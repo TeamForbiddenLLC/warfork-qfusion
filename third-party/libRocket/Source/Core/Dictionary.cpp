@@ -479,7 +479,7 @@ void Dictionary::Clear()
 	DictionaryEntry *ep;
 	bool table_is_malloced;
 	int n_full;
-	int i, n;
+	int i;
 	
 	DICTIONARY_DEBUG_CODE( Log::Message(LC_CORE, Log::LT_ALWAYS, "Dictionary::Clear") );
 	n = mask + 1;
