@@ -418,6 +418,7 @@ extern cvar_t *r_picmip;
 extern cvar_t *r_skymip;
 extern cvar_t *r_polyblend;
 extern cvar_t *r_lockpvs;
+extern cvar_t *r_screenshot_jpeg_quality;
 extern cvar_t *r_screenshot_fmtstr;
 extern cvar_t *r_screenshot_format;
 extern cvar_t *r_swapinterval;

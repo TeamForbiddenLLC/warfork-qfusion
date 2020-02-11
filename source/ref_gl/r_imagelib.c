@@ -44,7 +44,7 @@ r_imginfo_t IMG_LoadImage( const char * filename, uint8_t * ( *allocbuf )( void 
     
 }
 
-bool WriteScreenShot( const char *filename, r_imginfo_t *img, int type )
+bool WriteScreenShot( const char *filename, r_imginfo_t *img, int type, int quality )
 {
 	int file;
 	if( ri.FS_FOpenAbsoluteFile( filename, &file, FS_WRITE ) == -1 ) {
@@ -55,7 +55,7 @@ bool WriteScreenShot( const char *filename, r_imginfo_t *img, int type )
 
 	switch( type ) {
 		case 2:
-			return stbi_write_jpg( filename, img->width, img->height, img->samples, img->pixels, 100 ) != 0;
+			return stbi_write_jpg( filename, img->width, img->height, img->samples, img->pixels, quality ) != 0;
 		case 3:
 			return stbi_write_tga( filename, img->width, img->height, img->samples, img->pixels ) != 0;
 		default:

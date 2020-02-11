@@ -2097,7 +2097,7 @@ SCREEN SHOTS
 /*
 * R_ScreenShot
 */
-void R_ScreenShot( const char *filename, int x, int y, int width, int height,
+void R_ScreenShot( const char *filename, int x, int y, int width, int height, int quality,
 				   bool flipx, bool flipy, bool flipdiagonal, bool silent ) {
 	size_t size, buf_size;
 	uint8_t *buffer, *flipped, *rgb, *rgba;
@@ -2148,7 +2148,7 @@ void R_ScreenShot( const char *filename, int x, int y, int width, int height,
 					   flipx, flipy, flipdiagonal );
 	}
 
-	if( WriteScreenShot( filename, &imginfo, r_screenshot_format->integer ) && !silent ) {
+	if( WriteScreenShot( filename, &imginfo, r_screenshot_format->integer, quality ) && !silent ) {
 		Com_Printf( "Wrote %s\n", filename );
 	}
 }

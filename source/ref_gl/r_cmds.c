@@ -46,6 +46,7 @@ void R_TakeScreenShot( const char *path, const char *name, const char *fmtString
 	size_t path_size = strlen( path ) + 1;
 	char *checkname = NULL;
 	size_t checkname_size = 0;
+	int quality;
 
 	if( !R_IsRenderingToScreen() )
 		return;
@@ -54,6 +55,7 @@ void R_TakeScreenShot( const char *path, const char *name, const char *fmtString
 	{
 		case 2:
 			extension = ".jpg";
+			quality = r_screenshot_jpeg_quality->integer;
 			break;
 		case 3:
 			extension = ".tga";
@@ -135,7 +137,7 @@ void R_TakeScreenShot( const char *path, const char *name, const char *fmtString
 		lastIndex++;
 	}
 	
-R_ScreenShot( checkname, x, y, w, h, false, true, false, silent );
+R_ScreenShot( checkname, x, y, w, h, quality, false, true, false, silent );
 	
 	if( media ) {
 		ri.FS_AddFileToMedia( checkname );
@@ -253,7 +255,7 @@ void R_TakeEnvShot( const char *path, const char *name, unsigned maxPixels )
 		Q_snprintfz( checkname, checkname_size, "%s%s_%s", path, name, cubemapShots[i].suf );
 		COM_DefaultExtension( checkname, ".tga", checkname_size );
 		
-		R_ScreenShot( checkname, 0, 0, size, size,
+		R_ScreenShot( checkname, 0, 0, size, size, 100,
 					 ( cubemapShots[i].flags & IT_FLIPX ) ? true : false, 
 					 ( cubemapShots[i].flags & IT_FLIPY ) ? true : false, 
 					 ( cubemapShots[i].flags & IT_FLIPDIAGONAL ) ? true : false,
