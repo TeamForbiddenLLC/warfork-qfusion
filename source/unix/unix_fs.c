@@ -33,12 +33,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <sys/stat.h>
 #include <sys/mman.h>
 
-#ifdef __ANDROID__
-#include "../android/android_sys.h"
-#endif
-
 // Mac OS X and FreeBSD don't know the readdir64 and dirent64
-#if ( defined (__FreeBSD__) || defined (__ANDROID__) || !defined(_LARGEFILE64_SOURCE) )
+#if ( defined (__FreeBSD__) || !defined(_LARGEFILE64_SOURCE) )
 #define readdir64 readdir
 #define dirent64 dirent
 #endif
@@ -56,7 +52,7 @@ static int fdots = 0;
 */
 static bool FS_DirentIsDir( const struct dirent64 *d, const char *base )
 {
-#if ( defined( _DIRENT_HAVE_D_TYPE ) || defined( __ANDROID__ ) ) && defined( DT_DIR )
+#if ( defined( _DIRENT_HAVE_D_TYPE )
 	return ( d->d_type == DT_DIR );
 #else
 	size_t pathSize;
@@ -271,10 +267,6 @@ const char *Sys_FS_GetCacheDirectory( void )
 
 	if( cache[0] == '\0' )
 	{
-#ifdef __ANDROID__
-		Q_snprintfz( cache, sizeof( cache ), "%s/cache/%d.%d",
-			sys_android_internalDataPath, APP_VERSION_MAJOR, APP_VERSION_MINOR );
-#else
 		const char *homeEnv = getenv( "HOME" );
 		const char *base = NULL, *local = "";
 
@@ -312,17 +304,7 @@ const char *Sys_FS_GetCacheDirectory( void )
 */
 const char *Sys_FS_GetSecureDirectory( void )
 {
-#ifdef __ANDROID__
-	static char dir[PATH_MAX] = { '\0' };
-	if( !dir[0] )
-	{
-		Q_snprintfz( dir, sizeof( dir ), "%s/%d.%d", 
-			sys_android_app->activity->internalDataPath, APP_VERSION_MAJOR, APP_VERSION_MINOR );
-	}
-	return dir;
-#else
 	return NULL;
-#endif
 }
 
 /*
@@ -330,64 +312,7 @@ const char *Sys_FS_GetSecureDirectory( void )
 */
 const char *Sys_FS_GetMediaDirectory( fs_mediatype_t type )
 {
-#ifdef __ANDROID__
-	static char paths[FS_MEDIA_NUM_TYPES][PATH_MAX];
-	static int pathsChecked;
-	const char *publicDir;
-	JNIEnv *env;
-	jclass envClass;
-	jmethodID getPublicDirectory;
-	jstring js;
-	jobject file;
-	jclass fileClass;
-	jmethodID getAbsolutePath;
-	const char *pathUTF;
-
-	if( paths[type][0] )
-		return paths[type];
-
-	if( pathsChecked & ( 1 << type ) )
-		return NULL;
-
-	switch( type )
-	{
-	case FS_MEDIA_IMAGES:
-		publicDir = "Pictures";
-		break;
-	default:
-		return NULL;
-	}
-
-	pathsChecked |= 1 << type;
-
-	env = Sys_Android_GetJNIEnv();
-
-	envClass = (*env)->FindClass( env, "android/os/Environment" );
-	getPublicDirectory = (*env)->GetStaticMethodID( env, envClass, "getExternalStoragePublicDirectory",
-		"(Ljava/lang/String;)Ljava/io/File;" );
-	js = (*env)->NewStringUTF( env, publicDir );
-	file = (*env)->CallStaticObjectMethod( env, envClass, getPublicDirectory, js );
-	(*env)->DeleteLocalRef( env, js );
-	(*env)->DeleteLocalRef( env, envClass );
-	if( !file )
-		return NULL;
-
-	fileClass = (*env)->FindClass( env, "java/io/File" );
-	getAbsolutePath = (*env)->GetMethodID( env, fileClass, "getAbsolutePath", "()Ljava/lang/String;" );
-	js = (*env)->CallObjectMethod( env, file, getAbsolutePath );
-	(*env)->DeleteLocalRef( env, file );
-	(*env)->DeleteLocalRef( env, fileClass );
-
-	pathUTF = (*env)->GetStringUTFChars( env, js, NULL );
-	Q_strncpyz( paths[type], pathUTF, sizeof( paths[0] ) );
-	(*env)->ReleaseStringUTFChars( env, js, pathUTF );
-	(*env)->DeleteLocalRef( env, js );
-
-	return paths[type];
-
-#else
 	return NULL;
-#endif
 }
 
 /*
@@ -514,72 +439,5 @@ void Sys_FS_UnMMapFile( void *mapping, void *data, size_t size, size_t mapping_o
 */
 void Sys_FS_AddFileToMedia( const char *filename )
 {
-#ifdef __ANDROID__
-	ANativeActivity *activity = sys_android_app->activity;
-	JNIEnv *env = Sys_Android_GetJNIEnv();
-	char path[PATH_MAX];
-	jobject file, uri, intent;
 
-	if( !realpath( filename, path ) )
-		return;
-
-	{
-		jclass fileClass;
-		jmethodID ctor;
-		jstring pathname;
-
-		fileClass = (*env)->FindClass( env, "java/io/File" );
-		ctor = (*env)->GetMethodID( env, fileClass, "<init>", "(Ljava/lang/String;)V" );
-		pathname = (*env)->NewStringUTF( env, path );
-		file = (*env)->NewObject( env, fileClass, ctor, pathname );
-		(*env)->DeleteLocalRef( env, pathname );
-		(*env)->DeleteLocalRef( env, fileClass );
-	}
-
-	if( !file )
-		return;
-
-	{
-		jclass uriClass;
-		jmethodID fromFile;
-
-		uriClass = (*env)->FindClass( env, "android/net/Uri" );
-		fromFile = (*env)->GetStaticMethodID( env, uriClass, "fromFile", "(Ljava/io/File;)Landroid/net/Uri;" );
-		uri = (*env)->CallStaticObjectMethod( env, uriClass, fromFile, file );
-		(*env)->DeleteLocalRef( env, file );
-		(*env)->DeleteLocalRef( env, uriClass );
-	}
-
-	if( !uri )
-		return;
-
-	{
-		jclass intentClass;
-		jmethodID ctor, setData;
-		jstring action;
-		jobject intentRef;
-
-		intentClass = (*env)->FindClass( env, "android/content/Intent" );
-
-		ctor = (*env)->GetMethodID( env, intentClass, "<init>", "(Ljava/lang/String;)V" );
-		action = (*env)->NewStringUTF( env, "android.intent.action.MEDIA_SCANNER_SCAN_FILE" );
-		intent = (*env)->NewObject( env, intentClass, ctor, action );
-		(*env)->DeleteLocalRef( env, action );
-
-		setData = (*env)->GetMethodID( env, intentClass, "setData", "(Landroid/net/Uri;)Landroid/content/Intent;" );
-		intentRef = (*env)->CallObjectMethod( env, intent, setData, uri );
-		(*env)->DeleteLocalRef( env, uri );
-		(*env)->DeleteLocalRef( env, intentRef );
-
-		(*env)->DeleteLocalRef( env, intentClass );
-	}
-
-	{
-		jmethodID sendBroadcast;
-
-		sendBroadcast = (*env)->GetMethodID( env, sys_android_activityClass, "sendBroadcast", "(Landroid/content/Intent;)V" );
-		(*env)->CallVoidMethod( env, activity->clazz, sendBroadcast, intent );
-		(*env)->DeleteLocalRef( env, intent );
-	}
-#endif
 }

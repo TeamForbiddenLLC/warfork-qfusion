@@ -33,17 +33,17 @@ extern "C" {
 #include <ctype.h>
 #include <limits.h>
 #include <math.h>
-#include <stdio.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
 #ifndef _MSC_VER
 #include <strings.h>
 #endif
-#include <stdlib.h>
-#include <time.h>
-#include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <time.h>
 
 #ifdef __cplusplus
 };
@@ -57,7 +57,6 @@ extern "C" {
 extern "C" {
 #endif
 
-
 //==============================================
 
 #ifdef _WIN32
@@ -68,33 +67,33 @@ extern "C" {
 #ifdef _MSC_VER
 
 // unknown pragmas are SUPPOSED to be ignored, but....
-#pragma warning( disable : 4244 )       // MIPS
-#pragma warning( disable : 4136 )       // X86
-#pragma warning( disable : 4051 )       // ALPHA
+#pragma warning( disable : 4244 ) // MIPS
+#pragma warning( disable : 4136 ) // X86
+#pragma warning( disable : 4051 ) // ALPHA
 
 //# pragma warning(disable : 4018)		// signed/unsigned mismatch
 //# pragma warning(disable : 4305)		// truncation from const double to float
-#pragma warning( disable : 4514 )       // unreferenced inline function has been removed
-#pragma warning( disable : 4152 )       // nonstandard extension, function/data pointer conversion in expression
-#pragma warning( disable : 4201 )       // nonstandard extension used : nameless struct/union
-#pragma warning( disable : 4054 )       // 'type cast' : from function pointer to data pointer
-#pragma warning( disable : 4127 )       // conditional expression is constant
-#pragma warning( disable : 4100 )       // unreferenced formal parameter
-#pragma warning( disable : 4706 )       // assignment within conditional expression
-#pragma warning( disable : 4702 )       // unreachable code
-#pragma warning( disable : 4306 )       // conversion from 'int' to 'void *' of greater size
-#pragma warning( disable : 4305 )       // truncation from 'void *' to 'int'
-#pragma warning( disable : 4055 )		// 'type cast' : from data pointer 'void *' to function pointer
-#pragma warning( disable : 4204 )		// nonstandard extension used : non-constant aggregate initializer
+#pragma warning( disable : 4514 ) // unreferenced inline function has been removed
+#pragma warning( disable : 4152 ) // nonstandard extension, function/data pointer conversion in expression
+#pragma warning( disable : 4201 ) // nonstandard extension used : nameless struct/union
+#pragma warning( disable : 4054 ) // 'type cast' : from function pointer to data pointer
+#pragma warning( disable : 4127 ) // conditional expression is constant
+#pragma warning( disable : 4100 ) // unreferenced formal parameter
+#pragma warning( disable : 4706 ) // assignment within conditional expression
+#pragma warning( disable : 4702 ) // unreachable code
+#pragma warning( disable : 4306 ) // conversion from 'int' to 'void *' of greater size
+#pragma warning( disable : 4305 ) // truncation from 'void *' to 'int'
+#pragma warning( disable : 4055 ) // 'type cast' : from data pointer 'void *' to function pointer
+#pragma warning( disable : 4204 ) // nonstandard extension used : non-constant aggregate initializer
 
 #if defined _M_AMD64
-#pragma warning( disable : 4267 )       // conversion from 'size_t' to whatever, possible loss of data
+#pragma warning( disable : 4267 ) // conversion from 'size_t' to whatever, possible loss of data
 #endif
 
 #endif
 
-#if defined(_MSC_VER) && defined(_I64_MAX)
-# define HAVE___STRTOI64
+#if defined( _MSC_VER ) && defined( _I64_MAX )
+#define HAVE___STRTOI64
 #endif
 
 #define HAVE___INLINE
@@ -151,20 +150,20 @@ extern "C" {
 #ifdef _M_IX86
 #define CPUSTRING "x86"
 #define ARCH "x86"
-#elif defined ( __x86_64__ ) || defined( _M_AMD64 )
+#elif defined( __x86_64__ ) || defined( _M_AMD64 )
 #define CPUSTRING "x64"
 #define ARCH "x64"
-#elif defined ( _M_ALPHA )
+#elif defined( _M_ALPHA )
 #define CPUSTRING "axp"
-#define ARCH	  "axp"
+#define ARCH "axp"
 #endif
 
 // doh, some compilers need a _ prefix for variables so they can be
 // used in asm code
-#ifdef __GNUC__     // mingw
-#define VAR( x )    "_" # x
+#ifdef __GNUC__ // mingw
+#define VAR( x ) "_" #x
 #else
-#define VAR( x )    # x
+#define VAR( x ) #x
 #endif
 
 #ifdef _MSC_VER
@@ -186,7 +185,7 @@ typedef uintptr_t socket_handle_t;
 
 //==============================================
 
-#if defined ( __linux__ ) || defined ( __FreeBSD__ )
+#if defined( __linux__ ) || defined( __FreeBSD__ )
 
 #define HAVE_INLINE
 
@@ -198,10 +197,9 @@ typedef uintptr_t socket_handle_t;
 #define LIB_PREFIX "lib"
 #define LIB_SUFFIX ".so"
 
-#ifndef __ANDROID__
 #define MUMBLE_SUPPORT
 #define OPENAL_RUNTIME
-#endif
+
 
 // FIXME: move these to CMakeLists.txt
 #define LIBZ_LIBNAME "libz.so.1|libz.so"
@@ -214,12 +212,9 @@ typedef uintptr_t socket_handle_t;
 #define LIBTHEORA_LIBNAME "libtheora.so.0|libtheora.so"
 #define LIBFREETYPE_LIBNAME "libfreetype.so.6|libfreetype.so"
 
-#if defined ( __FreeBSD__ )
+#if defined( __FreeBSD__ )
 #define BUILDSTRING "FreeBSD"
 #define OSNAME "FreeBSD"
-#elif defined ( __ANDROID__ )
-#define BUILDSTRING "Android"
-#define OSNAME "Android"
 #else
 #define BUILDSTRING "Linux"
 #define OSNAME "Linux"
@@ -228,17 +223,14 @@ typedef uintptr_t socket_handle_t;
 #define STEAMQUERY_OS 'l'
 
 #ifdef __i386__
-#if defined ( __FreeBSD__ )
+#if defined( __FreeBSD__ )
 #define ARCH "freebsd_i386"
-#define CPUSTRING "i386"
-#elif defined ( __ANDROID__ )
-#define ARCH "android_x86"
 #define CPUSTRING "i386"
 #else
 #define ARCH "i386"
 #define CPUSTRING "i386"
 #endif
-#elif defined ( __x86_64__ )
+#elif defined( __x86_64__ )
 #if defined __FreeBSD__
 #define ARCH "freebsd_x86_64"
 #define CPUSTRING "x86_64"
@@ -246,34 +238,24 @@ typedef uintptr_t socket_handle_t;
 #define ARCH "x86_64"
 #define CPUSTRING "x86_64"
 #endif
-#elif defined ( __powerpc__ )
+#elif defined( __powerpc__ )
 #define ARCH "ppc"
 #define CPUSTRING "ppc"
-#elif defined ( __alpha__ )
+#elif defined( __alpha__ )
 #define ARCH "axp"
 #define CPUSTRING "axp"
-#elif defined ( __arm__ )
-#if defined ( __ANDROID__ )
-#define ARCH "android_armeabi-v7a"
-#define CPUSTRING "arm"
-#else
+#elif defined( __arm__ )
 #define ARCH "arm"
 #define CPUSTRING "arm"
-#endif
-#elif defined ( _MIPS_ARCH )
-#if defined ( __ANDROID__ )
-#define ARCH "android_mips"
-#define CPUSTRING "mips"
-#else
+#elif defined( _MIPS_ARCH )
 #define ARCH "mips"
 #define CPUSTRING "mips"
-#endif
 #else
 #define CPUSTRING "Unknown"
 #define ARCH "Unknown"
 #endif
 
-#define VAR( x ) # x
+#define VAR( x ) #x
 
 #include <alloca.h>
 
@@ -282,14 +264,14 @@ typedef int ioctl_param_t;
 
 typedef int socket_handle_t;
 
-#define SOCKET_ERROR (-1)
-#define INVALID_SOCKET (-1)
+#define SOCKET_ERROR ( -1 )
+#define INVALID_SOCKET ( -1 )
 
 #endif
 
 //==============================================
 
-#if defined ( __APPLE__ ) && defined ( __MACH__ )
+#if defined( __APPLE__ ) && defined( __MACH__ )
 
 #ifndef __MACOSX__
 #define __MACOSX__
@@ -319,14 +301,14 @@ typedef int socket_handle_t;
 #define LIBTHEORA_LIBNAME "libtheora.0.dylib|libtheora.dylib"
 #define LIBFREETYPE_LIBNAME "libfreetype.6.dylib|libfreetype.dylib"
 
-//Mac OSX has universal binaries, no need for cpu dependency
+// Mac OSX has universal binaries, no need for cpu dependency
 #define BUILDSTRING "MacOSX"
 #define OSNAME "MacOSX"
 #define STEAMQUERY_OS 'o'
 #define CPUSTRING "universal"
 #define ARCH "mac"
 
-#define VAR( x ) # x
+#define VAR( x ) #x
 
 #include <alloca.h>
 
@@ -334,28 +316,28 @@ typedef int ioctl_param_t;
 
 typedef int socket_handle_t;
 
-#define SOCKET_ERROR (-1)
-#define INVALID_SOCKET (-1)
+#define SOCKET_ERROR ( -1 )
+#define INVALID_SOCKET ( -1 )
 
 #endif
 
 //==============================================
 
-#if (defined __i386__ || defined __x86_64__) && defined __GNUC__
+#if( defined __i386__ || defined __x86_64__ ) && defined __GNUC__
 #define HAVE__BUILTIN_ATOMIC
-#elif (defined _WIN32)
+#elif( defined _WIN32 )
 #define HAVE__INTERLOCKED_API
 #endif
 
 //==============================================
 
-#if !defined(__cplusplus)
+#if !defined( __cplusplus )
 
 #ifdef HAVE___INLINE
 #ifndef inline
 #define inline __inline
 #endif
-#elif !defined ( HAVE_INLINE )
+#elif !defined( HAVE_INLINE )
 #ifndef inline
 #define inline
 #endif
@@ -405,7 +387,7 @@ typedef int socket_handle_t;
 #endif
 #endif
 
-#if ( defined ( _M_IX86 ) || defined ( __i386__ ) || defined ( __ia64__ ) ) && !defined ( C_ONLY )
+#if( defined( _M_IX86 ) || defined( __i386__ ) || defined( __ia64__ ) ) && !defined( C_ONLY )
 #define id386
 #else
 #ifdef id386
@@ -418,7 +400,7 @@ typedef int socket_handle_t;
 #endif
 
 #ifndef CPUSTRING
-#define CPUSTRING  "NON-WIN32"
+#define CPUSTRING "NON-WIN32"
 #endif
 
 #ifdef HAVE_TCHAR
@@ -431,14 +413,14 @@ typedef int socket_handle_t;
 #define qcdecl
 #endif
 
-#if defined ( __GNUC__ )
+#if defined( __GNUC__ )
 #define ATTRIBUTE_ALIGNED( x ) __attribute__( ( aligned( x ) ) )
-#define ATTRIBUTE_NOINLINE     __attribute__((noinline))
+#define ATTRIBUTE_NOINLINE __attribute__( ( noinline ) )
 #define ATTRIBUTE_NAKED
-#elif defined ( _MSC_VER )
+#elif defined( _MSC_VER )
 #define ATTRIBUTE_ALIGNED( x ) __declspec( align( x ) )
 #define ATTRIBUTE_NOINLINE
-#define ATTRIBUTE_NAKED        __declspec( naked )
+#define ATTRIBUTE_NAKED __declspec( naked )
 #else
 #define ATTRIBUTE_ALIGNED( x )
 #define ATTRIBUTE_NOINLINE
@@ -451,26 +433,26 @@ typedef int socket_handle_t;
 #endif
 
 #ifdef _M_AMD64
-#define STR_TO_POINTER(str) (void *)strtoll(str,NULL,0)
+#define STR_TO_POINTER( str ) (void *)strtoll( str, NULL, 0 )
 #else
-#define STR_TO_POINTER(str) (void *)strtol(str,NULL,0)
+#define STR_TO_POINTER( str ) (void *)strtol( str, NULL, 0 )
 #endif
 
 // Generic helper definitions for shared library support
 #if defined _WIN32 || defined __CYGWIN__
-# define QF_DLL_IMPORT __declspec(dllimport)
-# define QF_DLL_EXPORT __declspec(dllexport)
-# define QF_DLL_LOCAL
+#define QF_DLL_IMPORT __declspec( dllimport )
+#define QF_DLL_EXPORT __declspec( dllexport )
+#define QF_DLL_LOCAL
 #else
-# if __GNUC__ >= 4
-#  define QF_DLL_IMPORT __attribute__ ((visibility("default")))
-#  define QF_DLL_EXPORT __attribute__ ((visibility("default")))
-#  define QF_DLL_LOCAL  __attribute__ ((visibility("hidden")))
-# else
-#  define QF_DLL_IMPORT
-#  define QF_DLL_EXPORT
-#  define QF_DLL_LOCAL
-# endif
+#if __GNUC__ >= 4
+#define QF_DLL_IMPORT __attribute__( ( visibility( "default" ) ) )
+#define QF_DLL_EXPORT __attribute__( ( visibility( "default" ) ) )
+#define QF_DLL_LOCAL __attribute__( ( visibility( "hidden" ) ) )
+#else
+#define QF_DLL_IMPORT
+#define QF_DLL_EXPORT
+#define QF_DLL_LOCAL
+#endif
 #endif
 
 //==============================================
@@ -484,4 +466,3 @@ typedef int socket_handle_t;
 #endif
 
 #endif // GAME_QARCH_H
-
