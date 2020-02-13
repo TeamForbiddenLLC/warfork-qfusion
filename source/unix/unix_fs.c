@@ -225,7 +225,6 @@ const char *Sys_FS_GetHomeDirectory( void )
 
 	if( home[0] == '\0' )
 	{
-#ifndef __ANDROID__
 		const char *homeEnv = getenv( "HOME" );
 		const char *base = NULL, *local = "";
 
@@ -250,7 +249,6 @@ const char *Sys_FS_GetHomeDirectory( void )
 				( (const char *)APPLICATION ) + 1, APP_VERSION_MAJOR, APP_VERSION_MINOR );
 #endif
 		}
-#endif
 	}
 
 	if( home[0] == '\0' )
@@ -291,62 +289,11 @@ const char *Sys_FS_GetCacheDirectory( void )
 				( (const char *)APPLICATION ) + 1, APP_VERSION_MAJOR, APP_VERSION_MINOR );
 #endif
 		}
-#endif
 	}
 
 	if( cache[0] == '\0' )
 		return NULL;
 	return cache;
-}
-
-/*
-* Sys_FS_GetSecureDirectory
-*/
-const char *Sys_FS_GetSecureDirectory( void )
-{
-	return NULL;
-}
-
-/*
-* Sys_FS_GetMediaDirectory
-*/
-const char *Sys_FS_GetMediaDirectory( fs_mediatype_t type )
-{
-	return NULL;
-}
-
-/*
-* Sys_FS_GetRuntimeDirectory
-*/
-const char *Sys_FS_GetRuntimeDirectory( void )
-{
-	// disabled because some distributions mount /var/run with 'noexec' flag and consequently 
-	// game libs fail to load with 'failed to map segment from shared object' error
-#if 0
-	static char runtime[PATH_MAX] = { '\0' };
-
-	if( runtime[0] == '\0' )
-	{
-#ifndef __ANDROID__
-#ifndef __MACOSX__
-		const char *base = NULL, *local = "";
-
-		base = getenv( "XDG_RUNTIME_DIR" );
-		local = "";
-
-		if( base ) {
-			Q_snprintfz( runtime, sizeof( runtime ), "%s/%s%c%s-%d.%d", base, local, tolower( *( (const char *)APPLICATION ) ),
-				( (const char *)APPLICATION ) + 1, APP_VERSION_MAJOR, APP_VERSION_MINOR );
-		}
-#endif
-#endif
-	}
-
-	if( runtime[0] != '\0' )
-		return runtime;
-#endif
-
-	return NULL;
 }
 
 /*
@@ -432,12 +379,4 @@ void Sys_FS_UnMMapFile( void *mapping, void *data, size_t size, size_t mapping_o
 	if( !data )
 		return;
 	munmap( (char *)data - mapping_offset, size + mapping_offset );
-}
-
-/*
-* Sys_FS_AddFileToMedia
-*/
-void Sys_FS_AddFileToMedia( const char *filename )
-{
-
 }
