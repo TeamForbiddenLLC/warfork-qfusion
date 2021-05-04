@@ -384,7 +384,7 @@ static bool FS_SearchDirectoryForFile( searchpath_t *search, const char *filenam
 
 	Q_snprintfz( tempname, sizeof( tempname ), "%s/%s", search->path, filename );
 
-	f = fopen( tempname, "rb" );
+	f = Sys_FS_fopen( tempname, "rb" );
 	if( f )
 	{
 		fclose( f );
@@ -935,7 +935,7 @@ static int FS_FileExists( const char *filename, bool base, bool inVFS )
 	{
 		assert( tempname[0] != '\0' );
 		if( tempname[0] != '\0' ) {
-			return FS_FileLength( fopen( tempname, "rb" ), true );
+			return FS_FileLength( Sys_FS_fopen( tempname, "rb" ), true );
 		}
 	}
 
@@ -952,7 +952,7 @@ static int FS_AbsoluteFileExists( const char *filename )
 	if( !COM_ValidateFilename( filename ) )
 		return -1;
 
-	f = fopen( filename, "rb" );
+	f = Sys_FS_fopen( filename, "rb" );
 	if( !f )
 		return -1;
 
@@ -1028,7 +1028,7 @@ int FS_FOpenAbsoluteFile( const char *filename, int *filenum, int mode )
 	if( gz ) {
 		gzf = qgzopen( filename, modestr );
 	} else {
-		f = fopen( filename, modestr );
+		f = Sys_FS_fopen( filename, modestr );
 	}
 	if( !f && !gzf )
 	{
@@ -1093,7 +1093,7 @@ static int _FS_FOpenPakFile( packfile_t *pakFile, int *filenum )
 
 	*filenum = FS_OpenFileHandle();
 	file = &fs_filehandles[*filenum - 1];
-	file->fstream = fopen( pakFile->vfsHandle ? Sys_VFS_VFSName( pakFile->vfsHandle ) : pakFile->pakname, "rb" );
+	file->fstream = Sys_FS_fopen( pakFile->vfsHandle ? Sys_VFS_VFSName( pakFile->vfsHandle ) : pakFile->pakname, "rb" );
 	if( !file->fstream )
 		Com_Error( ERR_FATAL, "Error opening pak file: %s", pakFile->pakname );
 	file->uncompressedSize = pakFile->uncompressedSize;
@@ -1259,7 +1259,7 @@ static int _FS_FOpenFile( const char *filename, int *filenum, int mode, bool bas
 		if( gz ) {
 			gzf = qgzopen( tempname, modestr );
 		} else {
-			f = fopen( tempname, modestr );
+			f = Sys_FS_fopen( tempname, modestr );
 		}
 		if( !f && !gzf )
 			return -1;
@@ -1316,7 +1316,7 @@ static int _FS_FOpenFile( const char *filename, int *filenum, int mode, bool bas
 		unsigned int vfsOffset;
 
 		vfsName = Sys_VFS_VFSName( vfsHandle );
-		f = fopen( vfsName, "rb" );
+		f = Sys_FS_fopen( vfsName, "rb" );
 		if( !f ) {
 			Com_Error( ERR_FATAL, "Error opening VFS file: %s", vfsName );
 			goto error;
@@ -1349,7 +1349,7 @@ static int _FS_FOpenFile( const char *filename, int *filenum, int mode, bool bas
 			goto error;
 		}
 
-		f = fopen( tempname, "rb" );
+		f = Sys_FS_fopen( tempname, "rb" );
 		end = FS_FileLength( f, gz );
 
 		if( gz ) {
@@ -2605,7 +2605,7 @@ static pack_t *FS_LoadPK3File( const char *packfilename, bool silent )
 		}
 	}
 
-	fin = fopen( vfsHandle ? Sys_VFS_VFSName( vfsHandle ) : packfilename, "rb" );
+	fin = Sys_FS_fopen( vfsHandle ? Sys_VFS_VFSName( vfsHandle ) : packfilename, "rb" );
 	if( fin == NULL )
 	{
 		if( !silent ) Com_Printf( "Error opening PK3 file: %s\n", packfilename );

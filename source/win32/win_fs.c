@@ -231,7 +231,9 @@ const char *Sys_FS_GetHomeDirectory( void )
 
 	FreeLibrary( shFolderDll );
 #else
-	SHGetFolderPath( 0, csidl, 0, 0, home );
+	WCHAR wpath[MAX_PATH] = { 0 };
+	SHGetFolderPathW( 0, csidl, 0, 0, wpath );
+	_Sys_WideFileNameToUtf8(wpath, home, sizeof(home));
 #endif
 
 	if ( home[0] == '\0' )
@@ -279,11 +281,13 @@ const char *Sys_FS_GetRuntimeDirectory( void )
 	static char temp[MAX_PATH] = { '\0' };
 
 	if( temp[0] == 0 ) {
-		DWORD res = GetTempPath( MAX_PATH, temp );
+		WCHAR wpath[MAX_PATH] = { 0 };
+		DWORD res = GetTempPathW(_countof(wpath), wpath );
 		if( res == 0 || res >= MAX_PATH ) {
 			temp[0] = '\0';
 			return NULL;
 		}
+		_Sys_WideFileNameToUtf8(wpath, temp, _countof(temp));
 		Q_strncpyz( temp, va( "%s/%s %d.%d", COM_SanitizeFilePath( temp ), APPLICATION, APP_VERSION_MAJOR, APP_VERSION_MINOR ), sizeof( temp ) );		
 	}
 
@@ -296,8 +300,10 @@ const char *Sys_FS_GetRuntimeDirectory( void )
 void *Sys_FS_LockFile( const char *path )
 {
 	HANDLE handle;
+	WCHAR wpath[MAX_PATH];
 
-	handle = CreateFile( path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL );
+	_Sys_Utf8FileNameToWide(path, wpath, _countof(wpath));
+	handle = CreateFileW( wpath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL );
 	if( handle == INVALID_HANDLE_VALUE )
 		return NULL;
 	return (void *)handle;
@@ -316,7 +322,10 @@ void Sys_FS_UnlockFile( void *handle )
 */
 bool Sys_FS_CreateDirectory( const char *path )
 {
-	return ( !_mkdir( path ) );
+	WCHAR wpath[MAX_PATH];
+
+	_Sys_Utf8FileNameToWide(path, wpath, _countof(wpath));
+	return ( !_wmkdir( wpath ) );
 }
 
 /*
@@ -324,7 +333,10 @@ bool Sys_FS_CreateDirectory( const char *path )
 */
 bool Sys_FS_RemoveDirectory( const char *path )
 {
-	return ( !_rmdir( path ) );
+	WCHAR wpath[MAX_PATH];
+
+	_Sys_Utf8FileNameToWide(path, wpath, _countof(wpath));
+	return ( !_wrmdir( path ) );
 }
 
 /*
@@ -335,8 +347,11 @@ time_t Sys_FS_FileMTime( const char *filename )
 	HANDLE hFile;
 	FILETIME ft;
 	time_t time = 0;
+	WCHAR wpath[MAX_PATH];
 
-	hFile = CreateFile( filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL );
+	_Sys_Utf8FileNameToWide(filename, wpath, _countof(wpath));
+
+	hFile = CreateFileW( wpath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL );
 	if( hFile == INVALID_HANDLE_VALUE ) {
 		// the file doesn't exist
 		return 0;
@@ -357,6 +372,20 @@ time_t Sys_FS_FileMTime( const char *filename )
 	CloseHandle( hFile );
 
 	return time;
+}
+
+/*
+* Sys_FS_fopen
+*/
+FILE* Sys_FS_fopen(const char* path, const char* mode)
+{
+	WCHAR wpath[MAX_PATH];
+	WCHAR wmode[50];
+
+	_Sys_Utf8FileNameToWide(path, wpath, _countof(wpath));
+	_Sys_Utf8FileNameToWide(mode, wmode, _countof(wmode));
+
+	return _wfopen(wpath, wmode);
 }
 
 /*

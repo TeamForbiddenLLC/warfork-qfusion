@@ -190,7 +190,7 @@ static void Sys_VFS_Zip_LoadVFS( int idx, const char *filename )
 		goto end;
 	}
 
-	fin = fopen( filename, "rb" );
+	fin = Sys_FS_fopen( filename, "rb" );
 	if( !fin )
 	{
 		Com_Printf( "Error opening VFS zip file: %s\n", filename );

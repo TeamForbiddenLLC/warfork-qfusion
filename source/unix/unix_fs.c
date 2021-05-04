@@ -471,6 +471,14 @@ time_t Sys_FS_FileMTime( const char *filename )
 }
 
 /*
+* Sys_FS_fopen
+*/
+FILE* Sys_FS_fopen(const char* path, const char* mode)
+{
+	return fopen(path, mode);
+}
+
+/*
 * Sys_FS_FileNo
 */
 int	Sys_FS_FileNo( FILE *fp )

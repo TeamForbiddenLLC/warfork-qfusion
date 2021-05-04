@@ -39,6 +39,7 @@ void	    Sys_FS_UnlockFile( void *handle );
 
 time_t		Sys_FS_FileMTime( const char *filename );
 
+FILE* Sys_FS_fopen(const char* path, const char* mode);
 int			Sys_FS_FileNo( FILE *fp );
 
 void		*Sys_FS_MMapFile( int fileno, size_t size, size_t offset, void **mapping, size_t *mapping_offset );
