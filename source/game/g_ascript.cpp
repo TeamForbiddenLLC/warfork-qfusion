@@ -1861,6 +1861,32 @@ static float objectGameClient_getPMoveDashSpeed( gclient_t *self )
 	return self->ps.pmove.stats[PM_STAT_DASHSPEED];
 }
 
+static void objectGameClient_setPMoveDashTime( float time, gclient_t *self )
+{
+	if( time < 0.0f )
+		self->ps.pmove.stats[PM_STAT_DASHTIME] = 0;
+	else
+		self->ps.pmove.stats[PM_STAT_DASHTIME] = ( (int)time & 0xFFFF );
+}
+
+static float objectGameClient_getPMoveDashTime( gclient_t *self )
+{
+	return self->ps.pmove.stats[PM_STAT_DASHTIME];
+}
+
+static void objectGameClient_setPMoveWJTime( float time, gclient_t *self )
+{
+    if( time < 0.0f )
+        self->ps.pmove.stats[PM_STAT_WJTIME] = 0;
+    else
+        self->ps.pmove.stats[PM_STAT_WJTIME] = ( (int)time & 0xFFFF );
+}
+
+static float objectGameClient_getPMoveWJTime( gclient_t *self )
+{
+    return self->ps.pmove.stats[PM_STAT_WJTIME];
+}
+
 static asstring_t *objectGameClient_getUserInfoKey( asstring_t *key, gclient_t *self )
 {
 	char *s;
@@ -2026,11 +2052,15 @@ static const asMethod_t gameclient_Methods[] =
 	{ ASLIB_FUNCTION_DECL(void, set_pmoveMaxSpeed, ( float speed )), asFUNCTION(objectGameClient_setPMoveMaxSpeed), asCALL_CDECL_OBJLAST },
 	{ ASLIB_FUNCTION_DECL(void, set_pmoveJumpSpeed, ( float speed )), asFUNCTION(objectGameClient_setPMoveJumpSpeed), asCALL_CDECL_OBJLAST },
 	{ ASLIB_FUNCTION_DECL(void, set_pmoveDashSpeed, ( float speed )), asFUNCTION(objectGameClient_setPMoveDashSpeed), asCALL_CDECL_OBJLAST },
+	{ ASLIB_FUNCTION_DECL(void, set_pmoveDashTime, ( float time )), asFUNCTION(objectGameClient_setPMoveDashTime), asCALL_CDECL_OBJLAST },
+	{ ASLIB_FUNCTION_DECL(void, set_pmoveWJTime, ( float time )), asFUNCTION(objectGameClient_setPMoveWJTime), asCALL_CDECL_OBJLAST },
 	{ ASLIB_FUNCTION_DECL(uint, get_pmoveFeatures, () const), asFUNCTION(objectGameClient_getPMoveFeatures), asCALL_CDECL_OBJLAST },
 	{ ASLIB_FUNCTION_DECL(uint, get_pressedKeys, () const), asFUNCTION(objectGameClient_getPressedKeys), asCALL_CDECL_OBJLAST },
 	{ ASLIB_FUNCTION_DECL(float, get_pmoveMaxSpeed, () const), asFUNCTION(objectGameClient_getPMoveMaxSpeed), asCALL_CDECL_OBJLAST },
 	{ ASLIB_FUNCTION_DECL(float, get_pmoveJumpSpeed, () const), asFUNCTION(objectGameClient_getPMoveJumpSpeed), asCALL_CDECL_OBJLAST },
 	{ ASLIB_FUNCTION_DECL(float, get_pmoveDashSpeed, () const), asFUNCTION(objectGameClient_getPMoveDashSpeed), asCALL_CDECL_OBJLAST },
+	{ ASLIB_FUNCTION_DECL(float, get_pmoveDashTime, () const), asFUNCTION(objectGameClient_getPMoveDashTime), asCALL_CDECL_OBJLAST },
+	{ ASLIB_FUNCTION_DECL(float, get_pmoveWJTime, () const), asFUNCTION(objectGameClient_getPMoveWJTime), asCALL_CDECL_OBJLAST },
 	{ ASLIB_FUNCTION_DECL(const String @, getUserInfoKey, ( const String &in ) const), asFUNCTION(objectGameClient_getUserInfoKey), asCALL_CDECL_OBJLAST },
 	{ ASLIB_FUNCTION_DECL(void, printMessage, ( const String &in )), asFUNCTION(objectGameClient_printMessage), asCALL_CDECL_OBJLAST },
 	{ ASLIB_FUNCTION_DECL(void, chaseCam, ( const String @, bool teamOnly )), asFUNCTION(objectGameClient_ChaseCam), asCALL_CDECL_OBJLAST },
