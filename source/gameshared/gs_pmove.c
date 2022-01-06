@@ -92,6 +92,7 @@ pml_t pml;
 #define DEFAULT_LADDERSPEED 250.0f
 
 const float pm_friction = 8; //  ( initially 6 )
+const float pm_flyfriction = 4;
 const float pm_waterfriction = 1;
 const float pm_wateraccelerate = 10; // user intended acceleration when swimming ( initially 6 )
 
@@ -100,6 +101,8 @@ const float pm_decelerate = 12; // user intended deceleration when on ground
 
 const float pm_airaccelerate = 1; // user intended aceleration when on air
 const float pm_airdecelerate = 2.0f; // air deceleration (not +strafe one, just at normal moving).
+
+const float pm_flyaccelerate = 7;
 
 // special movement parameters
 
@@ -1347,19 +1350,13 @@ static void PM_CheckSpecialMovement( void )
 static void PM_FlyMove( bool doclip )
 {
 	float speed, drop, friction, control, newspeed;
-	float currentspeed, addspeed, accelspeed, maxspeed;
+	float currentspeed, addspeed, accelspeed;
 	int i;
 	vec3_t wishvel;
-	float fmove, smove;
+	float fmove, smove, umove;
 	vec3_t wishdir;
 	float wishspeed;
 	vec3_t end;
-	trace_t	trace;
-
-	maxspeed = pml.maxPlayerSpeed * 1.5;
-
-	if( pm->cmd.buttons & BUTTON_SPECIAL )
-		maxspeed *= 2;
 
 	// friction
 	speed = VectorLength( pml.velocity );
@@ -1371,9 +1368,8 @@ static void PM_FlyMove( bool doclip )
 	{
 		drop = 0;
 
-		friction = pm_friction * 1.5; // extra friction
-		control = speed < pm_decelerate ? pm_decelerate : speed;
-		drop += control * friction * pml.frametime;
+		friction = pm_flyfriction; // extra friction
+		drop += speed * friction * pml.frametime;
 
 		// scale the velocity
 		newspeed = speed - drop;
@@ -1387,11 +1383,14 @@ static void PM_FlyMove( bool doclip )
 	// accelerate
 	fmove = pml.forwardPush;
 	smove = pml.sidePush;
+	umove = pml.upPush;
+
 
 	if( pm->cmd.buttons & BUTTON_SPECIAL )
 	{
 		fmove *= 2;
 		smove *= 2;
+		umove *= 1.5;
 	}
 
 	VectorNormalize( pml.forward );
@@ -1404,21 +1403,11 @@ static void PM_FlyMove( bool doclip )
 	VectorCopy( wishvel, wishdir );
 	wishspeed = VectorNormalize( wishdir );
 
-
-	// clamp to server defined max speed
-	//
-	if( wishspeed > maxspeed )
-	{
-		wishspeed = maxspeed/wishspeed;
-		VectorScale( wishvel, wishspeed, wishvel );
-		wishspeed = maxspeed;
-	}
-
 	currentspeed = DotProduct( pml.velocity, wishdir );
 	addspeed = wishspeed - currentspeed;
 	if( addspeed > 0 )
 	{
-		accelspeed = pm_accelerate * pml.frametime * wishspeed;
+		accelspeed = pm_flyaccelerate * pml.frametime * wishspeed;
 		if( accelspeed > addspeed )
 			accelspeed = addspeed;
 
@@ -1428,12 +1417,7 @@ static void PM_FlyMove( bool doclip )
 
 	if( doclip )
 	{
-		for( i = 0; i < 3; i++ )
-			end[i] = pml.origin[i] + pml.frametime * pml.velocity[i];
-
-		module_Trace( &trace, pml.origin, pm->mins, pm->maxs, end, pm->playerState->POVnum, pm->contentmask, 0 );
-
-		VectorCopy( trace.endpos, pml.origin );
+		PM_StepSlideMove();
 	}
 	else
 	{
@@ -1941,7 +1925,7 @@ void Pmove( pmove_t *pmove )
 		if( pm->playerState->pmove.pm_type == PM_SPECTATOR )
 		{
 			PM_ApplyMouseAnglesClamp();
-			PM_FlyMove( false );
+			PM_FlyMove( true );
 		}
 		else
 		{
