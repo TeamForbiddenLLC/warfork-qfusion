@@ -92,7 +92,7 @@ pml_t pml;
 #define DEFAULT_LADDERSPEED 250.0f
 
 const float pm_friction = 8; //  ( initially 6 )
-const float pm_flyfriction = 4;
+const float pm_flyfriction = 5;
 const float pm_waterfriction = 1;
 const float pm_wateraccelerate = 10; // user intended acceleration when swimming ( initially 6 )
 
@@ -101,8 +101,6 @@ const float pm_decelerate = 12; // user intended deceleration when on ground
 
 const float pm_airaccelerate = 1; // user intended aceleration when on air
 const float pm_airdecelerate = 2.0f; // air deceleration (not +strafe one, just at normal moving).
-
-const float pm_flyaccelerate = 7;
 
 // special movement parameters
 
@@ -1349,7 +1347,7 @@ static void PM_CheckSpecialMovement( void )
 */
 static void PM_FlyMove( bool doclip )
 {
-	float speed, drop, friction, control, newspeed;
+	float speed, drop, friction, newspeed;
 	float currentspeed, addspeed, accelspeed;
 	int i;
 	vec3_t wishvel;
@@ -1357,6 +1355,7 @@ static void PM_FlyMove( bool doclip )
 	vec3_t wishdir;
 	float wishspeed;
 	vec3_t end;
+	trace_t trace;
 
 	// friction
 	speed = VectorLength( pml.velocity );
@@ -1398,7 +1397,7 @@ static void PM_FlyMove( bool doclip )
 
 	for( i = 0; i < 3; i++ )
 		wishvel[i] = pml.forward[i]*fmove + pml.right[i]*smove;
-	wishvel[2] += pml.upPush;
+	wishvel[2] += umove;
 
 	VectorCopy( wishvel, wishdir );
 	wishspeed = VectorNormalize( wishdir );
@@ -1407,7 +1406,7 @@ static void PM_FlyMove( bool doclip )
 	addspeed = wishspeed - currentspeed;
 	if( addspeed > 0 )
 	{
-		accelspeed = pm_flyaccelerate * pml.frametime * wishspeed;
+		accelspeed = ( pml.maxPlayerSpeed * 0.02f ) * pml.frametime * wishspeed;
 		if( accelspeed > addspeed )
 			accelspeed = addspeed;
 
@@ -1926,6 +1925,7 @@ void Pmove( pmove_t *pmove )
 		{
 			PM_ApplyMouseAnglesClamp();
 			PM_FlyMove( true );
+			PM_CategorizePosition();
 		}
 		else
 		{
