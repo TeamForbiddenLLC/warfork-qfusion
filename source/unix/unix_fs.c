@@ -308,6 +308,14 @@ const char *Sys_FS_GetCacheDirectory( void )
 }
 
 /*
+* Sys_FS_GetSteamWorkshopDirectory
+*/
+const char *Sys_FS_GetSteamWorkshopDirectory( void )
+{
+	return NULL;
+}
+
+/*
 * Sys_FS_GetSecureDirectory
 */
 const char *Sys_FS_GetSecureDirectory( void )

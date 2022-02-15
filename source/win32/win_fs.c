@@ -256,6 +256,37 @@ const char *Sys_FS_GetCacheDirectory( void )
 	return NULL;
 }
 
+#define STR_CAT(A, B)   A##B
+#define STR_TOWSTR_(x)	STR_CAT(L, #x)
+#define STR_TOWSTR(x)	STR_TOWSTR_(x)
+
+/*
+* Sys_FS_GetSteamWorkshopDirectory
+*/
+const char *Sys_FS_GetSteamWorkshopDirectory( void )
+{
+	static char workshop[MAX_PATH] = { '\0' };
+	static bool initialized = false;
+
+	if( !initialized ) {
+		initialized = true;
+		WCHAR wpath[MAX_PATH] = { 0 };
+		DWORD dwSize = sizeof( wpath );
+		if( RegGetValueW( HKEY_CURRENT_USER, L"SOFTWARE\\Valve\\Steam", L"SteamPath", RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ | RRF_ZEROONFAILURE, NULL, wpath, &dwSize ) == ERROR_SUCCESS ) {
+			wcsncat( wpath, L"\\steamapps\\workshop\\content\\" STR_TOWSTR( APP_STEAMID ), _countof( wpath ) - wcslen( wpath ) );
+
+			DWORD attr = GetFileAttributesW( wpath );
+			if( attr != INVALID_FILE_ATTRIBUTES && ( attr & FILE_ATTRIBUTE_DIRECTORY ) != 0 ) {
+				// directory exists!
+				_Sys_WideFileNameToUtf8( wpath, workshop, _countof( workshop ) );
+				COM_SanitizeFilePath( workshop );
+			}
+		}
+	}
+
+	return workshop[0] ? workshop : NULL;
+}
+
 /*
 * Sys_FS_GetSecureDirectory
 */
@@ -336,7 +367,7 @@ bool Sys_FS_RemoveDirectory( const char *path )
 	WCHAR wpath[MAX_PATH];
 
 	_Sys_Utf8FileNameToWide(path, wpath, _countof(wpath));
-	return ( !_wrmdir( path ) );
+	return ( !_wrmdir( wpath ) );
 }
 
 /*

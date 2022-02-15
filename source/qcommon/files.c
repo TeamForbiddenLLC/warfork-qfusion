@@ -155,6 +155,7 @@ typedef struct searchpath_s
 	pack_t *pack;
 	struct searchpath_s *base;		// parent basepath
 	struct searchpath_s *next;
+	bool append_basegame;
 } searchpath_t;
 
 typedef struct
@@ -3596,7 +3597,10 @@ static char **FS_GamePathPaks( searchpath_t *basepath, const char *gamedir, int 
 		int numvfsfiles = 0, numfiles = 0;
 		char **vfsfilenames = NULL, **filenames;
 
-		Q_snprintfz( pattern, sizeof( pattern ), "%s/*.%s", gamedir, pak_extensions[e] );
+		if( basepath->append_basegame )
+			Q_snprintfz( pattern, sizeof( pattern ), "%s/*.%s", gamedir, pak_extensions[e] );
+		else
+			Q_snprintfz( pattern, sizeof( pattern ), "*.%s", pak_extensions[e] );
 		Q_snprintfz( basePattern, sizeof( basePattern ), "%s/%s", basepath->path, pattern );
 
 		if( basepath == fs_root_searchpath ) // only add VFS once per game, treat it like the installation directory
@@ -3690,7 +3694,11 @@ static int FS_TouchGamePath( searchpath_t *basepath, const char *gamedir, bool i
 		path_size = sizeof( char ) * ( strlen( basepath->path ) + 1 + strlen( gamedir ) + 1 );
 		search->path = ( char* )FS_Malloc( path_size );
 		search->base = basepath;
-		Q_snprintfz( search->path, path_size, "%s/%s", basepath->path, gamedir );
+		search->append_basegame = basepath->append_basegame;
+		if( search->append_basegame )
+			Q_snprintfz( search->path, path_size, "%s/%s", basepath->path, gamedir );
+		else
+			Q_snprintfz( search->path, path_size, "%s", basepath->path );
 
 		search->next = fs_searchpaths;
 		fs_searchpaths = search;
@@ -4090,13 +4098,14 @@ bool FS_SetGameDirectory( const char *dir, bool force )
 /*
 * FS_AddBasePath
 */
-static void FS_AddBasePath( const char *path )
+static void FS_AddBasePath( const char *path, bool append_basegame )
 {
 	searchpath_t *newpath;
 
 	newpath = ( searchpath_t* )FS_Malloc( sizeof( searchpath_t ) );
 	newpath->path = FS_CopyString( path );
 	newpath->next = fs_basepaths;
+	newpath->append_basegame = append_basegame;
 	fs_basepaths = newpath;
 	COM_SanitizeFilePath( newpath->path );
 }
@@ -4299,6 +4308,7 @@ void FS_Init( void )
 	int i;
 	const char *homedir;
 	const char *cachedir;
+	const char *steam_workshop; 
 	char downloadsdir[FS_MAX_PATH];
 
 	assert( !fs_initialized );
@@ -4351,25 +4361,46 @@ void FS_Init( void )
 			Q_snprintfz( downloadsdir, sizeof( downloadsdir ), "%s", "downloads" );
 		}
 
-		FS_AddBasePath( downloadsdir );
+		FS_AddBasePath( downloadsdir, true );
 		fs_downloads_searchpath = fs_basepaths;
 	}
 
 	if( fs_cdpath->string[0] )
-		FS_AddBasePath( fs_cdpath->string );
+		FS_AddBasePath( fs_cdpath->string, true);
 
-	FS_AddBasePath( fs_basepath->string );
+	FS_AddBasePath( fs_basepath->string, true);
 	fs_root_searchpath = fs_basepaths;
 	fs_write_searchpath = fs_basepaths;
 
 	if( homedir != NULL && fs_usehomedir->integer ) {
-		FS_AddBasePath( homedir );
+		FS_AddBasePath( homedir, true);
 		fs_write_searchpath = fs_basepaths;
 	}
 
 	cachedir = Sys_FS_GetCacheDirectory();
 	if( cachedir )
-		FS_AddBasePath( cachedir );
+		FS_AddBasePath( cachedir, true);
+
+	steam_workshop = Sys_FS_GetSteamWorkshopDirectory();
+	if( steam_workshop ) {
+		char tempname[FS_MAX_PATH];
+		int numdirs = 0;
+		char **workshop_items;
+
+		Q_strncpyz( tempname, steam_workshop, sizeof( tempname ) );
+		Q_strncatz( tempname, "/*", sizeof( tempname ) );
+
+		if( workshop_items = FS_ListFiles( tempname, &numdirs, SFF_SUBDIR, SFF_HIDDEN | SFF_SYSTEM ) ) {
+			for( int n = 0; n < numdirs; ++n ) {
+				char *path = workshop_items[n];
+				size_t len = strlen( path );
+				if( len > 0 && path[len - 1] == '/' )
+					path[len - 1] = '\0';
+				FS_AddBasePath( workshop_items[n], false );
+			}
+			Mem_ZoneFree( workshop_items );
+		}
+	}
 
 	Sys_VFS_Init();
 
