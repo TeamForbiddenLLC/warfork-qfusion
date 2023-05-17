@@ -3086,9 +3086,6 @@ void CL_Init( void )
 
 	CL_Sys_Init();
 
-	// init localization subsystem
-	L10n_Init();
-
 	VID_Init();
 
 	CL_ClearState();
@@ -3175,7 +3172,6 @@ void CL_Shutdown( void )
 	CL_GameModule_Shutdown();
 	CL_SoundModule_Shutdown( true );
 	CL_ShutdownInput();
-	L10n_Shutdown();
 	VID_Shutdown();
 
 	CL_ShutdownMedia();

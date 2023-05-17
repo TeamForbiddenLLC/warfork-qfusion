@@ -872,6 +872,9 @@ void Qcommon_Init( int argc, char **argv )
 	// initialize memory manager
 	Memory_Init();
 
+    // init localization subsystem
+    L10n_Init();
+
 	// prepare enough of the subsystems to handle
 	// cvar and command buffer management
 	COM_InitArgv( argc, argv );
@@ -1159,6 +1162,7 @@ void Qcommon_Shutdown( void )
 	Cvar_Shutdown();
 	Cmd_Shutdown();
 	Cbuf_Shutdown();
+    L10n_Shutdown();
 	Memory_Shutdown();
 	
 	QMutex_Destroy( &com_print_mutex );
