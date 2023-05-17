@@ -26,6 +26,7 @@ file(GLOB SERVER_SOURCES
     "../qcommon/common.c"
     "../qcommon/files.c"
     "../qcommon/cmd.c"
+    "../qcommon/l10n.c"
     "../qcommon/mem.c"
     "../qcommon/net.c"
     "../qcommon/net_chan.c"

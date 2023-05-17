@@ -29,6 +29,7 @@ file(GLOB TV_SERVER_SOURCES
     "../qcommon/msg.c"
     "../qcommon/cvar.c"
     "../qcommon/dynvar.c"
+    "../qcommon/l10n.c"
     "../qcommon/library.c"
     "../qcommon/svnrev.c"
     "../qcommon/snap_demos.c"
