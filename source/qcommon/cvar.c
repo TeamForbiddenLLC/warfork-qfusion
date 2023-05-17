@@ -924,10 +924,6 @@ void Cvar_Init( void )
 	Cmd_AddCommand( "cvararchivelist", Cvar_ArchiveList_f );
 #endif
 
-	L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/bot" );
-	L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/cg" );
-	L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/cl" );
-
 	cvar_initialized = true;
 }
 
@@ -971,8 +967,6 @@ void Cvar_Shutdown( void )
 #ifndef PUBLIC_BUILD
 		Cmd_RemoveCommand( "cvararchivelist" );
 #endif
-
-		L10n_ClearDomain( "descriptions" );
 
 		QMutex_Lock( cvar_mutex );
 		Trie_Dump( cvar_trie, "", TRIE_DUMP_VALUES, &dump );

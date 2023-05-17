@@ -1188,7 +1188,6 @@ void Qcommon_Shutdown( void )
     Cvar_Shutdown();
     Cmd_Shutdown();
 	Cbuf_Shutdown();
-    L10n_Shutdown();
 	Memory_Shutdown();
 	
 	QMutex_Destroy( &com_print_mutex );
