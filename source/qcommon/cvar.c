@@ -471,37 +471,35 @@ void Cvar_FixCheatVars( void )
 */
 bool Cvar_Command( void )
 {
-	cvar_t *v;
-	const char *translated;
-			
-	// check variables
-	v = Cvar_Find( Cmd_Argv( 0 ) );
-	if( !v )
-		return false;
+    cvar_t *v;
+    const char *translated;
+            
+    // check variables
+    v = Cvar_Find( Cmd_Argv( 0 ) );
+    if( !v )
+        return false;
 
-	// perform a variable print or set
-	if( Cmd_Argc() == 1 )
-	{
-		Com_Printf( "\"%s\" is \"%s%s\" default: \"%s%s\"\n", v->name,
-			v->string, Q_ColorStringTerminator( v->string, ColorIndex(COLOR_WHITE) ),
-			v->dvalue, Q_ColorStringTerminator( v->dvalue, ColorIndex(COLOR_WHITE) ) );
-	
-		translated = L10n_TranslateString( "common", Cvar_GetName( v ) );
-		
-	    if( translated )
-		    Com_Printf( "\"%s\"\n", translated );
-		return false;
-										
-		if( v->latched_string )
-			Com_Printf( "latched: \"%s%s\"\n", v->latched_string,
-			Q_ColorStringTerminator( v->latched_string, ColorIndex(COLOR_WHITE) ) );
-		return true;
-	}
+    // perform a variable print or set
+    if( Cmd_Argc() == 1 )
+    {
+        Com_Printf( "\"%s\" is \"%s%s\" default: \"%s%s\"\n", v->name,
+        v->string, Q_ColorStringTerminator( v->string, ColorIndex(COLOR_WHITE) ),
+        v->dvalue, Q_ColorStringTerminator( v->dvalue, ColorIndex(COLOR_WHITE) ) );
 
-	Cvar_Set( v->name, Cmd_Argv( 1 ) );
-	return true;
+        if( v->latched_string )
+            Com_Printf( "latched: \"%s%s\"\n", v->latched_string,
+                Q_ColorStringTerminator( v->latched_string, ColorIndex(COLOR_WHITE) ) );
+
+        translated = L10n_TranslateString( "common", Cvar_GetName( v ) );
+        if( translated )
+            Com_Printf( "\"%s\"\n", translated );
+
+        return true;
+    }
+
+    Cvar_Set( v->name, Cmd_Argv( 1 ) );
+    return true;
 }
-
 
 /*
 * Cvar_Set_f
@@ -926,6 +924,10 @@ void Cvar_Init( void )
 	Cmd_AddCommand( "cvararchivelist", Cvar_ArchiveList_f );
 #endif
 
+	L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/bot" );
+	L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/cg" );
+	L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/cl" );
+
 	cvar_initialized = true;
 }
 
@@ -969,6 +971,8 @@ void Cvar_Shutdown( void )
 #ifndef PUBLIC_BUILD
 		Cmd_RemoveCommand( "cvararchivelist" );
 #endif
+
+		L10n_ClearDomain( "descriptions" );
 
 		QMutex_Lock( cvar_mutex );
 		Trie_Dump( cvar_trie, "", TRIE_DUMP_VALUES, &dump );
