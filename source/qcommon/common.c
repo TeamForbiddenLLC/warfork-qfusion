@@ -19,6 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 // common.c -- misc functions used in client and server
 #include "qcommon.h"
+#include "l10n.h"
 #if defined(__GNUC__) && defined(i386)
 #include <cpuid.h>
 #endif
@@ -858,6 +859,27 @@ void Qcommon_ShutdownCommands( void )
 }
 
 /*
+* Qcommon_InitCvarDescriptions
+*/
+
+void Qcommon_InitCvarDescriptions( void )
+{
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/bot" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/cg" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/cl" );
+    // add the rest here
+}
+
+/*
+* Qcommon_ShutdownCvarDescriptions
+*/
+
+void Qcommon_ShutdownCvarDescriptions( void )
+{
+    L10n_ClearDomain( "descriptions" );
+}
+
+/*
 * Qcommon_Init
 */
 void Qcommon_Init( int argc, char **argv )
@@ -872,9 +894,6 @@ void Qcommon_Init( int argc, char **argv )
 	// initialize memory manager
 	Memory_Init();
 
-    // init localization subsystem
-    L10n_Init();
-
 	// prepare enough of the subsystems to handle
 	// cvar and command buffer management
 	COM_InitArgv( argc, argv );
@@ -886,15 +905,19 @@ void Qcommon_Init( int argc, char **argv )
 	Cvar_PreInit();
 	Dynvar_PreInit();
 
-	// create basic commands and cvars
-	Cmd_Init();
-	Cvar_Init();
-	Dynvar_Init();
-	dynvars_initialized = true;
+    // create basic commands and cvars
+    Cmd_Init();
+    Cvar_Init();
+    Dynvar_Init();
+    dynvars_initialized = true;
 
-	wswcurl_init();
+    // init localization subsystem
+    L10n_Init();
+        Qcommon_InitCvarDescriptions();
 
-	Key_Init();
+    wswcurl_init();
+
+    Key_Init();
 
 	// we need to add the early commands twice, because
 	// a basepath or cdpath needs to be set before execing
@@ -1155,12 +1178,15 @@ void Qcommon_Shutdown( void )
 
 	Com_UnloadCompressionLibraries();
 
-	wswcurl_cleanup();
+   wswcurl_cleanup();
 
-	Dynvar_Shutdown();
-	dynvars_initialized = false;
-	Cvar_Shutdown();
-	Cmd_Shutdown();
+   Qcommon_ShutdownCvarDescriptions();
+   L10n_Shutdown();
+
+   Dynvar_Shutdown();
+   dynvars_initialized = false;
+    Cvar_Shutdown();
+    Cmd_Shutdown();
 	Cbuf_Shutdown();
     L10n_Shutdown();
 	Memory_Shutdown();
