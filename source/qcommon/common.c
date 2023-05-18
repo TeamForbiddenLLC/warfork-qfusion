@@ -911,10 +911,6 @@ void Qcommon_Init( int argc, char **argv )
     Dynvar_Init();
     dynvars_initialized = true;
 
-    // init localization subsystem
-    L10n_Init();
-        Qcommon_InitCvarDescriptions();
-
     wswcurl_init();
 
     Key_Init();
@@ -953,6 +949,10 @@ void Qcommon_Init( int argc, char **argv )
 
 	FS_Init();
 
+    // init localization subsystem
+    L10n_Init();
+        Qcommon_InitCvarDescriptions();
+        
 	Cbuf_AddText( "exec default.cfg\n" );
 	if( !dedicated->integer )
 	{
@@ -1174,15 +1174,15 @@ void Qcommon_Shutdown( void )
 
 	Com_CloseConsoleLog( true, true );
 
+   Qcommon_ShutdownCvarDescriptions();
+   L10n_Shutdown();
+
 	FS_Shutdown();
 
 	Com_UnloadCompressionLibraries();
 
    wswcurl_cleanup();
-
-   Qcommon_ShutdownCvarDescriptions();
-   L10n_Shutdown();
-
+   
    Dynvar_Shutdown();
    dynvars_initialized = false;
     Cvar_Shutdown();
