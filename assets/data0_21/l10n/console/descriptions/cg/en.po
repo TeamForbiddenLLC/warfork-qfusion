@@ -2,36 +2,54 @@
 
 #. Console/cg
 msgid "cg_autoaction_demo"
-msgstr "<0/1> Enables automatic demo recording of matches after warmup mode is finished. The demo will be written to /demos/autorecord/gametype/ in your data folder with the following file format: gametype_yyyy-mm-dd-hh-mm_map_playername_id.wdz20"
+msgstr "<0/1> Enables automatic demo recording of matches after warmup mode is finished.\n"
+"^6Disable: cg_autoaction_demo \"0\"\n"
+"^6Enable: cg_autoaction_demo \"1\"\n"
+"^6Note: The demo will be written to /demos/autorecord/gametype/ in your game data folder with the following file format: gametype_yyyy-mm-dd-hh-mm_map_playername_id.wfdz20"
 
 #. Console/cg
 msgid "cg_autoaction_screenshot"
-msgstr "<0/1> Enables automatic screenshot of final standings on the scoreboard when the match is finished. The screenshot will be written to /screenshots/ in your data folder with the following file format: wf_yymmdd_id.extension"
+msgstr "<0/1> Enables automatic screenshotting of the final standings on the scoreboard when the match is finished.\n"
+"^6Disable: cg_autoaction_screenshot \"0\"\n"
+"^6Enable: cg_autoaction_screenshot \"1\"\n"
+"^6Note: The screenshot will be written to /screenshots/ in your game data folder with the following file format: wf_yymmdd_id.extension"
 
 #. Console/cg
 msgid "cg_autoaction_spectator"
-msgstr "<0/1> Use autoaction when spectating games."
+msgstr "<0/1> Use autoaction when spectating games.\n"
+"^6Disable: cg_autoaction_spectator \"0\"\n"
+"^6Enable: cg_autoaction_spectator \"1\""
 
 #. Console/cg
 msgid "cg_autoaction_stats"
-msgstr "<0/1> If enabled, your statistics will be written to /stats/gametype/ in your data folder when the match is finished in following file format: gametype_yyyy-mm-dd-hh-mm_map_playername_id.txt"
+msgstr "<0/1> If enabled, your statistics will be written to a text file.\n"
+"^6Disable: cg_autoaction_stats \"0\"\n"
+"^6Enable: cg_autoaction_stats \"1\"\n"
+"^6Note: Stats will be written to /stats/gametype/ in your game data folder when the match is finished in following file format: gametype_yyyy-mm-dd-hh-mm_map_playername_id.txt"
 
 #. Console/cg
 msgid "cg_bloodTrail"
-msgstr "<value>	Changes the density of damage rings rendered when a player is hit. 0 = Disabled"
+msgstr "<value>	Changes the density of damage rings rendered when a player is hit.\n"
+"^6Disable: cg_bloodTrail \"0\""
 
 #. Console/cg
 msgid "cg_bloodTrailAlpha"
-msgstr "<0-1> Sets the transparency of damage rings rendered. 0 = 100% Transparent & 1 = 100% Solid"
+msgstr "<0-1> Sets the transparency of damage rings rendered.\n"
+"^6Totally transparent: cg_bloodTrailAlpha \"0\"\n"
+"^6Totally opaque: cg_bloodTrailAlpha \"1\""
 
 #. Console/cg
 msgid "cg_cartoonEffects"
-msgstr "<2/4/7>	Enables cartoon effects.
-Example Screenshots: 2 = Dust effect when falling, 4 = Dash effect, 7 = Dust effect when falling, Dash effect, Wall-jump effect."
+msgstr "<2/4/7>	Enables cartoon effects.\n"
+"^6Dust effect when falling: cg_cartoonEffects \"2\"\n"
+"^6Dash effect: cg_cartoonEffects \"4\"\n"
+"^6Dust effect when falling, Dash effect, and Wall-jump effect: cg_cartoonEffects \"7\""
 
 #. Console/cg
 msgid "cg_cartoonHitEffect"
-msgstr "<0/1> If enabled, critical hit effects are displayed for high damage value attacks."
+msgstr "<0/1> If enabled, critical hit effects are displayed for high damage value attacks.\n"
+"^6Disable: cg_cartoonHitEffect \"0\"\n"
+"^6Enable: cg_cartoonHitEffect \"1\""
 
 #. Console/cg
 msgid "cg_chatBeep"
