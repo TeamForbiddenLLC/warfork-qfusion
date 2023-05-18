@@ -492,7 +492,7 @@ bool Cvar_Command( void )
 
         translated = L10n_TranslateString( "descriptions", Cvar_GetName( v ) );
         if( translated )
-            Com_Printf( "\"%s\"\n", translated );
+        Com_Printf( S_COLOR_CYAN "%s\n", translated );
 
         return true;
     }

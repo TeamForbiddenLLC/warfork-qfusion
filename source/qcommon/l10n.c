@@ -641,8 +641,6 @@ void L10n_ClearDomains( void )
     podomain_t *podomain;
 
     for( podomain = podomains_head; podomain; podomain = podomain->next ) {
-        if( Q_stricmp( podomain->name, "descriptions" ) == 0 )
-            continue;
         L10n_ClearPODomain( podomain );
     }
 }
