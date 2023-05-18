@@ -916,6 +916,7 @@ extern mempool_t *zoneMemPool;
 void *Q_malloc( size_t size );
 void *Q_realloc( void *buf, size_t newsize );
 void Q_free( void *buf );
+void Qcommon_InitCvarDescriptions( void );
 
 void Qcommon_Init( int argc, char **argv );
 void Qcommon_Frame( unsigned int realmsec );

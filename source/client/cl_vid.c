@@ -615,6 +615,7 @@ load_refresh:
 
 		// load common localization strings
 		L10n_LoadLangPOFile( "common", "l10n" );
+        Qcommon_InitCvarDescriptions();
 
 		if( vid_ref_was_active ) {
 			IN_Restart();
