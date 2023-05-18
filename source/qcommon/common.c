@@ -867,7 +867,31 @@ void Qcommon_InitCvarDescriptions( void )
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/bot" );
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/cg" );
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/cl" );
-    // add the rest here
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/cm" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/com" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/con" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/fs" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/g" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/gl" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/host" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/http" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/in" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/logconsole" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/m" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/masterservers" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/menu" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/mm" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/net" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/prefixless" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/r" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/rcon" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/s" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/scr" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/sv" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/ui" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/vid" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/vsay" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/win" );
 }
 
 /*

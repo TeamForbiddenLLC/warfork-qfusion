@@ -490,7 +490,7 @@ bool Cvar_Command( void )
             Com_Printf( "latched: \"%s%s\"\n", v->latched_string,
                 Q_ColorStringTerminator( v->latched_string, ColorIndex(COLOR_WHITE) ) );
 
-        translated = L10n_TranslateString( "common", Cvar_GetName( v ) );
+        translated = L10n_TranslateString( "descriptions", Cvar_GetName( v ) );
         if( translated )
             Com_Printf( "\"%s\"\n", translated );
 
