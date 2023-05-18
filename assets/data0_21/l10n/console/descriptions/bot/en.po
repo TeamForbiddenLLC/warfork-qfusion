@@ -3,33 +3,33 @@
 #. Console/bot
 msgid "bot_dummy"
 msgstr "<0/1> If enabled, bots will be completely stationary and not fire any weapons.\n"
-"Disabled: bot_dummy \"0\"\n"
-"Enabled: bot_dummy \"1\""
+"^6Disable: bot_dummy \"0\"\n"
+"^6Enable: bot_dummy \"1\""
 
 #. Console/bot
 msgid "bot_showcombat"
 msgstr "<0/1> If enabled, combat messages for bots will be displayed.\n"
-"Disabled: bot_showcombat \"0\"\n"
-"Enabled: bot_showcombat \"1\"\n"
-"Note: You must also enable sv_cheats \"1\" and botdebug in console and then spectate the bot for this command to work."
+"^6Disable: bot_showcombat \"0\"\n"
+"^6Enable: bot_showcombat \"1\"\n"
+"^6Note: You must also enable sv_cheats \"1\" and botdebug in console and then spectate the bot for this command to work."
 
 #. Console/bot
 msgid "bot_showlrgoal"
 msgstr "<0/1> If enabled, the long range goals for bots will be displayed.\n"
-"Disabled: bot_showlrgoal \"0\"\n"
-"Enabled: bot_showlrgoal \"1\"\n"
-"Note: You must also enable sv_cheats \"1\" and botdebug in console and then spectate the bot for this command to work."
+"^6Disable: bot_showlrgoal \"0\"\n"
+"^6Enable: bot_showlrgoal \"1\"\n"
+"^6Note: You must also enable sv_cheats \"1\" and botdebug in console and then spectate the bot for this command to work."
 
 #. Console/bot
 msgid "bot_showpath"
 msgstr "<0/1> If enabled, a path will be drawn that the bot is following.\n"
-"Disabled: bot_showpath \"0\"\n"
-"Enabled: bot_showpath \"1\"\n"
-"Note: You must also enable sv_cheats \"1\" and botdebug in console and then spectate the bot for this command to work."
+"^6Disable: bot_showpath \"0\"\n"
+"^6Enable: bot_showpath \"1\"\n"
+"^6Note: You must also enable sv_cheats \"1\" and botdebug in console and then spectate the bot for this command to work."
 
 #. Console/bot
 msgid "bot_showsrgoal"
 msgstr "<0/1> If enabled, the short range goals for bots will be displayed.\n"
-"Disabled: bot_showsrgoal \"0\"\n"
-"Enabled: bot_showsrgoal \"1\"\n"
-"Note: You must also enable sv_cheats \"1\" and botdebug in console and then spectate the bot for this command to work."
+"^6Disable: bot_showsrgoal \"0\"\n"
+"^6Enable: bot_showsrgoal \"1\"\n"
+"^6Note: You must also enable sv_cheats \"1\" and botdebug in console and then spectate the bot for this command to work."
