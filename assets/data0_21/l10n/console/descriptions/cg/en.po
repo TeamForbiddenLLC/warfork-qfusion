@@ -40,7 +40,7 @@ msgstr "<0-1> Sets the transparency of damage rings rendered.\n"
 
 #. Console/cg
 msgid "cg_cartoonEffects"
-msgstr "<2/4/7>	Enables cartoon effects.\n"
+msgstr "<2/4/7> Enables cartoon effects.\n"
 "^6Dust effect when falling: cg_cartoonEffects \"2\"\n"
 "^6Dash effect: cg_cartoonEffects \"4\"\n"
 "^6Dust effect when falling, Dash effect, and Wall-jump effect: cg_cartoonEffects \"7\""
@@ -79,7 +79,7 @@ msgstr "<HUD name> Changes your HUD.\n"
 "^6Classic: cg_clientHUD \"classic\"\n"
 "^6Adem: cg_clientHUD \"adem\"\n"
 "^6Spec: cg_clientHUD \"spec\"\n"
-"^6Note: The list above doesn't include the names of custom HUDs."
+"^6Note: The list above only includes the name of stock HUDs and is not all inclusive."
 
 #. Console/cg
 msgid "cg_colorCorrection"
@@ -95,11 +95,11 @@ msgstr "<0-13> Changes your crosshair style.\n"
 
 #. Console/cg
 msgid "cg_crosshair_color"
-msgstr "<R G B>	Changes the color of your crosshair."
+msgstr "<R G B> Changes the color of your crosshair."
 
 #. Console/cg
 msgid "cg_crosshair_damage_color"
-msgstr "<R G B>	Changes the color of your crosshair when you hit an enemy."
+msgstr "<R G B> Changes the color of your crosshair when you hit an enemy."
 
 #. Console/cg
 msgid "cg_crosshair_font"
@@ -116,7 +116,7 @@ msgstr "<0-13> Changes your crosshair style for strong ammo. 0 disables it."
 
 #. Console/cg
 msgid "cg_crosshair_strong_color"
-msgstr "<R G B>	Changes the color of your crosshair for strong ammo."
+msgstr "<R G B> Changes the color of your crosshair for strong ammo."
 
 #. Console/cg
 msgid "cg_crosshair_strong_size"
@@ -161,11 +161,11 @@ msgstr "<0-11> Changes the color of your Damage Numbers.\n"
 
 #. Console/cg
 msgid "cg_damageNumbersDistance"
-msgstr "<1-200>	The vertical distance above the player model that Damage Numbers are displayed.\n"
+msgstr "<1-200> The vertical distance above the player model that Damage Numbers are displayed."
 
 #. Console/cg
 msgid "cg_damageNumbersOffset"
-msgstr "<1-5> The offset distance between the Damage Number and its shadow.\n"
+msgstr "<1-5> The offset distance between the Damage Number and its shadow."
 
 #. Console/cg
 msgid "cg_damageNumbersSize"
@@ -305,7 +305,10 @@ msgstr "<value> Specifies the dead-zone for looking left and right."
 
 #. Console/cg
 msgid "cg_gibs"
-msgstr "This command no longer works. It use to define the total number of gibs that would be displayed when you fragged someone."
+msgstr "<value> Defines the total number of gibs when someone is fragged.\n"
+"^6Disable: cg_gibs \"0\"\n"
+"^6Enable: cg_gibs \"1\""
+"^6Note: 15 gibs are defined by default with cg_gibs \"1\" through cg_gibs \"15\". If you want more specify cg_gibs \"16\" or more."
 
 #. Console/cg
 msgid "cg_gun"
@@ -319,7 +322,7 @@ msgstr "<0-1> Transparency of your weapon model.\n"
 
 #. Console/cg
 msgid "cg_gun_fov"
-msgstr "<1-160>	Field-of-View of your weapon model.\n"
+msgstr "<1-160> Field-of-View of your weapon model.\n"
 
 #. Console/cg
 msgid "cg_gunbob"
@@ -338,7 +341,7 @@ msgstr "<value> Moves your weapon's model on the Y axis."
 #. Console/cg
 msgid "cg_gunz"
 msgstr "<value> Moves your weapon's model on the Z axis."
-	
+ 
 #. Console/cg
 msgid "cg_handOffset"
 msgstr "<value> The offset of your hand's position. 0 means middle."
@@ -346,19 +349,19 @@ msgstr "<value> The offset of your hand's position. 0 means middle."
 #. Console/cg
 msgid "cg_instabeam_alpha"
 msgstr "<0-1> Transparency of the instabeam."
-	
+ 
 #. Console/cg
 msgid "cg_instabeam_time"
 msgstr "<value> The time an instagun beam will be displayed before disappearing."
-	
+ 
 #. Console/cg
 msgid "cg_instabeam_width"
 msgstr "<value> The width of an instagun beam."
-	
+ 
 #. Console/cg
 msgid "cg_laserBeamSubdivisions"
 msgstr "<value> The higher the number the smoother the laser beam looks."
-			
+   
 #. Console/cg
 msgid "cg_movementStyle"
 msgstr "<0/1> Changes the movement style.\n"
@@ -403,15 +406,19 @@ msgstr "<0/1> If enabled, you will see a flash when picking up an item or weapon
 
 #. Console/cg
 msgid "cg_placebo"
-msgstr "<value> Similar to sv_cheats. User experience varies. Satisfaction not guaranteed."
+msgstr "<value> This command sometimes yields a competitive edge over players similar to sv_cheats \"1\"\n"
+"^6Note: User experience varies. Satisfaction not guaranteed. Adult supervision is recommended."
 
 #. Console/cg
 msgid "cg_playList"
 msgstr "<path>/filename.m3u Path to your in-game music playlist."
+"^6Note: To easily make your own in-game music playlist, create a folder in /basewf/ called /sounds/music/, which contains a file named custom.m3u and your music in ogg or wav format. On each line in custom.m3u, specify one track (ie: warfork.ogg). Music cannot exceed 44.1kHz or it will crash the sound system. In the console type cg_playList \"sounds/music/custom.m3u\""
 
 #. Console/cg
 msgid "cg_playListShuffle"
 msgstr "<0/1> Plays songs randomly from the music playlist."
+"^6Disable: cg_playListShuffle \"0\"\n"
+"^6Enable: cg_playListShuffle \"1\""
 
 #. Console/cg
 msgid "cg_predict"
@@ -424,6 +431,8 @@ msgstr "<0/1> Optimizes cg_predict's behavior."
 #. Console/cg
 msgid "cg_predictLaserBeam"
 msgstr "<0/1> If enabled, a perfectly straight line laserbeam will always be drawn regardless of server lag. If disabled, a laserbeam will be drawn based on server lag."
+"^6Disable: cg_predictLaserBeam \"0\"\n"
+"^6Enable: cg_predictLaserBeam \"1\""
 
 #. Console/cg
 msgid "cg_projectileAntilagOffset"
@@ -460,7 +469,7 @@ msgstr "<0/1> Enables kill reactions."
 
 #. Console/cg
 msgid "cg_reactionKillsTimeout"
-msgstr "<1-180>	Frequency of Reaction Kills in seconds."
+msgstr "<1-180> Frequency of kill reactions in seconds."
 
 #. Console/cg
 msgid "cg_scoreboardFontFamily"
@@ -627,18 +636,26 @@ msgstr "<0/1> If enabled and your HUD supports it, your teammates location will 
 #. Console/cg
 msgid "cg_showTeamMates"
 msgstr "<0/1> Show teammates indicators."
+"^6Disable: cg_showTeamMates \"0\"\n"
+"^6Enable: cg_showTeamMates \"1\""
 
 #. Console/cg
 msgid "cg_showTimer"
 msgstr "<0/1> Displays the match's timer."
+"^6Disable: cg_showTimer \"0\"\n"
+"^6Enable: cg_showTimer \"1\""
 
 #. Console/cg
 msgid "cg_showViewBlends"
 msgstr "<0/1> If enabled, fullscreen overlays for underwater and pain effects will be displayed."
+"^6Disable: cg_showViewBlends \"0\"\n"
+"^6Enable: cg_showViewBlends \"1\""
 
 #. Console/cg
 msgid "cg_showZoomEffect"
 msgstr "<0/1> If enabled, the zoom effect is shown."
+"^6Disable: cg_showZoomEffect \"0\"\n"
+"^6Enable: cg_showZoomEffect \"1\""
 
 #. Console/cg
 msgid "cg_simpleItems"
@@ -650,11 +667,18 @@ msgstr "<value> Changes the size of simplistic item models."
 
 #. Console/cg
 msgid "cg_specHUD"
-msgstr "<HUD name> Changes the HUD while spectating."
+msgstr "<HUD name> Changes the HUD used while spectating."
+"^6Spec: cg_specHUD \"spec\"\n"
+"^6Classic: cg_specHUD \"classic\"\n"
+"^6Adem: cg_specHUD \"adem\"\n"
+"^6Default: cg_specHUD \"default\"\n"
+"^6Note: The list above only includes the name of stock HUDs and is not all inclusive."
 
 #. Console/cg
 msgid "cg_strafeHUD"
 msgstr "<0/1> Enables strafe HUD."
+"^6Disable: cg_strafeHUD \"0\"\n"
+"^6Enable: cg_strafeHUD \"1\""
 
 #. Console/cg
 msgid "cg_teamALPHAcolor"
@@ -674,7 +698,7 @@ msgstr "<default/fullbright> Changes models skin of all Team Forbidden players t
 
 #. Console/cg
 msgid "cg_teamBETAcolor"
-msgstr "<R G B>	Color of team Icy players."
+msgstr "<R G B> Color of team Icy players."
 
 #. Console/cg
 msgid "cg_teamBETAmodel"
@@ -691,18 +715,24 @@ msgstr "<default/fullbright> Changes models skin of all team Icy players to a us
 #. Console/cg
 msgid "cg_teamColoredBeams"
 msgstr "<0/1> If enabled, the LG beam color will be changed to the team color of the attacker."
+"^6Disable: cg_teamColoredBeams \"0\"\n"
+"^6Enable: cg_teamColoredBeams \"1\""
 
 #. Console/cg
 msgid "cg_teamColoredInstaBeams"
 msgstr "<0/1> Changes the color of the InstaBeam to the team color of the attacker."
+"^6Disable: cg_teamColoredInstaBeams \"0\"\n"
+"^6Enable: cg_teamColoredInstaBeams \"1\""
 
 #. Console/cg
 msgid "cg_teamPLAYERScolor"
-msgstr "<R G B>	Color of team Players players (non-team based gametypes)."
+msgstr "<R G B> Color of team Players players (non-team based gametypes)."
 
 #. Console/cg
 msgid "cg_teamPLAYERScolorForce"
 msgstr "<0/1> Changes color of all team Players players to a user-chosen one."
+"^6Disable: cg_teamPLAYERScolorForce \"0\"\n"
+"^6Enable: cg_teamPLAYERScolorForce \"1\""
 
 #. Console/cg
 msgid "cg_teamPLAYERSmodel"
@@ -711,6 +741,8 @@ msgstr "<model name> Default model of team Players players."
 #. Console/cg
 msgid "cg_teamPLAYERSmodelForce"
 msgstr "<0/1> Changes models of all team Players players to a user-chosen one."
+"^6Disable: cg_teamPLAYERSmodelForce \"0\"\n"
+"^6Enable: cg_teamPLAYERSmodelForce \"1\""
 
 #. Console/cg
 msgid "cg_teamPLAYERSskin"
@@ -753,22 +785,28 @@ msgstr "<0/1> Enables voice commands (also known as 'VSAYS').\n"
 
 #. Console/cg
 msgid "cg_volume_announcer"
-msgstr "<0-2.0>	Changes the volume of the announcer.\n"
+msgstr "<0-2.0> Changes the volume of the announcer.\n"
 "^6Disable: cg_volume_announcer \"0\""
 
 #. Console/cg
 msgid "cg_volume_effects"
-msgstr "<0-2.0>	Changes the volume of the effects.\n"
+msgstr "<0-2.0> Changes the volume of the effects.\n"
 "^6Disable: cg_volume_effects \"0\""
 
 #. Console/cg
+msgid "cg_volume_efforts"
+msgstr "<0-2.0> Changes the volume of your efforts.\n"
+"^6Disable: cg_volume_efforts \"0\"\n"
+"^6Note: Efforts are the grunting sounds players make when jumping."
+
+#. Console/cg
 msgid "cg_volume_hitsound"
-msgstr "<0-2.0>	Changes the volume of the hitsound.\n"
+msgstr "<0-2.0> Changes the volume of the hitsound.\n"
 "^6Disable: cg_volume_hitsound \"0\""
 
 #. Console/cg
 msgid "cg_volume_players"
-msgstr "<0-2.0>	Changes the volume of player sounds.\n"
+msgstr "<0-2.0> Changes the volume of player sounds.\n"
 "^6Disable: cg_volume_players \"0\""
 
 #. Console/cg
