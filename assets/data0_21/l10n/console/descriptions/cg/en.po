@@ -70,7 +70,7 @@ msgstr "<0-4> Filters Warfork TV chat messages.\n"
 "^Display all Messages: cg_chatFilterTV \"0\"\n"
 "^6Filters global chat messages: cg_chatFilterTV \"1\"\n"
 "^6Filters team chat messages: cg_chatFilterTV \"2\"\n"
-"^6Filter TV spectator chat messages.: cg_chatFilterTV \"4\""
+"^6Filter TV spectator chat messages: cg_chatFilterTV \"4\""
 
 #. Console/cg
 msgid "cg_clientHUD"
@@ -82,9 +82,10 @@ msgstr "<HUD name> Changes your HUD.\n"
 
 #. Console/cg
 msgid "cg_colorCorrection"
-msgstr "<0/1> Enables color correction. Color Correction works only on maps which have tables for it with supported GPUs."
+msgstr "<0/1> Enables color correction.\n"
 "^6Disable: cg_colorCorrection \"0\"\n"
-"^6Enable: cg_colorCorrection \"1\""
+"^6Enable: cg_colorCorrection \"1\"\n"
+"^6Note: Color Correction works only on maps which have tables for it with supported GPUs."
 
 #. Console/cg
 msgid "cg_crosshair"
@@ -473,7 +474,9 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/cg
 msgid "cg_scoreboardStats"
-msgstr "<0-1> If enabled, Weapons Statistics will be shown on the Scoreboard."
+msgstr "<0-1> If enabled, Statistics will be shown on the Scoreboard when spectating.\n"
+"^6Disable: cg_scoreboardStats \"0\"\n"
+"^6Enable: cg_scoreboardStats \"1\""
 
 #. Console/cg
 msgid "cg_scoreboardTitleFontFamily"
@@ -519,11 +522,15 @@ msgstr "<0/1> Enables an FPS counter.\n"
 
 #. Console/cg
 msgid "cg_showhelp"
-msgstr "<0/1> Displays help text under the timer."
+msgstr "<0/1> Displays help text under the round time.\n"
+"^6Disable: cg_showhelp \"0\"\n"
+"^6Enable: cg_showhelp \"1\""
 
 #. Console/cg
 msgid "cg_showHUD"
-msgstr "<0/1> Enables HUD."
+msgstr "<0/1> Enables HUD.\n"
+"^6Disable: cg_showHUD \"0\"\n"
+"^6Enable: cg_showHUD \"1\""
 
 #. Console/cg
 msgid "cg_showItemTimers"
@@ -531,11 +538,17 @@ msgstr "<value> Displays when items will spawn on your HUD (only in spectator mo
 
 #. Console/cg
 msgid "cg_showMiniMap"
-msgstr "<0/1> Displays a minimap (if supported by gamemode)."
+msgstr "<0/1> Displays a minimap.\n"
+"^6Disable: cg_showMiniMap \"0\"\n"
+"^6Enable: cg_showMiniMap \"1\"\n"
+"^6Note: A minimap must be bundled with the map and supported by the current gametype."
 
 #. Console/cg
 msgid "cg_showMiss"
-msgstr "<0/1> For debugging server events. If enabled, will dump prediction misses to console in x:y format. x = time y = distance error. Best to use with con_drawnotify 1 for easier viewing."
+msgstr "<0/1> If enabled, it will dump prediction misses to console in x:y format. x = time y = distance error.\n"
+"^6Disable: cg_showMiss \"0\"\n"
+"^6Enable: cg_showMiss \"1\"\n"
+"^6Note: This command was intended for debugging server events and is best used with con_drawnotify \"1\" so you don't have to keep opening your console for realtime information."
 
 #. Console/cg
 msgid "cg_showObituaries"
@@ -570,12 +583,10 @@ msgid "cg_showPlayerNames_zfar"
 msgstr "<value> Defines the distance that player names are still drawn over models."
 
 #. Console/cg
-msgid "cg_showPlayerTrails"
-msgstr "<0/1> This command has already been removed from the game and only exists in default.cfg. The next update will purge the remnants."
-
-#. Console/cg
 msgid "cg_showPointedPlayer"
 msgstr "<0/1> If enabled, when your mouse is pointed over a teammate or enemy their name will be drawn over the player model."
+"^6Disable: cg_showPointedPlayer \"0\"\n"
+"^6Enable: cg_showPointedPlayer \"1\""
 
 #. Console/cg
 msgid "cg_showPressedKeys"
@@ -700,11 +711,13 @@ msgstr "<0/1> Enables third person view.\n"
 
 #. Console/cg
 msgid "cg_thirdPersonAngle"
-msgstr "<value> Changes the angle of third person view."
+msgstr "<value> Changes the angle of third person view.\n"
+"^6Note: You must enable sv_cheats \"1\" and cg_thirdPerson \"1\" for this command to work."
 
 #. Console/cg
 msgid "cg_thirdPersonRange"
-msgstr "<value> The distance that the player model appears from the camera when in third person view."
+msgstr "<value> The distance that the player model appears from the camera when in third person view.\n"
+"^6Note: You must enable sv_cheats \"1\" and cg_thirdPerson \"1\" for this command to work."
 
 #. Console/cg
 msgid "cg_viewBob"
@@ -714,7 +727,9 @@ msgstr "<0/1> Enabled head bobbing.\n"
 
 #. Console/cg
 msgid "cg_viewSize"
-msgstr "<40-100> The percentage of the viewable area displayed on your screen. If less than 100 is defined then black space will fill your screen. If you set cl_demoavi_scissor 0 then images will always be exported as cg_viewSize 100. If you set cl_demoavi_scissor 1 then images will always be exported as cg_viewSize 100."
+msgstr "<40-100> Viewport size.\n"
+"^6Fullscreen: cg_viewSize \"100\"\n"
+"^6Note: If cg_viewSize is less than 100, then a black frame will fill-in the remaining percentage of viewable area."
 
 #. Console/cg
 msgid "cg_voiceChats"
@@ -724,37 +739,42 @@ msgstr "<0/1> Enables voice commands (also known as 'VSAYS').\n"
 
 #. Console/cg
 msgid "cg_volume_announcer"
-msgstr "<0-2.0>	Changes the volume of the announcer."
+msgstr "<0-2.0>	Changes the volume of the announcer.\n"
+"^6Disable: cg_volume_announcer \"0\""
 
 #. Console/cg
 msgid "cg_volume_effects"
-msgstr "<0-2.0>	Changes the volume of the effects."
+msgstr "<0-2.0>	Changes the volume of the effects.\n"
+"^6Disable: cg_volume_effects \"0\""
 
 #. Console/cg
 msgid "cg_volume_hitsound"
-msgstr "<0-2.0>	Changes the volume of the hitsound."
+msgstr "<0-2.0>	Changes the volume of the hitsound.\n"
+"^6Disable: cg_volume_hitsound \"0\""
 
 #. Console/cg
 msgid "cg_volume_players"
-msgstr "<0-2.0>	Changes the volume of player sounds."
+msgstr "<0-2.0>	Changes the volume of player sounds.\n"
+"^6Disable: cg_volume_players \"0\""
 
 #. Console/cg
 msgid "cg_volume_voicechats"
-msgstr "<0.0-2.0> Changes the volume of voice commands."
+msgstr "<0.0-2.0> Changes the volume of voice commands.\n"
+"^6Disable: cg_volume_voicechats \"0\""
 
 #. Console/cg
 msgid "cg_weaponAutoswitch"
-msgstr "<0-2> Enables auto switching of weapons when you're out of ammo.\n"
-"^6Autoswitch Disabled: cg_weaponAutoswitch \"0\"\n"
-"^6Autoswitch Enabled (one click): cg_weaponAutoswitch \"1\"\n"
-"^6Autoswitch Enabled (two clicks): cg_weaponAutoswitch \"2\""
+msgstr "<0-2> Enables auto switching of weapons.\n"
+"^6Disable: cg_weaponAutoswitch \"0\"\n"
+"^6Switch when you don't have the just picked weapon: cg_weaponAutoswitch \"1\"\n"
+"^6Switch when the new weapon improves the selected weapon: cg_weaponAutoswitch \"2\""
 
 #. Console/cg
 msgid "cg_weaponFlashes"
-msgstr "<0-2> Enables weapon flashes.\n"
-"^6All Weapon Flashes Disabled: cg_weaponFlashes \"0\"\n"
-"^6Wall + Floor Weapons Flashes Enabled: cg_weaponFlashes \"1\"\n"
-"^6Wall + Floor & Weapon Muzzle Flashes Enabled (if cg_gun is set to 1): cg_weaponFlashes \"2\""
+msgstr "<0/2> Enables weapon flashes.\n"
+"^6Disable: cg_weaponFlashes \"0\"\n"
+"^6Enable: cg_weaponFlashes \"2\"\n"
+"^6Note: You must also enable cg_gun \"1\" for weapon muzzle flashes."
 
 #. Console/cg
 msgid "cg_weaponlist"
