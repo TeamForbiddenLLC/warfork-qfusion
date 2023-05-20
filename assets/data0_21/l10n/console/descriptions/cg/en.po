@@ -103,7 +103,8 @@ msgstr "<R G B> Changes the color of your crosshair when you hit an enemy."
 
 #. Console/cg
 msgid "cg_crosshair_font"
-msgstr "<fontname> Changes the font of your crosshair."
+msgstr "<fontname> Changes the font of your crosshair.\n"
+"^6Note: Warfork currently only supports crosshairs in TrueType Font format."
 
 #. Console/cg
 msgid "cg_crosshair_size"
@@ -122,10 +123,6 @@ msgstr "<R G B> Changes the color of your crosshair for strong ammo."
 msgid "cg_crosshair_strong_size"
 msgstr "<0-64> Changes the size of your crosshair for strong ammo."
 "^6Disable: cg_crosshair_strong_size \"0\""
-
-#. Console/cg
-msgid "cg_damage_blend"
-msgstr "This command no longer works. It use to enable a red flash when you got hit if cg_damage_indicator = 1."
 
 #. Console/cg
 msgid "cg_damage_indicator"
@@ -667,7 +664,7 @@ msgstr "<value> Changes the size of simplistic item models."
 
 #. Console/cg
 msgid "cg_specHUD"
-msgstr "<HUD name> Changes the HUD used while spectating."
+msgstr "<HUD name> Changes the HUD used while spectating.\n"
 "^6Spec: cg_specHUD \"spec\"\n"
 "^6Classic: cg_specHUD \"classic\"\n"
 "^6Adem: cg_specHUD \"adem\"\n"
@@ -683,14 +680,29 @@ msgstr "<0/1> Enables strafe HUD."
 #. Console/cg
 msgid "cg_teamALPHAcolor"
 msgstr "<R G B> Color of team Forbidden players."
+"^Red: cg_teamALPHAcolor \"255 0 0\"\n"
+"^6Blue: cg_teamALPHAcolor \"51 128 255\"\n"
+"^6Green: cg_teamALPHAcolor \"0 204 102\"\n"
+"^6Orange: cg_teamALPHAcolor \"255 128 0\"\n"
+"^6Yellow: cg_teamALPHAcolor \"255 255 51\"\n"
+"^6Purple: cg_teamALPHAcolor \"153 51 255\"\n"
+"^6Note: The list above only includes RGB color examples and is not all inclusive."
 
 #. Console/cg
 msgid "cg_teamALPHAmodel"
-msgstr "<model name> Default model of team Forbidden players."
+msgstr "<model name> Default model of team Forbidden players.\n"
+"^6Padpork: cg_teamALPHAmodel \"bigvic\"\n"
+"^6Mondana: cg_teamALPHAmodel \"bobot\"\n"
+"^6Adem: cg_teamALPHAmodel \"monada\"\n"
+"^6Classic: cg_teamALPHAmodel \"padpork\"\n"
+"^6Adem: cg_teamALPHAmodel \"silverclaw\"\n"
+"^6Default: cg_teamALPHAmodel \"viciious\""
 
 #. Console/cg
 msgid "cg_teamALPHAmodelForce"
 msgstr "<0/1> Changes models of all team Forbidden players to a user-chosen one."
+"^6Disable: cg_teamALPHAmodelForce \"0\"\n"
+"^6Enable: cg_teamALPHAmodelForce \"1\""
 
 #. Console/cg
 msgid "cg_teamALPHAskin"
@@ -699,14 +711,29 @@ msgstr "<default/fullbright> Changes models skin of all Team Forbidden players t
 #. Console/cg
 msgid "cg_teamBETAcolor"
 msgstr "<R G B> Color of team Icy players."
+"^Red: cg_teamBETAcolor \"255 0 0\"\n"
+"^6Blue: cg_teamBETAcolor \"51 128 255\"\n"
+"^6Green: cg_teamBETAcolor \"0 204 102\"\n"
+"^6Orange: cg_teamBETAcolor \"255 128 0\"\n"
+"^6Yellow: cg_teamBETAcolor \"255 255 51\"\n"
+"^6Purple: cg_teamBETAcolor \"153 51 255\"\n"
+"^6Note: The list above only includes RGB color examples and is not all inclusive."
 
 #. Console/cg
 msgid "cg_teamBETAmodel"
-msgstr "<model name> Default model of team Icy players."
+msgstr "<model name> Default model of team Icy players.\n"
+"^6Padpork: cg_teamBETAmodel \"bigvic\"\n"
+"^6Mondana: cg_teamBETAmodel \"bobot\"\n"
+"^6Adem: cg_teamBETAmodel \"monada\"\n"
+"^6Classic: cg_teamBETAmodel \"padpork\"\n"
+"^6Adem: cg_teamBETAmodel \"silverclaw\"\n"
+"^6Default: cg_teamBETAmodel \"viciious\""
 
 #. Console/cg
 msgid "cg_teamBETAmodelForce"
 msgstr "<0/1> Changes models of all team Beta players to a user-chosen one."
+"^6Disable: cg_teamBETAmodelForce \"0\"\n"
+"^6Enable: cg_teamBETAmodelForce \"1\""
 
 #. Console/cg
 msgid "cg_teamBETAskin"
@@ -779,7 +806,7 @@ msgstr "<40-100> Viewport size.\n"
 
 #. Console/cg
 msgid "cg_voiceChats"
-msgstr "<0/1> Enables voice commands (also known as 'VSAYS').\n"
+msgstr "<0/1> Enables voice commands (also known as \"VSAYS\").\n"
 "^6Disable: cg_voiceChats \"0\"\n"
 "^6Enable: cg_voiceChats \"1\""
 
