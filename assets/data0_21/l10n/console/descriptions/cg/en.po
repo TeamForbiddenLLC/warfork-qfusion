@@ -18,7 +18,8 @@ msgstr "<0/1> Enables automatic screenshotting of the final standings on the sco
 msgid "cg_autoaction_spectator"
 msgstr "<0/1> Use autoaction when spectating games.\n"
 "^6Disable: cg_autoaction_spectator \"0\"\n"
-"^6Enable: cg_autoaction_spectator \"1\""
+"^6Enable: cg_autoaction_spectator \"1\"\n"
+"^6Note: cg_autoaction_demo \"1\", cg_autoaction_screenshot \"1\", and\or cg_autoaction_stats \"1\" will not be enabled in spectator mode unless cg_autoaction_spectator \"1\" is as well."
 
 #. Console/cg
 msgid "cg_autoaction_stats"
@@ -34,22 +35,24 @@ msgstr "<value> Changes the density of damage rings rendered when a player is hi
 
 #. Console/cg
 msgid "cg_bloodTrailAlpha"
-msgstr "<0-1> Sets the transparency of damage rings rendered.\n"
+msgstr "<0-1.0> Sets the transparency of damage rings rendered.\n"
 "^6Totally transparent: cg_bloodTrailAlpha \"0\"\n"
-"^6Totally opaque: cg_bloodTrailAlpha \"1\""
+"^6Totally opaque: cg_bloodTrailAlpha \"1.0\""
 
-#. Console/cg
+#. Console/cg (TODO)
 msgid "cg_cartoonEffects"
-msgstr "<2/4/7> Enables cartoon effects.\n"
-"^6Dust effect when falling: cg_cartoonEffects \"2\"\n"
-"^6Dash effect: cg_cartoonEffects \"4\"\n"
-"^6Dust effect when falling, Dash effect, and Wall-jump effect: cg_cartoonEffects \"7\""
+msgstr "<1/2/4> A bitmask that enables cartoon effects.\n"
+"^6Dust when effect falling: cg_cartoonEffects \"1\"\n"
+"^6Dash effect: cg_cartoonEffects \"2\"\n"
+"^6Dust effect when falling, Dash effect, and Wall-jump effect: cg_cartoonEffects \"4\"\n"
+"^6Note: cg_cartoonEffects \"7\" enables all effects."
 
 #. Console/cg
 msgid "cg_cartoonHitEffect"
 msgstr "<0/1> If enabled, critical hit effects are displayed for high damage value attacks.\n"
 "^6Disable: cg_cartoonHitEffect \"0\"\n"
-"^6Enable: cg_cartoonHitEffect \"1\""
+"^6Enable: cg_cartoonHitEffect \"1\"\n"
+"^6Note: Critical hit effect color varies based on damage dealt. Green (39 or more), Yellow (50 or more), and Red (64 or more)."
 
 #. Console/cg
 msgid "cg_chatBeep"
@@ -86,7 +89,7 @@ msgid "cg_colorCorrection"
 msgstr "<0/1> Enables color correction.\n"
 "^6Disable: cg_colorCorrection \"0\"\n"
 "^6Enable: cg_colorCorrection \"1\"\n"
-"^6Note: Color Correction works only on maps which have tables for it with supported GPUs."
+"^6Note: Color Correction works only with supported GPUs and maps which have tables for it."
 
 #. Console/cg
 msgid "cg_crosshair"
@@ -95,11 +98,25 @@ msgstr "<0-13> Changes your crosshair style.\n"
 
 #. Console/cg
 msgid "cg_crosshair_color"
-msgstr "<R G B> Changes the color of your crosshair."
+msgstr "<R G B> Changes the color of your crosshair.\n"
+"^6Red: cg_crosshair_color \"255 0 0\"\n"
+"^6Blue: cg_crosshair_color \"51 128 255\"\n"
+"^6Green: cg_crosshair_color \"0 204 102\"\n"
+"^6Orange: cg_crosshair_color \"255 128 0\"\n"
+"^6Yellow: cg_crosshair_color \"255 255 51\"\n"
+"^6Purple: cg_crosshair_color \"153 51 255\"\n"
+"^6Note: The list above only includes RGB color examples and is not all inclusive."
 
 #. Console/cg
 msgid "cg_crosshair_damage_color"
-msgstr "<R G B> Changes the color of your crosshair when you hit an enemy."
+msgstr "<R G B> Changes the color of your crosshair when you hit an enemy.\n"
+"^6Red: cg_crosshair_damage_color \"255 0 0\"\n"
+"^6Blue: cg_crosshair_damage_color \"51 128 255\"\n"
+"^6Green: cg_crosshair_damage_color \"0 204 102\"\n"
+"^6Orange: cg_crosshair_damage_color \"255 128 0\"\n"
+"^6Yellow: cg_crosshair_damage_color \"255 255 51\"\n"
+"^6Purple: cg_crosshair_damage_color \"153 51 255\"\n"
+"^6Note: The list above only includes RGB color examples and is not all inclusive."
 
 #. Console/cg
 msgid "cg_crosshair_font"
@@ -113,26 +130,35 @@ msgstr "<0-64> Changes the size of your crosshair.\n"
 
 #. Console/cg
 msgid "cg_crosshair_strong"
-msgstr "<0-13> Changes your crosshair style for strong ammo. 0 disables it."
+msgstr "<0-13> Changes your crosshair style for strong ammo.\n"
+"^6Disable: cg_crosshair_strong \"0\""
 
 #. Console/cg
 msgid "cg_crosshair_strong_color"
-msgstr "<R G B> Changes the color of your crosshair for strong ammo."
+msgstr "<R G B> Changes the color of your crosshair for strong ammo.\n"
+"^6Red: cg_crosshair_strong_color \"255 0 0\"\n"
+"^6Blue: cg_crosshair_strong_color \"51 128 255\"\n"
+"^6Green: cg_crosshair_strong_color \"0 204 102\"\n"
+"^6Orange: cg_crosshair_strong_color \"255 128 0\"\n"
+"^6Yellow: cg_crosshair_strong_color \"255 255 51\"\n"
+"^6Purple: cg_crosshair_strong_color \"153 51 255\"\n"
+"^6Note: The list above only includes RGB color examples and is not all inclusive."
 
 #. Console/cg
 msgid "cg_crosshair_strong_size"
-msgstr "<0-64> Changes the size of your crosshair for strong ammo."
+msgstr "<0-64> Changes the size of your crosshair for strong ammo.\n"
 "^6Disable: cg_crosshair_strong_size \"0\""
 
 #. Console/cg
 msgid "cg_damage_indicator"
-msgstr "<0-1> If enabled, a red damage indicator will appear in the direction(s) you were hit.\n"
+msgstr "<0/1> If enabled, a red damage indicator will appear in the direction(s) you were hit.\n"
 "^6Disable: cg_damage_indicator \"0\"\n"
 "^6Enable: cg_damage_indicator \"1\""
 
 #. Console/cg
 msgid "cg_damage_indicator_time"
-msgstr "<value> Sets how long the red damage indicator will be visible."
+msgstr "<value> Sets how long the damage indicator will be visible.\n"
+"^6Note: The damage indicator is red and shows the direction(s) you were hit."
 
 #. Console/cg
 msgid "cg_damageNumbers"
@@ -315,7 +341,9 @@ msgstr "<0/1> Shows your weapon.\n"
 
 #. Console/cg
 msgid "cg_gun_alpha"
-msgstr "<0-1> Transparency of your weapon model.\n"
+msgstr "<0-1.0> Transparency of your weapon model.\n"
+"^6Totally transparent: cg_gun_alpha \"0\"\n"
+"^6Totally opaque: cg_gun_alpha \"1.0\""
 
 #. Console/cg
 msgid "cg_gun_fov"
@@ -413,7 +441,7 @@ msgstr "<path>/filename.m3u Path to your in-game music playlist."
 
 #. Console/cg
 msgid "cg_playListShuffle"
-msgstr "<0/1> Plays songs randomly from the music playlist."
+msgstr "<0/1> Plays songs randomly from the music playlist.\n"
 "^6Disable: cg_playListShuffle \"0\"\n"
 "^6Enable: cg_playListShuffle \"1\""
 
@@ -427,7 +455,7 @@ msgstr "<0/1> Optimizes cg_predict's behavior."
 
 #. Console/cg
 msgid "cg_predictLaserBeam"
-msgstr "<0/1> If enabled, a perfectly straight line laserbeam will always be drawn regardless of server lag. If disabled, a laserbeam will be drawn based on server lag."
+msgstr "<0/1> If enabled, a perfectly straight line laserbeam will always be drawn regardless of server lag. If disabled, a laserbeam will be drawn based on server lag.\n"
 "^6Disable: cg_predictLaserBeam \"0\"\n"
 "^6Enable: cg_predictLaserBeam \"1\""
 
@@ -441,7 +469,8 @@ msgstr "<value> Controls the amount of firetrail left behind when firing the Roc
 
 #. Console/cg
 msgid "cg_projectileFireTrailAlpha"
-msgstr "<0-1> Controls the transparency level of the firetrail left behind when firing the Rocket Launcher or Grenade Launcher. 0 = 100% Transparent, 1 = Solid Color"
+msgstr "<0-1> Controls the transparency level of the firetrail left behind when firing the Rocket Launcher or Grenade Launcher.\n"
+"^6 0 = 100% Transparent, 1 = Solid Color"
 
 #. Console/cg
 msgid "cg_projectileTrail"
@@ -566,7 +595,7 @@ msgstr "<0/1> If enabled, it will dump prediction misses to console in x:y forma
 "^6Enable: cg_showMiss \"1\"\n"
 "^6Note: This command was intended for debugging server events and is best used with con_drawnotify \"1\" so you don't have to keep opening your console for realtime information."
 
-#. Console/cg
+#. Console/cg (TODO)
 msgid "cg_showObituaries"
 msgstr "<value> Displays who fragged who using which weapon on your HUD."
 
@@ -585,6 +614,8 @@ msgstr "<0/1> Displays player names above player models."
 #. Console/cg
 msgid "cg_showPlayerNames_alpha"
 msgstr "<0-1> Transparency of player names."
+"^6Totally transparent: cg_showPlayerNames_alpha \"0\"\n"
+"^6Totally opaque: cg_showPlayerNames_alpha \"1.0\""
 
 #. Console/cg
 msgid "cg_showPlayerNames_barWidth"
@@ -592,11 +623,11 @@ msgstr "<value> Bar width above your teammates player model, which contains info
 
 #. Console/cg
 msgid "cg_showPlayerNames_xoffset"
-msgstr "<value> Move player names by this much on the X axis."
+msgstr "<value> Move player names on the X axis."
 
 #. Console/cg
 msgid "cg_showPlayerNames_yoffset"
-msgstr "<value> Move player names by this much on the Y axis."
+msgstr "<value> Move player names on the Y axis."
 
 #. Console/cg
 msgid "cg_showPlayerNames_zfar"
@@ -604,13 +635,13 @@ msgstr "<value> Defines the distance that player names are still drawn over mode
 
 #. Console/cg
 msgid "cg_showPointedPlayer"
-msgstr "<0/1> If enabled, when your mouse is pointed over a teammate or enemy their name will be drawn over the player model."
+msgstr "<0/1> If enabled, when your mouse is pointed over a teammate or enemy their name will be drawn over the player model.\n"
 "^6Disable: cg_showPointedPlayer \"0\"\n"
 "^6Enable: cg_showPointedPlayer \"1\""
 
 #. Console/cg
 msgid "cg_showPressedKeys"
-msgstr "<0/1> If enabled, will show the key presses of players.\n"
+msgstr "<0/1> If enabled, will show your key presses or the player you're spectating.\n"
 "^6Disable: cg_showPressedKeys \"0\"\n"
 "^6Enable: cg_showPressedKeys \"1\""
 
@@ -622,7 +653,9 @@ msgstr "<0/1> Enables seeing your own shadow.\n"
 
 #. Console/cg
 msgid "cg_showSpeed"
-msgstr "<0-3> Changes the position of the speed display of the player. 0 to disable. Values higher than 1 aren't supported on all HUDs."
+msgstr "<0-3> Changes the position of the speed display of the player.\n"
+"^6Disable: cg_showSpeed \"0\"\n"
+"Note: Values higher than 1 aren't supported on all HUDs."
 
 #. Console/cg
 msgid "cg_showTeamLocations"
@@ -632,31 +665,34 @@ msgstr "<0/1> If enabled and your HUD supports it, your teammates location will 
 
 #. Console/cg
 msgid "cg_showTeamMates"
-msgstr "<0/1> Show teammates indicators."
+msgstr "<0/1> Show teammates indicators.\n"
 "^6Disable: cg_showTeamMates \"0\"\n"
 "^6Enable: cg_showTeamMates \"1\""
 
 #. Console/cg
 msgid "cg_showTimer"
-msgstr "<0/1> Displays the match's timer."
+msgstr "<0/1> Displays the match's timer.\n"
 "^6Disable: cg_showTimer \"0\"\n"
 "^6Enable: cg_showTimer \"1\""
 
 #. Console/cg
 msgid "cg_showViewBlends"
-msgstr "<0/1> If enabled, fullscreen overlays for underwater and pain effects will be displayed."
+msgstr "<0/1> If enabled, fullscreen overlays for underwater pain effects will be displayed.\n"
 "^6Disable: cg_showViewBlends \"0\"\n"
 "^6Enable: cg_showViewBlends \"1\""
 
 #. Console/cg
 msgid "cg_showZoomEffect"
-msgstr "<0/1> If enabled, the zoom effect is shown."
+msgstr "<0/1> If enabled, the zoom effect is shown.\n"
 "^6Disable: cg_showZoomEffect \"0\"\n"
 "^6Enable: cg_showZoomEffect \"1\""
 
 #. Console/cg
 msgid "cg_simpleItems"
-msgstr "<0-2> Replaces 3D models of pickupable items with simplistic 2D models. 0 = 3D item models, 1 = Animated 2D items (bobbing up and down), 2 = Static 2D items"
+msgstr "<0-2> Change between 2D (animated and static) and 3D items.\n"
+"^63D items: cg_simpleItems \"0\"\n"
+"^6Animated 2D items (bobbing up and down): cg_simpleItems \"1\"\n"
+"^6Static 2D items: cg_simpleItems \"2\""
 
 #. Console/cg
 msgid "cg_simpleItemsSize"
@@ -673,14 +709,14 @@ msgstr "<HUD name> Changes the HUD used while spectating.\n"
 
 #. Console/cg
 msgid "cg_strafeHUD"
-msgstr "<0/1> Enables strafe HUD."
+msgstr "<0/1> Enables strafe HUD.\n"
 "^6Disable: cg_strafeHUD \"0\"\n"
 "^6Enable: cg_strafeHUD \"1\""
 
 #. Console/cg
 msgid "cg_teamALPHAcolor"
-msgstr "<R G B> Color of team Forbidden players."
-"^Red: cg_teamALPHAcolor \"255 0 0\"\n"
+msgstr "<R G B> Color of team Forbidden players.\n"
+"^6Red: cg_teamALPHAcolor \"255 0 0\"\n"
 "^6Blue: cg_teamALPHAcolor \"51 128 255\"\n"
 "^6Green: cg_teamALPHAcolor \"0 204 102\"\n"
 "^6Orange: cg_teamALPHAcolor \"255 128 0\"\n"
@@ -691,12 +727,12 @@ msgstr "<R G B> Color of team Forbidden players."
 #. Console/cg
 msgid "cg_teamALPHAmodel"
 msgstr "<model name> Default model of team Forbidden players.\n"
-"^6Padpork: cg_teamALPHAmodel \"bigvic\"\n"
-"^6Mondana: cg_teamALPHAmodel \"bobot\"\n"
-"^6Adem: cg_teamALPHAmodel \"monada\"\n"
-"^6Classic: cg_teamALPHAmodel \"padpork\"\n"
-"^6Adem: cg_teamALPHAmodel \"silverclaw\"\n"
-"^6Default: cg_teamALPHAmodel \"viciious\""
+"^6Bigvic: cg_teamALPHAmodel \"bigvic\"\n"
+"^6Bobot: cg_teamALPHAmodel \"bobot\"\n"
+"^6Monada: cg_teamALPHAmodel \"monada\"\n"
+"^6Padpork: cg_teamALPHAmodel \"padpork\"\n"
+"^6Silverclaw: cg_teamALPHAmodel \"silverclaw\"\n"
+"^6Viciious: cg_teamALPHAmodel \"viciious\""
 
 #. Console/cg
 msgid "cg_teamALPHAmodelForce"
@@ -710,8 +746,8 @@ msgstr "<default/fullbright> Changes models skin of all Team Forbidden players t
 
 #. Console/cg
 msgid "cg_teamBETAcolor"
-msgstr "<R G B> Color of team Icy players."
-"^Red: cg_teamBETAcolor \"255 0 0\"\n"
+msgstr "<R G B> Color of team Icy players.\n"
+"^6Red: cg_teamBETAcolor \"255 0 0\"\n"
 "^6Blue: cg_teamBETAcolor \"51 128 255\"\n"
 "^6Green: cg_teamBETAcolor \"0 204 102\"\n"
 "^6Orange: cg_teamBETAcolor \"255 128 0\"\n"
@@ -722,58 +758,71 @@ msgstr "<R G B> Color of team Icy players."
 #. Console/cg
 msgid "cg_teamBETAmodel"
 msgstr "<model name> Default model of team Icy players.\n"
-"^6Padpork: cg_teamBETAmodel \"bigvic\"\n"
-"^6Mondana: cg_teamBETAmodel \"bobot\"\n"
-"^6Adem: cg_teamBETAmodel \"monada\"\n"
-"^6Classic: cg_teamBETAmodel \"padpork\"\n"
-"^6Adem: cg_teamBETAmodel \"silverclaw\"\n"
-"^6Default: cg_teamBETAmodel \"viciious\""
+"^6Bigvic: cg_teamBETAmodel \"bigvic\"\n"
+"^6Bobot: cg_teamBETAmodel \"bobot\"\n"
+"^6Monada: cg_teamBETAmodel \"monada\"\n"
+"^6Padpork: cg_teamBETAmodel \"padpork\"\n"
+"^6Silverclaw: cg_teamBETAmodel \"silverclaw\"\n"
+"^6Viciious: cg_teamBETAmodel \"viciious\""
 
 #. Console/cg
 msgid "cg_teamBETAmodelForce"
-msgstr "<0/1> Changes models of all team Beta players to a user-chosen one."
+msgstr "<0/1> Changes models of all team \"Icy\" players to a user-chosen one.\n"
 "^6Disable: cg_teamBETAmodelForce \"0\"\n"
 "^6Enable: cg_teamBETAmodelForce \"1\""
 
 #. Console/cg
 msgid "cg_teamBETAskin"
-msgstr "<default/fullbright> Changes models skin of all team Icy players to a user-chosen one."
+msgstr "<default/fullbright> Changes models skin of all team \"Icy\" players to a user-chosen one.\n"
 
 #. Console/cg
 msgid "cg_teamColoredBeams"
-msgstr "<0/1> If enabled, the LG beam color will be changed to the team color of the attacker."
+msgstr "<0/1> If enabled, the Lasergun beam color will be changed to the team color of the attacker.\n"
 "^6Disable: cg_teamColoredBeams \"0\"\n"
 "^6Enable: cg_teamColoredBeams \"1\""
 
 #. Console/cg
 msgid "cg_teamColoredInstaBeams"
-msgstr "<0/1> Changes the color of the InstaBeam to the team color of the attacker."
+msgstr "<0/1> Changes the color of the InstaBeam to the team color of the attacker.\n"
 "^6Disable: cg_teamColoredInstaBeams \"0\"\n"
 "^6Enable: cg_teamColoredInstaBeams \"1\""
 
 #. Console/cg
 msgid "cg_teamPLAYERScolor"
-msgstr "<R G B> Color of team Players players (non-team based gametypes)."
+msgstr "<R G B> Color of team \"Players\" players (non-team based gametypes).\n"
+"^6Red: cg_teamPLAYERScolor \"255 0 0\"\n"
+"^6Blue: cg_teamPLAYERScolor \"51 128 255\"\n"
+"^6Green: cg_teamPLAYERScolor \"0 204 102\"\n"
+"^6Orange: cg_teamPLAYERScolor \"255 128 0\"\n"
+"^6Yellow: cg_teamPLAYERScolor \"255 255 51\"\n"
+"^6Purple: cg_teamPLAYERScolor \"153 51 255\"\n"
+"^6Note: The list above only includes RGB color examples and is not all inclusive."
 
 #. Console/cg
 msgid "cg_teamPLAYERScolorForce"
-msgstr "<0/1> Changes color of all team Players players to a user-chosen one."
+msgstr "<0/1> Changes color of all team \"Players\" players to a user-chosen one.\n"
 "^6Disable: cg_teamPLAYERScolorForce \"0\"\n"
 "^6Enable: cg_teamPLAYERScolorForce \"1\""
 
 #. Console/cg
 msgid "cg_teamPLAYERSmodel"
-msgstr "<model name> Default model of team Players players."
+msgstr "<model name> Default model of team \"Players\" players.\n"
+"^6Bigvic: cg_teamPLAYERSmodel \"bigvic\"\n"
+"^6Bobot: cg_teamPLAYERSmodel \"bobot\"\n"
+"^6Monada: cg_teamPLAYERSmodel \"monada\"\n"
+"^6Padpork: cg_teamPLAYERSmodel \"padpork\"\n"
+"^6Silverclaw: cg_teamPLAYERSmodel \"silverclaw\"\n"
+"^6Viciious: cg_teamPLAYERSmodel \"viciious\""
 
 #. Console/cg
 msgid "cg_teamPLAYERSmodelForce"
-msgstr "<0/1> Changes models of all team Players players to a user-chosen one."
+msgstr "<0/1> Changes models of all team \"Players\" players to a user-chosen one.\n"
 "^6Disable: cg_teamPLAYERSmodelForce \"0\"\n"
 "^6Enable: cg_teamPLAYERSmodelForce \"1\""
 
 #. Console/cg
 msgid "cg_teamPLAYERSskin"
-msgstr "<default/fullbright> Changes models skin of all team Players players to a user-chosen one."
+msgstr "<default/fullbright> Changes the models skin of all team \"Players\" players to a user-chosen one.\n"
 
 #. Console/cg
 msgid "cg_thirdPerson"
@@ -841,7 +890,7 @@ msgid "cg_volume_voicechats"
 msgstr "<0.0-2.0> Changes the volume of voice commands.\n"
 "^6Disable: cg_volume_voicechats \"0\""
 
-#. Console/cg
+#. Console/cg (TODO)
 msgid "cg_weaponAutoswitch"
 msgstr "<0-2> Enables auto switching of weapons.\n"
 "^6Disable: cg_weaponAutoswitch \"0\"\n"
