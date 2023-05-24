@@ -19,7 +19,7 @@ msgid "cg_autoaction_spectator"
 msgstr "<0/1> Use autoaction when spectating games.\n"
 "^6Disable: cg_autoaction_spectator \"0\"\n"
 "^6Enable: cg_autoaction_spectator \"1\"\n"
-"^6Note: cg_autoaction_demo \"1\", cg_autoaction_screenshot \"1\", and\or cg_autoaction_stats \"1\" will not be enabled in spectator mode unless cg_autoaction_spectator \"1\" is as well."
+"^6Note: cg_autoaction_demo \"1\", cg_autoaction_screenshot \"1\", and/or cg_autoaction_stats \"1\" will not be enabled in spectator mode unless cg_autoaction_spectator \"1\" is as well."
 
 #. Console/cg
 msgid "cg_autoaction_stats"
@@ -266,7 +266,7 @@ msgstr "<value> The amount of times Warfork flashes in your taskbar if warmup en
 
 #. Console/cg
 msgid "cg_forceMyTeamAlpha"
-msgstr "<0/1> If enabled, your HUD, teammates and enemies will appear as if you always were in the Forbidden team.\n"
+msgstr "<0/1> If enabled, your HUD, teammates and enemies will appear as if you always were in the \"Forbidden\" team.\n"
 "^6Disable: cg_forceMyTeamAlpha \"0\"\n"
 "^6Enable: cg_forceMyTeamAlpha \"1\""
 
@@ -436,7 +436,7 @@ msgstr "<value> This command sometimes yields a competitive edge over players si
 
 #. Console/cg
 msgid "cg_playList"
-msgstr "<path>/filename.m3u Path to your in-game music playlist."
+msgstr "<path>/filename.m3u Path to your in-game music playlist.\n"
 "^6Note: To easily make your own in-game music playlist, create a folder in /basewf/ called /sounds/music/, which contains a file named custom.m3u and your music in ogg or wav format. On each line in custom.m3u, specify one track (ie: warfork.ogg). Music cannot exceed 44.1kHz or it will crash the sound system. In the console type cg_playList \"sounds/music/custom.m3u\""
 
 #. Console/cg
@@ -474,7 +474,8 @@ msgstr "<0-1> Controls the transparency level of the firetrail left behind when 
 
 #. Console/cg
 msgid "cg_projectileTrail"
-msgstr "<value> Controls the amount of smoke left behind when firing the Rocket Launcher or Grenade Launcher. 0 = Disabled"
+msgstr "<value> Controls the amount of smoke left behind when firing the Rocket Launcher or Grenade Launcher. 0 = Disabled\n"
+"^6Disable: cg_projectileTrail \"0\""
 
 #. Console/cg
 msgid "cg_raceGhosts"
@@ -533,13 +534,13 @@ msgstr "<0-2> Enables shadows. Uses simple shadows if set to 1, shadowmaps if se
 
 #. Console/cg
 msgid "cg_showAwards"
-msgstr "<0/1> Shows awards upon certain events (On Fire! etc.)"
+msgstr "<0/1> Shows awards upon certain events (On Fire! etc.)\n"
 "^6Disable: cg_showAwards \"0\"\n"
 "^6Enable: cg_showAwards \"1\""
 
 #. Console/cg
 msgid "cg_showBloodTrail"
-msgstr "<0/1> If enabled, damage rings will be rendered when a player is hit."
+msgstr "<0/1> If enabled, damage rings will be rendered when a player is hit.\n"
 "^6Disable: cg_showBloodTrail \"0\"\n"
 "^6Enable: cg_showBloodTrail \"1\""
 
@@ -549,13 +550,13 @@ msgstr "This command no longer works."
 
 #. Console/cg
 msgid "cg_showChasers"
-msgstr "<0/1> Displays chasers on the scoreboard (if there are any)."
+msgstr "<0/1> Displays chasers on the scoreboard (if there are any).\n"
 "^6Disable: cg_showChasers \"0\"\n"
 "^6Enable: cg_showChasers \"1\""
 
 #. Console/cg
 msgid "cg_showCrosshairDamage"
-msgstr "<0/1> Changes the crosshair's color to the damage color if an enemy gets hit."
+msgstr "<0/1> Changes the crosshair's color to the damage color if an enemy gets hit.\n"
 "^6Disable: cg_showCrosshairDamage \"0\"\n"
 "^6Enable: cg_showCrosshairDamage \"1\""
 
@@ -715,7 +716,7 @@ msgstr "<0/1> Enables strafe HUD.\n"
 
 #. Console/cg
 msgid "cg_teamALPHAcolor"
-msgstr "<R G B> Color of team Forbidden players.\n"
+msgstr "<R G B> Color of team \"Forbidden\" players.\n"
 "^6Red: cg_teamALPHAcolor \"255 0 0\"\n"
 "^6Blue: cg_teamALPHAcolor \"51 128 255\"\n"
 "^6Green: cg_teamALPHAcolor \"0 204 102\"\n"
@@ -726,7 +727,7 @@ msgstr "<R G B> Color of team Forbidden players.\n"
 
 #. Console/cg
 msgid "cg_teamALPHAmodel"
-msgstr "<model name> Default model of team Forbidden players.\n"
+msgstr "<model name> Default model of team \"Forbidden\" players.\n"
 "^6Bigvic: cg_teamALPHAmodel \"bigvic\"\n"
 "^6Bobot: cg_teamALPHAmodel \"bobot\"\n"
 "^6Monada: cg_teamALPHAmodel \"monada\"\n"
@@ -736,17 +737,17 @@ msgstr "<model name> Default model of team Forbidden players.\n"
 
 #. Console/cg
 msgid "cg_teamALPHAmodelForce"
-msgstr "<0/1> Changes models of all team Forbidden players to a user-chosen one."
+msgstr "<0/1> Changes models of all team \"Forbidden\" players to a user-chosen one."
 "^6Disable: cg_teamALPHAmodelForce \"0\"\n"
 "^6Enable: cg_teamALPHAmodelForce \"1\""
 
 #. Console/cg
 msgid "cg_teamALPHAskin"
-msgstr "<default/fullbright> Changes models skin of all Team Forbidden players to a user-chosen one."
+msgstr "<default/fullbright> Changes models skin of all team \"Forbidden\" players to a user-chosen one."
 
 #. Console/cg
 msgid "cg_teamBETAcolor"
-msgstr "<R G B> Color of team Icy players.\n"
+msgstr "<R G B> Color of team \"Icy\" players.\n"
 "^6Red: cg_teamBETAcolor \"255 0 0\"\n"
 "^6Blue: cg_teamBETAcolor \"51 128 255\"\n"
 "^6Green: cg_teamBETAcolor \"0 204 102\"\n"
@@ -757,7 +758,7 @@ msgstr "<R G B> Color of team Icy players.\n"
 
 #. Console/cg
 msgid "cg_teamBETAmodel"
-msgstr "<model name> Default model of team Icy players.\n"
+msgstr "<model name> Default model of team \"Icy\" players.\n"
 "^6Bigvic: cg_teamBETAmodel \"bigvic\"\n"
 "^6Bobot: cg_teamBETAmodel \"bobot\"\n"
 "^6Monada: cg_teamBETAmodel \"monada\"\n"
@@ -773,11 +774,11 @@ msgstr "<0/1> Changes models of all team \"Icy\" players to a user-chosen one.\n
 
 #. Console/cg
 msgid "cg_teamBETAskin"
-msgstr "<default/fullbright> Changes models skin of all team \"Icy\" players to a user-chosen one.\n"
+msgstr "<default/fullbright> Changes models skin of all team \"Icy\" players to a user-chosen one."
 
 #. Console/cg
 msgid "cg_teamColoredBeams"
-msgstr "<0/1> If enabled, the Lasergun beam color will be changed to the team color of the attacker.\n"
+msgstr "<0/1> Changes the Lasergun beam color to the team color of the attacker.\n"
 "^6Disable: cg_teamColoredBeams \"0\"\n"
 "^6Enable: cg_teamColoredBeams \"1\""
 
@@ -800,13 +801,13 @@ msgstr "<R G B> Color of team \"Players\" players (non-team based gametypes).\n"
 
 #. Console/cg
 msgid "cg_teamPLAYERScolorForce"
-msgstr "<0/1> Changes color of all team \"Players\" players to a user-chosen one.\n"
+msgstr "<0/1> Changes color of all team \"Players\" players (non-team based gametypes) to a user-chosen one.\n"
 "^6Disable: cg_teamPLAYERScolorForce \"0\"\n"
 "^6Enable: cg_teamPLAYERScolorForce \"1\""
 
 #. Console/cg
 msgid "cg_teamPLAYERSmodel"
-msgstr "<model name> Default model of team \"Players\" players.\n"
+msgstr "<model name> Default model of team \"Players\" players (non-team based gametypes).\n"
 "^6Bigvic: cg_teamPLAYERSmodel \"bigvic\"\n"
 "^6Bobot: cg_teamPLAYERSmodel \"bobot\"\n"
 "^6Monada: cg_teamPLAYERSmodel \"monada\"\n"
@@ -816,17 +817,17 @@ msgstr "<model name> Default model of team \"Players\" players.\n"
 
 #. Console/cg
 msgid "cg_teamPLAYERSmodelForce"
-msgstr "<0/1> Changes models of all team \"Players\" players to a user-chosen one.\n"
+msgstr "<0/1> Changes models of all team \"Players\" players (non-team based gametypes) to a user-chosen one.\n"
 "^6Disable: cg_teamPLAYERSmodelForce \"0\"\n"
 "^6Enable: cg_teamPLAYERSmodelForce \"1\""
 
 #. Console/cg
 msgid "cg_teamPLAYERSskin"
-msgstr "<default/fullbright> Changes the models skin of all team \"Players\" players to a user-chosen one.\n"
+msgstr "<default/fullbright> Changes the models skin of all team \"Players\" players (non-team based gametypes) to a user-chosen one."
 
 #. Console/cg
 msgid "cg_thirdPerson"
-msgstr "<0/1> Enables third person view.\n"
+msgstr "<0/1> Third person view.\n"
 "^6Disable: cg_thirdPerson \"0\"\n"
 "^6Enable: cg_thirdPerson \"1\"\n"
 "^6Note: You must also enable sv_cheats \"1\" for this command to work."
@@ -843,7 +844,7 @@ msgstr "<value> The distance that the player model appears from the camera when 
 
 #. Console/cg
 msgid "cg_viewBob"
-msgstr "<0/1> Enabled head bobbing.\n"
+msgstr "<0/1> Head bobbing.\n"
 "^6Disable: cg_viewBob \"0\"\n"
 "^6Enable: cg_viewBob \"1\""
 
@@ -855,57 +856,57 @@ msgstr "<40-100> Viewport size.\n"
 
 #. Console/cg
 msgid "cg_voiceChats"
-msgstr "<0/1> Enables voice commands (also known as \"VSAYS\").\n"
+msgstr "<0/1> Voice commands (also known as \"VSAYS\").\n"
 "^6Disable: cg_voiceChats \"0\"\n"
 "^6Enable: cg_voiceChats \"1\""
 
 #. Console/cg
 msgid "cg_volume_announcer"
-msgstr "<0-2.0> Changes the volume of the announcer.\n"
+msgstr "<0-1.0> Changes the volume of the announcer.\n"
 "^6Disable: cg_volume_announcer \"0\""
 
 #. Console/cg
 msgid "cg_volume_effects"
-msgstr "<0-2.0> Changes the volume of the effects.\n"
+msgstr "<0-1.0> Changes the volume of the effects.\n"
 "^6Disable: cg_volume_effects \"0\""
 
 #. Console/cg
 msgid "cg_volume_efforts"
-msgstr "<0-2.0> Changes the volume of your efforts.\n"
+msgstr "<0-1.0> Changes the volume of your efforts.\n"
 "^6Disable: cg_volume_efforts \"0\"\n"
 "^6Note: Efforts are the grunting sounds players make when jumping."
 
 #. Console/cg
 msgid "cg_volume_hitsound"
-msgstr "<0-2.0> Changes the volume of the hitsound.\n"
+msgstr "<0-1.0> Changes the volume of the hitsound.\n"
 "^6Disable: cg_volume_hitsound \"0\""
 
 #. Console/cg
 msgid "cg_volume_players"
-msgstr "<0-2.0> Changes the volume of player sounds.\n"
+msgstr "<0-1.0> Changes the volume of player sounds.\n"
 "^6Disable: cg_volume_players \"0\""
 
 #. Console/cg
 msgid "cg_volume_voicechats"
-msgstr "<0.0-2.0> Changes the volume of voice commands.\n"
+msgstr "<0-1.0> Changes the volume of voice commands (also known as \"VSAYS\").\n"
 "^6Disable: cg_volume_voicechats \"0\""
 
 #. Console/cg (TODO)
 msgid "cg_weaponAutoswitch"
-msgstr "<0-2> Enables auto switching of weapons.\n"
+msgstr "<0-2> Auto switching of weapons.\n"
 "^6Disable: cg_weaponAutoswitch \"0\"\n"
 "^6Switch when you don't have the just picked weapon: cg_weaponAutoswitch \"1\"\n"
 "^6Switch when the new weapon improves the selected weapon: cg_weaponAutoswitch \"2\""
 
-#. Console/cg
+#. Console/cg (TODO)
 msgid "cg_weaponFlashes"
-msgstr "<0/2> Enables weapon flashes.\n"
+msgstr "<0/2> Weapon flashes.\n"
 "^6Disable: cg_weaponFlashes \"0\"\n"
 "^6Enable: cg_weaponFlashes \"2\"\n"
 "^6Note: You must also enable cg_gun \"1\" for weapon muzzle flashes."
 
 #. Console/cg
 msgid "cg_weaponlist"
-msgstr "<0/1> If enabled, the weapon list will be displayed on your HUD.\n"
+msgstr "<0/1> Displays the weapon list on your HUD.\n"
 "^6Disable: cg_weaponlist \"0\"\n"
 "^6Enable: cg_weaponlist \"1\""
