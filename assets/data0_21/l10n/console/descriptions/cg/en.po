@@ -23,7 +23,7 @@ msgstr "<0/1> Use autoaction when spectating games.\n"
 
 #. Console/cg
 msgid "cg_autoaction_stats"
-msgstr "<0/1> If enabled, your statistics will be written to a text file.\n"
+msgstr "<0/1> Your statistics will be written to a text file.\n"
 "^6Disable: cg_autoaction_stats \"0\"\n"
 "^6Enable: cg_autoaction_stats \"1\"\n"
 "^6Note: Stats will be written to /stats/gametype/ in your game data folder when the match is finished in following file format: gametype_yyyy-mm-dd-hh-mm_map_playername_id.txt"
@@ -49,7 +49,7 @@ msgstr "<1/2/4> A bitmask that enables cartoon effects.\n"
 
 #. Console/cg
 msgid "cg_cartoonHitEffect"
-msgstr "<0/1> If enabled, critical hit effects are displayed for high damage value attacks.\n"
+msgstr "<0/1> Critical hit effects will be displayed for high damage value attacks.\n"
 "^6Disable: cg_cartoonHitEffect \"0\"\n"
 "^6Enable: cg_cartoonHitEffect \"1\"\n"
 "^6Note: Critical hit effect color varies based on damage dealt. Green (39 or more), Yellow (50 or more), and Red (64 or more)."
@@ -151,7 +151,7 @@ msgstr "<0-64> Changes the size of your crosshair for strong ammo.\n"
 
 #. Console/cg
 msgid "cg_damage_indicator"
-msgstr "<0/1> If enabled, a red damage indicator will appear in the direction(s) you were hit.\n"
+msgstr "<0/1> A red damage indicator will appear in the direction(s) you were hit.\n"
 "^6Disable: cg_damage_indicator \"0\"\n"
 "^6Enable: cg_damage_indicator \"1\""
 
@@ -200,43 +200,43 @@ msgstr "<1-4> Changes the size of your Damage Numbers.\n"
 
 #. Console/cg
 msgid "cg_debugHUD"
-msgstr "<0/1> If enabled, the HUD name that's being loaded will print to console.\n"
+msgstr "<0/1> The HUD name that's being loaded will print to console.\n"
 "^6Disable: cg_debugHUD \"0\"\n"
 "^6Enable: cg_debugHUD \"1\""
 
 #. Console/cg
 msgid "cg_debugPlayerModels"
-msgstr "<0/1> If enabled, player model information will be displayed on each map load in console.\n"
+msgstr "<0/1> Player model information will be displayed on each map load in console.\n"
 "^6Disable: cg_debugPlayerModels \"0\"\n"
 "^6Enable: cg_debugPlayerModels \"1\""
 
 #. Console/cg
 msgid "cg_debugWeaponModels"
-msgstr "<0/1> If enabled, weapon model information will be displayed on each map load in console.\n"
+msgstr "<0/1> Weapon model information will be displayed on each map load in console.\n"
 "^6Disable: cg_debugWeaponModels \"0\"\n"
 "^6Enable: cg_debugWeaponModels \"1\""
 
 #. Console/cg
 msgid "cg_decals"
-msgstr "<0/1> If enabled, you will see projectile impact effects on walls.\n"
+msgstr "<0/1> You will see projectile impact effects on walls.\n"
 "^6Disable: cg_decals \"0\"\n"
 "^6Enable: cg_decals \"1\""
 
 #. Console/cg
 msgid "cg_draw2D"
-msgstr "<0/1> If enabled, you will see the HUD (scores, ammunition, clock, etc.)\n"
+msgstr "<0/1> You will see the HUD (scores, ammunition, clock, etc.)\n"
 "^6Disable: cg_draw2D \"0\"\n"
 "^6Enable: cg_draw2D \"1\""
 
 #. Console/cg
 msgid "cg_ebbeam_alpha"
-msgstr "<0-1> Sets the transparency of the Electrobolt Beam.\n"
+msgstr "<0-1.0> Sets the transparency of the Electrobolt Beam.\n"
 "^6Totally transparent: cg_ebbeam_alpha \"0\"\n"
-"^6Totally opaque: cg_ebbeam_alpha \"1\""
+"^6Totally opaque: cg_ebbeam_alpha \"1.0\""
 
 #. Console/cg
 msgid "cg_ebbeam_old"
-msgstr "<0/1> If enabled, you will see the old (simplistic) Electrobolt beam.\n"
+msgstr "<0/1> You will see the old (simplistic) Electrobolt beam.\n"
 "^6Disable: cg_ebbeam_old \"0\"\n"
 "^6Enable: cg_ebbeam_old \"1\""
 
@@ -250,13 +250,13 @@ msgstr "<value> Sets the width of the Elecrobolt beam."
 
 #. Console/cg
 msgid "cg_explosionsDust"
-msgstr "<0/1> If enabled, an explosion dust will appear around Grenade Launcher and Rocket Launcher projectiles upon impact.\n"
+msgstr "<0/1> Explosion dust will appear around Grenade Launcher and Rocket Launcher projectiles upon impact.\n"
 "^6Disable: cg_explosionsRing \"0\"\n"
 "^6Enable: cg_explosionsRing \"1\""
 
 #. Console/cg
 msgid "cg_explosionsRing"
-msgstr "<0/1> If enabled, an explosion ring will appear around Grenade Launcher and Rocket Launcher projectiles upon impact.\n"
+msgstr "<0/1> An explosion ring will appear around Grenade Launcher and Rocket Launcher projectiles upon impact.\n"
 "^6Disable: cg_explosionsRing \"0\"\n"
 "^6Enable: cg_explosionsRing \"1\""
 
@@ -266,7 +266,7 @@ msgstr "<value> The amount of times Warfork flashes in your taskbar if warmup en
 
 #. Console/cg
 msgid "cg_forceMyTeamAlpha"
-msgstr "<0/1> If enabled, your HUD, teammates and enemies will appear as if you always were in the \"Forbidden\" team.\n"
+msgstr "<0/1> Your HUD, teammates and enemies will appear as if you always were in the \"Forbidden\" team.\n"
 "^6Disable: cg_forceMyTeamAlpha \"0\"\n"
 "^6Enable: cg_forceMyTeamAlpha \"1\""
 
@@ -288,7 +288,7 @@ msgstr "<value> Specifies the dead-zone for movement."
 
 #. Console/cg
 msgid "cg_gamepad_pitchInvert"
-msgstr "<0/1> If enabled, the gamepad will be inverted.\n"
+msgstr "<0/1> The gamepad will be inverted.\n"
 "^6Disable: cg_gamepad_pitchInvert \"0\"\n"
 "^6Enable: cg_gamepad_pitchInvert \"1\""
 
@@ -395,7 +395,7 @@ msgstr "<0/1> Changes the movement style.\n"
 
 #. Console/cg
 msgid "cg_noAutoHop"
-msgstr "<0/1> If enabled, disables automatic jumping when holding spacebar.\n"
+msgstr "<0/1> Disables automatic jumping when holding spacebar.\n"
 "^6Disable: cg_noAutoHop \"0\"\n"
 "^6Enable: cg_noAutoHop \"1\""
 
@@ -425,7 +425,7 @@ msgstr "<0/1> Enables particles.\n"
 
 #. Console/cg
 msgid "cg_pickup_flash"
-msgstr "<0/1> If enabled, you will see a flash when picking up an item or weapon. For this command to work set cg_showViewBlends 1.\n"
+msgstr "<0/1> You will see a flash when picking up an item or weapon. For this command to work set cg_showViewBlends 1.\n"
 "^6Disable: cg_pickup_flash \"0\"\n"
 "^6Enable: cg_pickup_flash \"1\""
 
@@ -455,7 +455,7 @@ msgstr "<0/1> Optimizes cg_predict's behavior."
 
 #. Console/cg
 msgid "cg_predictLaserBeam"
-msgstr "<0/1> If enabled, a perfectly straight line laserbeam will always be drawn regardless of server lag. If disabled, a laserbeam will be drawn based on server lag.\n"
+msgstr "<0/1> A perfectly straight line laserbeam will always be drawn regardless of server lag. If disabled, a laserbeam will be drawn based on server lag.\n"
 "^6Disable: cg_predictLaserBeam \"0\"\n"
 "^6Enable: cg_predictLaserBeam \"1\""
 
@@ -506,13 +506,13 @@ msgstr "<value> Name of font used in scoreboard."
 msgid "cg_scoreboardFontSize"
 msgstr "<value> Size of scoreboard's font."
 
-#. Console/cg
+#. Console/cg (TODO)
 msgid "cg_scoreboardMonoFontFamily"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
 #. Console/cg
 msgid "cg_scoreboardStats"
-msgstr "<0-1> If enabled, Statistics will be shown on the Scoreboard when spectating.\n"
+msgstr "<0-1> Statistics will be shown on the Scoreboard when spectating.\n"
 "^6Disable: cg_scoreboardStats \"0\"\n"
 "^6Enable: cg_scoreboardStats \"1\""
 
@@ -530,23 +530,23 @@ msgstr "<value> Width scale of the scoreboard."
 
 #. Console/cg
 msgid "cg_shadows"
-msgstr "<0-2> Enables shadows. Uses simple shadows if set to 1, shadowmaps if set to 2.0 to disable."
+msgstr "<0-2> Enables shadows.\n"
+"^6Disable: cg_shadows \"0\"\n"
+"^6Simple Shadows: cg_shadows \"1\"\n"
+"^6Shadowmaps: cg_shadows \"2\""
 
 #. Console/cg
 msgid "cg_showAwards"
-msgstr "<0/1> Shows awards upon certain events (On Fire! etc.)\n"
+msgstr "<0/1> Shows awards.\n"
 "^6Disable: cg_showAwards \"0\"\n"
-"^6Enable: cg_showAwards \"1\""
+"^6Enable: cg_showAwards \"1\"\n"
+"^6Note: Some of the more common awards are \"On Fire!\", \"Raging!\", \"Fraglord!\", \"Extermination!\", and \"God Mode!\"."
 
 #. Console/cg
 msgid "cg_showBloodTrail"
-msgstr "<0/1> If enabled, damage rings will be rendered when a player is hit.\n"
+msgstr "<0/1> Damage rings will be rendered when a player is hit.\n"
 "^6Disable: cg_showBloodTrail \"0\"\n"
 "^6Enable: cg_showBloodTrail \"1\""
-
-#. Console/cg
-msgid "cg_showCaptureAreas"
-msgstr "This command no longer works."
 
 #. Console/cg
 msgid "cg_showChasers"
@@ -556,13 +556,14 @@ msgstr "<0/1> Displays chasers on the scoreboard (if there are any).\n"
 
 #. Console/cg
 msgid "cg_showCrosshairDamage"
-msgstr "<0/1> Changes the crosshair's color to the damage color if an enemy gets hit.\n"
+msgstr "<0/1> Changes the crosshair's color if an enemy gets hit.\n"
 "^6Disable: cg_showCrosshairDamage \"0\"\n"
-"^6Enable: cg_showCrosshairDamage \"1\""
+"^6Enable: cg_showCrosshairDamage \"1\"\n"
+"^6Note: Use cg_crosshair_damage_color to change the specified color."
 
 #. Console/cg
 msgid "cg_showFPS"
-msgstr "<0/1> Enables an FPS counter.\n"
+msgstr "<0/1> Enables a FPS counter.\n"
 "^6Disable: cg_showFPS \"0\"\n"
 "^6Enable: cg_showFPS \"1\""
 
@@ -580,7 +581,8 @@ msgstr "<0/1> Enables HUD.\n"
 
 #. Console/cg
 msgid "cg_showItemTimers"
-msgstr "<value> Displays when items will spawn on your HUD (only in spectator mode)."
+msgstr "<value> Displays on your HUD when items will spawn. on your HUD.\n"
+"^6Note: Only works in spectator mode."
 
 #. Console/cg
 msgid "cg_showMiniMap"
@@ -591,10 +593,10 @@ msgstr "<0/1> Displays a minimap.\n"
 
 #. Console/cg
 msgid "cg_showMiss"
-msgstr "<0/1> If enabled, it will dump prediction misses to console in x:y format. x = time y = distance error.\n"
+msgstr "<0/1> Prediction misses will be dumped to console in x:y format. x = time y = distance error.\n"
 "^6Disable: cg_showMiss \"0\"\n"
 "^6Enable: cg_showMiss \"1\"\n"
-"^6Note: This command was intended for debugging server events and is best used with con_drawnotify \"1\" so you don't have to keep opening your console for realtime information."
+"^6Note: This command was intended for debugging server events and is best used with con_drawnotify \"1\" so you don't have to repeatedly open your console for realtime information."
 
 #. Console/cg (TODO)
 msgid "cg_showObituaries"
@@ -608,19 +610,20 @@ msgstr "<0/1> Displays when you pickup an item on your HUD."
 
 #. Console/cg
 msgid "cg_showPlayerNames"
-msgstr "<0/1> Displays player names above player models."
+msgstr "<0/1> Displays player names above their models."
 "^6Disable: cg_showPlayerNames \"0\"\n"
 "^6Enable: cg_showPlayerNames \"1\""
 
 #. Console/cg
 msgid "cg_showPlayerNames_alpha"
-msgstr "<0-1> Transparency of player names."
+msgstr "<0-1.0> Transparency of player names."
 "^6Totally transparent: cg_showPlayerNames_alpha \"0\"\n"
 "^6Totally opaque: cg_showPlayerNames_alpha \"1.0\""
 
 #. Console/cg
 msgid "cg_showPlayerNames_barWidth"
-msgstr "<value> Bar width above your teammates player model, which contains information such as Health and Armor."
+msgstr "<value> Bar width above your teammates player model.\n"
+"^6Note: Contains Health and Armor information when placing your crosshair over a teammate."
 
 #. Console/cg
 msgid "cg_showPlayerNames_xoffset"
@@ -636,13 +639,13 @@ msgstr "<value> Defines the distance that player names are still drawn over mode
 
 #. Console/cg
 msgid "cg_showPointedPlayer"
-msgstr "<0/1> If enabled, when your mouse is pointed over a teammate or enemy their name will be drawn over the player model.\n"
+msgstr "<0/1> When your mouse is pointed over a teammate or enemy their name will be drawn over the player model.\n"
 "^6Disable: cg_showPointedPlayer \"0\"\n"
 "^6Enable: cg_showPointedPlayer \"1\""
 
 #. Console/cg
 msgid "cg_showPressedKeys"
-msgstr "<0/1> If enabled, will show your key presses or the player you're spectating.\n"
+msgstr "<0/1> Your key presses or the players' you're spectating will be shown.\n"
 "^6Disable: cg_showPressedKeys \"0\"\n"
 "^6Enable: cg_showPressedKeys \"1\""
 
@@ -652,7 +655,7 @@ msgstr "<0/1> Enables seeing your own shadow.\n"
 "^6Disable: cg_showSelfShadow \"0\"\n"
 "^6Enable: cg_showSelfShadow \"1\""
 
-#. Console/cg
+#. Console/cg (TODO)
 msgid "cg_showSpeed"
 msgstr "<0-3> Changes the position of the speed display of the player.\n"
 "^6Disable: cg_showSpeed \"0\"\n"
@@ -660,7 +663,7 @@ msgstr "<0-3> Changes the position of the speed display of the player.\n"
 
 #. Console/cg
 msgid "cg_showTeamLocations"
-msgstr "<0/1> If enabled and your HUD supports it, your teammates location will be shown.\n"
+msgstr "<0/1> If your HUD supports it, your teammates location will be shown.\n"
 "^6Disable: cg_showTeamLocations \"0\"\n"
 "^6Enable: cg_showTeamLocations \"1\""
 
@@ -678,13 +681,14 @@ msgstr "<0/1> Displays the match's timer.\n"
 
 #. Console/cg
 msgid "cg_showViewBlends"
-msgstr "<0/1> If enabled, fullscreen overlays for underwater pain effects will be displayed.\n"
+msgstr "<0/1> Fullscreen overlays for underwater effects will be displayed.\n"
 "^6Disable: cg_showViewBlends \"0\"\n"
-"^6Enable: cg_showViewBlends \"1\""
+"^6Enable: cg_showViewBlends \"1\"\n"
+"^6Note: Warfork stock maps do not feature water."
 
 #. Console/cg
 msgid "cg_showZoomEffect"
-msgstr "<0/1> If enabled, the zoom effect is shown.\n"
+msgstr "<0/1> The zoom effect will be shown.\n"
 "^6Disable: cg_showZoomEffect \"0\"\n"
 "^6Enable: cg_showZoomEffect \"1\""
 
@@ -697,7 +701,8 @@ msgstr "<0-2> Change between 2D (animated and static) and 3D items.\n"
 
 #. Console/cg
 msgid "cg_simpleItemsSize"
-msgstr "<value> Changes the size of simplistic item models."
+msgstr "<0-32> Changes the size of simplistic item models.\n"
+"^6Disable: cg_simpleItemsSize \"0\""
 
 #. Console/cg
 msgid "cg_specHUD"
