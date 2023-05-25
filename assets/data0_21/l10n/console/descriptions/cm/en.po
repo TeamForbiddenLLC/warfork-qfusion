@@ -2,16 +2,21 @@
 
 #. Console/cm
 msgid "cm_mapHeader"
-msgstr "<value>	Stores map header information in the cvar."
+msgstr "<value> Stores map format (IBSP, FBSP, RBSP, etc.)\n"
+"^6Note: IBSP = ID BSP and RBSP = Raven BSP."
 
 #. Console/cm
 msgid "cm_mapVersion"
-msgstr "<value>	Stores map format description (IBSP, FBSP, etc.) in the cvar."
+msgstr "<value> Stores map format (ISBP, FBSP, RBSP, etc.) version number."
 
 #. Console/cm
 msgid "cm_noAreas"
-msgstr "<0/1> Disables area culling."
+msgstr "<0/1> Disables area culling.\n"
+"^6Disable: cm_noAreas \"0\"\n"
+"^6Enable: cm_noAreas \"1\""
 
 #. Console/cm
 msgid "cm_noCurves"
-msgstr "<0/1> If enabled, you can clip through curved surfaces."
+msgstr "<0/1> If enabled, you can clip through curved surfaces.\n"
+"^6Disable: cm_noCurves \"0\"\n"
+"^6Enable: cm_noCurves \"1\""
