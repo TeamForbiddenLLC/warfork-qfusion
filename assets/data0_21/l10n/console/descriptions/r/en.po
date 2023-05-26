@@ -2,7 +2,9 @@
 
 #. Console/r
 msgid "r_brightness"
-msgstr "<0-1.0>	Sets the brightness level on your screen."
+msgstr "<0-1.0>	Sets the brightness level on your screen.\n"
+"^6Disable: r_brightness \"0\"\n"
+"^6Enable: r_brightness \"1\""
 
 #. Console/r
 msgid "r_coronascale"
@@ -10,19 +12,27 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/r
 msgid "r_detailtextures"
-msgstr "<0/1> If enabled, detailed textures will be shown."
+msgstr "<0/1> Detailed textures will be shown.\n"
+"^6Disable: r_detailtextures \"0\"\n"
+"^6Enable: r_detailtextures \"1\""
 
 #. Console/r
 msgid "r_drawelements"
-msgstr "<0/1> Enables drawing elements."
+msgstr "<0/1> Enables drawing elements.\n"
+"^6Disable: r_drawelements \"0\"\n"
+"^6Enable: r_drawelements \"1\""
 
 #. Console/r
 msgid "r_drawentities"
-msgstr "<0/1> Enables drawing entities."
+msgstr "<0/1> Enables drawing entities.\n"
+"^6Disable: r_drawentities \"0\"\n"
+"^6Enable: r_drawentities \"1\""
 
 #. Console/r
 msgid "r_drawflat"
-msgstr "<0/1> If enabled, will draw the floor and walls as solid colors."
+msgstr "<0/1> Draws the floor and walls as solid colors.\n"
+"^6Disable: r_drawflat \"0\"\n"
+"^6Enable: r_drawflat \"1\""
 
 #. Console/r
 msgid "r_draworder"
@@ -30,11 +40,15 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/r
 msgid "r_drawworld"
-msgstr "<0/1> Enables drawing the world."
+msgstr "<0/1> Enables drawing the world.\n"
+"^6Disable: r_drawworld \"0\"\n"
+"^6Enable: r_drawworld \"1\""
 		
 #. Console/r
 msgid "r_dynamiclight"
-msgstr "<0/1> Enables dynamic light."
+msgstr "<0/1> Enables dynamic light.\n"
+"^6Disable: r_dynamiclight \"0\"\n"
+"^6Enable: r_dynamiclight \"1\""
 
 #. Console/r
 msgid "r_environment_color"
@@ -42,24 +56,34 @@ msgstr "Changes the background color if r_drawworld is 0"
 
 #. Console/r
 msgid "r_faceplanecull"
-msgstr "<0/1> If enabled, only the polygons of the face will be rendered. This command doesn't work and exists only in default.cfg. It will be purged and moved into the deprecated commands section soon."
+msgstr "<0/1> If enabled, only the polygons of the face will be rendered. This command doesn't work and exists only in default.cfg. It will be purged and moved into the deprecated commands section soon.\n"
+"^6Disable: r_faceplanecull \"0\"\n"
+"^6Enable: r_faceplanecull \"1\""
 
 #. Console/r
 msgid "r_fastsky"
-msgstr "<0/1> If enabled, only a basic skybox will be drawn."
-	
+msgstr "<0/1> If enabled, only a basic skybox will be drawn.\n"
+"^6Disable: r_fastsky \"0\"\n"
+"^6Enable: r_fastsky \"1\""
+
 #. Console/r
 msgid "r_floorcolor"
-msgstr "<R G B>	The color of floor if r_drawflat = 1. Examples: Red, Green, Blue"
+msgstr "<R G B>	The color of floor if r_drawflat = 1. Examples: Red, Green, Blue\n"
+"^6Disable: r_floorcolor \"0\"\n"
+"^6Enable: r_floorcolor \"1\""
 
 #. Console/r
 msgid "r_fullbright"
-msgstr "<0/1> Sets maximum brightness to all textures."
+msgstr "<0/1> Sets maximum brightness to all textures.\n"
+"^6Disable: r_fullbright \"0\"\n"
+"^6Enable: r_fullbright \"1\""
 	
 #. Console/r
 msgid "r_fxaa"
-msgstr "<0/1> Enables FXAA antialiasing."
-	
+msgstr "<0/1> Enables FXAA antialiasing.\n"
+"^6Disable: r_fxaa \"0\"\n"
+"^6Enable: r_fxaa \"1\""
+
 #. Console/r
 msgid "r_gamma"
 msgstr "<value>	Changes the gamma."
@@ -226,8 +250,10 @@ msgstr "<date format> File name format of screenshots. Example: wf_y%m%d_HM%S"
 
 #. Console/r
 msgid "r_screenshot_jpeg"
-msgstr "<0/1> Enables .jpeg screenshots."
-	
+msgstr "<0/1> Enables .jpeg screenshots.\n"
+"^6Disable: r_screenshot_jpeg \"0\"\n"
+"^6Enable: r_screenshot_jpeg \"1\""
+
 #. Console/r
 msgid "r_screenshot_jpeg_quality"
 msgstr "<0-100>	Sets the quality of jpeg screenshots, in percentages."
@@ -278,7 +304,9 @@ msgstr "<0-16>	Overall image and texture quality of the skybox. The highest the 
 
 #. Console/r
 msgid "r_soft_particles"
-msgstr "<0/1> Enables soft particles."
+msgstr "<0/1> Enables soft particles.\n"
+"^6Disable: r_soft_particles \"0\"\n"
+"^6Enable: r_soft_particles \"1\""
 			
 #. Console/r
 msgid "r_soft_particles_available"
@@ -314,7 +342,9 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/r
 msgid "r_texturebits"
-msgstr "<0/1> If enabled, vsync will be activated. Set vid_displayfrequency to your preferred value."
+msgstr "<0/1> If enabled, vsync will be activated. Set vid_displayfrequency to your preferred value.\n"
+"^6Disable: r_texturebits \"0\"\n"
+"^6Enable: r_texturebits \"1\""
 			
 #. Console/r
 msgid "r_texturecompression"
@@ -334,7 +364,9 @@ msgstr "Please help contribute a description of this command by visiting the War
 			
 #. Console/r
 msgid "r_usenotexture"
-msgstr "<0/1> Disables textures."
+msgstr "<0/1> Disables textures.\n"
+"^6Disable: r_usenotexture \"0\"\n"
+"^6Enable: r_usenotexture \"1\""
 
 #. Console/r
 msgid "r_wallcolor"
