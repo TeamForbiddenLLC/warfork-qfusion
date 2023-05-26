@@ -6,39 +6,55 @@ msgstr "<value>	Defines the multiplier for how fast you turn when running is tog
 
 #. Console/cl
 msgid "cl_checkForUpdate"
-msgstr "<0/1> If enabled, the client will be permitted to check for updates."
+msgstr "<0/1> The client will be permitted to check for updates.\n"
+"^6Disable: cl_checkForUpdate \"0\"\n"
+"^6Enable: cl_checkForUpdate \"1\"\n"
+"^6Note: This merely retrieves the latest version number from a remote server and compares it with your version number. Warfork utilizes Steam for updates, so it's unlikely this command will be used in the future."
 
 #. Console/cl
 msgid "cl_compresspackets"
-msgstr "<0/1> Compresses network packets."
+msgstr "<0/1> Compresses network packets.\n"
+"^6Disable: cl_compresspackets \"0\"\n"
+"^6Enable: cl_compresspackets \"1\""
 
-#. Console/cl
+#. Console/cl (TODO)
 msgid "cl_debug_serverCmd"
-msgstr "<0/1> If enabled, server debug information will printed to console."
+msgstr "<0/1> Server commands debug information will printed to console.\n"
+"^6Disable: cl_debug_serverCmd \"0\"\n"
+"^6Enable: cl_debug_serverCmd \"1\"\n"
+"^6Note: You must also enable sv_cheats \"1\" for this command to work."
 
-#. Console/cl
+#. Console/cl (TODO)
 msgid "cl_debug_timeDelta"
-msgstr "<0/1> If enabled, server debug information (netcode) will printed to console."
+msgstr "<0/1> Server debug information (netcode) will printed to console."
 
 #. Console/cl
 msgid "cl_demoavi_audio"
-msgstr "<0/1> If set to 1 Warfork will create a .wav when using demoavi cl_demoavi_video should be set to 0 since it will lag the game when capturing resulting in audio that is not realtime."
+msgstr "<0/1> Creates a .wav file when using demoavi.\n"
+"^6Disable: cl_demoavi_audio \"0\"\n"
+"^6Enable: cl_demoavi_audio \"1\"\n"
+"^6Note: cl_demoavi_video should be set to \"0\" to prevent lag when capturing, which will result in audio that is not realtime."
 
 #. Console/cl
 msgid "cl_demoavi_fps"
 msgstr "<value> Determines how many frames per second get captured by demoavi."
 
-#. Console/cl
+#. Console/cl (TODO)
 msgid "cl_demoavi_scissor"
 msgstr "<0/1> Determines how many frames per second get captured by demoavi."
 
 #. Console/cl
 msgid "cl_demoavi_video"
-msgstr "<0/1> If set to 1 Warfork will output frames when using demoavi."
+msgstr "<0/1> Output frames when using demoavi.\n"
+"^6Disable: cl_demoavi_video \"0\"\n"
+"^6Enable: cl_demoavi_video \"1\""
 
 #. Console/cl
 msgid "cl_download_allow_modules"
-msgstr "<0/1> Allows the downloading of modules. This is needed for mods such as Racemod."
+msgstr "<0/1> Allows the downloading of modules.\n"
+"^6Disable: cl_download_allow_modules \"0\"\n"
+"^6Enable: cl_download_allow_modules \"1\"\n"
+"^6Note: This is needed for mods such as Racemod."
 
 #. Console/cl
 msgid "cl_download_name"
@@ -50,15 +66,11 @@ msgstr "The percentage of what's being downloaded."
 
 #. Console/cl
 msgid "cl_downloads"
-msgstr "<0/1> If enabled, your client is allowed to download files (maps, textures, etc.) directly from the server you're connecting to."
+msgstr "<0/1> Allows your client to download files (maps, textures, etc.) directly from the server you're connecting to."
 
 #. Console/cl
 msgid "cl_downloads_from_web"
-msgstr "<0/1> If enabled, your client is allowed to download files (maps, textures, etc.) from a webserver."
-
-#. Console/cl
-msgid "cl_downloads_from_web"
-msgstr "The time before a client timeout when attempting to download from a webserver."
+msgstr "<0/1> Allows your client to download files (maps, textures, etc.) from a webserver."
 
 #. Console/cl
 msgid "cl_downloads_from_web_timeout"
@@ -106,23 +118,32 @@ msgstr "<value>	The amount packets per second that client is sending to the serv
 
 #. Console/cl
 msgid "cl_run"
-msgstr "<0/1> If enabled, running will be toggle automatically. This serves no purpose in disabling as Warfork has no footstep sounds."
+msgstr "<0/1> If enabled, running will be toggle automatically. This serves no purpose in disabling as Warfork has no footstep sounds.\n"
+"^6Disable: cl_run \"0\"\n"
+"^6Enable: cl_run \"1\""
 
 #. Console/cl
 msgid "cl_shownet"
-msgstr "<0/1> If enabled, latency information for network packets will be printed in console."
+msgstr "<0/1> If enabled, latency information for network packets will be printed in console.\n"
+"^6Disable: cl_shownet \"0\"\n"
+"^6Enable: cl_shownet \"1\""
 
 #. Console/cl
 msgid "cl_sleep"
-msgstr "<0/1> If enabled, you will get lower CPU usage with the cost of higher mouse latency and less stable fps."
+msgstr "<0/1> If enabled, you will get lower CPU usage with the cost of higher mouse latency and less stable fps.\n"
+"^6Disable: cl_sleep \"0\"\n"
+"^6Enable: cl_sleep \"1\""
 
 #. Console/cl
 msgid "cl_stereo"
-msgstr "<0/1> If enabled, stereoscopic rendering mode will be toggled."
+msgstr "<0/1> If enabled, stereoscopic rendering mode will be toggled.\n"
+"^6Disable: cl_stereo \"0\"\n"
+"^6Enable: cl_stereo \"1\""
 
 #. Console/cl
 msgid "cl_stereo_separation"
-msgstr "<0-1.0>	Camera offset with cl_stereo"
+msgstr "<0-1.0>	Camera offset with cl_stereo\n"
+"^6Disable: cl_stereo_separation \"0\""
 
 #. Console/cl
 msgid "cl_timeout"

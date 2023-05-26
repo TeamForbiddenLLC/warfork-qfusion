@@ -17,6 +17,6 @@ msgstr "<0/1> Disables area culling.\n"
 
 #. Console/cm
 msgid "cm_noCurves"
-msgstr "<0/1> If enabled, you can clip through curved surfaces.\n"
+msgstr "<0/1> Clip through curved surfaces.\n"
 "^6Disable: cm_noCurves \"0\"\n"
 "^6Enable: cm_noCurves \"1\""
