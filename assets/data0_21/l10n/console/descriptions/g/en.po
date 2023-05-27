@@ -1,6 +1,6 @@
 # (c) Team Forbidden LLC. All Rights Reserved.
 
-#. Console/g
+#. Console/g (TODO)
 msgid "g_allow_bunny"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
@@ -20,7 +20,8 @@ msgstr "<0/1> Players can hurt themselves with their own weapons.\n"
 msgid "g_allow_stun"
 msgstr "<0/1> Players can get stunned.\n"
 "^6Disable: g_allow_stun \"0\"\n"
-"^6Enable: g_allow_stun \"1\""
+"^6Enable: g_allow_stun \"1\"\n"
+"^6Note: Players will be unable to walljump when stunned."
 
 #. Console/g
 msgid "g_allow_teamdamage"
@@ -30,7 +31,7 @@ msgstr "<0/1> Friendlyfire.\n"
 
 #. Console/g
 msgid "g_ammo_respawn"
-msgstr "<value>	Changes the ammo respawn time."
+msgstr "<value> Changes the ammo respawn time."
 
 #. Console/g
 msgid "g_antilag"
@@ -62,31 +63,38 @@ msgstr "<0/1> Automatically records all demos.\n"
 
 #. Console/g
 msgid "g_autorecord_maxdemos"
-msgstr "<value>	Maximum amount of automatically recorded demos to keep (deletes old ones once limit is exceeded)."
+msgstr "<value> Maximum amount of automatically recorded demos to keep.\n"
+"^6Note: Deletes old ones once limit is exceeded."
 
 #. Console/g
 msgid "g_bomb_armtime"
-msgstr "<value> (Bomb-exclusive) Changes the amount of time needed to arm a bomb."
+msgstr "<value> Changes the amount of time needed to arm a bomb.\n"
+"^6Note: Exclusive to \"bomb\" gametype."
 
 #. Console/g
 msgid "g_bomb_bombtimer"
-msgstr "<value>	(Bomb-exclusive) Time before the bomb explodes after arming."
+msgstr "<value> Time before the bomb explodes after arming.\n"
+"^6Note: Exclusive to \"bomb\" gametype."
 
 #. Console/g
 msgid "g_bomb_carriers"
-msgstr "<value>	(Bomb-exclusive)"
+msgstr "<value>\n"
+"^6Note: Exclusive to \"bomb\" gametype."
 
 #. Console/g
 msgid "g_bomb_defusetime"
-msgstr "<value>	(Bomb-exclusive) Changes the amount of time needed to defuse an armed bomb."
+msgstr "<value> Changes the amount of time needed to defuse an armed bomb.\n"
+"^6Note: Exclusive to \"bomb\" gametype."
 
 #. Console/g
 msgid "g_bomb_roundtime"
-msgstr "<value>	(Bomb-exclusive) Sets the round time (in seconds)."
+msgstr "<value> Sets the round time (in seconds).\n"
+"^6Note: Exclusive to \"bomb\" gametype."
 
 #. Console/g
 msgid "g_bomb_spawnprotection"
-msgstr "<value>	(Bomb-exclusive)"
+msgstr "<value>\n"
+"^6Note: Exclusive to \"bomb\" gametype."
 
 #. Console/g
 msgid "g_challengers_queue"
@@ -496,15 +504,15 @@ msgstr "<0/1> Enforces the map pool for \"map\" callvote.\n"
 
 #. Console/g
 msgid "g_floodprotection_delay"
-msgstr "<value>	Blocks the chat for x seconds to player who triggered the flood protection."
+msgstr "<value> Blocks the chat for x seconds to player who triggered the flood protection."
 
 #. Console/g
 msgid "g_floodprotection_messages"
-msgstr "<value>	How many messages can a player send in y seconds before triggering the flood protection."
+msgstr "<value> How many messages can a player send in y seconds before triggering the flood protection."
 
 #. Console/g
 msgid "g_floodprotection_seconds"
-msgstr "<value>	Triggers flood protection if a player sends more than x messages in y seconds."
+msgstr "<value> Triggers flood protection if a player sends more than x messages in y seconds."
 
 #. Console/g
 msgid "g_floodprotection_team"
@@ -527,7 +535,7 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/g (TODO)
 msgid "g_gravity"
-msgstr "<value>	Obsolete Console variable."
+msgstr "<value> Obsolete Console variable."
 
 #. Console/g
 msgid "g_health_respawn"
@@ -535,7 +543,7 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/g
 msgid "g_inactivity_maxtime"
-msgstr "<value>	A player will get moved to spectators team if inactive for longer than x seconds.\n"
+msgstr "<value> A player will get moved to spectators team if inactive for longer than x seconds.\n"
 "^6Note: Doesn't affect warmup."
 
 #. Console/g
@@ -559,7 +567,7 @@ msgstr "<0/1> Instashield.\n"
 
 #. Console/g
 msgid "g_knockback_scale"
-msgstr "<value>	Changes the knockback scale of weapons.\n"
+msgstr "<value> Changes the knockback scale of weapons.\n"
 "^6Note: Affects normal weapons and Instagun."
 
 #. Console/g
@@ -580,7 +588,7 @@ msgstr "<0-2> Sets map rotation mode.\n"
 
 #. Console/g
 msgid "g_match_extendedtime"
-msgstr "<value>	Changes the overtime's length to x minutes.\n"
+msgstr "<value> Changes the overtime's length to x minutes.\n"
 "^6Disable: g_match_extendedtime \"0\""
 
 #. Console/g
@@ -593,7 +601,7 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/g
 msgid "g_maxtimeouts"
-msgstr "<value>	How many timeouts can be called per match."
+msgstr "<value> How many timeouts can be called per match."
 
 #. Console/g
 msgid "g_maxvelocity"
@@ -605,7 +613,7 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/g
 msgid "g_numbots"
-msgstr "<value>	Amount of bots on the server."
+msgstr "<value> Amount of bots on the server."
 
 #. Console/g
 msgid "g_operator_password"
@@ -621,15 +629,15 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/g
 msgid "g_scorelimit"
-msgstr "<value>	Amount of points required to obtain by a player/team to end the match."
+msgstr "<value> Amount of points required to obtain by a player/team to end the match."
 
 #. Console/g
 msgid "g_spawnsystem_wave_maxcount"
-msgstr "<value>	Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "<value> Please help contribute a description of this command by visiting the Warfork github repository."
 
 #. Console/g
 msgid "g_spawnsystem_wave_time"
-msgstr "<value>	Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "<value> Please help contribute a description of this command by visiting the Warfork github repository."
 
 #. Console/g
 msgid "g_teams_allow_uneven"
@@ -640,11 +648,11 @@ msgstr "<0/1> Allow the teams to be uneven.\n"
 
 #. Console/g
 msgid "g_teams_maxplayers"
-msgstr "<value>	How many players can a single team have."
+msgstr "<value> How many players a single team can have."
 
 #. Console/g
 msgid "g_timelimit"
-msgstr "<value>	Sets the duration of matches (in minutes)."
+msgstr "<value> Sets the duration of matches (in minutes)."
 
 #. Console/g
 msgid "g_uploads_demos"
@@ -664,15 +672,15 @@ msgstr "<0/1> Allows / disallows calling ALL votes (including opcalls).\n"
 
 #. Console/g
 msgid "g_vote_cooldowntime"
-msgstr "<value>	A player needs to wait x seconds after calling a vote to call another one."
+msgstr "<value> A player needs to wait x seconds after calling a vote to call another one."
 
 #. Console/g
 msgid "g_vote_electtime"
-msgstr "<value>	Specifies how long do callvotes last (in seconds)."
+msgstr "<value> Specifies how long do callvotes last (in seconds)."
 
 #. Console/g
 msgid "g_vote_maxchanges"
-msgstr "<value>	Specifies how many times can a player change their vote."
+msgstr "<value> Specifies how many times can a player change their vote."
 
 #. Console/g
 msgid "g_vote_percent"
