@@ -2,7 +2,7 @@
 
 #. Console/cl
 msgid "cl_anglespeedkey"
-msgstr "<value>	Defines the multiplier for how fast you turn when running is toggled."
+msgstr "<value> Defines the multiplier for how fast you turn when running is toggled."
 
 #. Console/cl
 msgid "cl_checkForUpdate"
@@ -74,7 +74,7 @@ msgstr "<0/1> Allows your client to download files (maps, textures, etc.) from a
 
 #. Console/cl
 msgid "cl_downloads_from_web_timeout"
-msgstr "<value>	The time before a client timeout when attempting to download from a webserver."
+msgstr "<value> The time before a client timeout when attempting to download from a webserver."
 
 #. Console/cl
 msgid "cl_extrapolate"
@@ -90,7 +90,9 @@ msgstr "<24-1000> Sets the FPS limit."
 
 #. Console/cl
 msgid "cl_mm_autologin"
-msgstr "<0/1> If enabled, matchmaking will automatically be logged into."
+msgstr "<0/1> If enabled, matchmaking will automatically be logged into.\n"
+"^6Disable: cl_mm_autologin \"0\"\n"
+"^6Enable: cl_mm_autologin \"1\""
 
 #. Console/cl
 msgid "cl_mm_session"
@@ -98,11 +100,11 @@ msgstr "Contains your matchmaking session information."
 
 #. Console/cl
 msgid "cl_mm_user"
-msgstr "<value>	Contains your matchmaking username."
+msgstr "<value> Contains your matchmaking username."
 
 #. Console/cl
 msgid "cl_pitchspeed"
-msgstr "<value>	The speed the player's screen moves up and down when using keyboard keys."
+msgstr "<value> The speed the player's screen moves up and down when using keyboard keys."
 
 #. Console/cl
 msgid "cl_port"
@@ -114,7 +116,7 @@ msgstr "IPv6 client port"
 
 #. Console/cl
 msgid "cl_pps"
-msgstr "<value>	The amount packets per second that client is sending to the server."
+msgstr "<value> The amount packets per second that client is sending to the server."
 
 #. Console/cl
 msgid "cl_run"
@@ -142,17 +144,17 @@ msgstr "<0/1> If enabled, stereoscopic rendering mode will be toggled.\n"
 
 #. Console/cl
 msgid "cl_stereo_separation"
-msgstr "<0-1.0>	Camera offset with cl_stereo\n"
+msgstr "<0-1.0> Camera offset with cl_stereo\n"
 "^6Disable: cl_stereo_separation \"0\""
 
 #. Console/cl
 msgid "cl_timeout"
-msgstr "<value>	Kicks the player if connection is lost for more than x seconds."
-	
-#. Console/cl
+msgstr "<value> Disconnects you from server if packet isn't recieved more than specified time in seconds."
+
+#. Console/cl (TODO)
 msgid "cl_ucmdMaxResend"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-	
+msgstr "The maximum amount of times a user command will be resent to the server."
+
 #. Console/cl
 msgid "cl_yawspeed"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
