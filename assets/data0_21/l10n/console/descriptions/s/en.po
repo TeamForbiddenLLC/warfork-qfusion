@@ -6,7 +6,9 @@ msgstr "<value>	If enabled, Doppler effect will be used for sounds"
 
 #. Console/s
 msgid "s_globalfocus"
-msgstr "<0/1> Mutes the game when alt-tabbed. 0 = Disabled, 1 = Enabled"
+msgstr "<0/1> Mutes the game when alt-tabbed.\n"
+"^6Disable: s_globalfocus \"0\"\n"
+"^6Enable: s_globalfocus \"1\""
 
 #. Console/s
 msgid "s_khz"
@@ -18,23 +20,31 @@ msgstr "<value>	The specified time waited before mixing sound samples."
 
 #. Console/s
 msgid "s_module"
-msgstr "<0-2> Specifies the default sound module. 0 = No Sound, 1 = Qfusion, 2 = OpenAL"
+msgstr "<0-2> Specifies the default sound module.\n"
+"^6No Sound: s_module \"0\"\n"
+"^6Qfusion: s_module \"1\"\n"
+"^6OpenAL: s_module \"2\""
 
 #. Console/s
 msgid "s_module_fallback"
-msgstr "<0-2> Specifies a fallback sound module incase s_module cannot be loaded."
+msgstr "<0-2> Specifies a fallback sound module incase s_module cannot be loaded.\n"
+"^6No Sound: s_module_fallback \"0\"\n"
+"^6Qfusion: s_module_fallback \"1\"\n"
+"^6OpenAL: s_module_fallback \"2\""
 
 #. Console/s
 msgid "s_musicvolume"
-msgstr "<0-1> Global music volume."
-	
+msgstr "<0-1.0> Global music volume.\n"
+"^6Disable: s_musicvolume \"0\""
+
 #. Console/s
 msgid "s_openAL_device"
 msgstr "<value>	Specifies the OpenAL device. Example: s_openAL_device 'Rapture3D'"
 	
 #. Console/s
 msgid "s_pseudoAcoustics"
-msgstr "<0/1> High quality spatialisation for the Qfusion Sound Module."
+msgstr "<0/1> High quality spatialisation.\n"
+"^6Note: This command works only for Qfusion Sound Module."
 
 #. Console/s
 msgid "s_separationDelay"
@@ -42,19 +52,26 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/s
 msgid "s_stereo2mono"
-msgstr "<0/1> Enables mono sound."
+msgstr "<0/1> Mono sound.\n"
+"^6Disable: s_stereo2mono \"0\"\n"
+"^6Enable: s_stereo2mono \"1\""
 
 #. Console/s
 msgid "s_swapstereo"
-msgstr "<0/1> Swap the left and right sound channel."
+msgstr "<0/1> Swap the left and right sound channel.\n"
+"^6Disable: s_swapstereo \"0\"\n"
+"^6Enable: s_swapstereo \"1\""
 
 #. Console/s
 msgid "s_volume"
-msgstr "<0-1> Global volume of the game."
+msgstr "<0-1.0> Global volume of the game.\n"
+"^6Disable: s_volume \"0\""
 
 #. Console/s
 msgid "s_wavonly"
-msgstr "<0/1> If enabled, only .wav sound files will be played."
+msgstr "<0/1> Only .wav sound files will be played.\n"
+"^6Disable: s_wavonly \"0\"\n"
+"^6Enable: s_wavonly \"1\""
 
 #. Console/s
 msgid "s_devices"
