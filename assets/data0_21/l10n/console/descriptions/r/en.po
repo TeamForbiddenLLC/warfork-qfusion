@@ -68,9 +68,14 @@ msgstr "<0/1> If enabled, only a basic skybox will be drawn.\n"
 
 #. Console/r
 msgid "r_floorcolor"
-msgstr "<R G B>	The color of floor if r_drawflat = 1. Examples: Red, Green, Blue\n"
-"^6Disable: r_floorcolor \"0\"\n"
-"^6Enable: r_floorcolor \"1\""
+msgstr "<R G B>	The color of floor.\n"
+"^6Red: r_floorcolor \"255 0 0\"\n"
+"^6Blue: r_floorcolor \"51 128 255\"\n"
+"^6Green: r_floorcolor \"0 204 102\"\n"
+"^6Orange: r_floorcolor \"255 128 0\"\n"
+"^6Yellow: r_floorcolor \"255 255 51\"\n"
+"^6Purple: r_floorcolor \"153 51 255\"\n"
+"^6Note: The list above only includes RGB color examples and is not all inclusive. r_drawflat = \"1\" must be set for this command to work."
 
 #. Console/r
 msgid "r_fullbright"
@@ -174,7 +179,9 @@ msgstr "Please help contribute a description of this command by visiting the War
 		
 #. Console/r
 msgid "r_multithreading"
-msgstr "<0/1> Enables multithreading."
+msgstr "<0/1> Utilize multithreading.\n"
+"^6Disable: r_multithreading \"0\"\n"
+"^6Enable: r_multithreading \"1\""
 		
 #. Console/r
 msgid "r_nobind"

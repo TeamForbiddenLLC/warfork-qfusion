@@ -2,15 +2,17 @@
 
 #. Console/ui
 msgid "ui_autobrowse_manual"
-msgstr "<0/1> If enabled, servers will be suggested when you click 'Play' and query the masterservers."
+msgstr "<0/1> Servers will be suggested when you click \"Play\" and query the masterservers.\n"
+"^6Disable: ui_autobrowse_manual \"0\"\n"
+"^6Enable: ui_autobrowse_manual \"1\""
 
 #. Console/ui
 msgid "ui_basepath"
-msgstr "<value>	Defines the basepath of the user interface. Example: ui/porkui"
+msgstr "<value>	Defines the basepath of the user interface.\n"
 
 #. Console/ui
 msgid "ui_cachepurgedate"
-msgstr "<yyyy-mm-dd> Purges the folder 'cache/ui' on a specific date, which contains cache from asyncrhonous HTTP requests. Example: 2020-02-13"
+msgstr "<yyyy-mm-dd> Purges the folder \"cache/ui\" on a specific date, which contains cache from asyncrhonous HTTP requests. Example: 2020-02-13"
 
 #. Console/ui
 msgid "ui_lighting"
@@ -26,7 +28,7 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/ui
 msgid "ui_tutorial_taken"
-msgstr "<0/1> If enabled, you will be prompted (once per game load) to complete the tutorial upon clicking 'Play'."
+msgstr "<0/1> If enabled, you will be prompted (once per game load) to complete the tutorial upon clicking \"Play\"."
 
 #. Console/ui
 msgid "ui_video_profile"

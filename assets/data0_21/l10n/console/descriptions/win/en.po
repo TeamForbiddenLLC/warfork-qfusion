@@ -2,8 +2,12 @@
 
 #. Console/win
 msgid "win_noalttab"
-msgstr "<0/1> If enabled, ALT+TAB will work. Example: 0 = Disabled or 1 Enabled"
+msgstr "<0/1> ALT+TAB will work."
+"^6Disable: win_noalttab \"0\"\n"
+"^6Enable: win_noalttab \"1\""
 
 #. Console/win
 msgid "win_nowinkeys"
-msgstr "<0/1> If enabled, Windows keys will work. 0 = Disabled or 1 Enabled"
+msgstr "<0/1> Windows keys will work."
+"^6Disable: win_nowinkeys \"0\"\n"
+"^6Enable: win_nowinkeys \"1\""

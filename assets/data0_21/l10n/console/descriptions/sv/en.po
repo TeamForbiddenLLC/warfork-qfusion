@@ -10,7 +10,10 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/sv
 msgid "sv_cheats"
-msgstr "<0/1> Enables cheats on the server."
+msgstr "<0/1> Enables cheats on the server.\n"
+"^6Disable: sv_cheats \"0\"\n"
+"^6Enable: sv_cheats \"1\"\n"
+"^6Note: Requires a server restart to go into effect. Simply Changing the map with the command map \"wfdm2\" for example will suffice."
 
 #. Console/sv
 msgid "sv_debug_serverCmd"
@@ -18,7 +21,8 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/sv
 msgid "sv_defaultmap"
-msgstr "<map> Changes the default map of the server."
+msgstr "<map> Sets the default map of the server."
+"^6Note: To see a list of available maps, use the command maplist."
 
 #. Console/sv
 msgid "sv_demodir"
@@ -39,10 +43,12 @@ msgstr "Please help contribute a description of this command by visiting the War
 #. Console/sv
 msgid "sv_hostname"
 msgstr "<name> Name of the server. Appears in the server list."
-	
+
 #. Console/sv
 msgid "sv_http"
-msgstr "<0/1> Enables an HTTP server that lets connecting players download missing files."
+msgstr "<0/1> Enables an HTTP server that lets connecting players download missing files.\n"
+"^6Disable: sv_http \"0\"\n"
+"^6Enable: sv_http \"1\""
 
 #. Console/sv
 msgid "sv_http_ip"
@@ -63,7 +69,7 @@ msgstr "Please help contribute a description of this command by visiting the War
 #. Console/sv
 msgid "sv_http_upstream_ip"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-					
+
 #. Console/sv
 msgid "sv_http_upstream_realip_header"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
@@ -75,11 +81,11 @@ msgstr "<ip address> If set, binds the Warfork server to a specific IPv4 address
 #. Console/sv
 msgid "sv_ip6"
 msgstr "<ip address> If set, binds the Warfork server to a specific IPv6 address."
-		
+
 #. Console/sv
 msgid "sv_iplimit"
 msgstr "<value>	Maximum amount of connections from a single IP address."
-		
+
 #. Console/sv
 msgid "sv_lastAutoUpdate"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
@@ -91,7 +97,7 @@ msgstr "<value>	Maximum amount of players allowed on the server."
 #. Console/sv
 msgid "sv_maxentities"
 msgstr "<value>	Maximum amount of entities on the map."
-		
+
 #. Console/sv
 msgid "sv_maxmvclients"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
@@ -115,19 +121,20 @@ msgstr "Please help contribute a description of this command by visiting the War
 #. Console/sv
 msgid "sv_modmanifest"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+
 #. Console/sv
 msgid "sv_MOTD"
 msgstr "<0/1> Enables Message Of The Day on the server."
-			
+
 #. Console/sv
 msgid "sv_MOTDFile"
 msgstr "<path> Path to Message Of The Day file."
-	
+
 #. Console/sv
 msgid "sv_MOTDString"
-msgstr "<value>	A definable MOTD String that takes precedence over sv_MOTDFile. MOTD String only updates after a map change."
-	
+msgstr "<value> A definable MOTD String that takes precedence over sv_MOTDFile.\n"
+"^6Note: The MOTD String only updates after a map change."
+
 #. Console/sv
 msgid "sv_port"
 msgstr "<port> Changes the IPv4 port of the Warfork server."
@@ -142,12 +149,17 @@ msgstr "<value>	Packets per second a server sends to the client."
 	
 #. Console/sv
 msgid "sv_public"
-msgstr "<0/1> If set to 1, the server will appear on the public server list."
-	
+msgstr "<0/1> The server will appear on the public server list./n"
+"^6Disable: sv_public \"0\"\n"
+"^6Enable: sv_public \"1\""
+
 #. Console/sv
 msgid "sv_pure"
-msgstr "<0/1> If set to 1, the server will check the validity of client files with server. Kicks if invalid."
-	
+msgstr "<0/1> The server will check the validity of client files with server.\n"
+"^6Disable: sv_pure \"0\"\n"
+"^6Enable: sv_pure \"1\"\n"
+"^6Note: The player will be kicked if the client files are invalid."
+
 #. Console/sv
 msgid "sv_pure_forcemodulepk3"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
@@ -171,10 +183,11 @@ msgstr "Please help contribute a description of this command by visiting the War
 #. Console/sv
 msgid "sv_showRcon"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-			
+
 #. Console/sv
 msgid "sv_skilllevel"
-msgstr "<0-2> Defines the skill level of your server, which affects bots. 0 = Easy, 1 = Medium, 2 = Hard."
+msgstr "<0-2> Defines the skill level of your server, which affects bots.\n"
+"^6Note: 0 = Easy, 1 = Medium, 2 = Hard."
 
 #. Console/sv
 msgid "sv_skillRating"
@@ -199,7 +212,7 @@ msgstr "Please help contribute a description of this command by visiting the War
 #. Console/sv
 msgid "sv_uploads_demos_baseurl"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-			
+	
 #. Console/sv
 msgid "sv_uploads_from_server"
 msgstr "<0/1> If enabled, uploading is allowed directly from the server."
@@ -210,4 +223,4 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/sv
 msgid "sv_zombietime"
-msgstr "<value>	Determines how long a connected client remains open after it has either timed out with sv_timeout or disconnected."
+msgstr "<value> Determines how long a connected client remains open after it has either timed out with sv_timeout or disconnected."

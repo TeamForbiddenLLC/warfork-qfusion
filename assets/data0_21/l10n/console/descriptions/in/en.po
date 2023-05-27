@@ -18,4 +18,6 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/in
 msgid "in_mouse"
-msgstr "<0/1> Enables mouse input."
+msgstr "<0/1> Mouse input.\n"
+"^6Disable: in_mouse \"0\"\n"
+"^6Enable: in_mouse \"1\""

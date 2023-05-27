@@ -39,7 +39,7 @@ msgstr "Please help contribute a description of this command by visiting the War
 #. Console/fs
 msgid "fs_path"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+
 #. Console/fs
 msgid "fs_search"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
