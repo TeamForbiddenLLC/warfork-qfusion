@@ -6,19 +6,27 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/g
 msgid "g_allow_falldamage"
-msgstr "<0/1> Enables fall damage."
+msgstr "<0/1> Scalable damage will be taken based on the distance fallen.\n"
+"^6Disable: g_allow_falldamage \"0\"\n"
+"^6Enable: g_allow_falldamage \"1\""
 
 #. Console/g
 msgid "g_allow_selfdamage"
-msgstr "<0/1> If enabled, players can hurt themselves with own weapons."
+msgstr "<0/1> Players can hurt themselves with their own weapons.\n"
+"^6Disable: g_allow_selfdamage \"0\"\n"
+"^6Enable: g_allow_selfdamage \"1\""
 
 #. Console/g
 msgid "g_allow_stun"
-msgstr "<0/1> If enabled, players can get stunned."
+msgstr "<0/1> Players can get stunned.\n"
+"^6Disable: g_allow_stun \"0\"\n"
+"^6Enable: g_allow_stun \"1\""
 
 #. Console/g
 msgid "g_allow_teamdamage"
-msgstr "<0/1> Enables friendlyfire."
+msgstr "<0/1> Friendlyfire.\n"
+"^6Disable: g_allow_teamdamage \"0\"\n"
+"^6Enable: g_allow_teamdamage \"1\""
 
 #. Console/g
 msgid "g_ammo_respawn"
@@ -26,7 +34,9 @@ msgstr "<value>	Changes the ammo respawn time."
 
 #. Console/g
 msgid "g_antilag"
-msgstr "<0/1> Enables antilag."
+msgstr "<0/1> Antilag.\n"
+"^6Disable: g_antilag \"0\"\n"
+"^6Enable: g_antilag \"1\""
 
 #. Console/g
 msgid "g_antilag_maxtimedelta"
@@ -46,7 +56,9 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/g
 msgid "g_autorecord"
-msgstr "<0/1> Automatically records all demos."
+msgstr "<0/1> Automatically records all demos.\n"
+"^6Disable: g_autorecord \"0\"\n"
+"^6Enable: g_autorecord \"1\""
 
 #. Console/g
 msgid "g_autorecord_maxdemos"
@@ -78,7 +90,9 @@ msgstr "<value>	(Bomb-exclusive)"
 
 #. Console/g
 msgid "g_challengers_queue"
-msgstr "<0/1> Enables the challengers queue."
+msgstr "<0/1> Challengers queue.\n"
+"^6Disable: g_challengers_queue \"0\"\n"
+"^6Enable: g_challengers_queue \"1\""
 
 #. Console/g
 msgid "g_countdown_time"
@@ -86,247 +100,399 @@ msgstr "<value>"
 
 #. Console/g
 msgid "g_disable_opcall_allow_falldamage"
-msgstr "<0/1> Disables 'allow_falldamage' opcall."
+msgstr "<0/1> Disables \"allow_falldamage\" opcall.\n"
+"^6Disable: g_disable_opcall_allow_falldamage \"0\"\n"
+"^6Enable: g_disable_opcall_allow_falldamage \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_allow_selfdamage"
-msgstr "<0/1> Disables 'allow_selfdamage' opcall."
+msgstr "<0/1> Disables \"allow_selfdamage\" opcall.\n"
+"^6Disable: g_disable_opcall_allow_selfdamage \"0\"\n"
+"^6Enable: g_disable_opcall_allow_selfdamage \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_allow_teamdamage"
-msgstr "<0/1> Disables 'allow_teamdamage' opcall."
+msgstr "<0/1> Disables \"allow_teamdamage\" opcall.\n"
+"^6Disable: g_disable_opcall_allow_teamdamage \"0\"\n"
+"^6Enable: g_disable_opcall_allow_teamdamage \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_allow_uneven"
-msgstr "<0/1> Disables 'allow_uneven' opcall."
+msgstr "<0/1> Disables \"allow_uneven\" opcall.\n"
+"^6Disable: g_disable_opcall_allow_uneven \"0\"\n"
+"^6Enable: g_disable_opcall_allow_uneven \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_allready"
-msgstr "<0/1> Disables 'allready' opcall."
+msgstr "<0/1> Disables \"allready\" opcall.\n"
+"^6Disable: g_disable_opcall_allready \"0\"\n"
+"^6Enable: g_disable_opcall_allready \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_extended_time"
-msgstr "<0/1> Disables 'extended_time' opcall."
+msgstr "<0/1> Disables \"extended_time\" opcall.\n"
+"^6Disable: g_disable_opcall_extended_time \"0\"\n"
+"^6Enable: g_disable_opcall_extended_time \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_gametype"
-msgstr "<0/1> Disables 'gametype' opcall."
+msgstr "<0/1> Disables \"gametype\" opcall.\n"
+"^6Disable: g_disable_opcall_gametype \"0\"\n"
+"^6Enable: g_disable_opcall_gametype \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_instajump"
-msgstr "<0/1> Disables 'instajump' opcall."
+msgstr "<0/1> Disables \"instajump\" opcall.\n"
+"^6Disable: g_disable_opcall_instajump \"0\"\n"
+"^6Enable: g_disable_opcall_instajump \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_instashield"
-msgstr "<0/1> Disables 'instashield' opcall."
+msgstr "<0/1> Disables \"instashield\" opcall.\n"
+"^6Disable: g_disable_opcall_instashield \"0\"\n"
+"^6Enable: g_disable_opcall_instashield \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_kick"
-msgstr "<0/1> Disables 'kick' opcall."
+msgstr "<0/1> Disables \"kick\" opcall.\n"
+"^6Disable: g_disable_opcall_kick \"0\"\n"
+"^6Enable: g_disable_opcall_kick \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_kickban"
-msgstr "<0/1> Disables 'kickban' opcall."
+msgstr "<0/1> Disables \"kickban\" opcall.\n"
+"^6Disable: g_disable_opcall_kickban \"0\"\n"
+"^6Enable: g_disable_opcall_kickban \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_lock"
-msgstr "<0/1> Disables 'lock' opcall."
+msgstr "<0/1> Disables \"lock\" opcall.\n"
+"^6Disable: g_disable_opcall_lock \"0\"\n"
+"^6Enable: g_disable_opcall_lock \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_map"
-msgstr "<0/1> Disables 'map' opcall."
+msgstr "<0/1> Disables \"map\" opcall.\n"
+"^6Disable: g_disable_opcall_map \"0\"\n"
+"^6Enable: g_disable_opcall_map \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_maxteamplayers"
-msgstr "<0/1> Disables 'maxteamplayers' opcall."
+msgstr "<0/1> Disables \"maxteamplayers\" opcall.\n"
+"^6Disable: g_disable_opcall_maxteamplayers \"0\"\n"
+"^6Enable: g_disable_opcall_maxteamplayers \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_mute"
-msgstr "<0/1> Disables 'mute' opcall."
+msgstr "<0/1> Disables \"mute\" opcall.\n"
+"^6Disable: g_disable_opcall_mute \"0\"\n"
+"^6Enable: g_disable_opcall_mute \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_nextmap"
-msgstr "<0/1> Disables 'nextmap' opcall."
+msgstr "<0/1> Disables \"nextmap\" opcall.\n"
+"^6Disable: g_disable_opcall_nextmap \"0\"\n"
+"^6Enable: g_disable_opcall_nextmap \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_numbots"
-msgstr "<0/1> Disables 'numbots' opcall."
+msgstr "<0/1> Disables \"numbots\" opcall.\n"
+"^6Disable: g_disable_opcall_numbots \"0\"\n"
+"^6Enable: g_disable_opcall_numbots \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_rebalance"
-msgstr "<0/1> Disables 'rebalance' opcall."
+msgstr "<0/1> Disables \"rebalance\" opcall.\n"
+"^6Disable: g_disable_opcall_rebalance \"0\"\n"
+"^6Enable: g_disable_opcall_rebalance \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_remove"
-msgstr "<0/1> Disables 'remove' opcall."
+msgstr "<0/1> Disables \"remove\" opcall.\n"
+"^6Disable: g_disable_opcall_remove \"0\"\n"
+"^6Enable: g_disable_opcall_remove \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_restart"
-msgstr "<0/1> Disables 'restart' opcall."
+msgstr "<0/1> Disables \"restart\" opcall.\n"
+"^6Disable: g_disable_opcall_restart \"0\"\n"
+"^6Enable: g_disable_opcall_restart \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_scorelimit"
-msgstr "<0/1> Disables 'scorelimit' opcall."
+msgstr "<0/1> Disables \"scorelimit\" opcall.\n"
+"^6Disable: g_disable_opcall_scorelimit \"0\"\n"
+"^6Enable: g_disable_opcall_scorelimit \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_shuffle"
-msgstr "<0/1> Disables 'shuffle' opcall."
+msgstr "<0/1> Disables \"shuffle\" opcall.\n"
+"^6Disable: g_disable_opcall_shuffle \"0\"\n"
+"^6Enable: g_disable_opcall_shuffle \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_timein"
-msgstr "<0/1> Disables 'timein' opcall."
+msgstr "<0/1> Disables \"timein\" opcall.\n"
+"^6Disable: g_disable_opcall_timein \"0\"\n"
+"^6Enable: g_disable_opcall_timein \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_timelimit"
-msgstr "<0/1> Disables 'timelimit' opcall."
+msgstr "<0/1> Disables \"timelimit\" opcall.\n"
+"^6Disable: g_disable_opcall_timelimit \"0\"\n"
+"^6Enable: g_disable_opcall_timelimit \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_timeout"
-msgstr "<0/1> Disables 'timeout' opcall."
+msgstr "<0/1> Disables \"timeout\" opcall.\n"
+"^6Disable: g_disable_opcall_timeout \"0\"\n"
+"^6Enable: g_disable_opcall_timeout \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_unlock"
-msgstr "<0/1> Disables 'unlock' opcall."
+msgstr "<0/1> Disables \"unlock\" opcall.\n"
+"^6Disable: g_disable_opcall_unlock \"0\"\n"
+"^6Enable: g_disable_opcall_unlock \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_unmute"
-msgstr "<0/1> Disables 'unmute' opcall."
+msgstr "<0/1> Disables \"unmute\" opcall.\n"
+"^6Disable: g_disable_opcall_unmute \"0\"\n"
+"^6Enable: g_disable_opcall_unmute \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_vmute"
-msgstr "<0/1> Disables 'vmute' opcall."
+msgstr "<0/1> Disables \"vmute\" opcall.\n"
+"^6Disable: g_disable_opcall_vmute \"0\"\n"
+"^6Enable: g_disable_opcall_vmute \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_vunmute"
-msgstr "<0/1> Disables 'vunmute' opcall."
+msgstr "<0/1> Disables \"vunmute\" opcall.\n"
+"^6Disable: g_disable_opcall_vunmute \"0\"\n"
+"^6Enable: g_disable_opcall_vunmute \"1\""
 
 #. Console/g
 msgid "g_disable_opcall_warmup_timelimit"
-msgstr "<0/1> Disables 'warmup_timelimit' opcall."
+msgstr "<0/1> Disables \"warmup_timelimit\" opcall.\n"
+"^6Disable: g_disable_opcall_warmup_timelimit \"0\"\n"
+"^6Enable: g_disable_opcall_warmup_timelimit \"1\""
 
 #. Console/g
 msgid "g_disable_vote_allow_falldamage"
-msgstr "<0/1> Disables 'allow_falldamage' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"allow_falldamage\" callvote.\n"
+"^6Disable: g_disable_vote_allow_falldamage \"0\"\n"
+"^6Enable: g_disable_vote_allow_falldamage \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_allow_selfdamage"
-msgstr "<0/1> Disables 'allow_selfdamage' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"allow_selfdamage\" callvote.\n"
+"^6Disable: g_disable_vote_allow_selfdamage \"0\"\n"
+"^6Enable: g_disable_vote_allow_selfdamage \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_allow_teamdamage"
-msgstr "<0/1> Disables 'allow_teamdamage' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"allow_teamdamage\" callvote.\n"
+"^6Disable: g_disable_vote_allow_teamdamage \"0\"\n"
+"^6Enable: g_disable_vote_allow_teamdamage \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_allow_uneven"
-msgstr "<0/1> Disables 'allow_uneven' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"allow_uneven\" callvote.\n"
+"^6Disable: g_disable_vote_allow_uneven \"0\"\n"
+"^6Enable: g_disable_vote_allow_uneven \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_allready"
-msgstr "<0/1> Disables 'allready' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"allready\" callvote.\n"
+"^6Disable: g_disable_vote_allready \"0\"\n"
+"^6Enable: g_disable_vote_allready \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_extended_time"
-msgstr "<0/1> Disables 'extended_time' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"extended_time\" callvote.\n"
+"^6Disable: g_disable_vote_extended_time \"0\"\n"
+"^6Enable: g_disable_vote_extended_time \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_gametype"
-msgstr "<0/1> Disables 'gametype' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"gametype\" callvote.\n"
+"^6Disable: g_disable_vote_gametype \"0\"\n"
+"^6Enable: g_disable_vote_gametype \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_instajump"
-msgstr "<0/1> Disables 'instajump' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"instajump\" callvote.\n"
+"^6Disable: g_disable_vote_instajump \"0\"\n"
+"^6Enable: g_disable_vote_instajump \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_instashield"
-msgstr "<0/1> Disables 'instashield' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"instashield\" callvote.\n"
+"^6Disable: g_disable_vote_instashield \"0\"\n"
+"^6Enable: g_disable_vote_instashield \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_kick"
-msgstr "<0/1> Disables 'kick' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"kick\" callvote.\n"
+"^6Disable: g_disable_vote_kick \"0\"\n"
+"^6Enable: g_disable_vote_kick \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_kickban"
-msgstr "<0/1> Disables 'kickban' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"kickban\" callvote.\n"
+"^6Disable: g_disable_vote_kickban \"0\"\n"
+"^6Enable: g_disable_vote_kickban \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_lock"
-msgstr "<0/1> Disables 'lock' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"lock\" callvote.\n"
+"^6Disable: g_disable_vote_lock \"0\"\n"
+"^6Enable: g_disable_vote_lock \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_map"
-msgstr "<0/1> Disables 'map' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"map\" callvote.\n"
+"^6Disable: g_disable_vote_map \"0\"\n"
+"^6Enable: g_disable_vote_map \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_maxteamplayers"
-msgstr "<0/1> Disables 'maxteamplayers' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"maxteamplayers\" callvote.\n"
+"^6Disable: g_disable_vote_maxteamplayers \"0\"\n"
+"^6Enable: g_disable_vote_maxteamplayers \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_mute"
-msgstr "<0/1> Disables 'mute' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"mute\" callvote.\n"
+"^6Disable: g_disable_vote_mute \"0\"\n"
+"^6Enable: g_disable_vote_mute \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_nextmap"
-msgstr "<0/1> Disables 'nextmap' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"nextmap\" callvote.\n"
+"^6Disable: g_disable_vote_nextmap \"0\"\n"
+"^6Enable: g_disable_vote_nextmap \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_numbots"
-msgstr "<0/1> Disables 'numbots' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"numbots\" callvote.\n"
+"^6Disable: g_disable_vote_numbots \"0\"\n"
+"^6Enable: g_disable_vote_numbots \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_rebalance"
-msgstr "<0/1> Disables 'rebalance' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"rebalance\" callvote.\n"
+"^6Disable: g_disable_vote_rebalance \"0\"\n"
+"^6Enable: g_disable_vote_rebalance \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_remove"
-msgstr "<0/1> Disables 'remove' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"remove\" callvote.\n"
+"^6Disable: g_disable_vote_remove \"0\"\n"
+"^6Enable: g_disable_vote_remove \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_restart"
-msgstr "<0/1> Disables 'restart' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"restart\" callvote.\n"
+"^6Disable: g_disable_vote_restart \"0\"\n"
+"^6Enable: g_disable_vote_restart \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_scorelimit"
-msgstr "<0/1> Disables 'scorelimit' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"scorelimit\" callvote.\n"
+"^6Disable: g_disable_vote_scorelimit \"0\"\n"
+"^6Enable: g_disable_vote_scorelimit \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_shuffle"
-msgstr "<0/1> Disables 'shuffle' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"shuffle\" callvote.\n"
+"^6Disable: g_disable_vote_shuffle \"0\"\n"
+"^6Enable: g_disable_vote_shuffle \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_timein"
-msgstr "<0/1> Disables 'timein' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"timein\" callvote.\n"
+"^6Disable: g_disable_vote_timein \"0\"\n"
+"^6Enable: g_disable_vote_timein \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_timelimit"
-msgstr "<0/1> Disables 'timelimit' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"timelimit\" callvote.\n"
+"^6Disable: g_disable_vote_timelimit \"0\"\n"
+"^6Enable: g_disable_vote_timelimit \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_timeout"
-msgstr "<0/1> Disables 'timeout' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"timeout\" callvote.\n"
+"^6Disable: g_disable_vote_timeout \"0\"\n"
+"^6Enable: g_disable_vote_timeout \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_unlock"
-msgstr "<0/1> Disables 'unlock' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"unlock\" callvote.\n"
+"^6Disable: g_disable_vote_unlock \"0\"\n"
+"^6Enable: g_disable_vote_unlock \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_unmute"
-msgstr "<0/1> Disables 'unmute' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"unmute\" callvote.\n"
+"^6Disable: g_disable_vote_unmute \"0\"\n"
+"^6Enable: g_disable_vote_unmute \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_vmute"
-msgstr "<0/1> Disables 'vmute' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"vmute\" callvote.\n"
+"^6Disable: g_disable_vote_vmute \"0\"\n"
+"^6Enable: g_disable_vote_vmute \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_vunmute"
-msgstr "<0/1> Disables 'vunmute' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"vunmute\" callvote.\n"
+"^6Disable: g_disable_vote_vunmute \"0\"\n"
+"^6Enable: g_disable_vote_vunmute \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_disable_vote_warmup_timelimit"
-msgstr "<0/1> Disables 'warmup_timelimit' callvote. Doesn't affect opcalls."
+msgstr "<0/1> Disables \"warmup_timelimit\" callvote.\n"
+"^6Disable: g_disable_vote_warmup_timelimit \"0\"\n"
+"^6Enable: g_disable_vote_warmup_timelimit \"1\"\n"
+"^6Note: Doesn't affect opcalls."
 
 #. Console/g
 msgid "g_enforce_map_pool"
-msgstr "<0/1> Enables enforcing the map pool for 'map' callvote."
+msgstr "<0/1> Enforces the map pool for \"map\" callvote.\n"
+"^6Disable: g_enforce_map_pool \"0\"\n"
+"^6Enable: g_enforce_map_pool \"1\""
 
 #. Console/g
 msgid "g_floodprotection_delay"
@@ -342,11 +508,14 @@ msgstr "<value>	Triggers flood protection if a player sends more than x messages
 
 #. Console/g
 msgid "g_floodprotection_team"
-msgstr "<0/1> If enabled, protects teamchat from flood."
+msgstr "<0/1> Protects teamchat from flood."
+"^6Disable: g_floodprotection_team \"0\"\n"
+"^6Enable: g_floodprotection_team \"1\""
 
 #. Console/g
 msgid "g_gametype"
-msgstr "<gametype> Changes the gametype. Requires server restart / map reload."
+msgstr "<gametype> Changes the gametype.\n"
+"^6Note: Requires server restart/map reload."
 
 #. Console/g
 msgid "g_gametypes_available"
@@ -356,7 +525,7 @@ msgstr "Please help contribute a description of this command by visiting the War
 msgid "g_gametypes_list"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
-#. Console/g
+#. Console/g (TODO)
 msgid "g_gravity"
 msgstr "<value>	Obsolete Console variable."
 
@@ -366,27 +535,37 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/g
 msgid "g_inactivity_maxtime"
-msgstr "<value>	A player will get moved to spectators team if inactive for longer than x seconds (doesn't affect warmup)."
+msgstr "<value>	A player will get moved to spectators team if inactive for longer than x seconds.\n"
+"^6Note: Doesn't affect warmup."
 
 #. Console/g
 msgid "g_instagib"
-msgstr "<0/1> Enables InstaGib. Requires server restart."
+msgstr "<0/1> Instagib."
+"^6Disable: g_instagib \"0\"\n"
+"^6Enable: g_instagib \"1\"\n"
+"^6Note: Requires a server restart."
 
 #. Console/g
 msgid "g_instajump"
-msgstr "<0/1> Enables Instajump."
+msgstr "<0/1> Instajump.\n"
+"^6Disable: g_instajump \"0\"\n"
+"^6Enable: g_instajump \"1\""
 
 #. Console/g
 msgid "g_instashield"
-msgstr "<0/1> Enables Instashield."
+msgstr "<0/1> Instashield.\n"
+"^6Disable: g_instashield \"0\"\n"
+"^6Enable: g_instashield \"1\""
 
 #. Console/g
 msgid "g_knockback_scale"
-msgstr "<value>	Changes the knockback scale of weapons. Affects normal weapons AND Instagun."
+msgstr "<value>	Changes the knockback scale of weapons.\n"
+"^6Note: Affects normal weapons and Instagun."
 
 #. Console/g
 msgid "g_map_pool"
-msgstr "<maplist> Only allows these maps to appear in 'map' callvote. Needs g_enforce_map_pool set to 1."
+msgstr "<maplist> Only allows these maps to appear in \"map\" callvote.\n"
+"^6Note: Needs g_enforce_map_pool \"1\""
 
 #. Console/g
 msgid "g_maplist"
@@ -394,11 +573,15 @@ msgstr "<maplist> Sets the server's map list."
 
 #. Console/g
 msgid "g_maprotation"
-msgstr "<0-2> Sets map rotation mode. 0 - same map, 1 - in order, 2 - random."
+msgstr "<0-2> Sets map rotation mode.\n"
+"^6Same map: g_maprotation \"0\"\n"
+"^6In order: g_maprotation \"1\"\n"
+"^6Random: g_maprotation \"2\""
 
 #. Console/g
 msgid "g_match_extendedtime"
-msgstr "<value>	Changes the overtime's length to x minutes. 0 to disable."
+msgstr "<value>	Changes the overtime's length to x minutes.\n"
+"^6Disable: g_match_extendedtime \"0\""
 
 #. Console/g
 msgid "g_match_score"
@@ -426,7 +609,7 @@ msgstr "<value>	Amount of bots on the server."
 
 #. Console/g
 msgid "g_operator_password"
-msgstr "<password>	Sets the operator password. Operator is disabled if empty."
+msgstr "<password> Sets the operator password. Operator is disabled if empty."
 
 #. Console/g
 msgid "g_postmatch_timelimit"
@@ -438,7 +621,7 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/g
 msgid "g_scorelimit"
-msgstr "<value>	Amount of points required to obtain by a player / team to end the match."
+msgstr "<value>	Amount of points required to obtain by a player/team to end the match."
 
 #. Console/g
 msgid "g_spawnsystem_wave_maxcount"
@@ -450,7 +633,10 @@ msgstr "<value>	Please help contribute a description of this command by visiting
 
 #. Console/g
 msgid "g_teams_allow_uneven"
-msgstr "<0/1> Allow the teams to be uneven. If enabled, allows players to switch teams anytime."
+msgstr "<0/1> Allow the teams to be uneven.\n"
+"^6Disable: g_teams_allow_uneven \"0\"\n"
+"^6Enable: g_teams_allow_uneven \"1\"\n"
+"^6Note: If enabled, allows players to switch teams anytime."
 
 #. Console/g
 msgid "g_teams_maxplayers"
@@ -462,15 +648,19 @@ msgstr "<value>	Sets the duration of matches (in minutes)."
 
 #. Console/g
 msgid "g_uploads_demos"
-msgstr "<0/1> Allows players to download demos from the server."
+msgstr "<0/1> Allows players to download demos from the server.\n"
+"^6Disable: g_uploads_demos \"0\"\n"
+"^6Enable: g_uploads_demos \"1\""
 
 #. Console/g
 msgid "g_votable_gametypes"
-msgstr "<gametypes>	A list of gametypes allowed to be used in 'gametype' callvote."
+msgstr "<gametypes> A list of gametypes allowed to be used in \"gametype\" callvote."
 
 #. Console/g
 msgid "g_vote_allowed"
-msgstr "<0/1> Allows / disallows calling ALL votes (including opcalls)."
+msgstr "<0/1> Allows / disallows calling ALL votes (including opcalls).\n"
+"^6Disable: g_vote_allowed \"0\"\n"
+"^6Enable: g_vote_allowed \"1\""
 
 #. Console/g
 msgid "g_vote_cooldowntime"
@@ -486,7 +676,7 @@ msgstr "<value>	Specifies how many times can a player change their vote."
 
 #. Console/g
 msgid "g_vote_percent"
-msgstr "<0-100>	How much % of players need to vote yes for the vote to pass."
+msgstr "<0-100> The percentage of players that need to vote yes for it to pass."
 
 #. Console/g
 msgid "g_weapon_respawn"
