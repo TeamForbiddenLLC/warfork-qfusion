@@ -8,15 +8,16 @@ msgstr "<0/1> Servers will be suggested when you click \"Play\" and query the ma
 
 #. Console/ui
 msgid "ui_basepath"
-msgstr "<value>	Defines the basepath of the user interface.\n"
+msgstr "<value>	Defines the basepath of the user interface (Example: \"ui/porkui\")."
 
 #. Console/ui
 msgid "ui_cachepurgedate"
-msgstr "<yyyy-mm-dd> Purges the folder \"cache/ui\" on a specific date, which contains cache from asyncrhonous HTTP requests. Example: 2020-02-13"
+msgstr "<yyyy-mm-dd> Purges the folder \"cache/ui\" on a specific date, which contains cache from asyncrhonous HTTP requests (Example: \"2023-02-13\")."
 
 #. Console/ui
 msgid "ui_lighting"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Used to store your lighting listbox choices in the UI.\n"
+"^6Note: Do not change this in console. It will not apply any lighting changes and only cause confusion in the UI."
 
 #. Console/ui
 msgid "ui_preload"
@@ -24,21 +25,26 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/ui
 msgid "ui_serverbrowser_tab"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Used to store the last tab used in the Server Browser.\n"
+"^6Note: Do not change this in console. It will only cause confusion in the UI."
 
 #. Console/ui
 msgid "ui_tutorial_taken"
-msgstr "<0/1> If enabled, you will be prompted (once per game load) to complete the tutorial upon clicking \"Play\"."
+msgstr "<0/1> You will be prompted (once per game load) to complete the tutorial upon clicking \"Play\".\n"
+"^6Disable: ui_tutorial_taken \"0\"\n"
+"^6Enable: ui_tutorial_taken \"1\"\n"
+"^6Note: This has been temporarily repurposed for a Warfork Early Access message."
 
 #. Console/ui
 msgid "ui_video_profile"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Used to store your graphics profile selector in the UI.\n"
+"^6Note: Do not change this in console. It will not apply any gfx changes and only cause confusion in the UI."
 
-#. Console/ui
+#. Console/ui (TODO)
 msgid "ui_dumpapi"
 msgstr "Dumps API information to console."
 
-#. Console/ui
+#. Console/ui (TODO)
 msgid "ui_printdocs"
 msgstr "Prints document cache to console."
 
