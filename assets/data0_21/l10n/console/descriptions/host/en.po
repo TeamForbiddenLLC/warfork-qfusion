@@ -2,6 +2,7 @@
 
 #. Console/host
 msgid "host_speeds"
-msgstr "<0/1> Timing information will be printed to console. all (total time), sv (server time), gm (game time), cl (client time), and rf (renderer time)."
+msgstr "<0/1> If enabled timing information will be printed to console.\n"
 "^6Disable: host_speeds \"0\"\n"
-"^6Enable: host_speeds \"1\""
+"^6Enable: host_speeds \"1\"\n"
+"^6Note: all (total time), sv (server time), gm (game time), cl (client time), and rf (renderer time)."

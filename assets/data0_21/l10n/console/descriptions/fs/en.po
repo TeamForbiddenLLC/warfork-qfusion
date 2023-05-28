@@ -8,9 +8,9 @@ msgstr "Please help contribute a description of this command by visiting the War
 msgid "fs_basepath"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
-#. Console/fs
+#. Console/fs (TODO)
 msgid "fs_cdpath"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Shared assets"
 
 #. Console/fs
 msgid "fs_game"
@@ -26,11 +26,11 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/fs
 msgid "fs_checksum"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "<path>"
 
 #. Console/fs
 msgid "fs_mtime"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "<path> [base]"
 
 #. Console/fs
 msgid "fs_pakfile"
@@ -42,4 +42,5 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/fs
 msgid "fs_search"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Searches files in .pk3 archives.\n"
+"^6Note: You can search for a specific file name and extension with \"fs_search *wf*.png\"."

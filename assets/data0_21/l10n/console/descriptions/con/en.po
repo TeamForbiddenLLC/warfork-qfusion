@@ -14,7 +14,9 @@ msgstr "<value> Please help contribute a description of this command by visiting
 
 #. Console/con
 msgid "con_fontSystemConsoleSize"
-msgstr "<value> Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "<1-26> Changes the font size of the console text."
+"^6Smallest: con_fontSystemConsoleSize \"1\"\n"
+"^6Largest: con_fontSystemConsoleSize \"26\""
 
 #. Console/con
 msgid "con_fontSystemFallbackFamily"
@@ -40,15 +42,20 @@ msgstr "<value> Please help contribute a description of this command by visiting
 msgid "con_fontSystemTinySize"
 msgstr "<value> Please help contribute a description of this command by visiting the Warfork github repository."
 
-#. Console/con
+#. Console/con (TODO)
 msgid "con_messageMode"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-	
+msgstr "Used by the HUD to change between message modes."
+"^6Close Chat: con_messageMode \"0\"\n"
+"^6Open Chat: con_messageMode \"1\"\n"
+"^6Open Team Chat: con_messageMode \"2\""
+
 #. Console/con
 msgid "con_notifytime"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+
 #. Console/con
 msgid "con_printText"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-
+msgstr "<0/1> Text will be printed to console.\n"
+"^6Disable: con_printText \"0\"\n"
+"^6Enable: con_printText \"1\"\n"
+"^6Note: con_printText \"0\" works best with scr_consize \"0.1\" and scr_conspeed \"0\"."
