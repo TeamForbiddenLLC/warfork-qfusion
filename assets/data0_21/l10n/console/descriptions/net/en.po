@@ -2,4 +2,6 @@
 
 #. Console/net
 msgid "net_showfragments"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Show netchannel fragments.\n"
+"^6Disable: net_showfragments \"0\"\n"
+"^6Enable: net_showfragments \"1\""
