@@ -2,48 +2,60 @@
 
 #. Console/m
 msgid "m_accel"
-msgstr "<value>	Mouse acceleration multiplier."
+msgstr "<value> Mouse acceleration multiplier."
 
 #. Console/m
 msgid "m_accelOffset"
-msgstr "<value>	Enables different mouse acceleration styles. 0 = Disabled, 1 = Weakens amplification effect if you move your mouse slower, 2 = Minimum distance for mouse movement to be registered."
+msgstr "<value> Enables different mouse acceleration styles.\n"
+"^6Disable: m_accelOffset \"0\"\n"
+"^6Weakens amplification effect if you move your mouse slower: m_accelOffset \"1\"\n"
+"^6Minimum distance for mouse movement to be registered: m_accelOffset \"2\""
 
 #. Console/m
 msgid "m_accelPow"
-msgstr "<value>	Determines the rate of acceleration for m_accelStyle = 2. Must be greater than 2 to not decelerate."
+msgstr "<value> Determines the rate of acceleration for m_accelStyle = \"2\".\n"
+"^6Note: Must be greater than \"2\" to not decelerate."
 
 #. Console/m
 msgid "m_accelStyle"
-msgstr "<value>	Style of mouse acceleration. 0 = Legacy style, 1 = Quake Live style, 2 = Extended legacy style with offset and variable pow mechanisms."
+msgstr "<0-2> Style of mouse acceleration.\n"
+"^6Legacy style: m_accelStyle \"0\"\n"
+"^6Quake Live style: m_accelStyle \"1\"\n"
+"^6Extended legacy style with offset and variable pow mechanisms: m_accelStyle \"2\""
 
 #. Console/m
 msgid "m_filter"
-msgstr "<0-2> If enabled the type of filtering applied to your mouse input will be changed. 0 = Off, 1 = Linear interpolation filtering, 2 = Extrapolation filtering."
-	
+msgstr "<0-2> The type of filtering applied to your mouse input will be changed.\n"
+"^6Disable: m_filter \"0\"\n"
+"^6Linear interpolation filtering: m_filter \"1\"\n"
+"^6Extrapolation filtering: m_filter \"2\""
+
 #. Console/m
 msgid "m_filterStrength"
-msgstr "<value>	Controls the strength of m_filter."
+msgstr "<value> Controls the strength of m_filter."
 
 #. Console/m
 msgid "m_forward"
-msgstr "<value>	Changes your mouse sensitivity when moving forward and back."
+msgstr "<value> Changes your mouse sensitivity when moving forward and back."
 
 #. Console/m
 msgid "m_pitch"
-msgstr "<value>	The sensitivity for looking up and down with the mouse."
+msgstr "<value> The sensitivity for looking up and down with the mouse."
 
 #. Console/m
 msgid "m_raw"
-msgstr "<0/1> Enables raw mouse data input."
+msgstr "<0/1> Raw mouse input."
+"^6Disable: m_raw \"0\"\n"
+"^6Enable: m_raw \"1\""
 
 #. Console/m
 msgid "m_sensCap"
-msgstr "<value>	Affects the maximum limit for m_accelStyle = 2."
+msgstr "<value> Affects the maximum limit for m_accelStyle = \"2\"."
 
 #. Console/m
 msgid "m_side"
-msgstr "<value>	Changes your mouse sensitivity when moving left and right."
+msgstr "<value> Changes your mouse sensitivity when moving left and right."
 
 #. Console/m
 msgid "m_yaw"
-msgstr "<value>	Changes speed scale of X axis."
+msgstr "<value> Changes speed scale of X axis."
