@@ -25,7 +25,7 @@ msgstr "<0/1> Players can get stunned.\n"
 
 #. Console/g
 msgid "g_allow_teamdamage"
-msgstr "<0/1> Friendlyfire.\n"
+msgstr "<0/1> Friendlyfire will yield damage.\n"
 "^6Disable: g_allow_teamdamage \"0\"\n"
 "^6Enable: g_allow_teamdamage \"1\""
 
@@ -33,27 +33,27 @@ msgstr "<0/1> Friendlyfire.\n"
 msgid "g_ammo_respawn"
 msgstr "<value> Changes the ammo respawn time."
 
-#. Console/g
+#. Console/g (TODO)
 msgid "g_antilag"
 msgstr "<0/1> Antilag.\n"
 "^6Disable: g_antilag \"0\"\n"
 "^6Enable: g_antilag \"1\""
 
-#. Console/g
+#. Console/g (TODO)
 msgid "g_antilag_maxtimedelta"
 msgstr "<value>"
 
-#. Console/g
+#. Console/g (TODO)
 msgid "g_antilag_timenudge"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
-#. Console/g
+#. Console/g (TODO)
 msgid "g_asGC_interval"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Garbage collection interval for Angelscript"
 
-#. Console/g
+#. Console/g (TODO)
 msgid "g_asGC_stats"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Garbage collection for Angelscript."
 
 #. Console/g
 msgid "g_autorecord"
@@ -64,7 +64,7 @@ msgstr "<0/1> Automatically records all demos.\n"
 #. Console/g
 msgid "g_autorecord_maxdemos"
 msgstr "<value> Maximum amount of automatically recorded demos to keep.\n"
-"^6Note: Deletes old ones once limit is exceeded."
+"^6Note: This will delete the old ones once limit is exceeded."
 
 #. Console/g
 msgid "g_bomb_armtime"
@@ -76,7 +76,7 @@ msgid "g_bomb_bombtimer"
 msgstr "<value> Time before the bomb explodes after arming.\n"
 "^6Note: Exclusive to \"bomb\" gametype."
 
-#. Console/g
+#. Console/g (TODO)
 msgid "g_bomb_carriers"
 msgstr "<value>\n"
 "^6Note: Exclusive to \"bomb\" gametype."
@@ -603,13 +603,13 @@ msgstr "Please help contribute a description of this command by visiting the War
 msgid "g_maxtimeouts"
 msgstr "<value> How many timeouts can be called per match."
 
-#. Console/g
+#. Console/g (TODO)
 msgid "g_maxvelocity"
 msgstr "Obsolete Console Variable."
 
-#. Console/g
+#. Console/g (TODO)
 msgid "g_needpass"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "A write protected variable indicating whether a password is needed."
 
 #. Console/g
 msgid "g_numbots"
@@ -621,7 +621,7 @@ msgstr "<password> Sets the operator password. Operator is disabled if empty."
 
 #. Console/g
 msgid "g_postmatch_timelimit"
-msgstr "<value>"
+msgstr "<value> The post match timelimit (in seconds)."
 
 #. Console/g
 msgid "g_race_gametype"
@@ -631,11 +631,11 @@ msgstr "Please help contribute a description of this command by visiting the War
 msgid "g_scorelimit"
 msgstr "<value> Amount of points required to obtain by a player/team to end the match."
 
-#. Console/g
+#. Console/g (TODO)
 msgid "g_spawnsystem_wave_maxcount"
 msgstr "<value> Please help contribute a description of this command by visiting the Warfork github repository."
 
-#. Console/g
+#. Console/g (TODO)
 msgid "g_spawnsystem_wave_time"
 msgstr "<value> Please help contribute a description of this command by visiting the Warfork github repository."
 
@@ -644,7 +644,7 @@ msgid "g_teams_allow_uneven"
 msgstr "<0/1> Allow the teams to be uneven.\n"
 "^6Disable: g_teams_allow_uneven \"0\"\n"
 "^6Enable: g_teams_allow_uneven \"1\"\n"
-"^6Note: If enabled, allows players to switch teams anytime."
+"^6Note: If enabled, allows players to switch teams anytime they want."
 
 #. Console/g
 msgid "g_teams_maxplayers"
@@ -666,7 +666,7 @@ msgstr "<gametypes> A list of gametypes allowed to be used in \"gametype\" callv
 
 #. Console/g
 msgid "g_vote_allowed"
-msgstr "<0/1> Allows / disallows calling ALL votes (including opcalls).\n"
+msgstr "<0/1> Vote calling (including opcalls).\n"
 "^6Disable: g_vote_allowed \"0\"\n"
 "^6Enable: g_vote_allowed \"1\""
 
@@ -676,7 +676,7 @@ msgstr "<value> A player needs to wait x seconds after calling a vote to call an
 
 #. Console/g
 msgid "g_vote_electtime"
-msgstr "<value> Specifies how long do callvotes last (in seconds)."
+msgstr "<value> Specifies how long callvotes last (in seconds)."
 
 #. Console/g
 msgid "g_vote_maxchanges"
@@ -687,5 +687,8 @@ msgid "g_vote_percent"
 msgstr "<0-100> The percentage of players that need to vote yes for it to pass."
 
 #. Console/g
-msgid "g_weapon_respawn"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgid "<0/1> g_weapon_respawn"
+msgstr "The amount of time (in seconds) weapons are respawned.\n"
+"^6Disable: g_weapon_respawn \"0\"\n"
+"^6Enable: g_weapon_respawn \"1\" (or more)\n"
+"^6Note: If you set g_weapon_respawn = \"0\", it'll use the gametypes defined value instead."

@@ -2,8 +2,13 @@
 
 #. Console/scr
 msgid "scr_consize"
-msgstr "<0.1-1.0> size of the console `0.1-1.0` Example: 0.1 = Smallest size, 0.5 = 50% of the screen, 1.0 = 100% of the screen."
-	
+msgstr "<0.1-1.0> Size of the console.\n"
+"^610% of the screen: scr_consize \"0.1\"\n"
+"^650% of the screen: scr_consize \"0.5\"\n"
+"^6100% of the screen: scr_consize \"1.0\""
+
 #. Console/scr
 msgid "scr_conspeed"
-msgstr "<value>	Controls the console drop-down speed. Example: 0 = Instant, 1 = Slowest, and anything higher than 1 increases the speed."
+msgstr "<0-1.0> Controls the console drop-down speed.\n"
+"^6Instantly: scr_conspeed \"0\"\n"
+"^6Slowest: scr_conspeed \"1.0\""
