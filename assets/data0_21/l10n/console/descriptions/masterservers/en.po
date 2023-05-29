@@ -2,4 +2,4 @@
 
 #. Console/masterservers
 msgid "masterservers_steam"
-msgstr "<value> Specifies the Steam master servers used to query a list of Warfork servers."
+msgstr "<value> Specifies the Steam masterservers used to query a list of Warfork servers."
