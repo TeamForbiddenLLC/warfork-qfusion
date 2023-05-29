@@ -2,7 +2,10 @@
 
 #. Console/s
 msgid "s_doppler"
-msgstr "<value>	If enabled, Doppler effect will be used for sounds"
+msgstr "<value> Doppler effect will be used for sounds\n"
+"^6Disable: s_doppler \"0\"\n"
+"^6Enable: s_doppler \"1\""
+"^6Note: This command works only for OpenAL Sound Module."
 
 #. Console/s
 msgid "s_globalfocus"
@@ -12,7 +15,8 @@ msgstr "<0/1> Mutes the game when alt-tabbed.\n"
 
 #. Console/s
 msgid "s_khz"
-msgstr "<value>	The sampling rate of the sounds in kilohertz."
+msgstr "<value> The sampling rate of the sounds in kilohertz.\n"
+"^6Note: Anything above \"44\", which is 44.1kHz will cause the sound system to crash."
 
 #. Console/s
 msgid "s_mixahead"
@@ -48,7 +52,8 @@ msgstr "<0/1> High quality spatialisation.\n"
 
 #. Console/s
 msgid "s_separationDelay"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "<value> Applies a delay to opposite ear of where the sound originates based on the angle."
+"^6Note: This command works only for Qfusion Sound Module."
 
 #. Console/s
 msgid "s_stereo2mono"
