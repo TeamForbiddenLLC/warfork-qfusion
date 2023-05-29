@@ -2,4 +2,5 @@
 
 #. Console/vsay
 msgid "vsay_team"
-msgstr "<name> Says a voice message to the team."
+msgstr "<name> Plays a voice command to your team."
+"^6Note: You can type vsay_team without specifying the <name> for a list of voice commands."
