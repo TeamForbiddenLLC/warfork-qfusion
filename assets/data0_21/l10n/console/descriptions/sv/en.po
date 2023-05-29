@@ -187,7 +187,9 @@ msgstr "Please help contribute a description of this command by visiting the War
 #. Console/sv
 msgid "sv_skilllevel"
 msgstr "<0-2> Defines the skill level of your server, which affects bots.\n"
-"^6Note: 0 = Easy, 1 = Medium, 2 = Hard."
+"^6Easy: sv_skilllevel \"0\"\n"
+"^6Medium: sv_skilllevel \"1\"\n"
+"^6Hard: sv_skilllevel \"2\""
 
 #. Console/sv
 msgid "sv_skillRating"
