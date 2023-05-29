@@ -16,7 +16,7 @@ msgstr "<yyyy-mm-dd> Purges the folder \"cache/ui\" on a specific date, which co
 
 #. Console/ui
 msgid "ui_lighting"
-msgstr "Used to store your lighting listbox choices in the UI.\n"
+msgstr "Used to store your lighting choices in the UI.\n"
 "^6Note: Do not change this in console. It will not apply any lighting changes and only cause confusion in the UI."
 
 #. Console/ui
@@ -37,17 +37,17 @@ msgstr "<0/1> You will be prompted (once per game load) to complete the tutorial
 
 #. Console/ui
 msgid "ui_video_profile"
-msgstr "Used to store your graphics profile selector in the UI.\n"
+msgstr "Used to store your graphics profile in the UI.\n"
 "^6Note: Do not change this in console. It will not apply any gfx changes and only cause confusion in the UI."
 
-#. Console/ui (TODO)
+#. Console/ui
 msgid "ui_dumpapi"
-msgstr "Dumps API information to console."
+msgstr "Prints a list of Angelscript API header files."
 
-#. Console/ui (TODO)
+#. Console/ui
 msgid "ui_printdocs"
-msgstr "Prints document cache to console."
+msgstr "Prints document cache and navigation stack to console."
 
 #. Console/ui
 msgid "ui_reload"
-msgstr "Reloads the user interface."
+msgstr "Reloads the User Interface."
