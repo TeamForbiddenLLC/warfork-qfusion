@@ -3,7 +3,7 @@
 #. Console/vid
 msgid "vid_displayfrequency"
 msgstr "<value> Defines the refresh rate of your screen in Hz.\n"
-"^6Desktop refresh rate: vid_displayfrequency \"0\""
+"^6Use desktop refresh rate: vid_displayfrequency \"0\""
 
 #. Console/vid
 msgid "vid_fullscreen"
