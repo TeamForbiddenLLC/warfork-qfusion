@@ -2,21 +2,24 @@
 
 #. Console/vid
 msgid "vid_displayfrequency"
-msgstr "<value>	Defines the refresh rate of your screen in Hz.\n"
+msgstr "<value> Defines the refresh rate of your screen in Hz.\n"
 "^6Desktop refresh rate: vid_displayfrequency \"0\""
 
 #. Console/vid
 msgid "vid_fullscreen"
-msgstr "<0/1> If enabled, Warfork will run in full screen mode."
+msgstr "<0/1> Warfork will run in fullscreen mode.\n"
+"^6Disable: vid_fullscreen \"0\"\n"
+"^6Enable: vid_fullscreen \"1\""
 
 #. Console/vid
 msgid "vid_height"
-msgstr "<value>	Defines a custom screen resolution height.\n"
+msgstr "<value> Defines a custom screen height (in pixels).\n"
 "^6Desktop height: vid_height \"0\""
 
 #. Console/vid
 msgid "vid_multiscreen_head"
-msgstr "<value>	Changes the default monitor used."
+msgstr "<value> Changes the default monitor used.\n"
+"^6Note: Only works on Linux."
 
 #. Console/vid
 msgid "vid_parentwid"
@@ -24,20 +27,20 @@ msgstr "Defines the parent window identifier."
 
 #. Console/vid
 msgid "vid_ref"
-msgstr "<value>	Defines the video renderer driver."
+msgstr "<value> Defines the video renderer driver."
 
 #. Console/vid
 msgid "vid_width"
-msgstr "<value>	Defines a custom screen resolution width.\n"
+msgstr "<value> Defines a custom screen width (in pixels).\n"
 "^6Desktop width: vid_width \"0\""
 
 #. Console/vid
 msgid "vid_xpos"
-msgstr "<value>	Defines the X position of the game running in window mode."
+msgstr "<value> Defines the X position of the game running in window mode."
 
 #. Console/vid
 msgid "vid_ypos"
-msgstr "<value>	Defines the Y position of the game running in window mode."
+msgstr "<value> Defines the Y position of the game running in window mode."
 
 #. Console/vid
 msgid "vid_modelist"
