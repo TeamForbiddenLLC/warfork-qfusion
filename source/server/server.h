@@ -340,7 +340,6 @@ extern cvar_t *sv_skilllevel;
 extern cvar_t *sv_maxclients;
 extern cvar_t *sv_maxmvclients;
 
-extern cvar_t *sv_enforcetime;
 extern cvar_t *sv_showRcon;
 extern cvar_t *sv_showChallenge;
 extern cvar_t *sv_showInfoQueries;

@@ -32,8 +32,6 @@ cvar_t *sv_port;
 cvar_t *sv_ip6;
 cvar_t *sv_port6;
 
-cvar_t *sv_enforcetime;
-
 cvar_t *sv_timeout;            // seconds without any message
 cvar_t *sv_zombietime;         // seconds to sink messages after disconnect
 
@@ -953,7 +951,6 @@ void SV_Init( void )
 	sv_hostname =		    Cvar_Get( "sv_hostname", APPLICATION " server", CVAR_SERVERINFO | CVAR_ARCHIVE );
 	sv_timeout =		    Cvar_Get( "sv_timeout", "125", 0 );
 	sv_zombietime =		    Cvar_Get( "sv_zombietime", "2", 0 );
-	sv_enforcetime =	    Cvar_Get( "sv_enforcetime", "1", 0 );
 	sv_showclamp =		    Cvar_Get( "sv_showclamp", "0", 0 );
 	sv_showRcon =		    Cvar_Get( "sv_showRcon", "1", 0 );
 	sv_showChallenge =	    Cvar_Get( "sv_showChallenge", "0", 0 );
