@@ -50,17 +50,19 @@ msgstr "Specifies the demo directory."
 msgid "sv_fps"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
-#. Console/sv
+#. Console/sv (TODO)
 msgid "sv_highchars"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-	
+msgstr "High-bit characters in player names."
+"^6Disable: sv_highchars \"0\"\n"
+"^6Enable: sv_highchars \"1\""
+
 #. Console/sv
 msgid "sv_hostname"
 msgstr "<name> Name of the server. Appears in the server list."
 
 #. Console/sv
 msgid "sv_http"
-msgstr "<0/1> Enables an HTTP server that lets connecting players download missing files.\n"
+msgstr "<0/1> A HTTP server that lets connecting players download missing files.\n"
 "^6Disable: sv_http \"0\"\n"
 "^6Enable: sv_http \"1\""
 
@@ -114,11 +116,12 @@ msgstr "<value>	Maximum amount of entities on the map."
 
 #. Console/sv
 msgid "sv_maxmvclients"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Maximum amount of multiview clients.\n"
+"Note: Multiview clients are limited to Warfork TV."
 
 #. Console/sv
 msgid "sv_mm_authkey"
-msgstr "Matchmaker Authentication Key.\n"
+msgstr "Matchmaker authentication key.\n"
 "Note: You must register your server at warfork.com to obtain an authkey."
 
 #. Console/sv
@@ -127,7 +130,8 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/sv
 msgid "sv_mm_enable"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Enables Matchmaking.\n"
+"Note: sv_mm_authkey must be set for this to work."
 	
 #. Console/sv
 msgid "sv_mm_loginonly"
@@ -234,6 +238,8 @@ msgstr "Please help contribute a description of this command by visiting the War
 #. Console/sv
 msgid "sv_uploads_from_server"
 msgstr "<0/1> Uploading is allowed directly from the server."
+"^6Disable: sv_uploads_from_server \"0\"\n"
+"^6Enable: sv_uploads_from_server \"1\"\n"
 
 #. Console/sv
 msgid "sv_uploads_http"
