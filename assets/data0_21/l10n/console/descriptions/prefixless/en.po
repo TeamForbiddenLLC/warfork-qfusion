@@ -106,15 +106,16 @@ msgstr "<value>	Proceeds to the next map."
 
 #. Console/prefixless
 msgid "password"
-msgstr "<password>	If a server requires a password, the client automatically tries to join with x password."
+msgstr "<password> If a server requires a password, the client automatically tries to join with x password."
 
 #. Console/prefixless
 msgid "logconsole"
 msgstr "<value> Automatically logs console to a specified file when defined.\n"
 "^6Note: Operating System Path\n"
-"^6Windows %USERPROFILE%/My Documents/My Games/Warfork 2.1/basewf/\n"
-"^6Mac ~/Library/Application Support/Warfork-2.1/basewf/\n"
-"^6Linux ~/.local/share/warfork-2.1/basewf/"
+"^6Windows %USERPROFILE%/My Documents/My Games/Warfork version.number/basewf/\n"
+"^6Mac ~/Library/Application Support/Warfork-version.number/basewf/\n"
+"^6Linux ~/.local/share/warfork-version.number/basewf/\n"
+"^6Note: If fs_usehomedir \"1\" is set it, then your log file will be stored in your/warfork/game/directory/basewf/."
 
 #. Console/prefixless
 msgid "protocol"
