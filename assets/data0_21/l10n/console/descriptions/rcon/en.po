@@ -2,8 +2,8 @@
 
 #. Console/rcon
 msgid "rcon_address"
-msgstr "<ip address> Sets the IP address for rcon connection."
+msgstr "<ip address> Sets the IP address for rcon."
 
 #. Console/rcon
 msgid "rcon_password"
-msgstr "<password> Sets the password for rcon connection."
+msgstr "<password> Sets the password for rcon."
