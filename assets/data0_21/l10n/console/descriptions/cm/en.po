@@ -3,11 +3,12 @@
 #. Console/cm
 msgid "cm_mapHeader"
 msgstr "<value> Stores map format (IBSP, FBSP, RBSP, etc.)\n"
-"^6Note: IBSP = ID BSP and RBSP = Raven BSP."
+"^6Note: IBSP = ID BSP, FBSP = Fusion BSP, and RBSP = Raven BSP."
 
 #. Console/cm
 msgid "cm_mapVersion"
-msgstr "<value> Stores map format (ISBP, FBSP, RBSP, etc.) version number."
+msgstr "<value> Stores map format (ISBP, FBSP, RBSP, etc.) version number.\n"
+"^6Note: IBSP = ID BSP, FBSP = Fusion BSP, and RBSP = Raven BSP."
 
 #. Console/cm
 msgid "cm_noAreas"
