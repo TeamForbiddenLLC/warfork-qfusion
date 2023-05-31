@@ -1,18 +1,15 @@
 # (c) Team Forbidden LLC. All Rights Reserved.
 
 #. Console/logconsole
-msgid "logconsole"
-msgstr "<value> Automatically logs console to a specified file when defined."
-
-#. Console/logconsole
 msgid "logconsole_append"
 msgstr "<0/1> Appends the log instead of destroying it on the next game launch."
 
-#. Console/logconsole (TODO)
+#. Console/logconsole
 msgid "logconsole_flush"
-msgstr "<0/1> Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "<0/1> Each line is written to the log file immediately.\n"
+msgstr "Note: If disabled your log will be written in batches."
 
 #. Console/logconsole
 msgid "logconsole_timestamp"
-msgstr "<0/1> Each line of your log will be prefixed with a timestamp."
+msgstr "<0/1> Each line of your log will be prefixed with a timestamp.\n"
 "Note: Example -> 2023-05-30T15:43:40Z Discord module unloaded."
