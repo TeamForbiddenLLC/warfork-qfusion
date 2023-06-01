@@ -2,11 +2,11 @@
 
 #. Console/gl
 msgid "gl_cull"
-msgstr "<0/1> Enable OpenGL Culling."
+msgstr "<0/1> OpenGL Culling."
 
 #. Console/gl
 msgid "gl_drawbuffer"
-msgstr "<value>	Specifies the buffer which display information will be written to."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_drawbuffer.txt"
 
 #. Console/gl
 msgid "gl_driver_win"
@@ -14,11 +14,11 @@ msgstr "<value>	Specifies the OpenGL driver dll file."
 
 #. Console/gl
 msgid "gl_ext_bgra"
-msgstr "If enabled, the BGRA openGL extension will be used if supported."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_bgra.txt"
 
 #. Console/gl
 msgid "gl_ext_blend_func_separate"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_blend_func_separate.txt"
 
 #. Console/gl
 msgid "gl_ext_compressed_ETC1_RGB8_texture"
@@ -28,49 +28,49 @@ msgstr "Please help contribute a description of this command by visiting the War
 msgid "gl_ext_depth24"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
-#. Console/gl
+#. Console/gl (TODO)
 msgid "gl_ext_depth_nonlinear"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
 #. Console/gl
 msgid "gl_ext_depth_texture"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Returns a single boolean value indicating whether texture depth is enabled."
 
 #. Console/gl
 msgid "gl_ext_draw_instanced"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_draw_instanced.txt"
 
 #. Console/gl
 msgid "gl_ext_draw_range_elements"
-msgstr "<0/1> If enabled, DrawRangeElements (an opengl extension) will be used if it's supported."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_draw_range_elements.txt"
 
 #. Console/gl
 msgid "gl_ext_ES3_compatibility"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
-#. Console/gl
+#. Console/gl 
 msgid "gl_ext_fragment_precision_high"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
 #. Console/gl
 msgid "gl_ext_fragment_shader"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Provides a collection of values produced by the rasterizer."
 
 #. Console/gl
 msgid "gl_ext_framebuffer_blit"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_framebuffer_blit.txt"
 
 #. Console/gl
 msgid "gl_ext_framebuffer_object"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_framebuffer_object.txt"
 
 #. Console/gl
 msgid "gl_ext_gamma_control"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Gamma control by the GPU (if supported)."
 
 #. Console/gl
 msgid "gl_ext_get_program_binary"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Provides the ability to use binary cache for GLSL programs."
 
 #. Console/gl
 msgid "gl_ext_GLSL"
@@ -80,7 +80,7 @@ msgstr "Please help contribute a description of this command by visiting the War
 msgid "gl_ext_GLSL130"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
-#. Console/gl
+#. Console/gl (TODO)
 msgid "gl_ext_GLSL_core"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
@@ -90,23 +90,23 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/gl
 msgid "gl_ext_gpu_shader5"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_gpu_shader5.txt"
 
-#. Console/gl
+#. Console/gl (TODO)
 msgid "gl_ext_half_float_vertex"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
 #. Console/gl
 msgid "gl_ext_instanced_arrays"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_instanced_arrays.txt"
 
-#. Console/gl
+#. Console/gl (TODO)
 msgid "gl_ext_meminfo"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
 #. Console/gl
 msgid "gl_ext_multitexture"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Multiple texture processor support."
 
 #. Console/gl
 msgid "gl_ext_packed_depth_stencil"
@@ -138,15 +138,15 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/gl
 msgid "gl_ext_swap_control"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_swap_control.txt"
 
 #. Console/gl
 msgid "gl_ext_texture3D"
-msgstr "<0/1> If enabled, the Texture3D (an opengl extension) will be used if it's supported."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_texture3D.txt"
 
 #. Console/gl
 msgid "gl_ext_texture_array"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_texture_array.txt"
 
 #. Console/gl
 msgid "gl_ext_texture_compression"
@@ -154,15 +154,15 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/gl
 msgid "gl_ext_texture_cube_map"
-msgstr "If enabled, Texture Cube Mapping (an opengl extension) will be used if it's supported."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_texture_cube_map.txt"
 
 #. Console/gl
 msgid "gl_ext_texture_edge_clamp"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_texture_edge_clamp.txt"
 
 #. Console/gl
 msgid "gl_ext_texture_filter_anisotropic"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "This OpenGL extension enables anisotropic texture filtering."
 
 #. Console/gl
 msgid "gl_ext_texture_lod"
@@ -190,7 +190,7 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/gl
 msgid "gl_ext_vertex_shader"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_vertex_shader.txt"
 
 #. Console/gl
 msgid "gl_finish"
