@@ -13,7 +13,9 @@ msgstr "<0/1> DirectInput.\n"
 
 #. Console/in
 msgid "in_grabinconsole"
-msgstr "Mouse cursor will be locked to the game (in window mode) when the console is open."
+msgstr "Mouse cursor will be locked to the game (in window mode) when the console is open.\n"
+"^6Disable: in_grabinconsole \"0\"\n"
+"^6Enable: in_grabinconsole \"1\""
 
 #. Console/in
 msgid "in_initmouse"
