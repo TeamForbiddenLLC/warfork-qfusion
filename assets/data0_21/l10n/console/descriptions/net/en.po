@@ -2,6 +2,6 @@
 
 #. Console/net
 msgid "net_showfragments"
-msgstr "Show netchannel fragments.\n"
+msgstr "<0/1> Show netchannel fragments.\n"
 "^6Disable: net_showfragments \"0\"\n"
 "^6Enable: net_showfragments \"1\""
