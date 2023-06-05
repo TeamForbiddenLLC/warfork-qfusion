@@ -2,11 +2,11 @@
 
 #. Console/mm
 msgid "mm_url"
-msgstr "Specifies the Warfork Matchmaking Servers"
+msgstr "<value> Specifies the Warfork Matchmaking Server."
 
 #. Console/mm
 msgid "mm_login"
-msgstr "Logs you in Matchmaking."
+msgstr "Logs you into Matchmaking."
 
 #. Console/mm
 msgid "mm_logout"
