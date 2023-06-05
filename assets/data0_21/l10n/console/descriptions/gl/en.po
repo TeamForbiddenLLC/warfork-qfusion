@@ -32,7 +32,7 @@ msgstr "Please help contribute a description of this command by visiting the War
 msgid "gl_ext_depth_nonlinear"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
-#. Console/gl
+#. Console/gl (TODO)
 msgid "gl_ext_depth_texture"
 msgstr "Returns a single boolean value indicating whether texture depth is enabled."
 
@@ -46,11 +46,11 @@ msgstr "For detailed technical information visit https://github.com/Warfork/gl/b
 
 #. Console/gl
 msgid "gl_ext_ES3_compatibility"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_ES3_compatibility.txt"
 
-#. Console/gl 
+#. Console/gl (TODO)
 msgid "gl_ext_fragment_precision_high"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "High precision floating point values in fragment shaders."
 
 #. Console/gl
 msgid "gl_ext_fragment_shader"
@@ -74,7 +74,7 @@ msgstr "Provides the ability to use binary cache for GLSL programs."
 
 #. Console/gl
 msgid "gl_ext_GLSL"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "OpenGL Shading Language (GLSL)."
 
 #. Console/gl
 msgid "gl_ext_GLSL130"
@@ -86,7 +86,7 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/gl
 msgid "gl_ext_gpu_memory_info"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_gpu_memory_info.txt"
 
 #. Console/gl
 msgid "gl_ext_gpu_shader5"
@@ -106,11 +106,11 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/gl
 msgid "gl_ext_multitexture"
-msgstr "Multiple texture processor support."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_multitexture.txt"
 
 #. Console/gl
 msgid "gl_ext_packed_depth_stencil"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_packed_depth_stencil.txt"
 
 #. Console/gl
 msgid "gl_ext_rgb8_rgba8"
@@ -134,7 +134,7 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/gl
 msgid "gl_ext_shadow_samplers"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_shadow_samplers.txt"
 
 #. Console/gl
 msgid "gl_ext_swap_control"
@@ -150,7 +150,9 @@ msgstr "For detailed technical information visit https://github.com/Warfork/gl/b
 
 #. Console/gl
 msgid "gl_ext_texture_compression"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Reduces memory held by textures."
+"^6Disable: gl_ext_texture_compression \"0\"\n"
+"^6Enable: gl_ext_texture_compression \"1\""
 
 #. Console/gl
 msgid "gl_ext_texture_cube_map"
@@ -162,27 +164,31 @@ msgstr "For detailed technical information visit https://github.com/Warfork/gl/b
 
 #. Console/gl
 msgid "gl_ext_texture_filter_anisotropic"
-msgstr "This OpenGL extension enables anisotropic texture filtering."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_texture_filter_anisotropic.txt"
 
 #. Console/gl
 msgid "gl_ext_texture_lod"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_texture_lod.txt"
 
-#. Console/gl
+#. Console/gl (TODO)
 msgid "gl_ext_texture_non_power_of_two"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "<0/1> Load textures which have non-power-of-two (NPOT) dimensions.\n"
+"^6Disable: gl_ext_texture_non_power_of_two \"0\"\n"
+"^6Enable: gl_ext_texture_non_power_of_two \"1\""
 
-#. Console/gl
+#. Console/gl (TODO)
 msgid "gl_ext_texture_npot"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "<0/1> Load textures which have non-power-of-two (NPOT) dimensions.\n"
+"^6Disable: gl_ext_texture_npot \"0\"\n"
+"^6Enable: gl_ext_texture_npot \"1\""
 
 #. Console/gl
 msgid "gl_ext_vertex_buffer_object"
-msgstr "If enabled, opengl vertex buffer objects will be utilized if supported. Vertex buffer objects are often slower than range elements."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_vertex_buffer_object.txt"
 
 #. Console/gl
 msgid "gl_ext_vertex_buffer_object_hack"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "For detailed technical information visit https://github.com/Warfork/gl/blob/main/gl_ext_vertex_buffer_object.txt"
 
 #. Console/gl
 msgid "gl_ext_vertex_half_float"
@@ -194,9 +200,9 @@ msgstr "For detailed technical information visit https://github.com/Warfork/gl/b
 
 #. Console/gl
 msgid "gl_finish"
-msgstr "<0/1> If enabled, the CPU will wait for the GPU at the end of each rendered frame.
-This can help resolve some video lag and input issues."
+msgstr "<0/1> The CPU will wait for the GPU at the end of each rendered frame.\n"
+"^6Note: This can help resolve some video lag and input issues."
 
 #. Console/gl
 msgid "gl_max_texture_size"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "The maximum texture size (width and height) that your graphics hardware supports."
