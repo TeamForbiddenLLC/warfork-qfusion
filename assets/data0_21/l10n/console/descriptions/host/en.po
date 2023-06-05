@@ -2,7 +2,7 @@
 
 #. Console/host
 msgid "host_speeds"
-msgstr "<0/1> If enabled timing information will be printed to console.\n"
+msgstr "<0/1> Engine performance times will be printed to console in milliseconds.\n"
 "^6Disable: host_speeds \"0\"\n"
 "^6Enable: host_speeds \"1\"\n"
-"^6Note: all (total time), sv (server time), gm (game time), cl (client time), and rf (renderer time)."
+"^6Note: The times represent how long the game engine takes to complete certain tasks. Example -> all, sv (server), gm (game), cl (client), and rf (renderer)."
