@@ -7,9 +7,9 @@ msgstr "<0/1> Debugs keyboard input.\n"
 
 #. Console/in
 msgid "in_dinput"
-msgstr "<0/1> DirectInput."
+msgstr "<0/1> DirectInput.\n"
 "^6Disable: in_dinput \"0\"\n"
-"^6Enable: in_dinput \"1\"\n"
+"^6Enable: in_dinput \"1\""
 
 #. Console/in
 msgid "in_grabinconsole"
@@ -17,7 +17,7 @@ msgstr "Mouse cursor will be locked to the game (in window mode) when the consol
 
 #. Console/in
 msgid "in_initmouse"
-msgstr "Initializes the mouse on game launch."
+msgstr "Initializes the mouse on game launch.\n"
 "^6Note: This command was intended for development purposes and only works using Microsoft Windows. If you want to disable mouse input use in_mouse instead."
 
 #. Console/in
