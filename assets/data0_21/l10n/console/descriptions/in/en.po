@@ -5,7 +5,7 @@ msgstr "<0/1> Debugs keyboard input.\n"
 "^6Enable: in_debug \"1\"\n"
 "^6Note: Example -> key:100 down:0 time:1405849 +moveright"
 
-#. Console/in (TODO)
+#. Console/in
 msgid "in_dinput"
 msgstr "<0/1> DirectInput."
 "^6Disable: in_dinput \"0\"\n"
