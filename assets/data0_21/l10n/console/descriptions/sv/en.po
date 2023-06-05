@@ -2,7 +2,9 @@
 
 #. Console/sv
 msgid "sv_autoUpdate"
-msgstr "Downloads updates automatically from our website.\n"
+msgstr "<0/1> Downloads updates automatically from our website.\n"
+"^6Disable: sv_autoUpdate \"0\"\n"
+"^6Enable: sv_autoUpdate \"1\"\n"
 "^6Note: Warfork utilizes Steam and this is not used."
 
 #. Console/sv
@@ -29,7 +31,7 @@ msgid "sv_cheats"
 msgstr "<0/1> Enables cheats on the server.\n"
 "^6Disable: sv_cheats \"0\"\n"
 "^6Enable: sv_cheats \"1\"\n"
-"^6Note: Requires a server restart to go into effect. Simply Changing the map with the command map \"wfdm2\" for example will suffice."
+"^6Note: Requires a server restart to go into effect. Simply changing the map with the command map \"wfdm2\" for example will suffice."
 
 #. Console/sv
 msgid "sv_debug_serverCmd"
@@ -39,16 +41,21 @@ msgstr "<0/1> Prints sv_cl->reliableAcknowledge (last acknowledged reliable mess
 
 #. Console/sv
 msgid "sv_defaultmap"
-msgstr "<map> Sets the default map of the server."
+msgstr "<map> Sets the default map of the server.\n"
 "^6Note: To see a list of available maps, use the command maplist."
 
-#. Console/sv (TODO)
+#. Console/sv
 msgid "sv_demodir"
-msgstr "Specifies the demo directory."
+msgstr "<value> Stores automatic serverside demos to a specified directory when defined.\n"
+"^6Note: Operating System Path\n"
+"^6Windows %USERPROFILE%/My Documents/My Games/Warfork version.number/basewf/demos/server/\n"
+"^6Mac ~/Library/Application Support/Warfork-version.number/basewf/demos/server/\n"
+"^6Linux ~/.local/share/warfork-version.number/basewf/demos/server\n"
+"^6Note: If fs_usehomedir \"0\" is set, then your log file will be stored in your/warfork/game/directory/basewf/demos/server."
 
 #. Console/sv
 msgid "sv_fps"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "The amount of frames per second the server will process."
 
 #. Console/sv (TODO)
 msgid "sv_highchars"
@@ -60,7 +67,7 @@ msgstr "High-bit characters in player names."
 msgid "sv_hostname"
 msgstr "<name> Name of the server. Appears in the server list."
 
-#. Console/sv
+#. Console/sv (TODO)
 msgid "sv_http"
 msgstr "<0/1> A HTTP server that lets connecting players download missing files.\n"
 "^6Disable: sv_http \"0\"\n"
@@ -130,12 +137,12 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/sv
 msgid "sv_mm_enable"
-msgstr "Enables Matchmaking.\n"
+msgstr "<0/1> Enables Matchmaking.\n"
 "Note: sv_mm_authkey must be set for this to work."
 	
 #. Console/sv
 msgid "sv_mm_loginonly"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "<0/1> Matchmaking will require players to login to their account before connecting to the server."
 
 #. Console/sv
 msgid "sv_modmanifest"
@@ -143,7 +150,7 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/sv
 msgid "sv_MOTD"
-msgstr "<0/1> Enables Message Of The Day on the server."
+msgstr "<0/1> Message Of The Day on the server."
 
 #. Console/sv
 msgid "sv_MOTDFile"
@@ -181,7 +188,7 @@ msgstr "<0/1> The server will check the validity of client files with server.\n"
 
 #. Console/sv
 msgid "sv_pure_forcemodulepk3"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Modules must be in a PK3 archive."
 
 #. Console/sv
 msgid "sv_reconnectlimit"
@@ -191,15 +198,11 @@ msgstr "<value>	Seconds a client must wait until they can reconnect with a serve
 msgid "sv_showChallenge"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
-#. Console/sv
-msgid "sv_showclamp"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-
-#. Console/sv
+#. Console/sv (TODO: doesnt do anything)
 msgid "sv_showInfoQueries"
 msgstr "Prints console feedback of sv_showRcon, sv_showChallenge and sv_showInfoQueries packets."
 
-#. Console/sv
+#. Console/sv (TODO: doesnt do anything)
 msgid "sv_showRcon"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
@@ -210,13 +213,14 @@ msgstr "<0-2> Defines the skill level of your server, which affects bots.\n"
 "^6Medium: sv_skilllevel \"1\"\n"
 "^6Hard: sv_skilllevel \"2\""
 
-#. Console/sv
+#. Console/sv (TODO)
 msgid "sv_skillRating"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Your matchmaking skill rating."
 
 #. Console/sv
 msgid "sv_timeout"
-msgstr "<value>	Kicks players from server if connection is lost for more than x seconds. Takes priority over cl_timeout."
+msgstr "<value>	Kicks players from server if connection is lost for more than defined seconds.\n"
+"^6Note: Takes priority over cl_timeout."
 
 #. Console/sv (TODO)
 msgid "sv_uploads"
@@ -241,9 +245,9 @@ msgstr "<0/1> Uploading is allowed directly from the server."
 "^6Disable: sv_uploads_from_server \"0\"\n"
 "^6Enable: sv_uploads_from_server \"1\"\n"
 
-#. Console/sv
+#. Console/sv (TODO)
 msgid "sv_uploads_http"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Local http server that uploads files."
 
 #. Console/sv
 msgid "sv_zombietime"

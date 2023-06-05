@@ -115,7 +115,7 @@ msgstr "<value> Automatically logs console to a specified file when defined.\n"
 "^6Windows %USERPROFILE%/My Documents/My Games/Warfork version.number/basewf/\n"
 "^6Mac ~/Library/Application Support/Warfork-version.number/basewf/\n"
 "^6Linux ~/.local/share/warfork-version.number/basewf/\n"
-"^6Note: If fs_usehomedir \"1\" is set, then your log file will be stored in your/warfork/game/directory/basewf/."
+"^6Note: If fs_usehomedir \"0\" is set, then your log file will be stored in your/warfork/game/directory/basewf/."
 
 #. Console/prefixless
 msgid "protocol"

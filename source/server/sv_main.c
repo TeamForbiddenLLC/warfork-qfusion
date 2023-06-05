@@ -62,7 +62,7 @@ cvar_t *sv_http_upstream_ip;
 cvar_t *sv_http_upstream_realip_header;
 #endif
 
-cvar_t *sv_showclamp;
+// cvar_t *sv_showclamp;
 cvar_t *sv_showRcon;
 cvar_t *sv_showChallenge;
 cvar_t *sv_showInfoQueries;
@@ -951,7 +951,7 @@ void SV_Init( void )
 	sv_hostname =		    Cvar_Get( "sv_hostname", APPLICATION " server", CVAR_SERVERINFO | CVAR_ARCHIVE );
 	sv_timeout =		    Cvar_Get( "sv_timeout", "125", 0 );
 	sv_zombietime =		    Cvar_Get( "sv_zombietime", "2", 0 );
-	sv_showclamp =		    Cvar_Get( "sv_showclamp", "0", 0 );
+//	sv_showclamp =		    Cvar_Get( "sv_showclamp", "0", 0 );
 	sv_showRcon =		    Cvar_Get( "sv_showRcon", "1", 0 );
 	sv_showChallenge =	    Cvar_Get( "sv_showChallenge", "0", 0 );
 	sv_showInfoQueries =	Cvar_Get( "sv_showInfoQueries", "0", 0 );
