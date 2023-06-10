@@ -200,11 +200,11 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/sv (TODO: doesnt do anything)
 msgid "sv_showInfoQueries"
-msgstr "Prints console feedback of sv_showRcon, sv_showChallenge and sv_showInfoQueries packets."
+msgstr "Prints console feedback of Steam Info Packets, Steam Players Packets, Steam Master Server Info Packets, and Info Packets."
 
 #. Console/sv (TODO: doesnt do anything)
 msgid "sv_showRcon"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Prints console feedback of Rcon Packets."
 
 #. Console/sv
 msgid "sv_skilllevel"
@@ -228,7 +228,7 @@ msgstr "Sending of upload offers or urls to clients."
 
 #. Console/sv (TODO)
 msgid "sv_uploads_baseurl"
-msgstr " http url of a directory mirroring Warfork directory.\n"
+msgstr "http url of a directory mirroring Warfork directory.\n"
 "Note: mod directory not to be included in this url anymore. Example: sv_uploads_baseurl \"http://mydomain.com/warfork\" where there is a subdirectory \"basewf\" or whatever mod directory your server is running containing the downloadable files."
 
 #. Console/sv
@@ -247,7 +247,9 @@ msgstr "<0/1> Uploading is allowed directly from the server."
 
 #. Console/sv (TODO)
 msgid "sv_uploads_http"
-msgstr "Local http server that uploads files."
+msgstr "<0/1> Local http server that uploads files to clients."
+"^6Disable: sv_uploads_http \"0\"\n"
+"^6Enable: sv_uploads_http \"1\"\n"
 
 #. Console/sv
 msgid "sv_zombietime"
