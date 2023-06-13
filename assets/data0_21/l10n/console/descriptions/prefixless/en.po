@@ -2,29 +2,45 @@
 
 #. Console/prefixless
 msgid "clan"
-msgstr "<name> Sets the name of your clan. Appears on the scoreboard."
+msgstr "<name> Sets the name of your clan.\n"
+"^6Note: Appears on the scoreboard."
 
 #. Console/prefixless
 msgid "color"
-msgstr "<R G B>	Sets your Player color."
+msgstr "<R G B> Sets your Player color.\n"
+"^6Red: color \"255 0 0\"\n"
+"^6Blue: color \"51 128 255\"\n"
+"^6Green: color \"0 204 102\"\n"
+"^6Orange: color \"255 128 0\"\n"
+"^6Yellow: color \"255 255 51\"\n"
+"^6Purple: color \"153 51 255\"\n"
+"^6Note: The list above only includes RGB color examples and is not all inclusive."
 
-#. Console/prefixless
+#. Console/prefixless (TODO)
 msgid "debuggraph"
-msgstr "<0/1> If enabled, the debug graph will be displayed."
+msgstr "<0/1> The debug graph will be displayed.\n"
+"^6Disable: debuggraph \"0\"\n"
+"^6Enable: debuggraph \"1\""
 
 #. Console/prefixless
 msgid "dedicated"
-msgstr "Tells the game if it's a dedicated server."
+msgstr "Specifies if the server is \"dedicated\".\n"
+"^6Disable: dedicated \"0\"\n"
+"^6Enable: dedicated \"1\"\n"
+"^6Note: Non-dedicated servers are running the Warfork game client, while also hosting a server for others to join at the same time. This typically results in lesser performance."
 
-#. Console/prefixless
+#. Console/prefixless (TODO)
 msgid "developer"
 msgstr "Level of developer information printed to the console. The higher the number, the more information is printed."
 
 #. Console/prefixless
 msgid "developerMemory"
-msgstr "<0/1> Prints memory allocation information to console if developer is enabled as well."
+msgstr "<0/1> Prints memory allocation information to console.\n"
+"^6Disable: developerMemory \"0\"\n"
+"^6Enable: developerMemory \"1\"\n"
+"^6Note: developer \"1\" must be set for this command to work."
 
-#. Console/prefixless
+#. Console/prefixless (TODO)
 msgid "favorites"
 msgstr "Amount of favorite servers."
 
@@ -35,58 +51,90 @@ msgstr "Please help contribute a description of this command by visiting the War
 #. Console/prefixless
 msgid "fixedtime"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-	
+ 
 #. Console/prefixless
 msgid "fov"
-msgstr "<value>	Changes your Field of view."
+msgstr "<value> Changes your Field of view."
 
 #. Console/prefixless
 msgid "gamedate"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "<value> The date that the Warfork binary was built.\n"
+"^6Note: The format will be mmm dd yyyy (Example: \"Jan 1 2023\")"
 
 #. Console/prefixless
 msgid "gamename"
-msgstr "Name of the game."
-	
-#. Console/prefixless
+msgstr "<value> Name of the game."
+ 
+#. Console/prefixless (TODO)
 msgid "graphheight"
-msgstr "Changes the graph height for timegraph, netgraph, etc."
-			
-#. Console/prefixless
+msgstr "<value> Changes the graph height (timegraph, netgraph, etc.)."
+ 
+#. Console/prefixless (TODO)
 msgid "graphscale"
-msgstr "Scales the graph (timegraph, netgraph, etc.) for resolutions with a width greather than 1024."
+msgstr "<value> Scales the graph (timegraph, netgraph, etc.) for resolutions with a width greather than 1024."
 
-#. Console/prefixless
+#. Console/prefixless (TODO)
 msgid "graphshift"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "<value> Vertically shifts the graph (timegraph, netgraph, etc.) for readability."
 
 #. Console/prefixless
 msgid "hand"
-msgstr "<0/1> Changes weapon handedness. Example: 0 = Right, 1 = Left"
+msgstr "<0/1> Changes weapon handedness.\n"
+"^6Right: hand \"0\"\n"
+"^6Left: hand \"1\""
 
 #. Console/prefixless
 msgid "handicap"
-msgstr "<value>	Decreases your damage output by x% usefull for dueling players below your skill level"
+msgstr "<0-90> Decreases your damage output by defined percentage value.\n"
+"^6Note: This is typically used for dueling players below your skill level."
 
 #. Console/prefixless
 msgid "lang"
 msgstr "<language> Sets the language of Warfork."
-	
+"^6Belarusian: lang \"be\"\n"
+"^6Bulgarian: lang \"bg\"\n"
+"^6Chinese (China): lang \"zh_CN\"\n"
+"^6Dutch: lang \"nl\"\n"
+"^6English: lang \"en\"\n"
+"^6Finnish: lang \"fi\"\n"
+"^6French: lang \"fr\"\n"
+"^6German: lang \"de\"\n"
+"^6Hungarian: lang \"hu\"\n"
+"^6Italian: lang \"it\"\n"
+"^6Japanese: lang \"ja\"\n"
+"^6Lithuanian: lang \"lt\"\n"
+"^6Polish: lang \"pl\"\n"
+"^6Portuguese: lang \"pt\"\n"
+"^6Portuguese (Brazil): lang \"pt_BR\"\n"
+"^6Romanian: lang \"ro\"\n"
+"^6Russian: lang \"ru\"\n"
+"^6Spanish: lang \"es\"\n"
+"^6Spanish (Latin America): lang \"es_419\"\n"
+"^6Swedish: lang \"sv\"\n"
+"^6Turkish: lang \"tr\"\n"
+"^6Ukranian: lang \"uk\"\n"
+"^6Vietnamese: lang \"vn\"\n"
+"^6Note: You can execute the command \"vid_restart\" after setting the language for it to change in-game. The list above only includes language examples and is not all inclusive."
+
 #. Console/prefixless
 msgid "lookspring"
-msgstr "<0/1> If enabled, the screen will be automatically centered when using +mlook."
+msgstr "<0/1> The screen will be automatically centered when using +mlook.\n"
+"^6Disable: lookspring \"0\"\n"
+"^6Enable: lookspring \"1\""
 
 #. Console/prefixless
 msgid "lookstrafe"
-msgstr "<0/1> If enabled, automatic strafing will be toggled when using +mlook."
+msgstr "<0/1> Automatic strafing will be toggled when using +mlook.\n"
+"^6Disable: lookstrafe \"0\"\n"
+"^6Enable: lookstrafe \"1\""
 
 #. Console/prefixless
 msgid "mapname"
-msgstr "The name of current map played."
-		
+msgstr "<value> The name of current map played."
+  
 #. Console/prefixless
 msgid "masterservers"
-msgstr "<value>	Specifies the master servers used to query a list of Warfork servers."
+msgstr "<value> Specifies the master servers used to query a list of Warfork servers."
 
 #. Console/prefixless
 msgid "model"
@@ -98,15 +146,18 @@ msgstr "<name> Changes your nickname."
 
 #. Console/prefixless
 msgid "netgraph"
-msgstr "<0/1> If enabled, information will be displayed on the bottom of the screen about all network packets."
+msgstr "<0/1> Information will be displayed on the bottom of the screen about all network packets.\n"
+"^6Disable: netgraph \"0\"\n"
+"^6Enable: netgraph \"1\""
 
-#. Console/prefixless
+#. Console/prefixless (TODO)
 msgid "nextmap"
-msgstr "<value>	Proceeds to the next map."
+msgstr "<value> Specifies the next map.\n"
+"^6Note: You can force the next map with \"match advance\"."
 
 #. Console/prefixless
 msgid "password"
-msgstr "<password> If a server requires a password, the client automatically tries to join with x password."
+msgstr "<password> If a server requires a password, the client automatically tries to join with the specific password."
 
 #. Console/prefixless
 msgid "logconsole"
@@ -119,23 +170,28 @@ msgstr "<value> Automatically logs console to a specified file when defined.\n"
 
 #. Console/prefixless
 msgid "protocol"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "<value> Specifies the Application Protocol Version."
+"^6Note: The protocol can be changed by modifying \"APP_PROTOCOL_VERSION\" found in \"source/qcommon/version.h\" and recompiling Warfork."
 
-#. Console/prefixless
+#. Console/prefixless (TODO)
 msgid "revision"
 msgstr "Date when the game was compiled."
 
 #. Console/prefixless
 msgid "sensitivity"
-msgstr "<value>	Changes sensitivity of your mouse."
+msgstr "<value> Changes sensitivity of your mouse."
 
 #. Console/prefixless
 msgid "showdrop"
-msgstr "<0/1> If enabled, information will be displayed in the console about dropped network packets."
+msgstr "<0/1> Information will be displayed in the console about dropped network packets.\n"
+"^6Disable: showdrop \"0\"\n"
+"^6Enable: showdrop \"1\""
 
 #. Console/prefixless
 msgid "showpackets"
-msgstr "<0/1> If enabled, information will be displayed in the console about all network packets."
+msgstr "<0/1> Information will be displayed in the console about all network packets.\n"
+"^6Disable: showpackets \"0\"\n"
+"^6Enable: showpackets \"1\""
 
 #. Console/prefixless
 msgid "skin"
@@ -144,191 +200,196 @@ msgstr "Please help contribute a description of this command by visiting the War
 #. Console/prefixless
 msgid "timedemo"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-	
+
 #. Console/prefixless
 msgid "timegraph"
-msgstr "<0/1> If enabled, a graph will be displayed, which visualizes the compression and expansion of game time, which is necessary maintain the overall game time constant."
-	
+msgstr "<0/1> A graph will be displayed, which visualizes the compression and expansion of game time.\n"
+"^6Disable: timegraph \"0\"\n"
+"^6Enable: timegraph \"1\"\n"
+"^6Note: This is necessary to maintain the overall game time constant."
+
 #. Console/prefixless
 msgid "timescale"
-msgstr "<value>	Changes the time scale of the game."
-	
+msgstr "<value> Changes the scale that game time advances in relation to real time.\n"
+"^6Note: sv_cheats \"1\" is required to use this command."
+
 #. Console/prefixless
 msgid "version"
-msgstr "The version of the game."
-	
+msgstr "<value> The version of the game."
+ 
 #. Console/prefixless
 msgid "zoomfov"
-msgstr "<value>	Changes the field of view while zooming."
-	
+msgstr "<3-75> Changes the field of view while zooming."
+
 #. Console/prefixless
 msgid "zoomsens"
-msgstr "<value>	Changes your sensitivity while zooming. 0 = uses your normal sensitivity."
-	
-#. Console/prefixless
+msgstr "<value> Changes your sensitivity while zooming."
+"^6Note: zoomsens \"0\" uses your normal sensitivity."
+
+#. Console/prefixless (FIXME)
 msgid "+attack"
 msgstr "Primary attack."
 
-#. Console/prefixless
+#. Console/prefixless (FIXME)
 msgid "+back"
 msgstr "Moves backward."
 
-#. Console/prefixless
+#. Console/prefixless (FIXME)
 msgid "+forward"
 msgstr "Moves forward."
 
-#. Console/prefixless
+#. Console/prefixless (FIXME)
 msgid "+klook"
 msgstr "Keyboard look; +forward +back serve as +lookup +lookdown."
 
-#. Console/prefixless
+#. Console/prefixless (FIXME)
 msgid "+left"
 msgstr "Turns left."
-		
-#. Console/prefixless
+  
+#. Console/prefixless (FIXME)
 msgid "+lookdown"
 msgstr "Looks down."
 
-#. Console/prefixless
+#. Console/prefixless (FIXME)
 msgid "+lookup"
 msgstr "Looks up."
-			
-#. Console/prefixless
+   
+#. Console/prefixless (FIXME)
 msgid "+movedown"
-msgstr "Moves backwards."	
-		
-#. Console/prefixless
+msgstr "Moves backwards." 
+  
+#. Console/prefixless (FIXME)
 msgid "+moveleft"
 msgstr "Moves left."
-			
-#. Console/prefixless
+   
+#. Console/prefixless (FIXME)
 msgid "+moveright"
-msgstr "Moves right."		
-		
-#. Console/prefixless
+msgstr "Moves right."  
+  
+#. Console/prefixless (FIXME)
 msgid "+moveup"
-msgstr "Moves up; In water, lava, etc."		
-		
-#. Console/prefixless
+msgstr "Moves up; In water, lava, etc."  
+  
+#. Console/prefixless (FIXME)
 msgid "+quickmenu"
-msgstr "An easily accessible menu with basic commands such as Voice Says. By default it is bound to LSHIFT."		
-		
-#. Console/prefixless
+msgstr "An easily accessible menu with basic commands such as Voice Says. By default it is bound to LSHIFT."  
+  
+#. Console/prefixless (FIXME)
 msgid "+right"
-msgstr "Turns right."		
-			
-#. Console/prefixless
+msgstr "Turns right."  
+   
+#. Console/prefixless (FIXME)
 msgid "+scores"
-msgstr "Accesses the scoreboard."		
+msgstr "Accesses the scoreboard."  
 
-#. Console/prefixless
+#. Console/prefixless (FIXME)
 msgid "+special"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
-#. Console/prefixless
+#. Console/prefixless (FIXME)
 msgid "+speed"
 msgstr "If run is enabled you will walk or vice versa when used. This serves no purpose as Warfork has no footstep sounds."
 
-#. Console/prefixless
+#. Console/prefixless (FIXME)
 msgid "+strafe"
 msgstr "When used +left and +right are changed with +moveleft and +moveright."
 
-#. Console/prefixless
+#. Console/prefixless (FIXME)
 msgid "+use"
 msgstr "Uses an item."
-		
-#. Console/prefixless
+  
+#. Console/prefixless (FIXME)
 msgid "+zoom"
 msgstr "Zooms."
-		
-#. Console/prefixless
+  
+#. Console/prefixless (FIXME)
 msgid "-attack"
-msgstr "Stops primary attack."	
+msgstr "Stops primary attack." 
 
-#. Console/prefixless
+#. Console/prefixless (FIXME)
 msgid "-back"
 msgstr "Stops moving backward."
 
-#. Console/prefixless
+#. Console/prefixless (FIXME)
 msgid "-forward"
 msgstr "Stops moving forward."
-		
-#. Console/prefixless
+  
+#. Console/prefixless (FIXME)
 msgid "-klook"
-msgstr "Stops Keyboard look; +forward +back serve as +lookup +lookdown."	
+msgstr "Stops Keyboard look; +forward +back serve as +lookup +lookdown." 
 
-#. Console/prefixless
+#. Console/prefixless (FIXME)
 msgid "-left"
 msgstr "Stops looking left."
 
-#. Console/prefixless
+#. Console/prefixless (FIXME)
 msgid "-lookdown"
 msgstr "Stops looking down."
-		
-#. Console/prefixless
+  
+#. Console/prefixless (FIXME)
 msgid "-lookup"
 msgstr "Stops looking up."
-		
-#. Console/prefixless
+  
+#. Console/prefixless (FIXME)
 msgid "-movedown"
 msgstr "Stops moving backwards."
 
-#. Console/prefixless
+#. Console/prefixless (FIXME)
 msgid "-moveleft"
-msgstr "Stops moving left."			
-		
-#. Console/prefixless
+msgstr "Stops moving left."   
+  
+#. Console/prefixless (FIXME)
 msgid "-moveright"
-msgstr "Stops moving right."			
-		
-#. Console/prefixless
+msgstr "Stops moving right."   
+  
+#. Console/prefixless (FIXME)
 msgid "-moveup"
 msgstr "Stops moving up; In water, lava, etc."
-		
-#. Console/prefixless
+  
+#. Console/prefixless (FIXME)
 msgid "-quickmenu"
 msgstr "Stops the quick menu, an easily accessible menu with basic commands such as Voice Says."
-		
-#. Console/prefixless
+  
+#. Console/prefixless (FIXME)
 msgid "-right"
 msgstr "Stops turning right."
-			
-#. Console/prefixless
+   
+#. Console/prefixless (FIXME)
 msgid "-scores"
 msgstr "Stops accessing the scoreboard."
-		
-#. Console/prefixless
+  
+#. Console/prefixless (FIXME)
 msgid "-special"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-				
-#. Console/prefixless
+    
+#. Console/prefixless (FIXME)
 msgid "-speed"
 msgstr "Stops changing your speed. If run is enabled you will walk or vice versa when used. This serves no purpose as Warfork has no footstep sounds."
-			
-#. Console/prefixless
+   
+#. Console/prefixless (FIXME)
 msgid "-strafe"
-msgstr "Stops strafing, which When used +left and +right are changed with +moveleft and +moveright."		
-		
-#. Console/prefixless
+msgstr "Stops strafing, which When used +left and +right are changed with +moveleft and +moveright."  
+  
+#. Console/prefixless (FIXME)
 msgid "-use"
-msgstr "Stops using an item."		
-		
-#. Console/prefixless
+msgstr "Stops using an item."  
+  
+#. Console/prefixless (FIXME)
 msgid "-zoom"
-msgstr "Stops zooming."		
-	
+msgstr "Stops zooming."  
+ 
 #. Console/prefixless
 msgid "addbotroam"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
 #. Console/prefixless
 msgid "addcam"
-msgstr "<type name>	Adds a camera to your democam path. Available camera types are: FirstPerson; ThirdPerson; Positional; Path_linear; Path_spline; orbital."
-		
+msgstr "<type name> Adds a camera to your democam path. Available camera types are: FirstPerson; ThirdPerson; Positional; Path_linear; Path_spline; orbital."
+  
 #. Console/prefixless
 msgid "addip"
 msgstr "<ip address> Adds IP addresses to the filter list."
-		
+  
 #. Console/prefixless
 msgid "addnode"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
@@ -344,31 +405,31 @@ msgstr "Please help contribute a description of this command by visiting the War
 #. Console/prefixless
 msgid "aliaslist"
 msgstr "Lists all aliases."
-	
+ 
 #. Console/prefixless
 msgid "awards"
-msgstr "Lists all aliases."		
-	
+msgstr "Lists all aliases."  
+ 
 #. Console/prefixless
 msgid "bind"
-msgstr "<key> <command>	Binds a key to a command."		
+msgstr "<key> <command> Binds a key to a command."  
 
 #. Console/prefixless
 msgid "bindlist"
-msgstr "Lists all bound keys."		
-			
+msgstr "Lists all bound keys."  
+   
 #. Console/prefixless
 msgid "botdebug"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+  
 #. Console/prefixless
 msgid "botnotarget"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+  
 #. Console/prefixless
 msgid "callvote"
 msgstr "<vote> [argument] Calls a vote."
-	
+ 
 #. Console/prefixless
 msgid "camswitch"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
@@ -376,7 +437,7 @@ msgstr "Please help contribute a description of this command by visiting the War
 #. Console/prefixless
 msgid "centerview"
 msgstr "Centers the players view."
-			
+   
 #. Console/prefixless
 msgid "chase"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
@@ -384,131 +445,131 @@ msgstr "Please help contribute a description of this command by visiting the War
 #. Console/prefixless
 msgid "chasenext"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-			
+   
 #. Console/prefixless
 msgid "chaseprev"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-			
+   
 #. Console/prefixless
 msgid "cinematic"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-	
+ 
 #. Console/prefixless
 msgid "cinepause"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-			
+   
 #. Console/prefixless
 msgid "cinlist"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+  
 #. Console/prefixless
 msgid "clear"
 msgstr "Clears the console."
-			
+   
 #. Console/prefixless
 msgid "clearcams"
-msgstr "Clears all cameras in a camerapath."		
-		
+msgstr "Clears all cameras in a camerapath."  
+  
 #. Console/prefixless
 msgid "cmd"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-			
+   
 #. Console/prefixless
 msgid "cmdlist"
 msgstr "Lists all console commands."
-			
+   
 #. Console/prefixless
 msgid "coach"
-msgstr "Allows you to be a coach in some team based gametypes. Be on the team you wish to coach before typing the command in console."		
-		
+msgstr "Allows you to be a coach in some team based gametypes. Be on the team you wish to coach before typing the command in console."  
+  
 #. Console/prefixless
 msgid "cointoss"
-msgstr "<heads/tails> Flips a coin based on your choice and announces if you won or lost."		
-		
+msgstr "<heads/tails> Flips a coin based on your choice and announces if you won or lost."  
+  
 #. Console/prefixless
 msgid "condump"
-msgstr "<filename> Dumps the console log to a file."		
-		
+msgstr "<filename> Dumps the console log to a file."  
+  
 #. Console/prefixless
 msgid "connect"
-msgstr "<ip address> Connects to a server."		
+msgstr "<ip address> Connects to a server."  
 
 #. Console/prefixless
 msgid "cvarcheck"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+  
 #. Console/prefixless
 msgid "cvarinfo"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+  
 #. Console/prefixless
 msgid "cvarlist"
 msgstr "Lists all cvars."
-	
+ 
 #. Console/prefixless
 msgid "deleteclosestnode"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+  
 #. Console/prefixless
 msgid "deletecam"
 msgstr "Deletes the current camera; only works in demoEditMode"
-			
+   
 #. Console/prefixless
 msgid "demo"
 msgstr "<filename> Loads a specific demo."
-			
+   
 #. Console/prefixless
 msgid "demoavi"
 msgstr "Starts recording video as frames or audio as .wav file depending on cl_demoavi_audio and cl_demoavi_video. Framerate depends on cl_demoavi_fps."
-		
+  
 #. Console/prefixless
 msgid "demoEditMode"
-msgstr "Lets you add and edit cameras for camera paths. Displays additional information on cameras (e.g.: timecode, current camera, next camera, type, position, roll, pitch, yaw ,fov)."		
+msgstr "Lets you add and edit cameras for camera paths. Displays additional information on cameras (e.g.: timecode, current camera, next camera, type, position, roll, pitch, yaw ,fov)."  
 
 #. Console/prefixless
 msgid "demoFreeFly"
-msgstr "Enables free flying camera regardless of set camera paths; entities like players may disappear on single POV demos when camera moves too far from the player."	
-		
+msgstr "Enables free flying camera regardless of set camera paths; entities like players may disappear on single POV demos when camera moves too far from the player." 
+  
 #. Console/prefixless
 msgid "demoget"
-msgstr "<ID> Use with demolist to download recorded demos from a server."	
+msgstr "<ID> Use with demolist to download recorded demos from a server." 
 
 #. Console/prefixless
 msgid "demojump"
 msgstr "Jumps to a specified time in a demo. Time format is [minutes:]seconds. Use + or - in front of the time to specify it in relation to current position in the demo."
-	
+ 
 #. Console/prefixless
 msgid "demolist"
 msgstr "Lists all demos on the Server and their ID. Can be downloaded via demoget <ID>"
-		
+  
 #. Console/prefixless
 msgid "demopause"
 msgstr "Pauses or resumes the currently playing demo."
-	
+ 
 #. Console/prefixless
 msgid "devmap"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-	
+ 
 #. Console/prefixless
 msgid "disconnect"
 msgstr "Disconnects from current server."
-			
+   
 #. Console/prefixless
 msgid "downloadcancel"
 msgstr "Cancels an active download."
-		
+  
 #. Console/prefixless
 msgid "downloadstatus"
-msgstr "Displays download status information."		
-		
+msgstr "Displays download status information."  
+  
 #. Console/prefixless
 msgid "driobide"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+  
 #. Console/prefixless
 msgid "dumpASapi"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-			
+   
 #. Console/prefixless
 msgid "dumpuser"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
@@ -516,11 +577,11 @@ msgstr "Please help contribute a description of this command by visiting the War
 #. Console/prefixless
 msgid "dynvarlist"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-			
+   
 #. Console/prefixless
 msgid "echo"
 msgstr "<message> Prints a message to the console."
-		
+  
 #. Console/prefixless
 msgid "editcam"
 msgstr "<command> <variable> Edits the current camera, you can edit: type <type name> eg. path_spline; track <entity number> (tracks entity; 0 for no track); fov; timeOffset; origin; angles; pitch; yaw; roll."
@@ -536,31 +597,31 @@ msgstr "Please help contribute a description of this command by visiting the War
 #. Console/prefixless
 msgid "envshot"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+  
 #. Console/prefixless
 msgid "exec"
 msgstr "<filename> Executes a configuration file."
-	
+ 
 #. Console/prefixless
 msgid "fontlist"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-	
+ 
 #. Console/prefixless
 msgid "gamemap"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-			
+   
 #. Console/prefixless
 msgid "gamemenu"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+  
 #. Console/prefixless
 msgid "gametype"
 msgstr "Lists information about current game type."
-			
+   
 #. Console/prefixless
 msgid "getinfo"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-	
+ 
 #. Console/prefixless
 msgid "getstatus"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
@@ -568,7 +629,7 @@ msgstr "Please help contribute a description of this command by visiting the War
 #. Console/prefixless
 msgid "gfxinfo"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+  
 #. Console/prefixless
 msgid "give"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
@@ -576,75 +637,75 @@ msgstr "Please help contribute a description of this command by visiting the War
 #. Console/prefixless
 msgid "glslprogramlist"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-			
+   
 #. Console/prefixless
 msgid "god"
 msgstr "Toggles godmode."
-				
+    
 #. Console/prefixless
 msgid "heartbeat"
 msgstr "Sends a manual heartbeat to the masterservers. This makes your server visible to those that query the list of servers."
-				
+    
 #. Console/prefixless
 msgid "help_hud"
 msgstr "Prints a list of HUD scripts commands, HUD scripts operators, HUD scripts CONSTANT names, and HUD scripts REFERENCE names to your console."
-	
+ 
 #. Console/prefixless
 msgid "imagelist"
 msgstr "Shows a list of all images loaded in your console."
-				
+    
 #. Console/prefixless
 msgid "importcams"
 msgstr "<filename> imports a .cam file. Filepath is relative to the demos directory. The cameras imported are merged with the previously existing, if any."
-			
+   
 #. Console/prefixless
 msgid "invite"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+  
 #. Console/prefixless
 msgid "join"
-msgstr "[team name]	Joins the game. Joins a specific team if specified."
-		
+msgstr "[team name] Joins the game. Joins a specific team if specified."
+  
 #. Console/prefixless
 msgid "kick"
 msgstr "<player> Kicks a player from the server."
-			
+   
 #. Console/prefixless
 msgid "kill"
 msgstr "Kills the player."
-	
+ 
 #. Console/prefixless
 msgid "killserver"
 msgstr "Kills the server process."
-		
+  
 #. Console/prefixless
 msgid "leavequeue"
 msgstr "Leaves the challengers queue."
-			
+   
 #. Console/prefixless
 msgid "listip"
 msgstr "The current list of filters will be printed to console."
-		
+  
 #. Console/prefixless
 msgid "listlocations"
 msgstr "Prints a list of all map locations (if available) to console."
-		
+  
 #. Console/prefixless
 msgid "listraces"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-			
+   
 #. Console/prefixless
 msgid "listratings"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-			
+   
 #. Console/prefixless
 msgid "lockteam"
 msgstr "Locks the teams."
-		
+  
 #. Console/prefixless
 msgid "makenodes"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+  
 #. Console/prefixless
 msgid "map"
 msgstr "<map name> Switches a map."
@@ -652,59 +713,59 @@ msgstr "<map name> Switches a map."
 #. Console/prefixless
 msgid "maplist"
 msgstr "Lists all maps available."
-				
+    
 #. Console/prefixless
 msgid "match"
 msgstr "<restart\advance\status> Restarts, Advances, or gets the Status of your match."
-			
+   
 #. Console/prefixless
 msgid "memlist"
 msgstr "Prints a memory pool list to your console."
-				
+    
 #. Console/prefixless
 msgid "memstats"
 msgstr "Prints memory statistics to your console."
-			
+   
 #. Console/prefixless
 msgid "messagemode"
 msgstr "Prompts you to write a message, which will be sent to everyone on the server."
-				
+    
 #. Console/prefixless
 msgid "messagemode2"
 msgstr "Prompts you to write a message, which will be sent to everyone on your team."
-				
+    
 #. Console/prefixless
 msgid "modellist"
 msgstr "Prints a list of all models loaded in your console."
-						
+      
 #. Console/prefixless
 msgid "music"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-						
+      
 #. Console/prefixless
 msgid "next"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-				
+    
 #. Console/prefixless
 msgid "nextmusic"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-					
+     
 #. Console/prefixless
 msgid "noclip"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-				
+    
 #. Console/prefixless
 msgid "noclip"
 msgstr "Toggles noclip."
-				
+    
 #. Console/prefixless
 msgid "notready"
 msgstr "Changes status to `Not ready`."
-		
+  
 #. Console/prefixless
 msgid "op"
 msgstr "<password> Makes the player a game operator."
-			
+   
 #. Console/prefixless
 msgid "opcall"
 msgstr "<vote> [argument] Calls an instant-passing vote."
@@ -712,23 +773,23 @@ msgstr "<vote> [argument] Calls an instant-passing vote."
 #. Console/prefixless
 msgid "operator"
 msgstr "<password> Makes the player a game operator."
-		
+  
 #. Console/prefixless
 msgid "pausemusic"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+  
 #. Console/prefixless
 msgid "pingserver"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-			
+   
 #. Console/prefixless
 msgid "players"
 msgstr "Lists all players in-game."
-			
+   
 #. Console/prefixless
 msgid "position"
-msgstr "Displays player's current position."			
-			
+msgstr "Displays player's current position."   
+   
 #. Console/prefixless
 msgid "prevmusic"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
@@ -736,179 +797,179 @@ msgstr "Please help contribute a description of this command by visiting the War
 #. Console/prefixless
 msgid "purelist"
 msgstr "Displays a list of all Pure Files in your console."
-	
+ 
 #. Console/prefixless
 msgid "putaway"
 msgstr "Closes the scoreboard if open."
-		
+  
 #. Console/prefixless
 msgid "quit"
 msgstr "Quits the game / server."
-	
+ 
 #. Console/prefixless
 msgid "racerestart"
 msgstr "Restarts the race."
-	
+ 
 #. Console/prefixless
 msgid "rcon"
 msgstr "<command> Executes a server command as console."
-	
+ 
 #. Console/prefixless
 msgid "ready"
 msgstr "Makes the player ready."
-	
+ 
 #. Console/prefixless
 msgid "reconnect"
 msgstr "Reconnects the player to the current server."
-		
+  
 #. Console/prefixless
 msgid "record"
 msgstr "<name> Records a demo with the specified name (These are single POV demos, for multiPOV use serverrecord)."
-		
+  
 #. Console/prefixless
 msgid "removeip"
 msgstr "<ip address> Removes IP addresses from the filter list."
-		
+  
 #. Console/prefixless
 msgid "requestservers"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+  
 #. Console/prefixless
 msgid "reset"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-				
+    
 #. Console/prefixless
 msgid "savenodes"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
 #. Console/prefixless
 msgid "saverecam"
-msgstr "<optional name>	Saves the .cam script file with the camera path data. If no name is provided, the demo name is used."
-		
+msgstr "<optional name> Saves the .cam script file with the camera path data. If no name is provided, the demo name is used."
+  
 #. Console/prefixless
 msgid "say"
 msgstr "<message> Sends a global message."
 
 #. Console/prefixless
 msgid "say_team"
-msgstr "<message> Sends a team message."	
+msgstr "<message> Sends a team message." 
 
 #. Console/prefixless
 msgid "score"
-msgstr "Toggles the scoreboard."	
-		
+msgstr "Toggles the scoreboard." 
+  
 #. Console/prefixless
 msgid "screenshot"
-msgstr "Takes a screenshot of what you're looking at."	
-	
+msgstr "Takes a screenshot of what you're looking at." 
+ 
 #. Console/prefixless
 msgid "serverinfo"
 msgstr "Displays Server info settings in console. Values displayed: version, fs_game, g_antilag, g_gametype, g_instagib, protocol, sv_cheats, sv_hostname, sv_http, sv_maxclients, sv_maxmvclients, sv_mm_enable, sv_mm_loginonly, sv_pps, sv_pure, sv_skilllevel, sv_skillRating."
-		
+  
 #. Console/prefixless
 msgid "serverrecord"
-msgstr "<name> Records a multiPOV demo on the Server (can be downloaded by clients via demolist and demoget)."		
-		
+msgstr "<name> Records a multiPOV demo on the Server (can be downloaded by clients via demolist and demoget)."  
+  
 #. Console/prefixless
 msgid "serverrecordcancel"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+  
 #. Console/prefixless
 msgid "serverrecordpurge"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-				
+    
 #. Console/prefixless
 msgid "serverrecordstop"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-			
+   
 #. Console/prefixless
 msgid "set"
 msgstr "<cvar> <value> Changes the value of x cvar to y."
-			
+   
 #. Console/prefixless
 msgid "seta"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-			
+   
 #. Console/prefixless
 msgid "setas"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-	
+ 
 #. Console/prefixless
 msgid "setau"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+  
 #. Console/prefixless
 msgid "setdyn"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-			
+   
 #. Console/prefixless
 msgid "sets"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-			
+   
 #. Console/prefixless
 msgid "setu"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-	
+ 
 #. Console/prefixless
 msgid "shaderdump"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-			
+   
 #. Console/prefixless
 msgid "shaderlist"
 msgstr "Prints a list of shaders currently loaded in your console."
-		
+  
 #. Console/prefixless
 msgid "showclosestnode"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+  
 #. Console/prefixless
 msgid "showip"
 msgstr "Shows your local IP Address (reversed)."
-		
+  
 #. Console/prefixless
 msgid "showserverip"
 msgstr "Shows the server IP Address."
-		
+  
 #. Console/prefixless
 msgid "sizedown"
 msgstr "Decreases the viewable area (affects cg_viewSize by -10) on your screen."
-			
+   
 #. Console/prefixless
 msgid "sizeup"
 msgstr "Increases the viewable area (affects cg_viewSize by +10) on your screen."
-		
+  
 #. Console/prefixless
 msgid "soundlist"
 msgstr "Prints a list of all sounds currently loaded in your console."
-		
+  
 #. Console/prefixless
 msgid "spec"
 msgstr "Joins the SPECTATOR team."
-		
+  
 #. Console/prefixless
 msgid "spectators"
 msgstr "Prints a list of spectators."
-		
+  
 #. Console/prefixless
 msgid "stats"
-msgstr "<id\playername>	Prints your or a specified players stats. Stats include hit/shot percent, damage given/received, ratio, health/armor, etc."
+msgstr "<id\playername> Prints your or a specified players stats. Stats include hit/shot percent, damage given/received, ratio, health/armor, etc."
 
 #. Console/prefixless
 msgid "status"
 msgstr "Displays the server status in console. Map, Player ID, Score, Ping, Player Names, Last Message, Address, Port, Rate, etc."
-		
+  
 #. Console/prefixless
 msgid "stop"
 msgstr "Stops your demo if it's currently recording."
-		
+  
 #. Console/prefixless
 msgid "stopmusic"
 msgstr "Stops music that's currently playing."
-			
+   
 #. Console/prefixless
 msgid "svscore"
 msgstr "<0/1> If enabled, the scoreboard will be toggled."
-	
+ 
 #. Console/prefixless
 msgid "timein"
 msgstr "Resumes the match instantly."
@@ -924,11 +985,11 @@ msgstr "<cvar> <argument 1> [argument n] Toggles a cvar's value between the argu
 #. Console/prefixless
 msgid "toggleconsole"
 msgstr "Toggles the console."
-	
+ 
 #. Console/prefixless
 msgid "toggleready"
 msgstr "Toggles 'ready' status."
-		
+  
 #. Console/prefixless
 msgid "unalias"
 msgstr "<name> Removes an alias."
@@ -936,79 +997,79 @@ msgstr "<name> Removes an alias."
 #. Console/prefixless
 msgid "unaliasall"
 msgstr "Removes all aliases."
-		
+  
 #. Console/prefixless
 msgid "unbind"
 msgstr "<key> Unbinds a key."
-			
+   
 #. Console/prefixless
 msgid "unbindall"
 msgstr "Unbinds all keys."
-		
+  
 #. Console/prefixless
 msgid "unlockteam"
 msgstr "Unlocks the teams."
-	
+ 
 #. Console/prefixless
 msgid "unready"
 msgstr "Makes the player unready."
-			
+   
 #. Console/prefixless
 msgid "upstate"
 msgstr "Updates your client on the current state of things."
-			
+   
 #. Console/prefixless
 msgid "use"
 msgstr "Uses an object in the world."
-		
+  
 #. Console/prefixless
 msgid "userinfo"
 msgstr "Prints a list of User Info Settings to your console.
 Examples: cg_movementStyle, cg_noAutohop, cl_mm_session, clan, color, hand, handicap, model, name, password, and skin."
-			
+   
 #. Console/prefixless
 msgid "viewpos"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."		
-		
+msgstr "Please help contribute a description of this command by visiting the Warfork github repository."  
+  
 #. Console/prefixless
 msgid "vote"
-msgstr "<yes/no> Casts a vote."		
+msgstr "<yes/no> Casts a vote."  
 
 #. Console/prefixless
 msgid "vsay"
-msgstr "<name> Says a voice message globally. Shows list of all voice messages if executed without the argument."	
+msgstr "<name> Says a voice message globally. Shows list of all voice messages if executed without the argument." 
 
 #. Console/prefixless
 msgid "vstr"
-msgstr "<variable> Execute a variable command. Example: vstr nextmap"	
-			
+msgstr "<variable> Execute a variable command. Example: vstr nextmap" 
+   
 #. Console/prefixless
 msgid "wait"
-msgstr "Delays the execution of a remaining command buffer until the next frame. Example: bind z '+attack ; wait ; kill'"	
-	
+msgstr "Delays the execution of a remaining command buffer until the next frame. Example: bind z '+attack ; wait ; kill'" 
+ 
 #. Console/prefixless
 msgid "weapcross"
-msgstr "<0-4> Shows weapon sets near your crosshair, which can be toggled between. 0 - View Only, 1 - Gunblade/Machine Gun, 2 - Riot Gun/Grenade Launcher, 3 - Rocket Launcher/Plasmagun, 4 - Lasergun/Electrobolt Example: bind 'p' weapcross 1"	
-	
+msgstr "<0-4> Shows weapon sets near your crosshair, which can be toggled between. 0 - View Only, 1 - Gunblade/Machine Gun, 2 - Riot Gun/Grenade Launcher, 3 - Rocket Launcher/Plasmagun, 4 - Lasergun/Electrobolt Example: bind 'p' weapcross 1" 
+ 
 #. Console/prefixless
 msgid "weaplast"
-msgstr "Switches to last weapon."	
-	
+msgstr "Switches to last weapon." 
+ 
 #. Console/prefixless
 msgid "weapnext"
-msgstr "Switches to next weapon."	
-		
+msgstr "Switches to next weapon." 
+  
 #. Console/prefixless
 msgid "weapprev"
-msgstr "Switches to previous weapon."	
+msgstr "Switches to previous weapon." 
 
 #. Console/prefixless
 msgid "whois"
-msgstr "<player> Provides player information if they're logged into Matchmaking."	
-		
+msgstr "<player> Provides player information if they're logged into Matchmaking." 
+  
 #. Console/prefixless
 msgid "writeconfig"
-msgstr "<name> Writes the current configuration to a file."	
+msgstr "<name> Writes the current configuration to a file." 
 
 #. Console/prefixless
 msgid "writeip"
