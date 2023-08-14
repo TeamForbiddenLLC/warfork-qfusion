@@ -424,7 +424,7 @@ void CG_PredictMovement( void )
 	trap_NET_GetCurrentState( NULL, &ucmdHead, NULL );
 	ucmdExecuted = cg.frame.ucmdExecuted;
 
-	if( !cg_predict_optimize->integer || ( ucmdHead - cg.predictFrom >= CMD_BACKUP ) )
+	if( ucmdHead - cg.predictFrom >= CMD_BACKUP )
 		cg.predictFrom = 0;
 
 	if( cg.predictFrom > 0 )
@@ -487,7 +487,7 @@ void CG_PredictMovement( void )
 		VectorCopy( cg.predictedPlayerState.pmove.origin, cg.predictedOrigins[frame] ); // store for prediction error checks
 
 		// backup the last predicted ucmd which has a timestamp (it's closed)
-		if( cg_predict_optimize->integer && ucmdExecuted == ucmdHead - 1 )
+		if( ucmdExecuted == ucmdHead - 1 )
 		{
 			if( ucmdExecuted != cg.predictFrom )
 			{
