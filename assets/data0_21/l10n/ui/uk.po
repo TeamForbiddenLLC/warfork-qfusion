@@ -540,7 +540,7 @@ msgid "Save changes"
 msgstr "Зберегти"
 
 msgid "Cancel"
-msgstr "Анулювати"
+msgstr "Відмінити"
 
 msgid "Model"
 msgstr "Модель"
