@@ -2,7 +2,7 @@
 
 #. Console/menu
 msgid "menu_close"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "Utilized by the UI to close menus."
 
 #. Console/menu
 msgid "menu_force"
@@ -14,12 +14,14 @@ msgstr "Please help contribute a description of this command by visiting the War
 
 #. Console/menu
 msgid "menu_open"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-		
+msgstr "<file> Utilized by the UI to open menus.\n"
+"^6Note: You can bind \"p\" \"credits\" will open credits."
+
 #. Console/menu
 msgid "menu_quick"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
-			
+msgstr "If quickMenuURL is different then it pops all documents from stack and inserts a new one.\n"
+"^6Note: When you pop a stack, it removes the most recently added element."
+
 #. Console/menu
 msgid "menu_tvchannel_add"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."

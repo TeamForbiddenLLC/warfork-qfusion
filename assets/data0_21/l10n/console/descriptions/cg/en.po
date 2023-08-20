@@ -39,13 +39,15 @@ msgstr "<0-1.0> Sets the transparency of damage rings displayed.\n"
 "^6Totally transparent: cg_bloodTrailAlpha \"0\"\n"
 "^6Totally opaque: cg_bloodTrailAlpha \"1.0\""
 
-#. Console/cg (TODO)
+#. Console/cg
 msgid "cg_cartoonEffects"
-msgstr "<1/2/4> A bitmask that enables cartoon effects.\n"
-"^6Dust when effect falling: cg_cartoonEffects \"1\"\n"
-"^6Dash effect: cg_cartoonEffects \"2\"\n"
-"^6Dust effect when falling, Dash effect, and Wall-jump effect: cg_cartoonEffects \"4\"\n"
-"^6Note: cg_cartoonEffects \"7\" enables all effects."
+msgstr "<0|1|2|3|4|7> Cartoon effects.\n"
+"^6Disabled: cg_cartoonEffects \"0\"\n"
+"^6Wall jump dust ring: cg_cartoonEffects \"1\"\n"
+"^6Dust effect when falling: cg_cartoonEffects \"2\"\n"
+"^6Wall jump dust ring + Dust effect when falling: cg_cartoonEffects \"3\"\n"
+"^6Dash effect: cg_cartoonEffects \"4\"\n"
+"^6Enable all cartoon effects: cg_cartoonEffects \"7\""
 
 #. Console/cg
 msgid "cg_cartoonHitEffect"
@@ -67,10 +69,10 @@ msgstr "<0-2> Filters chat messages.\n"
 "^6Filters global chat messages: cg_chatFilter \"1\"\n"
 "^6Filters team chat messages: cg_chatFilter \"2\""
 
-#. Console/cg (TODO)
+#. Console/cg
 msgid "cg_chatFilterTV"
 msgstr "<0-4> Filters Warfork TV chat messages.\n"
-"^Display all Messages: cg_chatFilterTV \"0\"\n"
+"^6Display all Messages: cg_chatFilterTV \"0\"\n"
 "^6Filters global chat messages: cg_chatFilterTV \"1\"\n"
 "^6Filters team chat messages: cg_chatFilterTV \"2\"\n"
 "^6Filter TV spectator chat messages: cg_chatFilterTV \"4\""
@@ -287,7 +289,8 @@ msgstr "<value> Threshold of gamepad's acceleration."
 
 #. Console/cg
 msgid "cg_gamepad_moveThres"
-msgstr "<value> Specifies the dead-zone for movement."
+msgstr "<value> The minimum stick deflection for moving forward or backwards.\n"
+"^6Note: This is commonly known as the dead-zone."
 
 #. Console/cg
 msgid "cg_gamepad_pitchInvert"
@@ -303,17 +306,20 @@ msgstr "<value> Specifies the sensitivity when looking up and down."
 msgid "cg_gamepad_pitchThres"
 msgstr "<value> Specifies the dead-zone for looking up and down."
 
-#. Console/cg (TODO)
+#. Console/cg
 msgid "cg_gamepad_runThres"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "<value> The minimum stick deflection for running.\n"
+"^6Note: If cg_gamepad_runThres is lower than cg_gamepad_moveThres the player will always run."
 
-#. Console/cg (TODO)
+#. Console/cg
 msgid "cg_gamepad_strafeRunThres"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "<value> The minimum stick deflection for running.\n"
+"^6Note: If cg_gamepad_strafeRunThres is lower than cg_gamepad_strafeThres the player will always strafe run."
 
-#. Console/cg (TODO)
+#. Console/cg
 msgid "cg_gamepad_strafeThres"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "<value> The minimum stick deflection for moving sideways.\n"
+"^6Note: This is commonly known as the dead-zone."
 
 #. Console/cg
 msgid "cg_gamepad_swapSticks"
@@ -392,13 +398,13 @@ msgstr "<value> The width of an Instagun Beam."
 #. Console/cg
 msgid "cg_laserBeamSubdivisions"
 msgstr "<value> The higher the number the smoother the laser beam looks."
-   
-#. Console/cg (TODO)
+
+#. Console/cg
 msgid "cg_movementStyle"
 msgstr "<0/1> Changes the movement style.\n"
 "^6Old style: cg_movementStyle \"0\"\n"
 "^6New style: cg_movementStyle \"1\"\n"
-"^6Note: Explain the differences here."
+"^6Note: New movement accelerates when holding +fwd and making turns."
 
 #. Console/cg
 msgid "cg_noAutoHop"
@@ -424,11 +430,12 @@ msgstr "<0/1> Outlines every object.\n"
 "^6Disable: cg_outlineWorld \"0\"\n"
 "^6Enable: cg_outlineWorld \"1\""
 
-#. Console/cg (TODO)
+#. Console/cg
 msgid "cg_particles"
 msgstr "<0/1> Particles.\n"
 "^6Disable: cg_particles \"0\"\n"
-"^6Enable: cg_particles \"1\""
+"^6Enable: cg_particles \"1\"\n"
+"^6Note: You can test particles by shooting the Riotgun against a wall."
 
 #. Console/cg
 msgid "cg_pickup_flash"
@@ -453,13 +460,10 @@ msgstr "<0/1> Plays songs randomly from the music playlist.\n"
 "^6Disable: cg_playListShuffle \"0\"\n"
 "^6Enable: cg_playListShuffle \"1\""
 
-#. Console/cg (TODO)
+#. Console/cg
 msgid "cg_predict"
-msgstr "<0/1> Predicts players' movement on multiplayer servers for smoothness."
-
-#. Console/cg (TODO)
-msgid "cg_predict_optimize"
-msgstr "<0/1> Optimizes cg_predict's behavior."
+msgstr "<0/1> Utilizes client side prediction.\n"
+"^6cg_predict \"0\" relies on only server confirmed events and is not recommended."
 
 #. Console/cg
 msgid "cg_predictLaserBeam"
@@ -468,16 +472,16 @@ msgstr "<0/1> A perfectly straight line laserbeam will always be drawn regardles
 "^6Enable: cg_predictLaserBeam \"1\"\n"
 "^6Note: If disabled, a laserbeam will be drawn based on server lag."
 
-#. Console/cg (TODO)
+#. Console/cg
 msgid "cg_projectileAntilagOffset"
 msgstr "<value> The defined value adds a time offset to counter anti-lag visualization."
 
-#. Console/cg (TODO)
+#. Console/cg
 msgid "cg_projectileFireTrail"
-msgstr "<value> Controls the amount of firetrail left behind when firing the Rocket Launcher or Grenade Launcher.\n"
+msgstr "<value> Controls the length of firetrail left behind when firing the Rocket Launcher or Grenade Launcher.\n"
 "^6Disable: cg_projectileFireTrail \"0\""
 
-#. Console/cg (TODO)
+#. Console/cg
 msgid "cg_projectileFireTrailAlpha"
 msgstr "<0-1.0> Controls the transparency level of the firetrail left behind when firing the Rocket Launcher or Grenade Launcher.\n"
 "^6Totally transparent: cg_projectileFireTrailAlpha \"0\"\n"
@@ -514,15 +518,15 @@ msgstr "<1-180> Delay between kill reactions in seconds."
 
 #. Console/cg
 msgid "cg_scoreboardFontFamily"
-msgstr "<value> Name of font used in scoreboard."
+msgstr "<value> Name of the scoreboard font."
 
 #. Console/cg
 msgid "cg_scoreboardFontSize"
-msgstr "<value> Size of scoreboard's font."
+msgstr "<value> Size of scoreboard font."
 
-#. Console/cg (TODO)
+#. Console/cg
 msgid "cg_scoreboardMonoFontFamily"
-msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
+msgstr "<value> Name of the scoreboard monofont."
 
 #. Console/cg
 msgid "cg_scoreboardStats"
@@ -593,9 +597,11 @@ msgstr "<0/1> Displays the HUD.\n"
 "^6Disable: cg_showHUD \"0\"\n"
 "^6Enable: cg_showHUD \"1\""
 
-#. Console/cg (TODO)
+#. Console/cg
 msgid "cg_showItemTimers"
-msgstr "<value> Displays on your HUD when items will spawn. on your HUD.\n"
+msgstr "<0/1> Displays on your HUD when items will spawn.\n"
+"^6Disable: cg_showItemTimers \"0\"\n"
+"^6Counts down: cg_showItemTimers \"1\"\n"
 "^6Note: Only works in spectator mode."
 
 #. Console/cg
@@ -612,9 +618,17 @@ msgstr "<0/1> Prediction misses will be dumped to console in x:y format. x = tim
 "^6Enable: cg_showMiss \"1\"\n"
 "^6Note: This command was intended for debugging server events and is best used with con_drawnotify \"1\", which will print the events on your screen in addition to the console."
 
-#. Console/cg (TODO)
+#. Console/cg
 msgid "cg_showObituaries"
-msgstr "<value> Displays who fragged who using which weapon on your HUD."
+msgstr "<0-7> Displays frags on the HUD.\n"
+"^6Disabled: cg_showObituaries \"0\"\n"
+"^6Icons: cg_showObituaries \"1\"\n"
+"^6Center: cg_showObituaries \"2\"\n"
+"^6Icons + Center: cg_showObituaries \"3\"\n"
+"^6Console: cg_showObituaries \"4\"\n"
+"^6Icons + Console: cg_showObituaries \"5\"\n"
+"^6Center + Console: cg_showObituaries \"6\"\n"
+"^6Icons + Center + Console: cg_showObituaries \"7\""
 
 #. Console/cg
 msgid "cg_showPickup"
@@ -669,11 +683,12 @@ msgstr "<0/1> See your own shadow.\n"
 "^6Disable: cg_showSelfShadow \"0\"\n"
 "^6Enable: cg_showSelfShadow \"1\""
 
-#. Console/cg (TODO)
+#. Console/cg
 msgid "cg_showSpeed"
-msgstr "<0-3> Changes the position of the speed display of the player.\n"
+msgstr "<0/1> Displays your speed (measured in Units per Second) in a specific position.\n"
 "^6Disable: cg_showSpeed \"0\"\n"
-"Note: Values higher than 1 aren't supported on all HUDs."
+"^6Bottom: cg_showSpeed \"1\"\n"
+"Note: Values higher than \"1\" might be supported on some HUDs."
 
 #. Console/cg
 msgid "cg_showTeamLocations"
@@ -861,6 +876,58 @@ msgid "cg_thirdPersonRange"
 msgstr "<value> The distance that the player model appears from the camera when in third person view.\n"
 "^6Note: You must enable sv_cheats \"1\" and cg_thirdPerson \"1\" for this command to work."
 
+#. Console/cg (TODO)
+msgid "cg_touch_flip"
+msgstr "<0/1> Swaps the left and right side of the touch controls.\n"
+"^6Disable: cg_touch_flip \"0\"\n"
+"^6Enable: cg_touch_flip \"1\""
+
+#. Console/cg (TODO)
+msgid "cg_touch_lookDecel"
+msgstr "<value> Modifies touch look deceleration."
+
+#. Console/cg (TODO)
+msgid "cg_touch_lookInvert"
+msgstr "<0/1> Inverts touch when looking.\n"
+"^6Disable: cg_touch_lookInvert \"0\"\n"
+"^6Enable: cg_touch_lookInvert \"1\""
+
+#. Console/cg (TODO)
+msgid "cg_touch_lookSens"
+msgstr "<value> Touch look sensitivity."
+
+#. Console/cg (TODO)
+msgid "cg_touch_lookThres"
+msgstr "<value> No clue."
+
+#. Console/cg (TODO)
+msgid "cg_touch_moveThres"
+msgstr "<value> The minimum deflection for moving forward or backwards.\n"
+"^6Note: This is commonly known as the dead-zone."
+
+#. Console/cg (TODO)
+msgid "cg_touch_scale"
+msgstr "<0-100> Touch controls size."
+
+#. Console/cg (TODO)
+msgid "cg_touch_showMoveDir"
+msgstr "<0/1> Shows the direction you're moving in on the touch HUD.\n"
+"^6Disable: cg_touch_showMoveDir \"0\"\n"
+"^6Enable: cg_touch_showMoveDir \"1\""
+
+#. Console/cg (TODO)
+msgid "cg_touch_strafeThres"
+msgstr "<value> The minimum deflection for moving sideways.\n"
+"^6Note: This is commonly known as the dead-zone."
+
+#. Console/cg (TODO)
+msgid "cg_touch_zoomThres"
+msgstr "<value> Not a clue."
+
+#. Console/cg (TODO)
+msgid "cg_touch_zoomTime"
+msgstr "<value> Touch zoom time."
+
 #. Console/cg
 msgid "cg_viewBob"
 msgstr "<0/1> Head bobbing.\n"
@@ -871,7 +938,7 @@ msgstr "<0/1> Head bobbing.\n"
 msgid "cg_viewSize"
 msgstr "<40-100> Viewport size.\n"
 "^6Fullscreen: cg_viewSize \"100\"\n"
-"^6Note: If cg_viewSize is less than 100, then a black frame will fill-in the remaining percentage of viewable area."
+"^6Note: If cg_viewSize is less than \"100\", then a black frame will fill-in the remaining percentage of viewable area."
 
 #. Console/cg
 msgid "cg_voiceChats"
@@ -910,19 +977,20 @@ msgid "cg_volume_voicechats"
 msgstr "<0-1.0> Changes the volume of voice commands (also known as \"VSAYS\").\n"
 "^6Disable: cg_volume_voicechats \"0\""
 
-#. Console/cg (TODO)
+#. Console/cg
 msgid "cg_weaponAutoswitch"
 msgstr "<0-2> Auto switching of weapons.\n"
 "^6Disable: cg_weaponAutoswitch \"0\"\n"
-"^6Switch when you don't have the just picked weapon: cg_weaponAutoswitch \"1\"\n"
-"^6Switch when the new weapon improves the selected weapon: cg_weaponAutoswitch \"2\""
+"^6Switch weapon automatically if improved: cg_weaponAutoswitch \"1\"\n"
+"^6Switch weapon automatically if you only have the Gunblade: cg_weaponAutoswitch \"2\"\n"
+"^6Note: Weapon precedence is 1. Electrobolt, 2. Lasergun, 3. Plasmagun, 4. Rocket Launcher, 5. Grenade Launcher, 6. Riot Gun, 7. Machine Gun and 8. Gunblade."
 
-#. Console/cg (TODO)
+#. Console/cg
 msgid "cg_weaponFlashes"
-msgstr "<0/2> Weapon flashes.\n"
+msgstr "<0-2> Weapon flashes.\n"
 "^6Disable: cg_weaponFlashes \"0\"\n"
-"^6Enable: cg_weaponFlashes \"2\"\n"
-"^6Note: You must also enable cg_gun \"1\" for weapon muzzle flashes."
+"^6Show on Wall and Floor: cg_weaponFlashes \"1\"\n"
+"^6Show on Wall and Floor + End of Gun: cg_weaponFlashes \"2\""
 
 #. Console/cg
 msgid "cg_weaponlist"

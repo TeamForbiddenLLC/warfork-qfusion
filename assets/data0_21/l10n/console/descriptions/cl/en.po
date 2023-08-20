@@ -39,9 +39,10 @@ msgstr "<0/1> Creates a .wav file when using demoavi.\n"
 msgid "cl_demoavi_fps"
 msgstr "<value> Determines how many frames per second get captured by demoavi."
 
-#. Console/cl (TODO)
+#. Console/cl
 msgid "cl_demoavi_scissor"
-msgstr "<0/1> Determines how many frames per second get captured by demoavi."
+msgstr "<0/1> Demoavi will use the value of cg_viewSize for recordings.\n"
+"^6Note: If cg_viewSize (the viewport size) is less than \"100\", then a black frame will fill-in the remaining percentage of viewable area."
 
 #. Console/cl
 msgid "cl_demoavi_video"

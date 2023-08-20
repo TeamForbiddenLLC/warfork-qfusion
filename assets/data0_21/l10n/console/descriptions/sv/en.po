@@ -57,9 +57,9 @@ msgstr "<value> Stores automatic serverside demos to a specified directory when 
 msgid "sv_fps"
 msgstr "The amount of frames per second the server will process."
 
-#. Console/sv (TODO)
+#. Console/sv
 msgid "sv_highchars"
-msgstr "High-bit characters in player names."
+msgstr "High-bit characters."
 "^6Disable: sv_highchars \"0\"\n"
 "^6Enable: sv_highchars \"1\""
 
@@ -67,7 +67,7 @@ msgstr "High-bit characters in player names."
 msgid "sv_hostname"
 msgstr "<name> Name of the server. Appears in the server list."
 
-#. Console/sv (TODO)
+#. Console/sv
 msgid "sv_http"
 msgstr "<0/1> A HTTP server that lets connecting players download missing files.\n"
 "^6Disable: sv_http \"0\"\n"
@@ -198,13 +198,17 @@ msgstr "<value>	Seconds a client must wait until they can reconnect with a serve
 msgid "sv_showChallenge"
 msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
-#. Console/sv (TODO: doesnt do anything)
+#. Console/sv
 msgid "sv_showInfoQueries"
-msgstr "Prints console feedback of Steam Info Packets, Steam Players Packets, Steam Master Server Info Packets, and Info Packets."
+msgstr "Prints console feedback of Info Packets when received.\n"
+"^6Disable: sv_showInfoQueries \"0\"\n"
+"^6Enable: sv_showInfoQueries \"1\""
 
-#. Console/sv (TODO: doesnt do anything)
+#. Console/sv
 msgid "sv_showRcon"
-msgstr "Prints console feedback of Rcon Packets."
+msgstr "<0/1> Prints console feedback of Rcon Packets.\n"
+"^6Disable: sv_showRcon \"0\"\n"
+"^6Enable: sv_showRcon \"1\""
 
 #. Console/sv
 msgid "sv_skilllevel"
@@ -213,23 +217,26 @@ msgstr "<0-2> Defines the skill level of your server, which affects bots.\n"
 "^6Medium: sv_skilllevel \"1\"\n"
 "^6Hard: sv_skilllevel \"2\""
 
-#. Console/sv (TODO)
+#. Console/sv
 msgid "sv_skillRating"
-msgstr "Your matchmaking skill rating."
+msgstr "<value> Your matchmaking skill rating.\n"
+"^6Note: It's initiated in sv_ and passed to the client."
 
 #. Console/sv
 msgid "sv_timeout"
 msgstr "<value>	Kicks players from server if connection is lost for more than defined seconds.\n"
 "^6Note: Takes priority over cl_timeout."
 
-#. Console/sv (TODO)
+#. Console/sv 
 msgid "sv_uploads"
-msgstr "Sending of upload offers or urls to clients."
+msgstr "<0/1> Sending of upload offers or urls to clients.\n"
+"^6Disable: sv_uploads \"0\"\n"
+"^6Enable: sv_uploads \"1\""
 
-#. Console/sv (TODO)
+#. Console/sv
 msgid "sv_uploads_baseurl"
-msgstr "http url of a directory mirroring Warfork directory.\n"
-"Note: mod directory not to be included in this url anymore. Example: sv_uploads_baseurl \"http://mydomain.com/warfork\" where there is a subdirectory \"basewf\" or whatever mod directory your server is running containing the downloadable files."
+msgstr "<value> http url of a directory mirroring Warfork directory.\n"
+"^6Note: nothing."
 
 #. Console/sv
 msgid "sv_uploads_demos"
@@ -249,7 +256,7 @@ msgstr "<0/1> Uploading is allowed directly from the server."
 msgid "sv_uploads_http"
 msgstr "<0/1> Local http server that uploads files to clients."
 "^6Disable: sv_uploads_http \"0\"\n"
-"^6Enable: sv_uploads_http \"1\"\n"
+"^6Enable: sv_uploads_http \"1\""
 
 #. Console/sv
 msgid "sv_zombietime"
