@@ -4,6 +4,7 @@ source/build*/
 source/*/Debug
 source/*/Release
 source/ipch
+build/
 libsrcs/angelscript/sdk/angelscript/lib/
 libsrcs/angelscript/sdk/angelscript/projects/gnuc/obj/
 libsrcs/libRocket/libRocket/lib/
@@ -23,6 +24,7 @@ libsrcs/libRocket/libRocket/Build/obj/
 **/*.xcodeproj
 **/Makefile
 *cmake_install.cmake
+.cache/
 *.sln
 *.vcxproj
 *.vcxproj.filters
