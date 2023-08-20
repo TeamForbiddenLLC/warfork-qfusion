@@ -193,7 +193,7 @@ void SV_MasterHeartbeat( void )
 		{
 			socket_t *socket;
 
-			if( dedicated && dedicated->integer )
+			if( dedicated && dedicated->integer && sv_log_heartbeats->integer )
 				Com_Printf( "Sending heartbeat to %s\n", NET_AddressToString( &master->address ) );
 
 			socket = ( master->address.type == NA_IP6 ? &svs.socket_udp6 : &svs.socket_udp );

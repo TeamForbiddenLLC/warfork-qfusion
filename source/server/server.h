@@ -349,6 +349,7 @@ extern cvar_t *sv_highchars;
 extern cvar_t *sv_maxrate;
 extern cvar_t *sv_compresspackets;
 extern cvar_t *sv_public;         // should heartbeats be sent
+extern cvar_t *sv_log_heartbeats;         // should the sending heartbeat message be printed
 
 // wsw : debug netcode
 extern cvar_t *sv_debug_serverCmd;

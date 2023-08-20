@@ -172,12 +172,18 @@ msgstr "<port> Changes the IPv6 port of the Warfork server."
 #. Console/sv
 msgid "sv_pps"
 msgstr "<value>	Packets per second a server sends to the client."
-	
+
 #. Console/sv
 msgid "sv_public"
 msgstr "<0/1> The server will appear on the public server list.\n"
 "^6Disable: sv_public \"0\"\n"
 "^6Enable: sv_public \"1\""
+
+#. Console/sv
+msgid "sv_log_heartbeats"
+msgstr "<0/1> Allow the printing of the sending heartbeat message to the console\n"
+"^6Disable: sv_log_heartbeats \"0\"\n"
+"^6Enable: sv_log_heartbeats \"1\""
 
 #. Console/sv
 msgid "sv_pure"
