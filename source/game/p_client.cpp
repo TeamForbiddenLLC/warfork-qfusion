@@ -1389,11 +1389,11 @@ bool ClientConnect( edict_t *ent, char *userinfo, bool fakeClient, bool tvClient
 	if( !fakeClient ) {
 		char message[MAX_STRING_CHARS];
 
-		Q_snprintfz( message, sizeof( message ), "%s%s connected", ent->r.client->netname, S_COLOR_WHITE );
+		Q_snprintfz( message, sizeof( message ), "%s%s connected", ent->r.client->netname, S_COLOR_YELLOW );
 
 		G_PrintMsg( NULL, "%s\n", message );
 
-		G_Printf( "%s%s connected from %s\n", ent->r.client->netname, S_COLOR_WHITE, ent->r.client->ip );
+		G_Printf( "%s%s connected from %s%s\n", ent->r.client->netname, S_COLOR_YELLOW, S_COLOR_WHITE , ent->r.client->ip );
 	}
 
 	// let the gametype scripts know this client just connected
@@ -1427,9 +1427,9 @@ void ClientDisconnect( edict_t *ent, const char *reason )
 	if( !level.gametype.disableObituaries || !(ent->r.svflags & SVF_FAKECLIENT ) )
 	{
 		if( !reason )
-			G_PrintMsg( NULL, "%s" S_COLOR_WHITE " disconnected\n", ent->r.client->netname );
+			G_PrintMsg( NULL, "%s" S_COLOR_YELLOW " disconnected\n", ent->r.client->netname );
 		else
-			G_PrintMsg( NULL, "%s" S_COLOR_WHITE " disconnected (%s" S_COLOR_WHITE ")\n", ent->r.client->netname, reason );
+			G_PrintMsg( NULL, "%s" S_COLOR_YELLOW " disconnected " S_COLOR_WHITE" (%s" S_COLOR_WHITE ")\n", ent->r.client->netname, reason );
 	}
 
 	// send effect
