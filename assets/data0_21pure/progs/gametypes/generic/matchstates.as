@@ -284,6 +284,8 @@ void GENERIC_CheatVarResponse( Client @client, String &cmdString, String &argsSt
 {
     //G_Print( S_COLOR_RED + "cvarinfo response: (argc" + argc + ") " + S_COLOR_WHITE + client.name + S_COLOR_WHITE + " " + argsString + "\n" );
 
+    GENERIC_RequestCheatVars();
+
     if ( argc < 2 )
         return;
 
