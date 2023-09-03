@@ -143,7 +143,7 @@ bool GT_Command( Client @client, const String &cmdString, const String &argsStri
 
         return true;
     }
-    else if ( cmdString == "cvarinfo" )
+    else if ( cmdString == "cheatcheck" )
     {
         GENERIC_CheatVarResponse( client, cmdString, argsString, argc );
         return true;
