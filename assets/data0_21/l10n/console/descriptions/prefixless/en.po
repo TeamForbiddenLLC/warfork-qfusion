@@ -518,7 +518,8 @@ msgstr "<ip address> Connects to a server."
 msgid "cvarcheck"
 msgstr "<userid> <cvar name> This server command reports the defined player's value for the defined cvar.\n"
 "^6Example: rcon cvarcheck 0 name\n"
-"^6Note: Only works from a server context, not client."
+"^6Note: Only works from a server context, not client.\n"
+"^6This command is currently not working as intended."
 
 #. Console/prefixless
 msgid "cvarinfo"
