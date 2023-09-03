@@ -21,11 +21,14 @@ msgstr "<value> Sets the default game.\n"
 msgid "fs_usedownloadsdir"
 msgstr "<0/1> Sets whether or not mods and add-ons (such as racemod) should be loaded from the user's local Warfork directory."
 
-#. Console/fs (FIXME)
+#. Console/fs
 msgid "fs_usehomedir"
-msgstr "<0/1> Uses your Warfork game directory instead of data folder.\n"
+msgstr "<0/1> Uses your home directory instead of the Warfork data folder.\n"
 "^6Disable: fs_usehomedir \"0\"\n"
-"^6Enable: fs_usehomedir \"1\""
+"^6Enable: fs_usehomedir \"1\"\n"
+"^6Note: You should only set this to 0 when the game client is unable to save assets in your homedir. To do so, it must be done as a launch option/argument: +set fs_usehomedir 0\n"
+"^6Homedir on Windows refers to C:\\Users\\USERNAME\\Documents\\My Games\\Warfork 2.1\\\n"
+"^6Homedir on Linux/Mac refers to ~/.local/share/warfork-2.1/"
 
 #. Console/fs
 msgid "fs_checksum"
