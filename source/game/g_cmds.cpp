@@ -364,17 +364,23 @@ static void Cmd_Score_f( edict_t *ent )
 */
 static void Cmd_CvarInfo_f( edict_t *ent )
 {
-	if( trap_Cmd_Argc() < 2 )
+	// check if command contains an argument
+	if (trap_Cmd_Argc() < 2)
 	{
 		G_PrintMsg( ent, "Cmd_CvarInfo_f: invalid argument count\n" );
 		return;
 	}
-
 	// see if the gametype script is requesting this info
 	if( !GT_asCallGameCommand( ent->r.client, "cvarinfo", trap_Cmd_Args(), trap_Cmd_Argc() - 1 ) )
 	{
+		
 		// if the gametype script wasn't interested in this command, print the output to console
 		G_Printf( "%s%s's cvar '%s' is '%s%s'\n", ent->r.client->netname, S_COLOR_WHITE, trap_Cmd_Argv( 1 ), trap_Cmd_Argv( 2 ), S_COLOR_WHITE );
+	}
+	else
+	{
+		// let the admin know that command is overwritten by the gametype
+		G_Printf( "%s%s reported that cvarinfo is overwritten by a gametype and is unavailable.\n", ent->r.client->netname, S_COLOR_WHITE );
 	}
 }
 
