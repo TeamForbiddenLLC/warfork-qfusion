@@ -55,12 +55,10 @@ msgstr "<0/1> Filters connection attempts based on IP addresses.\n"
 "^6Only addresses that match the list will be granted access: filterban \"1\"\n"
 "^6Note: Setting it to \"1\" is recommended for easily configuring a private game or allowing only local network players."
 
-#. Console/prefixless
+#. Console/prefixless (TODO)
 msgid "fixedtime"
-msgstr "<value> Sets gamemsec to the defined integer to have the game run at the defined speed.\n"
-"^6Note: You likely only want to set this if you are making a video from demos.\n"
-"^6If neither fixedtime nor timescale are set, gamemsec is equal to realmsec (real time)\n"
-"^6sv_cheats \"1\" is required to use this command."
+msgstr "<value> Keeps everything in the game world running at a consistent pace.\n"
+"^6Note: sv_cheats \"1\" is required to use this command."
 
 #. Console/prefixless
 msgid "fov"
@@ -199,16 +197,13 @@ msgstr "<0/1> Information will be displayed in the console about all network pac
 "^6Disable: showpackets \"0\"\n"
 "^6Enable: showpackets \"1\""
 
-#. Console/prefixless
+#. Console/prefixless (TODO)
 msgid "skin"
-msgstr "<skin> Changes your Player skin."
+msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
-#. Console/prefixless
+#. Console/prefixless (TODO)
 msgid "timedemo"
-msgstr "<0/1> Sets whether or not a demo should be timed when played.\n"
-"^6Disable: timedemo \"0\"\n"
-"^6Enable: timedemo \"1\"\n"
-"^6Note: Once set to \"1\", play a demo and then check console. Console will show stats related to the length and playback speed of the demo."
+msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
 #. Console/prefixless
 msgid "timegraph"
@@ -488,11 +483,11 @@ msgstr "Clears the console."
 
 #. Console/prefixless
 msgid "clearcams"
-msgstr "Clears all cameras in a camerapath."
+msgstr "Clears all cameras in a camerapath."  
 
-#. Console/prefixless
+#. Console/prefixless (TODO)
 msgid "cmd"
-msgstr "<commmand> Runs any argument(s) as if it were a command."
+msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
 #. Console/prefixless
 msgid "cmdlist"
@@ -514,18 +509,13 @@ msgstr "<filename> Dumps the console log to a file."
 msgid "connect"
 msgstr "<ip address> Connects to a server."  
 
-#. Console/prefixless
+#. Console/prefixless (TODO)
 msgid "cvarcheck"
-msgstr "<userid> <cvar name> This server command reports the defined player's value for the defined cvar.\n"
-"^6Example: rcon cvarcheck 0 name\n"
-"^6Note: Only works from a server context, not client.\n"
-"^6This command is currently not working as intended."
+msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
-#. Console/prefixless
+#. Console/prefixless (TODO)
 msgid "cvarinfo"
-msgstr "<cvar name> This command reports the current value for the defined cvar.\n"
-"^6Note: Only works from a client or gametype context, not server.\n"
-"^6This command is currently not working as intended."
+msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
 #. Console/prefixless
 msgid "cvarlist"
@@ -573,12 +563,6 @@ msgstr "Lists all demos on the Server and their ID.\n"
 #. Console/prefixless
 msgid "demopause"
 msgstr "Pauses or resumes the currently playing demo."
-
-#. Console/prefixless
-msgid "descriptions"
-msgstr "<0/1> Prints descriptions for console variables.\n"
-"^6Disable: descriptions \"0\"\n"
-"^6Enable: descriptions \"1\""
 
 #. Console/prefixless
 msgid "devmap"
@@ -736,9 +720,9 @@ msgstr "The current list of filters will be printed to console."
 msgid "listlocations"
 msgstr "Prints a list of all map locations (if available) to console."
 
-#. Console/prefixless
+#. Console/prefixless (TODO)
 msgid "listraces"
-msgstr "Prints the list of times that have been achieved during the race session."
+msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
 #. Console/prefixless
 msgid "listratings"
@@ -791,9 +775,9 @@ msgstr "Prints a list of all models loaded in your console."
 msgid "music"
 msgstr "<introfile|playlist> [loopfile|shuffle]"
 
-#. Console/prefixless
+#. Console/prefixless (TODO)
 msgid "next"
-msgstr "<command> Executes a server command when disconnecting."
+msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
 #. Console/prefixless
 msgid "nextmusic"
@@ -954,9 +938,9 @@ msgstr "<cvar> <value> Adds * and U flags to a cvar and sets its value. You can 
 "^6Note: * - Static variable. Changes to those variables are saved in config.cfg.\n"
 "^6U - User-info variable. Those variables are uploaded to the server (for example to let the server know the player's nickname)."
 
-#. Console/prefixless
+#. Console/prefixless (TODO)
 msgid "setdyn"
-msgstr "<dynvar> <value> Sets the defined dynamic variable to the defined value."
+msgstr "Please help contribute a description of this command by visiting the Warfork github repository."
 
 #. Console/prefixless
 msgid "sets"
