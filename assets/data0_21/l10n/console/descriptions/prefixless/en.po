@@ -1,6 +1,13 @@
 # (c) Team Forbidden LLC. All Rights Reserved.
 
 #. Console/prefixless
+msgid "autohelp"
+msgstr "<0/1> Prints descriptions for console variables in console.\n"
+"^6Disable: autohelp \"0\"\n"
+"^6Enable: autohelp \"1\"\n"
+"^6Note: Prints after execution."
+
+#. Console/prefixless
 msgid "clan"
 msgstr "<name> Sets the name of your clan.\n"
 "^6Note: Appears on the scoreboard."
@@ -573,12 +580,6 @@ msgstr "Lists all demos on the Server and their ID.\n"
 #. Console/prefixless
 msgid "demopause"
 msgstr "Pauses or resumes the currently playing demo."
-
-#. Console/prefixless
-msgid "descriptions"
-msgstr "<0/1> Prints descriptions for console variables.\n"
-"^6Disable: descriptions \"0\"\n"
-"^6Enable: descriptions \"1\""
 
 #. Console/prefixless
 msgid "devmap"

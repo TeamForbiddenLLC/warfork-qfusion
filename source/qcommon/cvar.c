@@ -490,7 +490,7 @@ bool Cvar_Command( void )
             Com_Printf( "latched: \"%s%s\"\n", v->latched_string,
                 Q_ColorStringTerminator( v->latched_string, ColorIndex(COLOR_WHITE) ) );
 
-        if( descriptions->integer )
+        if( autohelp->integer )
         translated = L10n_TranslateString( "descriptions", Cvar_GetName( v ) );
         if( translated )
         Com_Printf( S_COLOR_CYAN "%s\n", translated );
@@ -512,7 +512,7 @@ static void Cvar_Help_f( void )
     cvar_t *v;
     const char *translated;
 
-	if( Cmd_Argc() != 3 )
+    if( Cmd_Argc() == 2 )
 	{
 		Com_Printf( "usage: help <variable>\n" );
 

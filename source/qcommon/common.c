@@ -48,7 +48,7 @@ cvar_t *host_speeds;
 cvar_t *developer;
 cvar_t *timescale;
 cvar_t *dedicated;
-cvar_t *descriptions;
+cvar_t *autohelp;
 cvar_t *versioncvar;
 cvar_t *revisioncvar;
 cvar_t *tv_server;
@@ -1003,7 +1003,7 @@ void Qcommon_Init( int argc, char **argv )
 
 	Qcommon_InitCommands();
 
-	descriptions =	    Cvar_Get( "descriptions", "1", CVAR_ARCHIVE );
+	autohelp =	    Cvar_Get( "autohelp", "1", CVAR_ARCHIVE );
 	host_speeds =	    Cvar_Get( "host_speeds", "0", 0 );
 	timescale =	    Cvar_Get( "timescale", "1.0", CVAR_CHEAT );
 	fixedtime =	    Cvar_Get( "fixedtime", "0", CVAR_CHEAT );

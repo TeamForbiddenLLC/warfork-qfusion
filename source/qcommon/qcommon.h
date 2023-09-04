@@ -832,7 +832,7 @@ unsigned int Com_DaysSince1900( void );
 
 extern cvar_t *developer;
 extern cvar_t *dedicated;
-extern cvar_t *descriptions;
+extern cvar_t *autohelp;
 extern cvar_t *host_speeds;
 extern cvar_t *versioncvar;
 extern cvar_t *revisioncvar;
