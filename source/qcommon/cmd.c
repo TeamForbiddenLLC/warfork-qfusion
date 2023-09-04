@@ -1361,6 +1361,31 @@ void Cmd_ExecuteString( const char *text )
 	}
 }
 
+void Cmd_Help(void)
+{
+	const char *str;
+	cmd_function_t *cmd;
+	cmd_alias_t *a;
+	const char *translated = NULL;
+
+	str = Cmd_Argv( 1 );
+	if( Trie_Find( cmd_function_trie, str, TRIE_EXACT_MATCH, (void **)&cmd ) == TRIE_OK )
+	{
+		translated = L10n_TranslateString( "descriptions", cmd->name );
+	}
+	else if( Trie_Find( cmd_alias_trie, str, TRIE_EXACT_MATCH, (void **)&a ) == TRIE_OK )
+	{
+		translated = L10n_TranslateString( "descriptions", a->name );
+		if (!translated)
+			translated = L10n_TranslateString( "descriptions", a->value );
+	}
+	if (translated)
+		Com_Printf( S_COLOR_CYAN "%s\n", translated );
+	else
+		Com_Printf( "Unknown command \"%s" S_COLOR_WHITE "\"\n", str );
+}
+
+
 /*
 * Cmd_List_f
 */
