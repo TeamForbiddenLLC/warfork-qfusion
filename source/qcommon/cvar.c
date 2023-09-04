@@ -503,6 +503,34 @@ bool Cvar_Command( void )
 }
 
 /*
+* Cvar_Help_f
+* 
+* Allows using a help <variable> command incase descriptions are turned off.
+*/
+static void Cvar_Help_f( void )
+{
+    cvar_t *v;
+    const char *translated;
+
+	if( Cmd_Argc() != 3 )
+	{
+		Com_Printf( "usage: help <variable>\n" );
+
+        // check variables
+        v = Cvar_Find( Cmd_Argv( 1 ) );
+        if( !v )
+        return;
+ 
+        translated = L10n_TranslateString( "descriptions", Cvar_GetName( v ) );
+
+        if( translated )
+        Com_Printf( S_COLOR_CYAN "%s\n", translated );
+        
+		return;
+	}
+}
+
+/*
 * Cvar_Set_f
 * 
 * Allows setting and defining of arbitrary cvars from console
@@ -902,6 +930,7 @@ void Cvar_Init( void )
 
 	assert( cvar_trie );
 
+	Cmd_AddCommand( "help", Cvar_Help_f );
 	Cmd_AddCommand( "set", Cvar_Set_f );
 	Cmd_AddCommand( "seta", Cvar_Seta_f );
 	Cmd_AddCommand( "setau", Cvar_Setau_f );
@@ -956,6 +985,7 @@ void Cvar_Shutdown( void )
 		con_printText = NULL;
 #endif
 
+		Cmd_RemoveCommand( "help" );
 		Cmd_RemoveCommand( "set" );
 		Cmd_RemoveCommand( "seta" );
 		Cmd_RemoveCommand( "setau" );
