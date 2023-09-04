@@ -511,11 +511,10 @@ static void Cvar_Help_f( void )
 {
     cvar_t *v;
     const char *translated;
-
+            
     if( Cmd_Argc() == 2 )
 	{
-		Com_Printf( "usage: help <variable>\n" );
-
+        
         // check variables
         v = Cvar_Find( Cmd_Argv( 1 ) );
         if( !v )
@@ -525,7 +524,13 @@ static void Cvar_Help_f( void )
 
         if( translated )
         Com_Printf( S_COLOR_CYAN "%s\n", translated );
-        
+               
+		return;
+	}
+	else
+	{
+	    Com_Printf( S_COLOR_CYAN "%s\n", "<value> Prints a description.\n^6Example: help \"sensitivity\"" );
+
 		return;
 	}
 }
