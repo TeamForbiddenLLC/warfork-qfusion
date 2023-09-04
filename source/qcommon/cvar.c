@@ -511,14 +511,16 @@ static void Cvar_Help_f( void )
 {
     cvar_t *v;
     const char *translated;
-            
+
     if( Cmd_Argc() == 2 )
 	{
-        
         // check variables
         v = Cvar_Find( Cmd_Argv( 1 ) );
         if( !v )
-        return;
+		{
+			Cmd_Help();
+        	return;
+		}
  
         translated = L10n_TranslateString( "descriptions", Cvar_GetName( v ) );
 
