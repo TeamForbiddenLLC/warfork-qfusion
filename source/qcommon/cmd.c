@@ -1361,24 +1361,19 @@ void Cmd_ExecuteString( const char *text )
 	}
 }
 
-void Cmd_Help(void)
+static void Cmd_Help_f(void)
 {
 	const char *str;
-	cmd_function_t *cmd;
-	cmd_alias_t *a;
-	const char *translated = NULL;
+	const char *translated;
 
-	str = Cmd_Argv( 1 );
-	if( Trie_Find( cmd_function_trie, str, TRIE_EXACT_MATCH, (void **)&cmd ) == TRIE_OK )
-	{
-		translated = L10n_TranslateString( "descriptions", cmd->name );
+	if( Cmd_Argc() < 2 ) {
+		Com_Printf( S_COLOR_CYAN "help <value> Prints a description.\n^6Example: help \"sensitivity\"\n" );
+		return; // no tokens
 	}
-	else if( Trie_Find( cmd_alias_trie, str, TRIE_EXACT_MATCH, (void **)&a ) == TRIE_OK )
-	{
-		translated = L10n_TranslateString( "descriptions", a->name );
-		if (!translated)
-			translated = L10n_TranslateString( "descriptions", a->value );
-	}
+
+	str = cmd_argv[1];
+
+	translated = L10n_TranslateString( "descriptions", str );
 	if (translated)
 		Com_Printf( S_COLOR_CYAN "%s\n", translated );
 	else
@@ -1444,6 +1439,7 @@ void Cmd_Init( void )
 	// register our commands
 	//
 	Cmd_AddCommand( "cmdlist", Cmd_List_f );
+	Cmd_AddCommand( "help", Cmd_Help_f );
 	Cmd_AddCommand( "exec", Cmd_Exec_f );
 	Cmd_AddCommand( "echo", Cmd_Echo_f );
 	Cmd_AddCommand( "aliaslist", Cmd_AliasList_f );
@@ -1473,6 +1469,7 @@ void Cmd_Shutdown( void )
 		assert( cmd_function_trie );
 
 		Cmd_RemoveCommand( "cmdlist" );
+		Cmd_RemoveCommand( "help" );
 		Cmd_RemoveCommand( "exec" );
 		Cmd_RemoveCommand( "echo" );
 		Cmd_RemoveCommand( "aliaslist" );

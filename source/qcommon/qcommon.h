@@ -467,7 +467,6 @@ char		*Cmd_Args( void );
 void	    Cmd_TokenizeString( const char *text );
 void	    Cmd_ExecuteString( const char *text );
 void		Cmd_SetCompletionFunc( const char *cmd_name, xcompletionf_t completion_func );
-void		Cmd_Help( void );
 
 /*
 ==============================================================
