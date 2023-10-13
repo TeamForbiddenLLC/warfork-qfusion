@@ -2,7 +2,7 @@ version: 2.1
 orbs:
   discord: antonioned/discord@0.1.0
 jobs:
-  build-linux64:
+  build-linux32:
     docker:
       - image: ubuntu:20.04
     steps:
@@ -13,108 +13,34 @@ jobs:
       - run: echo "tzdata tzdata/Zones/America select New_York" >> /tmp/nyc.txt
       - run: debconf-set-selections /tmp/nyc.txt
       - run: ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
+      - run: echo "deb http://archive.ubuntu.com/ubuntu/ focal main universe" | sudo tee -a /etc/apt/sources.list
+      - run: echo "deb http://archive.ubuntu.com/ubuntu/ focal-updates main universe" | sudo tee -a /etc/apt/sources.list
+      - run: echo "deb http://archive.ubuntu.com/ubuntu/ focal-backports main universe" | sudo tee -a /etc/apt/sources.list
+      - run: echo "deb http://security.ubuntu.com/ubuntu focal-security main universe" | sudo tee -a /etc/apt/sources.list
+      - run: echo "deb http://ppa.launchpad.net/kubuntu-ppa/backports/ubuntu focal main" | sudo tee -a /etc/apt/sources.list
       - run: apt-get update
       - run: apt-get install -y --no-install-recommends tzdata
       - run: apt-get install -y openssh-client git
-      - run: apt-get install -y curl clang cmake build-essential libsdl2-dev libopenal-dev libvorbis-dev libtheora-dev libfreetype6-dev libcurl4-gnutls-dev git zip unzip
+      - run: apt-get install -y gcc-4.9 g++-4.9 cmake build-essential gcc-4.9-multilib g++-4.9-multilib gcc-multilib libgnutls-dev:i386 libidn11-dev:i386 libkrb5-dev:i386 librtmp-dev:i386 libpng-dev:i386 libgl1-mesa-dev:i386 libglu1-mesa-dev:i386 libpulse-dev:i386 libsdl2-dev:i386 libopenal-dev:i386 libvorbis-dev:i386 libtheora-dev:i386 libfreetype6-dev:i386 libcurl4-gnutls-dev:i386 libglib2.0-dev:i386
       - checkout
       - run: curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
       - run: unzip third-party/steamworks/sdk.zip -d third-party/steamworks
-      - run: export CC=clang CXX=clang++
+      - run: export CC=gcc-4.9 CXX=g++-4.9
       - run: cmake -DBUILD_STEAMLIB=1 ./source
       - run: make -j8
       - run: echo "${CIRCLE_SHA1}" > ./source/build/commit.txt
       - run: echo "671610" > ./source/build/steam_appid.txt
-      - run: tar -czvf ./source/Linux-x86_64-Release.tar.gz ./source/build/* --exclude ./source/build/*.a --exclude ./source/build/base*/*.a ./source/build/libs/*.a
+      - run: tar -czvf ./source/Linux-x86-Release.tar.gz ./source/build/* --exclude ./source/build/*.a --exclude ./source/build/base*/*.a ./source/build/libs/*.a
       - discord/status:
           fail_only: false
           failure_message: ":red_circle: ${CIRCLE_PROJECT_REPONAME} ${CIRCLE_BRANCH} ${CIRCLE_JOB} (${CIRCLE_SHA1}) has failed!"
           success_message: ":green_circle: ${CIRCLE_PROJECT_REPONAME} ${CIRCLE_BRANCH} ${CIRCLE_JOB} (${CIRCLE_SHA1}) has succeeded!"
           webhook: "${DISCORD_STATUS_WEBHOOK}"
       - store_artifacts:
-          path: ./source/Linux-x86_64-Release.tar.gz
-          
-  build-linux64-debug:
-    docker:
-      - image: ubuntu:20.04
-    steps:
-      - run: export DEBIAN_FRONTEND=noninteractive
-      - run: export DEBCONF_NONINTERACTIVE_SEEN=true
-      - run: touch /tmp/nyc.txt
-      - run: echo "tzdata tzdata/Areas select America" > /tmp/nyc.txt
-      - run: echo "tzdata tzdata/Zones/America select New_York" >> /tmp/nyc.txt
-      - run: debconf-set-selections /tmp/nyc.txt
-      - run: ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
-      - run: apt-get update
-      - run: apt-get install -y --no-install-recommends tzdata
-      - run: apt-get install -y openssh-client git
-      - run: apt-get install -y curl clang cmake build-essential libsdl2-dev libopenal-dev libvorbis-dev libtheora-dev libfreetype6-dev libcurl4-gnutls-dev git zip unzip
-      - checkout
-      - run: curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
-      - run: unzip third-party/steamworks/sdk.zip -d third-party/steamworks
-      - run: export CC=clang CXX=clang++
-      - run: cmake -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_STEAMLIB=1 ./source
-      - run: make -j8
-      - run: echo "${CIRCLE_SHA1}" > ./source/build/commit.txt
-      - run: echo "671610" > ./source/build/steam_appid.txt
-      - run: tar -czvf ./source/Linux-x86_64-Debug.tar.gz ./source/build/* --exclude ./source/build/*.a --exclude ./source/build/base*/*.a ./source/build/libs/*.a
-      - discord/status:
-          fail_only: false
-          failure_message: ":red_circle: ${CIRCLE_PROJECT_REPONAME} ${CIRCLE_BRANCH} ${CIRCLE_JOB} (${CIRCLE_SHA1}) has failed!"
-          success_message: ":green_circle: ${CIRCLE_PROJECT_REPONAME} ${CIRCLE_BRANCH} ${CIRCLE_JOB} (${CIRCLE_SHA1}) has succeeded!"
-          webhook: "${DISCORD_STATUS_WEBHOOK}"
-      - store_artifacts:
-          path: ./source/Linux-x86_64-Debug.tar.gz          
-
-  build-osx:
-    macos:
-      xcode: '13.4.1'
-    steps:
-      - checkout
-      - run: brew update
-      - run: brew install curl cmake sdl2 openal-soft libvorbis theora freetype git zip unzip
-      - run: curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
-      - run: unzip third-party/steamworks/sdk.zip -d third-party/steamworks
-      - run: cmake -G Xcode ./source
-      - run: xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration Release -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
-      - run: echo "${CIRCLE_SHA1}" > ./source/build/commit.txt
-      - run: echo "671610" > ./source/build/steam_appid.txt
-      - run: tar -czvf ./source/OSX-x86_64-Release.tar.gz ./source/build/Release/*.app
-      - discord/status:
-          fail_only: false
-          failure_message: ":red_circle: ${CIRCLE_PROJECT_REPONAME} ${CIRCLE_BRANCH} ${CIRCLE_JOB} (${CIRCLE_SHA1}) has failed!"
-          success_message: ":green_circle: ${CIRCLE_PROJECT_REPONAME} ${CIRCLE_BRANCH} ${CIRCLE_JOB} (${CIRCLE_SHA1}) has succeeded!"
-          webhook: "${DISCORD_STATUS_WEBHOOK}"
-      - store_artifacts:
-          path: ./source/OSX-x86_64-Release.tar.gz
-
-  build-osx-debug:
-    macos:
-      xcode: '13.4.1'
-    steps:
-      - checkout
-      - run: brew update
-      - run: brew install curl cmake sdl2 openal-soft libvorbis theora freetype git zip unzip
-      - run: curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
-      - run: unzip third-party/steamworks/sdk.zip -d third-party/steamworks
-      - run: cmake -DCMAKE_BUILD_TYPE=DEBUG -G Xcode ./source
-      - run: xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration Debug -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
-      - run: echo "${CIRCLE_SHA1}" > ./source/build/commit.txt
-      - run: echo "671610" > ./source/build/steam_appid.txt
-      - run: tar -czvf ./source/OSX-x86_64-Debug.tar.gz ./source/build/Debug/*.app
-      - discord/status:
-          fail_only: false
-          failure_message: ":red_circle: ${CIRCLE_PROJECT_REPONAME} ${CIRCLE_BRANCH} ${CIRCLE_JOB} (${CIRCLE_SHA1}) has failed!"
-          success_message: ":green_circle: ${CIRCLE_PROJECT_REPONAME} ${CIRCLE_BRANCH} ${CIRCLE_JOB} (${CIRCLE_SHA1}) has succeeded!"
-          webhook: "${DISCORD_STATUS_WEBHOOK}"
-      - store_artifacts:
-          path: ./source/OSX-x86_64-Debug.tar.gz
-          
+          path: ./source/Linux-x86-Release.tar.gz
+           
 workflows:
   version: 2
   build:
     jobs:
-      - build-linux64
-      - build-linux64-debug
-      - build-osx
-      - build-osx-debug
+      - build-linux32
