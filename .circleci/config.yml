@@ -14,8 +14,6 @@ jobs:
       - run: debconf-set-selections /tmp/nyc.txt
       - run: ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
       - run: dpkg --add-architecture i386
-      - run: apt-get install software-properties-common
-      - run: apt-get update
       - run: add-apt-repository ppa:kubuntu-ppa/backports
       - run: add-apt-repository ppa:ubuntu-toolchain-r/test
       - run: apt-get update
