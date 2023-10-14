@@ -13,7 +13,6 @@ jobs:
       - run: echo "tzdata tzdata/Zones/America select New_York" >> /tmp/nyc.txt
       - run: debconf-set-selections /tmp/nyc.txt
       - run: ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
-      - run: echo "deb http://ppa.launchpad.net/kubuntu-ppa/backports/ubuntu focal main" | sudo tee -a /etc/apt/sources.list
       - run: apt-get update
       - run: apt-get install -y --no-install-recommends tzdata
       - run: apt-get install -y openssh-client git
