@@ -13,6 +13,7 @@ jobs:
       - run: echo "tzdata tzdata/Zones/America select New_York" >> /tmp/nyc.txt
       - run: debconf-set-selections /tmp/nyc.txt
       - run: ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
+      - run: apt-get install -y software-properties-common
       - run: add-apt-repository -y ppa:ubuntu-toolchain-r/test
       - run: apt-get update
       - run: dpkg --add-architecture i386
