@@ -13,10 +13,8 @@ jobs:
       - run: echo "tzdata tzdata/Zones/America select New_York" >> /tmp/nyc.txt
       - run: debconf-set-selections /tmp/nyc.txt
       - run: ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
-      - run: dpkg --add-architecture i386
-      - run: add-apt-repository ppa:kubuntu-ppa/backports
-      - run: add-apt-repository ppa:ubuntu-toolchain-r/test
-      - run: apt-get update
+      - run: sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test && sudo apt-get update
+      - run: dpkg --add-architecture i386 && apt-get update
       - run: apt-get install -y --no-install-recommends tzdata
       - run: apt-get install -y openssh-client git
       - run: apt-get install -y gcc-4.9 g++-4.9 cmake build-essential gcc-4.9-multilib g++-4.9-multilib gcc-multilib libgnutls-dev:i386 libidn11-dev:i386 libkrb5-dev:i386 librtmp-dev:i386 libpng-dev:i386 libgl1-mesa-dev:i386 libglu1-mesa-dev:i386 libpulse-dev:i386 libsdl2-dev:i386 libopenal-dev:i386 libvorbis-dev:i386 libtheora-dev:i386 libfreetype6-dev:i386 libcurl4-gnutls-dev:i386 libglib2.0-dev:i386
