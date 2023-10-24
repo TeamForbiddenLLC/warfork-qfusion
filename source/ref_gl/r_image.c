@@ -491,9 +491,19 @@ static int R_ScaledImageSize( int width, int height, int *scaledWidth, int *scal
 		for( potWidth = 1; potWidth < width; potWidth <<= 1 );
 		for( potHeight = 1; potHeight < height; potHeight <<= 1 );
 
+        // Force a resample on Mac
+#ifdef __APPLE__
 		if( ( width != potWidth ) || ( height != potHeight ) )
+		{
 			mips = 1;
-
+			mip = -1;
+		}
+#else
+		if( ( width != potWidth ) || ( height != potHeight ) )
+		{
+			mips = 1;
+		}
+#endif
 		width = potWidth;
 		height = potHeight;
 	}
