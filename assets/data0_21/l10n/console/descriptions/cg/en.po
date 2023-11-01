@@ -57,6 +57,12 @@ msgstr "<0/1> Critical hit effects will be displayed for high damage value attac
 "^6Note: Critical hit effect color varies based on damage dealt. Green (39 or more), Yellow (50 or more), and Red (64 or more)."
 
 #. Console/cg
+msgid "cg_centerVote"
+msgstr "<0/1> Displays a centered notice when a vote is in progress.\n"
+"^6Disable: cg_centerVote \"0\"\n"
+"^6Enable: cg_centerVote \"1\""
+
+#. Console/cg
 msgid "cg_chatBeep"
 msgstr "<0/1> Plays a chat beep sound when someone sends a message.\n"
 "^6Disable: cg_chatBeep \"0\"\n"
