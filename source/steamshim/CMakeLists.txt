@@ -67,7 +67,6 @@ file(GLOB parent_SRC
 )
 add_executable(wf_steam ${STEAM_SERVER_BINARY_TYPE} ${parent_SRC})
 target_link_libraries(wf_steam ${STEAMWORKS_LIBRARY})
-# hack to fix cmake not doing its job
 
 qf_set_output_dir(wf_steam "")
 

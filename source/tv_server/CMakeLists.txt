@@ -2,6 +2,11 @@ project(${QFUSION_TVSERVER_NAME})
 
 include_directories(${MINIZ_INCLUDE_DIR} ${CURL_INCLUDE_DIR})
 
+if (BUILD_STEAMLIB)
+set(STEAMSHIMCHILD_LIBRARY steamshim_child)
+endif()
+
+
 file(GLOB TV_SERVER_HEADERS
     "*.h"
 	"../gameshared/q_*.h"
