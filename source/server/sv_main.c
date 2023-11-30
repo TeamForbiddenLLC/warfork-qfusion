@@ -95,6 +95,7 @@ cvar_t *sv_autoUpdate;
 cvar_t *sv_lastAutoUpdate;
 
 cvar_t *sv_demodir;
+cvar_t *sv_useSteamAuth;
 
 //============================================================================
 
@@ -950,6 +951,7 @@ void SV_Init( void )
 	sv_masterservers_steam =	Cvar_Get( "masterservers_steam", DEFAULT_MASTER_SERVERS_STEAM_IPS, CVAR_LATCH );
 
 	sv_debug_serverCmd =	    Cvar_Get( "sv_debug_serverCmd", "0", CVAR_ARCHIVE );
+	sv_useSteamAuth = Cvar_Get( "sv_useSteamAuth", "", CVAR_SERVERINFO );
 
 	sv_MOTD = Cvar_Get( "sv_MOTD", "0", CVAR_ARCHIVE );
 	sv_MOTDFile = Cvar_Get( "sv_MOTDFile", "", CVAR_ARCHIVE );

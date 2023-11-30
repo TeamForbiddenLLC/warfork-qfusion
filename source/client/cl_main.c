@@ -2238,11 +2238,12 @@ static void CL_InitLocal( void )
 	}
 
 
-	steam_id = Cvar_Get( "steam_id", "", CVAR_USERINFO);
+	steam_id = Cvar_Get( "steam_id", "", CVAR_USERINFO|CVAR_READONLY);
 
 	if (Steam_Active()){
 		char id[18];
-		Cvar_Set(steam_id->name, id);
+		Q_snprintfz(id, sizeof id, "%llu", Steam_GetSteamID());
+		Cvar_ForceSet(steam_id->name, id);
 	}
 
 	Cvar_Get( "clan", "", CVAR_USERINFO | CVAR_ARCHIVE );

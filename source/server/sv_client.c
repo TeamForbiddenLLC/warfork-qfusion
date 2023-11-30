@@ -1234,9 +1234,17 @@ void SV_ParseClientMessage( client_t *client, msg_t *msg )
 				ticket.pcbTicket = MSG_ReadLong(msg);
 				MSG_ReadData(msg, ticket.pTicket, AUTH_TICKET_MAXSIZE);
 
-				int result = Steam_BeginAuthSession(76561199071513456, &ticket);
-				if (result != 0)
+				char *steamid = Info_ValueForKey(client->userinfo, "steam_id");
+				if (!steamid || !steamid[0]){
+					SV_DropClient(client, DROP_TYPE_GENERAL, "steam authentication required and no steam id present");
+					break;
+				}
+
+				int result = Steam_BeginAuthSession(atoll(steamid), &ticket);
+				if (result != 0){
 					SV_DropClient(client, DROP_TYPE_GENERAL, "steam auth failure");
+					break;
+				}
 				
 			}
 			break;

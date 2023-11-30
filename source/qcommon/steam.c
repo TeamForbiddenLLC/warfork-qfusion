@@ -40,7 +40,6 @@ static const STEAMSHIM_Event* blockOnEvent(STEAMSHIM_EventType type){
 	while( 1 ) {
 		const STEAMSHIM_Event *evt = STEAMSHIM_pump();
 		if (!evt) continue;
-		printf("%i\n",evt->type);
 
 		if (evt->type == type){
 			printEvent( evt );
@@ -154,9 +153,8 @@ void Steam_SetRichPresence( const char *key, const char *val )
 uint64_t Steam_GetSteamID( void )
 {
 	STEAMSHIM_getSteamID();
-	// const STEAMSHIM_Event *evt = blockOnEvent(SHIMEVENT_STEAMIDRECIEVED);
-	
-	return 10;
+	const STEAMSHIM_Event *evt = blockOnEvent(SHIMEVENT_STEAMIDRECIEVED);
+	return evt->lvalue;
 }
 /*
 * Steam_Active

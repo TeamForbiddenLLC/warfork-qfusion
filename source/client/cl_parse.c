@@ -882,7 +882,7 @@ SERVER CONNECTING MESSAGES
 */
 static void CL_ParseServerData( msg_t *msg )
 {
-	const char *str, *gamedir;
+	const char *str, *gamedir, *serverinfo;
 	int i, sv_bitflags, numpure;
 	int http_portnum;
 	bool old_sv_pure;
@@ -985,18 +985,24 @@ static void CL_ParseServerData( msg_t *msg )
 				}
 			}
 		}
+		serverinfo = Cvar_Serverinfo();
+		printf("-%s-\n", serverinfo);
+		char* usesteamauth = Info_ValueForKey(serverinfo, "sv_useSteamAuth");
+		
+		if (usesteamauth && usesteamauth[0] == '1' && Steam_Active())
+		{
+			// ticket needs to be generated on demand each time we join a server
+			SteamAuthTicket_t *ticket = Steam_GetAuthSessionTicketBlocking();
 
-		// ticket needs to be generated on demand each time we join a server
-		SteamAuthTicket_t *ticket = Steam_GetAuthSessionTicketBlocking();
+	  	uint8_t messageData[MAX_MSGLEN];
+			msg_t msg;
+			MSG_Init(&msg, messageData, sizeof(messageData));
+	  	MSG_WriteByte(&msg, clc_steamauth);
+	  	MSG_WriteLong(&msg, ticket->pcbTicket);
+			MSG_WriteData(&msg, ticket->pTicket, AUTH_TICKET_MAXSIZE);
 
-	  uint8_t messageData[MAX_MSGLEN];
-		msg_t msg;
-		MSG_Init(&msg, messageData, sizeof(messageData));
-	  MSG_WriteByte(&msg, clc_steamauth);
-	  MSG_WriteLong(&msg, ticket->pcbTicket);
-		MSG_WriteData(&msg, ticket->pTicket, AUTH_TICKET_MAXSIZE);
-
-		CL_Netchan_Transmit(&msg);
+			CL_Netchan_Transmit(&msg);
+		}
 
 	}
 
