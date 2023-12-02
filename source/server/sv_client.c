@@ -370,7 +370,7 @@ static void SV_New_f( client_t *client )
 	Netchan_PushAllFragments( &client->netchan );
 
 
-	if (Cvar_String("sv_useSteamAuth")[0] != '0'){
+	if (Cvar_Integer("sv_useSteamAuth") != 0){
 		// ask client to authenticate with steam
 		SV_SendServerCommand( client, "steamauth" );
 	}
@@ -504,7 +504,7 @@ static void SV_Begin_f( client_t *client )
 	}
 	// wsw : r1q2[end]
 
-	if (Cvar_String("sv_useSteamAuth")[0] != '0' && !client->authenticated)
+	if (Cvar_Integer("sv_useSteamAuth") != 0 && !client->authenticated)
 	{
 		SV_DropClient( client, DROP_TYPE_GENERAL, "Client did not authenticate when steam authentication required." );
 		return;
