@@ -119,6 +119,10 @@ int Steam_BeginAuthSession(uint64_t steamid, SteamAuthTicket_t *ticket){
 	return evt->ivalue;
 }
 
+void Steam_EndAuthSession(uint64_t steamid){
+	STEAMSHIM_endAuthSession(steamid);
+}
+
 /*
 * Steam_AdvertiseGame
 */
@@ -156,6 +160,7 @@ uint64_t Steam_GetSteamID( void )
 	const STEAMSHIM_Event *evt = blockOnEvent(SHIMEVENT_STEAMIDRECIEVED);
 	return evt->lvalue;
 }
+
 /*
 * Steam_Active
 */

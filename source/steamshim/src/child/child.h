@@ -17,7 +17,7 @@ void STEAMSHIM_getPersonaName();
 void STEAMSHIM_setRichPresence(const char* key, const char* val);
 void STEAMSHIM_getAuthSessionTicket();
 void STEAMSHIM_beginAuthSession(uint64_t steamid, SteamAuthTicket_t* ticket);
-
+void STEAMSHIM_endAuthSession(uint64_t steamid);
 #ifdef __cplusplus
 }
 #endif

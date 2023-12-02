@@ -186,6 +186,13 @@ extern "C" {
       buf.Transmit();
   }
 
+  void STEAMSHIM_endAuthSession(uint64_t steamid){
+    pipebuff_t buf;
+    buf.WriteByte(SHIMCMD_ENDAUTHSESSION);
+    buf.WriteLong(steamid);
+    buf.Transmit();
+  }
+
   void STEAMSHIM_setRichPresence(char* key, char* val){
       pipebuff_t buf;
       buf.WriteByte(SHIMCMD_SETRICHPRESENCE);

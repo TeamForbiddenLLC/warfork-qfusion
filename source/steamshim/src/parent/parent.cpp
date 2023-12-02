@@ -112,11 +112,18 @@ static bool processCommand(pipebuff_t cmd, ShimCmd cmdtype, unsigned int len)
                 long long cbAuthTicket = cmd.ReadLong();
                 void* pAuthTicket = cmd.ReadData(AUTH_TICKET_MAXSIZE);
 
+
                 int result = GSteamGameServer->BeginAuthSession(pAuthTicket, cbAuthTicket, steamID);
 
                 msg.WriteByte(SHIMEVENT_AUTHSESSIONVALIDATED);
                 msg.WriteInt(result);
                 msg.Transmit();
+            }
+            break;
+        case SHIMCMD_ENDAUTHSESSION:
+            {
+                uint64 steamID = cmd.ReadLong();
+                GSteamGameServer->EndAuthSession(steamID);
             }
             break;
     } // switch

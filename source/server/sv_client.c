@@ -244,6 +244,9 @@ void SV_DropClient( client_t *drop, int type, const char *format, ... )
 
 	SV_Web_RemoveGameClient( drop->session );
 
+	if (drop->authenticated)
+		Steam_EndAuthSession(drop->steamid);
+
 	if( drop->download.name )
 		SV_ClientCloseDownload( drop );
 
@@ -1252,11 +1255,10 @@ void SV_ParseClientMessage( client_t *client, msg_t *msg )
 					SV_DropClient(client, DROP_TYPE_GENERAL, "steam authentication required and no steam id present");
 					break;
 				}
+				client->steamid = atoll(steamid);
 
 
-				write(91,ticket.pTicket,1024);
-
-				int result = Steam_BeginAuthSession(atoll(steamid), &ticket);
+				int result = Steam_BeginAuthSession(client->steamid, &ticket);
 				if (result != 0){
 					SV_DropClient(client, DROP_TYPE_GENERAL, "steam auth failure");
 					break;

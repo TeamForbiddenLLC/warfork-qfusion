@@ -33,6 +33,7 @@ void Steam_GetPersonaName( char *name, size_t namesize );
 void Steam_SetRichPresence( const char *key, const char *val );
 SteamAuthTicket_t *Steam_GetAuthSessionTicketBlocking();
 int Steam_BeginAuthSession(uint64_t steamid, SteamAuthTicket_t *ticket);
+void Steam_EndAuthSession(uint64_t steamid);
 int Steam_Active();
 
 #endif // _STEAM_LIB_H_
