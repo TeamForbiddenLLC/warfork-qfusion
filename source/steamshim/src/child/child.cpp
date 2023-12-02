@@ -97,8 +97,6 @@ static STEAMSHIM_Event* ProcessEvent(){
                 event.ivalue = result;
             }
             break;
-        default:
-            return NULL;
     }
 
     return &event;
