@@ -45,7 +45,6 @@ static STEAMSHIM_Event* ProcessEvent(){
         return NULL;
 
     volatile unsigned int msglen =buf.ReadInt();
-    // write(91,buf.buffer,1024);
 
 
     char type = buf.ReadByte();

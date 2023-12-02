@@ -104,9 +104,6 @@ int pipebuff_t::Recieve()
 
           assert(br < sizeof(buffer));
           const int morebr = readPipe(GPipeRead, buffer + br, sizeof (buffer) - br);
-          // write(91,"------",5);
-          // write(91,buffer,1024);
-          // printf("read from pipe\n");
           if (morebr > 0)
               br += morebr;
           else  /* uh oh */

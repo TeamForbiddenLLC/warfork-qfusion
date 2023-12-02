@@ -98,8 +98,6 @@ static bool processCommand(pipebuff_t cmd, ShimCmd cmdtype, unsigned int len)
                 uint32 pcbTicket;
                 GSteamUser->GetAuthSessionTicket(pTicket,AUTH_TICKET_MAXSIZE, &pcbTicket);
 
-                //write(91,pTicket,1024);
-
                 msg.WriteByte(SHIMEVENT_AUTHSESSIONTICKETRECIEVED);
                 msg.WriteLong(pcbTicket);
                 msg.WriteData(pTicket, AUTH_TICKET_MAXSIZE);
