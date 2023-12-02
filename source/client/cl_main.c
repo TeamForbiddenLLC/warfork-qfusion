@@ -2125,8 +2125,8 @@ static char* CL_RandomName(){
 
 	int listsize = sizeof(NonSteamPlayerNames)/sizeof(*NonSteamPlayerNames);
 	const char* randname = NonSteamPlayerNames[rand() % listsize];
-	char* name = Mem_ZoneMalloc(MAX_NAME_BYTES);
 
+	static char name[MAX_NAME_BYTES];
 	Q_snprintfz(name, strlen(randname)+7,"%s%i",randname,rand());
 
 	return name;
