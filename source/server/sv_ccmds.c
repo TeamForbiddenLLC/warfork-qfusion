@@ -252,8 +252,8 @@ void SV_Status_f( void )
 	}
 	Com_Printf( "map              : %s\n", sv.mapname );
 
-	Com_Printf( "num score ping name            lastmsg address               port   rate  \n" );
-	Com_Printf( "--- ----- ---- --------------- ------- --------------------- ------ ------\n" );
+	Com_Printf( "num score ping name            steamid           lastmsg address               port   rate  \n" );
+	Com_Printf( "--- ----- ---- --------------- ----------------- ------- --------------------- ------ ------\n" );
 	for( i = 0, cl = svs.clients; i < sv_maxclients->integer; i++, cl++ )
 	{
 		if( !cl->state )
@@ -278,6 +278,8 @@ void SV_Status_f( void )
 		l = 16 - (int)strlen( s );
 		for( j = 0; j < l; j++ )
 			Com_Printf( " " );
+
+		Com_Printf("%17llu ", cl->steamid);
 
 		Com_Printf( "%7i ", svs.realtime - cl->lastPacketReceivedTime );
 
