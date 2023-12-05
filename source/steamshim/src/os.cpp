@@ -67,7 +67,7 @@ bool launchChild(ProcessType *pid, char* name)
     char* exename;
     asprintf(&exename, ".\\%s", name);
 
-    bool bResult = ( CreateProcessW( exename, str, NULL, NULL, TRUE, 0, NULL,
+    bool bResult = ( CreateProcessW( TEXT( exename ), str, NULL, NULL, TRUE, 0, NULL,
                               NULL, &si, pid) != 0);
     free( str );
     return bResult;
