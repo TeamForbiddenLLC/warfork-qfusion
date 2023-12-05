@@ -231,11 +231,22 @@ int main(int argc, char **argv)
 
     dbgpipe("Parent starting mainline.\n");
 
+    char* exename;
+
     // temporary hack, make this better
     if (strstr(*GArgv,"warfork_steam"))
+    {
+        exename = GAME_CLIENT_LAUNCH_NAME;
         GServerType = STEAMGAMECLIENT;
-    else
+    } else {
         GServerType = STEAMGAMESERVER;
+        if (strstr(*GArgv,"wftv_server"))
+        {
+            exename = GAME_TVSERVER_LAUNCH_NAME;
+        }else{
+            exename = GAME_SERVER_LAUNCH_NAME;
+        }
+    }
 
     if (!createPipes(&pipeParentRead, &pipeParentWrite, &pipeChildRead, &pipeChildWrite))
         fail("Failed to create application pipes");
@@ -243,7 +254,7 @@ int main(int argc, char **argv)
         fail("Failed to initialize Steamworks");
     else if (!setEnvironmentVars(pipeChildRead, pipeChildWrite))
         fail("Failed to set environment variables");
-    else if (!launchChild(&childPid))
+    else if (!launchChild(&childPid,exename))
         fail("Failed to launch application");
 
     // Close the ends of the pipes that the child will use; we don't need them.

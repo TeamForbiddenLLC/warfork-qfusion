@@ -58,13 +58,16 @@ bool setEnvVar(const char *key, const char *val)
     return (SetEnvironmentVariableA(key, val) != 0);
 } // setEnvVar
 
-bool launchChild(ProcessType *pid)
+bool launchChild(ProcessType *pid, char* name)
 {
     LPWSTR str = _wcsdup( GetCommandLineW() );
     STARTUPINFOW si = { sizeof( si ) };
 
     memset( pid, 0, sizeof( *pid ) );
-    bool bResult = ( CreateProcessW( TEXT( ".\\" ) TEXT( GAME_CLIENT_LAUNCH_NAME ), str, NULL, NULL, TRUE, 0, NULL,
+    char* exename;
+    asprintf(&exename, ".\\%s", name);
+
+    bool bResult = ( CreateProcessW( exename, str, NULL, NULL, TRUE, 0, NULL,
                               NULL, &si, pid) != 0);
     free( str );
     return bResult;
@@ -89,7 +92,7 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 #else  // everyone else that isn't Windows.
 
-bool launchChild(ProcessType *pid)
+bool launchChild(ProcessType *pid, char* name )
 {
     *pid = fork();
     if (*pid == -1)   // failed
@@ -97,11 +100,10 @@ bool launchChild(ProcessType *pid)
     else if (*pid != 0)  // we're the parent
         return true;  // we'll let the pipe fail if this didn't work.
 
-    // we're the child.
-    if (strstr(*GArgv,"warfork_steam"))
-        GArgv[0] = strdup("./" GAME_CLIENT_LAUNCH_NAME);
-    else
-        GArgv[0] = strdup("./" GAME_SERVER_LAUNCH_NAME);
+    char* exename;
+    asprintf(&exename, "./%s", name);
+
+    GArgv[0] = exename;
     execvp(GArgv[0], GArgv);
     // still here? It failed! Terminate, closing child's ends of the pipes.
     _exit(1);
