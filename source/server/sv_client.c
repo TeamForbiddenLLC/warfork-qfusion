@@ -1248,7 +1248,7 @@ void SV_ParseClientMessage( client_t *client, msg_t *msg )
 			{
 				SteamAuthTicket_t ticket;
 				ticket.pcbTicket = MSG_ReadLong(msg);
-				MSG_ReadData(msg, ticket.pTicket, AUTH_TICKET_MAXSIZE);
+				MSG_ReadData(msg, ticket.pTicket, ticket.pcbTicket);
 
 				char *steamid = Info_ValueForKey(client->userinfo, "steam_id");
 				if (!steamid || !steamid[0]){

@@ -1234,7 +1234,7 @@ static void CL_SteamAuth(){
 		MSG_Init(&msg, messageData, sizeof(messageData));
 	  MSG_WriteByte(&msg, clc_steamauth);
 	  MSG_WriteLong(&msg, ticket->pcbTicket);
-		MSG_WriteData(&msg, ticket->pTicket, AUTH_TICKET_MAXSIZE);
+		MSG_WriteData(&msg, ticket->pTicket, ticket->pcbTicket);
 
 		CL_Netchan_Transmit(&msg);
 	}
