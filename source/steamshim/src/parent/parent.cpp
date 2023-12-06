@@ -224,7 +224,7 @@ int main(int argc, char **argv)
     PipeType pipeChildWrite = NULLPIPE;
     ProcessType childPid;
 
-    dbgpipe("Parent starting mainline.\n");
+    dprintf("Parent starting mainline.\n");
 
     const char* exename;
 
@@ -257,7 +257,7 @@ int main(int argc, char **argv)
     closePipe(pipeChildWrite);
     pipeChildRead = pipeChildWrite = NULLPIPE;
 
-    dbgpipe("Parent in command processing loop.\n");
+    dprintf("Parent in command processing loop.\n");
 
     // Now, we block for instructions until the pipe fails (child closed it or
     //  terminated/crashed).
@@ -265,7 +265,7 @@ int main(int argc, char **argv)
     GPipeWrite = pipeParentWrite;
     processCommands();
 
-    dbgpipe("Parent shutting down.\n");
+    dprintf("Parent shutting down.\n");
 
     // Close our ends of the pipes.
     // writeBye(pipeParentWrite);
@@ -274,12 +274,12 @@ int main(int argc, char **argv)
 
     // deinitSteamworks();
 
-    dbgpipe("Parent waiting on child process.\n");
+    dprintf("Parent waiting on child process.\n");
 
     // Wait for the child to terminate, close the child process handles.
     const int retval = closeProcess(&childPid);
 
-    dbgpipe("Parent exiting mainline (child exit code %d).\n", retval);
+    dprintf("Parent exiting mainline (child exit code %d).\n", retval);
 
     return retval;
 

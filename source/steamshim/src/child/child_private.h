@@ -21,7 +21,7 @@ freely, subject to the following restrictions:
 #define DEBUGPIPE 1
 
 #if DEBUGPIPE
-#define dbgpipe printf
+#define dprintf printf
 #else
-static inline void dbgpipe(const char *fmt, ...) {}
+static inline void dprintf(const char *fmt, ...) {}
 #endif
