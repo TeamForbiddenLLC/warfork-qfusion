@@ -210,11 +210,14 @@ extern "C" {
     buf.Transmit();
   }
 
-  void STEAMSHIM_setRichPresence(char* key, char* val){
+  void STEAMSHIM_setRichPresence(int num, char** key, char** val){
       pipebuff_t buf;
       buf.WriteByte(SHIMCMD_SETRICHPRESENCE);
-      buf.WriteString(key);
-      buf.WriteString(val);
+      buf.WriteInt(num);
+      for (int i=0; i < num;i++){
+          buf.WriteString(key[i]);
+          buf.WriteString(val[i]);
+      }
       buf.Transmit();
   }
 }

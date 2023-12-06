@@ -58,7 +58,7 @@ bool setEnvVar(const char *key, const char *val)
     return (SetEnvironmentVariableA(key, val) != 0);
 } // setEnvVar
 
-bool launchChild(ProcessType *pid, char* name)
+bool launchChild(ProcessType *pid, const char* name)
 {
     LPWSTR str = _wcsdup( GetCommandLineW() );
     STARTUPINFOW si = { sizeof( si ) };
@@ -92,7 +92,7 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 #else  // everyone else that isn't Windows.
 
-bool launchChild(ProcessType *pid, char* name )
+bool launchChild(ProcessType *pid, const char* name )
 {
     *pid = fork();
     if (*pid == -1)   // failed

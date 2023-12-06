@@ -53,15 +53,6 @@ static bool processCommand(pipebuff_t cmd, ShimCmd cmdtype, unsigned int len)
 #define PRINTGOTCMD(x) else if (cmdtype && cmdtype == x) printf("Parent got " #x ".\n")
     PRINTGOTCMD(SHIMCMD_BYE);
     // PRINTGOTCMD(SHIMCMD_PUMP);
-    PRINTGOTCMD(SHIMCMD_REQUESTSTATS);
-    PRINTGOTCMD(SHIMCMD_STORESTATS);
-    PRINTGOTCMD(SHIMCMD_SETACHIEVEMENT);
-    PRINTGOTCMD(SHIMCMD_GETACHIEVEMENT);
-    PRINTGOTCMD(SHIMCMD_RESETSTATS);
-    PRINTGOTCMD(SHIMCMD_SETSTATI);
-    PRINTGOTCMD(SHIMCMD_GETSTATI);
-    PRINTGOTCMD(SHIMCMD_SETSTATF);
-    PRINTGOTCMD(SHIMCMD_GETSTATF);
     PRINTGOTCMD(SHIMCMD_REQUESTSTEAMID);
     PRINTGOTCMD(SHIMCMD_REQUESTPERSONANAME);
     PRINTGOTCMD(SHIMCMD_SETRICHPRESENCE);
@@ -107,9 +98,13 @@ static bool processCommand(pipebuff_t cmd, ShimCmd cmdtype, unsigned int len)
 
         case SHIMCMD_SETRICHPRESENCE:
             {
-                const char *key = cmd.ReadString();
-                const char *val = cmd.ReadString();
-                SteamFriends()->SetRichPresence(key,val);
+                int num = cmd.ReadInt();
+
+                for (int i=0; i < num;i++){
+                    const char *key = cmd.ReadString();
+                    const char *val = cmd.ReadString();
+                    SteamFriends()->SetRichPresence(key,val);
+                }
             }
             break;
         case SHIMCMD_REQUESTAUTHSESSIONTICKET:
@@ -231,7 +226,7 @@ int main(int argc, char **argv)
 
     dbgpipe("Parent starting mainline.\n");
 
-    char* exename;
+    const char* exename;
 
     // temporary hack, make this better
     if (strstr(*GArgv,"warfork_steam"))

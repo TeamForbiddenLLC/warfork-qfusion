@@ -147,9 +147,9 @@ void Steam_GetPersonaName( char *name, size_t namesize )
 /*
 * Steam_SetRichPresence
 */
-void Steam_SetRichPresence( const char *key, const char *val )
+void Steam_SetRichPresence( int num, const char **key, const char **val )
 {
-	// STEAMSHIM_setRichPresence(key, val);
+	STEAMSHIM_setRichPresence(num, key, val);
 }
 /*
 * Steam_GetSteamID

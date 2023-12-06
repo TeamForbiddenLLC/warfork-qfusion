@@ -58,7 +58,7 @@ void pipebuff_t::WriteLong(long long val)
 
 void pipebuff_t::WriteString(char *val)
 {
-  WriteData(val, strlen(val));
+  WriteData(val, strlen(val)+1);
 }
 
 void *pipebuff_t::ReadData(size_t vallen)
@@ -72,7 +72,7 @@ void *pipebuff_t::ReadData(size_t vallen)
 char *pipebuff_t::ReadString()
 {
   char *str = cursize + buffer;
-  unsigned int len = strlen(str);
+  unsigned int len = strlen(str)+1;
   cursize +=len;
   return str;
 }

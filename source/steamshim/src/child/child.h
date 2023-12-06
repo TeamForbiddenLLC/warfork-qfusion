@@ -34,7 +34,7 @@ int STEAMSHIM_alive(void);
 const STEAMSHIM_Event *STEAMSHIM_pump(void);
 void STEAMSHIM_getSteamID();
 void STEAMSHIM_getPersonaName();
-void STEAMSHIM_setRichPresence(const char* key, const char* val);
+void STEAMSHIM_setRichPresence(int num, const char** key, const char** val);
 void STEAMSHIM_getAuthSessionTicket();
 void STEAMSHIM_beginAuthSession(uint64_t steamid, SteamAuthTicket_t* ticket);
 void STEAMSHIM_endAuthSession(uint64_t steamid);

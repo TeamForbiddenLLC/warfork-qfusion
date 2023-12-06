@@ -43,7 +43,7 @@ void fail(const char *err);
 bool createPipes(PipeType *pPipeParentRead, PipeType *pPipeParentWrite,
                         PipeType *pPipeChildRead, PipeType *pPipeChildWrite);
 bool setEnvVar(const char *key, const char *val);
-bool launchChild(ProcessType *pid, char* exename);
+bool launchChild(ProcessType *pid, const char* exename);
 int closeProcess(ProcessType *pid);
 
 int writePipe(PipeType fd, const void *buf, const unsigned int _len);
