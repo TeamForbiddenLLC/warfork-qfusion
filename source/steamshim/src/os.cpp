@@ -60,14 +60,15 @@ bool setEnvVar(const char *key, const char *val)
 
 bool launchChild(ProcessType *pid, const char* name)
 {
-    LPWSTR str = _wcsdup( GetCommandLineW() );
+    char *str = _strdup( GetCommandLineA() );
     STARTUPINFOW si = { sizeof( si ) };
 
     memset( pid, 0, sizeof( *pid ) );
-    char* exename;
-    asprintf(&exename, ".\\%s", name);
 
-    bool bResult = ( CreateProcessW( TEXT( exename ), str, NULL, NULL, TRUE, 0, NULL,
+    char exename[32] = ".\\";
+    strncpy(exename+2, name, 30);
+
+    bool bResult = ( CreateProcessA( exename, str, NULL, NULL, TRUE, 0, NULL,
                               NULL, &si, pid) != 0);
     free( str );
     return bResult;
@@ -100,8 +101,8 @@ bool launchChild(ProcessType *pid, const char* name )
     else if (*pid != 0)  // we're the parent
         return true;  // we'll let the pipe fail if this didn't work.
 
-    char* exename;
-    asprintf(&exename, "./%s", name);
+    char exename[32] = "./";
+    strncpy(exename+2, name, 30);
 
     GArgv[0] = exename;
     execvp(GArgv[0], GArgv);
