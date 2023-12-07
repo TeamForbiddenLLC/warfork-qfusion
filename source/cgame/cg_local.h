@@ -931,6 +931,7 @@ extern cvar_t *cg_raceGhostsAlpha;
 extern cvar_t *cg_chatBeep;
 extern cvar_t *cg_chatFilter;
 extern cvar_t *cg_chatFilterTV;
+extern cvar_t *cg_centerVote;
 
 //force models
 extern cvar_t *cg_teamPLAYERSmodel;

@@ -2099,7 +2099,7 @@ static void G_CallVotes_CheckState( void )
 				clientVoted[PLAYERNUM( ent )] == VOTED_NOTHING ) {
 				continue;
 			}
-       }
+		}
 
 
 		if( callvoteState.vote.callvote->need_auth && sv_mm_enable->integer ) {
@@ -2142,6 +2142,24 @@ static void G_CallVotes_CheckState( void )
 	{
 		if( callvoteState.timeout - game.realtime <= 7500 && callvoteState.timeout - game.realtime > 2500 )
 			G_AnnouncerSound( NULL, trap_SoundIndex( S_ANNOUNCER_CALLVOTE_VOTE_NOW ), GS_MAX_TEAMS, true, NULL );
+
+		char *ival;
+		int iCenterVoteEnabled;
+		edict_t *i;
+
+		// If a player doesn't have "Centered vote notifications" disabled, and they still have not voted, notify them of the vote via center print
+		for( i = game.edicts + 1; PLAYERNUM( i ) < gs.maxclients; i++ )
+		{
+			iCenterVoteEnabled = 1;
+			ival = NULL;
+			ival = Info_ValueForKey( i->r.client->userinfo, "cg_centerVote" );
+			if( ival )
+				iCenterVoteEnabled = atoi( ival );
+
+			if ( iCenterVoteEnabled != 0 && clientVoted[PLAYERNUM( i )] == VOTED_NOTHING )
+				G_CenterPrintMsg( i, S_COLOR_YELLOW "Vote in progress - View chat");
+		}
+
 		G_PrintMsg( NULL, "Vote in progress: %s%s%s, %i voted yes, %i voted no. %i required\n", S_COLOR_YELLOW,
 			G_CallVotes_String( &callvoteState.vote ), S_COLOR_WHITE, yeses, noes,
 			needvotes + 1 );
@@ -2402,6 +2420,23 @@ static void G_CallVote( edict_t *ent, bool isopcall )
 	trap_ConfigString( CS_ACTIVE_CALLVOTE, G_CallVotes_String( &callvoteState.vote ) );
 
 	G_AnnouncerSound( NULL, trap_SoundIndex( va( S_ANNOUNCER_CALLVOTE_CALLED_1_to_2, ( rand()&1 )+1 ) ), GS_MAX_TEAMS, true, NULL );
+
+	char *zval;
+	int zCenterVoteEnabled;
+	edict_t *z;
+
+	// If a player doesn't have "Centered vote notifications" disabled, and they still have not voted, notify them of the vote via center print
+	for( z = game.edicts + 1; PLAYERNUM( z ) < gs.maxclients; z++ )
+	{
+		zCenterVoteEnabled = 1;
+		zval = NULL;
+		zval = Info_ValueForKey( z->r.client->userinfo, "cg_centerVote" );
+		if( zval )
+			zCenterVoteEnabled = atoi( zval );
+
+		if ( zCenterVoteEnabled != 0 && clientVoted[PLAYERNUM( z )] == VOTED_NOTHING )
+			G_CenterPrintMsg( z, S_COLOR_YELLOW "Vote in progress - View chat");
+	}
 
 	G_PrintMsg( NULL, "%s" S_COLOR_WHITE " requested to vote " S_COLOR_YELLOW "%s\n",
 		ent->r.client->netname, G_CallVotes_String( &callvoteState.vote ) );

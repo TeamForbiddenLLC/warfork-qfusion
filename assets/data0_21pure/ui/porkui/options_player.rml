@@ -339,7 +339,10 @@
 							<option value="7">chat + center + icons</option>
 						</select>
 						<br/>
-						
+
+						<div class="title">Centered vote notifications</div>
+						<input cvar="cg_centerVote" type="checkbox" realtime="1"/>
+
 						<div class="title">Show teammates' indicators</div>
 						<input cvar="cg_showTeamMates" type="checkbox" realtime="1"/>
 

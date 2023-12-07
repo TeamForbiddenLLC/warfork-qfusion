@@ -627,6 +627,12 @@ msgstr "chat + center"
 msgid "chat + center + icons"
 msgstr "chat + center + icons"
 
+msgid "Centered vote notifications"
+msgstr "Centered vote notifications"
+
+msgid "Vote in progress - View chat"
+msgstr "Vote in progress - View chat"
+
 #. Shows indicators at the top of the teammates, even if they are not visible
 #. through the walls
 msgid "Show teammates' indicators"
