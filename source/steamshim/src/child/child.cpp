@@ -125,10 +125,10 @@ static STEAMSHIM_Event* ProcessEvent(){
 extern "C" {
   int STEAMSHIM_init(void)
   {
-      dprintf("Child init start.\n");
+      dbgprintf("Child init start.\n");
       if (!initPipes())
       {
-          dprintf("Child init failed.\n");
+          dbgprintf("Child init failed.\n");
           return 0;
       }
 
@@ -136,13 +136,13 @@ extern "C" {
       signal(SIGPIPE, SIG_IGN);
 #endif
 
-      dprintf("Child init success!\n");
+      dbgprintf("Child init success!\n");
       return 1;
   } 
 
   void STEAMSHIM_deinit(void)
   {
-      dprintf("Child deinit.\n");
+      dbgprintf("Child deinit.\n");
       if (GPipeWrite != NULLPIPE)
       {
           // writeBye();
