@@ -61,7 +61,7 @@ bool setEnvVar(const char *key, const char *val)
 bool launchChild(ProcessType *pid, const char* name)
 {
     char *str = _strdup( GetCommandLineA() );
-    STARTUPINFOW si = { sizeof( si ) };
+    STARTUPINFOA si = { sizeof( si ) };
 
     memset( pid, 0, sizeof( *pid ) );
 
