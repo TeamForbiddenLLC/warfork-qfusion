@@ -18,7 +18,7 @@ By using this implementation in any capacity, you acknowledge and agree to the f
 
 - **No Liability:** The developers, distributors, and associated entities disclaim any liability for damages, losses, or legal consequences arising from your use of this implementation or any related features.
 
-- **Independent Legal Advice:** This disclaimer underscores the importance of seeking independent legal advice to confirm that your use of this tool aligns with legal requirements. This disclaimer does not replace professional legal counsel.
+- **Independent Legal Advice:** This disclaimer underscores the importance of seeking independent legal advice to confirm that your use of this implementation aligns with legal requirements. This disclaimer does not replace professional legal counsel.
 
 By using this implementation or any associated features, you accept and agree to be bound by the terms of this legal disclaimer. If you disagree with any part of this disclaimer, refrain from using this implementation or its related features.
 
