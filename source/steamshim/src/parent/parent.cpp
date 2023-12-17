@@ -295,7 +295,10 @@ char *argv[MAX_NUM_ARGVS];
 static void ParseCommandLine( LPSTR lpCmdLine )
 {
 	argc = 1;
-	argv[0] = "exe";
+
+	static char buffer[MAX_PATH]={0};
+	GetModuleFileNameA(NULL,&argv[0],sizeof(buffer)/sizeof(*buffer));
+	argv[0] = buffer;
 
 	while( *lpCmdLine && ( argc < MAX_NUM_ARGVS ) ) {
 		while( *lpCmdLine && ( *lpCmdLine <= 32 || *lpCmdLine > 126 ) )
