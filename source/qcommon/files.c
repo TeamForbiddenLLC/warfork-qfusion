@@ -4298,11 +4298,7 @@ void FS_Init( void )
 
 	// Need to initialize before FS is done, but after the basic search path is constructed.
 #if APP_STEAMID
-#if !defined(DEDICATED_ONLY)
 	Steam_Init();
-#else
-	// FIXME: Steam server init here!
-#endif
 #endif
 
 	//

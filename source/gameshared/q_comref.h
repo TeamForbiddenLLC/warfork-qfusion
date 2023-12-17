@@ -173,6 +173,7 @@ typedef struct
 #define CS_TVSERVER			1
 #define	CS_MAXCLIENTS		2
 #define CS_MODMANIFEST		3
+#define CS_USESTEAMAUTH 4
 
 #define SERVER_PROTECTED_CONFIGSTRINGS 5
 

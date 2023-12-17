@@ -504,9 +504,9 @@ typedef struct {
 	_Bool discord_initialized;
 	unsigned int next_update;
 	RichPresence old_presence;
-} cl_discord_state_t;
+} cl_presence_state_t;
 
-static cl_discord_state_t cl_presence_state;
+static cl_presence_state_t cl_presence_state;
 
 void UpdatePresenceIfChanged( RichPresence presence )
 {
@@ -540,9 +540,9 @@ void UpdatePresenceIfChanged( RichPresence presence )
 
 #ifdef APP_STEAMID
 	if (Steam_Active()){
-		Steam_SetRichPresence("score", presence.state);
-		Steam_SetRichPresence("details", presence.details);
-		Steam_SetRichPresence("steam_display", "#Status_Score");
+		char* keys[3] = {"score", "details","steam_display"};
+		char* values[3] = {presence.state,presence.state,"#Status_Score"};
+		Steam_SetRichPresence(3, keys, values);
 	}
 #endif
 

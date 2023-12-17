@@ -882,7 +882,7 @@ SERVER CONNECTING MESSAGES
 */
 static void CL_ParseServerData( msg_t *msg )
 {
-	const char *str, *gamedir;
+	const char *str, *gamedir, *serverinfo;
 	int i, sv_bitflags, numpure;
 	int http_portnum;
 	bool old_sv_pure;
@@ -1026,6 +1026,7 @@ static void CL_ParseServerData( msg_t *msg )
 	// separate the printfs so the server message can have a color
 	Com_Printf( S_COLOR_WHITE "\n" "=====================================\n" );
 	Com_Printf( S_COLOR_WHITE "%s\n\n", cl.servermessage );
+
 }
 
 /*
@@ -1217,7 +1218,25 @@ static void CL_ParseConfigstringCommand( void )
 		idx = atoi( Cmd_Argv( i ) );
 		s = Cmd_Argv( i + 1 );
 
+
 		CL_UpdateConfigString( idx, s );
+	}
+}
+
+static void CL_SteamAuth(){
+	if (Steam_Active())
+	{
+		// ticket needs to be generated on demand each time we join a server
+		SteamAuthTicket_t *ticket = Steam_GetAuthSessionTicketBlocking();
+
+	  uint8_t messageData[MAX_MSGLEN];
+		msg_t msg;
+		MSG_Init(&msg, messageData, sizeof(messageData));
+	  MSG_WriteByte(&msg, clc_steamauth);
+	  MSG_WriteLong(&msg, ticket->pcbTicket);
+		MSG_WriteData(&msg, ticket->pTicket, ticket->pcbTicket);
+
+		CL_Netchan_Transmit(&msg);
 	}
 }
 
@@ -1240,6 +1259,7 @@ svcmd_t svcmds[] =
 	{ "initdownload", CL_InitDownload_f },
 	{ "multiview", CL_Multiview_f },
 	{ "cvarinfo", CL_CvarInfoRequest_f },
+	{ "steamauth", CL_SteamAuth },
 
 	{ NULL, NULL }
 };

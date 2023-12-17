@@ -897,6 +897,7 @@ static void CL_MM_ErrorMessage( bool printToConsole, const char *format, ... )
 
 void CL_MM_Init( void )
 {
+
 	if( cl_mm_initialized )
 		return;
 
@@ -941,7 +942,7 @@ void CL_MM_Init( void )
 	/*
 	* steam
 	*/
-	cl_mm_steam_id = Steam_GetSteamID();
+	// cl_mm_steam_id = Steam_GetSteamID();
 
 	/*
 	* login

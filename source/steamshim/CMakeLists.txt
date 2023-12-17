@@ -1,7 +1,9 @@
 project(wf_steam)
 
 add_definitions(
-    -DGAME_LAUNCH_NAME="${QFUSION_CLIENT_NAME}${CMAKE_EXECUTABLE_SUFFIX}"
+    -DGAME_CLIENT_LAUNCH_NAME="${QFUSION_CLIENT_NAME}${CMAKE_EXECUTABLE_SUFFIX}"
+    -DGAME_SERVER_LAUNCH_NAME="${QFUSION_SERVER_NAME}${CMAKE_EXECUTABLE_SUFFIX}"
+    -DGAME_TVSERVER_LAUNCH_NAME="${QFUSION_TVSERVER_NAME}${CMAKE_EXECUTABLE_SUFFIX}"
     -DUNICODE
     -D_UNICODE
 )
@@ -47,8 +49,25 @@ else()
 endif()
 
 
-add_executable(wf_steam ${STEAM_SERVER_BINARY_TYPE} pipe.c steamshim_parent.cpp)
+file(GLOB child_SRC
+    "src/*.h"
+    "src/*.cpp"
+    "src/child/*.h"
+    "src/child/*.cpp"
+)
+
+add_library(steamshim_child STATIC ${child_SRC})
+qf_set_output_dir(steamshim_child libs)
+
+file(GLOB parent_SRC
+    "src/*.h"
+    "src/*.cpp"
+    "src/parent/*.h"
+    "src/parent/*.cpp"
+)
+add_executable(wf_steam ${STEAM_SERVER_BINARY_TYPE} ${parent_SRC})
 target_link_libraries(wf_steam ${STEAMWORKS_LIBRARY})
+
 qf_set_output_dir(wf_steam "")
 
 add_custom_command(TARGET wf_steam
@@ -56,4 +75,19 @@ add_custom_command(TARGET wf_steam
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different
         "${STEAMWORKS_LIBRARY_DIR}/${STEAMWORKS_SO_PREFIX}${STEAMWORKS_LIBRARY}${STEAMWORKS_LIBRARY_EXTENSION}"
         "${STEAMWORKS_OUTPUT_PATH}"
+)
+add_custom_command(TARGET wf_steam
+    POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E create_symlink
+    "${STEAMWORKS_OUTPUT_PATH}/wf_steam${CMAKE_EXECUTABLE_SUFFIX}" "${STEAMWORKS_OUTPUT_PATH}/wf_server_steam${CMAKE_EXECUTABLE_SUFFIX}"
+)
+add_custom_command(TARGET wf_steam
+    POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E create_symlink
+    "${STEAMWORKS_OUTPUT_PATH}/wf_steam${CMAKE_EXECUTABLE_SUFFIX}" "${STEAMWORKS_OUTPUT_PATH}/warfork_steam${CMAKE_EXECUTABLE_SUFFIX}"
+)
+add_custom_command(TARGET wf_steam
+    POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E create_symlink
+    "${STEAMWORKS_OUTPUT_PATH}/wf_steam${CMAKE_EXECUTABLE_SUFFIX}" "${STEAMWORKS_OUTPUT_PATH}/wftv_server_steam${CMAKE_EXECUTABLE_SUFFIX}"
 )

@@ -20,6 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #ifndef _STEAM_LIB_H_
 #define _STEAM_LIB_H_
+#include "../steamshim/src/steamshim_types.h"
+#include <stdint.h>
 
 void Steam_Init( void );
 void Steam_RunFrame( void );
@@ -28,7 +30,10 @@ uint64_t Steam_GetSteamID( void );
 int Steam_GetAuthSessionTicket( void (*callback)( void *, size_t ) );
 void Steam_AdvertiseGame( const uint8_t *ip, unsigned short port );
 void Steam_GetPersonaName( char *name, size_t namesize );
-void Steam_SetRichPresence( const char *key, const char *val );
+void Steam_SetRichPresence( int num, const char **key, const char **val );
+SteamAuthTicket_t *Steam_GetAuthSessionTicketBlocking();
+int Steam_BeginAuthSession(uint64_t steamid, SteamAuthTicket_t *ticket);
+void Steam_EndAuthSession(uint64_t steamid);
 int Steam_Active();
 
 #endif // _STEAM_LIB_H_

@@ -177,18 +177,23 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR MINGW)
 
     # default to sdl2 build on non-windows platforms
     set(USE_SDL2 1)
+    
 
-    # -Wl,--as-needed
-    add_common_link_flags("-Wl,--as-needed")
+    # linking flags can't be used for static libs
+    if (!TARGET_IS_STATIC_LIB)
+        # -Wl,--as-needed
+        add_common_link_flags("-Wl,--as-needed")
 
-    # -s in release link flags
-    add_release_link_flags("-s")
+        # -s in release link flags
+        add_release_link_flags("-s")
 
-    if (MINGW)
-        add_definitions(-D_WIN32_WINNT=_WIN32_WINNT_VISTA)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
-        add_common_link_flags("-static -static-libgcc -static-libstdc++")
+        if (MINGW)
+            add_definitions(-D_WIN32_WINNT=_WIN32_WINNT_VISTA)
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
+            add_common_link_flags("-static -static-libgcc -static-libstdc++")
+        endif()
+
     endif()
 endif()
 
@@ -260,6 +265,7 @@ if (NOT GAME_MODULES_ONLY)
         find_windows_release_libs(SDL2_LIBRARIES)
     endif()
 endif()
+
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux") # Do not add 'OR MINGW' here - we need to use suffix-prefix settings from Windows
     set(CURL_LIBRARY "")

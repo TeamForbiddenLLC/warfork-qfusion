@@ -262,7 +262,8 @@ enum clc_ops_e
 	clc_move,				// [[usercmd_t]
 	clc_svcack,
 	clc_clientcommand,      // [string] message
-	clc_extension
+	clc_extension,
+	clc_steamauth,
 };
 
 //==============================================

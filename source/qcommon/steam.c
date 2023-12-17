@@ -18,7 +18,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 #include "../qcommon/qcommon.h"
-#include "../steamshim/steamshim_child.h"
+#include "../steamshim/src/child/child.h"
+#include <string.h>
 
 #define UNIMPLEMENTED_DBGBREAK()                                         \
 	do {                                                                 \
@@ -31,32 +32,25 @@ static void printEvent( const STEAMSHIM_Event *e )
 	if( !e )
 		return;
 
-	Com_Printf( "CHILD EVENT: " );
-	switch( e->type ) {
-#define PRINTGOTEVENT( x )     \
-	case SHIMEVENT_##x:        \
-		Com_Printf( "%s(", #x ); \
-		break
-		PRINTGOTEVENT( BYE );
-		PRINTGOTEVENT( STATSRECEIVED );
-		PRINTGOTEVENT( STATSSTORED );
-		PRINTGOTEVENT( SETACHIEVEMENT );
-		PRINTGOTEVENT( GETACHIEVEMENT );
-		PRINTGOTEVENT( STEAMIDRECIEVED );
-		PRINTGOTEVENT( PERSONANAMERECIEVED );
-		PRINTGOTEVENT( RESETSTATS );
-		PRINTGOTEVENT( SETSTATI );
-		PRINTGOTEVENT( GETSTATI );
-		PRINTGOTEVENT( SETSTATF );
-		PRINTGOTEVENT( GETSTATF );
-#undef PRINTGOTEVENT
-		default:
-			Com_Printf( "UNKNOWN(" );
-			break;
-	} /* switch */
-
-	Com_Printf( "%sokay, ival=%d, fval=%f, time=%llu, name='%s').\n", e->okay ? "" : "!", e->ivalue, e->fvalue, e->epochsecs, e->name );
+	Com_Printf( "%sokay, ival=%d, fval=%f, lval=%llu, name='%s').\n", e->okay ? "" : "!", e->ivalue, e->fvalue, e->lvalue, e->name );
 } /* printEvent */
+
+static const STEAMSHIM_Event* blockOnEvent(STEAMSHIM_EventType type){
+
+	while( 1 ) {
+		const STEAMSHIM_Event *evt = STEAMSHIM_pump();
+		if (!evt) continue;
+
+		if (evt->type == type){
+			printEvent( evt );
+			return evt;
+		} else {
+			printf("warning: ignoring event %i\n",evt->type);
+			// event gets ignored!
+			printEvent( evt );
+		}
+	}
+}
 
 /*
 * Steam_Init
@@ -69,7 +63,7 @@ void Steam_Init( void )
 		return;
 	}
 
-	STEAMSHIM_requestStats();
+	// STEAMSHIM_requestStats();
 }
 
 /*
@@ -98,8 +92,35 @@ void Steam_Shutdown( void )
 */
 int Steam_GetAuthSessionTicket( void ( *callback )( void *, size_t ) )
 {
-	// UNIMPLEMENTED_DBGBREAK();
+	// coolelectronics: not implementing anything here until i have a better understanding of cl_mm.c
 	return 0;
+}
+
+/*
+* Steam_GetAuthSessionTicketBlocking
+*/
+const SteamAuthTicket_t* Steam_GetAuthSessionTicketBlocking(){
+	static SteamAuthTicket_t ticket;
+
+	STEAMSHIM_getAuthSessionTicket();
+	const STEAMSHIM_Event *evt = blockOnEvent(SHIMEVENT_AUTHSESSIONTICKETRECIEVED);
+
+	ticket.pcbTicket = evt->lvalue;
+	memcpy(ticket.pTicket, evt->name, AUTH_TICKET_MAXSIZE);
+
+	return &ticket;
+}
+
+int Steam_BeginAuthSession(uint64_t steamid, SteamAuthTicket_t *ticket){
+
+	STEAMSHIM_beginAuthSession(steamid,ticket);
+	const STEAMSHIM_Event *evt = blockOnEvent(SHIMEVENT_AUTHSESSIONVALIDATED);
+
+	return evt->ivalue;
+}
+
+void Steam_EndAuthSession(uint64_t steamid){
+	STEAMSHIM_endAuthSession(steamid);
 }
 
 /*
@@ -119,18 +140,16 @@ void Steam_GetPersonaName( char *name, size_t namesize )
 		return;
 	}
 	STEAMSHIM_getPersonaName();
-	const STEAMSHIM_Event *evt;
-	while( !( evt = STEAMSHIM_pump() ) ) {
-	}
-	strncpy(name, evt->name,namesize);
+	const STEAMSHIM_Event *evt = blockOnEvent(SHIMEVENT_PERSONANAMERECIEVED);
+	strncpy(name, evt->name, namesize);
 }
 
 /*
 * Steam_SetRichPresence
 */
-void Steam_SetRichPresence( const char *key, const char *val )
+void Steam_SetRichPresence( int num, const char **key, const char **val )
 {
-	STEAMSHIM_setRichPresence(key, val);
+	STEAMSHIM_setRichPresence(num, key, val);
 }
 /*
 * Steam_GetSteamID
@@ -138,15 +157,14 @@ void Steam_SetRichPresence( const char *key, const char *val )
 uint64_t Steam_GetSteamID( void )
 {
 	STEAMSHIM_getSteamID();
-	const STEAMSHIM_Event *evt;
-	while( !( evt = STEAMSHIM_pump() ) ) {
-	}
-
+	const STEAMSHIM_Event *evt = blockOnEvent(SHIMEVENT_STEAMIDRECIEVED);
 	return evt->lvalue;
 }
+
 /*
 * Steam_Active
 */
 int Steam_Active(){
 	return STEAMSHIM_alive();
 }
+

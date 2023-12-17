@@ -95,6 +95,52 @@ static bool	cl_initialized = false;
 
 static async_stream_module_t *cl_async_stream;
 
+
+static const char* const DisallowedNames[] =
+{
+	"Player",
+
+	"Dyllan",
+	"Wallie",
+	"Clara",
+	"Pogo",
+	"Maddie",
+
+	"Missy",
+	"Brownie",
+	"Oscar",
+	"Scruffy",
+	"Tootsie",
+
+	"Fraggle",
+	"Marzipan",
+	"Butter",
+	"Biscuit",
+	"Cora",
+
+	"Fred",
+	"Dino",
+	"Rocky",
+	"Fluffy",
+	"Luke",
+
+	"Nico",
+	"Maggie",
+	"Bridgette",
+	"Angus",
+	"Clover",
+};
+
+static const char* const NonSteamPlayerNames[] =
+{
+	"Amber",
+	"Buck",
+	"Leon",
+	"Serena",
+	"Rufus",
+	"Hamilton",
+};
+
 //======================================================================
 
 
@@ -2066,12 +2112,32 @@ static void CL_ShowServerIP_f( void )
 	Com_Printf( "Address: %s\n", NET_AddressToString( &cls.serveraddress ) );
 }
 
+static bool CL_IsNameValid(const char* name){
+	if ( !name[0] ) return false;
+	for ( int i = 0; i < sizeof(DisallowedNames)/sizeof(*DisallowedNames); i++ ){
+		if ( !strncmp(name, DisallowedNames[i], strlen(DisallowedNames[i])) ) return false;
+	}
+	return true;
+}
+
+static char* CL_RandomName(){
+	srand(time(NULL));
+
+	int listsize = sizeof(NonSteamPlayerNames)/sizeof(*NonSteamPlayerNames);
+	const char* randname = NonSteamPlayerNames[rand() % listsize];
+
+	static char name[MAX_NAME_BYTES];
+	Q_snprintfz(name, strlen(randname)+7,"%s%i",randname,rand());
+
+	return name;
+}
+
 /*
 * CL_InitLocal
 */
 static void CL_InitLocal( void )
 {
-	cvar_t *name, *color;
+	cvar_t *name, *color, *steam_id;
 
 	cls.state = CA_DISCONNECTED;
 	Com_SetClientState( CA_DISCONNECTED );
@@ -2143,25 +2209,41 @@ static void CL_InitLocal( void )
 	rate =			Cvar_Get( "rate", "60000", CVAR_DEVELOPER ); // FIXME
 
 	name = Cvar_Get( "name", "", CVAR_USERINFO | CVAR_ARCHIVE );
-	if( !name->string[0] )
-	{
-		char steamname[MAX_NAME_BYTES * 4], *steamnameIn = steamname, *steamnameOut = steamname, c;
-		steamname[0] = '\0';
-		Steam_GetPersonaName( steamname, sizeof( steamname ) );
-		while( ( c = *steamnameIn ) != '\0' )
-		{
-			steamnameIn++;
-			if( ( c < 32 ) || ( c >= 127 ) || ( c == '\\' ) || ( c == ';' ) || ( c == '"' ) )
-				continue;
 
-			*( steamnameOut++ ) = c;
+	if ( !CL_IsNameValid(name->string) ){
+		if ( Steam_Active() ){
+			char steamname[MAX_NAME_BYTES * 4], *steamnameIn = steamname, c;
+			Steam_GetPersonaName( steamname, sizeof( steamname ) );
+
+			bool steamnamePrintable = true;
+			while( ( c = *steamnameIn ) != '\0' )
+			{
+				steamnameIn++;
+				if( ( c < 32 ) || ( c >= 127 ) || ( c == '\\' ) || ( c == ';' ) || ( c == '"' ) )
+					steamnamePrintable = false;
+			}
+      
+      COM_RemoveColorTokens( steamname );
+
+			// if even a single character isn't printable in the username, drop it and use a random one
+			if (!steamnamePrintable || !steamname[0] || !CL_IsNameValid(steamname)){
+				Cvar_Set( name->name, CL_RandomName() );
+			}else{
+			  Cvar_Set( name->name, steamname );
+			}
+		} else {
+			Cvar_Set( name->name, CL_RandomName() );
 		}
-		*steamnameOut = '\0';
 
-		if( !( COM_RemoveColorTokens( steamname )[0] ) )
-			Q_strncpyz( steamname, "Player", sizeof( steamname ) );
+	}
 
-		Cvar_Set( name->name, steamname );
+
+	steam_id = Cvar_Get( "steam_id", "", CVAR_USERINFO|CVAR_READONLY);
+
+	if (Steam_Active()){
+		char id[18];
+		Q_snprintfz(id, sizeof id, "%llu", Steam_GetSteamID());
+		Cvar_ForceSet(steam_id->name, id);
 	}
 
 	Cvar_Get( "clan", "", CVAR_USERINFO | CVAR_ARCHIVE );

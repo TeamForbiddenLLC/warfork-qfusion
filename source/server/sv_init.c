@@ -232,6 +232,7 @@ void SV_SetServerConfigStrings( void )
 	Q_strncpyz( sv.configstrings[CS_TVSERVER], "0", sizeof( sv.configstrings[0] ) );
 	Q_strncpyz( sv.configstrings[CS_HOSTNAME], Cvar_String( "sv_hostname" ), sizeof( sv.configstrings[0] ) );
 	Q_strncpyz( sv.configstrings[CS_MODMANIFEST], Cvar_String( "sv_modmanifest" ), sizeof( sv.configstrings[0] ) );
+	Q_strncpyz( sv.configstrings[CS_USESTEAMAUTH], Cvar_String( "sv_useSteamAuth" ), sizeof( sv.configstrings[0] ) );
 }
 
 /*

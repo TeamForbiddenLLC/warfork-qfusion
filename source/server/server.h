@@ -184,6 +184,9 @@ typedef struct client_s
 
 	bool tvclient;
 
+	bool authenticated; // did user sucesfully authenticate with a steam ticket
+	uint64_t steamid;
+
 	int mm_session;
 	unsigned int mm_ticket;
 	char mm_login[MAX_INFO_VALUE];

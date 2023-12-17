@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // sv_client.c -- server code for moving users
 
 #include "server.h"
+#include "../qcommon/steam.h"
 
 
 //============================================================================
@@ -243,6 +244,9 @@ void SV_DropClient( client_t *drop, int type, const char *format, ... )
 
 	SV_Web_RemoveGameClient( drop->session );
 
+	if (drop->authenticated)
+		Steam_EndAuthSession(drop->steamid);
+
 	if( drop->download.name )
 		SV_ClientCloseDownload( drop );
 
@@ -364,6 +368,12 @@ static void SV_New_f( client_t *client )
 
 	SV_SendMessageToClient( client, &tmpMessage );
 	Netchan_PushAllFragments( &client->netchan );
+
+
+	if (Cvar_Integer("sv_useSteamAuth") != 0){
+		// ask client to authenticate with steam
+		SV_SendServerCommand( client, "steamauth" );
+	}
 
 	// don't let it send reliable commands until we get the first configstring request
 	client->state = CS_CONNECTING;
@@ -494,6 +504,13 @@ static void SV_Begin_f( client_t *client )
 	}
 	// wsw : r1q2[end]
 
+	if (Cvar_Integer("sv_useSteamAuth") != 0 && !client->authenticated)
+	{
+		SV_DropClient( client, DROP_TYPE_GENERAL, "Client did not authenticate when steam authentication required." );
+		return;
+	}
+
+	
 	// handle the case of a level changing while a client was connecting
 	if( atoi( Cmd_Argv( 1 ) ) != svs.spawncount )
 	{
@@ -1225,6 +1242,29 @@ void SV_ParseClientMessage( client_t *client, msg_t *msg )
 					MSG_SkipData( msg, len );
 					break;
 				}
+			}
+			break;
+		case clc_steamauth:
+			{
+				SteamAuthTicket_t ticket;
+				ticket.pcbTicket = MSG_ReadLong(msg);
+				MSG_ReadData(msg, ticket.pTicket, ticket.pcbTicket);
+
+				char *steamid = Info_ValueForKey(client->userinfo, "steam_id");
+				if (!steamid || !steamid[0]){
+					SV_DropClient(client, DROP_TYPE_GENERAL, "steam authentication required and no steam id present");
+					break;
+				}
+				client->steamid = atoll(steamid);
+
+
+				int result = Steam_BeginAuthSession(client->steamid, &ticket);
+				if (result != 0){
+					SV_DropClient(client, DROP_TYPE_GENERAL, "steam auth failure");
+					break;
+				}
+				client->authenticated = true;
+				
 			}
 			break;
 		}

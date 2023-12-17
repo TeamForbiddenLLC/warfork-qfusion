@@ -650,6 +650,7 @@ static void SVC_DirectConnect( const socket_t *socket, const netadr_t *address )
 	unsigned int ticket_id;
 	bool tv_client;
 	unsigned int time;
+	char* steam_ticket;
 
 	Com_DPrintf( "SVC_DirectConnect (%s)\n", Cmd_Args() );
 

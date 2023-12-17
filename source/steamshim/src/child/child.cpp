@@ -1,0 +1,223 @@
+/*
+Copyright (C) 2023 coolelectronics
+
+This software is provided 'as-is', without any express or implied
+warranty. In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+*/
+
+#include <cstdint>
+#include <cstring>
+#include <stdio.h>
+#define DEBUGPIPE 1
+#include "child_private.h"
+#include "../steamshim.h"
+#include "../steamshim_private.h"
+#include "../os.h"
+#include "../steamshim_types.h"
+
+int GArgc = 0;
+char **GArgv = NULL;
+
+static int initPipes(void)
+{
+    char buf[64];
+    unsigned long long val;
+
+    if (!getEnvVar("STEAMSHIM_READHANDLE", buf, sizeof (buf)))
+        return 0;
+    else if (sscanf(buf, "%llu", &val) != 1)
+        return 0;
+    else
+        GPipeRead = (PipeType) val;
+
+    if (!getEnvVar("STEAMSHIM_WRITEHANDLE", buf, sizeof (buf)))
+        return 0;
+    else if (sscanf(buf, "%llu", &val) != 1)
+        return 0;
+    else
+        GPipeWrite = (PipeType) val;
+    
+    return ((GPipeRead != NULLPIPE) && (GPipeWrite != NULLPIPE));
+} /* initPipes */
+
+static STEAMSHIM_Event* ProcessEvent(){
+    static STEAMSHIM_Event event;
+    // make sure this is static, since it needs to persist between pumps
+    static pipebuff_t buf;
+
+    if (!buf.Recieve())
+        return NULL;
+
+    if (!buf.hasmsg)
+        return NULL;
+
+    volatile unsigned int msglen =buf.ReadInt();
+
+
+    char type = buf.ReadByte();
+    event.type = (STEAMSHIM_EventType)type;
+
+    #if DEBUGPIPE
+    if (0) {}
+    #define PRINTGOTEVENT(x) else if (type == x) printf("Child got " #x ".\n")
+    PRINTGOTEVENT(SHIMEVENT_BYE);
+    PRINTGOTEVENT(SHIMEVENT_STATSRECEIVED);
+    PRINTGOTEVENT(SHIMEVENT_STATSSTORED);
+    PRINTGOTEVENT(SHIMEVENT_SETACHIEVEMENT);
+    PRINTGOTEVENT(SHIMEVENT_GETACHIEVEMENT);
+    PRINTGOTEVENT(SHIMEVENT_RESETSTATS);
+    PRINTGOTEVENT(SHIMEVENT_SETSTATI);
+    PRINTGOTEVENT(SHIMEVENT_GETSTATI);
+    PRINTGOTEVENT(SHIMEVENT_SETSTATF);
+    PRINTGOTEVENT(SHIMEVENT_GETSTATF);
+    PRINTGOTEVENT(SHIMEVENT_STEAMIDRECIEVED);
+    PRINTGOTEVENT(SHIMEVENT_PERSONANAMERECIEVED);
+    PRINTGOTEVENT(SHIMEVENT_AUTHSESSIONTICKETRECIEVED);
+    PRINTGOTEVENT(SHIMEVENT_AUTHSESSIONVALIDATED);
+    #undef PRINTGOTEVENT
+    else printf("Child got unknown shimevent %d.\n", (int) type);
+    #endif
+
+    switch (type){
+        case SHIMEVENT_STEAMIDRECIEVED:
+            {
+                event.lvalue = buf.ReadLong();
+            }
+            break;
+        case SHIMEVENT_PERSONANAMERECIEVED:
+            {
+                char *string = buf.ReadString();
+                strcpy(event.name, string);
+            }
+            break;
+        case SHIMEVENT_AUTHSESSIONTICKETRECIEVED:
+            {
+                long long pcbTicket = buf.ReadLong();
+                void *ticket = buf.ReadData(AUTH_TICKET_MAXSIZE);
+                event.lvalue = pcbTicket;
+                memcpy(event.name, ticket, AUTH_TICKET_MAXSIZE);
+            }
+            break;
+        case SHIMEVENT_AUTHSESSIONVALIDATED:
+            {
+                int result = buf.ReadInt();
+                event.ivalue = result;
+            }
+            break;
+    }
+
+    return &event;
+}
+
+extern "C" {
+  int STEAMSHIM_init(void)
+  {
+      dbgprintf("Child init start.\n");
+      if (!initPipes())
+      {
+          dbgprintf("Child init failed.\n");
+          return 0;
+      }
+
+#ifndef _WIN32
+      signal(SIGPIPE, SIG_IGN);
+#endif
+
+      dbgprintf("Child init success!\n");
+      return 1;
+  } 
+
+  void STEAMSHIM_deinit(void)
+  {
+      dbgprintf("Child deinit.\n");
+      if (GPipeWrite != NULLPIPE)
+      {
+          // writeBye();
+          closePipe(GPipeWrite);
+      } 
+
+      if (GPipeRead != NULLPIPE)
+          closePipe(GPipeRead);
+
+      GPipeRead = GPipeWrite = NULLPIPE;
+
+#ifndef _WIN32
+      signal(SIGPIPE, SIG_DFL);
+#endif
+  } 
+
+  static inline int isAlive(void)
+  {
+      return ((GPipeRead != NULLPIPE) && (GPipeWrite != NULLPIPE));
+  } 
+
+  static inline int isDead(void)
+  {
+      return !isAlive();
+  }
+
+  int STEAMSHIM_alive(void)
+  {
+      return isAlive();
+  } 
+
+  const STEAMSHIM_Event *STEAMSHIM_pump(void)
+  {
+    // Write1ByteMessage(SHIMCMD_PUMP);
+    return ProcessEvent();
+  } 
+
+  void STEAMSHIM_getSteamID()
+  {
+	  Write1ByteMessage(SHIMCMD_REQUESTSTEAMID);
+  }
+
+  void STEAMSHIM_getPersonaName(){
+
+      Write1ByteMessage(SHIMCMD_REQUESTPERSONANAME);
+  }
+
+  void STEAMSHIM_getAuthSessionTicket(){
+      Write1ByteMessage(SHIMCMD_REQUESTAUTHSESSIONTICKET);
+  }
+
+  void STEAMSHIM_beginAuthSession(uint64_t steamid, SteamAuthTicket_t* ticket){
+      pipebuff_t buf;
+      buf.WriteByte(SHIMCMD_BEGINAUTHSESSION);
+      buf.WriteLong(steamid);
+      buf.WriteLong(ticket->pcbTicket);
+      buf.WriteData(ticket->pTicket, AUTH_TICKET_MAXSIZE);
+      buf.Transmit();
+  }
+
+  void STEAMSHIM_endAuthSession(uint64_t steamid){
+    pipebuff_t buf;
+    buf.WriteByte(SHIMCMD_ENDAUTHSESSION);
+    buf.WriteLong(steamid);
+    buf.Transmit();
+  }
+
+  void STEAMSHIM_setRichPresence(int num, char** key, char** val){
+      pipebuff_t buf;
+      buf.WriteByte(SHIMCMD_SETRICHPRESENCE);
+      buf.WriteInt(num);
+      for (int i=0; i < num;i++){
+          buf.WriteString(key[i]);
+          buf.WriteString(val[i]);
+      }
+      buf.Transmit();
+  }
+}

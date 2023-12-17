@@ -2,6 +2,11 @@ project(${QFUSION_SERVER_NAME})
 
 include_directories(${MINIZ_INCLUDE_DIR} ${CURL_INCLUDE_DIR})
 
+if (BUILD_STEAMLIB)
+    set(STEAMSHIMCHILD_LIBRARY steamshim_child)
+endif()
+
+
 file(GLOB SERVER_HEADERS
     "*.h"
 	"../gameshared/q_*.h"
@@ -84,16 +89,9 @@ else()
     set(SERVER_BINARY_TYPE "")
 endif()
 
-if (BUILD_STEAMLIB)
-    set(STEAMSHIM_FILES "../steamshim/steamshim_child.c" "../steamshim/steamshim_child.h")
-    source_group("steamshim" FILES ${STEAMSHIM_FILES})
-endif()
-
-
-
-add_executable(${QFUSION_SERVER_NAME} ${SERVER_BINARY_TYPE} ${SERVER_HEADERS} ${SERVER_SOURCES} ${SERVER_PLATFORM_SOURCES} ${STEAMSHIM_FILES})
+add_executable(${QFUSION_SERVER_NAME} ${SERVER_BINARY_TYPE} ${SERVER_HEADERS} ${SERVER_SOURCES} ${SERVER_PLATFORM_SOURCES})
 add_dependencies(${QFUSION_SERVER_NAME} angelwrap game)
-target_link_libraries(${QFUSION_SERVER_NAME} PRIVATE ${CURL_LIBRARY} ${SERVER_PLATFORM_LIBRARIES})
+target_link_libraries(${QFUSION_SERVER_NAME} PRIVATE ${CURL_LIBRARY} ${SERVER_PLATFORM_LIBRARIES} ${STEAMSHIMCHILD_LIBRARY})
 qf_set_output_dir(${QFUSION_SERVER_NAME} "")
 
 set_target_properties(${QFUSION_SERVER_NAME} PROPERTIES COMPILE_DEFINITIONS "DEDICATED_ONLY")
