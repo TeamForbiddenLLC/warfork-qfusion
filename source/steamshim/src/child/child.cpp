@@ -31,28 +31,6 @@ freely, subject to the following restrictions:
 int GArgc = 0;
 char **GArgv = NULL;
 
-static int initPipes(void)
-{
-    char buf[64];
-    unsigned long long val;
-
-    if (!getEnvVar("STEAMSHIM_READHANDLE", buf, sizeof (buf)))
-        return 0;
-    else if (sscanf(buf, "%llu", &val) != 1)
-        return 0;
-    else
-        GPipeRead = (PipeType) val;
-
-    if (!getEnvVar("STEAMSHIM_WRITEHANDLE", buf, sizeof (buf)))
-        return 0;
-    else if (sscanf(buf, "%llu", &val) != 1)
-        return 0;
-    else
-        GPipeWrite = (PipeType) val;
-    
-    return ((GPipeRead != NULLPIPE) && (GPipeWrite != NULLPIPE));
-} /* initPipes */
-
 static STEAMSHIM_Event* ProcessEvent(){
     static STEAMSHIM_Event event;
     // make sure this is static, since it needs to persist between pumps
@@ -122,15 +100,50 @@ static STEAMSHIM_Event* ProcessEvent(){
     return &event;
 }
 
+static bool setEnvironmentVars(PipeType pipeChildRead, PipeType pipeChildWrite)
+{
+    char buf[64];
+    snprintf(buf, sizeof (buf), "%llu", (unsigned long long) pipeChildRead);
+    if (!setEnvVar("STEAMSHIM_READHANDLE", buf))
+        return false;
+
+    snprintf(buf, sizeof (buf), "%llu", (unsigned long long) pipeChildWrite);
+    if (!setEnvVar("STEAMSHIM_WRITEHANDLE", buf))
+        return false;
+
+    return true;
+} 
+
 extern "C" {
   int STEAMSHIM_init(void)
   {
+
+
+    PipeType pipeParentRead = NULLPIPE;
+    PipeType pipeParentWrite = NULLPIPE;
+    PipeType pipeChildRead = NULLPIPE;
+    PipeType pipeChildWrite = NULLPIPE;
+    ProcessType childPid;
+
+
+    if (!createPipes(&pipeParentRead, &pipeParentWrite, &pipeChildRead, &pipeChildWrite))
+        fail("Failed to create application pipes");
+    else if (!setEnvironmentVars(pipeChildRead, pipeChildWrite))
+        fail("Failed to set environment variables");
+    else if (!launchChild(&childPid, "wf_steam.x86_64"))
+        fail("Failed to launch application");
+
       dbgprintf("Child init start.\n");
-      if (!initPipes())
-      {
-          dbgprintf("Child init failed.\n");
-          return 0;
-      }
+    
+
+
+
+      GPipeRead = pipeParentRead;
+      GPipeWrite = pipeParentWrite;
+    // Close the ends of the pipes that the child will use; we don't need them.
+    // closePipe(pipeChildRead);
+    // closePipe(pipeChildWrite);
+    pipeChildRead = pipeChildWrite = NULLPIPE;
 
 #ifndef _WIN32
       signal(SIGPIPE, SIG_IGN);

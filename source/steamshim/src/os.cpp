@@ -104,7 +104,8 @@ bool launchChild(ProcessType *pid, const char* name )
     char exename[32] = "./";
     strncpy(exename+2, name, 30);
 
-    GArgv[0] = exename;
+    char* GArgv[2] = {exename,NULL};
+    printf("hi from child\n");
     execvp(GArgv[0], GArgv);
     // still here? It failed! Terminate, closing child's ends of the pipes.
     _exit(1);

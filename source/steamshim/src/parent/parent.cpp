@@ -155,6 +155,7 @@ static void processCommands()
       continue;
 
     if (buf.hasmsg){
+
         volatile unsigned int evlen =buf.ReadInt();
 
         ShimCmd cmd = (ShimCmd)buf.ReadByte();
@@ -194,20 +195,27 @@ static bool initSteamworks(PipeType fd)
     return 1;
 } 
 
-static bool setEnvironmentVars(PipeType pipeChildRead, PipeType pipeChildWrite)
+static int initPipes(void)
 {
     char buf[64];
-    snprintf(buf, sizeof (buf), "%llu", (unsigned long long) pipeChildRead);
-    if (!setEnvVar("STEAMSHIM_READHANDLE", buf))
-        return false;
+    unsigned long long val;
 
-    snprintf(buf, sizeof (buf), "%llu", (unsigned long long) pipeChildWrite);
-    if (!setEnvVar("STEAMSHIM_WRITEHANDLE", buf))
-        return false;
+    if (!getEnvVar("STEAMSHIM_READHANDLE", buf, sizeof (buf)))
+        return 0;
+    else if (sscanf(buf, "%llu", &val) != 1)
+        return 0;
+    else
+        GPipeRead = (PipeType) val;
 
-    return true;
-} // setEnvironmentVars
-
+    if (!getEnvVar("STEAMSHIM_WRITEHANDLE", buf, sizeof (buf)))
+        return 0;
+    else if (sscanf(buf, "%llu", &val) != 1)
+        return 0;
+    else
+        GPipeWrite = (PipeType) val;
+    
+    return ((GPipeRead != NULLPIPE) && (GPipeWrite != NULLPIPE));
+} /* initPipes */
 
 int main(int argc, char **argv)
 {
@@ -217,16 +225,11 @@ int main(int argc, char **argv)
     GArgc = argc;
     GArgv = argv;
 
-
-    PipeType pipeParentRead = NULLPIPE;
-    PipeType pipeParentWrite = NULLPIPE;
-    PipeType pipeChildRead = NULLPIPE;
-    PipeType pipeChildWrite = NULLPIPE;
-    ProcessType childPid;
-
     dbgprintf("Parent starting mainline.\n");
 
     const char* exename;
+    if (!initPipes())
+        fail("Child init failed.\n");
 
     // temporary hack, make this better
     if (strstr(*GArgv,"warfork_steam"))
@@ -243,45 +246,35 @@ int main(int argc, char **argv)
         }
     }
 
-    if (!createPipes(&pipeParentRead, &pipeParentWrite, &pipeChildRead, &pipeChildWrite))
-        fail("Failed to create application pipes");
-    else if (!initSteamworks(pipeParentWrite))
-        fail("Failed to initialize Steamworks");
-    else if (!setEnvironmentVars(pipeChildRead, pipeChildWrite))
-        fail("Failed to set environment variables");
-    else if (!launchChild(&childPid,exename))
-        fail("Failed to launch application");
+    printf("a -%i -%i\n",GPipeWrite,GPipeRead);
 
-    // Close the ends of the pipes that the child will use; we don't need them.
-    closePipe(pipeChildRead);
-    closePipe(pipeChildWrite);
-    pipeChildRead = pipeChildWrite = NULLPIPE;
+    if (!initSteamworks(GPipeWrite))
+        fail("Failed to initialize Steamworks");
+
 
     dbgprintf("Parent in command processing loop.\n");
 
     // Now, we block for instructions until the pipe fails (child closed it or
     //  terminated/crashed).
-    GPipeRead = pipeParentRead;
-    GPipeWrite = pipeParentWrite;
     processCommands();
 
     dbgprintf("Parent shutting down.\n");
 
     // Close our ends of the pipes.
     // writeBye(pipeParentWrite);
-    closePipe(pipeParentRead);
-    closePipe(pipeParentWrite);
+    // closePipe(pipeParentRead);
+    // closePipe(pipeParentWrite);
 
     // deinitSteamworks();
 
     dbgprintf("Parent waiting on child process.\n");
 
     // Wait for the child to terminate, close the child process handles.
-    const int retval = closeProcess(&childPid);
+    // const int retval = closeProcess(&childPid);
 
-    dbgprintf("Parent exiting mainline (child exit code %d).\n", retval);
+    // dbgprintf("Parent exiting mainline (child exit code %d).\n", retval);
 
-    return retval;
+    return 0;
 
 }
 

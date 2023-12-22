@@ -76,18 +76,3 @@ add_custom_command(TARGET wf_steam
         "${STEAMWORKS_LIBRARY_DIR}/${STEAMWORKS_SO_PREFIX}${STEAMWORKS_LIBRARY}${STEAMWORKS_LIBRARY_EXTENSION}"
         "${STEAMWORKS_OUTPUT_PATH}"
 )
-add_custom_command(TARGET wf_steam
-    POST_BUILD
-    COMMAND "${CMAKE_COMMAND}" -E create_symlink
-    "${STEAMWORKS_OUTPUT_PATH}/wf_steam${CMAKE_EXECUTABLE_SUFFIX}" "${STEAMWORKS_OUTPUT_PATH}/wf_server_steam${CMAKE_EXECUTABLE_SUFFIX}"
-)
-add_custom_command(TARGET wf_steam
-    POST_BUILD
-    COMMAND "${CMAKE_COMMAND}" -E create_symlink
-    "${STEAMWORKS_OUTPUT_PATH}/wf_steam${CMAKE_EXECUTABLE_SUFFIX}" "${STEAMWORKS_OUTPUT_PATH}/warfork_steam${CMAKE_EXECUTABLE_SUFFIX}"
-)
-add_custom_command(TARGET wf_steam
-    POST_BUILD
-    COMMAND "${CMAKE_COMMAND}" -E create_symlink
-    "${STEAMWORKS_OUTPUT_PATH}/wf_steam${CMAKE_EXECUTABLE_SUFFIX}" "${STEAMWORKS_OUTPUT_PATH}/wftv_server_steam${CMAKE_EXECUTABLE_SUFFIX}"
-)
