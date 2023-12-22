@@ -28,7 +28,7 @@ freely, subject to the following restrictions:
 extern "C" {
 #endif
 
-int STEAMSHIM_init(void);  /* non-zero on success, zero on failure. */
+int STEAMSHIM_init(bool isclient);  /* non-zero on success, zero on failure. */
 void STEAMSHIM_deinit(void);
 int STEAMSHIM_alive(void);
 const STEAMSHIM_Event *STEAMSHIM_pump(void);

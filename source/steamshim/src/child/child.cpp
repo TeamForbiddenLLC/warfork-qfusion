@@ -111,11 +111,13 @@ static bool setEnvironmentVars(PipeType pipeChildRead, PipeType pipeChildWrite)
     if (!setEnvVar("STEAMSHIM_WRITEHANDLE", buf))
         return false;
 
+
+
     return true;
 } 
 
 extern "C" {
-  int STEAMSHIM_init(void)
+  int STEAMSHIM_init(bool isclient)
   {
 
 
@@ -125,12 +127,15 @@ extern "C" {
     PipeType pipeChildWrite = NULLPIPE;
     ProcessType childPid;
 
+    if (isclient)
+        setEnvVar("STEAMSHIM_ISCLIENT", "1");
+
 
     if (!createPipes(&pipeParentRead, &pipeParentWrite, &pipeChildRead, &pipeChildWrite))
         fail("Failed to create application pipes");
     else if (!setEnvironmentVars(pipeChildRead, pipeChildWrite))
         fail("Failed to set environment variables");
-    else if (!launchChild(&childPid, "wf_steam.x86_64"))
+    else if (!launchChild(&childPid, STEAM_BLOB_LAUNCH_NAME))
         fail("Failed to launch application");
 
       dbgprintf("Child init start.\n");

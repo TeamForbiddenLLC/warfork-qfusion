@@ -227,26 +227,15 @@ int main(int argc, char **argv)
 
     dbgprintf("Parent starting mainline.\n");
 
-    const char* exename;
+
+    char buf[64];
     if (!initPipes())
         fail("Child init failed.\n");
-
-    // temporary hack, make this better
-    if (strstr(*GArgv,"warfork_steam"))
-    {
-        exename = GAME_CLIENT_LAUNCH_NAME;
+    
+    if (getEnvVar("STEAMSHIM_ISCLIENT", buf, sizeof(buf)))
         GServerType = STEAMGAMECLIENT;
-    } else {
+    else
         GServerType = STEAMGAMESERVER;
-        if (strstr(*GArgv,"wftv_server"))
-        {
-            exename = GAME_TVSERVER_LAUNCH_NAME;
-        }else{
-            exename = GAME_SERVER_LAUNCH_NAME;
-        }
-    }
-
-    printf("a -%i -%i\n",GPipeWrite,GPipeRead);
 
     if (!initSteamworks(GPipeWrite))
         fail("Failed to initialize Steamworks");
@@ -285,39 +274,8 @@ int main(int argc, char **argv)
 int argc;
 char *argv[MAX_NUM_ARGVS];
 
-static void ParseCommandLine( LPSTR lpCmdLine )
-{
-	argc = 1;
-
-	static char buffer[MAX_PATH]={0};
-	GetModuleFileNameA(NULL,&argv[0],sizeof(buffer)/sizeof(*buffer));
-	argv[0] = buffer;
-
-	while( *lpCmdLine && ( argc < MAX_NUM_ARGVS ) ) {
-		while( *lpCmdLine && ( *lpCmdLine <= 32 || *lpCmdLine > 126 ) )
-			lpCmdLine++;
-
-		if( *lpCmdLine ) {
-			char quote = ( ( '"' == *lpCmdLine || '\'' == *lpCmdLine ) ? *lpCmdLine++ : 0 );
-
-			argv[argc++] = lpCmdLine;
-			if( quote ) {
-				while( *lpCmdLine && *lpCmdLine != quote && *lpCmdLine >= 32 && *lpCmdLine <= 126 )
-					lpCmdLine++;
-			} else {
-				while( *lpCmdLine && *lpCmdLine > 32 && *lpCmdLine <= 126 )
-					lpCmdLine++;
-			}
-
-			if( *lpCmdLine )
-				*lpCmdLine++ = 0;
-		}
-	}
-}
-
 int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow )
 {
-	ParseCommandLine( lpCmdLine );
 	return main( argc, argv );
 } // WinMain
 #endif
