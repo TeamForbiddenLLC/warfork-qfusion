@@ -1264,6 +1264,14 @@ void SV_ParseClientMessage( client_t *client, msg_t *msg )
 					break;
 				}
 				client->authenticated = true;
+
+				edict_t	*ent;
+				int edictnum;
+
+				edictnum = ( client - svs.clients ) + 1;
+				ent = EDICT_NUM( edictnum );
+
+				ge->ClientAuth( ent, client->steamid);
 				
 			}
 			break;

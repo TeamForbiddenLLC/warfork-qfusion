@@ -31,6 +31,7 @@ int meansOfDeath;
 
 cvar_t *password;
 cvar_t *g_operator_password;
+cvar_t *g_permanent_operators;
 cvar_t *g_select_empty;
 cvar_t *dedicated;
 cvar_t *developer;
@@ -270,6 +271,7 @@ void G_Init( unsigned int seed, unsigned int framemsec, int protocol, const char
 	password = trap_Cvar_Get( "password", "", CVAR_USERINFO );
 	password->modified = true; // force an update of g_needpass in G_UpdateServerInfo
 	g_operator_password = trap_Cvar_Get( "g_operator_password", "", CVAR_ARCHIVE );
+	g_permanent_operators = trap_Cvar_Get( "g_permanent_operators", "", CVAR_ARCHIVE );
 	filterban = trap_Cvar_Get( "filterban", "1", 0 );
 
 	cm_mapHeader = trap_Cvar_Get( "cm_mapHeader", "", 0 );

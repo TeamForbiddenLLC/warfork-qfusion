@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "g_local.h"
+#include <cstdint>
 
 #define PLAYER_MASS 200
 
@@ -796,6 +797,24 @@ void ClientBegin( edict_t *ent )
 
 	// let the gametype scripts now this client just entered the level
 	G_Gametype_ScoreEvent( client, "enterGame", NULL );
+}
+
+void ClientAuth ( edict_t *ent, uint64_t steamid )
+{
+	gclient_t *client = ent->r.client;
+	client->steamid = steamid;
+	client->authenticated = true;
+
+
+	char buf[17];
+	Q_snprintfz(buf, sizeof(buf), "%llu", steamid);
+
+	if ( Q_strrstr(g_permanent_operators->string, buf)){
+		if( !ent->r.client->isoperator )
+			G_PrintMsg( NULL, "%s" S_COLOR_WHITE " is now a game operator\n", ent->r.client->netname );
+
+		ent->r.client->isoperator = true;
+	}
 }
 
 /*

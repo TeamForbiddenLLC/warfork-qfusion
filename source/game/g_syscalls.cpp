@@ -47,6 +47,7 @@ extern "C" QF_DLL_EXPORT game_export_t *GetGameAPI( game_import_t *import )
 	globals.ClientDisconnect = ClientDisconnect;
 	globals.ClientBegin = ClientBegin;
 	globals.ClientCommand = ClientCommand;
+	globals.ClientAuth = ClientAuth;
 
 	globals.RunFrame = G_RunFrame;
 	globals.SnapFrame = G_SnapFrame;

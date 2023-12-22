@@ -220,6 +220,7 @@ typedef struct
 	void ( *ClientDisconnect )( edict_t *ent, const char *reason );
 	void ( *ClientCommand )( edict_t *ent );
 	void ( *ClientThink )( edict_t *ent, usercmd_t *cmd, int timeDelta );
+	void ( *ClientAuth )( edict_t *ent, uint64_t steamid );
 
 	void ( *RunFrame )( unsigned int msec, unsigned int serverTime );
 	void ( *SnapFrame )( void );

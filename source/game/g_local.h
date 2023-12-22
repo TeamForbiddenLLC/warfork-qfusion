@@ -33,6 +33,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "g_gametypes.h"
 
 #include "../matchmaker/mm_rating.h"
+#include <cstdint>
 
 //==================================================================
 // round(x)==floor(x+0.5f)
@@ -307,6 +308,7 @@ extern int meansOfDeath;
 
 extern cvar_t *password;
 extern cvar_t *g_operator_password;
+extern cvar_t *g_permanent_operators;
 extern cvar_t *g_select_empty;
 extern cvar_t *dedicated;
 extern cvar_t *developer;
@@ -855,6 +857,7 @@ void G_CheckClientRespawnClick( edict_t *ent );
 bool ClientConnect( edict_t *ent, char *userinfo, bool fakeClient, bool tvClient );
 void ClientDisconnect( edict_t *ent, const char *reason );
 void ClientBegin( edict_t *ent );
+void ClientAuth( edict_t *ent, uint64_t steamid );
 void ClientCommand( edict_t *ent );
 void G_PredictedEvent( int entNum, int ev, int parm );
 void G_TeleportPlayer( edict_t *player, edict_t *dest );
@@ -1242,6 +1245,9 @@ struct gclient_s
 	pmove_state_t old_pmove;    // for detecting out-of-pmove changes
 
 	int asRefCount, asFactored;
+
+	bool authenticated;
+	uint64_t steamid;
 };
 
 // quit or teamchange data for clients (stats)
