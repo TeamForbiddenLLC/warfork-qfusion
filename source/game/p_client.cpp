@@ -807,7 +807,7 @@ void ClientAuth ( edict_t *ent, uint64_t steamid )
 
 
 	char buf[17];
-	Q_snprintfz(buf, sizeof(buf), "%llu", steamid);
+	Q_snprintfz(buf, sizeof(buf), "%017llu", steamid);
 
 	if ( Q_strrstr(g_permanent_operators->string, buf)){
 		if( !ent->r.client->isoperator )
