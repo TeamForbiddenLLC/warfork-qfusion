@@ -630,6 +630,11 @@ msgid "g_operator_password"
 msgstr "<value> Sets the operator password. Operator is disabled if empty."
 
 #. Console/g
+msgid "g_permanent_operators"
+msgstr "<value> A comma separated list of 64-bit SteamID's (SteamID64) to grant operator access.\n"
+"^6Example: 76561197974895275,76561197960287930"
+
+#. Console/g
 msgid "g_postmatch_timelimit"
 msgstr "<value> The post match timelimit (in seconds)."
 

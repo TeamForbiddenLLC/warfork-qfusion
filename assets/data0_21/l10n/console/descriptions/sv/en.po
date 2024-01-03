@@ -280,5 +280,12 @@ msgstr "<0/1> Local http server that uploads files to clients.\n"
 "^6Enable: sv_uploads_http \"1\""
 
 #. Console/sv
+msgid "sv_useSteamAuth"
+msgstr "<0/1> Clients must authenticate with Steam before connecting to the server.\n"
+"^6Disable: sv_useSteamAuth \"0\"\n"
+"^6Enable: sv_useSteamAuth \"1\"\n"
+"^6Note: Requires a server restart to go into effect. Simply changing the map with the command map \"wfdm2\" for example will suffice."
+
+#. Console/sv
 msgid "sv_zombietime"
 msgstr "<value> Determines how long a connected client remains open after it has either timed out with sv_timeout or disconnected."
