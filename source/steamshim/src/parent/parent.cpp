@@ -25,6 +25,7 @@ freely, subject to the following restrictions:
 #include "../steamshim_private.h"
 #include "../os.h"
 #include "../steamshim.h"
+#include "steam/isteammatchmaking.h"
 #include "steam/steam_api.h"
 #include "steam/steam_gameserver.h"
 
@@ -131,6 +132,23 @@ static bool processCommand(pipebuff_t cmd, ShimCmd cmdtype, unsigned int len)
                 msg.WriteByte(SHIMEVENT_AUTHSESSIONVALIDATED);
                 msg.WriteInt(result);
                 msg.Transmit();
+            }
+            break;
+        case SHIMCMD_CREATEBEACON:
+            {
+
+                int openSlots = cmd.ReadInt();
+                char *connectString = cmd.ReadString();
+                char *metadata = cmd.ReadString();
+
+                uint32 puNumLocations;
+                SteamParties()->GetNumAvailableBeaconLocations(&puNumLocations);
+                if (puNumLocations <= 0) return 0;
+
+                SteamPartyBeaconLocation_t pLocationList[puNumLocations];
+                SteamParties()->GetAvailableBeaconLocations(pLocationList, puNumLocations);
+
+                SteamParties()->CreateBeacon(openSlots, pLocationList, connectString,metadata);
             }
             break;
         case SHIMCMD_ENDAUTHSESSION:

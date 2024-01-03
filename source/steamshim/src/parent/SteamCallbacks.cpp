@@ -18,30 +18,30 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 */
 
-#ifndef STEAMSHIM_CHILD_H
-#define STEAMSHIM_CHILD_H
 
-#include <stdint.h>
-#include "../steamshim.h"
-#include "../steamshim_types.h"
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "steam/isteamuser.h"
+#include "steam/steam_api.h"
+#include "steam/steam_gameserver.h"
 
-int STEAMSHIM_init(bool isclient);  /* non-zero on success, zero on failure. */
-void STEAMSHIM_deinit(void);
-int STEAMSHIM_alive(void);
-const STEAMSHIM_Event *STEAMSHIM_pump(void);
-void STEAMSHIM_getSteamID();
-void STEAMSHIM_getPersonaName();
-void STEAMSHIM_setRichPresence(int num, const char** key, const char** val);
-void STEAMSHIM_getAuthSessionTicket();
-void STEAMSHIM_beginAuthSession(uint64_t steamid, SteamAuthTicket_t* ticket);
-void STEAMSHIM_endAuthSession(uint64_t steamid);
-void STEAMSHIM_createBeacon(uint32_t openSlots, char* connectString, char* metadata);
-#ifdef __cplusplus
-}
-#endif
+#include "../os.h"
 
-#endif
+class SteamCallbacks;
+
+class SteamCallbacks
+{
+public:
+    SteamCallbacks();
+	STEAM_CALLBACK(SteamCallbacks, OnUserStatsReceived, UserStatsReceived_t, m_Callback);
+
+};
+
+
+SteamCallbacks::SteamCallbacks()
+    : m_CallbackCreateBeacon( this, &SteamCallbacks::OnCreateBeacon )
+{
+} 
+
+void SteamCallbacks::OnCreateBeacon(UserStatsReceived_t *pCallback)
+{
+} 
 

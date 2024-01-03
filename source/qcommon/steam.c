@@ -146,6 +146,10 @@ void Steam_GetPersonaName( char *name, size_t namesize )
 	STEAMSHIM_getPersonaName();
 	const STEAMSHIM_Event *evt = blockOnEvent(SHIMEVENT_PERSONANAMERECIEVED);
 	strncpy(name, evt->name, namesize);
+
+
+	printf("making beacon\n");
+	STEAMSHIM_createBeacon(1, "a", "b");
 }
 
 /*

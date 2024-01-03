@@ -238,4 +238,13 @@ extern "C" {
       }
       buf.Transmit();
   }
+  void STEAMSHIM_createBeacon(uint32_t openSlots, char* connectString, char* metadata)
+  {
+      pipebuff_t buf;
+      buf.WriteByte(SHIMCMD_CREATEBEACON);
+      buf.WriteInt(openSlots);
+      buf.WriteString(connectString);
+      buf.WriteString(metadata);
+      buf.Transmit();
+  }
 }
