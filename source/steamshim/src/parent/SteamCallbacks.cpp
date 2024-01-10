@@ -31,7 +31,7 @@ class SteamCallbacks
 {
 public:
     SteamCallbacks();
-	STEAM_CALLBACK(SteamCallbacks, OnUserStatsReceived, UserStatsReceived_t, m_Callback);
+	STEAM_CALLBACK(SteamCallbacks, OnCreateBeacon, UserStatsReceived_t, m_CallbackCreateBeacon);
 
 };
 

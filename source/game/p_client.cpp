@@ -19,6 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "g_local.h"
 #include <cstdint>
+#include <cstdlib>
 
 #define PLAYER_MASS 200
 
@@ -805,15 +806,21 @@ void ClientAuth ( edict_t *ent, uint64_t steamid )
 	client->steamid = steamid;
 	client->authenticated = true;
 
+	if ( g_permanent_operators->string[0] ){
+		char *pch = strtok(g_permanent_operators->string, ",");
+		while (pch != NULL){
+			uint64_t testid = atol(pch);
 
-	char buf[17];
-	Q_snprintfz(buf, sizeof(buf), "%017llu", steamid);
+			if (testid == steamid){
+				if( !ent->r.client->isoperator )
+					G_PrintMsg( NULL, "%s" S_COLOR_WHITE " is now a game operator\n", ent->r.client->netname );
 
-	if ( Q_strrstr(g_permanent_operators->string, buf)){
-		if( !ent->r.client->isoperator )
-			G_PrintMsg( NULL, "%s" S_COLOR_WHITE " is now a game operator\n", ent->r.client->netname );
+				ent->r.client->isoperator = true;
+				break;
+			}
 
-		ent->r.client->isoperator = true;
+			pch = strtok(NULL, ",");
+		}
 	}
 }
 
