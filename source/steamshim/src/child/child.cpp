@@ -131,14 +131,21 @@ extern "C" {
         setEnvVar("STEAMSHIM_ISCLIENT", "1");
 
 
-    if (!createPipes(&pipeParentRead, &pipeParentWrite, &pipeChildRead, &pipeChildWrite))
-        fail("Failed to create application pipes");
-    else if (!setEnvironmentVars(pipeChildRead, pipeChildWrite))
-        fail("Failed to set environment variables");
+    if (!createPipes(&pipeParentRead, &pipeParentWrite, &pipeChildRead, &pipeChildWrite)){
+        printf("steamshim: Failed to create application pipes\n");
+        return 0;
+    }
+    else if (!setEnvironmentVars(pipeChildRead, pipeChildWrite)){
+        printf("steamshim: Failed to set environment variables\n");
+        return 0;
+    }
     else if (!launchChild(&childPid, STEAM_BLOB_LAUNCH_NAME))
-        fail("Failed to launch application");
+    {
+        fail("steamshim: Failed to launch application\n");
+        return 0;
+    }
 
-      dbgprintf("Child init start.\n");
+    dbgprintf("Child init start.\n");
     
 
 
