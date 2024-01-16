@@ -169,9 +169,12 @@ static void processCommands()
 {
   pipebuff_t buf;
   while (1){
-    // time_t a = time(NULL) - time_since_last_pump;
-    //  printf("%lu\n",a);
-    //
+    if (time_since_last_pump != 0){
+        time_t delta = time(NULL) - time_since_last_pump;
+        if (delta > 5) // we haven't gotten a pump in 5 seconds, safe to assume the main process is either dead or unresponsive and we can terminate
+            exit(0);
+    }
+
     if (!buf.Recieve())
       continue;
 
