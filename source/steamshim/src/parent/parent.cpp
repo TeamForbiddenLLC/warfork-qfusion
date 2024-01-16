@@ -172,7 +172,7 @@ static void processCommands()
     if (time_since_last_pump != 0){
         time_t delta = time(NULL) - time_since_last_pump;
         if (delta > 5) // we haven't gotten a pump in 5 seconds, safe to assume the main process is either dead or unresponsive and we can terminate
-            exit(0);
+            return;
     }
 
     if (!buf.Recieve())
@@ -218,6 +218,14 @@ static bool initSteamworks(PipeType fd)
     // GSteamBridge = new SteamBridge(fd);
     return 1;
 } 
+
+static void deinitSteamworks() {
+    if (GServerType == STEAMGAMESERVER) {
+        SteamGameServer_Shutdown();
+    }else{
+        SteamAPI_Shutdown();
+    }
+}
 
 static int initPipes(void)
 {
@@ -274,21 +282,12 @@ int main(int argc, char **argv)
     dbgprintf("Parent shutting down.\n");
 
     // Close our ends of the pipes.
-    // writeBye(pipeParentWrite);
-    // closePipe(pipeParentRead);
-    // closePipe(pipeParentWrite);
+    closePipe(GPipeRead);
+    closePipe(GPipeWrite);
 
-    // deinitSteamworks();
-
-    dbgprintf("Parent waiting on child process.\n");
-
-    // Wait for the child to terminate, close the child process handles.
-    // const int retval = closeProcess(&childPid);
-
-    // dbgprintf("Parent exiting mainline (child exit code %d).\n", retval);
+    deinitSteamworks();
 
     return 0;
-
 }
 
 #ifdef _WIN32
