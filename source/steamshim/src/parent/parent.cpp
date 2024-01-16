@@ -142,7 +142,7 @@ static bool processCommand(pipebuff_t cmd, ShimCmd cmdtype, unsigned int len)
                 char *connectString = cmd.ReadString();
                 char *metadata = cmd.ReadString();
 
-                uint32 puNumLocations;
+                uint32 puNumLocations = 0;
                 SteamParties()->GetNumAvailableBeaconLocations(&puNumLocations);
                 if (puNumLocations <= 0) return 0;
 
