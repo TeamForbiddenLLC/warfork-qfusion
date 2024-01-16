@@ -150,11 +150,12 @@ extern "C" {
 
 
 
-      GPipeRead = pipeParentRead;
-      GPipeWrite = pipeParentWrite;
+    GPipeRead = pipeParentRead;
+    GPipeWrite = pipeParentWrite;
     // Close the ends of the pipes that the child will use; we don't need them.
-    // closePipe(pipeChildRead);
-    // closePipe(pipeChildWrite);
+    closePipe(pipeChildRead);
+    closePipe(pipeChildWrite);
+
     pipeChildRead = pipeChildWrite = NULLPIPE;
 
 #ifndef _WIN32
@@ -170,7 +171,7 @@ extern "C" {
       dbgprintf("Child deinit.\n");
       if (GPipeWrite != NULLPIPE)
       {
-          // writeBye();
+          Write1ByteMessage(SHIMCMD_BYE);
           closePipe(GPipeWrite);
       } 
 

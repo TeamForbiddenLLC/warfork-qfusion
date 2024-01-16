@@ -76,7 +76,6 @@ static bool processCommand(pipebuff_t cmd, ShimCmd cmdtype, unsigned int len)
             break;
 
         case SHIMCMD_BYE:
-            // writeBye(fd);
             return false;
 
         case SHIMCMD_REQUESTSTEAMID:
@@ -161,7 +160,7 @@ static bool processCommand(pipebuff_t cmd, ShimCmd cmdtype, unsigned int len)
             break;
     } // switch
 
-    return 0;
+    return true;
 }
 
 
@@ -184,7 +183,8 @@ static void processCommands()
 
         ShimCmd cmd = (ShimCmd)buf.ReadByte();
 
-        processCommand(buf, cmd, evlen);
+        if (!processCommand(buf, cmd, evlen))
+            return; // we were told to exit
     }
   }
 } 

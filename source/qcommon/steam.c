@@ -67,7 +67,6 @@ void Steam_Init( void )
 		return;
 	}
 
-	// STEAMSHIM_requestStats();
 }
 
 /*
