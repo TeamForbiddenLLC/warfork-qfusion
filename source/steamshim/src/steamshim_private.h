@@ -42,6 +42,7 @@ extern PipeType GPipeWrite;
 class pipebuff_t
 {
   public:
+  pipebuff_t();
   char buffer[PIPEMESSAGE_MAX];
   unsigned int cursize = 0;
 
@@ -64,6 +65,9 @@ class pipebuff_t
 
   int Transmit();
   int Recieve();
+
+  private:
+  int lastmsglen = 0;
 
 };
 

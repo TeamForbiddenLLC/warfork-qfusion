@@ -95,6 +95,13 @@ long long pipebuff_t::ReadLong(){
 
 
 
+extern int GArgc;
+extern char **GArgv;
+
+
+pipebuff_t::pipebuff_t(){
+  memset(buffer,0,sizeof buffer);
+}
 
 int pipebuff_t::Transmit()
 {
@@ -110,7 +117,13 @@ int pipebuff_t::Recieve()
   {
     cursize = 0;
     hasmsg = false;
-    memset(buffer,0,sizeof buffer);
+    // memset(buffer,0,sizeof buffer);
+  }
+
+  if (lastmsglen > 0) {
+    // we have extra data left over, shift it to the left
+    memmove(buffer, buffer+lastmsglen+sizeof(uint32_t), br);
+    lastmsglen = 0;
   }
 
 
@@ -124,6 +137,7 @@ int pipebuff_t::Recieve()
 
           assert(br < sizeof(buffer));
           const int morebr = readPipe(GPipeRead, buffer + br, sizeof (buffer) - br);
+
           if (morebr > 0)
               br += morebr;
           else  /* uh oh */
@@ -140,11 +154,8 @@ int pipebuff_t::Recieve()
     hasmsg = true;
 
     br -= msglen + sizeof(uint32_t);
-    if (br > 0){
-      // we have extra data left over, shift it to the left
-      memmove(buffer, buffer+msglen+sizeof(uint32_t), br);
-    }
-
+    if (br > 0)
+      lastmsglen = msglen;
   }
 
   return 1;

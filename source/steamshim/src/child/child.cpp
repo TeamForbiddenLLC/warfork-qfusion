@@ -201,7 +201,7 @@ extern "C" {
 
   const STEAMSHIM_Event *STEAMSHIM_pump(void)
   {
-    // Write1ByteMessage(SHIMCMD_PUMP);
+    Write1ByteMessage(SHIMCMD_PUMP);
     return ProcessEvent();
   } 
 

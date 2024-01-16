@@ -20,6 +20,7 @@ freely, subject to the following restrictions:
 
 #include <cstddef>
 #include <cstdint>
+#include <ctime>
 
 #include "parent_private.h"
 #include "../steamshim_private.h"
@@ -45,7 +46,7 @@ static AppId_t GAppID = 0;
 static uint64 GUserID = 0;
 // static SteamBridge *GSteamBridge = NULL;
 static ISteamGameServer *GSteamGameServer = NULL;
-
+static time_t time_since_last_pump = 0;
 
 static bool processCommand(pipebuff_t cmd, ShimCmd cmdtype, unsigned int len)
 {
@@ -67,6 +68,7 @@ static bool processCommand(pipebuff_t cmd, ShimCmd cmdtype, unsigned int len)
     switch (cmdtype)
     {
         case SHIMCMD_PUMP:
+            time(&time_since_last_pump);
             if (GServerType == STEAMGAMESERVER)
                 SteamGameServer_RunCallbacks();
             else
@@ -166,9 +168,10 @@ static bool processCommand(pipebuff_t cmd, ShimCmd cmdtype, unsigned int len)
 static void processCommands()
 {
   pipebuff_t buf;
-
   while (1){
-
+    // time_t a = time(NULL) - time_since_last_pump;
+    //  printf("%lu\n",a);
+    //
     if (!buf.Recieve())
       continue;
 
@@ -208,7 +211,7 @@ static bool initSteamworks(PipeType fd)
         GAppID = GSteamUtils ? GSteamUtils->GetAppID() : 0;
 	    GUserID = GSteamUser ? GSteamUser->GetSteamID().ConvertToUint64() : 0;
     }
-    //
+    
     // GSteamBridge = new SteamBridge(fd);
     return 1;
 } 
