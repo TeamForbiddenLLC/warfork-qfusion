@@ -269,15 +269,6 @@ static void SV_SpawnServer( const char *server, bool devmap )
 
 	sv.nextSnapTime = 1000;
 
-	// clean up remaining auth tickets or clients will fail to auth later
-	if (Steam_Active()){
-		client_t *cl;
-		for( i = 0, cl = svs.clients; i < sv_maxclients->integer; i++, cl++ )
-		{
-			Steam_EndAuthSession(cl->steamid);
-		}
-	}
-
 	Q_snprintfz( sv.configstrings[CS_WORLDMODEL], sizeof( sv.configstrings[CS_WORLDMODEL] ), "maps/%s.bsp", server );
 	CM_LoadMap( svs.cms, sv.configstrings[CS_WORLDMODEL], false, &checksum );
 
@@ -520,8 +511,21 @@ static void SV_FinalMessage( const char *message, bool reconnect )
 */
 void SV_ShutdownGame( const char *finalmsg, bool reconnect )
 {
+
 	if( !svs.initialized )
 		return;
+
+	// clean up remaining auth tickets or clients will fail to auth later
+	if (Steam_Active()){
+		client_t *cl;
+		int i;
+		for( i = 0, cl = svs.clients; i < sv_maxclients->integer; i++, cl++ )
+		{
+			if( !cl->state )
+				continue;
+			Steam_EndAuthSession(cl->steamid);
+		}
+	}
 
 	if( svs.demo.file )
 		SV_Demo_Stop_f();
