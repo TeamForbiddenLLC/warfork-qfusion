@@ -146,10 +146,11 @@ static bool processCommand(pipebuff_t cmd, ShimCmd cmdtype, unsigned int len)
                 SteamParties()->GetNumAvailableBeaconLocations(&puNumLocations);
                 if (puNumLocations <= 0) return 0;
 
-                SteamPartyBeaconLocation_t pLocationList[puNumLocations];
+                SteamPartyBeaconLocation_t *pLocationList = (SteamPartyBeaconLocation_t *)malloc(puNumLocations* sizeof(SteamPartyBeaconLocation_t) );
                 SteamParties()->GetAvailableBeaconLocations(pLocationList, puNumLocations);
 
                 SteamParties()->CreateBeacon(openSlots, pLocationList, connectString,metadata);
+                free(pLocationList);
             }
             break;
         case SHIMCMD_ENDAUTHSESSION:
