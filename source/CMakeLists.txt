@@ -31,6 +31,7 @@ endif()
 option(USE_SDL2 "Build using SDL2" OFF)
 option(GAME_MODULES_ONLY "Only build game modules" OFF)
 option(BUILD_STEAMLIB "Include the steamlib module (requires Steamworks SDK)" OFF)
+option(USE_GRAPHICS_NRI "Build using Nvidia NRI" OFF)
 
 # We compile third-party libs from source
 
@@ -54,6 +55,12 @@ set(DISCORD_INCLUDE_DIR ${DISCORD_DIR})
 
 set(OPENAL_DIR ${CMAKE_HOME_DIRECTORY}/../libsrcs/src/openal-soft)
 set(OPENAL_INCLUDE_DIR ${OPENAL_DIR}/include/AL)
+
+set(NRI_DIR ${CMAKE_HOME_DIRECTORY}/NRI)
+set(NRI_INCLUDE_DIR ${CMAKE_HOME_DIRECTORY}/NRI/Include)
+set(NRI_STATIC_LIBRARY ON)
+set(IS_SUBMODULE ON)
+add_subdirectory(NRI)
 
 # Windows specific settings
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")

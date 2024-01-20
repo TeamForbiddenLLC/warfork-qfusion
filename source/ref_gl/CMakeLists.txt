@@ -62,4 +62,11 @@ endif()
 add_library(ref_gl SHARED ${REF_GL_HEADERS} ${REF_GL_COMMON_SOURCES} ${REF_GL_PLATFORM_SOURCES})
 target_include_directories(ref_gl PRIVATE ${STB_INCLUDE_DIR})
 target_link_libraries(ref_gl PRIVATE ${REF_GL_PLATFORM_LIBRARIES})
+
+if(USE_GRAPHICS_NRI) 
+	target_link_libraries(ref_gl PRIVATE NRI)
+	target_include_directories(ref_gl PRIVATE ${NRI_INCLUDE_DIR})
+	target_compile_definitions(ref_gl PUBLIC USE_GRAPHICS_NRI=1)
+endif()
+
 qf_set_output_dir(ref_gl libs)

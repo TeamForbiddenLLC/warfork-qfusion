@@ -20,6 +20,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 #include "qmesa.h"
+#include "r_renderer.h"
+#include "r_resource_upload.h"
+
 
 /*
 =========================================================
@@ -28,6 +31,11 @@ VERTEX BUFFER OBJECTS
 
 =========================================================
 */
+R_CreateMeshVBOFn R_CreateMeshVBO;
+R_ReleaseMeshVBOFn R_ReleaseMeshVBO;
+R_UploadVBOVertexRawDataFn R_UploadVBOVertexRawData; 
+R_UploadVBOElemDataFn R_UploadVBOElemData;
+R_UploadVBOInstancesDataFn R_UploadVBOInstancesData; 
 
 typedef struct vbohandle_s
 {
@@ -57,48 +65,8 @@ static int r_num_active_vbos;
 static elem_t *R_VBOElemBuffer( unsigned numElems );
 static void *R_VBOVertBuffer( unsigned numVerts, size_t vertSize );
 
-/*
-* R_InitVBO
-*/
-void R_InitVBO( void )
-{
-	int i;
 
-	r_vbo_tempelems = NULL;
-	r_vbo_numtempelems = 0;
-
-	r_vbo_tempvsoup = NULL;
-	r_vbo_tempvsoupsize = 0;
-
-	r_num_active_vbos = 0;
-
-	memset( r_mesh_vbo, 0, sizeof( r_mesh_vbo ) );
-	memset( r_vbohandles, 0, sizeof( r_vbohandles ) );
-
-	// link vbo handles
-	r_free_vbohandles = r_vbohandles;
-	r_vbohandles_headnode.prev = &r_vbohandles_headnode;
-	r_vbohandles_headnode.next = &r_vbohandles_headnode;
-	for( i = 0; i < MAX_MESH_VERTEX_BUFFER_OBJECTS; i++ ) {
-		r_vbohandles[i].index = i;
-		r_vbohandles[i].vbo = &r_mesh_vbo[i];
-	}
-	for( i = 0; i < MAX_MESH_VERTEX_BUFFER_OBJECTS - 1; i++ ) {
-		r_vbohandles[i].next = &r_vbohandles[i+1];
-	}
-}
-
-/*
-* R_CreateMeshVBO
-*
-* Create two static buffer objects: vertex buffer and elements buffer, the real
-* data is uploaded by calling R_UploadVBOVertexData and R_UploadVBOElemData.
-*
-* Tag allows vertex buffer objects to be grouped and released simultaneously.
-*/
-mesh_vbo_t *R_CreateMeshVBO( void *owner, int numVerts, int numElems, int numInstances,
-	vattribmask_t vattribs, vbo_tag_t tag, vattribmask_t halfFloatVattribs )
-{
+mesh_vbo_t *R_CreateMeshVBO_GL( void *owner, int numVerts, int numElems, int numInstances, vattribmask_t vattribs, vbo_tag_t tag, vattribmask_t halfFloatVattribs ) {
 	int i;
 	size_t size;
 	GLuint vbo_id;
@@ -232,7 +200,7 @@ mesh_vbo_t *R_CreateMeshVBO( void *owner, int numVerts, int numElems, int numIns
 	qglGenBuffersARB( 1, &vbo_id );
 	if( !vbo_id )
 		goto error;
-	vbo->vertexId = vbo_id;
+	vbo->gl.vertexId = vbo_id;
 
 	qglBindBufferARB( GL_ARRAY_BUFFER_ARB, vbo_id );
 	qglBufferDataARB( GL_ARRAY_BUFFER_ARB, size, NULL, usage );
@@ -246,7 +214,7 @@ mesh_vbo_t *R_CreateMeshVBO( void *owner, int numVerts, int numElems, int numIns
 	qglGenBuffersARB( 1, &vbo_id );
 	if( !vbo_id )
 		goto error;
-	vbo->elemId = vbo_id;
+	vbo->gl.elemId = vbo_id;
 
 	size = numElems * sizeof( elem_t );
 	qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, vbo_id );
@@ -285,6 +253,7 @@ error:
 	return NULL;
 }
 
+
 /*
 * R_TouchMeshVBO
 */
@@ -307,7 +276,7 @@ mesh_vbo_t *R_GetVBOByIndex( int index )
 /*
 * R_ReleaseMeshVBO
 */
-void R_ReleaseMeshVBO( mesh_vbo_t *vbo )
+void R_ReleaseMeshVBO_GL( mesh_vbo_t *vbo )
 {
 	GLuint vbo_id;
 
@@ -316,13 +285,13 @@ void R_ReleaseMeshVBO( mesh_vbo_t *vbo )
 	qglBindBufferARB( GL_ARRAY_BUFFER_ARB, 0 );
 	qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, 0 );
 
-	if( vbo->vertexId ) {
-		vbo_id = vbo->vertexId;
+	if( vbo->gl.vertexId ) {
+		vbo_id = vbo->gl.vertexId;
 		qglDeleteBuffersARB( 1, &vbo_id );
 	}
 
-	if( vbo->elemId ) {
-		vbo_id = vbo->elemId;
+	if( vbo->gl.elemId ) {
+		vbo_id = vbo->gl.elemId;
 		qglDeleteBuffersARB( 1, &vbo_id );
 	}
 
@@ -676,10 +645,10 @@ vattribmask_t R_FillVBOVertexDataBuffer( mesh_vbo_t *vbo, vattribmask_t vattribs
 /*
 * R_UploadVBOVertexRawData
 */
-void R_UploadVBOVertexRawData( mesh_vbo_t *vbo, int vertsOffset, int numVerts, const void *data )
+static void R_UploadVBOVertexRawData_GL( mesh_vbo_t *vbo, int vertsOffset, int numVerts, const void *data )
 {
 	assert( vbo != NULL );
-	if( !vbo || !vbo->vertexId ) {
+	if( !vbo || !vbo->gl.vertexId ) {
 		return;
 	}
 
@@ -687,7 +656,7 @@ void R_UploadVBOVertexRawData( mesh_vbo_t *vbo, int vertsOffset, int numVerts, c
 		R_DeferDataSync();
 	}
 
-	qglBindBufferARB( GL_ARRAY_BUFFER_ARB, vbo->vertexId );
+	qglBindBufferARB( GL_ARRAY_BUFFER_ARB, vbo->gl.vertexId );
 	qglBufferSubDataARB( GL_ARRAY_BUFFER_ARB, vertsOffset * vbo->vertexSize, numVerts * vbo->vertexSize, data );
 }
 
@@ -701,7 +670,7 @@ vattribmask_t R_UploadVBOVertexData( mesh_vbo_t *vbo, int vertsOffset, vattribma
 
 	assert( vbo != NULL );
 	assert( mesh != NULL );
-	if( !vbo || !vbo->vertexId ) {
+	if( !vbo || !vbo->gl.vertexId ) {
 		return 0;
 	}
 
@@ -750,14 +719,14 @@ static void *R_VBOVertBuffer( unsigned numVerts, size_t vertSize )
 *
 * Upload elements into the buffer, properly offsetting them (batching)
 */
-void R_UploadVBOElemData( mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, const mesh_t *mesh )
+static void R_UploadVBOElemData_GL( mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, const mesh_t *mesh )
 {
 	int i;
 	elem_t *ielems = mesh->elems;
 
 	assert( vbo != NULL );
 
-	if( !vbo->elemId )
+	if( !vbo->gl.elemId )
 		return;
 
 	if( vertsOffset ) {
@@ -771,7 +740,7 @@ void R_UploadVBOElemData( mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, con
 		R_DeferDataSync();
 	}
 
-	qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, vbo->elemId );
+	qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, vbo->gl.elemId );
 	qglBufferSubDataARB( GL_ELEMENT_ARRAY_BUFFER_ARB, elemsOffset * sizeof( elem_t ),
 		mesh->numElems * sizeof( elem_t ), ielems );
 }
@@ -779,13 +748,13 @@ void R_UploadVBOElemData( mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, con
 /*
 * R_UploadVBOInstancesData
 */
-vattribmask_t R_UploadVBOInstancesData( mesh_vbo_t *vbo, int instOffset, int numInstances, instancePoint_t *instances )
+vattribmask_t R_UploadVBOInstancesData_GL( mesh_vbo_t *vbo, int instOffset, int numInstances, instancePoint_t *instances )
 {
 	vattribmask_t errMask = 0;
 
 	assert( vbo != NULL );
 
-	if( !vbo->vertexId ) {
+	if( !vbo->gl.vertexId ) {
 		return 0;
 	}
 
@@ -802,7 +771,7 @@ vattribmask_t R_UploadVBOInstancesData( mesh_vbo_t *vbo, int instOffset, int num
 	}
 
 	if( vbo->instancesOffset ) {
-		qglBindBufferARB( GL_ARRAY_BUFFER_ARB, vbo->vertexId );
+		qglBindBufferARB( GL_ARRAY_BUFFER_ARB, vbo->gl.vertexId );
 		qglBufferSubDataARB( GL_ARRAY_BUFFER_ARB, 
 			vbo->instancesOffset + instOffset * sizeof( instancePoint_t ), 
 			numInstances * sizeof( instancePoint_t ), instances );
@@ -887,4 +856,302 @@ void R_ShutdownVBO( void )
 		R_Free( r_vbo_tempelems );
 	}
 	r_vbo_numtempelems = 0;
+}
+
+// ------------------------------------
+// NRI backend implementation
+
+static void R_UploadVBOElemData_NRI( mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, const mesh_t *mesh )
+{
+	assert( vbo != NULL );
+
+	buffer_upload_desc_t uploadDesc = {};
+	uploadDesc.target = vbo->nri.indexBuffer;
+	uploadDesc.numBytes = mesh->numElems * sizeof( elem_t );
+	uploadDesc.byteOffset = elemsOffset * sizeof( elem_t );
+	//uploadDesc.currentAccess = vbo->nri.indexAccess;
+	R_ResourceBeginCopyBuffer( &uploadDesc );
+	elem_t *dest = (elem_t *)uploadDesc.data;
+	for( size_t i = 0; i < mesh->numElems; i++ ) {
+		dest[i] = vertsOffset + mesh->elems[i];
+	}
+  R_ResourceEndCopyBuffer( &uploadDesc );
+}
+
+vattribmask_t R_UploadVBOInstancesData_NRI( mesh_vbo_t *vbo, int instOffset, int numInstances, instancePoint_t *instances )
+{
+	vattribmask_t errMask = 0;
+
+	assert( vbo != NULL );
+
+	if( !vbo->gl.vertexId ) {
+		return 0;
+	}
+
+	if( !instances ) {
+		errMask |= VATTRIB_INSTANCES_BITS;
+	}
+
+	if( errMask ) {
+		return errMask;
+	}
+
+	if( vbo->tag != VBO_TAG_STREAM ) {
+		R_DeferDataSync();
+	}
+
+	if( vbo->instancesOffset ) {
+		buffer_upload_desc_t uploadDesc = {};
+		uploadDesc.target = vbo->nri.indexBuffer;
+		uploadDesc.numBytes = numInstances * sizeof( instancePoint_t );
+		uploadDesc.byteOffset = instOffset * sizeof( instancePoint_t );
+		//uploadDesc.currentAccess = vbo->nri.indexAccess;
+		R_ResourceBeginCopyBuffer( &uploadDesc );
+		instancePoint_t *dest = (instancePoint_t *)uploadDesc.data;
+		for( size_t i = 0; i < numInstances; i++ ) {
+			memcpy( dest[i], instances[i], sizeof( instancePoint_t ) );
+		}
+		R_ResourceEndCopyBuffer( &uploadDesc );
+	}
+	return 0;
+}
+
+static void R_UploadVBOVertexRawData_NRI( mesh_vbo_t *vbo, int vertsOffset, int numVerts, const void *data )
+{
+	assert( vbo != NULL );
+	if( !vbo || !vbo->nri.vertexBuffer ) {
+		return;
+	}
+
+	if( vbo->tag != VBO_TAG_STREAM ) {
+		R_DeferDataSync();
+	}
+
+  buffer_upload_desc_t uploadDesc = {};
+  uploadDesc.target = vbo->nri.vertexBuffer;
+  uploadDesc.numBytes = numVerts * vbo->vertexSize;
+  uploadDesc.byteOffset = vertsOffset * vbo->vertexSize;
+  R_ResourceBeginCopyBuffer(&uploadDesc);
+  memcpy( uploadDesc.data, data, uploadDesc.numBytes );
+  R_ResourceEndCopyBuffer( &uploadDesc );
+}
+
+static void R_ReleaseMeshVBO_NRI(mesh_vbo_t* vbo) {
+
+	//TODO: need to see if this crashes because of unrefrenced assets
+	if(vbo->nri.vertexBuffer) {
+		renderer.nri.coreI.DestroyBuffer(vbo->nri.vertexBuffer);
+	}
+	if(vbo->nri.indexBuffer) {
+		renderer.nri.coreI.DestroyBuffer(vbo->nri.vertexBuffer);
+	}
+	if(vbo->nri.instanceBuffer) {
+		renderer.nri.coreI.DestroyBuffer(vbo->nri.vertexBuffer);
+	}
+	for(size_t i = 0; i < vbo->nri.numAllocations; i++) {
+		renderer.nri.coreI.FreeMemory(vbo->nri.memory[i]);
+	} 
+	R_Free(vbo->nri.memory);	
+
+	if( vbo->index >= 1 && vbo->index <= MAX_MESH_VERTEX_BUFFER_OBJECTS ) {
+		vbohandle_t *vboh = &r_vbohandles[vbo->index - 1];
+
+		// remove from linked active list
+		vboh->prev->next = vboh->next;
+		vboh->next->prev = vboh->prev;
+
+		// insert into linked free list
+		vboh->next = r_free_vbohandles;
+		r_free_vbohandles = vboh;
+
+		r_num_active_vbos--;
+	}
+
+	memset( vbo, 0, sizeof( *vbo ) );
+	vbo->tag = VBO_TAG_NONE;
+
+}
+
+
+mesh_vbo_t *R_CreateMeshVBO_NRI( void *owner, int numVerts, int numElems, int numInstances, vattribmask_t vattribs, vbo_tag_t tag, vattribmask_t halfFloatVattribs )
+{
+	assert(numVerts > 0);
+	assert(numElems > 0);
+
+	vbohandle_t *vboh = NULL;
+	mesh_vbo_t *vbo = NULL;
+	vattribbit_t lmattrbit;
+	if( !( halfFloatVattribs & VATTRIB_POSITION_BIT ) ) {
+		halfFloatVattribs &= ~( VATTRIB_AUTOSPRITE_BIT );
+	}
+
+	halfFloatVattribs &= ~VATTRIB_COLORS_BITS;
+	halfFloatVattribs &= ~VATTRIB_BONES_BITS;
+
+	// TODO: convert quaternion component of instance_t to half-float
+	// when uploading instances data
+	halfFloatVattribs &= ~VATTRIB_INSTANCES_BITS;
+
+	size_t vertexByteStride = 0;
+	const size_t instanceByteStride = numInstances *  sizeof(instancePoint_t);
+	const bool hasInstanceBuffer = ( (vattribs & VATTRIB_INSTANCES_BITS) == VATTRIB_INSTANCES_BITS ) && numInstances;
+
+	vboh = r_free_vbohandles;
+	vbo = &r_mesh_vbo[vboh->index];
+	
+	// vertex buffer
+	{
+		vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_POSITION_BIT, halfFloatVattribs ) * 4;
+		// normals data
+		if( vattribs & VATTRIB_NORMAL_BIT ) {
+			assert( !( vertexByteStride & 3 ) );
+			vbo->normalsOffset = vertexByteStride;
+			vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_NORMAL_BIT, halfFloatVattribs ) * 4;
+		}
+
+		// s-vectors (tangent vectors)
+		if( vattribs & VATTRIB_SVECTOR_BIT ) {
+			assert( !( vertexByteStride & 3 ) );
+			vbo->sVectorsOffset = vertexByteStride;
+			vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_SVECTOR_BIT, halfFloatVattribs ) * 4;
+		}
+
+		// texture coordinates
+		if( vattribs & VATTRIB_TEXCOORDS_BIT ) {
+			assert( !( vertexByteStride & 3 ) );
+			vbo->stOffset = vertexByteStride;
+			vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_TEXCOORDS_BIT, halfFloatVattribs ) * 2;
+		}
+
+		// lightmap texture coordinates
+		lmattrbit = VATTRIB_LMCOORDS0_BIT;
+		for( size_t i = 0; i < ( MAX_LIGHTMAPS + 1 ) / 2; i++ ) {
+			if( !( vattribs & lmattrbit ) ) {
+				break;
+			}
+			assert( !( vertexByteStride & 3 ) );
+			vbo->lmstOffset[i] = vertexByteStride;
+			vbo->lmstSize[i] = ( vattribs & ( lmattrbit << 1 ) ) ? 4 : 2;
+			vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_LMCOORDS0_BIT, halfFloatVattribs ) * vbo->lmstSize[i];
+			lmattrbit = (vattribbit_t)( (vattribmask_t)lmattrbit << 2 );
+		}
+		// bones data for skeletal animation
+		if( ( vattribs & VATTRIB_BONES_BITS ) == VATTRIB_BONES_BITS ) {
+			assert( SKM_MAX_WEIGHTS == 4 );
+
+			assert( !( vertexByteStride & 3 ) );
+			vbo->bonesIndicesOffset = vertexByteStride;
+			vertexByteStride += sizeof( int );
+
+			assert( !( vertexByteStride & 3 ) );
+			vbo->bonesWeightsOffset = vertexByteStride;
+			vertexByteStride += sizeof( uint32_t );
+		}
+
+		// autosprites
+		// FIXME: autosprite2 requires waaaay too much data for such a trivial
+		// transformation..
+		if( ( vattribs & VATTRIB_AUTOSPRITE_BIT ) == VATTRIB_AUTOSPRITE_BIT ) {
+			assert( !( vertexByteStride & 3 ) );
+			vbo->spritePointsOffset = vertexByteStride;
+			vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_AUTOSPRITE_BIT, halfFloatVattribs ) * 4;
+		}
+		NriBufferDesc vertexBufferDesc = { .size = vertexByteStride * numVerts, .usageMask = NriBufferUsageBits_VERTEX_BUFFER};
+		renderer.nri.coreI.CreateBuffer(renderer.nri.device, &vertexBufferDesc, &vbo->nri.vertexBuffer);
+	}
+
+	NriBufferDesc instanceBufferDesc = { .size = numElems * sizeof(elem_t), .usageMask = NriBufferUsageBits_INDEX_BUFFER};
+	renderer.nri.coreI.CreateBuffer(renderer.nri.device, &instanceBufferDesc, &vbo->nri.indexBuffer);
+	
+	if(hasInstanceBuffer) {
+		vbo->instancesOffset = instanceByteStride;
+		NriBufferDesc instanceBufferDesc = { .size = instanceByteStride * numInstances, .usageMask = NriBufferUsageBits_CONSTANT_BUFFER};
+		renderer.nri.coreI.CreateBuffer(renderer.nri.device, &instanceBufferDesc, &vbo->nri.instanceBuffer);
+	}
+
+	NriBuffer* nriBuffers[] = {
+		vbo->nri.vertexBuffer,
+		vbo->nri.indexBuffer,
+		vbo->nri.instanceBuffer,
+	};
+
+  NriResourceGroupDesc resourceGroupDesc = {
+      .bufferNum = 2 + (hasInstanceBuffer ? 1 : 0),
+      .buffers = nriBuffers,
+      .memoryLocation = NriMemoryLocation_DEVICE,
+  };
+  const uint32_t allocationNum = renderer.nri.helperI.CalculateAllocationNumber(renderer.nri.device, &resourceGroupDesc);
+	vbo->nri.memory = R_Malloc(sizeof(NriMemory*) * allocationNum);
+	vbo->nri.numAllocations = allocationNum;
+	renderer.nri.helperI.AllocateAndBindMemory(renderer.nri.device, &resourceGroupDesc, vbo->nri.memory);
+
+	r_free_vbohandles = vboh->next;
+
+	// link to the list of active vbo handles
+	vboh->prev = &r_vbohandles_headnode;
+	vboh->next = r_vbohandles_headnode.next;
+	vboh->next->prev = vboh;
+	vboh->prev->next = vboh;
+
+	r_num_active_vbos++;
+
+	vbo->registrationSequence = rsh.registrationSequence;
+	vbo->vertexSize = vertexByteStride;
+	vbo->numVerts = numVerts;
+	vbo->numElems = numElems;
+	vbo->owner = owner;
+	vbo->index = vboh->index + 1;
+	vbo->tag = tag;
+	vbo->vertexAttribs = vattribs;
+	vbo->halfFloatAttribs = halfFloatVattribs;
+	return vbo;
+}
+
+/*
+* R_InitVBO
+*/
+void R_InitVBO()
+{
+  switch(renderer.backend) {
+	  case BACKEND_OPENGL_LEGACY:
+		  R_CreateMeshVBO = R_CreateMeshVBO_GL;
+		  R_ReleaseMeshVBO = R_ReleaseMeshVBO_GL;
+		  R_UploadVBOElemData = R_UploadVBOElemData_GL;
+		  R_UploadVBOVertexRawData = R_UploadVBOVertexRawData_GL;
+		  R_UploadVBOInstancesData = R_UploadVBOInstancesData_GL;
+		  break;
+	  case BACKEND_NRI_VULKAN:
+	  case BACKEND_NRI_METAL:
+	  case BACKEND_NRI_DX12:
+		  R_ReleaseMeshVBO = R_ReleaseMeshVBO_NRI; 
+		  R_CreateMeshVBO = R_CreateMeshVBO_NRI;
+		  R_UploadVBOElemData = R_UploadVBOElemData_NRI;
+		  R_UploadVBOVertexRawData = R_UploadVBOVertexRawData_NRI;
+		  R_UploadVBOInstancesData = R_UploadVBOInstancesData_NRI;
+		  break;
+  }
+
+	r_vbo_tempelems = NULL;
+	r_vbo_numtempelems = 0;
+
+	r_vbo_tempvsoup = NULL;
+	r_vbo_tempvsoupsize = 0;
+
+	r_num_active_vbos = 0;
+
+	memset( r_mesh_vbo, 0, sizeof( r_mesh_vbo ) );
+	memset( r_vbohandles, 0, sizeof( r_vbohandles ) );
+
+	// link vbo handles
+	r_free_vbohandles = r_vbohandles;
+	r_vbohandles_headnode.prev = &r_vbohandles_headnode;
+	r_vbohandles_headnode.next = &r_vbohandles_headnode;
+	for(size_t i = 0; i < MAX_MESH_VERTEX_BUFFER_OBJECTS; i++ ) {
+		r_vbohandles[i].index = i;
+		r_vbohandles[i].vbo = &r_mesh_vbo[i];
+	}
+	for(size_t i = 0; i < MAX_MESH_VERTEX_BUFFER_OBJECTS - 1; i++ ) {
+		r_vbohandles[i].next = &r_vbohandles[i+1];
+	}
+
 }

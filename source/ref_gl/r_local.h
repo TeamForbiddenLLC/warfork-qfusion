@@ -29,6 +29,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../qcommon/bsp.h"
 #include "../qcommon/patch.h"
 
+#include "r_renderer.h"
+
 typedef struct { char *name; void **funcPointer; } dllfunc_t;
 
 typedef struct mempool_s mempool_t;
@@ -41,6 +43,14 @@ typedef vec_t instancePoint_t[8]; // quaternion for rotation + xyz pos + uniform
 #define NUM_CUSTOMCOLORS		16
 
 #define NUM_LOADER_THREADS		4 // optimal value found by testing, when there are too many, CPU usage may be 100%
+
+typedef struct {
+    uint32_t    indexCount;
+    uint32_t    instanceCount;
+    uint32_t    firstIndex;
+    int32_t     vertexOffset;
+    uint32_t    firstInstance;
+} index_draw_indirect_t;
 
 enum
 {
@@ -761,12 +771,24 @@ typedef enum
 
 typedef struct mesh_vbo_s
 {
+	union {
+		struct {
+			unsigned int 		vertexId;
+			unsigned int		elemId;
+		} gl;
+		struct {
+			 uint8_t numAllocations;
+			 NriMemory** memory; 
+		   NriBuffer* vertexBuffer;
+		   NriBuffer* indexBuffer;
+			 NriBuffer* instanceBuffer;
+		} nri;
+	};
+
 	unsigned int		index;
 	int					registrationSequence;
 	vbo_tag_t			tag;
 
-	unsigned int 		vertexId;
-	unsigned int		elemId;
 	void 				*owner;
 	unsigned int 		visframe;
 
@@ -793,18 +815,18 @@ typedef struct mesh_vbo_s
 	size_t				instancesOffset;
 } mesh_vbo_t;
 
-void 		R_InitVBO( void );
-mesh_vbo_t *R_CreateMeshVBO( void *owner, int numVerts, int numElems, int numInstances,
-	vattribmask_t vattribs, vbo_tag_t tag, vattribmask_t halfFloatVattribs );
-void		R_ReleaseMeshVBO( mesh_vbo_t *vbo );
+void R_InitVBO();
+
+DECLARE_RENDERER_FUNCTION(mesh_vbo_t*, R_CreateMeshVBO,  void *owner, int numVerts, int numElems, int numInstances, vattribmask_t vattribs, vbo_tag_t tag, vattribmask_t halfFloatVattribs );
+DECLARE_RENDERER_FUNCTION(void, R_ReleaseMeshVBO, mesh_vbo_t *vbo);
+DECLARE_RENDERER_FUNCTION(void, R_UploadVBOVertexRawData, mesh_vbo_t *vbo, int vertsOffset, int numVerts, const void *data );
+DECLARE_RENDERER_FUNCTION(void, R_UploadVBOElemData, mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, const mesh_t *mesh );
+DECLARE_RENDERER_FUNCTION(vattribmask_t, R_UploadVBOInstancesData, mesh_vbo_t *vbo, int instOffset, int numInstances, instancePoint_t *instances );
 void		R_TouchMeshVBO( mesh_vbo_t *vbo );
 mesh_vbo_t *R_GetVBOByIndex( int index );
 int			R_GetNumberOfActiveVBOs( void );
 vattribmask_t R_FillVBOVertexDataBuffer( mesh_vbo_t *vbo, vattribmask_t vattribs, const mesh_t *mesh, void *outData );
-void		R_UploadVBOVertexRawData( mesh_vbo_t *vbo, int vertsOffset, int numVerts, const void *data );
-vattribmask_t R_UploadVBOVertexData( mesh_vbo_t *vbo, int vertsOffset, vattribmask_t vattribs, const mesh_t *mesh );
-void 		R_UploadVBOElemData( mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, const mesh_t *mesh );
-vattribmask_t R_UploadVBOInstancesData( mesh_vbo_t *vbo, int instOffset, int numInstances, instancePoint_t *instances );
+vattribmask_t R_UploadVBOVertexData(mesh_vbo_t *vbo, int vertsOffset, vattribmask_t vattribs, const mesh_t *mesh );
 void		R_FreeVBOsByTag( vbo_tag_t tag );
 void		R_FreeUnusedVBOs( void );
 void 		R_ShutdownVBO( void );

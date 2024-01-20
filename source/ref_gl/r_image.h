@@ -21,6 +21,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef R_IMAGE_H
 #define R_IMAGE_H
 
+#include "r_renderer.h"
+
 enum
 {
 	IT_NONE
@@ -71,6 +73,17 @@ enum
 
 typedef struct image_s
 {
+	union {
+		struct {
+			GLuint texnum;						// gl texture binding
+		} gl;
+		struct {
+			uint32_t numAllocations;
+			NriMemory** memory;
+			NriTexture* texture;
+		} nri;
+	};
+
 	char			*name;						// game path, not including extension
 	int				registrationSequence;
 	volatile bool loaded;
@@ -78,7 +91,6 @@ typedef struct image_s
 
 	char			extension[8];				// file extension
 	int				flags;
-	GLuint			texnum;						// gl texture binding
 	int				width, height;				// source image
 	int				layers;						// texture array size
 	int				upload_width,
@@ -91,7 +103,7 @@ typedef struct image_s
 	struct image_s	*next, *prev;
 } image_t;
 
-void R_InitImages( void );
+void R_InitImages();
 int R_TextureTarget( int flags, int *uploadTarget );
 void R_TouchImage( image_t *image, int tags );
 void R_FreeUnusedImagesByTags( int tags );
@@ -113,9 +125,10 @@ void R_ScreenShot( const char *filename, int x, int y, int width, int height,
 void R_TextureMode( char *string );
 void R_AnisotropicFilter( int value );
 
-image_t *R_LoadImage( const char *name, uint8_t **pic, int width, int height, int flags, int minmipsize, int tags, int samples );
-image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmipsize, int tags );
-image_t *R_Create3DImage( const char *name, int width, int height, int layers, int flags, int tags, int samples, bool array );
+
+DECLARE_RENDERER_FUNCTION(image_t*, R_LoadImage, const char *name, uint8_t **pic, int width, int height, int flags, int minmipsize, int tags, int samples );
+DECLARE_RENDERER_FUNCTION(image_t*, R_Create3DImage, const char *name, int width, int height, int layers, int flags, int tags, int samples, bool array );
+DECLARE_RENDERER_FUNCTION(image_t*, R_FindImage, const char *name, const char *suffix, int flags, int minmipsize, int tags );
 void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int flags, int minmipsize, int samples );
 void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, int width, int height );
 void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic );

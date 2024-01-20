@@ -133,6 +133,7 @@ void Sys_Error( const char *format, ... )
 	Q_vsnprintfz( msg, sizeof( msg ), format, argptr );
 	va_end( argptr );
 
+	assert(false);
 	ri.Com_Error( ERR_FATAL, "%s", msg );
 }
 

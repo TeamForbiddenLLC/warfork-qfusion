@@ -1,0 +1,3 @@
+[submodule "source/NRI"]
+	path = source/NRI
+	url = git@github.com:NVIDIAGameWorks/NRI.git

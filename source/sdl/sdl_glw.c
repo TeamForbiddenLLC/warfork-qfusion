@@ -279,14 +279,6 @@ rserr_t GLimp_SetWindow( void *hinstance, void *wndproc, void *parenthWnd, bool 
 }
 
 /*
-** GLimp_RenderingEnabled
-*/
-bool GLimp_RenderingEnabled( void )
-{
-	return true;
-}
-
-/*
 ** GLimp_SetSwapInterval
 */
 void GLimp_SetSwapInterval( int swapInterval )

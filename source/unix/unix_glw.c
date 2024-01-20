@@ -1112,13 +1112,6 @@ rserr_t GLimp_SetWindow( void *hinstance, void *wndproc, void *parenthWnd, bool 
 	return rserr_ok; // surface cannot be lost
 }
 
-/*
-** GLimp_RenderingEnabled
-*/
-bool GLimp_RenderingEnabled( void )
-{
-	return true;
-}
 
 /*
 ** GLimp_SetSwapInterval

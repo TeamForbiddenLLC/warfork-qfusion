@@ -20,6 +20,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef R_GLIMP_H
 #define R_GLIMP_H
 
+#include <stdbool.h>
+#include "../gameshared/q_shared.h"
+#include "../gameshared/q_cvar.h"
+
 #ifdef __cplusplus
 #define QGL_EXTERN extern "C"
 #else
@@ -78,13 +82,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define MAX_GLSL_UNIFORM_BONES			100
 #define MAX_GLSL_UNIFORM_INSTANCES		40
 
-#define GAMMARAMP_STRIDE				4096
+#define GAMMARAMP_STRIDE 4096
 
 extern cvar_t *r_stencilbits;
 extern cvar_t *gl_drawbuffer;
 extern cvar_t *gl_driver;
-
-//====================================================================
 
 enum
 {
@@ -248,8 +250,9 @@ IMPLEMENTATION SPECIFIC FUNCTIONS
 
 ====================================================================
 */
+bool GLimp_InitConfig();
+void GLimp_PrintConfig();
 
-bool	GLimp_RenderingEnabled( void );
 void	GLimp_BeginFrame( void );
 void	GLimp_EndFrame( void );
 int		GLimp_Init( const char *applicationName, void *hinstance, void *wndproc, void *parenthWnd, 

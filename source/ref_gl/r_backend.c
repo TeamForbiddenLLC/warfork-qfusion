@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 #include "r_backend_local.h"
+#include "r_renderer.h"
 
 // Smaller buffer for 2D polygons. Also a workaround for some instances of a hardly explainable bug on Adreno
 // that caused dynamic draws to slow everything down in some cases when normals are used with dynamic VBOs.
@@ -204,14 +205,14 @@ void RB_BindImage( int tmu, const image_t *tex )
 	GLuint texnum;
 
 	assert( tex != NULL );
-	assert( tex->texnum != 0 );
+	assert( tex->gl.texnum != 0 );
 
 	if( tex->missing ) {
 		tex = rsh.noTexture;
 	} else if( !tex->loaded ) {
 		// not yet loaded from disk
 		tex = tex->flags & IT_CUBEMAP ? rsh.whiteCubemapTexture : rsh.whiteTexture;
-	} else if( rsh.noTexture && ( r_nobind->integer && tex->texnum != 0 ) ) {
+	} else if( rsh.noTexture && ( r_nobind->integer && tex->gl.texnum != 0 ) ) {
 		// performance evaluation option
 		tex = rsh.noTexture;
 	}
@@ -221,7 +222,7 @@ void RB_BindImage( int tmu, const image_t *tex )
 		memset( rb.gl.currentTextures, 0, sizeof( rb.gl.currentTextures ) );
 	}
 
-	texnum = tex->texnum;
+	texnum = tex->gl.texnum;
 	if( rb.gl.currentTextures[tmu] == texnum )
 		return;
 
@@ -229,7 +230,7 @@ void RB_BindImage( int tmu, const image_t *tex )
 
 	RB_SelectTextureUnit( tmu );
 
-	qglBindTexture( R_TextureTarget( tex->flags, NULL ), tex->texnum );
+	qglBindTexture( R_TextureTarget( tex->flags, NULL ), tex->gl.texnum );
 
 	rb.stats.c_totalBinds++;
 }
@@ -722,8 +723,8 @@ void RB_BindVBO( int id, int primitive )
 		return;
 	}
 
-	RB_BindArrayBuffer( vbo->vertexId );
-	RB_BindElementArrayBuffer( vbo->elemId );
+	RB_BindArrayBuffer( vbo->gl.vertexId );
+	RB_BindElementArrayBuffer( vbo->gl.elemId );
 }
 
 /*
