@@ -147,7 +147,7 @@ bool COM_ValidateConfigstring( const char *string );
 #define	MAX_STRING_CHARS			1024		// max length of a string passed to Cmd_TokenizeString
 #define	MAX_STRING_TOKENS			256			// max tokens resulting from Cmd_TokenizeString
 #define	MAX_TOKEN_CHARS				1024		// max length of an individual token
-#define MAX_CONFIGSTRING_CHARS		MAX_QPATH	// max length of a configstring string
+#define MAX_CONFIGSTRING_CHARS		128 // max length of a configstring string
 
 #define MAX_NAME_BYTES				32			// max length of a player name, including trailing \0
 #define MAX_NAME_CHARS				15			// max visible characters in a name (color tokens and \0 not counted)

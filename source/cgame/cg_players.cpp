@@ -19,6 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "cg_local.h"
+#include <cstdlib>
 
 static const char *cg_defaultSexedSounds[] =
 {
@@ -267,4 +268,10 @@ void CG_LoadClientInfo( cg_clientInfo_t *ci, const char *info, int client )
 
 	s = Info_ValueForKey( info, "m" );
 	ci->modelindex = s && s[0] ? atoi( s ) : 0;
+
+
+	s = Info_ValueForKey( info, "steam_id" );
+	if (s){
+		ci->steamid = atol(s);
+	}
 }

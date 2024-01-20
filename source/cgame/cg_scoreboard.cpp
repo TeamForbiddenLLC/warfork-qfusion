@@ -659,6 +659,7 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 	int iconnum;
 	struct shader_s *icon;
 	bool highlight = false, trans = false;
+	int avatarid;
 
 	if( GS_TeamBasedGametype() )
 	{
@@ -674,7 +675,7 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 	xoffset = 0;
 	yoffset = 0;
 
-	height = trap_SCR_FontHeight( font );
+	height = 32;//trap_SCR_FontHeight( font );
 
 	// start from the center again
 	xoffset = CG_HorizontalAlignForWidth( 0, align, panelWidth );
@@ -699,6 +700,7 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 
 		Vector4Copy( colorWhite, color ); // reset to white after each column
 		icon = NULL;
+		avatarid = -1;
 		string[0] = 0;
 
 		// interpret the data based on the type defined in the layout
@@ -783,6 +785,10 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 			if( atoi( token ) )
 				icon = CG_MediaShader( cgs.media.shaderVSayIcon[VSAY_YES] );
 			break;
+		case 'a': // is a steam avatar
+				avatarid = atoi( token );
+				width = 32;
+			break;
 		}
 
 		if( !width )
@@ -804,6 +810,10 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 
 			if( icon )
 				SCR_AddPlayerIcon( icon, x + xoffset, y + yoffset, color[3], font );
+			if (avatarid == 1){
+				vec4_t tc = { 1.0f, 1.0f, 1.0f, 1.0f }, color;
+				CGAME_IMPORT.R_DrawFillRect(x + xoffset, y+yoffset, 32, 32,tc);
+			}
 		}
 
 		// draw the column value

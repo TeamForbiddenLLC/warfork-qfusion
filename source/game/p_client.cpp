@@ -1068,7 +1068,11 @@ static void G_UpdatePlayerInfoString( int playerNum )
 	// update client information in cgame
 	playerString[0] = 0;
 
+	char id[18];
+	Q_snprintfz(id, sizeof id, "%llu", client->steamid);
+
 	Info_SetValueForKey( playerString, "name", client->netname );
+	Info_SetValueForKey( playerString, "steam_id", id);
 	Info_SetValueForKey( playerString, "hand", va( "%i", client->hand ) );
 	Info_SetValueForKey( playerString, "color",
 		va( "%i %i %i", client->color[0], client->color[1], client->color[2] ) );
