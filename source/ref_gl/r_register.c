@@ -25,7 +25,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../qalgo/hash.h"
 #include "r_renderer.h"
 #include "r_resource_upload.h"
-#include "r_nriimp.h"
+#include "r_nri.h"
+#include "r_shared.h"
 
 nri_t r_nri;
 glconfig_t glConfig;
@@ -344,23 +345,20 @@ static void R_GfxInfo_f( void )
 /*
 * R_Init
 */
-rserr_t R_Init( const char *applicationName, const char *screenshotPrefix, int startupColor,
-	int iconResource, const int *iconXPM,
-	void *hinstance, void *wndproc, void *parenthWnd, 
-	bool verbose )
+rserr_t R_Init( r_app_init_desc_t* desc)
 {
 	r_mempool = R_AllocPool( NULL, "Rendering Frontend" );
-	r_verbose = verbose;
+	r_verbose = desc->verbose;
 	r_postinit = true;
-	r_backend_api = BACKEND_OPENGL_LEGACY;
-
+	r_backend_api = desc->api;
+	const char* applicationName = desc->applicationName;
+	const char* screenshotPrefix = desc->screenshotPrefix;
 	memset( &glConfig, 0, sizeof(glconfig_t) );
 
 	if( !applicationName ) applicationName = "Qfusion";
 	if( !screenshotPrefix ) screenshotPrefix = "";
 
 	R_Register( screenshotPrefix );
-
 
 	switch(r_backend_api) {
 		case BACKEND_OPENGL_LEGACY: {
@@ -382,8 +380,8 @@ rserr_t R_Init( const char *applicationName, const char *screenshotPrefix, int s
 				return rserr_invalid_driver;
 			}
 
-			// initialize OS-specific parts of OpenGL
-			if( !GLimp_Init( applicationName, hinstance, wndproc, parenthWnd, iconResource, iconXPM ) ) {
+			// initialicvar_t OS-specific parts of OpenGL
+			if( !GLimp_Init( applicationName, desc->hinstance, desc->wndProc, desc->parenthWnd, desc->iconResource, desc->iconXPM) ) {
 				QGL_Shutdown();
 				return rserr_unknown;
 			}
@@ -392,19 +390,38 @@ rserr_t R_Init( const char *applicationName, const char *screenshotPrefix, int s
 		case BACKEND_NRI_VULKAN:
 		case BACKEND_NRI_METAL:
 		case BACKEND_NRI_DX12: {
-			nri_desc_t nriDesc = {}; 
-			NRIimp_Init(&nriDesc);
+			nri_desc_t nriDesc = {};
+			nriDesc.width = desc->width;
+			nriDesc.height = desc->height;
+			switch( desc->winType ) {
+				case WINDOW_TYPE_WAYLAND:
+					nriDesc.window.wayland.surface = desc->window.wayland.surface;
+					nriDesc.window.wayland.display = desc->window.wayland.display;
+					break;
+				case WINDOW_TYPE_X11:
+					nriDesc.window.x11.window = desc->window.x11.window;
+					nriDesc.window.x11.dpy = desc->window.x11.dpy;
+					break;
+				case WINDOW_TYPE_WIN32:
+					nriDesc.window.windows.hwnd = desc->window.win.hwnd;
+					break;
+				default:
+					Com_Printf( "Unhandled window Type %d\n", desc->winType);
+					assert(false);
+					break;
+			}
+			nri_Init( &nriDesc );
 			break;
 		}
 	}
 	// FIXME: move this elsewhere?
 	glConfig.applicationName = R_CopyString( applicationName );
 	glConfig.screenshotPrefix = R_CopyString( screenshotPrefix );
-	glConfig.startupColor = startupColor;
+	glConfig.startupColor = desc->startupColor;
 
 	rf.applicationName = R_CopyString( applicationName );
 	rf.screenshotPrefix = R_CopyString( screenshotPrefix );
-	rf.startupColor = startupColor;
+	rf.startupColor = desc->startupColor;
 
 	return rserr_ok;
 }
@@ -430,15 +447,25 @@ static rserr_t R_PostInit( void )
 	rf.debugSurfaceLock = ri.Mutex_Create();
 
 	R_InitDrawLists();
-
-	if( !GLimp_InitConfig() ) {
-		QGL_Shutdown();
-		return rserr_unknown;
+	
+	switch(r_backend_api) {
+		case BACKEND_OPENGL_LEGACY: {
+			if( !GLimp_InitConfig() ) {
+				QGL_Shutdown();
+				return rserr_unknown;
+			}
+			break;
+		}
+		case BACKEND_NRI_DX12:
+		case BACKEND_NRI_VULKAN:
+		case BACKEND_NRI_METAL: {
+			R_InitResourceUpload();
+			break;
+		}
 	}
 
-	if( r_backend_api != BACKEND_OPENGL_LEGACY ) {
-		R_InitResourceUpload();
-	}
+
+
 
 	R_SetSwapInterval( 0, -1 );
 

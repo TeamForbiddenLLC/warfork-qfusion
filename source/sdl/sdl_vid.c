@@ -19,7 +19,9 @@
  */
 
 #include <SDL.h>
+#include <SDL_syswm.h>
 #include "../client/client.h"
+#include "../ref_gl/r_shared.h"
 
 SDL_Window *sdl_window;
 
@@ -35,8 +37,53 @@ static int VID_WndProc( void *wnd, int ev, int p1, int p2 )
 rserr_t VID_Sys_Init( const char *applicationName, const char *screenshotsPrefix, int startupColor, 
 	const int *iconXPM, void *parentWindow, bool verbose )
 {
-	return re.Init( applicationName, screenshotsPrefix, startupColor, 0, iconXPM, 
-		NULL, VID_WndProc, parentWindow, verbose );
+
+	SDL_DisplayMode mode;
+	SDL_GetDesktopDisplayMode( 0, &mode );
+
+	r_app_init_desc_t init = {};
+	init.width = mode.w;
+	init.height = mode.h;
+	init.applicationName = applicationName;
+	init.screenshotPrefix = screenshotsPrefix;
+	init.startupColor = startupColor;
+	init.iconXPM = iconXPM;
+	init.parenthWnd = parentWindow;
+	init.verbose = verbose;
+	init.wndProc = VID_WndProc;
+	init.api = BACKEND_OPENGL_LEGACY;
+	SDL_SysWMinfo wmi;
+	if( SDL_GetWindowWMInfo( sdl_window, &wmi ) ) {
+		switch( wmi.subsystem ) {
+#if defined( SDL_VIDEO_DRIVER_X11 )
+			case SDL_SYSWM_X11:
+				init.winType = WINDOW_TYPE_X11;
+				init.window.x11.window = wmi.info.x11.window;
+				init.window.x11.dpy = wmi.info.x11.display;
+				break;
+#endif
+#if defined( SDL_VIDEO_DRIVER_WAYLAND )
+			case SDL_SYSWM_WAYLAND:
+				init.winType = WINDOW_TYPE_WAYLAND;
+				init.window.wayland.display = wmi.info.wl.display;
+				init.window.wayland.surface = wmi.info.wl.surface;
+				break;
+#endif
+#if defined( SDL_VIDEO_DRIVER_WINDOWS )
+			case SDL_SYSWM_WINDOWS:
+				assert( false ); // TODO implement
+				// init.winType = WINDOW_TYPE_WIN32;
+				// init.window.win.hwnd = wmi.info.;
+				// init.window.win.surface = wmi.info.wl.surface;
+				break;
+#endif
+			default:
+				assert( false );
+				break;
+		}
+	}
+
+	return re.Init( &init);
 }
 
 /*

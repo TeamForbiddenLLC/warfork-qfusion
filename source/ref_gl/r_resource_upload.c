@@ -1,4 +1,4 @@
-#include "r_nriimp.h"
+#include "r_nri.h"
 #include "r_renderer.h"
 #include <assert.h>
 #include "stb_ds.h"
@@ -17,7 +17,6 @@ typedef struct command_set_s{
   size_t offset;
   NriCommandAllocator* allocator;
   NriCommandBuffer* cmd;
-  NriFence* fence;
   uint32_t reservedStageMemory;
   temporary_resource_buf_t* temporary;
 } resource_command_set_t;
@@ -41,6 +40,7 @@ static uint32_t activeSet = 0;
 static resource_stage_buffer_t stageBuffer = {};
 static resource_command_set_t commandSets[NUMBER_COMMAND_SETS] = {};
 static NriCommandQueue* cmdQueue = NULL;
+static NriFence* uploadFence = NULL;
 
 static bool __R_AllocFromStageBuffer(resource_command_set_t *set, size_t reqSize, resource_stage_response_t *res ) {
 	size_t allocSize = R_Align( reqSize, 4 ); // we round up to multiples of uint32_t
@@ -99,9 +99,8 @@ static bool R_AllocTemporaryBuffer( resource_command_set_t *set, size_t reqSize,
 
 static void R_UploadBeginCommandSet( struct command_set_s *set )
 {
-
 	if( syncIndex >= NUMBER_COMMAND_SETS ) {
-		r_nri.coreI.Wait( set->fence, 1 + syncIndex - NUMBER_COMMAND_SETS );
+		r_nri.coreI.Wait( uploadFence, 1 + syncIndex - NUMBER_COMMAND_SETS );
 		r_nri.coreI.ResetCommandAllocator( set->allocator );
 	   for(size_t i = 0; i < arrlen(set->temporary); i++) {
 	     r_nri.coreI.DestroyBuffer(set->temporary[i].buffer);
@@ -123,35 +122,32 @@ static void R_UploadEndCommandSet(struct command_set_s* set) {
 	queueSubmit.commandBuffers = cmdBuffers;
 	queueSubmit.commandBufferNum = 1;
 	r_nri.coreI.QueueSubmit( cmdQueue, &queueSubmit );
-	r_nri.coreI.QueueSignal( cmdQueue, set->fence, 1 + syncIndex );
+	r_nri.coreI.QueueSignal( cmdQueue, uploadFence, 1 + syncIndex );
   syncIndex++;
 }
 
 void R_InitResourceUpload()
 {
- NRI_ABORT_ON_FAILURE(r_nri.coreI.GetCommandQueue( r_nri.device, NriCommandQueueType_GRAPHICS, &cmdQueue))
- NriBufferDesc stageBufferDesc = { .size = SizeOfStageBufferByte };
- NRI_ABORT_ON_FAILURE( r_nri.coreI.CreateBuffer( r_nri.device, &stageBufferDesc, &stageBuffer.buffer ) )
+	NRI_ABORT_ON_FAILURE( r_nri.coreI.GetCommandQueue( r_nri.device, NriCommandQueueType_GRAPHICS, &cmdQueue ) )
+	NriBufferDesc stageBufferDesc = { .size = SizeOfStageBufferByte };
+	NRI_ABORT_ON_FAILURE( r_nri.coreI.CreateBuffer( r_nri.device, &stageBufferDesc, &stageBuffer.buffer ) )
 
-  NriResourceGroupDesc resourceGroupDesc = { 
-    .buffers = &stageBuffer.buffer, 
-    .bufferNum = 1, 
-    .memoryLocation = NriMemoryLocation_HOST_UPLOAD
-  };
-  assert(r_nri.helperI.CalculateAllocationNumber( r_nri.device, &resourceGroupDesc ) == 1 );
-  NRI_ABORT_ON_FAILURE( r_nri.helperI.AllocateAndBindMemory( r_nri.device, &resourceGroupDesc, &stageBuffer.memory ) );
+	NriResourceGroupDesc resourceGroupDesc = { .buffers = &stageBuffer.buffer, .bufferNum = 1, .memoryLocation = NriMemoryLocation_HOST_UPLOAD };
+	assert( r_nri.helperI.CalculateAllocationNumber( r_nri.device, &resourceGroupDesc ) == 1 );
+	NRI_ABORT_ON_FAILURE( r_nri.helperI.AllocateAndBindMemory( r_nri.device, &resourceGroupDesc, &stageBuffer.memory ) );
+	NRI_ABORT_ON_FAILURE( r_nri.coreI.CreateFence( r_nri.device, 0, &uploadFence ) );
 
-  for(size_t i = 0; i < Q_ARRAY_COUNT(commandSets); i++) {
-    NRI_ABORT_ON_FAILURE( r_nri.coreI.CreateCommandAllocator(cmdQueue, &commandSets[i].allocator) );
-    NRI_ABORT_ON_FAILURE( r_nri.coreI.CreateCommandBuffer(commandSets[i].allocator, &commandSets[i].cmd) );
-  }
+	for( size_t i = 0; i < Q_ARRAY_COUNT( commandSets ); i++ ) {
+		NRI_ABORT_ON_FAILURE( r_nri.coreI.CreateCommandAllocator( cmdQueue, &commandSets[i].allocator ) );
+		NRI_ABORT_ON_FAILURE( r_nri.coreI.CreateCommandBuffer( commandSets[i].allocator, &commandSets[i].cmd ) );
+	}
 
-  // we just keep the buffer always mapped
-  stageBuffer.cpuMappedBuffer = r_nri.coreI.MapBuffer(stageBuffer.buffer, 0, NRI_WHOLE_SIZE);
-  stageBuffer.tailOffset = 0;
-  stageBuffer.remaningSpace = SizeOfStageBufferByte;
-  activeSet = 0;
-  R_UploadBeginCommandSet( &commandSets[0] );
+	// we just keep the buffer always mapped
+	stageBuffer.cpuMappedBuffer = r_nri.coreI.MapBuffer( stageBuffer.buffer, 0, NRI_WHOLE_SIZE );
+	stageBuffer.tailOffset = 0;
+	stageBuffer.remaningSpace = SizeOfStageBufferByte;
+	activeSet = 0;
+	R_UploadBeginCommandSet( &commandSets[0] );
 }
 
 void R_ResourceBeginCopyBuffer( buffer_upload_desc_t *action )

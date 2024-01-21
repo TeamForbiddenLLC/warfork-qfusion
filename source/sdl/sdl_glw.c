@@ -65,7 +65,7 @@ rserr_t GLimp_SetFullscreenMode( int displayFrequency, bool fullscreen )
 	}
 
     if( SDL_SetWindowFullscreen( glw_state.sdl_window, flags ) == 0 ) {
-        glConfig.fullScreen = fullscreen;
+        r_renderer_state.fullScreen = fullscreen;
         return rserr_ok;
     }
 
@@ -116,11 +116,11 @@ rserr_t GLimp_SetMode( int x, int y, int width, int height, int displayFrequency
 		return rserr_invalid_mode;
 	}
 
-    glConfig.fullScreen = fullscreen ? GLimp_SetFullscreenMode( displayFrequency, fullscreen ) == rserr_ok : false;
+    r_renderer_state.fullScreen = fullscreen ? GLimp_SetFullscreenMode( displayFrequency, fullscreen ) == rserr_ok : false;
 	r_renderer_state.width = width;
 	r_renderer_state.height = height;
 
-    return glConfig.fullScreen == fullscreen ? rserr_ok : rserr_invalid_fullscreen;
+    return r_renderer_state.fullScreen == fullscreen ? rserr_ok : rserr_invalid_fullscreen;
 }
 
 /**

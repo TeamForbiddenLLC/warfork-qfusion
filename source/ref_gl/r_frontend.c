@@ -186,17 +186,13 @@ static ref_cmdbuf_t *RF_GetNextAdapterFrame( ref_frontendAdapter_t *adapter )
 	return result;
 }
 
-rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int startupColor,
-	int iconResource, const int *iconXPM,
-	void *hinstance, void *wndproc, void *parenthWnd, 
-	bool verbose )
+rserr_t RF_Init( r_app_init_desc_t *desc  )
 {
 	rserr_t err;
 
 	memset( &rrf, 0, sizeof( rrf ) );
 
-	err = R_Init( applicationName, screenshotPrefix, startupColor,
-		iconResource, iconXPM, hinstance, wndproc, parenthWnd, verbose );
+	err = R_Init( desc );
 	if( err != rserr_ok )
 		return err;
 
@@ -207,7 +203,7 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 {
 	rserr_t err;
 
-	if( r_renderer_state.width == width && r_renderer_state.height == height && glConfig.fullScreen != fullScreen ) {
+	if( r_renderer_state.width == width && r_renderer_state.height == height && r_renderer_state.fullScreen != fullScreen ) {
 		return GLimp_SetFullscreenMode( displayFrequency, fullScreen );
 	}
 

@@ -117,7 +117,7 @@ static void GLimp_SetWindowSize( bool fullscreen )
 
 static void GLimp_CreateWindow( void )
 {
-	bool fullscreen = glConfig.fullScreen;
+	bool fullscreen = r_renderer_state.fullScreen;
 	HWND parentHWND = glw_state.parenthWnd;
 #ifdef WITH_UTF8
 	WNDCLASSW wc;
@@ -182,7 +182,7 @@ static void GLimp_CreateWindow( void )
 */
 rserr_t GLimp_SetFullscreenMode( int displayFrequency, bool fullscreen )
 {
-	glConfig.fullScreen = false;
+	r_renderer_state.fullScreen = false;
 
 	// do a CDS if needed
 	if( fullscreen )
@@ -212,7 +212,7 @@ rserr_t GLimp_SetFullscreenMode( int displayFrequency, bool fullscreen )
 		if( a == DISP_CHANGE_SUCCESSFUL )
 		{
 			ri.Com_Printf( "ok\n" );
-			glConfig.fullScreen = true;
+			r_renderer_state.fullScreen = true;
 			GLimp_SetWindowSize( true );
 			return rserr_ok;
 		}
@@ -260,7 +260,7 @@ rserr_t GLimp_SetMode( int x, int y, int width, int height, int displayFrequency
 
 	r_renderer_state.width = width;
 	r_renderer_state.height = height;
-	glConfig.fullScreen = ( fullscreen ? GLimp_SetFullscreenMode( displayFrequency, fullscreen ) == rserr_ok : false );
+	r_renderer_state.fullScreen = ( fullscreen ? GLimp_SetFullscreenMode( displayFrequency, fullscreen ) == rserr_ok : false );
 	glConfig.stereoEnabled = stereo;
 
 	GLimp_CreateWindow();
@@ -271,7 +271,7 @@ rserr_t GLimp_SetMode( int x, int y, int width, int height, int displayFrequency
 		return false;
 	}
 
-	return ( fullscreen == glConfig.fullScreen ? rserr_ok : rserr_invalid_fullscreen );
+	return ( fullscreen == r_renderer_state.fullScreen ? rserr_ok : rserr_invalid_fullscreen );
 }
 
 /*
@@ -312,10 +312,10 @@ void GLimp_Shutdown( void )
 	UnregisterClass( glw_state.windowClassName, glw_state.hInstance );
 #endif
 
-	if( glConfig.fullScreen )
+	if( r_renderer_state.fullScreen )
 	{
 		ChangeDisplaySettings( 0, 0 );
-		glConfig.fullScreen = false;
+		r_renderer_state.fullScreen = false;
 	}
 
 	if( glw_state.applicationName )
@@ -568,7 +568,7 @@ void GLimp_AppActivate( bool active, bool destroy )
 	}
 	else
 	{
-		if( glConfig.fullScreen )
+		if( r_renderer_state.fullScreen )
 		{
 			ri.Cvar_Set( "gl_drawbuffer", "GL_NONE" );
 			ShowWindow( glw_state.hWnd, SW_MINIMIZE );

@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "../cgame/ref.h"
 
-#define REF_API_VERSION 21
+#define REF_API_VERSION 22
 
 struct mempool_s;
 struct cinematics_s;
@@ -30,7 +30,7 @@ struct cinematics_s;
 typedef struct qthread_s qthread_t;
 typedef struct qmutex_s qmutex_t;
 typedef struct qbufPipe_s qbufPipe_t;
-
+typedef struct r_app_init_desc_s r_app_init_desc_t;
 //
 // these are the functions exported by the refresh module
 //
@@ -131,8 +131,7 @@ typedef struct
 	// if API is different, the dll cannot be used
 	int			( *API )( void );
 
-	rserr_t		( *Init )( const char *applicationName, const char *screenshotsPrefix, int startupColor,
-					int iconResource, const int *iconXPM, void *hinstance, void *wndproc, void *parenthWnd, bool verbose );
+	rserr_t		( *Init )(r_app_init_desc_t* desc);
 	rserr_t		( *SetMode )( int x, int y, int width, int height, int displayFrequency, bool fullScreen, bool stereo );
 	rserr_t		( *SetWindow )( void *hinstance, void *wndproc, void *parenthWnd );
 

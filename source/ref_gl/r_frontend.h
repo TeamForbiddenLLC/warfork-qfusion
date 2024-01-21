@@ -48,8 +48,6 @@ typedef struct
 	ref_cmdbuf_t	*frames[3];			// triple-buffered
 	ref_cmdbuf_t	*frame; 			// current frontend frame
 
-	void            *auxGLContext;
-
 	ref_frontendAdapter_t adapter;
 
 	// these fields serve as the frontend cache which can also queried by the public API
@@ -59,8 +57,7 @@ typedef struct
 } ref_frontend_t;
 
 // public API
-rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int startupColor,
-	int iconResource, const int *iconXPM, void *hinstance, void *wndproc, void *parenthWnd,  bool verbose );
+rserr_t RF_Init( r_app_init_desc_t *desc );
 rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, bool fullScreen, bool stereo );
 void RF_AppActivate( bool active, bool destroy );
 rserr_t	RF_SetWindow( void *hinstance, void *wndproc, void *parenthWnd );

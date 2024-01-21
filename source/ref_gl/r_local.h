@@ -30,7 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../qcommon/patch.h"
 
 #include "r_renderer.h"
-#include "r_nriimp.h"
+#include "r_nri.h"
 
 typedef struct { char *name; void **funcPointer; } dllfunc_t;
 
@@ -45,13 +45,6 @@ typedef vec_t instancePoint_t[8]; // quaternion for rotation + xyz pos + uniform
 
 #define NUM_LOADER_THREADS		4 // optimal value found by testing, when there are too many, CPU usage may be 100%
 
-typedef struct {
-    uint32_t    indexCount;
-    uint32_t    instanceCount;
-    uint32_t    firstIndex;
-    int32_t     vertexOffset;
-    uint32_t    firstInstance;
-} index_draw_indirect_t;
 
 enum
 {
@@ -349,6 +342,7 @@ typedef struct
 } r_globals_t;
 
 extern ref_import_t ri;
+extern backend_api_t r_backend_api;
 
 extern r_shared_t rsh;
 extern r_scene_t rsc;
@@ -701,10 +695,7 @@ int			R_GetClippedFragments( const vec3_t origin, float radius, vec3_t axis[3], 
 //
 // r_register.c
 //
-rserr_t		R_Init( const char *applicationName, const char *screenshotPrefix, int startupColor,
-				int iconResource, const int *iconXPM,
-				void *hinstance, void *wndproc, void *parenthWnd, 
-				bool verbose );
+rserr_t		R_Init(r_app_init_desc_t* desc );
 void		R_BeginRegistration( void );
 void		R_EndRegistration( void );
 void		R_Shutdown( bool verbose );
