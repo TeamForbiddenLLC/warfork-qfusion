@@ -395,8 +395,8 @@ void RFB_GetObjectSize( int object, int *width, int *height )
 	r_fbo_t *fbo;
 
 	if( !object ) {
-		*width = glConfig.width;
-		*height = glConfig.height;
+		*width = r_renderer_state.width;
+		*height = r_renderer_state.height;
 		return;
 	}
 

@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define R_GRAPHICS_H
 
 #include "../gameshared/q_shared.h"
+#include "r_nriimp.h"
 
 static const uint32_t ByteToKB = 1024;
 static const uint32_t ByteToMB = 1024 * ByteToKB;
@@ -35,22 +36,22 @@ static inline size_t R_Align( size_t x, size_t alignment )
 	typedef ret( qcdecl *name##Fn )( __VA_ARGS__ ); \
 	extern name##Fn name;
 
-typedef struct {
-	uint16_t width;
-	uint16_t height;
-	bool fullScreen;
-	
-	char		*applicationName;
-	char		*screenshotPrefix;
-	int				startupColor;
-} r_renderer_state_t;
-
 typedef enum { 
 	BACKEND_OPENGL_LEGACY, 
 	BACKEND_NRI_VULKAN, 
 	BACKEND_NRI_METAL, 
 	BACKEND_NRI_DX12 
 } backend_api_t;
+
+typedef struct {
+	// nri
+	NriSwapChain *swapChain;
+
+	uint16_t width;
+	uint16_t height;
+	bool fullScreen;
+} r_renderer_state_t;
+
 
 extern backend_api_t r_backend_api;
 extern r_renderer_state_t r_renderer_state;

@@ -44,8 +44,8 @@ void RB_Init( void )
 
 	// set default OpenGL state
 	RB_SetGLDefaults();
-	rb.gl.scissor[2] = glConfig.width;
-	rb.gl.scissor[3] = glConfig.height;
+	rb.gl.scissor[2] = r_renderer_state.width;
+	rb.gl.scissor[3] = r_renderer_state.height;
 
 	// initialize shading
 	RB_InitShading();

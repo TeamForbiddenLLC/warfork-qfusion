@@ -1,7 +1,6 @@
 #ifndef R_NRI_IMP_H
 #define R_NRI_IMP_H
 
-#include "r_renderer.h"
 #define NRI_STATIC_LIBRARY 1
 #include "NRI.h"
 
@@ -32,7 +31,6 @@ typedef struct {
 		NriCoreInterface coreI;
 		NriSwapChainInterface swapChainI;
 		NriDevice *device;
-	  NriSwapChain *swapChain;
 } nri_t;
 
 extern nri_t r_nri;

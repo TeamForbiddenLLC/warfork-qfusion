@@ -209,7 +209,7 @@ typedef struct
 	int				version;
 	int				shadingLanguageVersion;
 
-	int				width, height;
+	//int				width, height;
 	bool			fullScreen;
 
 	bool			stereoEnabled;

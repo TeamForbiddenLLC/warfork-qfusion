@@ -117,8 +117,8 @@ rserr_t GLimp_SetMode( int x, int y, int width, int height, int displayFrequency
 	}
 
     glConfig.fullScreen = fullscreen ? GLimp_SetFullscreenMode( displayFrequency, fullscreen ) == rserr_ok : false;
-	glConfig.width = width;
-	glConfig.height = height;
+	r_renderer_state.width = width;
+	r_renderer_state.height = height;
 
     return glConfig.fullScreen == fullscreen ? rserr_ok : rserr_invalid_fullscreen;
 }
@@ -135,8 +135,8 @@ void GLimp_Shutdown()
 
 	memset( &glw_state, 0, sizeof( glw_state ) );
 
-	glConfig.width = 0;
-	glConfig.height = 0;
+	r_renderer_state.width = 0;
+	r_renderer_state.height = 0;
 }
 
 /**

@@ -297,6 +297,10 @@ typedef struct
 // the backend should never attempt reading or modifying them
 typedef struct
 {
+	char		*applicationName;
+	char		*screenshotPrefix;
+	int			startupColor;
+
 	bool 			in2D;
 	int				width2D, height2D;
 

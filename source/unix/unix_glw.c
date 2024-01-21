@@ -658,7 +658,7 @@ static rserr_t GLimp_SetMode_Real( int width, int height, int displayFrequency, 
 	XClassHint *class_hint;
 
 	if( x11display.dpy ) {
-		if( !force && (glConfig.width == width) && (glConfig.height == height) && (glConfig.fullScreen != fullscreen) ) {
+		if( !force && (r_renderer_state.width == width) && (r_renderer_state.height == height) && (glConfig.fullScreen != fullscreen) ) {
 			// fullscreen toggle
 			_NETWM_SET_FULLSCREEN( fullscreen );
 			_NETWM_CHECK_FULLSCREEN();
@@ -820,8 +820,8 @@ static rserr_t GLimp_SetMode_Real( int width, int height, int displayFrequency, 
 
 	XFlush( x11display.dpy );
 
-	glConfig.width = width;
-	glConfig.height = height;
+	r_renderer_state.width = width;
+	r_renderer_state.height = height;
 	glConfig.fullScreen = fullscreen;
 
 	_NETWM_CHECK_FULLSCREEN();
@@ -1057,7 +1057,7 @@ void GLimp_EndFrame( void )
 		cvar_t *vid_multiscreen_head = ri.Cvar_Get( "vid_multiscreen_head", "0", CVAR_ARCHIVE );
 		
 		if( vid_multiscreen_head->modified ) {
-			GLimp_SetMode_Real( glConfig.width, glConfig.height, _vid_display_refresh_rate, true, true, true );
+			GLimp_SetMode_Real( r_renderer_state.width, r_renderer_state.height, _vid_display_refresh_rate, true, true, true );
 			vid_multiscreen_head->modified = false;
 		}
 	}

@@ -217,7 +217,7 @@ void R_TakeEnvShot( const char *path, const char *name, unsigned maxPixels )
 	if( !R_IsRenderingToScreen() || !rsh.worldModel )
 		return;
 	
-	maxSize = min( min( glConfig.width, glConfig.height ), glConfig.maxTextureSize );
+	maxSize = min( min( r_renderer_state.width, r_renderer_state.height ), glConfig.maxTextureSize );
 	if( maxSize > maxPixels )
 		maxSize = maxPixels;
 	
@@ -242,8 +242,8 @@ void R_TakeEnvShot( const char *path, const char *name, unsigned maxPixels )
 	rn.shadowGroup = NULL;
 	rn.fbColorAttachment = rn.fbDepthAttachment = NULL;
 	
-	Vector4Set( rn.viewport, fd.x, glConfig.height - size - fd.y, size, size );
-	Vector4Set( rn.scissor, fd.x, glConfig.height - size - fd.y, size, size );
+	Vector4Set( rn.viewport, fd.x, r_renderer_state.height - size - fd.y, size, size );
+	Vector4Set( rn.scissor, fd.x, r_renderer_state.height - size - fd.y, size, size );
 	
 	for( i = 0; i < 6; i++ )
 	{

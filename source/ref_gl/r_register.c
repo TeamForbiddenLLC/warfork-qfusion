@@ -32,7 +32,6 @@ glconfig_t glConfig;
 backend_api_t r_backend_api;
 r_renderer_state_t r_renderer_state;
 r_shared_t rsh;
-
 mempool_t *r_mempool;
 
 cvar_t *r_maxfps;
@@ -350,8 +349,6 @@ rserr_t R_Init( const char *applicationName, const char *screenshotPrefix, int s
 	void *hinstance, void *wndproc, void *parenthWnd, 
 	bool verbose )
 {
-	const qgl_driverinfo_t *driver;
-
 	r_mempool = R_AllocPool( NULL, "Rendering Frontend" );
 	r_verbose = verbose;
 	r_postinit = true;
@@ -382,7 +379,6 @@ rserr_t R_Init( const char *applicationName, const char *screenshotPrefix, int s
 					ri.Cvar_ForceSet( gl_driver->name, dllname );
 					goto init_qgl;
 				}
-
 				return rserr_invalid_driver;
 			}
 
@@ -405,6 +401,10 @@ rserr_t R_Init( const char *applicationName, const char *screenshotPrefix, int s
 	glConfig.applicationName = R_CopyString( applicationName );
 	glConfig.screenshotPrefix = R_CopyString( screenshotPrefix );
 	glConfig.startupColor = startupColor;
+
+	rf.applicationName = R_CopyString( applicationName );
+	rf.screenshotPrefix = R_CopyString( screenshotPrefix );
+	rf.startupColor = startupColor;
 
 	return rserr_ok;
 }

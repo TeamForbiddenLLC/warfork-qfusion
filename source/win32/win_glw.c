@@ -52,7 +52,7 @@ static void GLimp_SetWindowSize( bool fullscreen )
 	int stylebits;
 	int exstyle;
 	int x = glw_state.win_x, y = glw_state.win_y;
-	int width = glConfig.width, height = glConfig.height;
+	int width = r_renderer_state.width, height = r_renderer_state.height;
 	HWND parentHWND = glw_state.parenthWnd;
 
 	if( !glw_state.hWnd )
@@ -196,8 +196,8 @@ rserr_t GLimp_SetFullscreenMode( int displayFrequency, bool fullscreen )
 
 		dm.dmSize = sizeof( dm );
 
-		dm.dmPelsWidth  = glConfig.width;
-		dm.dmPelsHeight = glConfig.height;
+		dm.dmPelsWidth  = r_renderer_state.width;
+		dm.dmPelsHeight = r_renderer_state.height;
 		dm.dmFields     = DM_PELSWIDTH | DM_PELSHEIGHT;
 
 		if( displayFrequency > 0 )
@@ -258,8 +258,8 @@ rserr_t GLimp_SetMode( int x, int y, int width, int height, int displayFrequency
 	glw_state.win_x = x;
 	glw_state.win_y = y;
 
-	glConfig.width = width;
-	glConfig.height = height;
+	r_renderer_state.width = width;
+	r_renderer_state.height = height;
 	glConfig.fullScreen = ( fullscreen ? GLimp_SetFullscreenMode( displayFrequency, fullscreen ) == rserr_ok : false );
 	glConfig.stereoEnabled = stereo;
 
@@ -335,8 +335,8 @@ void GLimp_Shutdown( void )
 	glw_state.win_x = 0;
 	glw_state.win_y = 0;
 
-	glConfig.width = 0;
-	glConfig.height = 0;
+	r_renderer_state.width = 0;
+	r_renderer_state.height = 0;
 }
 
 
