@@ -2998,7 +2998,7 @@ static void CL_CheckForUpdate( void )
 
 	if( !cl_checkForUpdate->integer )
 		return;
-	if( Steam_GetSteamID() )
+	if( Steam_Active() )
 		return;
 
 	if( updateRemoteData )

@@ -285,8 +285,14 @@ int main(int argc, char **argv)
     else
         GServerType = STEAMGAMESERVER;
 
-    if (!initSteamworks(GPipeWrite))
+    if (!initSteamworks(GPipeWrite)) {
+        char failure = 0;
+        writePipe(GPipeWrite, &failure, sizeof failure);
         fail("Failed to initialize Steamworks");
+    }
+
+    char success = 1;
+    writePipe(GPipeWrite, &success, sizeof success);
 
 
     dbgprintf("Parent in command processing loop.\n");

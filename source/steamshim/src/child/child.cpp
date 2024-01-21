@@ -154,13 +154,22 @@ extern "C" {
         return 0;
     }
 
-    dbgprintf("Child init start.\n");
-    
-
-
-
     GPipeRead = pipeParentRead;
     GPipeWrite = pipeParentWrite;
+
+    char status;
+    readPipe(GPipeRead, &status, sizeof status);
+
+    if (!status){
+        close(GPipeRead);
+        close(GPipeWrite);
+
+        GPipeWrite = GPipeRead = pipeChildRead = pipeChildWrite = NULLPIPE;
+        return 0;
+    }
+
+    dbgprintf("Child init start.\n");
+
     // Close the ends of the pipes that the child will use; we don't need them.
     closePipe(pipeChildRead);
     closePipe(pipeChildWrite);
