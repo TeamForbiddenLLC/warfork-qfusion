@@ -50,6 +50,8 @@ static uint64 GUserID = 0;
 static ISteamGameServer *GSteamGameServer = NULL;
 static time_t time_since_last_pump = 0;
 
+static SteamCallbacks *GSteamCallbacks;
+
 static bool processCommand(pipebuff_t cmd, ShimCmd cmdtype, unsigned int len)
 {
   #if 1
@@ -62,6 +64,7 @@ static bool processCommand(pipebuff_t cmd, ShimCmd cmdtype, unsigned int len)
     PRINTGOTCMD(SHIMCMD_SETRICHPRESENCE);
     PRINTGOTCMD(SHIMCMD_REQUESTAUTHSESSIONTICKET);
     PRINTGOTCMD(SHIMCMD_BEGINAUTHSESSION);
+    PRINTGOTCMD(SHIMCMD_ENDAUTHSESSION);
     PRINTGOTCMD(SHIMCMD_REQUESTAVATAR);
 #undef PRINTGOTCMD
     else if (cmdtype != SHIMCMD_PUMP) printf("Parent got unknown shimcmd %d.\n", (int) cmdtype);
@@ -161,17 +164,7 @@ static bool processCommand(pipebuff_t cmd, ShimCmd cmdtype, unsigned int len)
                 uint64 id = cmd.ReadLong();
 
                 if (!SteamFriends()->RequestUserInformation(id, false)){
-                    printf("cahced arleady\n");
-                    int handle = SteamFriends()->GetSmallFriendAvatar(id);
-
-                    uint8_t image[4096];
-                    SteamUtils()->GetImageRGBA(handle, image, sizeof image);
-
-                    
-                    msg.WriteByte(SHIMEVENT_AVATARRECIEVED);
-                    msg.WriteLong(id);
-                    msg.WriteData(image, sizeof image);
-                    msg.Transmit();
+                    TransmitAvatar(id);
                 }
             }
             break;
@@ -238,7 +231,7 @@ static bool initSteamworks(PipeType fd)
 	    GUserID = GSteamUser ? GSteamUser->GetSteamID().ConvertToUint64() : 0;
     }
     
-    // GSteamBridge = new SteamBridge(fd);
+    GSteamCallbacks = new SteamCallbacks();
     return 1;
 } 
 

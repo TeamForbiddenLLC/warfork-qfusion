@@ -813,8 +813,8 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 			if( icon )
 				SCR_AddPlayerIcon( icon, x + xoffset, y + yoffset, color[3], font );
 			if (avatar){
-				for (uint px = 0; px < 32; px++) {
-					for (uint py = 0; py < 32; py++) {
+				for (unsigned int px = 0; px < 32; px++) {
+					for (unsigned int py = 0; py < 32; py++) {
 						unsigned int pixel = py*32*4+4*px;
 						vec4_t tc;
 						tc[0] = ((float)avatar[pixel])/255;

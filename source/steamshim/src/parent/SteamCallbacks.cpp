@@ -19,29 +19,42 @@ freely, subject to the following restrictions:
 */
 
 
+#include "steam/isteamfriends.h"
 #include "steam/isteamuser.h"
 #include "steam/steam_api.h"
 #include "steam/steam_gameserver.h"
 
 #include "../os.h"
-
-class SteamCallbacks;
-
-class SteamCallbacks
-{
-public:
-    SteamCallbacks();
-	STEAM_CALLBACK(SteamCallbacks, OnCreateBeacon, UserStatsReceived_t, m_CallbackCreateBeacon);
-
-};
-
+#include "./parent_private.h"
+#include "../steamshim_private.h"
+#include "../steamshim.h"
 
 SteamCallbacks::SteamCallbacks()
-    : m_CallbackCreateBeacon( this, &SteamCallbacks::OnCreateBeacon )
+    : m_CallbackCreateBeacon( this, &SteamCallbacks::OnCreateBeacon ),
+    m_CallbackPersonaStateChange( this, &SteamCallbacks::OnPersonaStateChange)
 {
 } 
 
 void SteamCallbacks::OnCreateBeacon(UserStatsReceived_t *pCallback)
 {
 } 
+
+void SteamCallbacks::OnPersonaStateChange(PersonaStateChange_t *pCallback)
+{
+    if (pCallback->m_nChangeFlags & k_EPersonaChangeAvatar){
+        TransmitAvatar(pCallback->m_ulSteamID);
+    }
+} 
+void TransmitAvatar(uint64 id){
+    int handle = SteamFriends()->GetSmallFriendAvatar(id);
+
+    uint8_t image[4096];
+    SteamUtils()->GetImageRGBA(handle, image, sizeof image);
+
+    pipebuff_t msg;
+    msg.WriteByte(SHIMEVENT_AVATARRECIEVED);
+    msg.WriteLong(id);
+    msg.WriteData(image, sizeof image);
+    msg.Transmit();
+}
 
