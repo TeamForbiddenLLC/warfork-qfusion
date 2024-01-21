@@ -1,5 +1,6 @@
 #include "r_texureformat.h"
 
+
 NriFormat R_ToNRIFormat(texture_format_t format) {
   switch(format) {
     case R_FORMAT_R8_UNORM: return NriFormat_R8_UNORM;

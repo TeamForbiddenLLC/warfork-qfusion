@@ -34,8 +34,7 @@ FRAME COMMANDS BUFFER
 
 #define REF_CMD_BUF_SIZE 0x400000
 
-enum
-{
+typedef enum {
 	REF_CMD_BEGIN_FRAME,
 	REF_CMD_END_FRAME,
 	
@@ -56,7 +55,7 @@ enum
 	REF_CMD_DRAW_STRETCH_RAW_YUV,
 
 	NUM_REF_CMDS
-};
+} ref_cmd_type_t;
 
 typedef struct
 {

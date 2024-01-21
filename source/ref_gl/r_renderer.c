@@ -3,9 +3,9 @@
 
 #include <assert.h>
 
-renderer_t renderer;
+//renderer_t renderer;
 
-extern rserr_t initNRIRenderer( const renderer_desc_t *desc, renderer_t *rend );
+//extern rserr_t initNRIRenderer( const renderer_desc_t *desc, renderer_t *rend );
 //extern void printGLExtensions(renderer_t* rend);
 
 //rserr_t RE_initRenderer(const renderer_desc_t* desc, renderer_t* renderer) {

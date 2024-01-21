@@ -1,7 +1,7 @@
 #ifndef R_NRI_TEXFORMAT_H
 #define R_NRI_TEXFORMAT_H
 
-#include "r_renderer.h"
+#include "r_nriimp.h"
 #include <assert.h>
 
 typedef enum {

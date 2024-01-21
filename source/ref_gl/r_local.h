@@ -30,6 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../qcommon/patch.h"
 
 #include "r_renderer.h"
+#include "r_nriimp.h"
 
 typedef struct { char *name; void **funcPointer; } dllfunc_t;
 

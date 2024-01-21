@@ -1380,7 +1380,7 @@ void R_DeferDataSync( void )
 		return;
 
 	rf.dataSync = true;
-	if(renderer.backend == BACKEND_OPENGL_LEGACY) {
+	if(r_backend_api == BACKEND_OPENGL_LEGACY) {
 		qglFlush();
 	}
 	RB_FlushTextureCache();

@@ -1123,13 +1123,6 @@ void GLimp_SetSwapInterval( int swapInterval )
 }
 
 /*
-** GLimp_EnableMultithreadedRendering
-*/
-void GLimp_EnableMultithreadedRendering( bool enable )
-{
-}
-
-/*
 ** GLimp_GetWindowSurface
 */
 void *GLimp_GetWindowSurface( bool *renderable )

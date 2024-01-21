@@ -25,9 +25,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../qalgo/hash.h"
 #include "r_renderer.h"
 #include "r_resource_upload.h"
+#include "r_nriimp.h"
 
+nri_t r_nri;
 glconfig_t glConfig;
-
+backend_api_t r_backend_api;
+r_renderer_state_t r_renderer_state;
 r_shared_t rsh;
 
 mempool_t *r_mempool;
@@ -126,7 +129,6 @@ cvar_t *gl_driver;
 cvar_t *gl_cull;
 cvar_t *r_multithreading;
 
-static backend_api_t r_backend_api;
 static bool	r_verbose;
 static bool	r_postinit;
 
@@ -134,49 +136,6 @@ static void R_GfxInfo_f( void );
 
 static void R_InitVolatileAssets( void );
 static void R_DestroyVolatileAssets( void );
-
-/*
-* R_PrintMemoryInfo
-*/
-static void R_PrintMemoryInfo( void )
-{
-	int mem[12];
-
-	Com_Printf( "\n" );
-	Com_Printf( "Video memory information:\n" );
-
-	if( glConfig.ext.gpu_memory_info ) {
-		// NV
-		qglGetIntegerv( GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, mem );
-		Com_Printf( "total: %i MB\n", mem[0] >>10 );
-
-		qglGetIntegerv( GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX, mem );
-		Com_Printf( "dedicated: %i MB\n", mem[0] >>10 );
-
-		qglGetIntegerv( GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, mem );
-		Com_Printf( "available: %i MB\n", mem[0] >>10 );
-
-		qglGetIntegerv( GPU_MEMORY_INFO_EVICTION_COUNT_NVX, mem );
-		Com_Printf( "eviction count: %i MB\n", mem[0] >> 10 );
-
-		qglGetIntegerv( GPU_MEMORY_INFO_EVICTED_MEMORY_NVX, mem );
-		Com_Printf( "totally evicted: %i MB\n", mem[0] >>10 );
-	}
-	else if( glConfig.ext.meminfo ) {
-		// ATI
-		qglGetIntegerv( VBO_FREE_MEMORY_ATI, mem );
-		qglGetIntegerv( TEXTURE_FREE_MEMORY_ATI, mem+4 );
-		qglGetIntegerv( RENDERBUFFER_FREE_MEMORY_ATI, mem+8 );
-
-		Com_Printf( "total memory free in the pool: (VBO:%i, Tex:%i, RBuf:%i) MB\n", mem[0] >> 10, mem[4] >> 10, mem[8] >> 10 );
-		Com_Printf( "largest available free block in the pool: (V:%i, Tex:%i, RBuf:%i) MB\n", mem[5] >> 10, mem[4] >> 10, mem[9] >> 10 );
-		Com_Printf( "total auxiliary memory free: (VBO:%i, Tex:%i, RBuf:%i) MB\n", mem[2] >> 10, mem[6] >> 10, mem[10] >> 10 );
-		Com_Printf( "largest auxiliary free block: (VBO:%i, Tex:%i, RBuf:%i) MB\n", mem[3] >> 10, mem[7] >> 10, mem[11] >> 10 );
-	}
-	else {
-		Com_Printf( "not available\n" );
-	}
-}
 
 /*
 * R_FillStartupBackgroundColor
@@ -343,11 +302,43 @@ static void R_Register( const char *screenshotsPrefix )
 static void R_GfxInfo_f( void )
 {
 	Com_Printf( "\n" );
-	if(renderer.backend == BACKEND_OPENGL_LEGACY) {
+	if(r_backend_api == BACKEND_OPENGL_LEGACY) {
 		GLimp_PrintConfig();
-	}
 
-	R_PrintMemoryInfo();
+		Com_Printf( "\n" );
+		Com_Printf( "Video memory information:\n" );
+
+		uint8_t mem[12];
+		if( glConfig.ext.gpu_memory_info ) {
+			// NV
+			qglGetIntegerv( GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, mem );
+			Com_Printf( "total: %i MB\n", mem[0] >> 10 );
+
+			qglGetIntegerv( GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX, mem );
+			Com_Printf( "dedicated: %i MB\n", mem[0] >> 10 );
+
+			qglGetIntegerv( GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, mem );
+			Com_Printf( "available: %i MB\n", mem[0] >> 10 );
+
+			qglGetIntegerv( GPU_MEMORY_INFO_EVICTION_COUNT_NVX, mem );
+			Com_Printf( "eviction count: %i MB\n", mem[0] >> 10 );
+
+			qglGetIntegerv( GPU_MEMORY_INFO_EVICTED_MEMORY_NVX, mem );
+			Com_Printf( "totally evicted: %i MB\n", mem[0] >> 10 );
+		} else if( glConfig.ext.meminfo ) {
+			// ATI
+			qglGetIntegerv( VBO_FREE_MEMORY_ATI, mem );
+			qglGetIntegerv( TEXTURE_FREE_MEMORY_ATI, mem + 4 );
+			qglGetIntegerv( RENDERBUFFER_FREE_MEMORY_ATI, mem + 8 );
+
+			Com_Printf( "total memory free in the pool: (VBO:%i, Tex:%i, RBuf:%i) MB\n", mem[0] >> 10, mem[4] >> 10, mem[8] >> 10 );
+			Com_Printf( "largest available free block in the pool: (V:%i, Tex:%i, RBuf:%i) MB\n", mem[5] >> 10, mem[4] >> 10, mem[9] >> 10 );
+			Com_Printf( "total auxiliary memory free: (VBO:%i, Tex:%i, RBuf:%i) MB\n", mem[2] >> 10, mem[6] >> 10, mem[10] >> 10 );
+			Com_Printf( "largest auxiliary free block: (VBO:%i, Tex:%i, RBuf:%i) MB\n", mem[3] >> 10, mem[7] >> 10, mem[11] >> 10 );
+		} else {
+			Com_Printf( "not available\n" );
+		}
+	}
 }
 
 
@@ -365,7 +356,6 @@ rserr_t R_Init( const char *applicationName, const char *screenshotPrefix, int s
 	r_verbose = verbose;
 	r_postinit = true;
 	r_backend_api = BACKEND_OPENGL_LEGACY;
-	renderer.backend = BACKEND_OPENGL_LEGACY;
 
 	memset( &glConfig, 0, sizeof(glconfig_t) );
 
@@ -374,33 +364,43 @@ rserr_t R_Init( const char *applicationName, const char *screenshotPrefix, int s
 
 	R_Register( screenshotPrefix );
 
-	{
-		qgl_initerr_t initerr;
-		const char *dllname = NULL;
-		const qgl_driverinfo_t *driver = QGL_GetDriverInfo();
-		if( driver )
-			dllname = driver->dllname;
-	init_qgl:
-		initerr = QGL_Init( gl_driver ? gl_driver->string : dllname );
-		if( initerr != qgl_initerr_ok ) {
-			QGL_Shutdown();
-			Com_Printf( "ref_gl::R_Init() - could not load \"%s\"\n", gl_driver ? gl_driver->string : dllname );
 
-			if( ( initerr == qgl_initerr_invalid_driver ) && gl_driver && strcmp( gl_driver->string, dllname ) ) {
-				ri.Cvar_ForceSet( gl_driver->name, dllname );
-				goto init_qgl;
+	switch(r_backend_api) {
+		case BACKEND_OPENGL_LEGACY: {
+			qgl_initerr_t initerr;
+			const char *dllname = NULL;
+			const qgl_driverinfo_t *driver = QGL_GetDriverInfo();
+			if( driver )
+				dllname = driver->dllname;
+		init_qgl:
+			initerr = QGL_Init( gl_driver ? gl_driver->string : dllname );
+			if( initerr != qgl_initerr_ok ) {
+				QGL_Shutdown();
+				Com_Printf( "ref_gl::R_Init() - could not load \"%s\"\n", gl_driver ? gl_driver->string : dllname );
+
+				if( ( initerr == qgl_initerr_invalid_driver ) && gl_driver && strcmp( gl_driver->string, dllname ) ) {
+					ri.Cvar_ForceSet( gl_driver->name, dllname );
+					goto init_qgl;
+				}
+
+				return rserr_invalid_driver;
 			}
 
-			return rserr_invalid_driver;
+			// initialize OS-specific parts of OpenGL
+			if( !GLimp_Init( applicationName, hinstance, wndproc, parenthWnd, iconResource, iconXPM ) ) {
+				QGL_Shutdown();
+				return rserr_unknown;
+			}
+			break;
 		}
-
-		// initialize OS-specific parts of OpenGL
-		if( !GLimp_Init( applicationName, hinstance, wndproc, parenthWnd, iconResource, iconXPM ) ) {
-			QGL_Shutdown();
-			return rserr_unknown;
+		case BACKEND_NRI_VULKAN:
+		case BACKEND_NRI_METAL:
+		case BACKEND_NRI_DX12: {
+			nri_desc_t nriDesc = {}; 
+			NRIimp_Init(&nriDesc);
+			break;
 		}
 	}
-	
 	// FIXME: move this elsewhere?
 	glConfig.applicationName = R_CopyString( applicationName );
 	glConfig.screenshotPrefix = R_CopyString( screenshotPrefix );
@@ -436,7 +436,7 @@ static rserr_t R_PostInit( void )
 		return rserr_unknown;
 	}
 
-	if( renderer.backend != BACKEND_OPENGL_LEGACY ) {
+	if( r_backend_api != BACKEND_OPENGL_LEGACY ) {
 		R_InitResourceUpload();
 	}
 
@@ -627,15 +627,17 @@ void R_Shutdown( bool verbose )
 	RP_Shutdown();
 
 	// restore original gamma
-	if( glConfig.hwGamma ) {
-		GLimp_SetGammaRamp( GAMMARAMP_STRIDE, glConfig.gammaRampSize, glConfig.originalGammaRamp );
+	if(r_backend_api == BACKEND_OPENGL_LEGACY) {
+		if( glConfig.hwGamma ) {
+			GLimp_SetGammaRamp( GAMMARAMP_STRIDE, glConfig.gammaRampSize, glConfig.originalGammaRamp );
+		}
+		// shut down OS specific OpenGL stuff like contexts, etc.
+		GLimp_Shutdown();
 	}
 
   ri.Mutex_Destroy( &rf.speedsMsgLock );
 	ri.Mutex_Destroy( &rf.debugSurfaceLock );
 
-	// shut down OS specific OpenGL stuff like contexts, etc.
-	GLimp_Shutdown();
 
 	// shutdown our QGL subsystem
 	QGL_Shutdown();

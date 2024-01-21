@@ -2120,17 +2120,17 @@ static image_t *R_LoadImage_NRI( const char *name, uint8_t **pic, int width, int
 								   .sampleNum = 1,
 								   .type = NriTextureType_TEXTURE_2D,
 								   .mipNum = mipSize };
-	renderer.nri.coreI.CreateTexture( renderer.nri.device, &textureDesc, &image->nri.texture );
+	r_nri.coreI.CreateTexture( r_nri.device, &textureDesc, &image->nri.texture );
 
 	NriResourceGroupDesc resourceGroupDesc = {
 		.textureNum = 1,
 		.textures = &image->nri.texture,
 		.memoryLocation = NriMemoryLocation_DEVICE,
 	};
-	const uint32_t allocationNum = renderer.nri.helperI.CalculateAllocationNumber( renderer.nri.device, &resourceGroupDesc );
+	const uint32_t allocationNum = r_nri.helperI.CalculateAllocationNumber( r_nri.device, &resourceGroupDesc );
 	image->nri.numAllocations = allocationNum;
 	image->nri.memory = R_Malloc( sizeof( NriMemory * ) * allocationNum );
-	renderer.nri.helperI.AllocateAndBindMemory( renderer.nri.device, &resourceGroupDesc, image->nri.memory );
+	r_nri.helperI.AllocateAndBindMemory( r_nri.device, &resourceGroupDesc, image->nri.memory );
 	uint32_t srcBlockSize = R_FormatBitSizePerBlock( srcFormat ) / 8;
 	uint32_t destBlockSize = R_FormatBitSizePerBlock( destFormat ) / 8;
 	uint8_t* tmpBuffer = NULL;
@@ -2208,17 +2208,17 @@ static image_t *R_Create3DImage_NRI( const char *name, int width, int height, in
 								   .sampleNum = 1,
 								   .type = array ? NriTextureType_TEXTURE_2D : NriTextureType_TEXTURE_3D,
 								   .mipNum = mipSize };
-	renderer.nri.coreI.CreateTexture( renderer.nri.device, &textureDesc, &image->nri.texture );
+	r_nri.coreI.CreateTexture( r_nri.device, &textureDesc, &image->nri.texture );
 
 	NriResourceGroupDesc resourceGroupDesc = {
 		.textureNum = 1,
 		.textures = &image->nri.texture,
 		.memoryLocation = NriMemoryLocation_DEVICE,
 	};
-	const uint32_t allocationNum = renderer.nri.helperI.CalculateAllocationNumber( renderer.nri.device, &resourceGroupDesc );
+	const uint32_t allocationNum = r_nri.helperI.CalculateAllocationNumber( r_nri.device, &resourceGroupDesc );
 	image->nri.numAllocations = allocationNum;
 	image->nri.memory = R_Malloc( sizeof( NriMemory * ) * allocationNum );
-	renderer.nri.helperI.AllocateAndBindMemory( renderer.nri.device, &resourceGroupDesc, image->nri.memory );
+	r_nri.helperI.AllocateAndBindMemory( r_nri.device, &resourceGroupDesc, image->nri.memory );
 	return image;
 }
 
@@ -2296,10 +2296,10 @@ static void R_FreeImage_GL( image_t *image )
 
 static void R_FreeImage_NRI(image_t *image) {
 
-	renderer.nri.coreI.DestroyTexture(image->nri.texture);
+	r_nri.coreI.DestroyTexture(image->nri.texture);
 	R_Free( image->name );
 	for(size_t i = 0; i < image->nri.numAllocations; i++) {
-		renderer.nri.coreI.FreeMemory(image->nri.memory[i]);
+		r_nri.coreI.FreeMemory(image->nri.memory[i]);
 	}
 	R_Free(image->nri.memory);	
 
@@ -2529,17 +2529,17 @@ static image_t *R_FindImage_NRI( const char *name, const char *suffix, int flags
 								   .sampleNum = 1,
 								   .type = NriTextureType_TEXTURE_2D,
 								   .mipNum = mipSize };
-	renderer.nri.coreI.CreateTexture( renderer.nri.device, &textureDesc, &image->nri.texture );
+	r_nri.coreI.CreateTexture( r_nri.device, &textureDesc, &image->nri.texture );
 
 	NriResourceGroupDesc resourceGroupDesc = {
 		.textureNum = 1,
 		.textures = &image->nri.texture,
 		.memoryLocation = NriMemoryLocation_DEVICE,
 	};
-	const uint32_t allocationNum = renderer.nri.helperI.CalculateAllocationNumber( renderer.nri.device, &resourceGroupDesc );
+	const uint32_t allocationNum = r_nri.helperI.CalculateAllocationNumber( r_nri.device, &resourceGroupDesc );
 	image->nri.numAllocations = allocationNum;
 	image->nri.memory = R_Malloc( sizeof( NriMemory * ) * allocationNum );
-	renderer.nri.helperI.AllocateAndBindMemory( renderer.nri.device, &resourceGroupDesc, image->nri.memory );
+	r_nri.helperI.AllocateAndBindMemory( r_nri.device, &resourceGroupDesc, image->nri.memory );
 	uint8_t *tmpBuffer = NULL;
 	for( size_t index = 0; index < textureDesc.arraySize; index++ ) {
 		uint8_t *buf = upload[index].buf;
@@ -3154,7 +3154,7 @@ static void R_InitStretchRawImages( void )
 						 { &rsh.rawYUVTextures[2], "*** rawyuv2 ***", 0, 0, 1, IT_SPECIAL, 1, IMAGE_TAG_BUILTIN, 1 } };
 	for(size_t i = 0; i < Q_ARRAY_COUNT(rawImageInit); i++) {
 		image_t *image = R_AllocImage(rawImageInit[i].name);
-		if (renderer.backend == BACKEND_OPENGL_LEGACY) {
+		if (r_backend_api == BACKEND_OPENGL_LEGACY) {
 			qglGenTextures( 1, &image->gl.texnum );
 		}
 		image->width = rawImageInit[i].width;
@@ -3326,7 +3326,7 @@ void R_InitImages()
 	r_imagesLock = ri.Mutex_Create();
 
 	unpackAlignment[QGL_CONTEXT_MAIN] = 4;
-	if( renderer.backend == BACKEND_OPENGL_LEGACY ) {
+	if( r_backend_api == BACKEND_OPENGL_LEGACY ) {
 		qglPixelStorei( GL_PACK_ALIGNMENT, 1 );
 	}
 
@@ -3347,7 +3347,7 @@ void R_InitImages()
 		images[i].next = &images[i + 1];
 	}
 	
-	switch( renderer.backend ) {
+	switch( r_backend_api ) {
 		case BACKEND_OPENGL_LEGACY: {
 			R_LoadImage = R_LoadImage_GL; 
 			R_Create3DImage = R_Create3DImage_GL;

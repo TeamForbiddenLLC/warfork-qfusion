@@ -18,8 +18,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+#include "r_glimp.h"
 #include "r_local.h"
 #include "r_cmdque.h"
+#include "r_renderer.h"
 #include "r_frontend.h"
 
 static ref_frontend_t rrf;
@@ -117,8 +119,6 @@ static void RF_AdapterShutdown( ref_frontendAdapter_t *adapter )
 		GLimp_SharedContext_Destroy( adapter->GLcontext, NULL );
 	}
 
-	GLimp_EnableMultithreadedRendering( false );
-
 	memset( adapter, 0, sizeof( *adapter ) );
 }
 
@@ -128,21 +128,19 @@ static void RF_AdapterShutdown( ref_frontendAdapter_t *adapter )
 static bool RF_AdapterInit( ref_frontendAdapter_t *adapter )
 {
 	adapter->maxfps = 0;
-	adapter->cmdPipe = RF_CreateCmdPipe( !glConfig.multithreading );
+	adapter->cmdPipe = RF_CreateCmdPipe( !rrf.multithreading);
 
-	if( glConfig.multithreading ) {
+	if( rrf.multithreading ) {
 		adapter->frameLock = ri.Mutex_Create();
 
-		GLimp_EnableMultithreadedRendering( true );
-
-		if( !GLimp_SharedContext_Create( &adapter->GLcontext, NULL ) ) {
+		if(r_backend_api == BACKEND_OPENGL_LEGACY && 
+			!GLimp_SharedContext_Create( &adapter->GLcontext, NULL ) ) {
 			return false;
 		}
 		
 		adapter->shutdown = false;
 		adapter->thread = ri.Thread_Create( RF_AdapterThreadProc, adapter );
 		if( !adapter->thread ) {
-			GLimp_EnableMultithreadedRendering( false );
 			return false;
 		}
 	}
@@ -224,17 +222,25 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 	rrf.frameNum = rrf.lastFrameNum = 0;
 
 	if( !rrf.frame ) {
-		if( glConfig.multithreading ) {
-			int i;
-			for( i = 0; i < 3; i++ )
+		switch(r_backend_api) {
+			case BACKEND_OPENGL_LEGACY:
+				rrf.multithreading = glConfig.multithreading;
+				break;	
+			default:
+				rrf.multithreading = true;
+				break;
+		}
+		if(rrf.multithreading) {
+			for(size_t i = 0; i < 3; i++ ) {
 				rrf.frames[i] = RF_CreateCmdBuf( false );
+			}
 		}
 		else {
 			rrf.frame = RF_CreateCmdBuf( true );
 		}
 	}
 
-	if( glConfig.multithreading ) {
+	if(rrf.multithreading) {
 		rrf.frame = rrf.frames[0];
 	}
 
@@ -272,12 +278,11 @@ void RF_Shutdown( bool verbose )
 {
 	RF_AdapterShutdown( &rrf.adapter );
 
-	if( glConfig.multithreading ) {
-		int i;
-		for( i = 0; i < 3; i++ )
+	if( rrf.multithreading ) {
+		for( size_t i = 0; i < 3; i++ ) {
 			RF_DestroyCmdBuf( &rrf.frames[i] );
-	}
-	else {
+		}
+	} else {
 		RF_DestroyCmdBuf( &rrf.frame );
 	}
 	memset( &rrf, 0, sizeof( rrf ) );
@@ -354,7 +359,7 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 	rrf.adapter.maxfps = r_maxfps->integer;
 
 	// take the frame the backend is not busy processing
-	if( glConfig.multithreading ) {
+	if( rrf.multithreading ) {
 		ri.Mutex_Lock( rrf.adapter.frameLock );
 		if( rrf.lastFrameNum == rrf.adapter.frameNum )
 			rrf.frameNum = (rrf.adapter.frameNum + 1) % 3;
@@ -381,7 +386,7 @@ void RF_EndFrame( void )
 
 	rrf.frame->EndFrame( rrf.frame );
 	
-	if( glConfig.multithreading ) {
+	if( rrf.multithreading) {
 		ri.Mutex_Lock( rrf.adapter.frameLock );
 		rrf.lastFrameNum = rrf.frameNum;
 		rrf.frameId++;

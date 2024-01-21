@@ -295,13 +295,6 @@ bool GLimp_MakeCurrent( void *context, void *surface )
 }
 
 /*
-** GLimp_EnableMultithreadedRendering
-*/
-void GLimp_EnableMultithreadedRendering( bool enable )
-{
-}
-
-/*
 ** GLimp_GetWindowSurface
 */
 void *GLimp_GetWindowSurface( bool *renderable )

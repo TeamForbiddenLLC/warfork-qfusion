@@ -58,6 +58,7 @@ extern "C" {
 #endif
 
 #define Q_ARRAY_COUNT( array ) (sizeof( array ) / (sizeof( array[0])))
+#define Q_DEFINE_ALIGNED(def, a) __attribute__((aligned(a))) def
 
 //==============================================
 

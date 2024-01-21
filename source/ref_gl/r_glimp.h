@@ -268,7 +268,6 @@ void	GLimp_SetSwapInterval( int swapInterval );
 
 bool	GLimp_MakeCurrent( void *context, void *surface );
 
-void	GLimp_EnableMultithreadedRendering( bool enable );
 // When multithreaded rendering is enabled, GetWindowSurface must be called from the rendering thread, not the main one.
 // The window surface may be managed by the rendering thread in this case, and the main thread may have a fake surface instead
 // if the context implementation doesn't support multiple contexts bound to the same surface.

@@ -1,3 +1,4 @@
+#include "r_nriimp.h"
 #include "r_renderer.h"
 #include <assert.h>
 #include "stb_ds.h"
@@ -77,20 +78,20 @@ static bool R_AllocTemporaryBuffer( resource_command_set_t *set, size_t reqSize,
 	Com_Printf( "Creating temporary buffer ran out space in staging" );
 	temporary_resource_buf_t temp = {};
 	NriBufferDesc bufferDesc = { .size = reqSize };
-	NRI_ABORT_ON_FAILURE( renderer.nri.coreI.CreateBuffer( renderer.nri.device, &bufferDesc, &temp.buffer ) );
+	NRI_ABORT_ON_FAILURE( r_nri.coreI.CreateBuffer( r_nri.device, &bufferDesc, &temp.buffer ) );
 
 	NriMemoryDesc memoryDesc = {};
-	renderer.nri.coreI.GetBufferMemoryInfo( temp.buffer, NriMemoryLocation_HOST_UPLOAD, &memoryDesc );
-	NRI_ABORT_ON_FAILURE( renderer.nri.coreI.AllocateMemory( renderer.nri.device, NRI_ALL_NODES, memoryDesc.type, memoryDesc.size, &temp.memory ) );
+	r_nri.coreI.GetBufferMemoryInfo( temp.buffer, NriMemoryLocation_HOST_UPLOAD, &memoryDesc );
+	NRI_ABORT_ON_FAILURE( r_nri.coreI.AllocateMemory( r_nri.device, NRI_ALL_NODES, memoryDesc.type, memoryDesc.size, &temp.memory ) );
 
 	NriBufferMemoryBindingDesc bindBufferDesc = {
 		.memory = temp.memory,
 		.buffer = temp.buffer,
 	};
-	NRI_ABORT_ON_FAILURE( renderer.nri.coreI.BindBufferMemory( renderer.nri.device, &bindBufferDesc, 1 ) );
+	NRI_ABORT_ON_FAILURE( r_nri.coreI.BindBufferMemory( r_nri.device, &bindBufferDesc, 1 ) );
 	arrput(set->temporary, temp );
 
-  	res->cpuMapping = renderer.nri.coreI.MapBuffer(temp.buffer, 0, NRI_WHOLE_SIZE);
+  	res->cpuMapping = r_nri.coreI.MapBuffer(temp.buffer, 0, NRI_WHOLE_SIZE);
 	res->backing = temp.buffer;
 	res->byteOffset = 0;
 	return true;
@@ -100,53 +101,53 @@ static void R_UploadBeginCommandSet( struct command_set_s *set )
 {
 
 	if( syncIndex >= NUMBER_COMMAND_SETS ) {
-		renderer.nri.coreI.Wait( set->fence, 1 + syncIndex - NUMBER_COMMAND_SETS );
-		renderer.nri.coreI.ResetCommandAllocator( set->allocator );
+		r_nri.coreI.Wait( set->fence, 1 + syncIndex - NUMBER_COMMAND_SETS );
+		r_nri.coreI.ResetCommandAllocator( set->allocator );
 	   for(size_t i = 0; i < arrlen(set->temporary); i++) {
-	     renderer.nri.coreI.DestroyBuffer(set->temporary[i].buffer);
-	     renderer.nri.coreI.FreeMemory(set->temporary[i].memory);
+	     r_nri.coreI.DestroyBuffer(set->temporary[i].buffer);
+	     r_nri.coreI.FreeMemory(set->temporary[i].memory);
 	   }
 	  arrsetlen(set->temporary, 0);
 	}
   stageBuffer.remaningSpace += set->reservedStageMemory; 
   set->reservedStageMemory = 0;
-	renderer.nri.coreI.BeginCommandBuffer( set->cmd, NULL, 0 );
+	r_nri.coreI.BeginCommandBuffer( set->cmd, NULL, 0 );
 }
 
 static void R_UploadEndCommandSet(struct command_set_s* set) {
 	const NriCommandBuffer* cmdBuffers[] = {
     set->cmd
 	};
-	renderer.nri.coreI.EndCommandBuffer( set->cmd );
+	r_nri.coreI.EndCommandBuffer( set->cmd );
 	NriQueueSubmitDesc queueSubmit = {};
 	queueSubmit.commandBuffers = cmdBuffers;
 	queueSubmit.commandBufferNum = 1;
-	renderer.nri.coreI.QueueSubmit( cmdQueue, &queueSubmit );
-	renderer.nri.coreI.QueueSignal( cmdQueue, set->fence, 1 + syncIndex );
+	r_nri.coreI.QueueSubmit( cmdQueue, &queueSubmit );
+	r_nri.coreI.QueueSignal( cmdQueue, set->fence, 1 + syncIndex );
   syncIndex++;
 }
 
 void R_InitResourceUpload()
 {
- NRI_ABORT_ON_FAILURE(renderer.nri.coreI.GetCommandQueue( renderer.nri.device, NriCommandQueueType_GRAPHICS, &cmdQueue))
+ NRI_ABORT_ON_FAILURE(r_nri.coreI.GetCommandQueue( r_nri.device, NriCommandQueueType_GRAPHICS, &cmdQueue))
  NriBufferDesc stageBufferDesc = { .size = SizeOfStageBufferByte };
- NRI_ABORT_ON_FAILURE( renderer.nri.coreI.CreateBuffer( renderer.nri.device, &stageBufferDesc, &stageBuffer.buffer ) )
+ NRI_ABORT_ON_FAILURE( r_nri.coreI.CreateBuffer( r_nri.device, &stageBufferDesc, &stageBuffer.buffer ) )
 
   NriResourceGroupDesc resourceGroupDesc = { 
     .buffers = &stageBuffer.buffer, 
     .bufferNum = 1, 
     .memoryLocation = NriMemoryLocation_HOST_UPLOAD
   };
-  assert(renderer.nri.helperI.CalculateAllocationNumber( renderer.nri.device, &resourceGroupDesc ) == 1 );
-  NRI_ABORT_ON_FAILURE( renderer.nri.helperI.AllocateAndBindMemory( renderer.nri.device, &resourceGroupDesc, &stageBuffer.memory ) );
+  assert(r_nri.helperI.CalculateAllocationNumber( r_nri.device, &resourceGroupDesc ) == 1 );
+  NRI_ABORT_ON_FAILURE( r_nri.helperI.AllocateAndBindMemory( r_nri.device, &resourceGroupDesc, &stageBuffer.memory ) );
 
   for(size_t i = 0; i < Q_ARRAY_COUNT(commandSets); i++) {
-    NRI_ABORT_ON_FAILURE( renderer.nri.coreI.CreateCommandAllocator(cmdQueue, &commandSets[i].allocator) );
-    NRI_ABORT_ON_FAILURE( renderer.nri.coreI.CreateCommandBuffer(commandSets[i].allocator, &commandSets[i].cmd) );
+    NRI_ABORT_ON_FAILURE( r_nri.coreI.CreateCommandAllocator(cmdQueue, &commandSets[i].allocator) );
+    NRI_ABORT_ON_FAILURE( r_nri.coreI.CreateCommandBuffer(commandSets[i].allocator, &commandSets[i].cmd) );
   }
 
   // we just keep the buffer always mapped
-  stageBuffer.cpuMappedBuffer = renderer.nri.coreI.MapBuffer(stageBuffer.buffer, 0, NRI_WHOLE_SIZE);
+  stageBuffer.cpuMappedBuffer = r_nri.coreI.MapBuffer(stageBuffer.buffer, 0, NRI_WHOLE_SIZE);
   stageBuffer.tailOffset = 0;
   stageBuffer.remaningSpace = SizeOfStageBufferByte;
   activeSet = 0;
@@ -173,15 +174,15 @@ void R_ResourceEndCopyBuffer( buffer_upload_desc_t *action )
 		NriTransitionBarrierDesc transitions = {};
 		transitions.buffers = bufferBarriers;
 		transitions.bufferNum = Q_ARRAY_COUNT( bufferBarriers );
-		renderer.nri.coreI.CmdPipelineBarrier( commandSets[activeSet].cmd, &transitions, NULL, NriBarrierDependency_COPY_STAGE );
+		r_nri.coreI.CmdPipelineBarrier( commandSets[activeSet].cmd, &transitions, NULL, NriBarrierDependency_COPY_STAGE );
 	}
-	renderer.nri.coreI.CmdCopyBuffer( commandSets[activeSet].cmd, action->target, 0, action->byteOffset, action->internal.backing, 0, action->internal.byteOffset, action->numBytes );
+	r_nri.coreI.CmdCopyBuffer( commandSets[activeSet].cmd, action->target, 0, action->byteOffset, action->internal.backing, 0, action->internal.byteOffset, action->numBytes );
 }
 
 void R_ResourceBeginCopyTexture( texture_upload_desc_t *desc )
 {
 	assert( desc->target );
-	const NriDeviceDesc *deviceDesc = renderer.nri.coreI.GetDeviceDesc( renderer.nri.device );
+	const NriDeviceDesc *deviceDesc = r_nri.coreI.GetDeviceDesc( r_nri.device );
 
 	const uint32_t sliceRowNum = max( desc->slicePitch / desc->rowPitch, 1u );
 	const uint64_t alignedRowPitch = R_Align( desc->rowPitch, deviceDesc->uploadBufferTextureRowAlignment );
@@ -199,7 +200,7 @@ void R_ResourceBeginCopyTexture( texture_upload_desc_t *desc )
 }
 
 void R_ResourceEndCopyTexture( texture_upload_desc_t* desc) {
-	const NriTextureDesc* textureDesc = renderer.nri.coreI.GetTextureDesc( desc->target);
+	const NriTextureDesc* textureDesc = r_nri.coreI.GetTextureDesc( desc->target);
  
   NriTextureTransitionBarrierDesc textureTransitionBarrierDesc = {};
   textureTransitionBarrierDesc.texture = desc->target;
@@ -212,7 +213,7 @@ void R_ResourceEndCopyTexture( texture_upload_desc_t* desc) {
   NriTransitionBarrierDesc transitionBarriers = {};
   transitionBarriers.textureNum = 1;
   transitionBarriers.textures = &textureTransitionBarrierDesc;
-  renderer.nri.coreI.CmdPipelineBarrier(commandSets[activeSet].cmd, &transitionBarriers, NULL, NriBarrierDependency_COPY_STAGE);
+  r_nri.coreI.CmdPipelineBarrier(commandSets[activeSet].cmd, &transitionBarriers, NULL, NriBarrierDependency_COPY_STAGE);
   
   NriTextureRegionDesc destRegionDesc = { .arrayOffset = desc->arrayOffset, .mipOffset = desc->mipOffset, .width = textureDesc->width, .height = textureDesc->height, .depth = textureDesc->depth };
   NriTextureDataLayoutDesc srcLayoutDesc = {
@@ -220,7 +221,7 @@ void R_ResourceEndCopyTexture( texture_upload_desc_t* desc) {
     .rowPitch = desc->alignRowPitch, 
     .slicePitch = desc->alignSlicePitch,
   };
-  renderer.nri.coreI.CmdUploadBufferToTexture(commandSets[activeSet].cmd, desc->target, &destRegionDesc, desc->internal.backing, &srcLayoutDesc); 
+  r_nri.coreI.CmdUploadBufferToTexture(commandSets[activeSet].cmd, desc->target, &destRegionDesc, desc->internal.backing, &srcLayoutDesc); 
 }
 
 void R_ResourceSubmit() {

@@ -940,16 +940,16 @@ static void R_ReleaseMeshVBO_NRI(mesh_vbo_t* vbo) {
 
 	//TODO: need to see if this crashes because of unrefrenced assets
 	if(vbo->nri.vertexBuffer) {
-		renderer.nri.coreI.DestroyBuffer(vbo->nri.vertexBuffer);
+		r_nri.coreI.DestroyBuffer(vbo->nri.vertexBuffer);
 	}
 	if(vbo->nri.indexBuffer) {
-		renderer.nri.coreI.DestroyBuffer(vbo->nri.vertexBuffer);
+		r_nri.coreI.DestroyBuffer(vbo->nri.vertexBuffer);
 	}
-	if(vbo->nri.instanceBuffer) {
-		renderer.nri.coreI.DestroyBuffer(vbo->nri.vertexBuffer);
+	if( vbo->nri.instanceBuffer ) {
+		r_nri.coreI.DestroyBuffer( vbo->nri.vertexBuffer );
 	}
 	for(size_t i = 0; i < vbo->nri.numAllocations; i++) {
-		renderer.nri.coreI.FreeMemory(vbo->nri.memory[i]);
+		r_nri.coreI.FreeMemory(vbo->nri.memory[i]);
 	} 
 	R_Free(vbo->nri.memory);	
 
@@ -1057,16 +1057,16 @@ mesh_vbo_t *R_CreateMeshVBO_NRI( void *owner, int numVerts, int numElems, int nu
 			vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_AUTOSPRITE_BIT, halfFloatVattribs ) * 4;
 		}
 		NriBufferDesc vertexBufferDesc = { .size = vertexByteStride * numVerts, .usageMask = NriBufferUsageBits_VERTEX_BUFFER};
-		renderer.nri.coreI.CreateBuffer(renderer.nri.device, &vertexBufferDesc, &vbo->nri.vertexBuffer);
+		r_nri.coreI.CreateBuffer(r_nri.device, &vertexBufferDesc, &vbo->nri.vertexBuffer);
 	}
 
 	NriBufferDesc instanceBufferDesc = { .size = numElems * sizeof(elem_t), .usageMask = NriBufferUsageBits_INDEX_BUFFER};
-	renderer.nri.coreI.CreateBuffer(renderer.nri.device, &instanceBufferDesc, &vbo->nri.indexBuffer);
+	r_nri.coreI.CreateBuffer(r_nri.device, &instanceBufferDesc, &vbo->nri.indexBuffer);
 	
 	if(hasInstanceBuffer) {
 		vbo->instancesOffset = instanceByteStride;
 		NriBufferDesc instanceBufferDesc = { .size = instanceByteStride * numInstances, .usageMask = NriBufferUsageBits_CONSTANT_BUFFER};
-		renderer.nri.coreI.CreateBuffer(renderer.nri.device, &instanceBufferDesc, &vbo->nri.instanceBuffer);
+		r_nri.coreI.CreateBuffer(r_nri.device, &instanceBufferDesc, &vbo->nri.instanceBuffer);
 	}
 
 	NriBuffer* nriBuffers[] = {
@@ -1080,10 +1080,10 @@ mesh_vbo_t *R_CreateMeshVBO_NRI( void *owner, int numVerts, int numElems, int nu
       .buffers = nriBuffers,
       .memoryLocation = NriMemoryLocation_DEVICE,
   };
-  const uint32_t allocationNum = renderer.nri.helperI.CalculateAllocationNumber(renderer.nri.device, &resourceGroupDesc);
+  const uint32_t allocationNum = r_nri.helperI.CalculateAllocationNumber(r_nri.device, &resourceGroupDesc);
 	vbo->nri.memory = R_Malloc(sizeof(NriMemory*) * allocationNum);
 	vbo->nri.numAllocations = allocationNum;
-	renderer.nri.helperI.AllocateAndBindMemory(renderer.nri.device, &resourceGroupDesc, vbo->nri.memory);
+	r_nri.helperI.AllocateAndBindMemory(r_nri.device, &resourceGroupDesc, vbo->nri.memory);
 
 	r_free_vbohandles = vboh->next;
 
@@ -1112,7 +1112,7 @@ mesh_vbo_t *R_CreateMeshVBO_NRI( void *owner, int numVerts, int numElems, int nu
 */
 void R_InitVBO()
 {
-  switch(renderer.backend) {
+  switch(r_backend_api) {
 	  case BACKEND_OPENGL_LEGACY:
 		  R_CreateMeshVBO = R_CreateMeshVBO_GL;
 		  R_ReleaseMeshVBO = R_ReleaseMeshVBO_GL;
