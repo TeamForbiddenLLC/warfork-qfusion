@@ -568,6 +568,12 @@ static int SCR_DrawTeamTab( const char **ptrptr, int *curteam, int x, int y, int
 		if( SCR_SkipColumn( type ) )
 			continue;
 
+		if (strcmp(token,"AVATAR") == 0){
+			// special case, don't draw any text, just skip ahead 32px
+			xoffset += 32;
+			continue;
+		}
+
 		if( width )
 		{
 			if( pass ) {
@@ -675,7 +681,9 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 	xoffset = 0;
 	yoffset = 0;
 
-	height = 32;//trap_SCR_FontHeight( font );
+	height = 32;
+
+	int textoffset = (32-trap_SCR_FontHeight( font ))/2;
 
 	// start from the center again
 	xoffset = CG_HorizontalAlignForWidth( 0, align, panelWidth );
@@ -830,9 +838,9 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 		// draw the column value
 		if( pass && string[0] )
 		{
-			trap_SCR_DrawClampString( x + xoffset, y + yoffset, string,
-				x + xoffset, y + yoffset,
-				x + xoffset + width, y + yoffset + height, font, color );
+			trap_SCR_DrawClampString( x + xoffset, y + yoffset + textoffset, string,
+				x + xoffset, y + yoffset + textoffset,
+				x + xoffset + width, y + yoffset + height + textoffset, font, color );
 		}
 
 		columncount++;
