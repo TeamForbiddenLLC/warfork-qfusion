@@ -1146,6 +1146,12 @@ static bool objectGametypeDescriptor_isInstagib( gametype_descriptor_t *self )
 	return GS_Instagib();
 }
 
+static bool objectGametypeDescriptor_useSteamAuth( gametype_descriptor_t *self )
+{
+	cvar_t *sv_useSteamAuth = trap_Cvar_Get("sv_useSteamAuth", "", 0);
+	return sv_useSteamAuth->integer;
+}
+
 static bool objectGametypeDescriptor_hasFallDamage( gametype_descriptor_t *self )
 {
 	return GS_FallDamage();
@@ -1183,6 +1189,7 @@ static const asMethod_t gametypedescr_Methods[] =
 	{ ASLIB_FUNCTION_DECL(const String @, get_manifest, () const), asFUNCTION(objectGametypeDescriptor_getManifest), asCALL_CDECL_OBJLAST },
 	{ ASLIB_FUNCTION_DECL(void, setTeamSpawnsystem, ( int team, int spawnsystem, int wave_time, int wave_maxcount, bool deadcam )), asFUNCTION(objectGametypeDescriptor_SetTeamSpawnsystem), asCALL_CDECL_OBJLAST },
 	{ ASLIB_FUNCTION_DECL(bool, get_isInstagib, () const), asFUNCTION(objectGametypeDescriptor_isInstagib), asCALL_CDECL_OBJLAST },
+	{ ASLIB_FUNCTION_DECL(bool, get_useSteamAuth, () const), asFUNCTION(objectGametypeDescriptor_useSteamAuth), asCALL_CDECL_OBJLAST },
 	{ ASLIB_FUNCTION_DECL(bool, get_hasFallDamage, () const), asFUNCTION(objectGametypeDescriptor_hasFallDamage), asCALL_CDECL_OBJLAST },
 	{ ASLIB_FUNCTION_DECL(bool, get_hasSelfDamage, () const), asFUNCTION(objectGametypeDescriptor_hasSelfDamage), asCALL_CDECL_OBJLAST },
 	{ ASLIB_FUNCTION_DECL(bool, get_isInvidualGameType, () const), asFUNCTION(objectGametypeDescriptor_isInvidualGameType), asCALL_CDECL_OBJLAST },
