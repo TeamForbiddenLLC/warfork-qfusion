@@ -161,8 +161,8 @@ extern "C" {
     readPipe(GPipeRead, &status, sizeof status);
 
     if (!status){
-        close(GPipeRead);
-        close(GPipeWrite);
+        closePipe(GPipeRead);
+        closePipe(GPipeWrite);
 
         GPipeWrite = GPipeRead = pipeChildRead = pipeChildWrite = NULLPIPE;
         return 0;
