@@ -659,7 +659,7 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 	int iconnum;
 	struct shader_s *icon;
 	bool highlight = false, trans = false;
-	int avatarid;
+	unsigned char *avatar;
 
 	if( GS_TeamBasedGametype() )
 	{
@@ -700,7 +700,7 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 
 		Vector4Copy( colorWhite, color ); // reset to white after each column
 		icon = NULL;
-		avatarid = -1;
+		avatar = NULL;
 		string[0] = 0;
 
 		// interpret the data based on the type defined in the layout
@@ -786,7 +786,9 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 				icon = CG_MediaShader( cgs.media.shaderVSayIcon[VSAY_YES] );
 			break;
 		case 'a': // is a steam avatar
-				avatarid = atoi( token );
+				int id = atoi( token );
+				if (cgs.clientInfo[id].steamid)
+					avatar = cgs.clientInfo[id].avatar;
 				width = 32;
 			break;
 		}
@@ -810,9 +812,18 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 
 			if( icon )
 				SCR_AddPlayerIcon( icon, x + xoffset, y + yoffset, color[3], font );
-			if (avatarid == 1){
-				vec4_t tc = { 1.0f, 1.0f, 1.0f, 1.0f }, color;
-				CGAME_IMPORT.R_DrawFillRect(x + xoffset, y+yoffset, 32, 32,tc);
+			if (avatar){
+				for (uint px = 0; px < 32; px++) {
+					for (uint py = 0; py < 32; py++) {
+						unsigned int pixel = py*32*4+4*px;
+						vec4_t tc;
+						tc[0] = ((float)avatar[pixel])/255;
+						tc[1] = ((float)avatar[pixel+1])/255;
+						tc[2] = ((float)avatar[pixel+2])/255;
+						tc[3] = ((float)avatar[pixel+3])/255;
+						CGAME_IMPORT.R_DrawFillRect(x + xoffset + px, y+yoffset+py, 1, 1,tc);
+					}
+				}
 			}
 		}
 

@@ -158,14 +158,24 @@ void Steam_SetRichPresence( int num, const char **key, const char **val )
 {
 	STEAMSHIM_setRichPresence(num, key, val);
 }
-/*
-* Steam_GetSteamID
-*/
+
 uint64_t Steam_GetSteamID( void )
 {
 	STEAMSHIM_getSteamID();
 	const STEAMSHIM_Event *evt = blockOnEvent(SHIMEVENT_STEAMIDRECIEVED);
 	return evt->lvalue;
+}
+
+/*
+* Steam_GetSteamID
+* size is 0 for 32x32, 1 for 64x64, 2 for 128x128
+*/
+char *Steam_RequestAvatar(uint64_t steamid, int size)
+{
+	STEAMSHIM_requestAvatar(steamid, size);
+
+	const STEAMSHIM_Event *evt = blockOnEvent(SHIMEVENT_AVATARRECIEVED);
+	return evt->name;
 }
 
 /*

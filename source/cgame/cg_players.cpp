@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "cg_local.h"
-#include <cstdlib>
+#include "../qcommon/steam.h"
 
 static const char *cg_defaultSexedSounds[] =
 {
@@ -271,7 +271,10 @@ void CG_LoadClientInfo( cg_clientInfo_t *ci, const char *info, int client )
 
 
 	s = Info_ValueForKey( info, "steam_id" );
-	if (s){
+	if (s && atol(s)){
 		ci->steamid = atol(s);
+
+		char *avatar = CGAME_IMPORT.Steam_RequestAvatar(ci->steamid, 0);
+		memcpy(ci->avatar, avatar, sizeof ci->avatar);
 	}
 }

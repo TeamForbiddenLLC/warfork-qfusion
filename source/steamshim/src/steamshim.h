@@ -45,6 +45,7 @@ typedef enum STEAMSHIM_EventType
     SHIMEVENT_AUTHSESSIONTICKETRECIEVED,
     SHIMEVENT_AUTHSESSIONVALIDATED,
     SHIMEVENT_BEACONCREATED,
+    SHIMEVENT_AVATARRECIEVED,
 } STEAMSHIM_EventType;
 
 /* not all of these fields make sense in a given event. */
@@ -55,7 +56,7 @@ typedef struct STEAMSHIM_Event
     int ivalue;
     float fvalue;
     unsigned long long lvalue;
-    char name[1024];
+    char name[4096];
 } STEAMSHIM_Event;
 
 #ifdef __cplusplus

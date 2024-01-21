@@ -39,6 +39,7 @@ void STEAMSHIM_getAuthSessionTicket();
 void STEAMSHIM_beginAuthSession(uint64_t steamid, SteamAuthTicket_t* ticket);
 void STEAMSHIM_endAuthSession(uint64_t steamid);
 void STEAMSHIM_createBeacon(uint32_t openSlots, char* connectString, char* metadata);
+void STEAMSHIM_requestAvatar(uint64_t steamid, int size);
 #ifdef __cplusplus
 }
 #endif

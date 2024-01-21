@@ -557,6 +557,9 @@ void CL_GameModule_Init( void )
 	import.IN_IME_GetCandidates = IN_IME_GetCandidates;
 	import.IN_SupportedDevices = IN_SupportedDevices;
 
+
+	import.Steam_RequestAvatar = Steam_RequestAvatar;
+
 	if( builtinAPIfunc ) {
 		cge = builtinAPIfunc( &import );
 	}

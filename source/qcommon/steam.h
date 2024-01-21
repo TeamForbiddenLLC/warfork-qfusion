@@ -31,6 +31,7 @@ int Steam_GetAuthSessionTicket( void (*callback)( void *, size_t ) );
 void Steam_AdvertiseGame( const uint8_t *ip, unsigned short port );
 void Steam_GetPersonaName( char *name, size_t namesize );
 void Steam_SetRichPresence( int num, const char **key, const char **val );
+void Steam_RequestAvatar(uint64_t steamid, int size);
 SteamAuthTicket_t *Steam_GetAuthSessionTicketBlocking();
 int Steam_BeginAuthSession(uint64_t steamid, SteamAuthTicket_t *ticket);
 void Steam_EndAuthSession(uint64_t steamid);

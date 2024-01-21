@@ -95,6 +95,14 @@ static STEAMSHIM_Event* ProcessEvent(){
                 event.ivalue = result;
             }
             break;
+        case SHIMEVENT_AVATARRECIEVED:
+            {
+                uint64_t id = buf.ReadLong();
+                void *image = buf.ReadData(4096);
+                event.lvalue = id;
+                memcpy(event.name, image, 4096);
+            }
+            break;
     }
 
     return &event;
@@ -254,5 +262,12 @@ extern "C" {
       buf.WriteString(connectString);
       buf.WriteString(metadata);
       buf.Transmit();
+  }
+  void STEAMSHIM_requestAvatar(uint64_t steamid, int size){
+    pipebuff_t buf;
+    buf.WriteByte(SHIMCMD_REQUESTAVATAR);
+    buf.WriteLong(steamid);
+    buf.WriteInt(size);
+    buf.Transmit();
   }
 }

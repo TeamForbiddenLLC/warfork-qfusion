@@ -26,7 +26,9 @@ freely, subject to the following restrictions:
 #include "../steamshim_private.h"
 #include "../os.h"
 #include "../steamshim.h"
+#include "steam/isteamfriends.h"
 #include "steam/isteammatchmaking.h"
+#include "steam/isteamutils.h"
 #include "steam/steam_api.h"
 #include "steam/steam_gameserver.h"
 
@@ -60,6 +62,7 @@ static bool processCommand(pipebuff_t cmd, ShimCmd cmdtype, unsigned int len)
     PRINTGOTCMD(SHIMCMD_SETRICHPRESENCE);
     PRINTGOTCMD(SHIMCMD_REQUESTAUTHSESSIONTICKET);
     PRINTGOTCMD(SHIMCMD_BEGINAUTHSESSION);
+    PRINTGOTCMD(SHIMCMD_REQUESTAVATAR);
 #undef PRINTGOTCMD
     else if (cmdtype != SHIMCMD_PUMP) printf("Parent got unknown shimcmd %d.\n", (int) cmdtype);
 #endif
@@ -151,6 +154,25 @@ static bool processCommand(pipebuff_t cmd, ShimCmd cmdtype, unsigned int len)
 
                 SteamParties()->CreateBeacon(openSlots, pLocationList, connectString,metadata);
                 free(pLocationList);
+            }
+            break;
+        case SHIMCMD_REQUESTAVATAR:
+            {
+                uint64 id = cmd.ReadLong();
+
+                if (!SteamFriends()->RequestUserInformation(id, false)){
+                    printf("cahced arleady\n");
+                    int handle = SteamFriends()->GetSmallFriendAvatar(id);
+
+                    uint8_t image[4096];
+                    SteamUtils()->GetImageRGBA(handle, image, sizeof image);
+
+                    
+                    msg.WriteByte(SHIMEVENT_AVATARRECIEVED);
+                    msg.WriteLong(id);
+                    msg.WriteData(image, sizeof image);
+                    msg.Transmit();
+                }
             }
             break;
         case SHIMCMD_ENDAUTHSESSION:

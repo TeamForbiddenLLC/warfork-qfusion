@@ -271,6 +271,9 @@ typedef struct
 	unsigned int ( *IN_IME_GetCandidates )( char * const *cands, size_t candSize, unsigned int maxCands,
 		int *selected, int *firstKey );
 	unsigned int ( *IN_SupportedDevices )( void );
+
+	// steam.h
+	char *( *Steam_RequestAvatar )(uint64_t steamid, int size);
 } cgame_import_t;
 
 //

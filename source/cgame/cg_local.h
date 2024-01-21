@@ -374,7 +374,7 @@ typedef struct
 	struct shader_s *icon;
 	int modelindex;
 	long steamid;
-	char avatar[32 * 32 * 4]; // 32x32, 4 channels
+	unsigned char avatar[32 * 32 * 4]; // 32x32, 4 channels
 } cg_clientInfo_t;
 
 #define MAX_ANGLES_KICKS 3
