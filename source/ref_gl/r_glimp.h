@@ -202,8 +202,6 @@ typedef struct
 	const char		*shadingLanguageVersionString;
 	unsigned		versionHash;
 
-	const char		*applicationName;
-	const char		*screenshotPrefix;
 	int				startupColor;
 
 	int				version;

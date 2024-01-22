@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 #include "../qalgo/q_trie.h"
+#include "r_shared.h"
 
 #define MAX_GLSL_PROGRAMS			1024
 #define GLSL_PROGRAMS_HASH_SIZE		256
@@ -173,6 +174,17 @@ void RP_Init( void )
 	memset( r_glslprograms, 0, sizeof( r_glslprograms ) );
 	memset( r_glslprograms_hash, 0, sizeof( r_glslprograms_hash ) );
 
+	switch( r_backend_api ) {
+		case BACKEND_OPENGL_LEGACY: {
+			break;
+		}
+		case BACKEND_NRI_VULKAN:
+		case BACKEND_NRI_METAL:
+		case BACKEND_NRI_DX12: {
+			break;
+		}
+	}
+
 	Trie_Create( TRIE_CASE_INSENSITIVE, &glsl_cache_trie );
 
 	// register base programs
@@ -265,9 +277,9 @@ void RP_PrecachePrograms( void )
 	ptr = &data;
 
 	token = COM_Parse_r( tempbuf, sizeof( tempbuf ), ptr );
-	if( strcmp( token, glConfig.applicationName ) ) {
+	if( strcmp( token, rf.applicationName ) ) {
 		ri.Com_DPrintf( "Ignoring %s: unknown application name \"%s\", expected \"%s\"\n", 
-			token, glConfig.applicationName );
+			token, rf.applicationName );
 		return;
 	}
 
@@ -441,7 +453,7 @@ void RP_StorePrecacheList( void )
 		}
 	}
 
-	ri.FS_Printf( handle, "%s\n", glConfig.applicationName );
+	ri.FS_Printf( handle, "%s\n", rf.applicationName );
 	ri.FS_Printf( handle, "%i\n", GLSL_BITS_VERSION );
 
 	for( i = 0, program = r_glslprograms; i < r_numglslprograms; i++, program++ ) {

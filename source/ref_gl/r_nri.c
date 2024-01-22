@@ -23,8 +23,6 @@ static void nri_CallbackMessage(NriMessage msg, const char* file, uint32_t line,
 
 static void nri_BuildSwapchain( NriSwapChainDesc *swapChainDesc )
 {
-	assert(r_nri.swapChain == NULL);
-
 	NRI_ABORT_ON_FAILURE( r_nri.swapChainI.CreateSwapChain( r_nri.device, swapChainDesc, &r_nri.swapChain ) );
 	uint32_t textureNums = 0;
 	NriTexture *const *swapChainTextures = r_nri.swapChainI.GetSwapChainTextures( r_nri.swapChain, &textureNums );

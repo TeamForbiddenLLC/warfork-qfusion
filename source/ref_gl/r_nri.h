@@ -36,7 +36,6 @@ typedef struct {
 typedef struct {
     NriCommandAllocator* alloc;
     NriCommandBuffer* cmd;
-    
 } nri_frame_t;
 
 typedef struct {
@@ -70,5 +69,4 @@ typedef struct {
 
 bool nri_Init(nri_desc_t* desc);
 void nri_resizeSwapChain(uint16_t width, uint16_t height);
-
 #endif

@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+#include "r_glimp.h"
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
 
@@ -297,18 +298,18 @@ static void R_Register( const char *screenshotsPrefix )
 }
 
 /*
-* R_GfxInfo_f
-*/
+ * R_GfxInfo_f
+ */
 static void R_GfxInfo_f( void )
 {
 	Com_Printf( "\n" );
-	if(r_backend_api == BACKEND_OPENGL_LEGACY) {
+	if( r_backend_api == BACKEND_OPENGL_LEGACY ) {
 		GLimp_PrintConfig();
 
 		Com_Printf( "\n" );
 		Com_Printf( "Video memory information:\n" );
 
-		uint8_t mem[12];
+		char mem[12];
 		if( glConfig.ext.gpu_memory_info ) {
 			// NV
 			qglGetIntegerv( GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, mem );
@@ -341,7 +342,6 @@ static void R_GfxInfo_f( void )
 	}
 }
 
-
 /*
 * R_Init
 */
@@ -354,6 +354,8 @@ rserr_t R_Init( r_app_init_desc_t* desc)
 	const char* applicationName = desc->applicationName;
 	const char* screenshotPrefix = desc->screenshotPrefix;
 	memset( &glConfig, 0, sizeof(glconfig_t) );
+	memset( &rsh, 0, sizeof( rsh ) );
+	memset( &rf, 0, sizeof( rf ) );
 
 	if( !applicationName ) applicationName = "Qfusion";
 	if( !screenshotPrefix ) screenshotPrefix = "";
@@ -390,6 +392,9 @@ rserr_t R_Init( r_app_init_desc_t* desc)
 		case BACKEND_NRI_VULKAN:
 		case BACKEND_NRI_METAL:
 		case BACKEND_NRI_DX12: {
+			if( !GLimp_Init( applicationName, desc->hinstance, desc->wndProc, desc->parenthWnd, desc->iconResource, desc->iconXPM) ) {
+				return rserr_unknown;
+			}
 			nri_desc_t nriDesc = {};
 			nriDesc.width = desc->width;
 			nriDesc.height = desc->height;
@@ -415,13 +420,9 @@ rserr_t R_Init( r_app_init_desc_t* desc)
 		}
 	}
 	// FIXME: move this elsewhere?
-	glConfig.applicationName = R_CopyString( applicationName );
-	glConfig.screenshotPrefix = R_CopyString( screenshotPrefix );
 	glConfig.startupColor = desc->startupColor;
-
 	rf.applicationName = R_CopyString( applicationName );
 	rf.screenshotPrefix = R_CopyString( screenshotPrefix );
-	rf.startupColor = desc->startupColor;
 
 	return rserr_ok;
 }
@@ -431,12 +432,8 @@ rserr_t R_Init( r_app_init_desc_t* desc)
 */
 static rserr_t R_PostInit( void )
 {
-	memset( &rsh, 0, sizeof( rsh ) );
-	memset( &rf, 0, sizeof( rf ) );
-
 	rsh.registrationSequence = 1;
 	rsh.registrationOpen = false;
-
 	rsh.worldModelSequence = 1;
 
 	for( size_t i = 0; i < 256; i++ )
@@ -454,6 +451,8 @@ static rserr_t R_PostInit( void )
 				QGL_Shutdown();
 				return rserr_unknown;
 			}
+			R_FillStartupBackgroundColor( COLOR_R( glConfig.startupColor ) / 255.0f, COLOR_G( glConfig.startupColor ) / 255.0f, COLOR_B( glConfig.startupColor ) / 255.0f );
+			R_SetSwapInterval( 0, -1 );
 			break;
 		}
 		case BACKEND_NRI_DX12:
@@ -464,12 +463,6 @@ static rserr_t R_PostInit( void )
 		}
 	}
 
-
-
-
-	R_SetSwapInterval( 0, -1 );
-
-	R_FillStartupBackgroundColor( COLOR_R( glConfig.startupColor ) / 255.0f, COLOR_G( glConfig.startupColor ) / 255.0f, COLOR_B( glConfig.startupColor ) / 255.0f );
 
 	R_TextureMode( r_texturemode->string );
 
@@ -499,9 +492,12 @@ static rserr_t R_PostInit( void )
 
 	R_ClearRefInstStack();
 
-	GLenum glerr = qglGetError();
-	if( glerr != GL_NO_ERROR )
-		Com_Printf( "glGetError() = 0x%x\n", glerr );
+	if( r_backend_api == BACKEND_NRI_VULKAN ) {
+		GLenum glerr = qglGetError();
+		if( glerr != GL_NO_ERROR ) {
+			Com_Printf( "glGetError() = 0x%x\n", glerr );
+		}
+	}
 
 	return rserr_ok;
 }

@@ -21,6 +21,7 @@
 #include <SDL.h>
 
 #include "../ref_gl/r_local.h"
+#include "SDL_video.h"
 #include "sdl_glw.h"
 
 glwstate_t glw_state = {NULL, false};
@@ -103,24 +104,37 @@ rserr_t GLimp_SetMode( int x, int y, int width, int height, int displayFrequency
 	ri.Com_Printf( "...setting mode:" );
 	ri.Com_Printf( " %d %d %s\n", width, height, win_fs[fullscreen] );
 
-	// destroy the existing window
-	if( glw_state.sdl_window ) {
-		GLimp_Shutdown();
+	switch( r_backend_api ) {
+		case BACKEND_OPENGL_LEGACY: {
+			// destroy the existing window
+			if( glw_state.sdl_window ) {
+				GLimp_Shutdown();
+			}
+
+			GLimp_CreateWindow( x, y, width, height );
+
+			// init all the gl stuff for the window
+			if( !GLimp_InitGL( r_stencilbits->integer, stereo ) ) {
+				ri.Com_Printf( "VID_CreateWindow() - GLimp_InitGL failed\n" );
+				return rserr_invalid_mode;
+			}
+			r_renderer_state.fullScreen = fullscreen ? GLimp_SetFullscreenMode( displayFrequency, fullscreen ) == rserr_ok : false;
+			break;
+		}
+		case BACKEND_NRI_METAL:
+		case BACKEND_NRI_VULKAN:
+		case BACKEND_NRI_DX12: {
+			r_renderer_state.fullScreen = fullscreen ? GLimp_SetFullscreenMode( displayFrequency, fullscreen ) == rserr_ok : false;
+			SDL_SetWindowSize( glw_state.sdl_window, width, height );
+			nri_resizeSwapChain( width, height );
+			break;
+		}
 	}
 
-	GLimp_CreateWindow( x, y, width, height );
-
-	// init all the gl stuff for the window
-	if( !GLimp_InitGL( r_stencilbits->integer, stereo ) ) {
-		ri.Com_Printf( "VID_CreateWindow() - GLimp_InitGL failed\n" );
-		return rserr_invalid_mode;
-	}
-
-    r_renderer_state.fullScreen = fullscreen ? GLimp_SetFullscreenMode( displayFrequency, fullscreen ) == rserr_ok : false;
 	r_renderer_state.width = width;
 	r_renderer_state.height = height;
 
-    return r_renderer_state.fullScreen == fullscreen ? rserr_ok : rserr_invalid_fullscreen;
+  return r_renderer_state.fullScreen == fullscreen ? rserr_ok : rserr_invalid_fullscreen;
 }
 
 /**

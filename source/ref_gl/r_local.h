@@ -292,7 +292,6 @@ typedef struct
 {
 	char		*applicationName;
 	char		*screenshotPrefix;
-	int			startupColor;
 
 	bool 			in2D;
 	int				width2D, height2D;
