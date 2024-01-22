@@ -492,6 +492,8 @@ static rserr_t R_PostInit( void )
 
 	R_ClearRefInstStack();
 
+	R_SceneInit();
+
 	if( r_backend_api == BACKEND_NRI_VULKAN ) {
 		GLenum glerr = qglGetError();
 		if( glerr != GL_NO_ERROR ) {

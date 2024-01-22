@@ -705,13 +705,14 @@ rserr_t		R_SetMode( int x, int y, int width, int height, int displayFrequency, b
 //
 extern drawList_t r_worldlist, r_portalmasklist;
 
+void R_SceneInit();
 void R_AddDebugBounds( const vec3_t mins, const vec3_t maxs, const byte_vec4_t color );
 void R_ClearScene( void );
 void R_AddEntityToScene( const entity_t *ent );
 void R_AddLightToScene( const vec3_t org, float intensity, float r, float g, float b );
 void R_AddPolyToScene( const poly_t *poly );
 void R_AddLightStyleToScene( int style, float r, float g, float b );
-void R_RenderScene( const refdef_t *fd );
+DECLARE_RENDERER_FUNCTION(void, R_RenderScene, const refdef_t *fd );
 
 //
 // r_surf.c

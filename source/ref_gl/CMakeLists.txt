@@ -59,9 +59,13 @@ else()
 	endif()
 endif()
 
+
+find_package(glslang CONFIG REQUIRED)
 add_library(ref_gl SHARED ${REF_GL_HEADERS} ${REF_GL_COMMON_SOURCES} ${REF_GL_PLATFORM_SOURCES})
 target_include_directories(ref_gl PRIVATE ${STB_INCLUDE_DIR})
 target_link_libraries(ref_gl PRIVATE ${REF_GL_PLATFORM_LIBRARIES})
+# TODO: figure out what packages we need
+target_link_libraries(ref_gl PRIVATE glslang::OSDependent glslang::glslang glslang::MachineIndependent glslang::GenericCodeGen glslang::glslang-default-resource-limits glslang::OGLCompiler glslang::SPVRemapper glslang::SPIRV glslang::HLSL)
 
 if(USE_GRAPHICS_NRI) 
 	target_link_libraries(ref_gl PRIVATE NRI)

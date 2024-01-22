@@ -20,6 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 
+R_RenderSceneFn R_RenderScene;
+
 static void R_ClearDebugBounds( void );
 static void R_RenderDebugBounds( void );
 
@@ -302,7 +304,7 @@ static void R_BlitTextureToScrFbo( const refdef_t *fd, image_t *image, int dstFb
 /*
 * R_RenderScene
 */
-void R_RenderScene( const refdef_t *fd )
+static void R_RenderScene_GL( const refdef_t *fd )
 {
 	int fbFlags = 0;
 	int ppFrontBuffer = 0;
@@ -547,4 +549,18 @@ static void R_RenderDebugBounds( void )
 	RB_SetShaderStateMask( ~0, 0 );
 }
 
-//=======================================================================
+void R_SceneInit() {
+	switch( r_backend_api ) {
+		case BACKEND_OPENGL_LEGACY: {
+			R_RenderScene = R_RenderScene_GL;
+			break;
+		}
+		case BACKEND_NRI_VULKAN:
+		case BACKEND_NRI_METAL:
+		case BACKEND_NRI_DX12: {
+			break;
+		}
+	}
+
+}
+

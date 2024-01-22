@@ -1,0 +1,6 @@
+{
+  "name": "warfork-qfusion",
+  "dependencies": [
+    "glslang"
+  ]
+}

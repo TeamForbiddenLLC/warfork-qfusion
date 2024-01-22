@@ -311,3 +311,6 @@ if (NOT GAME_MODULES_ONLY)
     add_subdirectory(tv_server)
     add_subdirectory(client)
 endif()
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake")
+

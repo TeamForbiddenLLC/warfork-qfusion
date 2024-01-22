@@ -36,6 +36,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define GLSL_CACHE_FILE_NAME			"cache/glsl.cache"
 #define GLSL_BINARY_CACHE_FILE_NAME		"cache/glsl.cache.bin"
 
+RP_ShutdownFn RP_Shutdown;
+RP_PrecacheProgramsFn RP_PrecachePrograms;
+RP_StorePrecacheListFn RP_StorePrecacheList;
+RP_RegisterProgramFn RP_RegisterProgram;
+
 typedef struct
 {
 	r_glslfeat_t	bit;
@@ -160,55 +165,9 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	const deformv_t *deforms, int numDeforms, r_glslfeat_t features, 
 	int binaryFormat, unsigned binaryLength, void *binary );
 
-/*
-* RP_Init
-*/
-void RP_Init( void )
-{
-	int program;
 
-	if( r_glslprograms_initialized ) {
-		return;
-	}
-
-	memset( r_glslprograms, 0, sizeof( r_glslprograms ) );
-	memset( r_glslprograms_hash, 0, sizeof( r_glslprograms_hash ) );
-
-	switch( r_backend_api ) {
-		case BACKEND_OPENGL_LEGACY: {
-			break;
-		}
-		case BACKEND_NRI_VULKAN:
-		case BACKEND_NRI_METAL:
-		case BACKEND_NRI_DX12: {
-			break;
-		}
-	}
-
-	Trie_Create( TRIE_CASE_INSENSITIVE, &glsl_cache_trie );
-
-	// register base programs
-	RP_RegisterProgram( GLSL_PROGRAM_TYPE_MATERIAL, DEFAULT_GLSL_MATERIAL_PROGRAM, NULL, NULL, 0, 0 );
-	RP_RegisterProgram( GLSL_PROGRAM_TYPE_DISTORTION, DEFAULT_GLSL_DISTORTION_PROGRAM, NULL, NULL, 0, 0 );
-	RP_RegisterProgram( GLSL_PROGRAM_TYPE_RGB_SHADOW, DEFAULT_GLSL_RGB_SHADOW_PROGRAM, NULL, NULL, 0, 0 );
-	RP_RegisterProgram( GLSL_PROGRAM_TYPE_SHADOWMAP, DEFAULT_GLSL_SHADOWMAP_PROGRAM, NULL, NULL, 0, 0 );
-	RP_RegisterProgram( GLSL_PROGRAM_TYPE_OUTLINE, DEFAULT_GLSL_OUTLINE_PROGRAM, NULL, NULL, 0, 0 );
-	RP_RegisterProgram( GLSL_PROGRAM_TYPE_Q3A_SHADER, DEFAULT_GLSL_Q3A_SHADER_PROGRAM, NULL, NULL, 0, 0 );
-	RP_RegisterProgram( GLSL_PROGRAM_TYPE_CELSHADE, DEFAULT_GLSL_CELSHADE_PROGRAM, NULL, NULL, 0, 0 );
-	RP_RegisterProgram( GLSL_PROGRAM_TYPE_FOG, DEFAULT_GLSL_FOG_PROGRAM, NULL, NULL, 0, 0 );
-	RP_RegisterProgram( GLSL_PROGRAM_TYPE_FXAA, DEFAULT_GLSL_FXAA_PROGRAM, NULL, NULL, 0, 0 );
-	RP_RegisterProgram( GLSL_PROGRAM_TYPE_YUV, DEFAULT_GLSL_YUV_PROGRAM, NULL, NULL, 0, 0 );
-	RP_RegisterProgram( GLSL_PROGRAM_TYPE_COLORCORRECTION, DEFAULT_GLSL_COLORCORRECTION_PROGRAM, NULL, NULL, 0, 0 );
-
-	// check whether compilation of the shader with GPU skinning succeeds, if not, disable GPU bone transforms
-	if ( glConfig.maxGLSLBones ) {
-		program = RP_RegisterProgram( GLSL_PROGRAM_TYPE_MATERIAL, DEFAULT_GLSL_MATERIAL_PROGRAM, NULL, NULL, 0, GLSL_SHADER_COMMON_BONE_TRANSFORMS1 );
-		if ( !program ) {
-			glConfig.maxGLSLBones = 0;
-		}
-	}
-
-	r_glslprograms_initialized = true;
+static void RP_PrecachePrograms_NRI(void) {
+	//ignore precache
 }
 
 /*
@@ -223,7 +182,7 @@ void RP_Init( void )
 * ..
 * program_typeN features_lower_bitsN features_higher_bitsN program_nameN binary_offset
 */
-void RP_PrecachePrograms( void )
+static void RP_PrecachePrograms_GL( void )
 {
 	int version;
 	char *buffer = NULL, *data, **ptr;
@@ -412,6 +371,9 @@ void RP_PrecachePrograms( void )
 	}
 }
 
+void RP_StorePrecacheList_NRI( void ) {
+
+}
 
 /*
 * RP_StorePrecacheList
@@ -419,7 +381,7 @@ void RP_PrecachePrograms( void )
 * Stores the list of known GLSL program permutations to file on the disk.
 * File format matches that expected by RP_PrecachePrograms.
 */
-void RP_StorePrecacheList( void )
+void RP_StorePrecacheList_GL( void )
 {
 	unsigned int i;
 	int handle, handleBin;
@@ -1634,6 +1596,27 @@ static int R_Features2HashKey( r_glslfeat_t features )
 }
 
 /*
+* RP_Shutdown
+*/
+static void RP_Shutdown_GL( void )
+{
+	unsigned int i;
+	glsl_program_t *program;
+
+	qglUseProgram( 0 );
+
+	for( i = 0, program = r_glslprograms; i < r_numglslprograms; i++, program++ ) {
+		RF_DeleteProgram( program );
+	}
+	
+	Trie_Destroy( glsl_cache_trie );
+	glsl_cache_trie = NULL;
+
+	r_numglslprograms = 0;
+	r_glslprograms_initialized = false;
+}
+
+/*
 * RP_RegisterProgramBinary
 */
 static int RP_RegisterProgramBinary( int type, const char *name, const char *deformsKey, 
@@ -1970,11 +1953,17 @@ done:
 /*
 * RP_RegisterProgram
 */
-int RP_RegisterProgram( int type, const char *name, const char *deformsKey, 
+int RP_RegisterProgram_GL( int type, const char *name, const char *deformsKey, 
 	const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
 {
 	return RP_RegisterProgramBinary( type, name, deformsKey, deforms, numDeforms, 
 		features, 0, 0, NULL );
+}
+
+int RP_RegisterProgram_NRI( int type, const char *name, const char *deformsKey, 
+	const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
+{
+	return 0;
 }
 
 /*
@@ -2754,22 +2743,58 @@ static void RP_BindAttrbibutesLocations( glsl_program_t *program )
 }
 
 /*
-* RP_Shutdown
+* RP_Init
 */
-void RP_Shutdown( void )
+void RP_Init( void )
 {
-	unsigned int i;
-	glsl_program_t *program;
+	int program;
 
-	qglUseProgram( 0 );
-
-	for( i = 0, program = r_glslprograms; i < r_numglslprograms; i++, program++ ) {
-		RF_DeleteProgram( program );
+	if( r_glslprograms_initialized ) {
+		return;
 	}
-	
-	Trie_Destroy( glsl_cache_trie );
-	glsl_cache_trie = NULL;
 
-	r_numglslprograms = 0;
-	r_glslprograms_initialized = false;
+	memset( r_glslprograms, 0, sizeof( r_glslprograms ) );
+	memset( r_glslprograms_hash, 0, sizeof( r_glslprograms_hash ) );
+
+	switch( r_backend_api ) {
+		case BACKEND_OPENGL_LEGACY: {
+			RP_Shutdown = RP_Shutdown_GL;
+			RP_PrecachePrograms = RP_PrecachePrograms_GL;
+			RP_StorePrecacheList = RP_StorePrecacheList_GL; 
+			RP_RegisterProgram = RP_RegisterProgram_GL;
+			break;
+		}
+		case BACKEND_NRI_VULKAN:
+		case BACKEND_NRI_METAL:
+		case BACKEND_NRI_DX12: {
+			RP_PrecachePrograms = RP_PrecachePrograms_NRI;
+			RP_StorePrecacheList = RP_StorePrecacheList_NRI; 
+			break;
+		}
+	}
+
+	Trie_Create( TRIE_CASE_INSENSITIVE, &glsl_cache_trie );
+
+	// register base programs
+	RP_RegisterProgram( GLSL_PROGRAM_TYPE_MATERIAL, DEFAULT_GLSL_MATERIAL_PROGRAM, NULL, NULL, 0, 0 );
+	RP_RegisterProgram( GLSL_PROGRAM_TYPE_DISTORTION, DEFAULT_GLSL_DISTORTION_PROGRAM, NULL, NULL, 0, 0 );
+	RP_RegisterProgram( GLSL_PROGRAM_TYPE_RGB_SHADOW, DEFAULT_GLSL_RGB_SHADOW_PROGRAM, NULL, NULL, 0, 0 );
+	RP_RegisterProgram( GLSL_PROGRAM_TYPE_SHADOWMAP, DEFAULT_GLSL_SHADOWMAP_PROGRAM, NULL, NULL, 0, 0 );
+	RP_RegisterProgram( GLSL_PROGRAM_TYPE_OUTLINE, DEFAULT_GLSL_OUTLINE_PROGRAM, NULL, NULL, 0, 0 );
+	RP_RegisterProgram( GLSL_PROGRAM_TYPE_Q3A_SHADER, DEFAULT_GLSL_Q3A_SHADER_PROGRAM, NULL, NULL, 0, 0 );
+	RP_RegisterProgram( GLSL_PROGRAM_TYPE_CELSHADE, DEFAULT_GLSL_CELSHADE_PROGRAM, NULL, NULL, 0, 0 );
+	RP_RegisterProgram( GLSL_PROGRAM_TYPE_FOG, DEFAULT_GLSL_FOG_PROGRAM, NULL, NULL, 0, 0 );
+	RP_RegisterProgram( GLSL_PROGRAM_TYPE_FXAA, DEFAULT_GLSL_FXAA_PROGRAM, NULL, NULL, 0, 0 );
+	RP_RegisterProgram( GLSL_PROGRAM_TYPE_YUV, DEFAULT_GLSL_YUV_PROGRAM, NULL, NULL, 0, 0 );
+	RP_RegisterProgram( GLSL_PROGRAM_TYPE_COLORCORRECTION, DEFAULT_GLSL_COLORCORRECTION_PROGRAM, NULL, NULL, 0, 0 );
+
+	// check whether compilation of the shader with GPU skinning succeeds, if not, disable GPU bone transforms
+	if ( glConfig.maxGLSLBones ) {
+		program = RP_RegisterProgram( GLSL_PROGRAM_TYPE_MATERIAL, DEFAULT_GLSL_MATERIAL_PROGRAM, NULL, NULL, 0, GLSL_SHADER_COMMON_BONE_TRANSFORMS1 );
+		if ( !program ) {
+			glConfig.maxGLSLBones = 0;
+		}
+	}
+
+	r_glslprograms_initialized = true;
 }

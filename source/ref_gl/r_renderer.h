@@ -27,7 +27,6 @@ static const uint32_t ByteToKB = 1024;
 static const uint32_t ByteToMB = 1024 * ByteToKB;
 static const uint32_t ByteToGB = 1024 * ByteToMB;
 
-
 static inline size_t R_Align( size_t x, size_t alignment )
 {
 	return ( ( x + alignment - 1 ) & ~( alignment - 1 ) );
