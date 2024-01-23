@@ -495,10 +495,21 @@ void RP_StorePrecacheList_GL( void )
 	}
 }
 
-/*
-* RF_DeleteProgram
-*/
-static void RF_DeleteProgram( glsl_program_t *program )
+static void RF_DeleteProgram_NRI( glsl_program_t *program )
+{
+	glsl_program_t *hash_next;
+
+	if( program->name )
+		R_Free( program->name );
+	if( program->deformsKey )
+		R_Free( program->deformsKey );
+
+	hash_next = program->hash_next;
+	memset( program, 0, sizeof( glsl_program_t ) );
+	program->hash_next = hash_next;
+}
+
+static void RF_DeleteProgram_GL( glsl_program_t *program )
 {
 	glsl_program_t *hash_next;
 
@@ -1836,7 +1847,6 @@ static bool RF_LoadShaderFromFile_r( glslParser_t *parser, const char *fileName,
 
 
 void R_ProgramFeatures2DefinesAppend(sds* shaderSource, sds* shaderName, const glsl_feature_t *type_features, r_glslfeat_t features) {
-
 	for(size_t i = 0; features && type_features && type_features[i].bit; i++ )
 	{
 		if( (features & type_features[i].bit) == type_features[i].bit )
@@ -1892,10 +1902,11 @@ static int R_Features2HashKey( r_glslfeat_t features )
 {
 	int hash = 0x7e53a269;
 
-#define ComputeHash(hash,val) hash = -1521134295 * hash + (val), hash += (hash << 10), hash ^= (hash >> 6)
+#define ComputeHash( hash, val ) hash = -1521134295 * hash + ( val ), hash += ( hash << 10 ), hash ^= ( hash >> 6 )
 
-	ComputeHash(hash, (int)(features & 0xFFFFFFFF));
-	ComputeHash(hash, (int)((features >> 32ULL) & 0xFFFFFFFF));
+	ComputeHash( hash, (int)( features & 0xFFFFFFFF ) );
+	ComputeHash( hash, (int)( ( features >> 32ULL ) & 0xFFFFFFFF ) );
+#undef ComputeHash
 
 	return hash & (GLSL_PROGRAMS_HASH_SIZE - 1);
 }
@@ -1911,9 +1922,24 @@ static void RP_Shutdown_GL( void )
 	qglUseProgram( 0 );
 
 	for( i = 0, program = r_glslprograms; i < r_numglslprograms; i++, program++ ) {
-		RF_DeleteProgram( program );
+		RF_DeleteProgram_GL( program );
 	}
 	
+	Trie_Destroy( glsl_cache_trie );
+	glsl_cache_trie = NULL;
+
+	r_numglslprograms = 0;
+	r_glslprograms_initialized = false;
+}
+
+static void RP_Shutdown_NRI( void )
+{
+	glsl_program_t *program = NULL;
+	size_t i = 0;
+	for( i = 0, program = r_glslprograms; i < r_numglslprograms; i++, program++ ) {
+		RF_DeleteProgram_NRI( program );
+	}
+
 	Trie_Destroy( glsl_cache_trie );
 	glsl_cache_trie = NULL;
 
@@ -2233,7 +2259,7 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 
 done:
 	if( error )
-		RF_DeleteProgram( program );
+		RF_DeleteProgram_GL( program );
 
 	program->type = type;
 	program->features = features;
@@ -2255,30 +2281,16 @@ done:
 	return ( program - r_glslprograms ) + 1;
 }
 
-/*
-* RP_RegisterProgram
-*/
-int RP_RegisterProgram_GL( int type, const char *name, const char *deformsKey, 
-	const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
+static int RP_RegisterProgram_NRI( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
 {
-	return RP_RegisterProgramBinary( type, name, deformsKey, deforms, numDeforms, 
-		features, 0, 0, NULL );
-}
+	if( type <= GLSL_PROGRAM_TYPE_NONE || type >= GLSL_PROGRAM_TYPE_MAXTYPE )
+		return 0;
 
-
-static glsl_include_result_t* RP_ResolveGLSLInclude(void* ctx, const char* header_name, const char* includer_name,
-                                                          size_t include_depth) {
-  return NULL;
-}
-
-static int RP_FreeGLSLInclude(void* ctx, glsl_include_result_t* result) {
-  return 0;
-}
-
-int RP_RegisterProgram_NRI( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
-{
+	assert( !deforms || deformsKey );
+	
 	if( !deforms )
 		deformsKey = "";
+	
 	const int hash = R_Features2HashKey( features );
 	for( glsl_program_t *program = r_glslprograms_hash[type][hash]; program; program = program->hash_next ) {
 		if( ( program->features == features ) && !strcmp( program->deformsKey, deformsKey ) ) {
@@ -2312,7 +2324,11 @@ int RP_RegisterProgram_NRI( int type, const char *name, const char *deformsKey, 
 		}
 	}
 	program = r_glslprograms + r_numglslprograms++;
-	memset( program, 0, sizeof( *program ) );
+	sds featuresStr = sdsempty();
+	sds fullName  = sdsnew(name); 
+	R_ProgramFeatures2DefinesAppend( &featuresStr, &fullName, glsl_programtypes_features[type], features );
+	
+	ri.Com_DPrintf( "Registering GLSL program %s\n", fullName );
 
 	bool error = false;
 	sds filePath = sdsempty();
@@ -2320,20 +2336,29 @@ int RP_RegisterProgram_NRI( int type, const char *name, const char *deformsKey, 
 		shader_stage_t stage;
 		glslang_stage_t slangeStage;
 		sds source;
-		sds fullName;
 	} stages[] = {
-		{ .stage = R_STAGE_VERTEX, .slangeStage = GLSLANG_STAGE_VERTEX, .source = sdsempty(), .fullName = sdsempty() },
-		{ .stage = R_STAGE_FRAGMENT, .slangeStage = GLSLANG_STAGE_FRAGMENT, .source = sdsempty(), .fullName = sdsempty() },
+		{ .stage = R_STAGE_VERTEX, .slangeStage = GLSLANG_STAGE_VERTEX, .source = sdsempty() },
+		{ .stage = R_STAGE_FRAGMENT, .slangeStage = GLSLANG_STAGE_FRAGMENT, .source = sdsempty() },
 	};
 	// sds shaderSource[NumberShaders] = {sdsempty(), sdsempty()};
 	for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
-		//stages[i].source = sdscatfmt( stages[i].source, "#version 450 core\n" );
+		switch( stages[i].stage ) {
+			case R_STAGE_VERTEX:
+				stages[i].source = sdscatfmt( stages[i].source, "#define VERTEX_SHADER\n" );
+				break;
+			case R_STAGE_FRAGMENT:
+				stages[i].source = sdscatfmt( stages[i].source, "#define FRAGMENT_SHADER\n" );
+				break;
+			default:
+				assert( 0 );
+				break;
+		}
 		stages[i].source = sdscatfmt( stages[i].source, "#define QF_GLSL_VERSION 130\n" );
+		stages[i].source = sdscatfmt( stages[i].source, "#define MAX_UNIFORM_BONES %i\n", r_maxglslbones->integer );
 		stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_MACROS_GLSL130 );
 		stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_CONSTANTS );
 		switch( stages[i].stage ) {
 			case R_STAGE_VERTEX:
-				stages[i].source = sdscatfmt( stages[i].source, "#define VERTEX_SHADER\n" );
 				stages[i].source = R_AppendGLSLDeformv( stages[i].source, deforms, numDeforms );
 				stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_GLSL_WAVEFUNCS );
 				if( features & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
@@ -2343,10 +2368,8 @@ int RP_RegisterProgram_NRI( int type, const char *name, const char *deformsKey, 
 					stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_INSTANCED_TRANSFORMS );
 				}
 				stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_TRANSFORM_VERTS );
-
 				break;
 			case R_STAGE_FRAGMENT:
-				stages[i].source = sdscatfmt( stages[i].source, "#define FRAGMENT_SHADER\n" );
 				break;
 			default:
 				assert( 0 );
@@ -2354,7 +2377,7 @@ int RP_RegisterProgram_NRI( int type, const char *name, const char *deformsKey, 
 		}
 		stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_GLSL_MATH );
 		stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_MACROS );
-		R_ProgramFeatures2DefinesAppend( &stages[i].source, &stages[i].fullName, glsl_programtypes_features[type], features );
+		R_ProgramFeatures2DefinesAppend( &stages[i].source, &fullName, glsl_programtypes_features[type], features );
 
 		sdsclear( filePath );
 		switch( stages[i].stage ) {
@@ -2394,7 +2417,7 @@ int RP_RegisterProgram_NRI( int type, const char *name, const char *deformsKey, 
 		glslang_program_t *glslang_program = NULL;
 
 		if( !glslang_shader_preprocess( shader, &input ) ) {
-			Com_Printf( S_COLOR_YELLOW "GLSL parsing failed %s\n", stages[i].fullName );
+			Com_Printf( S_COLOR_YELLOW "GLSL parsing failed %s\n", fullName);
 			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_shader_get_info_log( shader ) );
 			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_shader_get_info_debug_log( shader ) );
 			Com_Printf( S_COLOR_YELLOW "%s\n", input.code );
@@ -2402,7 +2425,7 @@ int RP_RegisterProgram_NRI( int type, const char *name, const char *deformsKey, 
 			goto shader_error;
 		}
 		if( !glslang_shader_parse( shader, &input ) ) {
-			Com_Printf( S_COLOR_YELLOW "GLSL parsing failed %s\n", stages[i].fullName);
+			Com_Printf( S_COLOR_YELLOW "GLSL parsing failed %s\n", fullName);
 			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_shader_get_info_log( shader ) );
 			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_shader_get_info_debug_log( shader ) );
 			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_shader_get_preprocessed_code( shader ) );
@@ -2413,7 +2436,7 @@ int RP_RegisterProgram_NRI( int type, const char *name, const char *deformsKey, 
 		glslang_program_add_shader( glslang_program, shader );
 
 		if( !glslang_program_link( glslang_program, GLSLANG_MSG_SPV_RULES_BIT | GLSLANG_MSG_VULKAN_RULES_BIT ) ) {
-			Com_Printf( S_COLOR_YELLOW "GLSL linking failed %s\n", stages[i].fullName );
+			Com_Printf( S_COLOR_YELLOW "GLSL linking failed %s\n", fullName);
 			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_program_get_info_log( glslang_program ) );
 			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_program_get_info_debug_log( glslang_program ) );
 			error = true;
@@ -2439,16 +2462,18 @@ int RP_RegisterProgram_NRI( int type, const char *name, const char *deformsKey, 
 		}
 	}
 
+	sdsfree(fullName);
 	for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
-		sdsfree(stages[i].fullName);
 		sdsfree(stages[i].source);
 	}
 
 	if( error ) {
 		for(size_t i = 0; i < R_STAGE_MAX; i++) {
 			if(program->nri.bin[i].data) {
-				R_Free(program->nri.bin[i].data);
+				R_Free( program->nri.bin[i].data );
 			}
+			program->nri.bin[i].len = 0;
+			program->nri.bin[i].data = NULL;
 		}
 	}
 	
@@ -2464,6 +2489,13 @@ int RP_RegisterProgram_NRI( int type, const char *name, const char *deformsKey, 
 	}
 
 	return ( program - r_glslprograms ) + 1;
+}
+
+static int RP_RegisterProgram_GL( int type, const char *name, const char *deformsKey, 
+	const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
+{
+	return RP_RegisterProgramBinary( type, name, deformsKey, deforms, numDeforms, 
+		features, 0, 0, NULL );
 }
 
 /*
@@ -2555,6 +2587,7 @@ void RP_UpdateShaderUniforms( int elem,
 	const uint8_t *constColor, const float *rgbGenFuncArgs, const float *alphaGenFuncArgs,
 	const mat4_t texMatrix )
 {
+	assert(r_backend_api == BACKEND_OPENGL_LEGACY);
 	GLfloat m[9];
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
@@ -2602,6 +2635,7 @@ void RP_UpdateViewUniforms( int elem,
 	int viewport[4],
 	float zNear, float zFar )
 {
+	assert(r_backend_api == BACKEND_OPENGL_LEGACY);
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
 	if( program->loc.ModelViewMatrix >= 0 ) {
@@ -3261,15 +3295,25 @@ void RP_Init( void )
 		case BACKEND_OPENGL_LEGACY: {
 			RP_Shutdown = RP_Shutdown_GL;
 			RP_PrecachePrograms = RP_PrecachePrograms_GL;
-			RP_StorePrecacheList = RP_StorePrecacheList_GL; 
+			RP_StorePrecacheList = RP_StorePrecacheList_GL;
 			RP_RegisterProgram = RP_RegisterProgram_GL;
+
+			if( glConfig.maxGLSLBones ) {
+				program = RP_RegisterProgram( GLSL_PROGRAM_TYPE_MATERIAL, DEFAULT_GLSL_MATERIAL_PROGRAM, NULL, NULL, 0, GLSL_SHADER_COMMON_BONE_TRANSFORMS1 );
+				if( !program ) {
+					glConfig.maxGLSLBones = 0;
+				}
+			}
 			break;
 		}
 		case BACKEND_NRI_VULKAN:
 		case BACKEND_NRI_METAL:
 		case BACKEND_NRI_DX12: {
+			RP_Shutdown = RP_Shutdown_NRI;
 			RP_PrecachePrograms = RP_PrecachePrograms_NRI;
 			RP_StorePrecacheList = RP_StorePrecacheList_NRI; 
+			RP_RegisterProgram = RP_RegisterProgram_NRI;
+			program = RP_RegisterProgram( GLSL_PROGRAM_TYPE_MATERIAL, DEFAULT_GLSL_MATERIAL_PROGRAM, NULL, NULL, 0, GLSL_SHADER_COMMON_BONE_TRANSFORMS1 );
 			break;
 		}
 	}
@@ -3290,12 +3334,6 @@ void RP_Init( void )
 	RP_RegisterProgram( GLSL_PROGRAM_TYPE_COLORCORRECTION, DEFAULT_GLSL_COLORCORRECTION_PROGRAM, NULL, NULL, 0, 0 );
 
 	// check whether compilation of the shader with GPU skinning succeeds, if not, disable GPU bone transforms
-	if ( glConfig.maxGLSLBones ) {
-		program = RP_RegisterProgram( GLSL_PROGRAM_TYPE_MATERIAL, DEFAULT_GLSL_MATERIAL_PROGRAM, NULL, NULL, 0, GLSL_SHADER_COMMON_BONE_TRANSFORMS1 );
-		if ( !program ) {
-			glConfig.maxGLSLBones = 0;
-		}
-	}
 
 	r_glslprograms_initialized = true;
 }
