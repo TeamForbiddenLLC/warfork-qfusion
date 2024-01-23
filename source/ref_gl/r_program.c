@@ -23,6 +23,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_local.h"
 #include "../qalgo/q_trie.h"
 #include "r_shared.h"
+#include "r_program.h"
+
+#include "glslang/Include/glslang_c_interface.h"
+#include "glslang/Public/resource_limits_c.h"
+#include <glslang/Include/glslang_c_shader_types.h>
+
+#include "../gameshared/q_sds.h"
+#include "stb_ds.h"
+
 
 #define MAX_GLSL_PROGRAMS			1024
 #define GLSL_PROGRAMS_HASH_SIZE		256
@@ -48,8 +57,29 @@ typedef struct
 	const char		*suffix;
 } glsl_feature_t;
 
+typedef enum {
+	R_STAGE_VERTEX,
+	R_STAGE_FRAGMENT,
+	R_STAGE_MAX
+} shader_stage_t;
+
 typedef struct glsl_program_s
 {
+	union {
+		struct {
+			int object;
+			int vertexShader;
+			int fragmentShader;
+		} gl;
+		struct {
+			struct {
+				// for vulkan data will be SPIR-V
+				// TODO: DXC for DX12
+				size_t len;
+				uint8_t *data;
+			} bin[R_STAGE_MAX];
+		} nri;
+	};
 	char			*name;
 	int				type;
 	r_glslfeat_t	features;
@@ -57,9 +87,6 @@ typedef struct glsl_program_s
 	char 			*deformsKey;
 	struct glsl_program_s *hash_next;
 
-	int				object;
-	int				vertexShader;
-	int				fragmentShader;
 
 	int				binaryCachePos;
 
@@ -475,22 +502,22 @@ static void RF_DeleteProgram( glsl_program_t *program )
 {
 	glsl_program_t *hash_next;
 
-	if( program->vertexShader )
+	if( program->gl.vertexShader )
 	{
-		qglDetachShader( program->object, program->vertexShader );
-		qglDeleteShader( program->vertexShader );
-		program->vertexShader = 0;
+		qglDetachShader( program->gl.object, program->gl.vertexShader );
+		qglDeleteShader( program->gl.vertexShader );
+		program->gl.vertexShader = 0;
 	}
 
-	if( program->fragmentShader )
+	if( program->gl.fragmentShader )
 	{
-		qglDetachShader( program->object, program->fragmentShader );
-		qglDeleteShader( program->fragmentShader );
-		program->fragmentShader = 0;
+		qglDetachShader( program->gl.object, program->gl.fragmentShader );
+		qglDeleteShader( program->gl.fragmentShader );
+		program->gl.fragmentShader = 0;
 	}
 
-	if( program->object )
-		qglDeleteProgram( program->object );
+	if( program->gl.object )
+		qglDeleteProgram( program->gl.object );
 
 	if( program->name )
 		R_Free( program->name );
@@ -1221,6 +1248,123 @@ QF_GLSL_PI \
 * NOTE: Autosprite deforms can only be performed in a geometry shader.
 * NULL is returned in case an unsupported deform is passed.
 */
+static sds R_AppendGLSLDeformv(sds str, const deformv_t *deformv, int numDeforms ) {
+	static const char * const funcs[] = {
+		NULL, "WAVE_SIN", "WAVE_TRIANGLE", "WAVE_SQUARE", "WAVE_SAWTOOTH", "WAVE_INVERSESAWTOOTH", NULL
+	};
+	static const int numSupportedFuncs = sizeof( funcs ) / sizeof( funcs[0] ) - 1;
+	if( !numDeforms ) {
+		return NULL;
+	}
+	str = sdscatfmt(str, 
+		"#define QF_APPLY_DEFORMVERTS\n"
+		"#if defined(APPLY_AUTOSPRITE) || defined(APPLY_AUTOSPRITE2)\n"
+		"qf_attribute vec4 a_SpritePoint;\n"
+		"#else\n"
+		"#define a_SpritePoint vec4(0.0)\n"
+		"#endif\n"
+		"\n"
+		"#if defined(APPLY_AUTOSPRITE2)\n"
+		"qf_attribute vec4 a_SpriteRightUpAxis;\n"
+		"#else\n"
+		"#define a_SpriteRightUpAxis vec4(0.0)\n"
+		"#endif\n"
+		"\n"
+		"void QF_DeformVerts(inout vec4 Position, inout vec3 Normal, inout vec2 TexCoord)\n"
+		"{\n"
+		"float t = 0.0;\n"
+		"vec3 dist;\n"
+		"vec3 right, up, forward, newright;\n"
+		"\n"
+		"#if defined(WAVE_SIN)\n");
+	const int funcType = deformv->func.type;
+	for(size_t i = 0; i < numDeforms; i++, deformv++ ) {
+		switch( deformv->type ) {
+			case DEFORMV_WAVE: {
+				if( funcType <= SHADER_FUNC_NONE || funcType > numSupportedFuncs || !funcs[funcType] ) {
+					return NULL;
+				}
+				str = sdscatfmt( str, "Position.xyz += %s(u_QF_ShaderTime,%f,%f,%f+%f*(Position.x+Position.y+Position.z),%f) * Normal.xyz;\n", funcs[funcType], deformv->func.args[0],
+									deformv->func.args[1], deformv->func.args[2], deformv->func.args[3] ? deformv->args[0] : 0.0, deformv->func.args[3] );
+				break;
+			}
+			case DEFORMV_MOVE: {
+				if( funcType <= SHADER_FUNC_NONE || funcType > numSupportedFuncs || !funcs[funcType] ) {
+					return NULL;
+				}
+				str = sdscatfmt( str, "Position.xyz += %s(u_QF_ShaderTime,%f,%f,%f,%f) * vec3(%f, %f, %f);\n", funcs[funcType], deformv->func.args[0], deformv->func.args[1],
+									deformv->func.args[2], deformv->func.args[3], deformv->args[0], deformv->args[1], deformv->args[2] );
+
+				break;
+			}
+			case DEFORMV_BULGE:
+				str = sdscatfmt( str, "t = sin(TexCoord.s * %f + u_QF_ShaderTime * %f);\n"
+						"Position.xyz += max (-1.0 + %f, t) * %f * Normal.xyz;\n", 
+						deformv->args[0], deformv->args[2], deformv->args[3], deformv->args[1] );
+
+				break;
+			case DEFORMV_AUTOSPRITE:
+				str = sdscatfmt( str,
+									"right = (1.0 + step(0.5, TexCoord.s) * -2.0) * u_QF_ViewAxis[1] * u_QF_MirrorSide;\n;"
+									"up = (1.0 + step(0.5, TexCoord.t) * -2.0) * u_QF_ViewAxis[2];\n"
+									"forward = -1.0 * u_QF_ViewAxis[0];\n"
+									"Position.xyz = a_SpritePoint.xyz + (right + up) * a_SpritePoint.w;\n"
+									"Normal.xyz = forward;\n"
+									"TexCoord.st = vec2(step(0.5, TexCoord.s),step(0.5, TexCoord.t));\n" );
+
+				break;
+			case DEFORMV_AUTOPARTICLE:
+				str = sdscatfmt( str,
+						"right = (1.0 + TexCoord.s * -2.0) * u_QF_ViewAxis[1] * u_QF_MirrorSide;\n;"
+						"up = (1.0 + TexCoord.t * -2.0) * u_QF_ViewAxis[2];\n"
+						"forward = -1.0 * u_QF_ViewAxis[0];\n"
+						// prevent the particle from disappearing at large distances
+						"t = dot(a_SpritePoint.xyz + u_QF_EntityOrigin - u_QF_ViewOrigin, u_QF_ViewAxis[0]);\n"
+						"t = 1.5 + step(20.0, t) * t * 0.006;\n"
+						"Position.xyz = a_SpritePoint.xyz + (right + up) * t * a_SpritePoint.w;\n"
+						"Normal.xyz = forward;\n" );
+				break;
+			case DEFORMV_AUTOSPRITE2:
+				str = sdscatfmt( str,
+					// local sprite axes
+					"right = QF_LatLong2Norm(a_SpriteRightUpAxis.xy) * u_QF_MirrorSide;\n"
+					"up = QF_LatLong2Norm(a_SpriteRightUpAxis.zw);\n"
+
+					// mid of quad to camera vector
+					"dist = u_QF_ViewOrigin - u_QF_EntityOrigin - a_SpritePoint.xyz;\n"
+
+					// filter any longest-axis-parts off the camera-direction
+					"forward = normalize(dist - up * dot(dist, up));\n"
+
+					// the right axis vector as it should be to face the camera
+					"newright = cross(up, forward);\n"
+
+					// rotate the quad vertex around the up axis vector
+					"t = dot(right, Position.xyz - a_SpritePoint.xyz);\n"
+					"Position.xyz += t * (newright - right);\n"
+					"Normal.xyz = forward;\n");
+				break;
+			default:
+				break;
+		}
+	}
+
+	str = sdscatfmt(str, 
+		"#endif\n"
+		"}\n"
+		"\n");
+
+	return str;
+}
+
+/*
+* R_GLSLBuildDeformv
+* 
+* Converts some of the Q3A vertex deforms to a GLSL vertex shader. 
+* Supported deforms are: wave, move, bulge.
+* NOTE: Autosprite deforms can only be performed in a geometry shader.
+* NULL is returned in case an unsupported deform is passed.
+*/
 static const char *R_GLSLBuildDeformv( const deformv_t *deformv, int numDeforms )
 {
 	int i;
@@ -1365,6 +1509,150 @@ typedef struct
 	size_t numBuffers;
 } glslParser_t;
 
+static bool RF_AppendShaderFromFile__(sds* str, const char* rootFile, const char *fileName, int stackDepth, int programType, r_glslfeat_t features ) {
+	char tempbuf[MAX_TOKEN_CHARS];
+	char *fileContents = NULL;
+	char *trieCache = NULL;
+	trie_error_t trie_error = Trie_Find( glsl_cache_trie, fileName, TRIE_EXACT_MATCH, (void **)&trieCache );
+	if( trie_error != TRIE_OK ) {
+		R_LoadFile( fileName, (void **)&fileContents );
+		if( fileContents ) {
+			trieCache = R_CopyString( fileContents );
+		}
+		Trie_Insert( glsl_cache_trie, fileName, trieCache );
+	} else {
+		if( trieCache ) {
+			fileContents = R_CopyString( trieCache );
+		}
+	}
+
+	if( !fileContents ) {
+		Com_Printf( S_COLOR_YELLOW "Cannot load file '%s'\n", fileName );
+		return true;
+	}
+
+	char* it = fileContents;
+	char* prevIt = NULL; 
+	char* startBuf = NULL;
+	bool error = false;
+	sds inclueFilePath = sdsempty();
+	while( 1 ) {
+		prevIt = it;
+		char* token = COM_ParseExt_r( tempbuf, sizeof( tempbuf ), &it, true );
+		if( !token[0] ) {
+			break;
+		}
+		bool include = false;
+		bool ignore_include = false;
+
+		if( !Q_stricmp( token, "#include" ) ) {
+			include = true;
+		}
+		else if( !Q_strnicmp( token, "#include_if(", 12 ) ) {
+			include = true;
+			token += 12;
+
+			ignore_include = true;
+			if( ( !Q_stricmp( token, "APPLY_FOG)" ) && (features & GLSL_SHADER_COMMON_FOG) ) ||
+
+				( !Q_stricmp( token, "NUM_DLIGHTS)" ) && (features & GLSL_SHADER_COMMON_DLIGHTS) ) ||
+
+				( !Q_stricmp( token, "APPLY_GREYSCALE)" ) && (features & GLSL_SHADER_COMMON_GREYSCALE) ) ||
+
+				( (programType == GLSL_PROGRAM_TYPE_Q3A_SHADER) && !Q_stricmp( token, "NUM_LIGHTMAPS)" )
+					&& (features & GLSL_SHADER_Q3_LIGHTSTYLE) ) ||
+
+				( (programType == GLSL_PROGRAM_TYPE_MATERIAL) && !Q_stricmp( token, "NUM_LIGHTMAPS)" )
+					&& (features & GLSL_SHADER_MATERIAL_LIGHTSTYLE) ) ||
+
+				( (programType == GLSL_PROGRAM_TYPE_MATERIAL) && !Q_stricmp( token, "APPLY_OFFSETMAPPING)" ) 
+					&& (features & (GLSL_SHADER_MATERIAL_OFFSETMAPPING|GLSL_SHADER_MATERIAL_RELIEFMAPPING)) ) ||
+
+				( (programType == GLSL_PROGRAM_TYPE_MATERIAL) && !Q_stricmp( token, "APPLY_CELSHADING)" )
+					&& (features & GLSL_SHADER_MATERIAL_CELSHADING) ) ||
+
+				( (programType == GLSL_PROGRAM_TYPE_MATERIAL) && !Q_stricmp( token, "APPLY_DIRECTIONAL_LIGHT)" )
+					&& (features & GLSL_SHADER_MATERIAL_DIRECTIONAL_LIGHT) )
+
+				) {
+				ignore_include = false;
+			}
+		}
+
+		char* line = token;
+		if( !include || ignore_include ) { 
+			if( !ignore_include ) {
+				if( !startBuf ) {
+					startBuf = prevIt;
+				}
+			}
+
+			// skip to the end of the line
+			token = strchr( it, '\n' );
+			if( !token ) {
+				break;
+			}
+			it = token+1;
+			continue;
+		}
+
+		if( startBuf && prevIt > startBuf ) {
+			// cut the string at the beginning of the #include
+			*prevIt = '\0';
+			(*str) = sdscat(*str, startBuf);
+			startBuf = NULL;
+		}
+
+		// parse #include argument
+		token = COM_Parse_r( tempbuf, sizeof( tempbuf ), &it);
+		if( !token[0] ) {
+			Com_Printf( S_COLOR_YELLOW "Syntax error in '%s' around '%s'\n", fileName, line );
+			error = true;
+			goto done;
+		}
+
+		if( stackDepth == PARSER_MAX_STACKDEPTH ) {
+			Com_Printf( S_COLOR_YELLOW "Include stack overflow in '%s' around '%s'\n", fileName, line );
+			error = true;
+			goto done;
+		}
+
+		// load files from current directory, unless the path starts
+		// with the leading "/". in that case, go back to to top directory
+		COM_SanitizeFilePath( token );
+		
+		sdsclear( inclueFilePath );
+		inclueFilePath = sdsMakeRoomFor( inclueFilePath, strlen( fileName ) + 1 + strlen( token ) + 1 );
+
+		// tempFilename = R_Malloc( tempFilenameSize );
+
+		if( *token != '/' ) {
+			inclueFilePath = sdscat( inclueFilePath, fileName );
+			COM_StripFilename( inclueFilePath );
+		} else {
+			token++;
+			inclueFilePath = sdscat( inclueFilePath, rootFile );
+			COM_StripFilename( inclueFilePath );
+		}
+		sdscatfmt( inclueFilePath, "%s%s", *inclueFilePath ? "/" : "", token );
+		if( RF_AppendShaderFromFile__( str, rootFile, inclueFilePath, stackDepth + 1, programType, features ) ) {
+			error = true;
+			goto done;
+		}
+	}
+	if( startBuf ) {
+		*str = sdscat( *str, startBuf );
+	}
+done:
+	R_Free(fileContents);
+	sdsfree(inclueFilePath);
+	return error;
+}
+
+static bool RF_AppendShaderFromFile(sds* str, const char *fileName, int programType, r_glslfeat_t features ) {
+	return RF_AppendShaderFromFile__(str, fileName, fileName, 1, programType, features);
+}
+
 /*
 * RF_LoadShaderFromFile_r
 */
@@ -1376,10 +1664,9 @@ static bool RF_LoadShaderFromFile_r( glslParser_t *parser, const char *fileName,
 	char *ptr, *prevPtr;
 	char *startBuf;
 	char *trieCache;
-	trie_error_t trie_error;
 	char tempbuf[MAX_TOKEN_CHARS];
 
-	trie_error = Trie_Find( glsl_cache_trie, fileName, TRIE_EXACT_MATCH, ( void ** )&trieCache );
+	trie_error_t trie_error = Trie_Find( glsl_cache_trie, fileName, TRIE_EXACT_MATCH, ( void ** )&trieCache );
 	if( trie_error != TRIE_OK ) {
 		R_LoadFile( fileName, (void **)&fileContents );
 
@@ -1546,6 +1833,24 @@ static bool RF_LoadShaderFromFile_r( glslParser_t *parser, const char *fileName,
 	return parser->error;
 }
 
+
+
+void R_ProgramFeatures2DefinesAppend(sds* shaderSource, sds* shaderName, const glsl_feature_t *type_features, r_glslfeat_t features) {
+
+	for(size_t i = 0; features && type_features && type_features[i].bit; i++ )
+	{
+		if( (features & type_features[i].bit) == type_features[i].bit )
+		{
+			( *shaderSource ) = sdscatfmt( *shaderSource, "%s\n", type_features[i].define );
+			if( shaderName) {
+				(*shaderName) =  sdscatfmt(*shaderName, "%s\n", type_features[i].suffix);
+			}
+			features &= ~type_features[i].bit;
+		}
+	}
+
+}
+
 /*
 * R_ProgramFeatures2Defines
 * 
@@ -1695,21 +2000,21 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	}
 
 	program = r_glslprograms + r_numglslprograms++;
-	program->object = qglCreateProgram();
-	if( !program->object )
+	program->gl.object = qglCreateProgram();
+	if( !program->gl.object )
 	{
 		error = 1;
 		goto done;
 	}
 
 	if( glConfig.ext.get_program_binary && qglProgramParameteri ) {
-		qglProgramParameteri( program->object, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE );
+		qglProgramParameteri( program->gl.object, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE );
 	}
 
 	if( binary ) {
 		linked = 0;
-		qglProgramBinary( program->object, binaryFormat, binary, binaryLength );
-		qglGetProgramiv( program->object, GL_OBJECT_LINK_STATUS_ARB, &linked );
+		qglProgramBinary( program->gl.object, binaryFormat, binary, binaryLength );
+		qglGetProgramiv( program->gl.object, GL_OBJECT_LINK_STATUS_ARB, &linked );
 		if( !linked ) {
 			error = 1;
 		}
@@ -1856,11 +2161,11 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	parser.numBuffers = 0;
 	parser.numStrings = 0;
 	RF_LoadShaderFromFile_r( &parser, parser.topFile, 1, type, features );
-	program->vertexShader = RF_CompileShader( program->object, fullName, "vertex", GL_VERTEX_SHADER_ARB, 
+	program->gl.vertexShader = RF_CompileShader( program->gl.object, fullName, "vertex", GL_VERTEX_SHADER_ARB, 
 		shaderStrings, num_init_strings + parser.numStrings );
 	for( i = 0; i < parser.numBuffers; i++ )
 		R_Free( parser.buffers[i] );
-	if( !program->vertexShader )
+	if( !program->gl.vertexShader )
 	{
 		error = 1;
 		goto done;
@@ -1894,11 +2199,11 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	parser.numBuffers = 0;
 	parser.numStrings = 0;
 	RF_LoadShaderFromFile_r( &parser, parser.topFile, 1, type, features );
-	program->fragmentShader = RF_CompileShader( program->object, fullName, "fragment", GL_FRAGMENT_SHADER_ARB, 
+	program->gl.fragmentShader = RF_CompileShader( program->gl.object, fullName, "fragment", GL_FRAGMENT_SHADER_ARB, 
 		shaderStrings, num_init_strings + parser.numStrings );
 	for( i = 0; i < parser.numBuffers; i++ )
 		R_Free( parser.buffers[i] );
-	if( !program->fragmentShader )
+	if( !program->gl.fragmentShader )
 	{
 		error = 1;
 		goto done;
@@ -1907,13 +2212,13 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	// link
 	linked = 0;
 
-	qglLinkProgramARB( program->object );
-	qglGetProgramiv( program->object, GL_OBJECT_LINK_STATUS_ARB, &linked );
+	qglLinkProgramARB( program->gl.object );
+	qglGetProgramiv( program->gl.object, GL_OBJECT_LINK_STATUS_ARB, &linked );
 	if( !linked )
 	{
 		char log[8192];
 
-		qglGetProgramInfoLog( program->object, sizeof( log ), NULL, log );
+		qglGetProgramInfoLog( program->gl.object, sizeof( log ), NULL, log );
 		log[sizeof( log ) - 1] = 0;
 
 		if( log[0] ) {
@@ -1941,9 +2246,9 @@ done:
 		r_glslprograms_hash[type][hash] = program;
 	}
 
-	if( program->object )
+	if( program->gl.object )
 	{
-		qglUseProgram( program->object );
+		qglUseProgram( program->gl.object );
 		RP_GetUniformLocations( program );
 	}
 
@@ -1960,21 +2265,217 @@ int RP_RegisterProgram_GL( int type, const char *name, const char *deformsKey,
 		features, 0, 0, NULL );
 }
 
-int RP_RegisterProgram_NRI( int type, const char *name, const char *deformsKey, 
-	const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
+
+static glsl_include_result_t* RP_ResolveGLSLInclude(void* ctx, const char* header_name, const char* includer_name,
+                                                          size_t include_depth) {
+  return NULL;
+}
+
+static int RP_FreeGLSLInclude(void* ctx, glsl_include_result_t* result) {
+  return 0;
+}
+
+int RP_RegisterProgram_NRI( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
 {
-	return 0;
+	if( !deforms )
+		deformsKey = "";
+	const int hash = R_Features2HashKey( features );
+	for( glsl_program_t *program = r_glslprograms_hash[type][hash]; program; program = program->hash_next ) {
+		if( ( program->features == features ) && !strcmp( program->deformsKey, deformsKey ) ) {
+			return ( ( program - r_glslprograms ) + 1 );
+		}
+	}
+
+	if( r_numglslprograms == MAX_GLSL_PROGRAMS ) {
+		Com_Printf( S_COLOR_YELLOW "RP_RegisterProgram: GLSL programs limit exceeded\n" );
+		return 0;
+	}
+
+	glsl_program_t* program; 
+	if( !name ) {
+		glsl_program_t *parent = NULL;
+		for( size_t i = 0; i < r_numglslprograms; i++ ) {
+			program = r_glslprograms + i;
+
+			if( ( program->type == type ) && !program->features ) {
+				parent = program;
+				break;
+			}
+		}
+
+		if( parent ) {
+			if( !name )
+				name = parent->name;
+		} else {
+			Com_Printf( S_COLOR_YELLOW "RP_RegisterProgram: failed to find parent for program type %i\n", type );
+			return 0;
+		}
+	}
+	program = r_glslprograms + r_numglslprograms++;
+	memset( program, 0, sizeof( *program ) );
+
+	bool error = false;
+	sds filePath = sdsempty();
+	struct {
+		shader_stage_t stage;
+		glslang_stage_t slangeStage;
+		sds source;
+		sds fullName;
+	} stages[] = {
+		{ .stage = R_STAGE_VERTEX, .slangeStage = GLSLANG_STAGE_VERTEX, .source = sdsempty(), .fullName = sdsempty() },
+		{ .stage = R_STAGE_FRAGMENT, .slangeStage = GLSLANG_STAGE_FRAGMENT, .source = sdsempty(), .fullName = sdsempty() },
+	};
+	// sds shaderSource[NumberShaders] = {sdsempty(), sdsempty()};
+	for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
+		//stages[i].source = sdscatfmt( stages[i].source, "#version 450 core\n" );
+		stages[i].source = sdscatfmt( stages[i].source, "#define QF_GLSL_VERSION 130\n" );
+		stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_MACROS_GLSL130 );
+		stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_CONSTANTS );
+		switch( stages[i].stage ) {
+			case R_STAGE_VERTEX:
+				stages[i].source = sdscatfmt( stages[i].source, "#define VERTEX_SHADER\n" );
+				stages[i].source = R_AppendGLSLDeformv( stages[i].source, deforms, numDeforms );
+				stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_GLSL_WAVEFUNCS );
+				if( features & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
+					stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_QUAT_TRANSFORM );
+				}
+				if( features & ( GLSL_SHADER_COMMON_INSTANCED_TRANSFORMS | GLSL_SHADER_COMMON_INSTANCED_ATTRIB_TRANSFORMS ) ) {
+					stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_INSTANCED_TRANSFORMS );
+				}
+				stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_TRANSFORM_VERTS );
+
+				break;
+			case R_STAGE_FRAGMENT:
+				stages[i].source = sdscatfmt( stages[i].source, "#define FRAGMENT_SHADER\n" );
+				break;
+			default:
+				assert( 0 );
+				break;
+		}
+		stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_GLSL_MATH );
+		stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_MACROS );
+		R_ProgramFeatures2DefinesAppend( &stages[i].source, &stages[i].fullName, glsl_programtypes_features[type], features );
+
+		sdsclear( filePath );
+		switch( stages[i].stage ) {
+			case R_STAGE_VERTEX:
+				filePath = sdscatfmt( filePath, "glsl/%s.vert.glsl", name );
+				error = RF_AppendShaderFromFile( &stages[i].source, filePath, type, features );
+				break;
+			case R_STAGE_FRAGMENT:
+				filePath = sdscatfmt( filePath, "glsl/%s.frag.glsl", name );
+				error = RF_AppendShaderFromFile( &stages[i].source, filePath, type, features );
+				break;
+			default:
+				assert( 0 );
+				break;
+		}
+		if( error ) {
+			break;
+		}
+	}
+	sdsfree(filePath);
+
+	for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
+		const glslang_input_t input = { .language = GLSLANG_SOURCE_GLSL,
+										.stage = stages[i].slangeStage,
+										.client = GLSLANG_CLIENT_VULKAN,
+										.client_version = GLSLANG_TARGET_VULKAN_1_2,
+										.target_language = GLSLANG_TARGET_SPV,
+										.target_language_version = GLSLANG_TARGET_SPV_1_5,
+										.code = stages[i].source,
+										.default_version = 450,
+										.default_profile = GLSLANG_NO_PROFILE,
+										.force_default_version_and_profile = false,
+										.forward_compatible = false,
+										.messages = GLSLANG_MSG_DEFAULT_BIT,
+										.resource = glslang_default_resource() };
+		glslang_shader_t *shader = glslang_shader_create( &input );
+		glslang_program_t *glslang_program = NULL;
+
+		if( !glslang_shader_preprocess( shader, &input ) ) {
+			Com_Printf( S_COLOR_YELLOW "GLSL parsing failed %s\n", stages[i].fullName );
+			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_shader_get_info_log( shader ) );
+			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_shader_get_info_debug_log( shader ) );
+			Com_Printf( S_COLOR_YELLOW "%s\n", input.code );
+			error = true;
+			goto shader_error;
+		}
+		if( !glslang_shader_parse( shader, &input ) ) {
+			Com_Printf( S_COLOR_YELLOW "GLSL parsing failed %s\n", stages[i].fullName);
+			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_shader_get_info_log( shader ) );
+			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_shader_get_info_debug_log( shader ) );
+			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_shader_get_preprocessed_code( shader ) );
+			error = true;
+			goto shader_error;
+		}
+		glslang_program = glslang_program_create();
+		glslang_program_add_shader( glslang_program, shader );
+
+		if( !glslang_program_link( glslang_program, GLSLANG_MSG_SPV_RULES_BIT | GLSLANG_MSG_VULKAN_RULES_BIT ) ) {
+			Com_Printf( S_COLOR_YELLOW "GLSL linking failed %s\n", stages[i].fullName );
+			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_program_get_info_log( glslang_program ) );
+			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_program_get_info_debug_log( glslang_program ) );
+			error = true;
+			goto shader_error;
+		}
+		glslang_program_SPIRV_generate( glslang_program, stages[i].slangeStage );
+
+		size_t wordLen = glslang_program_SPIRV_get_size( glslang_program ) * sizeof( uint32_t );
+		program->nri.bin[stages[i].stage].len = wordLen;
+		program->nri.bin[stages[i].stage].data = R_Malloc( wordLen );
+		glslang_program_SPIRV_get( glslang_program, (uint32_t *)program->nri.bin[stages[i].stage].data );
+
+		// program->nri.bytecode = malloc()
+		// bin.words = malloc( bin.size * sizeof( uint32_t ) );
+		const char *spirv_messages = glslang_program_SPIRV_get_messages( glslang_program );
+		if( spirv_messages ) {
+			Com_Printf( S_COLOR_BLUE "(%s) %s\b", name, spirv_messages );
+		}
+	shader_error:
+		glslang_shader_delete( shader );
+		if( glslang_program ) {
+			glslang_program_delete( glslang_program );
+		}
+	}
+
+	for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
+		sdsfree(stages[i].fullName);
+		sdsfree(stages[i].source);
+	}
+
+	if( error ) {
+		for(size_t i = 0; i < R_STAGE_MAX; i++) {
+			if(program->nri.bin[i].data) {
+				R_Free(program->nri.bin[i].data);
+			}
+		}
+	}
+	
+	program->type = type;
+	program->features = features;
+	program->name = R_CopyString( name );
+	program->deformsKey = R_CopyString( deformsKey ? deformsKey : "" );
+
+	if( !program->hash_next )
+	{
+		program->hash_next = r_glslprograms_hash[type][hash];
+		r_glslprograms_hash[type][hash] = program;
+	}
+
+	return ( program - r_glslprograms ) + 1;
 }
 
 /*
-* RP_GetProgramObject
-*/
+ * RP_GetProgramObject
+ */
 int RP_GetProgramObject( int elem )
 {
+	assert(r_backend_api == BACKEND_OPENGL_LEGACY);
 	if( elem < 1 ) {
 		return 0;
 	}
-	return r_glslprograms[elem - 1].object;
+	return r_glslprograms[elem - 1].gl.object;
 }
 
 /*
@@ -1993,24 +2494,24 @@ static void *RP_GetProgramBinary( int elem, int *format, unsigned *length )
 	if( !glConfig.ext.get_program_binary ) {
 		return NULL;
 	}
-	if( !program->object ) {
+	if( !program->gl.object ) {
 		return NULL;
 	}
 
-	qglGetProgramiv( program->object, GL_OBJECT_LINK_STATUS_ARB, &linked );
+	qglGetProgramiv( program->gl.object, GL_OBJECT_LINK_STATUS_ARB, &linked );
 	if( !linked ) {
 		return NULL;
 	}
 
 	// FIXME: need real pointer to glGetProgramiv here,
 	// aliasing to glGetObjectParameterivARB doesn't work
-	qglGetProgramiv( program->object, GL_PROGRAM_BINARY_LENGTH, &GLlength );
+	qglGetProgramiv( program->gl.object, GL_PROGRAM_BINARY_LENGTH, &GLlength );
 	if( !GLlength ) {
 		return NULL;
 	}
 
 	binary = R_Malloc( GLlength );
-	qglGetProgramBinary( program->object, GLlength, NULL, &GLFormat, binary );
+	qglGetProgramBinary( program->gl.object, GLlength, NULL, &GLFormat, binary );
 
 	*format = GLFormat;
 	*length = GLlength;
@@ -2510,147 +3011,147 @@ static void RP_GetUniformLocations( glsl_program_t *program )
 
 	memset( &program->loc, -1, sizeof( program->loc ) );
 
-	program->loc.ModelViewMatrix = qglGetUniformLocationARB( program->object, "u_ModelViewMatrix" );
-	program->loc.ModelViewProjectionMatrix = qglGetUniformLocationARB( program->object, "u_ModelViewProjectionMatrix" );
+	program->loc.ModelViewMatrix = qglGetUniformLocationARB( program->gl.object, "u_ModelViewMatrix" );
+	program->loc.ModelViewProjectionMatrix = qglGetUniformLocationARB( program->gl.object, "u_ModelViewProjectionMatrix" );
 
-	program->loc.ZRange = qglGetUniformLocationARB( program->object, "u_ZRange" );
+	program->loc.ZRange = qglGetUniformLocationARB( program->gl.object, "u_ZRange" );
 
-	program->loc.ViewOrigin = qglGetUniformLocationARB( program->object, "u_ViewOrigin" );
-	program->loc.ViewAxis = qglGetUniformLocationARB( program->object, "u_ViewAxis" );
+	program->loc.ViewOrigin = qglGetUniformLocationARB( program->gl.object, "u_ViewOrigin" );
+	program->loc.ViewAxis = qglGetUniformLocationARB( program->gl.object, "u_ViewAxis" );
 
-	program->loc.MirrorSide = qglGetUniformLocationARB( program->object, "u_MirrorSide" );
+	program->loc.MirrorSide = qglGetUniformLocationARB( program->gl.object, "u_MirrorSide" );
 
-	program->loc.Viewport = qglGetUniformLocationARB( program->object, "u_Viewport" );
+	program->loc.Viewport = qglGetUniformLocationARB( program->gl.object, "u_Viewport" );
 
-	program->loc.LightDir = qglGetUniformLocationARB( program->object, "u_LightDir" );
-	program->loc.LightAmbient = qglGetUniformLocationARB( program->object, "u_LightAmbient" );
-	program->loc.LightDiffuse = qglGetUniformLocationARB( program->object, "u_LightDiffuse" );
+	program->loc.LightDir = qglGetUniformLocationARB( program->gl.object, "u_LightDir" );
+	program->loc.LightAmbient = qglGetUniformLocationARB( program->gl.object, "u_LightAmbient" );
+	program->loc.LightDiffuse = qglGetUniformLocationARB( program->gl.object, "u_LightDiffuse" );
 
-	program->loc.TextureMatrix = qglGetUniformLocationARB( program->object, "u_TextureMatrix" );
+	program->loc.TextureMatrix = qglGetUniformLocationARB( program->gl.object, "u_TextureMatrix" );
 	
-	locBaseTexture = qglGetUniformLocationARB( program->object, "u_BaseTexture" );
-	locNormalmapTexture = qglGetUniformLocationARB( program->object, "u_NormalmapTexture" );
-	locGlossTexture = qglGetUniformLocationARB( program->object, "u_GlossTexture" );
-	locDecalTexture = qglGetUniformLocationARB( program->object, "u_DecalTexture" );
-	locEntityDecalTexture = qglGetUniformLocationARB( program->object, "u_EntityDecalTexture" );
+	locBaseTexture = qglGetUniformLocationARB( program->gl.object, "u_BaseTexture" );
+	locNormalmapTexture = qglGetUniformLocationARB( program->gl.object, "u_NormalmapTexture" );
+	locGlossTexture = qglGetUniformLocationARB( program->gl.object, "u_GlossTexture" );
+	locDecalTexture = qglGetUniformLocationARB( program->gl.object, "u_DecalTexture" );
+	locEntityDecalTexture = qglGetUniformLocationARB( program->gl.object, "u_EntityDecalTexture" );
 
-	locDuDvMapTexture = qglGetUniformLocationARB( program->object, "u_DuDvMapTexture" );
-	locReflectionTexture = qglGetUniformLocationARB( program->object, "u_ReflectionTexture" );
-	locRefractionTexture = qglGetUniformLocationARB( program->object, "u_RefractionTexture" );
+	locDuDvMapTexture = qglGetUniformLocationARB( program->gl.object, "u_DuDvMapTexture" );
+	locReflectionTexture = qglGetUniformLocationARB( program->gl.object, "u_ReflectionTexture" );
+	locRefractionTexture = qglGetUniformLocationARB( program->gl.object, "u_RefractionTexture" );
 
 	for( i = 0; i < GLSL_SHADOWMAP_LIMIT; i++ ) {
-		locShadowmapTexture[i] = qglGetUniformLocationARB( program->object, 
+		locShadowmapTexture[i] = qglGetUniformLocationARB( program->gl.object, 
 			va_r( tmp, sizeof( tmp ), "u_ShadowmapTexture%i", i ) );
 		if( locShadowmapTexture[i] < 0 )
 			break;
 	}
 
-	locCelShadeTexture = qglGetUniformLocationARB( program->object, "u_CelShadeTexture" );
-	locCelLightTexture = qglGetUniformLocationARB( program->object, "u_CelLightTexture" );
-	locDiffuseTexture = qglGetUniformLocationARB( program->object, "u_DiffuseTexture" );
-	locStripesTexture = qglGetUniformLocationARB( program->object, "u_StripesTexture" );
+	locCelShadeTexture = qglGetUniformLocationARB( program->gl.object, "u_CelShadeTexture" );
+	locCelLightTexture = qglGetUniformLocationARB( program->gl.object, "u_CelLightTexture" );
+	locDiffuseTexture = qglGetUniformLocationARB( program->gl.object, "u_DiffuseTexture" );
+	locStripesTexture = qglGetUniformLocationARB( program->gl.object, "u_StripesTexture" );
 
-	locDepthTexture = qglGetUniformLocationARB( program->object, "u_DepthTexture" );
+	locDepthTexture = qglGetUniformLocationARB( program->gl.object, "u_DepthTexture" );
 
-	locYUVTextureY = qglGetUniformLocationARB( program->object, "u_YUVTextureY" );
-	locYUVTextureU = qglGetUniformLocationARB( program->object, "u_YUVTextureU" );
-	locYUVTextureV = qglGetUniformLocationARB( program->object, "u_YUVTextureV" );
+	locYUVTextureY = qglGetUniformLocationARB( program->gl.object, "u_YUVTextureY" );
+	locYUVTextureU = qglGetUniformLocationARB( program->gl.object, "u_YUVTextureU" );
+	locYUVTextureV = qglGetUniformLocationARB( program->gl.object, "u_YUVTextureV" );
 
-	locColorLUT = qglGetUniformLocationARB( program->object, "u_ColorLUT" );
+	locColorLUT = qglGetUniformLocationARB( program->gl.object, "u_ColorLUT" );
 
-	program->loc.DeluxemapOffset = qglGetUniformLocationARB( program->object, "u_DeluxemapOffset" );
+	program->loc.DeluxemapOffset = qglGetUniformLocationARB( program->gl.object, "u_DeluxemapOffset" );
 
 	for( i = 0; i < MAX_LIGHTMAPS; i++ ) {
 		// arrays of samplers are broken on ARM Mali so get u_LightmapTexture%i instead of u_LightmapTexture[%i]
-		locLightmapTexture[i] = qglGetUniformLocationARB( program->object, 
+		locLightmapTexture[i] = qglGetUniformLocationARB( program->gl.object, 
 			va_r( tmp, sizeof( tmp ), "u_LightmapTexture%i", i ) );
 
 		if( locLightmapTexture[i] < 0 )
 			break;
 
-		program->loc.LightstyleColor[i] = qglGetUniformLocationARB( program->object, 
+		program->loc.LightstyleColor[i] = qglGetUniformLocationARB( program->gl.object, 
 			va_r( tmp, sizeof( tmp ), "u_LightstyleColor[%i]", i ) );
 	}
 
-	program->loc.GlossFactors = qglGetUniformLocationARB( program->object, "u_GlossFactors" );
+	program->loc.GlossFactors = qglGetUniformLocationARB( program->gl.object, "u_GlossFactors" );
 
-	program->loc.OffsetMappingScale = qglGetUniformLocationARB( program->object, "u_OffsetMappingScale" );
+	program->loc.OffsetMappingScale = qglGetUniformLocationARB( program->gl.object, "u_OffsetMappingScale" );
 
-	program->loc.OutlineHeight = qglGetUniformLocationARB( program->object, "u_OutlineHeight" );
-	program->loc.OutlineCutOff = qglGetUniformLocationARB( program->object, "u_OutlineCutOff" );
+	program->loc.OutlineHeight = qglGetUniformLocationARB( program->gl.object, "u_OutlineHeight" );
+	program->loc.OutlineCutOff = qglGetUniformLocationARB( program->gl.object, "u_OutlineCutOff" );
 
-	program->loc.FrontPlane = qglGetUniformLocationARB( program->object, "u_FrontPlane" );
+	program->loc.FrontPlane = qglGetUniformLocationARB( program->gl.object, "u_FrontPlane" );
 
-	program->loc.TextureParams = qglGetUniformLocationARB( program->object, "u_TextureParams" );
+	program->loc.TextureParams = qglGetUniformLocationARB( program->gl.object, "u_TextureParams" );
 
-	program->loc.EntityDist = qglGetUniformLocationARB( program->object, "u_EntityDist" );
-	program->loc.EntityOrigin = qglGetUniformLocationARB( program->object, "u_EntityOrigin" );
-	program->loc.EntityColor = qglGetUniformLocationARB( program->object, "u_EntityColor" );
-	program->loc.ConstColor = qglGetUniformLocationARB( program->object, "u_ConstColor" );
-	program->loc.RGBGenFuncArgs = qglGetUniformLocationARB( program->object, "u_RGBGenFuncArgs" );
-	program->loc.AlphaGenFuncArgs = qglGetUniformLocationARB( program->object, "u_AlphaGenFuncArgs" );
+	program->loc.EntityDist = qglGetUniformLocationARB( program->gl.object, "u_EntityDist" );
+	program->loc.EntityOrigin = qglGetUniformLocationARB( program->gl.object, "u_EntityOrigin" );
+	program->loc.EntityColor = qglGetUniformLocationARB( program->gl.object, "u_EntityColor" );
+	program->loc.ConstColor = qglGetUniformLocationARB( program->gl.object, "u_ConstColor" );
+	program->loc.RGBGenFuncArgs = qglGetUniformLocationARB( program->gl.object, "u_RGBGenFuncArgs" );
+	program->loc.AlphaGenFuncArgs = qglGetUniformLocationARB( program->gl.object, "u_AlphaGenFuncArgs" );
 
-	program->loc.Fog.Plane = qglGetUniformLocationARB( program->object, "u_FogPlane" );
-	program->loc.Fog.Color = qglGetUniformLocationARB( program->object, "u_FogColor" );
-	program->loc.Fog.ScaleAndEyeDist = qglGetUniformLocationARB( program->object, "u_FogScaleAndEyeDist" );
-	program->loc.Fog.EyePlane = qglGetUniformLocationARB( program->object, "u_FogEyePlane" );
+	program->loc.Fog.Plane = qglGetUniformLocationARB( program->gl.object, "u_FogPlane" );
+	program->loc.Fog.Color = qglGetUniformLocationARB( program->gl.object, "u_FogColor" );
+	program->loc.Fog.ScaleAndEyeDist = qglGetUniformLocationARB( program->gl.object, "u_FogScaleAndEyeDist" );
+	program->loc.Fog.EyePlane = qglGetUniformLocationARB( program->gl.object, "u_FogEyePlane" );
 
-	program->loc.ShaderTime = qglGetUniformLocationARB( program->object, "u_ShaderTime" );
+	program->loc.ShaderTime = qglGetUniformLocationARB( program->gl.object, "u_ShaderTime" );
 
-	program->loc.ReflectionTexMatrix = qglGetUniformLocationARB( program->object, "u_ReflectionTexMatrix" );
-	program->loc.VectorTexMatrix = qglGetUniformLocationARB( program->object, "u_VectorTexMatrix" );
+	program->loc.ReflectionTexMatrix = qglGetUniformLocationARB( program->gl.object, "u_ReflectionTexMatrix" );
+	program->loc.VectorTexMatrix = qglGetUniformLocationARB( program->gl.object, "u_VectorTexMatrix" );
 
-	program->loc.builtin.ViewOrigin = qglGetUniformLocationARB( program->object, "u_QF_ViewOrigin" );
-	program->loc.builtin.ViewAxis = qglGetUniformLocationARB( program->object, "u_QF_ViewAxis" );
-	program->loc.builtin.MirrorSide = qglGetUniformLocationARB( program->object, "u_QF_MirrorSide" );
-	program->loc.builtin.EntityOrigin = qglGetUniformLocationARB( program->object, "u_QF_EntityOrigin" );
-	program->loc.builtin.ShaderTime = qglGetUniformLocationARB( program->object, "u_QF_ShaderTime" );
+	program->loc.builtin.ViewOrigin = qglGetUniformLocationARB( program->gl.object, "u_QF_ViewOrigin" );
+	program->loc.builtin.ViewAxis = qglGetUniformLocationARB( program->gl.object, "u_QF_ViewAxis" );
+	program->loc.builtin.MirrorSide = qglGetUniformLocationARB( program->gl.object, "u_QF_MirrorSide" );
+	program->loc.builtin.EntityOrigin = qglGetUniformLocationARB( program->gl.object, "u_QF_EntityOrigin" );
+	program->loc.builtin.ShaderTime = qglGetUniformLocationARB( program->gl.object, "u_QF_ShaderTime" );
 
 	// dynamic lights
 	for( i = 0; i < MAX_DLIGHTS; i++ ) {
-		program->loc.DynamicLightsPosition[i] = qglGetUniformLocationARB( program->object, 
+		program->loc.DynamicLightsPosition[i] = qglGetUniformLocationARB( program->gl.object, 
 			va_r( tmp, sizeof( tmp ), "u_DlightPosition[%i]", i ) );
 
 		if( !( i & 3 ) ) {
 			// 4x4 transposed, so we can index it with `i`
 			program->loc.DynamicLightsDiffuseAndInvRadius[i >> 2] =
-				qglGetUniformLocationARB( program->object, va_r( tmp, sizeof( tmp ), "u_DlightDiffuseAndInvRadius[%i]", i ) );
+				qglGetUniformLocationARB( program->gl.object, va_r( tmp, sizeof( tmp ), "u_DlightDiffuseAndInvRadius[%i]", i ) );
 		}
 	}
-	program->loc.NumDynamicLights = qglGetUniformLocationARB( program->object, "u_NumDynamicLights" );
+	program->loc.NumDynamicLights = qglGetUniformLocationARB( program->gl.object, "u_NumDynamicLights" );
 
 	// shadowmaps
 	for( i = 0; i < GLSL_SHADOWMAP_LIMIT; i++ ) {
 		program->loc.ShadowmapTextureParams[i] = 
-			qglGetUniformLocationARB( program->object, va_r( tmp, sizeof( tmp ), "u_ShadowmapTextureParams[%i]", i ) );
+			qglGetUniformLocationARB( program->gl.object, va_r( tmp, sizeof( tmp ), "u_ShadowmapTextureParams[%i]", i ) );
 		if( program->loc.ShadowmapTextureParams[i] < 0 )
 			break;
 
 		program->loc.ShadowmapMatrix[i] = 
-			qglGetUniformLocationARB( program->object, va_r( tmp, sizeof( tmp ), "u_ShadowmapMatrix%i", i ) );
+			qglGetUniformLocationARB( program->gl.object, va_r( tmp, sizeof( tmp ), "u_ShadowmapMatrix%i", i ) );
 
 		program->loc.ShadowDir[i] =
-			qglGetUniformLocationARB( program->object, va_r( tmp, sizeof( tmp ), "u_ShadowDir[%i]", i ) );
+			qglGetUniformLocationARB( program->gl.object, va_r( tmp, sizeof( tmp ), "u_ShadowDir[%i]", i ) );
 
 		program->loc.ShadowEntityDist[i] =
-			qglGetUniformLocationARB( program->object, va_r( tmp, sizeof( tmp ), "u_ShadowEntityDist[%i]", i ) );
+			qglGetUniformLocationARB( program->gl.object, va_r( tmp, sizeof( tmp ), "u_ShadowEntityDist[%i]", i ) );
 
 		if( !( i & 3 ) ) {
 			program->loc.ShadowAlpha[i >> 2] =
-				qglGetUniformLocationARB( program->object, va_r( tmp, sizeof( tmp ), "u_ShadowAlpha[%i]", i >> 2 ) );
+				qglGetUniformLocationARB( program->gl.object, va_r( tmp, sizeof( tmp ), "u_ShadowAlpha[%i]", i >> 2 ) );
 		}
 	}
 
-	program->loc.BlendMix = qglGetUniformLocationARB( program->object, "u_BlendMix" );
+	program->loc.BlendMix = qglGetUniformLocationARB( program->gl.object, "u_BlendMix" );
 
-	program->loc.SoftParticlesScale = qglGetUniformLocationARB( program->object, "u_SoftParticlesScale" );
+	program->loc.SoftParticlesScale = qglGetUniformLocationARB( program->gl.object, "u_SoftParticlesScale" );
 
-	program->loc.DualQuats = qglGetUniformLocationARB( program->object, "u_DualQuats" );
+	program->loc.DualQuats = qglGetUniformLocationARB( program->gl.object, "u_DualQuats" );
 
-	program->loc.InstancePoints = qglGetUniformLocationARB( program->object, "u_InstancePoints" );
+	program->loc.InstancePoints = qglGetUniformLocationARB( program->gl.object, "u_InstancePoints" );
 	
-	program->loc.WallColor = qglGetUniformLocationARB( program->object, "u_WallColor" );
-	program->loc.FloorColor = qglGetUniformLocationARB( program->object, "u_FloorColor" );
+	program->loc.WallColor = qglGetUniformLocationARB( program->gl.object, "u_WallColor" );
+	program->loc.FloorColor = qglGetUniformLocationARB( program->gl.object, "u_FloorColor" );
 
 	if( locBaseTexture >= 0 )
 		qglUniform1iARB( locBaseTexture, 0 );
@@ -2711,33 +3212,33 @@ static void RP_GetUniformLocations( glsl_program_t *program )
 */
 static void RP_BindAttrbibutesLocations( glsl_program_t *program )
 {
-	qglBindAttribLocationARB( program->object, VATTRIB_POSITION, "a_Position" ); 
-	qglBindAttribLocationARB( program->object, VATTRIB_SVECTOR, "a_SVector" ); 
-	qglBindAttribLocationARB( program->object, VATTRIB_NORMAL, "a_Normal" ); 
-	qglBindAttribLocationARB( program->object, VATTRIB_COLOR0, "a_Color" );
-	qglBindAttribLocationARB( program->object, VATTRIB_TEXCOORDS, "a_TexCoord" );
+	qglBindAttribLocationARB( program->gl.object, VATTRIB_POSITION, "a_Position" ); 
+	qglBindAttribLocationARB( program->gl.object, VATTRIB_SVECTOR, "a_SVector" ); 
+	qglBindAttribLocationARB( program->gl.object, VATTRIB_NORMAL, "a_Normal" ); 
+	qglBindAttribLocationARB( program->gl.object, VATTRIB_COLOR0, "a_Color" );
+	qglBindAttribLocationARB( program->gl.object, VATTRIB_TEXCOORDS, "a_TexCoord" );
 
-	qglBindAttribLocationARB( program->object, VATTRIB_SPRITEPOINT, "a_SpritePoint" );
-	qglBindAttribLocationARB( program->object, VATTRIB_SVECTOR, "a_SpriteRightUpAxis" );
+	qglBindAttribLocationARB( program->gl.object, VATTRIB_SPRITEPOINT, "a_SpritePoint" );
+	qglBindAttribLocationARB( program->gl.object, VATTRIB_SVECTOR, "a_SpriteRightUpAxis" );
 
-	qglBindAttribLocationARB( program->object, VATTRIB_BONESINDICES, "a_BonesIndices" );
-	qglBindAttribLocationARB( program->object, VATTRIB_BONESWEIGHTS, "a_BonesWeights" );
+	qglBindAttribLocationARB( program->gl.object, VATTRIB_BONESINDICES, "a_BonesIndices" );
+	qglBindAttribLocationARB( program->gl.object, VATTRIB_BONESWEIGHTS, "a_BonesWeights" );
 
-	qglBindAttribLocationARB( program->object, VATTRIB_LMCOORDS01, "a_LightmapCoord01" );
-	qglBindAttribLocationARB( program->object, VATTRIB_LMCOORDS23, "a_LightmapCoord23" );
+	qglBindAttribLocationARB( program->gl.object, VATTRIB_LMCOORDS01, "a_LightmapCoord01" );
+	qglBindAttribLocationARB( program->gl.object, VATTRIB_LMCOORDS23, "a_LightmapCoord23" );
 
 	if( glConfig.ext.texture_array ) {
-		qglBindAttribLocationARB( program->object, VATTRIB_LMLAYERS0123, "a_LightmapLayer0123" );
+		qglBindAttribLocationARB( program->gl.object, VATTRIB_LMLAYERS0123, "a_LightmapLayer0123" );
 	}
 
 	if( glConfig.ext.instanced_arrays ) {
-		qglBindAttribLocationARB( program->object, VATTRIB_INSTANCE_QUAT, "a_InstanceQuat" );
-		qglBindAttribLocationARB( program->object, VATTRIB_INSTANCE_XYZS, "a_InstancePosAndScale" );
+		qglBindAttribLocationARB( program->gl.object, VATTRIB_INSTANCE_QUAT, "a_InstanceQuat" );
+		qglBindAttribLocationARB( program->gl.object, VATTRIB_INSTANCE_XYZS, "a_InstancePosAndScale" );
 	}
 
 #ifndef GL_ES_VERSION_2_0
 	if( glConfig.shadingLanguageVersion >= 130 ) {
-		qglBindFragDataLocation( program->object, 0, "qf_FragColor" );
+		qglBindFragDataLocation( program->gl.object, 0, "qf_FragColor" );
 	}
 #endif
 }
