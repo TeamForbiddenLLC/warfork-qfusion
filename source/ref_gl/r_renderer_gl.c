@@ -9,8 +9,11 @@ static void R_SetupGL( void );
 static void R_EndGL( void );
 static void R_BindRefInstFBO( void );
 
+#define REFINST_STACK_SIZE	64
+static refinst_t riStack[REFINST_STACK_SIZE];
+static unsigned int riStackSize;
+
 /*
-*
 * Set scissor region for 2D drawing.
 * x and y represent the top left corner of the region/rectangle.
 */
@@ -214,6 +217,17 @@ static void R_Set2DMode_GL( bool enable )
 		RB_SetShaderStateMask( ~0, 0 );
 	}
 }
+static void R_DataSync_GL( void )
+{
+	if( rf.dataSync ) {
+		if( glConfig.multithreading ) {
+			// synchronize data we might have uploaded this frame between the threads
+			// FIXME: only call this when absolutely necessary
+			qglFinish();
+		}
+		rf.dataSync = false;
+	}
+}
 
 static void R_SetGamma_GL( float gamma )
 {
@@ -295,12 +309,66 @@ static void R_BindRefInstFBO( void )
 	R_BindFrameBufferObject( fbo );
 }
 
-void initRendererGL() {
-  R_SetGamma = R_SetGamma_GL;
-  R_Set2DMode = R_Set2DMode_GL;
-  R_Scissor = R_Scissor_GL;
-  R_GetScissor = R_GetScissor_GL;
-  R_ResetScissor = R_ResetScissor_GL;
-  R_DrawStretchQuick = R_DrawStretchQuick_GL;
-  R_BindFrameBufferObject = R_BindFrameBufferObject_GL;
+void R_DeferDataSync_GL( void )
+{
+	if( rsh.registrationOpen )
+		return;
+
+	rf.dataSync = true;
+	qglFlush();
+	RB_FlushTextureCache();
+}
+
+void R_ClearRefInstStack_GL( void )
+{
+	riStackSize = 0;
+}
+
+bool R_PushRefInst_GL( void )
+{
+	if( riStackSize == REFINST_STACK_SIZE ) {
+		return false;
+	}
+	riStack[riStackSize++] = rn;
+	R_EndGL();
+	return true;
+}
+
+void R_PopRefInst_GL( void )
+{
+	if( !riStackSize ) {
+		return;
+	}
+
+	rn = riStack[--riStackSize];
+	R_BindRefInstFBO();
+
+	R_SetupGL();
+}
+static void R_Finish_GL( void )
+{
+	qglFinish();
+}
+
+static void R_Flush_GL( void )
+{
+	qglFlush();
+}
+
+void initRendererGL()
+{
+	R_SetGamma = R_SetGamma_GL;
+	R_Set2DMode = R_Set2DMode_GL;
+	R_Scissor = R_Scissor_GL;
+	R_GetScissor = R_GetScissor_GL;
+	R_ResetScissor = R_ResetScissor_GL;
+	R_DrawStretchQuick = R_DrawStretchQuick_GL;
+	R_BindFrameBufferObject = R_BindFrameBufferObject_GL;
+	R_ClearRefInstStack = R_ClearRefInstStack_GL;
+	R_PushRefInst = R_PushRefInst_GL;
+	R_PopRefInst = R_PopRefInst_GL;
+	R_DeferDataSync = R_DeferDataSync_GL;
+	R_DataSync = R_DataSync_GL;
+	R_Finish = R_Finish_GL;
+	R_Flush = R_Flush_GL;
 }

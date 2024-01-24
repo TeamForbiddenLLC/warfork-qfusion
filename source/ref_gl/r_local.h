@@ -215,8 +215,6 @@ typedef struct
 	// bumped each time R_RegisterWorldModel is called
 	volatile int 	worldModelSequence;
 
-	float			sinTableByte[256];
-
 	model_t			*worldModel;
 	mbrushmodel_t	*worldBrushModel;
 
@@ -587,19 +585,6 @@ void		R_RenderView( const refdef_t *fd );
 const msurface_t *R_GetDebugSurface( void );
 const char *R_WriteSpeedsMessage( char *out, size_t size );
 void		R_RenderDebugSurface( const refdef_t *fd );
-void 		R_Finish( void );
-void		R_Flush( void );
-
-
-/**
- * Calls R_Finish if data sync was previously deferred.
- */
-void 		R_DataSync( void );
-
-/**
- * Defer R_DataSync call at the start/end of the next frame.
- */
-void 		R_DeferDataSync( void );
 
 mfog_t		*R_FogForBounds( const vec3_t mins, const vec3_t maxs );
 mfog_t		*R_FogForSphere( const vec3_t centre, const float radius );
@@ -635,9 +620,9 @@ int			R_GetCustomColor( int num );
 void		R_ShutdownCustomColors( void );
 
 #define ENTITY_OUTLINE(ent) (( !(rn.renderFlags & RF_MIRRORVIEW) && ((ent)->renderfx & RF_VIEWERMODEL) ) ? 0 : (ent)->outlineHeight)
-void		R_ClearRefInstStack( void );
-bool		R_PushRefInst( void );
-void		R_PopRefInst( void );
+//void		R_ClearRefInstStack( void );
+//bool		R_PushRefInst( void );
+//void		R_PopRefInst( void );
 
 //
 // r_mesh.c

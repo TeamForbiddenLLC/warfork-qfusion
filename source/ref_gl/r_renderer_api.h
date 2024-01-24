@@ -13,6 +13,13 @@ DECLARE_STUB_IMPL( void, R_Scissor, int x, int y, int w, int h );
 DECLARE_STUB_IMPL( void, R_GetScissor, int *x, int *y, int *w, int *h );
 DECLARE_STUB_IMPL( void, R_ResetScissor, void );
 DECLARE_STUB_IMPL( void, R_DrawStretchQuick, int x, int y, int w, int h, float s1, float t1, float s2, float t2, const vec4_t color, int program_type, image_t *image, int blendMask );
+DECLARE_STUB_IMPL( void, R_ClearRefInstStack, void );
+DECLARE_STUB_IMPL( bool, R_PushRefInst, void );
+DECLARE_STUB_IMPL( void, R_PopRefInst, void );
+DECLARE_STUB_IMPL( void, R_DeferDataSync, void );
+DECLARE_STUB_IMPL( void, R_DataSync, void );
+DECLARE_STUB_IMPL( void, R_Finish, void );
+DECLARE_STUB_IMPL( void, R_Flush, void );
 
 extern void initRendererGL();
 extern void initRendererNRI();

@@ -1170,86 +1170,11 @@ void R_RenderView( const refdef_t *fd )
 	R_EndGL();
 }
 
-#define REFINST_STACK_SIZE	64
-static refinst_t riStack[REFINST_STACK_SIZE];
-static unsigned int riStackSize;
-
-/*
-* R_ClearRefInstStack
-*/
-void R_ClearRefInstStack( void )
-{
-	riStackSize = 0;
-}
-
-/*
-* R_PushRefInst
-*/
-bool R_PushRefInst( void )
-{
-	if( riStackSize == REFINST_STACK_SIZE ) {
-		return false;
-	}
-	riStack[riStackSize++] = rn;
-	R_EndGL();
-	return true;
-}
-
-/*
-* R_PopRefInst
-*/
-void R_PopRefInst( void )
-{
-	if( !riStackSize ) {
-		return;
-	}
-
-	rn = riStack[--riStackSize];
-	R_BindRefInstFBO();
-
-	R_SetupGL();
-}
 
 //=======================================================================
 
 
-void R_Finish( void )
-{
-	qglFinish();
-}
 
-void R_Flush( void )
-{
-	qglFlush();
-}
-
-void R_DeferDataSync( void )
-{
-	if( rsh.registrationOpen )
-		return;
-
-	rf.dataSync = true;
-	if(r_backend_api == BACKEND_OPENGL_LEGACY) {
-		qglFlush();
-	}
-	RB_FlushTextureCache();
-}
-
-void R_DataSync( void )
-{
-	if( rf.dataSync ) {
-		if( glConfig.multithreading ) {
-			// synchronize data we might have uploaded this frame between the threads
-			// FIXME: only call this when absolutely necessary
-			qglFinish();
-		}
-		rf.dataSync = false;
-	}
-}
-
-/*
-* R_SetSwapInterval
-*/
 int R_SetSwapInterval( int swapInterval, int oldSwapInterval )
 {
 	if( glConfig.stereoEnabled )
@@ -1550,44 +1475,6 @@ void R_EndFrame( void )
 }
 
 //===================================================================
-
-/*
-* R_NormToLatLong
-*/
-void R_NormToLatLong( const vec_t *normal, uint8_t latlong[2] )
-{
-	float flatlong[2];
-
-	NormToLatLong( normal, flatlong );
-	latlong[0] = (int)( flatlong[0] * 255.0 / M_TWOPI ) & 255;
-	latlong[1] = (int)( flatlong[1] * 255.0 / M_TWOPI ) & 255;
-}
-
-/*
-* R_LatLongToNorm4
-*/
-void R_LatLongToNorm4( const uint8_t latlong[2], vec4_t out )
-{
-	static float * const sinTable = rsh.sinTableByte;
-	float sin_a, sin_b, cos_a, cos_b;
-
-	cos_a = sinTable[( latlong[0] + 64 ) & 255];
-	sin_a = sinTable[latlong[0]];
-	cos_b = sinTable[( latlong[1] + 64 ) & 255];
-	sin_b = sinTable[latlong[1]];
-
-	Vector4Set( out, cos_b * sin_a, sin_b * sin_a, cos_a, 0 );
-}
-
-/*
-* R_LatLongToNorm
-*/
-void R_LatLongToNorm( const uint8_t latlong[2], vec3_t out )
-{
-	vec4_t t;
-	R_LatLongToNorm4( latlong, t );
-	VectorCopy( t, out );
-}
 
 /*
 * R_CopyString
