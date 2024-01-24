@@ -23,36 +23,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 #include "r_nri.h"
+#include "r_math_util.h"
 
 r_globals_t rf;
 mapconfig_t mapConfig;
 refinst_t rn;
 r_scene_t rsc;
-
-/*
-* R_TransformBounds
-*/
-void R_TransformBounds( const vec3_t origin, const mat3_t axis, vec3_t mins, vec3_t maxs, vec3_t bbox[8] )
-{
-	int i;
-	vec3_t tmp;
-	mat3_t axis_;
-
-	Matrix3_Transpose( axis, axis_ );	// switch row-column order
-
-	// rotate local bounding box and compute the full bounding box
-	for( i = 0; i < 8; i++ )
-	{
-		vec_t *corner = bbox[i];
-
-		corner[0] = ( ( i & 1 ) ? mins[0] : maxs[0] );
-		corner[1] = ( ( i & 2 ) ? mins[1] : maxs[1] );
-		corner[2] = ( ( i & 4 ) ? mins[2] : maxs[2] );
-
-		Matrix3_TransformVector( axis_, corner, tmp );
-		VectorAdd( tmp, origin, corner );
-	}
-}
 
 /*
 * R_TransformForWorld
@@ -460,55 +436,6 @@ static byte_vec4_t pic_colors[4];
 static elem_t pic_elems[6] = { 0, 1, 2, 0, 2, 3 };
 static mesh_t pic_mesh = { 4, pic_xyz, pic_normals, NULL, pic_st, { 0, 0, 0, 0 }, { 0 }, { pic_colors, pic_colors, pic_colors, pic_colors }, NULL, NULL, 6, pic_elems };
 
-/*
-* R_Set2DMode
-*
-* Note that this sets the viewport to size of the active framebuffer.
-*/
-void R_Set2DMode( bool enable )
-{
-	int width, height;
-
-	width = rf.frameBufferWidth;
-	height = rf.frameBufferHeight;
-
-	if( rf.in2D == true && enable == true && width == rf.width2D && height == rf.height2D ) {
-		return;
-	} else if( rf.in2D == false && enable == false ) {
-		return;
-	}
-
-	rf.in2D = enable;
-
-	if( enable )
-	{
-		rf.width2D = width;
-		rf.height2D = height;
-
-		Matrix4_OrthogonalProjection( 0, width, height, 0, -99999, 99999, rn.projectionMatrix );
-		Matrix4_Copy( mat4x4_identity, rn.modelviewMatrix );
-		Matrix4_Copy( rn.projectionMatrix, rn.cameraProjectionMatrix );
-
-		// set 2D virtual screen size
-		RB_Scissor( 0, 0, width, height );
-		RB_Viewport( 0, 0, width, height );
-
-		RB_LoadProjectionMatrix( rn.projectionMatrix );
-		RB_LoadCameraMatrix( mat4x4_identity );
-		RB_LoadObjectMatrix( mat4x4_identity );
-
-		RB_SetShaderStateMask( ~0, GLSTATE_NO_DEPTH_TEST );
-
-		RB_SetRenderFlags( 0 );
-	}
-	else
-	{
-		// render previously batched 2D geometry, if any
-		RB_FlushDynamicMeshes();
-
-		RB_SetShaderStateMask( ~0, 0 );
-	}
-}
 
 /*
 * R_DrawRotatedStretchPic
@@ -714,82 +641,7 @@ void R_DrawStretchRawYUV( int x, int y, int w, int h, float s1, float t1, float 
 	R_DrawStretchRawYUVBuiltin( x, y, w, h, s1, t1, s2, t2, rsh.rawYUVTextures, 0 );
 }
 
-/*
-* R_DrawStretchQuick
-*/
-void R_DrawStretchQuick( int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
-	const vec4_t color, int program_type, image_t *image, int blendMask )
-{
-	static char *s_name = "$builtinimage";
-	static shaderpass_t p;
-	static shader_t s;
-	static float rgba[4];
 
-	s.vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT;
-	s.sort = SHADER_SORT_NEAREST;
-	s.numpasses = 1;
-	s.name = s_name;
-	s.passes = &p;
-
-	Vector4Copy( color, rgba );
-	p.rgbgen.type = RGB_GEN_CONST;
-	p.rgbgen.args = rgba;
-	p.alphagen.type = ALPHA_GEN_CONST;
-	p.alphagen.args = &rgba[3];
-	p.tcgen = TC_GEN_BASE;
-	p.images[0] = image;
-	p.flags = blendMask;
-	p.program_type = program_type;
-
-	R_DrawRotatedStretchPic( x, y, w, h, s1, t1, s2, t2, 0, color, &s );
-
-	RB_FlushDynamicMeshes();
-}
-
-/*
-* R_BindFrameBufferObject
-*/
-void R_BindFrameBufferObject( int object )
-{
-	int width, height;
-
-	RFB_GetObjectSize( object, &width, &height );
-
-	rf.frameBufferWidth = width;
-	rf.frameBufferHeight = height;
-
-	RB_BindFrameBufferObject( object );
-
-	RB_Viewport( rn.viewport[0], rn.viewport[1], rn.viewport[2], rn.viewport[3] );
-	RB_Scissor( rn.scissor[0], rn.scissor[1], rn.scissor[2], rn.scissor[3] );
-}
-
-/*
-* R_Scissor
-*
-* Set scissor region for 2D drawing.
-* x and y represent the top left corner of the region/rectangle.
-*/
-void R_Scissor( int x, int y, int w, int h )
-{
-	RB_Scissor( x, y, w, h );
-}
-
-/*
-* R_GetScissor
-*/
-void R_GetScissor( int *x, int *y, int *w, int *h )
-{
-	RB_GetScissor( x, y, w, h );
-}
-
-/*
-* R_ResetScissor
-*/
-void R_ResetScissor( void )
-{
-	RB_Scissor( 0, 0, rf.frameBufferWidth, rf.frameBufferHeight );
-}
 
 /*
 * R_PolyBlend
@@ -1410,29 +1262,6 @@ int R_SetSwapInterval( int swapInterval, int oldSwapInterval )
     return swapInterval;
 }
 
-/*
-* R_SetGamma
-*/
-void R_SetGamma( float gamma )
-{
-	int i, v;
-	double invGamma, div;
-	unsigned short gammaRamp[3*GAMMARAMP_STRIDE];
-
-	if( !glConfig.hwGamma )
-		return;
-
-	invGamma = 1.0 / bound( 0.5, gamma, 3.0 );
-	div = (double)( 1 << 0 ) / (glConfig.gammaRampSize - 0.5);
-
-	for( i = 0; i < glConfig.gammaRampSize; i++ )
-	{
-		v = ( int )( 65535.0 * pow( ( (double)i + 0.5 ) * div, invGamma ) + 0.5 );
-		gammaRamp[i] = gammaRamp[i + GAMMARAMP_STRIDE] = gammaRamp[i + 2*GAMMARAMP_STRIDE] = ( ( unsigned short )bound( 0, v, 65535 ) );
-	}
-
-	GLimp_SetGammaRamp( GAMMARAMP_STRIDE, glConfig.gammaRampSize, gammaRamp );
-}
 
 /*
 * R_SetWallFloorColors

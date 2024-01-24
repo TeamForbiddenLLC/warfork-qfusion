@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef R_LOCAL_H
 #define R_LOCAL_H
 
+#include "r_renderer_api.h"
 #include "../gameshared/q_arch.h"
 #include "../gameshared/q_math.h"
 #include "../gameshared/q_shared.h"
@@ -580,10 +581,8 @@ bool		R_IsRenderingToScreen( void );
 void		R_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync );
 void		R_EndFrame( void );
 int 		R_SetSwapInterval( int swapInterval, int oldSwapInterval );
-void		R_SetGamma( float gamma );
 void		R_SetWallFloorColors( const vec3_t wallColor, const vec3_t floorColor );
 void		R_SetDrawBuffer( const char *drawbuffer );
-void		R_Set2DMode( bool enable );
 void		R_RenderView( const refdef_t *fd );
 const msurface_t *R_GetDebugSurface( void );
 const char *R_WriteSpeedsMessage( char *out, size_t size );
@@ -618,7 +617,6 @@ struct mesh_vbo_s *R_InitPostProcessingVBO( void );
 void		R_TransformForWorld( void );
 void		R_TransformForEntity( const entity_t *e );
 void		R_TranslateForEntity( const entity_t *e );
-void		R_TransformBounds( const vec3_t origin, const mat3_t axis, vec3_t mins, vec3_t maxs, vec3_t bbox[8] );
 
 void		R_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	const vec4_t color, const shader_t *shader );
@@ -630,8 +628,6 @@ void		R_DrawStretchRawYUVBuiltin( int x, int y, int w, int h, float s1, float t1
 	image_t **yuvTextures, int flip );
 void		R_DrawStretchRaw( int x, int y, int w, int h, float s1, float t1, float s2, float t2 );
 void		R_DrawStretchRawYUV( int x, int y, int w, int h, float s1, float t1, float s2, float t2 );
-void		R_DrawStretchQuick( int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
-	const vec4_t color, int program_type, image_t *image, int blendMask );
 
 void		R_InitCustomColors( void );
 void		R_SetCustomColor( int num, int r, int g, int b );
@@ -639,16 +635,9 @@ int			R_GetCustomColor( int num );
 void		R_ShutdownCustomColors( void );
 
 #define ENTITY_OUTLINE(ent) (( !(rn.renderFlags & RF_MIRRORVIEW) && ((ent)->renderfx & RF_VIEWERMODEL) ) ? 0 : (ent)->outlineHeight)
-
 void		R_ClearRefInstStack( void );
 bool		R_PushRefInst( void );
 void		R_PopRefInst( void );
-
-void		R_BindFrameBufferObject( int object );
-
-void		R_Scissor( int x, int y, int w, int h );
-void		R_GetScissor( int *x, int *y, int *w, int *h );
-void		R_ResetScissor( void );
 
 //
 // r_mesh.c

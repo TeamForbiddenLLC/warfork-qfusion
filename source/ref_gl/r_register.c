@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 #include "r_glimp.h"
+#include "r_renderer_api.h"
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
 
@@ -368,6 +369,7 @@ rserr_t R_Init( r_app_init_desc_t* desc)
 			if( driver )
 				dllname = driver->dllname;
 		init_qgl:
+			initRendererGL();
 			initerr = QGL_Init( gl_driver ? gl_driver->string : dllname );
 			if( initerr != qgl_initerr_ok ) {
 				QGL_Shutdown();
@@ -390,6 +392,7 @@ rserr_t R_Init( r_app_init_desc_t* desc)
 		case BACKEND_NRI_VULKAN:
 		case BACKEND_NRI_METAL:
 		case BACKEND_NRI_DX12: {
+			initRendererNRI();
 			if( !GLimp_Init( applicationName, desc->hinstance, desc->wndProc, desc->parenthWnd, desc->iconResource, desc->iconXPM) ) {
 				return rserr_unknown;
 			}
