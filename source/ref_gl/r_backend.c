@@ -20,7 +20,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 #include "r_backend_local.h"
-#include "r_renderer.h"
 
 // Smaller buffer for 2D polygons. Also a workaround for some instances of a hardly explainable bug on Adreno
 // that caused dynamic draws to slow everything down in some cases when normals are used with dynamic VBOs.
@@ -44,8 +43,8 @@ void RB_Init( void )
 
 	// set default OpenGL state
 	RB_SetGLDefaults();
-	rb.gl.scissor[2] = r_renderer_state.width;
-	rb.gl.scissor[3] = r_renderer_state.height;
+	rb.gl.scissor[2] = rsh.width;
+	rb.gl.scissor[3] = rsh.height;
 
 	// initialize shading
 	RB_InitShading();
@@ -1370,3 +1369,4 @@ bool RB_ScissorForBounds( vec3_t bbox[8], int *x, int *y, int *w, int *h )
 
 	return true;
 }
+

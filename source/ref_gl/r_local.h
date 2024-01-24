@@ -29,8 +29,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../qcommon/bsp.h"
 #include "../qcommon/patch.h"
 
-#include "r_renderer.h"
 #include "r_nri.h"
+#include "r_shared.h"
 
 typedef struct { char *name; void **funcPointer; } dllfunc_t;
 
@@ -248,6 +248,10 @@ typedef struct
 	shader_t		*emptyFogShader;
 	
 	byte_vec4_t		customColors[NUM_CUSTOMCOLORS];
+
+	uint16_t width;
+	uint16_t height;
+	bool fullscreen;
 } r_shared_t;
 
 typedef struct
@@ -587,6 +591,7 @@ void		R_RenderDebugSurface( const refdef_t *fd );
 void 		R_Finish( void );
 void		R_Flush( void );
 
+
 /**
  * Calls R_Finish if data sync was previously deferred.
  */
@@ -712,7 +717,7 @@ void R_AddEntityToScene( const entity_t *ent );
 void R_AddLightToScene( const vec3_t org, float intensity, float r, float g, float b );
 void R_AddPolyToScene( const poly_t *poly );
 void R_AddLightStyleToScene( int style, float r, float g, float b );
-DECLARE_RENDERER_FUNCTION(void, R_RenderScene, const refdef_t *fd );
+DECLARE_STUB_IMPL(void, R_RenderScene, const refdef_t *fd );
 
 //
 // r_surf.c
@@ -813,11 +818,11 @@ typedef struct mesh_vbo_s
 
 void R_InitVBO();
 
-DECLARE_RENDERER_FUNCTION(mesh_vbo_t*, R_CreateMeshVBO,  void *owner, int numVerts, int numElems, int numInstances, vattribmask_t vattribs, vbo_tag_t tag, vattribmask_t halfFloatVattribs );
-DECLARE_RENDERER_FUNCTION(void, R_ReleaseMeshVBO, mesh_vbo_t *vbo);
-DECLARE_RENDERER_FUNCTION(void, R_UploadVBOVertexRawData, mesh_vbo_t *vbo, int vertsOffset, int numVerts, const void *data );
-DECLARE_RENDERER_FUNCTION(void, R_UploadVBOElemData, mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, const mesh_t *mesh );
-DECLARE_RENDERER_FUNCTION(vattribmask_t, R_UploadVBOInstancesData, mesh_vbo_t *vbo, int instOffset, int numInstances, instancePoint_t *instances );
+DECLARE_STUB_IMPL(mesh_vbo_t*, R_CreateMeshVBO,  void *owner, int numVerts, int numElems, int numInstances, vattribmask_t vattribs, vbo_tag_t tag, vattribmask_t halfFloatVattribs );
+DECLARE_STUB_IMPL(void, R_ReleaseMeshVBO, mesh_vbo_t *vbo);
+DECLARE_STUB_IMPL(void, R_UploadVBOVertexRawData, mesh_vbo_t *vbo, int vertsOffset, int numVerts, const void *data );
+DECLARE_STUB_IMPL(void, R_UploadVBOElemData, mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, const mesh_t *mesh );
+DECLARE_STUB_IMPL(vattribmask_t, R_UploadVBOInstancesData, mesh_vbo_t *vbo, int instOffset, int numInstances, instancePoint_t *instances );
 void		R_TouchMeshVBO( mesh_vbo_t *vbo );
 mesh_vbo_t *R_GetVBOByIndex( int index );
 int			R_GetNumberOfActiveVBOs( void );

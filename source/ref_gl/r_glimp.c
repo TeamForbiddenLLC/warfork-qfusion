@@ -868,7 +868,7 @@ void GLimp_PrintConfig()
 	Com_Printf( "GL_MAX_FRAGMENT_UNIFORM_COMPONENTS: %i\n", glConfig.maxFragmentUniformComponents );
 	Com_Printf( "\n" );
 
-	Com_Printf( "mode: %ix%i%s\n", r_renderer_state.width, r_renderer_state.height, r_renderer_state.fullScreen ? ", fullscreen" : ", windowed" );
+	Com_Printf( "mode: %ix%i%s\n", rsh.width, rsh.height, rsh.fullscreen ? ", fullscreen" : ", windowed" );
 	Com_Printf( "picmip: %i\n", r_picmip->integer );
 	Com_Printf( "texturemode: %s\n", r_texturemode->string );
 	Com_Printf( "anisotropic filtering: %i\n", r_texturefilter->integer );

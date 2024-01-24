@@ -21,7 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef R_IMAGE_H
 #define R_IMAGE_H
 
-#include "r_renderer.h"
+#include "r_nri.h"
 
 enum
 {
@@ -126,9 +126,9 @@ void R_TextureMode( char *string );
 void R_AnisotropicFilter( int value );
 
 
-DECLARE_RENDERER_FUNCTION(image_t*, R_LoadImage, const char *name, uint8_t **pic, int width, int height, int flags, int minmipsize, int tags, int samples );
-DECLARE_RENDERER_FUNCTION(image_t*, R_Create3DImage, const char *name, int width, int height, int layers, int flags, int tags, int samples, bool array );
-DECLARE_RENDERER_FUNCTION(image_t*, R_FindImage, const char *name, const char *suffix, int flags, int minmipsize, int tags );
+DECLARE_STUB_IMPL(image_t*, R_LoadImage, const char *name, uint8_t **pic, int width, int height, int flags, int minmipsize, int tags, int samples );
+DECLARE_STUB_IMPL(image_t*, R_Create3DImage, const char *name, int width, int height, int layers, int flags, int tags, int samples, bool array );
+DECLARE_STUB_IMPL(image_t*, R_FindImage, const char *name, const char *suffix, int flags, int minmipsize, int tags );
 void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int flags, int minmipsize, int samples );
 void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, int width, int height );
 void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic );

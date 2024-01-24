@@ -21,7 +21,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_glimp.h"
 #include "r_local.h"
 #include "r_cmdque.h"
-#include "r_renderer.h"
 #include "r_frontend.h"
 
 static ref_frontend_t rrf;
@@ -203,7 +202,7 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 {
 	rserr_t err;
 
-	if( r_renderer_state.width == width && r_renderer_state.height == height && r_renderer_state.fullScreen != fullScreen ) {
+	if( rsh.width == width && rsh.height == height && rsh.fullscreen != fullScreen ) {
 		return GLimp_SetFullscreenMode( displayFrequency, fullScreen );
 	}
 
@@ -506,7 +505,7 @@ void RF_GetScissor( int *x, int *y, int *w, int *h )
 void RF_ResetScissor( void )
 {
 	rrf.frame->ResetScissor( rrf.frame );
-	Vector4Set( rrf.scissor, 0, 0, r_renderer_state.width, r_renderer_state.height );
+	Vector4Set( rrf.scissor, 0, 0, rsh.width, rsh.height );
 }
 
 void RF_SetCustomColor( int num, int r, int g, int b )
@@ -575,7 +574,7 @@ void RF_WriteAviFrame( int frame, bool scissor )
 	if( scissor )
 	{
 		x = rsc.refdef.x;
-		y = r_renderer_state.height - rsc.refdef.height - rsc.refdef.y;
+		y = rsh.height - rsc.refdef.height - rsc.refdef.y;
 		w = rsc.refdef.width;
 		h = rsc.refdef.height;
 	}
@@ -583,8 +582,8 @@ void RF_WriteAviFrame( int frame, bool scissor )
 	{
 		x = 0;
 		y = 0;
-		w = r_renderer_state.width;
-		h = r_renderer_state.height;
+		w = rsh.width;
+		h = rsh.height;
 	}
 	
 	writedir = ri.FS_WriteDirectory();
@@ -639,7 +638,7 @@ void RF_TransformVectorToScreen( const refdef_t *rd, const vec3_t in, vec2_t out
  		return;
  	
 	out[0] = rd->x + ( temp[0] / temp[3] + 1.0f ) * rd->width * 0.5f;
-	out[1] = r_renderer_state.height - (rd->y + ( temp[1] / temp[3] + 1.0f ) * rd->height * 0.5f);
+	out[1] = rsh.height - (rd->y + ( temp[1] / temp[3] + 1.0f ) * rd->height * 0.5f);
 }
 
 bool RF_LerpTag( orientation_t *orient, const model_t *mod, int oldframe, int frame, float lerpfrac, const char *name )

@@ -10,8 +10,6 @@
 #include "Extensions/NRIRayTracing.h"
 #include "Extensions/NRISwapChain.h"
 
-#include "r_renderer.h"
-
 const static NriSwapChainFormat DefaultSwapchainFormat = NriSwapChainFormat_BT709_G22_8BIT; 
 
 #define NRI_ABORT_ON_FAILURE(result) \

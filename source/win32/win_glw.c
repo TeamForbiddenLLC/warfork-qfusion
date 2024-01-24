@@ -52,7 +52,7 @@ static void GLimp_SetWindowSize( bool fullscreen )
 	int stylebits;
 	int exstyle;
 	int x = glw_state.win_x, y = glw_state.win_y;
-	int width = r_renderer_state.width, height = r_renderer_state.height;
+	int width = rsh.width, height = rsh.height;
 	HWND parentHWND = glw_state.parenthWnd;
 
 	if( !glw_state.hWnd )
@@ -117,7 +117,7 @@ static void GLimp_SetWindowSize( bool fullscreen )
 
 static void GLimp_CreateWindow( void )
 {
-	bool fullscreen = r_renderer_state.fullScreen;
+	bool fullscreen = rsh.fullscreen;
 	HWND parentHWND = glw_state.parenthWnd;
 #ifdef WITH_UTF8
 	WNDCLASSW wc;
@@ -182,7 +182,7 @@ static void GLimp_CreateWindow( void )
 */
 rserr_t GLimp_SetFullscreenMode( int displayFrequency, bool fullscreen )
 {
-	r_renderer_state.fullScreen = false;
+	rsh.fullscreen = false;
 
 	// do a CDS if needed
 	if( fullscreen )
@@ -196,8 +196,8 @@ rserr_t GLimp_SetFullscreenMode( int displayFrequency, bool fullscreen )
 
 		dm.dmSize = sizeof( dm );
 
-		dm.dmPelsWidth  = r_renderer_state.width;
-		dm.dmPelsHeight = r_renderer_state.height;
+		dm.dmPelsWidth  = rsh.width;
+		dm.dmPelsHeight = rsh.height;
 		dm.dmFields     = DM_PELSWIDTH | DM_PELSHEIGHT;
 
 		if( displayFrequency > 0 )
@@ -212,7 +212,7 @@ rserr_t GLimp_SetFullscreenMode( int displayFrequency, bool fullscreen )
 		if( a == DISP_CHANGE_SUCCESSFUL )
 		{
 			ri.Com_Printf( "ok\n" );
-			r_renderer_state.fullScreen = true;
+			rsh.fullscreen = true;
 			GLimp_SetWindowSize( true );
 			return rserr_ok;
 		}
@@ -258,9 +258,9 @@ rserr_t GLimp_SetMode( int x, int y, int width, int height, int displayFrequency
 	glw_state.win_x = x;
 	glw_state.win_y = y;
 
-	r_renderer_state.width = width;
-	r_renderer_state.height = height;
-	r_renderer_state.fullScreen = ( fullscreen ? GLimp_SetFullscreenMode( displayFrequency, fullscreen ) == rserr_ok : false );
+	rsh.width = width;
+	rsh.height = height;
+	rsh.fullscreen = ( fullscreen ? GLimp_SetFullscreenMode( displayFrequency, fullscreen ) == rserr_ok : false );
 	glConfig.stereoEnabled = stereo;
 
 	GLimp_CreateWindow();
@@ -271,7 +271,7 @@ rserr_t GLimp_SetMode( int x, int y, int width, int height, int displayFrequency
 		return false;
 	}
 
-	return ( fullscreen == r_renderer_state.fullScreen ? rserr_ok : rserr_invalid_fullscreen );
+	return ( fullscreen == rsh.fullscreen ? rserr_ok : rserr_invalid_fullscreen );
 }
 
 /*
@@ -312,10 +312,10 @@ void GLimp_Shutdown( void )
 	UnregisterClass( glw_state.windowClassName, glw_state.hInstance );
 #endif
 
-	if( r_renderer_state.fullScreen )
+	if( rsh.fullscreen )
 	{
 		ChangeDisplaySettings( 0, 0 );
-		r_renderer_state.fullScreen = false;
+		rsh.fullscreen = false;
 	}
 
 	if( glw_state.applicationName )
@@ -335,8 +335,8 @@ void GLimp_Shutdown( void )
 	glw_state.win_x = 0;
 	glw_state.win_y = 0;
 
-	r_renderer_state.width = 0;
-	r_renderer_state.height = 0;
+	rsh.width = 0;
+	rsh.height = 0;
 }
 
 
@@ -568,7 +568,7 @@ void GLimp_AppActivate( bool active, bool destroy )
 	}
 	else
 	{
-		if( r_renderer_state.fullScreen )
+		if( rsh.fullscreen )
 		{
 			ri.Cvar_Set( "gl_drawbuffer", "GL_NONE" );
 			ShowWindow( glw_state.hWnd, SW_MINIMIZE );

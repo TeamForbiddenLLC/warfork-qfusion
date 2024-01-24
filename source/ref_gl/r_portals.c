@@ -576,7 +576,7 @@ static void R_DrawSkyportal( const entity_t *e, skyportal_t *skyportal )
 	{
 		rn.refdef.fov_x = skyportal->fov;
 		rn.refdef.fov_y = CalcFov( rn.refdef.fov_x, rn.refdef.width, rn.refdef.height );
-		AdjustFov( &rn.refdef.fov_x, &rn.refdef.fov_y, r_renderer_state.width, r_renderer_state.height, false );
+		AdjustFov( &rn.refdef.fov_x, &rn.refdef.fov_y, rsh.width, rsh.height, false );
 	}
 
 	R_RenderView( &rn.refdef );

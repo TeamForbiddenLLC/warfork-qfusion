@@ -29,6 +29,10 @@ extern "C" {
 
 //==============================================
 
+#define DECLARE_STUB_IMPL( ret, name, ... ) \
+	typedef ret( qcdecl *name##Fn )( __VA_ARGS__ ); \
+	extern name##Fn name;
+
 #if !defined ( ENDIAN_LITTLE ) && !defined ( ENDIAN_BIG )
 #if defined ( __i386__ ) || defined ( __ia64__ ) || defined ( WIN32 ) || ( defined ( __alpha__ ) || defined ( __alpha ) ) || defined ( __arm__ ) || ( defined ( __mips__ ) && defined ( __MIPSEL__ ) ) || defined ( __LITTLE_ENDIAN__ ) || defined ( __x86_64__ )
 #define ENDIAN_LITTLE
@@ -312,6 +316,10 @@ extern const size_t NUM_IMAGE_EXTENSIONS;
 //============================================
 // memory utilities
 //============================================
+
+#define KB_TO_BYTE (1024)
+#define MB_TO_BYTE (1024 * KB_TO_BYTE);
+#define GB_TO_BYTE (1024 * MB_TO_BYTE);
 
 typedef struct block_allocator_s block_allocator_t;
 typedef struct linear_allocator_s linear_allocator_t;

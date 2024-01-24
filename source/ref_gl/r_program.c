@@ -192,9 +192,8 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	const deformv_t *deforms, int numDeforms, r_glslfeat_t features, 
 	int binaryFormat, unsigned binaryLength, void *binary );
 
-
 static void RP_PrecachePrograms_NRI(void) {
-	//ignore precache
+	// TODO: implement precache solution
 }
 
 /*
@@ -399,7 +398,7 @@ static void RP_PrecachePrograms_GL( void )
 }
 
 void RP_StorePrecacheList_NRI( void ) {
-
+	//TODO: implement precache logic 
 }
 
 /*
@@ -2683,6 +2682,7 @@ void RP_UpdateViewUniforms( int elem,
 */
 void RP_UpdateBlendMixUniform( int elem, vec2_t blendMix )
 {
+	assert(r_backend_api == BACKEND_OPENGL_LEGACY);
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
 	if( program->loc.BlendMix >= 0 ) {
@@ -2695,6 +2695,7 @@ void RP_UpdateBlendMixUniform( int elem, vec2_t blendMix )
 */
 void RP_UpdateSoftParticlesUniforms( int elem, float scale )
 {
+	assert(r_backend_api == BACKEND_OPENGL_LEGACY);
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
 	if( program->loc.SoftParticlesScale >= 0 ) {
@@ -2708,6 +2709,7 @@ void RP_UpdateSoftParticlesUniforms( int elem, float scale )
 void RP_UpdateDiffuseLightUniforms( int elem,
 	const vec3_t lightDir, const vec4_t lightAmbient, const vec4_t lightDiffuse )
 {
+	assert(r_backend_api == BACKEND_OPENGL_LEGACY);
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
 	if( program->loc.LightDir >= 0 && lightDir )
@@ -2724,6 +2726,7 @@ void RP_UpdateDiffuseLightUniforms( int elem,
 void RP_UpdateMaterialUniforms( int elem,
 	float offsetmappingScale, float glossIntensity, float glossExponent )
 {
+	assert(r_backend_api == BACKEND_OPENGL_LEGACY);
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
 	if( program->loc.GlossFactors >= 0 )
@@ -2737,6 +2740,7 @@ void RP_UpdateMaterialUniforms( int elem,
 */
 void RP_UpdateDistortionUniforms( int elem, bool frontPlane )
 {
+	assert(r_backend_api == BACKEND_OPENGL_LEGACY);
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
 	if( program->loc.FrontPlane >= 0 )
@@ -2748,6 +2752,7 @@ void RP_UpdateDistortionUniforms( int elem, bool frontPlane )
 */
 void RP_UpdateTextureUniforms( int elem, int TexWidth, int TexHeight )
 {
+	assert(r_backend_api == BACKEND_OPENGL_LEGACY);
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
 	if( program->loc.TextureParams >= 0 )
@@ -2760,6 +2765,7 @@ void RP_UpdateTextureUniforms( int elem, int TexWidth, int TexHeight )
 */
 void RP_UpdateOutlineUniforms( int elem, float projDistance )
 {
+	assert(r_backend_api == BACKEND_OPENGL_LEGACY);
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
 	if( program->loc.OutlineHeight >= 0 )
@@ -2773,6 +2779,7 @@ void RP_UpdateOutlineUniforms( int elem, float projDistance )
 */
 void RP_UpdateFogUniforms( int elem, byte_vec4_t color, float clearDist, float opaqueDist, cplane_t *fogPlane, cplane_t *eyePlane, float eyeDist )
 {
+	assert(r_backend_api == BACKEND_OPENGL_LEGACY);
 	GLfloat fog_color[3] = { 0, 0, 0 };
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
@@ -2794,6 +2801,7 @@ void RP_UpdateFogUniforms( int elem, byte_vec4_t color, float clearDist, float o
 unsigned int RP_UpdateDynamicLightsUniforms( int elem, const superLightStyle_t *superLightStyle, 
 	const vec3_t entOrigin, const mat3_t entAxis, unsigned int dlightbits )
 {
+	assert(r_backend_api == BACKEND_OPENGL_LEGACY);
 	int i, n, c;
 	dlight_t *dl;
 	float colorScale = mapConfig.mapLightColorScale;
@@ -2891,6 +2899,7 @@ unsigned int RP_UpdateDynamicLightsUniforms( int elem, const superLightStyle_t *
 */
 void RP_UpdateTexGenUniforms( int elem, const mat4_t reflectionMatrix, const mat4_t vectorMatrix )
 {
+	assert(r_backend_api == BACKEND_OPENGL_LEGACY);
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
 	if( program->loc.ReflectionTexMatrix >= 0 )

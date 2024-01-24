@@ -20,8 +20,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef R_PROGRAM_H
 #define R_PROGRAM_H
 
-#include "r_renderer.h"
-
 typedef uint64_t r_glslfeat_t;
 
 #define GLSL_BIT(x)							(1ULL << (x))
@@ -190,14 +188,14 @@ enum
 #define GLSL_SHADER_FXAA_FXAA3					GLSL_BIT(32)
 
 void RP_Init( void );
-DECLARE_RENDERER_FUNCTION(void, RP_Shutdown, void);
-DECLARE_RENDERER_FUNCTION(void, RP_PrecachePrograms, void);
-DECLARE_RENDERER_FUNCTION(void, RP_StorePrecacheList, void );
+DECLARE_STUB_IMPL(void, RP_Shutdown, void);
+DECLARE_STUB_IMPL(void, RP_PrecachePrograms, void);
+DECLARE_STUB_IMPL(void, RP_StorePrecacheList, void );
 
 void RP_ProgramList_f( void );
 
 int	RP_FindProgram( const char *name );
-DECLARE_RENDERER_FUNCTION(int, RP_RegisterProgram, int type, const char *name, const char *deformsKey, 
+DECLARE_STUB_IMPL(int, RP_RegisterProgram, int type, const char *name, const char *deformsKey, 
 	const deformv_t *deforms, int numDeforms, r_glslfeat_t features );
 int	RP_GetProgramObject( int elem );
 

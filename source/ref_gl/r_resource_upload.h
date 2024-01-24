@@ -21,10 +21,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef R_RESOURCE_UPLOAD_H
 #define R_RESOURCE_UPLOAD_H
 
-#include "r_renderer.h"
+#include "r_nri.h"
+#include "../gameshared/q_shared.h"
 
-static const uint32_t SizeOfStageBufferByte = ByteToMB * 8;
-
+static const uint32_t SizeOfStageBufferByte = 8 * MB_TO_BYTE;
 
 void R_InitResourceUpload();
 

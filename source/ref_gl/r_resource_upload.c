@@ -1,5 +1,4 @@
 #include "r_nri.h"
-#include "r_renderer.h"
 #include <assert.h>
 #include "stb_ds.h"
 #include "r_local.h"
@@ -43,7 +42,7 @@ static NriCommandQueue* cmdQueue = NULL;
 static NriFence* uploadFence = NULL;
 
 static bool __R_AllocFromStageBuffer(resource_command_set_t *set, size_t reqSize, resource_stage_response_t *res ) {
-	size_t allocSize = R_Align( reqSize, 4 ); // we round up to multiples of uint32_t
+	size_t allocSize = ALIGN(reqSize, 4 ); // we round up to multiples of uint32_t
 	if( allocSize > stageBuffer.remaningSpace ) {
 		// we are out of avaliable space from staging
 		return false;
@@ -181,8 +180,8 @@ void R_ResourceBeginCopyTexture( texture_upload_desc_t *desc )
 	const NriDeviceDesc *deviceDesc = r_nri.coreI.GetDeviceDesc( r_nri.device );
 
 	const uint32_t sliceRowNum = max( desc->slicePitch / desc->rowPitch, 1u );
-	const uint64_t alignedRowPitch = R_Align( desc->rowPitch, deviceDesc->uploadBufferTextureRowAlignment );
-	const uint64_t alignedSlicePitch = R_Align( sliceRowNum * alignedRowPitch, deviceDesc->uploadBufferTextureSliceAlignment );
+	const uint64_t alignedRowPitch = ALIGN( desc->rowPitch, deviceDesc->uploadBufferTextureRowAlignment );
+	const uint64_t alignedSlicePitch = ALIGN( sliceRowNum * alignedRowPitch, deviceDesc->uploadBufferTextureSliceAlignment );
 	const uint64_t contentSize = alignedSlicePitch * fmax( desc->sliceNum, 1u );
 	
 	desc->alignRowPitch = alignedRowPitch ;

@@ -66,7 +66,7 @@ rserr_t GLimp_SetFullscreenMode( int displayFrequency, bool fullscreen )
 	}
 
     if( SDL_SetWindowFullscreen( glw_state.sdl_window, flags ) == 0 ) {
-        r_renderer_state.fullScreen = fullscreen;
+        rsh.fullscreen = fullscreen;
         return rserr_ok;
     }
 
@@ -118,23 +118,23 @@ rserr_t GLimp_SetMode( int x, int y, int width, int height, int displayFrequency
 				ri.Com_Printf( "VID_CreateWindow() - GLimp_InitGL failed\n" );
 				return rserr_invalid_mode;
 			}
-			r_renderer_state.fullScreen = fullscreen ? GLimp_SetFullscreenMode( displayFrequency, fullscreen ) == rserr_ok : false;
+			rsh.fullscreen = fullscreen ? GLimp_SetFullscreenMode( displayFrequency, fullscreen ) == rserr_ok : false;
 			break;
 		}
 		case BACKEND_NRI_METAL:
 		case BACKEND_NRI_VULKAN:
 		case BACKEND_NRI_DX12: {
-			r_renderer_state.fullScreen = fullscreen ? GLimp_SetFullscreenMode( displayFrequency, fullscreen ) == rserr_ok : false;
+			rsh.fullscreen = fullscreen ? GLimp_SetFullscreenMode( displayFrequency, fullscreen ) == rserr_ok : false;
 			SDL_SetWindowSize( glw_state.sdl_window, width, height );
 			nri_resizeSwapChain( width, height );
 			break;
 		}
 	}
 
-	r_renderer_state.width = width;
-	r_renderer_state.height = height;
+	rsh.width = width;
+	rsh.height = height;
 
-  return r_renderer_state.fullScreen == fullscreen ? rserr_ok : rserr_invalid_fullscreen;
+  return rsh.fullscreen == fullscreen ? rserr_ok : rserr_invalid_fullscreen;
 }
 
 /**
@@ -149,8 +149,8 @@ void GLimp_Shutdown()
 
 	memset( &glw_state, 0, sizeof( glw_state ) );
 
-	r_renderer_state.width = 0;
-	r_renderer_state.height = 0;
+	rsh.width = 0;
+	rsh.height = 0;
 }
 
 /**

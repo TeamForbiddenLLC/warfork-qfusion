@@ -24,7 +24,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // r_register.c
 #include "r_local.h"
 #include "../qalgo/hash.h"
-#include "r_renderer.h"
 #include "r_resource_upload.h"
 #include "r_nri.h"
 #include "r_shared.h"
@@ -32,7 +31,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 nri_t r_nri;
 glconfig_t glConfig;
 backend_api_t r_backend_api;
-r_renderer_state_t r_renderer_state;
 r_shared_t rsh;
 mempool_t *r_mempool;
 

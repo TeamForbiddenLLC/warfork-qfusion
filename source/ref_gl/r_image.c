@@ -20,7 +20,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_local.h"
 #include "r_imagelib.h"
 #include "../qalgo/hash.h"
-#include "r_renderer.h"
 #include "r_resource_upload.h"
 #include "r_texureformat.h"
 
@@ -1563,7 +1562,7 @@ static bool R_LoadKTX_NRI( image_t *image, const char *pathname )
 		
 		for(uint16_t i = 0; i < numMips; i++ )
 		{
-			uint16_t faceSize = R_Align( max( header->pixelWidth >> i, 1 ) * pixelSize, 4 ) * max( header->pixelHeight >> i, 1 );
+			uint16_t faceSize = ALIGN(max( header->pixelWidth >> i, 1 ) * pixelSize, 4 ) * max( header->pixelHeight >> i, 1 );
 			data += sizeof( int );
 			for(size_t j = 0; j < numFaces; j++ )
 				bufStart[i * numFaces + j] = data + faceSize * j;
@@ -3198,12 +3197,12 @@ static void R_InitScreenImagePair( const char *name, image_t **color, image_t **
 
 	if( color ) {
 		R_InitViewportTexture( color, name, 
-			0, r_renderer_state.width, r_renderer_state.height, 0, colorFlags, IMAGE_TAG_BUILTIN,
+			0, rsh.width, rsh.height, 0, colorFlags, IMAGE_TAG_BUILTIN,
 			glConfig.forceRGBAFramebuffers ? 4 : 3 );
 	}
 	if( depth && *color ) {
 		R_InitViewportTexture( depth, va_r( tn, sizeof( tn ), "%s_depth", name ), 
-			0, r_renderer_state.width, r_renderer_state.height, 0, depthFlags, IMAGE_TAG_BUILTIN, 1 );
+			0, rsh.width, rsh.height, 0, depthFlags, IMAGE_TAG_BUILTIN, 1 );
 		RFB_AttachTextureToObject( (*color)->fbo, *depth );
 	}
 }

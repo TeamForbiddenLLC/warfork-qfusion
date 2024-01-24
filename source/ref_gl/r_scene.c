@@ -236,7 +236,7 @@ static void R_BlitTextureToScrFbo( const refdef_t *fd, image_t *image, int dstFb
 		y = fd->y;
 		w = fw = fd->width;
 		h = fh = fd->height;
-		RB_Viewport( 0, 0, r_renderer_state.width, r_renderer_state.height );
+		RB_Viewport( 0, 0, rsh.width, rsh.height );
 		RB_Scissor( rn.scissor[0], rn.scissor[1], rn.scissor[2], rn.scissor[3] );
 	}
 	else {
@@ -254,7 +254,7 @@ static void R_BlitTextureToScrFbo( const refdef_t *fd, image_t *image, int dstFb
 			fh = cb->upload_height;
 		}
 		RB_Viewport( 0, 0, w, h );
-		RB_Scissor( 0, 0, r_renderer_state.width, r_renderer_state.height );
+		RB_Scissor( 0, 0, rsh.width, rsh.height );
 	}
 
 	s.vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT;
