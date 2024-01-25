@@ -204,6 +204,13 @@ typedef struct
 
 typedef struct
 {
+	vec3_t mins;
+	vec3_t maxs;
+	byte_vec4_t color;
+} r_debug_bound_t;
+
+typedef struct
+{
 	// bumped each R_ClearScene
 	unsigned int	frameCount;
 
@@ -235,7 +242,8 @@ typedef struct
 
 	unsigned int	renderedShadowBits;
 
-	refdef_t		refdef;
+	r_debug_bound_t *debugBounds;
+	refdef_t refdef;
 } r_scene_t;
 
 // global frontend variables are stored here
@@ -594,7 +602,6 @@ portalSurface_t *R_AddPortalSurface( const entity_t *ent, const mesh_t *mesh,
 	const vec3_t mins, const vec3_t maxs, const shader_t *shader, void *drawSurf );
 portalSurface_t *R_AddSkyportalSurface( const entity_t *ent, const shader_t *shader, 
 	void *drawSurf );
-void R_DrawPortals( void );
 
 //
 // r_poly.c
@@ -627,7 +634,6 @@ void R_AddEntityToScene( const entity_t *ent );
 void R_AddLightToScene( const vec3_t org, float intensity, float r, float g, float b );
 void R_AddPolyToScene( const poly_t *poly );
 void R_AddLightStyleToScene( int style, float r, float g, float b );
-DECLARE_STUB_IMPL(void, R_RenderScene, const refdef_t *fd );
 
 //
 // r_surf.c

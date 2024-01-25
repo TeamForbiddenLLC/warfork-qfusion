@@ -26,6 +26,7 @@ DECLARE_STUB_IMPL( void, R_RenderDebugSurface, const refdef_t *fd );
 DECLARE_STUB_IMPL( void, R_BeginFrame, float cameraSeparation, bool forceClear, bool forceVsync );
 DECLARE_STUB_IMPL( int, R_SetSwapInterval, int swapInterval, int oldSwapInterval );
 DECLARE_STUB_IMPL( void, R_RenderView, const refdef_t *fd );
+DECLARE_STUB_IMPL( void, R_RenderScene, const refdef_t *fd );
 
 extern void initRendererGL();
 extern void initRendererNRI();

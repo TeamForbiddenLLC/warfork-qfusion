@@ -19,3 +19,4 @@ R_RenderDebugSurfaceFn R_RenderDebugSurface;
 R_BeginFrameFn R_BeginFrame;
 R_SetSwapIntervalFn R_SetSwapInterval;
 R_RenderViewFn R_RenderView;
+R_RenderSceneFn R_RenderScene;

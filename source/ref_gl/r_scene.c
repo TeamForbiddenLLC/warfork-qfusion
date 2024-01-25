@@ -19,8 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "r_local.h"
-
-R_RenderSceneFn R_RenderScene;
+#include "stb_ds.h"
 
 static void R_ClearDebugBounds( void );
 static void R_RenderDebugBounds( void );
@@ -59,8 +58,7 @@ void R_ClearScene( void )
 	rsc.renderedShadowBits = 0;
 	rsc.frameCount++;
 
-	R_ClearDebugBounds();
-
+	arrsetlen(rsc.debugBounds, 0); 
 	R_ClearShadowGroups();
 
 	R_ClearSkeletalCache();
@@ -203,9 +201,6 @@ void R_AddLightStyleToScene( int style, float r, float g, float b )
 	ls->rgb[2] = max( 0, b );
 }
 
-/*
-* R_BlitTextureToScrFbo
-*/
 static void R_BlitTextureToScrFbo( const refdef_t *fd, image_t *image, int dstFbo, 
 	int program_type, const vec4_t color, int blendMask, int numShaderImages, image_t **shaderImages )
 {
@@ -301,266 +296,18 @@ static void R_BlitTextureToScrFbo( const refdef_t *fd, image_t *image, int dstFb
 	RB_Scissor( 0, 0, rf.frameBufferWidth, rf.frameBufferHeight );
 }
 
-/*
-* R_RenderScene
-*/
-static void R_RenderScene_GL( const refdef_t *fd )
-{
-	int fbFlags = 0;
-	int ppFrontBuffer = 0;
-	image_t *ppSource;
 
-	if( r_norefresh->integer )
-		return;
-
-	R_Set2DMode( false );
-
-	RB_SetTime( fd->time );
-
-	if( !( fd->rdflags & RDF_NOWORLDMODEL ) )
-		rsc.refdef = *fd;
-
-	rn.refdef = *fd;
-	if( !rn.refdef.minLight ) {
-		rn.refdef.minLight = 0.1f;
-	}
-
-	fd = &rn.refdef;
-
-	rn.renderFlags = RF_NONE;
-
-	rn.farClip = R_DefaultFarClip();
-	rn.clipFlags = 15;
-	if( rsh.worldModel && !( fd->rdflags & RDF_NOWORLDMODEL ) && rsh.worldBrushModel->globalfog )
-		rn.clipFlags |= 16;
-	rn.meshlist = &r_worldlist;
-	rn.portalmasklist = &r_portalmasklist;
-	rn.shadowBits = 0;
-	rn.dlightBits = 0;
-	rn.shadowGroup = NULL;
-
-	fbFlags = 0;
-	rn.fbColorAttachment = rn.fbDepthAttachment = NULL;
-	
-	if( !( fd->rdflags & RDF_NOWORLDMODEL ) ) {
-		if( r_soft_particles->integer && ( rsh.screenTexture != NULL ) ) {
-			rn.fbColorAttachment = rsh.screenTexture;
-			rn.fbDepthAttachment = rsh.screenDepthTexture;
-			rn.renderFlags |= RF_SOFT_PARTICLES;
-			fbFlags |= 1;
-		}
-
-		if( rsh.screenPPCopies[0] && rsh.screenPPCopies[1] ) {
-			int oldFlags = fbFlags;
-			shader_t *cc = rn.refdef.colorCorrection;
-
-			if( r_fxaa->integer ) {
-				fbFlags |= 2;
-			}
-
-			if( cc && cc->numpasses > 0 && cc->passes[0].images[0] && cc->passes[0].images[0] != rsh.noTexture ) {
-				fbFlags |= 4;
-			}
-
-			if( fbFlags != oldFlags ) {
-				if( !rn.fbColorAttachment ) {
-					rn.fbColorAttachment = rsh.screenPPCopies[0];
-					ppFrontBuffer = 1;
-				}
-			}
-		}
-	}
-
-	ppSource = rn.fbColorAttachment;
-
-	// clip new scissor region to the one currently set
-	Vector4Set( rn.scissor, fd->scissor_x, fd->scissor_y, fd->scissor_width, fd->scissor_height );
-	Vector4Set( rn.viewport, fd->x, fd->y, fd->width, fd->height );
-	VectorCopy( fd->vieworg, rn.pvsOrigin );
-	VectorCopy( fd->vieworg, rn.lodOrigin );
-
-	R_BindFrameBufferObject( 0 );
-
-	R_BuildShadowGroups();
-
-	R_RenderView( fd );
-
-	R_RenderDebugSurface( fd );
-
-	R_RenderDebugBounds();
-
-	R_BindFrameBufferObject( 0 );
-
-	R_Set2DMode( true );
-
-	if( !( fd->rdflags & RDF_NOWORLDMODEL ) ) {
-		ri.Mutex_Lock( rf.speedsMsgLock );
-		R_WriteSpeedsMessage( rf.speedsMsg, sizeof( rf.speedsMsg ) );
-		ri.Mutex_Unlock( rf.speedsMsgLock );
-	}
-
-	// blit and blend framebuffers in proper order
-
-	if( fbFlags == 1 ) {
-		// only blit soft particles directly when we don't have any other post processing
-		// otherwise use the soft particles FBO as the base texture on the next layer
-		// to avoid wasting time on resolves and the fragment shader to blit to a temp texture
-		R_BlitTextureToScrFbo( fd,
-			ppSource, 0,
-			GLSL_PROGRAM_TYPE_NONE,
-			colorWhite, 0,
-			0, NULL );
-	}
-	fbFlags &= ~1;
-
-	// apply FXAA
-	if( fbFlags & 2 ) {
-		image_t *dest;
-
-		fbFlags &= ~2;
-		dest = fbFlags ? rsh.screenPPCopies[ppFrontBuffer] : NULL;
-
-		R_BlitTextureToScrFbo( fd,
-			ppSource, dest ? dest->fbo : 0,
-			GLSL_PROGRAM_TYPE_FXAA,
-			colorWhite, 0,
-			0, NULL );
-
-		ppFrontBuffer ^= 1;
-		ppSource = dest;
-	}
-
-	// apply color correction
-	if( fbFlags & 4 ) {
-		image_t *dest;
-
-		fbFlags &= ~4;
-		dest = fbFlags ? rsh.screenPPCopies[ppFrontBuffer] : NULL;
-
-		R_BlitTextureToScrFbo( fd,
-			ppSource, dest ? dest->fbo : 0,
-			GLSL_PROGRAM_TYPE_COLORCORRECTION,
-			colorWhite, 0,
-			1, &( rn.refdef.colorCorrection->passes[0].images[0] ) );
-	}
-}
-
-/*
-=============================================================================
-
-BOUNDING BOXES
-
-=============================================================================
-*/
-
-typedef struct
-{
-	vec3_t mins;
-	vec3_t maxs;
-	byte_vec4_t color;
-} r_debug_bound_t;
-
-static unsigned r_num_debug_bounds;
-static size_t r_debug_bounds_current_size;
-static r_debug_bound_t *r_debug_bounds;
-
-/*
-* R_ClearDebugBounds
-*/
-static void R_ClearDebugBounds( void )
-{
-	r_num_debug_bounds = 0;
-}
-
-/*
-* R_AddDebugBounds
-*/
 void R_AddDebugBounds( const vec3_t mins, const vec3_t maxs, const byte_vec4_t color )
 {
-	unsigned i;
-
-	i = r_num_debug_bounds;
-	r_num_debug_bounds++;
-
-	if( r_num_debug_bounds > r_debug_bounds_current_size )
-	{
-		r_debug_bounds_current_size = ALIGN( r_num_debug_bounds, 256 );
-		if( r_debug_bounds )
-			r_debug_bounds = R_Realloc( r_debug_bounds, r_debug_bounds_current_size * sizeof( r_debug_bound_t ) );
-		else
-			r_debug_bounds = R_Malloc( r_debug_bounds_current_size * sizeof( r_debug_bound_t ) );
-	}
-
-	VectorCopy( mins, r_debug_bounds[i].mins );
-	VectorCopy( maxs, r_debug_bounds[i].maxs );
-	Vector4Copy( color, r_debug_bounds[i].color );
+	r_debug_bound_t bound = {};
+	VectorCopy( mins, bound.mins );
+	VectorCopy( maxs, bound.maxs );
+	Vector4Copy( color, bound.color );
+	arrpush(rsc.debugBounds, bound);
 }
 
-/*
-* R_RenderDebugBounds
-*/
-static void R_RenderDebugBounds( void )
-{
-	unsigned i, j;
-	const vec_t *mins, *maxs;
-	const uint8_t *color;
-	mesh_t mesh;
-	vec4_t verts[8];
-	byte_vec4_t colors[8];
-	elem_t elems[24] =
-	{
-		0, 1, 1, 3, 3, 2, 2, 0,
-		0, 4, 1, 5, 2, 6, 3, 7,
-		4, 5, 5, 7, 7, 6, 6, 4
-	};
-
-	if( !r_num_debug_bounds )
-		return;
-
-	memset( &mesh, 0, sizeof( mesh ) );
-	mesh.numVerts = 8;
-	mesh.xyzArray = verts;
-	mesh.numElems = 24;
-	mesh.elems = elems;
-	mesh.colorsArray[0] = colors;
-
-	RB_SetShaderStateMask( ~0, GLSTATE_NO_DEPTH_TEST );
-
-	for( i = 0; i < r_num_debug_bounds; i++ )
-	{
-		mins = r_debug_bounds[i].mins;
-		maxs = r_debug_bounds[i].maxs;
-		color = r_debug_bounds[i].color;
-
-		for( j = 0; j < 8; j++ )
-		{
-			verts[j][0] = ( ( j & 1 ) ? mins[0] : maxs[0] );
-			verts[j][1] = ( ( j & 2 ) ? mins[1] : maxs[1] );
-			verts[j][2] = ( ( j & 4 ) ? mins[2] : maxs[2] );
-			verts[j][3] = 1.0f;
-			Vector4Copy( color, colors[j] );
-		}
-
-		RB_AddDynamicMesh( rsc.worldent, rsh.whiteShader, NULL, NULL, 0, &mesh, GL_LINES, 0.0f, 0.0f );
-	}
-
-	RB_FlushDynamicMeshes();
-
-	RB_SetShaderStateMask( ~0, 0 );
-}
 
 void R_SceneInit() {
-	switch( r_backend_api ) {
-		case BACKEND_OPENGL_LEGACY: {
-			R_RenderScene = R_RenderScene_GL;
-			break;
-		}
-		case BACKEND_NRI_VULKAN:
-		case BACKEND_NRI_METAL:
-		case BACKEND_NRI_DX12: {
-			break;
-		}
-	}
 
 }
 

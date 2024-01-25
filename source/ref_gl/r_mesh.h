@@ -60,8 +60,7 @@ typedef struct
 	drawSurfaceType_t	*drawSurf;
 } sortedDrawSurf_t;
 
-typedef struct
-{
+typedef struct drawList_s {
 	unsigned int		numDrawSurfs, maxDrawSurfs;
 	sortedDrawSurf_t	*drawSurfs;
 

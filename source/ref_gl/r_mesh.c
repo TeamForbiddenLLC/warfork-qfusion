@@ -642,9 +642,6 @@ static void _R_DrawSurfaces( drawList_t *list )
 	RB_BindFrameBufferObject( riFBO );
 }
 
-/*
-* R_DrawSurfaces
-*/
 void R_DrawSurfaces( drawList_t *list )
 {
 	bool triOutlines;
@@ -657,9 +654,6 @@ void R_DrawSurfaces( drawList_t *list )
 	RB_EnableTriangleOutlines( triOutlines );
 }
 
-/*
-* R_DrawOutlinedSurfaces
-*/
 void R_DrawOutlinedSurfaces( drawList_t *list )
 {
 	bool triOutlines;
