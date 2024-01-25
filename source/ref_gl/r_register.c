@@ -1236,6 +1236,7 @@ rserr_t R_Init( const char *applicationName, const char *screenshotPrefix, int s
 	void *hinstance, void *wndproc, void *parenthWnd, 
 	bool verbose )
 {
+	initRendererGL();
 	qgl_initerr_t initerr;
 
 	r_mempool = R_AllocPool( NULL, "Rendering Frontend" );
@@ -1271,7 +1272,6 @@ init_qgl:
 		return rserr_invalid_driver;
 	}
 
-	initRendererGL();
 
 	// initialize OS-specific parts of OpenGL
 	if( !GLimp_Init( applicationName, hinstance, wndproc, parenthWnd, iconResource, iconXPM ) )

@@ -7,6 +7,7 @@
 typedef struct image_s image_t;
 typedef struct refdef_s refdef_t;
 
+DECLARE_STUB_IMPL( void, R_EndFrame, void );
 
 // stub interface for the renderering logic 
 extern void initRendererGL();
