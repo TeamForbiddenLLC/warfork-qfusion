@@ -5,9 +5,10 @@
 #include "r_math.h"
 
 typedef struct image_s image_t;
+typedef struct refdef_s refdef_t;
 
 DECLARE_STUB_IMPL( void, R_BindFrameBufferObject, int object );
-DECLARE_STUB_IMPL( void, R_Set2DMode, bool enable ); 
+DECLARE_STUB_IMPL( void, R_Set2DMode, bool enable );
 DECLARE_STUB_IMPL( void, R_SetGamma, float gamma );
 DECLARE_STUB_IMPL( void, R_Scissor, int x, int y, int w, int h );
 DECLARE_STUB_IMPL( void, R_GetScissor, int *x, int *y, int *w, int *h );
@@ -20,6 +21,11 @@ DECLARE_STUB_IMPL( void, R_DeferDataSync, void );
 DECLARE_STUB_IMPL( void, R_DataSync, void );
 DECLARE_STUB_IMPL( void, R_Finish, void );
 DECLARE_STUB_IMPL( void, R_Flush, void );
+DECLARE_STUB_IMPL( void, R_EndFrame, void );
+DECLARE_STUB_IMPL( void, R_RenderDebugSurface, const refdef_t *fd );
+DECLARE_STUB_IMPL( void, R_BeginFrame, float cameraSeparation, bool forceClear, bool forceVsync );
+DECLARE_STUB_IMPL( int, R_SetSwapInterval, int swapInterval, int oldSwapInterval );
+DECLARE_STUB_IMPL( void, R_RenderView, const refdef_t *fd );
 
 extern void initRendererGL();
 extern void initRendererNRI();

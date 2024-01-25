@@ -14,3 +14,8 @@ R_DeferDataSyncFn R_DeferDataSync;
 R_DataSyncFn R_DataSync;
 R_FinishFn R_Finish;
 R_FlushFn R_Flush;
+R_EndFrameFn R_EndFrame;
+R_RenderDebugSurfaceFn R_RenderDebugSurface;
+R_BeginFrameFn R_BeginFrame;
+R_SetSwapIntervalFn R_SetSwapInterval;
+R_RenderViewFn R_RenderView;

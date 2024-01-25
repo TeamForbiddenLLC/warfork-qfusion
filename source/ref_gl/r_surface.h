@@ -20,6 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef R_SURFACE_H
 #define R_SURFACE_H
 
+#include "r_vbo.h"
+
 typedef enum
 {
 	ST_NONE,

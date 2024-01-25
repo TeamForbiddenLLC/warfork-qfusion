@@ -201,14 +201,6 @@ int R_LODForSphere( const vec3_t origin, float radius )
 }
 
 /*
-=============================================================
-
-CUSTOM COLORS
-
-=============================================================
-*/
-
-/*
 * R_InitCustomColors
 */
 void R_InitCustomColors( void )
@@ -225,9 +217,7 @@ void R_SetCustomColor( int num, int r, int g, int b )
 		return;
 	Vector4Set( rsh.customColors[num], (uint8_t)r, (uint8_t)g, (uint8_t)b, 255 );
 }
-/*
-* R_GetCustomColor
-*/
+
 int R_GetCustomColor( int num )
 {
 	if( num < 0 || num >= NUM_CUSTOMCOLORS )
@@ -235,119 +225,10 @@ int R_GetCustomColor( int num )
 	return *(int *)rsh.customColors[num];
 }
 
-/*
-* R_ShutdownCustomColors
-*/
 void R_ShutdownCustomColors( void )
 {
 	memset( rsh.customColors, 255, sizeof( rsh.customColors ) );
 }
-
-/*
-=============================================================
-
-SPRITE MODELS
-
-=============================================================
-*/
-
-static drawSurfaceType_t spriteDrawSurf = ST_SPRITE;
-
-/*
-* R_BatchSpriteSurf
-*/
-void R_BatchSpriteSurf( const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceType_t *drawSurf )
-{
-	int i;
-	vec3_t point;
-	vec3_t v_left, v_up;
-	elem_t elems[6] = { 0, 1, 2, 0, 2, 3 };
-	vec4_t xyz[4] = { {0,0,0,1}, {0,0,0,1}, {0,0,0,1}, {0,0,0,1} };
-	vec4_t normals[4] = { {0,0,0,0}, {0,0,0,0}, {0,0,0,0}, {0,0,0,0} };
-	byte_vec4_t colors[4];
-	vec2_t texcoords[4] = { {0, 1}, {0, 0}, {1,0}, {1,1} };
-	mesh_t mesh;
-	float radius = e->radius * e->scale;
-	float rotation = e->rotation;
-
-	if( rotation )
-	{
-		RotatePointAroundVector( v_left, &rn.viewAxis[AXIS_FORWARD], &rn.viewAxis[AXIS_RIGHT], rotation );
-		CrossProduct( &rn.viewAxis[AXIS_FORWARD], v_left, v_up );
-	}
-	else
-	{
-		VectorCopy( &rn.viewAxis[AXIS_RIGHT], v_left );
-		VectorCopy( &rn.viewAxis[AXIS_UP], v_up );
-	}
-
-	if( rn.renderFlags & (RF_MIRRORVIEW|RF_FLIPFRONTFACE) )
-		VectorInverse( v_left );
-
-	VectorMA( e->origin, -radius, v_up, point );
-	VectorMA( point, radius, v_left, xyz[0] );
-	VectorMA( point, -radius, v_left, xyz[3] );
-
-	VectorMA( e->origin, radius, v_up, point );
-	VectorMA( point, radius, v_left, xyz[1] );
-	VectorMA( point, -radius, v_left, xyz[2] );
-
-	for( i = 0; i < 4; i++ )
-	{
-		VectorNegate( &rn.viewAxis[AXIS_FORWARD], normals[i] );
-		Vector4Copy( e->color, colors[i] );
-	}
-
-	mesh.elems = elems;
-	mesh.numElems = 6;
-	mesh.numVerts = 4;
-	mesh.xyzArray = xyz;
-	mesh.normalsArray = normals;
-	mesh.lmstArray[0] = NULL;
-	mesh.lmlayersArray[0] = NULL;
-	mesh.stArray = texcoords;
-	mesh.colorsArray[0] = colors;
-	mesh.colorsArray[1] = NULL;
-	mesh.sVectorsArray = NULL;
-
-	RB_AddDynamicMesh( e, shader, fog, portalSurface, 0, &mesh, GL_TRIANGLES, 0.0f, 0.0f );
-}
-
-/*
-* R_AddSpriteToDrawList
-*/
-static bool R_AddSpriteToDrawList( const entity_t *e )
-{
-	float dist;
-
-	if( e->flags & RF_NOSHADOW )
-	{
-		if( rn.renderFlags & RF_SHADOWMAPVIEW )
-			return false;
-	}
-
-	if( e->radius <= 0 || e->customShader == NULL || e->scale <= 0 ) {
-		return false;
-	}
-
-	dist =
-		( e->origin[0] - rn.refdef.vieworg[0] ) * rn.viewAxis[AXIS_FORWARD+0] +
-		( e->origin[1] - rn.refdef.vieworg[1] ) * rn.viewAxis[AXIS_FORWARD+1] +
-		( e->origin[2] - rn.refdef.vieworg[2] ) * rn.viewAxis[AXIS_FORWARD+2];
-	if( dist <= 0 )
-		return false; // cull it because we don't want to sort unneeded things
-
-	if( !R_AddSurfToDrawList( rn.meshlist, e, R_FogForSphere( e->origin, e->radius ), 
-		e->customShader, dist, 0, NULL, &spriteDrawSurf ) ) {
-		return false;
-	}
-
-	return true;
-}
-
-//==================================================================================
-
-static drawSurfaceType_t nullDrawSurf = ST_NULLMODEL;
 
 /*
 * R_InitNullModelVBO
@@ -414,11 +295,9 @@ void R_DrawNullSurf( const entity_t *e, const shader_t *shader, const mfog_t *fo
 	RB_DrawElements( 0, 6, 0, 6, 0, 0, 0, 0 );
 }
 
-/*
-* R_AddNullSurfToDrawList
-*/
 static bool R_AddNullSurfToDrawList( const entity_t *e )
 {
+	static drawSurfaceType_t nullDrawSurf = ST_NULLMODEL;
 	if( !R_AddSurfToDrawList( rn.meshlist, e, R_FogForSphere( e->origin, 0.1f ), 
 		rsh.whiteShader, 0, 0, NULL, &nullDrawSurf ) ) {
 		return false;
@@ -435,7 +314,6 @@ static vec2_t pic_st[4];
 static byte_vec4_t pic_colors[4];
 static elem_t pic_elems[6] = { 0, 1, 2, 0, 2, 3 };
 static mesh_t pic_mesh = { 4, pic_xyz, pic_normals, NULL, pic_st, { 0, 0, 0, 0 }, { 0 }, { pic_colors, pic_colors, pic_colors, pic_colors }, NULL, NULL, 6, pic_elems };
-
 
 /*
 * R_DrawRotatedStretchPic
@@ -567,8 +445,6 @@ void R_DrawStretchRaw( int x, int y, int w, int h, float s1, float t1, float s2,
 }
 
 /*
-* R_DrawStretchRawYUVBuiltin
-*
 * Set bit 0 in 'flip' to flip the image horizontally
 * Set bit 1 in 'flip' to flip the image vertically
 */
@@ -640,76 +516,6 @@ void R_DrawStretchRawYUV( int x, int y, int w, int h, float s1, float t1, float 
 {
 	R_DrawStretchRawYUVBuiltin( x, y, w, h, s1, t1, s2, t2, rsh.rawYUVTextures, 0 );
 }
-
-
-
-/*
-* R_PolyBlend
-*/
-static void R_PolyBlend( void )
-{
-	if( !r_polyblend->integer )
-		return;
-	if( rsc.refdef.blend[3] < 0.01f )
-		return;
-
-	R_Set2DMode( true );
-	R_DrawStretchPic( 0, 0, rf.frameBufferWidth, rf.frameBufferHeight, 0, 0, 1, 1, rsc.refdef.blend, rsh.whiteShader );
-	RB_FlushDynamicMeshes();
-}
-
-/*
-* R_ApplyBrightness
-*/
-static void R_ApplyBrightness( void )
-{
-	float c;
-	vec4_t color;
-
-	c = r_brightness->value;
-	if( c < 0.005 )
-		return;
-	else if( c > 1.0 )
-		c = 1.0;
-
-	color[0] = color[1] = color[2] = c, color[3] = 1;
-
-	R_Set2DMode( true );
-	R_DrawStretchQuick( 0, 0, rf.frameBufferWidth, rf.frameBufferHeight, 0, 0, 1, 1,
-		color, GLSL_PROGRAM_TYPE_NONE, rsh.whiteTexture, GLSTATE_SRCBLEND_ONE|GLSTATE_DSTBLEND_ONE );
-}
-
-/*
-* R_InitPostProcessingVBO
-*/
-mesh_vbo_t *R_InitPostProcessingVBO( void )
-{
-	vec4_t xyz[4] = { {0,0,0,1}, {1,0,0,1}, {1,1,0,1}, {0,1,0,1} };
-	vec2_t texcoords[4] = { {0,1}, {1,1}, {1,0}, {0,0} };
-	elem_t elems[6] = { 0, 1, 2, 0, 2, 3 };
-	mesh_t mesh;
-	vattribmask_t vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT;
-	mesh_vbo_t *vbo;
-	
-	vbo = R_CreateMeshVBO( &rf, 4, 6, 0, vattribs, VBO_TAG_NONE, vattribs );
-	if( !vbo ) {
-		return NULL;
-	}
-
-	memset( &mesh, 0, sizeof( mesh ) );
-	mesh.numVerts = 4;
-	mesh.xyzArray = xyz;
-	mesh.stArray = texcoords;
-	mesh.numElems = 6;
-	mesh.elems = elems;
-
-	R_UploadVBOVertexData( vbo, 0, vattribs, &mesh );
-	R_UploadVBOElemData( vbo, 0, 0, &mesh );
-
-	return vbo;
-}
-
-//=======================================================================
 
 /*
 * R_DefaultFarClip
@@ -899,298 +705,6 @@ static void R_Clear( int bitMask )
 	RB_Clear( bits, envColor[0], envColor[1], envColor[2], 1 );
 }
 
-/*
-* R_SetupGL
-*/
-static void R_SetupGL( void )
-{
-	RB_Scissor( rn.scissor[0], rn.scissor[1], rn.scissor[2], rn.scissor[3] );
-	RB_Viewport( rn.viewport[0], rn.viewport[1], rn.viewport[2], rn.viewport[3] );
-
-	if( rn.renderFlags & RF_CLIPPLANE )
-	{
-		cplane_t *p = &rn.clipPlane;
-		Matrix4_ObliqueNearClipping( p->normal, -p->dist, rn.cameraMatrix, rn.projectionMatrix );
-	}
-
-	RB_SetZClip( Z_NEAR, rn.farClip );
-
-	RB_SetCamera( rn.viewOrigin, rn.viewAxis );
-
-	RB_SetLightParams( rn.refdef.minLight, rn.refdef.rdflags & RDF_NOWORLDMODEL ? true : false );
-
-	RB_SetRenderFlags( rn.renderFlags );
-
-	RB_LoadProjectionMatrix( rn.projectionMatrix );
-
-	RB_LoadCameraMatrix( rn.cameraMatrix );
-
-	RB_LoadObjectMatrix( mat4x4_identity );
-
-	if( rn.renderFlags & RF_FLIPFRONTFACE )
-		RB_FlipFrontFace();
-
-	if( ( rn.renderFlags & RF_SHADOWMAPVIEW ) && glConfig.ext.shadow )
-		RB_SetShaderStateMask( ~0, GLSTATE_NO_COLORWRITE );
-}
-
-/*
-* R_EndGL
-*/
-static void R_EndGL( void )
-{
-	if( ( rn.renderFlags & RF_SHADOWMAPVIEW ) && glConfig.ext.shadow )
-		RB_SetShaderStateMask( ~0, 0 );
-
-	if( rn.renderFlags & RF_FLIPFRONTFACE )
-		RB_FlipFrontFace();
-}
-
-/*
-* R_DrawEntities
-*/
-static void R_DrawEntities( void )
-{
-	unsigned int i;
-	entity_t *e;
-	bool shadowmap = ( ( rn.renderFlags & RF_SHADOWMAPVIEW ) != 0 );
-	bool culled = true;
-
-	if( rn.renderFlags & RF_ENVVIEW )
-	{
-		for( i = 0; i < rsc.numBmodelEntities; i++ )
-		{
-			e = rsc.bmodelEntities[i];
-			if( !r_lerpmodels->integer )
-				e->backlerp = 0;
-			e->outlineHeight = rsc.worldent->outlineHeight;
-			Vector4Copy( rsc.worldent->outlineRGBA, e->outlineColor );
-			R_AddBrushModelToDrawList( e );
-		}
-		return;
-	}
-
-	for( i = rsc.numLocalEntities; i < rsc.numEntities; i++ )
-	{
-		e = R_NUM2ENT(i);
-		culled = true;
-
-		if( !r_lerpmodels->integer )
-			e->backlerp = 0;
-
-		switch( e->rtype )
-		{
-		case RT_MODEL:
-			if( !e->model ) {
-				R_AddNullSurfToDrawList( e );
-				continue;
-			}
-
-			switch( e->model->type )
-			{
-			case mod_alias:
-				culled = ! R_AddAliasModelToDrawList( e );
-				break;
-			case mod_skeletal:
-				culled = ! R_AddSkeletalModelToDrawList( e );
-				break;
-			case mod_brush:
-				e->outlineHeight = rsc.worldent->outlineHeight;
-				Vector4Copy( rsc.worldent->outlineRGBA, e->outlineColor );
-				culled = ! R_AddBrushModelToDrawList( e );
-			default:
-				break;
-			}
-			break;
-		case RT_SPRITE:
-			culled = ! R_AddSpriteToDrawList( e );
-			break;
-		default:
-			break;
-		}
-
-		if( shadowmap && !culled ) {
-			if( rsc.entShadowGroups[i] != rn.shadowGroup->id ||
-				r_shadows_self_shadow->integer ) {
-				// not from the casting group, mark as shadowed
-				rsc.entShadowBits[i] |= rn.shadowGroup->bit;
-			}
-		}
-	}
-}
-
-//=======================================================================
-
-/*
-* R_BindRefInstFBO
-*/
-static void R_BindRefInstFBO( void )
-{
-	int fbo;
-
-	if( rn.fbColorAttachment ) {
-		fbo = rn.fbColorAttachment->fbo;
-	}
-	else if( rn.fbDepthAttachment ) {
-		fbo = rn.fbDepthAttachment->fbo;
-	}
-	else {
-		fbo = 0;
-	}
-
-	R_BindFrameBufferObject( fbo );
-}
-
-/*
-* R_RenderView
-*/
-void R_RenderView( const refdef_t *fd )
-{
-	int msec = 0;
-	bool shadowMap = rn.renderFlags & RF_SHADOWMAPVIEW ? true : false;
-
-	rn.refdef = *fd;
-	rn.numVisSurfaces = 0;
-
-	// load view matrices with default far clip value
-	R_SetupViewMatrices();
-
-	rn.fog_eye = NULL;
-
-	rn.shadowBits = 0;
-	rn.dlightBits = 0;
-	
-	rn.numPortalSurfaces = 0;
-	rn.numDepthPortalSurfaces = 0;
-	rn.skyportalSurface = NULL;
-
-	ClearBounds( rn.visMins, rn.visMaxs );
-
-	R_ClearSky();
-
-	if( r_novis->integer ) {
-		rn.renderFlags |= RF_NOVIS;
-	}
-
-	if( r_lightmap->integer ) {
-		rn.renderFlags |= RF_LIGHTMAP;
-	}
-
-	if( r_drawflat->integer ) {
-		rn.renderFlags |= RF_DRAWFLAT;
-	}
-
-	R_ClearDrawList( rn.meshlist );
-
-	R_ClearDrawList( rn.portalmasklist );
-
-	if( !rsh.worldModel && !( rn.refdef.rdflags & RDF_NOWORLDMODEL ) )
-		return;
-
-	R_SetupFrame();
-
-	R_SetupFrustum( &rn.refdef, rn.farClip, rn.frustum );
-
-	// we know the initial farclip at this point after determining visible world leafs
-	// R_DrawEntities can make adjustments as well
-
-	if( !shadowMap ) {
-		if( r_speeds->integer )
-			msec = ri.Sys_Milliseconds();
-		R_MarkLeaves();
-		if( r_speeds->integer )
-			rf.stats.t_mark_leaves += ( ri.Sys_Milliseconds() - msec );
-
-		if( ! ( rn.refdef.rdflags & RDF_NOWORLDMODEL ) ) {
-			R_DrawWorld();
-
-			if( !rn.numVisSurfaces ) {
-				// no world surfaces visible
-				return;
-			}
-
-			rn.fog_eye = R_FogForSphere( rn.viewOrigin, 0.5 );
-		}
-
-		R_DrawCoronas();
-
-		if( r_speeds->integer )
-			msec = ri.Sys_Milliseconds();
-		R_DrawPolys();
-		if( r_speeds->integer )
-			rf.stats.t_add_polys += ( ri.Sys_Milliseconds() - msec );
-	}
-
-	if( r_speeds->integer )
-		msec = ri.Sys_Milliseconds();
-	R_DrawEntities();
-	if( r_speeds->integer )
-		rf.stats.t_add_entities += ( ri.Sys_Milliseconds() - msec );
-
-	if( !shadowMap ) {
-		// now set  the real far clip value and reload view matrices
-		R_SetFarClip();
-
-		R_SetupViewMatrices();
-
-		// render to depth textures, mark shadowed entities and surfaces
-		R_DrawShadowmaps();
-	}
-
-	R_SortDrawList( rn.meshlist );
-
-	R_BindRefInstFBO();
-
-	R_SetupGL();
-
-	R_DrawPortals();
-
-	if( r_portalonly->integer && !( rn.renderFlags & ( RF_MIRRORVIEW|RF_PORTALVIEW ) ) )
-		return;
-
-	R_Clear( ~0 );
-
-	if( r_speeds->integer )
-		msec = ri.Sys_Milliseconds();
-	R_DrawSurfaces( rn.meshlist );
-	if( r_speeds->integer )
-		rf.stats.t_draw_meshes += ( ri.Sys_Milliseconds() - msec );
-
-	rf.stats.c_slices_verts += rn.meshlist->numSliceVerts;
-	rf.stats.c_slices_verts_real += rn.meshlist->numSliceVertsReal;
-
-	rf.stats.c_slices_elems += rn.meshlist->numSliceElems;
-	rf.stats.c_slices_elems_real += rn.meshlist->numSliceElemsReal;
-
-	if( r_showtris->integer )
-		R_DrawOutlinedSurfaces( rn.meshlist );
-
-	R_TransformForWorld();
-
-	R_EndGL();
-}
-
-
-//=======================================================================
-
-
-
-int R_SetSwapInterval( int swapInterval, int oldSwapInterval )
-{
-	if( glConfig.stereoEnabled )
-		return oldSwapInterval;
-
-	clamp_low( swapInterval, r_swapinterval_min->integer );
-	if( swapInterval != oldSwapInterval ) {
-		GLimp_SetSwapInterval( swapInterval );
-    }
-    return swapInterval;
-}
-
-
-/*
-* R_SetWallFloorColors
-*/
 void R_SetWallFloorColors( const vec3_t wallColor, const vec3_t floorColor )
 {
 	int i;
@@ -1200,18 +714,12 @@ void R_SetWallFloorColors( const vec3_t wallColor, const vec3_t floorColor )
 	}
 }
 
-/*
-* R_SetDrawBuffer
-*/
 void R_SetDrawBuffer( const char *drawbuffer )
 {
 	Q_strncpyz( rf.drawBuffer, drawbuffer, sizeof( rf.drawBuffer ) );
 	rf.newDrawBuffer = true;
 }
 
-/*
-* R_IsRenderingToScreen
-*/
 bool R_IsRenderingToScreen( void )
 {
 	bool surfaceRenderable = true;
@@ -1325,156 +833,6 @@ const msurface_t *R_GetDebugSurface( void )
 	return debugSurface;
 }
 
-/*
-* R_RenderDebugSurface
-*/
-void R_RenderDebugSurface( const refdef_t *fd )
-{
-	rtrace_t tr;
-	vec3_t forward;
-	vec3_t start, end;
-	msurface_t *debugSurf = NULL;
-	
-	if( fd->rdflags & RDF_NOWORLDMODEL )
-		return;
-	
-	if( r_speeds->integer == 4 || r_speeds->integer == 5 )
-	{
-		msurface_t *surf = NULL;
-
-		VectorCopy( &fd->viewaxis[AXIS_FORWARD], forward );
-		VectorCopy( fd->vieworg, start );
-		VectorMA( start, 4096, forward, end );
-		
-		surf = R_TraceLine( &tr, start, end, 0 );
-		if( surf && surf->drawSurf && !r_showtris->integer )
-		{
-			R_ClearDrawList( rn.meshlist );
-			
-			R_ClearDrawList( rn.portalmasklist );
-			
-			if( R_AddSurfToDrawList( rn.meshlist, R_NUM2ENT(tr.ent), NULL, surf->shader, 0, 0, NULL, surf->drawSurf ) ) {
-				if( rn.refdef.rdflags & RDF_FLIPPED )
-					RB_FlipFrontFace();
-				
-				if( r_speeds->integer == 5 ) {
-					// VBO debug mode
-					R_AddVBOSlice( surf->drawSurf - rsh.worldBrushModel->drawSurfaces,
-								  surf->drawSurf->numVerts, surf->drawSurf->numElems,
-								  0, 0 );
-				}
-				else {
-					// classic mode (showtris for individual surface)
-					R_AddVBOSlice( surf->drawSurf - rsh.worldBrushModel->drawSurfaces,
-								  surf->mesh->numVerts, surf->mesh->numElems,
-								  surf->firstDrawSurfVert, surf->firstDrawSurfElem );
-				}
-				
-				R_DrawOutlinedSurfaces( rn.meshlist );
-				
-				if( rn.refdef.rdflags & RDF_FLIPPED )
-					RB_FlipFrontFace();
-				
-				debugSurf = surf;
-			}
-		}
-	}
-	
-	ri.Mutex_Lock( rf.debugSurfaceLock );
-	rf.debugSurface = debugSurf;
-	ri.Mutex_Unlock( rf.debugSurfaceLock );
-}
-
-/*
-* R_BeginFrame
-*/
-void R_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
-{
-    unsigned int time = ri.Sys_Milliseconds();
-
-	GLimp_BeginFrame();
-
-	RB_BeginFrame();
-
-#ifndef GL_ES_VERSION_2_0
-	if( cameraSeparation && ( !glConfig.stereoEnabled || !R_IsRenderingToScreen() ) )
-		cameraSeparation = 0;
-
-	if( rf.cameraSeparation != cameraSeparation )
-	{
-		rf.cameraSeparation = cameraSeparation;
-		if( cameraSeparation < 0 )
-			qglDrawBuffer( GL_BACK_LEFT );
-		else if( cameraSeparation > 0 )
-			qglDrawBuffer( GL_BACK_RIGHT );
-		else
-			qglDrawBuffer( GL_BACK );
-	}
-#endif
-
-	// draw buffer stuff
-	if( rf.newDrawBuffer )
-	{
-		rf.newDrawBuffer = false;
-
-#ifndef GL_ES_VERSION_2_0
-		if( cameraSeparation == 0 || !glConfig.stereoEnabled )
-		{
-			if( Q_stricmp( rf.drawBuffer, "GL_FRONT" ) == 0 )
-				qglDrawBuffer( GL_FRONT );
-			else
-				qglDrawBuffer( GL_BACK );
-		}
-#endif
-	}
-
-	if( forceClear )
-	{
-		RB_Clear( GL_COLOR_BUFFER_BIT, 0, 0, 0, 1 );
-	}
-
-	// set swap interval (vertical synchronization)
-	rf.swapInterval = R_SetSwapInterval( ( r_swapinterval->integer || forceVsync ) ? 1 : 0, rf.swapInterval );
-
-	memset( &rf.stats, 0, sizeof( rf.stats ) );
-
-    // update fps meter
-	rf.fps.count++;
-	rf.fps.time = time;
-	if( rf.fps.time - rf.fps.oldTime >= 250 ) {
-		rf.fps.average = time - rf.fps.oldTime;
-		rf.fps.average = 1000.0f * (rf.fps.count - rf.fps.oldCount) / (float)rf.fps.average + 0.5f;
-		rf.fps.oldTime = time;
-		rf.fps.oldCount = rf.fps.count;
-	}
-
-	R_Set2DMode( true );
-}
-
-/*
-* R_EndFrame
-*/
-void R_EndFrame( void )
-{
-	// render previously batched 2D geometry, if any
-	RB_FlushDynamicMeshes();
-
-	R_PolyBlend();
-	
-	R_ApplyBrightness();
-
-	// reset the 2D state so that the mode will be 
-	// properly set back again in R_BeginFrame
-	R_Set2DMode( false );
-
-	RB_EndFrame();
-
-	GLimp_EndFrame();
-
-	assert( qglGetError() == GL_NO_ERROR );
-}
-
-//===================================================================
 
 /*
 * R_CopyString

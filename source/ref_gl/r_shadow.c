@@ -163,10 +163,7 @@ add:
 	return true;
 }
 
-/*
-* R_ComputeShadowmapBounds
-*/
-static void R_ComputeShadowmapBounds( void )
+void R_BuildShadowGroups( void )
 {
 	unsigned int i;
 	vec3_t lightDir;
@@ -205,14 +202,6 @@ static void R_ComputeShadowmapBounds( void )
 		VectorSubtract( group->visMaxs, group->visOrigin, maxs );
 		group->visRadius = RadiusFromBounds( mins, maxs );
 	}
-}
-
-/*
-* R_BuildShadowGroups
-*/
-void R_BuildShadowGroups( void )
-{
-	R_ComputeShadowmapBounds();
 }
 
 /*

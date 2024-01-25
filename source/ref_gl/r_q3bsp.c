@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // r_q3bsp.c -- Q3 BSP model loading
 
 #include "r_local.h"
+#include "r_vertex_util.h"
 
 typedef struct
 {

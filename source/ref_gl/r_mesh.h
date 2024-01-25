@@ -26,6 +26,9 @@ struct portalSurface_s;
 
 #define MIN_RENDER_MESHES			2048
 
+#include "r_math.h"
+#include "r_surface.h"
+
 typedef struct mesh_s
 {
 	unsigned short		numVerts;

@@ -38,14 +38,9 @@ typedef struct { char *name; void **funcPointer; } dllfunc_t;
 typedef struct mempool_s mempool_t;
 typedef struct cinematics_s cinematics_t;
 
-typedef unsigned short elem_t;
-
-typedef vec_t instancePoint_t[8]; // quaternion for rotation + xyz pos + uniform scale
-
 #define NUM_CUSTOMCOLORS		16
 
 #define NUM_LOADER_THREADS		4 // optimal value found by testing, when there are too many, CPU usage may be 100%
-
 
 enum
 {
@@ -84,53 +79,7 @@ typedef struct superLightStyle_s
 #include "r_model.h"
 #include "r_trace.h"
 #include "r_program.h"
-
-#ifdef CGAMEGETLIGHTORIGIN
-#define SHADOW_MAPPING			2
-#else
-#define SHADOW_MAPPING			1
-#endif
-
-#define SUBDIVISIONS_MIN		3
-#define SUBDIVISIONS_MAX		16
-#define SUBDIVISIONS_DEFAULT	5
-
-#define MAX_PORTAL_SURFACES		32
-#define MAX_PORTAL_TEXTURES		64
-
-#define BACKFACE_EPSILON		4
-
-#define	ON_EPSILON				0.1         // point on plane side epsilon
-
-#define Z_NEAR					4.0f
-#define Z_BIAS					64.0f
-
-#define	SIDE_FRONT				0
-#define	SIDE_BACK				1
-#define	SIDE_ON					2
-
-#define RF_BIT(x)				(1ULL << (x))
-
-#define RF_NONE					0x0
-#define RF_MIRRORVIEW			RF_BIT(0)
-#define RF_PORTALVIEW			RF_BIT(1)
-#define RF_ENVVIEW				RF_BIT(2)
-#define RF_SHADOWMAPVIEW		RF_BIT(3)
-#define RF_FLIPFRONTFACE		RF_BIT(4)
-#define RF_DRAWFLAT				RF_BIT(5)
-#define RF_CLIPPLANE			RF_BIT(6)
-#define RF_NOVIS				RF_BIT(7)
-#define RF_LIGHTMAP				RF_BIT(8)
-#define RF_SOFT_PARTICLES		RF_BIT(9)
-#define RF_PORTAL_CAPTURE		RF_BIT(10)
-
-#define RF_CUBEMAPVIEW			( RF_ENVVIEW )
-#define RF_NONVIEWERREF			( RF_PORTALVIEW|RF_MIRRORVIEW|RF_ENVVIEW|RF_SHADOWMAPVIEW )
-
-#define MAX_REF_SCENES			32 // max scenes rendered per frame
-#define MAX_REF_ENTITIES		( MAX_ENTITIES + 48 ) // must not exceed 2048 because of sort key packing
-
-//===================================================================
+#include "r_config.h"
 
 typedef struct portalSurface_s
 {
@@ -576,15 +525,11 @@ void		R_FreeFile_( void *buffer, const char *filename, int fileline );
 #define		R_FreeFile(buffer) R_FreeFile_(buffer,__FILE__,__LINE__)
 
 bool		R_IsRenderingToScreen( void );
-void		R_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync );
-void		R_EndFrame( void );
-int 		R_SetSwapInterval( int swapInterval, int oldSwapInterval );
 void		R_SetWallFloorColors( const vec3_t wallColor, const vec3_t floorColor );
 void		R_SetDrawBuffer( const char *drawbuffer );
-void		R_RenderView( const refdef_t *fd );
 const msurface_t *R_GetDebugSurface( void );
 const char *R_WriteSpeedsMessage( char *out, size_t size );
-void		R_RenderDebugSurface( const refdef_t *fd );
+;
 
 mfog_t		*R_FogForBounds( const vec3_t mins, const vec3_t maxs );
 mfog_t		*R_FogForSphere( const vec3_t centre, const float radius );
@@ -592,12 +537,8 @@ bool	R_CompletelyFogged( const mfog_t *fog, vec3_t origin, float radius );
 int			R_LODForSphere( const vec3_t origin, float radius );
 float		R_DefaultFarClip( void );
 
-void		R_BatchSpriteSurf( const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceType_t *drawSurf );
-
 struct mesh_vbo_s *R_InitNullModelVBO( void );
 void	R_DrawNullSurf( const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceType_t *drawSurf );
-
-struct mesh_vbo_s *R_InitPostProcessingVBO( void );
 
 void		R_TransformForWorld( void );
 void		R_TransformForEntity( const entity_t *e );
@@ -643,11 +584,6 @@ void R_SortDrawList( drawList_t *list );
 void R_DrawSurfaces( drawList_t *list );
 void R_DrawOutlinedSurfaces( drawList_t *list );
 
-void R_CopyOffsetElements( const elem_t *inelems, int numElems, int vertsOffset, elem_t *outelems );
-void R_CopyOffsetTriangles( const elem_t *inelems, int numElems, int vertsOffset, elem_t *outelems );
-void R_BuildTrifanElements( int vertsOffset, int numVerts, elem_t *elems );
-void R_BuildTangentVectors( int numVertexes, vec4_t *xyzArray, vec4_t *normalsArray, vec2_t *stArray,
-	int numTris, elem_t *elems, vec4_t *sVectorsArray );
 
 //
 // r_portals.c
@@ -736,67 +672,10 @@ void		R_ShutdownSkeletalCache( void );
 // r_vbo.c
 //
 
-typedef enum
-{
-	VBO_TAG_NONE,
-	VBO_TAG_WORLD,
-	VBO_TAG_MODEL,
-	VBO_TAG_STREAM
-} vbo_tag_t;
-
-typedef struct mesh_vbo_s
-{
-	union {
-		struct {
-			unsigned int 		vertexId;
-			unsigned int		elemId;
-		} gl;
-		struct {
-			 uint8_t numAllocations;
-			 NriMemory** memory; 
-		   NriBuffer* vertexBuffer;
-		   NriBuffer* indexBuffer;
-			 NriBuffer* instanceBuffer;
-		} nri;
-	};
-
-	unsigned int		index;
-	int					registrationSequence;
-	vbo_tag_t			tag;
-
-	void 				*owner;
-	unsigned int 		visframe;
-
-	unsigned int 		numVerts;
-	unsigned int 		numElems;
-
-	size_t				vertexSize;
-	size_t				arrayBufferSize;
-	size_t				elemBufferSize;
-
-	vattribmask_t		vertexAttribs;
-	vattribmask_t		halfFloatAttribs;
-
-	size_t 				normalsOffset;
-	size_t 				sVectorsOffset;
-	size_t 				stOffset;
-	size_t 				lmstOffset[( MAX_LIGHTMAPS + 1 ) / 2];
-	size_t 				lmstSize[( MAX_LIGHTMAPS + 1 ) / 2];
-	size_t				lmlayersOffset[( MAX_LIGHTMAPS + 3 ) / 4];
-	size_t 				colorsOffset[MAX_LIGHTMAPS];
-	size_t				bonesIndicesOffset;
-	size_t				bonesWeightsOffset;
-	size_t				spritePointsOffset; // autosprite or autosprite2 centre + radius
-	size_t				instancesOffset;
-} mesh_vbo_t;
+#include "r_vbo.h"
 
 void R_InitVBO();
 
-DECLARE_STUB_IMPL(mesh_vbo_t*, R_CreateMeshVBO,  void *owner, int numVerts, int numElems, int numInstances, vattribmask_t vattribs, vbo_tag_t tag, vattribmask_t halfFloatVattribs );
-DECLARE_STUB_IMPL(void, R_ReleaseMeshVBO, mesh_vbo_t *vbo);
-DECLARE_STUB_IMPL(void, R_UploadVBOVertexRawData, mesh_vbo_t *vbo, int vertsOffset, int numVerts, const void *data );
-DECLARE_STUB_IMPL(void, R_UploadVBOElemData, mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, const mesh_t *mesh );
-DECLARE_STUB_IMPL(vattribmask_t, R_UploadVBOInstancesData, mesh_vbo_t *vbo, int instOffset, int numInstances, instancePoint_t *instances );
 void		R_TouchMeshVBO( mesh_vbo_t *vbo );
 mesh_vbo_t *R_GetVBOByIndex( int index );
 int			R_GetNumberOfActiveVBOs( void );

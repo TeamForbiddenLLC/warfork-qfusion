@@ -546,9 +546,28 @@ static void R_InitVolatileAssets( void )
 	else {
 		R_TouchMeshVBO( rsh.nullVBO );
 	}
-
 	if( !rsh.postProcessingVBO ) {
-		rsh.postProcessingVBO = R_InitPostProcessingVBO();
+		const vattribmask_t vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT;
+		mesh_vbo_t *vbo = R_CreateMeshVBO( &rf, 4, 6, 0, vattribs, VBO_TAG_NONE, vattribs );
+		assert(vbo);
+		if( vbo ) {
+			vec4_t xyz[4] = { {0,0,0,1}, {1,0,0,1}, {1,1,0,1}, {0,1,0,1} };
+			vec2_t texcoords[4] = { {0,1}, {1,1}, {1,0}, {0,0} };
+			elem_t elems[6] = { 0, 1, 2, 0, 2, 3 };
+			mesh_t mesh = { 
+				.numVerts = 4, 
+				.xyzArray = xyz, 
+				.stArray = texcoords, 
+				.numElems = 6, 
+				.elems = elems
+			};
+
+			R_UploadVBOVertexData( vbo, 0, vattribs, &mesh );
+			R_UploadVBOElemData( vbo, 0, 0, &mesh );
+
+			rsh.postProcessingVBO = vbo;
+		}
+
 	}
 	else {
 		R_TouchMeshVBO( rsh.postProcessingVBO );

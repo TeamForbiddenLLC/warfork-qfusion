@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 #include "iqm.h"
+#include "r_vertex_util.h"
 
 // typedefs
 typedef struct iqmheader iqmheader_t;
