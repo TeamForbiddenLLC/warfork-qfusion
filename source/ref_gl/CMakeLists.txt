@@ -14,10 +14,13 @@ file(GLOB REF_GL_HEADERS
 	"../qcommon/iqm.h"
 	"../qcommon/qfiles.h"
 	"../qalgo/*.h"
+	"${REF_BASE_DIR}/*.h"
 	)
 
 file(GLOB REF_GL_COMMON_SOURCES
 	"*.c"
+	"../ref_base/*.c"
+	"../ref_base/*.cpp"
 	"*.cpp"
 	"../gameshared/q_*.c"
 	"../qalgo/*.c"
@@ -58,8 +61,8 @@ else()
 		set(REF_GL_PLATFORM_LIBRARIES "X11" "Xext" "Xinerama" "Xrandr" "Xxf86vm" "m")
 	endif()
 endif()
-
 add_library(ref_gl SHARED ${REF_GL_HEADERS} ${REF_GL_COMMON_SOURCES} ${REF_GL_PLATFORM_SOURCES})
-target_include_directories(ref_gl PRIVATE ${STB_INCLUDE_DIR})
+target_compile_definitions(ref_gl PUBLIC RENDERER_OPENGL=1)
+target_include_directories(ref_gl PRIVATE ${STB_INCLUDE_DIR} "../ref_base")
 target_link_libraries(ref_gl PRIVATE ${REF_GL_PLATFORM_LIBRARIES})
 qf_set_output_dir(ref_gl libs)

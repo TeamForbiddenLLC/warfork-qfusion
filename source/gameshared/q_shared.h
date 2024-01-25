@@ -313,6 +313,10 @@ extern const size_t NUM_IMAGE_EXTENSIONS;
 // memory utilities
 //============================================
 
+#define KB_TO_BYTE (1024)
+#define MB_TO_BYTE (1024 * KB_TO_BYTE);
+#define GB_TO_BYTE (1024 * MB_TO_BYTE);
+
 typedef struct block_allocator_s block_allocator_t;
 typedef struct linear_allocator_s linear_allocator_t;
 

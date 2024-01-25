@@ -31,30 +31,6 @@ refinst_t rn;
 
 r_scene_t rsc;
 
-/*
-* R_TransformBounds
-*/
-void R_TransformBounds( const vec3_t origin, const mat3_t axis, vec3_t mins, vec3_t maxs, vec3_t bbox[8] )
-{
-	int i;
-	vec3_t tmp;
-	mat3_t axis_;
-
-	Matrix3_Transpose( axis, axis_ );	// switch row-column order
-
-	// rotate local bounding box and compute the full bounding box
-	for( i = 0; i < 8; i++ )
-	{
-		vec_t *corner = bbox[i];
-
-		corner[0] = ( ( i & 1 ) ? mins[0] : maxs[0] );
-		corner[1] = ( ( i & 2 ) ? mins[1] : maxs[1] );
-		corner[2] = ( ( i & 4 ) ? mins[2] : maxs[2] );
-
-		Matrix3_TransformVector( axis_, corner, tmp );
-		VectorAdd( tmp, origin, corner );
-	}
-}
 
 /*
 * R_TransformForWorld
@@ -1720,45 +1696,6 @@ void R_EndFrame( void )
 	assert( qglGetError() == GL_NO_ERROR );
 }
 
-//===================================================================
-
-/*
-* R_NormToLatLong
-*/
-void R_NormToLatLong( const vec_t *normal, uint8_t latlong[2] )
-{
-	float flatlong[2];
-
-	NormToLatLong( normal, flatlong );
-	latlong[0] = (int)( flatlong[0] * 255.0 / M_TWOPI ) & 255;
-	latlong[1] = (int)( flatlong[1] * 255.0 / M_TWOPI ) & 255;
-}
-
-/*
-* R_LatLongToNorm4
-*/
-void R_LatLongToNorm4( const uint8_t latlong[2], vec4_t out )
-{
-	static float * const sinTable = rsh.sinTableByte;
-	float sin_a, sin_b, cos_a, cos_b;
-
-	cos_a = sinTable[( latlong[0] + 64 ) & 255];
-	sin_a = sinTable[latlong[0]];
-	cos_b = sinTable[( latlong[1] + 64 ) & 255];
-	sin_b = sinTable[latlong[1]];
-
-	Vector4Set( out, cos_b * sin_a, sin_b * sin_a, cos_a, 0 );
-}
-
-/*
-* R_LatLongToNorm
-*/
-void R_LatLongToNorm( const uint8_t latlong[2], vec3_t out )
-{
-	vec4_t t;
-	R_LatLongToNorm4( latlong, t );
-	VectorCopy( t, out );
-}
 
 /*
 * R_CopyString
