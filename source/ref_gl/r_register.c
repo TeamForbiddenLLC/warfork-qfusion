@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // r_register.c
 #include "r_local.h"
 #include "../qalgo/hash.h"
+#include "r_renderer_stub.h"
 
 glconfig_t glConfig;
 
@@ -1235,14 +1236,10 @@ rserr_t R_Init( const char *applicationName, const char *screenshotPrefix, int s
 	void *hinstance, void *wndproc, void *parenthWnd, 
 	bool verbose )
 {
-	const qgl_driverinfo_t *driver;
-	const char *dllname = NULL;
 	qgl_initerr_t initerr;
 
 	r_mempool = R_AllocPool( NULL, "Rendering Frontend" );
-
 	r_verbose = verbose;
-
 	r_postinit = true;
 
 	if( !applicationName ) applicationName = "Qfusion";
@@ -1253,9 +1250,11 @@ rserr_t R_Init( const char *applicationName, const char *screenshotPrefix, int s
 	memset( &glConfig, 0, sizeof(glConfig) );
 
 	// initialize our QGL dynamic bindings
-	driver = QGL_GetDriverInfo();
-	if( driver )
+	const char *dllname = NULL;
+	const qgl_driverinfo_t *driver = QGL_GetDriverInfo();
+	if( driver ) {
 		dllname = driver->dllname;
+	}
 init_qgl:
 	initerr = QGL_Init( gl_driver ? gl_driver->string : dllname );
 	if( initerr != qgl_initerr_ok )
@@ -1271,6 +1270,8 @@ init_qgl:
 
 		return rserr_invalid_driver;
 	}
+
+	initRendererGL();
 
 	// initialize OS-specific parts of OpenGL
 	if( !GLimp_Init( applicationName, hinstance, wndproc, parenthWnd, iconResource, iconXPM ) )
@@ -1292,7 +1293,6 @@ init_qgl:
 */
 static rserr_t R_PostInit( void )
 {
-	int i;
 	GLenum glerr;
 
 	glConfig.hwGamma = GLimp_GetGammaRamp( GAMMARAMP_STRIDE, &glConfig.gammaRampSize, glConfig.originalGammaRamp );
@@ -1328,11 +1328,8 @@ static rserr_t R_PostInit( void )
 
 	rsh.worldModelSequence = 1;
 
-	for( i = 0; i < 256; i++ )
-		rsh.sinTableByte[i] = sin( (float)i / 255.0 * M_TWOPI );
-
-    rf.swapInterval = -1;
-    rf.speedsMsgLock = ri.Mutex_Create();
+	rf.swapInterval = -1;
+	rf.speedsMsgLock = ri.Mutex_Create();
 	rf.debugSurfaceLock = ri.Mutex_Create();
 
 	R_InitDrawLists();

@@ -210,8 +210,6 @@ typedef struct
 	// bumped each time R_RegisterWorldModel is called
 	volatile int 	worldModelSequence;
 
-	float			sinTableByte[256];
-
 	model_t			*worldModel;
 	mbrushmodel_t	*worldBrushModel;
 
@@ -438,13 +436,6 @@ extern cvar_t *gl_cull;
 extern cvar_t *vid_displayfrequency;
 extern cvar_t *vid_multiscreen_head;
 
-//====================================================================
-
-void R_NormToLatLong( const vec_t *normal, uint8_t latlong[2] );
-void R_LatLongToNorm( const uint8_t latlong[2], vec3_t out );
-void R_LatLongToNorm4( const uint8_t latlong[2], vec4_t out );
-
-//====================================================================
 
 //
 // r_alias.c
