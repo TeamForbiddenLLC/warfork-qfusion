@@ -1,0 +1,6 @@
+{
+  "name": "warfork",
+  "dependencies": [
+    "glslang" 
+  ]
+}
