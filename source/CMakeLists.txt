@@ -61,7 +61,10 @@ set(NRI_DIR ${CMAKE_HOME_DIRECTORY}/NRI)
 set(NRI_INCLUDE_DIR ${CMAKE_HOME_DIRECTORY}/NRI/Include)
 set(NRI_STATIC_LIBRARY ON)
 set(IS_SUBMODULE ON)
-add_subdirectory(NRI)
+
+if (NOT GAME_MODULES_ONLY AND USE_GRAPHICS_NRI)
+    add_subdirectory(NRI)
+endif()
 
 # Windows specific settings
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
