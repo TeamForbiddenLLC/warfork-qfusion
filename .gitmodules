@@ -1,6 +1,6 @@
 [submodule "source/NRI"]
 	path = source/NRI
-	url = git@github.com:NVIDIAGameWorks/NRI.git
+	url = https://github.com/TeamForbiddenLLC/NRI.git
 [submodule "source/vcpkg"]
 	path = source/vcpkg
-	url = git@github.com:microsoft/vcpkg.git
+	url = https://github.com/microsoft/vcpkg.git
