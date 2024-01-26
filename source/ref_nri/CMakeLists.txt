@@ -4,7 +4,7 @@ if (USE_SDL2)
 	include_directories(${SDL2_INCLUDE_DIR})
 endif()
 
-file(GLOB REF_GL_HEADERS
+file(GLOB REF_NRI_HEADERS
 	"*.h"
 	"../gameshared/q_*.h"
 	"../gameshared/anorms.h"
@@ -17,7 +17,7 @@ file(GLOB REF_GL_HEADERS
 	"${REF_BASE_DIR}/*.h"
 	)
 
-file(GLOB REF_GL_COMMON_SOURCES
+file(GLOB REF_NRI_COMMON_SOURCES
 	"*.c"
 	"../ref_base/*.c"
 	"../ref_base/*.cpp"
@@ -34,36 +34,41 @@ file(GLOB STB_HEADERS
 )
 
 if (USE_SDL2)
-	file(GLOB REF_GL_PLATFORM_SOURCES
+	file(GLOB REF_NRI_PLATFORM_SOURCES
 		"../sdl/sdl_glw.c"
 		"../sdl/sdl_glw_icon.c"
 		"../sdl/sdl_qgl.c"
 		)
 
-	set(REF_GL_PLATFORM_LIBRARIES ${SDL2_LIBRARY})
+	set(REF_NRI_PLATFORM_LIBRARIES ${SDL2_LIBRARY})
 else()
 	if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-		file(GLOB REF_GL_PLATFORM_SOURCES
+		file(GLOB REF_NRI_PLATFORM_SOURCES
 			"../win32/win_glw.c"
 			"../win32/win_qgl.c"
 			)
 
-		set(REF_GL_PLATFORM_LIBRARIES "")
+		set(REF_NRI_PLATFORM_LIBRARIES "")
 	endif()
 
 	if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-		file(GLOB REF_GL_PLATFORM_SOURCES
+		file(GLOB REF_NRI_PLATFORM_SOURCES
 			"../unix/unix_glw.c"
 			"../unix/unix_qgl.c"
 			"../unix/unix_xpm.c"
 			)
 
-		set(REF_GL_PLATFORM_LIBRARIES "X11" "Xext" "Xinerama" "Xrandr" "Xxf86vm" "m")
+		set(REF_NRI_PLATFORM_LIBRARIES "X11" "Xext" "Xinerama" "Xrandr" "Xxf86vm" "m")
 	endif()
 endif()
-add_library(ref_nri SHARED ${REF_GL_HEADERS} ${REF_GL_COMMON_SOURCES} ${REF_GL_PLATFORM_SOURCES})
-target_compile_definitions(ref_nri PUBLIC RENDERER_NRI=1)
+
+find_package(glslang CONFIG REQUIRED)
+
+add_library(ref_nri SHARED ${REF_NRI_HEADERS} ${REF_NRI_COMMON_SOURCES} ${REF_NRI_PLATFORM_SOURCES})
 target_include_directories(ref_nri PRIVATE ${STB_INCLUDE_DIR} "../ref_base")
-target_link_libraries(ref_nri PRIVATE ${REF_GL_PLATFORM_LIBRARIES})
+target_link_libraries(ref_nri PRIVATE NRI)
+target_link_libraries(ref_nri PRIVATE glslang::OSDependent glslang::glslang glslang::MachineIndependent glslang::GenericCodeGen glslang::glslang-default-resource-limits glslang::SPVRemapper glslang::SPIRV )
+target_link_libraries(ref_nri PRIVATE ${REF_NRI_PLATFORM_LIBRARIES})
+target_include_directories(ref_nri PRIVATE ${NRI_INCLUDE_DIR})
 qf_set_output_dir(ref_nri libs)
 

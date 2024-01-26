@@ -1,6 +1,7 @@
 project(qfusion)
 
 cmake_minimum_required(VERSION 2.8.12)
+include("${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake")
 
 message(STATUS "CMAKE_SYSTEM: " ${CMAKE_SYSTEM})
 message(STATUS "CMAKE_SYSTEM_NAME: " ${CMAKE_SYSTEM_NAME})
@@ -32,6 +33,7 @@ option(USE_SDL2 "Build using SDL2" OFF)
 option(BUILD_UNIT_TEST "Build with unit test" OFF)
 option(GAME_MODULES_ONLY "Only build game modules" OFF)
 option(BUILD_STEAMLIB "Include the steamlib module (requires Steamworks SDK)" OFF)
+option(USE_GRAPHICS_NRI "Build using Nvidia NRI" OFF)
 
 # We compile third-party libs from source
 
@@ -60,6 +62,12 @@ set(DISCORD_INCLUDE_DIR ${DISCORD_DIR})
 
 set(OPENAL_DIR ${CMAKE_HOME_DIRECTORY}/../libsrcs/src/openal-soft)
 set(OPENAL_INCLUDE_DIR ${OPENAL_DIR}/include/AL)
+
+set(NRI_DIR ${CMAKE_HOME_DIRECTORY}/NRI)
+set(NRI_INCLUDE_DIR ${CMAKE_HOME_DIRECTORY}/NRI/Include)
+set(NRI_STATIC_LIBRARY ON)
+set(IS_SUBMODULE ON)
+add_subdirectory(NRI)
 
 # Windows specific settings
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
@@ -302,8 +310,10 @@ add_subdirectory(steamshim)
 if (NOT GAME_MODULES_ONLY)
     add_subdirectory(cin)
     add_subdirectory(ftlib)
+    if (USE_GRAPHICS_NRI)
+    	add_subdirectory(ref_nri)
+    endif() 
     add_subdirectory(ref_gl)
-    add_subdirectory(ref_nri)
     add_subdirectory(snd_openal)
     add_subdirectory(ui)
     add_subdirectory(server)
