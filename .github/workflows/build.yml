@@ -19,6 +19,8 @@ jobs:
 
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Add safe directory - https://github.com/actions/checkout/issues/1169
         run: git config --system --add safe.directory /__w/warfork-qfusion/warfork-qfusion
@@ -77,6 +79,8 @@ jobs:
 
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Add safe directory - https://github.com/actions/checkout/issues/1169
         run: git config --system --add safe.directory /__w/warfork-qfusion/warfork-qfusion
@@ -135,6 +139,8 @@ jobs:
 
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Add safe directory - https://github.com/actions/checkout/issues/1169
         run: git config --system --add safe.directory /__w/warfork-qfusion/warfork-qfusion
@@ -184,6 +190,8 @@ jobs:
 
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Add safe directory - https://github.com/actions/checkout/issues/1169
         run: git config --system --add safe.directory /__w/warfork-qfusion/warfork-qfusion
@@ -223,6 +231,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -261,6 +271,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -299,6 +311,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Download steamworks sdk
         run: |
@@ -331,6 +345,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Download steamworks sdk
         run: |
@@ -363,6 +379,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Download steamworks sdk
         run: |
@@ -395,6 +413,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Download steamworks sdk
         run: |
