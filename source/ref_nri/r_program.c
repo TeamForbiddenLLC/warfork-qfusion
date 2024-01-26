@@ -23,6 +23,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_local.h"
 #include "../qalgo/q_trie.h"
 
+#include "glslang/Include/glslang_c_interface.h"
+#include "glslang/Public/resource_limits_c.h"
+#include <glslang/Include/glslang_c_shader_types.h>
+
+#include "../gameshared/q_sds.h"
+#include "stb_ds.h"
+
 #define MAX_GLSL_PROGRAMS			1024
 #define GLSL_PROGRAMS_HASH_SIZE		256
 
@@ -1958,12 +1965,12 @@ done:
 /*
 * RP_RegisterProgram
 */
-int RP_RegisterProgram( int type, const char *name, const char *deformsKey, 
-	const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
-{
-	return RP_RegisterProgramBinary( type, name, deformsKey, deforms, numDeforms, 
-		features, 0, 0, NULL );
-}
+//int RP_RegisterProgram( int type, const char *name, const char *deformsKey, 
+//	const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
+//{
+//	return RP_RegisterProgramBinary( type, name, deformsKey, deforms, numDeforms, 
+//		features, 0, 0, NULL );
+//}
 
 /*
 * RP_GetProgramObject
@@ -2477,6 +2484,221 @@ void RP_UpdateDrawFlatUniforms( int elem, const vec3_t wallColor, const vec3_t f
 		qglUniform3fARB( program->loc.WallColor, wallColor[0], wallColor[1], wallColor[2] );
 	if( program->loc.FloorColor >= 0 )
 		qglUniform3fARB( program->loc.FloorColor, floorColor[0], floorColor[1], floorColor[2] );
+}
+
+int RP_RegisterProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
+{
+	if( type <= GLSL_PROGRAM_TYPE_NONE || type >= GLSL_PROGRAM_TYPE_MAXTYPE )
+		return 0;
+
+	assert( !deforms || deformsKey );
+
+	if( !deforms )
+		deformsKey = "";
+
+	const int hash = R_Features2HashKey( features );
+	for( glsl_program_t *program = r_glslprograms_hash[type][hash]; program; program = program->hash_next ) {
+		if( ( program->features == features ) && !strcmp( program->deformsKey, deformsKey ) ) {
+			return ( ( program - r_glslprograms ) + 1 );
+		}
+	}
+
+	if( r_numglslprograms == MAX_GLSL_PROGRAMS ) {
+		Com_Printf( S_COLOR_YELLOW "RP_RegisterProgram: GLSL programs limit exceeded\n" );
+		return 0;
+	}
+
+	glsl_program_t* program; 
+	if( !name ) {
+		glsl_program_t *parent = NULL;
+		for( size_t i = 0; i < r_numglslprograms; i++ ) {
+			program = r_glslprograms + i;
+
+			if( ( program->type == type ) && !program->features ) {
+				parent = program;
+				break;
+			}
+		}
+
+		if( parent ) {
+			if( !name )
+				name = parent->name;
+		} else {
+			Com_Printf( S_COLOR_YELLOW "RP_RegisterProgram: failed to find parent for program type %i\n", type );
+			return 0;
+		}
+	}
+	program = r_glslprograms + r_numglslprograms++;
+	sds featuresStr = sdsempty();
+	sds fullName  = sdsnew(name); 
+	//R_ProgramFeatures2DefinesAppend( &featuresStr, &fullName, glsl_programtypes_features[type], features );
+
+	ri.Com_DPrintf( "Registering GLSL program %s\n", fullName );
+
+	typedef enum {
+		R_STAGE_VERTEX,
+		R_STAGE_FRAGMENT
+	} shader_stage_t ;
+
+	bool error = false;
+	sds filePath = sdsempty();
+  struct {
+  	shader_stage_t stage;
+  	glslang_stage_t slangeStage;
+  	sds source;
+  } stages[] = {
+  	{ .stage = R_STAGE_VERTEX, .slangeStage = GLSLANG_STAGE_VERTEX, .source = sdsempty() },
+  	{ .stage = R_STAGE_FRAGMENT, .slangeStage = GLSLANG_STAGE_FRAGMENT, .source = sdsempty() },
+  };
+  // sds shaderSource[NumberShaders] = {sdsempty(), sdsempty()};
+ // for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
+ // 	switch( stages[i].stage ) {
+ // 		case R_STAGE_VERTEX:
+ // 			stages[i].source = sdscatfmt( stages[i].source, "#define VERTEX_SHADER\n" );
+ // 			break;
+ // 		case R_STAGE_FRAGMENT:
+ // 			stages[i].source = sdscatfmt( stages[i].source, "#define FRAGMENT_SHADER\n" );
+ // 			break;
+ // 		default:
+ // 			assert( 0 );
+ // 			break;
+ // 	}
+ // 	stages[i].source = sdscatfmt( stages[i].source, "#define QF_GLSL_VERSION 130\n" );
+ // 	stages[i].source = sdscatfmt( stages[i].source, "#define MAX_UNIFORM_BONES %i\n", r_maxglslbones->integer );
+ // 	stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_MACROS_GLSL130 );
+ // 	stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_CONSTANTS );
+ // 	switch( stages[i].stage ) {
+ // 		case R_STAGE_VERTEX:
+ // 			stages[i].source = R_AppendGLSLDeformv( stages[i].source, deforms, numDeforms );
+ // 			stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_GLSL_WAVEFUNCS );
+ // 			if( features & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
+ // 				stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_QUAT_TRANSFORM );
+ // 			}
+ // 			if( features & ( GLSL_SHADER_COMMON_INSTANCED_TRANSFORMS | GLSL_SHADER_COMMON_INSTANCED_ATTRIB_TRANSFORMS ) ) {
+ // 				stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_INSTANCED_TRANSFORMS );
+ // 			}
+ // 			stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_TRANSFORM_VERTS );
+ // 			break;
+ // 		case R_STAGE_FRAGMENT:
+ // 			break;
+ // 		default:
+ // 			assert( 0 );
+ // 			break;
+ // 	}
+ // 	stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_GLSL_MATH );
+ // 	stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_MACROS );
+ // 	R_ProgramFeatures2DefinesAppend( &stages[i].source, &fullName, glsl_programtypes_features[type], features );
+
+ // 	sdsclear( filePath );
+ // 	switch( stages[i].stage ) {
+ // 		case R_STAGE_VERTEX:
+ // 			filePath = sdscatfmt( filePath, "glsl/%s.vert.glsl", name );
+ // 			error = RF_AppendShaderFromFile( &stages[i].source, filePath, type, features );
+ // 			break;
+ // 		case R_STAGE_FRAGMENT:
+ // 			filePath = sdscatfmt( filePath, "glsl/%s.frag.glsl", name );
+ // 			error = RF_AppendShaderFromFile( &stages[i].source, filePath, type, features );
+ // 			break;
+ // 		default:
+ // 			assert( 0 );
+ // 			break;
+ // 	}
+ // 	if( error ) {
+ // 		break;
+ // 	}
+ // }
+ // sdsfree(filePath);
+
+	for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
+		const glslang_input_t input = { .language = GLSLANG_SOURCE_GLSL,
+										.stage = stages[i].slangeStage,
+										.client = GLSLANG_CLIENT_VULKAN,
+										.client_version = GLSLANG_TARGET_VULKAN_1_2,
+										.target_language = GLSLANG_TARGET_SPV,
+										.target_language_version = GLSLANG_TARGET_SPV_1_5,
+										.code = stages[i].source,
+										.default_version = 450,
+										.default_profile = GLSLANG_NO_PROFILE,
+										.force_default_version_and_profile = false,
+										.forward_compatible = false,
+										.messages = GLSLANG_MSG_DEFAULT_BIT,
+										.resource = glslang_default_resource() };
+		glslang_shader_t *shader = glslang_shader_create( &input );
+		glslang_program_t *glslang_program = NULL;
+
+		if( !glslang_shader_preprocess( shader, &input ) ) {
+			Com_Printf( S_COLOR_YELLOW "GLSL parsing failed %s\n", fullName);
+			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_shader_get_info_log( shader ) );
+			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_shader_get_info_debug_log( shader ) );
+			Com_Printf( S_COLOR_YELLOW "%s\n", input.code );
+			error = true;
+			goto shader_error;
+		}
+		if( !glslang_shader_parse( shader, &input ) ) {
+			Com_Printf( S_COLOR_YELLOW "GLSL parsing failed %s\n", fullName);
+			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_shader_get_info_log( shader ) );
+			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_shader_get_info_debug_log( shader ) );
+			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_shader_get_preprocessed_code( shader ) );
+			error = true;
+			goto shader_error;
+		}
+		glslang_program = glslang_program_create();
+		glslang_program_add_shader( glslang_program, shader );
+
+		if( !glslang_program_link( glslang_program, GLSLANG_MSG_SPV_RULES_BIT | GLSLANG_MSG_VULKAN_RULES_BIT ) ) {
+			Com_Printf( S_COLOR_YELLOW "GLSL linking failed %s\n", fullName);
+			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_program_get_info_log( glslang_program ) );
+			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_program_get_info_debug_log( glslang_program ) );
+			error = true;
+			goto shader_error;
+		}
+		glslang_program_SPIRV_generate( glslang_program, stages[i].slangeStage );
+
+		size_t wordLen = glslang_program_SPIRV_get_size( glslang_program ) * sizeof( uint32_t );
+	 // program->nri.bin[stages[i].stage].len = wordLen;
+	 // program->nri.bin[stages[i].stage].data = R_Malloc( wordLen );
+	//	glslang_program_SPIRV_get( glslang_program, (uint32_t *)program->nri.bin[stages[i].stage].data );
+
+		// program->nri.bytecode = malloc()
+		// bin.words = malloc( bin.size * sizeof( uint32_t ) );
+		const char *spirv_messages = glslang_program_SPIRV_get_messages( glslang_program );
+		if( spirv_messages ) {
+			Com_Printf( S_COLOR_BLUE "(%s) %s\b", name, spirv_messages );
+		}
+	shader_error:
+		glslang_shader_delete( shader );
+		if( glslang_program ) {
+			glslang_program_delete( glslang_program );
+		}
+	}
+
+	sdsfree(fullName);
+	for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
+		sdsfree(stages[i].source);
+	}
+
+	//if( error ) {
+	//	for(size_t i = 0; i < R_STAGE_MAX; i++) {
+	//		if(program->nri.bin[i].data) {
+	//			R_Free( program->nri.bin[i].data );
+	//		}
+	//		program->nri.bin[i].len = 0;
+	//		program->nri.bin[i].data = NULL;
+	//	}
+	//}
+
+	program->type = type;
+	program->features = features;
+	program->name = R_CopyString( name );
+	program->deformsKey = R_CopyString( deformsKey ? deformsKey : "" );
+
+	if( !program->hash_next )
+	{
+		program->hash_next = r_glslprograms_hash[type][hash];
+		r_glslprograms_hash[type][hash] = program;
+	}
+
+	return ( program - r_glslprograms ) + 1;
 }
 
 /*
