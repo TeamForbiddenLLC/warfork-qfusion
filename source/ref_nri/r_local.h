@@ -557,6 +557,7 @@ void		R_FreeFile_( void *buffer, const char *filename, int fileline );
 
 bool		R_IsRenderingToScreen( void );
 void		R_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync );
+void		R_EndFrame( void );
 int 		R_SetSwapInterval( int swapInterval, int oldSwapInterval );
 void		R_SetGamma( float gamma );
 void		R_SetWallFloorColors( const vec3_t wallColor, const vec3_t floorColor );
