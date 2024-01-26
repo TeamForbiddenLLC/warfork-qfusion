@@ -21,7 +21,7 @@ file(GLOB CLIENT_HEADERS
 	"../qcommon/*.h"
 	"../qalgo/*.h"
 	"../angelwrap/qas_public.h"
-	"../ref_gl/r_public.h"
+	"../ref_base/r_public.h"
 	"../cgame/cg_public.h"
 	"../cgame/ref.h"
 	"../game/g_public.h"

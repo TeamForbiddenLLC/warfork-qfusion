@@ -20,7 +20,7 @@
 // client.h -- primary header for client
 
 #include "../qcommon/qcommon.h"
-#include "../ref_gl/r_public.h"
+#include "../ref_base/r_public.h"
 #include "../cgame/cg_public.h"
 #include "../matchmaker/mm_rating.h"
 #include "snd_public.h"

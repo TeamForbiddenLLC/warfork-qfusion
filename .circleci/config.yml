@@ -239,7 +239,9 @@ jobs:
           webhook: "${DISCORD_STATUS_WEBHOOK}"
       - store_artifacts:
           path: .\win-x86_64-Debug.zip
-
+checkout:
+  post:
+    - git submodule update --init --recursive
 workflows:
   version: 2
   build:
