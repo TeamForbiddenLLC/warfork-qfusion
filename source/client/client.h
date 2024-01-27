@@ -671,3 +671,17 @@ void CL_Sys_Init( void );
  * Shuts down the client parts of the platform module.
  */
 void CL_Sys_Shutdown( void );
+
+
+//
+// cl_steam.c
+//
+
+uint64_t Steam_GetSteamID( void );
+void Steam_AdvertiseGame( const uint8_t *ip, unsigned short port );
+void Steam_GetPersonaName( char *name, size_t namesize );
+const SteamAuthTicket_t* Steam_GetAuthSessionTicketBlocking();
+void Steam_SetRichPresence( int num, const char **key, const char **val );
+void Steam_RequestAvatar(uint64_t steamid, int size);
+void CL_Steam_RunFrame( void );
+

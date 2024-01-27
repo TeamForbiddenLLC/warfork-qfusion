@@ -2724,6 +2724,7 @@ void CL_Frame( int realmsec, int gamemsec )
 	CL_AdjustServerTime( gamemsec );
 	CL_UserInputFrame();
 	CL_NetFrame( realmsec, gamemsec );
+	CL_Steam_RunFrame();
 	CL_MM_Frame();
 	
 	if( cls.state == CA_CINEMATIC )

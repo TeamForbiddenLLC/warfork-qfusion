@@ -1116,8 +1116,6 @@ void Qcommon_Frame( unsigned int realmsec )
 
 	FS_Frame();
 
-	Steam_RunFrame();
-
 	if( dedicated->integer )
 	{
 		do

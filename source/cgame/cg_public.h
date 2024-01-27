@@ -273,7 +273,7 @@ typedef struct
 	unsigned int ( *IN_SupportedDevices )( void );
 
 	// steam.h
-	char *( *Steam_RequestAvatar )(uint64_t steamid, int size);
+	void ( *Steam_RequestAvatar )(uint64_t steamid, int size);
 } cgame_import_t;
 
 //
@@ -365,6 +365,9 @@ typedef struct
 	 * @return whether the finger is in cgame touch context
 	 */
 	bool ( *IsTouchDown )( int id );
+
+
+	void ( *CallbackRequestAvatar )( uint64_t steamid, char *avatar );
 } cgame_export_t;
 
 #endif

@@ -707,6 +707,7 @@ extern cvar_t *cg_skin;
 extern cvar_t *cg_hand;
 
 void CG_LoadClientInfo( cg_clientInfo_t *ci, const char *s, int client );
+void CG_CallbackRequestAvatar(uint64_t steamid, char *avatar);
 void CG_UpdateSexedSoundsRegistration( pmodelinfo_t *pmodelinfo );
 void CG_SexedSound( int entnum, int entchannel, const char *name, float fvol, float attn );
 void CG_SexedVSay( int entnum, int vsay, float fvol );

@@ -62,6 +62,8 @@ extern "C" QF_DLL_EXPORT cgame_export_t *GetCGameAPI( cgame_import_t *import )
 	globals.TouchEvent = CG_TouchEvent;
 	globals.IsTouchDown = CG_IsTouchDown;
 
+	globals.CallbackRequestAvatar = CG_CallbackRequestAvatar;
+
 	return &globals;
 }
 

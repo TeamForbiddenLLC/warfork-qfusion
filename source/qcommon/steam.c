@@ -33,7 +33,7 @@ static void printEvent( const STEAMSHIM_Event *e )
 		return;
 
 	Com_Printf( "%sokay, ival=%d, fval=%f, lval=%llu, name='%s').\n", e->okay ? "" : "!", e->ivalue, e->fvalue, e->lvalue, e->name );
-} /* printEvent */
+} 
 
 static const STEAMSHIM_Event* blockOnEvent(STEAMSHIM_EventType type){
 
@@ -70,112 +70,11 @@ void Steam_Init( void )
 }
 
 /*
-* Steam_RunFrame
-*/
-void Steam_RunFrame( void )
-{
-	const STEAMSHIM_Event *evt = STEAMSHIM_pump();
-	if( evt ) {
-		printEvent( evt );
-	}
-}
-
-/*
 * Steam_Shutdown
 */
 void Steam_Shutdown( void )
 {
 	STEAMSHIM_deinit();
-}
-
-
-
-/*
-* Steam_GetAuthSessionTicket
-*/
-int Steam_GetAuthSessionTicket( void ( *callback )( void *, size_t ) )
-{
-	// coolelectronics: not implementing anything here until i have a better understanding of cl_mm.c
-	return 0;
-}
-
-/*
-* Steam_GetAuthSessionTicketBlocking
-*/
-const SteamAuthTicket_t* Steam_GetAuthSessionTicketBlocking(){
-	static SteamAuthTicket_t ticket;
-
-	STEAMSHIM_getAuthSessionTicket();
-	const STEAMSHIM_Event *evt = blockOnEvent(SHIMEVENT_AUTHSESSIONTICKETRECIEVED);
-
-	ticket.pcbTicket = evt->lvalue;
-	memcpy(ticket.pTicket, evt->name, AUTH_TICKET_MAXSIZE);
-
-	return &ticket;
-}
-
-int Steam_BeginAuthSession(uint64_t steamid, SteamAuthTicket_t *ticket){
-
-	STEAMSHIM_beginAuthSession(steamid,ticket);
-	const STEAMSHIM_Event *evt = blockOnEvent(SHIMEVENT_AUTHSESSIONVALIDATED);
-
-	return evt->ivalue;
-}
-
-void Steam_EndAuthSession(uint64_t steamid){
-	STEAMSHIM_endAuthSession(steamid);
-}
-
-/*
-* Steam_AdvertiseGame
-*/
-void Steam_AdvertiseGame( const uint8_t *ip, unsigned short port )
-{
-	// UNIMPLEMENTED_DBGBREAK();
-}
-
-/*
-* Steam_GetPersonaName
-*/
-void Steam_GetPersonaName( char *name, size_t namesize )
-{
-	if( !namesize ) {
-		return;
-	}
-	STEAMSHIM_getPersonaName();
-	const STEAMSHIM_Event *evt = blockOnEvent(SHIMEVENT_PERSONANAMERECIEVED);
-	strncpy(name, evt->name, namesize);
-
-
-	printf("making beacon\n");
-	STEAMSHIM_createBeacon(1, "a", "b");
-}
-
-/*
-* Steam_SetRichPresence
-*/
-void Steam_SetRichPresence( int num, const char **key, const char **val )
-{
-	STEAMSHIM_setRichPresence(num, key, val);
-}
-
-uint64_t Steam_GetSteamID( void )
-{
-	STEAMSHIM_getSteamID();
-	const STEAMSHIM_Event *evt = blockOnEvent(SHIMEVENT_STEAMIDRECIEVED);
-	return evt->lvalue;
-}
-
-/*
-* Steam_GetSteamID
-* size is 0 for 32x32, 1 for 64x64, 2 for 128x128
-*/
-char *Steam_RequestAvatar(uint64_t steamid, int size)
-{
-	STEAMSHIM_requestAvatar(steamid, size);
-
-	const STEAMSHIM_Event *evt = blockOnEvent(SHIMEVENT_AVATARRECIEVED);
-	return evt->name;
 }
 
 /*

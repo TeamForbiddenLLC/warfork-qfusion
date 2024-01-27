@@ -795,7 +795,7 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 			break;
 		case 'a': // is a steam avatar
 				int id = atoi( token );
-				if (cgs.clientInfo[id].steamid)
+				if (i >= 0 && i < gs.maxclients && cgs.clientInfo[id].steamid)
 					avatar = cgs.clientInfo[id].avatar;
 				width = 32;
 			break;

@@ -720,6 +720,8 @@ void SV_Frame( int realmsec, int gamemsec )
 
 		SV_MM_Frame();
 
+		SV_Steam_RunFrame();
+
 		// send a heartbeat to the master if needed
 		SV_MasterHeartbeat();
 
