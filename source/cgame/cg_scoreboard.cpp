@@ -793,9 +793,9 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 				icon = CG_MediaShader( cgs.media.shaderVSayIcon[VSAY_YES] );
 			break;
 		case 'a': // is a steam avatar
-				int id = atoi( token );
-				if (i >= 0 && i < gs.maxclients && cgs.clientInfo[id].steamid)
-					avatar = cgs.clientInfo[id].avatar;
+				int i = atoi( token );
+				if (i >= 0 && i < gs.maxclients && cgs.clientInfo[i].steamid)
+					avatar = cgs.clientInfo[i].avatar;
 				width = 32;
 			break;
 		}
