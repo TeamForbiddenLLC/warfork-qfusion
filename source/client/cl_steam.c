@@ -1,5 +1,6 @@
 #include "../qcommon/qcommon.h"
 #include "../qcommon/steam.h"
+#include "client.h"
 #include "../steamshim/src/child/child.h"
 #include <string.h>
 
@@ -39,8 +40,7 @@ void CL_Steam_RunFrame( void )
 		switch (evt->type){
 			case SHIMEVENT_AVATARRECIEVED: 
 				{
-					const STEAMSHIM_Event *evt = blockOnEvent(SHIMEVENT_AVATARRECIEVED);
-
+          CL_GameModule_CallbackRequestAvatar(evt->lvalue, evt->name);
 				}
 				break;
 			default: break;

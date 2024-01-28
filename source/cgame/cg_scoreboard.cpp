@@ -651,7 +651,7 @@ static void SCR_AddPlayerIcon( struct shader_s *image, int x, int y, float alpha
 	if( scr_numplayericons >= ( sizeof( scr_playericons ) / sizeof( scr_playericons[0] ) ) )
 		SCR_DrawPlayerIcons( font );
 }
-
+#include <unistd.h>
 /*
 * SCR_DrawPlayerTab
 */

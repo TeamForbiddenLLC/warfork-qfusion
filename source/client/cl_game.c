@@ -756,3 +756,12 @@ bool CL_GameModule_IsTouchDown( int id )
 	return false;
 }
 
+/*
+* CL_GameModule_CallbackRequestAvatar
+*/
+void CL_GameModule_CallbackRequestAvatar( uint64_t steamid, char* avatar )
+{
+	if( cge )
+		cge->CallbackRequestAvatar( steamid, avatar );
+}
+

@@ -445,6 +445,7 @@ void CL_GameModule_AddViewAngles( vec3_t viewangles, float frametime, bool flipp
 void CL_GameModule_AddMovement( vec3_t movement );
 void CL_GameModule_TouchEvent( int id, touchevent_t type, int x, int y, unsigned int time );
 bool CL_GameModule_IsTouchDown( int id );
+void CL_GameModule_CallbackRequestAvatar( uint64_t steamid, char* avatar );
 
 //
 // cl_sound.c
