@@ -62,20 +62,7 @@ bool launchChild(ProcessType *pid, const char* name)
 {
     char *str = _strdup( GetCommandLineA() );
 
-    SECURITY_ATTRIBUTES saAttr;
-    saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
-    saAttr.bInheritHandle = TRUE;
-    saAttr.lpSecurityDescriptor = NULL;
-
-    HANDLE hChildStdoutRead, hChildStdoutWrite;
-    CreatePipe(&hChildStdoutRead, &hChildStdoutWrite, &saAttr, 0);
-    SetHandleInformation(hChildStdoutRead, HANDLE_FLAG_INHERIT, 0);
-
     STARTUPINFOA si = { sizeof( si ) };
-    si.hStdOutput = hChildStdoutWrite;
-    si.hStdError = hChildStdoutWrite;
-    si.dwFlags |= STARTF_USESTDHANDLES;
-
     memset( pid, 0, sizeof( *pid ) );
 
     char exename[32] = ".\\";
