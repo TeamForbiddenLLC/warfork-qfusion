@@ -54,7 +54,7 @@ class pipebuff_t
   void WriteByte(char val);
   void WriteInt(int val);
   void WriteFloat(float val);
-  void WriteLong(long long val);
+  void WriteLong(uint64_t val);
   void WriteString(char *val);
 
   void *ReadData(size_t vallen);
@@ -62,7 +62,7 @@ class pipebuff_t
   char ReadByte();
   int ReadInt();
   float ReadFloat();
-  long long ReadLong();
+  uint64_t ReadLong();
 
   int Transmit();
   int Recieve();

@@ -55,7 +55,7 @@ typedef struct STEAMSHIM_Event
     int okay;
     int ivalue;
     float fvalue;
-    unsigned long long lvalue;
+    uint64_t lvalue;
     char name[4096];
 } STEAMSHIM_Event;
 

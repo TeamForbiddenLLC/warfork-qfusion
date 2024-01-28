@@ -32,6 +32,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "cg_public.h"
 #include "cg_syscalls.h"
+#include <cstdint>
 
 #define CG_OBITUARY_HUD	    1
 #define CG_OBITUARY_CENTER  2
@@ -373,7 +374,7 @@ typedef struct
 	byte_vec4_t color;
 	struct shader_s *icon;
 	int modelindex;
-	long steamid;
+	uint64_t steamid;
 	unsigned char avatar[32 * 32 * 4]; // 32x32, 4 channels
 } cg_clientInfo_t;
 

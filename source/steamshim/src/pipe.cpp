@@ -51,7 +51,7 @@ void pipebuff_t::WriteFloat(float val)
   WriteData(&val, sizeof val);
 }
 
-void pipebuff_t::WriteLong(long long val)
+void pipebuff_t::WriteLong(uint64_t val)
 {
   WriteData(&val, sizeof val);
 }
@@ -89,8 +89,8 @@ float pipebuff_t::ReadFloat(){
   return *(float*)ReadData(sizeof(float));
 }
 
-long long pipebuff_t::ReadLong(){
-  return *(long long*)ReadData(sizeof(long long));
+uint64_t pipebuff_t::ReadLong(){
+  return *(uint64_t*)ReadData(sizeof(long long));
 }
 
 

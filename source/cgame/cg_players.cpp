@@ -273,7 +273,7 @@ void CG_LoadClientInfo( cg_clientInfo_t *ci, const char *info, int client )
 
 	s = Info_ValueForKey( info, "steam_id" );
 	if (s && atol(s)){
-		ci->steamid = atol(s);
+		ci->steamid = atoll(s);
 		CGAME_IMPORT.Steam_RequestAvatar(ci->steamid, 0);
 	}
 }
