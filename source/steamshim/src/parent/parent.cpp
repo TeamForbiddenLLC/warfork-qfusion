@@ -321,6 +321,11 @@ char *argv[MAX_NUM_ARGVS];
 
 int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow )
 {
+    if( strstr( GetCommandLineA(), "steamdbg" ) ) {
+        FreeConsole();
+        AllocConsole();
+        freopen( "CONOUT$", "w", stdout );
+    }
 	return main( argc, argv );
 } // WinMain
 #endif
