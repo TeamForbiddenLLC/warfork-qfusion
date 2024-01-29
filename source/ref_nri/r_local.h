@@ -29,6 +29,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../qcommon/bsp.h"
 #include "../qcommon/patch.h"
 
+#include "r_nri.h"
+#include "r_win.h"
+
 typedef struct { char *name; void **funcPointer; } dllfunc_t;
 
 typedef struct mempool_s mempool_t;
@@ -240,7 +243,11 @@ typedef struct
 	shader_t		*skyShader;
 	shader_t		*whiteShader;
 	shader_t		*emptyFogShader;
-	
+
+ 	nri_backend_t nri;
+ 	NriSwapChain* swapchain;
+	NriFence* frameFence; 
+
 	byte_vec4_t		customColors[NUM_CUSTOMCOLORS];
 } r_shared_t;
 
@@ -281,7 +288,7 @@ typedef struct
 } r_scene_t;
 
 // global frontend variables are stored here
-// the backend should never attempt reading or modifying them
+
 typedef struct
 {
 	bool 			in2D;
@@ -329,6 +336,11 @@ typedef struct
 	
 	char			drawBuffer[32];
 	bool			newDrawBuffer;
+
+	char *applicationName;
+	char *screenshotPrefix;
+	int startupColor;
+
 } r_globals_t;
 
 extern ref_import_t ri;
@@ -339,6 +351,11 @@ extern r_globals_t rf;
 
 #define R_ENT2NUM(ent) ((ent)-rsc.entities)
 #define R_NUM2ENT(num) (rsc.entities+(num))
+
+extern cvar_t *vid_width; 
+extern cvar_t *vid_height;
+extern cvar_t *vid_xpos;          // X coordinate of window position
+extern cvar_t *vid_ypos;          // Y coordinate of window position
 
 extern cvar_t *r_maxfps;
 extern cvar_t *r_norefresh;
@@ -557,7 +574,7 @@ void		R_FreeFile_( void *buffer, const char *filename, int fileline );
 
 bool		R_IsRenderingToScreen( void );
 void		R_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync );
-void		R_EndFrame( void );
+void    R_EndFrame( void );
 int 		R_SetSwapInterval( int swapInterval, int oldSwapInterval );
 void		R_SetGamma( float gamma );
 void		R_SetWallFloorColors( const vec3_t wallColor, const vec3_t floorColor );
@@ -567,7 +584,7 @@ void		R_RenderView( const refdef_t *fd );
 const msurface_t *R_GetDebugSurface( void );
 const char *R_WriteSpeedsMessage( char *out, size_t size );
 void		R_RenderDebugSurface( const refdef_t *fd );
-void 		R_Finish( void );
+//void 		R_Finish( void );
 void		R_Flush( void );
 
 /**
