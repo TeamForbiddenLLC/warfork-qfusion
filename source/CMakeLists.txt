@@ -1,8 +1,6 @@
 project(qfusion)
 
 cmake_minimum_required(VERSION 2.8.12)
-include("${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake")
-
 message(STATUS "CMAKE_SYSTEM: " ${CMAKE_SYSTEM})
 message(STATUS "CMAKE_SYSTEM_NAME: " ${CMAKE_SYSTEM_NAME})
 message(STATUS "CMAKE_SYSTEM_VERSION: " ${CMAKE_SYSTEM_VERSION})
@@ -64,6 +62,7 @@ if (NOT GAME_MODULES_ONLY AND USE_GRAPHICS_NRI)
     set(NRI_STATIC_LIBRARY ON)
     set(IS_SUBMODULE ON)
     add_subdirectory(NRI)
+    add_subdirectory(glslang)
 endif()
 
 # Windows specific settings
