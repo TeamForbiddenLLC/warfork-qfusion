@@ -163,9 +163,9 @@ void R_ScreenShot_f( void )
 	mediadir = ri.FS_MediaDirectory( FS_MEDIA_IMAGES );
 	if( mediadir )
 	{
-		path_size = strlen( mediadir ) + 1 /* '/' */ + strlen( glConfig.applicationName ) + 1 /* '/' */ + 1;
+		path_size = strlen( mediadir ) + 1 /* '/' */ + strlen( rf.applicationName ) + 1 /* '/' */ + 1;
 		path = alloca( path_size );
-		Q_snprintfz( path, path_size, "%s/%s/", mediadir, glConfig.applicationName );
+		Q_snprintfz( path, path_size, "%s/%s/", mediadir, rf.applicationName );
 	}
 	else
 	{
@@ -186,7 +186,7 @@ void R_ScreenShot_f( void )
 	
 	// hm... shouldn't really happen, but check anyway
 	if( i == 2 )
-		ri.Cvar_ForceSet( r_screenshot_fmtstr->name, glConfig.screenshotPrefix );
+		ri.Cvar_ForceSet( r_screenshot_fmtstr->name, rf.screenshotPrefix );
 
 	RF_ScreenShot( path, name, r_screenshot_fmtstr->string,
 				  ri.Cmd_Argc() >= 3 && !Q_stricmp( ri.Cmd_Argv( 2 ), "silent" ) ? true : false );

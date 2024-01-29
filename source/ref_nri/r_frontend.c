@@ -20,7 +20,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 #include "r_cmdque.h"
+#include "r_nri.h"
 #include "r_frontend.h"
+
+
+static bool enableDebugValidation = true;
 
 static ref_frontend_t rrf;
 static ref_cmdbuf_t *RF_GetNextAdapterFrame( ref_frontendAdapter_t *adapter );
@@ -78,20 +82,20 @@ static void RF_AdapterFrame( ref_frontendAdapter_t *adapter )
 /*
 * RF_AdapterThreadProc
 */
-static void *RF_AdapterThreadProc( void *param )
-{
-	ref_frontendAdapter_t *adapter = param;
-
-	GLimp_MakeCurrent( adapter->GLcontext, GLimp_GetWindowSurface( NULL ) );
-
-	while( !adapter->shutdown ) {
-		RF_AdapterFrame( adapter );
-	}
-
-	GLimp_MakeCurrent( NULL, NULL );
-
-	return NULL;
-}
+//static void *RF_AdapterThreadProc( void *param )
+//{
+//	ref_frontendAdapter_t *adapter = param;
+//
+//	GLimp_MakeCurrent( adapter->GLcontext, GLimp_GetWindowSurface( NULL ) );
+//
+//	while( !adapter->shutdown ) {
+//		RF_AdapterFrame( adapter );
+//	}
+//
+//	GLimp_MakeCurrent( NULL, NULL );
+//
+//	return NULL;
+//}
 
 /*
 * RF_AdapterShutdown
@@ -113,9 +117,9 @@ static void RF_AdapterShutdown( ref_frontendAdapter_t *adapter )
 
 	RF_DestroyCmdPipe( &adapter->cmdPipe );
 
-	if( adapter->GLcontext ) {
-		GLimp_SharedContext_Destroy( adapter->GLcontext, NULL );
-	}
+	//if( adapter->GLcontext ) {
+	//	GLimp_SharedContext_Destroy( adapter->GLcontext, NULL );
+	//}
 
 	GLimp_EnableMultithreadedRendering( false );
 
@@ -130,22 +134,22 @@ static bool RF_AdapterInit( ref_frontendAdapter_t *adapter )
 	adapter->maxfps = 0;
 	adapter->cmdPipe = RF_CreateCmdPipe( !glConfig.multithreading );
 
-	if( glConfig.multithreading ) {
-		adapter->frameLock = ri.Mutex_Create();
+ // if( glConfig.multithreading ) {
+ // 	adapter->frameLock = ri.Mutex_Create();
 
-		GLimp_EnableMultithreadedRendering( true );
+ // 	GLimp_EnableMultithreadedRendering( true );
 
-		if( !GLimp_SharedContext_Create( &adapter->GLcontext, NULL ) ) {
-			return false;
-		}
-		
-		adapter->shutdown = false;
-		adapter->thread = ri.Thread_Create( RF_AdapterThreadProc, adapter );
-		if( !adapter->thread ) {
-			GLimp_EnableMultithreadedRendering( false );
-			return false;
-		}
-	}
+ // 	if( !GLimp_SharedContext_Create( &adapter->GLcontext, NULL ) ) {
+ // 		return false;
+ // 	}
+ // 	
+ // 	adapter->shutdown = false;
+ // 	adapter->thread = ri.Thread_Create( RF_AdapterThreadProc, adapter );
+ // 	if( !adapter->thread ) {
+ // 		GLimp_EnableMultithreadedRendering( false );
+ // 		return false;
+ // 	}
+ // }
 
 	adapter->cmdPipe->Init( adapter->cmdPipe );
 
@@ -157,18 +161,18 @@ static bool RF_AdapterInit( ref_frontendAdapter_t *adapter )
 *
 * Blocks the current thread until adapter is finished processing frame and inter-frame commands.
 */
-static void RF_AdapterWait( ref_frontendAdapter_t *adapter )
-{
-	if( adapter->thread == NULL ) {
-		return;
-	}
-
-	while( adapter->frameId != adapter->readFrameId ) {
-		ri.Sys_Sleep( 0 );
-	}
-	
-	adapter->cmdPipe->FinishCmds( adapter->cmdPipe );
-}
+//static void RF_AdapterWait( ref_frontendAdapter_t *adapter )
+//{
+//	if( adapter->thread == NULL ) {
+//		return;
+//	}
+//
+//	while( adapter->frameId != adapter->readFrameId ) {
+//		ri.Sys_Sleep( 0 );
+//	}
+//	
+//	adapter->cmdPipe->FinishCmds( adapter->cmdPipe );
+//}
 
 static ref_cmdbuf_t *RF_GetNextAdapterFrame( ref_frontendAdapter_t *adapter )
 {
@@ -188,19 +192,86 @@ static ref_cmdbuf_t *RF_GetNextAdapterFrame( ref_frontendAdapter_t *adapter )
 	return result;
 }
 
+
+//TODO: cleanup leaking logic
 rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int startupColor,
 	int iconResource, const int *iconXPM,
 	void *hinstance, void *wndproc, void *parenthWnd, 
 	bool verbose )
 {
-	rserr_t err;
+	r_mempool = R_AllocPool( NULL, "Rendering Frontend" );
+	rserr_t err = R_Init( applicationName, screenshotPrefix, startupColor,
+		iconResource, iconXPM, hinstance, wndproc, parenthWnd, verbose );
 
 	memset( &rrf, 0, sizeof( rrf ) );
+	
+	if( !applicationName ) applicationName = "Qfusion";
+	if( !screenshotPrefix ) screenshotPrefix = "";
+	
+	R_WIN_Init(applicationName, hinstance, wndproc, parenthWnd, iconResource, iconXPM);
+	nri_init_desc_t desc = {
+		.enableApiValidation = true,
+		.enableNriValidation = true,
+		.api = NriGraphicsAPI_VULKAN
+	};		
+	
+	if(!R_InitNriBackend(&desc, &rsh.nri)) {
+		return rserr_unknown;
+	}
 
-	err = R_Init( applicationName, screenshotPrefix, startupColor,
-		iconResource, iconXPM, hinstance, wndproc, parenthWnd, verbose );
-	if( err != rserr_ok )
+	rf.applicationName= R_CopyString( applicationName );
+	rf.screenshotPrefix = R_CopyString( screenshotPrefix );
+	rf.startupColor = startupColor;
+
+	// create vulkan window
+	win_init_t winInit = { 
+		.backend = VID_WINDOW_VULKAN, 
+		.x = vid_xpos->integer, 
+		.y = vid_ypos->integer, 
+		.width = vid_xpos->integer, 
+		.height = vid_ypos->integer
+	};
+	if(!R_WIN_InitWindow(&winInit)) {
+		ri.Com_Error(ERR_DROP, "failed to create window" );
+		return rserr_unknown;
+	}
+
+	win_handle_t handle = {};
+	if(!R_WIN_GetWindowHandle( &handle ) ) {
+		ri.Com_Error(ERR_DROP, "failed to resolve window handle" );
+		return rserr_unknown;
+	}
+	NriWindow nriWindow = {};
+	switch( handle.winType ) {
+		case VID_WINDOW_WAYLAND:
+			nriWindow.wayland.surface = handle.window.wayland.surface;
+			nriWindow.wayland.display = handle.window.wayland.display;
+			break;
+		case VID_WINDOW_TYPE_X11:
+			nriWindow.x11.window = handle.window.x11.window;
+			nriWindow.x11.dpy = handle.window.x11.dpy;
+			break;
+		case VID_WINDOW_WIN32:
+			nriWindow.windows.hwnd = handle.window.win.hwnd;
+			break;
+		default:
+			assert( false );
+			break;
+	}
+
+	NriSwapChainDesc swapChainDesc = { 
+		.commandQueue = rsh.nri.graphicsCommandQueue,
+		.width = winInit.width, 
+		.height = winInit.height, 
+		.format = DefaultSwapchainFormat,
+		.textureNum = 3,
+		.window = nriWindow
+	};
+	NRI_ABORT_ON_FAILURE( rsh.nri.swapChainI.CreateSwapChain( rsh.nri.device, &swapChainDesc, &rsh.swapchain) );
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateFence( rsh.nri.device, 0, &rsh.frameFence ) );
+	if( err != rserr_ok ) {
 		return err;
+	}
 
 	return rserr_ok;
 }
@@ -224,19 +295,19 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 	rrf.frameNum = rrf.lastFrameNum = 0;
 
 	if( !rrf.frame ) {
-		if( glConfig.multithreading ) {
-			int i;
-			for( i = 0; i < 3; i++ )
-				rrf.frames[i] = RF_CreateCmdBuf( false );
-		}
-		else {
+		//if( glConfig.multithreading ) {
+		//	int i;
+		//	for( i = 0; i < 3; i++ )
+		//		rrf.frames[i] = RF_CreateCmdBuf( false );
+		//}
+		//else {
 			rrf.frame = RF_CreateCmdBuf( true );
-		}
+		//}
 	}
 
-	if( glConfig.multithreading ) {
-		rrf.frame = rrf.frames[0];
-	}
+	//if( glConfig.multithreading ) {
+	//	rrf.frame = rrf.frames[0];
+	//}
 
 	rrf.frame->Clear( rrf.frame );
 	memset( rrf.customColors, 0, sizeof( rrf.customColors ) );
@@ -264,7 +335,7 @@ rserr_t RF_SetWindow( void *hinstance, void *wndproc, void *parenthWnd )
 
 void RF_AppActivate( bool active, bool destroy )
 {
-	R_Flush();
+	//R_Flush();
 	GLimp_AppActivate( active, destroy );
 }
 
@@ -272,14 +343,14 @@ void RF_Shutdown( bool verbose )
 {
 	RF_AdapterShutdown( &rrf.adapter );
 
-	if( glConfig.multithreading ) {
-		int i;
-		for( i = 0; i < 3; i++ )
-			RF_DestroyCmdBuf( &rrf.frames[i] );
-	}
-	else {
+ // if( glConfig.multithreading ) {
+ // 	int i;
+ // 	for( i = 0; i < 3; i++ )
+ // 		RF_DestroyCmdBuf( &rrf.frames[i] );
+ // }
+ // else {
 		RF_DestroyCmdBuf( &rrf.frame );
-	}
+//	}
 	memset( &rrf, 0, sizeof( rrf ) );
 
 	R_Shutdown( verbose );
@@ -354,57 +425,73 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 	rrf.adapter.maxfps = r_maxfps->integer;
 
 	// take the frame the backend is not busy processing
-	if( glConfig.multithreading ) {
-		ri.Mutex_Lock( rrf.adapter.frameLock );
-		if( rrf.lastFrameNum == rrf.adapter.frameNum )
-			rrf.frameNum = (rrf.adapter.frameNum + 1) % 3;
-		else
-			rrf.frameNum = 3 - (rrf.adapter.frameNum + rrf.lastFrameNum);
-		if( rrf.frameNum == 3 ) {
-			rrf.frameNum = 1;
-		}
-		rrf.frame = rrf.frames[rrf.frameNum];
-		ri.Mutex_Unlock( rrf.adapter.frameLock );
-	}
+ // if( glConfig.multithreading ) {
+ // 	ri.Mutex_Lock( rrf.adapter.frameLock );
+ // 	if( rrf.lastFrameNum == rrf.adapter.frameNum )
+ // 		rrf.frameNum = (rrf.adapter.frameNum + 1) % 3;
+ // 	else
+ // 		rrf.frameNum = 3 - (rrf.adapter.frameNum + rrf.lastFrameNum);
+ // 	if( rrf.frameNum == 3 ) {
+ // 		rrf.frameNum = 1;
+ // 	}
+ // 	rrf.frame = rrf.frames[rrf.frameNum];
+ // 	ri.Mutex_Unlock( rrf.adapter.frameLock );
+ // }
 
-	rrf.frame->Clear( rrf.frame );
+	//rrf.frame->Clear( rrf.frame );
 	rrf.cameraSeparation = cameraSeparation;
 
-	R_DataSync();
+	//R_DataSync();
 
-	rrf.frame->BeginFrame( rrf.frame, cameraSeparation, forceClear, forceVsync );
+
+
+	memset( &rf.stats, 0, sizeof( rf.stats ) );
+
+	// update fps meter
+	// copy in changes from R_BeginFrame
+	//	rrf.frame->BeginFrame( rrf.frame, cameraSeparation, forceClear, forceVsync );
+	const unsigned int time = ri.Sys_Milliseconds();
+	rf.fps.count++;
+	rf.fps.time = time;
+	if( rf.fps.time - rf.fps.oldTime >= 250 ) {
+		rf.fps.average = time - rf.fps.oldTime;
+		rf.fps.average = 1000.0f * (rf.fps.count - rf.fps.oldCount) / (float)rf.fps.average + 0.5f;
+		rf.fps.oldTime = time;
+		rf.fps.oldCount = rf.fps.count;
+	}
+
 }
 
 void RF_EndFrame( void )
 {
-	R_DataSync();
+	//R_DataSync();
 
 	rrf.frame->EndFrame( rrf.frame );
 	
-	if( glConfig.multithreading ) {
-		ri.Mutex_Lock( rrf.adapter.frameLock );
-		rrf.lastFrameNum = rrf.frameNum;
-		rrf.frameId++;
-		ri.Mutex_Unlock( rrf.adapter.frameLock );
-	}
+ // if( glConfig.multithreading ) {
+ // 	ri.Mutex_Lock( rrf.adapter.frameLock );
+ // 	rrf.lastFrameNum = rrf.frameNum;
+ // 	rrf.frameId++;
+ // 	ri.Mutex_Unlock( rrf.adapter.frameLock );
+ // }
 }
 
 void RF_BeginRegistration( void )
 {
 	// sync to the backend thread to ensure it's not using old assets for drawing
-	RF_AdapterWait( &rrf.adapter );
+	//RF_AdapterWait( &rrf.adapter );
 	R_BeginRegistration();
 	rrf.adapter.cmdPipe->BeginRegistration( rrf.adapter.cmdPipe );
-	RF_AdapterWait( &rrf.adapter );
+	//RF_AdapterWait( &rrf.adapter );
 }
 
 void RF_EndRegistration( void )
 {
 	// sync to the backend thread to ensure it's not using old assets for drawing
-	RF_AdapterWait( &rrf.adapter );
+	//RF_AdapterWait( &rrf.adapter );
 	R_EndRegistration();
 	rrf.adapter.cmdPipe->EndRegistration( rrf.adapter.cmdPipe );
-	RF_AdapterWait( &rrf.adapter );
+	//RF_AdapterWait( &rrf.adapter );
 	
 	// reset the cache of custom colors, otherwise RF_SetCustomColor might fail to do anything
 	memset( rrf.customColors, 0, sizeof( rrf.customColors ) );
@@ -412,13 +499,14 @@ void RF_EndRegistration( void )
 
 void RF_RegisterWorldModel( const char *model, const dvis_t *pvsData )
 {
-	RF_AdapterWait( &rrf.adapter );
+	//RF_AdapterWait( &rrf.adapter );
 	R_RegisterWorldModel( model, pvsData );
 }
 
 void RF_ClearScene( void )
 {
-	rrf.frame->ClearScene( rrf.frame );
+	R_ClearScene_2(rrf.scene);	
+	//rrf.frame->ClearScene( rrf.frame );
 }
 
 void RF_AddEntityToScene( const entity_t *ent )
@@ -557,7 +645,7 @@ void RF_ReplaceRawSubPic( shader_t *shader, int x, int y, int width, int height,
 
 void RF_BeginAviDemo( void )
 {
-	RF_AdapterWait( &rrf.adapter );
+	//RF_AdapterWait( &rrf.adapter );
 }
 
 void RF_WriteAviFrame( int frame, bool scissor )
@@ -593,14 +681,14 @@ void RF_WriteAviFrame( int frame, bool scissor )
 	Q_snprintfz( path, path_size, "%s/%s/avi/", writedir, gamedir );
 	Q_snprintfz( name, sizeof( name ), "%06i", frame );
 	
-	RF_AdapterWait( &rrf.adapter );
+//	RF_AdapterWait( &rrf.adapter );
 	
 	rrf.adapter.cmdPipe->AviShot( rrf.adapter.cmdPipe, path, name, x, y, w, h );
 }
 
 void RF_StopAviDemo( void )
 {
-	RF_AdapterWait( &rrf.adapter );
+//	RF_AdapterWait( &rrf.adapter );
 }
 
 void RF_TransformVectorToScreen( const refdef_t *rd, const vec3_t in, vec2_t out )

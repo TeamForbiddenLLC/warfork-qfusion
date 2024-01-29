@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 
+
 r_globals_t rf;
 
 mapconfig_t mapConfig;
@@ -445,10 +446,9 @@ static mesh_t pic_mesh = { 4, pic_xyz, pic_normals, NULL, pic_st, { 0, 0, 0, 0 }
 */
 void R_Set2DMode( bool enable )
 {
-	int width, height;
 
-	width = rf.frameBufferWidth;
-	height = rf.frameBufferHeight;
+	int width = rf.frameBufferWidth;
+	int height = rf.frameBufferHeight;
 
 	if( rf.in2D == true && enable == true && width == rf.width2D && height == rf.height2D ) {
 		return;
@@ -1336,14 +1336,6 @@ void R_PopRefInst( void )
 	R_SetupGL();
 }
 
-//=======================================================================
-
-
-void R_Finish( void )
-{
-	qglFinish();
-}
-
 void R_Flush( void )
 {
 	qglFlush();
@@ -1361,14 +1353,14 @@ void R_DeferDataSync( void )
 
 void R_DataSync( void )
 {
-	if( rf.dataSync ) {
-		if( glConfig.multithreading ) {
-			// synchronize data we might have uploaded this frame between the threads
-			// FIXME: only call this when absolutely necessary
-			qglFinish();
-		}
-		rf.dataSync = false;
-	}
+ // if( rf.dataSync ) {
+ // 	if( glConfig.multithreading ) {
+ // 		// synchronize data we might have uploaded this frame between the threads
+ // 		// FIXME: only call this when absolutely necessary
+ // 		qglFinish();
+ // 	}
+ // 	rf.dataSync = false;
+ // }
 }
 
 /*
@@ -1376,14 +1368,14 @@ void R_DataSync( void )
 */
 int R_SetSwapInterval( int swapInterval, int oldSwapInterval )
 {
-	if( glConfig.stereoEnabled )
-		return oldSwapInterval;
-
-	clamp_low( swapInterval, r_swapinterval_min->integer );
-	if( swapInterval != oldSwapInterval ) {
-		GLimp_SetSwapInterval( swapInterval );
-    }
-    return swapInterval;
+//	if( glConfig.stereoEnabled )
+//		return oldSwapInterval;
+//
+//	clamp_low( swapInterval, r_swapinterval_min->integer );
+//	if( swapInterval != oldSwapInterval ) {
+//		GLimp_SetSwapInterval( swapInterval );
+//    }
+//    return swapInterval;
 }
 
 /*
@@ -1391,23 +1383,23 @@ int R_SetSwapInterval( int swapInterval, int oldSwapInterval )
 */
 void R_SetGamma( float gamma )
 {
-	int i, v;
-	double invGamma, div;
-	unsigned short gammaRamp[3*GAMMARAMP_STRIDE];
-
-	if( !glConfig.hwGamma )
-		return;
-
-	invGamma = 1.0 / bound( 0.5, gamma, 3.0 );
-	div = (double)( 1 << 0 ) / (glConfig.gammaRampSize - 0.5);
-
-	for( i = 0; i < glConfig.gammaRampSize; i++ )
-	{
-		v = ( int )( 65535.0 * pow( ( (double)i + 0.5 ) * div, invGamma ) + 0.5 );
-		gammaRamp[i] = gammaRamp[i + GAMMARAMP_STRIDE] = gammaRamp[i + 2*GAMMARAMP_STRIDE] = ( ( unsigned short )bound( 0, v, 65535 ) );
-	}
-
-	GLimp_SetGammaRamp( GAMMARAMP_STRIDE, glConfig.gammaRampSize, gammaRamp );
+//	int i, v;
+//	double invGamma, div;
+//	unsigned short gammaRamp[3*GAMMARAMP_STRIDE];
+//
+//	if( !glConfig.hwGamma )
+//		return;
+//
+//	invGamma = 1.0 / bound( 0.5, gamma, 3.0 );
+//	div = (double)( 1 << 0 ) / (glConfig.gammaRampSize - 0.5);
+//
+//	for( i = 0; i < glConfig.gammaRampSize; i++ )
+//	{
+//		v = ( int )( 65535.0 * pow( ( (double)i + 0.5 ) * div, invGamma ) + 0.5 );
+//		gammaRamp[i] = gammaRamp[i + GAMMARAMP_STRIDE] = gammaRamp[i + 2*GAMMARAMP_STRIDE] = ( ( unsigned short )bound( 0, v, 65535 ) );
+//	}
+//
+//	GLimp_SetGammaRamp( GAMMARAMP_STRIDE, glConfig.gammaRampSize, gammaRamp );
 }
 
 /*
@@ -1533,9 +1525,6 @@ const char *R_WriteSpeedsMessage(char *out, size_t size)
 	return out;
 }
 
-/*
-* R_GetDebugSurface
-*/
 const msurface_t *R_GetDebugSurface( void )
 {
 	msurface_t *debugSurface;
@@ -1547,9 +1536,6 @@ const msurface_t *R_GetDebugSurface( void )
 	return debugSurface;
 }
 
-/*
-* R_RenderDebugSurface
-*/
 void R_RenderDebugSurface( const refdef_t *fd )
 {
 	rtrace_t tr;
@@ -1562,13 +1548,11 @@ void R_RenderDebugSurface( const refdef_t *fd )
 	
 	if( r_speeds->integer == 4 || r_speeds->integer == 5 )
 	{
-		msurface_t *surf = NULL;
-
 		VectorCopy( &fd->viewaxis[AXIS_FORWARD], forward );
 		VectorCopy( fd->vieworg, start );
 		VectorMA( start, 4096, forward, end );
 		
-		surf = R_TraceLine( &tr, start, end, 0 );
+		msurface_t *surf = R_TraceLine( &tr, start, end, 0 );
 		if( surf && surf->drawSurf && !r_showtris->integer )
 		{
 			R_ClearDrawList( rn.meshlist );
@@ -1576,8 +1560,9 @@ void R_RenderDebugSurface( const refdef_t *fd )
 			R_ClearDrawList( rn.portalmasklist );
 			
 			if( R_AddSurfToDrawList( rn.meshlist, R_NUM2ENT(tr.ent), NULL, surf->shader, 0, 0, NULL, surf->drawSurf ) ) {
-				if( rn.refdef.rdflags & RDF_FLIPPED )
+				if( rn.refdef.rdflags & RDF_FLIPPED ) {
 					RB_FlipFrontFace();
+				}
 				
 				if( r_speeds->integer == 5 ) {
 					// VBO debug mode
@@ -1612,51 +1597,50 @@ void R_RenderDebugSurface( const refdef_t *fd )
 */
 void R_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 {
-    unsigned int time = ri.Sys_Milliseconds();
+	const unsigned int time = ri.Sys_Milliseconds();
 
-	GLimp_BeginFrame();
+	//GLimp_BeginFrame();
 
-	RB_BeginFrame();
+	//RB_BeginFrame();
 
-#ifndef GL_ES_VERSION_2_0
-	if( cameraSeparation && ( !glConfig.stereoEnabled || !R_IsRenderingToScreen() ) )
-		cameraSeparation = 0;
-
-	if( rf.cameraSeparation != cameraSeparation )
-	{
-		rf.cameraSeparation = cameraSeparation;
-		if( cameraSeparation < 0 )
-			qglDrawBuffer( GL_BACK_LEFT );
-		else if( cameraSeparation > 0 )
-			qglDrawBuffer( GL_BACK_RIGHT );
-		else
-			qglDrawBuffer( GL_BACK );
-	}
-#endif
+//#ifndef GL_ES_VERSION_2_0
+//	if( cameraSeparation && ( !glConfig.stereoEnabled || !R_IsRenderingToScreen() ) )
+//		cameraSeparation = 0;
+//
+//	if( rf.cameraSeparation != cameraSeparation ) {
+//		rf.cameraSeparation = cameraSeparation;
+//		if( cameraSeparation < 0 )
+//			qglDrawBuffer( GL_BACK_LEFT );
+//		else if( cameraSeparation > 0 )
+//			qglDrawBuffer( GL_BACK_RIGHT );
+//		else
+//			qglDrawBuffer( GL_BACK );
+//	}
+//#endif
 
 	// draw buffer stuff
 	if( rf.newDrawBuffer )
 	{
 		rf.newDrawBuffer = false;
-
-#ifndef GL_ES_VERSION_2_0
-		if( cameraSeparation == 0 || !glConfig.stereoEnabled )
-		{
-			if( Q_stricmp( rf.drawBuffer, "GL_FRONT" ) == 0 )
-				qglDrawBuffer( GL_FRONT );
-			else
-				qglDrawBuffer( GL_BACK );
-		}
-#endif
+//
+//#ifndef GL_ES_VERSION_2_0
+//		if( cameraSeparation == 0 || !glConfig.stereoEnabled )
+//		{
+//			if( Q_stricmp( rf.drawBuffer, "GL_FRONT" ) == 0 )
+//				qglDrawBuffer( GL_FRONT );
+//			else
+//				qglDrawBuffer( GL_BACK );
+//		}
+//#endif
 	}
 
-	if( forceClear )
-	{
-		RB_Clear( GL_COLOR_BUFFER_BIT, 0, 0, 0, 1 );
-	}
+//	if( forceClear )
+//	{
+//		RB_Clear( GL_COLOR_BUFFER_BIT, 0, 0, 0, 1 );
+//	}
 
 	// set swap interval (vertical synchronization)
-	rf.swapInterval = R_SetSwapInterval( ( r_swapinterval->integer || forceVsync ) ? 1 : 0, rf.swapInterval );
+	//rf.swapInterval = R_SetSwapInterval( ( r_swapinterval->integer || forceVsync ) ? 1 : 0, rf.swapInterval );
 
 	memset( &rf.stats, 0, sizeof( rf.stats ) );
 
@@ -1670,7 +1654,7 @@ void R_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 		rf.fps.oldCount = rf.fps.count;
 	}
 
-	R_Set2DMode( true );
+	//R_Set2DMode( true );
 }
 
 /*
@@ -1687,13 +1671,13 @@ void R_EndFrame( void )
 
 	// reset the 2D state so that the mode will be 
 	// properly set back again in R_BeginFrame
-	R_Set2DMode( false );
+//	R_Set2DMode( false );
 
-	RB_EndFrame();
+//	RB_EndFrame();
 
-	GLimp_EndFrame();
+//	GLimp_EndFrame();
 
-	assert( qglGetError() == GL_NO_ERROR );
+	//assert( qglGetError() == GL_NO_ERROR );
 }
 
 
