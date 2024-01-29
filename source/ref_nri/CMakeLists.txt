@@ -38,6 +38,7 @@ if (USE_SDL2)
 		"../sdl/sdl_glw.c"
 		"../sdl/sdl_glw_icon.c"
 		"../sdl/sdl_qgl.c"
+		"../sdl/sdl_win.c"
 		)
 
 	set(REF_NRI_PLATFORM_LIBRARIES ${SDL2_LIBRARY})
@@ -70,5 +71,6 @@ target_link_libraries(ref_nri PRIVATE NRI)
 target_link_libraries(ref_nri PRIVATE glslang::OSDependent glslang::glslang glslang::MachineIndependent glslang::GenericCodeGen glslang::glslang-default-resource-limits glslang::SPVRemapper glslang::SPIRV )
 target_link_libraries(ref_nri PRIVATE ${REF_NRI_PLATFORM_LIBRARIES})
 target_include_directories(ref_nri PRIVATE ${NRI_INCLUDE_DIR})
+target_include_directories(ref_nri PRIVATE ${MINIZ_INCLUDE_DIR})
 qf_set_output_dir(ref_nri libs)
 
