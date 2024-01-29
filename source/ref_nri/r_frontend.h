@@ -23,11 +23,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 #include "r_cmdque.h"
+#include "r_scene_2.h"
+#include "r_nri.h"
 
 // sync-to-async frontend adapter
 typedef struct {
 	void			*owner;				// pointer to parent ref_frontend_t
-	void            *GLcontext;
 	unsigned		frameNum;
 	uint32_t 		frameId;
 	volatile uint32_t readFrameId;
@@ -43,15 +44,19 @@ typedef struct
 	unsigned		frameNum; 			// wrapped
 	unsigned		lastFrameNum;
 	uint32_t 		frameId;
+	r_scene_2_t* scene;
+	
+	uint32_t frameIndex;
+	NriFence* frameFence;	
+	NriSwapChain* swapChain; 
+	//ref_back_buffer_t* backBufferArr;
+	//ref_frame_t cmdFrames[2]; // two cmd buffers for double buffer
 
 	ref_cmdbuf_t	*frames[3];			// triple-buffered
 	ref_cmdbuf_t	*frame; 			// current frontend frame
 
-	void            *auxGLContext;
-
 	ref_frontendAdapter_t adapter;
 
-	// these fields serve as the frontend cache which can also queried by the public API
 	int 			scissor[4];
 	float			cameraSeparation;
 	byte_vec4_t		customColors[NUM_CUSTOMCOLORS];
