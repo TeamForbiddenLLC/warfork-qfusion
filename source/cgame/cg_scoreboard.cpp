@@ -794,6 +794,11 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 			break;
 		case 'a': // is a steam avatar
 				int i = atoi( token );
+				if( i < 0 ) // negative numbers toggle transparency on
+				{
+					trans = true;
+					i = -1 - i;
+				}
 				if (i >= 0 && i < gs.maxclients && cgs.clientInfo[i].steamid)
 					avatar = cgs.clientInfo[i].avatar;
 				width = 32;
@@ -828,6 +833,8 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 						tc[1] = ((float)avatar[pixel+1])/255;
 						tc[2] = ((float)avatar[pixel+2])/255;
 						tc[3] = ((float)avatar[pixel+3])/255;
+						if (trans)
+							tc[3] /= 5;
 						CGAME_IMPORT.R_DrawFillRect(x + xoffset + px, y+yoffset+py, 1, 1,tc);
 					}
 				}
