@@ -34,7 +34,7 @@ char **GArgv = NULL;
 static STEAMSHIM_Event* ProcessEvent(){
     static STEAMSHIM_Event event;
     // make sure this is static, since it needs to persist between pumps
-    static pipebuff_t buf;
+    static PipeBuffer buf;
 
     if (!buf.Recieve())
         return NULL;
@@ -239,7 +239,7 @@ extern "C" {
   }
 
   void STEAMSHIM_beginAuthSession(uint64_t steamid, SteamAuthTicket_t* ticket){
-      pipebuff_t buf;
+      PipeBuffer buf;
       buf.WriteByte(SHIMCMD_BEGINAUTHSESSION);
       buf.WriteLong(steamid);
       buf.WriteLong(ticket->pcbTicket);
@@ -248,14 +248,14 @@ extern "C" {
   }
 
   void STEAMSHIM_endAuthSession(uint64_t steamid){
-    pipebuff_t buf;
+    PipeBuffer buf;
     buf.WriteByte(SHIMCMD_ENDAUTHSESSION);
     buf.WriteLong(steamid);
     buf.Transmit();
   }
 
   void STEAMSHIM_setRichPresence(int num, char** key, char** val){
-      pipebuff_t buf;
+      PipeBuffer buf;
       buf.WriteByte(SHIMCMD_SETRICHPRESENCE);
       buf.WriteInt(num);
       for (int i=0; i < num;i++){
@@ -266,7 +266,7 @@ extern "C" {
   }
   void STEAMSHIM_createBeacon(uint32_t openSlots, char* connectString, char* metadata)
   {
-      pipebuff_t buf;
+      PipeBuffer buf;
       buf.WriteByte(SHIMCMD_CREATEBEACON);
       buf.WriteInt(openSlots);
       buf.WriteString(connectString);
@@ -274,7 +274,7 @@ extern "C" {
       buf.Transmit();
   }
   void STEAMSHIM_requestAvatar(uint64_t steamid, int size){
-    pipebuff_t buf;
+    PipeBuffer buf;
     buf.WriteByte(SHIMCMD_REQUESTAVATAR);
     buf.WriteLong(steamid);
     buf.WriteInt(size);

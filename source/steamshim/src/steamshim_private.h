@@ -40,14 +40,11 @@ typedef enum ShimCmd
 extern PipeType GPipeRead;
 extern PipeType GPipeWrite;
 
-class pipebuff_t
+class PipeBuffer
 {
   public:
-  pipebuff_t();
-  char buffer[PIPEMESSAGE_MAX];
-  unsigned int cursize = 0;
+  PipeBuffer();
 
-  int br = 0;
   bool hasmsg = false;
 
   void WriteData(void* val, size_t vallen);
@@ -68,6 +65,9 @@ class pipebuff_t
   int Recieve();
 
   private:
+  char buffer[PIPEMESSAGE_MAX];
+  unsigned int cursor = 0;
+  int bytesRead = 0;
   int lastmsglen = 0;
 
 };

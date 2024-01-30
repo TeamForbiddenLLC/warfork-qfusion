@@ -29,67 +29,67 @@ freely, subject to the following restrictions:
 PipeType GPipeRead = NULLPIPE;
 PipeType GPipeWrite = NULLPIPE;
 
-void pipebuff_t::WriteData(void* val, size_t vallen)
+void PipeBuffer::WriteData(void* val, size_t vallen)
 {
-  assert(cursize + vallen < PIPEMESSAGE_MAX);
-  memcpy(buffer + cursize, val, vallen);
-  cursize += vallen;
+  assert(cursor + vallen < PIPEMESSAGE_MAX);
+  memcpy(buffer + cursor, val, vallen);
+  cursor += vallen;
 }
 
-void pipebuff_t::WriteByte(char val)
-{
-  WriteData(&val, sizeof val);
-}
-
-void pipebuff_t::WriteInt(int val)
+void PipeBuffer::WriteByte(char val)
 {
   WriteData(&val, sizeof val);
 }
 
-void pipebuff_t::WriteFloat(float val)
+void PipeBuffer::WriteInt(int val)
 {
   WriteData(&val, sizeof val);
 }
 
-void pipebuff_t::WriteLong(uint64_t val)
+void PipeBuffer::WriteFloat(float val)
 {
   WriteData(&val, sizeof val);
 }
 
-void pipebuff_t::WriteString(char *val)
+void PipeBuffer::WriteLong(uint64_t val)
+{
+  WriteData(&val, sizeof val);
+}
+
+void PipeBuffer::WriteString(char *val)
 {
   WriteData(val, strlen(val)+1);
 }
 
-void *pipebuff_t::ReadData(size_t vallen)
+void *PipeBuffer::ReadData(size_t vallen)
 {
-  assert(cursize + vallen < PIPEMESSAGE_MAX);
-  void* val = cursize + buffer;
-  cursize += vallen;
+  assert(cursor + vallen < PIPEMESSAGE_MAX);
+  void* val = cursor + buffer;
+  cursor += vallen;
   return val;
 }
 
-char *pipebuff_t::ReadString()
+char *PipeBuffer::ReadString()
 {
-  char *str = cursize + buffer;
+  char *str = cursor + buffer;
   unsigned int len = strlen(str)+1;
-  cursize +=len;
+  cursor +=len;
   return str;
 }
 
-char pipebuff_t::ReadByte(){
+char PipeBuffer::ReadByte(){
   return *(char*)ReadData(sizeof(char));
 }
 
-int pipebuff_t::ReadInt(){
+int PipeBuffer::ReadInt(){
   return *(int*)ReadData(sizeof(int));
 }
 
-float pipebuff_t::ReadFloat(){
+float PipeBuffer::ReadFloat(){
   return *(float*)ReadData(sizeof(float));
 }
 
-uint64_t pipebuff_t::ReadLong(){
+uint64_t PipeBuffer::ReadLong(){
   return *(uint64_t*)ReadData(sizeof(long long));
 }
 
@@ -99,47 +99,47 @@ extern int GArgc;
 extern char **GArgv;
 
 
-pipebuff_t::pipebuff_t(){
+PipeBuffer::PipeBuffer(){
   memset(buffer,0,sizeof buffer);
 }
 
-int pipebuff_t::Transmit()
+int PipeBuffer::Transmit()
 {
 
-  writePipe(GPipeWrite, &cursize, sizeof cursize);
-  return writePipe(GPipeWrite, buffer, cursize);
+  writePipe(GPipeWrite, &cursor, sizeof cursor);
+  return writePipe(GPipeWrite, buffer, cursor);
 }
 
-int pipebuff_t::Recieve()
+int PipeBuffer::Recieve()
 {
   // reset after a succesful message read. could be more explicit but idc
   if (hasmsg)
   {
-    cursize = 0;
+    cursor = 0;
     hasmsg = false;
     // memset(buffer,0,sizeof buffer);
   }
 
   if (lastmsglen > 0) {
     // we have extra data left over, shift it to the left
-    memmove(buffer, buffer+lastmsglen+sizeof(uint32_t), br);
+    memmove(buffer, buffer+lastmsglen+sizeof(uint32_t), bytesRead);
     lastmsglen = 0;
   }
 
 
   // read message length header
-  int msglen = (br > 0) ? (*(uint32_t*) &buffer[0]) : 0;
+  int msglen = (bytesRead > 0) ? (*(uint32_t*) &buffer[0]) : 0;
 
-  if (br < (msglen + sizeof(uint32_t)))  /* we have an incomplete commmand. Try to read more. */
+  if (bytesRead < (msglen + sizeof(uint32_t)))  /* we have an incomplete commmand. Try to read more. */
   {
       if (pipeReady(GPipeRead))
       {
 
-          assert(br < sizeof(buffer));
-          const int morebr = readPipe(GPipeRead, buffer + br, sizeof (buffer) - br);
+          assert(bytesRead < sizeof(buffer));
+          const int morebr = readPipe(GPipeRead, buffer + bytesRead, sizeof (buffer) - bytesRead);
 
           if (morebr > 0)
-              br += morebr;
+              bytesRead += morebr;
           else  /* uh oh */
           {
             return 0;
@@ -149,12 +149,12 @@ int pipebuff_t::Recieve()
 
 
   // we have a full command
-  if (msglen && (br >= msglen + sizeof(uint32_t)))
+  if (msglen && (bytesRead >= msglen + sizeof(uint32_t)))
   {
     hasmsg = true;
 
-    br -= msglen + sizeof(uint32_t);
-    if (br > 0)
+    bytesRead -= msglen + sizeof(uint32_t);
+    if (bytesRead > 0)
       lastmsglen = msglen;
   }
 
@@ -163,7 +163,7 @@ int pipebuff_t::Recieve()
 
 
 int Write1ByteMessage(const uint8_t message){
-  pipebuff_t buf;
+  PipeBuffer buf;
   buf.WriteByte(message);
   return buf.Transmit();
 }

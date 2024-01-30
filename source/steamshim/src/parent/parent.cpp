@@ -52,7 +52,7 @@ static time_t time_since_last_pump = 0;
 
 static SteamCallbacks *GSteamCallbacks;
 
-static bool processCommand(pipebuff_t cmd, ShimCmd cmdtype, unsigned int len)
+static bool processCommand(PipeBuffer cmd, ShimCmd cmdtype, unsigned int len)
 {
   #if 1
     if (false) {}
@@ -70,7 +70,7 @@ static bool processCommand(pipebuff_t cmd, ShimCmd cmdtype, unsigned int len)
     else if (cmdtype != SHIMCMD_PUMP) printf("Parent got unknown shimcmd %d.\n", (int) cmdtype);
 #endif
 
-    pipebuff_t msg;
+    PipeBuffer msg;
     switch (cmdtype)
     {
         case SHIMCMD_PUMP:
@@ -182,7 +182,7 @@ static bool processCommand(pipebuff_t cmd, ShimCmd cmdtype, unsigned int len)
 
 static void processCommands()
 {
-  pipebuff_t buf;
+  PipeBuffer buf;
   while (1){
     if (time_since_last_pump != 0){
         time_t delta = time(NULL) - time_since_last_pump;

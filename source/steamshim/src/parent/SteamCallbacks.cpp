@@ -51,7 +51,7 @@ void TransmitAvatar(uint64 id){
     uint8_t image[4096];
     SteamUtils()->GetImageRGBA(handle, image, sizeof image);
 
-    pipebuff_t msg;
+    PipeBuffer msg;
     msg.WriteByte(SHIMEVENT_AVATARRECIEVED);
     msg.WriteLong(id);
     msg.WriteData(image, sizeof image);
