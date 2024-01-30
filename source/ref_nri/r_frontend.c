@@ -199,11 +199,23 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	void *hinstance, void *wndproc, void *parenthWnd, 
 	bool verbose )
 {
+	memset( &rsh, 0, sizeof( rsh ) );
+	memset( &rf, 0, sizeof( rf ) );
+	memset( &rrf, 0, sizeof( rrf ) );
+	
+	rsh.registrationSequence = 1;
+	rsh.registrationOpen = false;
+
+	rsh.worldModelSequence = 1;
+
+	rf.swapInterval = -1;
+	rf.speedsMsgLock = ri.Mutex_Create();
+	rf.debugSurfaceLock = ri.Mutex_Create();
+
 	r_mempool = R_AllocPool( NULL, "Rendering Frontend" );
 	rserr_t err = R_Init( applicationName, screenshotPrefix, startupColor,
 		iconResource, iconXPM, hinstance, wndproc, parenthWnd, verbose );
 
-	memset( &rrf, 0, sizeof( rrf ) );
 	
 	if( !applicationName ) applicationName = "Qfusion";
 	if( !screenshotPrefix ) screenshotPrefix = "";
@@ -272,13 +284,19 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	if( err != rserr_ok ) {
 		return err;
 	}
+	
+	RP_Init();
+
+	R_InitDrawLists();
+	
+	R_InitShaders();
+
 
 	return rserr_ok;
 }
 
 rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, bool fullScreen, bool stereo )
 {
-	rserr_t err;
 
 	if( glConfig.width == width && glConfig.height == height && glConfig.fullScreen != fullScreen ) {
 		return GLimp_SetFullscreenMode( displayFrequency, fullScreen );
@@ -286,10 +304,11 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 
 	RF_AdapterShutdown( &rrf.adapter );
 
-	err = R_SetMode( x, y, width, height, displayFrequency, fullScreen, stereo );
-	if( err != rserr_ok ) {
-		return err;
-	}
+	// TODO: need to handle setting x,y and width,height
+ // err = R_SetMode( x, y, width, height, displayFrequency, fullScreen, stereo );
+ // if( err != rserr_ok ) {
+ // 	return err;
+ // }
 
 	rrf.frameId = 0;
 	rrf.frameNum = rrf.lastFrameNum = 0;
