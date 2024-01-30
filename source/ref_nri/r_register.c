@@ -297,17 +297,7 @@ static rserr_t R_PostInit( void )
  // if( glConfig.hwGamma )
  // 	r_gamma->modified = true;
 
-	memset( &rsh, 0, sizeof( rsh ) );
-	memset( &rf, 0, sizeof( rf ) );
 
-	rsh.registrationSequence = 1;
-	rsh.registrationOpen = false;
-
-	rsh.worldModelSequence = 1;
-
-	rf.swapInterval = -1;
-	rf.speedsMsgLock = ri.Mutex_Create();
-	rf.debugSurfaceLock = ri.Mutex_Create();
 
 	R_InitDrawLists();
 

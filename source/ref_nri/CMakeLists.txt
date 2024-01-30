@@ -63,12 +63,10 @@ else()
 	endif()
 endif()
 
-find_package(glslang CONFIG REQUIRED)
-
 add_library(ref_nri SHARED ${REF_NRI_HEADERS} ${REF_NRI_COMMON_SOURCES} ${REF_NRI_PLATFORM_SOURCES})
 target_include_directories(ref_nri PRIVATE ${STB_INCLUDE_DIR} "../ref_base")
 target_link_libraries(ref_nri PRIVATE NRI)
-target_link_libraries(ref_nri PRIVATE glslang::OSDependent glslang::glslang glslang::MachineIndependent glslang::GenericCodeGen glslang::glslang-default-resource-limits glslang::SPVRemapper glslang::SPIRV )
+target_link_libraries(ref_nri PRIVATE OSDependent glslang MachineIndependent GenericCodeGen glslang-default-resource-limits SPVRemapper SPIRV )
 target_link_libraries(ref_nri PRIVATE ${REF_NRI_PLATFORM_LIBRARIES})
 target_include_directories(ref_nri PRIVATE ${NRI_INCLUDE_DIR})
 target_include_directories(ref_nri PRIVATE ${MINIZ_INCLUDE_DIR})
