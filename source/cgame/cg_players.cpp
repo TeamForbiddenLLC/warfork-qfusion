@@ -281,7 +281,7 @@ void CG_CallbackRequestAvatar(uint64_t steamid, char *avatar){
 	for (int i = 0; i < gs.maxclients; i++){
 		cg_clientInfo_t *ci = &cgs.clientInfo[i];
 		if (ci->steamid == steamid){
-			memcpy(ci->avatar, avatar, sizeof ci->avatar);
+			ci->avatar = trap_R_RegisterRawPic(va("avatar-%llu", ci->steamid), 32, 32, (uint8_t*)avatar, 4);
 			return;
 		}
 	}

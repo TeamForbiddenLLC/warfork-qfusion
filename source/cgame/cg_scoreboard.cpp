@@ -664,7 +664,7 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 	int iconnum;
 	struct shader_s *icon;
 	bool highlight = false, trans = false;
-	unsigned char *avatar;
+	shader_s *avatar;
 
 	if( GS_TeamBasedGametype() )
 	{
@@ -824,20 +824,14 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 
 			if( icon )
 				SCR_AddPlayerIcon( icon, x + xoffset, y + yoffset, color[3], font );
+
 			if (avatar){
-				for (unsigned int px = 0; px < 32; px++) {
-					for (unsigned int py = 0; py < 32; py++) {
-						unsigned int pixel = py*32*4+4*px;
-						vec4_t tc;
-						tc[0] = ((float)avatar[pixel])/255;
-						tc[1] = ((float)avatar[pixel+1])/255;
-						tc[2] = ((float)avatar[pixel+2])/255;
-						tc[3] = ((float)avatar[pixel+3])/255;
-						if (trans)
-							tc[3] /= 5;
-						CGAME_IMPORT.R_DrawFillRect(x + xoffset + px, y+yoffset+py, 1, 1,tc);
-					}
-				}
+				vec4_t avColor {1,1,1,1};
+
+				if (trans)
+					avColor[3] = 0.3;
+
+				trap_R_DrawStretchPic(x+xoffset,y+yoffset,32,32,0,0,1,1,avColor,avatar);
 			}
 		}
 
