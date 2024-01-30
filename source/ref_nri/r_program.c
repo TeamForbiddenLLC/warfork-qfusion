@@ -42,6 +42,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define GLSL_CACHE_FILE_NAME			"cache/glsl.cache"
 #define GLSL_BINARY_CACHE_FILE_NAME		"cache/glsl.cache.bin"
 
+typedef struct {
+	char* bin;
+	size_t size;
+	glsl_program_stage_t stage;
+} shader_bin_data_t;
+
 typedef struct
 {
 	r_glslfeat_t	bit;
@@ -57,6 +63,9 @@ typedef struct glsl_program_s
 	const char		*string;
 	char 			*deformsKey;
 	struct glsl_program_s *hash_next;
+
+	uint16_t shaderStageSize;
+	shader_bin_data_t shaderBin[GLSL_STAGE_MAX];
 
 	int				object;
 	int				vertexShader;
@@ -150,11 +159,22 @@ typedef struct glsl_program_s
 
 trie_t *glsl_cache_trie = NULL;
 
-static bool r_glslprograms_initialized;
-
 static unsigned int r_numglslprograms;
 static glsl_program_t r_glslprograms[MAX_GLSL_PROGRAMS];
 static glsl_program_t *r_glslprograms_hash[GLSL_PROGRAM_TYPE_MAXTYPE][GLSL_PROGRAMS_HASH_SIZE];
+
+
+static glslang_stage_t __RP_GLStageToSlang(glsl_program_stage_t stage) {
+	switch(stage) {
+		case GLSL_STAGE_VERTEX: return GLSLANG_STAGE_VERTEX;
+		case GLSL_STAGE_FRAGMENT: return GLSLANG_STAGE_FRAGMENT;
+		default:
+			break;
+	}
+	// unhandled return invalid stage
+	assert(0);
+	return GLSLANG_STAGE_COUNT;
+}
 
 static int r_glslbincache_storemode;
 
@@ -162,20 +182,16 @@ static void RP_GetUniformLocations( glsl_program_t *program );
 static void RP_BindAttrbibutesLocations( glsl_program_t *program );
 
 static void *RP_GetProgramBinary( int elem, int *format, unsigned *length );
-static int RP_RegisterProgramBinary( int type, const char *name, const char *deformsKey, 
-	const deformv_t *deforms, int numDeforms, r_glslfeat_t features, 
-	int binaryFormat, unsigned binaryLength, void *binary );
+static int RP_RegisterProgramBinary( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features, int binaryFormat, unsigned binaryLength, void *binary );
 
 /*
-* RP_Init
-*/
+ * RP_Init
+ */
 void RP_Init( void )
 {
+	glslang_initialize_process();
 	int program;
 
-	if( r_glslprograms_initialized ) {
-		return;
-	}
 
 	memset( r_glslprograms, 0, sizeof( r_glslprograms ) );
 	memset( r_glslprograms_hash, 0, sizeof( r_glslprograms_hash ) );
@@ -196,14 +212,143 @@ void RP_Init( void )
 	RP_RegisterProgram( GLSL_PROGRAM_TYPE_COLORCORRECTION, DEFAULT_GLSL_COLORCORRECTION_PROGRAM, NULL, NULL, 0, 0 );
 
 	// check whether compilation of the shader with GPU skinning succeeds, if not, disable GPU bone transforms
-	if ( glConfig.maxGLSLBones ) {
+	if( glConfig.maxGLSLBones ) {
 		program = RP_RegisterProgram( GLSL_PROGRAM_TYPE_MATERIAL, DEFAULT_GLSL_MATERIAL_PROGRAM, NULL, NULL, 0, GLSL_SHADER_COMMON_BONE_TRANSFORMS1 );
-		if ( !program ) {
+		if( !program ) {
 			glConfig.maxGLSLBones = 0;
 		}
 	}
+}
 
-	r_glslprograms_initialized = true;
+typedef struct {
+	const glsl_feature_t *it;
+	r_glslfeat_t bits;
+} feature_iter_t;
+
+static bool isValidFeatureIter( feature_iter_t *iter )
+{
+	return iter->it != NULL && iter->bits > 0;
+}
+
+static feature_iter_t R_NextFeature( feature_iter_t iter )
+{
+	for( ; iter.it && iter.bits > 0 && iter.it->bit > 0; iter.it++ ) {
+		if( ( iter.bits & iter.it->bit ) == iter.it->bit ) {
+			iter.bits &= ~iter.it->bit;
+			return iter;
+		}
+	}
+	iter.it = NULL;
+	return iter;
+}
+
+static sds R_AppendGLSLDeformv( sds str, const deformv_t *deformv, int numDeforms )
+{
+	static const char *const funcs[] = { NULL, "WAVE_SIN", "WAVE_TRIANGLE", "WAVE_SQUARE", "WAVE_SAWTOOTH", "WAVE_INVERSESAWTOOTH", NULL };
+	static const int numSupportedFuncs = sizeof( funcs ) / sizeof( funcs[0] ) - 1;
+	if( !numDeforms ) {
+		return str;
+	}
+	str = sdscatfmt( str,
+					 "#define QF_APPLY_DEFORMVERTS\n"
+					 "#if defined(APPLY_AUTOSPRITE) || defined(APPLY_AUTOSPRITE2)\n"
+					 "qf_attribute vec4 a_SpritePoint;\n"
+					 "#else\n"
+					 "#define a_SpritePoint vec4(0.0)\n"
+					 "#endif\n"
+					 "\n"
+					 "#if defined(APPLY_AUTOSPRITE2)\n"
+					 "qf_attribute vec4 a_SpriteRightUpAxis;\n"
+					 "#else\n"
+					 "#define a_SpriteRightUpAxis vec4(0.0)\n"
+					 "#endif\n"
+					 "\n"
+					 "void QF_DeformVerts(inout vec4 Position, inout vec3 Normal, inout vec2 TexCoord)\n"
+					 "{\n"
+					 "float t = 0.0;\n"
+					 "vec3 dist;\n"
+					 "vec3 right, up, forward, newright;\n"
+					 "\n"
+					 "#if defined(WAVE_SIN)\n" );
+	const int funcType = deformv->func.type;
+	for( size_t i = 0; i < numDeforms; i++, deformv++ ) {
+		switch( deformv->type ) {
+			case DEFORMV_WAVE: {
+				if( funcType <= SHADER_FUNC_NONE || funcType > numSupportedFuncs || !funcs[funcType] ) {
+					return str;
+				}
+				str = sdscatfmt( str, "Position.xyz += %s(u_QF_ShaderTime,%f,%f,%f+%f*(Position.x+Position.y+Position.z),%f) * Normal.xyz;\n", funcs[funcType], deformv->func.args[0],
+								 deformv->func.args[1], deformv->func.args[2], deformv->func.args[3] ? deformv->args[0] : 0.0, deformv->func.args[3] );
+				break;
+			}
+			case DEFORMV_MOVE: {
+				if( funcType <= SHADER_FUNC_NONE || funcType > numSupportedFuncs || !funcs[funcType] ) {
+					return str;
+				}
+				str = sdscatfmt( str, "Position.xyz += %s(u_QF_ShaderTime,%f,%f,%f,%f) * vec3(%f, %f, %f);\n", funcs[funcType], deformv->func.args[0], deformv->func.args[1], deformv->func.args[2],
+								 deformv->func.args[3], deformv->args[0], deformv->args[1], deformv->args[2] );
+
+				break;
+			}
+			case DEFORMV_BULGE:
+				str = sdscatfmt( str,
+								 "t = sin(TexCoord.s * %f + u_QF_ShaderTime * %f);\n"
+								 "Position.xyz += max (-1.0 + %f, t) * %f * Normal.xyz;\n",
+								 deformv->args[0], deformv->args[2], deformv->args[3], deformv->args[1] );
+
+				break;
+			case DEFORMV_AUTOSPRITE:
+				str = sdscatfmt( str,
+								 "right = (1.0 + step(0.5, TexCoord.s) * -2.0) * u_QF_ViewAxis[1] * u_QF_MirrorSide;\n;"
+								 "up = (1.0 + step(0.5, TexCoord.t) * -2.0) * u_QF_ViewAxis[2];\n"
+								 "forward = -1.0 * u_QF_ViewAxis[0];\n"
+								 "Position.xyz = a_SpritePoint.xyz + (right + up) * a_SpritePoint.w;\n"
+								 "Normal.xyz = forward;\n"
+								 "TexCoord.st = vec2(step(0.5, TexCoord.s),step(0.5, TexCoord.t));\n" );
+
+				break;
+			case DEFORMV_AUTOPARTICLE:
+				str = sdscatfmt( str,
+								 "right = (1.0 + TexCoord.s * -2.0) * u_QF_ViewAxis[1] * u_QF_MirrorSide;\n;"
+								 "up = (1.0 + TexCoord.t * -2.0) * u_QF_ViewAxis[2];\n"
+								 "forward = -1.0 * u_QF_ViewAxis[0];\n"
+								 // prevent the particle from disappearing at large distances
+								 "t = dot(a_SpritePoint.xyz + u_QF_EntityOrigin - u_QF_ViewOrigin, u_QF_ViewAxis[0]);\n"
+								 "t = 1.5 + step(20.0, t) * t * 0.006;\n"
+								 "Position.xyz = a_SpritePoint.xyz + (right + up) * t * a_SpritePoint.w;\n"
+								 "Normal.xyz = forward;\n" );
+				break;
+			case DEFORMV_AUTOSPRITE2:
+				str = sdscatfmt( str,
+								 // local sprite axes
+								 "right = QF_LatLong2Norm(a_SpriteRightUpAxis.xy) * u_QF_MirrorSide;\n"
+								 "up = QF_LatLong2Norm(a_SpriteRightUpAxis.zw);\n"
+
+								 // mid of quad to camera vector
+								 "dist = u_QF_ViewOrigin - u_QF_EntityOrigin - a_SpritePoint.xyz;\n"
+
+								 // filter any longest-axis-parts off the camera-direction
+								 "forward = normalize(dist - up * dot(dist, up));\n"
+
+								 // the right axis vector as it should be to face the camera
+								 "newright = cross(up, forward);\n"
+
+								 // rotate the quad vertex around the up axis vector
+								 "t = dot(right, Position.xyz - a_SpritePoint.xyz);\n"
+								 "Position.xyz += t * (newright - right);\n"
+								 "Normal.xyz = forward;\n" );
+				break;
+			default:
+				break;
+		}
+	}
+
+	str = sdscatfmt( str,
+					 "#endif\n"
+					 "}\n"
+					 "\n" );
+
+	return str;
 }
 
 /*
@@ -407,43 +552,36 @@ void RP_PrecachePrograms( void )
 	}
 }
 
-
 /*
-* RP_StorePrecacheList
-*
-* Stores the list of known GLSL program permutations to file on the disk.
-* File format matches that expected by RP_PrecachePrograms.
-*/
+ * RP_StorePrecacheList
+ *
+ * Stores the list of known GLSL program permutations to file on the disk.
+ * File format matches that expected by RP_PrecachePrograms.
+ */
 void RP_StorePrecacheList( void )
 {
 	unsigned int i;
 	int handle, handleBin;
 	glsl_program_t *program;
 	unsigned dummy;
-	
-	if( !r_glslprograms_initialized ) {
-		return;
-	}
 
 	handle = 0;
-	if( ri.FS_FOpenFile( GLSL_CACHE_FILE_NAME, &handle, FS_WRITE|FS_CACHE ) == -1 ) {
+	if( ri.FS_FOpenFile( GLSL_CACHE_FILE_NAME, &handle, FS_WRITE | FS_CACHE ) == -1 ) {
 		Com_Printf( S_COLOR_YELLOW "Could not open %s for writing.\n", GLSL_CACHE_FILE_NAME );
 		return;
 	}
 
 	handleBin = 0;
 	if( glConfig.ext.get_program_binary ) {
-		if( ri.FS_FOpenFile( GLSL_BINARY_CACHE_FILE_NAME, &handleBin, r_glslbincache_storemode|FS_CACHE ) == -1 ) {
+		if( ri.FS_FOpenFile( GLSL_BINARY_CACHE_FILE_NAME, &handleBin, r_glslbincache_storemode | FS_CACHE ) == -1 ) {
 			Com_Printf( S_COLOR_YELLOW "Could not open %s for writing.\n", GLSL_BINARY_CACHE_FILE_NAME );
-		}
-		else if( r_glslbincache_storemode == FS_WRITE ) {
+		} else if( r_glslbincache_storemode == FS_WRITE ) {
 			dummy = 0;
 			ri.FS_Write( &dummy, sizeof( dummy ), handleBin );
 
 			dummy = glConfig.versionHash;
 			ri.FS_Write( &dummy, sizeof( dummy ), handleBin );
-		}
-		else {
+		} else {
 			ri.FS_Seek( handleBin, 0, FS_SEEK_END );
 		}
 	}
@@ -468,8 +606,7 @@ void RP_StorePrecacheList( void )
 			if( r_glslbincache_storemode == FS_APPEND && program->binaryCachePos ) {
 				// this program is already cached
 				binaryPos = program->binaryCachePos;
-			}
-			else {		
+			} else {
 				binary = RP_GetProgramBinary( i + 1, &binaryFormat, &binaryLength );
 				if( binary ) {
 					binaryPos = ri.FS_Tell( handleBin );
@@ -477,12 +614,8 @@ void RP_StorePrecacheList( void )
 			}
 		}
 
-		ri.FS_Printf( handle, "%i %i %i \"%s\" %u\n", 
-			program->type, 
-			(int)(program->features & ULONG_MAX), 
-			(int)((program->features>>32) & ULONG_MAX), 
-			program->name, binaryPos );
-		
+		ri.FS_Printf( handle, "%i %i %i \"%s\" %u\n", program->type, (int)( program->features & ULONG_MAX ), (int)( ( program->features >> 32 ) & ULONG_MAX ), program->name, binaryPos );
+
 		if( binary ) {
 			ri.FS_Write( &binaryFormat, sizeof( binaryFormat ), handleBin );
 			ri.FS_Write( &binaryLength, sizeof( binaryLength ), handleBin );
@@ -494,7 +627,7 @@ void RP_StorePrecacheList( void )
 	ri.FS_FCloseFile( handle );
 	ri.FS_FCloseFile( handleBin );
 
-	if( handleBin && ri.FS_FOpenFile( GLSL_BINARY_CACHE_FILE_NAME, &handleBin, FS_UPDATE|FS_CACHE ) != -1 ) {
+	if( handleBin && ri.FS_FOpenFile( GLSL_BINARY_CACHE_FILE_NAME, &handleBin, FS_UPDATE | FS_CACHE ) != -1 ) {
 		dummy = GLSL_BITS_VERSION;
 		ri.FS_Write( &dummy, sizeof( dummy ), handleBin );
 		ri.FS_FCloseFile( handleBin );
@@ -502,21 +635,19 @@ void RP_StorePrecacheList( void )
 }
 
 /*
-* RF_DeleteProgram
-*/
+ * RF_DeleteProgram
+ */
 static void RF_DeleteProgram( glsl_program_t *program )
 {
 	glsl_program_t *hash_next;
 
-	if( program->vertexShader )
-	{
+	if( program->vertexShader ) {
 		qglDetachShader( program->object, program->vertexShader );
 		qglDeleteShader( program->vertexShader );
 		program->vertexShader = 0;
 	}
 
-	if( program->fragmentShader )
-	{
+	if( program->fragmentShader ) {
 		qglDetachShader( program->object, program->fragmentShader );
 		qglDeleteShader( program->fragmentShader );
 		program->fragmentShader = 0;
@@ -536,10 +667,9 @@ static void RF_DeleteProgram( glsl_program_t *program )
 }
 
 /*
-* RF_CompileShader
-*/
-static int RF_CompileShader( int program, const char *programName, const char *shaderName, 
-	int shaderType, const char **strings, int numStrings )
+ * RF_CompileShader
+ */
+static int RF_CompileShader( int program, const char *programName, const char *shaderName, int shaderType, const char **strings, int numStrings )
 {
 	GLhandleARB shader;
 	GLint compiled;
@@ -553,8 +683,7 @@ static int RF_CompileShader( int program, const char *programName, const char *s
 	qglCompileShaderARB( shader );
 	qglGetShaderiv( shader, GL_OBJECT_COMPILE_STATUS_ARB, &compiled );
 
-	if( !compiled )
-	{
+	if( !compiled ) {
 		char log[4096];
 
 		qglGetShaderInfoLog( shader, sizeof( log ) - 1, NULL, log );
@@ -568,8 +697,7 @@ static int RF_CompileShader( int program, const char *programName, const char *s
 				Com_Printf( "\n" );
 			}
 
-			Com_Printf( S_COLOR_YELLOW "Failed to compile %s shader for program %s\n", 
-				shaderName, programName );
+			Com_Printf( S_COLOR_YELLOW "Failed to compile %s shader for program %s\n", shaderName, programName );
 			Com_Printf( "%s", log );
 			Com_Printf( "\n" );
 		}
@@ -585,127 +713,118 @@ static int RF_CompileShader( int program, const char *programName, const char *s
 
 // ======================================================================================
 
-#define MAX_DEFINES_FEATURES	255
+#define MAX_DEFINES_FEATURES 255
 
-static const glsl_feature_t glsl_features_empty[] =
-{
-	{ 0, NULL, NULL }
-};
+static const glsl_feature_t glsl_features_empty[] = { { 0, NULL, NULL } };
 
-static const glsl_feature_t glsl_features_generic[] =
-{
-	{ GLSL_SHADER_COMMON_GREYSCALE, "#define APPLY_GREYSCALE\n", "_grey" },
+static const glsl_feature_t glsl_features_generic[] = { { GLSL_SHADER_COMMON_GREYSCALE, "#define APPLY_GREYSCALE\n", "_grey" },
 
-	{ 0, NULL, NULL }
-};
+														{ 0, NULL, NULL } };
 
-static const glsl_feature_t glsl_features_material[] =
-{
-	{ GLSL_SHADER_COMMON_GREYSCALE, "#define APPLY_GREYSCALE\n", "_grey" },
+static const glsl_feature_t glsl_features_material[] = { { GLSL_SHADER_COMMON_GREYSCALE, "#define APPLY_GREYSCALE\n", "_grey" },
 
-	{ GLSL_SHADER_COMMON_BONE_TRANSFORMS4, "#define QF_NUM_BONE_INFLUENCES 4\n", "_bones4" },
-	{ GLSL_SHADER_COMMON_BONE_TRANSFORMS3, "#define QF_NUM_BONE_INFLUENCES 3\n", "_bones3" },
-	{ GLSL_SHADER_COMMON_BONE_TRANSFORMS2, "#define QF_NUM_BONE_INFLUENCES 2\n", "_bones2" },
-	{ GLSL_SHADER_COMMON_BONE_TRANSFORMS1, "#define QF_NUM_BONE_INFLUENCES 1\n", "_bones1" },
+														 { GLSL_SHADER_COMMON_BONE_TRANSFORMS4, "#define QF_NUM_BONE_INFLUENCES 4\n", "_bones4" },
+														 { GLSL_SHADER_COMMON_BONE_TRANSFORMS3, "#define QF_NUM_BONE_INFLUENCES 3\n", "_bones3" },
+														 { GLSL_SHADER_COMMON_BONE_TRANSFORMS2, "#define QF_NUM_BONE_INFLUENCES 2\n", "_bones2" },
+														 { GLSL_SHADER_COMMON_BONE_TRANSFORMS1, "#define QF_NUM_BONE_INFLUENCES 1\n", "_bones1" },
 
-	{ GLSL_SHADER_COMMON_RGB_GEN_ONE_MINUS_VERTEX, "#define APPLY_RGB_ONE_MINUS_VERTEX\n", "_c1-v" },
-	{ GLSL_SHADER_COMMON_RGB_GEN_CONST, "#define APPLY_RGB_CONST\n", "_cc" },
-	{ GLSL_SHADER_COMMON_RGB_GEN_VERTEX, "#define APPLY_RGB_VERTEX\n", "_cv" },
-	{ GLSL_SHADER_COMMON_RGB_DISTANCERAMP, "#define APPLY_RGB_DISTANCERAMP\n", "_rgb_dr" },
+														 { GLSL_SHADER_COMMON_RGB_GEN_ONE_MINUS_VERTEX, "#define APPLY_RGB_ONE_MINUS_VERTEX\n", "_c1-v" },
+														 { GLSL_SHADER_COMMON_RGB_GEN_CONST, "#define APPLY_RGB_CONST\n", "_cc" },
+														 { GLSL_SHADER_COMMON_RGB_GEN_VERTEX, "#define APPLY_RGB_VERTEX\n", "_cv" },
+														 { GLSL_SHADER_COMMON_RGB_DISTANCERAMP, "#define APPLY_RGB_DISTANCERAMP\n", "_rgb_dr" },
 
-	{ GLSL_SHADER_COMMON_ALPHA_GEN_ONE_MINUS_VERTEX, "#define APPLY_ALPHA_ONE_MINUS_VERTEX\n", "_a1-v" },
-	{ GLSL_SHADER_COMMON_ALPHA_GEN_VERTEX, "#define APPLY_ALPHA_VERTEX\n", "_av" },
-	{ GLSL_SHADER_COMMON_ALPHA_GEN_CONST, "#define APPLY_ALPHA_CONST\n", "_ac" },
-	{ GLSL_SHADER_COMMON_ALPHA_DISTANCERAMP, "#define APPLY_ALPHA_DISTANCERAMP\n", "_alpha_dr" },
+														 { GLSL_SHADER_COMMON_ALPHA_GEN_ONE_MINUS_VERTEX, "#define APPLY_ALPHA_ONE_MINUS_VERTEX\n", "_a1-v" },
+														 { GLSL_SHADER_COMMON_ALPHA_GEN_VERTEX, "#define APPLY_ALPHA_VERTEX\n", "_av" },
+														 { GLSL_SHADER_COMMON_ALPHA_GEN_CONST, "#define APPLY_ALPHA_CONST\n", "_ac" },
+														 { GLSL_SHADER_COMMON_ALPHA_DISTANCERAMP, "#define APPLY_ALPHA_DISTANCERAMP\n", "_alpha_dr" },
 
-	{ GLSL_SHADER_COMMON_FOG, "#define APPLY_FOG\n#define APPLY_FOG_IN 1\n", "_fog" },
-	{ GLSL_SHADER_COMMON_FOG_RGB, "#define APPLY_FOG_COLOR\n", "_rgb" },
+														 { GLSL_SHADER_COMMON_FOG, "#define APPLY_FOG\n#define APPLY_FOG_IN 1\n", "_fog" },
+														 { GLSL_SHADER_COMMON_FOG_RGB, "#define APPLY_FOG_COLOR\n", "_rgb" },
 
-	{ GLSL_SHADER_COMMON_DLIGHTS_16, "#define NUM_DLIGHTS 16\n", "_dl16" },
-	{ GLSL_SHADER_COMMON_DLIGHTS_12, "#define NUM_DLIGHTS 12\n", "_dl12" },
-	{ GLSL_SHADER_COMMON_DLIGHTS_8, "#define NUM_DLIGHTS 8\n", "_dl8" },
-	{ GLSL_SHADER_COMMON_DLIGHTS_4, "#define NUM_DLIGHTS 4\n", "_dl4" },
+														 { GLSL_SHADER_COMMON_DLIGHTS_16, "#define NUM_DLIGHTS 16\n", "_dl16" },
+														 { GLSL_SHADER_COMMON_DLIGHTS_12, "#define NUM_DLIGHTS 12\n", "_dl12" },
+														 { GLSL_SHADER_COMMON_DLIGHTS_8, "#define NUM_DLIGHTS 8\n", "_dl8" },
+														 { GLSL_SHADER_COMMON_DLIGHTS_4, "#define NUM_DLIGHTS 4\n", "_dl4" },
 
-	{ GLSL_SHADER_COMMON_DRAWFLAT, "#define APPLY_DRAWFLAT\n", "_flat" },
+														 { GLSL_SHADER_COMMON_DRAWFLAT, "#define APPLY_DRAWFLAT\n", "_flat" },
 
-	{ GLSL_SHADER_COMMON_AUTOSPRITE, "#define APPLY_AUTOSPRITE\n", "" },
-	{ GLSL_SHADER_COMMON_AUTOSPRITE2, "#define APPLY_AUTOSPRITE2\n", "" },
-	{ GLSL_SHADER_COMMON_AUTOPARTICLE, "#define APPLY_AUTOSPRITE\n#define APPLY_AUTOPARTICLE\n", "" },
+														 { GLSL_SHADER_COMMON_AUTOSPRITE, "#define APPLY_AUTOSPRITE\n", "" },
+														 { GLSL_SHADER_COMMON_AUTOSPRITE2, "#define APPLY_AUTOSPRITE2\n", "" },
+														 { GLSL_SHADER_COMMON_AUTOPARTICLE, "#define APPLY_AUTOSPRITE\n#define APPLY_AUTOPARTICLE\n", "" },
 
-	{ GLSL_SHADER_COMMON_INSTANCED_TRANSFORMS, "#define APPLY_INSTANCED_TRANSFORMS\n", "_instanced" },
-	{ GLSL_SHADER_COMMON_INSTANCED_ATTRIB_TRANSFORMS, "#define APPLY_INSTANCED_TRANSFORMS\n"
-		"#define APPLY_INSTANCED_ATTRIB_TRANSFORMS\n", "_instanced_va" },
-	
-	{ GLSL_SHADER_COMMON_AFUNC_GE128, "#define QF_ALPHATEST(a) { if ((a) < 0.5) discard; }\n", "_afunc_ge128" },
-	{ GLSL_SHADER_COMMON_AFUNC_LT128, "#define QF_ALPHATEST(a) { if ((a) >= 0.5) discard; }\n", "_afunc_lt128" },
-	{ GLSL_SHADER_COMMON_AFUNC_GT0, "#define QF_ALPHATEST(a) { if ((a) <= 0.0) discard; }\n", "_afunc_gt0" },
+														 { GLSL_SHADER_COMMON_INSTANCED_TRANSFORMS, "#define APPLY_INSTANCED_TRANSFORMS\n", "_instanced" },
+														 { GLSL_SHADER_COMMON_INSTANCED_ATTRIB_TRANSFORMS,
+														   "#define APPLY_INSTANCED_TRANSFORMS\n"
+														   "#define APPLY_INSTANCED_ATTRIB_TRANSFORMS\n",
+														   "_instanced_va" },
 
-	{ GLSL_SHADER_COMMON_TC_MOD, "#define APPLY_TC_MOD\n", "_tc_mod" },
+														 { GLSL_SHADER_COMMON_AFUNC_GE128, "#define QF_ALPHATEST(a) { if ((a) < 0.5) discard; }\n", "_afunc_ge128" },
+														 { GLSL_SHADER_COMMON_AFUNC_LT128, "#define QF_ALPHATEST(a) { if ((a) >= 0.5) discard; }\n", "_afunc_lt128" },
+														 { GLSL_SHADER_COMMON_AFUNC_GT0, "#define QF_ALPHATEST(a) { if ((a) <= 0.0) discard; }\n", "_afunc_gt0" },
 
-	{ GLSL_SHADER_MATERIAL_LIGHTSTYLE3, "#define NUM_LIGHTMAPS 4\n#define qf_lmvec01 vec4\n#define qf_lmvec23 vec4\n", "_ls3" },
-	{ GLSL_SHADER_MATERIAL_LIGHTSTYLE2, "#define NUM_LIGHTMAPS 3\n#define qf_lmvec01 vec4\n#define qf_lmvec23 vec2\n", "_ls2" },
-	{ GLSL_SHADER_MATERIAL_LIGHTSTYLE1, "#define NUM_LIGHTMAPS 2\n#define qf_lmvec01 vec4\n", "_ls1" },
-	{ GLSL_SHADER_MATERIAL_LIGHTSTYLE0, "#define NUM_LIGHTMAPS 1\n#define qf_lmvec01 vec2\n", "_ls0" },
-	{ GLSL_SHADER_MATERIAL_LIGHTMAP_ARRAYS, "#define LIGHTMAP_ARRAYS\n", "_lmarray" },
-	{ GLSL_SHADER_MATERIAL_FB_LIGHTMAP, "#define APPLY_FBLIGHTMAP\n", "_fb" },
-	{ GLSL_SHADER_MATERIAL_DIRECTIONAL_LIGHT, "#define APPLY_DIRECTIONAL_LIGHT\n", "_dirlight" },
+														 { GLSL_SHADER_COMMON_TC_MOD, "#define APPLY_TC_MOD\n", "_tc_mod" },
 
-	{ GLSL_SHADER_MATERIAL_SPECULAR, "#define APPLY_SPECULAR\n", "_gloss" },
-	{ GLSL_SHADER_MATERIAL_OFFSETMAPPING, "#define APPLY_OFFSETMAPPING\n", "_offmap" },
-	{ GLSL_SHADER_MATERIAL_RELIEFMAPPING, "#define APPLY_RELIEFMAPPING\n", "_relmap" },
-	{ GLSL_SHADER_MATERIAL_AMBIENT_COMPENSATION, "#define APPLY_AMBIENT_COMPENSATION\n", "_amb" },
-	{ GLSL_SHADER_MATERIAL_DECAL, "#define APPLY_DECAL\n", "_decal" },
-	{ GLSL_SHADER_MATERIAL_DECAL_ADD, "#define APPLY_DECAL_ADD\n", "_add" },
-	{ GLSL_SHADER_MATERIAL_BASETEX_ALPHA_ONLY, "#define APPLY_BASETEX_ALPHA_ONLY\n", "_alpha" },
-	{ GLSL_SHADER_MATERIAL_CELSHADING, "#define APPLY_CELSHADING\n", "_cel" },
-	{ GLSL_SHADER_MATERIAL_HALFLAMBERT, "#define APPLY_HALFLAMBERT\n", "_lambert" },
+														 { GLSL_SHADER_MATERIAL_LIGHTSTYLE3, "#define NUM_LIGHTMAPS 4\n#define qf_lmvec01 vec4\n#define qf_lmvec23 vec4\n", "_ls3" },
+														 { GLSL_SHADER_MATERIAL_LIGHTSTYLE2, "#define NUM_LIGHTMAPS 3\n#define qf_lmvec01 vec4\n#define qf_lmvec23 vec2\n", "_ls2" },
+														 { GLSL_SHADER_MATERIAL_LIGHTSTYLE1, "#define NUM_LIGHTMAPS 2\n#define qf_lmvec01 vec4\n", "_ls1" },
+														 { GLSL_SHADER_MATERIAL_LIGHTSTYLE0, "#define NUM_LIGHTMAPS 1\n#define qf_lmvec01 vec2\n", "_ls0" },
+														 { GLSL_SHADER_MATERIAL_LIGHTMAP_ARRAYS, "#define LIGHTMAP_ARRAYS\n", "_lmarray" },
+														 { GLSL_SHADER_MATERIAL_FB_LIGHTMAP, "#define APPLY_FBLIGHTMAP\n", "_fb" },
+														 { GLSL_SHADER_MATERIAL_DIRECTIONAL_LIGHT, "#define APPLY_DIRECTIONAL_LIGHT\n", "_dirlight" },
 
-	{ GLSL_SHADER_MATERIAL_ENTITY_DECAL, "#define APPLY_ENTITY_DECAL\n", "_decal2" },
-	{ GLSL_SHADER_MATERIAL_ENTITY_DECAL_ADD, "#define APPLY_ENTITY_DECAL_ADD\n", "_decal2_add" },
+														 { GLSL_SHADER_MATERIAL_SPECULAR, "#define APPLY_SPECULAR\n", "_gloss" },
+														 { GLSL_SHADER_MATERIAL_OFFSETMAPPING, "#define APPLY_OFFSETMAPPING\n", "_offmap" },
+														 { GLSL_SHADER_MATERIAL_RELIEFMAPPING, "#define APPLY_RELIEFMAPPING\n", "_relmap" },
+														 { GLSL_SHADER_MATERIAL_AMBIENT_COMPENSATION, "#define APPLY_AMBIENT_COMPENSATION\n", "_amb" },
+														 { GLSL_SHADER_MATERIAL_DECAL, "#define APPLY_DECAL\n", "_decal" },
+														 { GLSL_SHADER_MATERIAL_DECAL_ADD, "#define APPLY_DECAL_ADD\n", "_add" },
+														 { GLSL_SHADER_MATERIAL_BASETEX_ALPHA_ONLY, "#define APPLY_BASETEX_ALPHA_ONLY\n", "_alpha" },
+														 { GLSL_SHADER_MATERIAL_CELSHADING, "#define APPLY_CELSHADING\n", "_cel" },
+														 { GLSL_SHADER_MATERIAL_HALFLAMBERT, "#define APPLY_HALFLAMBERT\n", "_lambert" },
 
-	// doesn't make sense without APPLY_DIRECTIONAL_LIGHT
-	{ GLSL_SHADER_MATERIAL_DIRECTIONAL_LIGHT_MIX, "#define APPLY_DIRECTIONAL_LIGHT_MIX\n", "_mix" },
-	{ GLSL_SHADER_MATERIAL_DIRECTIONAL_LIGHT_FROM_NORMAL, "#define APPLY_DIRECTIONAL_LIGHT_FROM_NORMAL\n", "_normlight" },
+														 { GLSL_SHADER_MATERIAL_ENTITY_DECAL, "#define APPLY_ENTITY_DECAL\n", "_decal2" },
+														 { GLSL_SHADER_MATERIAL_ENTITY_DECAL_ADD, "#define APPLY_ENTITY_DECAL_ADD\n", "_decal2_add" },
 
-	{ 0, NULL, NULL }
-};
+														 // doesn't make sense without APPLY_DIRECTIONAL_LIGHT
+														 { GLSL_SHADER_MATERIAL_DIRECTIONAL_LIGHT_MIX, "#define APPLY_DIRECTIONAL_LIGHT_MIX\n", "_mix" },
+														 { GLSL_SHADER_MATERIAL_DIRECTIONAL_LIGHT_FROM_NORMAL, "#define APPLY_DIRECTIONAL_LIGHT_FROM_NORMAL\n", "_normlight" },
 
-static const glsl_feature_t glsl_features_distortion[] =
-{
-	{ GLSL_SHADER_COMMON_GREYSCALE, "#define APPLY_GREYSCALE\n", "_grey" },
+														 { 0, NULL, NULL } };
 
-	{ GLSL_SHADER_COMMON_RGB_GEN_ONE_MINUS_VERTEX, "#define APPLY_RGB_ONE_MINUS_VERTEX\n", "_c1-v" },
-	{ GLSL_SHADER_COMMON_RGB_GEN_CONST, "#define APPLY_RGB_CONST\n", "_cc" },
-	{ GLSL_SHADER_COMMON_RGB_GEN_VERTEX, "#define APPLY_RGB_VERTEX\n", "_cv" },
-	{ GLSL_SHADER_COMMON_RGB_DISTANCERAMP, "#define APPLY_RGB_DISTANCERAMP\n", "_rgb_dr" },
+static const glsl_feature_t glsl_features_distortion[] = { { GLSL_SHADER_COMMON_GREYSCALE, "#define APPLY_GREYSCALE\n", "_grey" },
 
-	{ GLSL_SHADER_COMMON_ALPHA_GEN_ONE_MINUS_VERTEX, "#define APPLY_ALPHA_ONE_MINUS_VERTEX\n", "_a1-v" },
-	{ GLSL_SHADER_COMMON_ALPHA_GEN_CONST, "#define APPLY_ALPHA_CONST\n", "_ac" },
-	{ GLSL_SHADER_COMMON_ALPHA_GEN_VERTEX, "#define APPLY_ALPHA_VERTEX\n", "_av" },
-	{ GLSL_SHADER_COMMON_ALPHA_DISTANCERAMP, "#define APPLY_ALPHA_DISTANCERAMP\n", "_alpha_dr" },
+														   { GLSL_SHADER_COMMON_RGB_GEN_ONE_MINUS_VERTEX, "#define APPLY_RGB_ONE_MINUS_VERTEX\n", "_c1-v" },
+														   { GLSL_SHADER_COMMON_RGB_GEN_CONST, "#define APPLY_RGB_CONST\n", "_cc" },
+														   { GLSL_SHADER_COMMON_RGB_GEN_VERTEX, "#define APPLY_RGB_VERTEX\n", "_cv" },
+														   { GLSL_SHADER_COMMON_RGB_DISTANCERAMP, "#define APPLY_RGB_DISTANCERAMP\n", "_rgb_dr" },
 
-	{ GLSL_SHADER_COMMON_AUTOSPRITE, "#define APPLY_AUTOSPRITE\n", "" },
-	{ GLSL_SHADER_COMMON_AUTOSPRITE2, "#define APPLY_AUTOSPRITE2\n", "" },
-	{ GLSL_SHADER_COMMON_AUTOPARTICLE, "#define APPLY_AUTOSPRITE\n#define APPLY_AUTOPARTICLE\n", "" },
+														   { GLSL_SHADER_COMMON_ALPHA_GEN_ONE_MINUS_VERTEX, "#define APPLY_ALPHA_ONE_MINUS_VERTEX\n", "_a1-v" },
+														   { GLSL_SHADER_COMMON_ALPHA_GEN_CONST, "#define APPLY_ALPHA_CONST\n", "_ac" },
+														   { GLSL_SHADER_COMMON_ALPHA_GEN_VERTEX, "#define APPLY_ALPHA_VERTEX\n", "_av" },
+														   { GLSL_SHADER_COMMON_ALPHA_DISTANCERAMP, "#define APPLY_ALPHA_DISTANCERAMP\n", "_alpha_dr" },
 
-	{ GLSL_SHADER_COMMON_INSTANCED_TRANSFORMS, "#define APPLY_INSTANCED_TRANSFORMS\n", "_instanced" },
-	{ GLSL_SHADER_COMMON_INSTANCED_ATTRIB_TRANSFORMS, "#define APPLY_INSTANCED_TRANSFORMS\n"
-			"#define APPLY_INSTANCED_ATTRIB_TRANSFORMS\n", "_instanced_va" },
+														   { GLSL_SHADER_COMMON_AUTOSPRITE, "#define APPLY_AUTOSPRITE\n", "" },
+														   { GLSL_SHADER_COMMON_AUTOSPRITE2, "#define APPLY_AUTOSPRITE2\n", "" },
+														   { GLSL_SHADER_COMMON_AUTOPARTICLE, "#define APPLY_AUTOSPRITE\n#define APPLY_AUTOPARTICLE\n", "" },
 
-	{ GLSL_SHADER_COMMON_FOG, "#define APPLY_FOG\n#define APPLY_FOG_IN 1\n", "_fog" },
-	{ GLSL_SHADER_COMMON_FOG_RGB, "#define APPLY_FOG_COLOR\n", "_rgb" },
+														   { GLSL_SHADER_COMMON_INSTANCED_TRANSFORMS, "#define APPLY_INSTANCED_TRANSFORMS\n", "_instanced" },
+														   { GLSL_SHADER_COMMON_INSTANCED_ATTRIB_TRANSFORMS,
+															 "#define APPLY_INSTANCED_TRANSFORMS\n"
+															 "#define APPLY_INSTANCED_ATTRIB_TRANSFORMS\n",
+															 "_instanced_va" },
 
-	{ GLSL_SHADER_DISTORTION_DUDV, "#define APPLY_DUDV\n", "_dudv" },
-	{ GLSL_SHADER_DISTORTION_EYEDOT, "#define APPLY_EYEDOT\n", "_eyedot" },
-	{ GLSL_SHADER_DISTORTION_DISTORTION_ALPHA, "#define APPLY_DISTORTION_ALPHA\n", "_alpha" },
-	{ GLSL_SHADER_DISTORTION_REFLECTION, "#define APPLY_REFLECTION\n", "_refl" },
-	{ GLSL_SHADER_DISTORTION_REFRACTION, "#define APPLY_REFRACTION\n", "_refr" },
+														   { GLSL_SHADER_COMMON_FOG, "#define APPLY_FOG\n#define APPLY_FOG_IN 1\n", "_fog" },
+														   { GLSL_SHADER_COMMON_FOG_RGB, "#define APPLY_FOG_COLOR\n", "_rgb" },
 
-	{ 0, NULL, NULL }
-};
+														   { GLSL_SHADER_DISTORTION_DUDV, "#define APPLY_DUDV\n", "_dudv" },
+														   { GLSL_SHADER_DISTORTION_EYEDOT, "#define APPLY_EYEDOT\n", "_eyedot" },
+														   { GLSL_SHADER_DISTORTION_DISTORTION_ALPHA, "#define APPLY_DISTORTION_ALPHA\n", "_alpha" },
+														   { GLSL_SHADER_DISTORTION_REFLECTION, "#define APPLY_REFLECTION\n", "_refl" },
+														   { GLSL_SHADER_DISTORTION_REFRACTION, "#define APPLY_REFRACTION\n", "_refr" },
 
-static const glsl_feature_t glsl_features_rgbshadow[] =
-{
+														   { 0, NULL, NULL } };
+
+static const glsl_feature_t glsl_features_rgbshadow[] = {
 	{ GLSL_SHADER_COMMON_BONE_TRANSFORMS4, "#define QF_NUM_BONE_INFLUENCES 4\n", "_bones4" },
 	{ GLSL_SHADER_COMMON_BONE_TRANSFORMS3, "#define QF_NUM_BONE_INFLUENCES 3\n", "_bones3" },
 	{ GLSL_SHADER_COMMON_BONE_TRANSFORMS2, "#define QF_NUM_BONE_INFLUENCES 2\n", "_bones2" },
@@ -716,11 +835,9 @@ static const glsl_feature_t glsl_features_rgbshadow[] =
 
 	{ GLSL_SHADER_RGBSHADOW_24BIT, "#define APPLY_RGB_SHADOW_24BIT\n", "_rgb24" },
 
-	{ 0, NULL, NULL }
-};
+	{ 0, NULL, NULL } };
 
-static const glsl_feature_t glsl_features_shadowmap[] =
-{
+static const glsl_feature_t glsl_features_shadowmap[] = {
 	{ GLSL_SHADER_COMMON_BONE_TRANSFORMS4, "#define QF_NUM_BONE_INFLUENCES 4\n", "_bones4" },
 	{ GLSL_SHADER_COMMON_BONE_TRANSFORMS3, "#define QF_NUM_BONE_INFLUENCES 3\n", "_bones3" },
 	{ GLSL_SHADER_COMMON_BONE_TRANSFORMS2, "#define QF_NUM_BONE_INFLUENCES 2\n", "_bones2" },
@@ -738,11 +855,9 @@ static const glsl_feature_t glsl_features_shadowmap[] =
 	{ GLSL_SHADER_SHADOWMAP_24BIT, "#define APPLY_RGB_SHADOW_24BIT\n", "_rgb24" },
 	{ GLSL_SHADER_SHADOWMAP_NORMALCHECK, "#define APPLY_SHADOW_NORMAL_CHECK\n", "_nc" },
 
-	{ 0, NULL, NULL }
-};
+	{ 0, NULL, NULL } };
 
-static const glsl_feature_t glsl_features_outline[] =
-{
+static const glsl_feature_t glsl_features_outline[] = {
 	{ GLSL_SHADER_COMMON_BONE_TRANSFORMS4, "#define QF_NUM_BONE_INFLUENCES 4\n", "_bones4" },
 	{ GLSL_SHADER_COMMON_BONE_TRANSFORMS3, "#define QF_NUM_BONE_INFLUENCES 3\n", "_bones3" },
 	{ GLSL_SHADER_COMMON_BONE_TRANSFORMS2, "#define QF_NUM_BONE_INFLUENCES 2\n", "_bones2" },
@@ -759,11 +874,9 @@ static const glsl_feature_t glsl_features_outline[] =
 
 	{ GLSL_SHADER_OUTLINE_OUTLINES_CUTOFF, "#define APPLY_OUTLINES_CUTOFF\n", "_outcut" },
 
-	{ 0, NULL, NULL }
-};
+	{ 0, NULL, NULL } };
 
-static const glsl_feature_t glsl_features_q3a[] =
-{
+static const glsl_feature_t glsl_features_q3a[] = {
 	{ GLSL_SHADER_COMMON_GREYSCALE, "#define APPLY_GREYSCALE\n", "_grey" },
 
 	{ GLSL_SHADER_COMMON_BONE_TRANSFORMS4, "#define QF_NUM_BONE_INFLUENCES 4\n", "_bones4" },
@@ -799,11 +912,10 @@ static const glsl_feature_t glsl_features_q3a[] =
 	{ GLSL_SHADER_COMMON_INSTANCED_ATTRIB_TRANSFORMS, "#define APPLY_INSTANCED_TRANSFORMS\n#define APPLY_INSTANCED_ATTRIB_TRANSFORMS\n", "_instanced_va" },
 
 	{ GLSL_SHADER_COMMON_SOFT_PARTICLE, "#define APPLY_SOFT_PARTICLE\n", "_sp" },
-	
+
 	{ GLSL_SHADER_COMMON_AFUNC_GE128, "#define QF_ALPHATEST(a) { if ((a) < 0.5) discard; }\n", "_afunc_ge128" },
 	{ GLSL_SHADER_COMMON_AFUNC_LT128, "#define QF_ALPHATEST(a) { if ((a) >= 0.5) discard; }\n", "_afunc_lt128" },
 	{ GLSL_SHADER_COMMON_AFUNC_GT0, "#define QF_ALPHATEST(a) { if ((a) <= 0.0) discard; }\n", "_afunc_gt0" },
-
 
 	{ GLSL_SHADER_COMMON_TC_MOD, "#define APPLY_TC_MOD\n", "_tc_mod" },
 
@@ -823,11 +935,9 @@ static const glsl_feature_t glsl_features_q3a[] =
 
 	{ GLSL_SHADER_Q3_ALPHA_MASK, "#define APPLY_ALPHA_MASK\n", "_alpha_mask" },
 
-	{ 0, NULL, NULL }
-};
+	{ 0, NULL, NULL } };
 
-static const glsl_feature_t glsl_features_celshade[] =
-{
+static const glsl_feature_t glsl_features_celshade[] = {
 	{ GLSL_SHADER_COMMON_GREYSCALE, "#define APPLY_GREYSCALE\n", "_grey" },
 
 	{ GLSL_SHADER_COMMON_BONE_TRANSFORMS4, "#define QF_NUM_BONE_INFLUENCES 4\n", "_bones4" },
@@ -853,7 +963,7 @@ static const glsl_feature_t glsl_features_celshade[] =
 
 	{ GLSL_SHADER_COMMON_INSTANCED_TRANSFORMS, "#define APPLY_INSTANCED_TRANSFORMS\n", "_instanced" },
 	{ GLSL_SHADER_COMMON_INSTANCED_ATTRIB_TRANSFORMS, "#define APPLY_INSTANCED_TRANSFORMS\n#define APPLY_INSTANCED_ATTRIB_TRANSFORMS\n", "_instanced_va" },
-	
+
 	{ GLSL_SHADER_COMMON_AFUNC_GE128, "#define QF_ALPHATEST(a) { if ((a) < 0.5) discard; }\n", "_afunc_ge128" },
 	{ GLSL_SHADER_COMMON_AFUNC_LT128, "#define QF_ALPHATEST(a) { if ((a) >= 0.5) discard; }\n", "_afunc_lt128" },
 	{ GLSL_SHADER_COMMON_AFUNC_GT0, "#define QF_ALPHATEST(a) { if ((a) <= 0.0) discard; }\n", "_afunc_gt0" },
@@ -870,11 +980,9 @@ static const glsl_feature_t glsl_features_celshade[] =
 	{ GLSL_SHADER_CELSHADE_CEL_LIGHT, "#define APPLY_CEL_LIGHT\n", "_light" },
 	{ GLSL_SHADER_CELSHADE_CEL_LIGHT_ADD, "#define APPLY_CEL_LIGHT_ADD\n", "_add" },
 
-	{ 0, NULL, NULL }
-};
+	{ 0, NULL, NULL } };
 
-static const glsl_feature_t glsl_features_fog[] =
-{
+static const glsl_feature_t glsl_features_fog[] = {
 	{ GLSL_SHADER_COMMON_BONE_TRANSFORMS4, "#define QF_NUM_BONE_INFLUENCES 4\n", "_bones4" },
 	{ GLSL_SHADER_COMMON_BONE_TRANSFORMS3, "#define QF_NUM_BONE_INFLUENCES 3\n", "_bones3" },
 	{ GLSL_SHADER_COMMON_BONE_TRANSFORMS2, "#define QF_NUM_BONE_INFLUENCES 2\n", "_bones2" },
@@ -890,52 +998,28 @@ static const glsl_feature_t glsl_features_fog[] =
 	{ GLSL_SHADER_COMMON_INSTANCED_TRANSFORMS, "#define APPLY_INSTANCED_TRANSFORMS\n", "_instanced" },
 	{ GLSL_SHADER_COMMON_INSTANCED_ATTRIB_TRANSFORMS, "#define APPLY_INSTANCED_TRANSFORMS\n#define APPLY_INSTANCED_ATTRIB_TRANSFORMS\n", "_instanced_va" },
 
-	{ 0, NULL, NULL }
-};
+	{ 0, NULL, NULL } };
 
-static const glsl_feature_t glsl_features_fxaa[] =
-{
-	{ GLSL_SHADER_FXAA_FXAA3, "#define APPLY_FXAA3\n", "_fxaa3" },
+static const glsl_feature_t glsl_features_fxaa[] = { { GLSL_SHADER_FXAA_FXAA3, "#define APPLY_FXAA3\n", "_fxaa3" },
 
-	{ 0, NULL, NULL }
-};
+													 { 0, NULL, NULL } };
 
-static const glsl_feature_t * const glsl_programtypes_features[] =
-{
+static const glsl_feature_t *const glsl_programtypes_features[] = {
 	// GLSL_PROGRAM_TYPE_NONE
 	NULL,
-	// GLSL_PROGRAM_TYPE_MATERIAL
-	glsl_features_material,
-	// GLSL_PROGRAM_TYPE_DISTORTION
-	glsl_features_distortion,
-	// GLSL_PROGRAM_TYPE_RGB_SHADOW
-	glsl_features_rgbshadow,
-	// GLSL_PROGRAM_TYPE_SHADOWMAP
-	glsl_features_shadowmap,
-	// GLSL_PROGRAM_TYPE_OUTLINE
-	glsl_features_outline,
-	// GLSL_PROGRAM_TYPE_UNUSED
-	glsl_features_empty,
-	// GLSL_PROGRAM_TYPE_Q3A_SHADER
-	glsl_features_q3a,
-	// GLSL_PROGRAM_TYPE_CELSHADE
-	glsl_features_celshade,
-	// GLSL_PROGRAM_TYPE_FOG
-	glsl_features_fog,
-	// GLSL_PROGRAM_TYPE_FXAA
-	glsl_features_fxaa,
-	// GLSL_PROGRAM_TYPE_YUV
-	glsl_features_empty,
-	// GLSL_PROGRAM_TYPE_COLORCORRECTION
-	glsl_features_empty
+	[GLSL_PROGRAM_TYPE_MATERIAL] = glsl_features_material,
+	[GLSL_PROGRAM_TYPE_DISTORTION] = glsl_features_distortion,
+	[GLSL_PROGRAM_TYPE_RGB_SHADOW] = glsl_features_rgbshadow,
+	[GLSL_PROGRAM_TYPE_SHADOWMAP] = glsl_features_shadowmap,
+	[GLSL_PROGRAM_TYPE_OUTLINE] = glsl_features_outline,
+	[GLSL_PROGRAM_TYPE_UNUSED] = glsl_features_empty,
+	[GLSL_PROGRAM_TYPE_Q3A_SHADER] = glsl_features_q3a,
+	[GLSL_PROGRAM_TYPE_CELSHADE] = glsl_features_celshade,
+	[GLSL_PROGRAM_TYPE_FOG] = glsl_features_fog,
+	[GLSL_PROGRAM_TYPE_FXAA] = glsl_features_fxaa,
+	[GLSL_PROGRAM_TYPE_YUV] = glsl_features_empty,
+	[GLSL_PROGRAM_TYPE_COLORCORRECTION] = glsl_features_empty 
 };
-
-// ======================================================================================
-
-#ifndef STR_HELPER
-#define STR_HELPER( s )					# s
-#define STR_TOSTR( x )					STR_HELPER( x )
-#endif
 
 #define QF_GLSL_VERSION120 "#version 120\n"
 #define QF_GLSL_VERSION130 "#version 130\n"
@@ -996,28 +1080,29 @@ static const glsl_feature_t * const glsl_programtypes_features[] =
 "#define qf_shadow shadow2D\n" \
 "\n"
 
-#define QF_BUILTIN_GLSL_MACROS_GLSL130 "" \
-"precision highp float;\n" \
-"#ifdef VERTEX_SHADER\n" \
-"  out myhalf4 qf_FrontColor;\n" \
-"# define qf_varying out\n" \
-"# define qf_flat_varying flat out\n" \
-"# define qf_attribute in\n" \
-"#endif\n" \
-"#ifdef FRAGMENT_SHADER\n" \
-"  in myhalf4 qf_FrontColor;\n" \
-"  out myhalf4 qf_FragColor;\n" \
-"# define qf_varying in\n" \
-"# define qf_flat_varying flat in\n" \
-"#endif\n" \
-"#define qf_texture texture\n" \
-"#define qf_textureCube texture\n" \
-"#define qf_textureLod textureLod\n" \
-"#define qf_textureArray texture\n" \
-"#define qf_texture3D texture\n" \
-"#define qf_textureOffset(a,b,c,d) textureOffset(a,b,ivec2(c,d))\n" \
-"#define qf_shadow texture\n" \
-"\n"
+#define QF_BUILTIN_GLSL_MACROS_GLSL130                                  \
+	""                                                                  \
+	"precision highp float;\n"                                          \
+	"#ifdef VERTEX_SHADER\n"                                            \
+	"  layout(location = 0) out myhalf4 qf_FrontColor;\n"                                    \
+	"# define qf_varying out\n"                                         \
+	"# define qf_flat_varying flat out\n"                               \
+	"# define qf_attribute in\n"                                        \
+	"#endif\n"                                                          \
+	"#ifdef FRAGMENT_SHADER\n"                                          \
+	"  layout(location = 0) in myhalf4 qf_FrontColor;\n"                                     \
+	"  layout(location = 1) out myhalf4 qf_FragColor;\n"                                     \
+	"# define qf_varying in\n"                                          \
+	"# define qf_flat_varying flat in\n"                                \
+	"#endif\n"                                                          \
+	"#define qf_texture texture\n"                                      \
+	"#define qf_textureCube texture\n"                                  \
+	"#define qf_textureLod textureLod\n"                                \
+	"#define qf_textureArray texture\n"                                 \
+	"#define qf_texture3D texture\n"                                    \
+	"#define qf_textureOffset(a,b,c,d) textureOffset(a,b,ivec2(c,d))\n" \
+	"#define qf_shadow texture\n"                                       \
+	"\n"
 
 #define QF_BUILTIN_GLSL_MACROS_GLSL100ES "" \
 "#define qf_varying varying\n" \
@@ -1382,10 +1467,9 @@ static const char *R_GLSLBuildDeformv( const deformv_t *deformv, int numDeforms 
 
 //=======================================================================
 
-#define PARSER_MAX_STACKDEPTH	16
+#define PARSER_MAX_STACKDEPTH 16
 
-typedef struct
-{
+typedef struct {
 	const char *topFile;
 	bool error;
 
@@ -1398,11 +1482,153 @@ typedef struct
 	size_t numBuffers;
 } glslParser_t;
 
+static bool RF_AppendShaderFromFile__( sds *str, const char *rootFile, const char *fileName, int stackDepth, int programType, r_glslfeat_t features )
+{
+	char tempbuf[MAX_TOKEN_CHARS];
+	char *fileContents = NULL;
+	char *trieCache = NULL;
+	trie_error_t trie_error = Trie_Find( glsl_cache_trie, fileName, TRIE_EXACT_MATCH, (void **)&trieCache );
+	if( trie_error != TRIE_OK ) {
+		R_LoadFile( fileName, (void **)&fileContents );
+		if( fileContents ) {
+			trieCache = R_CopyString( fileContents );
+		}
+		Trie_Insert( glsl_cache_trie, fileName, trieCache );
+	} else {
+		if( trieCache ) {
+			fileContents = R_CopyString( trieCache );
+		}
+	}
+
+	if( !fileContents ) {
+		Com_Printf( S_COLOR_YELLOW "Cannot load file '%s'\n", fileName );
+		return true;
+	}
+
+	char *it = fileContents;
+	char *prevIt = NULL;
+	char *startBuf = NULL;
+	bool error = false;
+	sds includeFilePath = sdsempty();
+	while( 1 ) {
+		prevIt = it;
+		char *token = COM_ParseExt_r( tempbuf, sizeof( tempbuf ), &it, true );
+		if( !token[0] ) {
+			break;
+		}
+		bool include = false;
+		bool ignore_include = false;
+
+		if( !Q_stricmp( token, "#include" ) ) {
+			include = true;
+		} else if( !Q_strnicmp( token, "#include_if(", 12 ) ) {
+			include = true;
+			token += 12;
+
+			ignore_include = true;
+			if( ( !Q_stricmp( token, "APPLY_FOG)" ) && ( features & GLSL_SHADER_COMMON_FOG ) ) ||
+
+				( !Q_stricmp( token, "NUM_DLIGHTS)" ) && ( features & GLSL_SHADER_COMMON_DLIGHTS ) ) ||
+
+				( !Q_stricmp( token, "APPLY_GREYSCALE)" ) && ( features & GLSL_SHADER_COMMON_GREYSCALE ) ) ||
+
+				( ( programType == GLSL_PROGRAM_TYPE_Q3A_SHADER ) && !Q_stricmp( token, "NUM_LIGHTMAPS)" ) && ( features & GLSL_SHADER_Q3_LIGHTSTYLE ) ) ||
+
+				( ( programType == GLSL_PROGRAM_TYPE_MATERIAL ) && !Q_stricmp( token, "NUM_LIGHTMAPS)" ) && ( features & GLSL_SHADER_MATERIAL_LIGHTSTYLE ) ) ||
+
+				( ( programType == GLSL_PROGRAM_TYPE_MATERIAL ) && !Q_stricmp( token, "APPLY_OFFSETMAPPING)" ) &&
+				  ( features & ( GLSL_SHADER_MATERIAL_OFFSETMAPPING | GLSL_SHADER_MATERIAL_RELIEFMAPPING ) ) ) ||
+
+				( ( programType == GLSL_PROGRAM_TYPE_MATERIAL ) && !Q_stricmp( token, "APPLY_CELSHADING)" ) && ( features & GLSL_SHADER_MATERIAL_CELSHADING ) ) ||
+
+				( ( programType == GLSL_PROGRAM_TYPE_MATERIAL ) && !Q_stricmp( token, "APPLY_DIRECTIONAL_LIGHT)" ) && ( features & GLSL_SHADER_MATERIAL_DIRECTIONAL_LIGHT ) )
+
+			) {
+				ignore_include = false;
+			}
+		}
+
+		char *line = token;
+		if( !include || ignore_include ) {
+			if( !ignore_include ) {
+				if( !startBuf ) {
+					startBuf = prevIt;
+				}
+			}
+
+			// skip to the end of the line
+			token = strchr( it, '\n' );
+			if( !token ) {
+				break;
+			}
+			it = token + 1;
+			continue;
+		}
+
+		if( startBuf && prevIt > startBuf ) {
+			// cut the string at the beginning of the #include
+			*prevIt = '\0';
+			( *str ) = sdscat( *str, startBuf );
+			startBuf = NULL;
+		}
+
+		// parse #include argument
+		token = COM_Parse_r( tempbuf, sizeof( tempbuf ), &it );
+		if( !token[0] ) {
+			Com_Printf( S_COLOR_YELLOW "Syntax error in '%s' around '%s'\n", fileName, line );
+			error = true;
+			goto done;
+		}
+
+		if( stackDepth == PARSER_MAX_STACKDEPTH ) {
+			Com_Printf( S_COLOR_YELLOW "Include stack overflow in '%s' around '%s'\n", fileName, line );
+			error = true;
+			goto done;
+		}
+
+		// load files from current directory, unless the path starts
+		// with the leading "/". in that case, go back to to top directory
+		COM_SanitizeFilePath( token );
+
+		sdsclear( includeFilePath );
+		includeFilePath = sdsMakeRoomFor( includeFilePath, strlen( fileName ) + 1 + strlen( token ) + 1 );
+
+		// tempFilename = R_Malloc( tempFilenameSize );
+
+		if( *token != '/' ) {
+			includeFilePath = sdscat( includeFilePath, fileName );
+			COM_StripFilename( includeFilePath );
+		} else {
+			token++;
+			includeFilePath = sdscat( includeFilePath, rootFile );
+			COM_StripFilename( includeFilePath );
+		}
+		sdsupdatelen( includeFilePath );
+		includeFilePath = sdscat( includeFilePath, ( *includeFilePath ? "/" : "" ) );
+		includeFilePath = sdscat( includeFilePath, token );
+		if( RF_AppendShaderFromFile__( str, rootFile, includeFilePath, stackDepth + 1, programType, features ) ) {
+			error = true;
+			goto done;
+		}
+	}
+	if( startBuf ) {
+		*str = sdscat( *str, startBuf );
+	}
+done:
+	R_Free( fileContents );
+	sdsfree( includeFilePath );
+	return error;
+}
+
+static bool RF_AppendShaderFromFile( sds *str, const char *fileName, int programType, r_glslfeat_t features )
+{
+	return RF_AppendShaderFromFile__( str, fileName, fileName, 1, programType, features );
+}
+
 /*
-* RF_LoadShaderFromFile_r
-*/
-static bool RF_LoadShaderFromFile_r( glslParser_t *parser, const char *fileName,
-	int stackDepth, int programType, r_glslfeat_t features )
+ * RF_LoadShaderFromFile_r
+ */
+static bool RF_LoadShaderFromFile_r( glslParser_t *parser, const char *fileName, int stackDepth, int programType, r_glslfeat_t features )
 {
 	char *fileContents;
 	char *token, *line;
@@ -1412,23 +1638,20 @@ static bool RF_LoadShaderFromFile_r( glslParser_t *parser, const char *fileName,
 	trie_error_t trie_error;
 	char tempbuf[MAX_TOKEN_CHARS];
 
-	trie_error = Trie_Find( glsl_cache_trie, fileName, TRIE_EXACT_MATCH, ( void ** )&trieCache );
+	trie_error = Trie_Find( glsl_cache_trie, fileName, TRIE_EXACT_MATCH, (void **)&trieCache );
 	if( trie_error != TRIE_OK ) {
 		R_LoadFile( fileName, (void **)&fileContents );
 
 		if( fileContents ) {
 			trieCache = R_CopyString( fileContents );
-		}
-		else {
+		} else {
 			trieCache = NULL;
 		}
 		Trie_Insert( glsl_cache_trie, fileName, trieCache );
-	}
-	else {
+	} else {
 		if( trieCache ) {
 			fileContents = R_CopyString( trieCache );
-		}
-		else {
+		} else {
 			fileContents = NULL;
 		}
 	}
@@ -1461,40 +1684,35 @@ static bool RF_LoadShaderFromFile_r( glslParser_t *parser, const char *fileName,
 
 		if( !Q_stricmp( token, "#include" ) ) {
 			include = true;
-		}
-		else if( !Q_strnicmp( token, "#include_if(", 12 ) ) {
+		} else if( !Q_strnicmp( token, "#include_if(", 12 ) ) {
 			include = true;
 			token += 12;
 
 			ignore_include = true;
-			if( ( !Q_stricmp( token, "APPLY_FOG)" ) && (features & GLSL_SHADER_COMMON_FOG) ) ||
+			if( ( !Q_stricmp( token, "APPLY_FOG)" ) && ( features & GLSL_SHADER_COMMON_FOG ) ) ||
 
-				( !Q_stricmp( token, "NUM_DLIGHTS)" ) && (features & GLSL_SHADER_COMMON_DLIGHTS) ) ||
+				( !Q_stricmp( token, "NUM_DLIGHTS)" ) && ( features & GLSL_SHADER_COMMON_DLIGHTS ) ) ||
 
-				( !Q_stricmp( token, "APPLY_GREYSCALE)" ) && (features & GLSL_SHADER_COMMON_GREYSCALE) ) ||
+				( !Q_stricmp( token, "APPLY_GREYSCALE)" ) && ( features & GLSL_SHADER_COMMON_GREYSCALE ) ) ||
 
-				( (programType == GLSL_PROGRAM_TYPE_Q3A_SHADER) && !Q_stricmp( token, "NUM_LIGHTMAPS)" )
-					&& (features & GLSL_SHADER_Q3_LIGHTSTYLE) ) ||
+				( ( programType == GLSL_PROGRAM_TYPE_Q3A_SHADER ) && !Q_stricmp( token, "NUM_LIGHTMAPS)" ) && ( features & GLSL_SHADER_Q3_LIGHTSTYLE ) ) ||
 
-				( (programType == GLSL_PROGRAM_TYPE_MATERIAL) && !Q_stricmp( token, "NUM_LIGHTMAPS)" )
-					&& (features & GLSL_SHADER_MATERIAL_LIGHTSTYLE) ) ||
+				( ( programType == GLSL_PROGRAM_TYPE_MATERIAL ) && !Q_stricmp( token, "NUM_LIGHTMAPS)" ) && ( features & GLSL_SHADER_MATERIAL_LIGHTSTYLE ) ) ||
 
-				( (programType == GLSL_PROGRAM_TYPE_MATERIAL) && !Q_stricmp( token, "APPLY_OFFSETMAPPING)" ) 
-					&& (features & (GLSL_SHADER_MATERIAL_OFFSETMAPPING|GLSL_SHADER_MATERIAL_RELIEFMAPPING)) ) ||
+				( ( programType == GLSL_PROGRAM_TYPE_MATERIAL ) && !Q_stricmp( token, "APPLY_OFFSETMAPPING)" ) &&
+				  ( features & ( GLSL_SHADER_MATERIAL_OFFSETMAPPING | GLSL_SHADER_MATERIAL_RELIEFMAPPING ) ) ) ||
 
-				( (programType == GLSL_PROGRAM_TYPE_MATERIAL) && !Q_stricmp( token, "APPLY_CELSHADING)" )
-					&& (features & GLSL_SHADER_MATERIAL_CELSHADING) ) ||
+				( ( programType == GLSL_PROGRAM_TYPE_MATERIAL ) && !Q_stricmp( token, "APPLY_CELSHADING)" ) && ( features & GLSL_SHADER_MATERIAL_CELSHADING ) ) ||
 
-				( (programType == GLSL_PROGRAM_TYPE_MATERIAL) && !Q_stricmp( token, "APPLY_DIRECTIONAL_LIGHT)" )
-					&& (features & GLSL_SHADER_MATERIAL_DIRECTIONAL_LIGHT) )
+				( ( programType == GLSL_PROGRAM_TYPE_MATERIAL ) && !Q_stricmp( token, "APPLY_DIRECTIONAL_LIGHT)" ) && ( features & GLSL_SHADER_MATERIAL_DIRECTIONAL_LIGHT ) )
 
-				) {
+			) {
 				ignore_include = false;
 			}
 		}
 
 		line = token;
-		if( !include || ignore_include ) { 
+		if( !include || ignore_include ) {
 			if( !ignore_include ) {
 				if( !startBuf ) {
 					startBuf = prevPtr;
@@ -1506,7 +1724,7 @@ static bool RF_LoadShaderFromFile_r( glslParser_t *parser, const char *fileName,
 			if( !token ) {
 				break;
 			}
-			ptr = token+1;
+			ptr = token + 1;
 			continue;
 		}
 
@@ -1535,7 +1753,7 @@ static bool RF_LoadShaderFromFile_r( glslParser_t *parser, const char *fileName,
 		}
 
 		if( !parser->error ) {
-			char tmp[MAX_TOKEN_CHARS+2];
+			char tmp[MAX_TOKEN_CHARS + 2];
 			char *tempFilename;
 			size_t tempFilenameSize;
 
@@ -1558,7 +1776,7 @@ static bool RF_LoadShaderFromFile_r( glslParser_t *parser, const char *fileName,
 
 			Q_strncatz( tempFilename, va_r( tmp, sizeof( tmp ), "%s%s", *tempFilename ? "/" : "", token ), tempFilenameSize );
 
-			parser->error = RF_LoadShaderFromFile_r( parser, tempFilename, stackDepth+1, programType, features );
+			parser->error = RF_LoadShaderFromFile_r( parser, tempFilename, stackDepth + 1, programType, features );
 
 			R_Free( tempFilename );
 
@@ -1580,19 +1798,17 @@ static bool RF_LoadShaderFromFile_r( glslParser_t *parser, const char *fileName,
 }
 
 /*
-* R_ProgramFeatures2Defines
-* 
-* Return an array of strings for bitflags
-*/
+ * R_ProgramFeatures2Defines
+ *
+ * Return an array of strings for bitflags
+ */
 static const char **R_ProgramFeatures2Defines( const glsl_feature_t *type_features, r_glslfeat_t features, char *name, size_t size )
 {
 	int i, p;
-	static const char *headers[MAX_DEFINES_FEATURES+1]; // +1 for NULL safe-guard
+	static const char *headers[MAX_DEFINES_FEATURES + 1]; // +1 for NULL safe-guard
 
-	for( i = 0, p = 0; features && type_features && type_features[i].bit; i++ )
-	{
-		if( (features & type_features[i].bit) == type_features[i].bit )
-		{
+	for( i = 0, p = 0; features && type_features && type_features[i].bit; i++ ) {
+		if( ( features & type_features[i].bit ) == type_features[i].bit ) {
 			headers[p++] = type_features[i].define;
 			if( name )
 				Q_strncatz( name, type_features[i].suffix, size );
@@ -1604,8 +1820,7 @@ static const char **R_ProgramFeatures2Defines( const glsl_feature_t *type_featur
 		}
 	}
 
-	if( p )
-	{
+	if( p ) {
 		headers[p] = NULL;
 		return headers;
 	}
@@ -1614,26 +1829,25 @@ static const char **R_ProgramFeatures2Defines( const glsl_feature_t *type_featur
 }
 
 /*
-* R_Features2HashKey
-*/
+ * R_Features2HashKey
+ */
 static int R_Features2HashKey( r_glslfeat_t features )
 {
 	int hash = 0x7e53a269;
 
-#define ComputeHash(hash,val) hash = -1521134295 * hash + (val), hash += (hash << 10), hash ^= (hash >> 6)
+#define ComputeHash( hash, val ) hash = -1521134295 * hash + ( val ), hash += ( hash << 10 ), hash ^= ( hash >> 6 )
 
-	ComputeHash(hash, (int)(features & 0xFFFFFFFF));
-	ComputeHash(hash, (int)((features >> 32ULL) & 0xFFFFFFFF));
+	ComputeHash( hash, (int)( features & 0xFFFFFFFF ) );
+	ComputeHash( hash, (int)( ( features >> 32ULL ) & 0xFFFFFFFF ) );
 
-	return hash & (GLSL_PROGRAMS_HASH_SIZE - 1);
+	return hash & ( GLSL_PROGRAMS_HASH_SIZE - 1 );
 }
 
 /*
-* RP_RegisterProgramBinary
-*/
-static int RP_RegisterProgramBinary( int type, const char *name, const char *deformsKey, 
-	const deformv_t *deforms, int numDeforms, r_glslfeat_t features, 
-	int binaryFormat, unsigned binaryLength, void *binary )
+ * RP_RegisterProgramBinary
+ */
+static int
+RP_RegisterProgramBinary( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features, int binaryFormat, unsigned binaryLength, void *binary )
 {
 	unsigned int i;
 	int hash;
@@ -1651,7 +1865,7 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	char fileName[1024];
 	const char **header;
 	char *shaderBuffers[100];
-	const char *shaderStrings[MAX_DEFINES_FEATURES+100];
+	const char *shaderStrings[MAX_DEFINES_FEATURES + 100];
 	char shaderVersion[100];
 	char maxBones[100];
 	const char *deformv;
@@ -1667,30 +1881,27 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 		deformsKey = "";
 
 	hash = R_Features2HashKey( features );
-	for( program = r_glslprograms_hash[type][hash]; program; program = program->hash_next )
-	{
+	for( program = r_glslprograms_hash[type][hash]; program; program = program->hash_next ) {
 		if( ( program->features == features ) && !strcmp( program->deformsKey, deformsKey ) ) {
-			return ( (program - r_glslprograms) + 1 );
+			return ( ( program - r_glslprograms ) + 1 );
 		}
 	}
 
-	if( r_numglslprograms == MAX_GLSL_PROGRAMS )
-	{
+	if( r_numglslprograms == MAX_GLSL_PROGRAMS ) {
 		Com_Printf( S_COLOR_YELLOW "RP_RegisterProgram: GLSL programs limit exceeded\n" );
 		return 0;
 	}
 
 	// if no string was specified, search for an already registered program of the same type
 	// with minimal set of features specified
-	if( !name )
-	{
+	if( !name ) {
 		glsl_program_t *parent;
 
 		parent = NULL;
 		for( i = 0; i < r_numglslprograms; i++ ) {
 			program = r_glslprograms + i;
 
-			if( (program->type == type) && !program->features ) {
+			if( ( program->type == type ) && !program->features ) {
 				parent = program;
 				break;
 			}
@@ -1699,8 +1910,7 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 		if( parent ) {
 			if( !name )
 				name = parent->name;
-		}
-		else {
+		} else {
 			Com_Printf( S_COLOR_YELLOW "RP_RegisterProgram: failed to find parent for program type %i\n", type );
 			return 0;
 		}
@@ -1708,8 +1918,7 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 
 	program = r_glslprograms + r_numglslprograms++;
 	program->object = qglCreateProgram();
-	if( !program->object )
-	{
+	if( !program->object ) {
 		error = 1;
 		goto done;
 	}
@@ -1731,8 +1940,7 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	Q_strncpyz( fullName, name, sizeof( fullName ) );
 	header = R_ProgramFeatures2Defines( glsl_programtypes_features[type], features, fullName, sizeof( fullName ) );
 
-	Q_snprintfz( shaderVersion, sizeof( shaderVersion ), 
-		"#define QF_GLSL_VERSION %i\n", glConfig.shadingLanguageVersion );
+	Q_snprintfz( shaderVersion, sizeof( shaderVersion ), "#define QF_GLSL_VERSION %i\n", glConfig.shadingLanguageVersion );
 
 	// load
 	//
@@ -1743,18 +1951,15 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 #ifdef GL_ES_VERSION_2_0
 	if( glConfig.shadingLanguageVersion >= 310 ) {
 		shaderStrings[i++] = QF_GLSL_VERSION310ES;
-	}
-	else if( glConfig.shadingLanguageVersion >= 300 ) {
+	} else if( glConfig.shadingLanguageVersion >= 300 ) {
 		shaderStrings[i++] = QF_GLSL_VERSION300ES;
 	}
 #else
 	if( glConfig.shadingLanguageVersion >= 140 ) {
 		shaderStrings[i++] = QF_GLSL_VERSION140;
-	}
-	else if( glConfig.shadingLanguageVersion >= 130 ) {
+	} else if( glConfig.shadingLanguageVersion >= 130 ) {
 		shaderStrings[i++] = QF_GLSL_VERSION130;
-	}
-	else {
+	} else {
 		shaderStrings[i++] = QF_GLSL_VERSION120;
 	}
 #endif
@@ -1793,21 +1998,18 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 
 	if( glConfig.shadingLanguageVersion >= 300 ) {
 		shaderStrings[i++] = QF_BUILTIN_GLSL_MACROS_GLSL300ES;
-	}
-	else {
+	} else {
 		shaderStrings[i++] = QF_BUILTIN_GLSL_MACROS_GLSL100ES;
 	}
 #else
 	if( glConfig.shadingLanguageVersion >= 130 ) {
 		shaderStrings[i++] = QF_BUILTIN_GLSL_MACROS_GLSL130;
-	}
-	else {
+	} else {
 		shaderStrings[i++] = QF_BUILTIN_GLSL_MACROS_GLSL120;
 	}
 #endif
 	shaderStrings[i++] = QF_BUILTIN_GLSL_CONSTANTS;
-	Q_snprintfz( maxBones, sizeof( maxBones ),
-		"#define MAX_UNIFORM_BONES %i\n", glConfig.maxGLSLBones );
+	Q_snprintfz( maxBones, sizeof( maxBones ), "#define MAX_UNIFORM_BONES %i\n", glConfig.maxGLSLBones );
 	shaderStrings[i++] = maxBones;
 	shaderStrings[i++] = QF_BUILTIN_GLSL_UNIFORMS;
 	wavefuncsIdx = i;
@@ -1817,7 +2019,7 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	if( header ) {
 		body_start = i;
 		for( ; header[i - body_start] && *header[i - body_start]; i++ )
-			shaderStrings[i] = ( char * )header[i - body_start];
+			shaderStrings[i] = (char *)header[i - body_start];
 	}
 
 	// forward declare QF_DeformVerts
@@ -1831,16 +2033,14 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	dualQuatsIdx = i;
 	if( features & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
 		shaderStrings[i++] = QF_BUILTIN_GLSL_QUAT_TRANSFORM;
-	}
-	else {
+	} else {
 		shaderStrings[i++] = "\n";
 	}
 
 	instancedIdx = i;
-	if( features & (GLSL_SHADER_COMMON_INSTANCED_TRANSFORMS|GLSL_SHADER_COMMON_INSTANCED_ATTRIB_TRANSFORMS) ) {
+	if( features & ( GLSL_SHADER_COMMON_INSTANCED_TRANSFORMS | GLSL_SHADER_COMMON_INSTANCED_ATTRIB_TRANSFORMS ) ) {
 		shaderStrings[i++] = QF_BUILTIN_GLSL_INSTANCED_TRANSFORMS;
-	}
-	else {
+	} else {
 		shaderStrings[i++] = "\n";
 	}
 
@@ -1855,7 +2055,7 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	parser.maxBuffers = sizeof( shaderBuffers ) / sizeof( shaderBuffers[0] );
 	parser.strings = &shaderStrings[num_init_strings];
 	parser.maxStrings = sizeof( shaderStrings ) / sizeof( shaderStrings[0] ) - num_init_strings;
-	
+
 	// compile
 	//
 
@@ -1868,12 +2068,10 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	parser.numBuffers = 0;
 	parser.numStrings = 0;
 	RF_LoadShaderFromFile_r( &parser, parser.topFile, 1, type, features );
-	program->vertexShader = RF_CompileShader( program->object, fullName, "vertex", GL_VERTEX_SHADER_ARB, 
-		shaderStrings, num_init_strings + parser.numStrings );
+	program->vertexShader = RF_CompileShader( program->object, fullName, "vertex", GL_VERTEX_SHADER_ARB, shaderStrings, num_init_strings + parser.numStrings );
 	for( i = 0; i < parser.numBuffers; i++ )
 		R_Free( parser.buffers[i] );
-	if( !program->vertexShader )
-	{
+	if( !program->vertexShader ) {
 		error = 1;
 		goto done;
 	}
@@ -1884,8 +2082,7 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 		shaderStrings[enableTextureArrayIdx] = QF_GLSL_ENABLE_EXT_TEXTURE_ARRAY;
 	shaderStrings[enableInstancedIdx] = "\n";
 #else
-	if( glConfig.shadingLanguageVersion < 300 )
-	{
+	if( glConfig.shadingLanguageVersion < 300 ) {
 		if( glConfig.ext.texture_array )
 			shaderStrings[enableTextureArrayIdx] = QF_GLSL_ENABLE_EXT_TEXTURE_ARRAY;
 		if( glConfig.ext.shadow )
@@ -1906,12 +2103,10 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	parser.numBuffers = 0;
 	parser.numStrings = 0;
 	RF_LoadShaderFromFile_r( &parser, parser.topFile, 1, type, features );
-	program->fragmentShader = RF_CompileShader( program->object, fullName, "fragment", GL_FRAGMENT_SHADER_ARB, 
-		shaderStrings, num_init_strings + parser.numStrings );
+	program->fragmentShader = RF_CompileShader( program->object, fullName, "fragment", GL_FRAGMENT_SHADER_ARB, shaderStrings, num_init_strings + parser.numStrings );
 	for( i = 0; i < parser.numBuffers; i++ )
 		R_Free( parser.buffers[i] );
-	if( !program->fragmentShader )
-	{
+	if( !program->fragmentShader ) {
 		error = 1;
 		goto done;
 	}
@@ -1921,8 +2116,7 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 
 	qglLinkProgramARB( program->object );
 	qglGetProgramiv( program->object, GL_OBJECT_LINK_STATUS_ARB, &linked );
-	if( !linked )
-	{
+	if( !linked ) {
 		char log[8192];
 
 		qglGetProgramInfoLog( program->object, sizeof( log ), NULL, log );
@@ -1947,14 +2141,12 @@ done:
 	program->name = R_CopyString( name );
 	program->deformsKey = R_CopyString( deformsKey ? deformsKey : "" );
 
-	if( !program->hash_next )
-	{
+	if( !program->hash_next ) {
 		program->hash_next = r_glslprograms_hash[type][hash];
 		r_glslprograms_hash[type][hash] = program;
 	}
 
-	if( program->object )
-	{
+	if( program->object ) {
 		qglUseProgram( program->object );
 		RP_GetUniformLocations( program );
 	}
@@ -1963,18 +2155,18 @@ done:
 }
 
 /*
-* RP_RegisterProgram
-*/
-//int RP_RegisterProgram( int type, const char *name, const char *deformsKey, 
+ * RP_RegisterProgram
+ */
+// int RP_RegisterProgram( int type, const char *name, const char *deformsKey,
 //	const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
 //{
-//	return RP_RegisterProgramBinary( type, name, deformsKey, deforms, numDeforms, 
+//	return RP_RegisterProgramBinary( type, name, deformsKey, deforms, numDeforms,
 //		features, 0, 0, NULL );
-//}
+// }
 
 /*
-* RP_GetProgramObject
-*/
+ * RP_GetProgramObject
+ */
 int RP_GetProgramObject( int elem )
 {
 	if( elem < 1 ) {
@@ -1984,10 +2176,10 @@ int RP_GetProgramObject( int elem )
 }
 
 /*
-* RP_GetProgramBinary
-*
-* Retrieves the binary from the program object
-*/
+ * RP_GetProgramBinary
+ *
+ * Retrieves the binary from the program object
+ */
 static void *RP_GetProgramBinary( int elem, int *format, unsigned *length )
 {
 	void *binary;
@@ -2025,8 +2217,8 @@ static void *RP_GetProgramBinary( int elem, int *format, unsigned *length )
 }
 
 /*
-* RP_ProgramList_f
-*/
+ * RP_ProgramList_f
+ */
 void RP_ProgramList_f( void )
 {
 	int i;
@@ -2034,15 +2226,14 @@ void RP_ProgramList_f( void )
 	char fullName[1024];
 
 	Com_Printf( "------------------\n" );
-	for( i = 0, program = r_glslprograms; i < MAX_GLSL_PROGRAMS; i++, program++ )
-	{
+	for( i = 0, program = r_glslprograms; i < MAX_GLSL_PROGRAMS; i++, program++ ) {
 		if( !program->name )
 			break;
 
 		Q_strncpyz( fullName, program->name, sizeof( fullName ) );
 		R_ProgramFeatures2Defines( glsl_programtypes_features[program->type], program->features, fullName, sizeof( fullName ) );
 
-		Com_Printf( " %3i %s", i+1, fullName );
+		Com_Printf( " %3i %s", i + 1, fullName );
 		if( *program->deformsKey ) {
 			Com_Printf( " dv:%s", program->deformsKey );
 		}
@@ -2052,13 +2243,17 @@ void RP_ProgramList_f( void )
 }
 
 /*
-* RP_UpdateShaderUniforms
-*/
-void RP_UpdateShaderUniforms( int elem, 
-	float shaderTime, 
-	const vec3_t entOrigin, const vec3_t entDist, const uint8_t *entityColor, 
-	const uint8_t *constColor, const float *rgbGenFuncArgs, const float *alphaGenFuncArgs,
-	const mat4_t texMatrix )
+ * RP_UpdateShaderUniforms
+ */
+void RP_UpdateShaderUniforms( int elem,
+							  float shaderTime,
+							  const vec3_t entOrigin,
+							  const vec3_t entDist,
+							  const uint8_t *entityColor,
+							  const uint8_t *constColor,
+							  const float *rgbGenFuncArgs,
+							  const float *alphaGenFuncArgs,
+							  const mat4_t texMatrix )
 {
 	GLfloat m[9];
 	glsl_program_t *program = r_glslprograms + elem - 1;
@@ -2073,7 +2268,7 @@ void RP_UpdateShaderUniforms( int elem,
 	if( program->loc.EntityDist >= 0 && entDist )
 		qglUniform3fvARB( program->loc.EntityDist, 1, entDist );
 	if( program->loc.EntityColor >= 0 && entityColor )
-		qglUniform4fARB( program->loc.EntityColor, entityColor[0] * 1.0/255.0, entityColor[1] * 1.0/255.0, entityColor[2] * 1.0/255.0, entityColor[3] * 1.0/255.0 );
+		qglUniform4fARB( program->loc.EntityColor, entityColor[0] * 1.0 / 255.0, entityColor[1] * 1.0 / 255.0, entityColor[2] * 1.0 / 255.0, entityColor[3] * 1.0 / 255.0 );
 
 	if( program->loc.ShaderTime >= 0 )
 		qglUniform1fARB( program->loc.ShaderTime, shaderTime );
@@ -2081,7 +2276,7 @@ void RP_UpdateShaderUniforms( int elem,
 		qglUniform1fARB( program->loc.builtin.ShaderTime, shaderTime );
 
 	if( program->loc.ConstColor >= 0 && constColor )
-		qglUniform4fARB( program->loc.ConstColor, constColor[0] * 1.0/255.0, constColor[1] * 1.0/255.0, constColor[2] * 1.0/255.0, constColor[3] * 1.0/255.0 );
+		qglUniform4fARB( program->loc.ConstColor, constColor[0] * 1.0 / 255.0, constColor[1] * 1.0 / 255.0, constColor[2] * 1.0 / 255.0, constColor[3] * 1.0 / 255.0 );
 	if( program->loc.RGBGenFuncArgs >= 0 && rgbGenFuncArgs )
 		qglUniform4fvARB( program->loc.RGBGenFuncArgs, 1, rgbGenFuncArgs );
 	if( program->loc.AlphaGenFuncArgs >= 0 && alphaGenFuncArgs )
@@ -2098,14 +2293,17 @@ void RP_UpdateShaderUniforms( int elem,
 }
 
 /*
-* RP_UpdateViewUniforms
-*/
-void RP_UpdateViewUniforms( int elem, 
-	const mat4_t modelviewMatrix, const mat4_t modelviewProjectionMatrix,
-	const vec3_t viewOrigin, const mat3_t viewAxis, 
-	const float mirrorSide, 
-	int viewport[4],
-	float zNear, float zFar )
+ * RP_UpdateViewUniforms
+ */
+void RP_UpdateViewUniforms( int elem,
+							const mat4_t modelviewMatrix,
+							const mat4_t modelviewProjectionMatrix,
+							const vec3_t viewOrigin,
+							const mat3_t viewAxis,
+							const float mirrorSide,
+							int viewport[4],
+							float zNear,
+							float zFar )
 {
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
@@ -2145,13 +2343,13 @@ void RP_UpdateViewUniforms( int elem,
 }
 
 /*
-* RP_UpdateBlendMixUniform
-*
-* The first component corresponds to RGB, the second to ALPHA.
-* Whenever the program needs to scale source colors, the mask needs
-* to be used in the following manner:
-* color *= mix(myhalf4(1.0), myhalf4(scale), u_BlendMix.xxxy);
-*/
+ * RP_UpdateBlendMixUniform
+ *
+ * The first component corresponds to RGB, the second to ALPHA.
+ * Whenever the program needs to scale source colors, the mask needs
+ * to be used in the following manner:
+ * color *= mix(myhalf4(1.0), myhalf4(scale), u_BlendMix.xxxy);
+ */
 void RP_UpdateBlendMixUniform( int elem, vec2_t blendMix )
 {
 	glsl_program_t *program = r_glslprograms + elem - 1;
@@ -2162,8 +2360,8 @@ void RP_UpdateBlendMixUniform( int elem, vec2_t blendMix )
 }
 
 /*
-* RP_UpdateSoftParticlesUniforms
-*/
+ * RP_UpdateSoftParticlesUniforms
+ */
 void RP_UpdateSoftParticlesUniforms( int elem, float scale )
 {
 	glsl_program_t *program = r_glslprograms + elem - 1;
@@ -2174,10 +2372,9 @@ void RP_UpdateSoftParticlesUniforms( int elem, float scale )
 }
 
 /*
-* RP_UpdateDiffuseLightUniforms
-*/
-void RP_UpdateDiffuseLightUniforms( int elem,
-	const vec3_t lightDir, const vec4_t lightAmbient, const vec4_t lightDiffuse )
+ * RP_UpdateDiffuseLightUniforms
+ */
+void RP_UpdateDiffuseLightUniforms( int elem, const vec3_t lightDir, const vec4_t lightAmbient, const vec4_t lightDiffuse )
 {
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
@@ -2190,10 +2387,9 @@ void RP_UpdateDiffuseLightUniforms( int elem,
 }
 
 /*
-* RP_UpdateMaterialUniforms
-*/
-void RP_UpdateMaterialUniforms( int elem,
-	float offsetmappingScale, float glossIntensity, float glossExponent )
+ * RP_UpdateMaterialUniforms
+ */
+void RP_UpdateMaterialUniforms( int elem, float offsetmappingScale, float glossIntensity, float glossExponent )
 {
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
@@ -2204,8 +2400,8 @@ void RP_UpdateMaterialUniforms( int elem,
 }
 
 /*
-* RP_UpdateDistortionUniforms
-*/
+ * RP_UpdateDistortionUniforms
+ */
 void RP_UpdateDistortionUniforms( int elem, bool frontPlane )
 {
 	glsl_program_t *program = r_glslprograms + elem - 1;
@@ -2215,20 +2411,19 @@ void RP_UpdateDistortionUniforms( int elem, bool frontPlane )
 }
 
 /*
-* RP_UpdateTextureUniforms
-*/
+ * RP_UpdateTextureUniforms
+ */
 void RP_UpdateTextureUniforms( int elem, int TexWidth, int TexHeight )
 {
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
 	if( program->loc.TextureParams >= 0 )
-		qglUniform4fARB( program->loc.TextureParams, TexWidth, TexHeight, 
-		TexWidth ? 1.0 / TexWidth : 1.0, TexHeight ? 1.0 / TexHeight : 1.0 );
+		qglUniform4fARB( program->loc.TextureParams, TexWidth, TexHeight, TexWidth ? 1.0 / TexWidth : 1.0, TexHeight ? 1.0 / TexHeight : 1.0 );
 }
 
 /*
-* RP_UpdateOutlineUniforms
-*/
+ * RP_UpdateOutlineUniforms
+ */
 void RP_UpdateOutlineUniforms( int elem, float projDistance )
 {
 	glsl_program_t *program = r_glslprograms + elem - 1;
@@ -2240,19 +2435,19 @@ void RP_UpdateOutlineUniforms( int elem, float projDistance )
 }
 
 /*
-* RP_UpdateFogUniforms
-*/
+ * RP_UpdateFogUniforms
+ */
 void RP_UpdateFogUniforms( int elem, byte_vec4_t color, float clearDist, float opaqueDist, cplane_t *fogPlane, cplane_t *eyePlane, float eyeDist )
 {
 	GLfloat fog_color[3] = { 0, 0, 0 };
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
-	VectorScale( color, (1.0/255.0), fog_color );
+	VectorScale( color, ( 1.0 / 255.0 ), fog_color );
 
 	if( program->loc.Fog.Color >= 0 )
-		qglUniform3fvARB( program->loc.Fog.Color, 1, fog_color ); 
+		qglUniform3fvARB( program->loc.Fog.Color, 1, fog_color );
 	if( program->loc.Fog.ScaleAndEyeDist >= 0 )
-		qglUniform2fARB( program->loc.Fog.ScaleAndEyeDist, 1.0 / (opaqueDist - clearDist), eyeDist );
+		qglUniform2fARB( program->loc.Fog.ScaleAndEyeDist, 1.0 / ( opaqueDist - clearDist ), eyeDist );
 	if( program->loc.Fog.Plane >= 0 )
 		qglUniform4fARB( program->loc.Fog.Plane, fogPlane->normal[0], fogPlane->normal[1], fogPlane->normal[2], fogPlane->dist );
 	if( program->loc.Fog.EyePlane >= 0 )
@@ -2260,10 +2455,9 @@ void RP_UpdateFogUniforms( int elem, byte_vec4_t color, float clearDist, float o
 }
 
 /*
-* RP_UpdateDynamicLightsUniforms
-*/
-unsigned int RP_UpdateDynamicLightsUniforms( int elem, const superLightStyle_t *superLightStyle, 
-	const vec3_t entOrigin, const mat3_t entAxis, unsigned int dlightbits )
+ * RP_UpdateDynamicLightsUniforms
+ */
+unsigned int RP_UpdateDynamicLightsUniforms( int elem, const superLightStyle_t *superLightStyle, const vec3_t entOrigin, const mat3_t entAxis, unsigned int dlightbits )
 {
 	int i, n, c;
 	dlight_t *dl;
@@ -2276,21 +2470,21 @@ unsigned int RP_UpdateDynamicLightsUniforms( int elem, const superLightStyle_t *
 	if( superLightStyle ) {
 		int i;
 		GLfloat rgb[3];
-		static float deluxemapOffset[(MAX_LIGHTMAPS + 3) & (~3)];
+		static float deluxemapOffset[( MAX_LIGHTMAPS + 3 ) & ( ~3 )];
 
 		for( i = 0; i < MAX_LIGHTMAPS && superLightStyle->lightmapStyles[i] != 255; i++ ) {
 			VectorCopy( rsc.lightStyles[superLightStyle->lightmapStyles[i]].rgb, rgb );
 			if( mapConfig.lightingIntensity )
 				VectorScale( rgb, mapConfig.lightingIntensity, rgb );
 
-			if( program->loc.LightstyleColor[i] >= 0 )	
+			if( program->loc.LightstyleColor[i] >= 0 )
 				qglUniform3fvARB( program->loc.LightstyleColor[i], 1, rgb );
 			if( program->loc.DeluxemapOffset >= 0 )
 				deluxemapOffset[i] = superLightStyle->stOffset[i][0];
 		}
 
 		if( i && ( program->loc.DeluxemapOffset >= 0 ) )
-			qglUniform4fvARB( program->loc.DeluxemapOffset, (i + 3) / 4, deluxemapOffset );
+			qglUniform4fvARB( program->loc.DeluxemapOffset, ( i + 3 ) / 4, deluxemapOffset );
 	}
 
 	if( dlightbits ) {
@@ -2329,7 +2523,7 @@ unsigned int RP_UpdateDynamicLightsUniforms( int elem, const superLightStyle_t *
 			}
 
 			n++;
-			dlightbits &= ~(1<<i);
+			dlightbits &= ~( 1 << i );
 			if( !dlightbits ) {
 				break;
 			}
@@ -2353,19 +2547,18 @@ unsigned int RP_UpdateDynamicLightsUniforms( int elem, const superLightStyle_t *
 			qglUniform4fvARB( program->loc.DynamicLightsDiffuseAndInvRadius[n >> 2], 4, shaderColor[0] );
 		}
 	}
-	
+
 	return 0;
 }
 
 /*
-* RP_UpdateTexGenUniforms
-*/
+ * RP_UpdateTexGenUniforms
+ */
 void RP_UpdateTexGenUniforms( int elem, const mat4_t reflectionMatrix, const mat4_t vectorMatrix )
 {
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
-	if( program->loc.ReflectionTexMatrix >= 0 )
-	{
+	if( program->loc.ReflectionTexMatrix >= 0 ) {
 		mat3_t m;
 		memcpy( &m[0], &reflectionMatrix[0], 3 * sizeof( vec_t ) );
 		memcpy( &m[3], &reflectionMatrix[4], 3 * sizeof( vec_t ) );
@@ -2377,10 +2570,9 @@ void RP_UpdateTexGenUniforms( int elem, const mat4_t reflectionMatrix, const mat
 }
 
 /*
-* RP_UpdateShadowsUniforms
-*/
-void RP_UpdateShadowsUniforms( int elem, int numShadows, const shadowGroup_t **groups, const mat4_t objectMatrix, 
-	const vec3_t objectOrigin, const mat3_t objectAxis )
+ * RP_UpdateShadowsUniforms
+ */
+void RP_UpdateShadowsUniforms( int elem, int numShadows, const shadowGroup_t **groups, const mat4_t objectMatrix, const vec3_t objectOrigin, const mat3_t objectAxis )
 {
 	int i;
 	const shadowGroup_t *group;
@@ -2399,9 +2591,7 @@ void RP_UpdateShadowsUniforms( int elem, int numShadows, const shadowGroup_t **g
 		group = groups[i];
 
 		if( program->loc.ShadowmapTextureParams[i] >= 0 ) {
-			qglUniform4fARB( program->loc.ShadowmapTextureParams[i], 
-				group->viewportSize[0], group->viewportSize[1], 
-				1.0f / group->textureSize[0], 1.0 / group->textureSize[1] );
+			qglUniform4fARB( program->loc.ShadowmapTextureParams[i], group->viewportSize[0], group->viewportSize[1], 1.0f / group->textureSize[0], 1.0 / group->textureSize[1] );
 		}
 
 		if( program->loc.ShadowmapMatrix[i] >= 0 ) {
@@ -2437,10 +2627,10 @@ void RP_UpdateShadowsUniforms( int elem, int numShadows, const shadowGroup_t **g
 }
 
 /*
-* RP_UpdateBonesUniforms
-* 
-* Set uniform values for animation dual quaternions
-*/
+ * RP_UpdateBonesUniforms
+ *
+ * Set uniform values for animation dual quaternions
+ */
 void RP_UpdateBonesUniforms( int elem, unsigned int numBones, dualquat_t *animDualQuat )
 {
 	glsl_program_t *program = r_glslprograms + elem - 1;
@@ -2455,10 +2645,10 @@ void RP_UpdateBonesUniforms( int elem, unsigned int numBones, dualquat_t *animDu
 }
 
 /*
-* RP_UpdateInstancesUniforms
-* 
-* Set uniform values for instance points (quaternion + xyz + scale)
-*/
+ * RP_UpdateInstancesUniforms
+ *
+ * Set uniform values for instance points (quaternion + xyz + scale)
+ */
 void RP_UpdateInstancesUniforms( int elem, unsigned int numInstances, instancePoint_t *instances )
 {
 	glsl_program_t *program = r_glslprograms + elem - 1;
@@ -2472,10 +2662,6 @@ void RP_UpdateInstancesUniforms( int elem, unsigned int numInstances, instancePo
 	qglUniform4fvARB( program->loc.InstancePoints, numInstances * 2, &instances[0][0] );
 }
 
-
-/*
-* RP_UpdateDrawFlatUniforms
-*/
 void RP_UpdateDrawFlatUniforms( int elem, const vec3_t wallColor, const vec3_t floorColor )
 {
 	glsl_program_t *program = r_glslprograms + elem - 1;
@@ -2484,6 +2670,31 @@ void RP_UpdateDrawFlatUniforms( int elem, const vec3_t wallColor, const vec3_t f
 		qglUniform3fARB( program->loc.WallColor, wallColor[0], wallColor[1], wallColor[2] );
 	if( program->loc.FloorColor >= 0 )
 		qglUniform3fARB( program->loc.FloorColor, floorColor[0], floorColor[1], floorColor[2] );
+}
+
+const char *RP_GLSLStageToShaderPrefix( const glsl_program_stage_t stage )
+{
+	switch( stage ) {
+		case GLSL_STAGE_VERTEX:
+			return "vert";
+		case GLSL_STAGE_FRAGMENT:
+			return "frag";
+		default:
+			assert( 0 ); // unhandled
+			break;
+	}
+	return "";
+}
+
+static void __RP_writeTextToFile( const char *filePath, const char *str )
+{
+	int shaderErrHandle = 0;
+	if( ri.FS_FOpenFile( filePath, &shaderErrHandle, FS_WRITE ) == -1 ) {
+		Com_Printf( S_COLOR_YELLOW "Could not open %s for writing.\n", filePath );
+	} else {
+		ri.FS_Write( str, strlen( str ), shaderErrHandle );
+		ri.FS_FCloseFile( shaderErrHandle );
+	}
 }
 
 int RP_RegisterProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
@@ -2508,7 +2719,7 @@ int RP_RegisterProgram( int type, const char *name, const char *deformsKey, cons
 		return 0;
 	}
 
-	glsl_program_t* program; 
+	glsl_program_t *program;
 	if( !name ) {
 		glsl_program_t *parent = NULL;
 		for( size_t i = 0; i < r_numglslprograms; i++ ) {
@@ -2530,134 +2741,171 @@ int RP_RegisterProgram( int type, const char *name, const char *deformsKey, cons
 	}
 	program = r_glslprograms + r_numglslprograms++;
 	sds featuresStr = sdsempty();
-	sds fullName  = sdsnew(name); 
-	//R_ProgramFeatures2DefinesAppend( &featuresStr, &fullName, glsl_programtypes_features[type], features );
+	sds fullName = sdsnew( name );
 
 	ri.Com_DPrintf( "Registering GLSL program %s\n", fullName );
 
-	typedef enum {
-		R_STAGE_VERTEX,
-		R_STAGE_FRAGMENT
-	} shader_stage_t ;
-
 	bool error = false;
-	sds filePath = sdsempty();
-  struct {
-  	shader_stage_t stage;
-  	glslang_stage_t slangeStage;
-  	sds source;
-  } stages[] = {
-  	{ .stage = R_STAGE_VERTEX, .slangeStage = GLSLANG_STAGE_VERTEX, .source = sdsempty() },
-  	{ .stage = R_STAGE_FRAGMENT, .slangeStage = GLSLANG_STAGE_FRAGMENT, .source = sdsempty() },
-  };
-  // sds shaderSource[NumberShaders] = {sdsempty(), sdsempty()};
- // for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
- // 	switch( stages[i].stage ) {
- // 		case R_STAGE_VERTEX:
- // 			stages[i].source = sdscatfmt( stages[i].source, "#define VERTEX_SHADER\n" );
- // 			break;
- // 		case R_STAGE_FRAGMENT:
- // 			stages[i].source = sdscatfmt( stages[i].source, "#define FRAGMENT_SHADER\n" );
- // 			break;
- // 		default:
- // 			assert( 0 );
- // 			break;
- // 	}
- // 	stages[i].source = sdscatfmt( stages[i].source, "#define QF_GLSL_VERSION 130\n" );
- // 	stages[i].source = sdscatfmt( stages[i].source, "#define MAX_UNIFORM_BONES %i\n", r_maxglslbones->integer );
- // 	stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_MACROS_GLSL130 );
- // 	stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_CONSTANTS );
- // 	switch( stages[i].stage ) {
- // 		case R_STAGE_VERTEX:
- // 			stages[i].source = R_AppendGLSLDeformv( stages[i].source, deforms, numDeforms );
- // 			stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_GLSL_WAVEFUNCS );
- // 			if( features & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
- // 				stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_QUAT_TRANSFORM );
- // 			}
- // 			if( features & ( GLSL_SHADER_COMMON_INSTANCED_TRANSFORMS | GLSL_SHADER_COMMON_INSTANCED_ATTRIB_TRANSFORMS ) ) {
- // 				stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_INSTANCED_TRANSFORMS );
- // 			}
- // 			stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_TRANSFORM_VERTS );
- // 			break;
- // 		case R_STAGE_FRAGMENT:
- // 			break;
- // 		default:
- // 			assert( 0 );
- // 			break;
- // 	}
- // 	stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_GLSL_MATH );
- // 	stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_MACROS );
- // 	R_ProgramFeatures2DefinesAppend( &stages[i].source, &fullName, glsl_programtypes_features[type], features );
+	struct {
+		glsl_program_stage_t stage;
+		sds source;
+	} stages[] = {
+		{ .stage = GLSL_STAGE_VERTEX, .source = sdsempty() },
+		{ .stage = GLSL_STAGE_FRAGMENT, .source = sdsempty() },
+	};
+	{
+		sds filePath = sdsempty();
+		for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
+			stages[i].source = sdscatfmt( stages[i].source, "#version 440 \n" );
+			switch( stages[i].stage ) {
+				case GLSL_STAGE_VERTEX:
+					stages[i].source = sdscatfmt( stages[i].source, "#define VERTEX_SHADER\n" );
+					break;
+				case GLSL_STAGE_FRAGMENT:
+					stages[i].source = sdscatfmt( stages[i].source, "#define FRAGMENT_SHADER\n" );
+					break;
+				default:
+					assert( 0 );
+					break;
+			}
+			stages[i].source = sdscatfmt( stages[i].source, QF_BUILTIN_GLSL_MACROS );
+			stages[i].source = sdscatfmt( stages[i].source, "#define MAX_UNIFORM_BONES %i\n", r_maxglslbones->integer );
+			stages[i].source = sdscat( stages[i].source, QF_BUILTIN_GLSL_MACROS_GLSL130 );
+			stages[i].source = sdscat( stages[i].source, QF_BUILTIN_GLSL_CONSTANTS );
+			stages[i].source = sdscatfmt( stages[i].source, QF_GLSL_MATH );
+			switch( stages[i].stage ) {
+				case GLSLANG_STAGE_VERTEX: {
+					stages[i].source = R_AppendGLSLDeformv( stages[i].source, deforms, numDeforms );
+					stages[i].source = sdscat( stages[i].source, QF_GLSL_WAVEFUNCS );
+					if( features & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
+						stages[i].source = sdscat( stages[i].source, QF_BUILTIN_GLSL_QUAT_TRANSFORM );
+					}
+					if( features & ( GLSL_SHADER_COMMON_INSTANCED_TRANSFORMS | GLSL_SHADER_COMMON_INSTANCED_ATTRIB_TRANSFORMS ) ) {
+						stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_INSTANCED_TRANSFORMS );
+					}
+					stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_TRANSFORM_VERTS );
+					break;
+				}
+				case GLSL_STAGE_FRAGMENT:
+					break;
+				default:
+					assert( 0 );
+					break;
+			}
+			for( feature_iter_t iter = { .it = glsl_programtypes_features[type], .bits = features }; isValidFeatureIter( &iter ); iter = R_NextFeature( iter ) ) {
+				featuresStr = sdscatfmt( featuresStr, "%s\n", iter.it->define );
+				if( fullName ) {
+					fullName = sdscatfmt( fullName, "%s\n", iter.it->suffix );
+				}
+			}
 
- // 	sdsclear( filePath );
- // 	switch( stages[i].stage ) {
- // 		case R_STAGE_VERTEX:
- // 			filePath = sdscatfmt( filePath, "glsl/%s.vert.glsl", name );
- // 			error = RF_AppendShaderFromFile( &stages[i].source, filePath, type, features );
- // 			break;
- // 		case R_STAGE_FRAGMENT:
- // 			filePath = sdscatfmt( filePath, "glsl/%s.frag.glsl", name );
- // 			error = RF_AppendShaderFromFile( &stages[i].source, filePath, type, features );
- // 			break;
- // 		default:
- // 			assert( 0 );
- // 			break;
- // 	}
- // 	if( error ) {
- // 		break;
- // 	}
- // }
- // sdsfree(filePath);
+			sdsclear( filePath );
+			filePath = sdscatfmt( filePath, "glsl_nri/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
+			error = RF_AppendShaderFromFile( &stages[i].source, filePath, type, features );
+			if( error ) {
+				break;
+			}
+		}
+		sdsfree( filePath );
+	}
 
 	for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
 		const glslang_input_t input = { .language = GLSLANG_SOURCE_GLSL,
-										.stage = stages[i].slangeStage,
+										.stage = __RP_GLStageToSlang(stages[i].stage),
 										.client = GLSLANG_CLIENT_VULKAN,
 										.client_version = GLSLANG_TARGET_VULKAN_1_2,
 										.target_language = GLSLANG_TARGET_SPV,
 										.target_language_version = GLSLANG_TARGET_SPV_1_5,
 										.code = stages[i].source,
 										.default_version = 450,
-										.default_profile = GLSLANG_NO_PROFILE,
+										.default_profile = GLSLANG_CORE_PROFILE,
 										.force_default_version_and_profile = false,
 										.forward_compatible = false,
 										.messages = GLSLANG_MSG_DEFAULT_BIT,
 										.resource = glslang_default_resource() };
 		glslang_shader_t *shader = glslang_shader_create( &input );
 		glslang_program_t *glslang_program = NULL;
-
 		if( !glslang_shader_preprocess( shader, &input ) ) {
-			Com_Printf( S_COLOR_YELLOW "GLSL parsing failed %s\n", fullName);
-			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_shader_get_info_log( shader ) );
-			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_shader_get_info_debug_log( shader ) );
-			Com_Printf( S_COLOR_YELLOW "%s\n", input.code );
+			sds errFilePath = sdscatfmt( sdsempty(), "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
+			const char *infoLog = glslang_shader_get_info_log( shader );
+			const char *debugLogs = glslang_shader_get_info_debug_log( shader );
+			Com_Printf( S_COLOR_YELLOW "GLSL preprocess failed %s\n", fullName );
+			Com_Printf( S_COLOR_YELLOW "%s\n", infoLog );
+			Com_Printf( S_COLOR_YELLOW "%s\n", debugLogs );
+			Com_Printf( S_COLOR_YELLOW "dump shader: %s\n", errFilePath );
+			
+			sds shaderErr = sdsempty();
+			shaderErr = sdscatfmt( shaderErr, "%s\n", input.code );
+			shaderErr = sdscatfmt( shaderErr, "----------- Preprocessing Failed -----------\n" );
+			shaderErr = sdscatfmt( shaderErr, "%s\n", infoLog );
+			shaderErr = sdscatfmt( shaderErr, "%s\n", debugLogs );
+			__RP_writeTextToFile( errFilePath, shaderErr );
+			sdsfree( shaderErr );
+			sdsfree(errFilePath);
+
 			error = true;
-			goto shader_error;
+			goto shader_done;
 		}
+
 		if( !glslang_shader_parse( shader, &input ) ) {
-			Com_Printf( S_COLOR_YELLOW "GLSL parsing failed %s\n", fullName);
-			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_shader_get_info_log( shader ) );
-			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_shader_get_info_debug_log( shader ) );
-			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_shader_get_preprocessed_code( shader ) );
+			sds errFilePath = sdscatfmt( sdsempty(), "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
+			const char *infoLog = glslang_shader_get_info_log( shader );
+			const char *debugLogs = glslang_shader_get_info_debug_log( shader );
+			//const char *preprocessedCode = glslang_shader_get_preprocessed_code( shader );
+			
+			Com_Printf( S_COLOR_YELLOW "GLSL parsing failed %s\n", fullName );
+			Com_Printf( S_COLOR_YELLOW "%s\n", infoLog );
+			Com_Printf( S_COLOR_YELLOW "%s\n", debugLogs );
+			Com_Printf( S_COLOR_YELLOW "dump shader: %s\n", errFilePath );
+
+			sds shaderErr = sdsempty();
+			shaderErr = sdscatfmt( shaderErr, "%s\n", input.code);
+			shaderErr = sdscatfmt( shaderErr, "----------- Parsing Failed -----------\n" );
+			shaderErr = sdscatfmt( shaderErr, "%s\n", infoLog );
+			shaderErr = sdscatfmt( shaderErr, "%s\n", debugLogs );
+			__RP_writeTextToFile( errFilePath, shaderErr );
+			sdsfree( shaderErr );
+			sdsfree(errFilePath);
+
 			error = true;
-			goto shader_error;
+			goto shader_done;
 		}
 		glslang_program = glslang_program_create();
 		glslang_program_add_shader( glslang_program, shader );
 
 		if( !glslang_program_link( glslang_program, GLSLANG_MSG_SPV_RULES_BIT | GLSLANG_MSG_VULKAN_RULES_BIT ) ) {
-			Com_Printf( S_COLOR_YELLOW "GLSL linking failed %s\n", fullName);
-			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_program_get_info_log( glslang_program ) );
-			Com_Printf( S_COLOR_YELLOW "%s\n", glslang_program_get_info_debug_log( glslang_program ) );
-			error = true;
-			goto shader_error;
-		}
-		glslang_program_SPIRV_generate( glslang_program, stages[i].slangeStage );
+			sds errFilePath = sdscatfmt( sdsempty(), "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
+			
+			const char *infoLogs = glslang_program_get_info_log( glslang_program );
+			const char *debugLogs = glslang_program_get_info_debug_log( glslang_program );
+			//const char *preprocessedCode = glslang_shader_get_preprocessed_code( shader );
 
-		size_t wordLen = glslang_program_SPIRV_get_size( glslang_program ) * sizeof( uint32_t );
-	 // program->nri.bin[stages[i].stage].len = wordLen;
-	 // program->nri.bin[stages[i].stage].data = R_Malloc( wordLen );
-	//	glslang_program_SPIRV_get( glslang_program, (uint32_t *)program->nri.bin[stages[i].stage].data );
+			Com_Printf( S_COLOR_YELLOW "GLSL linking failed %s\n", fullName );
+			Com_Printf( S_COLOR_YELLOW "%s\n", infoLogs );
+			Com_Printf( S_COLOR_YELLOW "%s\n", debugLogs );
+			Com_Printf( S_COLOR_YELLOW "dump shader: %s\n", errFilePath );
+
+			sds shaderErr = sdsempty();
+			shaderErr = sdscatfmt( shaderErr, "%s\n", input.code);
+			shaderErr = sdscatfmt( shaderErr, "----------- Linking Failed -----------\n" );
+			shaderErr = sdscatfmt( shaderErr, "%s\n", infoLogs );
+			shaderErr = sdscatfmt( shaderErr, "%s\n", debugLogs );
+			__RP_writeTextToFile( errFilePath, shaderErr );
+			sdsfree( shaderErr );
+			sdsfree( errFilePath );
+
+			error = true;
+			goto shader_done;
+		}
+		
+		glslang_program_SPIRV_generate( glslang_program, __RP_GLStageToSlang(stages[i].stage) );
+		size_t binSize = glslang_program_SPIRV_get_size( glslang_program ) * sizeof( uint32_t );
+		shader_bin_data_t* binData = &program->shaderBin[program->shaderStageSize++];
+		binData->bin = R_Malloc(binSize);
+		glslang_program_SPIRV_get( glslang_program, (uint32_t *)binData->bin);
+		binData->stage = stages[i].stage;
+		// program->nri.bin[stages[i].stage].len = wordLen;
+		// program->nri.bin[stages[i].stage].data = R_Malloc( wordLen );
 
 		// program->nri.bytecode = malloc()
 		// bin.words = malloc( bin.size * sizeof( uint32_t ) );
@@ -2665,19 +2913,23 @@ int RP_RegisterProgram( int type, const char *name, const char *deformsKey, cons
 		if( spirv_messages ) {
 			Com_Printf( S_COLOR_BLUE "(%s) %s\b", name, spirv_messages );
 		}
-	shader_error:
+
+
+	shader_done:
 		glslang_shader_delete( shader );
 		if( glslang_program ) {
 			glslang_program_delete( glslang_program );
 		}
 	}
 
-	sdsfree(fullName);
+	sdsfree( fullName );
 	for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
-		sdsfree(stages[i].source);
+		sdsfree( stages[i].source );
 	}
 
-	//if( error ) {
+
+
+	// if( error ) {
 	//	for(size_t i = 0; i < R_STAGE_MAX; i++) {
 	//		if(program->nri.bin[i].data) {
 	//			R_Free( program->nri.bin[i].data );
@@ -2685,15 +2937,14 @@ int RP_RegisterProgram( int type, const char *name, const char *deformsKey, cons
 	//		program->nri.bin[i].len = 0;
 	//		program->nri.bin[i].data = NULL;
 	//	}
-	//}
+	// }
 
 	program->type = type;
 	program->features = features;
 	program->name = R_CopyString( name );
 	program->deformsKey = R_CopyString( deformsKey ? deformsKey : "" );
 
-	if( !program->hash_next )
-	{
+	if( !program->hash_next ) {
 		program->hash_next = r_glslprograms_hash[type][hash];
 		r_glslprograms_hash[type][hash] = program;
 	}
@@ -2964,8 +3215,8 @@ static void RP_BindAttrbibutesLocations( glsl_program_t *program )
 }
 
 /*
-* RP_Shutdown
-*/
+ * RP_Shutdown
+ */
 void RP_Shutdown( void )
 {
 	unsigned int i;
@@ -2981,5 +3232,4 @@ void RP_Shutdown( void )
 	glsl_cache_trie = NULL;
 
 	r_numglslprograms = 0;
-	r_glslprograms_initialized = false;
 }

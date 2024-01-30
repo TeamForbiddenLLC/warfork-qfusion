@@ -22,6 +22,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 typedef uint64_t r_glslfeat_t;
 
+#include "../gameshared/q_arch.h"
+#include "r_math.h"
+
+struct deformv_t;
+
 #define GLSL_BIT(x)							(1ULL << (x))
 #define GLSL_BITS_VERSION					16
 
@@ -38,8 +43,7 @@ typedef uint64_t r_glslfeat_t;
 #define DEFAULT_GLSL_YUV_PROGRAM				"defaultYUV"
 #define DEFAULT_GLSL_COLORCORRECTION_PROGRAM	"defaultColorCorrection"
 
-// program types
-enum
+typedef enum glsl_program_type_s
 {
 	GLSL_PROGRAM_TYPE_NONE,
 	GLSL_PROGRAM_TYPE_MATERIAL,
@@ -56,7 +60,14 @@ enum
 	GLSL_PROGRAM_TYPE_COLORCORRECTION,
 
 	GLSL_PROGRAM_TYPE_MAXTYPE
-};
+} glsl_program_type_t;
+
+typedef enum {
+	GLSL_STAGE_VERTEX,
+	GLSL_STAGE_FRAGMENT,
+
+	GLSL_STAGE_MAX
+} glsl_program_stage_t;
 
 // features common for all program types
 #define GLSL_SHADER_COMMON_GREYSCALE			GLSL_BIT(0)
@@ -195,7 +206,7 @@ void RP_StorePrecacheList( void );
 void RP_ProgramList_f( void );
 
 int	RP_FindProgram( const char *name );
-int	RP_RegisterProgram( int type, const char *name, const char *deformsKey, 
+int	RP_RegisterProgram(int type, const char *name, const char *deformsKey, 
 	const deformv_t *deforms, int numDeforms, r_glslfeat_t features );
 int	RP_GetProgramObject( int elem );
 
