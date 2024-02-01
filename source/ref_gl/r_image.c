@@ -1508,7 +1508,7 @@ static bool R_LoadKTX( int ctx, image_t *image, const char *pathname )
 
 			R_SetupTexParameters( image->flags, scaledWidth, scaledHeight, image->minmipsize );
 
-			for(size_t i = 0; i < mip; ++i )
+			for( i = 0; i < mip; ++i )
 			{
 				data += sizeof( int ) + numFaces * ( (
 					ALIGN( max( header.pixelWidth >> i, 1 ), 4 ) *
