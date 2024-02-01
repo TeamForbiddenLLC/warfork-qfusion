@@ -28,7 +28,9 @@ freely, subject to the following restrictions:
 extern "C" {
 #endif
 
-int STEAMSHIM_init(bool isclient);  /* non-zero on success, zero on failure. */
+// pass runclient to connect to the steam app, runserver to host a game server
+// return of 0 means failure
+int STEAMSHIM_init(bool runclient, bool runserver);
 void STEAMSHIM_deinit(void);
 int STEAMSHIM_alive(void);
 const STEAMSHIM_Event *STEAMSHIM_pump(void);

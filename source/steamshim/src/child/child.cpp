@@ -126,7 +126,7 @@ static bool setEnvironmentVars(PipeType pipeChildRead, PipeType pipeChildWrite)
 } 
 
 extern "C" {
-  int STEAMSHIM_init(bool isclient)
+  int STEAMSHIM_init(bool runclient, bool runserver)
   {
 
 
@@ -136,8 +136,10 @@ extern "C" {
     PipeType pipeChildWrite = NULLPIPE;
     ProcessType childPid;
 
-    if (isclient)
-        setEnvVar("STEAMSHIM_ISCLIENT", "1");
+    if (runclient)
+        setEnvVar("STEAMSHIM_RUNCLIENT", "1");
+    if (runserver)
+        setEnvVar("STEAMSHIM_RUNSERVER", "1");
 
 
     if (!createPipes(&pipeParentRead, &pipeParentWrite, &pipeChildRead, &pipeChildWrite)){

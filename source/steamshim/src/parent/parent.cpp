@@ -35,11 +35,8 @@ freely, subject to the following restrictions:
 int GArgc = 0;
 char **GArgv = NULL;
 
-typedef enum ServerType {
-    STEAMGAMESERVER,
-    STEAMGAMECLIENT,
-} ServerType;
-static ServerType GServerType;
+static bool GRunServer = false;
+static bool GRunClient = false;
 
 static ISteamUserStats *GSteamStats = NULL;
 static ISteamUtils *GSteamUtils = NULL;
@@ -75,9 +72,9 @@ static bool processCommand(PipeBuffer cmd, ShimCmd cmdtype, unsigned int len)
     {
         case SHIMCMD_PUMP:
             time(&time_since_last_pump);
-            if (GServerType == STEAMGAMESERVER)
+            if (GRunServer)
                 SteamGameServer_RunCallbacks();
-            else
+            if (GRunClient)
                 SteamAPI_RunCallbacks();
             break;
 
@@ -208,14 +205,15 @@ static void processCommands()
 
 static bool initSteamworks(PipeType fd)
 {
-    if (GServerType == STEAMGAMESERVER) {
-        if (!SteamGameServer_Init(0, 27015, 0,eServerModeNoAuthentication,"0.0.0.0"))
+    if (GRunServer) {
+        if (!SteamGameServer_Init(0, 27016, 0,eServerModeNoAuthentication,"0.0.0.0"))
             return 0;
         GSteamGameServer = SteamGameServer();
         if (!GSteamGameServer)
             return 0;
         
-    }else{
+    }
+    if (GRunClient){
         // this can fail for many reasons:
         //  - you forgot a steam_appid.txt in the current working directory.
         //  - you don't have Steam running
@@ -236,9 +234,11 @@ static bool initSteamworks(PipeType fd)
 } 
 
 static void deinitSteamworks() {
-    if (GServerType == STEAMGAMESERVER) {
+    if (GRunServer) {
         SteamGameServer_Shutdown();
-    }else{
+    }
+
+    if (GRunClient) {
         SteamAPI_Shutdown();
     }
 }
@@ -280,10 +280,10 @@ int main(int argc, char **argv)
     if (!initPipes())
         fail("Child init failed.\n");
     
-    if (getEnvVar("STEAMSHIM_ISCLIENT", buf, sizeof(buf)))
-        GServerType = STEAMGAMECLIENT;
-    else
-        GServerType = STEAMGAMESERVER;
+    if (getEnvVar("STEAMSHIM_RUNCLIENT", buf, sizeof(buf)))
+        GRunClient = true;
+    if (getEnvVar("STEAMSHIM_RUNSERVER", buf, sizeof(buf)))
+        GRunServer = true;
 
     if (!initSteamworks(GPipeWrite)) {
         char failure = 0;

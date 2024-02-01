@@ -58,9 +58,9 @@ static const STEAMSHIM_Event* blockOnEvent(STEAMSHIM_EventType type){
 void Steam_Init( void )
 {
 #if DEDICATED_ONLY 
-	int r = STEAMSHIM_init(false);
+	int r = STEAMSHIM_init(false, true);
 #else
-	int r = STEAMSHIM_init(true);
+	int r = STEAMSHIM_init(true, true);
 #endif
 	if( !r ) {
 		Com_Printf( "Steam initialization failed.\n" );
