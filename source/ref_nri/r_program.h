@@ -25,8 +25,6 @@ typedef uint64_t r_glslfeat_t;
 #include "../gameshared/q_arch.h"
 #include "r_math.h"
 
-struct deformv_t;
-
 #define GLSL_BIT(x)							(1ULL << (x))
 #define GLSL_BITS_VERSION					16
 

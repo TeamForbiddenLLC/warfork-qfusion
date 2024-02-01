@@ -21,6 +21,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef R_IMAGE_H
 #define R_IMAGE_H
 
+#include "NRI.h"
+
 enum
 {
 	IT_NONE
@@ -71,24 +73,29 @@ enum
 
 typedef struct image_s
 {
+	NriTexture* texture;
+	size_t numAllocations;
+	NriMemory* memory[4];
+	
+
 	char			*name;						// game path, not including extension
 	int				registrationSequence;
 	volatile bool loaded;
 	volatile bool missing;
 
-	char			extension[8];				// file extension
-	int				flags;
-	GLuint			texnum;						// gl texture binding
-	int				width, height;				// source image
-	int				layers;						// texture array size
-	int				upload_width,
-					upload_height;				// after power of two and picmip
-	int				minmipsize;					// size of the smallest mipmap that should be used
-	int				samples;
-	int				fbo;						// frame buffer object texture is attached to
-	unsigned int	framenum;					// rf.frameCount texture was updated (rendered to)
-	int				tags;						// usage tags of the image
-	struct image_s	*next, *prev;
+	char extension[8]; // file extension
+	int flags;
+	GLuint texnum;			// gl texture binding need to remove
+	uint16_t width, height; // source image
+	int layers;				// texture array size
+	int upload_width,
+		upload_height; // after power of two and picmip
+	int minmipsize;	   // size of the smallest mipmap that should be used
+	int samples;
+	int fbo;			   // frame buffer object texture is attached to
+	unsigned int framenum; // rf.frameCount texture was updated (rendered to)
+	int tags;			   // usage tags of the image
+	struct image_s *next, *prev;
 } image_t;
 
 void R_InitImages( void );
