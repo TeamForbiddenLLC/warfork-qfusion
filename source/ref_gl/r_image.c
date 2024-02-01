@@ -1521,7 +1521,7 @@ static bool R_LoadKTX( int ctx, image_t *image, const char *pathname )
 			{
 				faceSize = ( ( ALIGN( scaledWidth, 4 ) * ALIGN( scaledHeight, 4 ) ) >> 4 ) * 8;
 				data += sizeof( int );
-				for(size_t j = 0; j < numFaces; ++j )
+				for( j = 0; j < numFaces; ++j )
 				{
 					qglCompressedTexImage2DARB( target + j, i, compressedFormat,
 						scaledWidth, scaledHeight, 0, faceSize, data );
