@@ -947,7 +947,7 @@ static void R_SetupFrame( void )
 			rf.worldModelSequence = rsh.worldModelSequence;
 
 			// load all world images if not yet
-			R_FinishLoadingImages();
+			//R_FinishLoadingImages();
 		}
 	}
 	else

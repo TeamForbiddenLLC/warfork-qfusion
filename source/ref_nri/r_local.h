@@ -29,6 +29,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../qcommon/bsp.h"
 #include "../qcommon/patch.h"
 
+#include "r_resource_upload.h"
+
 #include "r_nri.h"
 #include "r_win.h"
 
@@ -474,7 +476,7 @@ void		R_FreeCinematic( unsigned int id );
 void		R_RunAllCinematics( void );
 void		R_TouchCinematic( unsigned int id );
 void		R_FreeUnusedCinematics( void );
-void		R_FinishLoadingImages( void );
+//void		R_FinishLoadingImages( void );
 void		R_UploadCinematic( unsigned int id );
 image_t		*R_GetCinematicImage( unsigned int id );
 struct cinematics_s *R_GetCinematicById( unsigned int id );
@@ -768,6 +770,12 @@ typedef enum
 
 typedef struct mesh_vbo_s
 {
+	uint8_t numAllocations;
+	NriMemory *memory[16];
+	NriBuffer *vertexBuffer;
+	NriBuffer *indexBuffer;
+	NriBuffer *instanceBuffer;
+
 	unsigned int		index;
 	int					registrationSequence;
 	vbo_tag_t			tag;
