@@ -29,9 +29,33 @@ static bool enableDebugValidation = true;
 static ref_frontend_t rrf;
 static ref_cmdbuf_t *RF_GetNextAdapterFrame( ref_frontendAdapter_t *adapter );
 
-/*
-* RF_AdapterFrame
-*/
+static void __R_InitVolatileAssets( void )
+{
+	// init volatile data
+	R_InitSkeletalCache();
+	R_InitCoronas();
+	R_InitCustomColors();
+
+	rsh.envShader = R_LoadShader( "$environment", SHADER_TYPE_OPAQUE_ENV, true );
+	rsh.skyShader = R_LoadShader( "$skybox", SHADER_TYPE_SKYBOX, true );
+	rsh.whiteShader = R_LoadShader( "$whiteimage", SHADER_TYPE_2D, true );
+	rsh.emptyFogShader = R_LoadShader( "$emptyfog", SHADER_TYPE_FOG, true );
+
+	if( !rsh.nullVBO ) {
+		rsh.nullVBO = R_InitNullModelVBO();
+	}
+	else {
+		R_TouchMeshVBO( rsh.nullVBO );
+	}
+
+	if( !rsh.postProcessingVBO ) {
+		rsh.postProcessingVBO = R_InitPostProcessingVBO();
+	}
+	else {
+		R_TouchMeshVBO( rsh.postProcessingVBO );
+	}
+}
+
 static void RF_AdapterFrame( ref_frontendAdapter_t *adapter )
 {
 	static unsigned lastTime = 0;
@@ -97,9 +121,6 @@ static void RF_AdapterFrame( ref_frontendAdapter_t *adapter )
 //	return NULL;
 //}
 
-/*
-* RF_AdapterShutdown
-*/
 static void RF_AdapterShutdown( ref_frontendAdapter_t *adapter )
 {
 	if( !adapter->cmdPipe ) {
@@ -215,7 +236,6 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	r_mempool = R_AllocPool( NULL, "Rendering Frontend" );
 	rserr_t err = R_Init( applicationName, screenshotPrefix, startupColor,
 		iconResource, iconXPM, hinstance, wndproc, parenthWnd, verbose );
-
 	
 	if( !applicationName ) applicationName = "Qfusion";
 	if( !screenshotPrefix ) screenshotPrefix = "";
@@ -284,13 +304,31 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	if( err != rserr_ok ) {
 		return err;
 	}
-	
+	R_InitResourceUpload(&rsh.nri);
+
 	RP_Init();
 
-	R_InitDrawLists();
-	
+	R_InitVBO();
+
+	R_InitImages();
+
 	R_InitShaders();
 
+	R_InitCinematics();
+
+	R_InitSkinFiles();
+
+	R_InitModels();
+
+	R_ClearScene();
+
+	__R_InitVolatileAssets();
+
+	R_ClearRefInstStack();
+
+	R_InitDrawLists();
+
+	R_InitShaders();
 
 	return rserr_ok;
 }
@@ -331,25 +369,27 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 	rrf.frame->Clear( rrf.frame );
 	memset( rrf.customColors, 0, sizeof( rrf.customColors ) );
 
-	rrf.adapter.owner = (void *)&rrf;
-	if( RF_AdapterInit( &rrf.adapter ) != true ) {
-		return rserr_unknown;
-	}
+	//rrf.adapter.owner = (void *)&rrf;
+ // if( RF_AdapterInit( &rrf.adapter ) != true ) {
+ // 	return rserr_unknown;
+ // }
 
 	return rserr_ok;	
 }
 
 rserr_t RF_SetWindow( void *hinstance, void *wndproc, void *parenthWnd )
 {
-	rserr_t err;
-	bool surfaceChangePending = false;
+ // rserr_t err;
+ // bool surfaceChangePending = false;
 
-	err = GLimp_SetWindow( hinstance, wndproc, parenthWnd, &surfaceChangePending );
+ // err = GLimp_SetWindow( hinstance, wndproc, parenthWnd, &surfaceChangePending );
 
-	if( err == rserr_ok && surfaceChangePending )
-		rrf.adapter.cmdPipe->SurfaceChange( rrf.adapter.cmdPipe );
+ // if( err == rserr_ok && surfaceChangePending )
+ // 	rrf.adapter.cmdPipe->SurfaceChange( rrf.adapter.cmdPipe );
 
-	return err;
+ // return err;
+ assert( false );
+ return rserr_ok;
 }
 
 void RF_AppActivate( bool active, bool destroy )
