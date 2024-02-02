@@ -80,5 +80,6 @@ enum texture_format_e {
 
 uint32_t R_FormatChannelCount( enum texture_format_e format );
 uint32_t R_FormatBitSizePerBlock( enum texture_format_e format );
+uint32_t R_FormatChannelBitWidth( enum texture_format_e format, uint16_t channel );
 #endif
 

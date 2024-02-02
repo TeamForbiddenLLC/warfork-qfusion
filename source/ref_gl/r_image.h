@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef R_IMAGE_H
 #define R_IMAGE_H
 
+#include "r_texture_format.h"
 enum
 {
 	IT_NONE
@@ -79,12 +80,17 @@ typedef struct image_s
 	char			extension[8];				// file extension
 	int				flags;
 	GLuint			texnum;						// gl texture binding
+	
+	uint16_t srcWidth;
+	uint16_t srcHeight;
+
 	int				width, height;				// source image
 	int				layers;						// texture array size
 	int				upload_width,
 					upload_height;				// after power of two and picmip
 	int				minmipsize;					// size of the smallest mipmap that should be used
-	int				samples;
+	int				samples; // DEPRECATED
+	enum texture_format_e format;
 	int				fbo;						// frame buffer object texture is attached to
 	unsigned int	framenum;					// rf.frameCount texture was updated (rendered to)
 	int				tags;						// usage tags of the image
