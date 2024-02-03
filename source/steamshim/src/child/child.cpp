@@ -99,9 +99,9 @@ static STEAMSHIM_Event* ProcessEvent(){
         case SHIMEVENT_AVATARRECIEVED:
             {
                 uint64_t id = buf.ReadLong();
-                void *image = buf.ReadData(4096);
+                void *image = buf.ReadData(STEAM_AVATAR_SIZE);
                 event.lvalue = id;
-                memcpy(event.name, image, 4096);
+                memcpy(event.name, image, STEAM_AVATAR_SIZE);
             }
             break;
     }

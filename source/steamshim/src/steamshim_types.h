@@ -21,8 +21,8 @@ freely, subject to the following restrictions:
 #ifndef _INCL_STEAMSHIM_TYPES_H_
 #define _INCL_STEAMSHIM_TYPES_H_
 
-
-#define PIPEMESSAGE_MAX (4096 + 64)
+#define STEAM_AVATAR_SIZE (32*32*4)
+#define PIPEMESSAGE_MAX (STEAM_AVATAR_SIZE + 64)
 #define AUTH_TICKET_MAXSIZE 1024
 typedef struct {
   char pTicket[AUTH_TICKET_MAXSIZE];

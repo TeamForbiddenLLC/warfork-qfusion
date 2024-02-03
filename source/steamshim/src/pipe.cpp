@@ -112,12 +112,11 @@ int PipeBuffer::Transmit()
 
 int PipeBuffer::Recieve()
 {
-  // reset after a succesful message read. could be more explicit but idc
+  // reset cursor after a succesful message read
   if (hasmsg)
   {
     cursor = 0;
     hasmsg = false;
-    // memset(buffer,0,sizeof buffer);
   }
 
   if (lastmsglen > 0) {

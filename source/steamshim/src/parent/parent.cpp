@@ -32,8 +32,6 @@ freely, subject to the following restrictions:
 #include "steam/steam_api.h"
 #include "steam/steam_gameserver.h"
 
-int GArgc = 0;
-char **GArgv = NULL;
 
 static bool GRunServer = false;
 static bool GRunClient = false;
@@ -43,7 +41,6 @@ static ISteamUtils *GSteamUtils = NULL;
 static ISteamUser *GSteamUser = NULL;
 static AppId_t GAppID = 0;
 static uint64 GUserID = 0;
-// static SteamBridge *GSteamBridge = NULL;
 static ISteamGameServer *GSteamGameServer = NULL;
 static time_t time_since_last_pump = 0;
 
@@ -206,6 +203,7 @@ static void processCommands()
 static bool initSteamworks(PipeType fd)
 {
     if (GRunServer) {
+        // this will fail if port is in use
         if (!SteamGameServer_Init(0, 27016, 0,eServerModeNoAuthentication,"0.0.0.0"))
             return 0;
         GSteamGameServer = SteamGameServer();
@@ -270,8 +268,6 @@ int main(int argc, char **argv)
 #ifndef _WIN32
     signal(SIGPIPE, SIG_IGN);
 #endif
-    GArgc = argc;
-    GArgv = argv;
 
     dbgprintf("Parent starting mainline.\n");
 

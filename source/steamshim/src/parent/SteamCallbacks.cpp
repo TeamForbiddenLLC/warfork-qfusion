@@ -48,7 +48,7 @@ void SteamCallbacks::OnPersonaStateChange(PersonaStateChange_t *pCallback)
 void TransmitAvatar(uint64 id){
     int handle = SteamFriends()->GetSmallFriendAvatar(id);
 
-    uint8_t image[4096];
+    uint8_t image[STEAM_AVATAR_SIZE];
     SteamUtils()->GetImageRGBA(handle, image, sizeof image);
 
     PipeBuffer msg;
