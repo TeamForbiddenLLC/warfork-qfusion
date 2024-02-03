@@ -23,6 +23,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../gameshared/q_arch.h"
 #include "../qcommon/qthreads.h"
 
+#include "../gameshared/q_sds.h"
+#include "stb_image.h"
+
 #include "r_texture_format.h"
 #include <stdint.h>
 
@@ -352,12 +355,13 @@ static void R_SwapBlueRed( uint8_t *data, int width, int height, int samples, in
 }
 
 enum image_buffer_allocation_type {
-	ALLOCATION_IMAGE_BUF_EXT,
+	ALLOCATION_IMAGE_BUF_ALIAS, // memory that is aliased and non owning
 	ALLOCATION_IMAGE_BUF_INT,
 	ALLOCATION_IMAGE_BUF_STBI,
 };
 
-struct image_buffer_layout_s {
+struct image_buffer_s {
+	enum image_buffer_allocation_type type; 
 	enum texture_format_e format;
 	uint16_t alignment;
 
@@ -366,19 +370,42 @@ struct image_buffer_layout_s {
 	uint16_t height;
 	uint32_t rowPitch; // the number of bytes in a row of pixels including any alignment
 
+	union{
 	uint8_t *data;
+		void* stbiImage;
+	};
 };
 
-size_t __R_calculateRowPitch(struct image_buffer_layout_s* buffer, size_t alignment) {
+void __R_FreeImageBuffer(struct image_buffer_s* buffer) {
+	switch(buffer->type) {
+		case ALLOCATION_IMAGE_BUF_INT: {
+			if( buffer->data ) {
+				R_Free( buffer->data );
+			}
+			break;
+		}
+		case ALLOCATION_IMAGE_BUF_STBI: {
+			if( buffer->data ) {
+				stbi_image_free( buffer->stbiImage );
+			}
+			break;
+		}
+		case ALLOCATION_IMAGE_BUF_ALIAS:
+			// the buffer is either allocatted on the stack or its not owned by the layout
+			break;
+	}
+}
+
+size_t __R_calculateRowPitch(struct image_buffer_s* buffer, size_t alignment) {
 	const size_t blockSize = R_FormatBitSizePerBlock( buffer->format ) / 8;
 	return ALIGN( buffer->width * blockSize, alignment );
 }
 
-size_t __R_calculateReserve(struct image_buffer_layout_s* buffer) {
+size_t __R_calculateReserve(struct image_buffer_s* buffer) {
 	return buffer->rowPitch * buffer->height;
 }
 
-static bool __R_SwapChannelInPlace( struct image_buffer_layout_s *target, uint16_t c1, uint16_t c2 )
+static bool __R_SwapChannelInPlace( struct image_buffer_s *target, uint16_t c1, uint16_t c2 )
 {
 	assert(c1 < R_FormatChannelCount(target->format));
 	assert(c2 < R_FormatChannelCount(target->format));
@@ -447,7 +474,7 @@ static bool __R_SwapChannelInPlace( struct image_buffer_layout_s *target, uint16
 	return true;
 }
 
-static bool __R_SwapEndianess( struct image_buffer_layout_s *target )
+static bool __R_SwapEndianess( struct image_buffer_s *target )
 {
 	const size_t blockSize = R_FormatBitSizePerBlock( target->format ) / 8;
 	const uint16_t channelCount = R_FormatChannelCount( target->format );
@@ -514,7 +541,7 @@ static bool __R_SwapEndianess( struct image_buffer_layout_s *target )
 }
 
 
-static bool __R_FlipTexture( struct image_buffer_layout_s *src, struct image_buffer_layout_s *dest, bool flipx, bool flipy, bool flipdiagonal )
+static bool __R_FlipTexture( struct image_buffer_s *src, struct image_buffer_s *dest, bool flipx, bool flipy, bool flipdiagonal )
 {
 	const size_t blockSize = R_FormatBitSizePerBlock( src->format ) / 8;
 	if( flipdiagonal ) {
@@ -547,7 +574,7 @@ static bool __R_FlipTexture( struct image_buffer_layout_s *src, struct image_buf
 }
 
 struct image_upload_s {
-	struct image_buffer_layout_s* submit;
+	struct image_buffer_s* submit;
 
 
 	bool updateSubSection;
@@ -1475,7 +1502,7 @@ static bool __R_IsKTXFormatValid( int format, int type )
 	return false;
 }
 
-struct ktx_header_info_s {
+struct ktx_context_s {
 	bool swapEndianess;
 	int type;
 	int typeSize;
@@ -1490,10 +1517,12 @@ struct ktx_header_info_s {
 	int numberOfMipmapLevels;
 	int bytesOfKeyValueData;
 	size_t headerSize;
+
+	uint8_t* data;
 };
 
 
-static bool __R_DecodeKTXHeader( uint8_t *buffer, struct ktx_header_info_s *header)
+static bool __R_InitKTXContext( uint8_t *memory, struct ktx_context_s *cntx)
 {
 #pragma pack( push, 1 )
 	struct __raw_ktx_header_s {
@@ -1515,31 +1544,32 @@ static bool __R_DecodeKTXHeader( uint8_t *buffer, struct ktx_header_info_s *head
 #pragma pack( pop )
 
 	assert( sizeof( struct __raw_ktx_header_s ) == 64 );
-	struct __raw_ktx_header_s *rawHeader = (struct __raw_ktx_header_s *)buffer;
+	struct __raw_ktx_header_s *rawHeader = (struct __raw_ktx_header_s *)memory;
 	if( memcmp( rawHeader->identifier, "\xABKTX 11\xBB\r\n\x1A\n", 12 ) ) {
 		ri.Com_Printf( S_COLOR_YELLOW "R_LoadKTX: Bad file identifier\n");
 		return false;
 	}
 
 	const bool swapEndian = ( rawHeader->endianness == 0x01020304 ) ? true : false;
-	header->swapEndianess = swapEndian;
-	header->type = swapEndian ? LongSwap( rawHeader->type ) : rawHeader->type;
-	header->typeSize = swapEndian ? LongSwap( rawHeader->typeSize ) : rawHeader->typeSize;
-	header->format = swapEndian ? LongSwap( rawHeader->format ) : rawHeader->format;
-	header->internalFormat = swapEndian ? LongSwap( rawHeader->internalFormat ) : rawHeader->internalFormat;
-	header->baseInternalFormat = swapEndian ? LongSwap( rawHeader->baseInternalFormat ) : rawHeader->baseInternalFormat;
-	header->pixelWidth = swapEndian ? LongSwap( rawHeader->pixelWidth ) : rawHeader->pixelWidth;
-	header->pixelHeight = swapEndian ? LongSwap( rawHeader->pixelHeight ) : rawHeader->pixelHeight;
-	header->pixelDepth = swapEndian ? LongSwap( rawHeader->pixelDepth ) : rawHeader->pixelDepth;
-	header->numberOfArrayElements = swapEndian ? LongSwap( rawHeader->numberOfArrayElements ) : rawHeader->numberOfArrayElements;
-	header->numberOfFaces = swapEndian ? LongSwap( rawHeader->numberOfFaces ) : rawHeader->numberOfFaces;
-	header->numberOfMipmapLevels = swapEndian ? LongSwap( rawHeader->numberOfMipmapLevels ) : rawHeader->numberOfMipmapLevels;
-	header->bytesOfKeyValueData = swapEndian ? LongSwap( rawHeader->bytesOfKeyValueData ) : rawHeader->bytesOfKeyValueData;
-	header->headerSize = sizeof(struct __raw_ktx_header_s);
+	cntx->data = memory;
+	cntx->swapEndianess = swapEndian;
+	cntx->type = swapEndian ? LongSwap( rawHeader->type ) : rawHeader->type;
+	cntx->typeSize = swapEndian ? LongSwap( rawHeader->typeSize ) : rawHeader->typeSize;
+	cntx->format = swapEndian ? LongSwap( rawHeader->format ) : rawHeader->format;
+	cntx->internalFormat = swapEndian ? LongSwap( rawHeader->internalFormat ) : rawHeader->internalFormat;
+	cntx->baseInternalFormat = swapEndian ? LongSwap( rawHeader->baseInternalFormat ) : rawHeader->baseInternalFormat;
+	cntx->pixelWidth = swapEndian ? LongSwap( rawHeader->pixelWidth ) : rawHeader->pixelWidth;
+	cntx->pixelHeight = swapEndian ? LongSwap( rawHeader->pixelHeight ) : rawHeader->pixelHeight;
+	cntx->pixelDepth = swapEndian ? LongSwap( rawHeader->pixelDepth ) : rawHeader->pixelDepth;
+	cntx->numberOfArrayElements = swapEndian ? LongSwap( rawHeader->numberOfArrayElements ) : rawHeader->numberOfArrayElements;
+	cntx->numberOfFaces = swapEndian ? LongSwap( rawHeader->numberOfFaces ) : rawHeader->numberOfFaces;
+	cntx->numberOfMipmapLevels = swapEndian ? LongSwap( rawHeader->numberOfMipmapLevels ) : rawHeader->numberOfMipmapLevels;
+	cntx->bytesOfKeyValueData = swapEndian ? LongSwap( rawHeader->bytesOfKeyValueData ) : rawHeader->bytesOfKeyValueData;
+	cntx->headerSize = sizeof(struct __raw_ktx_header_s);
 	return true;
 }
 
-static bool __R_ValidateKTXHeader(const struct ktx_header_info_s* header, const int flags, const uint16_t expectedNumFaces) {
+static bool __R_ValidateKTXHeader(const struct ktx_context_s* header, const int flags, const uint16_t expectedNumFaces) {
 	assert(header);
 	bool result = true;
 	if( !__R_IsKTXFormatValid( header->format ? header->baseInternalFormat : header->internalFormat, header->type ) ) {
@@ -1577,6 +1607,29 @@ static bool __R_ValidateKTXHeader(const struct ktx_header_info_s* header, const 
 }
 
 
+/**
+ * for compressed formated mipLevel will corrisponed to the mip level stored in the compressed format. 
+ * MipLevels are 0 for non-compressed formats
+ *
+ * Return the Aliased memory from the buffer
+ **/
+static uint32_t __R_KTXFetchAliasMemory(const struct ktx_context_s* header,uint32_t faceOffset, uint32_t imageOffset, uint16_t mipLevel, struct image_buffer_s* imageBuffers, bool* swapEndian) {
+	const uint32_t numElements = header->numberOfArrayElements;
+	const uint32_t numFaces = header->numberOfFaces;
+	// compressed format
+	if( header->type == 0 ) {
+
+	}
+
+
+
+
+	//assert(mipLevel == 0);
+error:
+	return 0;
+}
+
+
 static bool __R_LoadKTX( int ctx, image_t *image, const char *pathname )
 {
 	int i, j;
@@ -1590,8 +1643,8 @@ static bool __R_LoadKTX( int ctx, image_t *image, const char *pathname )
 	if( !buffer )
 		return false;
 	
-	struct ktx_header_info_s header;
-	if(!__R_DecodeKTXHeader(buffer, &header)) {
+	struct ktx_context_s header;
+	if(!__R_InitKTXContext(buffer, &header)) {
 		goto error;
 	}
 
@@ -1794,10 +1847,7 @@ error: // must not be reached after actually starting uploading the texture
 	return false;
 }
 
-/*
-* R_LoadImageFromDisk
-*/
-static bool R_LoadImageFromDisk( int ctx, image_t *image )
+static bool __R_LoadImageFromDisk( int ctx, image_t *image )
 {
 	int flags = image->flags;
 	size_t len = strlen( image->name );
@@ -2180,7 +2230,7 @@ static struct image_s *__R_AllocImage( const char *name)
 }
 
 
-static void __R_LoadImageBuffer(int ctx, image_t* image,  struct image_buffer_layout_s* buf, uint16_t x, uint16_t y) {
+static void __R_LoadImageBuffer(int ctx, image_t* image,  struct image_buffer_s* buf, uint16_t x, uint16_t y) {
 
 }
 
@@ -2323,77 +2373,68 @@ void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic )
 */
 image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmipsize, int tags )
 {
-	int i, lastDot, lastSlash, searchFlags;
-	unsigned int len, key;
-	image_t	*image, *hnode;
-	char *pathname;
-	uint8_t *empty_data[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
-	bool loaded;
+	assert(name);
+	assert(name[0]);
 
-	if( !name || !name[0] )
-		return NULL; //	ri.Com_Error (ERR_DROP, "R_FindImage: NULL name");
-
-	ENSUREBUFSIZE( imagePathBuf, strlen( name ) + (suffix ? strlen( suffix ) : 0) + 5 );
-	pathname = r_imagePathBuf;
-
-	lastDot = -1;
-	lastSlash = -1;
-	for( i = ( name[0] == '/' || name[0] == '\\' ), len = 0; name[i]; i++ )
+	const size_t reserveSize = strlen( name ) + ( suffix ? strlen( suffix ) : 0 ) + 15;
+	sds resolvedPath = sdsnewlen( 0, reserveSize );
+	sdsclear( resolvedPath );
 	{
-		if( name[i] == '.' )
-			lastDot = len;
-		if( name[i] == '\\' )
-			pathname[len] = '/';
-		else
-			pathname[len] = tolower( name[i] );
-		if( pathname[len] == '/' )
-			lastSlash = len;
-		len++;
+		size_t lastDot = -1;
+		size_t lastSlash = -1;
+		for( size_t i = ( name[0] == '/' || name[0] == '\\' ); name[i]; i++ ) {
+			const char c = name[i];
+			if( c == '\\' ) {
+				resolvedPath = sdscat( resolvedPath, "/" );
+			} else {
+				resolvedPath = sdscatfmt( resolvedPath, "%c", tolower( c ) );
+			}
+			switch( c ) {
+				case '.':
+					lastDot = i;
+					break;
+				case '/':
+					lastSlash = i;
+					break;
+			}
+		}
+		// don't confuse paths such as /ui/xyz.cache/123 with file extensions
+		if( lastDot >= lastSlash ) {
+			sdssubstr( resolvedPath, 0, lastDot );
+		}
 	}
-
-	if( len < 5 )
-		return NULL;
-
-	// don't confuse paths such as /ui/xyz.cache/123 with file extensions
-	if( lastDot < lastSlash ) {
-		lastDot = -1;
+	if( suffix ) {
+		for( size_t i = 0; suffix[i]; i++ ) {
+			resolvedPath = sdscatfmt( resolvedPath, "%c", tolower( suffix[i] ) );
+		}
 	}
+	const uint32_t basePathLen = sdslen(resolvedPath);
+	sdssubstr(resolvedPath, 0, basePathLen);
 
-	if( lastDot != -1 )
-		len = lastDot;
-
-	if( suffix )
-	{
-		for( i = 0; suffix[i]; i++ )
-			pathname[len++] = tolower( suffix[i] );
-	}
-
-	pathname[len] = 0;
-
-	// look for it
-	key = COM_SuperFastHash( ( const uint8_t *)pathname, len, len ) % IMAGES_HASH_SIZE;
-	hnode = &images_hash_headnode[key];
-	searchFlags = flags & ~IT_LOADFLAGS;
+	image_t	*image;
+	const uint32_t key = COM_SuperFastHash( (uint8_t *)resolvedPath, strlen(resolvedPath), strlen(resolvedPath) ) % IMAGES_HASH_SIZE;
+	const image_t* hnode = &images_hash_headnode[key];
+	const int searchFlags = flags & ~IT_LOADFLAGS;
 	for( image = hnode->prev; image != hnode; image = image->prev )
 	{
 		if( ( ( image->flags & ~IT_LOADFLAGS ) == searchFlags ) &&
-			!strcmp( image->name, pathname ) && ( image->minmipsize == minmipsize ) ) {
+			!strcmp( image->name, resolvedPath) && ( image->minmipsize == minmipsize ) ) {
 			R_TouchImage( image, tags );
-			return image;
+			goto done;
 		}
 	}
+	sdssubstr(resolvedPath, 0, basePathLen);
 
-	pathname[len] = 0;
-
-	image = R_LoadImage( pathname, empty_data, 1, 1, flags, minmipsize, tags, 1 );
+	uint8_t *empty_data[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
+	image = R_LoadImage( resolvedPath, empty_data, 1, 1, flags, minmipsize, tags, 1 );
 
 	if( !( image->flags & IT_SYNC ) ) {
 		if( __R_LoadAsyncImageFromDisk( image ) ) {
-			return image;
+			goto done;
 		}
 	}
 
-	loaded = R_LoadImageFromDisk( QGL_CONTEXT_MAIN, image );
+	const bool loaded = __R_LoadImageFromDisk( QGL_CONTEXT_MAIN, image );
 	R_UnbindImage( image );
 
 	if( !loaded ) {
@@ -2407,6 +2448,8 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 		}
 		image->loaded = true;
 	}
+done:
+	sdsfree(resolvedPath);
 
 	return image;
 }
@@ -3336,7 +3379,7 @@ static unsigned __R_HandleLoadPicLoaderCmd(  const void *pcmd )
 	image_t *image = images + cmd->pic;
 	bool loaded;
 
-	loaded = R_LoadImageFromDisk( QGL_CONTEXT_LOADER + cmd->self, image );
+	loaded = __R_LoadImageFromDisk( QGL_CONTEXT_LOADER + cmd->self, image );
 	R_UnbindImage( image );
 
 	if( !loaded ) {
