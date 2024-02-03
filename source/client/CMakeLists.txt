@@ -259,5 +259,5 @@ target_link_libraries(${QFUSION_CLIENT_NAME} PRIVATE ${CURL_LIBRARY} ${CLIENT_PL
 qf_set_output_dir(${QFUSION_CLIENT_NAME} "")
 
 if (BUILD_STEAMLIB)
-    add_dependencies(wf_steam ${QFUSION_CLIENT_NAME})
+    add_dependencies(${QFUSION_CLIENT_NAME} wf_steam)
 endif()
