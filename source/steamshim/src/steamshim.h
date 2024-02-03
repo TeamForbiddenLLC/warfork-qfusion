@@ -21,6 +21,7 @@ freely, subject to the following restrictions:
 #ifndef STEAMSHIM_H
 #define STEAMSHIM_H
 
+#include "steamshim_types.h"
 #include <stdint.h>
 #ifdef __cplusplus
 extern "C" {
@@ -56,7 +57,7 @@ typedef struct STEAMSHIM_Event
     int ivalue;
     float fvalue;
     uint64_t lvalue;
-    char name[4096];
+    char name[STEAM_AVATAR_SIZE];
 } STEAMSHIM_Event;
 
 #ifdef __cplusplus

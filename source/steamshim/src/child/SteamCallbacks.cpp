@@ -25,7 +25,7 @@ freely, subject to the following restrictions:
 #include "steam/steam_gameserver.h"
 
 #include "../os.h"
-#include "./parent_private.h"
+#include "./child_private.h"
 #include "../steamshim_private.h"
 #include "../steamshim.h"
 

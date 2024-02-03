@@ -23,23 +23,5 @@ freely, subject to the following restrictions:
 #if DEBUGPIPE
 #define dbgprintf printf
 #else
-inline void dbgprintf(const char *fmt, ...) {}
+static inline void dbgprintf(const char *fmt, ...) {}
 #endif
-
-#include "steam/isteamfriends.h"
-#include "steam/isteamuser.h"
-#include "steam/steam_api.h"
-#include "steam/steam_gameserver.h"
-
-void TransmitAvatar(uint64 id);
-class SteamCallbacks
-{
-public:
-    SteamCallbacks();
-	STEAM_CALLBACK(SteamCallbacks, OnCreateBeacon, UserStatsReceived_t, m_CallbackCreateBeacon);
-	STEAM_CALLBACK(SteamCallbacks, OnPersonaStateChange, PersonaStateChange_t, m_CallbackPersonaStateChange);
-
-};
-
-extern int GArgc;
-extern char **GArgv;

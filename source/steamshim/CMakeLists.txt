@@ -47,23 +47,23 @@ else()
 endif()
 
 
-file(GLOB child_SRC
-    "src/*.h"
-    "src/*.cpp"
-    "src/child/*.h"
-    "src/child/*.cpp"
-)
-
-add_library(steamshim_child STATIC ${child_SRC})
-qf_set_output_dir(steamshim_child libs)
-
 file(GLOB parent_SRC
     "src/*.h"
     "src/*.cpp"
     "src/parent/*.h"
     "src/parent/*.cpp"
 )
-add_executable(wf_steam ${STEAM_SERVER_BINARY_TYPE} ${parent_SRC})
+
+add_library(steamshim_parent STATIC ${parent_SRC})
+qf_set_output_dir(steamshim_parent libs)
+
+file(GLOB child_SRC
+    "src/*.h"
+    "src/*.cpp"
+    "src/child/*.h"
+    "src/child/*.cpp"
+)
+add_executable(wf_steam ${STEAM_SERVER_BINARY_TYPE} ${child_SRC})
 target_link_libraries(wf_steam ${STEAMWORKS_LIBRARY})
 
 qf_set_output_dir(wf_steam "")

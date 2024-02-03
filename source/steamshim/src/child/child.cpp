@@ -18,268 +18,311 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 */
 
+#include <cstddef>
 #include <cstdint>
-#include <cstring>
-#include <stdio.h>
-#define DEBUGPIPE 1
+#include <ctime>
+
 #include "child_private.h"
-#include "../steamshim.h"
 #include "../steamshim_private.h"
 #include "../os.h"
-#include "../steamshim_types.h"
-
-int GArgc = 0;
-char **GArgv = NULL;
-
-static STEAMSHIM_Event* ProcessEvent(){
-    static STEAMSHIM_Event event;
-    // make sure this is static, since it needs to persist between pumps
-    static PipeBuffer buf;
-
-    if (!buf.Recieve())
-        return NULL;
-
-    if (!buf.hasmsg)
-        return NULL;
-
-    volatile unsigned int msglen =buf.ReadInt();
+#include "../steamshim.h"
+#include "steam/isteamfriends.h"
+#include "steam/isteammatchmaking.h"
+#include "steam/isteamutils.h"
+#include "steam/steam_api.h"
+#include "steam/steam_gameserver.h"
 
 
-    char type = buf.ReadByte();
-    event.type = (STEAMSHIM_EventType)type;
+static bool GRunServer = false;
+static bool GRunClient = false;
 
-    #if DEBUGPIPE
-    if (0) {}
-    #define PRINTGOTEVENT(x) else if (type == x) printf("Child got " #x ".\n")
-    PRINTGOTEVENT(SHIMEVENT_BYE);
-    PRINTGOTEVENT(SHIMEVENT_STATSRECEIVED);
-    PRINTGOTEVENT(SHIMEVENT_STATSSTORED);
-    PRINTGOTEVENT(SHIMEVENT_SETACHIEVEMENT);
-    PRINTGOTEVENT(SHIMEVENT_GETACHIEVEMENT);
-    PRINTGOTEVENT(SHIMEVENT_RESETSTATS);
-    PRINTGOTEVENT(SHIMEVENT_SETSTATI);
-    PRINTGOTEVENT(SHIMEVENT_GETSTATI);
-    PRINTGOTEVENT(SHIMEVENT_SETSTATF);
-    PRINTGOTEVENT(SHIMEVENT_GETSTATF);
-    PRINTGOTEVENT(SHIMEVENT_STEAMIDRECIEVED);
-    PRINTGOTEVENT(SHIMEVENT_PERSONANAMERECIEVED);
-    PRINTGOTEVENT(SHIMEVENT_AUTHSESSIONTICKETRECIEVED);
-    PRINTGOTEVENT(SHIMEVENT_AUTHSESSIONVALIDATED);
-    PRINTGOTEVENT(SHIMEVENT_AVATARRECIEVED);
-    #undef PRINTGOTEVENT
-    else printf("Child got unknown shimevent %d.\n", (int) type);
-    #endif
+static ISteamUserStats *GSteamStats = NULL;
+static ISteamUtils *GSteamUtils = NULL;
+static ISteamUser *GSteamUser = NULL;
+static AppId_t GAppID = 0;
+static uint64 GUserID = 0;
+static ISteamGameServer *GSteamGameServer = NULL;
+static time_t time_since_last_pump = 0;
 
-    switch (type){
-        case SHIMEVENT_STEAMIDRECIEVED:
-            {
-                event.lvalue = buf.ReadLong();
-            }
-            break;
-        case SHIMEVENT_PERSONANAMERECIEVED:
-            {
-                char *string = buf.ReadString();
-                strcpy(event.name, string);
-            }
-            break;
-        case SHIMEVENT_AUTHSESSIONTICKETRECIEVED:
-            {
-                long long pcbTicket = buf.ReadLong();
-                void *ticket = buf.ReadData(AUTH_TICKET_MAXSIZE);
-                event.lvalue = pcbTicket;
-                memcpy(event.name, ticket, AUTH_TICKET_MAXSIZE);
-            }
-            break;
-        case SHIMEVENT_AUTHSESSIONVALIDATED:
-            {
-                int result = buf.ReadInt();
-                event.ivalue = result;
-            }
-            break;
-        case SHIMEVENT_AVATARRECIEVED:
-            {
-                uint64_t id = buf.ReadLong();
-                void *image = buf.ReadData(STEAM_AVATAR_SIZE);
-                event.lvalue = id;
-                memcpy(event.name, image, STEAM_AVATAR_SIZE);
-            }
-            break;
-    }
+static SteamCallbacks *GSteamCallbacks;
 
-    return &event;
-}
-
-static bool setEnvironmentVars(PipeType pipeChildRead, PipeType pipeChildWrite)
+static bool processCommand(PipeBuffer cmd, ShimCmd cmdtype, unsigned int len)
 {
-    char buf[64];
-    snprintf(buf, sizeof (buf), "%llu", (unsigned long long) pipeChildRead);
-    if (!setEnvVar("STEAMSHIM_READHANDLE", buf))
-        return false;
+  #if 1
+    if (false) {}
+#define PRINTGOTCMD(x) else if (cmdtype && cmdtype == x) printf("Child got " #x ".\n")
+    PRINTGOTCMD(SHIMCMD_BYE);
+    // PRINTGOTCMD(SHIMCMD_PUMP);
+    PRINTGOTCMD(SHIMCMD_REQUESTSTEAMID);
+    PRINTGOTCMD(SHIMCMD_REQUESTPERSONANAME);
+    PRINTGOTCMD(SHIMCMD_SETRICHPRESENCE);
+    PRINTGOTCMD(SHIMCMD_REQUESTAUTHSESSIONTICKET);
+    PRINTGOTCMD(SHIMCMD_BEGINAUTHSESSION);
+    PRINTGOTCMD(SHIMCMD_ENDAUTHSESSION);
+    PRINTGOTCMD(SHIMCMD_REQUESTAVATAR);
+#undef PRINTGOTCMD
+    else if (cmdtype != SHIMCMD_PUMP) printf("Child got unknown shimcmd %d.\n", (int) cmdtype);
+#endif
 
-    snprintf(buf, sizeof (buf), "%llu", (unsigned long long) pipeChildWrite);
-    if (!setEnvVar("STEAMSHIM_WRITEHANDLE", buf))
-        return false;
+    PipeBuffer msg;
+    switch (cmdtype)
+    {
+        case SHIMCMD_PUMP:
+            time(&time_since_last_pump);
+            if (GRunServer)
+                SteamGameServer_RunCallbacks();
+            if (GRunClient)
+                SteamAPI_RunCallbacks();
+            break;
+
+        case SHIMCMD_BYE:
+            return false;
+
+        case SHIMCMD_REQUESTSTEAMID:
+            {
+                unsigned long long id = SteamUser()->GetSteamID().ConvertToUint64();
+
+                msg.WriteByte(SHIMEVENT_STEAMIDRECIEVED);
+                msg.WriteLong(id);
+                msg.Transmit();
+            }
+            break;
+
+        case SHIMCMD_REQUESTPERSONANAME:
+            {
+                const char* name = SteamFriends()->GetPersonaName();
+
+                msg.WriteByte(SHIMEVENT_PERSONANAMERECIEVED);
+                msg.WriteData((void*)name, strlen(name));
+                msg.Transmit();
+            }
+            break;
+
+        case SHIMCMD_SETRICHPRESENCE:
+            {
+                int num = cmd.ReadInt();
+
+                for (int i=0; i < num;i++){
+                    const char *key = cmd.ReadString();
+                    const char *val = cmd.ReadString();
+                    SteamFriends()->SetRichPresence(key,val);
+                }
+            }
+            break;
+        case SHIMCMD_REQUESTAUTHSESSIONTICKET:
+            {
+                char pTicket[AUTH_TICKET_MAXSIZE];
+                uint32 pcbTicket;
+                GSteamUser->GetAuthSessionTicket(pTicket,AUTH_TICKET_MAXSIZE, &pcbTicket);
+
+                msg.WriteByte(SHIMEVENT_AUTHSESSIONTICKETRECIEVED);
+                msg.WriteLong(pcbTicket);
+                msg.WriteData(pTicket, AUTH_TICKET_MAXSIZE);
+                msg.Transmit();
+            }
+            break;
+        case SHIMCMD_BEGINAUTHSESSION:
+            {
+                uint64 steamID = cmd.ReadLong();
+                long long cbAuthTicket = cmd.ReadLong();
+                void* pAuthTicket = cmd.ReadData(AUTH_TICKET_MAXSIZE);
 
 
+                int result = GSteamGameServer->BeginAuthSession(pAuthTicket, cbAuthTicket, steamID);
+
+                msg.WriteByte(SHIMEVENT_AUTHSESSIONVALIDATED);
+                msg.WriteInt(result);
+                msg.Transmit();
+            }
+            break;
+        case SHIMCMD_CREATEBEACON:
+            {
+
+                int openSlots = cmd.ReadInt();
+                char *connectString = cmd.ReadString();
+                char *metadata = cmd.ReadString();
+
+                uint32 puNumLocations = 0;
+                SteamParties()->GetNumAvailableBeaconLocations(&puNumLocations);
+                if (puNumLocations <= 0) return 0;
+
+                SteamPartyBeaconLocation_t *pLocationList = (SteamPartyBeaconLocation_t *)malloc(puNumLocations* sizeof(SteamPartyBeaconLocation_t) );
+                SteamParties()->GetAvailableBeaconLocations(pLocationList, puNumLocations);
+
+                SteamParties()->CreateBeacon(openSlots, pLocationList, connectString,metadata);
+                free(pLocationList);
+            }
+            break;
+        case SHIMCMD_REQUESTAVATAR:
+            {
+                uint64 id = cmd.ReadLong();
+
+                if (!SteamFriends()->RequestUserInformation(id, false)){
+                    TransmitAvatar(id);
+                }
+            }
+            break;
+        case SHIMCMD_ENDAUTHSESSION:
+            {
+                uint64 steamID = cmd.ReadLong();
+                GSteamGameServer->EndAuthSession(steamID);
+            }
+            break;
+    } // switch
 
     return true;
+}
+
+
+static void processCommands()
+{
+  PipeBuffer buf;
+  while (1){
+    if (time_since_last_pump != 0){
+        time_t delta = time(NULL) - time_since_last_pump;
+        if (delta > 5) // we haven't gotten a pump in 5 seconds, safe to assume the main process is either dead or unresponsive and we can terminate
+            return;
+    }
+
+    if (!buf.Recieve())
+      continue;
+
+    if (buf.hasmsg){
+
+        volatile unsigned int evlen =buf.ReadInt();
+
+        ShimCmd cmd = (ShimCmd)buf.ReadByte();
+
+        if (!processCommand(buf, cmd, evlen))
+            return; // we were told to exit
+    }
+  }
 } 
 
-extern "C" {
-  int STEAMSHIM_init(bool runclient, bool runserver)
-  {
 
-
-    PipeType pipeParentRead = NULLPIPE;
-    PipeType pipeParentWrite = NULLPIPE;
-    PipeType pipeChildRead = NULLPIPE;
-    PipeType pipeChildWrite = NULLPIPE;
-    ProcessType childPid;
-
-    if (runclient)
-        setEnvVar("STEAMSHIM_RUNCLIENT", "1");
-    if (runserver)
-        setEnvVar("STEAMSHIM_RUNSERVER", "1");
-
-
-    if (!createPipes(&pipeParentRead, &pipeParentWrite, &pipeChildRead, &pipeChildWrite)){
-        printf("steamshim: Failed to create application pipes\n");
-        return 0;
+static bool initSteamworks(PipeType fd)
+{
+    if (GRunServer) {
+        // this will fail if port is in use
+        if (!SteamGameServer_Init(0, 27016, 0,eServerModeNoAuthentication,"0.0.0.0"))
+            return 0;
+        GSteamGameServer = SteamGameServer();
+        if (!GSteamGameServer)
+            return 0;
+        
     }
-    else if (!setEnvironmentVars(pipeChildRead, pipeChildWrite)){
-        printf("steamshim: Failed to set environment variables\n");
-        return 0;
+    if (GRunClient){
+        // this can fail for many reasons:
+        //  - you forgot a steam_appid.txt in the current working directory.
+        //  - you don't have Steam running
+        //  - you don't own the game listed in steam_appid.txt
+        if (!SteamAPI_Init())
+            return 0;
+
+        GSteamStats = SteamUserStats();
+        GSteamUtils = SteamUtils();
+        GSteamUser = SteamUser();
+
+        GAppID = GSteamUtils ? GSteamUtils->GetAppID() : 0;
+	    GUserID = GSteamUser ? GSteamUser->GetSteamID().ConvertToUint64() : 0;
     }
-    else if (!launchChild(&childPid, STEAM_BLOB_LAUNCH_NAME))
-    {
-        printf("steamshim: Failed to launch application\n");
-        return 0;
-    }
+    
+    GSteamCallbacks = new SteamCallbacks();
+    return 1;
+} 
 
-    GPipeRead = pipeParentRead;
-    GPipeWrite = pipeParentWrite;
-
-    char status;
-    readPipe(GPipeRead, &status, sizeof status);
-
-    if (!status){
-        closePipe(GPipeRead);
-        closePipe(GPipeWrite);
-
-        GPipeWrite = GPipeRead = pipeChildRead = pipeChildWrite = NULLPIPE;
-        return 0;
+static void deinitSteamworks() {
+    if (GRunServer) {
+        SteamGameServer_Shutdown();
     }
 
-    dbgprintf("Child init start.\n");
-
-    // Close the ends of the pipes that the child will use; we don't need them.
-    closePipe(pipeChildRead);
-    closePipe(pipeChildWrite);
-
-    pipeChildRead = pipeChildWrite = NULLPIPE;
-
-#ifndef _WIN32
-      signal(SIGPIPE, SIG_IGN);
-#endif
-
-      dbgprintf("Child init success!\n");
-      return 1;
-  } 
-
-  void STEAMSHIM_deinit(void)
-  {
-      dbgprintf("Child deinit.\n");
-      if (GPipeWrite != NULLPIPE)
-      {
-          Write1ByteMessage(SHIMCMD_BYE);
-          closePipe(GPipeWrite);
-      } 
-
-      if (GPipeRead != NULLPIPE)
-          closePipe(GPipeRead);
-
-      GPipeRead = GPipeWrite = NULLPIPE;
-
-#ifndef _WIN32
-      signal(SIGPIPE, SIG_DFL);
-#endif
-  } 
-
-  static inline int isAlive(void)
-  {
-      return ((GPipeRead != NULLPIPE) && (GPipeWrite != NULLPIPE));
-  } 
-
-  static inline int isDead(void)
-  {
-      return !isAlive();
-  }
-
-  int STEAMSHIM_alive(void)
-  {
-      return isAlive();
-  } 
-
-  const STEAMSHIM_Event *STEAMSHIM_pump(void)
-  {
-    Write1ByteMessage(SHIMCMD_PUMP);
-    return ProcessEvent();
-  } 
-
-  void STEAMSHIM_getSteamID()
-  {
-	  Write1ByteMessage(SHIMCMD_REQUESTSTEAMID);
-  }
-
-  void STEAMSHIM_getPersonaName(){
-
-      Write1ByteMessage(SHIMCMD_REQUESTPERSONANAME);
-  }
-
-  void STEAMSHIM_getAuthSessionTicket(){
-      Write1ByteMessage(SHIMCMD_REQUESTAUTHSESSIONTICKET);
-  }
-
-  void STEAMSHIM_beginAuthSession(uint64_t steamid, SteamAuthTicket_t* ticket){
-      PipeBuffer buf;
-      buf.WriteByte(SHIMCMD_BEGINAUTHSESSION);
-      buf.WriteLong(steamid);
-      buf.WriteLong(ticket->pcbTicket);
-      buf.WriteData(ticket->pTicket, AUTH_TICKET_MAXSIZE);
-      buf.Transmit();
-  }
-
-  void STEAMSHIM_endAuthSession(uint64_t steamid){
-    PipeBuffer buf;
-    buf.WriteByte(SHIMCMD_ENDAUTHSESSION);
-    buf.WriteLong(steamid);
-    buf.Transmit();
-  }
-
-  void STEAMSHIM_setRichPresence(int num, char** key, char** val){
-      PipeBuffer buf;
-      buf.WriteByte(SHIMCMD_SETRICHPRESENCE);
-      buf.WriteInt(num);
-      for (int i=0; i < num;i++){
-          buf.WriteString(key[i]);
-          buf.WriteString(val[i]);
-      }
-      buf.Transmit();
-  }
-  void STEAMSHIM_createBeacon(uint32_t openSlots, char* connectString, char* metadata)
-  {
-      PipeBuffer buf;
-      buf.WriteByte(SHIMCMD_CREATEBEACON);
-      buf.WriteInt(openSlots);
-      buf.WriteString(connectString);
-      buf.WriteString(metadata);
-      buf.Transmit();
-  }
-  void STEAMSHIM_requestAvatar(uint64_t steamid, int size){
-    PipeBuffer buf;
-    buf.WriteByte(SHIMCMD_REQUESTAVATAR);
-    buf.WriteLong(steamid);
-    buf.WriteInt(size);
-    buf.Transmit();
-  }
+    if (GRunClient) {
+        SteamAPI_Shutdown();
+    }
 }
+
+static int initPipes(void)
+{
+    char buf[64];
+    unsigned long long val;
+
+    if (!getEnvVar("STEAMSHIM_READHANDLE", buf, sizeof (buf)))
+        return 0;
+    else if (sscanf(buf, "%llu", &val) != 1)
+        return 0;
+    else
+        GPipeRead = (PipeType) val;
+
+    if (!getEnvVar("STEAMSHIM_WRITEHANDLE", buf, sizeof (buf)))
+        return 0;
+    else if (sscanf(buf, "%llu", &val) != 1)
+        return 0;
+    else
+        GPipeWrite = (PipeType) val;
+    
+    return ((GPipeRead != NULLPIPE) && (GPipeWrite != NULLPIPE));
+} /* initPipes */
+
+int main(int argc, char **argv)
+{
+#ifndef _WIN32
+    signal(SIGPIPE, SIG_IGN);
+#endif
+
+    dbgprintf("Child starting mainline.\n");
+
+
+    char buf[64];
+    if (!initPipes())
+        fail("Child init failed.\n");
+    
+    if (getEnvVar("STEAMSHIM_RUNCLIENT", buf, sizeof(buf)))
+        GRunClient = true;
+    if (getEnvVar("STEAMSHIM_RUNSERVER", buf, sizeof(buf)))
+        GRunServer = true;
+
+    if (!initSteamworks(GPipeWrite)) {
+        char failure = 0;
+        writePipe(GPipeWrite, &failure, sizeof failure);
+        fail("Failed to initialize Steamworks");
+    }
+
+    char success = 1;
+    writePipe(GPipeWrite, &success, sizeof success);
+
+
+    dbgprintf("Child in command processing loop.\n");
+
+    // Now, we block for instructions until the pipe fails (child closed it or
+    //  terminated/crashed).
+    processCommands();
+
+    dbgprintf("Child shutting down.\n");
+
+    // Close our ends of the pipes.
+    closePipe(GPipeRead);
+    closePipe(GPipeWrite);
+
+    deinitSteamworks();
+
+    return 0;
+}
+
+#ifdef _WIN32
+
+// from win_sys
+#define MAX_NUM_ARGVS 128
+int argc;
+char *argv[MAX_NUM_ARGVS];
+
+int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow )
+{
+    if( strstr( GetCommandLineA(), "steamdbg" ) ) {
+        FreeConsole();
+        AllocConsole();
+        freopen( "CONOUT$", "w", stdout );
+    }
+	return main( argc, argv );
+} // WinMain
+#endif
+

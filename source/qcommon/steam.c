@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 #include "../qcommon/qcommon.h"
-#include "../steamshim/src/child/child.h"
+#include "../steamshim/src/parent/parent.h"
 #include <string.h>
 
 #define UNIMPLEMENTED_DBGBREAK()                                         \

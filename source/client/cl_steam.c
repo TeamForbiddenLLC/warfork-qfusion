@@ -1,7 +1,7 @@
 #include "../qcommon/qcommon.h"
 #include "../qcommon/steam.h"
 #include "client.h"
-#include "../steamshim/src/child/child.h"
+#include "../steamshim/src/parent/parent.h"
 #include <string.h>
 
 static void printEvent( const STEAMSHIM_Event *e )
