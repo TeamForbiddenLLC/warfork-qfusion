@@ -479,7 +479,6 @@ void CL_GameModule_Init( void )
 	import.R_DrawStretchPic = re.DrawStretchPic;
 	import.R_DrawStretchPoly = re.DrawStretchPoly;
 	import.R_DrawRotatedStretchPic = re.DrawRotatedStretchPic;
-	import.R_DrawFillRect = SCR_DrawFillRect;
 	import.R_Scissor = re.Scissor;
 	import.R_GetScissor = re.GetScissor;
 	import.R_ResetScissor = re.ResetScissor;
