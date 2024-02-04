@@ -1555,36 +1555,11 @@ struct ktx_context_s {
 	int numberOfFaces;
 	int numberOfMipmapLevels;
 	int bytesOfKeyValueData;
-	
-	size_t headerSize;
 
 	enum texture_format_e textureFormat; 
 	uint8_t* data;
 	struct ktx_context_data_s* dataContext;
 };
-
-static struct ktx_context_data_s *__R_GetKTXDataContext( const struct ktx_context_s *cntx, uint32_t mipLevel, uint32_t faceIndex, uint32_t arrayOffset )
-{
-	assert( cntx );
-	assert( cntx->dataContext );
-	const size_t numberOfArrayElements = max( 1, cntx->numberOfArrayElements );
-	const size_t numberOfFaces = max( 1, cntx->numberOfFaces );
-	const size_t index = ( mipLevel * numberOfArrayElements * numberOfFaces ) + ( faceIndex * numberOfArrayElements ) + arrayOffset;
-	assert(index < arrlen( cntx->dataContext ));
-	return &cntx->dataContext[index];
-}
-
-static void __R_FreeKTXContext( struct ktx_context_s *cntx )
-{
-	arrfree( cntx->dataContext );
-	cntx->dataContext = NULL;
-}
-
-/**
-* Ownership is transfered to the context. memory is manipulated in place within the ktx buffer
-*/
-static bool __R_InitKTXContext( uint8_t *memory, size_t size, struct ktx_context_s *cntx)
-{
 #pragma pack( push, 1 )
 	struct __raw_ktx_header_s {
 		char identifier[12];
@@ -1603,6 +1578,30 @@ static bool __R_InitKTXContext( uint8_t *memory, size_t size, struct ktx_context
 		int bytesOfKeyValueData;
 	};
 #pragma pack( pop )
+
+static struct ktx_context_data_s *__R_GetKTXDataContext( const struct ktx_context_s *cntx, uint32_t mipLevel, uint32_t faceIndex, uint32_t arrayOffset )
+{
+	assert( cntx );
+	assert( cntx->dataContext );
+	const size_t numberOfArrayElements = max( 1, cntx->numberOfArrayElements );
+	const size_t numberOfFaces = max( 1, cntx->numberOfFaces );
+	const size_t index = ( mipLevel * numberOfArrayElements * numberOfFaces ) + ( faceIndex * numberOfArrayElements ) + arrayOffset;
+	assert(index < arrlen( cntx->dataContext ));
+	return &cntx->dataContext[index];
+}
+
+static void __R_FreeKTXContext( struct ktx_context_s *cntx )
+{
+	arrfree( cntx->dataContext );
+	cntx->dataContext = NULL;
+}
+
+
+/**
+* Ownership is transfered to the context. memory is manipulated in place within the ktx buffer
+*/
+static bool __R_InitKTXContext( uint8_t *memory, size_t size, struct ktx_context_s *cntx)
+{
 
 	assert( sizeof( struct __raw_ktx_header_s ) == 64 );
 	struct __raw_ktx_header_s *rawHeader = (struct __raw_ktx_header_s *)memory;
@@ -1631,14 +1630,15 @@ static bool __R_InitKTXContext( uint8_t *memory, size_t size, struct ktx_context
 	cntx->numberOfFaces = swapEndian ? LongSwap( rawHeader->numberOfFaces ) : rawHeader->numberOfFaces;
 	cntx->numberOfMipmapLevels = swapEndian ? LongSwap( rawHeader->numberOfMipmapLevels ) : rawHeader->numberOfMipmapLevels;
 	cntx->bytesOfKeyValueData = swapEndian ? LongSwap( rawHeader->bytesOfKeyValueData ) : rawHeader->bytesOfKeyValueData;
-	cntx->headerSize = sizeof( struct __raw_ktx_header_s ) + cntx->bytesOfKeyValueData;
+	//cntx->headerSize = sizeof( struct __raw_ktx_header_s ) + cntx->bytesOfKeyValueData;
 
 	const size_t numberOfArrayElements = max( 1, cntx->numberOfArrayElements );
 	const size_t numberOfFaces = max( 1, cntx->numberOfFaces );
 	const size_t numberOfMips = max( 1, cntx->numberOfMipmapLevels );
-	arrsetlen( cntx->dataContext, numberOfArrayElements * numberOfFaces * numberOfMips );
-	size_t offsetData = 0;
 
+	const size_t keyValueOffset = sizeof(struct __raw_ktx_header_s);
+	const size_t dataOffset = sizeof(struct __raw_ktx_header_s) + cntx->bytesOfKeyValueData;
+	arrsetlen( cntx->dataContext, numberOfArrayElements * numberOfFaces * numberOfMips );
 	if( cntx->type == 0 ) {
 		switch( cntx->internalFormat ) {
 			case GL_ETC1_RGB8_OES:
@@ -1702,80 +1702,84 @@ static bool __R_InitKTXContext( uint8_t *memory, size_t size, struct ktx_context
 	}
 
 	// mip and faces are aligned 4
+	// KTX File Format Spec: https://registry.khronos.org/KTX/specs/1.0/ktxspec.v1.html
 	uint32_t width = cntx->pixelWidth;
 	uint32_t height = cntx->pixelHeight;
+
+	size_t bufferOffset = dataOffset;
+	//size_t offsetImageLen = sizeof(struct __raw_ktx_header_s) + cntx->bytesOfKeyValueData;
 	for( size_t mipLevel = 0; mipLevel < numberOfMips; mipLevel++ ) {
+		const uint32_t imageBufLen = swapEndian ? LongSwap( *( (uint32_t *)( memory + bufferOffset ) ) ) : *( (uint32_t *)( memory + bufferOffset ) );
+		bufferOffset += sizeof( uint32_t );
+		
+		size_t chunkOffset = 0;
 		for( size_t arrayIdx = 0; arrayIdx < numberOfArrayElements; arrayIdx++ ) {
 			for( size_t faceIdx = 0; faceIdx < numberOfFaces; faceIdx++ ) {
 				struct ktx_context_data_s *cntxData = __R_GetKTXDataContext( cntx, mipLevel, faceIdx, arrayIdx );
-
 				cntxData->width = width;
 				cntxData->height = height;
 				cntxData->update = false;
-				size_t byteSize = 0;
+				size_t imageChunkLen = 0;
 				size_t rowPitch = 0;
 				switch( cntx->textureFormat ) {
 					case R_FORMAT_ETC1_R8G8B8_OES:
 					case R_FORMAT_ETC2_R8G8B8_UNORM: {
 						const uint32_t blockWidth = R_FormatBlockWidth(cntx->textureFormat);
-						const uint32_t blockHeight = R_FormatBlockWidth(cntx->textureFormat);
+						const uint32_t blockHeight = R_FormatBlockHeight(cntx->textureFormat);
 						const uint32_t blockSizeBytes = R_FormatBitSizePerBlock(cntx->textureFormat) / 8;
-						rowPitch = ( ALIGN( (width / blockWidth) + (width % blockWidth == 0 ? 0 : 1) , 4 ) ); 
-						byteSize = ( rowPitch * ( ALIGN( (height/blockHeight) + (height % blockHeight == 0 ? 0 : 1), 4 ) >> 2 ) ) * blockSizeBytes;
+						rowPitch =  ALIGN( ((width / blockWidth) + (width % blockWidth == 0 ? 0 : 1)) * blockSizeBytes, blockWidth ); // not sure I need alignment 
+						imageChunkLen = rowPitch * ((height/blockHeight) + (height % blockHeight == 0 ? 0 : 1));
 						break;
 					}
-					case R_FORMAT_R4_G4_B4_A4_UNORM:
-						rowPitch = ALIGN( width * sizeof( short ), 4 );
-						byteSize = height * rowPitch;
-						break;
-					case R_FORMAT_R5_G6_B5_UNORM:
-						rowPitch = ALIGN( width * sizeof( short ), 4 );
-						byteSize = height * rowPitch;
-						break;
 					case R_FORMAT_R5_G5_B5_A1_UNORM:
-						rowPitch = ALIGN( width * sizeof( short ), 4 );
-						byteSize = height * rowPitch;
+					case R_FORMAT_R5_G6_B5_UNORM:
+					case R_FORMAT_R4_G4_B4_A4_UNORM:
+						rowPitch = width * sizeof( short );
+						imageChunkLen = height * rowPitch;
 						break;
 					case R_FORMAT_RGBA8_UNORM:
-						rowPitch = ALIGN( width * 4, 4 );
-						byteSize = height * rowPitch;
+						rowPitch = width * 4;
+						imageChunkLen = height * rowPitch;
 						break;
 					case R_FORMAT_RG8_UNORM:
-						rowPitch = ALIGN( width * 2, 4 );
-						byteSize = height * rowPitch;
-						break;
-					case R_FORMAT_BGR8_UNORM:
-						rowPitch = ALIGN( width * 3, 4 );
-						byteSize = height * rowPitch;
+						rowPitch = width * 2;
+						imageChunkLen = height * rowPitch;
 						break;
 					case R_FORMAT_RGB8_UNORM:
-						rowPitch = ALIGN( width * 3, 4 );
-						byteSize = height * rowPitch;
+					case R_FORMAT_BGR8_UNORM:
+						rowPitch =  width * 3;
+						imageChunkLen = height * rowPitch;
 						break;
 					case R_FORMAT_R8_UNORM:
-						rowPitch = ALIGN( width * 1, 4 );
-						byteSize = height * rowPitch;
+						rowPitch = width * 1;
+						imageChunkLen = height * rowPitch;
 						break;
 					default:
 						assert( false );
 						break;
 				}
-				cntxData->byteSize = byteSize;
+
+				cntxData->byteSize = imageChunkLen;
 				cntxData->rowPitch = rowPitch;
-				cntxData->byteOffset = offsetData;
-				offsetData += byteSize;
-				offsetData = ALIGN( offsetData, 4 );
+				cntxData->byteOffset = chunkOffset + bufferOffset;
+
+				chunkOffset += imageChunkLen;
+				chunkOffset = ALIGN( chunkOffset, 4 );
 			}
 		}
-		width >>= 1;
-		height >>= 1;
-		offsetData = ALIGN( offsetData, 4 );
+		if( chunkOffset != imageBufLen) {
+			ri.Com_Printf( S_COLOR_YELLOW "iamge buffer size: %d expected: %d\n", chunkOffset, imageBufLen);
+		}
+		chunkOffset  = ALIGN( chunkOffset , 4 );
+		bufferOffset += chunkOffset;
+
+		width = max( 1, width >> 1 );
+		height = max(1, height >> 1);
 	}
 
-	if( cntx->headerSize + offsetData > size ) {
-		ri.Com_Printf( S_COLOR_YELLOW "expected size is larger then file %d > %d\n", cntx->headerSize + offsetData, size );
-		return false;
-	}
+  if(bufferOffset != size ) {
+  	ri.Com_Printf( S_COLOR_YELLOW "file size does not match size: %d expected: %d\n", bufferOffset , size );
+  }
 
 	return true;
 }
@@ -1847,8 +1851,10 @@ static bool __R_LoadKTX( int ctx, image_t *image, const char *pathname )
 	uint8_t *buffer;
 	int bufferLen = R_LoadFile( pathname, ( void ** )&buffer );
 	
-	if( !buffer )
+	if(!buffer ) {
+		ri.Com_Printf( S_COLOR_YELLOW "Can't resolve KTX File: %s \n", image->name);
 		return false;
+	}
 
 	struct ktx_context_s header = {};
 	if( !__R_InitKTXContext( buffer, bufferLen, &header ) ) {
@@ -1867,7 +1873,7 @@ static bool __R_LoadKTX( int ctx, image_t *image, const char *pathname )
 	}
 
 	const int numMips = R_MipCount( header.pixelWidth, header.pixelHeight, image->minmipsize );
-	uint8_t* data = buffer + header.headerSize + header.bytesOfKeyValueData;
+	uint8_t* data = buffer + sizeof( struct __raw_ktx_header_s ) +  header.bytesOfKeyValueData;
 	
 	R_BindImage( image );
 
