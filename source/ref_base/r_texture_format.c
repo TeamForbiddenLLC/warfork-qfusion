@@ -231,7 +231,69 @@ uint32_t R_FormatChannelBitWidth( enum texture_format_e format, uint16_t channel
         assert(false);
     }
   }
+  return R_FORMAT_UNKNOWN;
 }
+
+bool R_FormatIsCompressed( enum texture_format_e format )
+{
+	switch( format ) {
+		case R_FORMAT_ETC1_R8G8B8_OES: // R_FORMAT_ETC2_R8G8B8_UNORM is a superset
+		case R_FORMAT_ETC2_R8G8B8_UNORM:
+		case R_FORMAT_ETC2_R8G8B8_SRGB:
+		case R_FORMAT_ETC2_R8G8B8A1_UNORM:
+		case R_FORMAT_ETC2_R8G8B8A1_SRGB:
+		case R_FORMAT_ETC2_R8G8B8A8_UNORM:
+		case R_FORMAT_ETC2_R8G8B8A8_SRGB:
+		case R_FORMAT_ETC2_EAC_R11_UNORM:
+		case R_FORMAT_ETC2_EAC_R11_SNORM:
+		case R_FORMAT_ETC2_EAC_R11G11_UNORM:
+		case R_FORMAT_ETC2_EAC_R11G11_SNORM:
+			return true;
+		default:
+			break;
+	}
+	return false;
+}
+
+uint32_t R_FormatBlockWidth( enum texture_format_e format ) {
+	switch( format ) {
+		case R_FORMAT_ETC1_R8G8B8_OES: return 4;
+		case R_FORMAT_ETC2_R8G8B8_UNORM:return 4;
+		case R_FORMAT_ETC2_R8G8B8_SRGB: return 4;
+		case R_FORMAT_ETC2_R8G8B8A1_UNORM: return 4;
+		case R_FORMAT_ETC2_R8G8B8A1_SRGB: return 4;
+		case R_FORMAT_ETC2_R8G8B8A8_UNORM: return 4;
+		case R_FORMAT_ETC2_R8G8B8A8_SRGB: return 4;
+		case R_FORMAT_ETC2_EAC_R11_UNORM: return 4;
+		case R_FORMAT_ETC2_EAC_R11_SNORM: return 4;
+		case R_FORMAT_ETC2_EAC_R11G11_UNORM: return 4;
+		case R_FORMAT_ETC2_EAC_R11G11_SNORM: return 4;
+		default:
+			break;
+	}
+	return 1;
+}
+
+uint32_t R_FormatBlockHeight( enum texture_format_e format )
+{
+	switch( format ) {
+		case R_FORMAT_ETC1_R8G8B8_OES: return 4;
+		case R_FORMAT_ETC2_R8G8B8_UNORM:return 4;
+		case R_FORMAT_ETC2_R8G8B8_SRGB: return 4;
+		case R_FORMAT_ETC2_R8G8B8A1_UNORM: return 4;
+		case R_FORMAT_ETC2_R8G8B8A1_SRGB: return 4;
+		case R_FORMAT_ETC2_R8G8B8A8_UNORM: return 4;
+		case R_FORMAT_ETC2_R8G8B8A8_SRGB: return 4;
+		case R_FORMAT_ETC2_EAC_R11_UNORM: return 4;
+		case R_FORMAT_ETC2_EAC_R11_SNORM: return 4;
+		case R_FORMAT_ETC2_EAC_R11G11_UNORM: return 4;
+		case R_FORMAT_ETC2_EAC_R11G11_SNORM: return 4;
+		default:
+			break;
+	}
+	return 1;
+}
+
 uint32_t R_FormatBitSizePerBlock(enum texture_format_e format) {
   switch(format) {
     case R_FORMAT_R8_UNORM: return 8;
@@ -272,6 +334,15 @@ uint32_t R_FormatBitSizePerBlock(enum texture_format_e format) {
     case R_FORMAT_RGBA32_UINT: return 128;
     case R_FORMAT_RGBA32_SINT: return 128;
     case R_FORMAT_RGBA32_SFLOAT: return 128;
+   
+    // compressed formats
+    case R_FORMAT_ETC1_R8G8B8_OES: return 64;
+	  case R_FORMAT_ETC2_R8G8B8_UNORM: return 64;
+	  case R_FORMAT_ETC2_R8G8B8_SRGB: return 64;
+	  case R_FORMAT_ETC2_R8G8B8A1_UNORM: return 64;
+	  case R_FORMAT_ETC2_R8G8B8A1_SRGB: return 64;
+	  case R_FORMAT_ETC2_R8G8B8A8_UNORM: return 64;
+	  case R_FORMAT_ETC2_R8G8B8A8_SRGB: return 64;
     default:
       assert(false);
   }

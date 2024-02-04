@@ -29,6 +29,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_texture_format.h"
 #include <stdint.h>
 
+#include "stb_ds.h"
+
 #define	MAX_GLIMAGES	    8192
 #define IMAGES_HASH_SIZE    64
 
@@ -113,7 +115,7 @@ static void R_BindImage( const image_t *tex )
 	RB_FlushTextureCache();
 }
 
-static void R_UnbindImage( const image_t *tex )
+static void __R_UnbindImage( const image_t *tex )
 {
 	qglBindTexture( R_TextureTarget( tex->flags, NULL ), 0 );
 	RB_FlushTextureCache();
@@ -363,16 +365,15 @@ enum image_buffer_allocation_type {
 struct image_buffer_s {
 	enum image_buffer_allocation_type type; 
 	enum texture_format_e format;
-	uint16_t alignment;
 
 	// https://github.com/microsoft/DirectXTex/wiki/Image
 	uint16_t width;
 	uint16_t height;
 	uint32_t rowPitch; // the number of bytes in a row of pixels including any alignment
 
-	union{
-	uint8_t *data;
-		void* stbiImage;
+	union {
+		uint8_t *data;
+		void *stbiImage;
 	};
 };
 
@@ -405,6 +406,26 @@ size_t __R_calculateReserve(struct image_buffer_s* buffer) {
 	return buffer->rowPitch * buffer->height;
 }
 
+static void __R_SwapchChannelBlockDispatch8( uint8_t *buf, uint16_t c1, uint16_t c2 )
+{
+	uint8_t temp = 0;
+	uint8_t *channelBlock0 = buf + ( c1 * sizeof( uint8_t ) );
+	uint8_t *channelBlock1 = buf + ( c2 * sizeof( uint8_t ) );
+	temp = *channelBlock0;
+	( *channelBlock0 ) = ( *channelBlock1 );
+	( *channelBlock1 ) = temp;
+}
+
+static void __R_SwapchChannelBlockDispatch16( uint8_t *buf, uint16_t c1, uint16_t c2 )
+{
+	uint8_t temp[sizeof( uint16_t )] = { 0 };
+	uint8_t *channelBlock0 = buf + ( c1 * sizeof( uint16_t ) );
+	uint8_t *channelBlock1 = buf + ( c2 * sizeof( uint16_t ) );
+	memcpy( temp, channelBlock0, sizeof( uint16_t ) );
+	memcpy( channelBlock0, channelBlock1, sizeof( uint16_t ) );
+	memcpy( channelBlock1, temp, sizeof( uint16_t ) );
+}
+
 static bool __R_SwapChannelInPlace( struct image_buffer_s *target, uint16_t c1, uint16_t c2 )
 {
 	assert(c1 < R_FormatChannelCount(target->format));
@@ -413,21 +434,24 @@ static bool __R_SwapChannelInPlace( struct image_buffer_s *target, uint16_t c1, 
 		return true;
 	}
 
+	void (*channelBlockDispatch)(uint8_t* block, uint16_t c1, uint16_t c2);
+
 	uint16_t channelByteWidth = 0;
 	switch( target->format ) {
 		case R_FORMAT_RG8_UNORM:
 		case R_FORMAT_RG8_SNORM:
-		case R_FORMAT_RG8_UINT:
-		case R_FORMAT_RG8_SINT:
 		case R_FORMAT_BGRA8_UNORM:
-		case R_FORMAT_BGRA8_SRGB:
 		case R_FORMAT_BGR8_UNORM:
 		case R_FORMAT_RGB8_UNORM:
 		case R_FORMAT_RGBA8_UNORM:
+		case R_FORMAT_RG8_UINT:
+		case R_FORMAT_RG8_SINT:
+		case R_FORMAT_BGRA8_SRGB:
 		case R_FORMAT_RGBA8_SNORM:
 		case R_FORMAT_RGBA8_UINT:
 		case R_FORMAT_RGBA8_SINT:
 		case R_FORMAT_RGBA8_SRGB:
+			
 			channelByteWidth = 1;
 			break;
 		case R_FORMAT_RG16_UNORM:
@@ -494,6 +518,7 @@ static bool __R_SwapEndianess( struct image_buffer_s *target )
 		case R_FORMAT_RGBA8_UINT:
 		case R_FORMAT_RGBA8_SINT:
 		case R_FORMAT_RGBA8_SRGB:
+			// 8 byte channels can't be swapped
 			return true;
 		case R_FORMAT_RG16_UNORM:
 		case R_FORMAT_RG16_SNORM:
@@ -1502,6 +1527,20 @@ static bool __R_IsKTXFormatValid( int format, int type )
 	return false;
 }
 
+struct ktx_context_data_s {
+	// updates internal data for consistency 
+	// - swaps endianness for platform
+	bool update;
+	
+	uint16_t width;
+	uint16_t height;
+	uint32_t rowPitch; 
+
+	// this is the start of the data
+	size_t byteSize;
+	size_t byteOffset; // ktx_context_data_s::data + byteOffset
+};
+
 struct ktx_context_s {
 	bool swapEndianess;
 	int type;
@@ -1516,37 +1555,64 @@ struct ktx_context_s {
 	int numberOfFaces;
 	int numberOfMipmapLevels;
 	int bytesOfKeyValueData;
+	
 	size_t headerSize;
 
+	enum texture_format_e textureFormat; 
 	uint8_t* data;
+	struct ktx_context_data_s* dataContext;
 };
 
+static struct ktx_context_data_s *__R_GetKTXDataContext( const struct ktx_context_s *cntx, uint32_t mipLevel, uint32_t faceIndex, uint32_t arrayOffset )
+{
+	assert( cntx );
+	assert( cntx->dataContext );
+	const size_t numberOfArrayElements = max( 1, cntx->numberOfArrayElements );
+	const size_t numberOfFaces = max( 1, cntx->numberOfFaces );
+	const size_t index = ( mipLevel * numberOfArrayElements * numberOfFaces ) + ( faceIndex * numberOfArrayElements ) + arrayOffset;
+	assert(index < arrlen( cntx->dataContext ));
+	return &cntx->dataContext[index];
+}
 
-static bool __R_InitKTXContext( uint8_t *memory, struct ktx_context_s *cntx)
+static void __R_FreeKTXContext( struct ktx_context_s *cntx )
+{
+	arrfree( cntx->dataContext );
+	cntx->dataContext = NULL;
+}
+
+/**
+* Ownership is transfered to the context. memory is manipulated in place within the ktx buffer
+*/
+static bool __R_InitKTXContext( uint8_t *memory, size_t size, struct ktx_context_s *cntx)
 {
 #pragma pack( push, 1 )
 	struct __raw_ktx_header_s {
-	char identifier[12];
-	int endianness;
-	int type;
-	int typeSize;
-	int format;
-	int internalFormat;
-	int baseInternalFormat;
-	int pixelWidth;
-	int pixelHeight;
-	int pixelDepth;
-	int numberOfArrayElements;
-	int numberOfFaces;
-	int numberOfMipmapLevels;
-	int bytesOfKeyValueData;
+		char identifier[12];
+		int endianness;
+		int type;
+		int typeSize;
+		int format;
+		int internalFormat;
+		int baseInternalFormat;
+		int pixelWidth;
+		int pixelHeight;
+		int pixelDepth;
+		int numberOfArrayElements;
+		int numberOfFaces;
+		int numberOfMipmapLevels;
+		int bytesOfKeyValueData;
 	};
 #pragma pack( pop )
 
 	assert( sizeof( struct __raw_ktx_header_s ) == 64 );
 	struct __raw_ktx_header_s *rawHeader = (struct __raw_ktx_header_s *)memory;
 	if( memcmp( rawHeader->identifier, "\xABKTX 11\xBB\r\n\x1A\n", 12 ) ) {
-		ri.Com_Printf( S_COLOR_YELLOW "R_LoadKTX: Bad file identifier\n");
+		ri.Com_Printf( S_COLOR_YELLOW "Bad file identifier\n" );
+		return false;
+	}
+
+	if(cntx->pixelDepth != 0) {
+		ri.Com_Printf( S_COLOR_YELLOW "Unsupported Feature 3D textures\n" );
 		return false;
 	}
 
@@ -1565,7 +1631,171 @@ static bool __R_InitKTXContext( uint8_t *memory, struct ktx_context_s *cntx)
 	cntx->numberOfFaces = swapEndian ? LongSwap( rawHeader->numberOfFaces ) : rawHeader->numberOfFaces;
 	cntx->numberOfMipmapLevels = swapEndian ? LongSwap( rawHeader->numberOfMipmapLevels ) : rawHeader->numberOfMipmapLevels;
 	cntx->bytesOfKeyValueData = swapEndian ? LongSwap( rawHeader->bytesOfKeyValueData ) : rawHeader->bytesOfKeyValueData;
-	cntx->headerSize = sizeof(struct __raw_ktx_header_s);
+	cntx->headerSize = sizeof( struct __raw_ktx_header_s ) + cntx->bytesOfKeyValueData;
+
+	const size_t numberOfArrayElements = max( 1, cntx->numberOfArrayElements );
+	const size_t numberOfFaces = max( 1, cntx->numberOfFaces );
+	const size_t numberOfMips = max( 1, cntx->numberOfMipmapLevels );
+	arrsetlen( cntx->dataContext, numberOfArrayElements * numberOfFaces * numberOfMips );
+	size_t offsetData = 0;
+
+	if( cntx->type == 0 ) {
+		switch( cntx->internalFormat ) {
+			case GL_ETC1_RGB8_OES:
+				cntx->textureFormat = R_FORMAT_ETC1_R8G8B8_OES;
+				break;
+			case GL_COMPRESSED_RGB8_ETC2:
+				cntx->textureFormat = R_FORMAT_ETC2_R8G8B8_UNORM;
+				break;
+			default:
+				// this is not handled
+				ri.Com_Error( ERR_FATAL, "unhandled internalFormat: %d", cntx->internalFormat );
+				assert( false );
+				break;
+		}
+	} else {
+		switch( cntx->type ) {
+			case GL_UNSIGNED_SHORT_4_4_4_4:
+				cntx->textureFormat = R_FORMAT_R4_G4_B4_A4_UNORM;
+				break;
+			case GL_UNSIGNED_SHORT_5_6_5:
+				cntx->textureFormat = R_FORMAT_R5_G6_B5_UNORM;
+				break;
+			case GL_UNSIGNED_SHORT_5_5_5_1:
+				cntx->textureFormat = R_FORMAT_R5_G5_B5_A1_UNORM;
+				break;
+			case GL_UNSIGNED_BYTE: {
+				switch( cntx->baseInternalFormat ) {
+					case GL_RGBA:
+						cntx->textureFormat = R_FORMAT_RGBA8_UNORM;
+						break;
+					case GL_BGRA_EXT:
+						cntx->textureFormat = R_FORMAT_BGRA8_UNORM;
+						break;
+					case GL_RGB:
+						cntx->textureFormat = R_FORMAT_RGB8_UNORM;
+						break;
+					case GL_BGR_EXT:
+						cntx->textureFormat = R_FORMAT_BGR8_UNORM;
+						break;
+					case GL_LUMINANCE_ALPHA:
+						cntx->textureFormat = R_FORMAT_RG8_UNORM;
+						break;
+					case GL_LUMINANCE:
+					case GL_ALPHA:
+						cntx->textureFormat = R_FORMAT_R8_UNORM;
+						break;
+					default:
+						// this is not handled
+						ri.Com_Error( ERR_FATAL, "Unhandled baseInternalFormat: %d", cntx->baseInternalFormat );
+						assert( false );
+						break;
+				}
+				break;
+			}
+			default:
+				// this is not handled
+				ri.Com_Error( ERR_FATAL, "unhandled type: %d", cntx->type );
+				assert( false );
+				break;
+		}
+	}
+
+	// mip and faces are aligned 4
+	uint32_t width = cntx->pixelWidth;
+	uint32_t height = cntx->pixelHeight;
+	for( size_t mipLevel = 0; mipLevel < numberOfMips; mipLevel++ ) {
+		for( size_t arrayIdx = 0; arrayIdx < numberOfArrayElements; arrayIdx++ ) {
+			for( size_t faceIdx = 0; faceIdx < numberOfFaces; faceIdx++ ) {
+				struct ktx_context_data_s *cntxData = __R_GetKTXDataContext( cntx, mipLevel, faceIdx, arrayIdx );
+
+				cntxData->width = width;
+				cntxData->height = height;
+				cntxData->update = false;
+				size_t byteSize = 0;
+				size_t rowPitch = 0;
+				switch( cntx->textureFormat ) {
+					case R_FORMAT_ETC1_R8G8B8_OES:
+					case R_FORMAT_ETC2_R8G8B8_UNORM: {
+						const uint32_t blockWidth = R_FormatBlockWidth(cntx->textureFormat);
+						const uint32_t blockHeight = R_FormatBlockWidth(cntx->textureFormat);
+						const uint32_t blockSizeBytes = R_FormatBitSizePerBlock(cntx->textureFormat) / 8;
+						rowPitch = ( ALIGN( (width / blockWidth) + (width % blockWidth == 0 ? 0 : 1) , 4 ) ); 
+						byteSize = ( rowPitch * ( ALIGN( (height/blockHeight) + (height % blockHeight == 0 ? 0 : 1), 4 ) >> 2 ) ) * blockSizeBytes;
+						break;
+					}
+					case R_FORMAT_R4_G4_B4_A4_UNORM:
+						rowPitch = ALIGN( width * sizeof( short ), 4 );
+						byteSize = height * rowPitch;
+						break;
+					case R_FORMAT_R5_G6_B5_UNORM:
+						rowPitch = ALIGN( width * sizeof( short ), 4 );
+						byteSize = height * rowPitch;
+						break;
+					case R_FORMAT_R5_G5_B5_A1_UNORM:
+						rowPitch = ALIGN( width * sizeof( short ), 4 );
+						byteSize = height * rowPitch;
+						break;
+					case R_FORMAT_RGBA8_UNORM:
+						rowPitch = ALIGN( width * 4, 4 );
+						byteSize = height * rowPitch;
+						break;
+					case R_FORMAT_RG8_UNORM:
+						rowPitch = ALIGN( width * 2, 4 );
+						byteSize = height * rowPitch;
+						break;
+					case R_FORMAT_BGR8_UNORM:
+						rowPitch = ALIGN( width * 3, 4 );
+						byteSize = height * rowPitch;
+						break;
+					case R_FORMAT_RGB8_UNORM:
+						rowPitch = ALIGN( width * 3, 4 );
+						byteSize = height * rowPitch;
+						break;
+					case R_FORMAT_R8_UNORM:
+						rowPitch = ALIGN( width * 1, 4 );
+						byteSize = height * rowPitch;
+						break;
+					default:
+						assert( false );
+						break;
+				}
+				cntxData->byteSize = byteSize;
+				cntxData->rowPitch = rowPitch;
+				cntxData->byteOffset = offsetData;
+				offsetData += byteSize;
+				offsetData = ALIGN( offsetData, 4 );
+			}
+		}
+		width >>= 1;
+		height >>= 1;
+		offsetData = ALIGN( offsetData, 4 );
+	}
+
+	if( cntx->headerSize + offsetData > size ) {
+		ri.Com_Printf( S_COLOR_YELLOW "expected size is larger then file %d > %d\n", cntx->headerSize + offsetData, size );
+		return false;
+	}
+
+	return true;
+}
+
+/**
+ * fills out the image buffer
+ * Return the Aliased memory from the buffer
+ **/
+static bool __R_KTXFetchAliasMemory( const struct ktx_context_s *cntx, struct image_buffer_s *image, uint32_t faceIndex, uint32_t arrOffset, uint16_t mipLevel )
+{
+	assert( image );
+	assert( cntx );
+	assert( cntx->data );
+	struct ktx_context_data_s *dataCntx = __R_GetKTXDataContext( cntx, mipLevel, faceIndex, arrOffset );
+	image->width = dataCntx->width;
+	image->height = dataCntx->height;
+	image->rowPitch = dataCntx->rowPitch;
+	image->data = &cntx->data[dataCntx->byteOffset];
+	image->format = cntx->textureFormat;
+	image->type = ALLOCATION_IMAGE_BUF_ALIAS;
 	return true;
 }
 
@@ -1607,29 +1837,6 @@ static bool __R_ValidateKTXHeader(const struct ktx_context_s* header, const int 
 }
 
 
-/**
- * for compressed formated mipLevel will corrisponed to the mip level stored in the compressed format. 
- * MipLevels are 0 for non-compressed formats
- *
- * Return the Aliased memory from the buffer
- **/
-static uint32_t __R_KTXFetchAliasMemory(const struct ktx_context_s* header,uint32_t faceOffset, uint32_t imageOffset, uint16_t mipLevel, struct image_buffer_s* imageBuffers, bool* swapEndian) {
-	const uint32_t numElements = header->numberOfArrayElements;
-	const uint32_t numFaces = header->numberOfFaces;
-	// compressed format
-	if( header->type == 0 ) {
-
-	}
-
-
-
-
-	//assert(mipLevel == 0);
-error:
-	return 0;
-}
-
-
 static bool __R_LoadKTX( int ctx, image_t *image, const char *pathname )
 {
 	int i, j;
@@ -1638,13 +1845,13 @@ static bool __R_LoadKTX( int ctx, image_t *image, const char *pathname )
 		return false;
 
 	uint8_t *buffer;
-	R_LoadFile( pathname, ( void ** )&buffer );
+	int bufferLen = R_LoadFile( pathname, ( void ** )&buffer );
 	
 	if( !buffer )
 		return false;
-	
-	struct ktx_context_s header;
-	if(!__R_InitKTXContext(buffer, &header)) {
+
+	struct ktx_context_s header = {};
+	if( !__R_InitKTXContext( buffer, bufferLen, &header ) ) {
 		goto error;
 	}
 
@@ -1753,6 +1960,7 @@ static bool __R_LoadKTX( int ctx, image_t *image, const char *pathname )
 		size_t pixelSize = 2;
 		size_t faceSize;
 
+
 		switch( header.baseInternalFormat )
 		{
 		case GL_RGBA:
@@ -1847,8 +2055,11 @@ error: // must not be reached after actually starting uploading the texture
 	return false;
 }
 
-static bool __R_LoadImageFromDisk( int ctx, image_t *image )
+static bool __R_LoadImageFromDisk( int thread_id, image_t *image )
 {
+
+	//sds resolvedPath = sdsnew(image->name);
+
 	int flags = image->flags;
 	size_t len = strlen( image->name );
 	char pathname[1024];
@@ -1863,7 +2074,7 @@ static bool __R_LoadImageFromDisk( int ctx, image_t *image )
 	memcpy( pathname, image->name, len + 1 );
 	
 	Q_strncatz( pathname, ".ktx", pathsize );
-	if( __R_LoadKTX( ctx, image, pathname ) )
+	if( __R_LoadKTX( thread_id, image, pathname ) )
 		return true;
 	pathname[len] = 0;
 
@@ -1896,7 +2107,7 @@ static bool __R_LoadImageFromDisk( int ctx, image_t *image )
 				pathname[len+3] = 0;
 
 				Q_strncatz( pathname, ".tga", pathsize );
-				samples = R_ReadImageFromDisk( ctx, pathname, pathsize, 
+				samples = R_ReadImageFromDisk( thread_id, pathname, pathsize, 
 					&(pic[j]), &width, &height, &flags, j );
 				if( pic[j] )
 				{
@@ -1917,7 +2128,7 @@ static bool __R_LoadImageFromDisk( int ctx, image_t *image )
 					if( cubemapSides[i][j].flags & ( IT_FLIPX|IT_FLIPY|IT_FLIPDIAGONAL ) )
 					{
 						int flags = cubemapSides[i][j].flags;
-						uint8_t *temp = R_PrepareImageBuffer( ctx,
+						uint8_t *temp = R_PrepareImageBuffer( thread_id,
 							TEXTURE_FLIPPING_BUF0+j, width * height * samples );
 						R_FlipTexture( pic[j], temp, width, height, 4, 
 							(flags & IT_FLIPX) ? true : false, 
@@ -1941,7 +2152,7 @@ static bool __R_LoadImageFromDisk( int ctx, image_t *image )
 
 			R_BindImage( image );
 
-			R_Upload32( ctx, pic, 0, 0, 0, width, height, flags, image->minmipsize, &image->upload_width, 
+			R_Upload32( thread_id, pic, 0, 0, 0, width, height, flags, image->minmipsize, &image->upload_width, 
 				&image->upload_height, samples, false, false );
 
 			Q_strncpyz( image->extension, &pathname[len+3], sizeof( image->extension ) );
@@ -1957,7 +2168,7 @@ static bool __R_LoadImageFromDisk( int ctx, image_t *image )
 		uint8_t *pic = NULL;
 
 		Q_strncatz( pathname, ".tga", pathsize );
-		samples = R_ReadImageFromDisk( ctx, pathname, pathsize, &pic, &width, &height, &flags, 0 );
+		samples = R_ReadImageFromDisk( thread_id, pathname, pathsize, &pic, &width, &height, &flags, 0 );
 
 		if( pic )
 		{
@@ -1967,7 +2178,7 @@ static bool __R_LoadImageFromDisk( int ctx, image_t *image )
 
 			R_BindImage( image );
 
-			R_Upload32( ctx, &pic, 0, 0, 0, width, height, flags, image->minmipsize, &image->upload_width, 
+			R_Upload32( thread_id, &pic, 0, 0, 0, width, height, flags, image->minmipsize, &image->upload_width, 
 				&image->upload_height, samples, false, false );
 
 			Q_strncpyz( image->extension, &pathname[len], sizeof( image->extension ) );
@@ -2282,9 +2493,9 @@ image_t *R_Create3DImage( const char *name, int width, int height, int layers, i
 /*
 * R_FreeImage
 */
-static void R_FreeImage( image_t *image )
+static void __R_FreeImage( image_t *image )
 {
-	R_UnbindImage( image );
+	__R_UnbindImage( image );
 
 	R_FreeTextureNum( image );
 
@@ -2400,6 +2611,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 		}
 		// don't confuse paths such as /ui/xyz.cache/123 with file extensions
 		if( lastDot >= lastSlash ) {
+			// truncate string omitting the extension
 			sdssubstr( resolvedPath, 0, lastDot );
 		}
 	}
@@ -2435,10 +2647,10 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	}
 
 	const bool loaded = __R_LoadImageFromDisk( QGL_CONTEXT_MAIN, image );
-	R_UnbindImage( image );
+	__R_UnbindImage( image );
 
 	if( !loaded ) {
-		R_FreeImage( image );
+		__R_FreeImage( image );
 		image = NULL;
 	}
 	else {
@@ -2454,17 +2666,7 @@ done:
 	return image;
 }
 
-/*
-==============================================================================
 
-SCREEN SHOTS
-
-==============================================================================
-*/
-
-/*
-* R_ScreenShot
-*/
 void R_ScreenShot( const char *filename, int x, int y, int width, int height,
 				   bool flipx, bool flipy, bool flipdiagonal, bool silent ) {
 	size_t size, buf_size;
@@ -2975,24 +3177,24 @@ void R_InitBuiltinScreenImages( void )
 void R_ReleaseBuiltinScreenImages( void )
 {
 	if( rsh.screenTexture ) {
-		R_FreeImage( rsh.screenTexture );
+		__R_FreeImage( rsh.screenTexture );
 	}
 	if( rsh.screenDepthTexture ) {
-		R_FreeImage( rsh.screenDepthTexture );
+		__R_FreeImage( rsh.screenDepthTexture );
 	}
 
 	if( rsh.screenTextureCopy ) {
-		R_FreeImage( rsh.screenTextureCopy );
+		__R_FreeImage( rsh.screenTextureCopy );
 	}
 	if( rsh.screenDepthTextureCopy ) {
-		R_FreeImage( rsh.screenDepthTextureCopy );
+		__R_FreeImage( rsh.screenDepthTextureCopy );
 	}
 
 	if( rsh.screenPPCopies[0] ) {
-		R_FreeImage( rsh.screenPPCopies[0] );
+		__R_FreeImage( rsh.screenPPCopies[0] );
 	}
 	if( rsh.screenPPCopies[1] ) {
-		R_FreeImage( rsh.screenPPCopies[1] );
+		__R_FreeImage( rsh.screenPPCopies[1] );
 	}
 
 	rsh.screenTexture = rsh.screenDepthTexture = NULL;
@@ -3006,6 +3208,7 @@ void R_ReleaseBuiltinScreenImages( void )
 */
 static void R_InitBuiltinImages( void )
 {
+
 	int w, h, flags, samples;
 	image_t *image;
 	const struct
@@ -3130,7 +3333,7 @@ void R_FreeUnusedImagesByTags( int tags )
 			continue;
 		}
 
-		R_FreeImage( image );
+		__R_FreeImage( image );
 	}
 }
 
@@ -3169,7 +3372,7 @@ void R_ShutdownImages( void )
 			// free texture
 			continue;
 		}
-		R_FreeImage( image );
+		__R_FreeImage( image );
 	}
 
 	R_FreeImageBuffers();
@@ -3303,13 +3506,12 @@ void R_FinishLoadingImages( void )
 
 static bool __R_LoadAsyncImageFromDisk( image_t *image )
 {
-	int id;
 
 	if( loader_gl_context[0] == NULL ) {
 		return false;
 	}
 
-	id = (image - images) % NUM_LOADER_THREADS;
+	int id = (image - images) % NUM_LOADER_THREADS;
 	if ( loader_gl_context[id] == NULL ) {
 		id = 0;
 	}
@@ -3321,7 +3523,7 @@ static bool __R_LoadAsyncImageFromDisk( image_t *image )
 	// Not doing finish (or only doing flush instead) causes missing textures on Nvidia and possibly other GPUs,
 	// since the loader thread is woken up pretty much instantly, and the GL calls that initialize the texture
 	// may still be processed or only queued in the main thread while the loader is trying to load the image.
-	R_UnbindImage( image );
+	__R_UnbindImage( image );
 	qglFinish();
 
 	R_IssueLoadPicLoaderCmd( id, image - images );
@@ -3380,7 +3582,7 @@ static unsigned __R_HandleLoadPicLoaderCmd(  const void *pcmd )
 	bool loaded;
 
 	loaded = __R_LoadImageFromDisk( QGL_CONTEXT_LOADER + cmd->self, image );
-	R_UnbindImage( image );
+	__R_UnbindImage( image );
 
 	if( !loaded ) {
 		image->missing = true;
