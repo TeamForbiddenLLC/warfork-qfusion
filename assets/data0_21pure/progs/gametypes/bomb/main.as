@@ -390,6 +390,7 @@ String @GT_ScoreboardMessage( uint maxlen )
 				// Name Clan Score Frags Ping R
 
 				entry = "&p " + playerId
+					+ " " + playerId
 					+ " " + client.clanName
 					+ " " + client.stats.score
 					+ " " + client.stats.frags
@@ -402,6 +403,7 @@ String @GT_ScoreboardMessage( uint maxlen )
 				// Name Clan Score Frags W1 W2 W3 Ping R
 
 				entry = "&p " + playerId
+					+ " " + playerId
 					+ " " + client.clanName
 					+ " " + client.stats.score
 					+ " " + client.stats.frags
@@ -864,13 +866,13 @@ void GT_InitGametype()
 	// define the scoreboard layout
 	if ( gametype.isInstagib )
 	{
-		G_ConfigString( CS_SCB_PLAYERTAB_LAYOUT, "%n 112 %s 52 %i 42 %i 42 %l 36 %p l1" );
-		G_ConfigString( CS_SCB_PLAYERTAB_TITLES, "Name Clan Score Frags Ping S" );
+		G_ConfigString( CS_SCB_PLAYERTAB_LAYOUT, "%a l1 %n 112 %s 52 %i 42 %i 42 %l 36 %p l1" );
+		G_ConfigString( CS_SCB_PLAYERTAB_TITLES, "AVATAR Name Clan Score Frags Ping S" );
 	}
 	else
 	{
-		G_ConfigString( CS_SCB_PLAYERTAB_LAYOUT, "%n 112 %s 52 %i 42 %i 42 %p l1 %p l1 %p l1 %l 36 %p l1" );
-		G_ConfigString( CS_SCB_PLAYERTAB_TITLES, "Name Clan Score Frags " + S_COLOR_WHITE + " " + S_COLOR_WHITE + " " + S_COLOR_WHITE + " Ping S" );
+		G_ConfigString( CS_SCB_PLAYERTAB_LAYOUT, "%a l1 %n 112 %s 52 %i 42 %i 42 %p l1 %p l1 %p l1 %l 36 %p l1" );
+		G_ConfigString( CS_SCB_PLAYERTAB_TITLES, "AVATAR Name Clan Score Frags " + S_COLOR_WHITE + " " + S_COLOR_WHITE + " " + S_COLOR_WHITE + " Ping S" );
 	}
 
 	// add commands

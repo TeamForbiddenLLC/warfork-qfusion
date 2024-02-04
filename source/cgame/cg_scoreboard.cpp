@@ -468,6 +468,8 @@ static bool SCR_SkipColumn( char type )
 	{
 	case 'r':
 		return GS_MatchState() != MATCH_STATE_WARMUP;
+	case 'a':
+		return *cgs.configStrings[CS_USESTEAMAUTH] != '1';
 	}
 
 	return false;
