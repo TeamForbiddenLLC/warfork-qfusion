@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
+#include "r_image.h"
 #include "r_local.h"
 #include "r_imagelib.h"
 #include "../qalgo/hash.h"
@@ -41,10 +42,18 @@ typedef struct
 	int side;
 } loaderCbInfo_t;
 
+
+enum image_req_compression_e {
+	REQ_SUPPORT_ETC2 = 0x1,
+	REQ_SUPPORT_RGB8_OES = 0x2
+};
+
 struct image_req_s {
 	uint16_t mipLevels;
 	uint16_t scaledWidth;
 	uint16_t scaledHeight;
+
+	enum image_req_compression_e compressionSupport;
 };
 
 struct image_policy_s {
@@ -61,7 +70,7 @@ static int unpackAlignment[NUM_QGL_CONTEXTS];
 static mempool_t *r_imagesPool;
 static char *r_imagePathBuf, *r_imagePathBuf2;
 static size_t r_sizeof_imagePathBuf, r_sizeof_imagePathBuf2;
-static void __R_CalculateImageReq(const struct image_s* image, const struct image_policy_s* policy, struct image_req_s* requriments);
+static void __R_CalculateImageReq( int flags, uint16_t srcWidth, uint16_t srcHeight, const struct image_policy_s *policy, struct image_req_s *requriments );
 
 #undef ENSUREBUFSIZE
 #define ENSUREBUFSIZE(buf,need) \
@@ -380,25 +389,15 @@ struct image_buffer_s {
 	uint8_t *data;
 };
 
-//void __R_FreeImageBuffer(struct image_buffer_s* buffer) {
-//	switch(buffer->type) {
-//		case ALLOCATION_IMAGE_BUF_INT: {
-//			if( buffer->data ) {
-//				R_Free( buffer->data );
-//			}
-//			break;
-//		}
-//		case ALLOCATION_IMAGE_BUF_STBI: {
-//			if( buffer->data ) {
-//				stbi_image_free( buffer->stbiImage );
-//			}
-//			break;
-//		}
-//		case ALLOCATION_IMAGE_BUF_ALIAS:
-//			// the buffer is either allocatted on the stack or its not owned by the layout
-//			break;
-//	}
-//}
+struct image_pogo_buffer {
+	uint8_t index;
+	struct image_buffer_s buffers[2];
+};
+
+struct image_buffer_s* __R_nextPogoBuffer(struct image_pogo_buffer* pogo) {
+	pogo->index = (pogo->index + 1) % 2;
+	return &pogo->buffers[pogo->index]; 
+}
 
 size_t __R_calculateRowPitch(struct image_buffer_s* buffer, size_t alignment) {
 	const size_t blockSize = R_FormatBitSizePerBlock( buffer->format ) / 8;
@@ -427,6 +426,15 @@ static void __R_SwapchChannelBlockDispatch16( uint8_t *buf, uint16_t c1, uint16_
 	memcpy( temp, channelBlock0, sizeof( uint16_t ) );
 	memcpy( channelBlock0, channelBlock1, sizeof( uint16_t ) );
 	memcpy( channelBlock1, temp, sizeof( uint16_t ) );
+}
+
+static void __R_UncompressBuffer(struct image_buffer_s* src, struct image_buffer_s* dest) {
+
+}
+
+
+static void __R_MipMapInPlace(struct image_buffer_s* target) {
+
 }
 
 static bool __R_SwapChannelInPlace( struct image_buffer_s *target, uint16_t c1, uint16_t c2 )
@@ -498,11 +506,19 @@ static bool __R_SwapChannelInPlace( struct image_buffer_s *target, uint16_t c1, 
 	return true;
 }
 
-void unpackBlockXXX8(uint8_t* block, float values[4], uint16_t numberChannels) {
 
+// packing logic could be extracted
+float unpackBlock8Unorm( uint8_t *block, uint16_t c )
+{
+	return ( block[c] / 255.0f );
+}
+void setBlock8Unorm( uint8_t *block, uint16_t c, float value )
+{
+	block[c] = ( value / 255.0f );
 }
 
 // alignment to calculate row pitch
+// https://wiki.tcl-lang.org/page/Image+Scaling+in+C
 static void __R_ResizeImage(struct image_buffer_s* src, struct image_buffer_s* dest) {
 	const size_t blockSize = R_FormatBitSizePerBlock( src->format ) / 8;
 	const uint16_t channelCount = R_FormatChannelCount( src->format );
@@ -515,35 +531,28 @@ static void __R_ResizeImage(struct image_buffer_s* src, struct image_buffer_s* d
 
   const float sx2 = scaleX / 2.0f;
   const float sy2 = scaleY / 2.0f;
+	float srcValues[4] = {};
 
 	switch( src->format ) {
 		case R_FORMAT_RG8_UNORM:
-		case R_FORMAT_RG8_SNORM:
-		case R_FORMAT_RG8_UINT:
-		case R_FORMAT_RG8_SINT:
 		case R_FORMAT_BGRA8_UNORM:
-		case R_FORMAT_BGRA8_SRGB:
 		case R_FORMAT_BGR8_UNORM:
 		case R_FORMAT_RGB8_UNORM:
-		case R_FORMAT_RGBA8_UNORM:
-		case R_FORMAT_RGBA8_SNORM:
-		case R_FORMAT_RGBA8_UINT:
-		case R_FORMAT_RGBA8_SINT:
-		case R_FORMAT_RGBA8_SRGB: {
+		case R_FORMAT_RGBA8_UNORM: {
 			for( size_t row = 0; row < dest->height; row++ ) {
-				const size_t rowStartIdx = src->rowPitch * row;
 				for( size_t column = 0; column < dest->width; column++ ) {
-					const uint8_t *buf = &src->data[rowStartIdx + ( column * blockSize )];
-
 					int srcColumn = (int)( column * scaleX );
 					int srcRow = (int)( row * scaleX );
 
-					uint8_t *destBlock = &dest->data[dest->rowPitch * row + ( column * blockSize )];
-					uint8_t *srcBlock = &src->data[src->rowPitch * srcRow + ( srcColumn * blockSize )];
+					uint8_t* const destBlock = &dest->data[dest->rowPitch * row + ( column * blockSize )];
+					uint8_t* const srcBlock = &src->data[src->rowPitch * srcRow + ( srcColumn * blockSize )];
 
-					float srcValues[4] = {};
+					for( size_t c = 0; c < channelCount; c++ ) {
+						srcValues[c] = unpackBlock8Unorm( srcBlock, c );
+					}
 
-					for( int boxY = (int)srcRow - sy2; boxY < (int)srcRow + sy2; boxY++ ) {
+					float numberPoints = 0;
+					for( int boxY = (int)srcRow - sx2; boxY < (int)srcRow + sx2; boxY++ ) {
 						if( boxY < 0 )
 							continue;
 						if( boxY > src->height )
@@ -553,13 +562,18 @@ static void __R_ResizeImage(struct image_buffer_s* src, struct image_buffer_s* d
 								continue;
 							if( boxX > src->width )
 								continue;
+							uint8_t *bboxSrcBlock = &src->data[src->rowPitch * boxY + ( boxX * blockSize )];
+							numberPoints++;
+							for( size_t c = 0; c < channelCount; c++ ) {
+								srcValues[c] += unpackBlock8Unorm( bboxSrcBlock, c );
+							}
 						}
 					}
 
-					for( size_t ci = 0; ci < channelCount; ci++ ) {
-						uint16_t *channelBlock = (uint16_t *)( buf + ( ci * sizeof( uint16_t ) ) );
-						( *channelBlock ) = ShortSwap( *channelBlock );
+					for( size_t c = 0; c < channelCount; c++ ) {
+						setBlock8Unorm(destBlock, c, srcValues[c] / numberPoints);
 					}
+
 				}
 			}
 			break;
@@ -2248,6 +2262,8 @@ error: // must not be reached after actually starting uploading the texture
 
 
 
+
+
 static bool __R_LoadImageFromDisk( int thread_id, image_t *image )
 {
 	int flags = image->flags;
@@ -2263,58 +2279,77 @@ static bool __R_LoadImageFromDisk( int thread_id, image_t *image )
 
 	memcpy( pathname, image->name, len + 1 );
 // TODO: need to figure out
-//	sds resolvedPath = sdsnew( image->name );
-//	const size_t basePathLen = sdslen(resolvedPath);
-//
-//	enum image_ext_type_e { IMAGE_EXT_TGA, IMAGE_EXT_JPG, IMAGE_EXT_PNG, IMAGE_EXT_KTX };
-//	struct ktx_context_s ktxContext = {};
-//
-//	const char* imageExtension[] = {
-//		[IMAGE_EXT_TGA] = ".tga", 
-//		[IMAGE_EXT_JPG] = ".jpg", 
-//		[IMAGE_EXT_PNG] = ".png", 
-//		[IMAGE_EXT_KTX] = ".ktx"
-//	};
-//
-//	const char* extension = ri.FS_FirstExtension( resolvedPath, imageExtension, Q_ARRAY_COUNT(imageExtension)); // last is KTX
-//	
-//	if(extension == imageExtension[IMAGE_EXT_KTX]) {
-//		sdscatfmt(resolvedPath, "%s", imageExtension[IMAGE_EXT_KTX]);
-//		uint8_t *buffer;
-//		int bufferLen = R_LoadFile( pathname, (void **)&buffer );
-//
-//		if(!__R_InitKTXContext( buffer, bufferLen, &ktxContext ) ) {
-//			return false;
-//		}
-//
-//		//struct ktx_image_meta_s* meta = __R_GetKTXMeta(&ktxContext,0,0,0);
-//		image->srcWidth = ktxContext.pixelWidth;
-//		image->srcHeight = ktxContext.pixelHeight;
-//
-//    const struct  ktx_image_meta_s* meta = __R_GetKTXMeta(&ktxContext, 0,0,0);
-//		struct image_req_s request = {};
-//		struct image_policy_s policy = {};
-//		__R_CalculateImageReq(image, &policy, &request);
-//		
-//		struct image_buffer_s srcImageBuffer = {};
-//		const bool isResize = (ktxContext.pixelWidth != request.scaledWidth || ktxContext.pixelHeight != request.scaledHeight);
-//		if(isResize) {
-//			__R_KTXFillBuffer( &ktxContext, &srcImageBuffer, 0, 0, 0 );
-//			if( __R_IsKTXCompressedFormat( &ktxContext ) ) {
-//				// we have to uncompress and quarter in place
-//			}
-//			for(size_t mipLevel = 0; mipLevel < request.mipLevels; mipLevel++) {
-//
-//			}
-//		} else {
-//			for(size_t mipLevel = 0; mipLevel < __R_GetKTXNumberMips(&ktxContext) && mipLevel < request.mipLevels; mipLevel++) {
-//				__R_KTXFillBuffer( &ktxContext, &srcImageBuffer, 0, 0, mipLevel);
-//
-//
-//
-//			}
-//		}
-//	}
+	sds resolvedPath = sdsnew( image->name );
+	const size_t basePathLen = sdslen(resolvedPath);
+	
+	enum image_ext_type_e { IMAGE_EXT_TGA, IMAGE_EXT_JPG, IMAGE_EXT_PNG, IMAGE_EXT_KTX };
+	struct ktx_context_s ktxContext = {};
+
+  struct image_pogo_buffer pogo = {};
+	const char* imageExtension[] = {
+		[IMAGE_EXT_TGA] = ".tga", 
+		[IMAGE_EXT_JPG] = ".jpg", 
+		[IMAGE_EXT_PNG] = ".png", 
+		[IMAGE_EXT_KTX] = ".ktx"
+	};
+
+	const char* extension = ri.FS_FirstExtension( resolvedPath, imageExtension, Q_ARRAY_COUNT(imageExtension)); // last is KTX
+	
+	if(extension == imageExtension[IMAGE_EXT_KTX]) {
+		sdscatfmt(resolvedPath, "%s", imageExtension[IMAGE_EXT_KTX]);
+		uint8_t *buffer;
+		int bufferLen = R_LoadFile( pathname, (void **)&buffer );
+
+		if(!__R_InitKTXContext( buffer, bufferLen, &ktxContext ) ) {
+			return false;
+		}
+		image->srcWidth = ktxContext.pixelWidth;
+		image->srcHeight = ktxContext.pixelHeight;
+
+		struct image_req_s requirments = {}; // requirments for the submitted image for consistency with other GPUS
+		struct image_policy_s policy = {}; // policy is empty no other restrictions
+		__R_CalculateImageReq( ktxContext.pixelWidth, ktxContext.pixelHeight, image->flags, &policy, &requirments );
+		const bool isResize = ( ktxContext.pixelWidth != requirments.scaledWidth || ktxContext.pixelHeight != requirments.scaledHeight );
+
+		// we have to transform the image so we have to unpack/resize the image
+		if( isResize || requirments.compressionSupport == 0 ) {
+			struct image_buffer_s *active = __R_nextPogoBuffer( &pogo );
+			__R_KTXFillBuffer( &ktxContext, active, 0, 0, 0 );
+			if( __R_IsKTXCompressedFormat( &ktxContext ) ) {
+				struct image_buffer_s *dest = __R_nextPogoBuffer( &pogo );
+				__R_UncompressBuffer( active, dest );
+				active = dest;
+			}
+			if(isResize) {
+				struct image_buffer_s *dest = __R_nextPogoBuffer( &pogo );
+				dest->width = requirments.scaledWidth;
+				dest->height = requirments.scaledHeight;
+				__R_ResizeImage( active, dest);
+				active = dest;
+			}
+			if( (image->flags & (IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL)) > 0) {
+				struct image_buffer_s *dest = __R_nextPogoBuffer( &pogo );
+				__R_FlipTexture( active, dest, 
+										( flags & IT_FLIPX ) ? true : false, 
+										( flags & IT_FLIPY ) ? true : false, 
+										( flags & IT_FLIPDIAGONAL ) ? true : false );
+				active = dest;
+			}
+			for( size_t mipLevel = 0; mipLevel < requirments.mipLevels; mipLevel++ ) {
+				const struct image_upload_s upload = { .buffer = active, .packAlignment = 4, .mipOffset = mipLevel };
+				__R_SubmitImage( thread_id, image, &upload );
+				__R_MipMapInPlace( active );
+			}
+		} else {
+
+
+			for(size_t mipLevel = 0; mipLevel < __R_GetKTXNumberMips(&ktxContext) && mipLevel < requirments.mipLevels; mipLevel++) {
+				struct image_buffer_s *active = __R_nextPogoBuffer( &pogo );
+				__R_KTXFillBuffer( &ktxContext, active, 0, 0, mipLevel);
+
+			}
+		}
+	}
 
 
 	Q_strncatz( pathname, ".ktx", pathsize );
@@ -2545,35 +2580,37 @@ image_t *R_LoadImage( const char *name, uint8_t **pic, int width, int height, in
 }
 
 
-
-
-
 /**
  *
  * image requriments for older system using opengl
  **/
-static void __R_CalculateImageReq(const struct image_s* image, const struct image_policy_s* policy, struct image_req_s* requriments) {
+static void __R_CalculateImageReq(int flags,uint16_t srcWidth, uint16_t srcHeight, const struct image_policy_s* policy, struct image_req_s* requriments) {
   assert(requriments);
   assert(policy);
 
   uint32_t maxTextureSize = UINT16_MAX;
-  if( image->flags & ( IT_FRAMEBUFFER | IT_DEPTH ) ) {
+  if( flags & ( IT_FRAMEBUFFER | IT_DEPTH ) ) {
   	maxTextureSize = glConfig.maxRenderbufferSize;
-  } else if( image->flags & IT_CUBEMAP ) {
+  } else if( flags & IT_CUBEMAP ) {
   	maxTextureSize = glConfig.maxTextureCubemapSize;
-  } else if( image->flags & IT_3D ) {
+  } else if( flags & IT_3D ) {
   	maxTextureSize = glConfig.maxTexture3DSize;
   } else {
   	maxTextureSize = glConfig.maxTextureSize;
   }
+  if(glConfig.ext.texture_compression) {
+	  requriments->compressionSupport |= glConfig.ext.compressed_ETC1_RGB8_texture ? REQ_SUPPORT_RGB8_OES : 0;
+	  requriments->compressionSupport |= glConfig.ext.ES3_compatibility ? REQ_SUPPORT_ETC2 : 0;
+  }
+
 
 #ifdef GL_ES_VERSION_2_0
 	const bool makePOT = (!glConfig.ext.texture_non_power_of_two && !policy->ignoreNPOTRequirment) && ( ( image->flags & ( IT_CLAMP|IT_NOMIPMAP ) ) != ( IT_CLAMP|IT_NOMIPMAP ) );
 #else
 	const bool makePOT = !glConfig.ext.texture_non_power_of_two && !policy->ignoreNPOTRequirment;
 #endif
-	uint16_t scaledWidth = image->srcWidth;
-  uint16_t scaledHeight = image->srcHeight;
+	uint16_t scaledWidth = srcWidth;
+  uint16_t scaledHeight = srcHeight;
   uint16_t mipLevel = 1;
   while(scaledWidth > maxTextureSize || scaledHeight > maxTextureSize) {
   	scaledWidth >>= 1;
@@ -2589,11 +2626,11 @@ static void __R_CalculateImageReq(const struct image_s* image, const struct imag
 		scaledHeight = potHeight;
 	}
 
-	if( !( image->flags & IT_NOPICMIP ) )
+	if( !( flags & IT_NOPICMIP ) )
 	{
 		// let people sample down the sky textures for speed
   	uint16_t minMipSize = max(1, policy->minminumTextureSizeForMips);
-		const int picmip = ( image->flags & IT_SKY ) ? r_skymip->integer : r_picmip->integer;
+		const int picmip = ( flags & IT_SKY ) ? r_skymip->integer : r_picmip->integer;
 		uint16_t w = scaledWidth;
 		uint16_t h = scaledHeight;
 		while(mipLevel < picmip && (w > minMipSize || h > minMipSize))
