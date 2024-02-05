@@ -27,6 +27,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "stb_image.h"
 
 #include "r_texture_format.h"
+#include <GL/gl.h>
 #include <stdint.h>
 
 #include "stb_ds.h"
@@ -40,6 +41,17 @@ typedef struct
 	int side;
 } loaderCbInfo_t;
 
+struct image_req_s {
+	uint16_t mipLevels;
+	uint16_t scaledWidth;
+	uint16_t scaledHeight;
+};
+
+struct image_policy_s {
+	bool ignoreNPOTRequirment;
+	uint32_t minminumTextureSizeForMips;
+};
+
 static image_t images[MAX_GLIMAGES];
 static image_t images_hash_headnode[IMAGES_HASH_SIZE], *free_images;
 static qmutex_t *r_imagesLock;
@@ -49,6 +61,7 @@ static int unpackAlignment[NUM_QGL_CONTEXTS];
 static mempool_t *r_imagesPool;
 static char *r_imagePathBuf, *r_imagePathBuf2;
 static size_t r_sizeof_imagePathBuf, r_sizeof_imagePathBuf2;
+static void __R_CalculateImageReq(const struct image_s* image, const struct image_policy_s* policy, struct image_req_s* requriments);
 
 #undef ENSUREBUFSIZE
 #define ENSUREBUFSIZE(buf,need) \
@@ -356,46 +369,36 @@ static void R_SwapBlueRed( uint8_t *data, int width, int height, int samples, in
 	}
 }
 
-enum image_buffer_allocation_type {
-	ALLOCATION_IMAGE_BUF_ALIAS, // memory that is aliased and non owning
-	ALLOCATION_IMAGE_BUF_INT,
-	ALLOCATION_IMAGE_BUF_STBI,
-};
+
 
 struct image_buffer_s {
-	enum image_buffer_allocation_type type; 
 	enum texture_format_e format;
-
 	// https://github.com/microsoft/DirectXTex/wiki/Image
 	uint16_t width;
 	uint16_t height;
 	uint32_t rowPitch; // the number of bytes in a row of pixels including any alignment
-
-	union {
-		uint8_t *data;
-		void *stbiImage;
-	};
+	uint8_t *data;
 };
 
-void __R_FreeImageBuffer(struct image_buffer_s* buffer) {
-	switch(buffer->type) {
-		case ALLOCATION_IMAGE_BUF_INT: {
-			if( buffer->data ) {
-				R_Free( buffer->data );
-			}
-			break;
-		}
-		case ALLOCATION_IMAGE_BUF_STBI: {
-			if( buffer->data ) {
-				stbi_image_free( buffer->stbiImage );
-			}
-			break;
-		}
-		case ALLOCATION_IMAGE_BUF_ALIAS:
-			// the buffer is either allocatted on the stack or its not owned by the layout
-			break;
-	}
-}
+//void __R_FreeImageBuffer(struct image_buffer_s* buffer) {
+//	switch(buffer->type) {
+//		case ALLOCATION_IMAGE_BUF_INT: {
+//			if( buffer->data ) {
+//				R_Free( buffer->data );
+//			}
+//			break;
+//		}
+//		case ALLOCATION_IMAGE_BUF_STBI: {
+//			if( buffer->data ) {
+//				stbi_image_free( buffer->stbiImage );
+//			}
+//			break;
+//		}
+//		case ALLOCATION_IMAGE_BUF_ALIAS:
+//			// the buffer is either allocatted on the stack or its not owned by the layout
+//			break;
+//	}
+//}
 
 size_t __R_calculateRowPitch(struct image_buffer_s* buffer, size_t alignment) {
 	const size_t blockSize = R_FormatBitSizePerBlock( buffer->format ) / 8;
@@ -438,7 +441,6 @@ static bool __R_SwapChannelInPlace( struct image_buffer_s *target, uint16_t c1, 
 
 	uint16_t channelByteWidth = 0;
 	switch( target->format ) {
-		case R_FORMAT_RG8_UNORM:
 		case R_FORMAT_RG8_SNORM:
 		case R_FORMAT_BGRA8_UNORM:
 		case R_FORMAT_BGR8_UNORM:
@@ -451,7 +453,6 @@ static bool __R_SwapChannelInPlace( struct image_buffer_s *target, uint16_t c1, 
 		case R_FORMAT_RGBA8_UINT:
 		case R_FORMAT_RGBA8_SINT:
 		case R_FORMAT_RGBA8_SRGB:
-			
 			channelByteWidth = 1;
 			break;
 		case R_FORMAT_RG16_UNORM:
@@ -485,9 +486,8 @@ static bool __R_SwapChannelInPlace( struct image_buffer_s *target, uint16_t c1, 
 	uint8_t stageBuffer[16];
 	assert(channelByteWidth <= Q_ARRAY_COUNT(stageBuffer));
 	for( size_t row = 0; row < target->height; row++ ) {
-		const size_t rowBeginOffset = target->rowPitch * row;
 		for( size_t column = 0; column < target->width; column++ ) {
-			uint8_t *buf = &target->data[rowBeginOffset + ( column * blockSize )];
+			uint8_t *buf = &target->data[target->rowPitch * row + ( column * blockSize )];
 			uint8_t *channelBlock0 = buf + ( c1 * channelByteWidth );
 			uint8_t *channelBlock1 = buf + ( c2 * channelByteWidth );
 			memcpy( stageBuffer, channelBlock0, channelByteWidth );
@@ -496,6 +496,79 @@ static bool __R_SwapChannelInPlace( struct image_buffer_s *target, uint16_t c1, 
 		}
 	}
 	return true;
+}
+
+void unpackBlockXXX8(uint8_t* block, float values[4], uint16_t numberChannels) {
+
+}
+
+// alignment to calculate row pitch
+static void __R_ResizeImage(struct image_buffer_s* src, struct image_buffer_s* dest) {
+	const size_t blockSize = R_FormatBitSizePerBlock( src->format ) / 8;
+	const uint16_t channelCount = R_FormatChannelCount( src->format );
+	assert(dest->format == src->format);
+
+	arrsetlen(dest->data, 100);
+
+  const float scaleX = ((float)src->width) / ((float)dest->width);
+  const float scaleY = ((float)src->height) / ((float)dest->height);
+
+  const float sx2 = scaleX / 2.0f;
+  const float sy2 = scaleY / 2.0f;
+
+	switch( src->format ) {
+		case R_FORMAT_RG8_UNORM:
+		case R_FORMAT_RG8_SNORM:
+		case R_FORMAT_RG8_UINT:
+		case R_FORMAT_RG8_SINT:
+		case R_FORMAT_BGRA8_UNORM:
+		case R_FORMAT_BGRA8_SRGB:
+		case R_FORMAT_BGR8_UNORM:
+		case R_FORMAT_RGB8_UNORM:
+		case R_FORMAT_RGBA8_UNORM:
+		case R_FORMAT_RGBA8_SNORM:
+		case R_FORMAT_RGBA8_UINT:
+		case R_FORMAT_RGBA8_SINT:
+		case R_FORMAT_RGBA8_SRGB: {
+			for( size_t row = 0; row < dest->height; row++ ) {
+				const size_t rowStartIdx = src->rowPitch * row;
+				for( size_t column = 0; column < dest->width; column++ ) {
+					const uint8_t *buf = &src->data[rowStartIdx + ( column * blockSize )];
+
+					int srcColumn = (int)( column * scaleX );
+					int srcRow = (int)( row * scaleX );
+
+					uint8_t *destBlock = &dest->data[dest->rowPitch * row + ( column * blockSize )];
+					uint8_t *srcBlock = &src->data[src->rowPitch * srcRow + ( srcColumn * blockSize )];
+
+					float srcValues[4] = {};
+
+					for( int boxY = (int)srcRow - sy2; boxY < (int)srcRow + sy2; boxY++ ) {
+						if( boxY < 0 )
+							continue;
+						if( boxY > src->height )
+							continue;
+						for( int boxX = (int)srcRow - sy2; boxX < (int)srcRow + sy2; boxX++ ) {
+							if( boxX < 0 )
+								continue;
+							if( boxX > src->width )
+								continue;
+						}
+					}
+
+					for( size_t ci = 0; ci < channelCount; ci++ ) {
+						uint16_t *channelBlock = (uint16_t *)( buf + ( ci * sizeof( uint16_t ) ) );
+						( *channelBlock ) = ShortSwap( *channelBlock );
+					}
+				}
+			}
+			break;
+		}
+		default:
+			assert(false);
+			break;
+	}
+	
 }
 
 static bool __R_SwapEndianess( struct image_buffer_s *target )
@@ -599,15 +672,99 @@ static bool __R_FlipTexture( struct image_buffer_s *src, struct image_buffer_s *
 }
 
 struct image_upload_s {
-	struct image_buffer_s* submit;
-
+	struct image_buffer_s* buffer;
+	uint32_t packAlignment;
 
 	bool updateSubSection;
-	uint16_t imageOffset;
-	uint16_t destX;
-	uint16_t destY;
 	
+	uint16_t imageOffset;
+	uint16_t faceOffset;
+	uint16_t mipOffset;
+
+	uint16_t x;
+	uint16_t y;
+	uint16_t z;
 };
+
+
+static void __R_SubmitImage( uint32_t glContext, struct image_s *image, const struct image_upload_s *upload )
+{
+	struct image_buffer_s *buffer = upload->buffer;
+	uint32_t target;
+	if( image->flags & IT_CUBEMAP ) {
+		target = GL_TEXTURE_CUBE_MAP_POSITIVE_X_ARB;
+	} else if( image->flags & IT_ARRAY ) {
+		target = GL_TEXTURE_2D_ARRAY_EXT;
+	} else if( image->flags & IT_3D ) {
+		target = GL_TEXTURE_3D_EXT;
+	} else {
+		target = GL_TEXTURE_2D;
+	}
+
+	const bool is3DExt = image->flags & ( IT_ARRAY | IT_3D );
+	R_UnpackAlignment( glContext, upload->packAlignment );
+
+	uint32_t width = image->width;
+	uint32_t height = buffer->height;
+
+#define UTIL_TEX_2D_IMAGE( internalFormat, format, type ) qglTexImage2D( target, 0, internalFormat, width, height, 0, format, type, buffer->data )
+#define UTIL_TEX_3D_IMAGE( format, type ) qglTexSubImage3DEXT( target, 0, upload->x, upload->y, upload->z, buffer->width, buffer->height, 1, format, type, buffer->data )
+
+	switch( buffer->format ) {
+		case R_FORMAT_D24_UNORM_S8_UINT:
+			assert( !is3DExt );
+			UTIL_TEX_2D_IMAGE( GL_DEPTH_STENCIL_EXT, GL_DEPTH_STENCIL_EXT, GL_UNSIGNED_INT_24_8_EXT );
+			break;
+		case R_FORMAT_R5_G5_B5_A1_UNORM:
+			if( is3DExt )
+				UTIL_TEX_3D_IMAGE( GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1 );
+			else
+				UTIL_TEX_2D_IMAGE( GL_RGBA, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1 );
+			break;
+		case R_FORMAT_R5_G6_B5_UNORM:
+			if( is3DExt )
+				UTIL_TEX_3D_IMAGE( GL_RGB, GL_UNSIGNED_SHORT_5_6_5 );
+			else
+				UTIL_TEX_2D_IMAGE( GL_RGB, GL_RGB, GL_UNSIGNED_SHORT_5_6_5 );
+			break;
+		case R_FORMAT_R4_G4_B4_A4_UNORM:
+			if( is3DExt )
+				UTIL_TEX_3D_IMAGE( GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4 );
+			else
+				UTIL_TEX_2D_IMAGE( GL_RGBA, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4 );
+			break;
+		case R_FORMAT_RGBA8_UNORM:
+			if( is3DExt )
+				UTIL_TEX_3D_IMAGE( GL_RGBA, GL_UNSIGNED_BYTE );
+			else
+				UTIL_TEX_2D_IMAGE( GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE );
+			break;
+		case R_FORMAT_RGB8_UNORM:
+			if( is3DExt )
+				UTIL_TEX_3D_IMAGE( GL_RGB, GL_UNSIGNED_BYTE );
+			else
+				UTIL_TEX_2D_IMAGE( GL_RGB, GL_RGB, GL_UNSIGNED_BYTE );
+			break;
+		case R_FORMAT_BGR8_UNORM:
+			if( is3DExt )
+				UTIL_TEX_3D_IMAGE( GL_BGR, GL_UNSIGNED_BYTE );
+			else
+				UTIL_TEX_2D_IMAGE( GL_BGR, GL_BGR, GL_UNSIGNED_BYTE );
+			break;
+		case R_FORMAT_R8_UNORM:
+			if( is3DExt )
+				UTIL_TEX_3D_IMAGE( GL_R, GL_UNSIGNED_BYTE );
+			else
+				UTIL_TEX_2D_IMAGE( GL_R, GL_R, GL_UNSIGNED_BYTE );
+			break;
+		default:
+			assert( false );
+			break;
+	}
+
+#undef UTIL_TEX_2D_IMAGE
+#undef UTIL_TEX_3D_IMAGE
+}
 
 static void R_EndianSwap16BitImage( unsigned short *data, int width, int height )
 {
@@ -1527,7 +1684,7 @@ static bool __R_IsKTXFormatValid( int format, int type )
 	return false;
 }
 
-struct ktx_context_data_s {
+struct ktx_image_meta_s {
 	// updates internal data for consistency 
 	// - swaps endianness for platform
 	bool update;
@@ -1558,7 +1715,7 @@ struct ktx_context_s {
 
 	enum texture_format_e textureFormat; 
 	uint8_t* data;
-	struct ktx_context_data_s* dataContext;
+	struct ktx_image_meta_s* dataContext;
 };
 #pragma pack( push, 1 )
 	struct __raw_ktx_header_s {
@@ -1579,7 +1736,7 @@ struct ktx_context_s {
 	};
 #pragma pack( pop )
 
-static struct ktx_context_data_s *__R_GetKTXDataContext( const struct ktx_context_s *cntx, uint32_t mipLevel, uint32_t faceIndex, uint32_t arrayOffset )
+static struct ktx_image_meta_s *__R_GetKTXMeta( const struct ktx_context_s *cntx, uint32_t mipLevel, uint32_t faceIndex, uint32_t arrayOffset )
 {
 	assert( cntx );
 	assert( cntx->dataContext );
@@ -1595,7 +1752,6 @@ static void __R_FreeKTXContext( struct ktx_context_s *cntx )
 	arrfree( cntx->dataContext );
 	cntx->dataContext = NULL;
 }
-
 
 /**
 * Ownership is transfered to the context. memory is manipulated in place within the ktx buffer
@@ -1630,7 +1786,6 @@ static bool __R_InitKTXContext( uint8_t *memory, size_t size, struct ktx_context
 	cntx->numberOfFaces = swapEndian ? LongSwap( rawHeader->numberOfFaces ) : rawHeader->numberOfFaces;
 	cntx->numberOfMipmapLevels = swapEndian ? LongSwap( rawHeader->numberOfMipmapLevels ) : rawHeader->numberOfMipmapLevels;
 	cntx->bytesOfKeyValueData = swapEndian ? LongSwap( rawHeader->bytesOfKeyValueData ) : rawHeader->bytesOfKeyValueData;
-	//cntx->headerSize = sizeof( struct __raw_ktx_header_s ) + cntx->bytesOfKeyValueData;
 
 	const size_t numberOfArrayElements = max( 1, cntx->numberOfArrayElements );
 	const size_t numberOfFaces = max( 1, cntx->numberOfFaces );
@@ -1679,11 +1834,13 @@ static bool __R_InitKTXContext( uint8_t *memory, size_t size, struct ktx_context
 						cntx->textureFormat = R_FORMAT_BGR8_UNORM;
 						break;
 					case GL_LUMINANCE_ALPHA:
-						cntx->textureFormat = R_FORMAT_RG8_UNORM;
+						cntx->textureFormat = R_FORMAT_L8_A8_UNORM;
 						break;
 					case GL_LUMINANCE:
+						cntx->textureFormat = R_FORMAT_L8_UNORM;
+						break;
 					case GL_ALPHA:
-						cntx->textureFormat = R_FORMAT_R8_UNORM;
+						cntx->textureFormat = R_FORMAT_A8_UNORM;
 						break;
 					default:
 						// this is not handled
@@ -1707,15 +1864,12 @@ static bool __R_InitKTXContext( uint8_t *memory, size_t size, struct ktx_context
 	uint32_t height = cntx->pixelHeight;
 
 	size_t bufferOffset = dataOffset;
-	//size_t offsetImageLen = sizeof(struct __raw_ktx_header_s) + cntx->bytesOfKeyValueData;
 	for( size_t mipLevel = 0; mipLevel < numberOfMips; mipLevel++ ) {
 		const uint32_t imageBufLen = swapEndian ? LongSwap( *( (uint32_t *)( memory + bufferOffset ) ) ) : *( (uint32_t *)( memory + bufferOffset ) );
 		bufferOffset += sizeof( uint32_t );
-		
-		size_t chunkOffset = 0;
 		for( size_t arrayIdx = 0; arrayIdx < numberOfArrayElements; arrayIdx++ ) {
 			for( size_t faceIdx = 0; faceIdx < numberOfFaces; faceIdx++ ) {
-				struct ktx_context_data_s *cntxData = __R_GetKTXDataContext( cntx, mipLevel, faceIdx, arrayIdx );
+				struct ktx_image_meta_s *cntxData = __R_GetKTXMeta( cntx, mipLevel, faceIdx, arrayIdx );
 				cntxData->width = width;
 				cntxData->height = height;
 				cntxData->update = false;
@@ -1734,24 +1888,27 @@ static bool __R_InitKTXContext( uint8_t *memory, size_t size, struct ktx_context
 					case R_FORMAT_R5_G5_B5_A1_UNORM:
 					case R_FORMAT_R5_G6_B5_UNORM:
 					case R_FORMAT_R4_G4_B4_A4_UNORM:
-						rowPitch = width * sizeof( short );
+						rowPitch = ALIGN(width * sizeof( short ), 4);
 						imageChunkLen = height * rowPitch;
 						break;
 					case R_FORMAT_RGBA8_UNORM:
-						rowPitch = width * 4;
+						rowPitch = ALIGN(width * 4, 4);
 						imageChunkLen = height * rowPitch;
 						break;
 					case R_FORMAT_RG8_UNORM:
-						rowPitch = width * 2;
+					case R_FORMAT_L8_A8_UNORM:
+						rowPitch = ALIGN(width * 2, 4);
 						imageChunkLen = height * rowPitch;
 						break;
 					case R_FORMAT_RGB8_UNORM:
 					case R_FORMAT_BGR8_UNORM:
-						rowPitch =  width * 3;
+						rowPitch =  ALIGN(width * 3, 4);
 						imageChunkLen = height * rowPitch;
 						break;
 					case R_FORMAT_R8_UNORM:
-						rowPitch = width * 1;
+					case R_FORMAT_L8_UNORM:
+					case R_FORMAT_A8_UNORM:
+						rowPitch = ALIGN(width * 1, 4);
 						imageChunkLen = height * rowPitch;
 						break;
 					default:
@@ -1761,46 +1918,74 @@ static bool __R_InitKTXContext( uint8_t *memory, size_t size, struct ktx_context
 
 				cntxData->byteSize = imageChunkLen;
 				cntxData->rowPitch = rowPitch;
-				cntxData->byteOffset = chunkOffset + bufferOffset;
+				cntxData->byteOffset = bufferOffset;
 
-				chunkOffset += imageChunkLen;
-				chunkOffset = ALIGN( chunkOffset, 4 );
+				bufferOffset += imageChunkLen;
+				if( numberOfFaces >= 1 ) {
+					bufferOffset  = ALIGN( bufferOffset, 4 );
+				}
 			}
 		}
-		if( chunkOffset != imageBufLen) {
-			ri.Com_Printf( S_COLOR_YELLOW "iamge buffer size: %d expected: %d\n", chunkOffset, imageBufLen);
-		}
-		chunkOffset  = ALIGN( chunkOffset , 4 );
-		bufferOffset += chunkOffset;
-
+	 // if( chunkOffset > imageBufLen ) {
+	 // 	ri.Com_Printf( S_COLOR_YELLOW "iamge buffer size greater %d expected: %d\n", chunkOffset, imageBufLen );
+	 // }
+		bufferOffset = ALIGN( bufferOffset, 4 );
 		width = max( 1, width >> 1 );
 		height = max(1, height >> 1);
 	}
 
-  if(bufferOffset != size ) {
+  if(bufferOffset > size ) {
   	ri.Com_Printf( S_COLOR_YELLOW "file size does not match size: %d expected: %d\n", bufferOffset , size );
   }
 
 	return true;
 }
 
+static uint16_t __R_GetKTXNumberMips( const struct ktx_context_s *cntx )
+{
+	return max( 1, cntx->numberOfMipmapLevels );
+}
+static uint16_t __R_GetKTXNumberFaces( const struct ktx_context_s *cntx )
+{
+	return max( 1, cntx->numberOfFaces );
+}
+
+static uint16_t __R_GetKTXNumberArrayElements( const struct ktx_context_s *cntx )
+{
+	return max( 1, cntx->numberOfArrayElements);
+}
+
+static bool __R_IsKTXCompressedFormat( const struct ktx_context_s *cntx )
+{
+	return R_FormatIsCompressed( cntx->format );
+}
+
 /**
  * fills out the image buffer
  * Return the Aliased memory from the buffer
  **/
-static bool __R_KTXFetchAliasMemory( const struct ktx_context_s *cntx, struct image_buffer_s *image, uint32_t faceIndex, uint32_t arrOffset, uint16_t mipLevel )
+static size_t __R_KTXFillBuffer( const struct ktx_context_s *cntx, struct image_buffer_s *image, uint32_t faceIndex, uint32_t arrOffset, uint16_t mipLevel )
 {
 	assert( image );
 	assert( cntx );
-	assert( cntx->data );
-	struct ktx_context_data_s *dataCntx = __R_GetKTXDataContext( cntx, mipLevel, faceIndex, arrOffset );
-	image->width = dataCntx->width;
-	image->height = dataCntx->height;
-	image->rowPitch = dataCntx->rowPitch;
-	image->data = &cntx->data[dataCntx->byteOffset];
+	assert(cntx->data );
+
+	struct ktx_image_meta_s *meta = __R_GetKTXMeta( cntx, mipLevel, faceIndex, arrOffset );
+	assert(meta);
+	image->width = meta->width;
+	image->height = meta->height;
+	image->rowPitch = meta->rowPitch;
 	image->format = cntx->textureFormat;
-	image->type = ALLOCATION_IMAGE_BUF_ALIAS;
-	return true;
+  
+  arrsetlen(image->data,meta->byteSize);
+
+  memcpy( image->data, &cntx->data[meta->byteOffset], meta->byteSize );
+  if( !R_FormatIsCompressed( image->format ) && cntx->swapEndianess ) {
+	  if( __R_SwapEndianess( image ) ) {
+		  return 0;
+	  }
+  }
+	return meta->byteSize;
 }
 
 static bool __R_ValidateKTXHeader(const struct ktx_context_s* header, const int flags, const uint16_t expectedNumFaces) {
@@ -2061,11 +2246,10 @@ error: // must not be reached after actually starting uploading the texture
 	return false;
 }
 
+
+
 static bool __R_LoadImageFromDisk( int thread_id, image_t *image )
 {
-
-	//sds resolvedPath = sdsnew(image->name);
-
 	int flags = image->flags;
 	size_t len = strlen( image->name );
 	char pathname[1024];
@@ -2078,7 +2262,61 @@ static bool __R_LoadImageFromDisk( int thread_id, image_t *image )
 	}
 
 	memcpy( pathname, image->name, len + 1 );
-	
+// TODO: need to figure out
+//	sds resolvedPath = sdsnew( image->name );
+//	const size_t basePathLen = sdslen(resolvedPath);
+//
+//	enum image_ext_type_e { IMAGE_EXT_TGA, IMAGE_EXT_JPG, IMAGE_EXT_PNG, IMAGE_EXT_KTX };
+//	struct ktx_context_s ktxContext = {};
+//
+//	const char* imageExtension[] = {
+//		[IMAGE_EXT_TGA] = ".tga", 
+//		[IMAGE_EXT_JPG] = ".jpg", 
+//		[IMAGE_EXT_PNG] = ".png", 
+//		[IMAGE_EXT_KTX] = ".ktx"
+//	};
+//
+//	const char* extension = ri.FS_FirstExtension( resolvedPath, imageExtension, Q_ARRAY_COUNT(imageExtension)); // last is KTX
+//	
+//	if(extension == imageExtension[IMAGE_EXT_KTX]) {
+//		sdscatfmt(resolvedPath, "%s", imageExtension[IMAGE_EXT_KTX]);
+//		uint8_t *buffer;
+//		int bufferLen = R_LoadFile( pathname, (void **)&buffer );
+//
+//		if(!__R_InitKTXContext( buffer, bufferLen, &ktxContext ) ) {
+//			return false;
+//		}
+//
+//		//struct ktx_image_meta_s* meta = __R_GetKTXMeta(&ktxContext,0,0,0);
+//		image->srcWidth = ktxContext.pixelWidth;
+//		image->srcHeight = ktxContext.pixelHeight;
+//
+//    const struct  ktx_image_meta_s* meta = __R_GetKTXMeta(&ktxContext, 0,0,0);
+//		struct image_req_s request = {};
+//		struct image_policy_s policy = {};
+//		__R_CalculateImageReq(image, &policy, &request);
+//		
+//		struct image_buffer_s srcImageBuffer = {};
+//		const bool isResize = (ktxContext.pixelWidth != request.scaledWidth || ktxContext.pixelHeight != request.scaledHeight);
+//		if(isResize) {
+//			__R_KTXFillBuffer( &ktxContext, &srcImageBuffer, 0, 0, 0 );
+//			if( __R_IsKTXCompressedFormat( &ktxContext ) ) {
+//				// we have to uncompress and quarter in place
+//			}
+//			for(size_t mipLevel = 0; mipLevel < request.mipLevels; mipLevel++) {
+//
+//			}
+//		} else {
+//			for(size_t mipLevel = 0; mipLevel < __R_GetKTXNumberMips(&ktxContext) && mipLevel < request.mipLevels; mipLevel++) {
+//				__R_KTXFillBuffer( &ktxContext, &srcImageBuffer, 0, 0, mipLevel);
+//
+//
+//
+//			}
+//		}
+//	}
+
+
 	Q_strncatz( pathname, ".ktx", pathsize );
 	if( __R_LoadKTX( thread_id, image, pathname ) )
 		return true;
@@ -2309,17 +2547,6 @@ image_t *R_LoadImage( const char *name, uint8_t **pic, int width, int height, in
 
 
 
-struct image_req_s {
-	uint16_t mipLevels;
-	uint16_t scaledWidth;
-	uint16_t scaledHeight;
-};
-
-
-struct image_policy_s {
-	bool ignoreNPOTRequirment;
-	uint32_t minminumTextureSizeForMips;
-};
 
 /**
  *
