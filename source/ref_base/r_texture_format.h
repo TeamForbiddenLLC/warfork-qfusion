@@ -107,5 +107,9 @@ uint32_t R_FormatBlockHeight( enum texture_format_e format );
 uint32_t R_FormatChannelCount( enum texture_format_e format );
 uint32_t R_FormatBitSizePerBlock( enum texture_format_e format );
 uint32_t R_FormatChannelBitWidth( enum texture_format_e format, uint16_t channel );
+
+
+bool R_DecodeLogicalPixelF(uint8_t* block, enum texture_format_e fmt, float* out);
+bool R_EncodeLogicalPixelF(uint8_t* block, enum texture_format_e fmt, float* out);
 #endif
 

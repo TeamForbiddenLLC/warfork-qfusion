@@ -79,7 +79,7 @@ typedef struct image_s
 
 	char			extension[8];				// file extension
 	int				flags;
-	GLuint			texnum;						// gl texture binding
+	int texnum;						// gl texture binding
 	
 	uint16_t srcWidth;
 	uint16_t srcHeight;

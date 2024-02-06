@@ -22,15 +22,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_imagelib.h"
 #include "../qalgo/hash.h"
 #include "../gameshared/q_arch.h"
+#include "../gameshared/q_sds.h"
 #include "../qcommon/qthreads.h"
 
-#include "../gameshared/q_sds.h"
-#include "stb_image.h"
-
 #include "r_texture_format.h"
-#include <GL/gl.h>
-#include <stdint.h>
 
+#include "stb_image.h"
 #include "stb_ds.h"
 
 #define	MAX_GLIMAGES	    8192
@@ -389,12 +386,12 @@ struct image_buffer_s {
 	uint8_t *data;
 };
 
-struct image_pogo_buffer {
+struct image_buffer_pogo {
 	uint8_t index;
 	struct image_buffer_s buffers[2];
 };
 
-struct image_buffer_s* __R_nextPogoBuffer(struct image_pogo_buffer* pogo) {
+struct image_buffer_s* __R_nextPogoBuffer(struct image_buffer_pogo* pogo) {
 	pogo->index = (pogo->index + 1) % 2;
 	return &pogo->buffers[pogo->index]; 
 }
@@ -406,6 +403,16 @@ size_t __R_calculateRowPitch(struct image_buffer_s* buffer, size_t alignment) {
 
 size_t __R_calculateReserve(struct image_buffer_s* buffer) {
 	return buffer->rowPitch * buffer->height;
+}
+
+
+static void __R_UncompressBuffer(struct image_buffer_s* src, struct image_buffer_s* dest) {
+
+}
+
+
+static void __R_MipMapInPlace(struct image_buffer_s* target) {
+
 }
 
 static void __R_SwapchChannelBlockDispatch8( uint8_t *buf, uint16_t c1, uint16_t c2 )
@@ -428,13 +435,14 @@ static void __R_SwapchChannelBlockDispatch16( uint8_t *buf, uint16_t c1, uint16_
 	memcpy( channelBlock1, temp, sizeof( uint16_t ) );
 }
 
-static void __R_UncompressBuffer(struct image_buffer_s* src, struct image_buffer_s* dest) {
-
-}
-
-
-static void __R_MipMapInPlace(struct image_buffer_s* target) {
-
+static void __R_SwapchChannelBlockDispatch32( uint8_t *buf, uint16_t c1, uint16_t c2 )
+{
+	uint8_t temp[sizeof( uint32_t )] = { 0 };
+	uint8_t *channelBlock0 = buf + ( c1 * sizeof( uint32_t ) );
+	uint8_t *channelBlock1 = buf + ( c2 * sizeof( uint32_t ) );
+	memcpy( temp, channelBlock0, sizeof( uint32_t ) );
+	memcpy( channelBlock0, channelBlock1, sizeof( uint32_t ) );
+	memcpy( channelBlock1, temp, sizeof( uint32_t ) );
 }
 
 static bool __R_SwapChannelInPlace( struct image_buffer_s *target, uint16_t c1, uint16_t c2 )
@@ -444,10 +452,7 @@ static bool __R_SwapChannelInPlace( struct image_buffer_s *target, uint16_t c1, 
 	if( c1 == c2 ) {
 		return true;
 	}
-
 	void (*channelBlockDispatch)(uint8_t* block, uint16_t c1, uint16_t c2);
-
-	uint16_t channelByteWidth = 0;
 	switch( target->format ) {
 		case R_FORMAT_RG8_SNORM:
 		case R_FORMAT_BGRA8_UNORM:
@@ -461,7 +466,7 @@ static bool __R_SwapChannelInPlace( struct image_buffer_s *target, uint16_t c1, 
 		case R_FORMAT_RGBA8_UINT:
 		case R_FORMAT_RGBA8_SINT:
 		case R_FORMAT_RGBA8_SRGB:
-			channelByteWidth = 1;
+			channelBlockDispatch = __R_SwapchChannelBlockDispatch8;
 			break;
 		case R_FORMAT_RG16_UNORM:
 		case R_FORMAT_RG16_SNORM:
@@ -473,7 +478,7 @@ static bool __R_SwapChannelInPlace( struct image_buffer_s *target, uint16_t c1, 
 		case R_FORMAT_RGBA16_UINT:
 		case R_FORMAT_RGBA16_SINT:
 		case R_FORMAT_RGBA16_SFLOAT:
-			channelByteWidth = 2;
+			channelBlockDispatch = __R_SwapchChannelBlockDispatch16;
 			break;
 		case R_FORMAT_RG32_UINT:
 		case R_FORMAT_RG32_SINT:
@@ -484,23 +489,17 @@ static bool __R_SwapChannelInPlace( struct image_buffer_s *target, uint16_t c1, 
 		case R_FORMAT_RGBA32_UINT:
 		case R_FORMAT_RGBA32_SINT:
 		case R_FORMAT_RGBA32_SFLOAT: 
-			channelByteWidth = 4;
+			channelBlockDispatch = __R_SwapchChannelBlockDispatch32;
 			break;
 		default:
 			ri.Com_Printf("unahandled format: %d", target->format);
 			return false;
 	}
 	const size_t blockSize = R_FormatBitSizePerBlock( target->format ) / 8;
-	uint8_t stageBuffer[16];
-	assert(channelByteWidth <= Q_ARRAY_COUNT(stageBuffer));
 	for( size_t row = 0; row < target->height; row++ ) {
 		for( size_t column = 0; column < target->width; column++ ) {
-			uint8_t *buf = &target->data[target->rowPitch * row + ( column * blockSize )];
-			uint8_t *channelBlock0 = buf + ( c1 * channelByteWidth );
-			uint8_t *channelBlock1 = buf + ( c2 * channelByteWidth );
-			memcpy( stageBuffer, channelBlock0, channelByteWidth );
-			memcpy( channelBlock0, channelBlock1, channelByteWidth );
-			memcpy( channelBlock1, stageBuffer, channelByteWidth );
+			uint8_t *const buf = &target->data[target->rowPitch * row + ( column * blockSize )];
+      channelBlockDispatch(buf, c1, c2);
 		}
 	}
 	return true;
@@ -1895,7 +1894,7 @@ static bool __R_InitKTXContext( uint8_t *memory, size_t size, struct ktx_context
 						const uint32_t blockWidth = R_FormatBlockWidth(cntx->textureFormat);
 						const uint32_t blockHeight = R_FormatBlockHeight(cntx->textureFormat);
 						const uint32_t blockSizeBytes = R_FormatBitSizePerBlock(cntx->textureFormat) / 8;
-						rowPitch =  ALIGN( ((width / blockWidth) + (width % blockWidth == 0 ? 0 : 1)) * blockSizeBytes, blockWidth ); // not sure I need alignment 
+						rowPitch =  ALIGN( ((width / blockWidth) + (width % blockWidth == 0 ? 0 : 1)) * blockSizeBytes, 4); // not sure I need alignment 
 						imageChunkLen = rowPitch * ((height/blockHeight) + (height % blockHeight == 0 ? 0 : 1));
 						break;
 					}
@@ -2285,7 +2284,7 @@ static bool __R_LoadImageFromDisk( int thread_id, image_t *image )
 	enum image_ext_type_e { IMAGE_EXT_TGA, IMAGE_EXT_JPG, IMAGE_EXT_PNG, IMAGE_EXT_KTX };
 	struct ktx_context_s ktxContext = {};
 
-  struct image_pogo_buffer pogo = {};
+  struct image_buffer_pogo pogo = {};
 	const char* imageExtension[] = {
 		[IMAGE_EXT_TGA] = ".tga", 
 		[IMAGE_EXT_JPG] = ".jpg", 
@@ -2330,9 +2329,9 @@ static bool __R_LoadImageFromDisk( int thread_id, image_t *image )
 			if( (image->flags & (IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL)) > 0) {
 				struct image_buffer_s *dest = __R_nextPogoBuffer( &pogo );
 				__R_FlipTexture( active, dest, 
-										( flags & IT_FLIPX ) ? true : false, 
-										( flags & IT_FLIPY ) ? true : false, 
-										( flags & IT_FLIPDIAGONAL ) ? true : false );
+										( flags & IT_FLIPX ) > 0, 
+										( flags & IT_FLIPY ) > 0, 
+										( flags & IT_FLIPDIAGONAL ) > 0);
 				active = dest;
 			}
 			for( size_t mipLevel = 0; mipLevel < requirments.mipLevels; mipLevel++ ) {
@@ -2346,7 +2345,6 @@ static bool __R_LoadImageFromDisk( int thread_id, image_t *image )
 			for(size_t mipLevel = 0; mipLevel < __R_GetKTXNumberMips(&ktxContext) && mipLevel < requirments.mipLevels; mipLevel++) {
 				struct image_buffer_s *active = __R_nextPogoBuffer( &pogo );
 				__R_KTXFillBuffer( &ktxContext, active, 0, 0, mipLevel);
-
 			}
 		}
 	}
