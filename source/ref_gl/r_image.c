@@ -25,7 +25,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../gameshared/q_sds.h"
 #include "../qcommon/qthreads.h"
 
+#include "r_image_buf.h"
+
 #include "r_texture_format.h"
+#include "r_image_buf.h"
+#include "r_image_buf_manipulator.h"
 
 #include "stb_image.h"
 #include "stb_ds.h"
@@ -377,33 +381,33 @@ static void R_SwapBlueRed( uint8_t *data, int width, int height, int samples, in
 
 
 
-struct image_buffer_s {
-	enum texture_format_e format;
-	// https://github.com/microsoft/DirectXTex/wiki/Image
-	uint16_t width;
-	uint16_t height;
-	uint32_t rowPitch; // the number of bytes in a row of pixels including any alignment
-	uint8_t *data;
-};
+//struct image_buffer_s {
+//	enum texture_format_e format;
+//	// https://github.com/microsoft/DirectXTex/wiki/Image
+//	uint16_t width;
+//	uint16_t height;
+//	uint32_t rowPitch; // the number of bytes in a row of pixels including any alignment
+//	uint8_t *data;
+//};
 
-struct image_buffer_pogo {
-	uint8_t index;
-	struct image_buffer_s buffers[2];
-};
+//struct image_buffer_pogo {
+//	uint8_t index;
+//	struct image_buffer_s buffers[2];
+//};
+//
+//struct image_buffer_s* __R_nextPogoBuffer(struct image_buffer_pogo* pogo) {
+//	pogo->index = (pogo->index + 1) % 2;
+//	return &pogo->buffers[pogo->index]; 
+//}
 
-struct image_buffer_s* __R_nextPogoBuffer(struct image_buffer_pogo* pogo) {
-	pogo->index = (pogo->index + 1) % 2;
-	return &pogo->buffers[pogo->index]; 
-}
-
-size_t __R_calculateRowPitch(struct image_buffer_s* buffer, size_t alignment) {
-	const size_t blockSize = R_FormatBitSizePerBlock( buffer->format ) / 8;
-	return ALIGN( buffer->width * blockSize, alignment );
-}
-
-size_t __R_calculateReserve(struct image_buffer_s* buffer) {
-	return buffer->rowPitch * buffer->height;
-}
+//size_t __R_calculateRowPitch(struct image_buffer_s* buffer, size_t alignment) {
+//	const size_t blockSize = R_FormatBitSizePerBlock( buffer->format ) / 8;
+//	return ALIGN( buffer->width * blockSize, alignment );
+//}
+//
+//size_t __R_calculateReserve(struct image_buffer_s* buffer) {
+//	return buffer->rowPitch * buffer->height;
+//}
 
 
 static void __R_UncompressBuffer(struct image_buffer_s* src, struct image_buffer_s* dest) {
@@ -447,240 +451,162 @@ static void __R_SwapchChannelBlockDispatch32( uint8_t *buf, uint16_t c1, uint16_
 
 static bool __R_SwapChannelInPlace( struct image_buffer_s *target, uint16_t c1, uint16_t c2 )
 {
-	assert(c1 < R_FormatChannelCount(target->format));
-	assert(c2 < R_FormatChannelCount(target->format));
-	if( c1 == c2 ) {
-		return true;
-	}
-	void (*channelBlockDispatch)(uint8_t* block, uint16_t c1, uint16_t c2);
-	switch( target->format ) {
-		case R_FORMAT_RG8_SNORM:
-		case R_FORMAT_BGRA8_UNORM:
-		case R_FORMAT_BGR8_UNORM:
-		case R_FORMAT_RGB8_UNORM:
-		case R_FORMAT_RGBA8_UNORM:
-		case R_FORMAT_RG8_UINT:
-		case R_FORMAT_RG8_SINT:
-		case R_FORMAT_BGRA8_SRGB:
-		case R_FORMAT_RGBA8_SNORM:
-		case R_FORMAT_RGBA8_UINT:
-		case R_FORMAT_RGBA8_SINT:
-		case R_FORMAT_RGBA8_SRGB:
-			channelBlockDispatch = __R_SwapchChannelBlockDispatch8;
-			break;
-		case R_FORMAT_RG16_UNORM:
-		case R_FORMAT_RG16_SNORM:
-		case R_FORMAT_RG16_UINT:
-		case R_FORMAT_RG16_SINT:
-		case R_FORMAT_RG16_SFLOAT:
-		case R_FORMAT_RGBA16_UNORM:
-		case R_FORMAT_RGBA16_SNORM:
-		case R_FORMAT_RGBA16_UINT:
-		case R_FORMAT_RGBA16_SINT:
-		case R_FORMAT_RGBA16_SFLOAT:
-			channelBlockDispatch = __R_SwapchChannelBlockDispatch16;
-			break;
-		case R_FORMAT_RG32_UINT:
-		case R_FORMAT_RG32_SINT:
-		case R_FORMAT_RG32_SFLOAT:
-		case R_FORMAT_RGB32_UINT:
-		case R_FORMAT_RGB32_SINT:
-		case R_FORMAT_RGB32_SFLOAT:
-		case R_FORMAT_RGBA32_UINT:
-		case R_FORMAT_RGBA32_SINT:
-		case R_FORMAT_RGBA32_SFLOAT: 
-			channelBlockDispatch = __R_SwapchChannelBlockDispatch32;
-			break;
-		default:
-			ri.Com_Printf("unahandled format: %d", target->format);
-			return false;
-	}
-	const size_t blockSize = R_FormatBitSizePerBlock( target->format ) / 8;
-	for( size_t row = 0; row < target->height; row++ ) {
-		for( size_t column = 0; column < target->width; column++ ) {
-			uint8_t *const buf = &target->data[target->rowPitch * row + ( column * blockSize )];
-      channelBlockDispatch(buf, c1, c2);
-		}
-	}
+ // assert(c1 < R_FormatChannelCount(target->format));
+ // assert(c2 < R_FormatChannelCount(target->format));
+ // if( c1 == c2 ) {
+ // 	return true;
+ // }
+ // void (*channelBlockDispatch)(uint8_t* block, uint16_t c1, uint16_t c2);
+ // switch( target->format ) {
+ // 	case R_FORMAT_RG8_SNORM:
+ // 	case R_FORMAT_BGRA8_UNORM:
+ // 	case R_FORMAT_BGR8_UNORM:
+ // 	case R_FORMAT_RGB8_UNORM:
+ // 	case R_FORMAT_RGBA8_UNORM:
+ // 	case R_FORMAT_RG8_UINT:
+ // 	case R_FORMAT_RG8_SINT:
+ // 	case R_FORMAT_BGRA8_SRGB:
+ // 	case R_FORMAT_RGBA8_SNORM:
+ // 	case R_FORMAT_RGBA8_UINT:
+ // 	case R_FORMAT_RGBA8_SINT:
+ // 	case R_FORMAT_RGBA8_SRGB:
+ // 		channelBlockDispatch = __R_SwapchChannelBlockDispatch8;
+ // 		break;
+ // 	case R_FORMAT_RG16_UNORM:
+ // 	case R_FORMAT_RG16_SNORM:
+ // 	case R_FORMAT_RG16_UINT:
+ // 	case R_FORMAT_RG16_SINT:
+ // 	case R_FORMAT_RG16_SFLOAT:
+ // 	case R_FORMAT_RGBA16_UNORM:
+ // 	case R_FORMAT_RGBA16_SNORM:
+ // 	case R_FORMAT_RGBA16_UINT:
+ // 	case R_FORMAT_RGBA16_SINT:
+ // 	case R_FORMAT_RGBA16_SFLOAT:
+ // 		channelBlockDispatch = __R_SwapchChannelBlockDispatch16;
+ // 		break;
+ // 	case R_FORMAT_RG32_UINT:
+ // 	case R_FORMAT_RG32_SINT:
+ // 	case R_FORMAT_RG32_SFLOAT:
+ // 	case R_FORMAT_RGB32_UINT:
+ // 	case R_FORMAT_RGB32_SINT:
+ // 	case R_FORMAT_RGB32_SFLOAT:
+ // 	case R_FORMAT_RGBA32_UINT:
+ // 	case R_FORMAT_RGBA32_SINT:
+ // 	case R_FORMAT_RGBA32_SFLOAT: 
+ // 		channelBlockDispatch = __R_SwapchChannelBlockDispatch32;
+ // 		break;
+ // 	default:
+ // 		ri.Com_Printf("unahandled format: %d", target->format);
+ // 		return false;
+ // }
+ // const size_t blockSize = R_FormatBitSizePerBlock( target->format ) / 8;
+ // for( size_t row = 0; row < target->height; row++ ) {
+ // 	for( size_t column = 0; column < target->width; column++ ) {
+ // 		uint8_t *const buf = &target->data[target->rowPitch * row + ( column * blockSize )];
+ //     channelBlockDispatch(buf, c1, c2);
+ // 	}
+ // }
 	return true;
-}
-
-
-// packing logic could be extracted
-float unpackBlock8Unorm( uint8_t *block, uint16_t c )
-{
-	return ( block[c] / 255.0f );
-}
-void setBlock8Unorm( uint8_t *block, uint16_t c, float value )
-{
-	block[c] = ( value / 255.0f );
 }
 
 // alignment to calculate row pitch
 // https://wiki.tcl-lang.org/page/Image+Scaling+in+C
 static void __R_ResizeImage(struct image_buffer_s* src, struct image_buffer_s* dest) {
-	const size_t blockSize = R_FormatBitSizePerBlock( src->format ) / 8;
-	const uint16_t channelCount = R_FormatChannelCount( src->format );
-	assert(dest->format == src->format);
-
-	arrsetlen(dest->data, 100);
-
-  const float scaleX = ((float)src->width) / ((float)dest->width);
-  const float scaleY = ((float)src->height) / ((float)dest->height);
-
-  const float sx2 = scaleX / 2.0f;
-  const float sy2 = scaleY / 2.0f;
-	float srcValues[4] = {};
-
-	switch( src->format ) {
-		case R_FORMAT_RG8_UNORM:
-		case R_FORMAT_BGRA8_UNORM:
-		case R_FORMAT_BGR8_UNORM:
-		case R_FORMAT_RGB8_UNORM:
-		case R_FORMAT_RGBA8_UNORM: {
-			for( size_t row = 0; row < dest->height; row++ ) {
-				for( size_t column = 0; column < dest->width; column++ ) {
-					int srcColumn = (int)( column * scaleX );
-					int srcRow = (int)( row * scaleX );
-
-					uint8_t* const destBlock = &dest->data[dest->rowPitch * row + ( column * blockSize )];
-					uint8_t* const srcBlock = &src->data[src->rowPitch * srcRow + ( srcColumn * blockSize )];
-
-					for( size_t c = 0; c < channelCount; c++ ) {
-						srcValues[c] = unpackBlock8Unorm( srcBlock, c );
-					}
-
-					float numberPoints = 0;
-					for( int boxY = (int)srcRow - sx2; boxY < (int)srcRow + sx2; boxY++ ) {
-						if( boxY < 0 )
-							continue;
-						if( boxY > src->height )
-							continue;
-						for( int boxX = (int)srcRow - sy2; boxX < (int)srcRow + sy2; boxX++ ) {
-							if( boxX < 0 )
-								continue;
-							if( boxX > src->width )
-								continue;
-							uint8_t *bboxSrcBlock = &src->data[src->rowPitch * boxY + ( boxX * blockSize )];
-							numberPoints++;
-							for( size_t c = 0; c < channelCount; c++ ) {
-								srcValues[c] += unpackBlock8Unorm( bboxSrcBlock, c );
-							}
-						}
-					}
-
-					for( size_t c = 0; c < channelCount; c++ ) {
-						setBlock8Unorm(destBlock, c, srcValues[c] / numberPoints);
-					}
-
-				}
-			}
-			break;
-		}
-		default:
-			assert(false);
-			break;
-	}
-	
-}
-
-static bool __R_SwapEndianess( struct image_buffer_s *target )
-{
-	const size_t blockSize = R_FormatBitSizePerBlock( target->format ) / 8;
-	const uint16_t channelCount = R_FormatChannelCount( target->format );
-
-	// method does not handle sfloats
-	switch( target->format ) {
-		case R_FORMAT_RG8_UNORM:
-		case R_FORMAT_RG8_SNORM:
-		case R_FORMAT_RG8_UINT:
-		case R_FORMAT_RG8_SINT:
-		case R_FORMAT_BGRA8_UNORM:
-		case R_FORMAT_BGRA8_SRGB:
-		case R_FORMAT_BGR8_UNORM:
-		case R_FORMAT_RGB8_UNORM:
-		case R_FORMAT_RGBA8_UNORM:
-		case R_FORMAT_RGBA8_SNORM:
-		case R_FORMAT_RGBA8_UINT:
-		case R_FORMAT_RGBA8_SINT:
-		case R_FORMAT_RGBA8_SRGB:
-			// 8 byte channels can't be swapped
-			return true;
-		case R_FORMAT_RG16_UNORM:
-		case R_FORMAT_RG16_SNORM:
-		case R_FORMAT_RG16_UINT:
-		case R_FORMAT_RG16_SINT:
-		case R_FORMAT_RGBA16_UNORM:
-		case R_FORMAT_RGBA16_SNORM:
-		case R_FORMAT_RGBA16_UINT:
-		case R_FORMAT_RGBA16_SINT: {
-			for( size_t row = 0; row < target->height; row++ ) {
-				const size_t rowStartIdx = target->rowPitch * row;
-				for( size_t column = 0; column < target->width; column++ ) {
-					uint8_t *buf = &target->data[rowStartIdx + ( column * blockSize )];
-					for( size_t ci = 0; ci < channelCount; ci++ ) {
-						uint16_t *channelBlock = (uint16_t *)( buf + ( ci * sizeof( uint16_t ) ) );
-						( *channelBlock ) = ShortSwap( *channelBlock );
-					}
-				}
-			}
-			break;
-		}
-		case R_FORMAT_RG32_UINT:
-		case R_FORMAT_RG32_SINT:
-		case R_FORMAT_RGB32_UINT:
-		case R_FORMAT_RGB32_SINT:
-		case R_FORMAT_RGBA32_UINT:
-		case R_FORMAT_RGBA32_SINT: {
-			for( size_t row = 0; row < target->height; row++ ) {
-				const size_t rowStartIdx = target->rowPitch * row;
-				for( size_t column = 0; column < target->width; column++ ) {
-					uint8_t *buf = &target->data[rowStartIdx + ( column * blockSize )];
-					for( size_t ci = 0; ci < channelCount; ci++ ) {
-						uint32_t *channelBlock = (uint32_t *)( buf + ( ci * sizeof( uint32_t ) ) );
-						( *channelBlock ) = ShortSwap( *channelBlock );
-					}
-				}
-			}
-			break;
-		}
-		default:
-			ri.Com_Printf( "Unahandled Format: %d", target->format );
-			return false;
-	}
-	return true;
+//	const size_t blockSize = R_FormatBitSizePerBlock( src->format ) / 8;
+//	const uint16_t channelCount = R_FormatChannelCount( src->format );
+//	assert(dest->format == src->format);
+//
+//	arrsetlen(dest->data, 100);
+//
+//  const float scaleX = ((float)src->width) / ((float)dest->width);
+//  const float scaleY = ((float)src->height) / ((float)dest->height);
+//
+//  const float sx2 = scaleX / 2.0f;
+//  const float sy2 = scaleY / 2.0f;
+//	float srcValues[4] = {};
+//
+//	switch( src->format ) {
+//		case R_FORMAT_RG8_UNORM:
+//		case R_FORMAT_BGRA8_UNORM:
+//		case R_FORMAT_BGR8_UNORM:
+//		case R_FORMAT_RGB8_UNORM:
+//		case R_FORMAT_RGBA8_UNORM: {
+//			for( size_t row = 0; row < dest->height; row++ ) {
+//				for( size_t column = 0; column < dest->width; column++ ) {
+//					int srcColumn = (int)( column * scaleX );
+//					int srcRow = (int)( row * scaleX );
+//
+//					uint8_t* const destBlock = &dest->data[dest->rowPitch * row + ( column * blockSize )];
+//					uint8_t* const srcBlock = &src->data[src->rowPitch * srcRow + ( srcColumn * blockSize )];
+//
+//					for( size_t c = 0; c < channelCount; c++ ) {
+//						srcValues[c] = unpackBlock8Unorm( srcBlock, c );
+//					}
+//
+//					float numberPoints = 0;
+//					for( int boxY = (int)srcRow - sx2; boxY < (int)srcRow + sx2; boxY++ ) {
+//						if( boxY < 0 )
+//							continue;
+//						if( boxY > src->height )
+//							continue;
+//						for( int boxX = (int)srcRow - sy2; boxX < (int)srcRow + sy2; boxX++ ) {
+//							if( boxX < 0 )
+//								continue;
+//							if( boxX > src->width )
+//								continue;
+//							uint8_t *bboxSrcBlock = &src->data[src->rowPitch * boxY + ( boxX * blockSize )];
+//							numberPoints++;
+//							for( size_t c = 0; c < channelCount; c++ ) {
+//								srcValues[c] += unpackBlock8Unorm( bboxSrcBlock, c );
+//							}
+//						}
+//					}
+//
+//					for( size_t c = 0; c < channelCount; c++ ) {
+//						setBlock8Unorm(destBlock, c, srcValues[c] / numberPoints);
+//					}
+//
+//				}
+//			}
+//			break;
+//		}
+//		default:
+//			assert(false);
+//			break;
+//	}
+//	
 }
 
 
 static bool __R_FlipTexture( struct image_buffer_s *src, struct image_buffer_s *dest, bool flipx, bool flipy, bool flipdiagonal )
 {
-	const size_t blockSize = R_FormatBitSizePerBlock( src->format ) / 8;
-	if( flipdiagonal ) {
-		assert( src->height == dest->width );
-		assert( src->width == dest->height );
-		for( size_t row = 0; row < src->height; row++ ) {
-			const size_t flippedRow = ( flipy ? row : ( src->height - 1 ) - row );
-			const size_t sourceRowOffset = src->rowPitch * row;
+	//const size_t blockSize = R_FormatBitSizePerBlock( src->format ) / 8;
+	//if( flipdiagonal ) {
+	//	assert( src->height == dest->width );
+	//	assert( src->width == dest->height );
+	//	for( size_t row = 0; row < src->height; row++ ) {
+	//		const size_t flippedRow = ( flipy ? row : ( src->height - 1 ) - row );
+	//		const size_t sourceRowOffset = src->rowPitch * row;
 
-			for( size_t col = 0; col < src->width; col++ ) {
-				const size_t flippedColumn = ( flipx ? col : ( src->width - 1 ) - col );
-				const size_t targetRowOffset = src->rowPitch * flippedColumn;
-				memcpy( &dest->data[targetRowOffset + ( flippedRow * blockSize )], &src->data[sourceRowOffset + ( col * blockSize )], blockSize );
-			}
-		}
-	} else {
-		assert( src->width == dest->width );
-		assert( src->height == dest->width );
-		for( size_t row = 0; row < src->height; row++ ) {
-			const size_t flippedRow = ( flipy ? row : ( src->height - 1 ) - row );
-			const size_t sourceRowOffset = src->rowPitch * row;
-			const size_t targetRowOffset = src->rowPitch * flippedRow;
-			for( size_t col = 0; col < src->width; col++ ) {
-				const size_t flippedColumn = ( flipx ? col : ( src->width - 1 ) - col );
-				memcpy( &dest->data[targetRowOffset + ( flippedColumn * blockSize )], &src->data[sourceRowOffset + ( col * blockSize )], blockSize );
-			}
-		}
-	}
+	//		for( size_t col = 0; col < src->width; col++ ) {
+	//			const size_t flippedColumn = ( flipx ? col : ( src->width - 1 ) - col );
+	//			const size_t targetRowOffset = src->rowPitch * flippedColumn;
+	//			memcpy( &dest->data[targetRowOffset + ( flippedRow * blockSize )], &src->data[sourceRowOffset + ( col * blockSize )], blockSize );
+	//		}
+	//	}
+	//} else {
+	//	assert( src->width == dest->width );
+	//	assert( src->height == dest->width );
+	//	for( size_t row = 0; row < src->height; row++ ) {
+	//		const size_t flippedRow = ( flipy ? row : ( src->height - 1 ) - row );
+	//		const size_t sourceRowOffset = src->rowPitch * row;
+	//		const size_t targetRowOffset = src->rowPitch * flippedRow;
+	//		for( size_t col = 0; col < src->width; col++ ) {
+	//			const size_t flippedColumn = ( flipx ? col : ( src->width - 1 ) - col );
+	//			memcpy( &dest->data[targetRowOffset + ( flippedColumn * blockSize )], &src->data[sourceRowOffset + ( col * blockSize )], blockSize );
+	//		}
+	//	}
+	//}
 	return true;
 }
 
@@ -717,13 +643,13 @@ static void __R_SubmitImage( uint32_t glContext, struct image_s *image, const st
 	const bool is3DExt = image->flags & ( IT_ARRAY | IT_3D );
 	R_UnpackAlignment( glContext, upload->packAlignment );
 
-	uint32_t width = image->width;
-	uint32_t height = buffer->height;
+	uint32_t width = buffer->layout.width;
+	uint32_t height = buffer->layout.height;
 
 #define UTIL_TEX_2D_IMAGE( internalFormat, format, type ) qglTexImage2D( target, 0, internalFormat, width, height, 0, format, type, buffer->data )
-#define UTIL_TEX_3D_IMAGE( format, type ) qglTexSubImage3DEXT( target, 0, upload->x, upload->y, upload->z, buffer->width, buffer->height, 1, format, type, buffer->data )
+#define UTIL_TEX_3D_IMAGE( format, type ) qglTexSubImage3DEXT( target, 0, upload->x, upload->y, upload->z, width,height, 1, format, type, buffer->data )
 
-	switch( buffer->format ) {
+	switch( buffer->layout.format ) {
 		case R_FORMAT_D24_UNORM_S8_UINT:
 			assert( !is3DExt );
 			UTIL_TEX_2D_IMAGE( GL_DEPTH_STENCIL_EXT, GL_DEPTH_STENCIL_EXT, GL_UNSIGNED_INT_24_8_EXT );
@@ -1981,23 +1907,20 @@ static size_t __R_KTXFillBuffer( const struct ktx_context_s *cntx, struct image_
 {
 	assert( image );
 	assert( cntx );
-	assert(cntx->data );
+	assert( cntx->data );
 
 	struct ktx_image_meta_s *meta = __R_GetKTXMeta( cntx, mipLevel, faceIndex, arrOffset );
 	assert(meta);
-	image->width = meta->width;
-	image->height = meta->height;
-	image->rowPitch = meta->rowPitch;
-	image->format = cntx->textureFormat;
-  
-  arrsetlen(image->data,meta->byteSize);
+	struct image_buffer_layout_s updateLayout = {};
+	R_CalcImageBufferLayout( meta->width, meta->height, cntx->format, 4, &updateLayout ); // ktx is all aligned to 4
+	
+	assert(updateLayout.size >= meta->byteSize);
+	R_ConfigureImageBuffer( image, &updateLayout );
 
-  memcpy( image->data, &cntx->data[meta->byteOffset], meta->byteSize );
-  if( !R_FormatIsCompressed( image->format ) && cntx->swapEndianess ) {
-	  if( __R_SwapEndianess( image ) ) {
-		  return 0;
-	  }
-  }
+	memcpy( image->data, &cntx->data[meta->byteOffset], meta->byteSize );
+	if( !R_FormatIsCompressed( image->layout.format ) && cntx->swapEndianess ) {
+		R_Buf_SwapEndianess( image );
+	}
 	return meta->byteSize;
 }
 
@@ -2312,23 +2235,23 @@ static bool __R_LoadImageFromDisk( int thread_id, image_t *image )
 
 		// we have to transform the image so we have to unpack/resize the image
 		if( isResize || requirments.compressionSupport == 0 ) {
-			struct image_buffer_s *active = __R_nextPogoBuffer( &pogo );
+			struct image_buffer_s *active = R_NextPogoBuffer( &pogo );
 			__R_KTXFillBuffer( &ktxContext, active, 0, 0, 0 );
 			if( __R_IsKTXCompressedFormat( &ktxContext ) ) {
-				struct image_buffer_s *dest = __R_nextPogoBuffer( &pogo );
-				__R_UncompressBuffer( active, dest );
+				struct image_buffer_s *dest = R_NextPogoBuffer( &pogo );
+				R_Buf_UncompressImage( active, R_FORMAT_RGBA8_UNORM, dest );
 				active = dest;
 			}
 			if(isResize) {
-				struct image_buffer_s *dest = __R_nextPogoBuffer( &pogo );
-				dest->width = requirments.scaledWidth;
-				dest->height = requirments.scaledHeight;
-				__R_ResizeImage( active, dest);
+				struct image_buffer_s *dest = R_NextPogoBuffer( &pogo );
+				//dest->width = requirments.scaledWidth;
+				//dest->height = requirments.scaledHeight;
+				//__R_ResizeImage( active, dest);
 				active = dest;
 			}
 			if( (image->flags & (IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL)) > 0) {
-				struct image_buffer_s *dest = __R_nextPogoBuffer( &pogo );
-				__R_FlipTexture( active, dest, 
+				struct image_buffer_s *dest = R_NextPogoBuffer( &pogo );
+				R_Buf_FlipTexture( active, dest, 
 										( flags & IT_FLIPX ) > 0, 
 										( flags & IT_FLIPY ) > 0, 
 										( flags & IT_FLIPDIAGONAL ) > 0);
@@ -2337,13 +2260,13 @@ static bool __R_LoadImageFromDisk( int thread_id, image_t *image )
 			for( size_t mipLevel = 0; mipLevel < requirments.mipLevels; mipLevel++ ) {
 				const struct image_upload_s upload = { .buffer = active, .packAlignment = 4, .mipOffset = mipLevel };
 				__R_SubmitImage( thread_id, image, &upload );
-				__R_MipMapInPlace( active );
+				R_Buf_MipMapQuarterInPlace( active );
 			}
 		} else {
 
 
 			for(size_t mipLevel = 0; mipLevel < __R_GetKTXNumberMips(&ktxContext) && mipLevel < requirments.mipLevels; mipLevel++) {
-				struct image_buffer_s *active = __R_nextPogoBuffer( &pogo );
+				struct image_buffer_s *active = R_NextPogoBuffer( &pogo );
 				__R_KTXFillBuffer( &ktxContext, active, 0, 0, mipLevel);
 			}
 		}

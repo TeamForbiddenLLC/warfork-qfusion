@@ -1,3 +1,6 @@
+#ifndef R_IMAGE_BUF_H
+#define R_IMAGE_BUF_H
+
 #include "../gameshared/q_arch.h"
 #include "r_texture_format.h"
 
@@ -15,11 +18,10 @@ struct image_buffer_layout_s {
   uint16_t height;
 
   // logical blocks for compressed formats blocks 
-  //    else this is equal to the width
+  //    else this is equal to the size of the images 
 	uint16_t logicalWidth;  
 	uint16_t logicalHeight;
 	uint32_t rowPitch; // the number of bytes in a row of pixels including any alignment
-
   uint16_t rowAlignment;
 };
 
@@ -34,15 +36,6 @@ struct image_buffer_pogo {
 	struct image_buffer_s buffers[2];
 };
 
-
-struct image_buffer_layout_desc_s {
-  uint16_t rowAlignment;
-	uint16_t width;
-	uint16_t height;
-  enum texture_format_e format;
-};
-
-
 // pogo buffer
 struct image_buffer_s* R_NextPogoBuffer(struct image_buffer_pogo* pogo);
 
@@ -52,3 +45,4 @@ void R_ConfigureImageBuffer(struct image_buffer_s* buffer, struct image_buffer_l
 void R_ConfigureBufferSize(struct image_buffer_s* buffer,size_t size); // update the intternal length 
 void R_FreeImageBuffer(struct image_buffer_s* buffer);
 
+#endif

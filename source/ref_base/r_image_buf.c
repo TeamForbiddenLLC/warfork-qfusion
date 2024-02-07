@@ -40,7 +40,6 @@ void R_ConfigureImageBuffer(struct image_buffer_s *buffer, struct image_buffer_l
   arrsetlen(buffer->data, layout->size);
 }
 
-
 struct image_buffer_s* R_NextPogoBuffer(struct image_buffer_pogo* pogo) {
 	pogo->index = (pogo->index + 1) % 2;
 	return &pogo->buffers[pogo->index]; 
