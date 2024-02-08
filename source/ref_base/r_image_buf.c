@@ -3,8 +3,6 @@
 #include "stb_ds.h"
 #include "../gameshared/q_math.h"
 
-
-
 //void R_CalcImageBufferLayout(uint16_t width, uint16_t height, enum texture_format_e, struct image_buffer_layout_s* layout) {
 
 void R_CalcImageBufferLayout( uint16_t width, uint16_t height, enum texture_format_e format, uint16_t rowAlignment, struct image_buffer_layout_s *layout )
@@ -36,13 +34,25 @@ void R_ConfigureBufferSize( struct image_buffer_s *buffer, size_t size ) {
 
 void R_ConfigureImageBuffer(struct image_buffer_s *buffer, struct image_buffer_layout_s *layout )
 {
-  buffer->layout = (*layout);
-  arrsetlen(buffer->data, layout->size);
+	if( !( buffer->flags & IMAGE_BUF_IS_ALIASED )) {
+		arrsetlen( buffer->data, layout->size );
+	}
+	buffer->layout = ( *layout );
 }
 
-struct image_buffer_s* R_NextPogoBuffer(struct image_buffer_pogo* pogo) {
-	pogo->index = (pogo->index + 1) % 2;
-	return &pogo->buffers[pogo->index]; 
+void R_ImagePogoIncrement( struct image_buffer_pogo_s *pogo )
+{
+	pogo->index = ( pogo->index + 1 ) % 2;
+}
+
+struct image_buffer_s *R_ImagePogoCurrent( struct image_buffer_pogo_s *pogo )
+{
+	return &pogo->buffers[pogo->index];
+}
+
+struct image_buffer_s *R_ImagePogoNext( struct image_buffer_pogo_s *pogo )
+{
+	return &pogo->buffers[( pogo->index + 1 ) % 2];
 }
 
 void R_FreeImageBuffer( struct image_buffer_s *buffer )

@@ -6,8 +6,8 @@ uint32_t R_FormatChannelCount(enum texture_format_e format) {
     case R_FORMAT_R8_SNORM: return 1;
     case R_FORMAT_R8_UINT: return 1;
     case R_FORMAT_R8_SINT: return 1;
-    case R_FORMAT_BGRA8_UNORM: return 2;
-    case R_FORMAT_BGRA8_SRGB: return 2;
+    case R_FORMAT_BGRA8_UNORM: return 4;
+    case R_FORMAT_BGRA8_SRGB: return 4;
     case R_FORMAT_RG8_UNORM: return 2;
     case R_FORMAT_RG8_SNORM: return 2;
     case R_FORMAT_RG8_UINT: return 2;

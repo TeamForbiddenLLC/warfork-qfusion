@@ -123,9 +123,8 @@ void R_Buf_SwapEndianess( struct image_buffer_s *target )
   	case R_FORMAT_RGBA16_UINT:
   	case R_FORMAT_RGBA16_SINT: {
   		for( size_t row = 0; row < target->layout.height; row++ ) {
-  			const size_t rowStartIdx = target->layout.rowPitch * row;
   			for( size_t column = 0; column < target->layout.width; column++ ) {
-  				uint8_t *buf = &target->data[rowStartIdx + ( column * blockSize )];
+  				uint8_t *buf = &target->data[target->layout.rowPitch * row + ( column * blockSize )];
   				for( size_t ci = 0; ci < channelCount; ci++ ) {
   					uint16_t *channelBlock = (uint16_t *)( buf + ( ci * sizeof( uint16_t ) ) );
   					( *channelBlock ) = ShortSwap( *channelBlock );
@@ -141,9 +140,8 @@ void R_Buf_SwapEndianess( struct image_buffer_s *target )
   	case R_FORMAT_RGBA32_UINT:
   	case R_FORMAT_RGBA32_SINT: {
   		for( size_t row = 0; row < target->layout.height; row++ ) {
-  			const size_t rowStartIdx = target->layout.rowPitch * row;
   			for( size_t column = 0; column < target->layout.width; column++ ) {
-  				uint8_t *buf = &target->data[rowStartIdx + ( column * blockSize )];
+  				uint8_t *buf = &target->data[target->layout.rowPitch * row + ( column * blockSize )];
   				for( size_t ci = 0; ci < channelCount; ci++ ) {
   					uint32_t *channelBlock = (uint32_t *)( buf + ( ci * sizeof( uint32_t ) ) );
   					( *channelBlock ) = ShortSwap( *channelBlock );
@@ -158,7 +156,7 @@ void R_Buf_SwapEndianess( struct image_buffer_s *target )
 }
 
 
-void R_ResizeImage( const struct image_buffer_s *src, uint16_t scaledWidth, uint16_t scaledHeight, struct image_buffer_s *dest )
+void R_Buf_ResizeImage( const struct image_buffer_s *src, uint16_t scaledWidth, uint16_t scaledHeight, struct image_buffer_s *dest )
 {
 	const size_t blockSize = R_FormatBitSizePerBlock( src->layout.format ) / 8;
 	const uint16_t channelCount = R_FormatChannelCount( src->layout.format);
@@ -228,7 +226,7 @@ void R_ResizeImage( const struct image_buffer_s *src, uint16_t scaledWidth, uint
 	}
 }
 
-bool R_FlipTexture( struct image_buffer_s *src, struct image_buffer_s *dest, bool flipx, bool flipy, bool flipdiagonal )
+void R_Buf_FlipTexture( struct image_buffer_s *src, struct image_buffer_s *dest, bool flipx, bool flipy, bool flipdiagonal )
 {
 	struct image_buffer_layout_s updateLayout = { 0 };
 	assert( !R_FormatIsCompressed( src->layout.format ) ); // we don't handle compressed blocks this swap logic is swapping whole blocks
@@ -259,28 +257,29 @@ bool R_FlipTexture( struct image_buffer_s *src, struct image_buffer_s *dest, boo
 			}
 		}
 	}
-	return true;
 }
 
-void R_Buf_UncompressImage_ETC1(const struct image_buffer_s *src, struct image_buffer_s *dest) {
+void R_Buf_UncompressImage_ETC1_RGB8(const struct image_buffer_s *src, struct image_buffer_s *dest, uint16_t rowAlignment) {
 	assert( src->layout.format == R_FORMAT_ETC1_R8G8B8_OES );
 
 	struct image_buffer_layout_s updateLayout = {};
-	R_CalcImageBufferLayout( src->layout.width, src->layout.height, src->layout.format, src->layout.rowAlignment, &updateLayout );
+	R_CalcImageBufferLayout( src->layout.width, src->layout.height, R_FORMAT_RGB8_UNORM, rowAlignment, &updateLayout );
 	R_ConfigureImageBuffer( dest, &updateLayout );
 
 	const size_t decodeBlockSize = R_FormatBitSizePerBlock( R_FORMAT_RGB8_UNORM ) / 8;
 	const size_t encodeBlockSize = R_FormatBitSizePerBlock( R_FORMAT_ETC1_R8G8B8_OES ) / 8;
 
-	uint8_t colors[4 * 4 * 3]; // RGB8 unorm
+	uint8_t colors[RGB_ETC1_BLOCK_DECODE.rowPitch * RGB_ETC1_BLOCK_DECODE.logicalHeight]; // RGB8 unorm
 	for( size_t row = 0; row < src->layout.logicalHeight; row++ ) {
 		for( size_t column = 0; column < src->layout.logicalWidth; column++ ) {
 			uint8_t *const block = &src->data[src->layout.rowPitch * row + column * encodeBlockSize];
-			R_ETC1DecodeBlock_RGB( block, colors );
-			for( size_t subRow = 0; subRow < RGB_ETC1_BLOCK.height; subRow++ ) {
-				for( size_t subCol = 0; subCol < RGB_ETC1_BLOCK.width; subCol++ ) {
-					uint8_t *const decodeBlock = &colors[RGB_ETC1_BLOCK.rowPitch * subRow + subCol * decodeBlockSize];
-					uint8_t *const targetBlock = &dest->data[dest->layout.rowPitch * ( ( row * 2 ) + subRow ) + ( ( ( column * 2 ) + subCol ) * decodeBlockSize )];
+			// decode block and store in colors
+			R_ETC1DecodeBlock_RGB8( block, colors );
+			// iterrate over the sub block and write the results out to the dest buffer 
+			for( size_t subRow = 0; subRow < RGB_ETC1_BLOCK_DECODE.height; subRow++ ) {
+				for( size_t subCol = 0; subCol < RGB_ETC1_BLOCK_DECODE.width; subCol++ ) {
+					uint8_t *const decodeBlock = &colors[RGB_ETC1_BLOCK_DECODE.rowPitch * subRow + subCol * decodeBlockSize];
+					uint8_t *const targetBlock = &dest->data[dest->layout.rowPitch * ( ( row * RGB_ETC1_BLOCK_DECODE.logicalHeight) + subRow ) + ( ( ( column * RGB_ETC1_BLOCK_DECODE.logicalWidth) + subCol ) * decodeBlockSize )];
 					memcpy( targetBlock, decodeBlock, decodeBlockSize );
 				}
 			}
@@ -288,19 +287,16 @@ void R_Buf_UncompressImage_ETC1(const struct image_buffer_s *src, struct image_b
 	}
 }
 
-void R_Buf_MipMapQuarterInPlaceU8(struct image_buffer_s *src) {
+void R_Buf_MipMapQuarterInPlaceU8( struct image_buffer_s *src )
+{
+	assert( src->layout.format == R_FORMAT_BGR8_UNORM || 
+				src->layout.format == R_FORMAT_BGRA8_UNORM || 
+				src->layout.format == R_FORMAT_BGR8_UNORM || 
+			  src->layout.format == R_FORMAT_RGBA8_UNORM || 
+				src->layout.format == R_FORMAT_L8_A8_UNORM || 
+				src->layout.format == R_FORMAT_L8_UNORM || 
+				src->layout.format == R_FORMAT_A8_UNORM );
 
-	assert( 
-		src->layout.format == R_FORMAT_BGR8_UNORM  ||
-		src->layout.format == R_FORMAT_BGRA8_UNORM ||
-		src->layout.format == R_FORMAT_BGR8_UNORM  ||
-		src->layout.format == R_FORMAT_RGB8_UNORM  ||
-		src->layout.format == R_FORMAT_RGBA8_UNORM ||
-		src->layout.format == R_FORMAT_L8_A8_UNORM ||
-		src->layout.format == R_FORMAT_L8_UNORM ||
-		src->layout.format == R_FORMAT_A8_UNORM
-	);
-	
 	const size_t blockSize = R_FormatBitSizePerBlock( src->layout.format ) / 8;
 	const uint16_t channelCount = R_FormatChannelCount( src->layout.format );
 	const uint32_t halfWidth = ( src->layout.width >> 1 );
@@ -310,19 +306,19 @@ void R_Buf_MipMapQuarterInPlaceU8(struct image_buffer_s *src) {
 
 	for( size_t row = 0; row < halfHeight; row++ ) {
 		for( size_t column = 0; column < halfWidth; column++ ) {
-			const uint8_t* b1 = &src->data[src->layout.rowPitch * ( row * 2 + 0 ) + ( ( column * 2 + 0 ) * blockSize )];
-			const uint8_t* b2 = &src->data[src->layout.rowPitch * ( row * 2 + 1 ) + ( ( column * 2 + 0 ) * blockSize )];
-			const uint8_t* b3 = &src->data[src->layout.rowPitch * ( row * 2 + 0 ) + ( ( column * 2 + 1 ) * blockSize )];
-			const uint8_t* b4 = &src->data[src->layout.rowPitch * ( row * 2 + 1 ) + ( ( column * 2 + 1 ) * blockSize )];
-			for(size_t c = 0; c < channelCount; c++) {
-			  src->data[(updateLayout.rowPitch * row) + column * blockSize] = (b1[c] + b2[c] + b3[c] + b4[c]) >> 4; 
+			const uint8_t *b1 = &src->data[src->layout.rowPitch * ( row * 2 + 0 ) + ( ( column * 2 + 0 ) * blockSize )];
+			const uint8_t *b2 = &src->data[src->layout.rowPitch * ( row * 2 + 1 ) + ( ( column * 2 + 0 ) * blockSize )];
+			const uint8_t *b3 = &src->data[src->layout.rowPitch * ( row * 2 + 0 ) + ( ( column * 2 + 1 ) * blockSize )];
+			const uint8_t *b4 = &src->data[src->layout.rowPitch * ( row * 2 + 1 ) + ( ( column * 2 + 1 ) * blockSize )];
+			for( size_t c = 0; c < channelCount; c++ ) {
+				src->data[( updateLayout.rowPitch * row ) + column * blockSize] = ( b1[c] + b2[c] + b3[c] + b4[c] ) >> 4;
 			}
 		}
 	}
+	R_ConfigureImageBuffer( src, &updateLayout ); // we configure the
 }
 
-void R_Buf_MipMapQuarterInPlace( struct image_buffer_s *src )
-{
+void R_Buf_MipMapQuarterInPlace_Fallback( struct image_buffer_s *src ) {
 	const size_t blockSize = R_FormatBitSizePerBlock( src->layout.format ) / 8;
 	const uint16_t channelCount = R_FormatChannelCount( src->layout.format );
 	const uint32_t halfWidth = ( src->layout.width >> 1 );
@@ -357,5 +353,22 @@ void R_Buf_MipMapQuarterInPlace( struct image_buffer_s *src )
 		}
 	}
 	R_ConfigureImageBuffer( src, &updateLayout ); // we configure the
+}
+void R_Buf_MipMapQuarterInPlace( struct image_buffer_s *src )
+{
+	switch( src->layout.format ) {
+		case R_FORMAT_BGR8_UNORM:
+		case R_FORMAT_BGRA8_UNORM:
+		case R_FORMAT_RGB8_UNORM:
+		case R_FORMAT_RGBA8_UNORM:
+		case R_FORMAT_L8_A8_UNORM:
+		case R_FORMAT_L8_UNORM:
+		case R_FORMAT_A8_UNORM:
+			R_Buf_MipMapQuarterInPlaceU8( src );
+			break;
+		default:
+			R_Buf_MipMapQuarterInPlace_Fallback( src );
+			break;
+	}
 }
 

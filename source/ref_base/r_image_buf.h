@@ -25,24 +25,34 @@ struct image_buffer_layout_s {
   uint16_t rowAlignment;
 };
 
+enum image_buffer_flags_e {
+	IMAGE_BUF_IS_ALIASED = 0x1,
+	IMAGE_BUF_IS_BIG_ENDIAN = 0x2,
+	IMAGE_BUF_MAX = 0xffff
+};
+
 struct image_buffer_s {
+	enum image_buffer_flags_e flags;
 	struct image_buffer_layout_s layout;
 	uint8_t *data;
 };
 
 // pogo between two buffers
-struct image_buffer_pogo {
+struct image_buffer_pogo_s {
 	uint8_t index;
 	struct image_buffer_s buffers[2];
 };
 
 // pogo buffer
-struct image_buffer_s* R_NextPogoBuffer(struct image_buffer_pogo* pogo);
+void R_ImagePogoIncrement(struct image_buffer_pogo_s* pogo);
+struct image_buffer_s* R_ImagePogoCurrent(struct image_buffer_pogo_s* pogo);
+struct image_buffer_s* R_ImagePogoNext(struct image_buffer_pogo_s* pogo);
 
 // image_buffer_s
 void R_CalcImageBufferLayout(uint16_t pixWidth, uint16_t pixHeight, enum texture_format_e format, uint16_t rowAlignment, struct image_buffer_layout_s* layout); 
 void R_ConfigureImageBuffer(struct image_buffer_s* buffer, struct image_buffer_layout_s* layout );
 void R_ConfigureBufferSize(struct image_buffer_s* buffer,size_t size); // update the intternal length 
 void R_FreeImageBuffer(struct image_buffer_s* buffer);
+
 
 #endif

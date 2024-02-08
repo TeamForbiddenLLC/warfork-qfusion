@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "r_image.h"
+#include "r_ktx_loader.h"
 #include "r_local.h"
 #include "r_imagelib.h"
 #include "../qalgo/hash.h"
@@ -1623,306 +1624,306 @@ static bool __R_IsKTXFormatValid( int format, int type )
 	return false;
 }
 
-struct ktx_image_meta_s {
-	// updates internal data for consistency 
-	// - swaps endianness for platform
-	bool update;
-	
-	uint16_t width;
-	uint16_t height;
-	uint32_t rowPitch; 
-
-	// this is the start of the data
-	size_t byteSize;
-	size_t byteOffset; // ktx_context_data_s::data + byteOffset
-};
-
-struct ktx_context_s {
-	bool swapEndianess;
-	int type;
-	int typeSize;
-	int format;
-	int internalFormat;
-	int baseInternalFormat;
-	int pixelWidth;
-	int pixelHeight;
-	int pixelDepth;
-	int numberOfArrayElements;
-	int numberOfFaces;
-	int numberOfMipmapLevels;
-	int bytesOfKeyValueData;
-
-	enum texture_format_e textureFormat; 
-	uint8_t* data;
-	struct ktx_image_meta_s* dataContext;
-};
-#pragma pack( push, 1 )
-	struct __raw_ktx_header_s {
-		char identifier[12];
-		int endianness;
-		int type;
-		int typeSize;
-		int format;
-		int internalFormat;
-		int baseInternalFormat;
-		int pixelWidth;
-		int pixelHeight;
-		int pixelDepth;
-		int numberOfArrayElements;
-		int numberOfFaces;
-		int numberOfMipmapLevels;
-		int bytesOfKeyValueData;
-	};
-#pragma pack( pop )
-
-static struct ktx_image_meta_s *__R_GetKTXMeta( const struct ktx_context_s *cntx, uint32_t mipLevel, uint32_t faceIndex, uint32_t arrayOffset )
-{
-	assert( cntx );
-	assert( cntx->dataContext );
-	const size_t numberOfArrayElements = max( 1, cntx->numberOfArrayElements );
-	const size_t numberOfFaces = max( 1, cntx->numberOfFaces );
-	const size_t index = ( mipLevel * numberOfArrayElements * numberOfFaces ) + ( faceIndex * numberOfArrayElements ) + arrayOffset;
-	assert(index < arrlen( cntx->dataContext ));
-	return &cntx->dataContext[index];
-}
-
-static void __R_FreeKTXContext( struct ktx_context_s *cntx )
-{
-	arrfree( cntx->dataContext );
-	cntx->dataContext = NULL;
-}
-
-/**
-* Ownership is transfered to the context. memory is manipulated in place within the ktx buffer
-*/
-static bool __R_InitKTXContext( uint8_t *memory, size_t size, struct ktx_context_s *cntx)
-{
-
-	assert( sizeof( struct __raw_ktx_header_s ) == 64 );
-	struct __raw_ktx_header_s *rawHeader = (struct __raw_ktx_header_s *)memory;
-	if( memcmp( rawHeader->identifier, "\xABKTX 11\xBB\r\n\x1A\n", 12 ) ) {
-		ri.Com_Printf( S_COLOR_YELLOW "Bad file identifier\n" );
-		return false;
-	}
-
-	if(cntx->pixelDepth != 0) {
-		ri.Com_Printf( S_COLOR_YELLOW "Unsupported Feature 3D textures\n" );
-		return false;
-	}
-
-	const bool swapEndian = ( rawHeader->endianness == 0x01020304 ) ? true : false;
-	cntx->data = memory;
-	cntx->swapEndianess = swapEndian;
-	cntx->type = swapEndian ? LongSwap( rawHeader->type ) : rawHeader->type;
-	cntx->typeSize = swapEndian ? LongSwap( rawHeader->typeSize ) : rawHeader->typeSize;
-	cntx->format = swapEndian ? LongSwap( rawHeader->format ) : rawHeader->format;
-	cntx->internalFormat = swapEndian ? LongSwap( rawHeader->internalFormat ) : rawHeader->internalFormat;
-	cntx->baseInternalFormat = swapEndian ? LongSwap( rawHeader->baseInternalFormat ) : rawHeader->baseInternalFormat;
-	cntx->pixelWidth = swapEndian ? LongSwap( rawHeader->pixelWidth ) : rawHeader->pixelWidth;
-	cntx->pixelHeight = swapEndian ? LongSwap( rawHeader->pixelHeight ) : rawHeader->pixelHeight;
-	cntx->pixelDepth = swapEndian ? LongSwap( rawHeader->pixelDepth ) : rawHeader->pixelDepth;
-	cntx->numberOfArrayElements = swapEndian ? LongSwap( rawHeader->numberOfArrayElements ) : rawHeader->numberOfArrayElements;
-	cntx->numberOfFaces = swapEndian ? LongSwap( rawHeader->numberOfFaces ) : rawHeader->numberOfFaces;
-	cntx->numberOfMipmapLevels = swapEndian ? LongSwap( rawHeader->numberOfMipmapLevels ) : rawHeader->numberOfMipmapLevels;
-	cntx->bytesOfKeyValueData = swapEndian ? LongSwap( rawHeader->bytesOfKeyValueData ) : rawHeader->bytesOfKeyValueData;
-
-	const size_t numberOfArrayElements = max( 1, cntx->numberOfArrayElements );
-	const size_t numberOfFaces = max( 1, cntx->numberOfFaces );
-	const size_t numberOfMips = max( 1, cntx->numberOfMipmapLevels );
-
-	const size_t keyValueOffset = sizeof(struct __raw_ktx_header_s);
-	const size_t dataOffset = sizeof(struct __raw_ktx_header_s) + cntx->bytesOfKeyValueData;
-	arrsetlen( cntx->dataContext, numberOfArrayElements * numberOfFaces * numberOfMips );
-	if( cntx->type == 0 ) {
-		switch( cntx->internalFormat ) {
-			case GL_ETC1_RGB8_OES:
-				cntx->textureFormat = R_FORMAT_ETC1_R8G8B8_OES;
-				break;
-			case GL_COMPRESSED_RGB8_ETC2:
-				cntx->textureFormat = R_FORMAT_ETC2_R8G8B8_UNORM;
-				break;
-			default:
-				// this is not handled
-				ri.Com_Error( ERR_FATAL, "unhandled internalFormat: %d", cntx->internalFormat );
-				assert( false );
-				break;
-		}
-	} else {
-		switch( cntx->type ) {
-			case GL_UNSIGNED_SHORT_4_4_4_4:
-				cntx->textureFormat = R_FORMAT_R4_G4_B4_A4_UNORM;
-				break;
-			case GL_UNSIGNED_SHORT_5_6_5:
-				cntx->textureFormat = R_FORMAT_R5_G6_B5_UNORM;
-				break;
-			case GL_UNSIGNED_SHORT_5_5_5_1:
-				cntx->textureFormat = R_FORMAT_R5_G5_B5_A1_UNORM;
-				break;
-			case GL_UNSIGNED_BYTE: {
-				switch( cntx->baseInternalFormat ) {
-					case GL_RGBA:
-						cntx->textureFormat = R_FORMAT_RGBA8_UNORM;
-						break;
-					case GL_BGRA_EXT:
-						cntx->textureFormat = R_FORMAT_BGRA8_UNORM;
-						break;
-					case GL_RGB:
-						cntx->textureFormat = R_FORMAT_RGB8_UNORM;
-						break;
-					case GL_BGR_EXT:
-						cntx->textureFormat = R_FORMAT_BGR8_UNORM;
-						break;
-					case GL_LUMINANCE_ALPHA:
-						cntx->textureFormat = R_FORMAT_L8_A8_UNORM;
-						break;
-					case GL_LUMINANCE:
-						cntx->textureFormat = R_FORMAT_L8_UNORM;
-						break;
-					case GL_ALPHA:
-						cntx->textureFormat = R_FORMAT_A8_UNORM;
-						break;
-					default:
-						// this is not handled
-						ri.Com_Error( ERR_FATAL, "Unhandled baseInternalFormat: %d", cntx->baseInternalFormat );
-						assert( false );
-						break;
-				}
-				break;
-			}
-			default:
-				// this is not handled
-				ri.Com_Error( ERR_FATAL, "unhandled type: %d", cntx->type );
-				assert( false );
-				break;
-		}
-	}
-
-	// mip and faces are aligned 4
-	// KTX File Format Spec: https://registry.khronos.org/KTX/specs/1.0/ktxspec.v1.html
-	uint32_t width = cntx->pixelWidth;
-	uint32_t height = cntx->pixelHeight;
-
-	size_t bufferOffset = dataOffset;
-	for( size_t mipLevel = 0; mipLevel < numberOfMips; mipLevel++ ) {
-		const uint32_t imageBufLen = swapEndian ? LongSwap( *( (uint32_t *)( memory + bufferOffset ) ) ) : *( (uint32_t *)( memory + bufferOffset ) );
-		bufferOffset += sizeof( uint32_t );
-		for( size_t arrayIdx = 0; arrayIdx < numberOfArrayElements; arrayIdx++ ) {
-			for( size_t faceIdx = 0; faceIdx < numberOfFaces; faceIdx++ ) {
-				struct ktx_image_meta_s *cntxData = __R_GetKTXMeta( cntx, mipLevel, faceIdx, arrayIdx );
-				cntxData->width = width;
-				cntxData->height = height;
-				cntxData->update = false;
-				size_t imageChunkLen = 0;
-				size_t rowPitch = 0;
-				switch( cntx->textureFormat ) {
-					case R_FORMAT_ETC1_R8G8B8_OES:
-					case R_FORMAT_ETC2_R8G8B8_UNORM: {
-						const uint32_t blockWidth = R_FormatBlockWidth(cntx->textureFormat);
-						const uint32_t blockHeight = R_FormatBlockHeight(cntx->textureFormat);
-						const uint32_t blockSizeBytes = R_FormatBitSizePerBlock(cntx->textureFormat) / 8;
-						rowPitch =  ALIGN( ((width / blockWidth) + (width % blockWidth == 0 ? 0 : 1)) * blockSizeBytes, 4); // not sure I need alignment 
-						imageChunkLen = rowPitch * ((height/blockHeight) + (height % blockHeight == 0 ? 0 : 1));
-						break;
-					}
-					case R_FORMAT_R5_G5_B5_A1_UNORM:
-					case R_FORMAT_R5_G6_B5_UNORM:
-					case R_FORMAT_R4_G4_B4_A4_UNORM:
-						rowPitch = ALIGN(width * sizeof( short ), 4);
-						imageChunkLen = height * rowPitch;
-						break;
-					case R_FORMAT_RGBA8_UNORM:
-						rowPitch = ALIGN(width * 4, 4);
-						imageChunkLen = height * rowPitch;
-						break;
-					case R_FORMAT_RG8_UNORM:
-					case R_FORMAT_L8_A8_UNORM:
-						rowPitch = ALIGN(width * 2, 4);
-						imageChunkLen = height * rowPitch;
-						break;
-					case R_FORMAT_RGB8_UNORM:
-					case R_FORMAT_BGR8_UNORM:
-						rowPitch =  ALIGN(width * 3, 4);
-						imageChunkLen = height * rowPitch;
-						break;
-					case R_FORMAT_R8_UNORM:
-					case R_FORMAT_L8_UNORM:
-					case R_FORMAT_A8_UNORM:
-						rowPitch = ALIGN(width * 1, 4);
-						imageChunkLen = height * rowPitch;
-						break;
-					default:
-						assert( false );
-						break;
-				}
-
-				cntxData->byteSize = imageChunkLen;
-				cntxData->rowPitch = rowPitch;
-				cntxData->byteOffset = bufferOffset;
-
-				bufferOffset += imageChunkLen;
-				if( numberOfFaces >= 1 ) {
-					bufferOffset  = ALIGN( bufferOffset, 4 );
-				}
-			}
-		}
-	 // if( chunkOffset > imageBufLen ) {
-	 // 	ri.Com_Printf( S_COLOR_YELLOW "iamge buffer size greater %d expected: %d\n", chunkOffset, imageBufLen );
-	 // }
-		bufferOffset = ALIGN( bufferOffset, 4 );
-		width = max( 1, width >> 1 );
-		height = max(1, height >> 1);
-	}
-
-  if(bufferOffset > size ) {
-  	ri.Com_Printf( S_COLOR_YELLOW "file size does not match size: %d expected: %d\n", bufferOffset , size );
-  }
-
-	return true;
-}
-
-static uint16_t __R_GetKTXNumberMips( const struct ktx_context_s *cntx )
-{
-	return max( 1, cntx->numberOfMipmapLevels );
-}
-static uint16_t __R_GetKTXNumberFaces( const struct ktx_context_s *cntx )
-{
-	return max( 1, cntx->numberOfFaces );
-}
-
-static uint16_t __R_GetKTXNumberArrayElements( const struct ktx_context_s *cntx )
-{
-	return max( 1, cntx->numberOfArrayElements);
-}
-
-static bool __R_IsKTXCompressedFormat( const struct ktx_context_s *cntx )
-{
-	return R_FormatIsCompressed( cntx->format );
-}
-
-/**
- * fills out the image buffer
- * Return the Aliased memory from the buffer
- **/
-static size_t __R_KTXFillBuffer( const struct ktx_context_s *cntx, struct image_buffer_s *image, uint32_t faceIndex, uint32_t arrOffset, uint16_t mipLevel )
-{
-	assert( image );
-	assert( cntx );
-	assert( cntx->data );
-
-	struct ktx_image_meta_s *meta = __R_GetKTXMeta( cntx, mipLevel, faceIndex, arrOffset );
-	assert(meta);
-	struct image_buffer_layout_s updateLayout = {};
-	R_CalcImageBufferLayout( meta->width, meta->height, cntx->format, 4, &updateLayout ); // ktx is all aligned to 4
-	
-	assert(updateLayout.size >= meta->byteSize);
-	R_ConfigureImageBuffer( image, &updateLayout );
-
-	memcpy( image->data, &cntx->data[meta->byteOffset], meta->byteSize );
-	if( !R_FormatIsCompressed( image->layout.format ) && cntx->swapEndianess ) {
-		R_Buf_SwapEndianess( image );
-	}
-	return meta->byteSize;
-}
+//struct ktx_image_meta_s {
+//	// updates internal data for consistency 
+//	// - swaps endianness for platform
+//	bool update;
+//	
+//	uint16_t width;
+//	uint16_t height;
+//	uint32_t rowPitch; 
+//
+//	// this is the start of the data
+//	size_t byteSize;
+//	size_t byteOffset; // ktx_context_data_s::data + byteOffset
+//};
+//
+//struct ktx_context_s {
+//	bool swapEndianess;
+//	int type;
+//	int typeSize;
+//	int format;
+//	int internalFormat;
+//	int baseInternalFormat;
+//	int pixelWidth;
+//	int pixelHeight;
+//	int pixelDepth;
+//	int numberOfArrayElements;
+//	int numberOfFaces;
+//	int numberOfMipmapLevels;
+//	int bytesOfKeyValueData;
+//
+//	enum texture_format_e textureFormat; 
+//	uint8_t* data;
+//	struct ktx_image_meta_s* dataContext;
+//};
+//#pragma pack( push, 1 )
+//	struct __raw_ktx_header_s {
+//		char identifier[12];
+//		int endianness;
+//		int type;
+//		int typeSize;
+//		int format;
+//		int internalFormat;
+//		int baseInternalFormat;
+//		int pixelWidth;
+//		int pixelHeight;
+//		int pixelDepth;
+//		int numberOfArrayElements;
+//		int numberOfFaces;
+//		int numberOfMipmapLevels;
+//		int bytesOfKeyValueData;
+//	};
+//#pragma pack( pop )
+//
+//static struct ktx_image_meta_s *__R_GetKTXMeta( const struct ktx_context_s *cntx, uint32_t mipLevel, uint32_t faceIndex, uint32_t arrayOffset )
+//{
+//	assert( cntx );
+//	assert( cntx->dataContext );
+//	const size_t numberOfArrayElements = max( 1, cntx->numberOfArrayElements );
+//	const size_t numberOfFaces = max( 1, cntx->numberOfFaces );
+//	const size_t index = ( mipLevel * numberOfArrayElements * numberOfFaces ) + ( faceIndex * numberOfArrayElements ) + arrayOffset;
+//	assert(index < arrlen( cntx->dataContext ));
+//	return &cntx->dataContext[index];
+//}
+//
+//static void __R_FreeKTXContext( struct ktx_context_s *cntx )
+//{
+//	arrfree( cntx->dataContext );
+//	cntx->dataContext = NULL;
+//}
+//
+///**
+//* Ownership is transfered to the context. memory is manipulated in place within the ktx buffer
+//*/
+//static bool __R_InitKTXContext( uint8_t *memory, size_t size, struct ktx_context_s *cntx)
+//{
+//
+//	assert( sizeof( struct __raw_ktx_header_s ) == 64 );
+//	struct __raw_ktx_header_s *rawHeader = (struct __raw_ktx_header_s *)memory;
+//	if( memcmp( rawHeader->identifier, "\xABKTX 11\xBB\r\n\x1A\n", 12 ) ) {
+//		ri.Com_Printf( S_COLOR_YELLOW "Bad file identifier\n" );
+//		return false;
+//	}
+//
+//	if(cntx->pixelDepth != 0) {
+//		ri.Com_Printf( S_COLOR_YELLOW "Unsupported Feature 3D textures\n" );
+//		return false;
+//	}
+//
+//	const bool swapEndian = ( rawHeader->endianness == 0x01020304 ) ? true : false;
+//	cntx->data = memory;
+//	cntx->swapEndianess = swapEndian;
+//	cntx->type = swapEndian ? LongSwap( rawHeader->type ) : rawHeader->type;
+//	cntx->typeSize = swapEndian ? LongSwap( rawHeader->typeSize ) : rawHeader->typeSize;
+//	cntx->format = swapEndian ? LongSwap( rawHeader->format ) : rawHeader->format;
+//	cntx->internalFormat = swapEndian ? LongSwap( rawHeader->internalFormat ) : rawHeader->internalFormat;
+//	cntx->baseInternalFormat = swapEndian ? LongSwap( rawHeader->baseInternalFormat ) : rawHeader->baseInternalFormat;
+//	cntx->pixelWidth = swapEndian ? LongSwap( rawHeader->pixelWidth ) : rawHeader->pixelWidth;
+//	cntx->pixelHeight = swapEndian ? LongSwap( rawHeader->pixelHeight ) : rawHeader->pixelHeight;
+//	cntx->pixelDepth = swapEndian ? LongSwap( rawHeader->pixelDepth ) : rawHeader->pixelDepth;
+//	cntx->numberOfArrayElements = swapEndian ? LongSwap( rawHeader->numberOfArrayElements ) : rawHeader->numberOfArrayElements;
+//	cntx->numberOfFaces = swapEndian ? LongSwap( rawHeader->numberOfFaces ) : rawHeader->numberOfFaces;
+//	cntx->numberOfMipmapLevels = swapEndian ? LongSwap( rawHeader->numberOfMipmapLevels ) : rawHeader->numberOfMipmapLevels;
+//	cntx->bytesOfKeyValueData = swapEndian ? LongSwap( rawHeader->bytesOfKeyValueData ) : rawHeader->bytesOfKeyValueData;
+//
+//	const size_t numberOfArrayElements = max( 1, cntx->numberOfArrayElements );
+//	const size_t numberOfFaces = max( 1, cntx->numberOfFaces );
+//	const size_t numberOfMips = max( 1, cntx->numberOfMipmapLevels );
+//
+//	const size_t keyValueOffset = sizeof(struct __raw_ktx_header_s);
+//	const size_t dataOffset = sizeof(struct __raw_ktx_header_s) + cntx->bytesOfKeyValueData;
+//	arrsetlen( cntx->dataContext, numberOfArrayElements * numberOfFaces * numberOfMips );
+//	if( cntx->type == 0 ) {
+//		switch( cntx->internalFormat ) {
+//			case GL_ETC1_RGB8_OES:
+//				cntx->textureFormat = R_FORMAT_ETC1_R8G8B8_OES;
+//				break;
+//			case GL_COMPRESSED_RGB8_ETC2:
+//				cntx->textureFormat = R_FORMAT_ETC2_R8G8B8_UNORM;
+//				break;
+//			default:
+//				// this is not handled
+//				ri.Com_Error( ERR_FATAL, "unhandled internalFormat: %d", cntx->internalFormat );
+//				assert( false );
+//				break;
+//		}
+//	} else {
+//		switch( cntx->type ) {
+//			case GL_UNSIGNED_SHORT_4_4_4_4:
+//				cntx->textureFormat = R_FORMAT_R4_G4_B4_A4_UNORM;
+//				break;
+//			case GL_UNSIGNED_SHORT_5_6_5:
+//				cntx->textureFormat = R_FORMAT_R5_G6_B5_UNORM;
+//				break;
+//			case GL_UNSIGNED_SHORT_5_5_5_1:
+//				cntx->textureFormat = R_FORMAT_R5_G5_B5_A1_UNORM;
+//				break;
+//			case GL_UNSIGNED_BYTE: {
+//				switch( cntx->baseInternalFormat ) {
+//					case GL_RGBA:
+//						cntx->textureFormat = R_FORMAT_RGBA8_UNORM;
+//						break;
+//					case GL_BGRA_EXT:
+//						cntx->textureFormat = R_FORMAT_BGRA8_UNORM;
+//						break;
+//					case GL_RGB:
+//						cntx->textureFormat = R_FORMAT_RGB8_UNORM;
+//						break;
+//					case GL_BGR_EXT:
+//						cntx->textureFormat = R_FORMAT_BGR8_UNORM;
+//						break;
+//					case GL_LUMINANCE_ALPHA:
+//						cntx->textureFormat = R_FORMAT_L8_A8_UNORM;
+//						break;
+//					case GL_LUMINANCE:
+//						cntx->textureFormat = R_FORMAT_L8_UNORM;
+//						break;
+//					case GL_ALPHA:
+//						cntx->textureFormat = R_FORMAT_A8_UNORM;
+//						break;
+//					default:
+//						// this is not handled
+//						ri.Com_Error( ERR_FATAL, "Unhandled baseInternalFormat: %d", cntx->baseInternalFormat );
+//						assert( false );
+//						break;
+//				}
+//				break;
+//			}
+//			default:
+//				// this is not handled
+//				ri.Com_Error( ERR_FATAL, "unhandled type: %d", cntx->type );
+//				assert( false );
+//				break;
+//		}
+//	}
+//
+//	// mip and faces are aligned 4
+//	// KTX File Format Spec: https://registry.khronos.org/KTX/specs/1.0/ktxspec.v1.html
+//	uint32_t width = cntx->pixelWidth;
+//	uint32_t height = cntx->pixelHeight;
+//
+//	size_t bufferOffset = dataOffset;
+//	for( size_t mipLevel = 0; mipLevel < numberOfMips; mipLevel++ ) {
+//		const uint32_t imageBufLen = swapEndian ? LongSwap( *( (uint32_t *)( memory + bufferOffset ) ) ) : *( (uint32_t *)( memory + bufferOffset ) );
+//		bufferOffset += sizeof( uint32_t );
+//		for( size_t arrayIdx = 0; arrayIdx < numberOfArrayElements; arrayIdx++ ) {
+//			for( size_t faceIdx = 0; faceIdx < numberOfFaces; faceIdx++ ) {
+//				struct ktx_image_meta_s *cntxData = __R_GetKTXMeta( cntx, mipLevel, faceIdx, arrayIdx );
+//				cntxData->width = width;
+//				cntxData->height = height;
+//				cntxData->update = false;
+//				size_t imageChunkLen = 0;
+//				size_t rowPitch = 0;
+//				switch( cntx->textureFormat ) {
+//					case R_FORMAT_ETC1_R8G8B8_OES:
+//					case R_FORMAT_ETC2_R8G8B8_UNORM: {
+//						const uint32_t blockWidth = R_FormatBlockWidth(cntx->textureFormat);
+//						const uint32_t blockHeight = R_FormatBlockHeight(cntx->textureFormat);
+//						const uint32_t blockSizeBytes = R_FormatBitSizePerBlock(cntx->textureFormat) / 8;
+//						rowPitch =  ALIGN( ((width / blockWidth) + (width % blockWidth == 0 ? 0 : 1)) * blockSizeBytes, 4); // not sure I need alignment 
+//						imageChunkLen = rowPitch * ((height/blockHeight) + (height % blockHeight == 0 ? 0 : 1));
+//						break;
+//					}
+//					case R_FORMAT_R5_G5_B5_A1_UNORM:
+//					case R_FORMAT_R5_G6_B5_UNORM:
+//					case R_FORMAT_R4_G4_B4_A4_UNORM:
+//						rowPitch = ALIGN(width * sizeof( short ), 4);
+//						imageChunkLen = height * rowPitch;
+//						break;
+//					case R_FORMAT_RGBA8_UNORM:
+//						rowPitch = ALIGN(width * 4, 4);
+//						imageChunkLen = height * rowPitch;
+//						break;
+//					case R_FORMAT_RG8_UNORM:
+//					case R_FORMAT_L8_A8_UNORM:
+//						rowPitch = ALIGN(width * 2, 4);
+//						imageChunkLen = height * rowPitch;
+//						break;
+//					case R_FORMAT_RGB8_UNORM:
+//					case R_FORMAT_BGR8_UNORM:
+//						rowPitch =  ALIGN(width * 3, 4);
+//						imageChunkLen = height * rowPitch;
+//						break;
+//					case R_FORMAT_R8_UNORM:
+//					case R_FORMAT_L8_UNORM:
+//					case R_FORMAT_A8_UNORM:
+//						rowPitch = ALIGN(width * 1, 4);
+//						imageChunkLen = height * rowPitch;
+//						break;
+//					default:
+//						assert( false );
+//						break;
+//				}
+//
+//				cntxData->byteSize = imageChunkLen;
+//				cntxData->rowPitch = rowPitch;
+//				cntxData->byteOffset = bufferOffset;
+//
+//				bufferOffset += imageChunkLen;
+//				if( numberOfFaces >= 1 ) {
+//					bufferOffset  = ALIGN( bufferOffset, 4 );
+//				}
+//			}
+//		}
+//	 // if( chunkOffset > imageBufLen ) {
+//	 // 	ri.Com_Printf( S_COLOR_YELLOW "iamge buffer size greater %d expected: %d\n", chunkOffset, imageBufLen );
+//	 // }
+//		bufferOffset = ALIGN( bufferOffset, 4 );
+//		width = max( 1, width >> 1 );
+//		height = max(1, height >> 1);
+//	}
+//
+//  if(bufferOffset > size ) {
+//  	ri.Com_Printf( S_COLOR_YELLOW "file size does not match size: %d expected: %d\n", bufferOffset , size );
+//  }
+//
+//	return true;
+//}
+//
+//static uint16_t __R_GetKTXNumberMips( const struct ktx_context_s *cntx )
+//{
+//	return max( 1, cntx->numberOfMipmapLevels );
+//}
+//static uint16_t __R_GetKTXNumberFaces( const struct ktx_context_s *cntx )
+//{
+//	return max( 1, cntx->numberOfFaces );
+//}
+//
+//static uint16_t __R_GetKTXNumberArrayElements( const struct ktx_context_s *cntx )
+//{
+//	return max( 1, cntx->numberOfArrayElements);
+//}
+//
+//static bool __R_IsKTXCompressedFormat( const struct ktx_context_s *cntx )
+//{
+//	return R_FormatIsCompressed( cntx->format );
+//}
+//
+///**
+// * fills out the image buffer
+// * Return the Aliased memory from the buffer
+// **/
+//static size_t __R_KTXFillBuffer( const struct ktx_context_s *cntx, struct image_buffer_s *image, uint32_t faceIndex, uint32_t arrOffset, uint16_t mipLevel )
+//{
+//	assert( image );
+//	assert( cntx );
+//	assert( cntx->data );
+//
+//	struct ktx_image_meta_s *meta = __R_GetKTXMeta( cntx, mipLevel, faceIndex, arrOffset );
+//	assert(meta);
+//	struct image_buffer_layout_s updateLayout = {};
+//	R_CalcImageBufferLayout( meta->width, meta->height, cntx->format, 4, &updateLayout ); // ktx is all aligned to 4
+//	
+//	assert(updateLayout.size >= meta->byteSize);
+//	R_ConfigureImageBuffer( image, &updateLayout );
+//
+//	memcpy( image->data, &cntx->data[meta->byteOffset], meta->byteSize );
+//	if( !R_FormatIsCompressed( image->layout.format ) && cntx->swapEndianess ) {
+//		R_Buf_SwapEndianess( image );
+//	}
+//	return meta->byteSize;
+//}
 
 static bool __R_ValidateKTXHeader(const struct ktx_context_s* header, const int flags, const uint16_t expectedNumFaces) {
 	assert(header);
@@ -1961,6 +1962,25 @@ static bool __R_ValidateKTXHeader(const struct ktx_context_s* header, const int 
 	return result;
 }
 
+#pragma pack( push, 1 )
+struct __raw_ktx_header_s {
+	char identifier[12];
+	int endianness;
+	int type;
+	int typeSize;
+	int format;
+	int internalFormat;
+	int baseInternalFormat;
+	int pixelWidth;
+	int pixelHeight;
+	int pixelDepth;
+	int numberOfArrayElements;
+	int numberOfFaces;
+	int numberOfMipmapLevels;
+	int bytesOfKeyValueData;
+};
+#pragma pack( pop )
+
 
 static bool __R_LoadKTX( int ctx, image_t *image, const char *pathname )
 {
@@ -1978,7 +1998,7 @@ static bool __R_LoadKTX( int ctx, image_t *image, const char *pathname )
 	}
 
 	struct ktx_context_s header = {};
-	if( !__R_InitKTXContext( buffer, bufferLen, &header ) ) {
+	if( !R_InitKTXContext( buffer, bufferLen, &header ) ) {
 		goto error;
 	}
 
@@ -2207,7 +2227,7 @@ static bool __R_LoadImageFromDisk( int thread_id, image_t *image )
 	enum image_ext_type_e { IMAGE_EXT_TGA, IMAGE_EXT_JPG, IMAGE_EXT_PNG, IMAGE_EXT_KTX };
 	struct ktx_context_s ktxContext = {};
 
-  struct image_buffer_pogo pogo = {};
+  struct image_buffer_pogo_s pogo = {};
 	const char* imageExtension[] = {
 		[IMAGE_EXT_TGA] = ".tga", 
 		[IMAGE_EXT_JPG] = ".jpg", 
@@ -2220,55 +2240,55 @@ static bool __R_LoadImageFromDisk( int thread_id, image_t *image )
 	if(extension == imageExtension[IMAGE_EXT_KTX]) {
 		sdscatfmt(resolvedPath, "%s", imageExtension[IMAGE_EXT_KTX]);
 		uint8_t *buffer;
-		int bufferLen = R_LoadFile( pathname, (void **)&buffer );
-
-		if(!__R_InitKTXContext( buffer, bufferLen, &ktxContext ) ) {
-			return false;
-		}
-		image->srcWidth = ktxContext.pixelWidth;
-		image->srcHeight = ktxContext.pixelHeight;
-
-		struct image_req_s requirments = {}; // requirments for the submitted image for consistency with other GPUS
-		struct image_policy_s policy = {}; // policy is empty no other restrictions
-		__R_CalculateImageReq( ktxContext.pixelWidth, ktxContext.pixelHeight, image->flags, &policy, &requirments );
-		const bool isResize = ( ktxContext.pixelWidth != requirments.scaledWidth || ktxContext.pixelHeight != requirments.scaledHeight );
-
-		// we have to transform the image so we have to unpack/resize the image
-		if( isResize || requirments.compressionSupport == 0 ) {
-			struct image_buffer_s *active = R_NextPogoBuffer( &pogo );
-			__R_KTXFillBuffer( &ktxContext, active, 0, 0, 0 );
-			if( __R_IsKTXCompressedFormat( &ktxContext ) ) {
-				struct image_buffer_s *dest = R_NextPogoBuffer( &pogo );
-				R_Buf_UncompressImage( active, R_FORMAT_RGBA8_UNORM, dest );
-				active = dest;
+		const int bufferLen = R_LoadFile( pathname, (void **)&buffer );
+		if(buffer) {
+			const enum ktx_context_result_e result  = R_InitKTXContext(buffer, bufferLen, &ktxContext); 
+			if(result != KTX_ERR_NONE) {
+				return false;
 			}
-			if(isResize) {
-				struct image_buffer_s *dest = R_NextPogoBuffer( &pogo );
-				//dest->width = requirments.scaledWidth;
-				//dest->height = requirments.scaledHeight;
-				//__R_ResizeImage( active, dest);
-				active = dest;
-			}
-			if( (image->flags & (IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL)) > 0) {
-				struct image_buffer_s *dest = R_NextPogoBuffer( &pogo );
-				R_Buf_FlipTexture( active, dest, 
-										( flags & IT_FLIPX ) > 0, 
-										( flags & IT_FLIPY ) > 0, 
-										( flags & IT_FLIPDIAGONAL ) > 0);
-				active = dest;
-			}
-			for( size_t mipLevel = 0; mipLevel < requirments.mipLevels; mipLevel++ ) {
-				const struct image_upload_s upload = { .buffer = active, .packAlignment = 4, .mipOffset = mipLevel };
-				__R_SubmitImage( thread_id, image, &upload );
-				R_Buf_MipMapQuarterInPlace( active );
-			}
-		} else {
+			image->srcWidth = ktxContext.pixelWidth;
+			image->srcHeight = ktxContext.pixelHeight;
 
+			struct image_req_s requirments = {}; // requirments for the submitted image for consistency with other GPUS
+			struct image_policy_s policy = {}; // policy is empty no other restrictions
+			__R_CalculateImageReq( ktxContext.pixelWidth, ktxContext.pixelHeight, image->flags, &policy, &requirments );
+			const bool isResize = ( ktxContext.pixelWidth != requirments.scaledWidth || ktxContext.pixelHeight != requirments.scaledHeight );
 
-			for(size_t mipLevel = 0; mipLevel < __R_GetKTXNumberMips(&ktxContext) && mipLevel < requirments.mipLevels; mipLevel++) {
-				struct image_buffer_s *active = R_NextPogoBuffer( &pogo );
-				__R_KTXFillBuffer( &ktxContext, active, 0, 0, mipLevel);
+			// we have to transform the image so we have to unpack/resize the image
+			if( isResize || requirments.compressionSupport == 0 ) {
+				R_KTXFillBuffer( &ktxContext, R_ImagePogoCurrent(&pogo), 0, 0, 0 );
+				if(R_FormatIsCompressed(R_ImagePogoCurrent(&pogo)->layout.format) ) {
+					R_Buf_UncompressImage_ETC1_RGB8(R_ImagePogoCurrent(&pogo), R_ImagePogoNext(&pogo), 4);
+					R_ImagePogoIncrement(&pogo);
+				}
+				if(isResize) {
+					R_Buf_ResizeImage(R_ImagePogoCurrent(&pogo), 
+												requirments.scaledWidth, requirments.scaledHeight, R_ImagePogoNext(&pogo));
+					R_ImagePogoIncrement(&pogo);
+				}
+				if( ( image->flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) ) > 0 ) {
+					R_Buf_FlipTexture( R_ImagePogoCurrent(&pogo), R_ImagePogoNext(&pogo), 
+											(flags & IT_FLIPX) > 0, 
+											(flags & IT_FLIPY) > 0, 
+											(flags & IT_FLIPDIAGONAL) > 0);
+					R_ImagePogoIncrement(&pogo);
+				}
+				R_BindImage( image );
+				for( size_t mipLevel = 0; mipLevel < requirments.mipLevels; mipLevel++ ) {
+					const struct image_upload_s upload = { .buffer = R_ImagePogoCurrent(&pogo), .packAlignment = 4, .mipOffset = mipLevel };
+					__R_SubmitImage( thread_id, image, &upload );
+			  	R_Buf_MipMapQuarterInPlace(R_ImagePogoCurrent(&pogo));
+				}
+			} else {
+				R_BindImage( image );
+				for(size_t mipLevel = 0; mipLevel < R_KTXGetNumberMips(&ktxContext) && mipLevel < requirments.mipLevels; mipLevel++) {
+					R_KTXFillBuffer( &ktxContext, R_ImagePogoCurrent(&pogo), 0, 0, mipLevel);
+					const struct image_upload_s upload = { .buffer = R_ImagePogoCurrent(&pogo), .packAlignment = 4, .mipOffset = mipLevel };
+					__R_SubmitImage( thread_id, image, &upload );
+				}
 			}
+			R_FreeFile(buffer);
+			return true;
 		}
 	}
 

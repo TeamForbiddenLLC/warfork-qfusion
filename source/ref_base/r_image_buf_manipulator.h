@@ -9,8 +9,9 @@ void R_Buf_ResizeImage( const struct image_buffer_s *src, uint16_t scaledWidth, 
 void R_Buf_FlipTexture( struct image_buffer_s *src, struct image_buffer_s *dest, bool flipx, bool flipy, bool flipdiagonal );
 void R_Buf_SwapEndianess( struct image_buffer_s *target );
 
-void R_Buf_MipMapQuarterInPlace(struct image_buffer_s *src);
 void R_Buf_MipMapQuarterInPlaceU8(struct image_buffer_s *src);
+void R_Buf_MipMapQuarterInPlace_Fallback( struct image_buffer_s *src );
+void R_Buf_MipMapQuarterInPlace(struct image_buffer_s *src);
 
-void R_Buf_UncompressImage_ETC1(const struct image_buffer_s *src, struct image_buffer_s *dest);
+void R_Buf_UncompressImage_ETC1_RGB8(const struct image_buffer_s *src, struct image_buffer_s *dest, uint16_t rowAlignment);
 #endif

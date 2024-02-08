@@ -97,7 +97,7 @@ void R_EncodeLogicalBlockF( uint8_t *block, enum texture_format_e fmt, float *in
 	}
 }
 
-void R_ETC1DecodeBlock_RGB(uint8_t* block, uint8_t* colors) {
+void R_ETC1DecodeBlock_RGB8(uint8_t* block, uint8_t* colors) {
 
   // defined in table: https://registry.khronos.org/OpenGL/extensions/OES/OES_compressed_ETC1_RGB8_texture.txt
   // BCF -- Base Color Flag
@@ -125,7 +125,7 @@ void R_ETC1DecodeBlock_RGB(uint8_t* block, uint8_t* colors) {
   #define BCF_CW2(value) ((value >> 5) & 7) 
 
   // sub pixel colors
-  static const int q_etc1_modifierTable[] =
+  static const int ETC1_ModifierTable[] =
   {
 	  2, 8, -2, -8,
 	  5, 17, -5, -17,
@@ -136,7 +136,7 @@ void R_ETC1DecodeBlock_RGB(uint8_t* block, uint8_t* colors) {
 	  33, 106, -33, -106,
 	  47, 183, -47, -183
   };
-  static const int etc1Lookup[] = { 0, 1, 2, 3, -4, -3, -2, -1 };
+  static const int ETC1_Lookup[] = { 0, 1, 2, 3, -4, -3, -2, -1 };
 
 	const uint64_t baseColorsAndFlags = ( block[0] << 24 ) | ( block[1] << 16 ) | ( block[2] << 8 ) | block[3];
 	const uint64_t pixels = ( block[4] << 24 ) | ( block[5] << 16 ) | ( block[6] << 8 ) | block[7];
@@ -146,15 +146,15 @@ void R_ETC1DecodeBlock_RGB(uint8_t* block, uint8_t* colors) {
     // copy the top 3 bits to the bottom order bits
     // for the second half we use the etc1lookup to look up the intensity
     r1 = (BCF_C1_R1_DIFF(baseColorsAndFlags) << 3) | (BCF_C1_R1_DIFF(baseColorsAndFlags) >> 2);
-    const int r2_ = (BCF_C1_R1_DIFF(baseColorsAndFlags) + etc1Lookup[BCF_C2_DR2_DIFF(baseColorsAndFlags)]) & 0x1F;
+    const int r2_ = (BCF_C1_R1_DIFF(baseColorsAndFlags) + ETC1_Lookup[BCF_C2_DR2_DIFF(baseColorsAndFlags)]) & 0x1F;
     r2 = (r2_ << 3) | (r2_ >> 2);
 
     g1 = (BCF_C1_G1_DIFF(baseColorsAndFlags) << 3) | (BCF_C1_G1_DIFF(baseColorsAndFlags) >> 2); 
-    const int g2_ = (BCF_C1_G1_DIFF(baseColorsAndFlags) + etc1Lookup[BCF_C2_DG2_DIFF(baseColorsAndFlags)]) & 0x1F;
+    const int g2_ = (BCF_C1_G1_DIFF(baseColorsAndFlags) + ETC1_Lookup[BCF_C2_DG2_DIFF(baseColorsAndFlags)]) & 0x1F;
     g2 = (g2_ << 3) | (g2_ >> 2);
     
     b1 = (BCF_C1_B1_DIFF(baseColorsAndFlags) << 3) | (BCF_C1_B1_DIFF(baseColorsAndFlags) >> 2); 
-    const int b2_ = (BCF_C1_B1_DIFF(baseColorsAndFlags) + etc1Lookup[BCF_C2_DB2_DIFF(baseColorsAndFlags)]) & 0x1F;
+    const int b2_ = (BCF_C1_B1_DIFF(baseColorsAndFlags) + ETC1_Lookup[BCF_C2_DB2_DIFF(baseColorsAndFlags)]) & 0x1F;
     b2 = (b2_ << 3) | (b2_ >> 2); 
 	} else {
 	  // indvidual mode
@@ -173,7 +173,7 @@ void R_ETC1DecodeBlock_RGB(uint8_t* block, uint8_t* colors) {
 		const uint32_t x = ( BCF_FLIP_SET( baseColorsAndFlags ) ? ( index >> 1 ) : ( index >> 2 ) ); 
 		const uint32_t y = ( BCF_FLIP_SET( baseColorsAndFlags ) ? ( index & 1 ) : ( index & 3 ) );
 		const uint32_t k = y + ( x * 4 );
-		const uint32_t delta = (q_etc1_modifierTable + (BCF_CW1(baseColorsAndFlags) << 2))[( ( pixels >> k ) & 1 ) | ( ( pixels >> ( k + 15 ) ) & 2 )];
+		const uint32_t delta = (ETC1_ModifierTable + (BCF_CW1(baseColorsAndFlags) << 2))[( ( pixels >> k ) & 1 ) | ( ( pixels >> ( k + 15 ) ) & 2 )];
 		
 		colors[( ( y * 4 * CHANNEL_COUNT ) ) + ( x * CHANNEL_COUNT + 0 )] = bound( 0, r1 + delta, 255 );
 		colors[( ( y * 4 * CHANNEL_COUNT ) ) + ( x * CHANNEL_COUNT + 1 )] = bound( 0, g1 + delta, 255 );
@@ -184,7 +184,7 @@ void R_ETC1DecodeBlock_RGB(uint8_t* block, uint8_t* colors) {
 		const uint32_t x = ( BCF_FLIP_SET( baseColorsAndFlags ) ? ( index >> 1 ) : ( index >> 2 ) + 2 );
 		const uint32_t y = ( BCF_FLIP_SET( baseColorsAndFlags ) ? ( index & 1 ) + 2 : ( index & 3 ) );
 		const uint32_t k = y + ( x * 4 );
-		const uint32_t delta = (q_etc1_modifierTable + (BCF_CW2(baseColorsAndFlags) << 2))[( ( pixels >> k ) & 1 ) | ( ( pixels >> ( k + 15 ) ) & 2 )];
+		const uint32_t delta = (ETC1_ModifierTable + (BCF_CW2(baseColorsAndFlags) << 2))[( ( pixels >> k ) & 1 ) | ( ( pixels >> ( k + 15 ) ) & 2 )];
 
 		colors[( ( y * 4 * CHANNEL_COUNT ) ) + ( x * CHANNEL_COUNT + 0 )] = bound( 0, r2 + delta, 255 );
 		colors[( ( y * 4 * CHANNEL_COUNT ) ) + ( x * CHANNEL_COUNT + 1 )] = bound( 0, g2 + delta, 255 );

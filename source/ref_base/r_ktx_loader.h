@@ -1,18 +1,20 @@
+#ifndef R_KTX_LOADER_H
+#define R_KTX_LOADER_H
+
 #include "../gameshared/q_arch.h"
+#include "r_image_buf.h"
 #include "r_texture_format.h"
 
 struct ktx_image_s {
-	// updates internal data for consistency 
-	// - swaps endianness for platform
-	bool update;
-	
-	uint16_t width;
-	uint16_t height;
-	uint32_t rowPitch; 
+	struct image_buffer_layout_s layout;
+	size_t offset; // offset into data
+};
 
-	// this is the start of the data
-	size_t byteSize;
-	size_t byteOffset; // ktx_context_data_s::data + byteOffset
+enum ktx_context_result_e {
+  KTX_ERR_NONE = 0,
+  KTX_ERR_INVALID_IDENTIFIER = -1,
+  KTX_ERR_UNHANDLED_TYPE = -2,
+  KTX_ERR_TRUNCATED = -3,
 };
 
 struct ktx_context_s {
@@ -30,8 +32,16 @@ struct ktx_context_s {
 	int numberOfMipmapLevels;
 	int bytesOfKeyValueData;
 
-	enum texture_format_e textureFormat; 
-	uint8_t* data;
-	struct ktx_image_s* dataContext;
+  uint8_t* pixel;
+	struct ktx_image_s* images;
 };
 
+enum ktx_context_result_e R_InitKTXContext( uint8_t *memory, size_t size, struct ktx_context_s *cntx );
+uint16_t R_KTXGetNumberMips( const struct ktx_context_s *cntx );
+uint16_t R_KTXGetNumberFaces( const struct ktx_context_s *cntx );
+uint16_t R_KTXGetNumberArrayElements( const struct ktx_context_s *cntx );
+//bool R_KTXIsCompressedFormat( const struct ktx_context_s *cntx );
+void R_KTXFillBuffer( const struct ktx_context_s *cntx, struct image_buffer_s *image, uint32_t faceIndex, uint32_t arrOffset, uint16_t mipLevel );
+struct ktx_image_s* R_KTXGetImage(const struct ktx_context_s *cntx, uint32_t mipLevel, uint32_t faceIndex, uint32_t arrayOffset );
+
+#endif
