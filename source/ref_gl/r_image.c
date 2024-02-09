@@ -21,6 +21,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_imagelib.h"
 #include "../qalgo/hash.h"
 
+#include "../gameshared/q_sds.h"
+
 #define	MAX_GLIMAGES	    8192
 #define IMAGES_HASH_SIZE    64
 
@@ -1986,87 +1988,75 @@ void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic )
 }
 
 /*
-* R_FindImage
 * 
 * Finds and loads the given image. IT_SYNC images are loaded synchronously.
 * For synchronous missing images, NULL is returned.
 */
 image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmipsize, int tags )
 {
-	int i, lastDot, lastSlash, searchFlags;
-	unsigned int len, key;
-	image_t	*image, *hnode;
-	char *pathname;
-	uint8_t *empty_data[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
-	bool loaded;
+	assert(name);
+	assert(name[0]);
 
-	if( !name || !name[0] )
-		return NULL; //	ri.Com_Error (ERR_DROP, "R_FindImage: NULL name");
-
-	ENSUREBUFSIZE( imagePathBuf, strlen( name ) + (suffix ? strlen( suffix ) : 0) + 5 );
-	pathname = r_imagePathBuf;
-
-	lastDot = -1;
-	lastSlash = -1;
-	for( i = ( name[0] == '/' || name[0] == '\\' ), len = 0; name[i]; i++ )
+	const size_t reserveSize = strlen( name ) + ( suffix ? strlen( suffix ) : 0 ) + 15;
+	sds resolvedPath = sdsnewlen( 0, reserveSize );
+	sdsclear( resolvedPath );
 	{
-		if( name[i] == '.' )
-			lastDot = len;
-		if( name[i] == '\\' )
-			pathname[len] = '/';
-		else
-			pathname[len] = tolower( name[i] );
-		if( pathname[len] == '/' )
-			lastSlash = len;
-		len++;
-	}
-
-	if( len < 5 )
-		return NULL;
-
+		size_t lastDot = -1;
+		size_t lastSlash = -1;
+		for( size_t i = ( name[0] == '/' || name[0] == '\\' ); name[i]; i++ ) {
+			const char c = name[i];
+			if( c == '\\' ) {
+				resolvedPath = sdscat( resolvedPath, "/" );
+			} else {
+				resolvedPath = sdscatfmt( resolvedPath, "%c", tolower( c ) );
+			}
+			switch( c ) {
+				case '.':
+					lastDot = i;
+					break;
+				case '/':
+					lastSlash = i;
+					break;
+			}
+		}
 	// don't confuse paths such as /ui/xyz.cache/123 with file extensions
-	if( lastDot < lastSlash ) {
-		lastDot = -1;
+		if( lastDot >= lastSlash ) {
+			// truncate string omitting the extension
+			sdssubstr( resolvedPath, 0, lastDot );
+		}
 	}
-
-	if( lastDot != -1 )
-		len = lastDot;
-
-	if( suffix )
-	{
-		for( i = 0; suffix[i]; i++ )
-			pathname[len++] = tolower( suffix[i] );
+	if( suffix ) {
+		for( size_t i = 0; suffix[i]; i++ ) {
+			resolvedPath = sdscatfmt( resolvedPath, "%c", tolower( suffix[i] ) );
 	}
+	}
+	const uint32_t basePathLen = sdslen(resolvedPath);
+	sdssubstr(resolvedPath, 0, basePathLen);
 
-	pathname[len] = 0;
-
-	// look for it
-	key = COM_SuperFastHash( ( const uint8_t *)pathname, len, len ) % IMAGES_HASH_SIZE;
-	hnode = &images_hash_headnode[key];
-	searchFlags = flags & ~IT_LOADFLAGS;
+	image_t	*image;
+	const uint32_t key = COM_SuperFastHash( (uint8_t *)resolvedPath, strlen(resolvedPath), strlen(resolvedPath) ) % IMAGES_HASH_SIZE;
+	const image_t* hnode = &images_hash_headnode[key];
+	const int searchFlags = flags & ~IT_LOADFLAGS;
 	for( image = hnode->prev; image != hnode; image = image->prev )
 	{
 		if( ( ( image->flags & ~IT_LOADFLAGS ) == searchFlags ) &&
-			!strcmp( image->name, pathname ) && ( image->minmipsize == minmipsize ) ) {
+			!strcmp( image->name, resolvedPath) && ( image->minmipsize == minmipsize ) ) {
 			R_TouchImage( image, tags );
-			return image;
+			goto done;
 		}
 	}
+	sdssubstr(resolvedPath, 0, basePathLen);
 
-	pathname[len] = 0;
-
-	//
-	// load the pic from disk
-	//
-	image = R_LoadImage( pathname, empty_data, 1, 1, flags, minmipsize, tags, 1 );
+	uint8_t *empty_data[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
+	image = R_LoadImage( resolvedPath, empty_data, 1, 1, flags, minmipsize, tags, 1 );
 
 	if( !( image->flags & IT_SYNC ) ) {
 		if( R_LoadAsyncImageFromDisk( image ) ) {
-			return image;
+			goto done;
 		}
 	}
 
-	loaded = R_LoadImageFromDisk( QGL_CONTEXT_MAIN, image );
+	const bool loaded = R_LoadImageFromDisk( QGL_CONTEXT_MAIN, image );
 	R_UnbindImage( image );
 
 	if( !loaded ) {
@@ -2080,21 +2070,13 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 		}
 		image->loaded = true;
 	}
+done:
+	sdsfree(resolvedPath);
 
 	return image;
 }
 
-/*
-==============================================================================
 
-SCREEN SHOTS
-
-==============================================================================
-*/
-
-/*
-* R_ScreenShot
-*/
 void R_ScreenShot( const char *filename, int x, int y, int width, int height,
 				   bool flipx, bool flipy, bool flipdiagonal, bool silent ) {
 	size_t size, buf_size;
