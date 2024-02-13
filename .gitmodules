@@ -4,3 +4,6 @@
 [submodule "source/vcpkg"]
 	path = source/vcpkg
 	url = https://github.com/microsoft/vcpkg.git
+[submodule "source/glslang"]
+	path = source/glslang
+	url = git@github.com:KhronosGroup/glslang.git
