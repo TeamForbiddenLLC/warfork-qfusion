@@ -1904,7 +1904,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 								 .depth = 1,
 								 .usageMask = __R_NRITextureUsageBits( flags ),
 								 .arraySize = ( flags & IT_CUBEMAP ) ? 6 : 1,
-								 .format = R_ToNRIFormat( destFormat ),
+								 .format = R_NRIFormat( destFormat ),
 								 .sampleNum = 1,
 								 .type = NriTextureType_TEXTURE_2D,
 								 .mipNum = mipSize };
@@ -2328,7 +2328,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 								   .height = uploads[0].height,
 								   .usageMask = __R_NRITextureUsageBits( flags ),
 								   .arraySize = uploadRawImgCount,
-								   .format = R_ToNRIFormat( format ),
+								   .format = R_NRIFormat( format ),
 								   .sampleNum = 1,
 								   .type = NriTextureType_TEXTURE_2D,
 								   .mipNum = mipSize };
