@@ -4,6 +4,8 @@
 #define NRI_STATIC_LIBRARY 1
 #include "NRI.h"
 
+#include "r_texture_format.h"
+
 #include "Extensions/NRIDeviceCreation.h"
 #include "Extensions/NRIHelper.h"
 #include "Extensions/NRIMeshShader.h"
@@ -64,4 +66,6 @@ typedef struct {
 
 bool R_InitNriBackend(const nri_init_desc_t* init, nri_backend_t* backend);
 void R_NRI_CallbackMessage(NriMessage msg, const char* file, uint32_t line, const char* message, void* userArg);
+NriFormat R_NRIFormat(enum texture_format_e format);
+
 #endif
