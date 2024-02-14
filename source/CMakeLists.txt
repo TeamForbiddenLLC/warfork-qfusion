@@ -29,6 +29,7 @@ if (QFUSION_APPLICATION_VERSION_HEADER)
 endif()
 
 option(USE_SDL2 "Build using SDL2" OFF)
+option(BUILD_UNIT_TEST "Build with unit test" OFF)
 option(GAME_MODULES_ONLY "Only build game modules" OFF)
 option(BUILD_STEAMLIB "Include the steamlib module (requires Steamworks SDK)" OFF)
 
@@ -37,6 +38,11 @@ option(BUILD_STEAMLIB "Include the steamlib module (requires Steamworks SDK)" OF
 set(ANGELSCRIPT_DIR ${CMAKE_HOME_DIRECTORY}/../third-party/angelscript/sdk/angelscript)
 set(ANGELSCRIPT_INCLUDE_DIR ${ANGELSCRIPT_DIR}/include/)
 add_subdirectory(${ANGELSCRIPT_DIR}/projects/cmake ${ANGELSCRIPT_DIR}/lib/)
+
+set(UNITY_DIR ${CMAKE_HOME_DIRECTORY}/../third-party/unity)
+set(UNITY_INCLUDE_DIR ${UNITY_DIR}/src/)
+set(UNITY_SRC_DIR ${UNITY_DIR}/src/)
+set(UNITY_SRC_FILES ${UNITY_SRC_DIR}/unity.c)
 
 set(LIBROCKET_DIR ${CMAKE_HOME_DIRECTORY}/../third-party/libRocket)
 set(LIBROCKET_INCLUDE_DIR ${LIBROCKET_DIR}/Include)
@@ -287,6 +293,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     capitalize(QFUSION_CLIENT_NAME)
 endif()
 
+add_subdirectory(ref_base)
 add_subdirectory(angelwrap)
 add_subdirectory(cgame)
 add_subdirectory(game)
