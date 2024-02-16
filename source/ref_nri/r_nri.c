@@ -1,7 +1,6 @@
 #include "r_nri.h"
 #include "../gameshared/q_arch.h"
 #include "Extensions/NRIWrapperVK.h"
-#include "NRIDescs.h"
 #include "r_local.h"
 
 #include "stb_ds.h"
@@ -9,7 +8,6 @@
 #define VK_USE_PLATFORM_XLIB_KHR 1
 #define VK_NO_PROTOTYPES 1
 #include <vulkan/vulkan_core.h>
-#include "vulkan/vulkan.h"
 #include <vulkan/vulkan_xlib.h>
 #include <vulkan/vulkan_wayland.h>
 
@@ -75,7 +73,7 @@ static const char* R_PhysicalDeviceTypeToString(VkPhysicalDeviceType deviceType)
   return "Unknown";
 }
 
-bool R_InitNriBackend(const nri_init_desc_t* init, nri_backend_t* backend) {
+bool R_InitNriBackend(const nri_init_desc_t* init, struct nri_backend_s* backend) {
 
   backend->api = init->api;
   switch(init->api) {
