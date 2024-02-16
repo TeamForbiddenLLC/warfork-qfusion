@@ -540,7 +540,7 @@ void RF_BeginRegistration( void )
 	// sync to the backend thread to ensure it's not using old assets for drawing
 	//RF_AdapterWait( &rrf.adapter );
 	R_BeginRegistration();
-	rrf.adapter.cmdPipe->BeginRegistration( rrf.adapter.cmdPipe );
+	//rrf.adapter.cmdPipe->BeginRegistration( rrf.adapter.cmdPipe );
 	//RF_AdapterWait( &rrf.adapter );
 }
 
@@ -548,8 +548,8 @@ void RF_EndRegistration( void )
 {
 	// sync to the backend thread to ensure it's not using old assets for drawing
 	//RF_AdapterWait( &rrf.adapter );
-	R_EndRegistration();
-	rrf.adapter.cmdPipe->EndRegistration( rrf.adapter.cmdPipe );
+	//R_EndRegistration();
+	//rrf.adapter.cmdPipe->EndRegistration( rrf.adapter.cmdPipe );
 	//RF_AdapterWait( &rrf.adapter );
 	
 	// reset the cache of custom colors, otherwise RF_SetCustomColor might fail to do anything
