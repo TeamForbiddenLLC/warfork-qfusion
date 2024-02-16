@@ -28,7 +28,7 @@ static const uint32_t SizeOfStageBufferByte = 8 * MB_TO_BYTE;
 
 
 typedef struct {
-	NriAccessBits currentAccess;
+	NriAccessStage currentAccess;
 	NriBuffer *target;
 	size_t numBytes;
 	size_t byteOffset;
@@ -44,14 +44,14 @@ typedef struct {
 
 
 typedef struct {
-	NriAccessAndLayout currentAccess;
+	//NriAccessLayoutStage  currentAccess;
+	NriAccessLayoutStage currentAccessAndLayout;
 	NriTexture *target;
 	
 	// https://github.com/microsoft/DirectXTex/wiki/Image
   uint32_t sliceNum;
   uint32_t rowPitch;
   uint32_t slicePitch;
-	NriAccessAndLayout currentAccessAndLayout;
 
 	uint32_t arrayOffset;
 	uint32_t mipOffset;
@@ -63,11 +63,11 @@ typedef struct {
 
 	struct {
 		NriBuffer *backing;
-		size_t byteOffset;
+		uint64_t byteOffset;
 	} internal;
 } texture_upload_desc_t;
 
-void R_InitResourceUpload(nri_backend_t* nri);
+void R_InitResourceUpload(struct nri_backend_s* nri);
 void R_ExitResourceUpload();
 
 // buffer upload

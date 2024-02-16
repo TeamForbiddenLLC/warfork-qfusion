@@ -39,7 +39,7 @@ static const char *NriResultToString[NriResult_MAX_NUM] = { [NriResult_SUCCESS] 
 															[NriResult_DEVICE_LOST] = "DEVICE_LOST",
 															[NriResult_OUT_OF_DATE] = "OUT_OF_DATE" };
 
-typedef struct {
+struct nri_backend_s {
 	NriGraphicsAPI api;
 	NriHelperInterface helperI;
 	NriCoreInterface coreI;
@@ -56,7 +56,7 @@ typedef struct {
   		VkInstance instance;
   	} vk;
   };  
-} nri_backend_t;
+} ;
 
 typedef struct {
 	NriGraphicsAPI api;
@@ -64,7 +64,7 @@ typedef struct {
 	bool enableNriValidation;
 } nri_init_desc_t; 
 
-bool R_InitNriBackend(const nri_init_desc_t* init, nri_backend_t* backend);
+bool R_InitNriBackend(const nri_init_desc_t* init, struct nri_backend_s* backend);
 void R_NRI_CallbackMessage(NriMessage msg, const char* file, uint32_t line, const char* message, void* userArg);
 NriFormat R_NRIFormat(enum texture_format_e format);
 
