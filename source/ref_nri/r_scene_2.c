@@ -156,10 +156,203 @@ void R_AddPolyToScene_2( r_scene_2_t *scene, const poly_t *poly )
 	}
 }
 
+void R_AddLightStyleToScene_2(r_scene_2_t* scene, int style, float r, float g, float b ) {
+	if( style < 0 || style >= MAX_LIGHTSTYLES )
+		ri.Com_Error( ERR_DROP, "R_AddLightStyleToScene: bad light style %i", style );
+
+	lightstyle_t *const ls = &scene->lightStyles[style];
+	ls->rgb[0] = max( 0, r );
+	ls->rgb[1] = max( 0, g );
+	ls->rgb[2] = max( 0, b );
+}
+
 r_scene_2_t *R_CreateScene_2()
 {
 	r_scene_2_t *scene = R_Malloc( sizeof( r_scene_2_t ) );
 	memset( scene, 0, sizeof( r_scene_2_t ) );
 	scene->skmCachePool = R_AllocPool( r_mempool, "SKM Cache" );
 	return scene;
+}
+
+static void R_ComputeShadowmapBounds( void )
+{
+	unsigned int i;
+	vec3_t lightDir;
+	vec4_t lightDiffuse;
+	vec3_t mins, maxs;
+	shadowGroup_t *group;
+
+	for( i = 0; i < rsc.numShadowGroups; i++ ) {
+		group = rsc.shadowGroups + i;
+
+		if( group->projDist <= 1.0f ) {
+			group->bit = 0;
+			continue;
+		}
+
+		// get projection dir from lightgrid
+		R_LightForOrigin( group->origin, lightDir, group->lightAmbient, lightDiffuse, group->projDist, false );
+
+		// prevent light dir from going upwards
+		VectorSet( lightDir, -lightDir[0], -lightDir[1], -fabs( lightDir[2] ) );
+		VectorNormalize2( lightDir, group->lightDir );
+
+		VectorScale( group->lightDir, group->projDist, lightDir );
+		VectorScale( group->lightDir, group->projDist * 2.0f, lightDir );
+		VectorAdd( group->mins, lightDir, mins );
+		VectorAdd( group->maxs, lightDir, maxs );
+
+		AddPointToBounds( group->mins, group->visMins, group->visMaxs );
+		AddPointToBounds( group->maxs, group->visMins, group->visMaxs );
+		AddPointToBounds( mins, group->visMins, group->visMaxs );
+		AddPointToBounds( maxs, group->visMins, group->visMaxs );
+
+		VectorAdd( group->visMins, group->visMaxs, group->visOrigin );
+		VectorScale( group->visOrigin, 0.5, group->visOrigin );
+		VectorSubtract( group->visMins, group->visOrigin, mins );
+		VectorSubtract( group->visMaxs, group->visOrigin, maxs );
+		group->visRadius = RadiusFromBounds( mins, maxs );
+	}
+}
+
+
+void R_RenderScene_2(r_scene_2_t* scene, const refdef_t *fd ) {
+	int fbFlags = 0;
+	int ppFrontBuffer = 0;
+	image_t *ppSource;
+
+	if( r_norefresh->integer )
+		return;
+
+	R_Set2DMode( false );
+
+	RB_SetTime( fd->time );
+
+	if( !( fd->rdflags & RDF_NOWORLDMODEL ) )
+		rsc.refdef = *fd;
+
+	rn.refdef = *fd;
+	if( !rn.refdef.minLight ) {
+		rn.refdef.minLight = 0.1f;
+	}
+
+	fd = &rn.refdef;
+
+	rn.renderFlags = RF_NONE;
+
+	rn.farClip = R_DefaultFarClip();
+	rn.clipFlags = 15;
+	if( rsh.worldModel && !( fd->rdflags & RDF_NOWORLDMODEL ) && rsh.worldBrushModel->globalfog )
+		rn.clipFlags |= 16;
+	rn.meshlist = &r_worldlist;
+	rn.portalmasklist = &r_portalmasklist;
+	rn.shadowBits = 0;
+	rn.dlightBits = 0;
+	rn.shadowGroup = NULL;
+
+	fbFlags = 0;
+	rn.fbColorAttachment = rn.fbDepthAttachment = NULL;
+	
+	if( !( fd->rdflags & RDF_NOWORLDMODEL ) ) {
+		if( r_soft_particles->integer && ( rsh.screenTexture != NULL ) ) {
+			rn.fbColorAttachment = rsh.screenTexture;
+			rn.fbDepthAttachment = rsh.screenDepthTexture;
+			rn.renderFlags |= RF_SOFT_PARTICLES;
+			fbFlags |= 1;
+		}
+
+		if( rsh.screenPPCopies[0] && rsh.screenPPCopies[1] ) {
+			int oldFlags = fbFlags;
+			shader_t *cc = rn.refdef.colorCorrection;
+
+			if( r_fxaa->integer ) {
+				fbFlags |= 2;
+			}
+
+			if( cc && cc->numpasses > 0 && cc->passes[0].images[0] && cc->passes[0].images[0] != rsh.noTexture ) {
+				fbFlags |= 4;
+			}
+
+			if( fbFlags != oldFlags ) {
+				if( !rn.fbColorAttachment ) {
+					rn.fbColorAttachment = rsh.screenPPCopies[0];
+					ppFrontBuffer = 1;
+				}
+			}
+		}
+	}
+
+	ppSource = rn.fbColorAttachment;
+
+	// clip new scissor region to the one currently set
+	Vector4Set( rn.scissor, fd->scissor_x, fd->scissor_y, fd->scissor_width, fd->scissor_height );
+	Vector4Set( rn.viewport, fd->x, fd->y, fd->width, fd->height );
+	VectorCopy( fd->vieworg, rn.pvsOrigin );
+	VectorCopy( fd->vieworg, rn.lodOrigin );
+
+ // R_BindFrameBufferObject( 0 );
+
+  R_ComputeShadowmapBounds();
+
+ // R_RenderView( fd );
+
+ // R_RenderDebugSurface( fd );
+
+ // R_RenderDebugBounds();
+
+ // R_BindFrameBufferObject( 0 );
+
+ // R_Set2DMode( true );
+
+	if( !( fd->rdflags & RDF_NOWORLDMODEL ) ) {
+		ri.Mutex_Lock( rf.speedsMsgLock );
+		R_WriteSpeedsMessage( rf.speedsMsg, sizeof( rf.speedsMsg ) );
+		ri.Mutex_Unlock( rf.speedsMsgLock );
+	}
+
+	// blit and blend framebuffers in proper order
+
+	if( fbFlags == 1 ) {
+		// only blit soft particles directly when we don't have any other post processing
+		// otherwise use the soft particles FBO as the base texture on the next layer
+		// to avoid wasting time on resolves and the fragment shader to blit to a temp texture
+		//R_BlitTextureToScrFbo( fd,
+		//	ppSource, 0,
+		//	GLSL_PROGRAM_TYPE_NONE,
+		//	colorWhite, 0,
+		//	0, NULL );
+	}
+	fbFlags &= ~1;
+
+	// apply FXAA
+	if( fbFlags & 2 ) {
+		image_t *dest;
+
+		fbFlags &= ~2;
+		dest = fbFlags ? rsh.screenPPCopies[ppFrontBuffer] : NULL;
+
+	 // R_BlitTextureToScrFbo( fd,
+	 // 	ppSource, dest ? dest->fbo : 0,
+	 // 	GLSL_PROGRAM_TYPE_FXAA,
+	 // 	colorWhite, 0,
+	 // 	0, NULL );
+
+		ppFrontBuffer ^= 1;
+		ppSource = dest;
+	}
+
+	// apply color correction
+	if( fbFlags & 4 ) {
+		image_t *dest;
+
+		fbFlags &= ~4;
+		dest = fbFlags ? rsh.screenPPCopies[ppFrontBuffer] : NULL;
+
+	 // R_BlitTextureToScrFbo( fd,
+	 // 	ppSource, dest ? dest->fbo : 0,
+	 // 	GLSL_PROGRAM_TYPE_COLORCORRECTION,
+	 // 	colorWhite, 0,
+	 // 	1, &( rn.refdef.colorCorrection->passes[0].images[0] ) );
+	}
+
 }

@@ -17,6 +17,8 @@ typedef struct skmcacheentry_s
 
 typedef struct
 {
+	
+
   mempool_t* skmCachePool;
 	
 	size_t entityIdx;
@@ -62,7 +64,9 @@ void R_ClearScene_2(r_scene_2_t* scene);
 void R_AddEntityToScene_2(r_scene_2_t* scene, const entity_t *ent );
 void R_AddLightToScene_2(r_scene_2_t* scene, const vec3_t org, float intensity, float r, float g, float b );
 void R_AddPolyToScene_2(r_scene_2_t* scene, const poly_t *poly );
-void R_AddLightStyleToScene_2( int style, float r, float g, float b );
+void R_AddLightStyleToScene_2(r_scene_2_t* scene, int style, float r, float g, float b );
+
+void R_RenderScene_2(r_scene_2_t* scene, const refdef_t *fd );
 
 
 #endif

@@ -1917,8 +1917,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
   };
   const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
   assert(allocationNum <= Q_ARRAY_COUNT(image->memory));
-  
-  rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, image->memory );
+  NRI_ABORT_ON_FAILURE(rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, image->memory ));
   uint32_t srcBlockSize = R_FormatBitSizePerBlock( srcFormat ) / 8;
   uint32_t destBlockSize = R_FormatBitSizePerBlock( destFormat ) / 8;
   uint8_t* tmpBuffer = NULL;
@@ -2188,12 +2187,15 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 		resolvedPath = strcat(resolvedPath, suffix);
 	}
 
+
+	size_t uploadRawImgCount = 0;
+
 	// look for it
 	const uint32_t key = COM_SuperFastHash( (const uint8_t *)resolvedPath, strlen(resolvedPath), strlen(resolvedPath) ) % IMAGES_HASH_SIZE;
 	const image_t *hnode = &images_hash_headnode[key];
 	const uint32_t searchFlags = flags & ~IT_LOADFLAGS;
 	for( image_t *it = hnode->prev; it != hnode; it = it->prev ) {
-		if( ( ( it->flags & ~IT_LOADFLAGS ) == searchFlags ) && !strcmp( image->name, resolvedPath ) && ( image->minmipsize == minmipsize ) ) {
+		if( ( ( it->flags & ~IT_LOADFLAGS ) == searchFlags ) && !strcmp( it->name, resolvedPath ) && ( it->minmipsize == minmipsize ) ) {
 			R_TouchImage( it, tags );
 			image = it;
 			goto done;
@@ -2242,7 +2244,6 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 		int height;
 		int flags;
 	} uploads[6] = {};
-	size_t uploadRawImgCount = 0;
 	if( isCubeMap) {
 		static struct cubemapSufAndFlip {
 			char *suf;

@@ -1,8 +1,9 @@
 #include "r_nri.h"
-#include <assert.h>
 #include "stb_ds.h"
 #include "r_resource_upload.h"
 #include "../gameshared/q_math.h"
+
+#include <assert.h>
 
 #define NUMBER_COMMAND_SETS 3 
 
@@ -40,7 +41,7 @@ static resource_command_set_t commandSets[NUMBER_COMMAND_SETS] = {};
 static NriCommandQueue* cmdQueue = NULL;
 static NriFence* uploadFence = NULL;
 
-static nri_backend_t* backend;
+static struct nri_backend_s* backend;
 
 static bool __R_AllocFromStageBuffer(resource_command_set_t *set, size_t reqSize, resource_stage_response_t *res ) {
 	size_t allocSize = ALIGN(reqSize, 4 ); // we round up to multiples of uint32_t
@@ -126,7 +127,7 @@ static void R_UploadEndCommandSet(struct command_set_s* set) {
   syncIndex++;
 }
 
-void R_InitResourceUpload(nri_backend_t* nri)
+void R_InitResourceUpload(struct nri_backend_s* nri)
 {
 	assert(nri);
 	backend = nri;
@@ -165,17 +166,27 @@ void R_ResourceBeginCopyBuffer( buffer_upload_desc_t *action )
 
 void R_ResourceEndCopyBuffer( buffer_upload_desc_t *action )
 {
-	{
-		NriBufferTransitionBarrierDesc bufferBarriers[] = { 
-			{ .buffer = action->internal.backing, 
-				.prevAccess = action->currentAccess, 
-				.nextAccess = NriAccessBits_COPY_DESTINATION } };
-		NriTransitionBarrierDesc transitions = {};
-		transitions.buffers = bufferBarriers;
-		transitions.bufferNum = Q_ARRAY_COUNT( bufferBarriers );
-		backend->coreI.CmdPipelineBarrier( commandSets[activeSet].cmd, &transitions, NULL, NriBarrierDependency_COPY_STAGE );
-	}
-	backend->coreI.CmdCopyBuffer( commandSets[activeSet].cmd, action->target, 0, action->byteOffset, action->internal.backing, 0, action->internal.byteOffset, action->numBytes );
+ // {
+ //   NriBufferTransitionBarrierDesc bufferBarriers[] = { 
+ //   	{ .buffer = action->internal.backing, 
+ //   		.prevAccess = action->currentAccess, 
+ //   		.nextAccess = NriAccessBits_COPY_DESTINATION } };
+ //   NriTransitionBarrierDesc transitions = {};
+ //   transitions.buffers = bufferBarriers;
+ //   transitions.bufferNum = Q_ARRAY_COUNT( bufferBarriers );
+ //   backend->coreI.CmdPipelineBarrier( commandSets[activeSet].cmd, &transitions, NULL, NriBarrierDependency_COPY_STAGE );
+ // }
+	
+  NriBufferBarrierDesc transitionBarriers = {0};
+  transitionBarriers.before = action->currentAccess;
+  transitionBarriers.after.access = NriAccessBits_COPY_DESTINATION; 
+  transitionBarriers.after.stages = NriStageBits_COPY; 
+  transitionBarriers.buffer = action->target;//otextureTransitionBarrierDesc;
+	
+	NriBarrierGroupDesc barrierGroupDesc = {0};
+	barrierGroupDesc.bufferNum = 1;
+	barrierGroupDesc.buffers = &transitionBarriers;
+  backend->coreI.CmdBarrier( commandSets[activeSet].cmd, &barrierGroupDesc);
 }
 
 void R_ResourceBeginCopyTexture( texture_upload_desc_t *desc )
@@ -185,7 +196,7 @@ void R_ResourceBeginCopyTexture( texture_upload_desc_t *desc )
 
 	const uint32_t sliceRowNum = max( desc->slicePitch / desc->rowPitch, 1u );
 	const uint64_t alignedRowPitch = ALIGN( desc->rowPitch, deviceDesc->uploadBufferTextureRowAlignment );
-	const uint64_t alignedSlicePitch = ALIGN( sliceRowNum * alignedRowPitch, deviceDesc->uploadBufferTextureSliceAlignment );
+	const uint64_t alignedSlicePitch =  ALIGN( sliceRowNum * alignedRowPitch, deviceDesc->uploadBufferTextureSliceAlignment );
 	const uint64_t contentSize = alignedSlicePitch * fmax( desc->sliceNum, 1u );
 	
 	desc->alignRowPitch = alignedRowPitch ;
@@ -201,18 +212,24 @@ void R_ResourceBeginCopyTexture( texture_upload_desc_t *desc )
 void R_ResourceEndCopyTexture( texture_upload_desc_t* desc) {
 	const NriTextureDesc* textureDesc = backend->coreI.GetTextureDesc( desc->target);
  
-  NriTextureTransitionBarrierDesc textureTransitionBarrierDesc = {};
-  textureTransitionBarrierDesc.texture = desc->target;
-  textureTransitionBarrierDesc.prevState = desc->currentAccessAndLayout;
-  textureTransitionBarrierDesc.nextState.layout = NriTextureLayout_COPY_DESTINATION; 
-  textureTransitionBarrierDesc.nextState.acessBits = NriAccessBits_COPY_DESTINATION; 
-  textureTransitionBarrierDesc.arraySize = desc->arrayOffset;
-  textureTransitionBarrierDesc.mipNum = desc->mipOffset;
+ // NriTextureTransitionBarrierDesc textureTransitionBarrierDesc = {};
+ // textureTransitionBarrierDesc.texture = desc->target;
+ // textureTransitionBarrierDesc.prevState = desc->currentAccessAndLayout;
+ // textureTransitionBarrierDesc.nextState.layout = NriTextureLayout_COPY_DESTINATION; 
+ // textureTransitionBarrierDesc.nextState.acessBits = NriAccessBits_COPY_DESTINATION; 
+ // textureTransitionBarrierDesc.arraySize = desc->arrayOffset;
+ // textureTransitionBarrierDesc.mipNum = desc->mipOffset;
 
-  NriTransitionBarrierDesc transitionBarriers = {};
-  transitionBarriers.textureNum = 1;
-  transitionBarriers.textures = &textureTransitionBarrierDesc;
-  backend->coreI.CmdPipelineBarrier(commandSets[activeSet].cmd, &transitionBarriers, NULL, NriBarrierDependency_COPY_STAGE);
+  NriTextureBarrierDesc transitionBarriers = {0};
+  transitionBarriers.before = desc->currentAccessAndLayout;
+  transitionBarriers.after.layout = NriLayout_COPY_DESTINATION; 
+  transitionBarriers.after.stages = NriStageBits_COPY; 
+  transitionBarriers.texture = desc->target;//otextureTransitionBarrierDesc;
+
+	NriBarrierGroupDesc barrierGroupDesc = {0};
+	barrierGroupDesc.textureNum = 1;
+	barrierGroupDesc.textures = &transitionBarriers;
+  backend->coreI.CmdBarrier(commandSets[activeSet].cmd, &barrierGroupDesc);//, NULL, NriBarrierDependency_COPY_STAGE);
   
   NriTextureRegionDesc destRegionDesc = { .arrayOffset = desc->arrayOffset, .mipOffset = desc->mipOffset, .width = textureDesc->width, .height = textureDesc->height, .depth = textureDesc->depth };
   NriTextureDataLayoutDesc srcLayoutDesc = {

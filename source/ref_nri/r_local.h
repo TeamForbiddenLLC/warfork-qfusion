@@ -246,7 +246,7 @@ typedef struct
 	shader_t		*whiteShader;
 	shader_t		*emptyFogShader;
 
- 	nri_backend_t nri;
+ 	struct nri_backend_s nri;
  	NriSwapChain* swapchain;
 	NriFence* frameFence; 
 
