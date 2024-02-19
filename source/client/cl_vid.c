@@ -283,6 +283,10 @@ static void *VID_RefModule_MemAllocExt( mempool_t *pool, size_t size, size_t ali
 	return _Mem_AllocExt( pool, size, align, z, MEMPOOL_REFMODULE, 0, filename, fileline );
 }
 
+static void *VID_RefModule_MemAlloc(mempool_t *pool, size_t size, const char *filename, int fileline ) {
+	return _Mem_Alloc( pool, size,MEMPOOL_REFMODULE, 0, filename, fileline );
+}
+
 static void VID_RefModule_MemFree( void *data, const char *filename, int fileline ) {
 	_Mem_Free( data, MEMPOOL_REFMODULE, 0, filename, fileline );
 }
@@ -298,6 +302,18 @@ static void VID_RefModule_MemFreePool( mempool_t **pool, const char *filename, i
 static void VID_RefModule_MemEmptyPool( mempool_t *pool, const char *filename, int fileline ) {
 	_Mem_EmptyPool( pool, MEMPOOL_REFMODULE, 0, filename, fileline );
 }
+
+static struct mem_import_s vid_mem_import = {
+	._Mod_Mem_AllocExt = VID_RefModule_MemAllocExt,
+	._Mod_Mem_Alloc = VID_RefModule_MemAlloc,
+	._Mod_Mem_FreePool = VID_RefModule_MemFreePool,
+	._Mod_Mem_EmptyPool = VID_RefModule_MemEmptyPool,
+	._Mod_AllocPool = VID_RefModule_MemAllocPool, 
+	._Mod_Free = VID_RefModule_MemFree, 
+	._Mem_CopyString = _Mem_CopyString,  
+	._Mem_CheckSentinels = _Mem_CheckSentinels, 
+	.Mem_PoolTotalSize = Mem_PoolTotalSize 
+};
 
 static struct cinematics_s *VID_RefModule_CIN_Open( const char *name, unsigned int start_time, bool *yuv, float *framerate )
 {
@@ -317,6 +333,7 @@ static bool VID_LoadRefresh( const char *name )
 
 	VID_UnloadRefresh();
 
+	import.memImport = &vid_mem_import;
 	import.Com_Error = &Com_Error;
 	import.Com_Printf = &Com_Printf;
 	import.Com_DPrintf = &Com_DPrintf;
@@ -374,14 +391,6 @@ static bool VID_LoadRefresh( const char *name )
 	import.CIN_ReadNextFrameYUV = &CIN_ReadNextFrameYUV;
 	import.CIN_Reset = &CIN_Reset;
 	import.CIN_Close = &CIN_Close;
-
-	import.Mem_AllocPool = &VID_RefModule_MemAllocPool;
-	import.Mem_FreePool = &VID_RefModule_MemFreePool;
-	import.Mem_EmptyPool = &VID_RefModule_MemEmptyPool;
-	import.Mem_AllocExt = &VID_RefModule_MemAllocExt;
-	import.Mem_Free = &VID_RefModule_MemFree;
-	import.Mem_Realloc = &_Mem_Realloc;
-	import.Mem_PoolTotalSize = &Mem_PoolTotalSize;
 
 	import.Thread_Create = QThread_Create;
 	import.Thread_Join = QThread_Join;

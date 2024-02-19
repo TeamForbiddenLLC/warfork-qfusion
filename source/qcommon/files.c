@@ -1778,7 +1778,7 @@ static int _FS_LoadFile( int fhandle, unsigned int len, void **buffer, void *sta
 	if( stack && ( stackSize > len ) )
 		buf = ( uint8_t* )stack;
 	else
-		buf = ( uint8_t* )_Mem_AllocExt( tempMemPool, len + 1, 0, 0, 0, 0, filename, fileline );
+		buf = ( uint8_t* )_Mem_AllocExt( Mem_DefaultTempPool(), len + 1, 0, 0, 0, 0, filename, fileline );
 	buf[len] = 0;
 	*buffer = buf;
 

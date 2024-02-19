@@ -82,7 +82,7 @@ static void Mod_AliasBuildMeshesForFrame0( model_t *mod )
 		size += sizeof( vec4_t );       // s-vectors
 		size *= mesh->numverts;
 
-		mesh->xyzArray = ( vec4_t * )Mod_Malloc( mod, size );
+		mesh->xyzArray = ( vec4_t * )Mod_Mem_AllocExt( mod->mempool, size, 0, 1);
 		mesh->normalsArray = ( vec4_t * )( ( uint8_t * )mesh->xyzArray + mesh->numverts * sizeof( vec4_t ) );
 		mesh->sVectorsArray = ( vec4_t * )( ( uint8_t * )mesh->normalsArray + mesh->numverts * sizeof( vec4_t ) );
 
@@ -173,7 +173,7 @@ void Mod_LoadAliasMD3Model( model_t *mod, model_t *parent, void *buffer, bspForm
 		mod->name, version, MD3_ALIAS_VERSION );
 
 	mod->type = mod_alias;
-	mod->extradata = poutmodel = ( maliasmodel_t * )Mod_Malloc( mod, sizeof( maliasmodel_t ) );
+	mod->extradata = poutmodel = ( maliasmodel_t * )Mod_Mem_AllocExt( mod->mempool, sizeof( maliasmodel_t ), 0, 1 );
 	mod->radius = 0;
 	mod->registrationSequence = rsh.registrationSequence;
 	mod->touch = &Mod_TouchAliasModel;
@@ -208,7 +208,7 @@ void Mod_LoadAliasMD3Model( model_t *mod, model_t *parent, void *buffer, bspForm
 	bufsize = poutmodel->numframes * ( sizeof( maliasframe_t ) + sizeof( maliastag_t ) * poutmodel->numtags ) +
 		poutmodel->nummeshes * sizeof( maliasmesh_t ) + 
 		poutmodel->nummeshes * sizeof( drawSurfaceAlias_t );
-	buf = ( uint8_t * )Mod_Malloc( mod, bufsize );
+	buf = ( uint8_t * )Mod_Mem_AllocExt( mod->mempool, bufsize, 0, 1);
 
 	//
 	// load the frames
@@ -310,7 +310,7 @@ void Mod_LoadAliasMD3Model( model_t *mod, model_t *parent, void *buffer, bspForm
 		bufsize = ALIGN( sizeof( maliasskin_t ) * poutmesh->numskins, sizeof( vec_t ) ) +
 			numverts * ( sizeof( vec2_t ) + sizeof( maliasvertex_t ) * poutmodel->numframes ) +
 			poutmesh->numtris * sizeof( elem_t ) * 3;
-		buf = ( uint8_t * )Mod_Malloc( mod, bufsize );
+		buf = ( uint8_t * )Mod_Mem_AllocExt( mod->mempool, bufsize,0,1);
 
 		//
 		// load the skins

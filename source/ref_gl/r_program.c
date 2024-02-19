@@ -344,9 +344,9 @@ void RP_PrecachePrograms( void )
 					}
 
 					if( binaryLength ) {
-						binary = R_Malloc( binaryLength );
+						binary =  Mod_Mem_Alloc(r_mempool, binaryLength );
 						if( binary != NULL && ri.FS_Read( binary, binaryLength, handleBin ) != (int)binaryLength ) {
-							R_Free( binary );
+							Mod_Mem_Free( binary );
 							binary = NULL;
 							CLOSE_AND_DROP_BINARY_CACHE();
 						}
@@ -376,7 +376,7 @@ void RP_PrecachePrograms( void )
 					program->binaryCachePos = binaryPos;
 				}
 
-				R_Free( binary );
+				Mod_Mem_Free( binary );
 				binary = NULL;
 
 				if( elem ) {
@@ -480,7 +480,7 @@ void RP_StorePrecacheList( void )
 			ri.FS_Write( &binaryFormat, sizeof( binaryFormat ), handleBin );
 			ri.FS_Write( &binaryLength, sizeof( binaryLength ), handleBin );
 			ri.FS_Write( binary, binaryLength, handleBin );
-			R_Free( binary );
+			Mod_Mem_Free( binary );
 		}
 	}
 
@@ -519,9 +519,9 @@ static void RF_DeleteProgram( glsl_program_t *program )
 		qglDeleteProgram( program->object );
 
 	if( program->name )
-		R_Free( program->name );
+		Mod_Mem_Free( program->name );
 	if( program->deformsKey )
-		R_Free( program->deformsKey );
+		Mod_Mem_Free( program->deformsKey );
 
 	hash_next = program->hash_next;
 	memset( program, 0, sizeof( glsl_program_t ) );
@@ -1538,7 +1538,7 @@ static bool RF_LoadShaderFromFile_r( glslParser_t *parser, const char *fileName,
 			COM_SanitizeFilePath( token );
 
 			tempFilenameSize = strlen( fileName ) + 1 + strlen( token ) + 1;
-			tempFilename = R_Malloc( tempFilenameSize );
+			tempFilename =  Mod_Mem_Alloc(r_mempool, tempFilenameSize );
 
 			if( *token != '/' ) {
 				Q_strncpyz( tempFilename, fileName, tempFilenameSize );
@@ -1553,7 +1553,7 @@ static bool RF_LoadShaderFromFile_r( glslParser_t *parser, const char *fileName,
 
 			parser->error = RF_LoadShaderFromFile_r( parser, tempFilename, stackDepth+1, programType, features );
 
-			R_Free( tempFilename );
+			Mod_Mem_Free( tempFilename );
 
 			if( parser->error ) {
 				return true;
@@ -1864,7 +1864,7 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	program->vertexShader = RF_CompileShader( program->object, fullName, "vertex", GL_VERTEX_SHADER_ARB, 
 		shaderStrings, num_init_strings + parser.numStrings );
 	for( i = 0; i < parser.numBuffers; i++ )
-		R_Free( parser.buffers[i] );
+		Mod_Mem_Free( parser.buffers[i] );
 	if( !program->vertexShader )
 	{
 		error = 1;
@@ -1902,7 +1902,7 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	program->fragmentShader = RF_CompileShader( program->object, fullName, "fragment", GL_FRAGMENT_SHADER_ARB, 
 		shaderStrings, num_init_strings + parser.numStrings );
 	for( i = 0; i < parser.numBuffers; i++ )
-		R_Free( parser.buffers[i] );
+		Mod_Mem_Free( parser.buffers[i] );
 	if( !program->fragmentShader )
 	{
 		error = 1;
@@ -2008,7 +2008,7 @@ static void *RP_GetProgramBinary( int elem, int *format, unsigned *length )
 		return NULL;
 	}
 
-	binary = R_Malloc( GLlength );
+	binary =  Mod_Mem_Alloc(r_mempool, GLlength );
 	qglGetProgramBinary( program->object, GLlength, NULL, &GLFormat, binary );
 
 	*format = GLFormat;

@@ -1704,7 +1704,7 @@ char *R_CopyString_( const char *in, const char *filename, int fileline )
 {
 	char *out;
 
-	out = ri.Mem_AllocExt( r_mempool, ( strlen( in ) + 1 ), 0, 1, filename, fileline );
+	out = _Mod_Mem_AllocExt( r_mempool, ( strlen( in ) + 1 ), 0, 1, filename, fileline );
 	strcpy( out, in );
 
 	return out;
@@ -1737,7 +1737,7 @@ int R_LoadFile_( const char *path, int flags, void **buffer, const char *filenam
 		return len;
 	}
 
-	buf = ( uint8_t *)ri.Mem_AllocExt( r_mempool, len + 1, 16, 0, filename, fileline );
+	buf = ( uint8_t *)_Mod_Mem_AllocExt( r_mempool, len + 1, 16, 0, filename, fileline );
 	buf[len] = 0;
 	*buffer = buf;
 
@@ -1752,5 +1752,5 @@ int R_LoadFile_( const char *path, int flags, void **buffer, const char *filenam
 */
 void R_FreeFile_( void *buffer, const char *filename, int fileline )
 {
-	ri.Mem_Free( buffer, filename, fileline );
+	_Mod_Free( buffer, filename, fileline );
 }

@@ -846,8 +846,6 @@ MEMORY MANAGEMENT
 ==============================================================
 */
 
-struct mempool_s;
-typedef struct mempool_s mempool_t;
 
 #define MEMPOOL_TEMPORARY			1
 #define MEMPOOL_GAMEPROGS			2
@@ -864,6 +862,11 @@ void Memory_InitCommands( void );
 void Memory_Shutdown( void );
 void Memory_ShutdownCommands( void );
 
+#include "mod_mem.h"
+
+mempool_t * Mem_DefaultTempPool();
+mempool_t * Mem_DefaultZonePool();
+
 void *_Mem_AllocExt( mempool_t *pool, size_t size, size_t aligment, int z, int musthave, int canthave, const char *filename, int fileline );
 void *_Mem_Alloc( mempool_t *pool, size_t size, int musthave, int canthave, const char *filename, int fileline );
 void *_Mem_Realloc( void *data, size_t size, const char *filename, int fileline );
@@ -872,12 +875,8 @@ mempool_t *_Mem_AllocPool( mempool_t *parent, const char *name, int flags, const
 mempool_t *_Mem_AllocTempPool( const char *name, const char *filename, int fileline );
 void _Mem_FreePool( mempool_t **pool, int musthave, int canthave, const char *filename, int fileline );
 void _Mem_EmptyPool( mempool_t *pool, int musthave, int canthave, const char *filename, int fileline );
-char *_Mem_CopyString( mempool_t *pool, const char *in, const char *filename, int fileline );
-
-void _Mem_CheckSentinels( void *data, const char *filename, int fileline );
 void _Mem_CheckSentinelsGlobal( const char *filename, int fileline );
 
-size_t Mem_PoolTotalSize( mempool_t *pool );
 
 #define Mem_AllocExt( pool, size, z ) _Mem_AllocExt( pool, size, 0, z, 0, 0, __FILE__, __LINE__ )
 #define Mem_Alloc( pool, size ) _Mem_Alloc( pool, size, 0, 0, __FILE__, __LINE__ )
@@ -897,17 +896,77 @@ size_t Mem_PoolTotalSize( mempool_t *pool );
 #define Mem_DebugCheckSentinelsGlobal() _Mem_CheckSentinelsGlobal( __FILE__, __LINE__ )
 #endif
 
-// used for temporary allocations
-extern mempool_t *tempMemPool;
-extern mempool_t *zoneMemPool;
-
-#define Mem_ZoneMallocExt( size, z ) Mem_AllocExt( zoneMemPool, size, z )
-#define Mem_ZoneMalloc( size ) Mem_Alloc( zoneMemPool, size )
+#define Mem_ZoneMallocExt( size, z ) Mem_AllocExt( Mem_DefaultZonePool(), size, z )
+#define Mem_ZoneMalloc( size ) Mem_Alloc( Mem_DefaultZonePool(), size )
 #define Mem_ZoneFree( data ) Mem_Free( data )
 
-#define Mem_TempMallocExt( size, z ) Mem_AllocExt( tempMemPool, size, z )
-#define Mem_TempMalloc( size ) Mem_Alloc( tempMemPool, size )
+#define Mem_TempMallocExt( size, z ) Mem_AllocExt( Mem_DefaultTempPool(), size, z )
+#define Mem_TempMalloc( size ) Mem_Alloc( Mem_DefaultTempPool(), size )
 #define Mem_TempFree( data ) Mem_Free( data )
+
+
+
+// static const struct mem_import_s default_mem_imports_s = {
+//   .Mem_DefaultTempPool = Mem_DefaultTempPool, 
+//   .Mem_DefaultZonePool = Mem_DefaultZonePool,
+
+// 	._Mem_AllocExt = _Mem_AllocExt,
+// 	._Mem_Alloc = _Mem_Alloc,
+// 	._Mem_Realloc = _Mem_Realloc,
+// 	._Mem_Free = _Mem_Free,
+// 	._Mem_AllocPool = _Mem_AllocPool,
+// 	._Mem_AllocTempPool = _Mem_AllocTempPool,
+// 	._Mem_FreePool = _Mem_FreePool,
+// 	._Mem_EmptyPool = _Mem_EmptyPool,
+// 	._Mem_CopyString = _Mem_CopyString,
+
+// 	._Mem_CheckSentinelsGlobal = _Mem_CheckSentinelsGlobal,
+// 	._Mem_CheckSentinels = _Mem_CheckSentinels,
+
+// 	.Mem_PoolTotalSize = Mem_PoolTotalSize
+// };
+
+
+//mempool_t *_Mem_AllocPool( mempool_t *parent, const char *name, int flags, const char *filename, int fileline );
+//mempool_t *_Mem_AllocTempPool( const char *name, const char *filename, int fileline );
+//void _Mem_FreePool( mempool_t **pool, int musthave, int canthave, const char *filename, int fileline );
+//void _Mem_EmptyPool( mempool_t *pool, int musthave, int canthave, const char *filename, int fileline );
+//char *_Mem_CopyString( mempool_t *pool, const char *in, const char *filename, int fileline );
+//
+//void _Mem_CheckSentinels( void *data, const char *filename, int fileline );
+//void _Mem_CheckSentinelsGlobal( const char *filename, int fileline );
+//
+//size_t Mem_PoolTotalSize( mempool_t *pool );
+//
+//#define Mem_AllocExt( pool, size, z ) _Mem_AllocExt( pool, size, 0, z, 0, 0, __FILE__, __LINE__ )
+//#define Mem_Alloc( pool, size ) _Mem_Alloc( pool, size, 0, 0, __FILE__, __LINE__ )
+//#define Mem_Realloc( data, size ) _Mem_Realloc( data, size, __FILE__, __LINE__ )
+//#define Mem_Free( mem ) _Mem_Free( mem, 0, 0, __FILE__, __LINE__ )
+//#define Mem_AllocPool( parent, name ) _Mem_AllocPool( parent, name, 0, __FILE__, __LINE__ )
+//#define Mem_AllocTempPool( name ) _Mem_AllocTempPool( name, __FILE__, __LINE__ )
+//#define Mem_FreePool( pool ) _Mem_FreePool( pool, 0, 0, __FILE__, __LINE__ )
+//#define Mem_EmptyPool( pool ) _Mem_EmptyPool( pool, 0, 0, __FILE__, __LINE__ )
+//#define Mem_CopyString( pool, str ) _Mem_CopyString( pool, str, __FILE__, __LINE__ )
+//
+//#define Mem_CheckSentinels( data ) _Mem_CheckSentinels( data, __FILE__, __LINE__ )
+//#define Mem_CheckSentinelsGlobal() _Mem_CheckSentinelsGlobal( __FILE__, __LINE__ )
+//#ifdef NDEBUG
+//#define Mem_DebugCheckSentinelsGlobal()
+//#else
+//#define Mem_DebugCheckSentinelsGlobal() _Mem_CheckSentinelsGlobal( __FILE__, __LINE__ )
+//#endif
+
+// used for temporary allocations
+//extern mempool_t *tempMemPool;
+//extern mempool_t *zoneMemPool;
+
+//#define Mem_ZoneMallocExt( size, z ) Mem_AllocExt( zoneMemPool, size, z )
+//#define Mem_ZoneMalloc( size ) Mem_Alloc( zoneMemPool, size )
+//#define Mem_ZoneFree( data ) Mem_Free( data )
+//
+//#define Mem_TempMallocExt( size, z ) Mem_AllocExt( tempMemPool, size, z )
+//#define Mem_TempMalloc( size ) Mem_Alloc( tempMemPool, size )
+//#define Mem_TempFree( data ) Mem_Free( data )
 
 void *Q_malloc( size_t size );
 void *Q_realloc( void *buf, size_t newsize );

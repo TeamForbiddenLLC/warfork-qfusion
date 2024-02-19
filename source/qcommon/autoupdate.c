@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+#include "mod_mem.h"
 #include "qcommon.h"
 #include "asyncstream.h"
 
@@ -55,7 +56,7 @@ static void (*au_newfiles_callback)( void );
 * AU_MemAlloc
 */
 static void *_AU_MemAlloc( size_t size, const char *filename, int fileline ) {
-	return _Mem_Alloc( zoneMemPool, size, 0, 0, filename, fileline );
+	return _Mem_Alloc( Mem_DefaultZonePool(), size, 0, 0, filename, fileline );
 }
 
 /*

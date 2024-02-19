@@ -51,9 +51,9 @@ static size_t r_sizeof_imagePathBuf, r_sizeof_imagePathBuf2;
 	if( r_sizeof_ ##buf < need ) \
 	{ \
 		if( r_ ##buf ) \
-			R_Free( r_ ##buf ); \
+			Mod_Mem_Free( r_ ##buf ); \
 		r_sizeof_ ##buf += (((need) & (MAX_QPATH-1))+1) * MAX_QPATH; \
-		r_ ##buf = R_MallocExt( r_imagesPool, r_sizeof_ ##buf, 0, 0 ); \
+		r_ ##buf = Mod_Mem_AllocExt( r_imagesPool, r_sizeof_ ##buf, 0, 0 ); \
 	}
 
 static int gl_filter_min = GL_LINEAR_MIPMAP_NEAREST;
@@ -346,8 +346,8 @@ static uint8_t *_R_PrepareImageBuffer( int ctx, int buffer, size_t size,
 	{
 		r_imageBufSize[ctx][buffer] = size;
 		if( r_imageBuffers[ctx][buffer] )
-			R_Free( r_imageBuffers[ctx][buffer] );
-		r_imageBuffers[ctx][buffer] = R_MallocExt( r_imagesPool, size, 0, 1 );
+			Mod_Mem_Free( r_imageBuffers[ctx][buffer] );
+		r_imageBuffers[ctx][buffer] = Mod_Mem_AllocExt( r_imagesPool, size, 0, 1 );
 	}
 
 	memset( r_imageBuffers[ctx][buffer], 255, size );
@@ -367,7 +367,7 @@ void R_FreeImageBuffers( void )
 		{
 			if( r_imageBuffers[i][j] )
 			{
-				R_Free( r_imageBuffers[i][j] );
+				Mod_Mem_Free( r_imageBuffers[i][j] );
 				r_imageBuffers[i][j] = NULL;
 			}
 			r_imageBufSize[i][j] = 0;
@@ -1682,7 +1682,7 @@ static image_t *R_CreateImage( const char *name, int width, int height, int laye
 		ri.Com_Error( ERR_DROP, "R_LoadImage: r_numImages == MAX_GLIMAGES" );
 	}
 
-	image->name = R_MallocExt( r_imagesPool, name_len + 1, 0, 1 );
+	image->name = Mod_Mem_AllocExt( r_imagesPool, name_len + 1, 0, 1 );
 	strcpy( image->name, name );
 	image->width = width;
 	image->height = height;
@@ -1774,7 +1774,7 @@ static void R_FreeImage( image_t *image )
 
 	R_FreeTextureNum( image );
 
-	R_Free( image->name );
+	Mod_Mem_Free( image->name );
 
 	image->name = NULL;
 	image->texnum = 0;
@@ -1960,9 +1960,9 @@ void R_ScreenShot( const char *filename, int x, int y, int width, int height,
 	buf_size = width * height * 4 + size;
 	if( buf_size > r_screenShotBufferSize ) {
 		if( r_screenShotBuffer ) {
-			R_Free( r_screenShotBuffer );
+			Mod_Mem_Free( r_screenShotBuffer );
 		}
-		r_screenShotBuffer = R_MallocExt( r_imagesPool, buf_size, 0, 1 );
+		r_screenShotBuffer = Mod_Mem_AllocExt( r_imagesPool, buf_size, 0, 1 );
 		r_screenShotBufferSize = buf_size;
 	}
 
@@ -2543,7 +2543,7 @@ void R_InitImages( void )
 	if( r_imagesPool )
 		return;
 
-	r_imagesPool = R_AllocPool( r_mempool, "Images" );
+	r_imagesPool = Mod_Mem_AllocPool( r_mempool, "Images" );
 	r_imagesLock = ri.Mutex_Create();
 
 	unpackAlignment[QGL_CONTEXT_MAIN] = 4;
@@ -2664,13 +2664,13 @@ void R_ShutdownImages( void )
 	R_FreeImageBuffers();
 
 	if( r_imagePathBuf )
-		R_Free( r_imagePathBuf );
+		Mod_Mem_Free( r_imagePathBuf );
 	if( r_imagePathBuf2 )
-		R_Free( r_imagePathBuf2 );
+		Mod_Mem_Free( r_imagePathBuf2 );
 
 	ri.Mutex_Destroy( &r_imagesLock );
 
-	R_FreePool( &r_imagesPool );
+	Mod_Mem_FreePool( &r_imagesPool );
 
 	r_screenShotBuffer = NULL;
 	r_screenShotBufferSize = 0;

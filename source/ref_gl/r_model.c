@@ -134,7 +134,7 @@ static void Mod_CreateVisLeafs( model_t *mod )
 	mbrushmodel_t *loadbmodel = (( mbrushmodel_t * )mod->extradata);
 
 	count = loadbmodel->numleafs;
-	loadbmodel->visleafs = Mod_Malloc( mod, ( count+1 )*sizeof( *loadbmodel->visleafs ) );
+	loadbmodel->visleafs = Mod_Mem_AllocExt( mod->mempool, ( count+1 )*sizeof( *loadbmodel->visleafs ), 16, 1);
 	memset( loadbmodel->visleafs, 0, ( count+1 )*sizeof( *loadbmodel->visleafs ) );
 
 	numVisLeafs = 0;
@@ -361,13 +361,13 @@ static int Mod_CreateSubmodelBufferObjects( model_t *mod, unsigned int modnum, s
 	if( !bm->numfaces )
 		return 0;
 
-	surfmap = ( msurface_t ** )Mod_Malloc( mod, bm->numfaces * sizeof( *surfmap ) );
-	surfaces = ( msurface_t ** )Mod_Malloc( mod, bm->numfaces * sizeof( *surfaces ) );
+	surfmap = ( msurface_t ** )Mod_Mem_AllocExt( mod->mempool, bm->numfaces * sizeof( *surfmap ),16,1 );
+	surfaces = ( msurface_t ** )Mod_Mem_AllocExt( mod->mempool, bm->numfaces * sizeof( *surfaces ),16,1);
 	numSurfaces = 0;
 
 	numTempVBOs = 0;
 	maxTempVBOs = 1024;
-	tempVBOs = ( mesh_vbo_t * )Mod_Malloc( mod, maxTempVBOs * sizeof( *tempVBOs ) );
+	tempVBOs = ( mesh_vbo_t * )Mod_Mem_AllocExt( mod->mempool, maxTempVBOs * sizeof( *tempVBOs ),16,1 );
 	startDrawSurface = loadbmodel->numDrawSurfaces;
 
 	if( !modnum && loadbmodel->pvs )
@@ -383,8 +383,8 @@ static int Mod_CreateSubmodelBufferObjects( model_t *mod, unsigned int modnum, s
 
 		// build visibility data for each face, based on what leafs
 		// this face belongs to (visible from)
-		visdata = ( uint8_t * )Mod_Malloc( mod, rowlongs * 4 * loadbmodel->numsurfaces );
-		areadata = ( uint8_t * )Mod_Malloc( mod, areabytes * loadbmodel->numsurfaces );
+		visdata = ( uint8_t * )Mod_Mem_Alloc( mod->mempool, rowlongs * 4 * loadbmodel->numsurfaces );
+		areadata = ( uint8_t * )Mod_Mem_Alloc( mod->mempool, areabytes * loadbmodel->numsurfaces );
 
 		for( pleaf = loadbmodel->visleafs, leaf = *pleaf; leaf; leaf = *pleaf++ )
 		{
@@ -550,7 +550,7 @@ merge:
 		// create temp VBO to hold pre-batched info
 		if( numTempVBOs == maxTempVBOs ) {
 			maxTempVBOs += 1024;
-			tempVBOs = Mod_Realloc( tempVBOs, maxTempVBOs * sizeof( *tempVBOs ) );
+			tempVBOs = Mod_Mem_Realloc( tempVBOs, maxTempVBOs * sizeof( *tempVBOs ) );
 		}
 
 		vbo = &tempVBOs[numTempVBOs++];
@@ -716,14 +716,14 @@ merge:
 		R_UploadVBOInstancesData( vbo, 0, surf->numInstances, surf->instances );
 	}
 
-	R_Free( tempVBOs );
-	R_Free( surfmap );
-	R_Free( surfaces );
+	Mod_Mem_Free( tempVBOs );
+	Mod_Mem_Free( surfmap );
+	Mod_Mem_Free( surfaces );
 
 	if( visdata )
-		R_Free( visdata );
+		Mod_Mem_Free( visdata );
 	if( areadata )
-		R_Free( areadata );
+		Mod_Mem_Free( areadata );
 
 	return num_vbos;
 }
@@ -747,7 +747,7 @@ void Mod_CreateVertexBufferObjects( model_t *mod )
 
 	// allocate memory for drawsurfs
 	loadbmodel->numDrawSurfaces = 0;
-	loadbmodel->drawSurfaces = Mod_Malloc( mod, sizeof( *loadbmodel->drawSurfaces ) * loadbmodel->numsurfaces );
+	loadbmodel->drawSurfaces = Mod_Mem_AllocExt( mod->mempool, sizeof( *loadbmodel->drawSurfaces ) * loadbmodel->numsurfaces, 16, 1 );
 
 	for( i = 0; i < loadbmodel->numsubmodels; i++ ) {
 		vbos = Mod_CreateSubmodelBufferObjects( mod, i, &size );
@@ -865,7 +865,7 @@ void Mod_Modellist_f( void )
 		if( !mod->name ) {
 			continue;
 		}
-		size = ri.Mem_PoolTotalSize( mod->mempool );
+		size = Mem_PoolTotalSize( mod->mempool );
 		Com_Printf( "%8i : %s\n", size, mod->name );
 		total += size;
 	}
@@ -878,12 +878,12 @@ void Mod_Modellist_f( void )
 */
 void R_InitModels( void )
 {
-	mod_mempool = R_AllocPool( r_mempool, "Models" );
+	mod_mempool = Mod_Mem_AllocPool( r_mempool, "Models" );
 	memset( mod_novis, 0xff, sizeof( mod_novis ) );
 	mod_isworldmodel = false;
 	mod_worldvis = NULL;
 	r_prevworldmodel = NULL;
-	mod_mapConfigs = R_MallocExt( mod_mempool, sizeof( *mod_mapConfigs ) * MAX_MOD_KNOWN, 0, 1 );
+	mod_mapConfigs = Mod_Mem_AllocExt( mod_mempool, sizeof( *mod_mapConfigs ) * MAX_MOD_KNOWN, 0, 1 );
 }
 
 /*
@@ -891,7 +891,7 @@ void R_InitModels( void )
 */
 static void Mod_Free( model_t *model )
 {
-	R_FreePool( &model->mempool );
+	Mod_Mem_FreePool( &model->mempool );
 	memset( model, 0, sizeof( *model ) );
 	model->type = mod_free;
 }
@@ -945,7 +945,7 @@ void R_ShutdownModels( void )
 	mod_numknown = 0;
 	memset( mod_known, 0, sizeof( mod_known ) );
 
-	R_FreePool( &mod_mempool );
+	Mod_Mem_FreePool( &mod_mempool );
 }
 
 /*
@@ -1069,12 +1069,12 @@ model_t *Mod_ForName( const char *name, bool crash )
 
 	// free data we may still have from the previous load attempt for this model slot
 	if( mod->mempool ) {
-		R_FreePool( &mod->mempool );
+		Mod_Mem_FreePool( &mod->mempool );
 	}
 
 	mod->type = mod_bad;
-	mod->mempool = R_AllocPool( mod_mempool, name );
-	mod->name = Mod_Malloc( mod, strlen( name ) + 1 );
+	mod->mempool = Mod_Mem_AllocPool( mod_mempool, name );
+	mod->name = Mod_Mem_Alloc(mod->mempool, strlen( name ) + 1 );
 	strcpy( mod->name, name );
 
 	// return the NULL model
@@ -1133,8 +1133,8 @@ model_t *Mod_ForName( const char *name, bool crash )
 
 		lod->type = mod_bad;
 		lod->lodnum = i+1;
-		lod->mempool = R_AllocPool( mod_mempool, lodname );
-		lod->name = Mod_Malloc( lod, strlen( lodname ) + 1 );
+		lod->mempool = Mod_Mem_AllocPool( mod_mempool, lodname );
+		lod->name = Mod_Mem_Alloc( lod->mempool, strlen( lodname ) + 1 );
 		strcpy( lod->name, lodname );
 
 		mod_numknown++;
@@ -1373,8 +1373,8 @@ void R_GetTransformBufferForMesh( mesh_t *mesh, bool positions, bool normals, bo
 	if( bufSize > r_modelTransformBufSize ) {
 		r_modelTransformBufSize = bufSize;
 		if( r_modelTransformBuf )
-			R_Free( r_modelTransformBuf );
-		r_modelTransformBuf = R_Malloc( bufSize );
+			Mod_Mem_Free( r_modelTransformBuf );
+		r_modelTransformBuf = Mod_Mem_Alloc(r_mempool, bufSize );
 	}
 
 	bufPtr = r_modelTransformBuf;
