@@ -722,9 +722,9 @@ static elem_t *R_VBOElemBuffer( unsigned numElems )
 {
 	if( numElems > r_vbo_numtempelems ) {
 		if( r_vbo_numtempelems )
-			R_Free( r_vbo_tempelems );
+			Mod_Mem_Free( r_vbo_tempelems );
 		r_vbo_numtempelems = numElems;
-		r_vbo_tempelems = ( elem_t * )R_Malloc( sizeof( *r_vbo_tempelems ) * numElems );
+		r_vbo_tempelems = ( elem_t * )Mod_Mem_Alloc(r_mempool, sizeof( *r_vbo_tempelems ) * numElems );
 	}
 
 	return r_vbo_tempelems;
@@ -738,9 +738,9 @@ static void *R_VBOVertBuffer( unsigned numVerts, size_t vertSize )
 	size_t size = numVerts * vertSize;
 	if( size > r_vbo_tempvsoupsize ) {
 		if( r_vbo_tempvsoup )
-			R_Free( r_vbo_tempvsoup );
+			Mod_Mem_Free( r_vbo_tempvsoup );
 		r_vbo_tempvsoupsize = size;
-		r_vbo_tempvsoup = ( float * )R_Malloc( size );
+		r_vbo_tempvsoup = (float *)Mod_Mem_Alloc( r_mempool, size );
 	}
 	return r_vbo_tempvsoup;
 }
@@ -884,7 +884,7 @@ void R_ShutdownVBO( void )
 	}
 
 	if( r_vbo_tempelems ) {
-		R_Free( r_vbo_tempelems );
+		Mod_Mem_Free(r_vbo_tempelems );
 	}
 	r_vbo_numtempelems = 0;
 }

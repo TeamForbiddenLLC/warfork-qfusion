@@ -234,7 +234,7 @@ void RP_PrecachePrograms( void )
 	}
 
 #define CLOSE_AND_DROP_BINARY_CACHE() do { \
-		ri.FS_FCloseFile( handleBin ); \
+		FS_FCloseFile( handleBin ); \
 		handleBin = 0; \
 		r_glslbincache_storemode = FS_WRITE; \
 	} while(0)
@@ -242,18 +242,18 @@ void RP_PrecachePrograms( void )
 	handleBin = 0;
 	if( glConfig.ext.get_program_binary && !isDefaultCache ) {
 		r_glslbincache_storemode = FS_APPEND;
-		if( ri.FS_FOpenFile( GLSL_BINARY_CACHE_FILE_NAME, &handleBin, FS_READ|FS_CACHE ) != -1 ) {
+		if( FS_FOpenFile( GLSL_BINARY_CACHE_FILE_NAME, &handleBin, FS_READ|FS_CACHE ) != -1 ) {
 			unsigned hash;
 
 			version = 0;
 			hash = 0;
 
-			ri.FS_Seek( handleBin, 0, FS_SEEK_END );
-			binaryCacheSize = ri.FS_Tell( handleBin );
-			ri.FS_Seek( handleBin, 0, FS_SEEK_SET );
+			FS_Seek( handleBin, 0, FS_SEEK_END );
+			binaryCacheSize = FS_Tell( handleBin );
+			FS_Seek( handleBin, 0, FS_SEEK_SET );
 
-			ri.FS_Read( &version, sizeof( version ), handleBin );
-			ri.FS_Read( &hash, sizeof( hash ), handleBin );
+			FS_Read( &version, sizeof( version ), handleBin );
+			FS_Read( &hash, sizeof( hash ), handleBin );
 			
 			if( binaryCacheSize < 8 || version != GLSL_BITS_VERSION || hash != glConfig.versionHash ) {
 				CLOSE_AND_DROP_BINARY_CACHE();
@@ -335,18 +335,18 @@ void RP_PrecachePrograms( void )
 				if( binaryPos ) {
 					bool err = false;
 					
-					err = !err && ri.FS_Seek( handleBin, binaryPos, FS_SEEK_SET ) < 0;
-					err = !err && ri.FS_Read( &binaryFormat, sizeof( binaryFormat ), handleBin ) != sizeof( binaryFormat );
-					err = !err && ri.FS_Read( &binaryLength, sizeof( binaryLength ), handleBin ) != sizeof( binaryLength );
+					err = !err && FS_Seek( handleBin, binaryPos, FS_SEEK_SET ) < 0;
+					err = !err && FS_Read( &binaryFormat, sizeof( binaryFormat ), handleBin ) != sizeof( binaryFormat );
+					err = !err && FS_Read( &binaryLength, sizeof( binaryLength ), handleBin ) != sizeof( binaryLength );
 					if( err || binaryLength >= binaryCacheSize ) {
 						binaryLength = 0;
 						CLOSE_AND_DROP_BINARY_CACHE();
 					}
 
 					if( binaryLength ) {
-						binary = R_Malloc( binaryLength );
-						if( binary != NULL && ri.FS_Read( binary, binaryLength, handleBin ) != (int)binaryLength ) {
-							R_Free( binary );
+						binary =  Mod_Mem_Alloc(r_mempool, binaryLength );
+						if( binary != NULL && FS_Read( binary, binaryLength, handleBin ) != (int)binaryLength ) {
+							Mod_Mem_Free( binary );
 							binary = NULL;
 							CLOSE_AND_DROP_BINARY_CACHE();
 						}
@@ -376,7 +376,7 @@ void RP_PrecachePrograms( void )
 					program->binaryCachePos = binaryPos;
 				}
 
-				R_Free( binary );
+				Mod_Mem_Free( binary );
 				binary = NULL;
 
 				if( elem ) {
@@ -396,7 +396,7 @@ void RP_PrecachePrograms( void )
 	R_FreeFile( buffer );
 
 	if( handleBin ) {
-		ri.FS_FCloseFile( handleBin );
+		FS_FCloseFile( handleBin );
 	}
 }
 
@@ -419,30 +419,30 @@ void RP_StorePrecacheList( void )
 	}
 
 	handle = 0;
-	if( ri.FS_FOpenFile( GLSL_CACHE_FILE_NAME, &handle, FS_WRITE|FS_CACHE ) == -1 ) {
+	if( FS_FOpenFile( GLSL_CACHE_FILE_NAME, &handle, FS_WRITE|FS_CACHE ) == -1 ) {
 		Com_Printf( S_COLOR_YELLOW "Could not open %s for writing.\n", GLSL_CACHE_FILE_NAME );
 		return;
 	}
 
 	handleBin = 0;
 	if( glConfig.ext.get_program_binary ) {
-		if( ri.FS_FOpenFile( GLSL_BINARY_CACHE_FILE_NAME, &handleBin, r_glslbincache_storemode|FS_CACHE ) == -1 ) {
+		if( FS_FOpenFile( GLSL_BINARY_CACHE_FILE_NAME, &handleBin, r_glslbincache_storemode|FS_CACHE ) == -1 ) {
 			Com_Printf( S_COLOR_YELLOW "Could not open %s for writing.\n", GLSL_BINARY_CACHE_FILE_NAME );
 		}
 		else if( r_glslbincache_storemode == FS_WRITE ) {
 			dummy = 0;
-			ri.FS_Write( &dummy, sizeof( dummy ), handleBin );
+			FS_Write( &dummy, sizeof( dummy ), handleBin );
 
 			dummy = glConfig.versionHash;
-			ri.FS_Write( &dummy, sizeof( dummy ), handleBin );
+			FS_Write( &dummy, sizeof( dummy ), handleBin );
 		}
 		else {
-			ri.FS_Seek( handleBin, 0, FS_SEEK_END );
+			FS_Seek( handleBin, 0, FS_SEEK_END );
 		}
 	}
 
-	ri.FS_Printf( handle, "%s\n", glConfig.applicationName );
-	ri.FS_Printf( handle, "%i\n", GLSL_BITS_VERSION );
+	FS_Printf( handle, "%s\n", glConfig.applicationName );
+	FS_Printf( handle, "%i\n", GLSL_BITS_VERSION );
 
 	for( i = 0, program = r_glslprograms; i < r_numglslprograms; i++, program++ ) {
 		void *binary = NULL;
@@ -465,32 +465,32 @@ void RP_StorePrecacheList( void )
 			else {		
 				binary = RP_GetProgramBinary( i + 1, &binaryFormat, &binaryLength );
 				if( binary ) {
-					binaryPos = ri.FS_Tell( handleBin );
+					binaryPos = FS_Tell( handleBin );
 				}
 			}
 		}
 
-		ri.FS_Printf( handle, "%i %i %i \"%s\" %u\n", 
+		FS_Printf( handle, "%i %i %i \"%s\" %u\n", 
 			program->type, 
 			(int)(program->features & ULONG_MAX), 
 			(int)((program->features>>32) & ULONG_MAX), 
 			program->name, binaryPos );
 		
 		if( binary ) {
-			ri.FS_Write( &binaryFormat, sizeof( binaryFormat ), handleBin );
-			ri.FS_Write( &binaryLength, sizeof( binaryLength ), handleBin );
-			ri.FS_Write( binary, binaryLength, handleBin );
-			R_Free( binary );
+			FS_Write( &binaryFormat, sizeof( binaryFormat ), handleBin );
+			FS_Write( &binaryLength, sizeof( binaryLength ), handleBin );
+			FS_Write( binary, binaryLength, handleBin );
+			Mod_Mem_Free( binary );
 		}
 	}
 
-	ri.FS_FCloseFile( handle );
-	ri.FS_FCloseFile( handleBin );
+	FS_FCloseFile( handle );
+	FS_FCloseFile( handleBin );
 
-	if( handleBin && ri.FS_FOpenFile( GLSL_BINARY_CACHE_FILE_NAME, &handleBin, FS_UPDATE|FS_CACHE ) != -1 ) {
+	if( handleBin && FS_FOpenFile( GLSL_BINARY_CACHE_FILE_NAME, &handleBin, FS_UPDATE|FS_CACHE ) != -1 ) {
 		dummy = GLSL_BITS_VERSION;
-		ri.FS_Write( &dummy, sizeof( dummy ), handleBin );
-		ri.FS_FCloseFile( handleBin );
+		FS_Write( &dummy, sizeof( dummy ), handleBin );
+		FS_FCloseFile( handleBin );
 	}
 }
 
@@ -519,9 +519,9 @@ static void RF_DeleteProgram( glsl_program_t *program )
 		qglDeleteProgram( program->object );
 
 	if( program->name )
-		R_Free( program->name );
+		Mod_Mem_Free( program->name );
 	if( program->deformsKey )
-		R_Free( program->deformsKey );
+		Mod_Mem_Free( program->deformsKey );
 
 	hash_next = program->hash_next;
 	memset( program, 0, sizeof( glsl_program_t ) );
@@ -1538,7 +1538,7 @@ static bool RF_LoadShaderFromFile_r( glslParser_t *parser, const char *fileName,
 			COM_SanitizeFilePath( token );
 
 			tempFilenameSize = strlen( fileName ) + 1 + strlen( token ) + 1;
-			tempFilename = R_Malloc( tempFilenameSize );
+			tempFilename =  Mod_Mem_Alloc(r_mempool, tempFilenameSize );
 
 			if( *token != '/' ) {
 				Q_strncpyz( tempFilename, fileName, tempFilenameSize );
@@ -1553,7 +1553,7 @@ static bool RF_LoadShaderFromFile_r( glslParser_t *parser, const char *fileName,
 
 			parser->error = RF_LoadShaderFromFile_r( parser, tempFilename, stackDepth+1, programType, features );
 
-			R_Free( tempFilename );
+			Mod_Mem_Free( tempFilename );
 
 			if( parser->error ) {
 				return true;
@@ -1864,7 +1864,7 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	program->vertexShader = RF_CompileShader( program->object, fullName, "vertex", GL_VERTEX_SHADER_ARB, 
 		shaderStrings, num_init_strings + parser.numStrings );
 	for( i = 0; i < parser.numBuffers; i++ )
-		R_Free( parser.buffers[i] );
+		Mod_Mem_Free( parser.buffers[i] );
 	if( !program->vertexShader )
 	{
 		error = 1;
@@ -1902,7 +1902,7 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	program->fragmentShader = RF_CompileShader( program->object, fullName, "fragment", GL_FRAGMENT_SHADER_ARB, 
 		shaderStrings, num_init_strings + parser.numStrings );
 	for( i = 0; i < parser.numBuffers; i++ )
-		R_Free( parser.buffers[i] );
+		Mod_Mem_Free( parser.buffers[i] );
 	if( !program->fragmentShader )
 	{
 		error = 1;
@@ -2008,7 +2008,7 @@ static void *RP_GetProgramBinary( int elem, int *format, unsigned *length )
 		return NULL;
 	}
 
-	binary = R_Malloc( GLlength );
+	binary =  Mod_Mem_Alloc(r_mempool, GLlength );
 	qglGetProgramBinary( program->object, GLlength, NULL, &GLFormat, binary );
 
 	*format = GLFormat;

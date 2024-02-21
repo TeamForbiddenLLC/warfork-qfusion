@@ -484,9 +484,9 @@ void R_AddDebugBounds( const vec3_t mins, const vec3_t maxs, const byte_vec4_t c
 	{
 		r_debug_bounds_current_size = ALIGN( r_num_debug_bounds, 256 );
 		if( r_debug_bounds )
-			r_debug_bounds = R_Realloc( r_debug_bounds, r_debug_bounds_current_size * sizeof( r_debug_bound_t ) );
+			r_debug_bounds = Mod_Mem_Realloc( r_debug_bounds, r_debug_bounds_current_size * sizeof( r_debug_bound_t ) );
 		else
-			r_debug_bounds = R_Malloc( r_debug_bounds_current_size * sizeof( r_debug_bound_t ) );
+			r_debug_bounds =  Mod_Mem_Alloc(r_mempool, r_debug_bounds_current_size * sizeof( r_debug_bound_t ) );
 	}
 
 	VectorCopy( mins, r_debug_bounds[i].mins );

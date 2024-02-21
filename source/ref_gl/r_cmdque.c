@@ -640,11 +640,11 @@ ref_cmdbuf_t *RF_CreateCmdBuf( bool sync )
 {
 	ref_cmdbuf_t *cmdbuf;
 
-	cmdbuf = R_Malloc( sizeof( *cmdbuf ) );
+	cmdbuf =  Mod_Mem_Alloc(r_mempool, sizeof( *cmdbuf ) );
 	if( sync ) {
 		cmdbuf->sync = true;
 	} else {
-		cmdbuf->buf = R_Malloc( REF_CMD_BUF_SIZE );
+		cmdbuf->buf =  Mod_Mem_Alloc(r_mempool, REF_CMD_BUF_SIZE );
 		cmdbuf->buf_size = REF_CMD_BUF_SIZE;
 	}
 
@@ -681,8 +681,8 @@ void RF_DestroyCmdBuf( ref_cmdbuf_t **pcmdbuf )
 	cmdbuf = *pcmdbuf;
 	*pcmdbuf = NULL;
 
-	R_Free( cmdbuf->buf );
-	R_Free( cmdbuf );
+	Mod_Mem_Free( cmdbuf->buf );
+	Mod_Mem_Free( cmdbuf );
 }
 
 /*
@@ -1113,7 +1113,7 @@ ref_cmdpipe_t *RF_CreateCmdPipe( bool sync )
 {
 	ref_cmdpipe_t *cmdpipe;
 
-	cmdpipe = R_Malloc( sizeof( *cmdpipe ) );
+	cmdpipe =  Mod_Mem_Alloc(r_mempool, sizeof( *cmdpipe ) );
 	if( sync ) {
 		cmdpipe->sync = sync;
 	} else {
@@ -1154,5 +1154,5 @@ void RF_DestroyCmdPipe( ref_cmdpipe_t **pcmdpipe )
 	if( cmdpipe->pipe ) {
 		ri.BufPipe_Destroy( &cmdpipe->pipe );
 	}
-	R_Free( cmdpipe );
+	Mod_Mem_Free( cmdpipe );
 }

@@ -1204,7 +1204,7 @@ static unsigned R_GLVersionHash( const char *vendorString,
 		strlen( versionString ) + strlen( ARCH ) + 1;
 
 	pos = 0;
-	tmp = R_Malloc( tmp_size );
+	tmp = Mod_Mem_Alloc(r_mempool, tmp_size );
 
 	csize = strlen( vendorString );
 	memcpy( tmp + pos, vendorString, csize );
@@ -1225,7 +1225,7 @@ static unsigned R_GLVersionHash( const char *vendorString,
 
 	hash = COM_SuperFastHash( tmp, tmp_size, tmp_size );
 
-	R_Free( tmp );
+	Mod_Mem_Free( tmp );
 
 	return hash;
 }
@@ -1240,7 +1240,7 @@ rserr_t R_Init( const char *applicationName, const char *screenshotPrefix, int s
 {
 	qgl_initerr_t initerr;
 
-	r_mempool = R_AllocPool( NULL, "Rendering Frontend" );
+	r_mempool = Mod_Mem_AllocPool( NULL, "Rendering Frontend" );
 	r_verbose = verbose;
 	r_postinit = true;
 
@@ -1540,5 +1540,5 @@ void R_Shutdown( bool verbose )
 	// shutdown our QGL subsystem
 	QGL_Shutdown();
 
-	R_FreePool( &r_mempool );
+	Mod_Mem_FreePool( &r_mempool );
 }

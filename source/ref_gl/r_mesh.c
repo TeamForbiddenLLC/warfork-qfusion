@@ -81,10 +81,10 @@ static void R_ReserveDrawSurfaces( drawList_t *list, int minMeshes )
 	oldSize = maxMeshes;
 	newSize = max( minMeshes, oldSize * 2 );
 
-	newDs = R_Malloc( newSize * sizeof( sortedDrawSurf_t ) );
+	newDs = Mod_Mem_Alloc(r_mempool , newSize * sizeof( sortedDrawSurf_t ) );
 	if( ds ) {
 		memcpy( newDs, ds, oldSize * sizeof( sortedDrawSurf_t ) );
-		R_Free( ds );
+		Mod_Mem_Free( ds );
 	}
 	
 	list->drawSurfs = newDs;
@@ -285,10 +285,10 @@ static void R_ReserveVBOSlices( drawList_t *list, unsigned int minSlices )
 	newSize = max( minSlices, oldSize * 2 );
 
 	slices = list->vboSlices;
-	newSlices = R_Malloc( newSize * sizeof( vboSlice_t ) );
+	newSlices =  Mod_Mem_Alloc(r_mempool, newSize * sizeof( vboSlice_t ) );
 	if( slices ) {
 		memcpy( newSlices, slices, oldSize * sizeof( vboSlice_t ) );
-		R_Free( slices );
+		Mod_Mem_Free( slices );
 	}
 
 	list->vboSlices = newSlices;
@@ -673,7 +673,7 @@ void R_BuildTangentVectors( int numVertexes, vec4_t *xyzArray, vec4_t *normalsAr
 	vec3_t *tVectorsArray;
 
 	if( numVertexes > sizeof( stackTVectorsArray )/sizeof( stackTVectorsArray[0] ) )
-		tVectorsArray = R_Malloc( sizeof( vec3_t )*numVertexes );
+		tVectorsArray = Mod_Mem_Alloc(r_mempool, sizeof( vec3_t )*numVertexes );
 	else
 		tVectorsArray = stackTVectorsArray;
 
@@ -739,5 +739,5 @@ void R_BuildTangentVectors( int numVertexes, vec4_t *xyzArray, vec4_t *normalsAr
 	}
 
 	if( tVectorsArray != stackTVectorsArray )
-		R_Free( tVectorsArray );
+		Mod_Mem_Free( tVectorsArray );
 }

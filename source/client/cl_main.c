@@ -3063,7 +3063,7 @@ static void CL_CheckForUpdate( void )
 */
 static void *CL_AsyncStream_Alloc( size_t size, const char *filename, int fileline )
 {
-	return _Mem_Alloc( zoneMemPool, size, 0, 0, filename, fileline );
+	return _Mem_Alloc( Mem_DefaultZonePool(), size, 0, 0, filename, fileline );
 }
 
 /*

@@ -283,6 +283,10 @@ static void *VID_RefModule_MemAllocExt( mempool_t *pool, size_t size, size_t ali
 	return _Mem_AllocExt( pool, size, align, z, MEMPOOL_REFMODULE, 0, filename, fileline );
 }
 
+static void *VID_RefModule_MemAlloc(mempool_t *pool, size_t size, const char *filename, int fileline ) {
+	return _Mem_Alloc( pool, size,MEMPOOL_REFMODULE, 0, filename, fileline );
+}
+
 static void VID_RefModule_MemFree( void *data, const char *filename, int fileline ) {
 	_Mem_Free( data, MEMPOOL_REFMODULE, 0, filename, fileline );
 }
@@ -298,6 +302,18 @@ static void VID_RefModule_MemFreePool( mempool_t **pool, const char *filename, i
 static void VID_RefModule_MemEmptyPool( mempool_t *pool, const char *filename, int fileline ) {
 	_Mem_EmptyPool( pool, MEMPOOL_REFMODULE, 0, filename, fileline );
 }
+
+static struct mem_import_s vid_mem_import = {
+	._Mod_Mem_AllocExt = VID_RefModule_MemAllocExt,
+	._Mod_Mem_Alloc = VID_RefModule_MemAlloc,
+	._Mod_Mem_FreePool = VID_RefModule_MemFreePool,
+	._Mod_Mem_EmptyPool = VID_RefModule_MemEmptyPool,
+	._Mod_AllocPool = VID_RefModule_MemAllocPool, 
+	._Mod_Free = VID_RefModule_MemFree, 
+	._Mem_CopyString = _Mem_CopyString,  
+	._Mem_CheckSentinels = _Mem_CheckSentinels, 
+	.Mem_PoolTotalSize = Mem_PoolTotalSize 
+};
 
 static struct cinematics_s *VID_RefModule_CIN_Open( const char *name, unsigned int start_time, bool *yuv, float *framerate )
 {
@@ -317,6 +333,8 @@ static bool VID_LoadRefresh( const char *name )
 
 	VID_UnloadRefresh();
 
+	import.fsImport = &default_fs_imports_s;
+	import.memImport = &vid_mem_import;
 	import.Com_Error = &Com_Error;
 	import.Com_Printf = &Com_Printf;
 	import.Com_DPrintf = &Com_DPrintf;
@@ -345,43 +363,12 @@ static bool VID_LoadRefresh( const char *name )
 	import.Cmd_ExecuteText = &Cbuf_ExecuteText;
 	import.Cmd_SetCompletionFunc = &Cmd_SetCompletionFunc;
 
-	import.FS_FOpenFile = &FS_FOpenFile;
-	import.FS_FOpenAbsoluteFile = &FS_FOpenAbsoluteFile;
-	import.FS_Read = &FS_Read;
-	import.FS_Write = &FS_Write;
-	import.FS_Printf = &FS_Printf;
-	import.FS_Tell = &FS_Tell;
-	import.FS_Seek = &FS_Seek;
-	import.FS_Eof = &FS_Eof;
-	import.FS_Flush = &FS_Flush;
-	import.FS_FCloseFile = &FS_FCloseFile;
-	import.FS_RemoveFile = &FS_RemoveFile;
-	import.FS_GetFileList = &FS_GetFileList;
-	import.FS_GetGameDirectoryList = &FS_GetGameDirectoryList;
-	import.FS_FirstExtension = &FS_FirstExtension;
-	import.FS_MoveFile = &FS_MoveFile;
-	import.FS_IsUrl = &FS_IsUrl;
-	import.FS_FileMTime = &FS_FileMTime;
-	import.FS_RemoveDirectory = &FS_RemoveDirectory;
-	import.FS_GameDirectory = &FS_GameDirectory;
-	import.FS_WriteDirectory = &FS_WriteDirectory;
-	import.FS_MediaDirectory = &FS_MediaDirectory;
-	import.FS_AddFileToMedia = &FS_AddFileToMedia;
-
 	import.CIN_Open = &VID_RefModule_CIN_Open;
 	import.CIN_NeedNextFrame = &CIN_NeedNextFrame;
 	import.CIN_ReadNextFrame = &CIN_ReadNextFrame;
 	import.CIN_ReadNextFrameYUV = &CIN_ReadNextFrameYUV;
 	import.CIN_Reset = &CIN_Reset;
 	import.CIN_Close = &CIN_Close;
-
-	import.Mem_AllocPool = &VID_RefModule_MemAllocPool;
-	import.Mem_FreePool = &VID_RefModule_MemFreePool;
-	import.Mem_EmptyPool = &VID_RefModule_MemEmptyPool;
-	import.Mem_AllocExt = &VID_RefModule_MemAllocExt;
-	import.Mem_Free = &VID_RefModule_MemFree;
-	import.Mem_Realloc = &_Mem_Realloc;
-	import.Mem_PoolTotalSize = &Mem_PoolTotalSize;
 
 	import.Thread_Create = QThread_Create;
 	import.Thread_Join = QThread_Join;

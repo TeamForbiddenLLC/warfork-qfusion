@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 // common.c -- misc functions used in client and server
+#include "mod_mem.h"
 #include "qcommon.h"
 #include "l10n.h"
 #if defined(__GNUC__) && defined(i386)
@@ -229,6 +230,7 @@ void Com_Printf( const char *format, ... )
 	va_start( argptr, format );
 	Q_vsnprintfz( msg, sizeof( msg ), format, argptr );
 	va_end( argptr );
+	printf("%s", msg);
 
 	QMutex_Lock( com_print_mutex );
 
@@ -308,6 +310,7 @@ void Com_Error( com_error_code_t code, const char *format, ... )
 	Q_vsnprintfz( msg, sizeof_msg, format, argptr );
 	va_end( argptr );
 
+	printf("%s", msg);
 	if( code == ERR_DROP )
 	{
 		Com_Printf( "********************\nERROR: %s\n********************\n", msg );
@@ -513,12 +516,12 @@ int Com_GlobMatch( const char *pattern, const char *text, const bool casecmp )
 
 char *_ZoneCopyString( const char *str, const char *filename, int fileline )
 {
-	return _Mem_CopyString( zoneMemPool, str, filename, fileline );
+	return _Mem_CopyString( Mem_DefaultZonePool(), str, filename, fileline );
 }
 
 char *_TempCopyString( const char *str, const char *filename, int fileline )
 {
-	return _Mem_CopyString( tempMemPool, str, filename, fileline );
+	return _Mem_CopyString( Mem_DefaultTempPool(), str, filename, fileline );
 }
 
 void Info_Print( char *s )
@@ -574,7 +577,7 @@ void Com_AddPakToPureList( purelist_t **purelist, const char *pakname, const uns
 	purelist_t *purefile;
 	const size_t len = strlen( pakname ) + 1;
 
-	purefile = ( purelist_t* )Mem_Alloc( mempool ? mempool : zoneMemPool, sizeof( purelist_t ) + len );
+	purefile = ( purelist_t* )Mem_Alloc( mempool ? mempool : Mem_DefaultZonePool(), sizeof( purelist_t ) + len );
 	purefile->filename = ( char * )(( uint8_t * )purefile + sizeof( *purefile ));
 	memcpy( purefile->filename, pakname, len );
 	purefile->checksum = checksum;

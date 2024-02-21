@@ -106,10 +106,10 @@ static mempool_t *poolChain = NULL;
 // used for temporary memory allocations around the engine, not for longterm
 // storage, if anything in this pool stays allocated during gameplay, it is
 // considered a leak
-mempool_t *tempMemPool;
+static mempool_t *tempMemPool;
 
 // only for zone
-mempool_t *zoneMemPool;
+static mempool_t *zoneMemPool;
 
 static qmutex_t *memMutex;
 
@@ -668,6 +668,16 @@ void Memory_Init( void )
 	tempMemPool = Mem_AllocTempPool( "Temporary Memory" );
 
 	memory_initialized = true;
+}
+
+mempool_t *Mem_DefaultTempPool()
+{
+	return tempMemPool;
+}
+
+mempool_t *Mem_DefaultZonePool()
+{
+	return zoneMemPool;
 }
 
 /*

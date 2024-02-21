@@ -695,52 +695,12 @@ int			FS_Rescan( void );
 void	    FS_Frame( void );
 void	    FS_Shutdown( void );
 
-const char *FS_GameDirectory( void );
-const char *FS_BaseGameDirectory( void );
+#include "mod_fs.h"
+
 bool		FS_SetGameDirectory( const char *dir, bool force );
 int			FS_GetGameDirectoryList( char *buf, size_t bufsize );
 int			FS_GetExplicitPurePakList( char ***paknames );
 bool		FS_IsExplicitPurePak( const char *pakname, bool *wrongver );
-
-// handling of absolute filenames
-// only to be used if necessary (library not supporting custom file handling functions etc.)
-const char *FS_WriteDirectory( void );
-const char *FS_CacheDirectory( void );
-const char *FS_SecureDirectory( void );
-const char *FS_MediaDirectory( fs_mediatype_t type );
-const char *FS_DownloadsDirectory( void );
-const char *FS_RuntimeDirectory( void );
-void	    FS_CreateAbsolutePath( const char *path );
-const char *FS_AbsoluteNameForFile( const char *filename );
-const char *FS_AbsoluteNameForBaseFile( const char *filename );
-void	    FS_AddExtraPK3Directory( const char *path );
-
-// // game and base files
-// file streaming
-int	    FS_FOpenFile( const char *filename, int *filenum, int mode );
-int	    FS_FOpenBaseFile( const char *filename, int *filenum, int mode );
-int		FS_FOpenAbsoluteFile( const char *filename, int *filenum, int mode );
-void	FS_FCloseFile( int file );
-
-int	    FS_Read( void *buffer, size_t len, int file );
-int	    FS_Print( int file, const char *msg );
-int	    FS_Printf( int file, const char *format, ... );
-int	    FS_Write( const void *buffer, size_t len, int file );
-int	    FS_Tell( int file );
-int	    FS_Seek( int file, int offset, int whence );
-int	    FS_Eof( int file );
-int	    FS_Flush( int file );
-bool	FS_IsUrl( const char *url );
-int		FS_FileNo( int file, size_t *offset );
-
-// file loading
-int	    FS_LoadFileExt( const char *path, int flags, void **buffer, void *stack, size_t stackSize, const char *filename, int fileline );
-int	    FS_LoadBaseFileExt( const char *path, int flags, void **buffer, void *stack, size_t stackSize, const char *filename, int fileline );
-void	FS_FreeFile( void *buffer );
-void	FS_FreeBaseFile( void *buffer );
-#define FS_LoadFile(path,buffer,stack,stacksize) FS_LoadFileExt(path,0,buffer,stack,stacksize,__FILE__,__LINE__)
-#define FS_LoadBaseFile(path,buffer,stack,stacksize) FS_LoadBaseFileExt(path,0,buffer,stack,stacksize,__FILE__,__LINE__)
-#define FS_LoadCacheFile(path,buffer,stack,stacksize) FS_LoadFileExt(path,FS_CACHE,buffer,stack,stacksize,__FILE__,__LINE__)
 
 /**
 * Maps an existing file on disk for reading. 
@@ -754,43 +714,7 @@ void	FS_UnMMapBaseFile( int file, void *data );
 int		FS_GetNotifications( void );
 int		FS_RemoveNotifications( int bitmask );
 
-// util functions
-bool    FS_CopyFile( const char *src, const char *dst );
-bool    FS_CopyBaseFile( const char *src, const char *dst );
-bool    FS_ExtractFile( const char *src, const char *dst );
-bool    FS_MoveFile( const char *src, const char *dst );
-bool    FS_MoveBaseFile( const char *src, const char *dst );
-bool    FS_MoveCacheFile( const char *src, const char *dst );
-bool    FS_RemoveFile( const char *filename );
-bool    FS_RemoveBaseFile( const char *filename );
-bool    FS_RemoveAbsoluteFile( const char *filename );
-bool    FS_RemoveDirectory( const char *dirname );
-bool    FS_RemoveBaseDirectory( const char *dirname );
-bool    FS_RemoveAbsoluteDirectory( const char *dirname );
-unsigned    FS_ChecksumAbsoluteFile( const char *filename );
-unsigned    FS_ChecksumBaseFile( const char *filename, bool ignorePakChecksum );
-bool	FS_CheckPakExtension( const char *filename );
-bool	FS_PakFileExists( const char *packfilename );
-
-time_t		FS_FileMTime( const char *filename );
-time_t		FS_BaseFileMTime( const char *filename );
-
-// // only for game files
-const char *FS_FirstExtension( const char *filename, const char *extensions[], int num_extensions );
-const char *FS_PakNameForFile( const char *filename );
-bool    FS_IsPureFile( const char *pakname );
-const char *FS_FileManifest( const char *filename );
-const char *FS_BaseNameForFile( const char *filename );
-
-int			FS_GetFileList( const char *dir, const char *extension, char *buf, size_t bufsize, int start, int end );
-int			FS_GetFileListExt( const char *dir, const char *extension, char *buf, size_t *bufsize, int start, int end );
-
-// // only for base files
-bool    FS_IsPakValid( const char *filename, unsigned *checksum );
-bool    FS_AddPurePak( unsigned checksum );
-void	FS_RemovePurePaks( void );
-
-void	FS_AddFileToMedia( const char *filename );
+bool FS_SetGameDirectory( const char *dir, bool force );
 
 /*
 ==============================================================
@@ -846,8 +770,6 @@ MEMORY MANAGEMENT
 ==============================================================
 */
 
-struct mempool_s;
-typedef struct mempool_s mempool_t;
 
 #define MEMPOOL_TEMPORARY			1
 #define MEMPOOL_GAMEPROGS			2
@@ -864,6 +786,11 @@ void Memory_InitCommands( void );
 void Memory_Shutdown( void );
 void Memory_ShutdownCommands( void );
 
+#include "mod_mem.h"
+
+mempool_t * Mem_DefaultTempPool();
+mempool_t * Mem_DefaultZonePool();
+
 void *_Mem_AllocExt( mempool_t *pool, size_t size, size_t aligment, int z, int musthave, int canthave, const char *filename, int fileline );
 void *_Mem_Alloc( mempool_t *pool, size_t size, int musthave, int canthave, const char *filename, int fileline );
 void *_Mem_Realloc( void *data, size_t size, const char *filename, int fileline );
@@ -872,12 +799,8 @@ mempool_t *_Mem_AllocPool( mempool_t *parent, const char *name, int flags, const
 mempool_t *_Mem_AllocTempPool( const char *name, const char *filename, int fileline );
 void _Mem_FreePool( mempool_t **pool, int musthave, int canthave, const char *filename, int fileline );
 void _Mem_EmptyPool( mempool_t *pool, int musthave, int canthave, const char *filename, int fileline );
-char *_Mem_CopyString( mempool_t *pool, const char *in, const char *filename, int fileline );
-
-void _Mem_CheckSentinels( void *data, const char *filename, int fileline );
 void _Mem_CheckSentinelsGlobal( const char *filename, int fileline );
 
-size_t Mem_PoolTotalSize( mempool_t *pool );
 
 #define Mem_AllocExt( pool, size, z ) _Mem_AllocExt( pool, size, 0, z, 0, 0, __FILE__, __LINE__ )
 #define Mem_Alloc( pool, size ) _Mem_Alloc( pool, size, 0, 0, __FILE__, __LINE__ )
@@ -897,17 +820,77 @@ size_t Mem_PoolTotalSize( mempool_t *pool );
 #define Mem_DebugCheckSentinelsGlobal() _Mem_CheckSentinelsGlobal( __FILE__, __LINE__ )
 #endif
 
-// used for temporary allocations
-extern mempool_t *tempMemPool;
-extern mempool_t *zoneMemPool;
-
-#define Mem_ZoneMallocExt( size, z ) Mem_AllocExt( zoneMemPool, size, z )
-#define Mem_ZoneMalloc( size ) Mem_Alloc( zoneMemPool, size )
+#define Mem_ZoneMallocExt( size, z ) Mem_AllocExt( Mem_DefaultZonePool(), size, z )
+#define Mem_ZoneMalloc( size ) Mem_Alloc( Mem_DefaultZonePool(), size )
 #define Mem_ZoneFree( data ) Mem_Free( data )
 
-#define Mem_TempMallocExt( size, z ) Mem_AllocExt( tempMemPool, size, z )
-#define Mem_TempMalloc( size ) Mem_Alloc( tempMemPool, size )
+#define Mem_TempMallocExt( size, z ) Mem_AllocExt( Mem_DefaultTempPool(), size, z )
+#define Mem_TempMalloc( size ) Mem_Alloc( Mem_DefaultTempPool(), size )
 #define Mem_TempFree( data ) Mem_Free( data )
+
+
+
+// static const struct mem_import_s default_mem_imports_s = {
+//   .Mem_DefaultTempPool = Mem_DefaultTempPool, 
+//   .Mem_DefaultZonePool = Mem_DefaultZonePool,
+
+// 	._Mem_AllocExt = _Mem_AllocExt,
+// 	._Mem_Alloc = _Mem_Alloc,
+// 	._Mem_Realloc = _Mem_Realloc,
+// 	._Mem_Free = _Mem_Free,
+// 	._Mem_AllocPool = _Mem_AllocPool,
+// 	._Mem_AllocTempPool = _Mem_AllocTempPool,
+// 	._Mem_FreePool = _Mem_FreePool,
+// 	._Mem_EmptyPool = _Mem_EmptyPool,
+// 	._Mem_CopyString = _Mem_CopyString,
+
+// 	._Mem_CheckSentinelsGlobal = _Mem_CheckSentinelsGlobal,
+// 	._Mem_CheckSentinels = _Mem_CheckSentinels,
+
+// 	.Mem_PoolTotalSize = Mem_PoolTotalSize
+// };
+
+
+//mempool_t *_Mem_AllocPool( mempool_t *parent, const char *name, int flags, const char *filename, int fileline );
+//mempool_t *_Mem_AllocTempPool( const char *name, const char *filename, int fileline );
+//void _Mem_FreePool( mempool_t **pool, int musthave, int canthave, const char *filename, int fileline );
+//void _Mem_EmptyPool( mempool_t *pool, int musthave, int canthave, const char *filename, int fileline );
+//char *_Mem_CopyString( mempool_t *pool, const char *in, const char *filename, int fileline );
+//
+//void _Mem_CheckSentinels( void *data, const char *filename, int fileline );
+//void _Mem_CheckSentinelsGlobal( const char *filename, int fileline );
+//
+//size_t Mem_PoolTotalSize( mempool_t *pool );
+//
+//#define Mem_AllocExt( pool, size, z ) _Mem_AllocExt( pool, size, 0, z, 0, 0, __FILE__, __LINE__ )
+//#define Mem_Alloc( pool, size ) _Mem_Alloc( pool, size, 0, 0, __FILE__, __LINE__ )
+//#define Mem_Realloc( data, size ) _Mem_Realloc( data, size, __FILE__, __LINE__ )
+//#define Mem_Free( mem ) _Mem_Free( mem, 0, 0, __FILE__, __LINE__ )
+//#define Mem_AllocPool( parent, name ) _Mem_AllocPool( parent, name, 0, __FILE__, __LINE__ )
+//#define Mem_AllocTempPool( name ) _Mem_AllocTempPool( name, __FILE__, __LINE__ )
+//#define Mem_FreePool( pool ) _Mem_FreePool( pool, 0, 0, __FILE__, __LINE__ )
+//#define Mem_EmptyPool( pool ) _Mem_EmptyPool( pool, 0, 0, __FILE__, __LINE__ )
+//#define Mem_CopyString( pool, str ) _Mem_CopyString( pool, str, __FILE__, __LINE__ )
+//
+//#define Mem_CheckSentinels( data ) _Mem_CheckSentinels( data, __FILE__, __LINE__ )
+//#define Mem_CheckSentinelsGlobal() _Mem_CheckSentinelsGlobal( __FILE__, __LINE__ )
+//#ifdef NDEBUG
+//#define Mem_DebugCheckSentinelsGlobal()
+//#else
+//#define Mem_DebugCheckSentinelsGlobal() _Mem_CheckSentinelsGlobal( __FILE__, __LINE__ )
+//#endif
+
+// used for temporary allocations
+//extern mempool_t *tempMemPool;
+//extern mempool_t *zoneMemPool;
+
+//#define Mem_ZoneMallocExt( size, z ) Mem_AllocExt( zoneMemPool, size, z )
+//#define Mem_ZoneMalloc( size ) Mem_Alloc( zoneMemPool, size )
+//#define Mem_ZoneFree( data ) Mem_Free( data )
+//
+//#define Mem_TempMallocExt( size, z ) Mem_AllocExt( tempMemPool, size, z )
+//#define Mem_TempMalloc( size ) Mem_Alloc( tempMemPool, size )
+//#define Mem_TempFree( data ) Mem_Free( data )
 
 void *Q_malloc( size_t size );
 void *Q_realloc( void *buf, size_t newsize );
