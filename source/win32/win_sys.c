@@ -256,9 +256,7 @@ const char *Sys_GetPreferredLanguage( void )
 	}
 
 	if( hr ) {
-		WCHAR *pwszLanguagesBuffer;
-		
-		pwszLanguagesBuffer = Q_malloc( sizeof( WCHAR ) * cchLanguagesBuffer );
+		WCHAR *pwszLanguagesBuffer = malloc( sizeof( WCHAR ) * cchLanguagesBuffer );
 		hr = GetUserPreferredUILanguages_f( MUI_LANGUAGE_NAME, &numLanguages, pwszLanguagesBuffer, &cchLanguagesBuffer );
 
 		if( hr ) {
@@ -271,7 +269,7 @@ const char *Sys_GetPreferredLanguage( void )
 			if( p ) { *p = '_'; }
 		}
 
-		Q_free( pwszLanguagesBuffer );	
+		free( pwszLanguagesBuffer );	
 	}
 
 	FreeLibrary( kernel32Dll );

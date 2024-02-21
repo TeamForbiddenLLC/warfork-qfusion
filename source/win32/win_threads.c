@@ -49,9 +49,7 @@ struct qmutex_s {
 */
 int Sys_Mutex_Create( qmutex_t **pmutex )
 {
-	qmutex_t *mutex;
-
-	mutex = ( qmutex_t * )Q_malloc( sizeof( *mutex ) );
+	qmutex_t *mutex = ( qmutex_t * )malloc( sizeof( *mutex ) );
 	if( !mutex ) {
 		return -1;
 	}
@@ -70,7 +68,7 @@ void Sys_Mutex_Destroy( qmutex_t *mutex )
 		return;
 	}
 	DeleteCriticalSection( &mutex->h );
-	Q_free( mutex );
+	free( mutex );
 }
 
 /*
@@ -105,7 +103,7 @@ int Sys_Mutex_Create( qmutex_t **pmutex )
 		return GetLastError();
 	}
 	
-	mutex = ( qmutex_t * )Q_malloc( sizeof( *mutex ) );
+	mutex = ( qmutex_t * )malloc( sizeof( *mutex ) );
 	if( !mutex ) {
 		return -1;
 	}
@@ -123,7 +121,7 @@ void Sys_Mutex_Destroy( qmutex_t *mutex )
 		return;
 	}
 	CloseHandle( mutex->h );
-	Q_free( mutex );
+	free( mutex );
 }
 
 /*
@@ -158,7 +156,7 @@ int Sys_Thread_Create( qthread_t **pthread, void *(*routine) (void*), void *para
 		return GetLastError();
 	}
 
-	thread = ( qthread_t * )Q_malloc( sizeof( *thread ) );
+	thread = ( qthread_t * )malloc( sizeof( *thread ) );
 	thread->h = h;
 	*pthread = thread;
 	return 0;
@@ -212,7 +210,7 @@ int Sys_CondVar_Create( qcondvar_t **pcond )
 		return -1;
 	}
 
-	cond = ( qcondvar_t * )Q_malloc( sizeof( *cond ) );
+	cond = ( qcondvar_t * )malloc( sizeof( *cond ) );
 
 	if( pInitializeConditionVariable ) {
 		pInitializeConditionVariable( &( cond->c ) );
@@ -221,7 +219,7 @@ int Sys_CondVar_Create( qcondvar_t **pcond )
 		// If some day Qfusion needs broadcast, a waiter counter should be added.
 		e = CreateEvent( NULL, FALSE, FALSE, NULL );
 		if( !e ) {
-			Q_free( cond );
+			free( cond );
 			return GetLastError();
 		}
 	}
@@ -245,7 +243,7 @@ void Sys_CondVar_Destroy( qcondvar_t *cond )
 		CloseHandle( cond->e );
 	}
 
-	Q_free( cond );
+	free( cond );
 }
 
 /*

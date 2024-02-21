@@ -635,6 +635,7 @@ void Com_FreePureList( purelist_t **purelist )
 	*purelist = NULL;
 }
 
+//============================================================================
 
 void Key_Init( void );
 void Key_Shutdown( void );
@@ -671,44 +672,6 @@ static void Com_Lag_f( void )
 	Com_Printf( "Lagged %i milliseconds\n", msecs );
 }
 #endif
-
-/*
-* Q_malloc
-* 
-* Just like malloc(), but die if allocation fails
-*/
-void *Q_malloc( size_t size )
-{
-	void *buf = malloc( size );
-
-	if( !buf )
-		Sys_Error( "Q_malloc: failed on allocation of %i bytes.\n", size );
-
-	return buf;
-}
-
-/*
-* Q_realloc
-* 
-* Just like realloc(), but die if reallocation fails
-*/
-void *Q_realloc( void *buf, size_t newsize )
-{
-	void *newbuf = realloc( buf, newsize );
-
-	if( !newbuf && newsize )
-		Sys_Error( "Q_realloc: failed on allocation of %i bytes.\n", newsize );
-
-	return newbuf;
-}
-
-/*
-* Q_free
-*/
-void Q_free( void *buf )
-{
-	free( buf );
-}
 
 /*
 * Qcommon_InitCommands

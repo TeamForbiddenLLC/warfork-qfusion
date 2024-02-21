@@ -190,7 +190,7 @@ void Con_Clear_f( void )
 
 	for( i = 0; i < CON_MAXLINES; i++ )
 	{
-		Q_free( con.text[i] );
+		free( con.text[i] );
 		con.text[i] = NULL;
 	}
 	con.numlines = 0;
@@ -476,7 +476,7 @@ static void Con_Linefeed( bool notify )
 {
 	// shift scrollback text up in the buffer to make room for a new line
 	if (con.numlines == con.totallines )
-		Q_free( con.text[con.numlines - 1] );
+		free( con.text[con.numlines - 1] );
 	memmove( con.text + 1, con.text, sizeof( con.text[0] ) * min( con.numlines, con.totallines - 1 ) );
 	con.text[0] = NULL;
 
@@ -514,7 +514,7 @@ static void addcharstostr( char **s, const char *c, size_t num ) {
 		num--;
 	}
 
-	newstr = Q_realloc( *s, len + addlen + 1 );
+	newstr = realloc( *s, len + addlen + 1 );
 	memcpy( newstr + len, c, addlen );
 	newstr[len + addlen] = '\0';
 	*s = newstr;

@@ -898,9 +898,6 @@ extern mempool_t *zoneMemPool;
 #define Mem_TempMalloc( size ) Mem_Alloc( tempMemPool, size )
 #define Mem_TempFree( data ) Mem_Free( data )
 
-void *Q_malloc( size_t size );
-void *Q_realloc( void *buf, size_t newsize );
-void Q_free( void *buf );
 void Qcommon_InitCvarDescriptions( void );
 
 void Qcommon_Init( int argc, char **argv );
