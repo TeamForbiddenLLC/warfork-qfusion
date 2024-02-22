@@ -347,6 +347,7 @@ static bool VID_LoadRefresh( const char *name )
 
 	import.FS_FOpenFile = &FS_FOpenFile;
 	import.FS_FOpenAbsoluteFile = &FS_FOpenAbsoluteFile;
+	import.FS_FOpenFileGroup = &FS_FOpenFileGroup;
 	import.FS_Read = &FS_Read;
 	import.FS_Write = &FS_Write;
 	import.FS_Printf = &FS_Printf;

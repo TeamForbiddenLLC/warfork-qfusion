@@ -1124,9 +1124,15 @@ static int _FS_FOpenPakFile( packfile_t *pakFile, int *filenum )
 * 
 * Finds the file in the search path. Returns filesize and an open handle
 * Used for streaming data out of either a pak file or a separate file.
+*
+* this only applies to pak and vfs
+* if a group is not defined then its filled in 
+*  - requires the next query to comes from the same pak/vfs for packs
+*  
 */
-static int _FS_FOpenFile( const char *filename, int *filenum, int mode, bool base )
+static int _FS_FOpenFile( const char *filename, int *filenum, int mode, bool base, uintptr_t* group)
 {
+
 	searchpath_t *search;
 	filehandle_t *file;
 	bool noSize;
@@ -1257,10 +1263,18 @@ static int _FS_FOpenFile( const char *filename, int *filenum, int mode, bool bas
 	if( !search )
 		goto notfound_dprint;
 
-	if( pakFile )
+	if(pakFile)
 	{
-		int uncompressedSize;
+		if(group) {
+			if(*group == 0) {
+				(*group) = (uintptr_t)pakFile;
+			} else if(( *group ) != (uintptr_t)pakFile ) {
+				Com_DPrintf( "FS_FOpen%sFile: Skipping not in the same group %s\n", (base ? "Base" : ""), filename );
+				goto error;
+			}
+		}
 
+		int uncompressedSize;
 		assert( !base );
 
 		uncompressedSize = _FS_FOpenPakFile( pakFile, filenum );
@@ -1274,8 +1288,17 @@ static int _FS_FOpenFile( const char *filename, int *filenum, int mode, bool bas
 		Com_DPrintf( "PackFile: %s : %s\n", search->pack->filename, filename );
 		return uncompressedSize;
 	}
-	else if( vfsHandle )
+	else if( vfsHandle)
 	{
+		if(group) {
+			if(*group == 0) {
+				(*group) = (uintptr_t)vfsHandle;
+			} else if(( *group ) != (uintptr_t)vfsHandle) {
+				Com_DPrintf( "FS_FOpen%sFile: Skipping not in the same group %s\n", (base ? "Base" : ""), filename );
+				goto error;
+			}
+		}
+
 		const char *vfsName;
 		FILE *f;
 		unsigned int vfsOffset;
@@ -1341,7 +1364,12 @@ error:
 */
 int FS_FOpenFile( const char *filename, int *filenum, int mode )
 {
-	return _FS_FOpenFile( filename, filenum, mode, false );
+	return _FS_FOpenFile( filename, filenum, mode, false, NULL);
+}
+
+int FS_FOpenFileGroup( const char *filename, int *filenum, int mode, uintptr_t *group )
+{
+	return _FS_FOpenFile( filename, filenum, mode, false, group );
 }
 
 /*
@@ -1351,7 +1379,7 @@ int FS_FOpenFile( const char *filename, int *filenum, int mode )
 */
 int FS_FOpenBaseFile( const char *filename, int *filenum, int mode )
 {
-	return _FS_FOpenFile( filename, filenum, mode, true );
+	return _FS_FOpenFile( filename, filenum, mode, true, NULL );
 }
 
 /*
@@ -2107,7 +2135,7 @@ bool _FS_CopyFile( const char *src, const char *dst, bool base, bool absolute )
 	int srcnum, dstnum, length, result, l;
 	uint8_t buffer[FS_MAX_BLOCK_SIZE];
 
-	length = _FS_FOpenFile( src, &srcnum, FS_READ, base );
+	length = _FS_FOpenFile( src, &srcnum, FS_READ, base, NULL);
 	if( length == -1 )
 	{
 		return false;
@@ -2116,7 +2144,7 @@ bool _FS_CopyFile( const char *src, const char *dst, bool base, bool absolute )
 	if( absolute )
 		result = FS_FOpenAbsoluteFile( dst, &dstnum, FS_WRITE ) == -1;
 	else
-		result = _FS_FOpenFile( dst, &dstnum, FS_WRITE, base ) == -1;
+		result = _FS_FOpenFile( dst, &dstnum, FS_WRITE, base, NULL) == -1;
 	if( result == -1 )
 	{
 		FS_FCloseFile( srcnum );

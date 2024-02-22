@@ -69,6 +69,7 @@ typedef struct
 	void *( *Com_LibraryProcAddress )( void *lib, const char *name );
 
 	int ( *FS_FOpenFile )( const char *filename, int *filenum, int mode );
+	int ( *FS_FOpenFileGroup)( const char *filename, int *filenum, int mode, uintptr_t *group );
 	int ( *FS_FOpenAbsoluteFile )( const char *filename, int *filenum, int mode );
 	int ( *FS_Read )( void *buffer, size_t len, int file );
 	int ( *FS_Write )( const void *buffer, size_t len, int file );

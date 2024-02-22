@@ -717,8 +717,9 @@ void	    FS_AddExtraPK3Directory( const char *path );
 
 // // game and base files
 // file streaming
-int	    FS_FOpenFile( const char *filename, int *filenum, int mode );
-int	    FS_FOpenBaseFile( const char *filename, int *filenum, int mode );
+int	  FS_FOpenFile( const char *filename, int *filenum, int mode );
+int   FS_FOpenFileGroup( const char *filename, int *filenum, int mode, uintptr_t *group );
+int	  FS_FOpenBaseFile( const char *filename, int *filenum, int mode );
 int		FS_FOpenAbsoluteFile( const char *filename, int *filenum, int mode );
 void	FS_FCloseFile( int file );
 
