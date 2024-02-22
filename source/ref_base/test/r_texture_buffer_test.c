@@ -131,7 +131,7 @@ void test_promote_textuire_buffer(void **state) {
   const int res = T_AliasTextureBuf( &buffer, &texturedesc, c, 768);
   assert_int_equal( TEXTURE_BUF_SUCCESS, res );
 
-  T_PromteTextureBuf(&buffer);
+  T_PromoteTextureBuf(&buffer);
   assert_ptr_not_equal(buffer.buffer, c );
   assert_false(buffer.flags & TEX_BUF_IS_ALIASED);
 
