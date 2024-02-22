@@ -68,30 +68,6 @@ typedef struct
 	void ( *Com_UnloadLibrary )( void **lib );
 	void *( *Com_LibraryProcAddress )( void *lib, const char *name );
 
-	int ( *FS_FOpenFile )( const char *filename, int *filenum, int mode );
-	int ( *FS_FOpenFileGroup)( const char *filename, int *filenum, int mode, group_handle_t *group );
-	int ( *FS_FOpenAbsoluteFile )( const char *filename, int *filenum, int mode );
-	int ( *FS_Read )( void *buffer, size_t len, int file );
-	int ( *FS_Write )( const void *buffer, size_t len, int file );
-	int ( *FS_Printf )( int file, const char *format, ... );
-	int ( *FS_Tell )( int file );
-	int ( *FS_Seek )( int file, int offset, int whence );
-	int ( *FS_Eof )( int file );
-	int ( *FS_Flush )( int file );
-	void ( *FS_FCloseFile )( int file );
-	bool ( *FS_RemoveFile )( const char *filename );
-	int ( *FS_GetFileList )( const char *dir, const char *extension, char *buf, size_t bufsize, int start, int end );
-	int ( *FS_GetGameDirectoryList )( char *buf, size_t bufsize );
-	const char *( *FS_FirstExtension )( const char *filename, const char *extensions[], int num_extensions );
-	bool ( *FS_MoveFile )( const char *src, const char *dst );
-	bool ( *FS_IsUrl )( const char *url );
-	time_t ( *FS_FileMTime )( const char *filename );
-	bool ( *FS_RemoveDirectory )( const char *dirname );
-	const char * ( *FS_GameDirectory )( void );
-	const char * ( *FS_WriteDirectory )( void );
-	const char * ( *FS_MediaDirectory )( fs_mediatype_t type );
-	void ( *FS_AddFileToMedia )( const char *filename );
-
 	struct cinematics_s *( *CIN_Open )( const char *name, unsigned int start_time, bool *yuv, float *framerate );
 	bool ( *CIN_NeedNextFrame )( struct cinematics_s *cin, unsigned int curtime );
 	uint8_t *( *CIN_ReadNextFrame )( struct cinematics_s *cin, int *width, int *height, 
@@ -124,8 +100,13 @@ typedef struct
 	void ( *BufPipe_WriteCmd )( qbufPipe_t *queue, const void *cmd, unsigned cmd_size );
 	int ( *BufPipe_ReadCmds )( qbufPipe_t *queue, unsigned (**cmdHandlers)( const void * ) );
 	void ( *BufPipe_Wait )( qbufPipe_t *queue, int (*read)( qbufPipe_t *, unsigned( ** )(const void *), bool ), 
-		unsigned (**cmdHandlers)( const void * ), unsigned timeout_msec );
+	unsigned (**cmdHandlers)( const void * ), unsigned timeout_msec );
+	
+	const struct fs_import_s* fsImport;
+
 } ref_import_t;
+
+
 
 typedef struct
 {

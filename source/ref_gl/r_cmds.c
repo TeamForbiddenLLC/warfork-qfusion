@@ -113,7 +113,7 @@ void R_TakeScreenShot( const char *path, const char *name, const char *fmtString
 		else
 		{
 			Q_snprintfz( checkname, checkname_size, "%s%s%s", path, timestampString, extension );
-			if( ri.FS_FOpenAbsoluteFile( checkname, NULL, FS_READ ) != -1 )
+			if( FS_FOpenAbsoluteFile( checkname, NULL, FS_READ ) != -1 )
 			{
 				lastIndex = 0;
 				addIndex = true;
@@ -123,7 +123,7 @@ void R_TakeScreenShot( const char *path, const char *name, const char *fmtString
 		for( ; addIndex && lastIndex < maxFiles; lastIndex++ )
 		{
 			Q_snprintfz( checkname, checkname_size, "%s%s%05i%s", path, timestampString, lastIndex, extension );
-			if( ri.FS_FOpenAbsoluteFile( checkname, NULL, FS_READ ) == -1 )
+			if( FS_FOpenAbsoluteFile( checkname, NULL, FS_READ ) == -1 )
 				break; // file doesn't exist
 		}
 		
@@ -139,7 +139,7 @@ void R_TakeScreenShot( const char *path, const char *name, const char *fmtString
 R_ScreenShot( checkname, x, y, w, h, false, true, false, silent );
 	
 	if( media ) {
-		ri.FS_AddFileToMedia( checkname );
+		FS_AddFileToMedia( checkname );
 	}
 }
 
@@ -160,7 +160,7 @@ void R_ScreenShot_f( void )
 
 	name = ri.Cmd_Argv( 1 );
 
-	mediadir = ri.FS_MediaDirectory( FS_MEDIA_IMAGES );
+	mediadir = FS_MediaDirectory( FS_MEDIA_IMAGES );
 	if( mediadir )
 	{
 		path_size = strlen( mediadir ) + 1 /* '/' */ + strlen( glConfig.applicationName ) + 1 /* '/' */ + 1;
@@ -169,9 +169,9 @@ void R_ScreenShot_f( void )
 	}
 	else
 	{
-		path_size = strlen( ri.FS_WriteDirectory() ) + 1 /* '/' */ + strlen( ri.FS_GameDirectory() ) + strlen( "/screenshots/" ) + 1;
+		path_size = strlen( FS_WriteDirectory() ) + 1 /* '/' */ + strlen( FS_GameDirectory() ) + strlen( "/screenshots/" ) + 1;
 		path = alloca( path_size );
-		Q_snprintfz( path, path_size, "%s/%s/screenshots/", ri.FS_WriteDirectory(), ri.FS_GameDirectory() );
+		Q_snprintfz( path, path_size, "%s/%s/screenshots/", FS_WriteDirectory(), FS_GameDirectory() );
 	}
 	
 	// validate timestamp string
@@ -283,8 +283,8 @@ void R_EnvShot_f( void )
 		return;
 	}
 
-	writedir = ri.FS_WriteDirectory();
-	gamedir = ri.FS_GameDirectory();
+	writedir = FS_WriteDirectory();
+	gamedir = FS_GameDirectory();
 	path_size = strlen( writedir ) + 1 + strlen( gamedir ) + 1 + strlen( "env/" ) + 1;
 	path = alloca( path_size );
 	Q_snprintfz( path, path_size, "%s/%s/env/", writedir, gamedir );

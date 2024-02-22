@@ -695,53 +695,13 @@ int			FS_Rescan( void );
 void	    FS_Frame( void );
 void	    FS_Shutdown( void );
 
-const char *FS_GameDirectory( void );
-const char *FS_BaseGameDirectory( void );
+#include "mod_fs.h"
+
+
 bool		FS_SetGameDirectory( const char *dir, bool force );
 int			FS_GetGameDirectoryList( char *buf, size_t bufsize );
 int			FS_GetExplicitPurePakList( char ***paknames );
 bool		FS_IsExplicitPurePak( const char *pakname, bool *wrongver );
-
-// handling of absolute filenames
-// only to be used if necessary (library not supporting custom file handling functions etc.)
-const char *FS_WriteDirectory( void );
-const char *FS_CacheDirectory( void );
-const char *FS_SecureDirectory( void );
-const char *FS_MediaDirectory( fs_mediatype_t type );
-const char *FS_DownloadsDirectory( void );
-const char *FS_RuntimeDirectory( void );
-void	    FS_CreateAbsolutePath( const char *path );
-const char *FS_AbsoluteNameForFile( const char *filename );
-const char *FS_AbsoluteNameForBaseFile( const char *filename );
-void	    FS_AddExtraPK3Directory( const char *path );
-
-// // game and base files
-// file streaming
-int	  FS_FOpenFile( const char *filename, int *filenum, int mode );
-int FS_FOpenFileGroup( const char *filename, int *filenum, int mode, group_handle_t *group );
-int	  FS_FOpenBaseFile( const char *filename, int *filenum, int mode );
-int		FS_FOpenAbsoluteFile( const char *filename, int *filenum, int mode );
-void	FS_FCloseFile( int file );
-
-int	    FS_Read( void *buffer, size_t len, int file );
-int	    FS_Print( int file, const char *msg );
-int	    FS_Printf( int file, const char *format, ... );
-int	    FS_Write( const void *buffer, size_t len, int file );
-int	    FS_Tell( int file );
-int	    FS_Seek( int file, int offset, int whence );
-int	    FS_Eof( int file );
-int	    FS_Flush( int file );
-bool	FS_IsUrl( const char *url );
-int		FS_FileNo( int file, size_t *offset );
-
-// file loading
-int	    FS_LoadFileExt( const char *path, int flags, void **buffer, void *stack, size_t stackSize, const char *filename, int fileline );
-int	    FS_LoadBaseFileExt( const char *path, int flags, void **buffer, void *stack, size_t stackSize, const char *filename, int fileline );
-void	FS_FreeFile( void *buffer );
-void	FS_FreeBaseFile( void *buffer );
-#define FS_LoadFile(path,buffer,stack,stacksize) FS_LoadFileExt(path,0,buffer,stack,stacksize,__FILE__,__LINE__)
-#define FS_LoadBaseFile(path,buffer,stack,stacksize) FS_LoadBaseFileExt(path,0,buffer,stack,stacksize,__FILE__,__LINE__)
-#define FS_LoadCacheFile(path,buffer,stack,stacksize) FS_LoadFileExt(path,FS_CACHE,buffer,stack,stacksize,__FILE__,__LINE__)
 
 /**
 * Maps an existing file on disk for reading. 
@@ -755,43 +715,7 @@ void	FS_UnMMapBaseFile( int file, void *data );
 int		FS_GetNotifications( void );
 int		FS_RemoveNotifications( int bitmask );
 
-// util functions
-bool    FS_CopyFile( const char *src, const char *dst );
-bool    FS_CopyBaseFile( const char *src, const char *dst );
-bool    FS_ExtractFile( const char *src, const char *dst );
-bool    FS_MoveFile( const char *src, const char *dst );
-bool    FS_MoveBaseFile( const char *src, const char *dst );
-bool    FS_MoveCacheFile( const char *src, const char *dst );
-bool    FS_RemoveFile( const char *filename );
-bool    FS_RemoveBaseFile( const char *filename );
-bool    FS_RemoveAbsoluteFile( const char *filename );
-bool    FS_RemoveDirectory( const char *dirname );
-bool    FS_RemoveBaseDirectory( const char *dirname );
-bool    FS_RemoveAbsoluteDirectory( const char *dirname );
-unsigned    FS_ChecksumAbsoluteFile( const char *filename );
-unsigned    FS_ChecksumBaseFile( const char *filename, bool ignorePakChecksum );
-bool	FS_CheckPakExtension( const char *filename );
-bool	FS_PakFileExists( const char *packfilename );
-
-time_t		FS_FileMTime( const char *filename );
-time_t		FS_BaseFileMTime( const char *filename );
-
-// // only for game files
-const char *FS_FirstExtension( const char *filename, const char *extensions[], int num_extensions );
-const char *FS_PakNameForFile( const char *filename );
-bool    FS_IsPureFile( const char *pakname );
-const char *FS_FileManifest( const char *filename );
-const char *FS_BaseNameForFile( const char *filename );
-
-int			FS_GetFileList( const char *dir, const char *extension, char *buf, size_t bufsize, int start, int end );
-int			FS_GetFileListExt( const char *dir, const char *extension, char *buf, size_t *bufsize, int start, int end );
-
-// // only for base files
-bool    FS_IsPakValid( const char *filename, unsigned *checksum );
-bool    FS_AddPurePak( unsigned checksum );
-void	FS_RemovePurePaks( void );
-
-void	FS_AddFileToMedia( const char *filename );
+bool FS_SetGameDirectory( const char *dir, bool force );
 
 /*
 ==============================================================

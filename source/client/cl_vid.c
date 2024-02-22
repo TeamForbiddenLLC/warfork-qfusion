@@ -317,6 +317,7 @@ static bool VID_LoadRefresh( const char *name )
 
 	VID_UnloadRefresh();
 
+	import.fsImport = &default_fs_imports_s;
 	import.Com_Error = &Com_Error;
 	import.Com_Printf = &Com_Printf;
 	import.Com_DPrintf = &Com_DPrintf;
@@ -344,30 +345,6 @@ static bool VID_LoadRefresh( const char *name )
 	import.Cmd_Execute = &Cbuf_Execute;
 	import.Cmd_ExecuteText = &Cbuf_ExecuteText;
 	import.Cmd_SetCompletionFunc = &Cmd_SetCompletionFunc;
-
-	import.FS_FOpenFile = &FS_FOpenFile;
-	import.FS_FOpenAbsoluteFile = &FS_FOpenAbsoluteFile;
-	import.FS_FOpenFileGroup = &FS_FOpenFileGroup;
-	import.FS_Read = &FS_Read;
-	import.FS_Write = &FS_Write;
-	import.FS_Printf = &FS_Printf;
-	import.FS_Tell = &FS_Tell;
-	import.FS_Seek = &FS_Seek;
-	import.FS_Eof = &FS_Eof;
-	import.FS_Flush = &FS_Flush;
-	import.FS_FCloseFile = &FS_FCloseFile;
-	import.FS_RemoveFile = &FS_RemoveFile;
-	import.FS_GetFileList = &FS_GetFileList;
-	import.FS_GetGameDirectoryList = &FS_GetGameDirectoryList;
-	import.FS_FirstExtension = &FS_FirstExtension;
-	import.FS_MoveFile = &FS_MoveFile;
-	import.FS_IsUrl = &FS_IsUrl;
-	import.FS_FileMTime = &FS_FileMTime;
-	import.FS_RemoveDirectory = &FS_RemoveDirectory;
-	import.FS_GameDirectory = &FS_GameDirectory;
-	import.FS_WriteDirectory = &FS_WriteDirectory;
-	import.FS_MediaDirectory = &FS_MediaDirectory;
-	import.FS_AddFileToMedia = &FS_AddFileToMedia;
 
 	import.CIN_Open = &VID_RefModule_CIN_Open;
 	import.CIN_NeedNextFrame = &CIN_NeedNextFrame;

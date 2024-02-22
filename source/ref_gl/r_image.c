@@ -1515,7 +1515,7 @@ static bool R_LoadImageFromDisk( int ctx, image_t *image )
 			{
 				sdssubstr(pathname, 0, baseLen);
 				pathname = sdscatfmt( pathname, "_%s", cubemapSides[i][j].suf );
-				const char* extension = ri.FS_FirstExtension( pathname, IMAGE_EXTENSIONS, NUM_IMAGE_EXTENSIONS - 1 ); // last is KTX
+				const char* extension = FS_FirstExtension( pathname, IMAGE_EXTENSIONS, NUM_IMAGE_EXTENSIONS - 1 ); // last is KTX
 				
 				if(extension != NULL) {
 					lastExtension = extension;
@@ -1590,7 +1590,7 @@ static bool R_LoadImageFromDisk( int ctx, image_t *image )
 	{
 		struct texture_buf_s pic = {0};
 		sdssubstr(pathname, 0, baseLen);
-		const char* extension = ri.FS_FirstExtension( pathname, IMAGE_EXTENSIONS, NUM_IMAGE_EXTENSIONS - 1 ); // last is KTX
+		const char* extension = FS_FirstExtension( pathname, IMAGE_EXTENSIONS, NUM_IMAGE_EXTENSIONS - 1 ); // last is KTX
 		if(extension != NULL) {
 			pathname = sdscat(pathname, extension);
 		}

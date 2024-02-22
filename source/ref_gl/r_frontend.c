@@ -586,8 +586,8 @@ void RF_WriteAviFrame( int frame, bool scissor )
 		h = glConfig.height;
 	}
 	
-	writedir = ri.FS_WriteDirectory();
-	gamedir = ri.FS_GameDirectory();
+	writedir = FS_WriteDirectory();
+	gamedir = FS_GameDirectory();
 	path_size = strlen( writedir ) + 1 + strlen( gamedir ) + strlen( "/avi/" ) + 1;
 	path = alloca( path_size );
 	Q_snprintfz( path, path_size, "%s/%s/avi/", writedir, gamedir );

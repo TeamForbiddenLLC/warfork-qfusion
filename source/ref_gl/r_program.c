@@ -234,7 +234,7 @@ void RP_PrecachePrograms( void )
 	}
 
 #define CLOSE_AND_DROP_BINARY_CACHE() do { \
-		ri.FS_FCloseFile( handleBin ); \
+		FS_FCloseFile( handleBin ); \
 		handleBin = 0; \
 		r_glslbincache_storemode = FS_WRITE; \
 	} while(0)
@@ -242,18 +242,18 @@ void RP_PrecachePrograms( void )
 	handleBin = 0;
 	if( glConfig.ext.get_program_binary && !isDefaultCache ) {
 		r_glslbincache_storemode = FS_APPEND;
-		if( ri.FS_FOpenFile( GLSL_BINARY_CACHE_FILE_NAME, &handleBin, FS_READ|FS_CACHE ) != -1 ) {
+		if( FS_FOpenFile( GLSL_BINARY_CACHE_FILE_NAME, &handleBin, FS_READ|FS_CACHE ) != -1 ) {
 			unsigned hash;
 
 			version = 0;
 			hash = 0;
 
-			ri.FS_Seek( handleBin, 0, FS_SEEK_END );
-			binaryCacheSize = ri.FS_Tell( handleBin );
-			ri.FS_Seek( handleBin, 0, FS_SEEK_SET );
+			FS_Seek( handleBin, 0, FS_SEEK_END );
+			binaryCacheSize = FS_Tell( handleBin );
+			FS_Seek( handleBin, 0, FS_SEEK_SET );
 
-			ri.FS_Read( &version, sizeof( version ), handleBin );
-			ri.FS_Read( &hash, sizeof( hash ), handleBin );
+			FS_Read( &version, sizeof( version ), handleBin );
+			FS_Read( &hash, sizeof( hash ), handleBin );
 			
 			if( binaryCacheSize < 8 || version != GLSL_BITS_VERSION || hash != glConfig.versionHash ) {
 				CLOSE_AND_DROP_BINARY_CACHE();
@@ -335,9 +335,9 @@ void RP_PrecachePrograms( void )
 				if( binaryPos ) {
 					bool err = false;
 					
-					err = !err && ri.FS_Seek( handleBin, binaryPos, FS_SEEK_SET ) < 0;
-					err = !err && ri.FS_Read( &binaryFormat, sizeof( binaryFormat ), handleBin ) != sizeof( binaryFormat );
-					err = !err && ri.FS_Read( &binaryLength, sizeof( binaryLength ), handleBin ) != sizeof( binaryLength );
+					err = !err && FS_Seek( handleBin, binaryPos, FS_SEEK_SET ) < 0;
+					err = !err && FS_Read( &binaryFormat, sizeof( binaryFormat ), handleBin ) != sizeof( binaryFormat );
+					err = !err && FS_Read( &binaryLength, sizeof( binaryLength ), handleBin ) != sizeof( binaryLength );
 					if( err || binaryLength >= binaryCacheSize ) {
 						binaryLength = 0;
 						CLOSE_AND_DROP_BINARY_CACHE();
@@ -345,7 +345,7 @@ void RP_PrecachePrograms( void )
 
 					if( binaryLength ) {
 						binary = R_Malloc( binaryLength );
-						if( binary != NULL && ri.FS_Read( binary, binaryLength, handleBin ) != (int)binaryLength ) {
+						if( binary != NULL && FS_Read( binary, binaryLength, handleBin ) != (int)binaryLength ) {
 							R_Free( binary );
 							binary = NULL;
 							CLOSE_AND_DROP_BINARY_CACHE();
@@ -396,7 +396,7 @@ void RP_PrecachePrograms( void )
 	R_FreeFile( buffer );
 
 	if( handleBin ) {
-		ri.FS_FCloseFile( handleBin );
+		FS_FCloseFile( handleBin );
 	}
 }
 
@@ -419,30 +419,30 @@ void RP_StorePrecacheList( void )
 	}
 
 	handle = 0;
-	if( ri.FS_FOpenFile( GLSL_CACHE_FILE_NAME, &handle, FS_WRITE|FS_CACHE ) == -1 ) {
+	if( FS_FOpenFile( GLSL_CACHE_FILE_NAME, &handle, FS_WRITE|FS_CACHE ) == -1 ) {
 		Com_Printf( S_COLOR_YELLOW "Could not open %s for writing.\n", GLSL_CACHE_FILE_NAME );
 		return;
 	}
 
 	handleBin = 0;
 	if( glConfig.ext.get_program_binary ) {
-		if( ri.FS_FOpenFile( GLSL_BINARY_CACHE_FILE_NAME, &handleBin, r_glslbincache_storemode|FS_CACHE ) == -1 ) {
+		if( FS_FOpenFile( GLSL_BINARY_CACHE_FILE_NAME, &handleBin, r_glslbincache_storemode|FS_CACHE ) == -1 ) {
 			Com_Printf( S_COLOR_YELLOW "Could not open %s for writing.\n", GLSL_BINARY_CACHE_FILE_NAME );
 		}
 		else if( r_glslbincache_storemode == FS_WRITE ) {
 			dummy = 0;
-			ri.FS_Write( &dummy, sizeof( dummy ), handleBin );
+			FS_Write( &dummy, sizeof( dummy ), handleBin );
 
 			dummy = glConfig.versionHash;
-			ri.FS_Write( &dummy, sizeof( dummy ), handleBin );
+			FS_Write( &dummy, sizeof( dummy ), handleBin );
 		}
 		else {
-			ri.FS_Seek( handleBin, 0, FS_SEEK_END );
+			FS_Seek( handleBin, 0, FS_SEEK_END );
 		}
 	}
 
-	ri.FS_Printf( handle, "%s\n", glConfig.applicationName );
-	ri.FS_Printf( handle, "%i\n", GLSL_BITS_VERSION );
+	FS_Printf( handle, "%s\n", glConfig.applicationName );
+	FS_Printf( handle, "%i\n", GLSL_BITS_VERSION );
 
 	for( i = 0, program = r_glslprograms; i < r_numglslprograms; i++, program++ ) {
 		void *binary = NULL;
@@ -465,32 +465,32 @@ void RP_StorePrecacheList( void )
 			else {		
 				binary = RP_GetProgramBinary( i + 1, &binaryFormat, &binaryLength );
 				if( binary ) {
-					binaryPos = ri.FS_Tell( handleBin );
+					binaryPos = FS_Tell( handleBin );
 				}
 			}
 		}
 
-		ri.FS_Printf( handle, "%i %i %i \"%s\" %u\n", 
+		FS_Printf( handle, "%i %i %i \"%s\" %u\n", 
 			program->type, 
 			(int)(program->features & ULONG_MAX), 
 			(int)((program->features>>32) & ULONG_MAX), 
 			program->name, binaryPos );
 		
 		if( binary ) {
-			ri.FS_Write( &binaryFormat, sizeof( binaryFormat ), handleBin );
-			ri.FS_Write( &binaryLength, sizeof( binaryLength ), handleBin );
-			ri.FS_Write( binary, binaryLength, handleBin );
+			FS_Write( &binaryFormat, sizeof( binaryFormat ), handleBin );
+			FS_Write( &binaryLength, sizeof( binaryLength ), handleBin );
+			FS_Write( binary, binaryLength, handleBin );
 			R_Free( binary );
 		}
 	}
 
-	ri.FS_FCloseFile( handle );
-	ri.FS_FCloseFile( handleBin );
+	FS_FCloseFile( handle );
+	FS_FCloseFile( handleBin );
 
-	if( handleBin && ri.FS_FOpenFile( GLSL_BINARY_CACHE_FILE_NAME, &handleBin, FS_UPDATE|FS_CACHE ) != -1 ) {
+	if( handleBin && FS_FOpenFile( GLSL_BINARY_CACHE_FILE_NAME, &handleBin, FS_UPDATE|FS_CACHE ) != -1 ) {
 		dummy = GLSL_BITS_VERSION;
-		ri.FS_Write( &dummy, sizeof( dummy ), handleBin );
-		ri.FS_FCloseFile( handleBin );
+		FS_Write( &dummy, sizeof( dummy ), handleBin );
+		FS_FCloseFile( handleBin );
 	}
 }
 

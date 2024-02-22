@@ -27,16 +27,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+#include "../qcommon/mod_fs.h"
 #include <setjmp.h>
 
 bool WriteScreenShot( const char *filename, r_imginfo_t *img, int type )
 {
 	int file;
-	if( ri.FS_FOpenAbsoluteFile( filename, &file, FS_WRITE ) == -1 ) {
+	if( FS_FOpenAbsoluteFile( filename, &file, FS_WRITE ) == -1 ) {
 		Com_Printf( "WriteScreenShot: Couldn't create %s\n", filename );
 		return false;
 	}
-	ri.FS_FCloseFile( file );
+	FS_FCloseFile( file );
 
 	switch( type ) {
 		case 2:
