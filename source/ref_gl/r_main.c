@@ -1710,7 +1710,7 @@ char *R_CopyString_( const char *in, const char *filename, int fileline )
 	return out;
 }
 
-int R_LoadFileGroup_( const char *path, int flags, uintptr_t* group, void **buffer, const char *filename, int fileline )
+int R_LoadFileGroup_( const char *path, int flags, group_handle_t* group, void **buffer, const char *filename, int fileline )
 {
 	uint8_t *buf;
 	unsigned int len;

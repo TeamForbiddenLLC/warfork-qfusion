@@ -1130,7 +1130,7 @@ static int _FS_FOpenPakFile( packfile_t *pakFile, int *filenum )
 *  - requires the next query to comes from the same pak/vfs for packs
 *  
 */
-static int _FS_FOpenFile( const char *filename, int *filenum, int mode, bool base, uintptr_t* group)
+static int _FS_FOpenFile( const char *filename, int *filenum, int mode, bool base, group_handle_t* group)
 {
 
 	searchpath_t *search;
@@ -1367,7 +1367,7 @@ int FS_FOpenFile( const char *filename, int *filenum, int mode )
 	return _FS_FOpenFile( filename, filenum, mode, false, NULL);
 }
 
-int FS_FOpenFileGroup( const char *filename, int *filenum, int mode, uintptr_t *group )
+int FS_FOpenFileGroup( const char *filename, int *filenum, int mode, group_handle_t *group )
 {
 	return _FS_FOpenFile( filename, filenum, mode, false, group );
 }

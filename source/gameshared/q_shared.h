@@ -383,6 +383,8 @@ typedef enum
 	FS_MEDIA_NUM_TYPES
 } fs_mediatype_t;
 
+typedef uintptr_t group_handle_t;
+
 //==============================================================
 //
 //THREADS

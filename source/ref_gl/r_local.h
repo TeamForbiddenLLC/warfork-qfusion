@@ -549,7 +549,7 @@ char		*R_CopyString_( const char *in, const char *filename, int fileline );
 #define		R_CopyString(in) R_CopyString_(in,__FILE__,__LINE__)
 
 int			R_LoadFile_( const char *path, int flags, void **buffer, const char *filename, int fileline );
-int			R_LoadFileGroup_( const char *path, int flags, uintptr_t* group, void **buffer, const char *filename, int fileline );
+int			R_LoadFileGroup_( const char *path, int flags, group_handle_t* group, void **buffer, const char *filename, int fileline );
 void		R_FreeFile_( void *buffer, const char *filename, int fileline );
 
 #define		R_LoadFileGroup(path, group, buffer) R_LoadFileGroup_(path,0, group, buffer,__FILE__,__LINE__)
