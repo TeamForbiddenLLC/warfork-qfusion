@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "cg_local.h"
 #include "../qcommon/steam.h"
+#include "../qcommon/mod_fs.h"
 #include <cstdint>
 
 static const char *cg_defaultSexedSounds[] =
@@ -130,8 +131,8 @@ static struct sfx_s *CG_RegisterPmodelSexedSound( pmodelinfo_t *pmodelinfo, cons
 	Q_snprintfz( sexedFilename, sizeof( sexedFilename ), "sounds/players/%s/%s", model, oname+1 );
 
 	if( ( !COM_FileExtension( sexedFilename ) &&
-		trap_FS_FirstExtension( sexedFilename, SOUND_EXTENSIONS, NUM_SOUND_EXTENSIONS ) ) ||
-		trap_FS_FOpenFile( sexedFilename, NULL, FS_READ ) != -1 )
+		FS_FirstExtension( sexedFilename, SOUND_EXTENSIONS, NUM_SOUND_EXTENSIONS ) ) ||
+		FS_FOpenFile( sexedFilename, NULL, FS_READ ) != -1 )
 	{
 		sexedSfx->sfx = trap_S_RegisterSound( sexedFilename );
 	}
