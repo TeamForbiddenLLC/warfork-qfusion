@@ -178,6 +178,7 @@ void CL_UIModule_Init( void )
 
 	import.Error = CL_UIModule_Error;
 	import.Print = CL_UIModule_Print;
+	import.fsImport = &default_fs_imports_s;
 
 	import.Dynvar_Create = Dynvar_Create;
 	import.Dynvar_Destroy = Dynvar_Destroy;
@@ -204,25 +205,6 @@ void CL_UIModule_Init( void )
 	import.Cmd_ExecuteText = Cbuf_ExecuteText;
 	import.Cmd_Execute = Cbuf_Execute;
 	import.Cmd_SetCompletionFunc = Cmd_SetCompletionFunc;
-
-	import.FS_FOpenFile = FS_FOpenFile;
-	import.FS_Read = FS_Read;
-	import.FS_Write = FS_Write;
-	import.FS_Print = FS_Print;
-	import.FS_Tell = FS_Tell;
-	import.FS_Seek = FS_Seek;
-	import.FS_Eof = FS_Eof;
-	import.FS_Flush = FS_Flush;
-	import.FS_FCloseFile = FS_FCloseFile;
-	import.FS_RemoveFile = FS_RemoveFile;
-	import.FS_GetFileList = FS_GetFileList;
-	import.FS_GetGameDirectoryList = FS_GetGameDirectoryList;
-	import.FS_FirstExtension = FS_FirstExtension;
-	import.FS_MoveFile = FS_MoveFile;
-	import.FS_MoveCacheFile = FS_MoveCacheFile;
-	import.FS_IsUrl = FS_IsUrl;
-	import.FS_FileMTime = FS_FileMTime;
-	import.FS_RemoveDirectory = FS_RemoveDirectory;
 
 	import.CL_Quit = CL_Quit;
 	import.CL_SetKeyDest = CL_SetKeyDest;

@@ -244,7 +244,7 @@ int FS_Printf( int file, const char *format, ...){
 	int ret;
 	va_list args;
 	va_start(args, format);
-	ret = fs_import.FS_Printf(file, args);
+	ret = fs_import.FS_Printf(file, format, args);
 	va_end(args);
 	return ret;
 }

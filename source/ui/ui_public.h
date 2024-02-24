@@ -43,6 +43,8 @@ enum {
 //
 typedef struct
 {
+	const struct fs_import_s* fsImport;
+
 	// halts the application
 	void ( *Error )( const char *str );
 
@@ -152,32 +154,6 @@ typedef struct
 	void ( *GetConfigString )( int i, char *str, int size );
 	unsigned int ( *Milliseconds )( void );
 	uint64_t ( *Microseconds )( void );
-
-	// files will be memory mapped read only
-	// the returned buffer may be part of a larger pak file,
-	// or a discrete file from anywhere in the quake search path
-	// a -1 return means the file does not exist
-	// NULL can be passed for buf to just determine existance
-	// you can also open URL's, but you cant use anything else but
-	// FS_Read (blocking) and FS_CloseFile
-	int ( *FS_FOpenFile )( const char *filename, int *filenum, int mode );
-	int ( *FS_Read )( void *buffer, size_t len, int file );
-	int ( *FS_Write )( const void *buffer, size_t len, int file );
-	int ( *FS_Print )( int file, const char *msg );
-	int ( *FS_Tell )( int file );
-	int ( *FS_Seek )( int file, int offset, int whence );
-	int ( *FS_Eof )( int file );
-	int ( *FS_Flush )( int file );
-	void ( *FS_FCloseFile )( int file );
-	bool ( *FS_RemoveFile )( const char *filename );
-	int ( *FS_GetFileList )( const char *dir, const char *extension, char *buf, size_t bufsize, int start, int end );
-	int ( *FS_GetGameDirectoryList )( char *buf, size_t bufsize );
-	const char *( *FS_FirstExtension )( const char *filename, const char *extensions[], int num_extensions );
-	bool ( *FS_MoveFile )( const char *src, const char *dst );
-	bool ( *FS_MoveCacheFile )( const char *src, const char *dst );
-	bool ( *FS_IsUrl )( const char *url );
-	time_t ( *FS_FileMTime )( const char *filename );
-	bool ( *FS_RemoveDirectory )( const char *dirname );
 
 	// maplist
 	const char *( *ML_GetFilename )( const char *fullname );

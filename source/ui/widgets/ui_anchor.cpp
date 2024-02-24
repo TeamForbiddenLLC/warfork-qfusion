@@ -87,7 +87,7 @@ public:
 				trap::Cmd_ExecuteText( EXEC_APPEND, va( "connect \"%s\"\n", href.CString() ) );
 				return;
 			}
-			else if( trap::FS_IsUrl( href.CString() ) ) {
+			else if( FS_IsUrl( href.CString() ) ) {
 				String target = GetAttribute<String>("target", "");
 
 				if( target == "_browser" ) {

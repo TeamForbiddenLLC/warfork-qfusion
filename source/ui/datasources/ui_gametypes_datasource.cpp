@@ -2,6 +2,7 @@
 #include "kernel/ui_common.h"
 #include "kernel/ui_utils.h"
 #include "datasources/ui_gametypes_datasource.h"
+#include "../qcommon/mod_fs.h"
 
 namespace WSWUI
 {
@@ -25,11 +26,11 @@ namespace WSWUI
 				std::string filepath = std::string("progs/gametypes") + "/" + gt.name + ".gtd";
 				int filenum, filelen;
 
-				filelen = trap::FS_FOpenFile( filepath.c_str(), &filenum, FS_READ );
+				filelen = FS_FOpenFile( filepath.c_str(), &filenum, FS_READ );
 				if( filenum ) {
 					if( filelen > 0 ){
 						char *buffer = new char[filelen+1], *end = buffer + filelen;
-						trap::FS_Read( buffer, filelen, filenum );
+						FS_Read( buffer, filelen, filenum );
 						buffer[filelen] = '\0';
 
 						// parse title and description
@@ -58,7 +59,7 @@ namespace WSWUI
 						delete[] buffer;
 					}
 
-					trap::FS_FCloseFile( filenum );
+					FS_FCloseFile( filenum );
 				}
 
 				gameTypes.push_back(gt);

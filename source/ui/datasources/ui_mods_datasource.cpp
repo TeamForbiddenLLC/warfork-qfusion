@@ -21,7 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ui_precompiled.h"
 #include "kernel/ui_common.h"
 #include "datasources/ui_mods_datasource.h"
-
+#include "../qcommon/mod_fs.h"
 #define SOURCE_NAME "mods"
 #define TABLE_NAME "list"
 #define FIELDS "name"
@@ -44,7 +44,7 @@ void ModsDataSource::UpdatePath( void )
 	char buffer[8*1024], foldername[MAX_QPATH];
 	int numfolders, length, i;
 
-	if( ( numfolders = trap::FS_GetGameDirectoryList( buffer, sizeof( buffer ) ) ) == 0 )
+	if( ( numfolders = FS_GetGameDirectoryList( buffer, sizeof( buffer ) ) ) == 0 )
 		return;
 
 	s = buffer;

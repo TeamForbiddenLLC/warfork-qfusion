@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "kernel/ui_streamcache.h"
 #include "../../qalgo/md5.h"
 #include <time.h>
+#include "../qcommon/mod_fs.h"
 
 namespace WSWUI
 {
@@ -118,7 +119,7 @@ size_t StreamCache::StreamRead( const void *buf, size_t numb, float percentage, 
 	}
 	else if( stream->cache_cb ) {
 		// write to temporary cache file
-		return trap::FS_Write( buf, numb, stream->tmpFilenum );
+		return FS_Write( buf, numb, stream->tmpFilenum );
 	}
 
 	// undefined
@@ -147,21 +148,21 @@ void StreamCache::StreamDone( int status, const char *contentType, void *private
 		realFile = stream->parent->RealFileForCacheFile( tmpFile.substr( 0, tmpFile.size() - strlen( WSW_UI_STREAMCACHE_EXT ) ), _contentType );
 
 		// close the temp file, that'll also flush yet unwritten data to disk
-		trap::FS_FCloseFile( stream->tmpFilenum );
+		FS_FCloseFile( stream->tmpFilenum );
 
 		// remove the target file so that a new one can be moved in its place
-		trap::FS_RemoveFile( realFile.c_str() );
+		FS_RemoveFile( realFile.c_str() );
 
 		bool moved = false;
 		if( status == HTTP_CODE_OK ) {
 			// verify that the move succeeds
-			moved = ( trap::FS_MoveCacheFile( tmpFile.c_str(), realFile.c_str() ) == true );
+			moved = ( FS_MoveCacheFile( tmpFile.c_str(), realFile.c_str() ) == true );
 		}
 		else {
 			Com_Printf( S_COLOR_YELLOW "StreamCache::StreamDone: error %i fetching '%s'\n", status, stream->url.c_str() );
 
 			// remove the temp file
-			trap::FS_RemoveFile( tmpFile.c_str() );
+			FS_RemoveFile( tmpFile.c_str() );
 		}
 
 		// this is also going to delete the stream object
@@ -219,7 +220,7 @@ void StreamCache::PerformRequest( const char *url, const char *method, const cha
 			// examine last modified datetime for the cache file
 			// note, that mTime is -1 for non-existing files
 			// or 0 if mTime could not be obtained)
-			mTime = trap::FS_FileMTime( cacheFilename.c_str() );
+			mTime = FS_FileMTime( cacheFilename.c_str() );
 			if( mTime + cacheTTL * 60 > time( NULL ) ) {
 				cacheFilename = "cache://" + cacheFilename;
 				cache_cb( cacheFilename.c_str(), privatep );
@@ -256,7 +257,7 @@ void StreamCache::PerformRequest( const char *url, const char *method, const cha
 		if( !inProgress ) {
 			stream->tmpFilename = tmpFilename;
 
-			if( trap::FS_FOpenFile( tmpFilename.c_str(), &stream->tmpFilenum, FS_WRITE|FS_CACHE ) < 0 ) {
+			if( FS_FOpenFile( tmpFilename.c_str(), &stream->tmpFilenum, FS_WRITE|FS_CACHE ) < 0 ) {
 				Com_Printf( S_COLOR_YELLOW "WARNING: Failed to open %s for writing\n", tmpFilename.c_str() );
 				__delete__( stream );
 				return;
@@ -301,16 +302,16 @@ std::string StreamCache::CacheFileForUrl( const std::string url, bool noCache )
 	std::string linkName = cacheName + LINK_EXTENSION;
 	int filenum, length;
 
-	length = trap::FS_FOpenFile( linkName.c_str(), &filenum, FS_READ|FS_CACHE );
+	length = FS_FOpenFile( linkName.c_str(), &filenum, FS_READ|FS_CACHE );
 	if( length >= 0 ) {
 		if( length > 0 ) {
 			char *buf = new char[length+1];
-			trap::FS_Read( buf, length, filenum );
+			FS_Read( buf, length, filenum );
 			buf[length] = '\0';
 			cacheName = buf;
 			delete[] buf;
 		}
-		trap::FS_FCloseFile( filenum );
+		FS_FCloseFile( filenum );
 	}
 
 	return cacheName;
@@ -351,9 +352,9 @@ std::string StreamCache::RealFileForCacheFile( const std::string cacheFile, cons
 		int filenum;
 		std::string linkFile = cacheFile + LINK_EXTENSION;
 
-		if( trap::FS_FOpenFile( linkFile.c_str(), &filenum, FS_WRITE|FS_CACHE ) >= 0 ) {
-			trap::FS_Write( realFile.c_str(), realFile.length(), filenum );
-			trap::FS_FCloseFile( filenum );
+		if( FS_FOpenFile( linkFile.c_str(), &filenum, FS_WRITE|FS_CACHE ) >= 0 ) {
+			FS_Write( realFile.c_str(), realFile.length(), filenum );
+			FS_FCloseFile( filenum );
 		}
 	}
 

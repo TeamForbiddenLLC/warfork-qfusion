@@ -8,6 +8,7 @@
 #include "ui_precompiled.h"
 #include "kernel/ui_common.h"
 #include "kernel/ui_fileinterface.h"
+#include "../qcommon/mod_fs.h"
 
 namespace WSWUI
 {
@@ -37,11 +38,11 @@ Rocket::Core::FileHandle UI_FileInterface::Open(const Rocket::Core::String & pat
 		while( path2[0] == '/' ) {
 			path2.Erase( 0, 1 );
 		}
-		length = trap::FS_FOpenFile( path2.CString(), &filenum, FS_READ | (cache ? FS_CACHE : 0) );
+		length = FS_FOpenFile( path2.CString(), &filenum, FS_READ | (cache ? FS_CACHE : 0) );
 	}
 	else if( protocol == "http" ) {
 		// allow blocking download of remote resources
-		length = trap::FS_FOpenFile( path.CString(), &filenum, FS_READ );
+		length = FS_FOpenFile( path.CString(), &filenum, FS_READ );
 	}
 
 	if( length == -1 )
@@ -60,13 +61,13 @@ void UI_FileInterface::Close(Rocket::Core::FileHandle file)
 		int filenum = static_cast<int>( file );
 
 		fileSizeMap.erase( filenum );
-		trap::FS_FCloseFile( filenum );
+		FS_FCloseFile( filenum );
 	}
 }
 
 size_t UI_FileInterface::Read(void *buffer, size_t size, Rocket::Core::FileHandle file)
 {
-	return trap::FS_Read( buffer, size, static_cast<int>( file ) );
+	return FS_Read( buffer, size, static_cast<int>( file ) );
 }
 
 bool UI_FileInterface::Seek(Rocket::Core::FileHandle file, long  offset, int origin)
@@ -80,12 +81,12 @@ bool UI_FileInterface::Seek(Rocket::Core::FileHandle file, long  offset, int ori
 	else
 		return false;
 
-	return ( trap::FS_Seek( static_cast<int>( file ), offset, origin ) != -1 );
+	return ( FS_Seek( static_cast<int>( file ), offset, origin ) != -1 );
 }
 
 size_t UI_FileInterface::Tell(Rocket::Core::FileHandle file)
 {
-	return trap::FS_Tell( static_cast<int>( file ) );
+	return FS_Tell( static_cast<int>( file ) );
 }
 
 size_t UI_FileInterface::Length(Rocket::Core::FileHandle file)
