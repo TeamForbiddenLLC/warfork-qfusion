@@ -160,11 +160,6 @@ struct fs_import_s {
 	FS_FOpenBaseFileFn FS_FOpenBaseFile;
 };
 static const struct fs_import_s default_fs_imports_s = {
-	.FS_FOpenBaseFile = FS_FOpenBaseFile,
-	.FS_FCloseFile = FS_FCloseFile,
-	.FS_FOpenFile = FS_FOpenFile,
-	.FS_FOpenFileGroup = FS_FOpenFileGroup,
-	.FS_FOpenAbsoluteFile = FS_FOpenAbsoluteFile,
 	.FS_GameDirectory = FS_GameDirectory,
 	.FS_BaseGameDirectory = FS_BaseGameDirectory,
 	.FS_WriteDirectory = FS_WriteDirectory,
@@ -186,6 +181,8 @@ static const struct fs_import_s default_fs_imports_s = {
 	.FS_Flush = FS_Flush,
 	.FS_IsUrl = FS_IsUrl,
 	.FS_FileNo = FS_FileNo,
+	.FS_FOpenFile = FS_FOpenFile,
+	.FS_FOpenFileGroup = FS_FOpenFileGroup,
 	.FS_CreateAbsolutePath = FS_CreateAbsolutePath,
 	.FS_AbsoluteNameForFile = FS_AbsoluteNameForFile,
 	.FS_AbsoluteNameForBaseFile = FS_AbsoluteNameForBaseFile,
@@ -223,6 +220,9 @@ static const struct fs_import_s default_fs_imports_s = {
 	.FS_AddPurePak = FS_AddPurePak,
 	.FS_RemovePurePaks = FS_RemovePurePaks,
 	.FS_AddFileToMedia = FS_AddFileToMedia,
+	.FS_FOpenAbsoluteFile = FS_FOpenAbsoluteFile,
+	.FS_FCloseFile = FS_FCloseFile,
+	.FS_FOpenBaseFile = FS_FOpenBaseFile,
 };
 
 #if FS_DEFINE_INTERFACE_IMPL
