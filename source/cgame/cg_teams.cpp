@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "cg_local.h"
 
+#include "../qcommon/mod_fs.h"
 /*
 * CG_ForceTeam
 */
@@ -89,7 +90,7 @@ static void CG_RegisterForceModel( cvar_t *teamForceModel, cvar_t *teamForceMode
 		if( pmodelinfo )
 		{
 			// when we register a new model, we must re-register the skin, even if the cvar is not modified
-			if( !cgs.pure || trap_FS_IsPureFile( va( "models/players/%s/%s.skin", teamForceModel->string, teamForceSkin->string ) ) )
+			if( !cgs.pure || FS_IsPureFile( va( "models/players/%s/%s.skin", teamForceModel->string, teamForceSkin->string ) ) )
 				skin = R_RegisterSkinFile( va( "models/players/%s/%s", teamForceModel->string, teamForceSkin->string ) );
 			// if the skin failed, we can still try with default value (so only setting model cvar has a visible effect)
 			if( !skin )

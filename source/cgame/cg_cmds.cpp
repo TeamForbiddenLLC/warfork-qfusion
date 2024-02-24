@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "cg_local.h"
 
 #include "../qcommon/steam.h"
+#include "../qcommon/mod_fs.h"
 
 /*
 ==========================================================================
@@ -302,7 +303,7 @@ void CG_SC_PrintStatsToFile( const char *format, ... )
 	Q_vsnprintfz( msg, sizeof( msg ), format, argptr );
 	va_end( argptr );
 
-	trap_FS_Print( cg_statsFileHandle, msg );
+	FS_Print( cg_statsFileHandle, msg );
 }
 
 /*
@@ -313,7 +314,7 @@ static void CG_SC_DumpPlayerStats( const char *filename, const char *stats )
 	if( cgs.demoPlaying )
 		return;
 
-	if( trap_FS_FOpenFile( filename, &cg_statsFileHandle, FS_APPEND ) == -1 )
+	if( FS_FOpenFile( filename, &cg_statsFileHandle, FS_APPEND ) == -1 )
 	{
 		CG_Printf( "Couldn't write autorecorded stats, error opening file %s\n", filename );
 		return;
@@ -321,7 +322,7 @@ static void CG_SC_DumpPlayerStats( const char *filename, const char *stats )
 
 	CG_SC_PrintPlayerStats( stats, CG_SC_PrintStatsToFile, NULL );
 
-	trap_FS_FCloseFile( cg_statsFileHandle );
+	FS_FCloseFile( cg_statsFileHandle );
 }
 
 /*
@@ -991,7 +992,7 @@ static void CG_WriteBlockList( void )
 
 	Q_strncpyz( name, "blocklist.cfg", sizeof( name ) );
 
-	if( trap_FS_FOpenFile( name, &file, FS_WRITE ) == -1 )
+	if( FS_FOpenFile( name, &file, FS_WRITE ) == -1 )
 	{
 		CG_Printf( "Couldn't open %s\n", name );
 		return;
@@ -1000,10 +1001,10 @@ static void CG_WriteBlockList( void )
 	for( auto const &it : blocklist )
 	{
 		Q_snprintfz( string, sizeof( string ), "block \"%s\" \"%llu\"\r\n", it.second.c_str(), it.first);
-		trap_FS_Write( string, strlen( string ), file );
+		FS_Write( string, strlen( string ), file );
 	}
 
-	trap_FS_FCloseFile( file );
+	FS_FCloseFile( file );
 }
 
 static void CG_Cmd_Block_f( void )

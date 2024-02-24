@@ -22,7 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../steamshim/src/mod_steam.h"
 #define REF_DEFINE_INTERFACE_IMPL 1
 #include "../ref_base/ref_mod.h"
-
+#define FS_DEFINE_INTERFACE_IMPL 1
+#include "../qcommon/mod_fs.h"
 
 #include "cg_local.h"
 
@@ -43,6 +44,7 @@ extern "C" QF_DLL_EXPORT cgame_export_t *GetCGameAPI( cgame_import_t *import )
 	CGAME_IMPORT = *import;
 	Q_ImportSteamModule( &import->steam_import );
 
+	fs_import = *import->fsImport;
 	globals.API = CG_API;
 
 	globals.Init = CG_Init;
