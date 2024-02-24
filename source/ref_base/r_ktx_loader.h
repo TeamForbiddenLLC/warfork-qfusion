@@ -13,6 +13,7 @@ enum ktx_context_result_type_e {
   KTX_ERR_INVALID_IDENTIFIER,
   KTX_ERR_UNHANDLED_TEXTURE_TYPE,
   KTX_ERR_TRUNCATED,
+  KTX_WARN_MIPLEVEL_TRUNCATED, 
   KTX_ERR_ZER_TEXTURE_SIZE 
 };
 
@@ -27,6 +28,12 @@ struct ktx_context_err_s {
 			size_t size;
 			size_t expected;
 		} errTruncated;
+		struct {
+			uint_fast8_t expectedMipLevels;
+			uint_fast8_t mipLevels; 
+			size_t size;
+			size_t expected;
+		} mipTruncated;
 	};
 };
 

@@ -27,7 +27,7 @@ struct __raw_ktx_header_s {
 };
 #pragma pack( pop )
 
-static struct ktx_image_s *R_KTXGetImage( const struct ktx_context_s *cntx, uint32_t mipLevel, uint32_t faceIndex, uint32_t arrayOffset )
+static inline struct ktx_image_s *R_KTXGetImage( const struct ktx_context_s *cntx, uint32_t mipLevel, uint32_t faceIndex, uint32_t arrayOffset )
 {
 	assert( cntx );
 	assert( cntx->textures);
@@ -165,9 +165,12 @@ bool R_InitKTXContext(struct ktx_context_s *cntx, uint8_t *memory, size_t size, 
 		faceLodSize = ALIGN( faceLodSize, 4 ); // pad buffer to multiple of 4
 		offset += sizeof( uint32_t );
 		if( faceLodSize + offset > size ) {
-			err->type = KTX_ERR_TRUNCATED;
-			err->errTruncated.size = size;
-			err->errTruncated.expected = faceLodSize + offset;
+			err->mipTruncated.expectedMipLevels = mipLevel;
+			cntx->numberOfMipmapLevels = ( mipLevel > 0 ) ? mipLevel - 1 : 0;
+			err->mipTruncated.mipLevels = cntx->numberOfMipmapLevels;
+			err->type = cntx->numberOfMipmapLevels == 0 ? KTX_ERR_TRUNCATED: KTX_WARN_MIPLEVEL_TRUNCATED;
+			err->mipTruncated.size = size;
+			err->mipTruncated.expected = faceLodSize + offset;
 			goto error;
 		}
 
@@ -181,9 +184,12 @@ bool R_InitKTXContext(struct ktx_context_s *cntx, uint8_t *memory, size_t size, 
 				arrByteOffset += img->texture.size;
 			}
 			if( faceLodSize + offset > size ) {
-				err->type = KTX_ERR_TRUNCATED;
-				err->errTruncated.size = size;
-				err->errTruncated.expected = faceLodSize + offset;
+				err->mipTruncated.expectedMipLevels = mipLevel;
+				cntx->numberOfMipmapLevels = ( mipLevel > 0 ) ? mipLevel - 1 : 0;
+				err->mipTruncated.mipLevels = cntx->numberOfMipmapLevels;
+				err->type = cntx->numberOfMipmapLevels == 0 ? KTX_ERR_TRUNCATED : KTX_WARN_MIPLEVEL_TRUNCATED;
+				err->mipTruncated.size = size;
+				err->mipTruncated.expected = faceLodSize + offset;
 				goto error;
 			}
 			offset += faceLodSize;

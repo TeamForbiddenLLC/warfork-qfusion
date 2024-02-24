@@ -1311,19 +1311,23 @@ static bool R_LoadKTX( int ctx, image_t *image, const char *pathname )
 	if( !R_InitKTXContext( &ktxContext, buffer, bufferSize, &err ) ) {
 		switch(err.type) {
 			case KTX_ERR_INVALID_IDENTIFIER:
-				ri.Com_Printf( S_COLOR_YELLOW "R_LoadKTX: Bad file identifier: %s\n", pathname );
-				break;
+				ri.Com_Printf( S_COLOR_RED "R_LoadKTX: Bad file identifier: %s\n", pathname );
+				goto error;
 			case KTX_ERR_UNHANDLED_TEXTURE_TYPE:
-				ri.Com_Printf( S_COLOR_YELLOW "R_LoadKTX: Unhandeled texture (type: %04x internalFormat %04x): %s\n", err.errTextureType.type, err.errTextureType.internalFormat, pathname );
-				break;
+				ri.Com_Printf( S_COLOR_RED "R_LoadKTX: Unhandeled texture (type: %04x internalFormat %04x): %s\n", err.errTextureType.type, err.errTextureType.internalFormat, pathname );
+				goto error;
 			case KTX_ERR_TRUNCATED:
-				ri.Com_Printf( S_COLOR_YELLOW "R_LoadKTX: Truncated Data (size: %lu expected: %lu): %s\n", err.errTruncated.size, err.errTruncated.expected, pathname );
+				ri.Com_Printf( S_COLOR_RED "R_LoadKTX: Truncated Data size:(orignal: %lu expected: %lu): %s\n", err.errTruncated.size, err.errTruncated.expected, pathname );
+				goto error;
+			case KTX_WARN_MIPLEVEL_TRUNCATED:
+				ri.Com_Printf( S_COLOR_YELLOW "R_LoadKTX: Truncated MipLevel size: (orignal: %lu expected: %lu) mip: (orignal: %lu expected: %lu): %s\n", err.errTruncated.size, err.errTruncated.expected,
+							   err.mipTruncated.mipLevels, err.mipTruncated.expectedMipLevels, pathname );
 				break;
 			case KTX_ERR_ZER_TEXTURE_SIZE:
-				ri.Com_Printf( S_COLOR_YELLOW "R_LoadKTX: Zero texture size: %s\n", pathname );
+				ri.Com_Printf( S_COLOR_RED "R_LoadKTX: Zero texture size: %s\n", pathname );
+				goto error;
 				break;
 		}
-		goto error;
 	}
 
 	if( ktxContext.format && ( ktxContext.format != ktxContext.baseInternalFormat ) )
