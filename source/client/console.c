@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // console.c
 
 #include "client.h"
-
+#include "../qcommon/mod_mem.h"
 #define CON_MAXLINES	3000
 typedef struct
 {
@@ -244,11 +244,6 @@ static size_t Con_BufferText( char *buffer, const char *delim )
 */
 static void Con_Dump_f( void )
 {
-	int file;
-	size_t buffer_size;
-	char *buffer;
-	size_t name_size;
-	char *name;
 	const char *newline = "\r\n";
 
 	if( !con_initialized )
@@ -260,8 +255,8 @@ static void Con_Dump_f( void )
 		return;
 	}
 
-	name_size = sizeof( char ) * ( strlen( Cmd_Argv( 1 ) ) + strlen( ".txt" ) + 1 );
-	name = Mem_TempMalloc( name_size );
+	const size_t name_size = sizeof( char ) * ( strlen( Cmd_Argv( 1 ) ) + strlen( ".txt" ) + 1 );
+	char* const name = Q_Malloc( name_size );
 
 	Q_strncpyz( name, Cmd_Argv( 1 ), name_size );
 	COM_DefaultExtension( name, ".txt", name_size );
@@ -270,21 +265,22 @@ static void Con_Dump_f( void )
 	if( !COM_ValidateRelativeFilename( name ) )
 	{
 		Com_Printf( "Invalid filename.\n" );
-		Mem_TempFree( name );
+		Q_Free( name );
 		return;
 	}
-
+	
+	int file;
 	if( FS_FOpenFile( name, &file, FS_WRITE ) == -1 )
 	{
 		Com_Printf( "Couldn't open: %s\n", name );
-		Mem_TempFree( name );
+		Q_Free( name );
 		return;
 	}
 
 	QMutex_Lock( con.mutex );
 
-	buffer_size = Con_BufferText( NULL, newline ) + 1;
-	buffer = Mem_TempMalloc( buffer_size );
+	const size_t buffer_size = Con_BufferText( NULL, newline ) + 1;
+	char *const buffer = Q_Malloc( buffer_size );
 
 	Con_BufferText( buffer, newline );
 
@@ -294,10 +290,10 @@ static void Con_Dump_f( void )
 
 	FS_FCloseFile( file );
 
-	Mem_TempFree( buffer );
+	Q_Free( buffer );
 
 	Com_Printf( "Dumped console text: %s\n", name );
-	Mem_TempFree( name );
+	Q_Free( name );
 }
 
 /*

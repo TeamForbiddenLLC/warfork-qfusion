@@ -673,9 +673,9 @@ void Q_Free( void *ptr )
 		assert( false );
 		_Mem_Error( "Mem_Free: Request to deallocate RAM that was naver allocated (alloc at %s:%i)", mem->sourceFilename, mem->sourceline );
 	}
-	__unlinkMemory( mem );
-	__validateAllocationHeader( ptr );
+	__validateAllocationHeader( mem);
 	free( mem->baseAddress );
+	__unlinkMemory( mem );
 	__returnMemHeaderToReserve( mem );
 	QMutex_Unlock( memMutex );
 }
