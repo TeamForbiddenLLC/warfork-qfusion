@@ -394,13 +394,13 @@ static struct memheader_s *__findLinkMemory( const void *reportedAddress )
 static void __dumpMemHeader(const struct memheader_s* allocUnit)
 {
 	if( allocUnit->pool ) {
-		Com_Printf( "[I] Pool: %s", allocUnit->pool->name);
+		Com_Printf( "[I] Pool: %s\n", allocUnit->pool->name);
 	}
-	Com_Printf("[I] Address (reported): %010p", allocUnit->reportedAddress);
-	Com_Printf("[I] Address (actual)  : %010p", allocUnit->baseAddress);
-	Com_Printf("[I] Size (reported)   : 0x%08X (%s)", (unsigned int)(allocUnit->size), __memorySizeString((unsigned int)(allocUnit->size)));
-	Com_Printf("[I] Size (actual)     : 0x%08X (%s)", (unsigned int)(allocUnit->realsize), __memorySizeString((unsigned int)(allocUnit->size)));
-	Com_Printf("[I] Owner             : %s:%s(%d)", allocUnit->sourceFilename, allocUnit->functionName, allocUnit->sourceline);
+	Com_Printf("[I] Address (reported): %010p\n", allocUnit->reportedAddress);
+	Com_Printf("[I] Address (actual)  : %010p\n", allocUnit->baseAddress);
+	Com_Printf("[I] Size (reported)   : 0x%08X (%s)\n", (unsigned int)(allocUnit->size), __memorySizeString((unsigned int)(allocUnit->size)));
+	Com_Printf("[I] Size (actual)     : 0x%08X (%s)\n", (unsigned int)(allocUnit->realsize), __memorySizeString((unsigned int)(allocUnit->size)));
+	Com_Printf("[I] Owner             : %s:%s(%d)\n", allocUnit->sourceFilename, allocUnit->functionName, allocUnit->sourceline);
 }
 
 bool __validateAllocationHeader(const struct memheader_s* header)
@@ -416,7 +416,7 @@ bool __validateAllocationHeader(const struct memheader_s* header)
 		const uint8_t expectedPrefixByte = (prefixPattern >> ((i % sizeof(uint32_t)) * 8)) & 0xFF;
 		if (*pre != expectedPrefixByte)
 		{
-			Com_Printf("[!] A memory allocation unit was corrupt because of an underrun:");
+			Com_Printf("[!] A memory allocation unit was corrupt because of an underrun:\n");
 			__dumpMemHeader(header);
 			errorFlag = true;
 		}
@@ -429,7 +429,7 @@ bool __validateAllocationHeader(const struct memheader_s* header)
 		const uint8_t expectedPostfixByte = (postfixPattern >> ((i % sizeof(uint32_t)) * 8)) & 0xFF;
 		if (*post != expectedPostfixByte)
 		{
-			Com_Printf("[!] A memory allocation unit was corrupt because of an overrun:");
+			Com_Printf("[!] A memory allocation unit was corrupt because of an overrun:\n");
 			__dumpMemHeader(header);
 			errorFlag = true;
 		}
@@ -1133,8 +1133,7 @@ static void MemStats_f( void )
 
 void Mem_DumpMemoryReport() {
 	Mem_ValidationAllAllocations();	
-	
-	Com_Printf("----------------------- Tracked Allocations ----------------------------");
+	Com_Printf("----------------------- Tracked Allocations ----------------------------\n");
 	for( size_t i = 0; i < AllocHashSize; i++ ) {
 		struct memheader_s *ptr = hashTable[i];
 		while( ptr ) {

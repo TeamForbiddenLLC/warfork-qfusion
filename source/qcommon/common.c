@@ -180,7 +180,6 @@ static void Com_ReopenConsoleLog( void )
 	QMutex_Lock( com_print_mutex );
 
 	Com_CloseConsoleLog( false, false );
-
 	if( logconsole && logconsole->string && logconsole->string[0] )
 	{
 		size_t name_size;
@@ -1081,22 +1080,21 @@ void Qcommon_Shutdown( void )
 	Qcommon_ShutdownCommands();
 	Memory_ShutdownCommands();
 
-	Com_CloseConsoleLog( true, true );
-
-   Qcommon_ShutdownCvarDescriptions();
-   L10n_Shutdown();
+	Qcommon_ShutdownCvarDescriptions();
+	L10n_Shutdown();
 
 	FS_Shutdown();
 
-   wswcurl_cleanup();
-   
-   Dynvar_Shutdown();
-   dynvars_initialized = false;
-    Cvar_Shutdown();
-    Cmd_Shutdown();
+	wswcurl_cleanup();
+
+	Dynvar_Shutdown();
+	dynvars_initialized = false;
+	Cvar_Shutdown();
+	Cmd_Shutdown();
 	Cbuf_Shutdown();
 	Memory_Shutdown();
 	
+	Com_CloseConsoleLog( true, true );
 	QMutex_Destroy( &com_print_mutex );
 
 	QThreads_Shutdown();
