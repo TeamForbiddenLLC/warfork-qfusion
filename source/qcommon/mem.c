@@ -78,12 +78,16 @@ static bool commands_initialized = false;
 	static const bool AlwaysWipeAll = true; 
 	static const size_t PaddingSize = 8;
 #else
-	static const size_t PaddingSize = 4;
+	static const size_t PaddingSize = 1;
 	static const bool AlwaysWipeAll = false; 
 #endif
 
 static const bool RandomWipe = false; 
 #define CANARY_SIZE (PaddingSize * sizeof(uint32_t))
+
+struct {
+	uint_fast32_t memTrackCount; // tracks the number of linked units if this is mismatched then the table is corrupted
+} stats;
 
 typedef struct memheader_s
 {
@@ -269,7 +273,7 @@ static const char* __memorySizeString(uint32_t size)
 {
 	static char str[128];
 	if (size > (1024 * 1024))
-		printf(str, "%10s (%7.2fM)", _insertCommas(size), ((float)size) / (1024.0f * 1024.0f));
+		sprintf(str, "%10s (%7.2fM)", _insertCommas(size), ((float)size) / (1024.0f * 1024.0f));
 	else if (size > 1024)
 		sprintf(str, "%10s (%7.2fK)", _insertCommas(size), ((float)size) / 1024.0f);
 	else
@@ -293,6 +297,7 @@ static inline void __linkMemory( struct memheader_s *mem )
 	mem->hnext = hashTable[hashIndex];
 	mem->hprev = NULL;
 	hashTable[hashIndex] = mem;
+	stats.memTrackCount++;
 }
 
 static inline void __unlinkPool(struct memheader_s* mem) {
@@ -339,6 +344,7 @@ static inline void __unlinkMemory( struct memheader_s *mem )
 	}
 	mem->hprev = NULL;
 	mem->hnext = NULL;
+	stats.memTrackCount--;
 }
 
 
@@ -914,6 +920,7 @@ void _Mem_FreePool( mempool_t **pool, int musthave, int canthave, const char *fi
 }
 
 void Mem_ValidationAllAllocations() {
+	uint_fast32_t memTrackCount = 0; 
 	int numberErrors = 0;
 	for( size_t i = 0; i < AllocHashSize; i++ ) {
 		struct memheader_s *ptr = hashTable[i];
@@ -921,9 +928,14 @@ void Mem_ValidationAllAllocations() {
 			if(!__validateAllocationHeader( ptr )) {
 				numberErrors++;		
 			}
+			memTrackCount++; 
 			ptr = ptr->hnext;
 		}
 	}
+	assert(memTrackCount == stats.memTrackCount);
+	if(memTrackCount != stats.memTrackCount) 
+		Com_Printf("[!] number of tracked units is mismatched table is corrupted (found: %d expected: %d)", memTrackCount, stats.memTrackCount);
+
 	if (numberErrors > 0)
 		Com_Printf("[!] While validting header, %d allocation headers(s) were found to have problems", numberErrors);
 }
