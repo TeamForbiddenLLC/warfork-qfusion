@@ -30,6 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../qalgo/md5.h"
 #include "../matchmaker/mm_common.h"
 #include "compression.h"
+#include "mem.h"
 
 #define MAX_NUM_ARGVS	50
 
@@ -180,6 +181,7 @@ static void Com_ReopenConsoleLog( void )
 	QMutex_Lock( com_print_mutex );
 
 	Com_CloseConsoleLog( false, false );
+
 	if( logconsole && logconsole->string && logconsole->string[0] )
 	{
 		size_t name_size;
@@ -1077,24 +1079,27 @@ void Qcommon_Shutdown( void )
 
 	Com_Autoupdate_Shutdown();
 
+
 	Qcommon_ShutdownCommands();
 	Memory_ShutdownCommands();
 
-	Qcommon_ShutdownCvarDescriptions();
-	L10n_Shutdown();
+	Mem_DumpMemoryReport();
+	Com_CloseConsoleLog( true, true );
+
+   Qcommon_ShutdownCvarDescriptions();
+   L10n_Shutdown();
 
 	FS_Shutdown();
 
-	wswcurl_cleanup();
-
-	Dynvar_Shutdown();
-	dynvars_initialized = false;
-	Cvar_Shutdown();
-	Cmd_Shutdown();
+   wswcurl_cleanup();
+   
+   Dynvar_Shutdown();
+   dynvars_initialized = false;
+    Cvar_Shutdown();
+    Cmd_Shutdown();
 	Cbuf_Shutdown();
 	Memory_Shutdown();
 	
-	Com_CloseConsoleLog( true, true );
 	QMutex_Destroy( &com_print_mutex );
 
 	QThreads_Shutdown();

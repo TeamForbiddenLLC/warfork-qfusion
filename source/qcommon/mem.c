@@ -399,7 +399,7 @@ static void __dumpMemHeader(const struct memheader_s* allocUnit)
 	Com_Printf("[I] Address (reported): %010p\n", allocUnit->reportedAddress);
 	Com_Printf("[I] Address (actual)  : %010p\n", allocUnit->baseAddress);
 	Com_Printf("[I] Size (reported)   : 0x%08X (%s)\n", (unsigned int)(allocUnit->size), __memorySizeString((unsigned int)(allocUnit->size)));
-	Com_Printf("[I] Size (actual)     : 0x%08X (%s)\n", (unsigned int)(allocUnit->realsize), __memorySizeString((unsigned int)(allocUnit->size)));
+	Com_Printf("[I] Size (actual)     : 0x%08X (%s)\n", (unsigned int)(allocUnit->realsize), __memorySizeString((unsigned int)(allocUnit->realsize)));
 	Com_Printf("[I] Owner             : %s:%s(%d)\n", allocUnit->sourceFilename, allocUnit->functionName, allocUnit->sourceline);
 }
 
@@ -1183,7 +1183,6 @@ void Memory_Shutdown( void )
 	if( !memory_initialized )
 		return;
 	
-	Mem_DumpMemoryReport();
 
 	// set the cvar to NULL so nothing is printed to non-existing console
 	developerMemory = NULL;
