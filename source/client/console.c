@@ -1236,7 +1236,7 @@ static void Con_CompleteCommandLine( void )
 		{
 			// the list is empty, although non-NULL list pointer suggests that the command
 			// exists, so clean up and exit without printing anything
-			Mem_TempFree( list[4] );
+			Q_Free( list[4] );
 			return;
 		}
 	}
@@ -1340,7 +1340,7 @@ static void Con_CompleteCommandLine( void )
 			size_t temp_size;
 
 			temp_size = sizeof( key_lines[edit_line] );
-			cmd_temp = Mem_TempMalloc( temp_size );
+			cmd_temp = Q_Malloc( temp_size );
 
 			Q_strncpyz( cmd_temp, key_lines[edit_line] + skip, temp_size );
 			p = strstr( cmd_temp, " " );
@@ -1364,13 +1364,14 @@ static void Con_CompleteCommandLine( void )
 		key_lines[edit_line][key_linepos] = 0;
 
 		if( cmd == cmd_temp )
-			Mem_TempFree( cmd );
+			Q_Free( cmd );
 	}
 
 	for( i = 0; i < 5; ++i )
 	{
-		if( list[i] )
-			Mem_TempFree( list[i] );
+		if( list[i] ) {
+			Q_Free( list[i] );
+		}
 	}
 }
 
@@ -1391,8 +1392,6 @@ LINE TYPING INTO THE CONSOLE
 */
 static void Con_Key_Copy( void )
 {
-	size_t buffer_size;
-	char *buffer;
 	const char *newline = "\r\n";
 
 	if( search_text[0] ) {
@@ -1402,8 +1401,8 @@ static void Con_Key_Copy( void )
 
 	QMutex_Lock( con.mutex );
 
-	buffer_size = Con_BufferText( NULL, newline ) + 1;
-	buffer = Mem_TempMalloc( buffer_size );
+	const size_t buffer_size = Con_BufferText( NULL, newline ) + 1;
+	char* buffer = Q_Malloc( buffer_size );
 
 	Con_BufferText( buffer, newline );
 
@@ -1411,7 +1410,7 @@ static void Con_Key_Copy( void )
 
 	CL_SetClipboardData( buffer );
 
-	Mem_TempFree( buffer );
+	Q_Free( buffer );
 }
 
 /*
@@ -2172,7 +2171,7 @@ static void Con_MessageCompletion( const char *partial, bool teamonly )
 			for( i = 0; i < 4; ++i )
 			{
 				if( list[i] )
-					Mem_TempFree( list[i] );
+					Q_free( list[i] );
 			}
 
 			if( t == 1 && comp_len < sizeof( comp ) - 1 ) {
