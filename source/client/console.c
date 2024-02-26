@@ -2171,7 +2171,7 @@ static void Con_MessageCompletion( const char *partial, bool teamonly )
 			for( i = 0; i < 4; ++i )
 			{
 				if( list[i] )
-					Q_free( list[i] );
+					Q_Free( list[i] );
 			}
 
 			if( t == 1 && comp_len < sizeof( comp ) - 1 ) {
