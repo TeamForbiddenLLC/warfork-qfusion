@@ -24,7 +24,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "tv_upstream.h"
 #include "tv_upstream_demos.h"
-
+#include "../qcommon/mod_cmd.h"
+ 
 static char *TV_ConnstateToString( connstate_t state )
 {
 	switch( state )

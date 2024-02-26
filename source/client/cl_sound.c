@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 #include "client.h"
+#include "../qcommon/mod_cmd.h"
 
 static sound_export_t *se;
 static mempool_t *cl_soundmodulepool;

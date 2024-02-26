@@ -2,6 +2,7 @@
 #define __MODULE_CMD_H
 
 #include "../gameshared/q_arch.h"
+#include "../gameshared/q_shared.h"
 
 #define DECLARE_TYPEDEF_METHOD( ret, name, ... ) \
 	typedef ret(*name##Fn )( __VA_ARGS__ ); \

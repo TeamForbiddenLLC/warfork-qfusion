@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "client.h"
 #include "../ui/ui_public.h"
 #include "../qcommon/asyncstream.h"
+#include "../qcommon/mod_cmd.h"
 
 // Structure containing functions exported from user interface DLL
 static ui_export_t *uie;
