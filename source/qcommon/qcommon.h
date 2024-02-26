@@ -434,7 +434,7 @@ void	    Cbuf_Execute( void );
 
 //===========================================================================
 
-#include "mod_cmd.h"
+#include "module_cmd.h"
 #include "cmd.h"
 
 /*

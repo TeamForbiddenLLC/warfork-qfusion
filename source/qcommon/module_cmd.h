@@ -1,5 +1,5 @@
-#ifndef R_CMD_MODULE_H
-#define R_CMD_MODULE_H
+#ifndef __MODULE_CMD_H
+#define __MODULE_CMD_H
 
 #include "../gameshared/q_arch.h"
 
