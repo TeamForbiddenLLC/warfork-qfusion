@@ -29,7 +29,6 @@ CINEMATICS PLAYBACK ABSTRACTION LAYER
 #include "cin_local.h"
 #include "cin_roq.h"
 
-#include "../qcommon/mod_cmd.h"
 
 enum
 {
