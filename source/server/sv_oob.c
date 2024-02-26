@@ -21,6 +21,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "server.h"
 #include "../matchmaker/mm_common.h"
 
+#include "../qcommon/mod_cmd.h"
+
 typedef struct sv_master_s
 {
 	netadr_t address;
