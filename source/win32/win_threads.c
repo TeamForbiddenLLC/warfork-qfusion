@@ -146,17 +146,20 @@ void Sys_Mutex_Unlock( qmutex_t *mutex )
 */
 int Sys_Thread_Create( qthread_t **pthread, void *(*routine) (void*), void *param )
 {
-	qthread_t *thread;
 	unsigned threadID;
-	HANDLE h;
 	
-	h = (HANDLE)_beginthreadex( NULL, 0, (unsigned (WINAPI *) (void *))routine, param, 0, &threadID );
+	qthread_t *thread = ( qthread_t * )malloc( sizeof( *thread ) );
+	if(!thread) {
+		return -1;
+	}
+
+	HANDLE h = (HANDLE)_beginthreadex( NULL, 0, (unsigned (WINAPI *) (void *))routine, param, 0, &threadID );
 
 	if( h == NULL ) {
+		free(thread);
 		return GetLastError();
 	}
 
-	thread = ( qthread_t * )malloc( sizeof( *thread ) );
 	thread->h = h;
 	*pthread = thread;
 	return 0;
@@ -203,14 +206,16 @@ bool Sys_Atomic_CAS( volatile int *value, int oldval, int newval, qmutex_t *mute
 */
 int Sys_CondVar_Create( qcondvar_t **pcond )
 {
-	qcondvar_t *cond;
 	HANDLE *e = NULL;
 
 	if( !pcond ) {
 		return -1;
 	}
 
-	cond = ( qcondvar_t * )malloc( sizeof( *cond ) );
+	qcondvar_t *cond = ( qcondvar_t * )malloc( sizeof( *cond ) );
+	if(!cond) {
+		return -1;
+	}
 
 	if( pInitializeConditionVariable ) {
 		pInitializeConditionVariable( &( cond->c ) );
