@@ -57,7 +57,7 @@ struct cmd_import_s {
 	Cmd_SetCompletionFuncFn Cmd_SetCompletionFunc;
 };
 
-static struct cmd_import_s Q_DefaultCmdImport = {
+static const struct cmd_import_s Q_DefaultCmdImport = {
 	Cmd_AddCommand,
 	Cmd_RemoveCommand,
 	Cmd_Exists,
