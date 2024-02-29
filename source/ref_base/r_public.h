@@ -22,6 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "../cgame/ref.h"
 
+#include "../qcommon/mod_mem.h"
+
 #define REF_API_VERSION 21
 
 struct mempool_s;
@@ -103,7 +105,7 @@ typedef struct
 	unsigned (**cmdHandlers)( const void * ), unsigned timeout_msec );
 	
 	const struct fs_import_s* fsImport;
-
+	const struct mem_import_s* memImport;
 } ref_import_t;
 
 
