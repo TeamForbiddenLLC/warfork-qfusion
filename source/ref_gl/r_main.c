@@ -1702,21 +1702,17 @@ void R_EndFrame( void )
 */
 char *R_CopyString_( const char *in, const char *filename, int fileline )
 {
-	char *out;
-
-	out = ri.Mem_AllocExt( r_mempool, ( strlen( in ) + 1 ), 0, 1, filename, fileline );
+	char *out = __Q_Malloc(strlen(in) + 1, filename, "", fileline);
 	strcpy( out, in );
+	Q_LinkToPool(out, Q_ParentPool()); // TODO: invesigate memory for copy string 
 
 	return out;
 }
 
 int R_LoadFileGroup_( const char *path, int flags, group_handle_t* group, void **buffer, const char *filename, int fileline )
 {
-	uint8_t *buf;
 	unsigned int len;
 	int fhandle;
-
-	buf = NULL; // quiet compiler warning
 
 	// look for it in the filesystem or pack files
 	len = FS_FOpenFileGroup( path, &fhandle, FS_READ|flags, group );
@@ -1733,8 +1729,8 @@ int R_LoadFileGroup_( const char *path, int flags, group_handle_t* group, void *
 		FS_FCloseFile( fhandle );
 		return len;
 	}
-
-	buf = ( uint8_t *)ri.Mem_AllocExt( r_mempool, len + 1, 16, 0, filename, fileline );
+	uint8_t *buf = __Q_MallocAligned( 16, len + 1, filename, "", fileline );
+	Q_LinkToPool(buf, Q_ParentPool()); // TODO: invesigate memory for copy string 
 	buf[len] = 0;
 	*buffer = buf;
 
@@ -1746,11 +1742,8 @@ int R_LoadFileGroup_( const char *path, int flags, group_handle_t* group, void *
 
 int R_LoadFile_( const char *path, int flags, void **buffer, const char *filename, int fileline )
 {
-	uint8_t *buf;
 	unsigned int len;
 	int fhandle;
-
-	buf = NULL; // quiet compiler warning
 
 	// look for it in the filesystem or pack files
 	len = FS_FOpenFile( path, &fhandle, FS_READ|flags );
@@ -1768,7 +1761,7 @@ int R_LoadFile_( const char *path, int flags, void **buffer, const char *filenam
 		return len;
 	}
 
-	buf = ( uint8_t *)ri.Mem_AllocExt( r_mempool, len + 1, 16, 0, filename, fileline );
+	uint8_t *buf = __Q_MallocAligned( 16, len + 1, filename, "", fileline );
 	buf[len] = 0;
 	*buffer = buf;
 
@@ -1783,5 +1776,5 @@ int R_LoadFile_( const char *path, int flags, void **buffer, const char *filenam
 */
 void R_FreeFile_( void *buffer, const char *filename, int fileline )
 {
-	ri.Mem_Free( buffer, filename, fileline );
+	Q_Free(buffer);
 }

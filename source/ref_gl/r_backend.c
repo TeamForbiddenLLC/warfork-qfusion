@@ -39,7 +39,7 @@ void RB_Init( void )
 {
 	memset( &rb, 0, sizeof( rb ) );
 
-	rb.mempool = R_AllocPool( NULL, "Rendering Backend" );
+	rb.mempool = Q_CreatePool(NULL,"Rendering Backend" );
 
 	// set default OpenGL state
 	RB_SetGLDefaults();
@@ -62,7 +62,8 @@ void RB_Shutdown( void )
 {
 	RP_StorePrecacheList();
 
-	R_FreePool( &rb.mempool );
+	Q_FreePool( rb.mempool );
+	rb.mempool = NULL;
 }
 
 /*
@@ -691,7 +692,7 @@ void RB_RegisterStreamVBOs( void )
 		stream->vbo = R_CreateMeshVBO( &rb,
 			MAX_STREAM_VBO_VERTS, MAX_STREAM_VBO_ELEMENTS, 0,
 			vattribs[i], VBO_TAG_STREAM, VATTRIB_TEXCOORDS_BIT|VATTRIB_NORMAL_BIT|VATTRIB_SVECTOR_BIT );
-		stream->vertexData = RB_Alloc( MAX_STREAM_VBO_VERTS * stream->vbo->vertexSize );
+		stream->vertexData = Q_MallocAligned(16, MAX_STREAM_VBO_VERTS * stream->vbo->vertexSize );
 	}
 }
 
@@ -1260,9 +1261,10 @@ void RB_DrawElementsInstanced( int firstVert, int numVerts, int firstElem, int n
 		// the uniform state in between draw calls
 		if( rb.maxDrawInstances < numInstances ) {
 			if( rb.drawInstances ) {
-				RB_Free( rb.drawInstances );
+				Q_Free( rb.drawInstances );
 			}
-			rb.drawInstances = RB_Alloc( numInstances * sizeof( *rb.drawInstances ) );
+			rb.drawInstances = Q_CallocAligned( numInstances, 16, sizeof( *rb.drawInstances ) );
+			Q_LinkToPool(rb.drawInstances, rb.mempool);
 			rb.maxDrawInstances = numInstances;
 		}
 		memcpy( rb.drawInstances, instances, numInstances * sizeof( *instances ) );

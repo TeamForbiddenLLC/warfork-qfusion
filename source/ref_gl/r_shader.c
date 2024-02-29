@@ -945,9 +945,9 @@ static void Shader_Template( shader_t *shader, shaderpass_t *pass, const char **
 
 	// (re)allocate string buffer, if needed
 	if( !r_shaderTemplateBuf )
-		r_shaderTemplateBuf = R_Malloc( length + 1 );
+		r_shaderTemplateBuf = Q_Malloc( length + 1 );
 	else
-		r_shaderTemplateBuf = R_Realloc( r_shaderTemplateBuf, length + 1 );
+		r_shaderTemplateBuf = Q_Realloc( r_shaderTemplateBuf, length + 1 );
 
 	// start with an empty string
 	out = r_shaderTemplateBuf;
@@ -1822,7 +1822,7 @@ static void Shader_MakeCache( const char *filename )
 	size_t cacheMemSize;
 
 	pathNameSize = strlen( "scripts/" ) + strlen( filename ) + 1;
-	pathName = R_Malloc( pathNameSize );
+	pathName = Q_Malloc( pathNameSize );
 	assert( pathName );
 	Q_snprintfz( pathName, pathNameSize, "scripts/%s", filename );
 
@@ -1836,7 +1836,7 @@ static void Shader_MakeCache( const char *filename )
 	if( !size )
 		goto done;
 
-	buf = R_Malloc( size+1 );
+	buf = Q_Malloc( size+1 );
 	strcpy( buf, temp );
 	R_FreeFile( temp );
 	temp = NULL;
@@ -1855,11 +1855,11 @@ static void Shader_MakeCache( const char *filename )
 
 	if( !cacheMemSize )
 	{
-		R_Free( buf );
+		Q_Free( buf );
 		goto done;
 	}
 
-	cacheMemBuf = R_Malloc( cacheMemSize );
+	cacheMemBuf = Q_Malloc( cacheMemSize );
 	memset( cacheMemBuf, 0, cacheMemSize );
 	for( ptr = buf; ptr; )
 	{
@@ -1881,7 +1881,7 @@ static void Shader_MakeCache( const char *filename )
 
 set_path_and_offset:
 		if( cache->filename )
-			R_Free( cache->filename );
+			Q_Free( cache->filename );
 		cache->filename = R_CopyString( filename );
 		cache->buffer = buf;
 		cache->offset = ptr - buf;
@@ -1893,7 +1893,7 @@ done:
 	if( temp )
 		R_FreeFile( temp );
 	if( pathName )
-		R_Free( pathName );
+		Q_Free( pathName );
 }
 
 /*
@@ -2014,12 +2014,12 @@ static void R_FreeShader( shader_t *shader )
 	}
 
 	if( shader->deforms ) {
-		R_Free( shader->deforms );
+		Q_Free( shader->deforms );
 		shader->deforms = 0;
 	}
 	shader->numdeforms = 0;
 	shader->deformsKey = NULL;
-	R_Free( shader->passes );
+	Q_Free( shader->passes );
 	shader->passes = NULL;
 	shader->numpasses = 0;
 	shader->name = NULL;
@@ -2148,8 +2148,8 @@ void R_ShutdownShaders( void )
 		R_FreeShader( s );
 	}
 
-	R_Free( r_shaderTemplateBuf );
-	R_Free( r_shortShaderName );
+	Q_Free( r_shaderTemplateBuf );
+	Q_Free( r_shortShaderName );
 
 	r_shaderTemplateBuf = NULL;
 	r_shortShaderName = NULL;
@@ -2420,7 +2420,7 @@ static void Shader_Finish( shader_t *s )
 	
 	size += strlen( oldname ) + 1;
 
-	buffer = R_Malloc( size );
+	buffer = Q_Malloc( size );
 	bufferOffset = 0;
 
 	s->passes = ( shaderpass_t * )(buffer + bufferOffset); bufferOffset += s->numpasses * sizeof( shaderpass_t );
@@ -2468,7 +2468,7 @@ static void Shader_Finish( shader_t *s )
 	size = s->numdeforms * sizeof( deformv_t );
 	size += deformvKeyLen + 1;
 
-	buffer = R_Malloc( size );
+	buffer = Q_Malloc( size );
 	bufferOffset = 0;
 
 	if( s->numdeforms )
@@ -2678,7 +2678,7 @@ create_default:
 		switch( type ) {
 		case SHADER_TYPE_VERTEX:
 			// vertex lighting
-			data = R_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			data = Q_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
 			s->flags = SHADER_DEPTHWRITE|SHADER_CULL_FRONT;
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT|VATTRIB_COLOR0_BIT;
 			s->sort = SHADER_SORT_OPAQUE;
@@ -2689,6 +2689,7 @@ create_default:
 
 			s->numpasses = 0;
 			pass = &s->passes[s->numpasses++];
+			memset(pass, 0, sizeof(shaderpass_t));
 			pass->flags = GLSTATE_DEPTHWRITE;
 			pass->tcgen = TC_GEN_BASE;
 			pass->rgbgen.type = RGB_GEN_VERTEX;
@@ -2699,7 +2700,7 @@ create_default:
 			// deluxemapping
 			Shaderpass_LoadMaterial( &materialImages[0], &materialImages[1], &materialImages[2], shortname, 0, s->imagetags );
 
-			data = R_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			data = Q_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
 			s->flags = SHADER_DEPTHWRITE|SHADER_CULL_FRONT|SHADER_LIGHTMAP;
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT|VATTRIB_LMCOORDS0_BIT|VATTRIB_NORMAL_BIT|VATTRIB_SVECTOR_BIT;
 			s->sort = SHADER_SORT_OPAQUE;
@@ -2709,6 +2710,7 @@ create_default:
 			strcpy( s->name, shortname );
 
 			pass = &s->passes[0];
+			memset(pass, 0, sizeof(shaderpass_t));
 			pass->flags = GLSTATE_DEPTHWRITE;
 			pass->tcgen = TC_GEN_BASE;
 			pass->rgbgen.type = RGB_GEN_IDENTITY;
@@ -2720,7 +2722,7 @@ create_default:
 			pass->images[3] = materialImages[2]; // decalmap
 			break;
 		case SHADER_TYPE_CORONA:
-			data = R_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) * 1 );
+			data = Q_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) * 1 );
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT|VATTRIB_COLOR0_BIT;
 			s->sort = SHADER_SORT_ADDITIVE;
 			s->numpasses = 1;
@@ -2730,6 +2732,7 @@ create_default:
 			strcpy( s->name, shortname );
 
 			pass = &s->passes[0];
+			memset(pass, 0, sizeof(shaderpass_t));
 			pass->flags = GLSTATE_SRCBLEND_ONE|GLSTATE_DSTBLEND_ONE;
 			pass->rgbgen.type = RGB_GEN_VERTEX;
 			pass->alphagen.type = ALPHA_GEN_IDENTITY;
@@ -2740,7 +2743,7 @@ create_default:
 			// load material images
 			Shaderpass_LoadMaterial( &materialImages[0], &materialImages[1], &materialImages[2], shortname, 0, s->imagetags );
 
-			data = R_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			data = Q_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
 			s->flags = SHADER_DEPTHWRITE|SHADER_CULL_FRONT;
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT|VATTRIB_NORMAL_BIT;
 			s->sort = SHADER_SORT_OPAQUE;
@@ -2750,6 +2753,7 @@ create_default:
 			strcpy( s->name, shortname );
 
 			pass = &s->passes[0];
+			memset(pass, 0, sizeof(shaderpass_t));
 			pass->flags = GLSTATE_DEPTHWRITE;
 			pass->rgbgen.type = RGB_GEN_IDENTITY;
 			pass->alphagen.type = ALPHA_GEN_IDENTITY;
@@ -2764,7 +2768,7 @@ create_default:
 		case SHADER_TYPE_2D:
 		case SHADER_TYPE_2D_RAW:
 		case SHADER_TYPE_VIDEO:
-			data = R_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			data = Q_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
 
 			s->flags = 0;
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT|VATTRIB_COLOR0_BIT;
@@ -2775,6 +2779,7 @@ create_default:
 			strcpy( s->name, shortname );
 
 			pass = &s->passes[0];
+			memset(pass, 0, sizeof(shaderpass_t));
 			pass->flags = GLSTATE_SRCBLEND_SRC_ALPHA|GLSTATE_DSTBLEND_ONE_MINUS_SRC_ALPHA;
 			pass->rgbgen.type = RGB_GEN_VERTEX;
 			pass->alphagen.type = ALPHA_GEN_VERTEX;
@@ -2794,18 +2799,20 @@ create_default:
 			break;
 		case SHADER_TYPE_OPAQUE_ENV:
 			// pad to 4 floats
-			data = R_Malloc( ALIGN( sizeof( shaderpass_t ), 16 ) + 4 * sizeof( float ) + shortname_length + 1 );
+			data = Q_Malloc( ALIGN( sizeof( shaderpass_t ), 16 ) + 4 * sizeof( float ) + shortname_length + 1 );
 
 			s->vattribs = VATTRIB_POSITION_BIT;
 			s->sort = SHADER_SORT_OPAQUE;
 			s->flags = SHADER_CULL_FRONT|SHADER_DEPTHWRITE;
 			s->numpasses = 1;
 			s->passes = ( shaderpass_t * )( data );
+			memset(s->passes, 0, sizeof(shaderpass_t));
 			s->passes[0].rgbgen.args = ( float * )((uint8_t *)data + ALIGN( sizeof( shaderpass_t ), 16 ));
 			s->name = ( char * )( s->passes[0].rgbgen.args + 4 );
 			strcpy( s->name, shortname );
 
 			pass = &s->passes[0];
+			pass->rgbgen.args = ( float * )((uint8_t *)data + ALIGN( sizeof( shaderpass_t ), 16 ));
 			pass->flags = GLSTATE_DEPTHWRITE;
 			pass->rgbgen.type = RGB_GEN_ENVIRONMENT;
 			VectorClear( pass->rgbgen.args );
@@ -2814,7 +2821,7 @@ create_default:
 			pass->images[0] = rsh.whiteTexture;
 			break;
 		case SHADER_TYPE_SKYBOX:
-			data = R_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			data = Q_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
 
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT;
 			s->sort = SHADER_SORT_SKY;
@@ -2825,6 +2832,7 @@ create_default:
 			strcpy( s->name, shortname );
 
 			pass = &s->passes[0];
+			memset(pass, 0, sizeof(shaderpass_t));
 			pass->rgbgen.type = RGB_GEN_IDENTITY;
 			pass->alphagen.type = ALPHA_GEN_IDENTITY;
 			pass->tcgen = TC_GEN_BASE;
@@ -2833,7 +2841,7 @@ create_default:
 			pass->images[0] = rsh.whiteTexture;
 			break;
 		case SHADER_TYPE_FOG:
-			data = R_Malloc( shortname_length + 1 );
+			data = Q_Malloc( shortname_length + 1 );
 
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT;
 			s->sort = SHADER_SORT_FOG;
@@ -2944,11 +2952,11 @@ shader_t *R_LoadShader( const char *name, shaderType_e type, bool forceDefault )
 	nameLength = strlen( name );
 	if( nameLength + 1 > r_shortShaderNameSize || r_shortShaderNameSize < MAX_QPATH ) {
 		if( r_shortShaderName ) {
-			R_Free( r_shortShaderName );
+			Q_Free( r_shortShaderName );
 			r_shortShaderName = NULL;
 		}
 		r_shortShaderNameSize = max( nameLength + 1, MAX_QPATH );
-		r_shortShaderName = R_Malloc( r_shortShaderNameSize );
+		r_shortShaderName = Q_Malloc( r_shortShaderNameSize );
 	}
 
 	shortname = r_shortShaderName;

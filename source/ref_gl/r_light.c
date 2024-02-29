@@ -537,8 +537,8 @@ static int R_PackLightmaps( int num, int w, int h, int dataSize, int stride, int
 	if( rectSize > r_lightmapBufferSize )
 	{
 		if( r_lightmapBuffer )
-			R_Free( r_lightmapBuffer );
-		r_lightmapBuffer = R_MallocExt( r_mempool, rectSize, 0, 0 );
+			Q_Free( r_lightmapBuffer );
+		r_lightmapBuffer = Q_Malloc(rectSize);
 		memset( r_lightmapBuffer, 255, rectSize );
 		r_lightmapBufferSize = rectSize;
 	}
@@ -635,7 +635,7 @@ void R_BuildLightmaps( model_t *mod, int numLightmaps, int w, int h, const uint8
 	}
 
 	r_lightmapBufferSize = size * samples;
-	r_lightmapBuffer = R_MallocExt( r_mempool, r_lightmapBufferSize, 0, 0 );
+	r_lightmapBuffer = Q_Malloc(r_lightmapBufferSize);
 	r_numUploadedLightmaps = 0;
 
 	if( mapConfig.lightmapArrays )
@@ -717,11 +717,11 @@ void R_BuildLightmaps( model_t *mod, int numLightmaps, int w, int h, const uint8
 	}
 
 	if( r_lightmapBuffer )
-		R_Free( r_lightmapBuffer );
+		Q_Free( r_lightmapBuffer );
 
-	loadbmodel->lightmapImages = Mod_Malloc( mod, sizeof( *loadbmodel->lightmapImages ) * r_numUploadedLightmaps );
-	memcpy( loadbmodel->lightmapImages, r_lightmapTextures, 
-		sizeof( *loadbmodel->lightmapImages ) * r_numUploadedLightmaps );
+	loadbmodel->lightmapImages = Q_MallocAligned( 16, sizeof( *loadbmodel->lightmapImages ) * r_numUploadedLightmaps );
+	Q_LinkToPool(loadbmodel->lightmapImages, mod->mempool);
+	memcpy( loadbmodel->lightmapImages, r_lightmapTextures, sizeof( *loadbmodel->lightmapImages ) * r_numUploadedLightmaps );
 	loadbmodel->numLightmapImages = r_numUploadedLightmaps;
 
 	ri.Com_DPrintf( "Packed %i lightmap blocks into %i texture(s)\n", numBlocks, r_numUploadedLightmaps );
@@ -763,7 +763,8 @@ void R_InitLightStyles( model_t *mod )
 	assert( mod );
 
 	loadbmodel = (( mbrushmodel_t * )mod->extradata);
-	loadbmodel->superLightStyles = Mod_Malloc( mod, sizeof( *loadbmodel->superLightStyles ) * MAX_LIGHTSTYLES );
+	loadbmodel->superLightStyles = Q_MallocAligned(16, sizeof( *loadbmodel->superLightStyles ) * MAX_LIGHTSTYLES);
+	Q_LinkToPool(loadbmodel->superLightStyles, mod->mempool);
 	loadbmodel->numSuperLightStyles = 0;
 
 	for( i = 0; i < MAX_LIGHTSTYLES; i++ )

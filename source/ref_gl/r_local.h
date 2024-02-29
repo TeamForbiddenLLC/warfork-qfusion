@@ -538,8 +538,6 @@ void		R_ShutdownCoronas( void );
 //
 #define R_FASTSKY() (r_fastsky->integer || rf.viewcluster == -1)
 
-extern mempool_t *r_mempool;
-
 #define	R_Malloc( size ) ri.Mem_AllocExt( r_mempool, size, 16, 1, __FILE__, __LINE__ )
 #define	R_Realloc( data, size ) ri.Mem_Realloc( data, size, __FILE__, __LINE__ )
 #define	R_Free( data ) ri.Mem_Free( data, __FILE__, __LINE__ )

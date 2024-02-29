@@ -22,6 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "../cgame/ref.h"
 
+#include "../qcommon/mod_mem.h"
+
 #define REF_API_VERSION 21
 
 struct mempool_s;
@@ -77,14 +79,6 @@ typedef struct
 	void ( *CIN_Reset )( struct cinematics_s *cin, unsigned int cur_time );
 	void ( *CIN_Close )( struct cinematics_s *cin );
 
-	struct mempool_s *( *Mem_AllocPool )( struct mempool_s *parent, const char *name, const char *filename, int fileline );
-	void ( *Mem_FreePool )( struct mempool_s **pool, const char *filename, int fileline );
-	void ( *Mem_EmptyPool )( struct mempool_s *pool, const char *filename, int fileline );
-	void *( *Mem_AllocExt )( struct mempool_s *pool, size_t size, size_t alignment, int z, const char *filename, int fileline );
-	void ( *Mem_Free )( void *data, const char *filename, int fileline );
-	void *( *Mem_Realloc )( void *data, size_t size, const char *filename, int fileline );
-	size_t ( *Mem_PoolTotalSize )( struct mempool_s *pool );
-
 	// multithreading
 	struct qthread_s *( *Thread_Create )( void *(*routine) (void*), void *param );
 	void ( *Thread_Join )( struct qthread_s *thread );
@@ -103,7 +97,7 @@ typedef struct
 	unsigned (**cmdHandlers)( const void * ), unsigned timeout_msec );
 	
 	const struct fs_import_s* fsImport;
-
+	const struct mem_import_s* memImport;
 } ref_import_t;
 
 

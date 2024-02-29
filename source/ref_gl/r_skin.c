@@ -55,11 +55,11 @@ static void SkinFile_FreeSkinFile( skinfile_t *skinfile )
 
 	if( skinfile->numpairs ) {
 		for( i = 0; i < skinfile->numpairs; i++ )
-			R_Free( skinfile->pairs[i].meshname );
-		R_Free( skinfile->pairs );
+			Q_Free( skinfile->pairs[i].meshname );
+		Q_Free( skinfile->pairs );
 	}
 
-	R_Free( skinfile->name );
+	Q_Free( skinfile->name );
 
 	memset( skinfile, 0, sizeof( skinfile_t ) );
 }
@@ -160,7 +160,7 @@ static skinfile_t *R_SkinFileForName( const char *name )
 	skinfile->numpairs = SkinFile_ParseBuffer( buffer, NULL );
 	if( skinfile->numpairs )
 	{
-		skinfile->pairs = R_Malloc( skinfile->numpairs * sizeof( mesh_shader_pair_t ) );
+		skinfile->pairs = Q_Calloc( skinfile->numpairs, sizeof( mesh_shader_pair_t ) );
 		SkinFile_ParseBuffer( buffer, skinfile->pairs );
 	}
 	else

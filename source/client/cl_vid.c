@@ -25,6 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "cin.h"
 #include "ftlib.h"
 #include "xpm.h"
+#include "../qcommon/mod_mem.h"
 
 cvar_t *vid_ref;
 cvar_t *vid_width, *vid_height;
@@ -316,7 +317,11 @@ static bool VID_LoadRefresh( const char *name )
 	GetRefAPI_t GetRefAPI_f;
 
 	VID_UnloadRefresh();
+	
+	vid_ref_mempool = Q_CreatePool( NULL, "Refresh" );
+	struct mem_import_s memImport = DECLARE_MEM_STRUCT(vid_ref_mempool); 
 
+	import.memImport = &memImport;
 	import.fsImport = &default_fs_imports_s;
 	import.Com_Error = &Com_Error;
 	import.Com_Printf = &Com_Printf;
@@ -353,14 +358,6 @@ static bool VID_LoadRefresh( const char *name )
 	import.CIN_Reset = &CIN_Reset;
 	import.CIN_Close = &CIN_Close;
 
-	import.Mem_AllocPool = &VID_RefModule_MemAllocPool;
-	import.Mem_FreePool = &VID_RefModule_MemFreePool;
-	import.Mem_EmptyPool = &VID_RefModule_MemEmptyPool;
-	import.Mem_AllocExt = &VID_RefModule_MemAllocExt;
-	import.Mem_Free = &VID_RefModule_MemFree;
-	import.Mem_Realloc = &_Mem_Realloc;
-	import.Mem_PoolTotalSize = &Mem_PoolTotalSize;
-
 	import.Thread_Create = QThread_Create;
 	import.Thread_Join = QThread_Join;
 	import.Thread_Yield = QThread_Yield;
@@ -393,22 +390,30 @@ static bool VID_LoadRefresh( const char *name )
 		// load succeeded
 		int api_version;
 		ref_export_t *rep;
+		
 
 		rep = GetRefAPI_f( &import );
 		re = *rep;
-		vid_ref_mempool = Mem_AllocPool( NULL, "Refresh" );
 		api_version = re.API();
 
 		if( api_version != REF_API_VERSION ) {
 			// wrong version
 			Com_Printf( "Wrong version: %i, not %i.\n", api_version, REF_API_VERSION );
 			VID_UnloadRefresh();
+			if(vid_ref_mempool) {
+				Q_FreePool(vid_ref_mempool);
+				vid_ref_mempool = NULL;
+			}
 			return false;
 		}
 	}
 	else
 	{
 		Com_Printf( "Not found %s.\n", va( LIB_DIRECTORY "/" LIB_PREFIX "%s_" ARCH LIB_SUFFIX, name ) );
+		if(vid_ref_mempool) {
+			Q_FreePool(vid_ref_mempool);
+			vid_ref_mempool = NULL;
+		}
 		return false;
 	}
 
