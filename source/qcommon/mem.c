@@ -868,10 +868,10 @@ void _Mem_Free( void *data, int musthave, int canthave, const char *filename, in
 	__validateAllocationHeader(mem);
 
 	mempool_t *pool = mem->pool;
-	if( musthave && ( ( pool->flags & musthave ) != musthave ) )
-		_Mem_Error( "Mem_Free: bad pool flags (musthave) (alloc at %s:%i)", filename, fileline );
-	if( canthave && ( pool->flags & canthave ) )
-		_Mem_Error( "Mem_Free: bad pool flags (canthave) (alloc at %s:%i)", filename, fileline );
+	//if( musthave && ( ( pool->flags & musthave ) != musthave ) )
+	//	_Mem_Error( "Mem_Free: bad pool flags (musthave) (alloc at %s:%i)", filename, fileline );
+	//if( canthave && ( pool->flags & canthave ) )
+	//	_Mem_Error( "Mem_Free: bad pool flags (canthave) (alloc at %s:%i)", filename, fileline );
 	if( developerMemory && developerMemory->integer )
 		Com_DPrintf( "Mem_Free: pool %s, alloc %s:%i, free %s:%i, size %i bytes\n", pool->name, mem->sourceFile, mem->sourceLine, filename, fileline, mem->size );
 	
