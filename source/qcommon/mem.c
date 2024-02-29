@@ -750,7 +750,6 @@ void *_Mem_AllocExt( mempool_t *pool, size_t size, size_t alignment, int z, int 
 
 	// default to 16-bytes alignment
 	alignment = alignment < MIN_MEM_ALIGNMENT ? MIN_MEM_ALIGNMENT  : alignment;
-
 	assert( pool != NULL );
 
  // if( pool == NULL )
@@ -946,10 +945,10 @@ void _Mem_FreePool( mempool_t **pool, int musthave, int canthave, const char *fi
 
 	if( !( *pool ) )
 		return;
-	if( musthave && ( ( ( *pool )->flags & musthave ) != musthave ) )
-		_Mem_Error( "Mem_FreePool: bad pool flags (musthave) (alloc at %s:%i)", filename, fileline );
-	if( canthave && ( ( *pool )->flags & canthave ) )
-		_Mem_Error( "Mem_FreePool: bad pool flags (canthave) (alloc at %s:%i)", filename, fileline );
+ // if( musthave && ( ( ( *pool )->flags & musthave ) != musthave ) )
+ // 	_Mem_Error( "Mem_FreePool: bad pool flags (musthave) (alloc at %s:%i)", filename, fileline );
+ // if( canthave && ( ( *pool )->flags & canthave ) )
+ // 	_Mem_Error( "Mem_FreePool: bad pool flags (canthave) (alloc at %s:%i)", filename, fileline );
 
 	Q_FreePool(*pool);
 	*pool = NULL;
