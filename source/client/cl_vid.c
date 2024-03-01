@@ -310,6 +310,8 @@ static struct cinematics_s *VID_RefModule_CIN_Open( const char *name, unsigned i
 */
 static bool VID_LoadRefresh( const char *name )
 {
+	vid_ref_mempool = Q_CreatePool( NULL, "Refresh" );
+	
 	static ref_import_t import;
 	static struct mem_import_s memImport;
 	memImport = (struct mem_import_s)DECLARE_MEM_STRUCT( vid_ref_mempool );
@@ -321,7 +323,6 @@ static bool VID_LoadRefresh( const char *name )
 
 	VID_UnloadRefresh();
 	
-	vid_ref_mempool = Q_CreatePool( NULL, "Refresh" );
 
 	import.memImport = &memImport;
 	import.fsImport = &default_fs_imports_s;
