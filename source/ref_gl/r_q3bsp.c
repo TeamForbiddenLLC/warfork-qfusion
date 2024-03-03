@@ -1861,7 +1861,7 @@ static void Mod_Finish( const lump_t *faces, const lump_t *light, vec3_t gridSiz
 /*
 * Mod_LoadQ3BrushModel
 */
-void Mod_LoadQ3BrushModel( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *format )
+void Mod_LoadQ3BrushModel( model_t *mod, model_t *parent, void *buffer, const bspFormatDesc_t *format )
 {
 	int i;
 	dheader_t *header;

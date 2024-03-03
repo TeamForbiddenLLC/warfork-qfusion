@@ -35,6 +35,7 @@ typedef void ( *modelLoader_t )( void *param0, void *param1, void *param2, void 
 #define BSP_RAVEN		1
 #define BSP_NOAREAS		2
 
+
 typedef struct
 {
 	const char *header;
@@ -56,6 +57,7 @@ typedef struct
 
 extern const bspFormatDesc_t q3BSPFormats[];
 
+const bspFormatDesc_t *Q_FindFormatDescriptorFromHeader( const bspFormatDesc_t *formats, const uint8_t* buf);
 const bspFormatDesc_t *Q_FindBSPFormat( const bspFormatDesc_t *formats, const char *header, int version );
 const modelFormatDescr_t *Q_FindFormatDescriptor( const modelFormatDescr_t *formats, const uint8_t *buf, const bspFormatDesc_t **bspFormat );
 

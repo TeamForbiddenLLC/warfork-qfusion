@@ -22,13 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../qcommon/qfiles.h"
 #include "bsp.h"
 
-/*
-==============================================================
 
-BSP FORMATS
-
-==============================================================
-*/
 
 static const int mod_IBSPQ3Versions[] = { Q3BSPVERSION, RTCWBSPVERSION, 0 };
 static const int mod_RBSPQ3Versions[] = { RBSPVERSION, 0 };
@@ -44,9 +38,6 @@ const bspFormatDesc_t q3BSPFormats[] =
 	{ NULL, NULL, 0, 0, 0, 0 }
 };
 
-/*
-* Com_FindBSPFormat
-*/
 const bspFormatDesc_t *Q_FindBSPFormat( const bspFormatDesc_t *formats, const char *header, int version )
 {
 	int j;
@@ -73,16 +64,20 @@ const bspFormatDesc_t *Q_FindBSPFormat( const bspFormatDesc_t *formats, const ch
 	return NULL;
 }
 
-/*
-* Com_FindFormatDescriptor
-*/
+const bspFormatDesc_t *Q_FindFormatDescriptorFromHeader( const bspFormatDesc_t *formats, const uint8_t* buf) {
+	for( const bspFormatDesc_t *descr = formats; descr->header; descr++ ) {
+		const int version = LittleLong( *( (int *)( (uint8_t *)buf + strlen(descr->header) ) ));
+		const bspFormatDesc_t* result = Q_FindBSPFormat(descr,(const char*) buf, version );
+		if(result)
+			return result;
+	}
+	return NULL;
+}
+
 const modelFormatDescr_t *Q_FindFormatDescriptor( const modelFormatDescr_t *formats, const uint8_t *buf, const bspFormatDesc_t **bspFormat )
 {
-	int i;
-	const modelFormatDescr_t *descr;
-
 	// search for a matching header
-	for( i = 0, descr = formats; descr->header; i++, descr++ )
+	for(const modelFormatDescr_t *descr = formats; descr->header; descr++ )
 	{
 		if( descr->header[0] == '*' )
 		{

@@ -24,9 +24,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_local.h"
 #include "iqm.h"
 
-void Mod_LoadAliasMD3Model( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *unused );
-void Mod_LoadSkeletalModel( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *unused );
-void Mod_LoadQ3BrushModel( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *format );
+
+void Mod_LoadAliasMD3Model( model_t *mod, model_t *parent, void *buffer);
+void Mod_LoadSkeletalModel( model_t *mod, model_t *parent, void *buffer);
+void Mod_LoadQ3BrushModel( model_t *mod, model_t *parent, void *buffer,const  bspFormatDesc_t *format );
 
 model_t *Mod_LoadModel( model_t *mod, bool crash );
 
@@ -46,26 +47,60 @@ static mapconfig_t *mod_mapConfigs;
 
 static mempool_t *mod_mempool;
 
-static const modelFormatDescr_t mod_supportedformats[] =
-{
-	// Quake III Arena .md3 models
-	{ IDMD3HEADER, 4, NULL, MOD_MAX_LODS, ( const modelLoader_t )Mod_LoadAliasMD3Model },
 
-	// Skeletal models
-	{ IQM_MAGIC, sizeof( IQM_MAGIC ), NULL, MOD_MAX_LODS, ( const modelLoader_t )Mod_LoadSkeletalModel },
-
-	// Q3-alike .bsp models
-	{ "*", 4, q3BSPFormats, 0, ( const modelLoader_t )Mod_LoadQ3BrushModel },
-
-	// trailing NULL
-	{ NULL,	0, NULL, 0, NULL }
+enum model_format_e {
+	FileFormatUnknown,
+	ModelFormatIDMD3,
+	ModelFormatIQM,
+	ModelFormaQ3BSP,
+	ModelFormaQ2BSP,
+	ModelFormaQ1BSP
 };
 
-//===============================================================================
 
-/*
-* Mod_PointInLeaf
-*/
+struct model_format_def_s {
+	enum model_format_e format;
+	union {
+		const bspFormatDesc_t* bspFormat; 
+	};
+};
+
+static bool isFormatSupportLOD(const struct model_format_def_s* model) {
+	switch(model->format) {
+		case ModelFormatIDMD3:
+		case ModelFormatIQM:
+			return true;
+		default:
+			break;
+	}
+	return false;
+} 
+
+static struct model_format_def_s guessFormatDefinition(const char* buf) {
+	const bspFormatDesc_t *bspFormat = NULL;
+	if( !strncmp( (const char *)buf, IDMD3HEADER, strlen( IDMD3HEADER ) ) ) {
+		struct model_format_def_s res = {
+			.format = ModelFormatIDMD3,
+		};
+		return res;
+	}
+	if( !strncmp( (const char *)buf, IQM_MAGIC, strlen( IQM_MAGIC ) ) ) {
+		struct model_format_def_s res = { .format = ModelFormatIQM };
+		return res;
+	}
+
+	if( ( bspFormat = Q_FindFormatDescriptorFromHeader( q3BSPFormats, (const uint8_t *)buf ) ) != NULL ) {
+		struct model_format_def_s res = { 
+			.format = ModelFormaQ3BSP, 
+			.bspFormat = bspFormat 
+		};
+		return res;
+	}
+
+	struct model_format_def_s res = { .format = FileFormatUnknown };
+	return res;
+}
+
 mleaf_t *Mod_PointInLeaf( vec3_t p, model_t *model )
 {
 	mnode_t	*node;
@@ -1019,9 +1054,8 @@ model_t *Mod_ForHandle( unsigned int elem )
 	return mod_known + elem;
 }
 
+
 /*
-* Mod_ForName
-* 
 * Loads in a model for the given name
 */
 model_t *Mod_ForName( const char *name, bool crash )
@@ -1030,9 +1064,6 @@ model_t *Mod_ForName( const char *name, bool crash )
 	model_t	*mod, *lod;
 	unsigned *buf;
 	char shortname[MAX_QPATH], lodname[MAX_QPATH];
-	const char *extension;
-	const modelFormatDescr_t *descr;
-	bspFormatDesc_t *bspFormat = NULL;
 
 	if( !name[0] )
 		ri.Com_Error( ERR_DROP, "Mod_ForName: NULL name" );
@@ -1050,7 +1081,7 @@ model_t *Mod_ForName( const char *name, bool crash )
 
 	Q_strncpyz( shortname, name, sizeof( shortname ) );
 	COM_StripExtension( shortname );
-	extension = &name[strlen( shortname )+1];
+	const char *extension = &name[strlen( shortname ) + 1];
 
 	mod = Mod_FindSlot( name );
 	if( mod->type == mod_bad ) {
@@ -1082,9 +1113,9 @@ model_t *Mod_ForName( const char *name, bool crash )
 	if( !buf )
 		return NULL;
 
-	// call the apropriate loader
-	descr = Q_FindFormatDescriptor( mod_supportedformats, ( const uint8_t * )buf, (const bspFormatDesc_t **)&bspFormat );
-	if( !descr )
+	struct model_format_def_s format = guessFormatDefinition((const char*) buf );
+
+	if( format.format == FileFormatUnknown )
 	{
 		ri.Com_DPrintf( S_COLOR_YELLOW "Mod_NumForName: unknown fileid for %s", mod->name );
 		return NULL;
@@ -1095,7 +1126,22 @@ model_t *Mod_ForName( const char *name, bool crash )
 		R_InitMapConfig( name );
 	}
 
-	descr->loader( mod, NULL, buf, bspFormat );
+	switch(format.format) {
+	 	case ModelFormatIDMD3:
+	 		Mod_LoadAliasMD3Model(mod, NULL, buf); 
+	 		break;
+	 	case ModelFormatIQM:
+	 		Mod_LoadSkeletalModel(mod, NULL, buf); 
+	 		break;
+	 	case ModelFormaQ3BSP:
+	 		Mod_LoadQ3BrushModel(mod, NULL, buf, format.bspFormat); 
+	 		break;
+		default:
+			assert(false);
+			break;
+	}
+
+	//descr->loader( mod, NULL, buf, bspFormat );
 	R_FreeFile( buf );
 
 	if( mod->type == mod_bad ) {
@@ -1113,37 +1159,45 @@ model_t *Mod_ForName( const char *name, bool crash )
 		mod->touch = &Mod_TouchBrushModel;
 	}
 
-	if( !descr->maxLods )
-		return mod;
+	if( isFormatSupportLOD(&format)) {
+		mod->lodnum = 0;
+		mod->numlods = 0;
+		for( i = 0; i < MOD_MAX_LODS; i++ ) {
+			Q_snprintfz( lodname, sizeof( lodname ), "%s_%i.%s", shortname, i + 1, extension );
+			R_LoadFileGroup( lodname, &group, (void **)&buf );
+			
+			if( !buf || guessFormatDefinition((const char*)buf).format == format.format)
+				break;
 
-	//
-	// load level-of-detail models
-	//
-	mod->lodnum = 0;
-	mod->numlods = 0;
-	for( i = 0; i < descr->maxLods; i++ )
-	{
-		Q_snprintfz( lodname, sizeof( lodname ), "%s_%i.%s", shortname, i+1, extension );
-		R_LoadFileGroup(lodname, &group, (void **)&buf );
-		if( !buf || strncmp( (const char *)buf, descr->header, descr->headerLen ) )
-			break;
+			lod = mod->lods[i] = Mod_FindSlot( lodname );
+			if( lod->name && !strcmp( lod->name, lodname ) )
+				continue;
 
-		lod = mod->lods[i] = Mod_FindSlot( lodname );
-		if( lod->name && !strcmp( lod->name, lodname ) )
-			continue;
+			lod->type = mod_bad;
+			lod->lodnum = i + 1;
+			lod->mempool = R_AllocPool( mod_mempool, lodname );
+			lod->name = Mod_Malloc( lod, strlen( lodname ) + 1 );
+			strcpy( lod->name, lodname );
 
-		lod->type = mod_bad;
-		lod->lodnum = i+1;
-		lod->mempool = R_AllocPool( mod_mempool, lodname );
-		lod->name = Mod_Malloc( lod, strlen( lodname ) + 1 );
-		strcpy( lod->name, lodname );
+			mod_numknown++;
 
-		mod_numknown++;
+			switch( format.format) {
+				case ModelFormatIDMD3:
+					Mod_LoadAliasMD3Model( lod, mod, buf );
+					break;
+				case ModelFormatIQM:
+					Mod_LoadSkeletalModel( lod, mod, buf );
+					break;
+				default:
+					assert( 0 );
+					break;
+			}
 
-		descr->loader( lod, mod, buf, bspFormat );
-		R_FreeFile( buf );
+			//descr->loader( lod, mod, buf, bspFormat );
+			R_FreeFile( buf );
 
-		mod->numlods++;
+			mod->numlods++;
+		}
 	}
 
 	return mod;
