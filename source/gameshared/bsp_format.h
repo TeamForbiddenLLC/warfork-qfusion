@@ -3,10 +3,18 @@
 
 #include "../gameshared/q_arch.h"
 
-enum bsp_format_def_e {
-	BSP_VERSION_1,
-	BSP_VERSION_2,
-	BSP_VERSION_3
+// http://www.mralligator.com/q3/
+enum q_bsp_version {
+	Q1_VERSION_V29 = 29, 
+	
+	Q2_VERSION_IBSP_V38 = 38,  
+	// quake 3
+	Q3_VERSION_IBSP_V46 = 46,  
+	// quake live 
+	Q3_VERSION_IBSP_V47 = 47,
+
+	Q3_VERSION_RBSP_V1 = 1,
+	Q3_VERSION_FBSP_V1 = 1,
 };
 
 enum bsp_flag_3_e {
@@ -15,26 +23,9 @@ enum bsp_flag_3_e {
 	BSP_3_NOAREAS     = 2
 };
 
-struct bsp_format_def_s{
-	enum bsp_format_def_e type;
-	union {
-		struct {
-			int lightmapWidth;
-			int lightmapHeight;
-			enum bsp_flag_3_e flags;
-		} v3;
-	};
-};
-
-struct bsp_format_def_s guessFormatDef(const char* buffer, size_t len);
-
 struct lump_s {
 	int fileofs, filelen;
 };
-
-#define Q3_IDBSPHEADER	  "IBSP"
-#define Q3_RBSPHEADER	    "RBSP"
-#define Q3_QFBSPHEADER	  "FBSP"
 
 #define Q3_BSPVERSION	    46
 #define Q3_RTCWBSPVERSION	    47
@@ -77,6 +68,12 @@ struct lump_s {
 #define QF_LIGHTMAP_HEIGHT	512
 #define QF_LIGHTMAP_SIZE	( QF_LIGHTMAP_WIDTH*QF_LIGHTMAP_HEIGHT*LIGHTMAP_BYTES )
 
+struct q3_format_defintion_s {
+	int lightmapWidth;
+	int lightmapHeight;
+	enum bsp_flag_3_e flags;
+};
+
 // key / value pair sizes
 
 enum q3_lumps_e {
@@ -102,10 +99,54 @@ enum q3_lumps_e {
 	Q3_HEADER_SIZE = 18
 };
 
-struct q3bsp_header_s {
+struct q3_lump_model {
+	float mins[3], maxs[3];
+	int firstface, numfaces; // submodels just draw faces
+							 // without walking the bsp tree
+	int firstbrush, numbrushes;
+};
+
+
+
+struct q3q2bsp_header_s {
 	char magic[4];
 	int version;
-	struct lump_s lumps[Q3_HEADER_SIZE];
+};
+
+struct q1bsp_header_s {
+	int version;
+};
+
+enum q2_lump_e {
+	Q2_LUMP_ENTITIES = 0,
+	Q2_LUMP_PLANES = 1,
+	Q2_LUMP_VERTEXES = 2,
+	Q2_LUMP_VISIBILITY = 3,
+	Q2_LUMP_NODES = 4,
+	Q2_LUMP_TEXINFO = 5,
+	Q2_LUMP_FACES = 6,
+	Q2_LUMP_LIGHTING = 7,
+	Q2_LUMP_LEAFS = 8,
+	Q2_LUMP_LEAFFACES = 9,
+	Q2_LUMP_LEAFBRUSHES = 10,
+	Q2_LUMP_EDGES = 11,
+	Q2_LUMP_SURFEDGES = 12,
+	Q2_LUMP_MODELS = 13,
+	Q2_LUMP_BRUSHES = 14,
+	Q2_LUMP_BRUSHSIDES = 15,
+	Q2_LUMP_POP = 16,
+	Q2_LUMP_AREAS = 17,
+	Q2_LUMP_AREAPORTALS = 18,
+
+	Q2_LUMP_SIZE = 19
+};
+
+// Q2_LUMP_MODELS 
+struct q2_lump_model{
+	float mins[3], maxs[3];
+	float origin[3];            // for sounds or lights
+	int headnode;
+	int firstface, numfaces;            // submodels just draw faces
 };
 
 #define Q1_BSPVERSION       29
@@ -131,15 +172,14 @@ enum q1_lumps_e {
   Q1_LUMP_SIZE = 15
 };
 
-struct q2bsp_header_s {
-	char magic[4];
-	int version;
-	struct lump_s lumps[Q1_LUMP_SIZE];
-};
-
-struct q1bsp_header_s {
-	int version;
-	struct lump_s lumps[Q1_LUMP_SIZE];
+// Q1_LUMP_MODELS 
+struct q1_lump_model{
+	float mins[3], maxs[3];
+	float origin[3];
+	int headnode[Q1_MAX_MAP_HULLS];
+	int visleafs;               // not including the solid leaf 0
+	int firstface, numfaces;
 };
 
 #endif
+

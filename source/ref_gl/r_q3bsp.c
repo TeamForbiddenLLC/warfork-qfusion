@@ -23,6 +23,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 
+#include "../gameshared/file_format.h"
+#include "../gameshared/bsp_format.h"
+#include "r_model.h"
+
 typedef struct
 {
 	vec3_t mins, maxs;
@@ -1858,6 +1862,168 @@ static void Mod_Finish( const lump_t *faces, const lump_t *light, vec3_t gridSiz
 	loadmodel_numpatchgroups = loadmodel_maxpatchgroups = 0;
 }
 
+struct lump_s unpackLump(struct lump_s* lump) {
+	struct lump_s res = {};
+	res.filelen = LittleLong(lump->filelen); 
+	res.fileofs = LittleLong(lump->fileofs); 
+	return res;
+}
+
+static inline void __CreateBrushesForModel(model_t* mod, size_t numberOfBrushes) {
+	void *buffer = Q_Calloc( numberOfBrushes, sizeof( model_t ) + sizeof( mbrushmodel_t ) );
+	mbrushmodel_t *const mbrushModel = (mbrushmodel_t *)( ( (uint8_t *)buffer ) + numberOfBrushes * sizeof( model_t ) );
+	model_t *const inlineModels = buffer;
+	mod->extradata = mbrushModel;
+	mbrushModel->numsubmodels = numberOfBrushes;
+	mbrushModel->inlines = inlineModels;
+	for( size_t i = 0; i < numberOfBrushes; i++ ) {
+		inlineModels[i].extradata = mbrushModel + i;
+	}
+}
+
+bool Mod_LoadBSPBrushModel2( model_t *mod, model_t *parent, void *buffer, const struct header_format_def_s* format) {
+
+	struct lump_s lumpEntity = {}; 
+	struct lump_s lumpShaderRefs = {};
+	struct lump_s lumpPlanes = {};
+	struct lump_s lumpNodes = {};
+	struct lump_s lumpLeafs = {};
+	struct lump_s lumpLeafFaces = {};
+	struct lump_s lumpLeafBrushes = {}; 
+	struct lump_s lumpModelOffset = {};
+	struct lump_s lumpBrushes = {};
+	struct lump_s lumpBrushSides = {};
+	struct lump_s lumpVertices = {};
+	struct lump_s lumpElements = {};
+	struct lump_s lumpFogs = {};
+	struct lump_s lumpFaces = {};
+	struct lump_s lumpLighting = {};
+	struct lump_s lumpLightGrid = {};
+	struct lump_s lumpVisibility = {};
+	struct lump_s lumpLightArray = {};
+
+	switch(format->format) {
+  	case FILE_QUAKE_BSP_V29: {// quake
+			struct lump_s* lumps = buffer + sizeof(struct q1bsp_header_s);
+			lumpEntity = unpackLump(lumps + Q1_LUMP_ENTITIES);
+			lumpModelOffset = unpackLump(lumps + Q1_LUMP_MODELS);
+			
+			if(lumpModelOffset.filelen % sizeof(struct q1_lump_model)) {
+				ri.Com_Error( ERR_DROP, "Quake 1: lump model mismatched size %s", loadmodel->name );
+				return false;
+			}
+
+			// create model brushes
+			const size_t numBrushModels = lumpModelOffset.filelen / sizeof(struct q1_lump_model);
+			mod->extradata = Q_Malloc(numBrushModels * ( sizeof(model_t ) + sizeof( mbrushmodel_t) ) );
+
+
+			break;
+		}
+		case FILE_QUAKE_IBSP_V38: { // quake 2 
+			struct lump_s* lumps = buffer + sizeof(struct q3q2bsp_header_s);
+			lumpEntity = unpackLump(lumps + Q2_LUMP_ENTITIES);
+			lumpModelOffset = unpackLump(lumps + Q2_LUMP_MODELS);
+			
+			if(lumpModelOffset.filelen % sizeof(struct q2_lump_model)) {
+				ri.Com_Error( ERR_DROP, "Quake 1: lump model mismatched size %s", loadmodel->name );
+				return false;
+			}
+			const size_t numBrushModels = lumpModelOffset.filelen / sizeof(struct q2_lump_model);
+
+			break;
+		}
+		case FILE_QUAKE_IBSP_V46: // quake 3 
+		case FILE_QUAKE_IBSP_V47: // quake 3
+		case FILE_QUAKE_RBSP_V1:
+		case FILE_QUAKE_FBSP_V1: {
+			struct lump_s* lumps = buffer + sizeof(struct q3q2bsp_header_s);
+			lumpEntity = unpackLump(lumps + Q3_LUMP_ENTITIES);
+			lumpModelOffset = unpackLump(lumps + Q3_LUMP_MODELS);
+			lumpLighting = unpackLump(lumps + Q3_LUMP_LIGHTING);
+			lumpModelOffset = unpackLump(lumps + Q3_LUMP_MODELS);
+
+			
+			if(lumpModelOffset.filelen % sizeof(struct q3_lump_model)) {
+				ri.Com_Error( ERR_DROP, "Quake 1: lump model mismatched size %s", loadmodel->name );
+				return false;
+			}
+			const size_t numLumpModels = lumpModelOffset.filelen / sizeof(struct q3_lump_model);
+			const struct q3_lump_model* q3LumpModels = buffer + lumpModelOffset.fileofs;
+
+			__CreateBrushesForModel(mod, numLumpModels);
+
+			mbrushmodel_t *const brush = mod->extradata;
+			brush->submodels = Q_Calloc(numLumpModels, sizeof(model_t)); 
+			for( size_t i = 0; i < numLumpModels; i++ ) {
+				for( size_t j = 0; j < 3; j++ ) {
+					// spread the mins / maxs by a pixel
+					brush->submodels[i].mins[j] = LittleFloat( q3LumpModels->mins[j] ) - 1;
+					brush->submodels[i].maxs[j] = LittleFloat( q3LumpModels->maxs[j] ) + 1;
+				}
+				brush->submodels[i].radius = RadiusFromBounds( brush->submodels[i].mins, brush->submodels[i].maxs );
+				brush->submodels[i].firstface = LittleLong( q3LumpModels[i].firstface );
+				brush->submodels[i].numfaces = LittleLong( q3LumpModels[i].numfaces );
+			}
+
+
+
+			// -----------------------------
+			// Load Lighting
+			// -----------------------------
+			R_InitLightStyles(mod);
+			do {
+				// set overbright bits for lightmaps and lightgrid
+				// deluxemapped maps have zero scale because most surfaces
+				// have a gloss stage that makes them look brighter anyway
+				if( mapConfig.lightingIntensity ) {
+					mapConfig.overbrightBits -= atoi( r_mapoverbrightbits->dvalue );
+					if( mapConfig.overbrightBits < 0 )
+						mapConfig.overbrightBits = 0;
+					mapConfig.pow2MapOvrbr = max( mapConfig.overbrightBits, 0 );
+					mapConfig.mapLightColorScale = ( 1 << mapConfig.pow2MapOvrbr ) * mapConfig.lightingIntensity;
+				} else {
+					// for maps that do not specify lighting intensity, default intensity to 2
+					// and reduce overbright bits according
+					// this allows for more dramatic shadows while staying faithful to author's original intention
+					mapConfig.pow2MapOvrbr = mapConfig.overbrightBits - 1;
+					if( mapConfig.pow2MapOvrbr < 0 )
+						mapConfig.pow2MapOvrbr = 0;
+					mapConfig.lightingIntensity = (float)( 1 << max( mapConfig.overbrightBits - mapConfig.pow2MapOvrbr, 0 ) );
+					mapConfig.overbrightBits = 0;
+					mapConfig.mapLightColorScale = mapConfig.lightingIntensity;
+				}
+
+				if( r_lighting_vertexlight->integer ) {
+					break;
+				}
+
+				size = mod_bspFormat->lightmapWidth * mod_bspFormat->lightmapHeight * LIGHTMAP_BYTES;
+				if( l->filelen % size )
+					ri.Com_Error( ERR_DROP, "Mod_LoadLighting: funny lump size in %s", loadmodel->name );
+
+				loadmodel_numlightmaps = l->filelen / size;
+				loadmodel_lightmapRects = Q_CallocAligned(  loadmodel_numlightmaps, 16, sizeof( *loadmodel_lightmapRects ) );
+				Q_LinkToPool(loadmodel_lightmapRects, loadmodel->mempool);
+
+				Mod_CheckDeluxemaps( faces, mod_base + l->fileofs );
+				R_BuildLightmaps( loadmodel, loadmodel_numlightmaps, mod_bspFormat->lightmapWidth, mod_bspFormat->lightmapHeight, mod_base + l->fileofs, loadmodel_lightmapRects );
+
+
+			} while(false);
+
+			break;
+		}
+		defaut:
+			assert(false);
+			return false;
+	}
+
+
+
+
+
+}
 /*
 * Mod_LoadQ3BrushModel
 */
@@ -1865,6 +2031,7 @@ void Mod_LoadQ3BrushModel( model_t *mod, model_t *parent, void *buffer, const bs
 {
 	int i;
 	dheader_t *header;
+
 	vec3_t gridSize, ambient, outline;
 
 	mod->type = mod_brush;

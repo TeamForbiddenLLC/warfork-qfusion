@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_local.h"
 #include "iqm.h"
 
+#include "../gameshared/file_format.h"
 
 void Mod_LoadAliasMD3Model( model_t *mod, model_t *parent, void *buffer);
 void Mod_LoadSkeletalModel( model_t *mod, model_t *parent, void *buffer);
@@ -1060,7 +1061,6 @@ model_t *Mod_ForHandle( unsigned int elem )
 */
 model_t *Mod_ForName( const char *name, bool crash )
 {
-	int i;
 	model_t	*mod, *lod;
 	unsigned *buf;
 	char shortname[MAX_QPATH], lodname[MAX_QPATH];
@@ -1115,6 +1115,12 @@ model_t *Mod_ForName( const char *name, bool crash )
 
 	struct model_format_def_s format = guessFormatDefinition((const char*) buf );
 
+	struct header_format_def_s header_format = {};
+	if(!FF_GuessFormat((const char*)buf, 0, &header_format)) {
+		ri.Com_DPrintf( S_COLOR_YELLOW "Mod_NumForName: unknown fileid for %s", mod->name );
+		return NULL;
+	}
+
 	if( format.format == FileFormatUnknown )
 	{
 		ri.Com_DPrintf( S_COLOR_YELLOW "Mod_NumForName: unknown fileid for %s", mod->name );
@@ -1141,7 +1147,6 @@ model_t *Mod_ForName( const char *name, bool crash )
 			break;
 	}
 
-	//descr->loader( mod, NULL, buf, bspFormat );
 	R_FreeFile( buf );
 
 	if( mod->type == mod_bad ) {
@@ -1162,7 +1167,7 @@ model_t *Mod_ForName( const char *name, bool crash )
 	if( isFormatSupportLOD(&format)) {
 		mod->lodnum = 0;
 		mod->numlods = 0;
-		for( i = 0; i < MOD_MAX_LODS; i++ ) {
+		for(size_t i = 0; i < MOD_MAX_LODS; i++ ) {
 			Q_snprintfz( lodname, sizeof( lodname ), "%s_%i.%s", shortname, i + 1, extension );
 			R_LoadFileGroup( lodname, &group, (void **)&buf );
 			
