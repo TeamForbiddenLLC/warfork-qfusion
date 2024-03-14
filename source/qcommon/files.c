@@ -1023,7 +1023,7 @@ int FS_FOpenAbsoluteFile( const char *filename, int *filenum, int mode )
 		return -1;
 	}
 
-	end = (mode == FS_WRITE || FS_FileLength( f, false ));
+	end = (mode == FS_WRITE ? true : FS_FileLength( f, false ));
 
 	*filenum = FS_OpenFileHandle();
 	file = &fs_filehandles[*filenum - 1];
