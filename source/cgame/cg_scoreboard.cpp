@@ -656,7 +656,7 @@ static void SCR_AddPlayerIcon( struct shader_s *image, int x, int y, float alpha
 /*
 * SCR_DrawPlayerTab
 */
-static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int panelWidth, struct qfontface_s *font, int pass )
+static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int panelWidth, struct qfontface_s *font, int pass, bool last )
 {
 	int dir, align, i, columncount;
 	char type, string[MAX_STRING_CHARS];
@@ -689,6 +689,7 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 	// start from the center again
 	xoffset = CG_HorizontalAlignForWidth( 0, align, panelWidth );
 	xoffset += ( SCB_CENTERMARGIN * dir );
+	int xstart = x + xoffset;
 
 	// draw the background
 	columncount = 0;
@@ -850,6 +851,16 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 		xoffset += width;
 	}
 
+	int gap = 6;
+	if (pass && !last){
+		// draw scoreboard separator
+		CG_TeamColor( team, teamcolor );
+		teamcolor[3] = SCB_BACKGROUND_ALPHA - 0.17;
+		trap_R_DrawStretchPic( xstart, y + yoffset +32,panelWidth+gap, gap, 0, 0, 1, 1,teamcolor, cgs.shaderWhite );
+	}
+
+	height += gap;
+
 	yoffset += height;
 	return yoffset;
 }
@@ -942,6 +953,10 @@ void CG_DrawScoreboard( void )
 			panelWidth += width;
 	}
 
+	// count how many entries per team
+	int numentries[GS_MAX_TEAMS] = {0};
+	int entry[GS_MAX_TEAMS] = {0};
+
 	// parse and draw the scoreboard message
 	for ( pass = 0; pass < 2; pass++ )
 	{
@@ -952,6 +967,7 @@ void CG_DrawScoreboard( void )
 		while ( ptr )
 		{
 			token = COM_ParseExt( &ptr, true );
+			
 			if ( token[0] != '&' )
 				break;
 
@@ -962,7 +978,15 @@ void CG_DrawScoreboard( void )
 			}
 			else if ( !Q_stricmp( token, "&p" ) ) // player tab
 			{
-				yoffset += SCR_DrawPlayerTab( &ptr, team, xpos, ypos + yoffset, panelWidth, font, pass );
+				bool islast = false;
+				if (pass && entry[team] == numentries[team] - 1)
+					islast = true;
+				yoffset += SCR_DrawPlayerTab( &ptr, team, xpos, ypos + yoffset, panelWidth, font, pass, islast );
+
+				if (pass)
+					entry[team]++;
+				else 
+					numentries[team]++;
 			}
 			else if ( !Q_stricmp( token, "&w" ) ) // list of challengers
 			{
