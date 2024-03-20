@@ -1725,6 +1725,9 @@ image_t *R_LoadImage( const char *name, uint8_t **pic, int width, int height, in
 	R_Upload32( QGL_CONTEXT_MAIN, pic, 0, 0, 0, width, height, flags, minmipsize,
 		&image->upload_width, &image->upload_height, image->samples, false, false );
 
+	R_DeferDataSync();
+	R_UnbindImage(image);
+
 	return image;
 }
 
