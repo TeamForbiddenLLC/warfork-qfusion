@@ -741,6 +741,7 @@ void Qcommon_InitCvarDescriptions( void )
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/s" );
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/scr" );
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/sv" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/tv" );	
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/ui" );
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/vid" );
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/vsay" );

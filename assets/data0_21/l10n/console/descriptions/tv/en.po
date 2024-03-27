@@ -1,0 +1,126 @@
+# (c) Team Forbidden LLC. All Rights Reserved.
+
+#. Console/tv
+msgid "tv_autorecord"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_compresspackets"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_floodprotection_messages"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_floodprotection_penalty"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_floodprotection_seconds"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_log_heartbeats"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_ip"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_ip6"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_lobbymusic"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_masterservers"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_masterservers_steam"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_maxclients"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_maxmvclients"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_name"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_password"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_port"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_port6"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_public"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_rcon_password"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_reconnectlimit"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_server"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_tcp"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_timeout"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_udp"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
+
+#. Console/tv
+msgid "tv_zombietime"
+msgstr "<value> No clue.\n"
+"^6Note: No clue."
