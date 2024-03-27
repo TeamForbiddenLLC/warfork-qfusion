@@ -2,18 +2,20 @@
 
 #. Console/tv
 msgid "tv_autorecord"
-msgstr "<value> No clue.\n"
-"^6Note: No clue."
+msgstr "<0/1> Automatically records all TV demos.\n"
+"^6Disable: tv_autorecord \"0\"\n"
+"^6Enable: tv_autorecord \"1\""
 
 #. Console/tv
 msgid "tv_compresspackets"
-msgstr "<value> No clue.\n"
-"^6Note: No clue."
+msgstr "<0/1> Compresses TV network packets.\n"
+"^6Disable: tv_compresspackets \"0\"\n"
+"^6Enable: tv_compresspackets \"1\""
 
 #. Console/tv
 msgid "tv_floodprotection_messages"
-msgstr "<value> No clue.\n"
-"^6Note: No clue."
+msgstr "<value> The amount of messages a player is permitted to send before triggering flood protection.\n"
+"^6Note: The amount of messages sent resets to \"0\" after the specified value of tv_floodprotection_seconds elapses."
 
 #. Console/tv
 msgid "tv_floodprotection_penalty"
@@ -22,23 +24,21 @@ msgstr "<value> No clue.\n"
 
 #. Console/tv
 msgid "tv_floodprotection_seconds"
-msgstr "<value> No clue.\n"
-"^6Note: No clue."
+msgstr "<value> The amount of time before \"tv_floodprotection_messages\" resets."
 
 #. Console/tv
 msgid "tv_log_heartbeats"
-msgstr "<value> No clue.\n"
-"^6Note: No clue."
+msgstr "<0/1> Prints transmitted heartbeat messages to the TV server console.\n"
+"^6Disable: tv_log_heartbeats \"0\"\n"
+"^6Enable: tv_log_heartbeats \"1\""
 
 #. Console/tv
 msgid "tv_ip"
-msgstr "<value> No clue.\n"
-"^6Note: No clue."
+msgstr "<ip> If set, binds the Warfork TV server to a specific IPv4 address."
 
 #. Console/tv
 msgid "tv_ip6"
-msgstr "<value> No clue.\n"
-"^6Note: No clue."
+msgstr "<ip> If set, binds the Warfork TV server to a specific IPv6 address."
 
 #. Console/tv
 msgid "tv_lobbymusic"
@@ -46,19 +46,16 @@ msgstr "<value> No clue.\n"
 "^6Note: No clue."
 
 #. Console/tv
-msgid "tv_masterservers"
-msgstr "<value> No clue.\n"
-"^6Note: No clue."
+msgid "masterservers"
+msgstr "<value> Specifies the master servers used to query a list of Warfork TV servers."
 
 #. Console/tv
 msgid "tv_masterservers_steam"
-msgstr "<value> No clue.\n"
-"^6Note: No clue."
+msgstr "<value> Specifies the Steam masterservers used to query a list of Warfork TV servers."
 
 #. Console/tv
 msgid "tv_maxclients"
-msgstr "<value> No clue.\n"
-"^6Note: No clue."
+msgstr "<value>	Maximum amount of viewers allowed on the TV server."
 
 #. Console/tv
 msgid "tv_maxmvclients"
@@ -77,13 +74,11 @@ msgstr "<value> No clue.\n"
 
 #. Console/tv
 msgid "tv_port"
-msgstr "<value> No clue.\n"
-"^6Note: No clue."
+msgstr "<port> Changes the IPv4 port of the Warfork TV server."
 
 #. Console/tv
 msgid "tv_port6"
-msgstr "<value> No clue.\n"
-"^6Note: No clue."
+msgstr "<port> Changes the IPv6 port of the Warfork TV server."
 
 #. Console/tv
 msgid "tv_public"
@@ -122,5 +117,4 @@ msgstr "<value> No clue.\n"
 
 #. Console/tv
 msgid "tv_zombietime"
-msgstr "<value> No clue.\n"
-"^6Note: No clue."
+msgstr "<value> Determines how long a connected client remains open after it has either timed out with tv_timeout or disconnected."
