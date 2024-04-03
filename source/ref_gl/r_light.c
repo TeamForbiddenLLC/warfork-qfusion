@@ -763,7 +763,8 @@ void R_InitLightStyles( model_t *mod )
 	assert( mod );
 
 	loadbmodel = (( mbrushmodel_t * )mod->extradata);
-	loadbmodel->superLightStyles = Mod_Malloc( mod, sizeof( *loadbmodel->superLightStyles ) * MAX_LIGHTSTYLES );
+	loadbmodel->superLightStyles = Q_CallocAligned( MAX_LIGHTSTYLES, 16, sizeof( *loadbmodel->superLightStyles ) );
+	Q_ScopeAttach(mod->scope, loadbmodel->superLightStyles);
 	loadbmodel->numSuperLightStyles = 0;
 
 	for( i = 0; i < MAX_LIGHTSTYLES; i++ )

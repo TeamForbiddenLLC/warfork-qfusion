@@ -45,6 +45,7 @@ model_t *r_prevworldmodel;
 static mapconfig_t *mod_mapConfigs;
 
 static mempool_t *mod_mempool;
+static memscope_t *mod_scope;
 
 static const modelFormatDescr_t mod_supportedformats[] =
 {
@@ -878,6 +879,7 @@ void Mod_Modellist_f( void )
 */
 void R_InitModels( void )
 {
+	mod_scope = Q_CreateScope(NULL, "Models");
 	mod_mempool = R_AllocPool( r_mempool, "Models" );
 	memset( mod_novis, 0xff, sizeof( mod_novis ) );
 	mod_isworldmodel = false;
@@ -945,6 +947,8 @@ void R_ShutdownModels( void )
 	mod_numknown = 0;
 	memset( mod_known, 0, sizeof( mod_known ) );
 
+	Q_FreeScope(mod_scope);
+	mod_scope = NULL;
 	R_FreePool( &mod_mempool );
 }
 
@@ -1072,10 +1076,16 @@ model_t *Mod_ForName( const char *name, bool crash )
 	if( mod->mempool ) {
 		R_FreePool( &mod->mempool );
 	}
+	if(mod->scope) {
+		Q_FreeScope(mod->scope);
+		mod->scope = NULL;
+	}
 
 	mod->type = mod_bad;
 	mod->mempool = R_AllocPool( mod_mempool, name );
-	mod->name = Mod_Malloc( mod, strlen( name ) + 1 );
+	mod->scope = Q_CreateScope(mod_scope, name);
+	mod->name = Q_Malloc(strlen( name ) + 1 );
+	Q_ScopeAttach(mod->scope, mod->name);
 	strcpy( mod->name, name );
 
 	// return the NULL model
@@ -1135,6 +1145,7 @@ model_t *Mod_ForName( const char *name, bool crash )
 		lod->type = mod_bad;
 		lod->lodnum = i+1;
 		lod->mempool = R_AllocPool( mod_mempool, lodname );
+		lod->scope = Q_CreateScope(mod_scope, name);
 		lod->name = Mod_Malloc( lod, strlen( lodname ) + 1 );
 		strcpy( lod->name, lodname );
 

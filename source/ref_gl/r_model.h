@@ -413,6 +413,7 @@ typedef struct model_s
 	struct model_s	*lods[MOD_MAX_LODS];
 
 	mempool_t		*mempool;
+	memscope_t		*scope;
 } model_t;
 
 //============================================================================

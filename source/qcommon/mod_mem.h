@@ -5,6 +5,15 @@
 
 struct mempool_s;
 typedef struct mempool_s mempool_t;
+struct memscope_s;
+typedef struct memscope_s memscope_t;
+
+typedef void (*free_hander_t)(void* p);
+
+struct memscope_alloc_s {
+  void* ptr;
+  void (*freeHandle)(void* ptr);
+};
 
 struct mempool_stats_s {
 	size_t size;
@@ -34,28 +43,55 @@ DECLARE_TYPEDEF_METHOD( void, Q_FreePool, mempool_t *pool );
 DECLARE_TYPEDEF_METHOD( void, Q_EmptyPool, mempool_t *pool );
 DECLARE_TYPEDEF_METHOD( struct mempool_stats_s, Q_PoolStats, mempool_t *pool );
 DECLARE_TYPEDEF_METHOD( void, Mem_ValidationAllAllocations );
+
+
+// similar to a pool but lighter weight constrction 
+// user is required to free memory from the scope or trigger a double free error from the memory tracker
+DECLARE_TYPEDEF_METHOD( memscope_t*, Q_CreateScope, memscope_t *parent, const char* name);
+DECLARE_TYPEDEF_METHOD( bool, Q_ScopeHas, memscope_t* scope, void* ptr);
+DECLARE_TYPEDEF_METHOD( void, Q_ScopeAttach, memscope_t* scope, void* ptr); // take ownership of allocation
+DECLARE_TYPEDEF_METHOD( void, Q_ScopeAttachWithFreeHandle, memscope_t *scope, free_hander_t handle, void *ptr ); // take ownership of allocation with a custom free
+DECLARE_TYPEDEF_METHOD( void, Q_ScopeRelease, memscope_t* scope, void* ptr);
+DECLARE_TYPEDEF_METHOD( void, Q_ScopeFree, memscope_t* scope, void* ptr); // free the memory attached to a scope
+DECLARE_TYPEDEF_METHOD( void, Q_FreeScope, memscope_t* scope);
+
+
 #undef DECLARE_TYPEDEF_METHOD
 
 mempool_t* Q_ParentPool(); 
 
 struct mem_import_s {
   mempool_t* parent; // the parent pool to link to by default if NULL is passed into a pool
-	Q_PoolStatsFn Q_PoolStats;
-	__Q_MallocFn __Q_Malloc;
-	__Q_CallocFn __Q_Calloc;
-	__Q_ReallocFn __Q_Realloc;
-	__Q_MallocAlignedFn __Q_MallocAligned;
-	__Q_CallocAlignedFn __Q_CallocAligned;
-	Mem_ValidationAllAllocationsFn Mem_ValidationAllAllocations; 
-	Q_FreeFn Q_Free;
-	Q_CreatePoolFn Q_CreatePool;
-	Q_LinkToPoolFn Q_LinkToPool;
-	Q_FreePoolFn Q_FreePool;
-	Q_EmptyPoolFn Q_EmptyPool;
+  Q_CreateScopeFn Q_CreateScope;
+  Q_ScopeHasFn Q_ScopeHas;
+  Q_ScopeAttachFn Q_ScopeAttach;
+  Q_ScopeAttachWithFreeHandleFn Q_ScopeAttachWithFreeHandle;
+  Q_ScopeReleaseFn Q_ScopeRelease;
+  Q_ScopeFreeFn Q_ScopeFree;
+  Q_FreeScopeFn Q_FreeScope;
+  Q_PoolStatsFn Q_PoolStats;
+  __Q_MallocFn __Q_Malloc;
+  __Q_CallocFn __Q_Calloc;
+  __Q_ReallocFn __Q_Realloc;
+  __Q_MallocAlignedFn __Q_MallocAligned;
+  __Q_CallocAlignedFn __Q_CallocAligned;
+  Mem_ValidationAllAllocationsFn Mem_ValidationAllAllocations;
+  Q_FreeFn Q_Free;
+  Q_CreatePoolFn Q_CreatePool;
+  Q_LinkToPoolFn Q_LinkToPool;
+  Q_FreePoolFn Q_FreePool;
+  Q_EmptyPoolFn Q_EmptyPool;
 };
 
 #define DECLARE_MEM_STRUCT(PARENT) { \
 	PARENT, \
+  Q_CreateScope, \
+  Q_ScopeHas, \
+  Q_ScopeAttach, \
+  Q_ScopeAttachWithFreeHandle, \
+  Q_ScopeRelease, \
+  Q_ScopeFree, \
+  Q_FreeScope, \
 	Q_PoolStats, \
 	__Q_Malloc, \
 	__Q_Calloc, \
@@ -73,6 +109,14 @@ struct mem_import_s {
 #if MEM_DEFINE_INTERFACE_IMPL
 static struct mem_import_s mem_import;
 mempool_t* Q_ParentPool() { return mem_import.parent; }
+
+memscope_t* Q_CreateScope(memscope_t *parent, const char* name) { return mem_import.Q_CreateScope(parent, name);}
+bool Q_ScopeHas(memscope_t* scope, void* ptr) { return mem_import.Q_ScopeHas(scope, ptr);}
+void Q_ScopeAttach(memscope_t* scope, void* ptr) { return mem_import.Q_ScopeAttach(scope, ptr);}
+void Q_ScopeAttachWithFreeHandle(memscope_t *scope, free_hander_t handle, void *ptr ) { return mem_import.Q_ScopeAttachWithFreeHandle(scope, handle, ptr);}
+void Q_ScopeRelease(memscope_t* scope, void* ptr) { return mem_import.Q_ScopeRelease(scope, ptr);}
+void Q_ScopeFree(memscope_t* scope, void* ptr) { return mem_import.Q_ScopeFree(scope, ptr);}
+void Q_FreeScope(memscope_t* scope) { return mem_import.Q_FreeScope(scope);}
 void *__Q_Malloc( size_t size, const char *sourceFilename, const char *functionName, int sourceLine ) { return mem_import.__Q_Malloc(size, sourceFilename, functionName, sourceLine); }
 void* __Q_Calloc(size_t count, size_t size, const char *sourceFilename, const char *functionName, int sourceLine ) { return mem_import.__Q_Calloc(count, size, sourceFilename, functionName, sourceLine); }
 void *__Q_Realloc( void *ptr, size_t size, const char *sourceFilename, const char *functionName, int sourceLine ) { return mem_import.__Q_Realloc(ptr, size, sourceFilename, functionName, sourceLine); }

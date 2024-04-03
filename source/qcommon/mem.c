@@ -57,10 +57,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "mod_mem.h"
 #include "mem.h"
 
+#define MAX_SCOPE_NAME 32
 #define POOLNAMESIZE 128
 #define MEMALIGNMENT_DEFAULT		16
 #define MIN_MEM_ALIGNMENT sizeof(void*) 
-
 #define AllocHashSize ( 1u << 12u )
 
 static const unsigned int prefixPattern = 0xbaadf00d;      // Fill pattern for bytes preceeding allocated blocks
@@ -71,6 +71,18 @@ static const unsigned int releasedPattern = 0xdeadbeef;    // Fill pattern for d
 static bool memory_initialized = false;
 static bool commands_initialized = false;
 
+struct memscope_s {
+  char name[MAX_SCOPE_NAME];
+	struct memscope_s *parent;
+	struct memscope_s *child;
+	
+	struct memscope_s *next;
+	
+	size_t size;
+	size_t reserved;
+	struct memscope_alloc_s *alloc;
+	qmutex_t* lock;	
+};
 
 mempool_t* Q_ParentPool() {
 	return NULL; 
@@ -153,9 +165,9 @@ struct mempool_s
 
 };
 
+
+
 cvar_t *developerMemory;
-
-
 // used for temporary memory allocations around the engine, not for longterm
 // storage, if anything in this pool stays allocated during gameplay, it is
 // considered a leak
@@ -165,6 +177,9 @@ mempool_t *zoneMemPool;
 static mempool_t *rootChain = NULL; // root chain of mem pool without parents
 
 static qmutex_t *memMutex;
+
+// parenting and unparenting should be a thread safe operation
+static qmutex_t *scopeMutex;
 
 static struct memheader_s *hashTable[AllocHashSize];
 static struct memheader_s *reservoirHeaders;
@@ -505,12 +520,12 @@ void *__Q_MallocAligned(size_t align, size_t size, const char* sourceFilename, c
 	mem->size = size;
 	mem->realsize = realsize;
 	if(sourceFilename) {
-		strncpy(mem->sourceFile, sourceFilename, sizeof(mem->sourceFile)); 	
+		strncpy(mem->sourceFile, sourceFilename, sizeof(mem->sourceFile) - 1); 	
 	} else {
 		strcpy(mem->sourceFile, "??");
 	}
 	if(functionName) {
-		strncpy(mem->sourceFunc, functionName, sizeof(mem->sourceFunc)); 	
+		strncpy(mem->sourceFunc, functionName, sizeof(mem->sourceFunc) - 1); 	
 	} else {
 		strcpy(mem->sourceFunc, "??");
 	}
@@ -526,7 +541,8 @@ mempool_t *Q_CreatePool( mempool_t *parent, const char *name )
 	mempool_t *pool = (mempool_t *)malloc( sizeof( mempool_t ) );
 	if( pool == NULL )
 		_Mem_Error( "Mem_AllocPool: out of memory" );
-
+	
+	QMutex_Lock( memMutex );
 	memset( pool, 0, sizeof( mempool_t ) );
 	pool->chain = NULL;
 	pool->parent = parent;
@@ -542,7 +558,8 @@ mempool_t *Q_CreatePool( mempool_t *parent, const char *name )
 		pool->next = rootChain;
 		rootChain = pool;
 	}
-
+	QMutex_Unlock(memMutex);
+	
 	return pool;
 }
 
@@ -597,12 +614,12 @@ void *__Q_Realloc( void *ptr, size_t size, const char *sourceFilename, const cha
 	mem->baseAddress = baseAddress;
 	mem->sourceLine = sourceLine;
 	if(sourceFilename) {
-		strncpy(mem->sourceFile, sourceFilename, sizeof(mem->sourceFile)); 	
+		strncpy(mem->sourceFile, sourceFilename, sizeof(mem->sourceFile) - 1); 	
 	} else {
 		strcpy(mem->sourceFile, "??");
 	}
 	if(functionName) {
-		strncpy(mem->sourceFunc, functionName, sizeof(mem->sourceFunc)); 	
+		strncpy(mem->sourceFunc, functionName, sizeof(mem->sourceFunc) - 1); 	
 	} else {
 		strcpy(mem->sourceFunc, "??");
 	}
@@ -785,7 +802,7 @@ void *_Mem_AllocExt( mempool_t *pool, size_t size, size_t alignment, int z, int 
 	mem->realsize = realsize;
 	mem->sourceLine = fileline;
 	if(filename) {
-		strncpy(mem->sourceFile, filename, sizeof(mem->sourceFile)); 	
+		strncpy(mem->sourceFile, filename, sizeof(mem->sourceFile) - 1); 	
 	} else {
 		strcpy(mem->sourceFile, "??");
 	}
@@ -910,7 +927,7 @@ mempool_t *_Mem_AllocPool( mempool_t *parent, const char *name, int flags, const
 	pool->child = NULL;
 	pool->totalsize = 0;
 	pool->realsize = sizeof( mempool_t );
-	Q_strncpyz( pool->name, name, sizeof( pool->name ) );
+	Q_strncpyz( pool->name, name, sizeof( pool->name ));
 
 	if( parent )
 	{
@@ -938,7 +955,6 @@ mempool_t *_Mem_AllocTempPool( const char *name, const char *filename, int filel
 
 void _Mem_FreePool( mempool_t **pool, int musthave, int canthave, const char *filename, int fileline )
 {
-	mempool_t **chainAddress;
 #ifdef SHOW_NONFREED
 	memheader_t *mem;
 #endif
@@ -976,6 +992,151 @@ void Mem_ValidationAllAllocations() {
 	if (numberErrors > 0)
 		Com_Printf("[!] While validting header, %d allocation headers(s) were found to have problems", numberErrors);
 	QMutex_Unlock( memMutex );
+}
+
+memscope_t *Q_CreateScope( memscope_t *parent, const char *name )
+{
+	memscope_t *scope = Q_Malloc( sizeof(struct memscope_s) );
+	if(!scope) 
+	  return NULL;
+	memset(scope, 0, sizeof(struct memscope_s));
+	if(name) {
+		strncpy(scope->name, name, sizeof(parent->name) - 1); 	
+	} else {
+		strncpy(scope->name, "??", sizeof(parent->name) - 1); 	
+	}
+	scope->lock = QMutex_Create(); 
+	if(parent) {
+		scope->parent = parent;
+		QMutex_Lock( scopeMutex );
+			scope->next = parent->child;
+			parent->child = scope;
+		QMutex_Unlock( scopeMutex );
+	} 	
+	return scope;
+}
+
+void Q_ScopeAttach( memscope_t *scope, void *ptr )
+{
+	Q_ScopeAttachWithFreeHandle( scope, Q_Free, ptr );
+}
+
+void Q_ScopeAttachWithFreeHandle( memscope_t *scope, free_hander_t handle, void *ptr )
+{
+	assert( scope );
+	if( !ptr ) {
+		return;
+	}
+	
+	QMutex_Lock(scope->lock);	
+	for( size_t i = 0; i < scope->size; i++ ) {
+		if( scope->alloc[i].ptr == ptr ) {
+			// we're already tracking this allocation
+			QMutex_Unlock(scope->lock);	
+			return;
+		}
+	}
+
+	// need to allocate more to the scope
+	if( ( scope->size + 1 ) > scope->reserved ) {
+		scope->reserved = ( scope->reserved == 0 ) ? 16 : ( ( scope->reserved >> 1 ) + scope->reserved ); // grow tracked allocations by 1.5
+		scope->alloc = Q_Realloc( scope->alloc, scope->reserved * sizeof( struct memscope_s ) );
+	}
+
+	struct memscope_alloc_s *alloc = &scope->alloc[scope->size++];
+	alloc->ptr = ptr;
+	alloc->freeHandle = handle;
+	QMutex_Unlock(scope->lock);	
+}
+
+static bool __findMemAllocScope( memscope_t *scope, void *ptr, size_t *index )
+{
+	assert( scope );
+	if( ptr == NULL )
+		return false;
+	for( size_t i = 0; i < scope->size; i++ ) {
+		struct memscope_alloc_s *alloc = &scope->alloc[i];
+		if( alloc->ptr == ptr ) {
+			if( index ) {
+				*index = i;
+			}
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Q_ScopeHas( memscope_t *scope, void *ptr )
+{
+	return __findMemAllocScope( scope, ptr, NULL );
+}
+
+void Q_ScopeRelease( memscope_t *scope, void *ptr )
+{
+	assert( scope );
+	if( ptr == NULL )
+		return;
+	QMutex_Lock(scope->lock);	
+	size_t index;
+	if( __findMemAllocScope( scope, ptr, &index ) ) {
+		const size_t bufSize = ( scope->size - ( index + 1 ) ) * sizeof( struct memscope_alloc_s );
+		if( bufSize > 0 )
+			memmove( &scope->alloc[index], &scope->alloc[index + 1], bufSize );
+		scope->size--;
+	}
+	QMutex_Unlock(scope->lock);	
+}
+
+void Q_ScopeFree( memscope_t *scope, void *ptr )
+{
+	assert( scope );
+	if( ptr == NULL )
+		return;
+
+	QMutex_Lock(scope->lock);	
+	size_t index;
+	if( __findMemAllocScope( scope, ptr, &index ) ) {
+		struct memscope_alloc_s *alloc = &scope->alloc[index];
+		alloc->freeHandle( alloc->ptr );
+		const size_t bufSize = ( scope->size - ( index + 1 ) ) * sizeof( struct memscope_alloc_s );
+		if( bufSize > 0 )
+			memmove( &scope->alloc[index], &scope->alloc[index + 1], bufSize );
+		scope->size--;
+	}
+	QMutex_Unlock(scope->lock);	
+}
+
+static void __Q_FreeScopeRecuse(memscope_t *scope) {
+	for( size_t i = 0; i < scope->size; i++ ) {
+		struct memscope_alloc_s *alloc = &scope->alloc[i];
+		alloc->freeHandle( alloc->ptr );
+	}
+
+	for( memscope_t *current = scope->child; current != NULL; current = scope->next) {
+		__Q_FreeScopeRecuse( current );
+	}
+	QMutex_Destroy(&scope->lock);
+	Q_Free( scope->alloc );
+	Q_Free( scope );
+}
+
+void Q_FreeScope( memscope_t *scope )
+{
+	if( !scope )
+		return;
+
+	if( scope->parent ) {
+		QMutex_Lock( scopeMutex );
+		struct memscope_s **current = &scope->parent->child;
+		while( *current && *current != scope ) {
+			current = &( *current )->next;
+		}
+		assert( *current == scope ); // pool was already freed
+		assert( current != NULL );
+		*current = scope->next;
+		QMutex_Unlock( scopeMutex );
+	}
+	__Q_FreeScopeRecuse( scope );
 }
 
 void _Mem_EmptyPool( mempool_t *pool, int musthave, int canthave, const char *filename, int fileline )
@@ -1202,6 +1363,7 @@ void Memory_Init( void )
 {
 	assert( !memory_initialized );
 
+	scopeMutex = QMutex_Create();
 	memMutex = QMutex_Create();
 
 	zoneMemPool = Mem_AllocPool( NULL, "Zone" );
