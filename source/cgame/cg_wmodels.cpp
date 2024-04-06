@@ -30,6 +30,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "cg_local.h"
 
+#include "../qcommon/mod_fs.h"
+
 
 //======================================================================
 //						weaponinfo Registering
@@ -72,17 +74,17 @@ static bool CG_vWeap_ParseAnimationScript( weaponinfo_t *weaponinfo, const char 
 		debug = false;
 
 	// load the file
-	length = trap_FS_FOpenFile( filename, &filenum, FS_READ );
+	length = FS_FOpenFile( filename, &filenum, FS_READ );
 	if( length == -1 )
 		return false;
 	if( !length )
 	{
-		trap_FS_FCloseFile( filenum );
+		FS_FCloseFile( filenum );
 		return false;
 	}
 	buf = ( uint8_t * )CG_Malloc( length + 1 );
-	trap_FS_Read( buf, length, filenum );
-	trap_FS_FCloseFile( filenum );
+	FS_Read( buf, length, filenum );
+	FS_FCloseFile( filenum );
 
 	if( !buf )
 	{
