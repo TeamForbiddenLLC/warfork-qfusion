@@ -83,7 +83,7 @@ static bool R_AllocTemporaryBuffer( resource_command_set_t *set, size_t reqSize,
 
 	NriMemoryDesc memoryDesc = {};
 	backend->coreI.GetBufferMemoryInfo( temp.buffer, NriMemoryLocation_HOST_UPLOAD, &memoryDesc );
-	NRI_ABORT_ON_FAILURE( backend->coreI.AllocateMemory( backend->device, NRI_ALL_NODES, memoryDesc.type, memoryDesc.size, &temp.memory ) );
+	NRI_ABORT_ON_FAILURE( backend->coreI.AllocateMemory( backend->device, memoryDesc.type, memoryDesc.size, &temp.memory ) );
 
 	NriBufferMemoryBindingDesc bindBufferDesc = {
 		.memory = temp.memory,
@@ -111,7 +111,7 @@ static void R_UploadBeginCommandSet( struct command_set_s *set )
 	}
   stageBuffer.remaningSpace += set->reservedStageMemory; 
   set->reservedStageMemory = 0;
-	backend->coreI.BeginCommandBuffer( set->cmd, NULL, 0 );
+	backend->coreI.BeginCommandBuffer( set->cmd, 0 );
 }
 
 static void R_UploadEndCommandSet(struct command_set_s* set) {
@@ -123,7 +123,7 @@ static void R_UploadEndCommandSet(struct command_set_s* set) {
 	queueSubmit.commandBuffers = cmdBuffers;
 	queueSubmit.commandBufferNum = 1;
 	backend->coreI.QueueSubmit( cmdQueue, &queueSubmit );
-	backend->coreI.QueueSignal( cmdQueue, uploadFence, 1 + syncIndex );
+	//backend->coreI.QueueSignal( cmdQueue, uploadFence, 1 + syncIndex );
   syncIndex++;
 }
 

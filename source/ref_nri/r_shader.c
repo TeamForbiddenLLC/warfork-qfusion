@@ -1949,12 +1949,12 @@ static void R_InitShadersCache( void )
 		}
 
 		// enumerate shaders
-		numfiles = ri.FS_GetFileList( dirs[d], ".shader", NULL, 0, 0, 0 );
+		numfiles = FS_GetFileList( dirs[d], ".shader", NULL, 0, 0, 0 );
 		numfiles_total += numfiles;
 
 		// now load them all
 		for( i = 0; i < numfiles; i += k ) {
-			if( ( k = ri.FS_GetFileList( dirs[d], ".shader", shaderPaths, sizeof( shaderPaths ), i, numfiles )) == 0 ) {
+			if( ( k = FS_GetFileList( dirs[d], ".shader", shaderPaths, sizeof( shaderPaths ), i, numfiles )) == 0 ) {
 				k = 1; // advance by one file
 				continue;
 			}

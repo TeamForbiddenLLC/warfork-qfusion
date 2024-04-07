@@ -417,7 +417,7 @@ static int R_ReadImageFromDisk( int ctx, char *pathname, size_t pathname_size,
 	*width = *height = 0;
 	samples = 0;
 
-	extension = ri.FS_FirstExtension( pathname, IMAGE_EXTENSIONS, NUM_IMAGE_EXTENSIONS - 1 ); // last is KTX
+	extension = FS_FirstExtension( pathname, IMAGE_EXTENSIONS, NUM_IMAGE_EXTENSIONS - 1 ); // last is KTX
 	if( extension )
 	{
 
@@ -2223,7 +2223,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 		[IMAGE_EXT_PNG] = ".png", 
 		[IMAGE_EXT_KTX] = ".ktx"
 	};
-	const char* extension = ri.FS_FirstExtension( resolvedPath, imageExtension, Q_ARRAY_COUNT(imageExtension)); // last is KTX
+	const char* extension = FS_FirstExtension( resolvedPath, imageExtension, Q_ARRAY_COUNT(imageExtension)); // last is KTX
 	const size_t basePathLen = sdslen(resolvedPath);
 	if(extension == imageExtension[IMAGE_EXT_KTX]) {
 		resolvedPath = sdscat(resolvedPath, extension);

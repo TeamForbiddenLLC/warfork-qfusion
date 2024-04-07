@@ -188,12 +188,12 @@ bool R_InitNriBackend(const nri_init_desc_t* init, struct nri_backend_s* backend
 
 		  NriDeviceCreationVKDesc deviceDesc = {
 			  .vkInstance = (NRIVkInstance)backend->vk.instance,
-			  .vkPhysicalDevices = (NRIVkPhysicalDevice)&physicalDevice,
-			  .deviceGroupSize = 1,
+			  //.vkPhysicalDevices = (NRIVkPhysicalDevice)&physicalDevice,
+			  //.deviceGroupSize = 1,
 			  .queueFamilyIndices = queueFamilyIndecies,
 			  .queueFamilyIndexNum = Q_ARRAY_COUNT(queueFamilyIndecies),
 			  .vkDevice = (NRIVkDevice)backend->vk.device,
-			  .enableNRIValidation = true,
+			  //.enableNRIValidation = true,
 			  .spirvBindingOffsets = DefaultBindingOffset,
 			  .callbackInterface = {
 			    .MessageCallback = R_NRI_CallbackMessage

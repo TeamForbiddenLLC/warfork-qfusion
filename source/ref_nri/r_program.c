@@ -2092,11 +2092,11 @@ const char *RP_GLSLStageToShaderPrefix( const glsl_program_stage_t stage )
 static void __RP_writeTextToFile( const char *filePath, const char *str )
 {
 	int shaderErrHandle = 0;
-	if( ri.FS_FOpenFile( filePath, &shaderErrHandle, FS_WRITE ) == -1 ) {
+	if( FS_FOpenFile( filePath, &shaderErrHandle, FS_WRITE ) == -1 ) {
 		Com_Printf( S_COLOR_YELLOW "Could not open %s for writing.\n", filePath );
 	} else {
-		ri.FS_Write( str, strlen( str ), shaderErrHandle );
-		ri.FS_FCloseFile( shaderErrHandle );
+		FS_Write( str, strlen( str ), shaderErrHandle );
+		FS_FCloseFile( shaderErrHandle );
 	}
 }
 
