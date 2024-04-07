@@ -27,32 +27,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
-r_imginfo_t IMG_LoadImage( const char * filename, uint8_t * ( *allocbuf )( void *, size_t, const char *, int ), void * uptr ) {
-	( void ) allocbuf;
-
-	r_imginfo_t ret;
-	memset( &ret, 0, sizeof( ret ) );
-
-	uint8_t * data;
-	size_t size = R_LoadFile( filename, ( void ** ) &data );
-	if( data == NULL )
-		return ret;
-
-	ret.pixels = stbi_load_from_memory( data, size, &ret.width, &ret.height, &ret.samples, 0 );
-	ret.comp = ret.samples == 3 ? IMGCOMP_RGB : IMGCOMP_RGBA;
-
-	return ret;
-    
-}
+#include "../qcommon/mod_fs.h"
+#include <setjmp.h>
 
 bool WriteScreenShot( const char *filename, r_imginfo_t *img, int type )
 {
 	int file;
-	if( ri.FS_FOpenAbsoluteFile( filename, &file, FS_WRITE ) == -1 ) {
+	if( FS_FOpenAbsoluteFile( filename, &file, FS_WRITE ) == -1 ) {
 		Com_Printf( "WriteScreenShot: Couldn't create %s\n", filename );
 		return false;
 	}
-	ri.FS_FCloseFile( file );
+	FS_FCloseFile( file );
 
 	switch( type ) {
 		case 2:

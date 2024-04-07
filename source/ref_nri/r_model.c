@@ -1216,7 +1216,7 @@ static void R_InitMapConfig( const char *model )
 		{
 			*p = 0;
 			Q_strncatz( lightmapsPath, "/lm_0000.tga", sizeof( lightmapsPath ) );
-			if( ri.FS_FOpenFile( lightmapsPath, NULL, FS_READ ) != -1 )
+			if( FS_FOpenFile( lightmapsPath, NULL, FS_READ ) != -1 )
 			{
 				ri.Com_DPrintf( S_COLOR_YELLOW "External lightmap stage: lightmaps packing is disabled\n" );
 				mapConfig.lightmapsPacking = false;
