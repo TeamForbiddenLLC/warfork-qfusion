@@ -18,6 +18,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+#define FS_DEFINE_INTERFACE_IMPL 1
+#include "../qcommon/mod_fs.h"
+
+#define MEM_DEFINE_INTERFACE_IMPL 1
+#include "../qcommon/mod_mem.h"
+
 // r_public.c
 #include "r_local.h"
 #include "r_frontend.h"
@@ -45,6 +51,8 @@ extern "C"
 QF_DLL_EXPORT ref_export_t *GetRefAPI( ref_import_t *import )
 {
 	static ref_export_t globals;
+	fs_import = *import->fsImport;
+	Q_ImportMemModule(import->memImport);	
 
 	ri = *import;
 
