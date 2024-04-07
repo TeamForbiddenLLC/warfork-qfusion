@@ -747,6 +747,7 @@ static const struct fs_import_s default_fs_imports_s = {
 	.FS_PakFileExists = FS_PakFileExists,
 	.FS_FileMTime = FS_FileMTime,
 	.FS_BaseFileMTime = FS_BaseFileMTime,
+	.FS_FirstExtension2 = FS_FirstExtension2,
 	.FS_FirstExtension = FS_FirstExtension,
 	.FS_PakNameForFile = FS_PakNameForFile,
 	.FS_IsPureFile = FS_IsPureFile,

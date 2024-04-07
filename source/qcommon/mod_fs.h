@@ -76,6 +76,7 @@ DECLARE_TYPEDEF_METHOD( time_t, FS_FileMTime, const char *filename );
 DECLARE_TYPEDEF_METHOD( time_t, FS_BaseFileMTime, const char *filename );
 
 // // only for game files
+DECLARE_TYPEDEF_METHOD( const char *, FS_FirstExtension2, const char *filename, const char *extensions[], int num_extensions );
 DECLARE_TYPEDEF_METHOD( const char *, FS_FirstExtension, const char *filename, const char *extensions[], int num_extensions );
 DECLARE_TYPEDEF_METHOD( const char *, FS_PakNameForFile, const char *filename );
 DECLARE_TYPEDEF_METHOD( bool, FS_IsPureFile, const char *pakname );
@@ -144,6 +145,7 @@ struct fs_import_s {
 	FS_PakFileExistsFn FS_PakFileExists;
 	FS_FileMTimeFn FS_FileMTime;
 	FS_BaseFileMTimeFn FS_BaseFileMTime;
+	FS_FirstExtension2Fn FS_FirstExtension2;
 	FS_FirstExtensionFn FS_FirstExtension;
 	FS_PakNameForFileFn FS_PakNameForFile;
 	FS_IsPureFileFn FS_IsPureFile;
@@ -221,6 +223,7 @@ bool FS_CheckPakExtension(const char *filename ){ return fs_import.FS_CheckPakEx
 bool FS_PakFileExists(const char *packfilename ){ return fs_import.FS_PakFileExists(packfilename);}
 time_t FS_FileMTime(const char *filename ){ return fs_import.FS_FileMTime(filename);}
 time_t FS_BaseFileMTime(const char *filename ){ return fs_import.FS_BaseFileMTime(filename);}
+const char * FS_FirstExtension2(const char *filename, const char *extensions[], int num_extensions ){ return fs_import.FS_FirstExtension2(filename, extensions, num_extensions);}
 const char * FS_FirstExtension(const char *filename, const char *extensions[], int num_extensions ){ return fs_import.FS_FirstExtension(filename, extensions, num_extensions);}
 const char * FS_PakNameForFile(const char *filename ){ return fs_import.FS_PakNameForFile(filename);}
 bool FS_IsPureFile(const char *pakname ){ return fs_import.FS_IsPureFile(pakname);}

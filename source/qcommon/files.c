@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "wswcurl.h"
 #include "../qalgo/md5.h"
 #include "../qalgo/q_trie.h"
+#include "../gameshared/q_sds.h"
 
 /*
 =============================================================================
@@ -768,6 +769,76 @@ static void FS_CloseFileHandle( filehandle_t *fh )
 	fs_free_filehandles = fh;
 
 	QMutex_Unlock( fs_fh_mutex );
+}
+
+
+/**
+ * this method does not try and strip the extension from the filepath.
+ * takes the filepath tacks on the extension and tries to find a valid file.
+ **/
+const char *FS_FirstExtension2( const char *filename, const char *extensions[], int num_extensions ) {
+	
+	if( !COM_ValidateRelativeFilename( filename ) )
+		return NULL;
+
+	// search through the path, one element at a time
+	QMutex_Lock( fs_searchpaths_mutex );
+	const char *implicitpure = NULL;
+	bool purepass = true;
+	const char *result = NULL;
+
+	sds filepath = sdsempty();
+	filepath = sdscat(filepath, filename);
+	size_t basepathLen = sdslen(filepath);
+	searchpath_t* search = fs_searchpaths;
+	while( search ) {
+		if( search->pack ) // is the element a pak file?
+		{
+			if( ( search->pack->pure > FS_PURE_NONE ) == purepass ) {
+				for(size_t i = 0; i < num_extensions; i++ ) {
+				  sdssubstr(filepath, 0, basepathLen);
+				  filepath = sdscat(filepath, extensions[i]);
+				  if( FS_SearchPakForFile( search->pack, filepath, NULL ) ) {
+				  	if( !purepass || search->pack->pure == FS_PURE_EXPLICIT ) {
+				  		result = extensions[i];
+				  		goto return_result;
+				  	} else if( implicitpure == NULL ) {
+				  		implicitpure = extensions[i];
+				  		break;
+				  	}
+				  }
+				}
+			}
+		} else {
+			if( !purepass ) {
+				for(size_t i = 0; i < num_extensions; i++ ) {
+					void *vfsHandle = NULL; // search in VFS as well
+				  sdssubstr(filepath, 0, basepathLen);
+				  filepath = sdscat(filepath, extensions[i]);
+					if( FS_SearchDirectoryForFile( search, filepath, NULL, 0, &vfsHandle ) ) {
+						result = extensions[i];
+						goto return_result;
+					}
+				}
+			}
+		}
+
+		if( !search->next && purepass ) {
+			if( implicitpure ) {
+				result = implicitpure;
+				goto return_result;
+			}
+			search = fs_searchpaths;
+			purepass = false;
+		} else {
+			search = search->next;
+		}
+	}
+
+return_result:
+	QMutex_Unlock( fs_searchpaths_mutex );
+	sdsfree(filepath);
+	return result;
 }
 
 /*
