@@ -131,8 +131,6 @@ static bool setEnvironmentVars(PipeType pipeChildRead, PipeType pipeChildWrite)
     if (!setEnvVar("STEAMSHIM_WRITEHANDLE", buf))
         return false;
 
-
-
     return true;
 } 
 

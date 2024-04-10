@@ -44,7 +44,7 @@ static ISteamUser *GSteamUser = NULL;
 static AppId_t GAppID = 0;
 static uint64 GUserID = 0;
 static ISteamGameServer *GSteamGameServer = NULL;
-static time_t time_since_last_pump = 0;
+// static time_t time_since_last_pump = 0;
 
 static SteamCallbacks *GSteamCallbacks;
 
@@ -70,7 +70,7 @@ static bool processCommand(PipeBuffer cmd, ShimCmd cmdtype, unsigned int len)
     switch (cmdtype)
     {
         case SHIMCMD_PUMP:
-            time(&time_since_last_pump);
+            // time(&time_since_last_pump);
             if (GRunServer)
                 SteamGameServer_RunCallbacks();
             if (GRunClient)
@@ -195,11 +195,11 @@ static void processCommands()
 {
   PipeBuffer buf;
   while (1){
-    if (time_since_last_pump != 0){
-        time_t delta = time(NULL) - time_since_last_pump;
-        if (delta > 5) // we haven't gotten a pump in 5 seconds, safe to assume the main process is either dead or unresponsive and we can terminate
-            return;
-    }
+    // if (time_since_last_pump != 0){
+    //     time_t delta = time(NULL) - time_since_last_pump;
+    //     if (delta > 5) // we haven't gotten a pump in 5 seconds, safe to assume the main process is either dead or unresponsive and we can terminate
+    //         return;
+    // }
 
     if (!buf.Recieve())
       continue;
@@ -284,8 +284,9 @@ static int initPipes(void)
 
 int main(int argc, char **argv)
 {
-#ifndef _WIN32
     signal(SIGPIPE, SIG_IGN);
+    signal(SIGINT, SIG_IGN);
+#ifndef _WIN32
 
     if( argc > 1 && strcmp(argv[1], "steamdebug") ) {
         debug = true;
