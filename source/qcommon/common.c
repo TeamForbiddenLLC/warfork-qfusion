@@ -250,6 +250,7 @@ void Com_Printf( const char *format, ... )
 	Sys_ConsoleOutput( msg );
 
 	Con_Print( msg );
+	printf("%s\n", msg);
 
 	if( log_file )
 	{

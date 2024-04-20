@@ -168,6 +168,10 @@ static int GLimp_InitGL( int stencilbits, bool stereo )
 	int colorBits, depthBits, stencilBits, stereo_;
 
 	SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, max( 0, stencilbits ) );
+	SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE );
+	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 2);
+	SDL_GL_SetAttribute( SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
 
 	if( stereo ) {
 		ri.Com_DPrintf( "...attempting to use stereo\n" );

@@ -936,6 +936,7 @@ void RB_FlushDynamicMeshes( void )
 		m[13] = transy;
 		RB_LoadObjectMatrix( m );
 	}
+	assert( qglGetError() == GL_NO_ERROR );
 }
 
 /*
@@ -960,6 +961,8 @@ static void RB_EnableVertexAttribs( void )
 	RB_EnableVertexAttrib( VATTRIB_POSITION, true );
 	qglVertexAttribPointerARB( VATTRIB_POSITION, 4, FLOAT_VATTRIB_GL_TYPE( VATTRIB_POSITION_BIT, hfa ), 
 		GL_FALSE, vbo->vertexSize, ( const GLvoid * )0 );
+	assert( qglGetError() == GL_NO_ERROR );
+
 
 	// normal
 	if( vattribs & VATTRIB_NORMAL_BIT ) {
@@ -1078,6 +1081,7 @@ static void RB_EnableVertexAttribs( void )
 		RB_EnableVertexAttrib( VATTRIB_INSTANCE_QUAT, false );
 		RB_EnableVertexAttrib( VATTRIB_INSTANCE_XYZS, false );
 	}
+	assert( qglGetError() == GL_NO_ERROR );
 }
 
 /*
@@ -1161,6 +1165,7 @@ void RB_DrawElementsReal( rbDrawElements_t *de )
 	if( rb.primitive == GL_TRIANGLES ) {
 		rb.stats.c_totalTris += numElems * numInstances / 3;
 	}
+	assert( qglGetError() == GL_NO_ERROR );
 }
 
 /*
