@@ -53,6 +53,12 @@ typedef struct {
   uint32_t rowPitch;
   uint32_t slicePitch;
 
+	uint16_t x;
+	uint16_t y;
+	uint16_t z;
+	uint32_t width;
+	uint32_t height;
+
 	uint32_t arrayOffset;
 	uint32_t mipOffset;
 
