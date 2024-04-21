@@ -38,8 +38,6 @@ typedef struct
 	uint8_t *pixels;
 } r_imginfo_t;
 
-r_imginfo_t IMG_LoadImage( const char * filename, uint8_t *( *allocbuf )( void *, size_t, const char *, int ), void *uptr );
-
 bool WriteScreenShot( const char * filename, r_imginfo_t *info, int type );
 
 void DecompressETC1( const uint8_t *in, int width, int height, uint8_t *out, bool bgr );
