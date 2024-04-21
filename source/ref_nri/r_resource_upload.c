@@ -194,9 +194,8 @@ void R_ResourceBeginCopyTexture( texture_upload_desc_t *desc )
 	assert( desc->target );
 	const NriDeviceDesc *deviceDesc = backend->coreI.GetDeviceDesc( backend->device );
 
-	const uint32_t sliceRowNum = max( desc->slicePitch / desc->rowPitch, 1u );
 	const uint64_t alignedRowPitch = ALIGN( desc->rowPitch, deviceDesc->uploadBufferTextureRowAlignment );
-	const uint64_t alignedSlicePitch =  ALIGN( sliceRowNum * alignedRowPitch, deviceDesc->uploadBufferTextureSliceAlignment );
+	const uint64_t alignedSlicePitch =  ALIGN( desc->sliceNum * alignedRowPitch, deviceDesc->uploadBufferTextureSliceAlignment );
 	const uint64_t contentSize = alignedSlicePitch * fmax( desc->sliceNum, 1u );
 	
 	desc->alignRowPitch = alignedRowPitch ;
@@ -211,14 +210,6 @@ void R_ResourceBeginCopyTexture( texture_upload_desc_t *desc )
 
 void R_ResourceEndCopyTexture( texture_upload_desc_t* desc) {
 	const NriTextureDesc* textureDesc = backend->coreI.GetTextureDesc( desc->target);
- 
- // NriTextureTransitionBarrierDesc textureTransitionBarrierDesc = {};
- // textureTransitionBarrierDesc.texture = desc->target;
- // textureTransitionBarrierDesc.prevState = desc->currentAccessAndLayout;
- // textureTransitionBarrierDesc.nextState.layout = NriTextureLayout_COPY_DESTINATION; 
- // textureTransitionBarrierDesc.nextState.acessBits = NriAccessBits_COPY_DESTINATION; 
- // textureTransitionBarrierDesc.arraySize = desc->arrayOffset;
- // textureTransitionBarrierDesc.mipNum = desc->mipOffset;
 
   NriTextureBarrierDesc transitionBarriers = {0};
   transitionBarriers.before = desc->currentAccessAndLayout;
@@ -231,7 +222,16 @@ void R_ResourceEndCopyTexture( texture_upload_desc_t* desc) {
 	barrierGroupDesc.textures = &transitionBarriers;
   backend->coreI.CmdBarrier(commandSets[activeSet].cmd, &barrierGroupDesc);//, NULL, NriBarrierDependency_COPY_STAGE);
   
-  NriTextureRegionDesc destRegionDesc = { .arrayOffset = desc->arrayOffset, .mipOffset = desc->mipOffset, .width = textureDesc->width, .height = textureDesc->height, .depth = textureDesc->depth };
+  NriTextureRegionDesc destRegionDesc = { 
+  	.arrayOffset = desc->arrayOffset, 
+  	.mipOffset = desc->mipOffset,
+  	.x = desc->x,
+  	.y = desc->y,
+  	.z = desc->z,
+  	.width = desc->width, 
+  	.height = desc->height, 
+  	.depth = textureDesc->depth 
+  };
   NriTextureDataLayoutDesc srcLayoutDesc = {
     .offset = desc->internal.byteOffset,
     .rowPitch = desc->alignRowPitch, 

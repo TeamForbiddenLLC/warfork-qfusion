@@ -23,9 +23,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_texture_format.h"
 #include "r_resource_upload.h"
+#include "r_texture_buf.h"
+#include "r_texture_format.h"
 
 #include "../gameshared/q_sds.h"
 #include "../gameshared/q_arch.h"
+#include "r_texture_buffer_load.h"
 
 #include "../qalgo/hash.h"
 
@@ -407,48 +410,54 @@ static stbi_uc* __loadFileImageStbi(const char* filepath, int* width, int* heigh
 	return stbiBuffer; 
 }
 
-static int R_ReadImageFromDisk( int ctx, char *pathname, size_t pathname_size, 
-	uint8_t **pic, int *width, int *height, int *flags, int side )
-{
-	const char *extension;
-	int samples;
+static void __R_stbi_free_image(void* p) {
+	stbi_uc* img = (stbi_uc*) p;
+	stbi_image_free(img);
+}
 
-	*pic = NULL;
-	*width = *height = 0;
-	samples = 0;
-
-	extension = FS_FirstExtension( pathname, IMAGE_EXTENSIONS, NUM_IMAGE_EXTENSIONS - 1 ); // last is KTX
-	if( extension )
-	{
-
-		loaderCbInfo_t cbinfo = { ctx, side };
-
-		COM_ReplaceExtension( pathname, extension, pathname_size );
-
-		r_imginfo_t imginfo = IMG_LoadImage( pathname, _R_AllocImageBufferCb, (void *)&cbinfo );
-
-		if( imginfo.samples >= 3 )
-		{
-			if( ( (imginfo.comp & ~1) == IMGCOMP_BGR ) && ( !glConfig.ext.bgra || !flags ) )
-			{
-				R_SwapBlueRed( imginfo.pixels, imginfo.width, imginfo.height, imginfo.samples, 1 );
-				imginfo.comp = IMGCOMP_RGB | (imginfo.comp & 1);
-			}
-		}
-
-		*pic = imginfo.pixels;
-		*width = imginfo.width;
-		*height = imginfo.height;
-		samples = imginfo.samples;
-		if( flags )
-		{
-			if( ( imginfo.samples >= 3 ) && ( ( imginfo.comp & ~1 ) == IMGCOMP_BGR ) )
-				*flags |= IT_BGRA;
-		}
+// TODO: replace r_texture_buffer_load.h has a replacment 
+static bool __R_ReadImageFromDisk_stbi(char *filename, struct texture_buf_s* buffer ) {
+	uint8_t* data;
+	size_t size = R_LoadFile( filename, ( void ** ) &data );
+	if(data == NULL) {
+		ri.Com_Printf(S_COLOR_YELLOW "can't resolve file: %s", filename);
+		return false;
 	}
 
-	return samples;
+	struct texture_buf_desc_s desc = {
+		.alignment = 1,
+	};
+
+	int channelCount = 0;
+	int w;
+	int h;
+	stbi_uc* stbiBuffer = stbi_load_from_memory( data, size, &w, &h, &channelCount, 0 );
+	desc.width = w;
+	desc.height = h;
+	switch(channelCount) {
+		case 1:
+			desc.def = R_BaseFormatDef(R_FORMAT_A8_UNORM);
+			break;
+		case 2:
+			desc.def = R_BaseFormatDef(R_FORMAT_L8_A8_UNORM);
+			break;
+		case 3:
+			desc.def = R_BaseFormatDef(R_FORMAT_RGB8_UNORM);
+			break;
+		case 4:
+			desc.def = R_BaseFormatDef(R_FORMAT_RGBA8_UNORM);
+			break;
+		default:
+			stbi_image_free(stbiBuffer);
+			ri.Com_Printf(S_COLOR_YELLOW "unhandled channel count: %d", channelCount);
+			return false;
+	}
+	R_FreeFile( data );
+	const int res = T_AliasTextureBuf_Free(buffer, &desc, stbiBuffer, 0, stbiBuffer, __R_stbi_free_image);
+	assert(res == TEXTURE_BUF_SUCCESS);
+	return true;
 }
+
 
 /*
 * R_ScaledImageSize
@@ -1899,14 +1908,15 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 
   enum texture_format_e srcFormat = __R_ResolveDataFormat( flags, samples);
   enum texture_format_e destFormat = __R_ToSupportedFormat( srcFormat );
-  NriTextureDesc textureDesc = { .width = width,
+  NriTextureDesc textureDesc = { 
+  								.width = width,
 								 .height = height,
 								 .depth = 1,
 								 .usageMask = __R_NRITextureUsageBits( flags ),
 								 .arraySize = ( flags & IT_CUBEMAP ) ? 6 : 1,
 								 .format = R_NRIFormat( destFormat ),
 								 .sampleNum = 1,
-								 .type = NriTextureType_TEXTURE_2D,
+								 .type =  NriTextureType_TEXTURE_2D,
 								 .mipNum = mipSize };
   rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture );
 
@@ -1942,6 +1952,8 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
   			uploadDesc.rowPitch = w * destBlockSize;
   			uploadDesc.arrayOffset = index;
   			uploadDesc.mipOffset = i;
+  			uploadDesc.width = w;
+  			uploadDesc.height = h;
   			uploadDesc.target = image->texture;
   			R_ResourceBeginCopyTexture( &uploadDesc );
   			for( size_t slice = 0; slice < height; slice++ ) {
@@ -2380,6 +2392,8 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 			uploadDesc.rowPitch = w * destBlockSize;
 			uploadDesc.arrayOffset = index;
 			uploadDesc.mipOffset = i;
+			uploadDesc.width = w;
+			uploadDesc.height = h;
 			uploadDesc.target = image->texture;
 			R_ResourceBeginCopyTexture( &uploadDesc );
 			for( size_t slice = 0; slice < uploads[index].height; slice++ ) {
