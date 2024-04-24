@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "client.h"
 #include "cin.h"
 #include "../qcommon/asyncstream.h"
+#include <stdint.h>
 
 static cgame_export_t *cge;
 
@@ -556,8 +557,7 @@ void CL_GameModule_Init( void )
 	import.IN_IME_GetCandidates = IN_IME_GetCandidates;
 	import.IN_SupportedDevices = IN_SupportedDevices;
 
-
-	import.Steam_RequestAvatar = Steam_RequestAvatar;
+	import.steam_import = (struct steam_import_s)DECLARE_STEAM_STRUCT();
 
 	if( builtinAPIfunc ) {
 		cge = builtinAPIfunc( &import );
@@ -755,18 +755,6 @@ bool CL_GameModule_IsTouchDown( int id )
 	return false;
 }
 
-/*
-* CL_GameModule_CallbackRequestAvatar
-*/
-void CL_GameModule_CallbackRequestAvatar( uint64_t steamid, char* avatar )
-{
-	if( cge )
-		cge->CallbackRequestAvatar( steamid, avatar );
-}
-
-/*
-* CL_GameModule_CallbackRequestAvatar
-*/
 bool CL_GameModule_GetBlocklistItem( size_t index, uint64_t* steamid_out, char* name, size_t* name_len_in_out )
 {
 	if ( cge )

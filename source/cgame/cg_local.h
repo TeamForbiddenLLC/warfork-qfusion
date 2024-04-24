@@ -32,6 +32,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "cg_public.h"
 #include "cg_syscalls.h"
+#include <cstdint>
 
 #define CG_OBITUARY_HUD	    1
 #define CG_OBITUARY_CENTER  2
@@ -702,8 +703,9 @@ extern cvar_t *cg_model;
 extern cvar_t *cg_skin;
 extern cvar_t *cg_hand;
 
+void CG_initPlayer();
+void CG_deinitPlayer(); 
 void CG_LoadClientInfo( cg_clientInfo_t *ci, const char *s, int client );
-void CG_CallbackRequestAvatar(uint64_t steamid, char *avatar);
 void CG_UpdateSexedSoundsRegistration( pmodelinfo_t *pmodelinfo );
 void CG_SexedSound( int entnum, int entchannel, const char *name, float fvol, float attn );
 void CG_SexedVSay( int entnum, int vsay, float fvol );

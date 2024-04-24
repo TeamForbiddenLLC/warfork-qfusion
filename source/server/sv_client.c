@@ -244,8 +244,9 @@ void SV_DropClient( client_t *drop, int type, const char *format, ... )
 
 	SV_Web_RemoveGameClient( drop->session );
 
-	if (drop->authenticated)
+	if (drop->authenticated) {
 		Steam_EndAuthSession(drop->steamid);
+	}
 
 	if( drop->download.name )
 		SV_ClientCloseDownload( drop );

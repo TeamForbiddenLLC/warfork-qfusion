@@ -418,8 +418,6 @@ void CL_Precache_f( void );
 void CL_ForwardToServer_f( void );
 void CL_ServerDisconnect_f( void );
 
-void CL_ParseSteamConnectString(const char* cmdline);
-
 size_t CL_GetBaseServerURL( char *buffer, size_t buffer_size );
 
 int CL_AddSessionHttpRequestHeaders( const char *url, const char **headers );
@@ -447,7 +445,6 @@ void CL_GameModule_AddViewAngles( vec3_t viewangles, float frametime, bool flipp
 void CL_GameModule_AddMovement( vec3_t movement );
 void CL_GameModule_TouchEvent( int id, touchevent_t type, int x, int y, unsigned int time );
 bool CL_GameModule_IsTouchDown( int id );
-void CL_GameModule_CallbackRequestAvatar( uint64_t steamid, char* avatar );
 bool CL_GameModule_GetBlocklistItem( size_t index, uint64_t* steamid_out, char* name, size_t* name_len_in_out );
 
 //
@@ -681,12 +678,5 @@ void CL_Sys_Shutdown( void );
 // cl_steam.c
 //
 
-uint64_t Steam_GetSteamID( void );
-void Steam_AdvertiseGame( const uint8_t *ip, unsigned short port );
-void Steam_GetPersonaName( char *name, size_t namesize );
-const SteamAuthTicket_t* Steam_GetAuthSessionTicketBlocking();
-void Steam_SetRichPresence( int num, const char **key, const char **val );
-void Steam_RequestAvatar(uint64_t steamid, int size);
-void CL_Steam_RunFrame( void );
-void Steam_OpenProfile( uint64_t steamid );
+void Steam_AdvertiseGame( const uint8_t *ip, unsigned short port, uint32_t* syncToken);
 

@@ -62,6 +62,7 @@ file(GLOB child_SRC
     "src/*.cpp"
     "src/child/*.h"
     "src/child/*.cpp"
+    "src/child/ServerBrowser.cpp"
 )
 
 if (BUILD_STEAMLIB)

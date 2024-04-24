@@ -19,6 +19,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #define FS_DEFINE_INTERFACE_IMPL 1
 #include "../qcommon/mod_fs.h"
+#define STEAM_DEFINE_INTERFACE_IMPL 1 
+#include "../steamshim/src/mod_steam.h"
 
 #include "ui_precompiled.h"
 #include "kernel/ui_common.h"
@@ -196,6 +198,7 @@ ui_export_t *GetUIAPI( ui_import_t *import )
 
 	// Trap::UI_IMPORT = *import;
 	WSWUI::UI_IMPORT = *import;
+	Q_ImportSteamModule(&import->steam_import);
 
 	fs_import = *(import->fsImport);
 	globals.API = WSWUI::API;

@@ -21,6 +21,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef __UI_PUBLIC_H__
 #define __UI_PUBLIC_H__
 
+#include "./../steamshim/src/mod_steam.h"
+
 #define	UI_API_VERSION	    62
 
 typedef size_t (*ui_async_stream_read_cb_t)(const void *buf, size_t numb, float percentage, 
@@ -187,7 +189,7 @@ typedef struct
 	const char *( *L10n_GetUserLanguage )( void );
 
 	// steam
-	void *( *Steam_OpenProfile )( uint64_t steamid );
+	struct steam_import_s steam_import;
 	bool ( *GetBlocklistItem )( size_t index, uint64_t* steamid_out, char* name, size_t* name_len_in_out );
 } ui_import_t;
 

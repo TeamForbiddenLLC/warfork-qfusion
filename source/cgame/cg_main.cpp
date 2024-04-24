@@ -1239,6 +1239,8 @@ void CG_Init( const char *serverName, unsigned int playerNum,
 	CG_ConfigString( CS_AUTORECORDSTATE, cgs.configStrings[CS_AUTORECORDSTATE] );
 
 	CG_DemocamInit();
+	
+	CG_initPlayer();
 }
 
 /*
@@ -1246,6 +1248,7 @@ void CG_Init( const char *serverName, unsigned int playerNum,
 */
 void CG_Shutdown( void )
 {
+	CG_deinitPlayer();
 	CG_FreeLocalEntities();
 	CG_DemocamShutdown();
 	CG_ScreenShutdown();

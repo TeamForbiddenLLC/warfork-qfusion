@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ftlib.h"
 #include "../qcommon/asyncstream.h"
 #include "../qalgo/hash.h"
+#include "../steamshim/src/parent/parent.h"
 #include <stdlib.h>
 
 cvar_t *cl_stereo_separation;
@@ -1909,7 +1910,7 @@ void CL_SetClientState( int state )
 	Com_SetClientState( state );
 
 	if( state <= CA_DISCONNECTED )
-		Steam_AdvertiseGame( NULL, 0 );
+		Steam_AdvertiseGame( NULL, 0, NULL);
 
 	switch( state )
 	{
@@ -2140,12 +2141,43 @@ static char* CL_RandomName(){
 	return name;
 }
 
+static void CL_RPC_cb_steam_id(void* self, struct steam_rpc_pkt_s* rec ) {
+  assert(rec->common.cmd == RPC_REQUEST_STEAM_ID);
+  cvar_t* steam_cvar = self;
+  char id[18];
+  Q_snprintfz( id, sizeof id, "%llu", rec->steam_id.id );
+  Cvar_ForceSet( steam_cvar->name, id );
+}
+
+static void CL_RPC_cb_persona( void *self, struct steam_rpc_pkt_s *rec )
+{
+	cvar_t *name_cvar = self;
+	assert( rec->common.cmd == RPC_PERSONA_NAME );
+	char steamname[MAX_NAME_BYTES * 4], *steamnameIn = steamname, c;
+	strncpy( steamname, (char *)rec->persona_name.buf, sizeof( steamname ) );
+
+	bool steamnamePrintable = true;
+	while( ( c = *steamnameIn ) != '\0' ) {
+		steamnameIn++;
+		if( ( c < 32 ) || ( c >= 127 ) || ( c == '\\' ) || ( c == ';' ) || ( c == '"' ) )
+			steamnamePrintable = false;
+	}
+
+	COM_RemoveColorTokens( steamname );
+
+	// if even a single character isn't printable in the username, drop it and use a random one
+	if( !steamnamePrintable || !steamname[0] || !CL_IsNameValid( steamname ) ) {
+		Cvar_Set( name_cvar->name, CL_RandomName() );
+	} else {
+		Cvar_Set( name_cvar->name, steamname );
+	}
+}
 /*
 * CL_InitLocal
 */
 static void CL_InitLocal( void )
 {
-	cvar_t *name, *color, *steam_id;
+	cvar_t *name, *color;
 
 	cls.state = CA_DISCONNECTED;
 	Com_SetClientState( CA_DISCONNECTED );
@@ -2217,41 +2249,25 @@ static void CL_InitLocal( void )
 	rate =			Cvar_Get( "rate", "60000", CVAR_DEVELOPER ); // FIXME
 
 	name = Cvar_Get( "name", "", CVAR_USERINFO | CVAR_ARCHIVE );
+	uint32_t syncIndex = 0;
 
 	if ( !CL_IsNameValid(name->string) ){
-		if ( Steam_Active() ){
-			char steamname[MAX_NAME_BYTES * 4], *steamnameIn = steamname, c;
-			Steam_GetPersonaName( steamname, sizeof( steamname ) );
-
-			bool steamnamePrintable = true;
-			while( ( c = *steamnameIn ) != '\0' )
-			{
-				steamnameIn++;
-				if( ( c < 32 ) || ( c >= 127 ) || ( c == '\\' ) || ( c == ';' ) || ( c == '"' ) )
-					steamnamePrintable = false;
-			}
-      
-      COM_RemoveColorTokens( steamname );
-
-			// if even a single character isn't printable in the username, drop it and use a random one
-			if (!steamnamePrintable || !steamname[0] || !CL_IsNameValid(steamname)){
-				Cvar_Set( name->name, CL_RandomName() );
-			}else{
-			  Cvar_Set( name->name, steamname );
-			}
+		if ( STEAMSHIM_active() ){
+			struct steam_rpc_shim_common_s request;
+			request.cmd = RPC_REQUEST_STEAM_ID;
+			STEAMSHIM_sendRPC( &request, sizeof( struct steam_rpc_shim_common_s ), name, CL_RPC_cb_persona, &syncIndex );
 		} else {
 			Cvar_Set( name->name, CL_RandomName() );
 		}
-
 	}
 
-	steam_id = Cvar_Get( "steam_id", "", CVAR_USERINFO|CVAR_READONLY);
-
-	if (Steam_Active()){
-		char id[18];
-		Q_snprintfz(id, sizeof id, "%llu", Steam_GetSteamID());
-		Cvar_ForceSet(steam_id->name, id);
+	if (STEAMSHIM_active()){
+		struct steam_rpc_shim_common_s request;
+		request.cmd = RPC_REQUEST_STEAM_ID;
+  	cvar_t *steam_id = Cvar_Get( "steam_id", "", CVAR_USERINFO | CVAR_READONLY );
+		STEAMSHIM_sendRPC(&request,sizeof(struct steam_rpc_shim_common_s), steam_id , CL_RPC_cb_steam_id, &syncIndex);
 	}
+	STEAMSHIM_waitDispatchSync(syncIndex);
 
 	Cvar_Get( "clan", "", CVAR_USERINFO | CVAR_ARCHIVE );
 	Cvar_Get( "model", DEFAULT_PLAYERMODEL, CVAR_USERINFO | CVAR_ARCHIVE );
@@ -2732,7 +2748,7 @@ void CL_Frame( int realmsec, int gamemsec )
 	CL_AdjustServerTime( gamemsec );
 	CL_UserInputFrame();
 	CL_NetFrame( realmsec, gamemsec );
-	CL_Steam_RunFrame();
+	STEAMSHIM_dispatch();
 	CL_MM_Frame();
 	
 	if( cls.state == CA_CINEMATIC )
@@ -3007,7 +3023,7 @@ static void CL_CheckForUpdate( void )
 
 	if( !cl_checkForUpdate->integer )
 		return;
-	if( Steam_Active() )
+	if( STEAMSHIM_active() )
 		return;
 
 	if( updateRemoteData )
@@ -3155,20 +3171,14 @@ void CL_AsyncStreamRequest( const char *url, const char **headers, int timeout, 
 	}
 }
 
-void CL_ParseSteamConnectString(const char* cmdline){
-	if (!cmdline[0]) return;
-	if (Q_strrstr(cmdline, "\"")) {
+static void CL_RPC_cb_commandLine(void *self, struct steam_rpc_pkt_s *rec ){
+	if( !rec->launch_command.buf[0] )
+		return;
+	if( Q_strrstr( (char *)rec->launch_command.buf, "\"" ) ) {
 		// block potential command injection
 		return;
 	}
-	Cbuf_ExecuteText(EXEC_NOW, va("connect \"%s\"", cmdline));
-}
-
-static void CL_SteamCommandLineInit(){
-	if (Steam_Active()) {
-		const char *cmdline = Steam_CommandLine();
-		CL_ParseSteamConnectString(cmdline);
-	}
+	Cbuf_ExecuteText( EXEC_NOW, va( "connect \"%s\"", rec->launch_command.buf ) );
 }
 
 //============================================================================
@@ -3237,7 +3247,12 @@ void CL_Init( void )
 
 	ML_Init();
 
-	CL_SteamCommandLineInit();
+	if (STEAMSHIM_active()) {
+		struct steam_rpc_shim_common_s req;
+		req.cmd = RPC_REQUEST_LAUNCH_COMMAND;
+		STEAMSHIM_sendRPC(&req, sizeof(struct steam_rpc_shim_common_s), NULL, CL_RPC_cb_commandLine, NULL);
+	}
+
 }
 
 /*

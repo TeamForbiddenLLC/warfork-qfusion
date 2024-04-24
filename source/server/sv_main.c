@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "server.h"
 #include "../qcommon/steam.h"
-
+#include "../steamshim/src/mod_steam.h"
 static bool sv_initialized = false;
 
 mempool_t *sv_mempool;
@@ -722,7 +722,7 @@ void SV_Frame( int realmsec, int gamemsec )
 
 		SV_MM_Frame();
 
-		SV_Steam_RunFrame();
+		STEAMSHIM_dispatch();
 
 		// send a heartbeat to the master if needed
 		SV_MasterHeartbeat();
@@ -1004,7 +1004,7 @@ void SV_Init( void )
 
 	SV_Web_Init();
 
-	if (Steam_Active()) {
+	if (STEAMSHIM_active()) {
 		if (!dedicated->integer)
 			Cvar_ForceSet( "sv_useSteamAuth", "1" );
 	} else {
