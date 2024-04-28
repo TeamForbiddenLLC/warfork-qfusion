@@ -51,7 +51,6 @@ typedef struct {
 	// https://github.com/microsoft/DirectXTex/wiki/Image
   uint32_t sliceNum;
   uint32_t rowPitch;
-  uint32_t slicePitch;
 
 	uint16_t x;
 	uint16_t y;
