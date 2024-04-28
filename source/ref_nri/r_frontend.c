@@ -18,9 +18,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+#include "r_image.h"
 #include "r_local.h"
 #include "r_cmdque.h"
 #include "r_nri.h"
+#include "r_resource_upload.h"
 #include "r_frontend.h"
 
 
@@ -426,17 +428,17 @@ static void RF_CheckCvars( void )
 	}
 
 	// update gamma
-	if( r_gamma->modified )
-	{
-		r_gamma->modified = false;
-		rrf.adapter.cmdPipe->SetGamma( rrf.adapter.cmdPipe, r_gamma->value );
-	}
-	
-	if( r_texturefilter->modified )
-	{
-		r_texturefilter->modified = false;
-		rrf.adapter.cmdPipe->SetTextureFilter( rrf.adapter.cmdPipe, r_texturefilter->integer );
-	}
+ // if( r_gamma->modified )
+ // {
+ // 	r_gamma->modified = false;
+ // 	rrf.adapter.cmdPipe->SetGamma( rrf.adapter.cmdPipe, r_gamma->value );
+ // }
+ // 
+ // if( r_texturefilter->modified )
+ // {
+ // 	r_texturefilter->modified = false;
+ // 	rrf.adapter.cmdPipe->SetTextureFilter( rrf.adapter.cmdPipe, r_texturefilter->integer );
+ // }
 
 	if( r_wallcolor->modified || r_floorcolor->modified ) {
 		vec3_t wallColor, floorColor;
@@ -445,21 +447,28 @@ static void RF_CheckCvars( void )
 		sscanf( r_floorcolor->string, "%3f %3f %3f", &floorColor[0], &floorColor[1], &floorColor[2] );
 		
 		r_wallcolor->modified = r_floorcolor->modified = false;
-
-		rrf.adapter.cmdPipe->SetWallFloorColors( rrf.adapter.cmdPipe, wallColor, floorColor );		
+		
+		for( size_t i = 0; i < 3; i++ ) {
+			rsh.wallColor[i] = bound( 0, floor( wallColor[i] ) / 255.0, 1.0 );
+			rsh.floorColor[i] = bound( 0, floor( floorColor[i] ) / 255.0, 1.0 );
+		}
+		//rrf.adapter.cmdPipe->SetWallFloorColors( rrf.adapter.cmdPipe, wallColor, floorColor );		
 	}
 
 	if( gl_drawbuffer->modified )
 	{
 		gl_drawbuffer->modified = false;
-		rrf.adapter.cmdPipe->SetDrawBuffer( rrf.adapter.cmdPipe, gl_drawbuffer->string );
+		Q_strncpyz( rf.drawBuffer, gl_drawbuffer->string, sizeof( rf.drawBuffer ) );
+		rf.newDrawBuffer = true;
+		//rrf.adapter.cmdPipe->SetDrawBuffer( rrf.adapter.cmdPipe, gl_drawbuffer->string );
 	}
 	
 	// texturemode stuff
 	if( r_texturemode->modified )
 	{
 		r_texturemode->modified = false;
-		rrf.adapter.cmdPipe->SetTextureMode( rrf.adapter.cmdPipe, r_texturemode->string );
+		R_TextureMode(r_texturemode->string);
+		//rrf.adapter.cmdPipe->SetTextureMode( rrf.adapter.cmdPipe, r_texturemode->string );
 	}
 	
 	// keep r_outlines_cutoff value in sane bounds to prevent wallhacking
@@ -526,6 +535,7 @@ void RF_EndFrame( void )
 	//R_DataSync();
 
 	rrf.frame->EndFrame( rrf.frame );
+	R_ResourceSubmit();
 	
  // if( glConfig.multithreading ) {
  // 	ri.Mutex_Lock( rrf.adapter.frameLock );
@@ -551,7 +561,9 @@ void RF_EndRegistration( void )
 	//R_EndRegistration();
 	//rrf.adapter.cmdPipe->EndRegistration( rrf.adapter.cmdPipe );
 	//RF_AdapterWait( &rrf.adapter );
-	
+
+	//R_EndRegistration();
+
 	// reset the cache of custom colors, otherwise RF_SetCustomColor might fail to do anything
 	memset( rrf.customColors, 0, sizeof( rrf.customColors ) );
 }
@@ -564,119 +576,119 @@ void RF_RegisterWorldModel( const char *model, const dvis_t *pvsData )
 
 void RF_ClearScene( void )
 {
-	R_ClearScene_2(rrf.scene);	
+	//R_ClearScene_2(rrf.scene);	
 	//rrf.frame->ClearScene( rrf.frame );
 }
 
 void RF_AddEntityToScene( const entity_t *ent )
 {
-	rrf.frame->AddEntityToScene( rrf.frame, ent );
+	//rrf.frame->AddEntityToScene( rrf.frame, ent );
 }
 
 void RF_AddLightToScene( const vec3_t org, float intensity, float r, float g, float b )
 {
-	rrf.frame->AddLightToScene( rrf.frame, org, intensity, r, g, b );
+	//rrf.frame->AddLightToScene( rrf.frame, org, intensity, r, g, b );
 }
 
 void RF_AddPolyToScene( const poly_t *poly )
 {
-	rrf.frame->AddPolyToScene( rrf.frame, poly );
+	//rrf.frame->AddPolyToScene( rrf.frame, poly );
 }
 
 void RF_AddLightStyleToScene( int style, float r, float g, float b )
 {
-	rrf.frame->AddLightStyleToScene( rrf.frame, style, r, g, b );
+	//rrf.frame->AddLightStyleToScene( rrf.frame, style, r, g, b );
 }
 
 void RF_RenderScene( const refdef_t *fd )
 {
-	rrf.frame->RenderScene( rrf.frame, fd );
+	//rrf.frame->RenderScene( rrf.frame, fd );
 }
 
 void RF_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	const vec4_t color, const shader_t *shader )
 {
-	rrf.frame->DrawRotatedStretchPic( rrf.frame, x, y, w, h, s1, t1, s2, t2, 0, color, shader );
+	//rrf.frame->DrawRotatedStretchPic( rrf.frame, x, y, w, h, s1, t1, s2, t2, 0, color, shader );
 }
 
 void RF_DrawRotatedStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, float angle, 
 	const vec4_t color, const shader_t *shader )
 {
-	rrf.frame->DrawRotatedStretchPic( rrf.frame, x, y, w, h, s1, t1, s2, t2, angle, color, shader );
+	//rrf.frame->DrawRotatedStretchPic( rrf.frame, x, y, w, h, s1, t1, s2, t2, angle, color, shader );
 }
 
 void RF_DrawStretchRaw( int x, int y, int w, int h, int cols, int rows, 
 	float s1, float t1, float s2, float t2, uint8_t *data )
 {
-	if( !cols || !rows )
-		return;
+	//if( !cols || !rows )
+	//	return;
 
-	if( data )
-		R_UploadRawPic( rsh.rawTexture, cols, rows, data );
+	//if( data )
+	//	R_UploadRawPic( rsh.rawTexture, cols, rows, data );
 
-	rrf.frame->DrawStretchRaw( rrf.frame, x, y, w, h, s1, t1, s2, t2 );
+	//rrf.frame->DrawStretchRaw( rrf.frame, x, y, w, h, s1, t1, s2, t2 );
 }
 
 void RF_DrawStretchRawYUV( int x, int y, int w, int h, 
 	float s1, float t1, float s2, float t2, ref_img_plane_t *yuv )
 {
-	if( yuv )
-		R_UploadRawYUVPic( rsh.rawYUVTextures, yuv );
+	//if( yuv )
+	//	R_UploadRawYUVPic( rsh.rawYUVTextures, yuv );
 
-	rrf.frame->DrawStretchRawYUV( rrf.frame, x, y, w, h, s1, t1, s2, t2 );
+	//rrf.frame->DrawStretchRawYUV( rrf.frame, x, y, w, h, s1, t1, s2, t2 );
 }
 
 void RF_DrawStretchPoly( const poly_t *poly, float x_offset, float y_offset )
 {
-	rrf.frame->DrawStretchPoly( rrf.frame, poly, x_offset, y_offset );
+	//rrf.frame->DrawStretchPoly( rrf.frame, poly, x_offset, y_offset );
 }
 
 void RF_SetScissor( int x, int y, int w, int h )
 {
-	rrf.frame->SetScissor( rrf.frame, x, y, w, h );
-	Vector4Set( rrf.scissor, x, y, w, h );
+	//rrf.frame->SetScissor( rrf.frame, x, y, w, h );
+	//Vector4Set( rrf.scissor, x, y, w, h );
 }
 
 void RF_GetScissor( int *x, int *y, int *w, int *h )
 {
-	if( x )
-		*x = rrf.scissor[0];
-	if( y )
-		*y = rrf.scissor[1];
-	if( w )
-		*w = rrf.scissor[2];
-	if( h )
-		*h = rrf.scissor[3];
+ // if( x )
+ // 	*x = rrf.scissor[0];
+ // if( y )
+ // 	*y = rrf.scissor[1];
+ // if( w )
+ // 	*w = rrf.scissor[2];
+ // if( h )
+ // 	*h = rrf.scissor[3];
 }
 
 void RF_ResetScissor( void )
 {
-	rrf.frame->ResetScissor( rrf.frame );
-	Vector4Set( rrf.scissor, 0, 0, glConfig.width, glConfig.height );
+//	rrf.frame->ResetScissor( rrf.frame );
+//	Vector4Set( rrf.scissor, 0, 0, glConfig.width, glConfig.height );
 }
 
 void RF_SetCustomColor( int num, int r, int g, int b )
 {
-	byte_vec4_t rgba;
+ // byte_vec4_t rgba;
 
-	Vector4Set( rgba, r, g, b, 255 );
-	
-	if( *(int *)rgba != *(int *)rrf.customColors[num] ) {
-		rrf.adapter.cmdPipe->SetCustomColor( rrf.adapter.cmdPipe, num, r, g, b );
-		*(int *)rrf.customColors[num] = *(int *)rgba;
-	}
+ // Vector4Set( rgba, r, g, b, 255 );
+ // 
+ // if( *(int *)rgba != *(int *)rrf.customColors[num] ) {
+ // 	rrf.adapter.cmdPipe->SetCustomColor( rrf.adapter.cmdPipe, num, r, g, b );
+ // 	*(int *)rrf.customColors[num] = *(int *)rgba;
+ // }
 }
 
 void RF_ScreenShot( const char *path, const char *name, const char *fmtstring, bool silent )
 {
-	if( RF_RenderingEnabled() )
-		rrf.adapter.cmdPipe->ScreenShot( rrf.adapter.cmdPipe, path, name, fmtstring, silent );
+ // if( RF_RenderingEnabled() )
+ // 	rrf.adapter.cmdPipe->ScreenShot( rrf.adapter.cmdPipe, path, name, fmtstring, silent );
 }
 
 void RF_EnvShot( const char *path, const char *name, unsigned pixels )
 {
-	if( RF_RenderingEnabled() )
-		rrf.adapter.cmdPipe->EnvShot( rrf.adapter.cmdPipe, path, name, pixels );
+//	if( RF_RenderingEnabled() )
+//		rrf.adapter.cmdPipe->EnvShot( rrf.adapter.cmdPipe, path, name, pixels );
 }
 
 bool RF_RenderingEnabled( void )
