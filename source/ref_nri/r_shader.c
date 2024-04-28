@@ -3105,13 +3105,6 @@ shader_t *R_RegisterVideo( const char *name )
 }
 
 /*
-* R_RemapShader
-*/
-void R_RemapShader( const char *from, const char *to, int timeOffset )
-{
-}
-
-/*
 * R_GetShaderDimensions
 *
 * Returns dimensions for shader's base (taken from the first pass) image
@@ -3147,21 +3140,22 @@ void R_GetShaderDimensions( const shader_t *shader, int *width, int *height )
 */
 void R_ReplaceRawSubPic( shader_t *shader, int x, int y, int width, int height, uint8_t *data )
 {
-	image_t *baseImage;
+	//TODO: I don't think we can do this
+ // image_t *baseImage;
 
-	assert( shader );
-	if( !shader )
-		return;
+ // assert( shader );
+ // if( !shader )
+ // 	return;
 
-	assert( shader->type == SHADER_TYPE_2D_RAW );
-	if( shader->type != SHADER_TYPE_2D_RAW )
-		return;
+ // assert( shader->type == SHADER_TYPE_2D_RAW );
+ // if( shader->type != SHADER_TYPE_2D_RAW )
+ // 	return;
 
-	baseImage = shader->passes[0].images[0];
+ // baseImage = shader->passes[0].images[0];
 
-	assert( ( ( x + width ) <= baseImage->upload_width ) && ( ( y + height ) <= baseImage->upload_height ) );
-	if( ( ( x + width ) > baseImage->upload_width ) || ( ( y + height ) > baseImage->upload_height ) )
-		return;
+ // assert( ( ( x + width ) <= baseImage->upload_width ) && ( ( y + height ) <= baseImage->upload_height ) );
+ // if( ( ( x + width ) > baseImage->upload_width ) || ( ( y + height ) > baseImage->upload_height ) )
+ // 	return;
 
-	R_ReplaceSubImage( baseImage, 0, x, y, &data, width, height );
+ // R_ReplaceSubImage( baseImage, 0, x, y, &data, width, height );
 }
