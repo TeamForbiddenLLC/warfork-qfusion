@@ -29,6 +29,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../qcommon/bsp.h"
 #include "../qcommon/patch.h"
 
+#include "../ref_base/ref_mod.h"
+
 #include "../qcommon/mod_fs.h"
 #include "r_resource_upload.h"
 

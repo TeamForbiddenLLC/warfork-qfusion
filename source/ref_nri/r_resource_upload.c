@@ -92,38 +92,37 @@ static bool R_AllocTemporaryBuffer( resource_command_set_t *set, size_t reqSize,
 	NRI_ABORT_ON_FAILURE( backend->coreI.BindBufferMemory( backend->device, &bindBufferDesc, 1 ) );
 	arrput(set->temporary, temp );
 
-  	res->cpuMapping = backend->coreI.MapBuffer(temp.buffer, 0, NRI_WHOLE_SIZE);
+	res->cpuMapping = backend->coreI.MapBuffer( temp.buffer, 0, NRI_WHOLE_SIZE );
 	res->backing = temp.buffer;
 	res->byteOffset = 0;
 	return true;
 }
 
-static void R_UploadBeginCommandSet( struct command_set_s *set )
+static void R_UploadBeginCommandSet( uint32_t setIndex)
 {
-	if( syncIndex >= NUMBER_COMMAND_SETS ) {
-		backend->coreI.Wait( uploadFence, 1 + syncIndex - NUMBER_COMMAND_SETS );
-		backend->coreI.ResetCommandAllocator( set->allocator );
-	   for(size_t i = 0; i < arrlen(set->temporary); i++) {
-	     backend->coreI.DestroyBuffer(set->temporary[i].buffer);
-	     backend->coreI.FreeMemory(set->temporary[i].memory);
-	   }
-	  arrsetlen(set->temporary, 0);
-	}
+	struct command_set_s* set = &commandSets[activeSet];
   stageBuffer.remaningSpace += set->reservedStageMemory; 
   set->reservedStageMemory = 0;
 	backend->coreI.BeginCommandBuffer( set->cmd, 0 );
 }
 
-static void R_UploadEndCommandSet(struct command_set_s* set) {
+static void R_UploadEndCommandSet(uint32_t setIndex) {
+	struct command_set_s* set = &commandSets[activeSet];
 	const NriCommandBuffer* cmdBuffers[] = {
     set->cmd
 	};
+
+	NriFenceSubmitDesc signalFence = {0};
+	signalFence.fence = uploadFence;
+	signalFence.value = 1 + syncIndex;
+
 	backend->coreI.EndCommandBuffer( set->cmd );
-	NriQueueSubmitDesc queueSubmit = {};
+	NriQueueSubmitDesc queueSubmit = {0};
 	queueSubmit.commandBuffers = cmdBuffers;
 	queueSubmit.commandBufferNum = 1;
+	queueSubmit.signalFenceNum = 1;
+	queueSubmit.signalFences = &signalFence;
 	backend->coreI.QueueSubmit( cmdQueue, &queueSubmit );
-	//backend->coreI.QueueSignal( cmdQueue, uploadFence, 1 + syncIndex );
   syncIndex++;
 }
 
@@ -151,7 +150,7 @@ void R_InitResourceUpload(struct nri_backend_s* nri)
 	stageBuffer.tailOffset = 0;
 	stageBuffer.remaningSpace = SizeOfStageBufferByte;
 	activeSet = 0;
-	R_UploadBeginCommandSet( &commandSets[0] );
+	R_UploadBeginCommandSet( 0 );
 }
 
 void R_ResourceBeginCopyBuffer( buffer_upload_desc_t *action )
@@ -196,13 +195,13 @@ void R_ResourceBeginCopyTexture( texture_upload_desc_t *desc )
 
 	const uint64_t alignedRowPitch = ALIGN( desc->rowPitch, deviceDesc->uploadBufferTextureRowAlignment );
 	const uint64_t alignedSlicePitch =  ALIGN( desc->sliceNum * alignedRowPitch, deviceDesc->uploadBufferTextureSliceAlignment );
-	const uint64_t contentSize = alignedSlicePitch * fmax( desc->sliceNum, 1u );
+	//const uint64_t contentSize = alignedSlicePitch * fmax( desc->sliceNum, 1u );
 	
-	desc->alignRowPitch = alignedRowPitch ;
+	desc->alignRowPitch = alignedRowPitch;
 	desc->alignSlicePitch = alignedSlicePitch;
 
 	resource_stage_response_t res = {};
-	R_AllocTemporaryBuffer( &commandSets[activeSet], contentSize, &res );
+	R_AllocTemporaryBuffer( &commandSets[activeSet], alignedSlicePitch, &res );
 	desc->internal.byteOffset = res.byteOffset;
 	desc->data = res.cpuMapping;
 	desc->internal.backing = res.backing;
@@ -241,9 +240,19 @@ void R_ResourceEndCopyTexture( texture_upload_desc_t* desc) {
 }
 
 void R_ResourceSubmit() {
-  R_UploadEndCommandSet(&commandSets[activeSet]);
-  activeSet = (activeSet +1) % NUMBER_COMMAND_SETS;
-  R_UploadEndCommandSet(&commandSets[activeSet]);
+  R_UploadEndCommandSet(activeSet);
+  activeSet = ( activeSet + 1 ) % NUMBER_COMMAND_SETS;
+	if( syncIndex >= NUMBER_COMMAND_SETS ) {
+		struct command_set_s *set = &commandSets[activeSet];
+		backend->coreI.Wait( uploadFence, 1 + syncIndex - NUMBER_COMMAND_SETS );
+		backend->coreI.ResetCommandAllocator( set->allocator );
+	   for(size_t i = 0; i < arrlen(set->temporary); i++) {
+	     backend->coreI.DestroyBuffer(set->temporary[i].buffer);
+	     backend->coreI.FreeMemory(set->temporary[i].memory);
+	   }
+	  arrsetlen(set->temporary, 0);
+	}
+  R_UploadBeginCommandSet(activeSet);
 }
 
 
