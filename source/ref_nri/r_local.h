@@ -206,6 +206,21 @@ typedef struct
 
 //====================================================
 
+#define NUMBER_FRAMES_FLIGHT 3
+#define NUMBER_RESERVED_BACKBUFFERS 4 
+#define SWAPCHAIN_FORMAT 
+
+
+struct frame_s {
+  NriCommandAllocator* allocator;
+  NriCommandBuffer* cmd;
+};
+
+struct back_buffers_s {
+    NriDescriptor* colorAttachment;
+    NriTexture* texture;
+};
+
 // globals shared by the frontend and the backend
 // the backend should never attempt modifying any of these
 typedef struct
@@ -248,10 +263,17 @@ typedef struct
 	shader_t		*skyShader;
 	shader_t		*whiteShader;
 	shader_t		*emptyFogShader;
+ 
 
  	struct nri_backend_s nri;
+	
+	uint32_t frameIndex;
+ 	uint32_t backbufferIndex;
+ 	NriCommandQueue* cmdQueue;
  	NriSwapChain* swapchain;
-	NriFence* frameFence; 
+	NriFence* frameFence;
+	struct frame_s frames[NUMBER_FRAMES_FLIGHT];
+	struct back_buffers_s* backBuffers;
 
 	byte_vec4_t		customColors[NUM_CUSTOMCOLORS];
 } r_shared_t;

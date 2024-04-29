@@ -44,16 +44,15 @@ typedef struct
 	unsigned		frameNum; 			// wrapped
 	unsigned		lastFrameNum;
 	uint32_t 		frameId;
-	r_scene_2_t* scene;
 	
-	uint32_t frameIndex;
-	NriFence* frameFence;	
-	NriSwapChain* swapChain; 
 	//ref_back_buffer_t* backBufferArr;
 	//ref_frame_t cmdFrames[2]; // two cmd buffers for double buffer
+	r_scene_2_t* scene;
 
-	ref_cmdbuf_t	*frames[3];			// triple-buffered
-	ref_cmdbuf_t	*frame; 			// current frontend frame
+	uint32_t frameIndex;
+	NriFence* frameFence;
+	NriSwapChain* swapChain; 
+	ref_cmdbuf_t	frames[NUMBER_FRAMES_FLIGHT];			// triple-buffered
 
 	ref_frontendAdapter_t adapter;
 
