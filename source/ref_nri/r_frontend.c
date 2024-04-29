@@ -18,12 +18,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+#include "NRIDescs.h"
 #include "r_image.h"
 #include "r_local.h"
 #include "r_cmdque.h"
 #include "r_nri.h"
 #include "r_resource_upload.h"
 #include "r_frontend.h"
+
+#include "stb_ds.h"
 
 
 static bool enableDebugValidation = true;
@@ -199,20 +202,20 @@ static bool RF_AdapterInit( ref_frontendAdapter_t *adapter )
 
 static ref_cmdbuf_t *RF_GetNextAdapterFrame( ref_frontendAdapter_t *adapter )
 {
-	ref_cmdbuf_t *result = NULL;
-	ref_frontend_t *fe = adapter->owner;
+	//ref_cmdbuf_t *result = NULL;
+	//ref_frontend_t *fe = adapter->owner;
 
-	ri.Mutex_Lock( adapter->frameLock );
-	if( adapter->frameNum != fe->lastFrameNum ) {
-		adapter->frameId = fe->frameId;
-		adapter->frameNum = fe->lastFrameNum;
+	//ri.Mutex_Lock( adapter->frameLock );
+	//if( adapter->frameNum != fe->lastFrameNum ) {
+	//	adapter->frameId = fe->frameId;
+	//	adapter->frameNum = fe->lastFrameNum;
 
-		result = fe->frames[adapter->frameNum];
-		result->SetFrameId( result, fe->frameId );
-	}
-	ri.Mutex_Unlock( adapter->frameLock );
+	//	result = fe->frames[adapter->frameNum];
+	//	result->SetFrameId( result, fe->frameId );
+	//}
+	//ri.Mutex_Unlock( adapter->frameLock );
 
-	return result;
+	return NULL;
 }
 
 
@@ -303,6 +306,29 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	};
 	NRI_ABORT_ON_FAILURE( rsh.nri.swapChainI.CreateSwapChain( rsh.nri.device, &swapChainDesc, &rsh.swapchain) );
 	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateFence( rsh.nri.device, 0, &rsh.frameFence ) );
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.GetCommandQueue(rsh.nri.device, NriCommandQueueType_GRAPHICS, &rsh.cmdQueue) )
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateFence( rsh.nri.device, 0, &rsh.frameFence) );
+
+
+	for(size_t i = 0; i < NUMBER_FRAMES_FLIGHT; i++) {
+		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateCommandAllocator( rsh.cmdQueue, &rsh.frames[i].allocator ) );
+		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateCommandBuffer( rsh.frames[i].allocator, &rsh.frames[i].cmd ) );
+	}
+
+	{
+		uint32_t swapChainTextureNum;
+		NriTexture *const *swapChainTextures = rsh.nri.swapChainI.GetSwapChainTextures( rsh.swapchain, &swapChainTextureNum );
+		arrsetlen(rsh.backBuffers, swapChainTextureNum);
+		for( uint32_t i = 0; i < swapChainTextureNum; i++ ) {
+			rsh.backBuffers[i].texture = swapChainTextures[i];
+			NriTexture2DViewDesc textureViewDesc = { 
+				swapChainTextures[i], 
+				NriTexture2DViewType_COLOR_ATTACHMENT, 
+				DefaultSwapchainFormat };
+			NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &rsh.backBuffers[i].colorAttachment) );
+		}
+	}
+
 	if( err != rserr_ok ) {
 		return err;
 	}
@@ -342,7 +368,47 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 		return GLimp_SetFullscreenMode( displayFrequency, fullScreen );
 	}
 
-	RF_AdapterShutdown( &rrf.adapter );
+	rsh.frameIndex = 0;
+
+	rsh.nri.helperI.WaitForIdle( rsh.cmdQueue );
+	rsh.nri.swapChainI.DestroySwapChain( rsh.swapchain );
+
+
+	win_handle_t handle = {};
+	if(!R_WIN_GetWindowHandle( &handle ) ) {
+		ri.Com_Error(ERR_DROP, "failed to resolve window handle" );
+		return rserr_unknown;
+	}
+	NriWindow nriWindow = {};
+	switch( handle.winType ) {
+		case VID_WINDOW_WAYLAND:
+			nriWindow.wayland.surface = handle.window.wayland.surface;
+			nriWindow.wayland.display = handle.window.wayland.display;
+			break;
+		case VID_WINDOW_TYPE_X11:
+			nriWindow.x11.window = handle.window.x11.window;
+			nriWindow.x11.dpy = handle.window.x11.dpy;
+			break;
+		case VID_WINDOW_WIN32:
+			nriWindow.windows.hwnd = handle.window.win.hwnd;
+			break;
+		default:
+			assert( false );
+			break;
+	}
+
+
+	//NriSwapChainDesc swapChainDesc = { 
+	//	.commandQueue = rsh.nri.graphicsCommandQueue,
+	//	.width = width, 
+	//	.height = height, 
+	//	.format = DefaultSwapchainFormat,
+	//	.textureNum = 3,
+	//	.window =nriWindow 
+	//};
+	//NRI_ABORT_ON_FAILURE( rsh.nri.swapChainI.CreateSwapChain( rsh.nri.device, &swapChainDesc, &rsh.swapchain) );
+
+	//RF_AdapterShutdown( &rrf.adapter );
 
 	// TODO: need to handle setting x,y and width,height
  // err = R_SetMode( x, y, width, height, displayFrequency, fullScreen, stereo );
@@ -353,22 +419,22 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 	rrf.frameId = 0;
 	rrf.frameNum = rrf.lastFrameNum = 0;
 
-	if( !rrf.frame ) {
-		//if( glConfig.multithreading ) {
-		//	int i;
-		//	for( i = 0; i < 3; i++ )
-		//		rrf.frames[i] = RF_CreateCmdBuf( false );
-		//}
-		//else {
-			rrf.frame = RF_CreateCmdBuf( true );
-		//}
-	}
+	//if( !rrf.frame ) {
+	//	//if( glConfig.multithreading ) {
+	//	//	int i;
+	//	//	for( i = 0; i < 3; i++ )
+	//	//		rrf.frames[i] = RF_CreateCmdBuf( false );
+	//	//}
+	//	//else {
+	//		//rrf.frame = RF_CreateCmdBuf( true );
+	//	//}
+	//}
 
 	//if( glConfig.multithreading ) {
 	//	rrf.frame = rrf.frames[0];
 	//}
 
-	rrf.frame->Clear( rrf.frame );
+	//rrf.frame->Clear( rrf.frame );
 	memset( rrf.customColors, 0, sizeof( rrf.customColors ) );
 
 	//rrf.adapter.owner = (void *)&rrf;
@@ -410,7 +476,7 @@ void RF_Shutdown( bool verbose )
  // 		RF_DestroyCmdBuf( &rrf.frames[i] );
  // }
  // else {
-		RF_DestroyCmdBuf( &rrf.frame );
+		//RF_DestroyCmdBuf( &rrf.frame );
 //	}
 	memset( &rrf, 0, sizeof( rrf ) );
 
@@ -491,6 +557,13 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 	R_RunAllCinematics();
 
 	rrf.adapter.maxfps = r_maxfps->integer;
+	
+	const uint32_t bufferedFrameIndex = rsh.frameIndex % NUMBER_FRAMES_FLIGHT;
+	if( rsh.frameIndex >= NUMBER_FRAMES_FLIGHT ) {
+		rsh.nri.coreI.Wait( rsh.frameFence, 1 + rsh.frameIndex - NUMBER_FRAMES_FLIGHT );
+		rsh.nri.coreI.ResetCommandAllocator( rsh.frames[bufferedFrameIndex].allocator);
+	}
+	rsh.backbufferIndex = rsh.nri.swapChainI.AcquireNextSwapChainTexture( rsh.swapchain);
 
 	// take the frame the backend is not busy processing
  // if( glConfig.multithreading ) {
@@ -532,17 +605,40 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 
 void RF_EndFrame( void )
 {
-	//R_DataSync();
+	// R_DataSync();
 
-	rrf.frame->EndFrame( rrf.frame );
+	// rrf.frame->EndFrame( rrf.frame );
 	R_ResourceSubmit();
-	
- // if( glConfig.multithreading ) {
- // 	ri.Mutex_Lock( rrf.adapter.frameLock );
- // 	rrf.lastFrameNum = rrf.frameNum;
- // 	rrf.frameId++;
- // 	ri.Mutex_Unlock( rrf.adapter.frameLock );
- // }
+
+	// if( glConfig.multithreading ) {
+	// 	ri.Mutex_Lock( rrf.adapter.frameLock );
+	// 	rrf.lastFrameNum = rrf.frameNum;
+	// 	rrf.frameId++;
+	// 	ri.Mutex_Unlock( rrf.adapter.frameLock );
+	// }
+	const uint32_t bufferedFrameIndex = rsh.frameIndex % NUMBER_FRAMES_FLIGHT;
+
+	{ // Submit
+		const NriCommandBuffer *buffers[] = { rsh.frames[bufferedFrameIndex].cmd };
+		NriQueueSubmitDesc queueSubmitDesc = {};
+		queueSubmitDesc.commandBuffers = buffers;
+		queueSubmitDesc.commandBufferNum = 1;
+		rsh.nri.coreI.QueueSubmit(rsh.cmdQueue, &queueSubmitDesc);
+	}
+
+	// Present
+	rsh.nri.swapChainI.QueuePresent( rsh.swapchain );
+	{ // Signaling after "Present" improves D3D11 performance a bit
+		NriFenceSubmitDesc signalFence = {};
+		signalFence.fence = rsh.frameFence;
+		signalFence.value = 1 + rsh.frameIndex;
+
+		NriQueueSubmitDesc queueSubmitDesc = {};
+		queueSubmitDesc.signalFences = &signalFence;
+		queueSubmitDesc.signalFenceNum = 1;
+
+		//rsh.nri.coreI.QueueSubmit( *m_CommandQueue, queueSubmitDesc );
+	}
 }
 
 void RF_BeginRegistration( void )
