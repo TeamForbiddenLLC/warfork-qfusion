@@ -26,7 +26,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 static const uint32_t SizeOfStageBufferByte = 8 * MB_TO_BYTE;
 
-
 typedef struct {
 	NriAccessStage currentAccess;
 	NriBuffer *target;
