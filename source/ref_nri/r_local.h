@@ -267,7 +267,7 @@ typedef struct
 
  	struct nri_backend_s nri;
 	
-	uint32_t frameIndex;
+	uint32_t frameCnt;
  	uint32_t backbufferIndex;
  	NriCommandQueue* cmdQueue;
  	NriSwapChain* swapchain;
