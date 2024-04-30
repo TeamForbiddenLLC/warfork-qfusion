@@ -18,7 +18,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
-#include "NRIDescs.h"
 #include "r_image.h"
 #include "r_local.h"
 #include "r_cmdque.h"
@@ -316,15 +315,20 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	}
 
 	{
+		
+    //nriTexture* const* swapChainTextures = NRI.GetSwapChainTextures(*m_SwapChain, swapChainTextureNum);
+    //swapChainFormat = NRI.GetTextureDesc(*swapChainTextures[0]).format;
+
 		uint32_t swapChainTextureNum;
 		NriTexture *const *swapChainTextures = rsh.nri.swapChainI.GetSwapChainTextures( rsh.swapchain, &swapChainTextureNum );
 		arrsetlen(rsh.backBuffers, swapChainTextureNum);
 		for( uint32_t i = 0; i < swapChainTextureNum; i++ ) {
 			rsh.backBuffers[i].texture = swapChainTextures[i];
+			NriTextureDesc* desc = rsh.nri.coreI.GetTextureDesc(swapChainTextures[i]);
 			NriTexture2DViewDesc textureViewDesc = { 
 				swapChainTextures[i], 
 				NriTexture2DViewType_COLOR_ATTACHMENT, 
-				DefaultSwapchainFormat };
+				desc->format };
 			NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &rsh.backBuffers[i].colorAttachment) );
 		}
 	}
@@ -368,10 +372,10 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 		return GLimp_SetFullscreenMode( displayFrequency, fullScreen );
 	}
 
-	rsh.frameIndex = 0;
+	rsh.frameCnt = 0;
 
 	rsh.nri.helperI.WaitForIdle( rsh.cmdQueue );
-	rsh.nri.swapChainI.DestroySwapChain( rsh.swapchain );
+	//rsh.nri.swapChainI.DestroySwapChain( rsh.swapchain );
 
 
 	win_handle_t handle = {};
@@ -557,14 +561,17 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 	R_RunAllCinematics();
 
 	rrf.adapter.maxfps = r_maxfps->integer;
+
+	const uint32_t bufferedFrameIndex = rsh.frameCnt % NUMBER_FRAMES_FLIGHT;
+	struct frame_s* frame = &rsh.frames[bufferedFrameIndex];
 	
-	const uint32_t bufferedFrameIndex = rsh.frameIndex % NUMBER_FRAMES_FLIGHT;
-	if( rsh.frameIndex >= NUMBER_FRAMES_FLIGHT ) {
-		rsh.nri.coreI.Wait( rsh.frameFence, 1 + rsh.frameIndex - NUMBER_FRAMES_FLIGHT );
+	if( rsh.frameCnt >= NUMBER_FRAMES_FLIGHT ) {
+		rsh.nri.coreI.Wait( rsh.frameFence, 1 + rsh.frameCnt - NUMBER_FRAMES_FLIGHT );
 		rsh.nri.coreI.ResetCommandAllocator( rsh.frames[bufferedFrameIndex].allocator);
 	}
 	rsh.backbufferIndex = rsh.nri.swapChainI.AcquireNextSwapChainTexture( rsh.swapchain);
 
+	NRI_ABORT_ON_FAILURE(rsh.nri.coreI.BeginCommandBuffer(frame->cmd, NULL));
 	// take the frame the backend is not busy processing
  // if( glConfig.multithreading ) {
  // 	ri.Mutex_Lock( rrf.adapter.frameLock );
@@ -610,17 +617,60 @@ void RF_EndFrame( void )
 	// rrf.frame->EndFrame( rrf.frame );
 	R_ResourceSubmit();
 
-	// if( glConfig.multithreading ) {
-	// 	ri.Mutex_Lock( rrf.adapter.frameLock );
-	// 	rrf.lastFrameNum = rrf.frameNum;
-	// 	rrf.frameId++;
-	// 	ri.Mutex_Unlock( rrf.adapter.frameLock );
-	// }
-	const uint32_t bufferedFrameIndex = rsh.frameIndex % NUMBER_FRAMES_FLIGHT;
+	const uint32_t bufferedFrameIndex = rsh.frameCnt % NUMBER_FRAMES_FLIGHT;
+	struct frame_s* frame = &rsh.frames[bufferedFrameIndex];
+	struct back_buffers_s* backBuffer = &rsh.backBuffers[rsh.backbufferIndex];
+	{
+		NriTextureBarrierDesc textureBarrierDescs = {};
+		textureBarrierDescs.texture = backBuffer->texture;
+		textureBarrierDescs.after = (NriAccessLayoutStage){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT };
+		textureBarrierDescs.arraySize = 1;
+		textureBarrierDescs.mipNum = 1;
+
+		NriBarrierGroupDesc barrierGroupDesc = {};
+		barrierGroupDesc.textureNum = 1;
+		barrierGroupDesc.textures = &textureBarrierDescs;
+		rsh.nri.coreI.CmdBarrier( frame->cmd, &barrierGroupDesc );
+	}
+
+	NriAttachmentsDesc attachmentsDesc = {};
+	attachmentsDesc.colorNum = 1;
+	const NriDescriptor * colorAttachments[] = { backBuffer->colorAttachment };
+	attachmentsDesc.colors = colorAttachments;
+	rsh.nri.coreI.CmdBeginRendering( frame->cmd, &attachmentsDesc );
+	{
+
+		const NriTextureDesc* backBufferDesc = rsh.nri.coreI.GetTextureDesc(backBuffer->texture);
+
+    NriClearDesc clearDesc = {};
+  	clearDesc.value.color32f = (NriColor32f){ 0.0f, 0.0f, 1.0f, 1.0f };
+  	NriRect rect3 = { 0, 0,  backBufferDesc->width, backBufferDesc->height};
+  	rsh.nri.coreI.CmdClearAttachments( frame->cmd, &clearDesc, 1, &rect3, 1 );
+	}
+	rsh.nri.coreI.CmdEndRendering( frame->cmd);
+	{
+		NriTextureBarrierDesc textureBarrierDescs = {};
+		textureBarrierDescs.texture = backBuffer->texture;
+		textureBarrierDescs.before = (NriAccessLayoutStage){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT }; 
+		textureBarrierDescs.after = (NriAccessLayoutStage){ NriAccessBits_UNKNOWN, NriLayout_PRESENT};
+		textureBarrierDescs.arraySize = 1;
+		textureBarrierDescs.mipNum = 1;
+
+		NriBarrierGroupDesc barrierGroupDesc = {};
+		barrierGroupDesc.textureNum = 1;
+		barrierGroupDesc.textures = &textureBarrierDescs;
+		rsh.nri.coreI.CmdBarrier( frame->cmd, &barrierGroupDesc );
+	}
+
+ // textureBarrierDescs.before = textureBarrierDescs.after;
+ // textureBarrierDescs.after = { nri::AccessBits::UNKNOWN, nri::Layout::PRESENT };
+
+	NRI_ABORT_ON_FAILURE(rsh.nri.coreI.EndCommandBuffer(frame->cmd));
+
 
 	{ // Submit
 		const NriCommandBuffer *buffers[] = { rsh.frames[bufferedFrameIndex].cmd };
-		NriQueueSubmitDesc queueSubmitDesc = {};
+		NriQueueSubmitDesc queueSubmitDesc = {0};
 		queueSubmitDesc.commandBuffers = buffers;
 		queueSubmitDesc.commandBufferNum = 1;
 		rsh.nri.coreI.QueueSubmit(rsh.cmdQueue, &queueSubmitDesc);
@@ -631,14 +681,16 @@ void RF_EndFrame( void )
 	{ // Signaling after "Present" improves D3D11 performance a bit
 		NriFenceSubmitDesc signalFence = {};
 		signalFence.fence = rsh.frameFence;
-		signalFence.value = 1 + rsh.frameIndex;
+		signalFence.value = 1 + rsh.frameCnt;
 
 		NriQueueSubmitDesc queueSubmitDesc = {};
 		queueSubmitDesc.signalFences = &signalFence;
 		queueSubmitDesc.signalFenceNum = 1;
 
-		//rsh.nri.coreI.QueueSubmit( *m_CommandQueue, queueSubmitDesc );
+		rsh.nri.coreI.QueueSubmit( rsh.cmdQueue, &queueSubmitDesc );
 	}
+
+	rsh.frameCnt++;
 }
 
 void RF_BeginRegistration( void )
