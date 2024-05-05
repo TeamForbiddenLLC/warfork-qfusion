@@ -22,12 +22,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 #include "../qalgo/q_trie.h"
+#include "./r_hasher.h"
 
 #include "glslang/Include/glslang_c_interface.h"
 #include "glslang/Public/resource_limits_c.h"
 #include <glslang/Include/glslang_c_shader_types.h>
+#include "spirv_reflect.h"
 
 #include "../gameshared/q_sds.h"
+#include "r_vattribs.h"
+#include "r_nri.h"
 #include "stb_ds.h"
 
 #define MAX_GLSL_PROGRAMS			1024
@@ -42,11 +46,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define GLSL_CACHE_FILE_NAME			"cache/glsl.cache"
 #define GLSL_BINARY_CACHE_FILE_NAME		"cache/glsl.cache.bin"
 
-struct shader_bin_data_t {
-	char *bin;
-	size_t size;
-	glsl_program_stage_t stage;
-};
 
 typedef struct {
 	r_glslfeat_t bit;
@@ -54,107 +53,9 @@ typedef struct {
 	const char *suffix;
 } glsl_feature_t;
 
-struct glsl_program_s {
-	char *name;
-	int type;
-	r_glslfeat_t features;
-	const char *string;
-	char *deformsKey;
-	struct glsl_program_s *hash_next;
-
-	// might not need to store the bin data
-	// will have to see if I need to re-declare the pipeline
-	uint16_t shaderStageSize;
-	struct shader_bin_data_t shaderBin[GLSL_STAGE_MAX];
-
-	int binaryCachePos;
-
-	struct loc_s {
-		int			ModelViewMatrix,
-					ModelViewProjectionMatrix,
-
-					ZRange,
-
-					ViewOrigin,
-					ViewAxis,
-
-					MirrorSide,
-
-					Viewport,
-
-					LightDir,
-					LightAmbient,
-					LightDiffuse,
-
-					TextureMatrix,
-
-					GlossFactors,
-
-					OffsetMappingScale,
-					OutlineHeight,
-					OutlineCutOff,
-
-					FrontPlane,
-					TextureParams,
-
-					EntityDist,
-					EntityOrigin,
-					EntityColor,
-					ConstColor,
-					RGBGenFuncArgs,
-					AlphaGenFuncArgs;
-
-					struct {
-						int Plane,
-							Color,
-							ScaleAndEyeDist,
-							EyePlane;
-					} Fog;
-
-		int			ShaderTime,
-
-					ReflectionTexMatrix,
-					VectorTexMatrix,
-
-					DeluxemapOffset,
-					LightstyleColor[MAX_LIGHTMAPS],
-
-					DynamicLightsPosition[MAX_DLIGHTS],
-					DynamicLightsDiffuseAndInvRadius[MAX_DLIGHTS >> 2],
-					NumDynamicLights,
-
-					AttrBonesIndices,
-					AttrBonesWeights,
-					DualQuats,
-
-					InstancePoints,
-
-					WallColor,
-					FloorColor,
-
-					ShadowmapTextureParams[GLSL_SHADOWMAP_LIMIT],
-					ShadowmapMatrix[GLSL_SHADOWMAP_LIMIT],
-					ShadowAlpha[( GLSL_SHADOWMAP_LIMIT + 3 ) / 4],
-					ShadowDir[GLSL_SHADOWMAP_LIMIT],
-					ShadowEntityDist[GLSL_SHADOWMAP_LIMIT],
-					
-					BlendMix,
-					
-					SoftParticlesScale;
-
-		// builtin uniforms
-		struct {
-			int		ShaderTime,
-					ViewOrigin,
-					ViewAxis,
-					MirrorSide,
-					EntityOrigin;
-		} builtin;
-	} loc;
-};
 
 trie_t *glsl_cache_trie = NULL;
-
+ 
 static unsigned int r_numglslprograms;
 static struct glsl_program_s r_glslprograms[MAX_GLSL_PROGRAMS];
 static struct glsl_program_s *r_glslprograms_hash[GLSL_PROGRAM_TYPE_MAXTYPE][GLSL_PROGRAMS_HASH_SIZE];
@@ -1552,21 +1453,6 @@ static bool RF_AppendShaderFromFile( sds *str, const char *fileName, int program
 	return __RF_AppendShaderFromFile( str, fileName, fileName, 1, programType, features );
 }
 
-/*
- * R_Features2HashKey
- */
-static int R_Features2HashKey( r_glslfeat_t features )
-{
-	int hash = 0x7e53a269;
-
-#define ComputeHash( hash, val ) hash = -1521134295 * hash + ( val ), hash += ( hash << 10 ), hash ^= ( hash >> 6 )
-
-	ComputeHash( hash, (int)( features & 0xFFFFFFFF ) );
-	ComputeHash( hash, (int)( ( features >> 32ULL ) & 0xFFFFFFFF ) );
-
-	return hash & ( GLSL_PROGRAMS_HASH_SIZE - 1 );
-}
-
 int RP_GetProgramObject( int elem )
 {
 	assert(0);
@@ -2099,8 +1985,129 @@ static void __RP_writeTextToFile( const char *filePath, const char *str )
 		FS_FCloseFile( shaderErrHandle );
 	}
 }
+	
 
-int RP_RegisterProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
+static inline struct pipeline_s* __resolvePipeline(struct glsl_program_s *program, hash_t hash) {
+	const size_t startIndex = hash % PIPELINE_LAYOUT_HASH_SIZE;
+	size_t index = startIndex;
+	do {
+		if(program->layouts[index].hash == hash || program->layouts[index].hash == 0) {
+			program->layouts[index].hash = hash;
+			return &program->layouts[index];
+		}
+		index = (index + 1) % PIPELINE_LAYOUT_HASH_SIZE;
+	} while(index != startIndex);
+	return NULL;
+}
+
+struct pipeline_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_layout_def_s *def ) {
+	
+	hash_t hash = HASH_INITIAL_VALUE;
+	hash = hash_u32(hash, def->attrib );
+	hash = hash_u32(hash, def->halfAttrib);
+	hash = hash_data(hash, &def->inputAssembly, sizeof(NriInputAssemblyDesc)); 
+	hash = hash_data(hash, &def->rasterization, sizeof(NriRasterizationDesc)); 
+
+	struct pipeline_s* pipeline = __resolvePipeline(program, hash);
+	if(pipeline->layout) {
+		return pipeline; // pipeline is present in slot
+	}
+
+	uint32_t streamIdx = 0;
+	uint32_t attribIndex = 0;
+	NriShaderDesc shaderDesc[16] = {0};
+	NriGraphicsPipelineDesc graphicsPipelineDesc = {
+		.shaders = shaderDesc,
+		.rasterization = def->rasterization,
+		.inputAssembly = def->inputAssembly
+	};
+
+	assert( rsh.nri.api == NriGraphicsAPI_VULKAN );
+
+	NriVertexStreamDesc vertexStreamDesc[32] = {0};
+  NriVertexAttributeDesc vertexAttributeDesc[32] = {};
+	struct attrib_init_s {
+		vattribbit_t attr;
+		size_t numChannels;
+		const char *d3dAttribute;
+		uint32_t vkAttribute;
+	} attributes[] = { 
+		{ VATTRIB_POSITION_BIT, 4, "POSITION", 0 }, 
+		{ VATTRIB_NORMAL_BIT, 4, "NORMAL", 0 }, 
+		{ VATTRIB_SVECTOR_BIT, 4, "TANGENT", 0 }, 
+		{ VATTRIB_TEXCOORDS_BIT, 2, "TEXCOORD_0", 0 }, 
+		//{ VATTRIB_LMCOORDS0_BIT, 2, "position", 0 }, 
+		//{ VATTRIB_LMCOORDS1_BIT, 2, "position", 0 }, 
+		//{ VATTRIB_LMCOORDS2_BIT, 2, "position", 0 }, 
+		//{ VATTRIB_LMCOORDS3_BIT, 2, "position", 0 }, 
+	};
+
+	uint32_t bindingSlot = 0;
+	for( size_t i = 0; i < Q_ARRAY_COUNT( attributes ); i++ ) {
+		if( def->attrib & attributes[i].attr ) {
+			vertexAttributeDesc[attribIndex].offset = 0;
+			vertexAttributeDesc[attribIndex].streamIndex = streamIdx;
+			vertexAttributeDesc[attribIndex].d3d = ( NriVertexAttributeD3D ){ attributes[i].d3dAttribute, 0 };
+			vertexAttributeDesc[attribIndex].vk = ( NriVertexAttributeVK ){ attributes[i].vkAttribute };
+
+			vertexStreamDesc[streamIdx].bindingSlot = bindingSlot++;
+			vertexStreamDesc[streamIdx].stride = ( ( def->halfAttrib & attributes[i].attr ) ? sizeof( uint16_t ) : sizeof( uint32_t ) ) * attributes[i].numChannels;
+			attribIndex++;
+			streamIdx++;
+		}
+	}
+
+	NriVertexInputDesc vertexInputDesc = {
+		.attributes = vertexAttributeDesc,
+		.attributeNum = attribIndex,
+		.streams = vertexStreamDesc,
+		.streamNum = streamIdx
+	};
+
+	graphicsPipelineDesc.vertexInput = &vertexInputDesc;
+	if( program->shaderBin[GLSL_STAGE_VERTEX].bin && 
+		program->shaderBin[GLSL_STAGE_FRAGMENT].bin ) {
+		shaderDesc[0] = (NriShaderDesc) {
+			.size = program->shaderBin[GLSL_STAGE_VERTEX].size,
+			.stage = NriStageBits_FRAGMENT_SHADER,
+			.bytecode = program->shaderBin[GLSL_STAGE_VERTEX].bin,
+			.entryPointName = "main"
+		};
+
+		shaderDesc[1] = (NriShaderDesc) {
+			.size = program->shaderBin[GLSL_STAGE_FRAGMENT].size,
+			.stage = NriStageBits_FRAGMENT_SHADER,
+			.bytecode = program->shaderBin[GLSL_STAGE_FRAGMENT].bin,
+			.entryPointName = "main"
+		};
+		graphicsPipelineDesc.shaderNum = 2;
+	} else {
+		return NULL;
+	}
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateGraphicsPipeline( rsh.nri.device, &graphicsPipelineDesc, &pipeline->layout ) );
+	return pipeline;
+}
+
+//static NriDescriptorRangeDesc* __FindAndInsertNriDescriptorConstant(SpvReflectBlockVariable* binding, NriPushConstantDesc** ranges) {
+//	for(size_t i = 0; i < arrlen(ranges); i++) {
+//		if((*ranges)[i].registerIndex == binding->offset) {
+//			return &(*ranges)[i];
+//		}
+//	}
+//}
+
+static NriDescriptorRangeDesc* __FindAndInsertNriDescriptorRange(const SpvReflectDescriptorBinding* binding, NriDescriptorRangeDesc** ranges) {
+	for(size_t i = 0; i < arrlen(ranges); i++) {
+		if((*ranges)[i].baseRegisterIndex == binding->binding) {
+			return &(*ranges)[i];
+		}
+	}
+	const size_t insertIndex = arraddnindex( ranges, 1 );
+	memset( &(*ranges)[insertIndex], 0, sizeof( NriDescriptorRangeDesc ) );
+	return &( *ranges )[insertIndex];
+}
+
+struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
 {
 	if( type <= GLSL_PROGRAM_TYPE_NONE || type >= GLSL_PROGRAM_TYPE_MAXTYPE )
 		return 0;
@@ -2110,10 +2117,10 @@ int RP_RegisterProgram( int type, const char *name, const char *deformsKey, cons
 	if( !deforms )
 		deformsKey = "";
 
-	const int hash = R_Features2HashKey( features );
-	for( struct glsl_program_s *program = r_glslprograms_hash[type][hash]; program; program = program->hash_next ) {
+	const uint32_t hashIndex = hash_u64( HASH_INITIAL_VALUE, features ) % GLSL_PROGRAMS_HASH_SIZE;
+	for( struct glsl_program_s *program = r_glslprograms_hash[type][hashIndex]; program; program = program->hash_next ) {
 		if( ( program->features == features ) && !strcmp( program->deformsKey, deformsKey ) ) {
-			return ( ( program - r_glslprograms ) + 1 );
+			return program;
 		}
 	}
 
@@ -2212,14 +2219,22 @@ int RP_RegisterProgram( int type, const char *name, const char *deformsKey, cons
 		sdsfree( filePath );
 	}
 
-	for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
-		const glslang_input_t input = { .language = GLSLANG_SOURCE_GLSL,
-										.stage = __RP_GLStageToSlang(stages[i].stage),
+	SpvReflectDescriptorSet** reflectionDescSets = NULL;
+	SpvReflectBlockVariable* reflectionBlockSets[1] = {0};
+
+	NriDescriptorSetDesc descriptorSetDesc[DESCRIPTOR_SET_MAX] = {0};
+	NriDescriptorRangeDesc* descRangeDescs[DESCRIPTOR_SET_MAX] = {0};
+	NriPushConstantDesc descPushConstantDescs = {0};
+
+	for( size_t stageIdx = 0; stageIdx < Q_ARRAY_COUNT( stages ); stageIdx++ ) {
+		const glslang_input_t input = { 
+										.language = GLSLANG_SOURCE_GLSL,
+										.stage = __RP_GLStageToSlang( stages[stageIdx].stage ),
 										.client = GLSLANG_CLIENT_VULKAN,
 										.client_version = GLSLANG_TARGET_VULKAN_1_2,
 										.target_language = GLSLANG_TARGET_SPV,
 										.target_language_version = GLSLANG_TARGET_SPV_1_5,
-										.code = stages[i].source,
+										.code = stages[stageIdx].source,
 										.default_version = 450,
 										.default_profile = GLSLANG_CORE_PROFILE,
 										.force_default_version_and_profile = false,
@@ -2229,14 +2244,14 @@ int RP_RegisterProgram( int type, const char *name, const char *deformsKey, cons
 		glslang_shader_t *shader = glslang_shader_create( &input );
 		glslang_program_t *glslang_program = NULL;
 		if( !glslang_shader_preprocess( shader, &input ) ) {
-			sds errFilePath = sdscatfmt( sdsempty(), "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
+			sds errFilePath = sdscatfmt( sdsempty(), "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ) );
 			const char *infoLog = glslang_shader_get_info_log( shader );
 			const char *debugLogs = glslang_shader_get_info_debug_log( shader );
 			Com_Printf( S_COLOR_YELLOW "GLSL preprocess failed %s\n", fullName );
 			Com_Printf( S_COLOR_YELLOW "%s\n", infoLog );
 			Com_Printf( S_COLOR_YELLOW "%s\n", debugLogs );
 			Com_Printf( S_COLOR_YELLOW "dump shader: %s\n", errFilePath );
-			
+
 			sds shaderErr = sdsempty();
 			shaderErr = sdscatfmt( shaderErr, "%s\n", input.code );
 			shaderErr = sdscatfmt( shaderErr, "----------- Preprocessing Failed -----------\n" );
@@ -2244,31 +2259,31 @@ int RP_RegisterProgram( int type, const char *name, const char *deformsKey, cons
 			shaderErr = sdscatfmt( shaderErr, "%s\n", debugLogs );
 			__RP_writeTextToFile( errFilePath, shaderErr );
 			sdsfree( shaderErr );
-			sdsfree(errFilePath);
+			sdsfree( errFilePath );
 
 			error = true;
 			goto shader_done;
 		}
 
 		if( !glslang_shader_parse( shader, &input ) ) {
-			sds errFilePath = sdscatfmt( sdsempty(), "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
+			sds errFilePath = sdscatfmt( sdsempty(), "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ) );
 			const char *infoLog = glslang_shader_get_info_log( shader );
 			const char *debugLogs = glslang_shader_get_info_debug_log( shader );
-			//const char *preprocessedCode = glslang_shader_get_preprocessed_code( shader );
-			
+			// const char *preprocessedCode = glslang_shader_get_preprocessed_code( shader );
+
 			Com_Printf( S_COLOR_YELLOW "GLSL parsing failed %s\n", fullName );
 			Com_Printf( S_COLOR_YELLOW "%s\n", infoLog );
 			Com_Printf( S_COLOR_YELLOW "%s\n", debugLogs );
 			Com_Printf( S_COLOR_YELLOW "dump shader: %s\n", errFilePath );
 
 			sds shaderErr = sdsempty();
-			shaderErr = sdscatfmt( shaderErr, "%s\n", input.code);
+			shaderErr = sdscatfmt( shaderErr, "%s\n", input.code );
 			shaderErr = sdscatfmt( shaderErr, "----------- Parsing Failed -----------\n" );
 			shaderErr = sdscatfmt( shaderErr, "%s\n", infoLog );
 			shaderErr = sdscatfmt( shaderErr, "%s\n", debugLogs );
 			__RP_writeTextToFile( errFilePath, shaderErr );
 			sdsfree( shaderErr );
-			sdsfree(errFilePath);
+			sdsfree( errFilePath );
 
 			error = true;
 			goto shader_done;
@@ -2277,11 +2292,11 @@ int RP_RegisterProgram( int type, const char *name, const char *deformsKey, cons
 		glslang_program_add_shader( glslang_program, shader );
 
 		if( !glslang_program_link( glslang_program, GLSLANG_MSG_SPV_RULES_BIT | GLSLANG_MSG_VULKAN_RULES_BIT ) ) {
-			sds errFilePath = sdscatfmt( sdsempty(), "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
-			
+			sds errFilePath = sdscatfmt( sdsempty(), "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ) );
+
 			const char *infoLogs = glslang_program_get_info_log( glslang_program );
 			const char *debugLogs = glslang_program_get_info_debug_log( glslang_program );
-			//const char *preprocessedCode = glslang_shader_get_preprocessed_code( shader );
+			// const char *preprocessedCode = glslang_shader_get_preprocessed_code( shader );
 
 			Com_Printf( S_COLOR_YELLOW "GLSL linking failed %s\n", fullName );
 			Com_Printf( S_COLOR_YELLOW "%s\n", infoLogs );
@@ -2289,7 +2304,7 @@ int RP_RegisterProgram( int type, const char *name, const char *deformsKey, cons
 			Com_Printf( S_COLOR_YELLOW "dump shader: %s\n", errFilePath );
 
 			sds shaderErr = sdsempty();
-			shaderErr = sdscatfmt( shaderErr, "%s\n", input.code);
+			shaderErr = sdscatfmt( shaderErr, "%s\n", input.code );
 			shaderErr = sdscatfmt( shaderErr, "----------- Linking Failed -----------\n" );
 			shaderErr = sdscatfmt( shaderErr, "%s\n", infoLogs );
 			shaderErr = sdscatfmt( shaderErr, "%s\n", debugLogs );
@@ -2300,24 +2315,137 @@ int RP_RegisterProgram( int type, const char *name, const char *deformsKey, cons
 			error = true;
 			goto shader_done;
 		}
-		
+
 		const char *spirv_messages = glslang_program_SPIRV_get_messages( glslang_program );
 		if( spirv_messages ) {
 			Com_Printf( S_COLOR_BLUE "(%s) %s\b", name, spirv_messages );
 		}
-		
-		glslang_program_SPIRV_generate( glslang_program, __RP_GLStageToSlang(stages[i].stage) );
+
+		glslang_program_SPIRV_generate( glslang_program, __RP_GLStageToSlang( stages[stageIdx].stage ) );
 		size_t binSize = glslang_program_SPIRV_get_size( glslang_program ) * sizeof( uint32_t );
-		struct shader_bin_data_t* binData = &program->shaderBin[program->shaderStageSize++];
-		binData->bin = R_Malloc(binSize);
-		glslang_program_SPIRV_get( glslang_program, (uint32_t *)binData->bin);
-		binData->stage = stages[i].stage;
+		struct shader_bin_data_s *binData = &program->shaderBin[program->shaderStageSize++];
+		binData->bin = R_Malloc( binSize );
+		glslang_program_SPIRV_get( glslang_program, (uint32_t *)binData->bin );
+		binData->stage = stages[stageIdx].stage;
+
+		SpvReflectShaderModule module = { 0 };
+		SpvReflectResult result = spvReflectCreateShaderModule( binSize / sizeof( uint32_t ), binData->bin, &module );
+		assert( result == SPV_REFLECT_RESULT_SUCCESS );
+
+		// configure push constant sets for pipeline layout
+		{
+			uint32_t pushConstantCount = 0;
+			result = spvReflectEnumeratePushConstantBlocks( &module, &pushConstantCount, NULL );
+			assert( result == SPV_REFLECT_RESULT_SUCCESS );
+			if(pushConstantCount > 0) {
+				assert( pushConstantCount == 1 ); // lets only support 1 push constant
+
+				result = spvReflectEnumeratePushConstantBlocks( &module, &pushConstantCount, reflectionBlockSets );
+				assert( result == SPV_REFLECT_RESULT_SUCCESS );
+				descPushConstantDescs.size = reflectionBlockSets[0]->size;
+				switch( stages[stageIdx].stage ) {
+					case GLSLANG_STAGE_VERTEX:
+						descPushConstantDescs.shaderStages |= NriStageBits_VERTEX_SHADER;
+						break;
+					case GLSL_STAGE_FRAGMENT:
+						descPushConstantDescs.shaderStages |= NriStageBits_FRAGMENT_SHADER;
+						break;
+					default:
+						assert( false );
+						break;
+				}
+			}
+		}
+
+		// configure descriptor sets for pipeline layout
+		{
+			uint32_t descCount = 0;
+			result = spvReflectEnumerateDescriptorSets( &module, &descCount, NULL );
+			assert( result == SPV_REFLECT_RESULT_SUCCESS );
+			arrsetlen( reflectionDescSets, descCount );
+
+			result = spvReflectEnumerateDescriptorSets( &module, &descCount, reflectionDescSets );
+			assert( result == SPV_REFLECT_RESULT_SUCCESS );
+
+			for( size_t i_set = 0; i_set < descCount; i_set++ ) {
+				const SpvReflectDescriptorSet *reflection = reflectionDescSets[i_set];
+				for( size_t i_binding = 0; i_binding < reflectionDescSets[i_set]->binding_count; i_binding++ ) {
+					const SpvReflectDescriptorBinding *reflectionBinding = reflectionDescSets[i_set]->bindings[i_binding];
+					NriDescriptorRangeDesc *rangeDesc = __FindAndInsertNriDescriptorRange( reflectionBinding, &descRangeDescs[reflection->set] );
+					rangeDesc->descriptorNum = reflectionBinding->array.dims_count;
+					rangeDesc->baseRegisterIndex = reflectionBinding->binding;
+					rangeDesc->isArray = reflectionBinding->array.dims_count > 0;
+					switch( reflectionBinding->descriptor_type ) {
+						case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER:
+							rangeDesc->descriptorType = NriDescriptorType_SAMPLER;
+							break;
+						case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+							rangeDesc->descriptorType = NriDescriptorType_TEXTURE;
+							break;
+						case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+							rangeDesc->descriptorType = NriDescriptorType_STORAGE_TEXTURE;
+							break;
+						case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+							rangeDesc->descriptorType = NriDescriptorType_BUFFER;
+							break;
+						case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+							rangeDesc->descriptorType = NriDescriptorType_STORAGE_BUFFER;
+							break;
+						case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+							rangeDesc->descriptorType = NriDescriptorType_CONSTANT_BUFFER;
+							break;
+						case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+							rangeDesc->descriptorType = NriDescriptorType_STORAGE_BUFFER;
+							break;
+						case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+						case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+						case SPV_REFLECT_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+						case SPV_REFLECT_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+						case SPV_REFLECT_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+							assert( false );
+							break;
+					}
+					// rangeDesc->descriptorType
+					switch( stages[stageIdx].stage ) {
+						case GLSLANG_STAGE_VERTEX:
+							rangeDesc->shaderStages |= NriStageBits_VERTEX_SHADER;
+							break;
+						case GLSL_STAGE_FRAGMENT:
+							rangeDesc->shaderStages |= NriStageBits_FRAGMENT_SHADER;
+							break;
+						default:
+							assert( false );
+							break;
+					}
+				}
+			}
+		}
 
 	shader_done:
 		glslang_shader_delete( shader );
 		if( glslang_program ) {
 			glslang_program_delete( glslang_program );
 		}
+	}
+	arrfree(reflectionDescSets);
+	NriPipelineLayoutDesc pipelineLayoutdesc = { 0 };
+	for(size_t i = 0; i < DESCRIPTOR_SET_MAX; i++) {
+		if(descRangeDescs[i]) {
+			descriptorSetDesc[pipelineLayoutdesc.descriptorSetNum].registerSpace = i;
+			descriptorSetDesc[pipelineLayoutdesc.descriptorSetNum].rangeNum = arrlen(descRangeDescs[i]);
+			descriptorSetDesc[pipelineLayoutdesc.descriptorSetNum++].ranges = descRangeDescs[i];
+		}
+	}
+	pipelineLayoutdesc.descriptorSets = descriptorSetDesc;
+	if( descPushConstantDescs.size > 0 ) {
+		pipelineLayoutdesc.pushConstantNum = 1;
+		pipelineLayoutdesc.pushConstants = &descPushConstantDescs;
+	}
+
+	NRI_ABORT_ON_FAILURE(rsh.nri.coreI.CreatePipelineLayout(rsh.nri.device, &pipelineLayoutdesc, &program->layout));
+	
+	for(size_t  i = 0;  i < DESCRIPTOR_SET_MAX; i++) {
+		arrfree( descRangeDescs[i] );
 	}
 
 	sdsfree( fullName );
@@ -2331,11 +2459,16 @@ int RP_RegisterProgram( int type, const char *name, const char *deformsKey, cons
 	program->deformsKey = R_CopyString( deformsKey ? deformsKey : "" );
 
 	if( !program->hash_next ) {
-		program->hash_next = r_glslprograms_hash[type][hash];
-		r_glslprograms_hash[type][hash] = program;
+		program->hash_next = r_glslprograms_hash[type][hashIndex];
+		r_glslprograms_hash[type][hashIndex] = program;
 	}
 
-	return ( program - r_glslprograms ) + 1;
+	return program;
+}
+
+int RP_RegisterProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
+{
+	return 0;
 }
 
 /*
@@ -2599,6 +2732,7 @@ static void RP_BindAttrbibutesLocations( struct glsl_program_s *program )
 //	}
 //#endif
 }
+
 
 /*
  * RP_Shutdown

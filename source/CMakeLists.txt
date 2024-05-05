@@ -67,8 +67,10 @@ set(NRI_INCLUDE_DIR ${CMAKE_HOME_DIRECTORY}/NRI/Include)
 if (NOT GAME_MODULES_ONLY AND USE_GRAPHICS_NRI)
     set(NRI_STATIC_LIBRARY ON)
     set(IS_SUBMODULE ON)
+    set(SPIRV_REFLECT_STATIC_LIB ON )
     add_subdirectory(NRI)
     add_subdirectory(glslang)
+    add_subdirectory(SPIRV-Reflect)
 endif()
 
 # Windows specific settings

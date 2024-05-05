@@ -20,6 +20,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef R_BACKEND_LOCAL_H
 #define R_BACKEND_LOCAL_H
 
+#include "r_frame_cmd_buffer.h"
+#include "r_gpu_ring_buffer.h"
+#include "r_nri.h"
+#include "r_frame_cmd_buffer.h"
+
+
 #define MAX_STREAM_VBO_VERTS		8192
 #define MAX_STREAM_VBO_ELEMENTS		MAX_STREAM_VBO_VERTS*6
 #define MAX_STREAM_VBO_TRIANGLES	MAX_STREAM_VBO_ELEMENTS/3
@@ -53,6 +59,7 @@ typedef struct
 {
 	mesh_vbo_t *vbo;
 	uint8_t *vertexData;
+	uint16_t* elementData;
 	rbDrawElements_t drawElements;
 } rbDynamicStream_t;
 
@@ -134,6 +141,9 @@ typedef struct r_backend_s
 	int currentRegProgramType;
 	r_glslfeat_t currentRegProgramFeatures;
 
+	struct r_ring_buffer_s dynVertexBuffer;
+	struct r_ring_buffer_s dynElementBuffer;
+
 	rbDynamicStream_t dynamicStreams[RB_VBO_NUM_STREAMS];
 	rbDynamicDraw_t dynamicDraws[MAX_DYNAMIC_DRAWS];
 	int numDynamicDraws;
@@ -198,6 +208,9 @@ void RB_DrawElementsReal( rbDrawElements_t *de );
 	( (blendsrc) == GLSTATE_SRCBLEND_ONE_MINUS_SRC_ALPHA || (blenddst) == GLSTATE_DSTBLEND_ONE_MINUS_SRC_ALPHA )
 
 // r_backend_program.c
+void RB_DrawShadedElements();
+void RB_DrawShadedElements_NRI(struct frame_cmd_buffer_s* cmd);
+
 void RB_InitShading( void );
 void RB_DrawOutlinedElements( void );
 void RB_DrawShadedElements( void );
