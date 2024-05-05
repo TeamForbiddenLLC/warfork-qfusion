@@ -2353,6 +2353,11 @@ void RB_DrawOutlinedElements( void )
 #endif
 }
 
+
+void RB_DrawShadedElements_NRI(struct frame_cmd_buffer_s* cmd) {
+
+}
+
 /*
 * RB_DrawShadedElements
 */

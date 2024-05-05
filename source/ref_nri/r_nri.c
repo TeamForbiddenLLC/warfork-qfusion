@@ -13,32 +13,32 @@
 #include <vulkan/vulkan_xlib.h>
 #include <vulkan/vulkan_wayland.h>
 
-#if defined( _WIN32 )
-
-#include <windows.h>
-static void *Sys_Library_Open( const char *name )
-{
-	return (void *)LoadLibrary( name );
-}
-static void *Sys_Library_ProcAddress( void *lib, const char *apifuncname )
-{
-	return (void *)GetProcAddress( (HINSTANCE)lib, apifuncname );
-}
-
-#else
-
-#include <dlfcn.h>
-static void *Sys_Library_Open( const char *name )
-{
-	return dlopen( name, RTLD_NOW );
-}
-
-static void *Sys_Library_ProcAddress( void *lib, const char *apifuncname )
-{
-	return (void *)dlsym( lib, apifuncname );
-}
-
-#endif
+//#if defined( _WIN32 )
+//
+//#include <windows.h>
+//static void *Sys_Library_Open( const char *name )
+//{
+//	return (void *)LoadLibrary( name );
+//}
+//static void *Sys_Library_ProcAddress( void *lib, const char *apifuncname )
+//{
+//	return (void *)GetProcAddress( (HINSTANCE)lib, apifuncname );
+//}
+//
+//#else
+//
+//#include <dlfcn.h>
+//static void *Sys_Library_Open( const char *name )
+//{
+//	return dlopen( name, RTLD_NOW );
+//}
+//
+//static void *Sys_Library_ProcAddress( void *lib, const char *apifuncname )
+//{
+//	return (void *)dlsym( lib, apifuncname );
+//}
+//
+//#endif
 
 void R_NRI_CallbackMessage(NriMessage msg, const char* file, uint32_t line, const char* message, void* userArg) {
   switch(msg) {
@@ -79,15 +79,15 @@ bool R_InitNriBackend(const nri_init_desc_t* init, struct nri_backend_s* backend
 	backend->api = init->api;
 	switch( init->api ) {
 		case NriGraphicsAPI_VULKAN: {
-#if defined( _WIN32 )
-			static const char *instanceExtensions[] = { VK_KHR_WIN32_SURFACE_EXTENSION_NAME, VK_KHR_SURFACE_EXTENSION_NAME };
-#else
-			static const char *instanceExtensions[] = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME, VK_KHR_XLIB_SURFACE_EXTENSION_NAME };
-#endif
-			const char *deviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
-			const char *layers[] = { "VK_LAYER_KHRONOS_validation" };
+//#if defined( _WIN32 )
+//			static const char *instanceExtensions[] = { VK_KHR_WIN32_SURFACE_EXTENSION_NAME, VK_KHR_SURFACE_EXTENSION_NAME };
+//#else
+//			static const char *instanceExtensions[] = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME, VK_KHR_XLIB_SURFACE_EXTENSION_NAME };
+//#endif
+//			const char *deviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+//			const char *layers[] = { "VK_LAYER_KHRONOS_validation" };
 
-			backend->vk.vulkanLoader = Sys_Library_Open( "libvulkan.so" );
+			//backend->vk.vulkanLoader = Sys_Library_Open( "libvulkan.so" );
 
 		  // PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)Sys_Library_ProcAddress( backend->vk.vulkanLoader, "vkGetInstanceProcAddr" );
 		  // PFN_vkCreateInstance vkCreateInstance = (PFN_vkCreateInstance)vkGetInstanceProcAddr( VK_NULL_HANDLE, "vkCreateInstance" );

@@ -20,13 +20,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef R_PROGRAM_H
 #define R_PROGRAM_H
 
+#include "r_frame_cmd_buffer.h"
 typedef uint64_t r_glslfeat_t;
 
 #include "../gameshared/q_arch.h"
 #include "r_math.h"
+#include "r_nri.h"
+#include "r_vattribs.h"
 
 #define GLSL_BIT(x)							(1ULL << (x))
 #define GLSL_BITS_VERSION					16
+
+#define PIPELINE_LAYOUT_HASH_SIZE 256
+#define VERTEX_POS_BINDING_SLOT (0)
 
 #define DEFAULT_GLSL_MATERIAL_PROGRAM			"defaultMaterial"
 #define DEFAULT_GLSL_DISTORTION_PROGRAM			"defaultDistortion"
@@ -59,13 +65,6 @@ typedef enum glsl_program_type_s
 
 	GLSL_PROGRAM_TYPE_MAXTYPE
 } glsl_program_type_t;
-
-typedef enum {
-	GLSL_STAGE_VERTEX,
-	GLSL_STAGE_FRAGMENT,
-
-	GLSL_STAGE_MAX
-} glsl_program_stage_t;
 
 // features common for all program types
 #define GLSL_SHADER_COMMON_GREYSCALE			GLSL_BIT(0)
@@ -196,6 +195,125 @@ typedef enum {
 // fxaa
 #define GLSL_SHADER_FXAA_FXAA3					GLSL_BIT(32)
 
+typedef enum {
+	GLSL_STAGE_VERTEX,
+	GLSL_STAGE_FRAGMENT,
+
+	GLSL_STAGE_MAX
+} glsl_program_stage_t;
+
+struct pipeline_s {
+	uint64_t hash;
+	NriPipeline* layout;
+	NriDescriptorSet* sets[];
+};
+
+struct shader_bin_data_s {
+	char *bin;
+	size_t size;
+	glsl_program_stage_t stage;
+};
+
+struct glsl_program_s {
+	char *name;
+	int type;
+	r_glslfeat_t features;
+	const char *string;
+	char *deformsKey;
+	struct glsl_program_s *hash_next;
+	NriPipelineLayout* layout;
+
+	// might not need to store the bin data
+	// will have to see if I need to re-declare the pipeline
+	uint16_t shaderStageSize;
+	struct shader_bin_data_s shaderBin[GLSL_STAGE_MAX];
+	struct pipeline_s layouts[PIPELINE_LAYOUT_HASH_SIZE];
+
+	struct loc_s {
+		int			ModelViewMatrix,
+					ModelViewProjectionMatrix,
+
+					ZRange,
+
+					ViewOrigin,
+					ViewAxis,
+
+					MirrorSide,
+
+					Viewport,
+
+					LightDir,
+					LightAmbient,
+					LightDiffuse,
+
+					TextureMatrix,
+
+					GlossFactors,
+
+					OffsetMappingScale,
+					OutlineHeight,
+					OutlineCutOff,
+
+					FrontPlane,
+					TextureParams,
+
+					EntityDist,
+					EntityOrigin,
+					EntityColor,
+					ConstColor,
+					RGBGenFuncArgs,
+					AlphaGenFuncArgs;
+
+					struct {
+						int Plane,
+							Color,
+							ScaleAndEyeDist,
+							EyePlane;
+					} Fog;
+
+		int			ShaderTime,
+
+					ReflectionTexMatrix,
+					VectorTexMatrix,
+
+					DeluxemapOffset,
+					LightstyleColor[MAX_LIGHTMAPS],
+
+					DynamicLightsPosition[MAX_DLIGHTS],
+					DynamicLightsDiffuseAndInvRadius[MAX_DLIGHTS >> 2],
+					NumDynamicLights,
+
+					AttrBonesIndices,
+					AttrBonesWeights,
+					DualQuats,
+
+					InstancePoints,
+
+					WallColor,
+					FloorColor,
+
+					ShadowmapTextureParams[GLSL_SHADOWMAP_LIMIT],
+					ShadowmapMatrix[GLSL_SHADOWMAP_LIMIT],
+					ShadowAlpha[( GLSL_SHADOWMAP_LIMIT + 3 ) / 4],
+					ShadowDir[GLSL_SHADOWMAP_LIMIT],
+					ShadowEntityDist[GLSL_SHADOWMAP_LIMIT],
+					
+					BlendMix,
+					
+					SoftParticlesScale;
+
+		// builtin uniforms
+		struct {
+			int		ShaderTime,
+					ViewOrigin,
+					ViewAxis,
+					MirrorSide,
+					EntityOrigin;
+		} builtin;
+	} loc;
+};
+
+
 void RP_Init( void );
 void RP_Shutdown( void );
 void RP_PrecachePrograms( void );
@@ -203,9 +321,25 @@ void RP_StorePrecacheList( void );
 
 void RP_ProgramList_f( void );
 
-int	RP_FindProgram( const char *name );
+
+struct pipeline_layout_def_s {
+	vattribmask_t attrib;
+	vattribmask_t halfAttrib;
+
+	size_t numFrameAttachments;
+	struct NriColorAttachmentDesc* attachment;
+
+	NriInputAssemblyDesc inputAssembly;
+	NriRasterizationDesc rasterization;
+
+};
+
+struct pipeline_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_layout_def_s *def );
+struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features );
+
 int	RP_RegisterProgram(int type, const char *name, const char *deformsKey, 
 	const deformv_t *deforms, int numDeforms, r_glslfeat_t features );
+
 int	RP_GetProgramObject( int elem );
 
 void RP_UpdateShaderUniforms( int elem, 
