@@ -18,13 +18,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+#include "r_gpu_ring_buffer.h"
 #include "r_local.h"
 #include "r_backend_local.h"
 
 // Smaller buffer for 2D polygons. Also a workaround for some instances of a hardly explainable bug on Adreno
 // that caused dynamic draws to slow everything down in some cases when normals are used with dynamic VBOs.
 #define COMPACT_STREAM_VATTRIBS ( VATTRIB_POSITION_BIT | VATTRIB_COLOR0_BIT | VATTRIB_TEXCOORDS_BIT )
-static elem_t dynamicStreamElems[RB_VBO_NUM_STREAMS][MAX_STREAM_VBO_ELEMENTS];
 
 rbackend_t rb;
 
@@ -695,6 +695,7 @@ void RB_RegisterStreamVBOs( void )
 	}
 }
 
+
 /*
 * RB_BindVBO
 */
@@ -740,9 +741,8 @@ void RB_AddDynamicMesh( const entity_t *entity, const shader_t *shader,
 	bool merge = false;
 	vattribmask_t vattribs;
 	int streamId = RB_VBO_NONE;
-	rbDynamicStream_t *stream;
 	int destVertOffset;
-	elem_t *destElems;
+	
 
 	// can't (and shouldn't because that would break batching) merge strip draw calls
 	// (consider simply disabling merge later in this case if models with tristrips are added in the future, but that's slow)
@@ -792,7 +792,7 @@ void RB_AddDynamicMesh( const entity_t *entity, const shader_t *shader,
 		vattribs = prev->vattribs;
 	}
 
-	stream = &rb.dynamicStreams[-streamId - 1];
+	rbDynamicStream_t *stream = &rb.dynamicStreams[-streamId - 1];
 
 	if( ( !merge && ( ( rb.numDynamicDraws + 1 ) > MAX_DYNAMIC_DRAWS ) ) ||
 		( ( stream->drawElements.firstVert + stream->drawElements.numVerts + numVerts ) > MAX_STREAM_VBO_VERTS ) ||
@@ -838,7 +838,7 @@ void RB_AddDynamicMesh( const entity_t *entity, const shader_t *shader,
 	R_FillVBOVertexDataBuffer( stream->vbo, vattribs, mesh,
 		stream->vertexData + destVertOffset * stream->vbo->vertexSize );
 
-	destElems = dynamicStreamElems[-streamId - 1] + stream->drawElements.firstElem + stream->drawElements.numElems;
+	elem_t *destElems = stream->elementData + stream->drawElements.firstElem + stream->drawElements.numElems;
 	if( trifan ) {
 		R_BuildTrifanElements( destVertOffset, numElems, destElems );
 	}
@@ -871,28 +871,45 @@ void RB_FlushDynamicMeshes( void )
 		return;
 	}
 
+	struct {
+		size_t vertexBufferOffset;
+		NriBuffer* vertexBuffer;
+		size_t elementBufferOffset;
+		NriBuffer* elementBuffer;
+	} upload[RB_VBO_NUM_STREAMS] = {0};
+
 	for( i = 0; i < RB_VBO_NUM_STREAMS; i++ ) {
 		stream = &rb.dynamicStreams[i];
 
-		// R_UploadVBO* are going to rebind buffer arrays for upload
-		// so update our local VBO state cache by calling RB_BindVBO
-		RB_BindVBO( -i - 1, GL_TRIANGLES ); // dummy value for primitive here
-
 		// because of firstVert, upload elems first
 		if( stream->drawElements.numElems ) {
-			mesh_t elemMesh;
-			memset( &elemMesh, 0, sizeof( elemMesh ) );
-			elemMesh.elems = dynamicStreamElems[i] + stream->drawElements.firstElem;
-			elemMesh.numElems = stream->drawElements.numElems;
-			R_UploadVBOElemData( stream->vbo, 0, stream->drawElements.firstElem, &elemMesh );
-			stream->drawElements.firstElem += stream->drawElements.numElems;
+			struct buffer_req_s req = {};
+			const size_t reqSize = stream->drawElements.numElems * sizeof( elem_t );
+			R_RequestBuffer(&rb.dynElementBuffer,reqSize, &req);
+
+			void* mappeData = rsh.nri.coreI.MapBuffer(req.buffer, req.offset, reqSize);
+			memcpy(mappeData, stream->elementData + stream->drawElements.firstElem, reqSize);  
+			rsh.nri.coreI.UnmapBuffer(req.buffer);
+			
+			upload[i].elementBuffer = req.buffer;
+			upload[i].elementBufferOffset = req.offset;
+
+			stream->drawElements.firstElem = 0;
 			stream->drawElements.numElems = 0;
 		}
-
 		if( stream->drawElements.numVerts ) {
-			R_UploadVBOVertexRawData( stream->vbo, stream->drawElements.firstVert, stream->drawElements.numVerts,
-				stream->vertexData + stream->drawElements.firstVert * stream->vbo->vertexSize );
-			stream->drawElements.firstVert += stream->drawElements.numVerts;
+			struct buffer_req_s req = {};
+			const size_t reqSize = stream->drawElements.numVerts * stream->vbo->vertexSize;
+			R_RequestBuffer(&rb.dynVertexBuffer,reqSize, &req);
+
+			void* mappeData = rsh.nri.coreI.MapBuffer(req.buffer, req.offset, reqSize);
+			memcpy(mappeData, stream->vertexData, reqSize);  
+			rsh.nri.coreI.UnmapBuffer(req.buffer);
+
+			upload[i].vertexBuffer = req.buffer;
+			upload[i].vertexBufferOffset = req.offset;
+
+			stream->drawElements.firstVert = 0;
 			stream->drawElements.numVerts = 0;
 		}
 	}
@@ -904,6 +921,7 @@ void RB_FlushDynamicMeshes( void )
 	transy = m[13];
 
 	for( i = 0, draw = rb.dynamicDraws; i < numDraws; i++, draw++ ) {
+
 		RB_BindShader( draw->entity, draw->shader, draw->fog );
 		RB_BindVBO( draw->streamId, draw->primitive );
 		RB_SetPortalSurface( draw->portalSurface );

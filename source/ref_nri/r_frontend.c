@@ -612,18 +612,16 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 
 void RF_EndFrame( void )
 {
-	// R_DataSync();
-
-	// rrf.frame->EndFrame( rrf.frame );
 	R_ResourceSubmit();
 
 	const uint32_t bufferedFrameIndex = rsh.frameCnt % NUMBER_FRAMES_FLIGHT;
-	struct frame_s* frame = &rsh.frames[bufferedFrameIndex];
-	struct back_buffers_s* backBuffer = &rsh.backBuffers[rsh.backbufferIndex];
+	struct frame_s *frame = &rsh.frames[bufferedFrameIndex];
+	struct back_buffers_s *backBuffer = &rsh.backBuffers[rsh.backbufferIndex];
+	
 	{
 		NriTextureBarrierDesc textureBarrierDescs = {};
 		textureBarrierDescs.texture = backBuffer->texture;
-		textureBarrierDescs.after = (NriAccessLayoutStage){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT };
+		textureBarrierDescs.after = ( NriAccessLayoutStage ){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT };
 		textureBarrierDescs.arraySize = 1;
 		textureBarrierDescs.mipNum = 1;
 
@@ -635,24 +633,24 @@ void RF_EndFrame( void )
 
 	NriAttachmentsDesc attachmentsDesc = {};
 	attachmentsDesc.colorNum = 1;
-	const NriDescriptor * colorAttachments[] = { backBuffer->colorAttachment };
+	const NriDescriptor *colorAttachments[] = { backBuffer->colorAttachment };
 	attachmentsDesc.colors = colorAttachments;
 	rsh.nri.coreI.CmdBeginRendering( frame->cmd, &attachmentsDesc );
 	{
+		const NriTextureDesc *backBufferDesc = rsh.nri.coreI.GetTextureDesc( backBuffer->texture );
 
-		const NriTextureDesc* backBufferDesc = rsh.nri.coreI.GetTextureDesc(backBuffer->texture);
-
-    NriClearDesc clearDesc = {};
-  	clearDesc.value.color32f = (NriColor32f){ 0.0f, 0.0f, 1.0f, 1.0f };
-  	NriRect rect3 = { 0, 0,  backBufferDesc->width, backBufferDesc->height};
-  	rsh.nri.coreI.CmdClearAttachments( frame->cmd, &clearDesc, 1, &rect3, 1 );
+		NriClearDesc clearDesc = {};
+		clearDesc.value.color32f = ( NriColor32f ){ 0.0f, 0.0f, 1.0f, 1.0f };
+		NriRect rect3 = { 0, 0, backBufferDesc->width, backBufferDesc->height };
+		rsh.nri.coreI.CmdClearAttachments( frame->cmd, &clearDesc, 1, &rect3, 1 );
 	}
-	rsh.nri.coreI.CmdEndRendering( frame->cmd);
+	rsh.nri.coreI.CmdEndRendering( frame->cmd );
+	
 	{
 		NriTextureBarrierDesc textureBarrierDescs = {};
 		textureBarrierDescs.texture = backBuffer->texture;
-		textureBarrierDescs.before = (NriAccessLayoutStage){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT }; 
-		textureBarrierDescs.after = (NriAccessLayoutStage){ NriAccessBits_UNKNOWN, NriLayout_PRESENT};
+		textureBarrierDescs.before = ( NriAccessLayoutStage ){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT };
+		textureBarrierDescs.after = ( NriAccessLayoutStage ){ NriAccessBits_UNKNOWN, NriLayout_PRESENT };
 		textureBarrierDescs.arraySize = 1;
 		textureBarrierDescs.mipNum = 1;
 
@@ -662,18 +660,14 @@ void RF_EndFrame( void )
 		rsh.nri.coreI.CmdBarrier( frame->cmd, &barrierGroupDesc );
 	}
 
- // textureBarrierDescs.before = textureBarrierDescs.after;
- // textureBarrierDescs.after = { nri::AccessBits::UNKNOWN, nri::Layout::PRESENT };
-
-	NRI_ABORT_ON_FAILURE(rsh.nri.coreI.EndCommandBuffer(frame->cmd));
-
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.EndCommandBuffer( frame->cmd ) );
 
 	{ // Submit
 		const NriCommandBuffer *buffers[] = { rsh.frames[bufferedFrameIndex].cmd };
-		NriQueueSubmitDesc queueSubmitDesc = {0};
+		NriQueueSubmitDesc queueSubmitDesc = { 0 };
 		queueSubmitDesc.commandBuffers = buffers;
 		queueSubmitDesc.commandBufferNum = 1;
-		rsh.nri.coreI.QueueSubmit(rsh.cmdQueue, &queueSubmitDesc);
+		rsh.nri.coreI.QueueSubmit( rsh.cmdQueue, &queueSubmitDesc );
 	}
 
 	// Present
@@ -756,6 +750,7 @@ void RF_RenderScene( const refdef_t *fd )
 void RF_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	const vec4_t color, const shader_t *shader )
 {
+	R_DrawRotatedStretchPic( x, y, w, h, s1, t1, s2, t2, 0, color, shader );
 	//rrf.frame->DrawRotatedStretchPic( rrf.frame, x, y, w, h, s1, t1, s2, t2, 0, color, shader );
 }
 

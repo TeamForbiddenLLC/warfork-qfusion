@@ -7,3 +7,6 @@
 [submodule "source/glslang"]
 	path = source/glslang
 	url = git@github.com:KhronosGroup/glslang.git
+[submodule "source/SPIRV-Reflect"]
+	path = source/SPIRV-Reflect
+	url = git@github.com:KhronosGroup/SPIRV-Reflect.git
