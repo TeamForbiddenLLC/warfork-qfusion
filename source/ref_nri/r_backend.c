@@ -32,6 +32,30 @@ static void RB_SetGLDefaults( void );
 static void RB_RegisterStreamVBOs( void );
 static void RB_SelectTextureUnit( int tmu );
 
+static inline size_t meshOffsetVBO( mesh_vbo_t *vbo, enum vattrib_e attrib ) {
+	switch( attrib ) {
+		case VATTRIB_POSITION:
+			return 0;
+		case VATTRIB_NORMAL:
+			return vbo->normalsOffset;
+		case VATTRIB_SVECTOR:
+		return vbo->sVectorsOffset;
+		case VATTRIB_COLOR0:
+		case VATTRIB_TEXCOORDS:
+		case VATTRIB_SPRITEPOINT:
+		case VATTRIB_BONESINDICES:
+		case VATTRIB_BONESWEIGHTS:
+		case VATTRIB_LMLAYERS0123:
+		case VATTRIB_INSTANCE_QUAT:
+		case VATTRIB_INSTANCE_XYZS:
+			assert(false);
+			break;
+		default:
+			break;
+	}
+	return 0;
+}
+
 /*
 * RB_Init
 */
@@ -478,21 +502,15 @@ void RB_SetState( int state )
 	rb.gl.state = state;
 }
 
-/*
-* RB_FrontFace
-*/
-void RB_FrontFace( bool front )
+void RB_FlipFrontFace( struct frame_cmd_buffer_s* cmd)
 {
-	qglFrontFace( front ? GL_CW : GL_CCW );
-	rb.gl.frontFace = front;
-}
-
-/*
-* RB_FlipFrontFace
-*/
-void RB_FlipFrontFace( void )
-{
-	RB_FrontFace( !rb.gl.frontFace );
+	assert(cmd);
+	rb.gl.frontFace = !rb.gl.frontFace;
+	if( rb.gl.frontFace ) {
+		cmd->state.cullMode = NriCullMode_FRONT;
+	} else {
+		cmd->state.cullMode = NriCullMode_BACK;
+	}
 }
 
 /*
@@ -740,9 +758,7 @@ void RB_AddDynamicMesh( const entity_t *entity, const shader_t *shader,
 	rbDynamicDraw_t *prev = NULL, *draw;
 	bool merge = false;
 	vattribmask_t vattribs;
-	int streamId = RB_VBO_NONE;
 	int destVertOffset;
-	
 
 	// can't (and shouldn't because that would break batching) merge strip draw calls
 	// (consider simply disabling merge later in this case if models with tristrips are added in the future, but that's slow)
@@ -761,7 +777,8 @@ void RB_AddDynamicMesh( const entity_t *entity, const shader_t *shader,
 	if( rb.numDynamicDraws ) {
 		prev = &rb.dynamicDraws[rb.numDynamicDraws - 1];
 	}
-
+	
+	enum dynamic_stream_e streamId = RB_DYN_STREAM_DEFAULT;
 	if( prev ) {
 		int prevRenderFX = 0, renderFX = 0;
 		if( prev->entity ) {
@@ -774,31 +791,26 @@ void RB_AddDynamicMesh( const entity_t *entity, const shader_t *shader,
 			( prev->shader == shader ) && ( prev->fog == fog ) && ( prev->portalSurface == portalSurface ) &&
 			( ( prev->shadowBits && shadowBits ) || ( !prev->shadowBits && !shadowBits ) ) ) {
 			// don't rebind the shader to get the VBO in this case
-			streamId = prev->streamId;
+			streamId = prev->dynamicStreamIdx;
 			if( ( prev->shadowBits == shadowBits ) && ( prev->primitive == primitive ) &&
 				( prev->offset[0] == x_offset ) && ( prev->offset[1] == y_offset ) &&
 				!memcmp( prev->scissor, scissor, sizeof( scissor ) ) ) {
 				merge = true;
 			}
 		}
-	}
-
-	if( streamId == RB_VBO_NONE ) {
-		RB_BindShader( entity, shader, fog );
-		vattribs = rb.currentVAttribs;
-		streamId = ( ( vattribs & ~COMPACT_STREAM_VATTRIBS ) ? RB_VBO_STREAM : RB_VBO_STREAM_COMPACT );
-	}
-	else {
 		vattribs = prev->vattribs;
+	} else {
+		RB_BindShader( NULL,entity, shader, fog );
+		vattribs = rb.currentVAttribs;
+		streamId = ( ( vattribs & ~COMPACT_STREAM_VATTRIBS ) ? RB_DYN_STREAM_DEFAULT : RB_DYN_STREAM_COMPACT );
 	}
 
-	rbDynamicStream_t *stream = &rb.dynamicStreams[-streamId - 1];
-
+	rbDynamicStream_t *stream = &rb.dynamicStreams[streamId];
 	if( ( !merge && ( ( rb.numDynamicDraws + 1 ) > MAX_DYNAMIC_DRAWS ) ) ||
 		( ( stream->drawElements.firstVert + stream->drawElements.numVerts + numVerts ) > MAX_STREAM_VBO_VERTS ) ||
 		( ( stream->drawElements.firstElem + stream->drawElements.numElems + numElems ) > MAX_STREAM_VBO_ELEMENTS ) ) {
 		// wrap if overflows
-		RB_FlushDynamicMeshes();
+		RB_FlushDynamicMeshes(NULL);
 
 		stream->drawElements.firstVert = 0;
 		stream->drawElements.numVerts = 0;
@@ -822,7 +834,7 @@ void RB_AddDynamicMesh( const entity_t *entity, const shader_t *shader,
 		draw->portalSurface = portalSurface;
 		draw->shadowBits = shadowBits;
 		draw->vattribs = vattribs;
-		draw->streamId = streamId;
+		draw->dynamicStreamIdx = streamId;
 		draw->primitive = primitive;
 		draw->offset[0] = x_offset;
 		draw->offset[1] = y_offset;
@@ -858,16 +870,14 @@ void RB_AddDynamicMesh( const entity_t *entity, const shader_t *shader,
 /*
 * RB_FlushDynamicMeshes
 */
-void RB_FlushDynamicMeshes( void )
+void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 {
-	int i, numDraws = rb.numDynamicDraws;
-	rbDynamicStream_t *stream;
-	rbDynamicDraw_t *draw;
+	assert(cmd);
 	int sx, sy, sw, sh;
 	float offsetx = 0.0f, offsety = 0.0f, transx, transy;
 	mat4_t m;
 
-	if( !numDraws ) {
+	if( rb.numDynamicDraws == 0 ) {
 		return;
 	}
 
@@ -876,11 +886,12 @@ void RB_FlushDynamicMeshes( void )
 		NriBuffer* vertexBuffer;
 		size_t elementBufferOffset;
 		NriBuffer* elementBuffer;
-	} upload[RB_VBO_NUM_STREAMS] = {0};
+		size_t numInputs;
+		struct frame_cmd_vertex_input_s vertexInputs[MAX_VERTEX_BINDINGS];
+	} upload[RB_DYN_STREAM_NUM] = {0};
 
-	for( i = 0; i < RB_VBO_NUM_STREAMS; i++ ) {
-		stream = &rb.dynamicStreams[i];
-
+	for(size_t i = 0; i < RB_DYN_STREAM_NUM; i++ ) {
+		rbDynamicStream_t *stream = &rb.dynamicStreams[i];
 		// because of firstVert, upload elems first
 		if( stream->drawElements.numElems ) {
 			struct buffer_req_s req = {};
@@ -912,18 +923,34 @@ void RB_FlushDynamicMeshes( void )
 			stream->drawElements.firstVert = 0;
 			stream->drawElements.numVerts = 0;
 		}
+
+		enum vattrib_e attr = 0;
+		
+		for(uint32_t attrbit = stream->vbo->vertexAttribs; attrbit > 0; attrbit = attrbit >> 1, attr++) {
+			upload[i].vertexInputs[upload[i].numInputs].buffer = upload[i].vertexBuffer;
+			upload[i].vertexInputs[upload[i].numInputs].offset 
+				= meshOffsetVBO(stream->vbo, attr) + upload[i].vertexBufferOffset;
+			upload[i].numInputs++;
+		}
 	}
 
 	RB_GetScissor( &sx, &sy, &sw, &sh );
 
+
+
 	Matrix4_Copy( rb.objectMatrix, m );
 	transx = m[12];
 	transy = m[13];
+	for( size_t i = 0; i < rb.numDynamicDraws; i++ ) {
+		rbDynamicDraw_t const *draw = rb.dynamicDraws;
+		rbDynamicStream_t *stream = &rb.dynamicStreams[draw->dynamicStreamIdx];
+		
 
-	for( i = 0, draw = rb.dynamicDraws; i < numDraws; i++, draw++ ) {
 
-		RB_BindShader( draw->entity, draw->shader, draw->fog );
-		RB_BindVBO( draw->streamId, draw->primitive );
+		//upload[draw->dynamicStreamIdx].vertexBuffer
+
+		RB_BindShader( NULL, draw->entity, draw->shader, draw->fog );
+		RB_BindVBO( draw->dynamicStreamIdx, draw->primitive );
 		RB_SetPortalSurface( draw->portalSurface );
 		RB_SetShadowBits( draw->shadowBits );
 		RB_Scissor( draw->scissor[0], draw->scissor[1], draw->scissor[2], draw->scissor[3] );

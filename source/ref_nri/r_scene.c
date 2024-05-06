@@ -222,7 +222,7 @@ static void R_BlitTextureToScrFbo( const refdef_t *fd, image_t *image, int dstFb
 	// (also using custom PP effects like FXAA with the stream VBO causes
 	// Adreno to mark the VBO as "slow" (due to some weird bug)
 	// for the rest of the frame and drop FPS to 10-20).
-	RB_FlushDynamicMeshes();
+	RB_FlushDynamicMeshes(NULL);
 
 	RB_BindFrameBufferObject( dstFbo );
 
@@ -288,7 +288,7 @@ static void R_BlitTextureToScrFbo( const refdef_t *fd, image_t *image, int dstFb
 	Matrix4_Translate2D( m, x, y );
 	RB_LoadObjectMatrix( m );
 
-	RB_BindShader( NULL, &s, NULL );
+	RB_BindShader( NULL, NULL, &s, NULL );
 	RB_BindVBO( rsh.postProcessingVBO->index, GL_TRIANGLES );
 	RB_DrawElements( 0, 4, 0, 6, 0, 0, 0, 0 );
 
@@ -302,7 +302,7 @@ static void R_BlitTextureToScrFbo( const refdef_t *fd, image_t *image, int dstFb
 /*
 * R_RenderScene
 */
-void R_RenderScene( const refdef_t *fd )
+void R_RenderScene(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 {
 	int fbFlags = 0;
 	int ppFrontBuffer = 0;
@@ -377,17 +377,23 @@ void R_RenderScene( const refdef_t *fd )
 	VectorCopy( fd->vieworg, rn.pvsOrigin );
 	VectorCopy( fd->vieworg, rn.lodOrigin );
 
-	R_BindFrameBufferObject( 0 );
+	NriAttachmentsDesc attachmentsDesc = {};
+	attachmentsDesc.colorNum = 1;
+	const NriDescriptor *colorAttachments[] = { frame->backBuffer.colorAttachment };
+	attachmentsDesc.colors = colorAttachments;
+	rsh.nri.coreI.CmdBeginRendering( frame->cmd, &attachmentsDesc );
 
 	R_BuildShadowGroups();
 
-	R_RenderView( fd );
+	R_RenderView(frame, fd );
 
 	R_RenderDebugSurface( fd );
 
 	R_RenderDebugBounds();
 
-	R_BindFrameBufferObject( 0 );
+	//R_BindFrameBufferObject( 0 );
+	rsh.nri.coreI.CmdEndRendering( frame->cmd );
+
 
 	R_Set2DMode( true );
 
@@ -542,7 +548,7 @@ static void R_RenderDebugBounds( void )
 		RB_AddDynamicMesh( rsc.worldent, rsh.whiteShader, NULL, NULL, 0, &mesh, GL_LINES, 0.0f, 0.0f );
 	}
 
-	RB_FlushDynamicMeshes();
+	RB_FlushDynamicMeshes(NULL);
 
 	RB_SetShaderStateMask( ~0, 0 );
 }

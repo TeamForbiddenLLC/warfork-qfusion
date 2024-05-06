@@ -20,6 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef R_BACKEND_H
 #define R_BACKEND_H
 
+#include "r_frame_cmd_buffer.h"
+
 enum
 {
 	RB_VBO_STREAM_COMPACT		= -2, // bind RB_VBO_STREAM instead
@@ -27,6 +29,7 @@ enum
 	RB_VBO_NONE					= 0,
 	RB_VBO_NUM_STREAMS			= -RB_VBO_STREAM_COMPACT
 };
+
 
 //===================================================================
 
@@ -54,8 +57,7 @@ void RB_DepthOffset( bool enable );
 void RB_ClearDepth( float depth );
 void RB_Cull( int cull );
 void RB_SetState( int state );
-void RB_FrontFace( bool front );
-void RB_FlipFrontFace( void );
+void RB_FlipFrontFace( struct frame_cmd_buffer_s* cmd);
 void RB_Scissor( int x, int y, int w, int h );
 void RB_GetScissor( int *x, int *y, int *w, int *h );
 void RB_ApplyScissor( void );
@@ -82,7 +84,7 @@ void RB_BindVBO( int id, int primitive);
 void RB_AddDynamicMesh( const entity_t *entity, const shader_t *shader,
 	const struct mfog_s *fog, const struct portalSurface_s *portalSurface, unsigned int shadowBits,
 	const struct mesh_s *mesh, int primitive, float x_offset, float y_offset );
-void RB_FlushDynamicMeshes( void );
+void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd);
 
 void RB_DrawElements( int firstVert, int numVerts, int firstElem, int numElems,
 	int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems );
@@ -93,7 +95,7 @@ void RB_DrawElementsInstanced( int firstVert, int numVerts, int firstElem, int n
 void RB_FlushTextureCache( void );
 
 // shader
-void RB_BindShader( const entity_t *e, const struct shader_s *shader, const struct mfog_s *fog );
+void RB_BindShader(struct frame_cmd_buffer_s* frame,  const entity_t *e, const struct shader_s *shader, const struct mfog_s *fog );
 void RB_SetLightstyle( const struct superLightStyle_s *lightStyle );
 void RB_SetDlightBits( unsigned int dlightBits );
 void RB_SetShadowBits( unsigned int shadowBits );

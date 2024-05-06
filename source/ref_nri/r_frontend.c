@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+#include "r_frame_cmd_buffer.h"
 #include "r_image.h"
 #include "r_local.h"
 #include "r_cmdque.h"
@@ -310,14 +311,11 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 
 
 	for(size_t i = 0; i < NUMBER_FRAMES_FLIGHT; i++) {
-		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateCommandAllocator( rsh.cmdQueue, &rsh.frames[i].allocator ) );
-		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateCommandBuffer( rsh.frames[i].allocator, &rsh.frames[i].cmd ) );
+		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateCommandAllocator( rsh.cmdQueue, &rsh.frameCmds[i].allocator ) );
+		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateCommandBuffer( rsh.frameCmds[i].allocator, &rsh.frameCmds[i].cmd ) );
 	}
 
 	{
-		
-    //nriTexture* const* swapChainTextures = NRI.GetSwapChainTextures(*m_SwapChain, swapChainTextureNum);
-    //swapChainFormat = NRI.GetTextureDesc(*swapChainTextures[0]).format;
 
 		uint32_t swapChainTextureNum;
 		NriTexture *const *swapChainTextures = rsh.nri.swapChainI.GetSwapChainTextures( rsh.swapchain, &swapChainTextureNum );
@@ -563,15 +561,17 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 	rrf.adapter.maxfps = r_maxfps->integer;
 
 	const uint32_t bufferedFrameIndex = rsh.frameCnt % NUMBER_FRAMES_FLIGHT;
-	struct frame_s* frame = &rsh.frames[bufferedFrameIndex];
+	struct frame_cmd_buffer_s* frame = &rsh.frameCmds[bufferedFrameIndex];
 	
 	if( rsh.frameCnt >= NUMBER_FRAMES_FLIGHT ) {
 		rsh.nri.coreI.Wait( rsh.frameFence, 1 + rsh.frameCnt - NUMBER_FRAMES_FLIGHT );
-		rsh.nri.coreI.ResetCommandAllocator( rsh.frames[bufferedFrameIndex].allocator);
+		rsh.nri.coreI.ResetCommandAllocator( frame->allocator);
 	}
-	rsh.backbufferIndex = rsh.nri.swapChainI.AcquireNextSwapChainTexture( rsh.swapchain);
-
+	frame->backBuffer = rsh.backBuffers[rsh.nri.swapChainI.AcquireNextSwapChainTexture( rsh.swapchain )];
+	
 	NRI_ABORT_ON_FAILURE(rsh.nri.coreI.BeginCommandBuffer(frame->cmd, NULL));
+	
+	FR_ResetCmdState(frame);
 	// take the frame the backend is not busy processing
  // if( glConfig.multithreading ) {
  // 	ri.Mutex_Lock( rrf.adapter.frameLock );
@@ -615,12 +615,11 @@ void RF_EndFrame( void )
 	R_ResourceSubmit();
 
 	const uint32_t bufferedFrameIndex = rsh.frameCnt % NUMBER_FRAMES_FLIGHT;
-	struct frame_s *frame = &rsh.frames[bufferedFrameIndex];
-	struct back_buffers_s *backBuffer = &rsh.backBuffers[rsh.backbufferIndex];
-	
+	struct frame_cmd_buffer_s *frame = &rsh.frameCmds[bufferedFrameIndex];
+
 	{
 		NriTextureBarrierDesc textureBarrierDescs = {};
-		textureBarrierDescs.texture = backBuffer->texture;
+		textureBarrierDescs.texture = frame->backBuffer.texture;
 		textureBarrierDescs.after = ( NriAccessLayoutStage ){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT };
 		textureBarrierDescs.arraySize = 1;
 		textureBarrierDescs.mipNum = 1;
@@ -633,11 +632,11 @@ void RF_EndFrame( void )
 
 	NriAttachmentsDesc attachmentsDesc = {};
 	attachmentsDesc.colorNum = 1;
-	const NriDescriptor *colorAttachments[] = { backBuffer->colorAttachment };
+	const NriDescriptor *colorAttachments[] = { frame->backBuffer.colorAttachment };
 	attachmentsDesc.colors = colorAttachments;
 	rsh.nri.coreI.CmdBeginRendering( frame->cmd, &attachmentsDesc );
 	{
-		const NriTextureDesc *backBufferDesc = rsh.nri.coreI.GetTextureDesc( backBuffer->texture );
+		const NriTextureDesc *backBufferDesc = rsh.nri.coreI.GetTextureDesc( frame->backBuffer.texture );
 
 		NriClearDesc clearDesc = {};
 		clearDesc.value.color32f = ( NriColor32f ){ 0.0f, 0.0f, 1.0f, 1.0f };
@@ -648,7 +647,7 @@ void RF_EndFrame( void )
 	
 	{
 		NriTextureBarrierDesc textureBarrierDescs = {};
-		textureBarrierDescs.texture = backBuffer->texture;
+		textureBarrierDescs.texture = frame->backBuffer.texture;
 		textureBarrierDescs.before = ( NriAccessLayoutStage ){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT };
 		textureBarrierDescs.after = ( NriAccessLayoutStage ){ NriAccessBits_UNKNOWN, NriLayout_PRESENT };
 		textureBarrierDescs.arraySize = 1;
@@ -663,7 +662,7 @@ void RF_EndFrame( void )
 	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.EndCommandBuffer( frame->cmd ) );
 
 	{ // Submit
-		const NriCommandBuffer *buffers[] = { rsh.frames[bufferedFrameIndex].cmd };
+		const NriCommandBuffer *buffers[] = { frame->cmd };
 		NriQueueSubmitDesc queueSubmitDesc = { 0 };
 		queueSubmitDesc.commandBuffers = buffers;
 		queueSubmitDesc.commandBufferNum = 1;
@@ -718,8 +717,7 @@ void RF_RegisterWorldModel( const char *model, const dvis_t *pvsData )
 
 void RF_ClearScene( void )
 {
-	//R_ClearScene_2(rrf.scene);	
-	//rrf.frame->ClearScene( rrf.frame );
+	R_ClearScene();	
 }
 
 void RF_AddEntityToScene( const entity_t *ent )
@@ -734,7 +732,7 @@ void RF_AddLightToScene( const vec3_t org, float intensity, float r, float g, fl
 
 void RF_AddPolyToScene( const poly_t *poly )
 {
-	//rrf.frame->AddPolyToScene( rrf.frame, poly );
+	R_AddPolyToScene( poly );
 }
 
 void RF_AddLightStyleToScene( int style, float r, float g, float b )
@@ -744,6 +742,9 @@ void RF_AddLightStyleToScene( int style, float r, float g, float b )
 
 void RF_RenderScene( const refdef_t *fd )
 {
+	const uint32_t bufferedFrameIndex = rsh.frameCnt % NUMBER_FRAMES_FLIGHT;
+	struct frame_cmd_buffer_s* cmd = &rsh.frameCmds[bufferedFrameIndex];
+	R_RenderScene( cmd, fd );
 	//rrf.frame->RenderScene( rrf.frame, fd );
 }
 

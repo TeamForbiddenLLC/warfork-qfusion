@@ -462,14 +462,14 @@ static void _R_DrawSurfaces( drawList_t *list )
 			entityFX != prevEntityFX ) {
 
 			if( prevBatchDrawSurf && !batchDrawSurf ) {
-				RB_FlushDynamicMeshes();
+				RB_FlushDynamicMeshes(NULL);
 				batchFlushed = true;
 			}
 
 			// hack the depth range to prevent view model from poking into walls
 			if( entity->flags & RF_WEAPONMODEL ) {
 				if( !depthHack ) {
-					RB_FlushDynamicMeshes();
+					RB_FlushDynamicMeshes(NULL);
 					batchFlushed = true;
 					depthHack = true;
 					RB_GetDepthRange( &depthmin, &depthmax );
@@ -477,7 +477,7 @@ static void _R_DrawSurfaces( drawList_t *list )
 				}
 			} else {
 				if( depthHack ) {
-					RB_FlushDynamicMeshes();
+					RB_FlushDynamicMeshes(NULL);
 					batchFlushed = true;
 					depthHack = false;
 					RB_DepthRange( depthmin, depthmax );
@@ -489,9 +489,9 @@ static void _R_DrawSurfaces( drawList_t *list )
 				bool oldCullHack = cullHack;
 				cullHack = ( ( entity->flags & RF_CULLHACK ) ? true : false );
 				if( cullHack != oldCullHack ) {
-					RB_FlushDynamicMeshes();
+					RB_FlushDynamicMeshes(NULL);
 					batchFlushed = true;
-					RB_FlipFrontFace();
+					RB_FlipFrontFace(NULL);
 				}
 			}
 
@@ -499,7 +499,7 @@ static void _R_DrawSurfaces( drawList_t *list )
 			// to not pollute the farclip
 			infiniteProj = entity->renderfx & RF_NODEPTHTEST ? true : (shader->flags & SHADER_SKY ? true : false);
 			if( infiniteProj != prevInfiniteProj ) {
-				RB_FlushDynamicMeshes();
+				RB_FlushDynamicMeshes(NULL);
 				batchFlushed = true;
 				if( infiniteProj ) {
 					Matrix4_Copy( rn.projectionMatrix, projectionMatrix );
@@ -521,7 +521,7 @@ static void _R_DrawSurfaces( drawList_t *list )
 					// draw all dynamic surfaces that write depth before copying
 					if( batchOpaque ) {
 						batchOpaque = false;
-						RB_FlushDynamicMeshes();
+						RB_FlushDynamicMeshes(NULL);
 						batchFlushed = true;
 					}
 					RB_BlitFrameBufferObject( rsh.screenTextureCopy->fbo, GL_DEPTH_BUFFER_BIT, FBO_COPY_NORMAL );
@@ -548,7 +548,7 @@ static void _R_DrawSurfaces( drawList_t *list )
 			if( !batchDrawSurf ) {
 				assert( r_drawSurfCb[drawSurfType] );
 
-				RB_BindShader( entity, shader, fog );
+				RB_BindShader( NULL ,entity, shader, fog );
 				RB_SetPortalSurface( portalSurface );
 				RB_SetShadowBits( shadowBits );
 
@@ -574,13 +574,13 @@ static void _R_DrawSurfaces( drawList_t *list )
 	}
 
 	if( batchDrawSurf ) {
-		RB_FlushDynamicMeshes();
+		RB_FlushDynamicMeshes(NULL);
 	}
 	if( depthHack ) {
 		RB_DepthRange( depthmin, depthmax );
 	}
 	if( cullHack ) {
-		RB_FlipFrontFace();
+		RB_FlipFrontFace(NULL);
 	}
 
 	RB_BindFrameBufferObject( riFBO );

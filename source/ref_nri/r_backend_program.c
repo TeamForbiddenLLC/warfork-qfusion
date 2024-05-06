@@ -1949,7 +1949,7 @@ static void RB_UpdateVertexAttribs( void )
 /*
 * RB_BindShader
 */
-void RB_BindShader( const entity_t *e, const shader_t *shader, const mfog_t *fog )
+void RB_BindShader(struct frame_cmd_buffer_s* frame, const entity_t *e, const shader_t *shader, const mfog_t *fog )
 {
 	rb.currentShader = shader;
 	rb.fog = fog;
