@@ -264,7 +264,7 @@ static unsigned R_HandleRenderSceneCmd( uint8_t *pcmd )
 		return cmd->length;
 	}
 
-	R_RenderScene( &cmd->refdef );
+	//R_RenderScene( &cmd->refdef );
 	return cmd->length;
 }
 

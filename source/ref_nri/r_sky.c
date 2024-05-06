@@ -271,7 +271,7 @@ static void R_DrawSkyBoxSide( const skydome_t *skydome, const visSkySide_t *visS
 		rn.skyMins[1][side] >= rn.skyMaxs[1][side] )
 		return;
 
-	RB_BindShader( rsc.skyent, skyShader, fog );
+	RB_BindShader( NULL, rsc.skyent, skyShader, fog );
 
 	RB_BindVBO( skydome->linearVbos[side]->index, GL_TRIANGLES );
 
@@ -309,7 +309,7 @@ static void R_DrawBlackBottom( const skydome_t *skydome, const visSkySide_t *vis
 		rn.skyMins[1][side] >= rn.skyMaxs[1][side] )
 		return;
 
-	RB_BindShader( rsc.skyent, rsh.envShader, fog );
+	RB_BindShader( NULL, rsc.skyent, rsh.envShader, fog );
 
 	RB_BindVBO( skydome->linearVbos[side]->index, GL_TRIANGLES );
 
@@ -404,7 +404,7 @@ void R_DrawSkySurf( const entity_t *e, const shader_t *shader, const mfog_t *fog
 					rn.skyMins[1][i] >= rn.skyMaxs[1][i] )
 					continue;
 
-				RB_BindShader( rsc.skyent, shader, NULL ); // must be called for every side to reset backend state
+				RB_BindShader( NULL ,rsc.skyent, shader, NULL ); // must be called for every side to reset backend state
 
 				RB_BindVBO( skydome->sphereVbos[i]->index, GL_TRIANGLES );
 

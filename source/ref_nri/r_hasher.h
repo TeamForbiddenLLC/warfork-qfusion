@@ -27,24 +27,24 @@
 typedef uint64_t hash_t;
 static hash_t const HASH_INITIAL_VALUE = 0xcbf29ce484222325ull;
 
-inline hash_t hash_u32( hash_t hash, uint32_t value )
+static inline hash_t hash_u32( hash_t hash, uint32_t value )
 {
 	return ( hash * 0x100000001b3ull ) ^ value;
 }
 
-inline hash_t hash_s32( hash_t hash, int32_t value )
+static inline hash_t hash_s32( hash_t hash, int32_t value )
 {
 	return hash_u32( hash, value );
 }
 
-inline hash_t hash_u64( hash_t hash, uint64_t value )
+static inline hash_t hash_u64( hash_t hash, uint64_t value )
 {
 	hash = hash_u32( hash, value & 0xffffffffu );
 	hash = hash_u32( hash, value >> 32 );
 	return hash;
 }
 
-inline hash_t hash_f32( hash_t hash, float value )
+static inline hash_t hash_f32( hash_t hash, float value )
 {
 	union {
 		float f32;
@@ -54,7 +54,7 @@ inline hash_t hash_f32( hash_t hash, float value )
 	return hash_u32( hash, u.u32 );
 }
 
-inline hash_t hash_data( hash_t hash, const void *data, size_t size )
+static inline hash_t hash_data( hash_t hash, const void *data, size_t size )
 {
 	for( size_t i = 0; i < size; i++ )
 		hash = ( hash * 0x100000001b3ull ) ^ ( (uint8_t *)data )[i];

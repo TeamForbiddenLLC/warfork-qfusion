@@ -33,6 +33,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "../qcommon/mod_fs.h"
 #include "r_resource_upload.h"
+#include "r_frame_cmd_buffer.h"
+
 
 #include "r_nri.h"
 #include "r_win.h"
@@ -208,18 +210,6 @@ typedef struct
 
 #define NUMBER_FRAMES_FLIGHT 3
 #define NUMBER_RESERVED_BACKBUFFERS 4 
-#define SWAPCHAIN_FORMAT 
-
-
-struct frame_s {
-  NriCommandAllocator* allocator;
-  NriCommandBuffer* cmd;
-};
-
-struct back_buffers_s {
-    NriDescriptor* colorAttachment;
-    NriTexture* texture;
-};
 
 // globals shared by the frontend and the backend
 // the backend should never attempt modifying any of these
@@ -264,19 +254,18 @@ typedef struct
 	shader_t		*whiteShader;
 	shader_t		*emptyFogShader;
  
-
  	struct nri_backend_s nri;
 	
 	uint32_t frameCnt;
- 	uint32_t backbufferIndex;
  	NriCommandQueue* cmdQueue;
  	NriSwapChain* swapchain;
 	NriFence* frameFence;
-	struct frame_s frames[NUMBER_FRAMES_FLIGHT];
-	struct back_buffers_s* backBuffers;
+	struct backbuffer_s* backBuffers;
+	struct frame_cmd_buffer_s frameCmds[NUMBER_FRAMES_FLIGHT];
 
 	byte_vec4_t		customColors[NUM_CUSTOMCOLORS];
 } r_shared_t;
+
 
 typedef struct
 {
@@ -607,7 +596,7 @@ void		R_SetGamma( float gamma );
 void		R_SetWallFloorColors( const vec3_t wallColor, const vec3_t floorColor );
 void		R_SetDrawBuffer( const char *drawbuffer );
 void		R_Set2DMode( bool enable );
-void		R_RenderView( const refdef_t *fd );
+void		R_RenderView(struct frame_cmd_buffer_s* frame, const refdef_t *fd );
 const msurface_t *R_GetDebugSurface( void );
 const char *R_WriteSpeedsMessage( char *out, size_t size );
 void		R_RenderDebugSurface( const refdef_t *fd );
@@ -740,7 +729,7 @@ void R_AddEntityToScene( const entity_t *ent );
 void R_AddLightToScene( const vec3_t org, float intensity, float r, float g, float b );
 void R_AddPolyToScene( const poly_t *poly );
 void R_AddLightStyleToScene( int style, float r, float g, float b );
-void R_RenderScene( const refdef_t *fd );
+void R_RenderScene(struct frame_cmd_buffer_s* cmd, const refdef_t *fd );
 
 //
 // r_surf.c
