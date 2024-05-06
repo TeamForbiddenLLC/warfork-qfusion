@@ -409,7 +409,7 @@ setup_and_render:
 	VectorCopy( origin, rn.refdef.vieworg );
 	Matrix3_Copy( axis, rn.refdef.viewaxis );
 
-	R_RenderView( &rn.refdef );
+	R_RenderView(NULL, &rn.refdef );
 
 	if( doRefraction && !refraction && ( shader->flags & SHADER_PORTAL_CAPTURE2 ) )
 	{
@@ -579,7 +579,7 @@ static void R_DrawSkyportal( const entity_t *e, skyportal_t *skyportal )
 		AdjustFov( &rn.refdef.fov_x, &rn.refdef.fov_y, glConfig.width, glConfig.height, false );
 	}
 
-	R_RenderView( &rn.refdef );
+	R_RenderView( NULL, &rn.refdef );
 
 	// restore modelview and projection matrices, scissoring, etc for the main view
 	R_PopRefInst();

@@ -17,6 +17,7 @@
 
 const static NriSwapChainFormat DefaultSwapchainFormat = NriSwapChainFormat_BT709_G22_8BIT;
 const static NriSPIRVBindingOffsets DefaultBindingOffset = {100, 200, 300, 400}; // just ShaderMake defaults for simplicity
+
 enum descriptor_set_e {
   DESCRIPTOR_SET_0,
   DESCRIPTOR_SET_1,
@@ -24,6 +25,8 @@ enum descriptor_set_e {
   DESCRIPTOR_SET_MAX
 };
 
+struct constant_buffer_s {
+};
 
 #define R_VK_ABORT_ON_FAILURE(result) \
 	if(result != VK_SUCCESS) { \

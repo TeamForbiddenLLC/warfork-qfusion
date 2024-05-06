@@ -167,7 +167,7 @@ add:
 /*
 * R_ComputeShadowmapBounds
 */
-static void R_ComputeShadowmapBounds( void )
+void R_BuildShadowGroups( void )
 {
 	unsigned int i;
 	vec3_t lightDir;
@@ -206,14 +206,6 @@ static void R_ComputeShadowmapBounds( void )
 		VectorSubtract( group->visMaxs, group->visOrigin, maxs );
 		group->visRadius = RadiusFromBounds( mins, maxs );
 	}
-}
-
-/*
-* R_BuildShadowGroups
-*/
-void R_BuildShadowGroups( void )
-{
-	R_ComputeShadowmapBounds();
 }
 
 /*
@@ -454,7 +446,7 @@ void R_DrawShadowmaps( void )
 		Vector4Set( rn.viewport, refdef.x + 3,refdef.y + textureHeight - refdef.height + 3, refdef.width - 6, refdef.height - 6 );
 		Vector4Set( rn.scissor, refdef.x, refdef.y, textureWidth, textureHeight );
 
-		R_RenderView( &refdef );
+		R_RenderView( NULL,&refdef );
 
 		Matrix4_Copy( rn.cameraProjectionMatrix, group->cameraProjectionMatrix );
 
