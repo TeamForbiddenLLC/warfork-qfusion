@@ -32,6 +32,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define MAX_DYNAMIC_DRAWS			2048
 
+enum dynamic_stream_e {
+	RB_DYN_STREAM_DEFAULT,
+	RB_DYN_STREAM_COMPACT, // bind RB_VBO_STREAM instead
+	RB_DYN_STREAM_NUM, // bind RB_VBO_STREAM instead
+};
+
 typedef struct r_backend_stats_s
 {
 	unsigned int numVerts, numElems;
@@ -71,7 +77,7 @@ typedef struct
 	const portalSurface_t *portalSurface;
 	unsigned int shadowBits;
 	vattribmask_t vattribs; // based on the fields above - cached to avoid rebinding
-	int streamId;
+	enum dynamic_stream_e dynamicStreamIdx;
 	int primitive;
 	vec2_t offset;
 	int scissor[4];
@@ -144,9 +150,9 @@ typedef struct r_backend_s
 	struct r_ring_buffer_s dynVertexBuffer;
 	struct r_ring_buffer_s dynElementBuffer;
 
-	rbDynamicStream_t dynamicStreams[RB_VBO_NUM_STREAMS];
+	rbDynamicStream_t dynamicStreams[RB_DYN_STREAM_NUM];
 	rbDynamicDraw_t dynamicDraws[MAX_DYNAMIC_DRAWS];
-	int numDynamicDraws;
+	unsigned int numDynamicDraws;
 
 	instancePoint_t *drawInstances;
 	int maxDrawInstances;

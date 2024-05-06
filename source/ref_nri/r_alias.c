@@ -686,7 +686,7 @@ void R_DrawAliasSurf( const entity_t *e, const shader_t *shader, const mfog_t *f
 
 		RB_AddDynamicMesh( e, shader, fog, portalSurface, shadowBits, &dynamicMesh, GL_TRIANGLES, 0.0f, 0.0f );
 
-		RB_FlushDynamicMeshes();
+		RB_FlushDynamicMeshes(NULL);
 	}
 }
 

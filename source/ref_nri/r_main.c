@@ -482,7 +482,7 @@ void R_Set2DMode( bool enable )
 	else
 	{
 		// render previously batched 2D geometry, if any
-		RB_FlushDynamicMeshes();
+		RB_FlushDynamicMeshes(NULL);
 
 		RB_SetShaderStateMask( ~0, 0 );
 	}
@@ -681,7 +681,7 @@ void R_DrawStretchRawYUVBuiltin( int x, int y, int w, int h,
 
 	R_DrawRotatedStretchPic( x, y, w, h, s1, t1, s2, t2, 0, colorWhite, &s );
 
-	RB_FlushDynamicMeshes();
+	RB_FlushDynamicMeshes(NULL);
 }
 
 /*
@@ -721,7 +721,7 @@ void R_DrawStretchQuick( int x, int y, int w, int h, float s1, float t1, float s
 
 	R_DrawRotatedStretchPic( x, y, w, h, s1, t1, s2, t2, 0, color, &s );
 
-	RB_FlushDynamicMeshes();
+	RB_FlushDynamicMeshes(NULL);
 }
 
 /*
@@ -781,7 +781,7 @@ static void R_PolyBlend( void )
 
 	R_Set2DMode( true );
 	R_DrawStretchPic( 0, 0, rf.frameBufferWidth, rf.frameBufferHeight, 0, 0, 1, 1, rsc.refdef.blend, rsh.whiteShader );
-	RB_FlushDynamicMeshes();
+	RB_FlushDynamicMeshes(NULL);
 }
 
 /*
@@ -1054,7 +1054,7 @@ static void R_SetupGL( void )
 	RB_LoadObjectMatrix( mat4x4_identity );
 
 	if( rn.renderFlags & RF_FLIPFRONTFACE )
-		RB_FlipFrontFace();
+		RB_FlipFrontFace(NULL);
 
 	if( ( rn.renderFlags & RF_SHADOWMAPVIEW ) && glConfig.ext.shadow )
 		RB_SetShaderStateMask( ~0, GLSTATE_NO_COLORWRITE );
@@ -1069,7 +1069,7 @@ static void R_EndGL( void )
 		RB_SetShaderStateMask( ~0, 0 );
 
 	if( rn.renderFlags & RF_FLIPFRONTFACE )
-		RB_FlipFrontFace();
+		RB_FlipFrontFace(NULL);
 }
 
 /*
@@ -1170,7 +1170,7 @@ static void R_BindRefInstFBO( void )
 /*
 * R_RenderView
 */
-void R_RenderView( const refdef_t *fd )
+void R_RenderView(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 {
 	int msec = 0;
 	bool shadowMap = rn.renderFlags & RF_SHADOWMAPVIEW ? true : false;
@@ -1561,7 +1561,7 @@ void R_RenderDebugSurface( const refdef_t *fd )
 			
 			if( R_AddSurfToDrawList( rn.meshlist, R_NUM2ENT(tr.ent), NULL, surf->shader, 0, 0, NULL, surf->drawSurf ) ) {
 				if( rn.refdef.rdflags & RDF_FLIPPED ) {
-					RB_FlipFrontFace();
+					RB_FlipFrontFace(NULL);
 				}
 				
 				if( r_speeds->integer == 5 ) {
@@ -1580,7 +1580,7 @@ void R_RenderDebugSurface( const refdef_t *fd )
 				R_DrawOutlinedSurfaces( rn.meshlist );
 				
 				if( rn.refdef.rdflags & RDF_FLIPPED )
-					RB_FlipFrontFace();
+					RB_FlipFrontFace(NULL);
 				
 				debugSurf = surf;
 			}
@@ -1663,7 +1663,7 @@ void R_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 void R_EndFrame( void )
 {
 	// render previously batched 2D geometry, if any
-	RB_FlushDynamicMeshes();
+	RB_FlushDynamicMeshes(NULL);
 
 	R_PolyBlend();
 	

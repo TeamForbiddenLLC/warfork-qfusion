@@ -2013,8 +2013,6 @@ struct pipeline_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pi
 		return pipeline; // pipeline is present in slot
 	}
 
-	uint32_t streamIdx = 0;
-	uint32_t attribIndex = 0;
 	NriShaderDesc shaderDesc[16] = {0};
 	NriGraphicsPipelineDesc graphicsPipelineDesc = {
 		.shaders = shaderDesc,
@@ -2041,19 +2039,18 @@ struct pipeline_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pi
 		//{ VATTRIB_LMCOORDS2_BIT, 2, "position", 0 }, 
 		//{ VATTRIB_LMCOORDS3_BIT, 2, "position", 0 }, 
 	};
-
+	uint32_t streamIdx = 0;
+	uint32_t attribIndex = 0;
 	uint32_t bindingSlot = 0;
 	for( size_t i = 0; i < Q_ARRAY_COUNT( attributes ); i++ ) {
 		if( def->attrib & attributes[i].attr ) {
 			vertexAttributeDesc[attribIndex].offset = 0;
 			vertexAttributeDesc[attribIndex].streamIndex = streamIdx;
 			vertexAttributeDesc[attribIndex].d3d = ( NriVertexAttributeD3D ){ attributes[i].d3dAttribute, 0 };
-			vertexAttributeDesc[attribIndex].vk = ( NriVertexAttributeVK ){ attributes[i].vkAttribute };
+			vertexAttributeDesc[attribIndex++].vk = ( NriVertexAttributeVK ){ attributes[i].vkAttribute };
 
 			vertexStreamDesc[streamIdx].bindingSlot = bindingSlot++;
-			vertexStreamDesc[streamIdx].stride = ( ( def->halfAttrib & attributes[i].attr ) ? sizeof( uint16_t ) : sizeof( uint32_t ) ) * attributes[i].numChannels;
-			attribIndex++;
-			streamIdx++;
+			vertexStreamDesc[streamIdx++].stride = ( ( def->halfAttrib & attributes[i].attr ) ? sizeof( uint16_t ) : sizeof( uint32_t ) ) * attributes[i].numChannels;
 		}
 	}
 
@@ -2087,14 +2084,6 @@ struct pipeline_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pi
 	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateGraphicsPipeline( rsh.nri.device, &graphicsPipelineDesc, &pipeline->layout ) );
 	return pipeline;
 }
-
-//static NriDescriptorRangeDesc* __FindAndInsertNriDescriptorConstant(SpvReflectBlockVariable* binding, NriPushConstantDesc** ranges) {
-//	for(size_t i = 0; i < arrlen(ranges); i++) {
-//		if((*ranges)[i].registerIndex == binding->offset) {
-//			return &(*ranges)[i];
-//		}
-//	}
-//}
 
 static NriDescriptorRangeDesc* __FindAndInsertNriDescriptorRange(const SpvReflectDescriptorBinding* binding, NriDescriptorRangeDesc** ranges) {
 	for(size_t i = 0; i < arrlen(ranges); i++) {

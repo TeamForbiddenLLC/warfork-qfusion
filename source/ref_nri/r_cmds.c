@@ -249,7 +249,8 @@ void R_TakeEnvShot( const char *path, const char *name, unsigned maxPixels )
 	{
 		AnglesToAxis( cubemapShots[i].angles, fd.viewaxis );
 		
-		R_RenderView( &fd );
+		assert(false); // TODO: need to implement
+		//R_RenderView( &fd );
 		
 		Q_snprintfz( checkname, checkname_size, "%s%s_%s", path, name, cubemapShots[i].suf );
 		COM_DefaultExtension( checkname, ".tga", checkname_size );
