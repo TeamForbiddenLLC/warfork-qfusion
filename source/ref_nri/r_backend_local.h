@@ -202,6 +202,9 @@ typedef struct r_backend_s
 	bool noWorldLight;
 } rbackend_t;
 
+
+
+
 extern rbackend_t rb;
 
 // r_backend.c
@@ -215,7 +218,15 @@ void RB_DrawElementsReal( rbDrawElements_t *de );
 
 // r_backend_program.c
 void RB_DrawShadedElements();
-void RB_DrawShadedElements_NRI(struct frame_cmd_buffer_s* cmd);
+void RB_DrawShadedElements_2( struct frame_cmd_buffer_s *cmd,
+							  int firstVert,
+							  int numVerts,
+							  int firstElem,
+							  int numElems,
+							  int firstShadowVert,
+							  int numShadowVerts,
+							  int firstShadowElem,
+							  int numShadowElems );
 
 void RB_InitShading( void );
 void RB_DrawOutlinedElements( void );
