@@ -279,7 +279,7 @@ static void R_DrawSkyBoxSide( const skydome_t *skydome, const visSkySide_t *visS
 
 	RB_SetSkyboxSide( imageIndex );
 
-	RB_DrawElements( visSide->firstVert, visSide->numVerts, visSide->firstElem, visSide->numElems, 0, 0, 0, 0 );
+	RB_DrawElements(visSide->firstVert, visSide->numVerts, visSide->firstElem, visSide->numElems, 0, 0, 0, 0 );
 }
 
 /*

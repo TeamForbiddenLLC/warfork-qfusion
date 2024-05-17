@@ -309,10 +309,16 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.GetCommandQueue(rsh.nri.device, NriCommandQueueType_GRAPHICS, &rsh.cmdQueue) )
 	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateFence( rsh.nri.device, 0, &rsh.frameFence) );
 
+	const struct block_buffer_pool_desc_s uboBlockBufferDesc = {
+		.blockSize = UBOBlockerBufferSize,
+		.alignmentReq = UBOBlockerBufferAlignmentReq,
+		.usageBits = NriBufferUsageBits_CONSTANT_BUFFER | NriBufferUsageBits_SHADER_RESOURCE
+	};
 
 	for(size_t i = 0; i < NUMBER_FRAMES_FLIGHT; i++) {
 		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateCommandAllocator( rsh.cmdQueue, &rsh.frameCmds[i].allocator ) );
 		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateCommandBuffer( rsh.frameCmds[i].allocator, &rsh.frameCmds[i].cmd ) );
+		InitBlockBufferPool( &rsh.nri, &rsh.frameCmds[i].uboBlockBuffer, &uboBlockBufferDesc );
 	}
 
 	{
@@ -571,7 +577,7 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 	
 	NRI_ABORT_ON_FAILURE(rsh.nri.coreI.BeginCommandBuffer(frame->cmd, NULL));
 	
-	FR_ResetCmdState(frame);
+	FR_CmdSetDefaultState(frame);
 	// take the frame the backend is not busy processing
  // if( glConfig.multithreading ) {
  // 	ri.Mutex_Lock( rrf.adapter.frameLock );

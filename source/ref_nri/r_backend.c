@@ -32,14 +32,15 @@ static void RB_SetGLDefaults( void );
 static void RB_RegisterStreamVBOs( void );
 static void RB_SelectTextureUnit( int tmu );
 
-static inline size_t meshOffsetVBO( mesh_vbo_t *vbo, enum vattrib_e attrib ) {
+static inline size_t meshOffsetVBO( mesh_vbo_t *vbo, enum vattrib_e attrib )
+{
 	switch( attrib ) {
 		case VATTRIB_POSITION:
 			return 0;
 		case VATTRIB_NORMAL:
 			return vbo->normalsOffset;
 		case VATTRIB_SVECTOR:
-		return vbo->sVectorsOffset;
+			return vbo->sVectorsOffset;
 		case VATTRIB_COLOR0:
 		case VATTRIB_TEXCOORDS:
 		case VATTRIB_SPRITEPOINT:
@@ -48,7 +49,7 @@ static inline size_t meshOffsetVBO( mesh_vbo_t *vbo, enum vattrib_e attrib ) {
 		case VATTRIB_LMLAYERS0123:
 		case VATTRIB_INSTANCE_QUAT:
 		case VATTRIB_INSTANCE_XYZS:
-			assert(false);
+			assert( false );
 			break;
 		default:
 			break;
@@ -507,9 +508,9 @@ void RB_FlipFrontFace( struct frame_cmd_buffer_s* cmd)
 	assert(cmd);
 	rb.gl.frontFace = !rb.gl.frontFace;
 	if( rb.gl.frontFace ) {
-		cmd->state.cullMode = NriCullMode_FRONT;
+		cmd->layoutState.cullMode = NriCullMode_FRONT;
 	} else {
-		cmd->state.cullMode = NriCullMode_BACK;
+		cmd->layoutState.cullMode = NriCullMode_BACK;
 	}
 }
 
@@ -881,13 +882,17 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 		return;
 	}
 
-	struct {
+	struct stage_upload_s {
 		size_t vertexBufferOffset;
 		NriBuffer* vertexBuffer;
 		size_t elementBufferOffset;
 		NriBuffer* elementBuffer;
 		size_t numInputs;
-		struct frame_cmd_vertex_input_s vertexInputs[MAX_VERTEX_BINDINGS];
+		struct stage_vertex_input_s {
+			NriBuffer *buffer;
+			uint64_t offset;
+			uint32_t slot;
+		} vertexInput[MAX_VERTEX_BINDINGS];
 	} upload[RB_DYN_STREAM_NUM] = {0};
 
 	for(size_t i = 0; i < RB_DYN_STREAM_NUM; i++ ) {
@@ -927,16 +932,14 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 		enum vattrib_e attr = 0;
 		
 		for(uint32_t attrbit = stream->vbo->vertexAttribs; attrbit > 0; attrbit = attrbit >> 1, attr++) {
-			upload[i].vertexInputs[upload[i].numInputs].buffer = upload[i].vertexBuffer;
-			upload[i].vertexInputs[upload[i].numInputs].offset 
-				= meshOffsetVBO(stream->vbo, attr) + upload[i].vertexBufferOffset;
-			upload[i].numInputs++;
+			struct stage_vertex_input_s* input = &upload[i].vertexInput[upload[i].numInputs++];
+			input->buffer = upload[i].vertexBuffer;
+			input->offset = meshOffsetVBO( stream->vbo, attr ) + upload[i].vertexBufferOffset;
+			input->slot = attr;
 		}
 	}
 
 	RB_GetScissor( &sx, &sy, &sw, &sh );
-
-
 
 	Matrix4_Copy( rb.objectMatrix, m );
 	transx = m[12];
@@ -944,16 +947,16 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 	for( size_t i = 0; i < rb.numDynamicDraws; i++ ) {
 		rbDynamicDraw_t const *draw = rb.dynamicDraws;
 		rbDynamicStream_t *stream = &rb.dynamicStreams[draw->dynamicStreamIdx];
-		
-
-
-		//upload[draw->dynamicStreamIdx].vertexBuffer
+		struct stage_upload_s *stage = &upload[draw->dynamicStreamIdx];
+		for( uint32_t i = 0; i < stage->numInputs; i++ ) {
+			FR_CmdSetVertexInput( cmd, stage->vertexInput[i].slot, stage->vertexInput[i].buffer, stage->vertexInput[i].offset );
+		}
+		FR_SetPipelineVertexAttrib( cmd, stream->vbo->vertexAttribs, stream->vbo->halfFloatAttribs );
 
 		RB_BindShader( NULL, draw->entity, draw->shader, draw->fog );
-		RB_BindVBO( draw->dynamicStreamIdx, draw->primitive );
 		RB_SetPortalSurface( draw->portalSurface );
 		RB_SetShadowBits( draw->shadowBits );
-		RB_Scissor( draw->scissor[0], draw->scissor[1], draw->scissor[2], draw->scissor[3] );
+		FR_CmdSetScissor( cmd, draw->scissor[0], draw->scissor[1], draw->scissor[2], draw->scissor[3] );
 
 		// translate the mesh in 2D
 		if( ( offsetx != draw->offset[0] ) || ( offsety != draw->offset[1] ) ) {
@@ -964,16 +967,16 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 			RB_LoadObjectMatrix( m );
 		}
 
-		RB_DrawElements(
+		RB_DrawShadedElements_2(cmd,
 			draw->drawElements.firstVert, draw->drawElements.numVerts,
 			draw->drawElements.firstElem, draw->drawElements.numElems,
 			draw->drawElements.firstVert, draw->drawElements.numVerts,
-			draw->drawElements.firstElem, draw->drawElements.numElems );
+			draw->drawElements.firstElem, draw->drawElements.numElems);
 	}
 
 	rb.numDynamicDraws = 0;
 
-	RB_Scissor( sx, sy, sw, sh );
+	FR_CmdSetScissor( cmd, sx, sy, sw, sh );
 
 	// restore the original translation in the object matrix if it has been changed
 	if( offsetx || offsety ) {
@@ -1236,10 +1239,38 @@ static void RB_DrawElements_( void )
 	}
 }
 
+
+
+void RB_DrawElements_2( struct frame_cmd_buffer_s *cmd, int firstVert, int numVerts, int firstElem, int numElems, int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems ) {
+	rb.currentVAttribs &= ~VATTRIB_INSTANCES_BITS;
+
+	rb.drawElements.numVerts = numVerts;
+	rb.drawElements.numElems = numElems;
+	rb.drawElements.firstVert = firstVert;
+	rb.drawElements.firstElem = firstElem;
+	rb.drawElements.numInstances = 0;
+
+	rb.drawShadowElements.numVerts = numShadowVerts;
+	rb.drawShadowElements.numElems = numShadowElems;
+	rb.drawShadowElements.firstVert = firstShadowVert;
+	rb.drawShadowElements.firstElem = firstShadowElem;
+	rb.drawShadowElements.numInstances = 0;
+	
+	if ( !rb.drawElements.numVerts || !rb.drawElements.numElems ) {
+		return;
+	}
+
+	if( rb.triangleOutlines ) {
+		RB_DrawOutlinedElements();
+	} else {
+		RB_DrawShadedElements();
+	}
+
+}
 /*
 * RB_DrawElements
 */
-void RB_DrawElements( int firstVert, int numVerts, int firstElem, int numElems,
+void RB_DrawElements(int firstVert, int numVerts, int firstElem, int numElems,
 	int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems )
 {
 	rb.currentVAttribs &= ~VATTRIB_INSTANCES_BITS;

@@ -18,13 +18,16 @@
 const static NriSwapChainFormat DefaultSwapchainFormat = NriSwapChainFormat_BT709_G22_8BIT;
 const static NriSPIRVBindingOffsets DefaultBindingOffset = {100, 200, 300, 400}; // just ShaderMake defaults for simplicity
 
+// DirectX 12 requires ubo's be aligned by 256
+const static uint32_t UBOBlockerBufferSize = 256 * 128;
+const static uint32_t UBOBlockerBufferAlignmentReq = 256;
+
 enum descriptor_set_e {
   DESCRIPTOR_SET_0,
   DESCRIPTOR_SET_1,
   DESCRIPTOR_SET_2,
   DESCRIPTOR_SET_MAX
 };
-
 struct constant_buffer_s {
 };
 
