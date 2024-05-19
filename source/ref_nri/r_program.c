@@ -1991,16 +1991,16 @@ static inline struct pipeline_s* __resolvePipeline(struct glsl_program_s *progra
 	const size_t startIndex = hash % PIPELINE_LAYOUT_HASH_SIZE;
 	size_t index = startIndex;
 	do {
-		if(program->layouts[index].hash == hash || program->layouts[index].hash == 0) {
-			program->layouts[index].hash = hash;
-			return &program->layouts[index];
+		if(program->pipelines[index].hash == hash || program->pipelines[index].hash == 0) {
+			program->pipelines[index].hash = hash;
+			return &program->pipelines[index];
 		}
 		index = (index + 1) % PIPELINE_LAYOUT_HASH_SIZE;
 	} while(index != startIndex);
 	return NULL;
 }
 
-struct pipeline_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_layout_def_s *def ) {
+struct pipeline_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_layout_config_s *def ) {
 	
 	hash_t hash = HASH_INITIAL_VALUE;
 	hash = hash_u32(hash, def->attrib );
@@ -2009,7 +2009,7 @@ struct pipeline_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pi
 	hash = hash_data(hash, &def->rasterization, sizeof(NriRasterizationDesc)); 
 
 	struct pipeline_s* pipeline = __resolvePipeline(program, hash);
-	if(pipeline->layout) {
+	if(pipeline->pipeline) {
 		return pipeline; // pipeline is present in slot
 	}
 
@@ -2081,7 +2081,7 @@ struct pipeline_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pi
 	} else {
 		return NULL;
 	}
-	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateGraphicsPipeline( rsh.nri.device, &graphicsPipelineDesc, &pipeline->layout ) );
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateGraphicsPipeline( rsh.nri.device, &graphicsPipelineDesc, &pipeline->pipeline ) );
 	return pipeline;
 }
 
@@ -2364,29 +2364,42 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 					rangeDesc->descriptorNum = reflectionBinding->array.dims_count;
 					rangeDesc->baseRegisterIndex = reflectionBinding->binding;
 					rangeDesc->isArray = reflectionBinding->array.dims_count > 0;
+
+					const uint32_t bindingBit = ( 1u << reflectionBinding->binding );
+					program->pipelineLayout.array_size[reflectionBinding->binding] = max( program->pipelineLayout.array_size[reflectionBinding->binding], max( reflectionBinding->array.dims_count, 1 ) );
 					switch( reflectionBinding->descriptor_type ) {
 						case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER:
 							rangeDesc->descriptorType = NriDescriptorType_SAMPLER;
+							program->pipelineLayout.samplerMask |= bindingBit;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 							rangeDesc->descriptorType = NriDescriptorType_TEXTURE;
-							break;
-						case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-							rangeDesc->descriptorType = NriDescriptorType_STORAGE_TEXTURE;
+							program->pipelineLayout.textureMask |= bindingBit;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+							program->pipelineLayout.bufferMask |= bindingBit;
 							rangeDesc->descriptorType = NriDescriptorType_BUFFER;
 							break;
+						case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+							program->pipelineLayout.storageTextureMask |= bindingBit;
+							rangeDesc->descriptorType = NriDescriptorType_STORAGE_TEXTURE;
+							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+							program->pipelineLayout.storageBufferMask |= bindingBit;
 							rangeDesc->descriptorType = NriDescriptorType_STORAGE_BUFFER;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+							program->pipelineLayout.constantBufferMask |= bindingBit;
 							rangeDesc->descriptorType = NriDescriptorType_CONSTANT_BUFFER;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-							rangeDesc->descriptorType = NriDescriptorType_STORAGE_BUFFER;
+							program->pipelineLayout.structuredBufferMask |= bindingBit;
+							rangeDesc->descriptorType = NriDescriptorType_STRUCTURED_BUFFER;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+							program->pipelineLayout.storageStructuredBufferMask |= bindingBit;
+							rangeDesc->descriptorType = NriDescriptorType_STORAGE_STRUCTURED_BUFFER;
+							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 						case SPV_REFLECT_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
 						case SPV_REFLECT_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
@@ -2431,7 +2444,7 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 		pipelineLayoutdesc.pushConstants = &descPushConstantDescs;
 	}
 
-	NRI_ABORT_ON_FAILURE(rsh.nri.coreI.CreatePipelineLayout(rsh.nri.device, &pipelineLayoutdesc, &program->layout));
+	NRI_ABORT_ON_FAILURE(rsh.nri.coreI.CreatePipelineLayout(rsh.nri.device, &pipelineLayoutdesc, &program->pipelineLayout.layout));
 	
 	for(size_t  i = 0;  i < DESCRIPTOR_SET_MAX; i++) {
 		arrfree( descRangeDescs[i] );

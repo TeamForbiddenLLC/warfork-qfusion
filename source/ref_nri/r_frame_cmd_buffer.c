@@ -34,17 +34,12 @@ void FR_CmdSetTexture(struct frame_cmd_buffer_s* cmd, uint32_t set, uint32_t bin
 
 }
 
-void FR_SetPipelineSetCull( struct frame_cmd_buffer_s *cmd, NriCullMode mode ) {
-  cmd->layoutState.cullMode = mode;
-}
-
-void FR_SetPipelineVertexAttrib(struct frame_cmd_buffer_s* cmd,vattrib_t attrib, vattrib_t halfAttrib) {
-  cmd->layoutState.attrib = attrib;
-  cmd->layoutState.halfAttrib = halfAttrib;
-}
-
 void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint32_t instanceNum, uint32_t baseIndex, uint32_t baseVertex, uint32_t baseInstance) {
-  
+
+  for(size_t i = 0; i < DESCRIPTOR_MAX_BINDINGS; i++) {
+
+  }
+
   uint32_t vertexSlot = 0;
   for( uint32_t attr = cmd->cmdState.dirtyVertexBuffers; attr > 0; attr = ( attr >> 1 ), vertexSlot++ ) {
 	  if( cmd->cmdState.dirtyVertexBuffers & ( 1 << vertexSlot ) ) {
