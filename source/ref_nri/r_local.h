@@ -208,8 +208,6 @@ typedef struct
 
 //====================================================
 
-#define NUMBER_FRAMES_FLIGHT 3
-#define NUMBER_RESERVED_BACKBUFFERS 4 
 
 // globals shared by the frontend and the backend
 // the backend should never attempt modifying any of these
@@ -260,7 +258,7 @@ typedef struct
  	NriCommandQueue* cmdQueue;
  	NriSwapChain* swapchain;
 	NriFence* frameFence;
-	struct backbuffer_s* backBuffers;
+	struct frame_backbuffer_s* backBuffers;
 	struct frame_cmd_buffer_s frameCmds[NUMBER_FRAMES_FLIGHT];
 
 	byte_vec4_t		customColors[NUM_CUSTOMCOLORS];
