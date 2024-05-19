@@ -508,9 +508,9 @@ void RB_FlipFrontFace( struct frame_cmd_buffer_s* cmd)
 	assert(cmd);
 	rb.gl.frontFace = !rb.gl.frontFace;
 	if( rb.gl.frontFace ) {
-		cmd->layoutState.cullMode = NriCullMode_FRONT;
+		cmd->layoutDef.cullMode = NriCullMode_FRONT;
 	} else {
-		cmd->layoutState.cullMode = NriCullMode_BACK;
+		cmd->layoutDef.cullMode = NriCullMode_BACK;
 	}
 }
 
@@ -951,7 +951,9 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 		for( uint32_t i = 0; i < stage->numInputs; i++ ) {
 			FR_CmdSetVertexInput( cmd, stage->vertexInput[i].slot, stage->vertexInput[i].buffer, stage->vertexInput[i].offset );
 		}
-		FR_SetPipelineVertexAttrib( cmd, stream->vbo->vertexAttribs, stream->vbo->halfFloatAttribs );
+
+		cmd->layoutDef.attrib = stream->vbo->vertexAttribs;
+		cmd->layoutDef.halfAttrib = stream->vbo->halfFloatAttribs;
 
 		RB_BindShader( NULL, draw->entity, draw->shader, draw->fog );
 		RB_SetPortalSurface( draw->portalSurface );

@@ -316,6 +316,7 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	};
 
 	for(size_t i = 0; i < NUMBER_FRAMES_FLIGHT; i++) {
+		rsh.frameCmds[i].frameCount = i;
 		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateCommandAllocator( rsh.cmdQueue, &rsh.frameCmds[i].allocator ) );
 		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateCommandBuffer( rsh.frameCmds[i].allocator, &rsh.frameCmds[i].cmd ) );
 		InitBlockBufferPool( &rsh.nri, &rsh.frameCmds[i].uboBlockBuffer, &uboBlockBufferDesc );
@@ -568,11 +569,12 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 
 	const uint32_t bufferedFrameIndex = rsh.frameCnt % NUMBER_FRAMES_FLIGHT;
 	struct frame_cmd_buffer_s* frame = &rsh.frameCmds[bufferedFrameIndex];
-	
+
 	if( rsh.frameCnt >= NUMBER_FRAMES_FLIGHT ) {
 		rsh.nri.coreI.Wait( rsh.frameFence, 1 + rsh.frameCnt - NUMBER_FRAMES_FLIGHT );
 		rsh.nri.coreI.ResetCommandAllocator( frame->allocator);
 	}
+	frame->frameCount = rsh.frameCnt; 
 	frame->backBuffer = rsh.backBuffers[rsh.nri.swapChainI.AcquireNextSwapChainTexture( rsh.swapchain )];
 	
 	NRI_ABORT_ON_FAILURE(rsh.nri.coreI.BeginCommandBuffer(frame->cmd, NULL));

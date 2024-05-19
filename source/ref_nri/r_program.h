@@ -202,16 +202,17 @@ typedef enum {
 	GLSL_STAGE_MAX
 } glsl_program_stage_t;
 
-struct pipeline_s {
-	uint64_t hash;
-	NriPipeline* layout;
-	NriDescriptorSet* sets[];
-};
 
 struct shader_bin_data_s {
 	char *bin;
 	size_t size;
 	glsl_program_stage_t stage;
+};
+
+
+struct pipeline_s {
+	uint64_t hash;
+	NriPipeline* pipeline;
 };
 
 struct glsl_program_s {
@@ -221,13 +222,14 @@ struct glsl_program_s {
 	const char *string;
 	char *deformsKey;
 	struct glsl_program_s *hash_next;
-	NriPipelineLayout* layout;
 
 	// might not need to store the bin data
 	// will have to see if I need to re-declare the pipeline
 	uint16_t shaderStageSize;
 	struct shader_bin_data_s shaderBin[GLSL_STAGE_MAX];
-	struct pipeline_s layouts[PIPELINE_LAYOUT_HASH_SIZE];
+	//NriPipelineLayout* layout;
+	struct pipeline_s pipelines[PIPELINE_LAYOUT_HASH_SIZE];
+	struct pipeline_layout_s pipelineLayout;
 
 	struct loc_s {
 		int			ModelViewMatrix,
@@ -321,20 +323,7 @@ void RP_StorePrecacheList( void );
 
 void RP_ProgramList_f( void );
 
-
-struct pipeline_layout_def_s {
-	vattribmask_t attrib;
-	vattribmask_t halfAttrib;
-
-	size_t numFrameAttachments;
-	struct NriColorAttachmentDesc* attachment;
-
-	NriInputAssemblyDesc inputAssembly;
-	NriRasterizationDesc rasterization;
-
-};
-
-struct pipeline_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_layout_def_s *def );
+struct pipeline_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_layout_config_s *def );
 struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features );
 
 int	RP_RegisterProgram(int type, const char *name, const char *deformsKey, 

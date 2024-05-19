@@ -5,6 +5,7 @@
 #include "NRI.h"
 
 #include "r_texture_format.h"
+#include "r_vattribs.h"
 
 #include "Extensions/NRIDeviceCreation.h"
 #include "Extensions/NRIHelper.h"
@@ -22,13 +23,45 @@ const static NriSPIRVBindingOffsets DefaultBindingOffset = {100, 200, 300, 400};
 const static uint32_t UBOBlockerBufferSize = 256 * 128;
 const static uint32_t UBOBlockerBufferAlignmentReq = 256;
 
+#define NUMBER_FRAMES_FLIGHT 3
+#define NUMBER_RESERVED_BACKBUFFERS 4 
+#define DESCRIPTOR_MAX_BINDINGS 32
+#define MAX_VERTEX_BINDINGS 24 
+
+#define BINDING_SETS_PER_POOL 24 
+
 enum descriptor_set_e {
   DESCRIPTOR_SET_0,
   DESCRIPTOR_SET_1,
   DESCRIPTOR_SET_2,
   DESCRIPTOR_SET_MAX
 };
-struct constant_buffer_s {
+
+
+struct pipeline_layout_s {
+	NriPipelineLayout* layout;
+	uint32_t samplerMask;
+	uint32_t constantBufferMask;
+	uint32_t textureMask;
+	uint32_t storageTextureMask;
+	uint32_t bufferMask;
+	uint32_t storageBufferMask;
+	uint32_t structuredBufferMask;
+	uint32_t storageStructuredBufferMask;
+	uint32_t accelerationStructureMask;
+	uint32_t array_size[DESCRIPTOR_MAX_BINDINGS];
+};
+
+struct pipeline_layout_config_s {
+	vattribmask_t attrib;
+	vattribmask_t halfAttrib;
+	NriCullMode cullMode;
+
+	size_t numFrameAttachments;
+	struct NriColorAttachmentDesc* attachment;
+
+	NriInputAssemblyDesc inputAssembly;
+	NriRasterizationDesc rasterization;
 };
 
 #define R_VK_ABORT_ON_FAILURE(result) \

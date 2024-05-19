@@ -1455,7 +1455,6 @@ r_glslfeat_t RB_TcGenToProgramFeatures( int tcgen, vec_t *tcgenVec, mat4_t texMa
 static void RB_RenderMeshGLSL_Q3AShader_2(struct frame_cmd_buffer_s* cmd, const shaderpass_t *pass, r_glslfeat_t programFeatures )
 {
 	int state;
-	int program;
 	int rgbgen = pass->rgbgen.type;
 	const image_t *image;
 	const mfog_t *fog = rb.fog;
@@ -1592,42 +1591,58 @@ static void RB_RenderMeshGLSL_Q3AShader_2(struct frame_cmd_buffer_s* cmd, const 
 	}
 
 	// update uniforms
-	program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_Q3A_SHADER, NULL,
-		rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-	if( RB_BindProgram( program ) )
-	{
-		RB_UpdateCommonUniforms( program, pass, texMatrix );
+ // struct pipeline_layout_def_s layoutDef = {
+ // 	.attrib = cmd->layoutState.attrib,
+ // 	.halfAttrib = cmd->layoutState.halfAttrib
+ // };
+	struct glsl_program_s* program = RP_ResolveProgram(GLSL_PROGRAM_TYPE_Q3A_SHADER, NULL,	rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
+	struct pipeline_s* pipeline = RP_ResolvePipeline(program, &cmd->layoutDef);
+  
+  //rsh.nri.coreI.CmdSetPipelineLayout(cmd->cmd, pipeline->layout);
+  //rsh.nri.coreI.CmdSetPipeline(cmd->cmd, pipeline->pipeline);
 
-		RP_UpdateTexGenUniforms( program, texMatrix, genVectors );
+	FR_CmdDrawElements(cmd, 
+										cmd->additional.drawElements.numElems,
+										cmd->additional.drawElements.numVerts,
+										cmd->additional.drawElements.numInstances,
+										cmd->additional.drawElements.firstVert,
+										cmd->additional.drawElements.firstElem);
 
-		RP_UpdateDiffuseLightUniforms( program, lightDir, lightAmbient, lightDiffuse );
+	//program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_Q3A_SHADER, NULL,	rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
+	//if( RB_BindProgram( program ) )
+	//{
+	//	RB_UpdateCommonUniforms( program, pass, texMatrix );
 
-		if( programFeatures & GLSL_SHADER_COMMON_FOG ) {
-			RB_UpdateFogUniforms( program, fog );
-		}
+	//	RP_UpdateTexGenUniforms( program, texMatrix, genVectors );
 
-		// submit animation data
-		if( programFeatures & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
-			RP_UpdateBonesUniforms( program, rb.bonesData.numBones, rb.bonesData.dualQuats );
-		}
+	//	RP_UpdateDiffuseLightUniforms( program, lightDir, lightAmbient, lightDiffuse );
 
-		// dynamic lights
-		if( isLightmapped || isWorldVertexLight ) {
-			RP_UpdateDynamicLightsUniforms( program, lightStyle, e->origin, e->axis, rb.currentDlightBits );
-		}
+	//	if( programFeatures & GLSL_SHADER_COMMON_FOG ) {
+	//		RB_UpdateFogUniforms( program, fog );
+	//	}
 
-		// r_drawflat
-		if( programFeatures & GLSL_SHADER_COMMON_DRAWFLAT ) {
-			RP_UpdateDrawFlatUniforms( program, rsh.wallColor, rsh.floorColor );
-		}
+	//	// submit animation data
+	//	if( programFeatures & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
+	//		RP_UpdateBonesUniforms( program, rb.bonesData.numBones, rb.bonesData.dualQuats );
+	//	}
 
-		if( programFeatures & GLSL_SHADER_COMMON_SOFT_PARTICLE ) {
-			RP_UpdateTextureUniforms( program, 
-				rsh.screenDepthTexture->upload_width, rsh.screenDepthTexture->upload_height );
-		}
+	//	// dynamic lights
+	//	if( isLightmapped || isWorldVertexLight ) {
+	//		RP_UpdateDynamicLightsUniforms( program, lightStyle, e->origin, e->axis, rb.currentDlightBits );
+	//	}
 
-		RB_DrawElementsReal( &rb.drawElements );
-	}
+	//	// r_drawflat
+	//	if( programFeatures & GLSL_SHADER_COMMON_DRAWFLAT ) {
+	//		RP_UpdateDrawFlatUniforms( program, rsh.wallColor, rsh.floorColor );
+	//	}
+
+	//	if( programFeatures & GLSL_SHADER_COMMON_SOFT_PARTICLE ) {
+	//		RP_UpdateTextureUniforms( program, 
+	//			rsh.screenDepthTexture->upload_width, rsh.screenDepthTexture->upload_height );
+	//	}
+
+	//	RB_DrawElementsReal( &rb.drawElements );
+	//}
 }
 
 
@@ -2759,13 +2774,13 @@ static void RB_SetShaderState_2( struct frame_cmd_buffer_s* cmd)
 
 	// Face culling
 	if( !gl_cull->integer || rb.currentEntity->rtype == RT_SPRITE ) {
-		FR_SetPipelineSetCull( cmd, NriCullMode_NONE );
+		cmd->layoutDef.cullMode = NriCullMode_NONE;
 	} else if( shaderFlags & SHADER_CULL_FRONT ) {
-		FR_SetPipelineSetCull( cmd, NriCullMode_FRONT);
+		cmd->layoutDef.cullMode = NriCullMode_FRONT;
 	} else if( shaderFlags & SHADER_CULL_BACK ) {
-		FR_SetPipelineSetCull( cmd, NriCullMode_BACK);
+		cmd->layoutDef.cullMode = NriCullMode_BACK;
 	} else {
-		FR_SetPipelineSetCull( cmd, NriCullMode_NONE );
+		cmd->layoutDef.cullMode = NriCullMode_NONE;
 	}
 
 	state = 0;
