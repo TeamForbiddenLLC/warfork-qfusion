@@ -1,6 +1,8 @@
 #ifndef R_NRI_IMP_H
 #define R_NRI_IMP_H
 
+#include "r_hasher.h"
+#include "r_image.h"
 #define NRI_STATIC_LIBRARY 1
 #include "NRI.h"
 
@@ -27,6 +29,8 @@ const static uint32_t UBOBlockerBufferAlignmentReq = 256;
 #define NUMBER_RESERVED_BACKBUFFERS 4 
 #define DESCRIPTOR_MAX_BINDINGS 32
 #define MAX_VERTEX_BINDINGS 24 
+#define MAX_PIPELINE_ATTACHMENTS 5
+
 
 #define BINDING_SETS_PER_POOL 24 
 
@@ -34,34 +38,8 @@ enum descriptor_set_e {
   DESCRIPTOR_SET_0,
   DESCRIPTOR_SET_1,
   DESCRIPTOR_SET_2,
+  DESCRIPTOR_SET_3,
   DESCRIPTOR_SET_MAX
-};
-
-
-struct pipeline_layout_s {
-	NriPipelineLayout* layout;
-	uint32_t samplerMask;
-	uint32_t constantBufferMask;
-	uint32_t textureMask;
-	uint32_t storageTextureMask;
-	uint32_t bufferMask;
-	uint32_t storageBufferMask;
-	uint32_t structuredBufferMask;
-	uint32_t storageStructuredBufferMask;
-	uint32_t accelerationStructureMask;
-	uint32_t array_size[DESCRIPTOR_MAX_BINDINGS];
-};
-
-struct pipeline_layout_config_s {
-	vattribmask_t attrib;
-	vattribmask_t halfAttrib;
-	NriCullMode cullMode;
-
-	size_t numFrameAttachments;
-	struct NriColorAttachmentDesc* attachment;
-
-	NriInputAssemblyDesc inputAssembly;
-	NriRasterizationDesc rasterization;
 };
 
 #define R_VK_ABORT_ON_FAILURE(result) \
@@ -113,5 +91,31 @@ typedef struct {
 bool R_InitNriBackend(const nri_init_desc_t* init, struct nri_backend_s* backend);
 void R_NRI_CallbackMessage(NriMessage msg, const char* file, uint32_t line, const char* message, void* userArg);
 NriFormat R_NRIFormat(enum texture_format_e format);
+
+
+struct descriptor_simple_serializer_s {
+  NriDescriptor const* descriptors[DESCRIPTOR_MAX_BINDINGS];
+  uint32_t cookies[DESCRIPTOR_MAX_BINDINGS];
+  uint32_t descriptorMask;
+};
+hash_t DescSimple_SerialHash( struct descriptor_simple_serializer_s *state );
+void DescSimple_WriteImage( struct descriptor_simple_serializer_s *state, uint32_t slot, const image_t *image );
+void DescSimple_StateCommit(struct nri_backend_s *backend, struct descriptor_simple_serializer_s *state, NriDescriptorSet* descriptor);
+
+struct pipeline_layout_config_s {
+	vattribmask_t attrib;
+	vattribmask_t halfAttrib;
+	NriCullMode cullMode;
+
+	size_t numFrameAttachments;
+	NriViewport viewport;
+	NriColorAttachmentDesc attachment[MAX_PIPELINE_ATTACHMENTS];
+	NriDepthAttachmentDesc depthAttachment;
+	NriStencilAttachmentDesc stencilAttachment;
+
+	NriInputAssemblyDesc inputAssembly;
+	NriRasterizationDesc rasterization;
+};
+
 
 #endif

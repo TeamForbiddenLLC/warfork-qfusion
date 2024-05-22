@@ -355,6 +355,116 @@ void RB_Cull( int cull )
 	rb.gl.faceCull = cull;
 }
 
+// for these we assume will just do this to the first attachment
+void RB_SetState_2( struct frame_cmd_buffer_s *cmd, int state )
+{
+	if( state & GLSTATE_BLEND_MASK ) {
+		// int blendsrc, blenddst;
+
+		switch( state & GLSTATE_SRCBLEND_MASK ) {
+			case GLSTATE_SRCBLEND_ZERO:
+				cmd->layoutConfig.attachment[0].colorBlend.srcFactor = NriBlendFactor_ZERO;
+				break;
+			case GLSTATE_SRCBLEND_DST_COLOR:
+				cmd->layoutConfig.attachment[0].colorBlend.srcFactor = NriBlendFactor_DST_COLOR;
+				break;
+			case GLSTATE_SRCBLEND_ONE_MINUS_DST_COLOR:
+				cmd->layoutConfig.attachment[0].colorBlend.srcFactor = NriBlendFactor_ONE_MINUS_DST_COLOR;
+				break;
+			case GLSTATE_SRCBLEND_SRC_ALPHA:
+				cmd->layoutConfig.attachment[0].colorBlend.srcFactor = NriBlendFactor_SRC_ALPHA;
+				break;
+			case GLSTATE_SRCBLEND_ONE_MINUS_SRC_ALPHA:
+				cmd->layoutConfig.attachment[0].colorBlend.srcFactor = NriBlendFactor_ONE_MINUS_SRC_ALPHA;
+				break;
+			case GLSTATE_SRCBLEND_DST_ALPHA:
+				cmd->layoutConfig.attachment[0].colorBlend.srcFactor = NriBlendFactor_DST_ALPHA;
+				break;
+			case GLSTATE_SRCBLEND_ONE_MINUS_DST_ALPHA:
+				cmd->layoutConfig.attachment[0].colorBlend.srcFactor = NriBlendFactor_ONE_MINUS_DST_ALPHA;
+				break;
+			default:
+			case GLSTATE_SRCBLEND_ONE:
+				cmd->layoutConfig.attachment[0].colorBlend.srcFactor = NriBlendFactor_ONE;
+				break;
+		}
+
+		switch( state & GLSTATE_DSTBLEND_MASK ) {
+			case GLSTATE_DSTBLEND_ONE:
+				cmd->layoutConfig.attachment[0].colorBlend.dstFactor = NriBlendFactor_ONE;
+				break;
+			case GLSTATE_DSTBLEND_SRC_COLOR:
+				cmd->layoutConfig.attachment[0].colorBlend.dstFactor = NriBlendFactor_SRC_COLOR;
+				break;
+			case GLSTATE_DSTBLEND_ONE_MINUS_SRC_COLOR:
+				cmd->layoutConfig.attachment[0].colorBlend.dstFactor = NriBlendFactor_ONE_MINUS_SRC_COLOR;
+				break;
+			case GLSTATE_DSTBLEND_SRC_ALPHA:
+				cmd->layoutConfig.attachment[0].colorBlend.dstFactor = NriBlendFactor_SRC_ALPHA;
+				break;
+			case GLSTATE_DSTBLEND_ONE_MINUS_SRC_ALPHA:
+				cmd->layoutConfig.attachment[0].colorBlend.dstFactor = NriBlendFactor_ONE_MINUS_SRC_ALPHA;
+				break;
+			case GLSTATE_DSTBLEND_DST_ALPHA:
+				cmd->layoutConfig.attachment[0].colorBlend.dstFactor = NriBlendFactor_DST_ALPHA;
+				break;
+			case GLSTATE_DSTBLEND_ONE_MINUS_DST_ALPHA:
+				cmd->layoutConfig.attachment[0].colorBlend.dstFactor = NriBlendFactor_ONE_MINUS_DST_ALPHA;
+				break;
+			default:
+			case GLSTATE_DSTBLEND_ZERO:
+				cmd->layoutConfig.attachment[0].colorBlend.dstFactor = NriBlendFactor_ZERO;
+				break;
+		}
+
+		if( !( rb.gl.state & GLSTATE_BLEND_MASK ) ) {
+			cmd->layoutConfig.attachment[0].blendEnabled = true;
+		}
+	} else {
+		cmd->layoutConfig.attachment[0].blendEnabled = false;
+	}
+
+	if( state & GLSTATE_NO_COLORWRITE ) {
+		cmd->layoutConfig.attachment[0].colorWriteMask = 0;
+	} else {
+		cmd->layoutConfig.attachment[0].colorWriteMask = NriColorWriteBits_RGB | ( ( state & GLSTATE_ALPHAWRITE ) ? NriColorWriteBits_A : 0 );
+	}
+
+	if( state & GLSTATE_NO_DEPTH_TEST ) {
+		cmd->layoutConfig.depthAttachment.compareFunc = NriCompareFunc_ALWAYS;
+	} else if( state & GLSTATE_DEPTHFUNC_EQ ) {
+		cmd->layoutConfig.depthAttachment.compareFunc = NriCompareFunc_EQUAL;
+	} else if( state & GLSTATE_DEPTHFUNC_GT ) {
+		cmd->layoutConfig.depthAttachment.compareFunc = NriCompareFunc_GREATER;
+	} else {
+		cmd->layoutConfig.depthAttachment.compareFunc = NriCompareFunc_LESS_EQUAL;
+	}
+
+	cmd->layoutConfig.depthAttachment.write = ( state & GLSTATE_DEPTHWRITE );
+
+
+
+	rb.gl.depthoffset = (state & GLSTATE_OFFSET_FILL);
+	if( state & GLSTATE_OFFSET_FILL ) {
+
+		cmd->layoutConfig.viewport.depthRangeMin = rb.gl.depthmin;
+		cmd->layoutConfig.viewport.depthRangeMax = rb.gl.depthmax;
+	} else {
+		cmd->layoutConfig.viewport.depthRangeMin = rb.gl.depthmin + (4.0f / 65535.0f);
+		cmd->layoutConfig.viewport.depthRangeMax = rb.gl.depthmax;
+	}
+
+	if( glConfig.stencilBits ) {
+	 //TODO: workout stencil test logic
+	 // if( state & GLSTATE_STENCIL_TEST )
+	 // 	qglEnable( GL_STENCIL_TEST );
+	 // else
+	 // 	qglDisable( GL_STENCIL_TEST );
+	}
+
+	rb.gl.state = state;
+}
+
 /*
 * RB_SetState
 */
@@ -508,9 +618,9 @@ void RB_FlipFrontFace( struct frame_cmd_buffer_s* cmd)
 	assert(cmd);
 	rb.gl.frontFace = !rb.gl.frontFace;
 	if( rb.gl.frontFace ) {
-		cmd->layoutDef.cullMode = NriCullMode_FRONT;
+		cmd->layoutConfig.cullMode = NriCullMode_FRONT;
 	} else {
-		cmd->layoutDef.cullMode = NriCullMode_BACK;
+		cmd->layoutConfig.cullMode = NriCullMode_BACK;
 	}
 }
 
@@ -952,8 +1062,8 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 			FR_CmdSetVertexInput( cmd, stage->vertexInput[i].slot, stage->vertexInput[i].buffer, stage->vertexInput[i].offset );
 		}
 
-		cmd->layoutDef.attrib = stream->vbo->vertexAttribs;
-		cmd->layoutDef.halfAttrib = stream->vbo->halfFloatAttribs;
+		cmd->layoutConfig.attrib = stream->vbo->vertexAttribs;
+		cmd->layoutConfig.halfAttrib = stream->vbo->halfFloatAttribs;
 
 		RB_BindShader( NULL, draw->entity, draw->shader, draw->fog );
 		RB_SetPortalSurface( draw->portalSurface );

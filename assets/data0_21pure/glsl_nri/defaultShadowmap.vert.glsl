@@ -1,5 +1,4 @@
 #include "include/common.glsl"
-#include "include/uniforms.glsl"
 #include "include/attributes.glsl"
 
 #ifndef NUM_SHADOWS
