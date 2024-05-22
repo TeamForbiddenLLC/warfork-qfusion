@@ -316,3 +316,39 @@ NriFormat R_NRIFormat(enum texture_format_e format) {
   }
   return NriFormat_UNKNOWN;
 }
+
+hash_t DescSimple_SerialHash( struct descriptor_simple_serializer_s *state )
+{
+	hash_t hash = HASH_INITIAL_VALUE;
+	uint32_t descIndex = 0;
+	for( uint32_t mask = state->descriptorMask; mask; mask >>= 1u, descIndex++ ) {
+		if( mask & 1u ) {
+			hash = hash_u32( hash, descIndex );
+			hash = hash_u32( hash, state->cookies[descIndex] );
+		}
+	}
+	return hash;
+}
+
+void DescSimple_WriteImage( struct descriptor_simple_serializer_s *state, uint32_t slot, const image_t *image )
+{
+	assert( image );
+	assert( state );
+	state->descriptorMask |= ( slot << 1u );
+	state->cookies[slot] = image->cookie;
+	state->descriptors[slot] = image->descriptor;
+}
+
+void DescSimple_StateCommit( struct nri_backend_s *backend, struct descriptor_simple_serializer_s *state, NriDescriptorSet *descriptor )
+{
+	uint32_t descIndex = 0;
+	for( uint32_t mask = state->descriptorMask; mask; mask >>= 1u, descIndex++ ) {
+		if( mask & 1u ) {
+			NriDescriptorRangeUpdateDesc updateDesc = { 0 };
+			updateDesc.descriptors = &state->descriptors[descIndex];
+			updateDesc.descriptorNum = 1;
+			backend->coreI.UpdateDescriptorRanges(descriptor, descIndex, 1, &updateDesc);
+		}
+	}
+}
+

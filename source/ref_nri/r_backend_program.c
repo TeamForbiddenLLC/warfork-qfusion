@@ -18,6 +18,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+#include "r_descriptor_pool.h"
+#include "r_hasher.h"
 #include "r_local.h"
 #include "r_backend_local.h"
 
@@ -54,6 +56,9 @@ static int rb_noiseperm[NOISE_SIZE];
 static shaderpass_t r_GLSLpasses[MAX_BUILTIN_GLSLPASSES];
 
 static void RB_SetShaderpassState( int state );
+
+static void RB_RenderMeshGLSL_Q3AShader_2(struct frame_cmd_buffer_s* cmd, const shaderpass_t *pass, r_glslfeat_t programFeatures );
+static void RB_RenderMeshGLSL_Material_2(struct frame_cmd_buffer_s* cmd, const shaderpass_t *pass, r_glslfeat_t programFeatures );
 
 static void RB_RenderMeshGLSL_Material( const shaderpass_t *pass, r_glslfeat_t programFeatures );
 static void RB_RenderMeshGLSL_Distortion( const shaderpass_t *pass, r_glslfeat_t programFeatures );
@@ -813,9 +818,288 @@ static void RB_UpdateFogUniforms( int program, const mfog_t *fog )
 		fog->shader->fog_dist, &fogPlane, &vpnPlane, dist );
 }
 
-/*
-* RB_RenderMeshGLSL_Material
-*/
+
+static void RB_RenderMeshGLSL_Material_2(struct frame_cmd_buffer_s* cmd, const shaderpass_t *pass, r_glslfeat_t programFeatures )
+{
+	int program;
+	vec3_t lightDir = { 0.0f, 0.0f, 0.0f };
+	vec4_t ambient = { 0.0f, 0.0f, 0.0f, 0.0f }, diffuse = { 0.0f, 0.0f, 0.0f, 0.0f };
+	const superLightStyle_t *lightStyle = NULL;
+	const mfog_t *fog = rb.fog;
+	mat4_t texMatrix;
+	
+	struct descriptor_simple_serializer_s materialDesc = {0};  
+
+	// handy pointers
+	const image_t* base = RB_ShaderpassTex( pass );
+	const image_t* normalmap = pass->images[1] && !pass->images[1]->missing ? pass->images[1] : rsh.blankBumpTexture;
+	const image_t* glossmap = pass->images[2] && !pass->images[2]->missing ?  pass->images[2] : NULL;
+	const image_t* decalmap = pass->images[3] && !pass->images[3]->missing ?  pass->images[3] : NULL;
+	const image_t* entdecalmap = pass->images[4] && !pass->images[4]->missing ?  pass->images[4] : NULL;
+
+	if( normalmap && !normalmap->loaded ) {
+		normalmap = rsh.blankBumpTexture;
+	}
+	if( glossmap && !glossmap->loaded ) {
+		glossmap = NULL;
+	}
+	if( decalmap && !decalmap->loaded ) {
+		decalmap = NULL;
+	}
+	if( entdecalmap && !entdecalmap->loaded ) {
+		entdecalmap = NULL;
+	}
+
+	// use blank image if the normalmap is too tiny due to high picmip value
+	if( normalmap && ( normalmap->upload_width < 2 || normalmap->upload_height < 2 ) ) {
+		normalmap = rsh.blankBumpTexture;
+	}
+
+	if( ( rb.currentModelType == mod_brush && !mapConfig.deluxeMappingEnabled )
+		|| ( normalmap == rsh.blankBumpTexture && !glossmap && !decalmap && !entdecalmap ) ) {
+		// render as plain Q3A shader, which is less computation-intensive
+		RB_RenderMeshGLSL_Q3AShader_2(cmd, pass, programFeatures );
+		return;
+	}
+	float offsetmappingScale = (normalmap->samples == 4) ? (r_offsetmapping_scale->value * rb.currentShader->offsetmappingScale): 0;
+	float glossIntensity = rb.currentShader->glossIntensity ? rb.currentShader->glossIntensity : r_lighting_glossintensity->value;
+	float glossExponent = rb.currentShader->glossExponent ? rb.currentShader->glossExponent : r_lighting_glossexponent->value;
+
+	const bool applyDecal = decalmap != NULL;
+
+	// possibly apply the "texture" fog inline
+	if( fog == rb.texFog ) {
+		if( ( rb.currentShader->numpasses == 1 ) && !rb.currentShadowBits ) {
+			rb.texFog = NULL;
+		}
+		else {
+			fog = NULL;
+		}
+	}
+	programFeatures |= RB_FogProgramFeatures( pass, fog );
+
+	if( rb.currentModelType == mod_brush )
+	{
+		// brush models
+		if( !( r_offsetmapping->integer & 1 ) ) {
+			offsetmappingScale = 0;
+		}
+		if( rb.renderFlags & RF_LIGHTMAP ) {
+			programFeatures |= GLSL_SHADER_MATERIAL_BASETEX_ALPHA_ONLY;
+		}
+		if( DRAWFLAT() ) {
+			programFeatures |= GLSL_SHADER_COMMON_DRAWFLAT|GLSL_SHADER_MATERIAL_BASETEX_ALPHA_ONLY;
+		}
+	}
+	else if( rb.currentModelType == mod_bad )
+	{
+		// polys
+		if( !( r_offsetmapping->integer & 2 ) )
+			offsetmappingScale = 0;
+	}
+	else
+	{
+		// regular models
+		if( !( r_offsetmapping->integer & 4 ) )
+			offsetmappingScale = 0;
+	#ifdef CELSHADEDMATERIAL
+		programFeatures |= GLSL_SHADER_MATERIAL_CELSHADING;
+	#endif
+	#ifdef HALFLAMBERTLIGHTING
+		programFeatures |= GLSL_SHADER_MATERIAL_HALFLAMBERT;
+	#endif
+	}
+
+	// add dynamic lights
+	if( rb.currentDlightBits ) {
+		programFeatures |= RB_DlightbitsToProgramFeatures( rb.currentDlightBits );
+	}
+
+	Matrix4_Identity( texMatrix );
+
+	DescSimple_WriteImage(&materialDesc, 0, base);	
+
+	// convert rgbgen and alphagen to GLSL feature defines
+	programFeatures |= RB_RGBAlphaGenToProgramFeatures( &pass->rgbgen, &pass->alphagen );
+
+	// set shaderpass state (blending, depthwrite, etc)
+	RB_SetShaderpassState( pass->flags );
+
+	// we only send S-vectors to GPU and recalc T-vectors as cross product
+	// in vertex shader
+	//RB_BindImage( 1, normalmap );         // normalmap
+	DescSimple_WriteImage(&materialDesc, 1, normalmap);	
+
+	if( glossmap && glossIntensity )
+	{
+		programFeatures |= GLSL_SHADER_MATERIAL_SPECULAR;
+		//RB_BindImage( 2, glossmap ); // gloss
+		DescSimple_WriteImage(&materialDesc, 2, glossmap);	
+	}
+
+	if( applyDecal )
+	{
+		programFeatures |= GLSL_SHADER_MATERIAL_DECAL;
+
+		if( rb.renderFlags & RF_LIGHTMAP ) {
+			decalmap = rsh.blackTexture;
+			programFeatures |= GLSL_SHADER_MATERIAL_DECAL_ADD;
+		}
+		else {
+			// if no alpha, use additive blending
+			if( decalmap->samples & 1 )
+				programFeatures |= GLSL_SHADER_MATERIAL_DECAL_ADD;
+		}
+
+		//RB_BindImage( 3, decalmap ); // decal
+		DescSimple_WriteImage(&materialDesc, 2, decalmap);	
+	}
+
+	if( entdecalmap )
+	{
+		programFeatures |= GLSL_SHADER_MATERIAL_ENTITY_DECAL;
+
+		// if no alpha, use additive blending
+		if( entdecalmap->samples & 1 )
+			programFeatures |= GLSL_SHADER_MATERIAL_ENTITY_DECAL_ADD;
+
+		//RB_BindImage( 4, entdecalmap ); // decal
+		DescSimple_WriteImage( &materialDesc, 4, entdecalmap );
+	}
+
+	if( offsetmappingScale > 0 )
+		programFeatures |= r_offsetmapping_reliefmapping->integer ? 
+			GLSL_SHADER_MATERIAL_RELIEFMAPPING : GLSL_SHADER_MATERIAL_OFFSETMAPPING;
+
+	if( rb.currentModelType == mod_brush )
+	{
+		// world surface
+		if( rb.superLightStyle && rb.superLightStyle->lightmapNum[0] >= 0 )
+		{
+			lightStyle = rb.superLightStyle;
+
+			// bind lightmap textures and set program's features for lightstyles
+			int i = 0;
+			for(; i < MAX_LIGHTMAPS && lightStyle->lightmapStyles[i] != 255; i++ ) {
+				DescSimple_WriteImage( &materialDesc, i + 4, rsh.worldBrushModel->lightmapImages[lightStyle->lightmapNum[i]] );
+				//RB_BindImage( i+4, rsh.worldBrushModel->lightmapImages[lightStyle->lightmapNum[i]] );
+			}
+
+			programFeatures |= ( i * GLSL_SHADER_MATERIAL_LIGHTSTYLE0 );
+
+			if( mapConfig.lightmapArrays )
+				programFeatures |= GLSL_SHADER_MATERIAL_LIGHTMAP_ARRAYS;
+
+			if( i == 1 && !mapConfig.lightingIntensity )
+			{
+				vec_t *rgb = rsc.lightStyles[lightStyle->lightmapStyles[0]].rgb;
+
+				// GLSL_SHADER_MATERIAL_FB_LIGHTMAP indicates that there's no need to renormalize
+				// the lighting vector for specular (saves 3 adds, 3 muls and 1 normalize per pixel)
+				if( rgb[0] == 1 && rgb[1] == 1 && rgb[2] == 1 )
+					programFeatures |= GLSL_SHADER_MATERIAL_FB_LIGHTMAP;
+			}
+
+			if( !VectorCompare( mapConfig.ambient, vec3_origin ) )
+			{
+				VectorCopy( mapConfig.ambient, ambient );
+				programFeatures |= GLSL_SHADER_MATERIAL_AMBIENT_COMPENSATION;
+			}
+		}
+		else
+		{
+			// vertex lighting
+			VectorSet( lightDir, 0.1f, 0.2f, 0.7f );
+			VectorSet( ambient, rb.minLight, rb.minLight, rb.minLight );
+			VectorSet( diffuse, rb.minLight, rb.minLight, rb.minLight );
+			
+			programFeatures |= GLSL_SHADER_MATERIAL_DIRECTIONAL_LIGHT|GLSL_SHADER_MATERIAL_DIRECTIONAL_LIGHT_MIX;
+		}
+	}
+	else
+	{
+		vec3_t temp;
+
+		programFeatures |= GLSL_SHADER_MATERIAL_DIRECTIONAL_LIGHT;
+
+		if( rb.currentModelType == mod_bad )
+		{
+			programFeatures |= GLSL_SHADER_MATERIAL_DIRECTIONAL_LIGHT_FROM_NORMAL;
+
+			VectorSet( lightDir, 0, 0, 0 );
+			Vector4Set( ambient, 0, 0, 0, 0 );
+			Vector4Set( diffuse, 1, 1, 1, 1 );
+		}
+		else
+		{
+			const entity_t *e = rb.currentEntity;
+
+			if( e->flags & RF_FULLBRIGHT )
+			{
+				Vector4Set( ambient, 1, 1, 1, 1 );
+				Vector4Set( diffuse, 1, 1, 1, 1 );
+			}
+			else
+			{
+				if( e->model && e != rsc.worldent )
+				{
+					// get weighted incoming direction of world and dynamic lights
+					R_LightForOrigin( e->lightingOrigin, temp, ambient, diffuse, 
+						e->model->radius * e->scale, rb.noWorldLight );
+				}
+				else
+				{
+					VectorSet( temp, 0.1f, 0.2f, 0.7f );
+				}
+
+				if( e->flags & RF_MINLIGHT )
+				{
+					float minLight = rb.minLight;
+					if( ambient[0] <= minLight || ambient[1] <= minLight || ambient[2] <= minLight )
+						VectorSet( ambient, minLight, minLight, minLight );
+				}
+
+				// rotate direction
+				Matrix3_TransformVector( e->axis, temp, lightDir );
+			}
+		}
+	}
+
+	program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_MATERIAL, NULL,
+		rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
+	if( RB_BindProgram( program ) )
+	{
+		// update uniforms
+
+		RB_UpdateCommonUniforms( program, pass, texMatrix );
+
+		RP_UpdateMaterialUniforms( program, offsetmappingScale, glossIntensity, glossExponent );
+
+		RP_UpdateDiffuseLightUniforms( program, lightDir, ambient, diffuse );
+
+		if( programFeatures & GLSL_SHADER_COMMON_FOG ) {
+			RB_UpdateFogUniforms( program, fog );
+		}
+
+		// submit animation data
+		if( programFeatures & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
+			RP_UpdateBonesUniforms( program, rb.bonesData.numBones, rb.bonesData.dualQuats );
+		}
+
+		// dynamic lights
+		RP_UpdateDynamicLightsUniforms( program, lightStyle, rb.currentEntity->origin, rb.currentEntity->axis, 
+			rb.currentDlightBits );
+
+		// r_drawflat
+		if( programFeatures & GLSL_SHADER_COMMON_DRAWFLAT ) {
+			RP_UpdateDrawFlatUniforms( program, rsh.wallColor, rsh.floorColor );
+		}
+
+		RB_DrawElementsReal( &rb.drawElements );
+	}
+}
+
+
 static void RB_RenderMeshGLSL_Material( const shaderpass_t *pass, r_glslfeat_t programFeatures )
 {
 	int i;
@@ -1456,7 +1740,6 @@ static void RB_RenderMeshGLSL_Q3AShader_2(struct frame_cmd_buffer_s* cmd, const 
 {
 	int state;
 	int rgbgen = pass->rgbgen.type;
-	const image_t *image;
 	const mfog_t *fog = rb.fog;
 	bool isWorldSurface = rb.currentModelType == mod_brush ? true : false;
 	const superLightStyle_t *lightStyle = NULL;
@@ -1466,6 +1749,8 @@ static void RB_RenderMeshGLSL_Q3AShader_2(struct frame_cmd_buffer_s* cmd, const 
 	vec4_t lightAmbient, lightDiffuse;
 	mat4_t texMatrix, genVectors;
 
+	struct descriptor_simple_serializer_s materialDesc = {0};  
+	
 	// lightmapped surface pass
 	if( isWorldSurface && 
 		rb.superLightStyle && 
@@ -1534,7 +1819,7 @@ static void RB_RenderMeshGLSL_Q3AShader_2(struct frame_cmd_buffer_s* cmd, const 
 		Vector4Set( lightDiffuse, 1, 1, 1, 1 );
 	}
 
-	image = RB_ShaderpassTex( pass );
+	const image_t *image = RB_ShaderpassTex( pass );
 	if( isLightmapped || isWorldVertexLight ) {
 		// add dynamic lights
 		if( rb.currentDlightBits ) {
@@ -1552,8 +1837,8 @@ static void RB_RenderMeshGLSL_Q3AShader_2(struct frame_cmd_buffer_s* cmd, const 
 		programFeatures |= GLSL_SHADER_Q3_ALPHA_MASK;
 	}
 
-	RB_BindImage( 0, image );
-
+	DescSimple_WriteImage( &materialDesc, 0, image); 
+	
 	// convert rgbgen and alphagen to GLSL feature defines
 	programFeatures |= RB_RGBAlphaGenToProgramFeatures( &pass->rgbgen, &pass->alphagen );
 
@@ -1575,9 +1860,6 @@ static void RB_RenderMeshGLSL_Q3AShader_2(struct frame_cmd_buffer_s* cmd, const 
 
 	RB_SetShaderpassState( state );
 
-	if( programFeatures & GLSL_SHADER_COMMON_SOFT_PARTICLE ) {
-		RB_BindImage( 3, rsh.screenDepthTextureCopy );
-	}
 
 	if( isLightmapped ) {
 		int i;
@@ -1596,10 +1878,21 @@ static void RB_RenderMeshGLSL_Q3AShader_2(struct frame_cmd_buffer_s* cmd, const 
  // 	.halfAttrib = cmd->layoutState.halfAttrib
  // };
 	struct glsl_program_s* program = RP_ResolveProgram(GLSL_PROGRAM_TYPE_Q3A_SHADER, NULL,	rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-	struct pipeline_s* pipeline = RP_ResolvePipeline(program, &cmd->layoutDef);
-  
-  //rsh.nri.coreI.CmdSetPipelineLayout(cmd->cmd, pipeline->layout);
-  //rsh.nri.coreI.CmdSetPipeline(cmd->cmd, pipeline->pipeline);
+	struct pipeline_hash_s* pipeline = RP_ResolvePipeline(program, &cmd->layoutConfig);
+	
+	//ResolveDescriptorSet(rsh.nri, cmd, )
+
+	if( programFeatures & GLSL_SHADER_COMMON_SOFT_PARTICLE ) {
+		DescSimple_WriteImage( &materialDesc, 3, rsh.screenDepthTextureCopy );
+		//RB_BindImage( 3, rsh.screenDepthTextureCopy );
+	}
+
+	struct descriptor_set_result_s result = ResolveDescriptorSet( &rsh.nri, cmd, program->descriptorSetAlloc[DESCRIPTOR_SET_0], DescSimple_SerialHash( &materialDesc ) );
+	if( !result.found ) {
+		DescSimple_StateCommit( &rsh.nri, &materialDesc, result.set );
+	}
+	rsh.nri.coreI.CmdSetDescriptorSet(cmd->cmd, DESCRIPTOR_SET_0, result.set, NULL);
+
 
 	FR_CmdDrawElements(cmd, 
 										cmd->additional.drawElements.numElems,
@@ -1607,6 +1900,8 @@ static void RB_RenderMeshGLSL_Q3AShader_2(struct frame_cmd_buffer_s* cmd, const 
 										cmd->additional.drawElements.numInstances,
 										cmd->additional.drawElements.firstVert,
 										cmd->additional.drawElements.firstElem);
+
+	
 
 	//program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_Q3A_SHADER, NULL,	rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 	//if( RB_BindProgram( program ) )
@@ -2068,249 +2363,9 @@ void RB_RenderMeshGLSLProgrammed_2(struct frame_cmd_buffer_s *cmd, const shaderp
 	}
 
 	switch( programType ) {
-		case GLSL_PROGRAM_TYPE_MATERIAL: {
-			vec3_t lightDir = { 0.0f, 0.0f, 0.0f };
-			vec4_t ambient = { 0.0f, 0.0f, 0.0f, 0.0f }, diffuse = { 0.0f, 0.0f, 0.0f, 0.0f };
-			float offsetmappingScale, glossIntensity, glossExponent;
-			const superLightStyle_t *lightStyle = NULL;
-			const mfog_t *fog = rb.fog;
-			bool applyDecal;
-			mat4_t texMatrix;
-			r_glslfeat_t programFeatures = features;
-			// handy pointers
-			const image_t* base = RB_ShaderpassTex( pass );
-			const image_t* normalmap = pass->images[1] && !pass->images[1]->missing ? pass->images[1] : rsh.blankBumpTexture;
-			const image_t* glossmap = pass->images[2] && !pass->images[2]->missing ? pass->images[2] : NULL;
-			const image_t* decalmap = pass->images[3] && !pass->images[3]->missing ? pass->images[3] : NULL;
-			const image_t* entdecalmap = pass->images[4] && !pass->images[4]->missing ? pass->images[4] : NULL;
-
-			if( normalmap && !normalmap->loaded ) {
-				normalmap = rsh.blankBumpTexture;
-			}
-			if( glossmap && !glossmap->loaded ) {
-				glossmap = NULL;
-			}
-			if( decalmap && !decalmap->loaded ) {
-				decalmap = NULL;
-			}
-			if( entdecalmap && !entdecalmap->loaded ) {
-				entdecalmap = NULL;
-			}
-
-			// use blank image if the normalmap is too tiny due to high picmip value
-			if( normalmap && ( normalmap->upload_width < 2 || normalmap->upload_height < 2 ) ) {
-				normalmap = rsh.blankBumpTexture;
-			}
-
-			if( ( rb.currentModelType == mod_brush && !mapConfig.deluxeMappingEnabled ) || ( normalmap == rsh.blankBumpTexture && !glossmap && !decalmap && !entdecalmap ) ) {
-				// render as plain Q3A shader, which is less computation-intensive
-				RB_RenderMeshGLSL_Q3AShader_2(cmd, pass, programFeatures );
-				return;
-			}
-
-			if( normalmap->samples == 4 )
-				offsetmappingScale = r_offsetmapping_scale->value * rb.currentShader->offsetmappingScale;
-			else // no alpha in normalmap, don't bother with offset mapping
-				offsetmappingScale = 0;
-
-			glossIntensity = rb.currentShader->glossIntensity ? rb.currentShader->glossIntensity : r_lighting_glossintensity->value;
-			glossExponent = rb.currentShader->glossExponent ? rb.currentShader->glossExponent : r_lighting_glossexponent->value;
-
-			applyDecal = decalmap != NULL;
-
-			// possibly apply the "texture" fog inline
-			if( fog == rb.texFog ) {
-				if( ( rb.currentShader->numpasses == 1 ) && !rb.currentShadowBits ) {
-					rb.texFog = NULL;
-				} else {
-					fog = NULL;
-				}
-			}
-			programFeatures |= RB_FogProgramFeatures( pass, fog );
-
-			if( rb.currentModelType == mod_brush ) {
-				// brush models
-				if( !( r_offsetmapping->integer & 1 ) ) {
-					offsetmappingScale = 0;
-				}
-				if( rb.renderFlags & RF_LIGHTMAP ) {
-					programFeatures |= GLSL_SHADER_MATERIAL_BASETEX_ALPHA_ONLY;
-				}
-				if( DRAWFLAT() ) {
-					programFeatures |= GLSL_SHADER_COMMON_DRAWFLAT | GLSL_SHADER_MATERIAL_BASETEX_ALPHA_ONLY;
-				}
-			} else if( rb.currentModelType == mod_bad ) {
-				// polys
-				if( !( r_offsetmapping->integer & 2 ) )
-					offsetmappingScale = 0;
-			} else {
-				// regular models
-				if( !( r_offsetmapping->integer & 4 ) )
-					offsetmappingScale = 0;
-#ifdef CELSHADEDMATERIAL
-				programFeatures |= GLSL_SHADER_MATERIAL_CELSHADING;
-#endif
-#ifdef HALFLAMBERTLIGHTING
-				programFeatures |= GLSL_SHADER_MATERIAL_HALFLAMBERT;
-#endif
-			}
-
-			// add dynamic lights
-			if( rb.currentDlightBits ) {
-				programFeatures |= RB_DlightbitsToProgramFeatures( rb.currentDlightBits );
-			}
-
-			Matrix4_Identity( texMatrix );
-
-			RB_BindImage( 0, base );
-
-			// convert rgbgen and alphagen to GLSL feature defines
-			programFeatures |= RB_RGBAlphaGenToProgramFeatures( &pass->rgbgen, &pass->alphagen );
-
-			// set shaderpass state (blending, depthwrite, etc)
-			RB_SetShaderpassState( pass->flags );
-
-			// we only send S-vectors to GPU and recalc T-vectors as cross product
-			// in vertex shader
-			RB_BindImage( 1, normalmap ); // normalmap
-
-			if( glossmap && glossIntensity ) {
-				programFeatures |= GLSL_SHADER_MATERIAL_SPECULAR;
-				RB_BindImage( 2, glossmap ); // gloss
-			}
-
-			if( applyDecal ) {
-				programFeatures |= GLSL_SHADER_MATERIAL_DECAL;
-
-				if( rb.renderFlags & RF_LIGHTMAP ) {
-					decalmap = rsh.blackTexture;
-					programFeatures |= GLSL_SHADER_MATERIAL_DECAL_ADD;
-				} else {
-					// if no alpha, use additive blending
-					if( decalmap->samples & 1 )
-						programFeatures |= GLSL_SHADER_MATERIAL_DECAL_ADD;
-				}
-
-				RB_BindImage( 3, decalmap ); // decal
-			}
-
-			if( entdecalmap ) {
-				programFeatures |= GLSL_SHADER_MATERIAL_ENTITY_DECAL;
-
-				// if no alpha, use additive blending
-				if( entdecalmap->samples & 1 )
-					programFeatures |= GLSL_SHADER_MATERIAL_ENTITY_DECAL_ADD;
-
-				RB_BindImage( 4, entdecalmap ); // decal
-			}
-
-			if( offsetmappingScale > 0 )
-				programFeatures |= r_offsetmapping_reliefmapping->integer ? GLSL_SHADER_MATERIAL_RELIEFMAPPING : GLSL_SHADER_MATERIAL_OFFSETMAPPING;
-
-			if( rb.currentModelType == mod_brush ) {
-				// world surface
-				if( rb.superLightStyle && rb.superLightStyle->lightmapNum[0] >= 0 ) {
-					lightStyle = rb.superLightStyle;
-
-					// bind lightmap textures and set program's features for lightstyles
-					int i = 0;
-					for(i = 0; i < MAX_LIGHTMAPS && lightStyle->lightmapStyles[i] != 255; i++ )
-						RB_BindImage( i + 4, rsh.worldBrushModel->lightmapImages[lightStyle->lightmapNum[i]] );
-
-					programFeatures |= ( i * GLSL_SHADER_MATERIAL_LIGHTSTYLE0 );
-
-					if( mapConfig.lightmapArrays )
-						programFeatures |= GLSL_SHADER_MATERIAL_LIGHTMAP_ARRAYS;
-
-					if(i == 1 && !mapConfig.lightingIntensity ) {
-						vec_t *rgb = rsc.lightStyles[lightStyle->lightmapStyles[0]].rgb;
-
-						// GLSL_SHADER_MATERIAL_FB_LIGHTMAP indicates that there's no need to renormalize
-						// the lighting vector for specular (saves 3 adds, 3 muls and 1 normalize per pixel)
-						if( rgb[0] == 1 && rgb[1] == 1 && rgb[2] == 1 )
-							programFeatures |= GLSL_SHADER_MATERIAL_FB_LIGHTMAP;
-					}
-
-					if( !VectorCompare( mapConfig.ambient, vec3_origin ) ) {
-						VectorCopy( mapConfig.ambient, ambient );
-						programFeatures |= GLSL_SHADER_MATERIAL_AMBIENT_COMPENSATION;
-					}
-				} else {
-					// vertex lighting
-					VectorSet( lightDir, 0.1f, 0.2f, 0.7f );
-					VectorSet( ambient, rb.minLight, rb.minLight, rb.minLight );
-					VectorSet( diffuse, rb.minLight, rb.minLight, rb.minLight );
-
-					programFeatures |= GLSL_SHADER_MATERIAL_DIRECTIONAL_LIGHT | GLSL_SHADER_MATERIAL_DIRECTIONAL_LIGHT_MIX;
-				}
-			} else {
-				vec3_t temp;
-
-				programFeatures |= GLSL_SHADER_MATERIAL_DIRECTIONAL_LIGHT;
-
-				if( rb.currentModelType == mod_bad ) {
-					programFeatures |= GLSL_SHADER_MATERIAL_DIRECTIONAL_LIGHT_FROM_NORMAL;
-
-					VectorSet( lightDir, 0, 0, 0 );
-					Vector4Set( ambient, 0, 0, 0, 0 );
-					Vector4Set( diffuse, 1, 1, 1, 1 );
-				} else {
-					const entity_t *e = rb.currentEntity;
-
-					if( e->flags & RF_FULLBRIGHT ) {
-						Vector4Set( ambient, 1, 1, 1, 1 );
-						Vector4Set( diffuse, 1, 1, 1, 1 );
-					} else {
-						if( e->model && e != rsc.worldent ) {
-							// get weighted incoming direction of world and dynamic lights
-							R_LightForOrigin( e->lightingOrigin, temp, ambient, diffuse, e->model->radius * e->scale, rb.noWorldLight );
-						} else {
-							VectorSet( temp, 0.1f, 0.2f, 0.7f );
-						}
-
-						if( e->flags & RF_MINLIGHT ) {
-							float minLight = rb.minLight;
-							if( ambient[0] <= minLight || ambient[1] <= minLight || ambient[2] <= minLight )
-								VectorSet( ambient, minLight, minLight, minLight );
-						}
-
-						// rotate direction
-						Matrix3_TransformVector( e->axis, temp, lightDir );
-					}
-				}
-			}
-
-			int program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_MATERIAL, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-			if( RB_BindProgram( program ) ) {
-				// update uniforms
-
-				RB_UpdateCommonUniforms( program, pass, texMatrix );
-
-				RP_UpdateMaterialUniforms( program, offsetmappingScale, glossIntensity, glossExponent );
-
-				RP_UpdateDiffuseLightUniforms( program, lightDir, ambient, diffuse );
-
-				if( programFeatures & GLSL_SHADER_COMMON_FOG ) {
-					RB_UpdateFogUniforms( program, fog );
-				}
-
-				// submit animation data
-				if( programFeatures & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
-					RP_UpdateBonesUniforms( program, rb.bonesData.numBones, rb.bonesData.dualQuats );
-				}
-
-				// dynamic lights
-				RP_UpdateDynamicLightsUniforms( program, lightStyle, rb.currentEntity->origin, rb.currentEntity->axis, rb.currentDlightBits );
-
-				// r_drawflat
-				if( programFeatures & GLSL_SHADER_COMMON_DRAWFLAT ) {
-					RP_UpdateDrawFlatUniforms( program, rsh.wallColor, rsh.floorColor );
-				}
-
-				RB_DrawElementsReal( &rb.drawElements );
-			}
+		case GLSL_PROGRAM_TYPE_MATERIAL:
+			RB_RenderMeshGLSL_Material_2( cmd, pass, features );
 			break;
-		}
 		case GLSL_PROGRAM_TYPE_DISTORTION:
 			RB_RenderMeshGLSL_Distortion( pass, features );
 			break;
@@ -2774,13 +2829,13 @@ static void RB_SetShaderState_2( struct frame_cmd_buffer_s* cmd)
 
 	// Face culling
 	if( !gl_cull->integer || rb.currentEntity->rtype == RT_SPRITE ) {
-		cmd->layoutDef.cullMode = NriCullMode_NONE;
+		cmd->layoutConfig.cullMode = NriCullMode_NONE;
 	} else if( shaderFlags & SHADER_CULL_FRONT ) {
-		cmd->layoutDef.cullMode = NriCullMode_FRONT;
+		cmd->layoutConfig.cullMode = NriCullMode_FRONT;
 	} else if( shaderFlags & SHADER_CULL_BACK ) {
-		cmd->layoutDef.cullMode = NriCullMode_BACK;
+		cmd->layoutConfig.cullMode = NriCullMode_BACK;
 	} else {
-		cmd->layoutDef.cullMode = NriCullMode_NONE;
+		cmd->layoutConfig.cullMode = NriCullMode_NONE;
 	}
 
 	state = 0;
@@ -2794,6 +2849,27 @@ static void RB_SetShaderState_2( struct frame_cmd_buffer_s* cmd)
 		state |= GLSTATE_NO_DEPTH_TEST;
 
 	rb.currentShaderState = (state & rb.shaderStateANDmask) | rb.shaderStateORmask;
+}
+
+
+
+
+static void RB_SetShaderpassState_2( struct frame_cmd_buffer_s *cmd, int state )
+{
+	state |= rb.currentShaderState;
+	if( rb.alphaHack ) {
+		if( !( state & GLSTATE_BLEND_MASK ) ) {
+			// force alpha blending
+			state = (state & ~ GLSTATE_DEPTHWRITE)|GLSTATE_SRCBLEND_SRC_ALPHA|GLSTATE_DSTBLEND_ONE_MINUS_SRC_ALPHA;
+		}
+	}
+	if( rb.noColorWrite ) {
+		state |= GLSTATE_NO_COLORWRITE;
+	}
+	if( rb.depthEqual && (state & GLSTATE_DEPTHWRITE) ) {
+		state |= GLSTATE_DEPTHFUNC_EQ;
+	}
+	RB_SetState_2( cmd, state );
 }
 
 

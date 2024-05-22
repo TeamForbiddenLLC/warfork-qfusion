@@ -87,7 +87,7 @@ int R_TextureTarget( int flags, int *uploadTarget )
 */
 static void R_BindImage( const image_t *tex )
 {
-	qglBindTexture( R_TextureTarget( tex->flags, NULL ), tex->texnum );
+	//qglBindTexture( R_TextureTarget( tex->flags, NULL ), tex->texnum );
 	RB_FlushTextureCache();
 }
 
@@ -96,7 +96,7 @@ static void R_BindImage( const image_t *tex )
 */
 static void R_UnbindImage( const image_t *tex )
 {
-	qglBindTexture( R_TextureTarget( tex->flags, NULL ), 0 );
+	//qglBindTexture( R_TextureTarget( tex->flags, NULL ), 0 );
 	RB_FlushTextureCache();
 }
 
@@ -1633,6 +1633,7 @@ static image_t *R_LinkPic( unsigned int hash )
 	image->next = images_hash_headnode[hash].next;
 	image->next->prev = image;
 	image->prev->next = image;
+	image->cookie = ++rsh.cookie; 
 
 	ri.Mutex_Unlock( r_imagesLock );
 	assert(image);

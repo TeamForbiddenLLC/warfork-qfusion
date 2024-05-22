@@ -1,8 +1,7 @@
 #include "include/common.glsl"
-#include "include/uniforms.glsl"
 #include "include/fog.glsl"
 
-qf_varying vec2 v_FogCoord;
+layout(location = 0) in vec2 v_FogCoord;
 
 void main(void)
 {
