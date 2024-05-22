@@ -1,9 +1,11 @@
 
-#ifndef R_DESCIRPTOR_POOL_H
-#define R_DESCIRPTOR_POOL_H
+#ifndef R_DESCRIPTOR_POOL_H
+#define R_DESCRIPTOR_POOL_H
 
 #include "../../gameshared/q_arch.h"
 #include "r_frame_cmd_buffer.h"
+#include "r_hasher.h"
+#include "r_image.h"
 #include "r_nri.h"
 
 #define RESERVE_BLOCK_SIZE 1024
@@ -25,7 +27,9 @@ struct descriptor_set_slot_s {
 };
 
 struct descriptor_set_allloc_s {
+	// configuration for the allocator
 	struct {
+		NriPipelineLayout *layout;
 		uint32_t setIndex;
 		uint32_t samplerMaxNum;
 		uint32_t constantBufferMaxNum;
@@ -38,8 +42,6 @@ struct descriptor_set_allloc_s {
 		uint32_t storageStructuredBufferMaxNum;
 		uint32_t accelerationStructureMaxNum;
 	} config;
-	NriPipelineLayout *layout;
-	uint32_t setIndex;
 
 	struct descriptor_set_slot_s *hashSlots[ALLOC_HASH_RESERVE];
 	struct descriptor_set_slot_s *queueBegin;
@@ -56,7 +58,8 @@ struct descriptor_set_result_s {
 	struct NriDescriptorSet *set;
 };
 
-struct descriptor_set_result_s AllocResolveDescriptorSet( struct nri_backend_s *backend, struct frame_cmd_buffer_s *cmd, struct descriptor_set_allloc_s *alloc, uint32_t hash );
+struct descriptor_set_result_s ResolveDescriptorSet( struct nri_backend_s *backend, struct frame_cmd_buffer_s *cmd, struct descriptor_set_allloc_s *alloc, uint32_t hash );
 void FreeDescriptorSetAlloc( struct nri_backend_s *backend, struct descriptor_set_allloc_s *alloc );
+
 
 #endif

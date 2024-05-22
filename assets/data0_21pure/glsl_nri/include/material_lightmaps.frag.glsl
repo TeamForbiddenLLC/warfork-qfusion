@@ -10,6 +10,7 @@ uniform LightmapSampler u_LightmapTexture3;
 #endif // NUM_LIGHTMAPS >= 3
 #endif // NUM_LIGHTMAPS >= 2
 
+
 // deluxemapping using light vectors in modelspace
 myhalf3 LightmapColor(in myhalf3 surfaceNormalModelspace, out myhalf3 weightedDiffuseNormalModelspace)
 {
