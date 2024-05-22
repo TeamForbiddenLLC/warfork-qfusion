@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 // r_program.c - OpenGL Shading Language support
 
+#include "r_descriptor_pool.h"
 #include "r_local.h"
 #include "../qalgo/q_trie.h"
 #include "./r_hasher.h"
@@ -33,6 +34,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_vattribs.h"
 #include "r_nri.h"
 #include "stb_ds.h"
+
+#include "../../gameshared/q_arch.h"
 
 #define MAX_GLSL_PROGRAMS			1024
 #define GLSL_PROGRAMS_HASH_SIZE		256
@@ -137,27 +140,27 @@ static sds R_AppendGLSLDeformv( sds str, const deformv_t *deformv, int numDeform
 	if( !numDeforms ) {
 		return str;
 	}
-	str = sdscatfmt( str,
-					 "#define QF_APPLY_DEFORMVERTS\n"
-					 "#if defined(APPLY_AUTOSPRITE) || defined(APPLY_AUTOSPRITE2)\n"
-					 "qf_attribute vec4 a_SpritePoint;\n"
-					 "#else\n"
-					 "#define a_SpritePoint vec4(0.0)\n"
-					 "#endif\n"
-					 "\n"
-					 "#if defined(APPLY_AUTOSPRITE2)\n"
-					 "qf_attribute vec4 a_SpriteRightUpAxis;\n"
-					 "#else\n"
-					 "#define a_SpriteRightUpAxis vec4(0.0)\n"
-					 "#endif\n"
-					 "\n"
-					 "void QF_DeformVerts(inout vec4 Position, inout vec3 Normal, inout vec2 TexCoord)\n"
-					 "{\n"
-					 "float t = 0.0;\n"
-					 "vec3 dist;\n"
-					 "vec3 right, up, forward, newright;\n"
-					 "\n"
-					 "#if defined(WAVE_SIN)\n" );
+ // str = sdscatfmt( str,
+ // 				 "#define QF_APPLY_DEFORMVERTS\n"
+ // 				 "#if defined(APPLY_AUTOSPRITE) || defined(APPLY_AUTOSPRITE2)\n"
+ // 				 "qf_attribute vec4 a_SpritePoint;\n"
+ // 				 "#else\n"
+ // 				 "#define a_SpritePoint vec4(0.0)\n"
+ // 				 "#endif\n"
+ // 				 "\n"
+ // 				 "#if defined(APPLY_AUTOSPRITE2)\n"
+ // 				 "qf_attribute vec4 a_SpriteRightUpAxis;\n"
+ // 				 "#else\n"
+ // 				 "#define a_SpriteRightUpAxis vec4(0.0)\n"
+ // 				 "#endif\n"
+ // 				 "\n"
+ // 				 "void QF_DeformVerts(inout vec4 Position, inout vec3 Normal, inout vec2 TexCoord)\n"
+ // 				 "{\n"
+ // 				 "float t = 0.0;\n"
+ // 				 "vec3 dist;\n"
+ // 				 "vec3 right, up, forward, newright;\n"
+ // 				 "\n"
+ // 				 "#if defined(WAVE_SIN)\n" );
 	const int funcType = deformv->func.type;
 	for( size_t i = 0; i < numDeforms; i++, deformv++ ) {
 		switch( deformv->type ) {
@@ -165,76 +168,130 @@ static sds R_AppendGLSLDeformv( sds str, const deformv_t *deformv, int numDeform
 				if( funcType <= SHADER_FUNC_NONE || funcType > numSupportedFuncs || !funcs[funcType] ) {
 					return str;
 				}
-				str = sdscatfmt( str, "Position.xyz += %s(u_QF_ShaderTime,%f,%f,%f+%f*(Position.x+Position.y+Position.z),%f) * Normal.xyz;\n", funcs[funcType], deformv->func.args[0],
-								 deformv->func.args[1], deformv->func.args[2], deformv->func.args[3] ? deformv->args[0] : 0.0, deformv->func.args[3] );
+			 // str = sdscatfmt(str, "#define DEFORMV_METHOD_%s 1", funcs[funcType]);
+			 // 
+			 // str = sdscatfmt(str, "#define DEFORMV_FUNC %s", funcs[funcType]);
+			 // str = sdscatfmt(str, "#define DEFORMV_ARG_0 %f", deformv->func.args[0]);
+			 // str = sdscatfmt(str, "#define DEFORMV_ARG_1 %f", deformv->func.args[1]);
+			 // str = sdscatfmt(str, "#define DEFORMV_ARG_2 %f", deformv->func.args[2]);
+			 // str = sdscatfmt(str, "#define DEFORMV_ARG_3 %f", deformv->func.args[3]);
+				
+				str = sdscatfmt(str, "#define DEFORMV_WAVE 1");
+				str = sdscatfmt(str, "#define DEFORMV_FUNC %s", funcs[funcType]);
+				str = sdscatfmt(str, "#define DEFORMV_CONSTANT vec4(%f,%f,%f,%f)", 
+										deformv->func.args[0],
+										deformv->func.args[1],
+										deformv->func.args[2],
+										deformv->func.args[3]
+				);
+				
+				//str = sdscatfmt( str, "Position.xyz += %s(u_QF_ShaderTime,%f,%f,%f+%f*(Position.x+Position.y+Position.z),%f) * Normal.xyz;\n", funcs[funcType], 
+				//         deformv->func.args[0],
+				//				 deformv->func.args[1], 
+				//				 deformv->func.args[2], 
+				//				 deformv->func.args[3] ? deformv->args[0] : 0.0, 
+				//				 deformv->func.args[3] );
 				break;
 			}
 			case DEFORMV_MOVE: {
 				if( funcType <= SHADER_FUNC_NONE || funcType > numSupportedFuncs || !funcs[funcType] ) {
 					return str;
 				}
-				str = sdscatfmt( str, "Position.xyz += %s(u_QF_ShaderTime,%f,%f,%f,%f) * vec3(%f, %f, %f);\n", funcs[funcType], deformv->func.args[0], deformv->func.args[1], deformv->func.args[2],
-								 deformv->func.args[3], deformv->args[0], deformv->args[1], deformv->args[2] );
+		 // 	str = sdscatfmt(str, "#define DEFORMV_MOVE 1");
+		 // 	str = sdscatfmt(str, "#define DEFORMV_METHOD_%s 1", funcs[funcType]);
+				
+				str = sdscatfmt(str, "#define DEFORMV_MOVE 1");
+				str = sdscatfmt(str, "#define DEFORMV_FUNC %s", funcs[funcType]);
+				str = sdscatfmt(str, "#define DEFORMV_CONSTANT vec4(%f,%f,%f,%f)", 
+										deformv->func.args[0],
+										deformv->func.args[1],
+										deformv->func.args[2],
+										deformv->func.args[3]
+				);
+				
+
+				//str = sdscatfmt(str, "#define DEFORMV_ARG_0 %f", deformv->func.args[0]);
+				//str = sdscatfmt(str, "#define DEFORMV_ARG_1 %f", deformv->func.args[1]);
+				//str = sdscatfmt(str, "#define DEFORMV_ARG_2 %f", deformv->func.args[2]);
+				//str = sdscatfmt(str, "#define DEFORMV_ARG_3 %f", deformv->func.args[3]);
+				//str = sdscatfmt( str, "Position.xyz += %s(u_QF_ShaderTime,%f,%f,%f,%f) * vec3(%f, %f, %f);\n", funcs[funcType], 
+				//         deformv->func.args[0], 
+				//         deformv->func.args[1], 
+				//         deformv->func.args[2],
+				//				 deformv->func.args[3], 
+				//				 deformv->args[0], 
+				//				 deformv->args[1], 
+				//				 deformv->args[2] );
 
 				break;
 			}
 			case DEFORMV_BULGE:
-				str = sdscatfmt( str,
-								 "t = sin(TexCoord.s * %f + u_QF_ShaderTime * %f);\n"
-								 "Position.xyz += max (-1.0 + %f, t) * %f * Normal.xyz;\n",
-								 deformv->args[0], deformv->args[2], deformv->args[3], deformv->args[1] );
+				str = sdscatfmt(str, "#define DEFORMV_BULGE 1");
+				str = sdscatfmt(str, "#define DEFORMV_CONSTANT vec4(%f,%f,%f,%f)", 
+										deformv->func.args[0],
+										deformv->func.args[1],
+										deformv->func.args[2],
+										deformv->func.args[3]
+				);
+			 // str = sdscatfmt( str,
+			 // 				 "t = sin(TexCoord.s * %f + u_QF_ShaderTime * %f);\n"
+			 // 				 "Position.xyz += max (-1.0 + %f, t) * %f * Normal.xyz;\n",
+			 // 				 deformv->args[0], deformv->args[2], deformv->args[3], deformv->args[1] );
 
 				break;
 			case DEFORMV_AUTOSPRITE:
-				str = sdscatfmt( str,
-								 "right = (1.0 + step(0.5, TexCoord.s) * -2.0) * u_QF_ViewAxis[1] * u_QF_MirrorSide;\n;"
-								 "up = (1.0 + step(0.5, TexCoord.t) * -2.0) * u_QF_ViewAxis[2];\n"
-								 "forward = -1.0 * u_QF_ViewAxis[0];\n"
-								 "Position.xyz = a_SpritePoint.xyz + (right + up) * a_SpritePoint.w;\n"
-								 "Normal.xyz = forward;\n"
-								 "TexCoord.st = vec2(step(0.5, TexCoord.s),step(0.5, TexCoord.t));\n" );
+				str = sdscatfmt(str, "#define DEFORMV_AUTOSPRITE 1");
+				//str = sdscatfmt( str,
+				//				 "right = (1.0 + step(0.5, TexCoord.s) * -2.0) * u_QF_ViewAxis[1] * u_QF_MirrorSide;\n;"
+				//				 "up = (1.0 + step(0.5, TexCoord.t) * -2.0) * u_QF_ViewAxis[2];\n"
+				//				 "forward = -1.0 * u_QF_ViewAxis[0];\n"
+				//				 "Position.xyz = a_SpritePoint.xyz + (right + up) * a_SpritePoint.w;\n"
+				//				 "Normal.xyz = forward;\n"
+				//				 "TexCoord.st = vec2(step(0.5, TexCoord.s),step(0.5, TexCoord.t));\n" );
 
 				break;
 			case DEFORMV_AUTOPARTICLE:
-				str = sdscatfmt( str,
-								 "right = (1.0 + TexCoord.s * -2.0) * u_QF_ViewAxis[1] * u_QF_MirrorSide;\n;"
-								 "up = (1.0 + TexCoord.t * -2.0) * u_QF_ViewAxis[2];\n"
-								 "forward = -1.0 * u_QF_ViewAxis[0];\n"
-								 // prevent the particle from disappearing at large distances
-								 "t = dot(a_SpritePoint.xyz + u_QF_EntityOrigin - u_QF_ViewOrigin, u_QF_ViewAxis[0]);\n"
-								 "t = 1.5 + step(20.0, t) * t * 0.006;\n"
-								 "Position.xyz = a_SpritePoint.xyz + (right + up) * t * a_SpritePoint.w;\n"
-								 "Normal.xyz = forward;\n" );
+				str = sdscatfmt(str, "#define DEFORMV_AUTOPARTICLE 1");
+				//str = sdscatfmt( str,
+				//				 "right = (1.0 + TexCoord.s * -2.0) * u_QF_ViewAxis[1] * u_QF_MirrorSide;\n;"
+				//				 "up = (1.0 + TexCoord.t * -2.0) * u_QF_ViewAxis[2];\n"
+				//				 "forward = -1.0 * u_QF_ViewAxis[0];\n"
+				//				 // prevent the particle from disappearing at large distances
+				//				 "t = dot(a_SpritePoint.xyz + u_QF_EntityOrigin - u_QF_ViewOrigin, u_QF_ViewAxis[0]);\n"
+				//				 "t = 1.5 + step(20.0, t) * t * 0.006;\n"
+				//				 "Position.xyz = a_SpritePoint.xyz + (right + up) * t * a_SpritePoint.w;\n"
+				//				 "Normal.xyz = forward;\n" );
 				break;
 			case DEFORMV_AUTOSPRITE2:
-				str = sdscatfmt( str,
-								 // local sprite axes
-								 "right = QF_LatLong2Norm(a_SpriteRightUpAxis.xy) * u_QF_MirrorSide;\n"
-								 "up = QF_LatLong2Norm(a_SpriteRightUpAxis.zw);\n"
+				str = sdscatfmt(str, "#define DEFORMV_AUTOSPRITE2 1");
+				//str = sdscatfmt( str,
+				//				 // local sprite axes
+				//				 "right = QF_LatLong2Norm(a_SpriteRightUpAxis.xy) * u_QF_MirrorSide;\n"
+				//				 "up = QF_LatLong2Norm(a_SpriteRightUpAxis.zw);\n"
 
-								 // mid of quad to camera vector
-								 "dist = u_QF_ViewOrigin - u_QF_EntityOrigin - a_SpritePoint.xyz;\n"
+				//				 // mid of quad to camera vector
+				//				 "dist = u_QF_ViewOrigin - u_QF_EntityOrigin - a_SpritePoint.xyz;\n"
 
-								 // filter any longest-axis-parts off the camera-direction
-								 "forward = normalize(dist - up * dot(dist, up));\n"
+				//				 // filter any longest-axis-parts off the camera-direction
+				//				 "forward = normalize(dist - up * dot(dist, up));\n"
 
-								 // the right axis vector as it should be to face the camera
-								 "newright = cross(up, forward);\n"
+				//				 // the right axis vector as it should be to face the camera
+				//				 "newright = cross(up, forward);\n"
 
-								 // rotate the quad vertex around the up axis vector
-								 "t = dot(right, Position.xyz - a_SpritePoint.xyz);\n"
-								 "Position.xyz += t * (newright - right);\n"
-								 "Normal.xyz = forward;\n" );
+				//				 // rotate the quad vertex around the up axis vector
+				//				 "t = dot(right, Position.xyz - a_SpritePoint.xyz);\n"
+				//				 "Position.xyz += t * (newright - right);\n"
+				//				 "Normal.xyz = forward;\n" );
 				break;
 			default:
 				break;
 		}
 	}
 
-	str = sdscatfmt( str,
-					 "#endif\n"
-					 "}\n"
-					 "\n" );
+	//str = sdscatfmt( str,
+	//				 "#endif\n"
+	//				 "}\n"
+	//				 "\n" );
 
 	return str;
 }
@@ -1197,28 +1254,28 @@ static const char *R_GLSLBuildDeformv( const deformv_t *deformv, int numDeforms 
 	}
 
 	program[0] = '\0';
-	Q_strncpyz( program,
-		"#define QF_APPLY_DEFORMVERTS\n"
-		"#if defined(APPLY_AUTOSPRITE) || defined(APPLY_AUTOSPRITE2)\n"
-		"qf_attribute vec4 a_SpritePoint;\n"
-		"#else\n"
-		"#define a_SpritePoint vec4(0.0)\n"
-		"#endif\n"
-		"\n"
-		"#if defined(APPLY_AUTOSPRITE2)\n"
-		"qf_attribute vec4 a_SpriteRightUpAxis;\n"
-		"#else\n"
-		"#define a_SpriteRightUpAxis vec4(0.0)\n"
-		"#endif\n"
-		"\n"
-		"void QF_DeformVerts(inout vec4 Position, inout vec3 Normal, inout vec2 TexCoord)\n"
-		"{\n"
-		"float t = 0.0;\n"
-		"vec3 dist;\n"
-		"vec3 right, up, forward, newright;\n"
-		"\n"
-		"#if defined(WAVE_SIN)\n"
-		, sizeof( program ) );
+  Q_strncpyz( program,
+  	"#define QF_APPLY_DEFORMVERTS\n"
+  	"#if defined(APPLY_AUTOSPRITE) || defined(APPLY_AUTOSPRITE2)\n"
+  	"qf_attribute vec4 a_SpritePoint;\n"
+  	"#else\n"
+  	"#define a_SpritePoint vec4(0.0)\n"
+  	"#endif\n"
+  	"\n"
+  	"#if defined(APPLY_AUTOSPRITE2)\n"
+  	"qf_attribute vec4 a_SpriteRightUpAxis;\n"
+  	"#else\n"
+  	"#define a_SpriteRightUpAxis vec4(0.0)\n"
+  	"#endif\n"
+  	"\n"
+  	"void QF_DeformVerts(inout vec4 Position, inout vec3 Normal, inout vec2 TexCoord)\n"
+  	"{\n"
+  	"float t = 0.0;\n"
+  	"vec3 dist;\n"
+  	"vec3 right, up, forward, newright;\n"
+  	"\n"
+  	"#if defined(WAVE_SIN)\n"
+  	, sizeof( program ) );
 
 	for( i = 0; i < numDeforms; i++, deformv++ ) {
 		switch( deformv->type ) {
@@ -1227,7 +1284,6 @@ static const char *R_GLSLBuildDeformv( const deformv_t *deformv, int numDeforms 
 				if( funcType <= SHADER_FUNC_NONE || funcType > numSupportedFuncs || !funcs[funcType] ) {
 					return NULL;
 				}
-
 				Q_strncatz( program, va_r( tmp, sizeof( tmp ), "Position.xyz += %s(u_QF_ShaderTime,%f,%f,%f+%f*(Position.x+Position.y+Position.z),%f) * Normal.xyz;\n", 
 					funcs[funcType], deformv->func.args[0], deformv->func.args[1], deformv->func.args[2], deformv->func.args[3] ? deformv->args[0] : 0.0, deformv->func.args[3] ), 
 					sizeof( program ) );
@@ -1987,7 +2043,7 @@ static void __RP_writeTextToFile( const char *filePath, const char *str )
 }
 	
 
-static inline struct pipeline_s* __resolvePipeline(struct glsl_program_s *program, hash_t hash) {
+static inline struct pipeline_hash_s* __resolvePipeline(struct glsl_program_s *program, hash_t hash) {
 	const size_t startIndex = hash % PIPELINE_LAYOUT_HASH_SIZE;
 	size_t index = startIndex;
 	do {
@@ -2000,7 +2056,7 @@ static inline struct pipeline_s* __resolvePipeline(struct glsl_program_s *progra
 	return NULL;
 }
 
-struct pipeline_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_layout_config_s *def ) {
+struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_layout_config_s *def ) {
 	
 	hash_t hash = HASH_INITIAL_VALUE;
 	hash = hash_u32(hash, def->attrib );
@@ -2008,7 +2064,7 @@ struct pipeline_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pi
 	hash = hash_data(hash, &def->inputAssembly, sizeof(NriInputAssemblyDesc)); 
 	hash = hash_data(hash, &def->rasterization, sizeof(NriRasterizationDesc)); 
 
-	struct pipeline_s* pipeline = __resolvePipeline(program, hash);
+	struct pipeline_hash_s* pipeline = __resolvePipeline(program, hash);
 	if(pipeline->pipeline) {
 		return pipeline; // pipeline is present in slot
 	}
@@ -2358,47 +2414,58 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 
 			for( size_t i_set = 0; i_set < descCount; i_set++ ) {
 				const SpvReflectDescriptorSet *reflection = reflectionDescSets[i_set];
-				for( size_t i_binding = 0; i_binding < reflectionDescSets[i_set]->binding_count; i_binding++ ) {
-					const SpvReflectDescriptorBinding *reflectionBinding = reflectionDescSets[i_set]->bindings[i_binding];
+				
+				// create the descriptor allocator
+				if(program->descriptorSetAlloc[reflection->set] == NULL) {
+					program->descriptorSetAlloc[reflection->set] = malloc(sizeof(struct descriptor_set_allloc_s));
+					memset(program->descriptorSetAlloc[reflection->set], 0, sizeof(struct descriptor_set_allloc_s));
+				}
+				struct descriptor_set_allloc_s* const descAlloc = program->descriptorSetAlloc[reflection->set];
+				descAlloc->config.layout = program->layout;
+				descAlloc->config.setIndex = reflection->set;
+
+				for( size_t i_binding = 0; i_binding < reflection->binding_count; i_binding++ ) {
+					const SpvReflectDescriptorBinding *reflectionBinding = reflection->bindings[i_binding];
+					assert(reflection->set < DESCRIPTOR_SET_MAX);
+
 					NriDescriptorRangeDesc *rangeDesc = __FindAndInsertNriDescriptorRange( reflectionBinding, &descRangeDescs[reflection->set] );
 					rangeDesc->descriptorNum = reflectionBinding->array.dims_count;
 					rangeDesc->baseRegisterIndex = reflectionBinding->binding;
 					rangeDesc->isArray = reflectionBinding->array.dims_count > 0;
 
-					const uint32_t bindingBit = ( 1u << reflectionBinding->binding );
-					program->pipelineLayout.array_size[reflectionBinding->binding] = max( program->pipelineLayout.array_size[reflectionBinding->binding], max( reflectionBinding->array.dims_count, 1 ) );
+					const uint32_t bindingCount = max( reflectionBinding->array.dims_count, 1 );
 					switch( reflectionBinding->descriptor_type ) {
 						case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER:
 							rangeDesc->descriptorType = NriDescriptorType_SAMPLER;
-							program->pipelineLayout.samplerMask |= bindingBit;
+							descAlloc->config.samplerMaxNum += bindingCount;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 							rangeDesc->descriptorType = NriDescriptorType_TEXTURE;
-							program->pipelineLayout.textureMask |= bindingBit;
+							descAlloc->config.textureMaxNum += bindingCount;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-							program->pipelineLayout.bufferMask |= bindingBit;
 							rangeDesc->descriptorType = NriDescriptorType_BUFFER;
+							descAlloc->config.bufferMaxNum += bindingCount;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-							program->pipelineLayout.storageTextureMask |= bindingBit;
 							rangeDesc->descriptorType = NriDescriptorType_STORAGE_TEXTURE;
+							descAlloc->config.storageTextureMaxNum += bindingCount;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-							program->pipelineLayout.storageBufferMask |= bindingBit;
 							rangeDesc->descriptorType = NriDescriptorType_STORAGE_BUFFER;
+							descAlloc->config.storageBufferMaxNum += bindingCount;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-							program->pipelineLayout.constantBufferMask |= bindingBit;
 							rangeDesc->descriptorType = NriDescriptorType_CONSTANT_BUFFER;
+							descAlloc->config.constantBufferMaxNum += bindingCount;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-							program->pipelineLayout.structuredBufferMask |= bindingBit;
 							rangeDesc->descriptorType = NriDescriptorType_STRUCTURED_BUFFER;
+							descAlloc->config.structuredBufferMaxNum += bindingCount;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-							program->pipelineLayout.storageStructuredBufferMask |= bindingBit;
 							rangeDesc->descriptorType = NriDescriptorType_STORAGE_STRUCTURED_BUFFER;
+							descAlloc->config.storageStructuredBufferMaxNum += bindingCount;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 						case SPV_REFLECT_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
@@ -2444,7 +2511,7 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 		pipelineLayoutdesc.pushConstants = &descPushConstantDescs;
 	}
 
-	NRI_ABORT_ON_FAILURE(rsh.nri.coreI.CreatePipelineLayout(rsh.nri.device, &pipelineLayoutdesc, &program->pipelineLayout.layout));
+	NRI_ABORT_ON_FAILURE(rsh.nri.coreI.CreatePipelineLayout(rsh.nri.device, &pipelineLayoutdesc, &program->layout));
 	
 	for(size_t  i = 0;  i < DESCRIPTOR_SET_MAX; i++) {
 		arrfree( descRangeDescs[i] );

@@ -1,53 +1,61 @@
-#include "include/common.glsl"
-#include "include/uniforms.glsl"
-#include_if(APPLY_FOG) "include/fog.glsl"
-#include_if(APPLY_GREYSCALE) "include/greyscale.glsl"
+#include "include/resource.glsl"
 
-layout(location = 2) qf_varying vec2 v_TexCoord;
-layout(location = 3) qf_varying vec3 v_TexCoordCube;
-
-#if defined(APPLY_FOG) && !defined(APPLY_FOG_COLOR)
-layout(location = 4) qf_varying vec2 v_FogCoord;
-#endif
-
-layout(binding = 1) uniform sampler2D u_BaseTexture;
-layout(binding = 2) uniform samplerCube u_CelShadeTexture;
+layout(set = 1, binding = 1) uniform texture2D u_BaseTexture;
+layout(set = 1, binding = 2) uniform textureCube u_CelShadeTexture;
 
 #ifdef APPLY_DIFFUSE
-layout(binding = 3) uniform sampler2D u_DiffuseTexture;
+	layout(set = 1, binding = 3) uniform texture2D u_DiffuseTexture;
 #endif
+
 #ifdef APPLY_DECAL
-layout(binding = 4) uniform sampler2D u_DecalTexture;
+	layout(set = 1, binding = 4) uniform texture2D u_DecalTexture;
 #endif
+
 #ifdef APPLY_ENTITY_DECAL
-layout(binding = 5) uniform sampler2D u_EntityDecalTexture;
+	layout(set = 1, binding = 5) uniform texture2D u_EntityDecalTexture;
 #endif
+
 #ifdef APPLY_STRIPES
-layout(binding = 6) uniform sampler2D u_StripesTexture;
+	layout(set = 1, binding = 6) uniform texture2D u_StripesTexture;
 #endif
+
 #ifdef APPLY_CEL_LIGHT
-layout(binding = 7) uniform samplerCube u_CelLightTexture;
+	layout(set = 1, binding = 7) uniform textureCube u_CelLightTexture;
 #endif
+
+layout(set = 2, binding = 0) uniform DefualtCellUniforms ubo;
+
+layout(location = 0) in vec2 v_TexCoord;
+layout(location = 1) in vec3 v_TexCoordCube;
+
+#if defined(APPLY_FOG) && !defined(APPLY_FOG_COLOR)
+	layout(set = 2, binding = 1) uniform FogUniforms fog;  
+	layout(location = 2) in vec2 v_FogCoord;
+#endif
+
+layout(location = 0) out vec4 outFragColor;
+
+
+#include "include/common.glsl"
+#include "include/fog.glsl"
+#include "include/greyscale.glsl"
 
 void main(void)
 {
-	myhalf4 inColor = myhalf4(qf_FrontColor);
-
-	myhalf4 tempColor;
-
-	myhalf4 outColor;
-	outColor = myhalf4(qf_texture(u_BaseTexture, v_TexCoord));
+	vec4 inColor = myhalf4(qf_FrontColor);
+	vec4 tempColor;
+	vec4 outColor = myhalf4(qf_texture(u_BaseTexture, v_TexCoord));
 #ifdef QF_ALPHATEST
 	QF_ALPHATEST(outColor.a * inColor.a);
 #endif
 
 #ifdef APPLY_ENTITY_DECAL
-#ifdef APPLY_ENTITY_DECAL_ADD
-	outColor.rgb += myhalf3(u_EntityColor.rgb) * myhalf3(qf_texture(u_EntityDecalTexture, v_TexCoord));
-#else
-	tempColor = myhalf4(u_EntityColor.rgb, 1.0) * myhalf4(qf_texture(u_EntityDecalTexture, v_TexCoord));
-	outColor.rgb = mix(outColor.rgb, tempColor.rgb, tempColor.a);
-#endif
+	#ifdef APPLY_ENTITY_DECAL_ADD
+		outColor.rgb += myhalf3(ubo.entityColor.rgb) * myhalf3(qf_texture(u_EntityDecalTexture, v_TexCoord));
+	#else
+		tempColor = myhalf4(ubo.entityColor.rgb, 1.0) * myhalf4(qf_texture(u_EntityDecalTexture, v_TexCoord));
+		outColor.rgb = mix(outColor.rgb, tempColor.rgb, tempColor.a);
+	#endif
 #endif // APPLY_ENTITY_DECAL
 
 #ifdef APPLY_DIFFUSE
@@ -58,9 +66,9 @@ void main(void)
 
 #ifdef APPLY_STRIPES
 #ifdef APPLY_STRIPES_ADD
-	outColor.rgb += myhalf3(u_EntityColor.rgb) * myhalf3(qf_texture(u_StripesTexture, v_TexCoord));
+	outColor.rgb += myhalf3(ubo.entityColor.rgb) * myhalf3(qf_texture(u_StripesTexture, v_TexCoord));
 #else
-	tempColor = myhalf4(u_EntityColor.rgb, 1.0) * myhalf4(qf_texture(u_StripesTexture, v_TexCoord));
+	tempColor = myhalf4(ubo.entityColor.rgb, 1.0) * myhalf4(qf_texture(u_StripesTexture, v_TexCoord));
 	outColor.rgb = mix(outColor.rgb, tempColor.rgb, tempColor.a);
 #endif
 #endif // APPLY_STRIPES_ADD
@@ -91,8 +99,8 @@ void main(void)
 
 #if defined(APPLY_FOG) && !defined(APPLY_FOG_COLOR)
 	myhalf fogDensity = FogDensity(v_FogCoord);
-	outColor.rgb = mix(outColor.rgb, u_FogColor, fogDensity);
+	outColor.rgb = mix(outColor.rgb, fog.fogColor, fogDensity);
 #endif
 
-	qf_FragColor = vec4(outColor);
+	outFragColor = vec4(outColor);
 }

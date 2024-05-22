@@ -1,5 +1,4 @@
 #include "include/common.glsl"
-#include "include/uniforms.glsl"
 #include "include/attributes.glsl"
 #include "include/rgbgen.glsl"
 #include_if(APPLY_FOG) "include/fog.glsl"

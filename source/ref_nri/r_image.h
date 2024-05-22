@@ -73,10 +73,12 @@ enum
 
 typedef struct image_s
 {
+	uint32_t cookie;
+
+	NriDescriptor* descriptor;
 	NriTexture* texture;
 	size_t numAllocations;
 	NriMemory* memory[4];
-	
 
 	char			*name;						// game path, not including extension
 	int				registrationSequence;
@@ -88,8 +90,7 @@ typedef struct image_s
 	int texnum;			// gl texture binding need to remove
 	uint16_t width, height; // source image
 	int layers;				// texture array size
-	int upload_width,
-		upload_height; // after power of two and picmip
+	int upload_width, upload_height; // after power of two and picmip
 	int minmipsize;	   // size of the smallest mipmap that should be used
 	int samples;
 	int fbo;			   // frame buffer object texture is attached to

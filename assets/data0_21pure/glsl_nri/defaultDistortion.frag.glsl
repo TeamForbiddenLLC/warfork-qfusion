@@ -1,22 +1,24 @@
 #include "include/common.glsl"
-#include "include/uniforms.glsl"
-#include_if(APPLY_GREYSCALE) "include/greyscale.glsl"
+#include "include/greyscale.glsl"
 
-qf_varying vec4 v_TexCoord;
-qf_varying vec4 v_ProjVector;
-#ifdef APPLY_EYEDOT
-qf_varying vec3 v_EyeVector;
-#endif
+layout(location = 0) out vec4 v_TexCoord;
+layout(location = 1) out vec4 v_FrontColor;
+layout(location = 2) out vec4 v_ProjVector;
+layout(location = 3) out vec3 v_EyeVector;
 
 #ifdef APPLY_DUDV
-uniform sampler2D u_DuDvMapTexture;
+layout(set = 1, binding = 0) uniform texture2D u_DuDvMapTexture;
 #endif
 
 #ifdef APPLY_EYEDOT
-uniform sampler2D u_NormalmapTexture;
+layout(set = 1, binding = 1) uniform texture2D u_NormalmapTexture;
 #endif
-uniform sampler2D u_ReflectionTexture;
-uniform sampler2D u_RefractionTexture;
+layout(set = 1, binding = 2) uniform texture2D u_ReflectionTexture;
+
+layout(set = 1, binding = 3) uniform texture2D u_RefractionTexture;
+layout(set = 1, binding = 3) uniform sampler u_RefractionTextureSampler;
+
+layout(set = 2, binding = 0) uniform UBODefaultDistortion ubo;
 
 void main(void)
 {
@@ -73,9 +75,9 @@ void main(void)
 
 	// add reflection and refraction
 #ifdef APPLY_DISTORTION_ALPHA
-	color = myhalf3(qf_FrontColor.rgb) + myhalf3(mix (refr, refl, myhalf(qf_FrontColor.a)));
+	color = myhalf3(v_FrontColor.rgb) + myhalf3(mix (refr, refl, v_FrontColor.a));
 #else
-	color = myhalf3(qf_FrontColor.rgb) + refr + refl;
+	color = myhalf3(v_FrontColor.rgb) + refr + refl;
 #endif
 
 #ifdef APPLY_GREYSCALE

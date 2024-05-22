@@ -1,10 +1,10 @@
 #include "include/common.glsl"
-#include "include/uniforms.glsl"
 
-qf_varying vec2 v_TexCoord;
+layout(set = 1, binding = 0) uniform texture2D u_BaseTexture;
+layout(set = 1, binding = 1) uniform texture2D u_ColorLUT;
 
-uniform sampler2D u_BaseTexture;
-uniform sampler2D u_ColorLUT;
+layout(location = 0) in vec2 v_TexCoord;
+layout(location = 0) out vec4 outFragColor;
 
 void main(void)
 {
@@ -16,5 +16,5 @@ void main(void)
 	vec3 color1 = qf_texture(u_ColorLUT, coords.rg + blueOffset).rgb;
 	blueOffset.y = min(blueOffset.y + 0.0625, 0.9375);
 	vec3 color2 = qf_texture(u_ColorLUT, coords.rg + blueOffset).rgb;
-	qf_FragColor = vec4(mix(color1, color2, blueMix), 1.0);
+	outFragColor = vec4(mix(color1, color2, blueMix), 1.0);
 }

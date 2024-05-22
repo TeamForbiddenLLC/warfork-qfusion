@@ -210,7 +210,48 @@ struct shader_bin_data_s {
 };
 
 
-struct pipeline_s {
+struct DynamicLights{
+    float lightDiffuse[4];
+    float position[3];
+    float invRadius;
+};
+
+struct mat4 {
+	float m[16];
+};
+
+struct Unif {
+	float shaderTime;
+
+	float mvp[4][4];
+	float mv[4][4];
+
+	struct mat4 viewOrigin;
+	struct mat4 viewAxis;
+	float viewport[4];
+
+	float texMatrix[4][2];
+	float RGBGenFuncArgs[4];
+	float AlphaGenFuncArgs[4];
+	float constColor[4];
+	float blendMix[2];
+	float glossFactors[2];
+	float u_FogScaleAndEyeDist[2];
+
+	float wallColor[3];
+	float floorColor[3];
+
+	float u_FogEyePlane[4];
+	float u_FogPlane[4];
+	float u_FogColor[3];
+
+	int u_NumDynamicLights;
+	float u_DlightPosition[3][16];
+	float u_DlightDiffuseAndInvRadius[4][16];
+	struct DynamicLights dynamicLights[16];
+};
+
+struct pipeline_hash_s {
 	uint64_t hash;
 	NriPipeline* pipeline;
 };
@@ -227,9 +268,9 @@ struct glsl_program_s {
 	// will have to see if I need to re-declare the pipeline
 	uint16_t shaderStageSize;
 	struct shader_bin_data_s shaderBin[GLSL_STAGE_MAX];
-	//NriPipelineLayout* layout;
-	struct pipeline_s pipelines[PIPELINE_LAYOUT_HASH_SIZE];
-	struct pipeline_layout_s pipelineLayout;
+	NriPipelineLayout* layout;
+	struct pipeline_hash_s pipelines[PIPELINE_LAYOUT_HASH_SIZE];
+	struct descriptor_set_allloc_s* descriptorSetAlloc[DESCRIPTOR_SET_MAX];
 
 	struct loc_s {
 		int			ModelViewMatrix,
@@ -323,7 +364,7 @@ void RP_StorePrecacheList( void );
 
 void RP_ProgramList_f( void );
 
-struct pipeline_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_layout_config_s *def );
+struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_layout_config_s *def );
 struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features );
 
 int	RP_RegisterProgram(int type, const char *name, const char *deformsKey, 

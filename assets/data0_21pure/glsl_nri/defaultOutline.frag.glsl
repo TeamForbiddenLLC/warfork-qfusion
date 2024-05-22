@@ -1,10 +1,9 @@
 #include "include/common.glsl"
-#include "include/uniforms.glsl"
-#include_if(APPLY_FOG) "include/fog.glsl"
+#include "include/resource.glsl"
 
-#ifdef APPLY_FOG
-qf_varying vec2 v_FogCoord;
-#endif
+
+layout(location = 0) in vec4 v_FogCoord
+layout(location = 1) in vec4 v_FogCoord
 
 uniform float u_OutlineCutOff;
 

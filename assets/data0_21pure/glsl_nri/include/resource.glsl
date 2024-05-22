@@ -1,22 +1,75 @@
-layout(set = 0, binding = 0) uniform Scene {
-    float shaderTime;
-} set_scene;
-
-layout(set = 0, binding = 1) uniform View {
-    mat4 viewOrigin;
-    mat4 viewAxis;
-    ivec4 viewport;
-} set_view;
+struct UBOLightMap {
+    float3 lightMapColors[4];
+};
 
 
-struct DynamicLights{
-    float4 lightDiffuse;
+struct UBODefaultOutline {
+    float outlineCutOff;
+    float fogColor;
+};
+
+struct DefaultFogUBO {
+    mat4 mvp;
+    vec3 color;
+    float eyeDist;
+    vec4 eyePlane 
+    vec4 plane;
+    float scale;
+};
+
+struct DefaultMaterialConstBuffer {
+    vec3 viewOrigin;
+    float entityDist;
+    mat4 mvp;
+    vec4 textureMatrix[2];
+    vec4 constColor;
+    vec4 rgbGenFuncArgs;
+    vec3 lightAmbient;
+    float entityDist;
+    vec3 lightDiffuse;
+    float frontPlane;
+    vec3 lightDir;
+};
+
+struct UBODefaultMaterial {
+    vec4 constColor;
+    vec4 rgbGenFuncArgs;
+};
+
+struct UBODefaultCellShade {
+    mat4 mvp;
+    vec4 entityColor;
+    vec4 textureMatrix[2];
+    vec2 blendMix;
+    vec3 entityDist;
+    mat3 reflectionTextureMat;
+};
+
+
+struct DynamicLight {
+    float4 diffuseAndInvRadius;
     float3 position;
     float invRadius;
 };
 
-layout(set = 0, binding = 2) uniform Object {
-    mat4 mvp;
-    mat4 mv;
-    DynamicLights dynamicLights[NUM_DLIGHTS];
-} set_object;
+struct LightConstBuffer {
+
+};
+
+struct UBODynamicLights {
+    int numberLights;
+    DynamicLight lights[NUM_DLIGHTS];
+};
+
+struct FogConstBuffer {
+    vec3 color;
+    float eyeDist;
+    vec4 eyePlane 
+    vec4 plane;
+    float scale;
+};
+
+struct UBOLightMap {
+  int numLightMaps;
+};
+

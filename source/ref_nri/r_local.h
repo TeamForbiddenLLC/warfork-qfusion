@@ -262,6 +262,8 @@ typedef struct
 	struct frame_cmd_buffer_s frameCmds[NUMBER_FRAMES_FLIGHT];
 
 	byte_vec4_t		customColors[NUM_CUSTOMCOLORS];
+
+	uint32_t cookie;
 } r_shared_t;
 
 

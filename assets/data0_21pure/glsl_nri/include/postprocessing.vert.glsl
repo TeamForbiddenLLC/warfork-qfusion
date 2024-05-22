@@ -2,7 +2,7 @@
 #include "uniforms.glsl"
 #include "attributes.glsl"
 
-qf_varying vec2 v_TexCoord;
+layout(location = 0) out vec2 v_TexCoord;
 
 void main(void)
 {

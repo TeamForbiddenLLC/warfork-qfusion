@@ -1,9 +1,10 @@
 #include "include/common.glsl"
-#include "include/uniforms.glsl"
-#include "include/fog.glsl"
+#include "include/resource.glsl"
 #include "include/attributes.glsl"
 
-qf_varying vec2 v_FogCoord;
+layout(location = 0) out vec2 v_FogCoord;
+
+layout(set = 2, binding = 0) uniform DefaultFogUBO ubo;  
 
 void main(void)
 {
@@ -12,8 +13,12 @@ void main(void)
 	vec2 TexCoord = a_TexCoord;
 
 	QF_TransformVerts(Position, Normal, TexCoord);
+	FogGenCoord(
+			ubo.eyePlane,
+			ubo.plane,
+			ubo.scale,
+			ubo.eyeDist,
+		, Position, v_FogCoord);
 
-	FogGenCoord(Position, v_FogCoord);
-
-	gl_Position = u_ModelViewProjectionMatrix * Position;
+	gl_Position = ubo.mvp * Position;
 }
