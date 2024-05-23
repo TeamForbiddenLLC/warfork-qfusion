@@ -25,9 +25,11 @@ freely, subject to the following restrictions:
 #include "os.h"
 #include "steamshim_types.h"
 #include "steamshim_private.h"
+#include <mutex>
 
 PipeType GPipeRead = NULLPIPE;
 PipeType GPipeWrite = NULLPIPE;
+std::mutex writeGuard;
 
 void PipeBuffer::WriteData(const void* val, size_t vallen)
 {
@@ -105,9 +107,11 @@ PipeBuffer::PipeBuffer(){
 
 int PipeBuffer::Transmit()
 {
-
-  writePipe(GPipeWrite, &cursor, sizeof cursor);
-  return writePipe(GPipeWrite, buffer, cursor);
+  writeGuard.lock();
+  writePipe( GPipeWrite, &cursor, sizeof cursor );
+  const int result = writePipe( GPipeWrite, buffer, cursor );
+  writeGuard.unlock();
+  return result;
 }
 
 int PipeBuffer::Recieve()

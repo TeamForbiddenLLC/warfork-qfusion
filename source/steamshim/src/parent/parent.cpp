@@ -28,6 +28,7 @@ freely, subject to the following restrictions:
 #include "../os.h"
 #include "../steamshim_types.h"
 
+
 int GArgc = 0;
 char **GArgv = NULL;
 
