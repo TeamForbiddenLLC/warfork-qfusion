@@ -1,6 +1,4 @@
-#include "include/common.glsl"
-#include "include/attributes.glsl"
-#include "include/rgbgen.glsl"
+#include "include/global.glsl"
 
 #ifdef APPLY_FOG
 	layout(set = 2, binding = 1) uniform FogUniforms fog;  
@@ -25,14 +23,10 @@ void main(void)
 
 #ifdef APPLY_FOG
 	#if defined(APPLY_FOG_COLOR)
-		FogGenColor(
-			fog.eyePlane,
-			fog.plane,
-			fog.scale,
-			fog.eyeDist,
+		QF_FogGenColor(
 			Position, 
 			outColor, 
-			u_BlendMix);
+			obj.blendMix);
 	#else
 		FogGenCoordTexCoord(
 			fog.eyePlane,

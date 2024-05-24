@@ -1,25 +1,11 @@
-#include "include/common.glsl"
-#include "include/resource.glsl"
+#include "include/global.glsl" 
 
-#include "include/attributes.glsl"
-#include "include/rgbgen.glsl"
-#include "include/fog.glsl"
-#include "include/varying_material.glsl"
-
-layout(set = 2, binding = 0) uniform DefaultMaterialConstBuffer cbObject;
-layout(set = 2, binding = 1) uniform FogConstBuffer cbFog;
+layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultMaterialCB pass;
 
 layout(location = 0) out vec3 v_Position 
 layout(location = 1) out vec4 v_EyeVector 
-#ifdef NUM_LIGHTMAPS
-	layout(location = 2) out qf_lmvec01 v_LightmapTexCoord01;
-	#if NUM_LIGHTMAPS > 2 
-		layout(location = 3) out qf_lmvec23 v_LightmapTexCoord23;
-	#endif 
-  # ifdef LIGHTMAP_ARRAYS
-  	layout(location = 4) out vec4 a_LightmapLayer0123;
-  # endif // LIGHTMAP_ARRAYS
-#endif
+layout(location = 2) out qf_lmvec01 v_LightmapTexCoord01;
+layout(location = 3) out qf_lmvec23 v_LightmapTexCoord23;
 layout(location = 5) out vec4 v_LightmapLayer0123;
 layout(location = 6) out mat3 v_StrMatrix; // directions of S/T/R texcoords (tangent, binormal, normal)
 
@@ -34,37 +20,21 @@ void main()
 
 	QF_TransformVerts_Tangent(Position, Normal, Tangent, TexCoord);
 
-	vec4 outColor = VertexRGBGen(
-		cbObject.constColor
-		cbObject.rgbGenFuncArgs,
-		cbObject.lightAmbient,
-		cbObject.entityDist,
-		cbObject.lightDiffuse,
-		cbObject.lightDir,
+	vec4 outColor = QF_VertexRGBGen(
 		Position, Normal, inColor);
 
 #ifdef APPLY_FOG
 #if defined(APPLY_FOG_COLOR)
-	FogGenColor(
-			cbFog.eyePlane,
-			cbFog.plane,
-			cbFog.scale,
-			cbFog.eyeDist,
-		Position, outColor, constants.blendMix);
+	QF_FogGenColor(Position, outColor, obj.blendMix);
 #else
-	FogGenCoord(
-			cbFog.eyePlane,
-			cbFog.plane,
-			cbFog.scale,
-			cbFog.eyeDist,
-		Position, v_TexCoord_FogCoord.pq);
+	QF_FogGenCoordTexCoord(Position, v_TexCoord_FogCoord.pq);
 #endif
 #endif // APPLY_FOG
 
 	qf_FrontColor = vec4(outColor);
 
 #if defined(APPLY_TC_MOD)
-	v_TexCoord_FogCoord.st = TextureMatrix2x3Mul(cbObject.textureMatrix, TexCoord);
+	v_TexCoord_FogCoord.st = TextureMatrix2x3Mul(pass.textureMatrix, TexCoord);
 #else
 	v_TexCoord_FogCoord.st = TexCoord;
 #endif
@@ -92,5 +62,5 @@ void main()
 	v_Position = Position.xyz;
 #endif
 
-	gl_Position = ubo.mvp * Position;
+	gl_Position = obj.mvp * Position;
 }

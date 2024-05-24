@@ -1,7 +1,6 @@
-#include "include/resource.glsl"
+#include "include/global.glsl"
 
-layout(set = 2, binding = 0) uniform UBODefaultCellShade ubo;  
-layout(set = 2, binding = 1) uniform FogUniforms fog;  
+layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultCellShadeCB pass;
 
 layout(location = 0) out vec2 v_TexCoord;
 layout(location = 1) out vec3 v_TexCoordCube;
@@ -9,10 +8,6 @@ layout(location = 1) out vec3 v_TexCoordCube;
 #if defined(APPLY_FOG) && !defined(APPLY_FOG_COLOR)
 	layout(location = 2) out vec2 v_FogCoord;
 #endif
-
-#include "include/common.glsl"
-#include "include/attributes.glsl"
-#include "include/rgbgen.glsl"
 
 void main(void)
 {
@@ -23,24 +18,34 @@ void main(void)
 
 	QF_TransformVerts(Position, Normal, TexCoord);
 
-	myhalf4 outColor = VertexRGBGen(Position, Normal, inColor);
+	myhalf4 outColor = QF_VertexRGBGen(Position, Normal, inColor);
 
 #ifdef APPLY_FOG
 	#ifdef APPLY_FOG_COLOR
-		FogGenColor(fog, Position, outColor, ubo.blendMix);
+		FogGenColor(
+			frame.fogEyePlane,
+			frame.fogPlane,
+			frame.fogScale,
+			frame.eyeDist, 
+			Position, outColor, frame.blendMix);
 	#else
-		FogGenCoordTexCoord(fog, Position, v_FogCoord);
+		FogGenCoordTexCoord(
+			frame.fogEyePlane,
+			frame.fogPlane,
+			frame.fogScale,
+			frame.eyeDist, 
+			Position, v_FogCoord);
 	#endif
 #endif
 
 	qf_FrontColor = vec4(outColor);
 
 #if defined(APPLY_TC_MOD)
-	v_TexCoord = TextureMatrix2x3Mul(ubo.textureMatrix, TexCoord);
+	v_TexCoord = TextureMatrix2x3Mul(pass.textureMatrix, TexCoord);
 #else
 	v_TexCoord = TexCoord;
 #endif
-	v_TexCoordCube = ubo.reflectionTextureMat * reflect(normalize(Position.xyz - ubo.entityDist), Normal.xyz);
+	v_TexCoordCube = pass.reflectionTexMatrix * reflect(normalize(Position.xyz - obj.entityDist), Normal.xyz);
 
-	gl_Position = ubo.mvp * Position;
+	gl_Position = obj.mvp * Position;
 }
