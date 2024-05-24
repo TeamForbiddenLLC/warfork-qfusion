@@ -1,11 +1,10 @@
-#include "include/common.glsl"
-#include "include/yuv.glsl"
+#include "include/global.glsl"
 
 qf_varying vec2 v_TexCoord;
 
-uniform sampler2D u_YUVTextureY;
-uniform sampler2D u_YUVTextureU;
-uniform sampler2D u_YUVTextureV;
+uniform texture2D u_YUVTextureY;
+uniform texture2D  u_YUVTextureU;
+uniform texture2D  u_YUVTextureV;
 
 void main(void)
 {

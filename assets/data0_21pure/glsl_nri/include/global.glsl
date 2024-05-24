@@ -17,39 +17,11 @@
 #define DESCRIPTOR_PASS_SET 2 
 #define DESCRIPTOR_OBJECT_SET 3 
 
-
+#include "resource.glsl"
 #include "math_utils.glsl"
 #include "colorspace_utils.glsl"
 
-#ifdef VERTEX_SHADER
-  layout(location = 0) in vec4 a_Position;
-  layout(location = 1) in vec4 a_SVector;
-  layout(location = 2) in vec4 a_Normal;
-  layout(location = 3) in vec4 a_Color;
-  layout(location = 4) in vec2 a_TexCoord;
-  # ifdef NUM_LIGHTMAPS
-    layout(location = 5) in qf_lmvec01 a_LightmapCoord01;
-    # if NUM_LIGHTMAPS > 2
-    layout(location = 6) in qf_lmvec23 a_LightmapCoord23;
-    # endif // NUM_LIGHTMAPS > 2
-    # ifdef LIGHTMAP_ARRAYS
-    layout(location = 7) in vec4 a_LightmapLayer0123;
-    # endif // LIGHTMAP_ARRAYS
-  #endif // NUM_LIGHTMAPS
-
-	#define QF_APPLY_DEFORMVERTS
-		#if defined(APPLY_AUTOSPRITE) || defined(APPLY_AUTOSPRITE2)
-		layout(location = 8) in vec4 a_SpritePoint;
-		#else
-		#define a_SpritePoint vec4(0.0)
-	#endif
-
-	#if defined(APPLY_AUTOSPRITE2)
-		layout(location = 9) in vec4 a_SpriteRightUpAxis;
-	#else
-		#define a_SpriteRightUpAxis vec4(0.0)
-	#endif
-#endif // VERTEX_SHADER
+#include "attributes.glsl"
 
 #ifdef APPLY_INSTANCED_TRANSFORMS
 	layout(set = DESCRIPTOR_OBJECT_SET, binding = 0) uniform vec4 instancePoints[MAX_UNIFORM_INSTANCES * 2]; 
@@ -57,7 +29,7 @@
 	#define a_InstancePosAndScale instancePoints[gl_InstanceID*2+1]
 #endif
 
-#	ifdef QF_NUM_BONE_INFLUENCES
+#ifdef QF_NUM_BONE_INFLUENCES
 	layout(set = DESCRIPTOR_OBJECT_SET, binding = 1) uniform vec4 dualQuats[MAX_UNIFORM_BONES*2]
 	layout(location = 10) in vec4 a_BonesIndices;
 	layout(location = 11) in vec4 a_BonesWeights;
@@ -69,19 +41,103 @@
 	#define a_SpriteRightUpAxis vec4(0.0)
 #endif
 
-struct FrameCB {
-	float shaderTime;
-	vec3 viewOrigin;
-	float mirrorSide;
-	mat3 viewAxis;
-};
-
-struct ObjectCB {
-	vec3 entityOrigin
-};
-
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 2) uniform ObjectCB obj; 
+layout(set = DESCRIPTOR_OBJECT_SET, binding = 3) uniform VertexColoringCB vc; 
 layout(set = DESCRIPTOR_FRAME_SET, binding = 0) uniform FrameCB frame; 
+
+
+void QF_FogGenCoordTexCoord(
+  in vec4 Position, 
+  out vec2 outTexCoord)
+{
+	// side = vec2(inside, outside)
+	vec2 side = myhalf2(step(frame.eyeDist, 0.0), step(0.0, frame.eyeDist));
+	float FDist = dot(Position.xyz, frame.fogEyePlane.xyz) - frame.fogEyePlane.w;
+	float FVdist = dot(Position.xyz, frame.fogPlane.xyz) - frame.fogPlane.w;
+	float VToEyeDist = FVdist - frame.eyeDist;
+
+	// prevent calculations that might result in infinities:
+	// always ensure that abs(NudgedVToEyeDist) >= FOG_DIST_NUDGE_FACTOR
+	myhalf NudgedVToEyeDist = step(FOG_DIST_NUDGE_FACTOR, VToEyeDist    ) * VToEyeDist +
+				step(FOG_DIST_NUDGE_FACTOR, VToEyeDist * -1.0) * VToEyeDist + 
+				(step(abs(VToEyeDist), FOG_DIST_NUDGE_FACTOR)) * FOG_DIST_NUDGE_FACTOR;
+
+	myhalf FogDistScale = FVdist / NudgedVToEyeDist;
+
+	myhalf FogS = FDist * dot(side, myhalf2(1.0, step(FVdist, 0.0) * FogDistScale));
+	myhalf FogT = -FVdist;
+	outTexCoord = vec2(FogS * fogScale, FogT * fogScale + 1.5*FOG_TEXCOORD_STEP);
+}
+
+void QF_FogGenColor(
+  in vec4 Position, 
+  inout myhalf4 outColor, 
+  in myhalf2 blendMix)
+{
+	// side = vec2(inside, outside)
+	vec2 side = vec2(step(frame.eyeDist, 0.0), step(0.0, frame.eyeDist));
+	float FDist = dot(Position.xyz, frame.fogEyePlane.xyz) - frame.fogEyePlane.w;
+	float FVdist = dot(Position.xyz, frame.fogPlane.xyz) - frame.fogPlane.w;
+	float VToEyeDist = FVdist - frame.eyeDist;
+
+	// prevent calculations that might result in infinities:
+	// always ensure that abs(NudgedVToEyeDist) >= FOG_DIST_NUDGE_FACTOR
+	myhalf NudgedVToEyeDist = step(FOG_DIST_NUDGE_FACTOR, VToEyeDist    ) * VToEyeDist +
+				step(FOG_DIST_NUDGE_FACTOR, VToEyeDist * -1.0) * VToEyeDist + 
+				(step(abs(VToEyeDist), FOG_DIST_NUDGE_FACTOR)) * FOG_DIST_NUDGE_FACTOR;
+
+	myhalf FogDistScale = FVdist / NudgedVToEyeDist;
+
+	myhalf FogDist = FDist * dot(side, myhalf2(1.0, FogDistScale));
+	myhalf FogScale = myhalf(clamp(1.0 - FogDist * frame.fogScale, 0.0, 1.0));
+	outColor *= mix(myhalf4(1.0), myhalf4(FogScale), blendMix.xxxy);
+}
+
+
+vec4 QF_VertexRGBGen(
+  in vec4 Position, 
+  in vec3 Normal, 
+  in vec4 VertexColor)
+{
+
+#if defined(APPLY_RGB_CONST) && defined(APPLY_ALPHA_CONST)
+	vec4 Color = constColor;
+#else
+	vec4 Color = vec4(1.0);
+
+  #if defined(APPLY_RGB_CONST)
+	  Color.rgb = vc.colorConst.rgb;
+  #elif defined(APPLY_RGB_VERTEX)
+	  Color.rgb = VertexColor.rgb;
+  #elif defined(APPLY_RGB_ONE_MINUS_VERTEX)
+	  Color.rgb = vec3(1.0) - VertexColor.rgb;
+  #elif defined(APPLY_RGB_GEN_DIFFUSELIGHT)
+	  Color.rgb = vec3(vc.lightAmbient.rgb + max(dot(vc.lightDir.xyz, Normal), 0.0) * vc.lightDiffuse.xyz);
+  #endif
+
+  #if defined(APPLY_ALPHA_CONST)
+	  Color.a = constColor.a;
+  #elif defined(APPLY_ALPHA_VERTEX)
+	  Color.a = VertexColor.a;
+  #elif defined(APPLY_ALPHA_ONE_MINUS_VERTEX)
+	  Color.a = 1.0 - VertexColor.a;
+  #endif
+
+#endif
+
+#define DISTANCERAMP(x1,x2,y1,y2) mix(y1, y2, smoothstep(x1, x2, myhalf(dot(obj.entityDist - Position.xyz, Normal))))
+#ifdef APPLY_RGB_DISTANCERAMP
+	Color.rgb *= DISTANCERAMP(vc.rgbGenFuncArgs[2], vc.rgbGenFuncArgs[3], vc.rgbGenFuncArgs[0], vc.rgbGenFuncArgs[1]);
+#endif
+
+#ifdef APPLY_ALPHA_DISTANCERAMP
+	Color.a *= DISTANCERAMP(vc.alphaGenFuncArgs[2], vc.alphaGenFuncArgs[3], vc.alphaGenFuncArgs[0], vc.alphaGenFuncArgs[1]);
+#endif
+#undef DISTANCERAMP
+
+	return Color;
+}
+
 
 
 void QF_TransformVerts(inout vec4 Position, inout vec3 Normal, inout vec3 Tangent, inout vec2 TexCoord) {
@@ -122,7 +178,6 @@ void QF_TransformVerts(inout vec4 Position, inout vec3 Normal, inout vec3 Tangen
 			Tangent += cross(DQReal.xyz, cross(DQReal.xyz, Tangent) + Tangent * DQReal.w) * 2.0;
 	}
 	#	endif
-	#	ifdef QF_APPLY_DEFORMVERTS
 	{
 		#if defined(DEFORMV_WAVE)
 			vec4 arg = DEFORMV_CONSTANT;
@@ -166,7 +221,6 @@ void QF_TransformVerts(inout vec4 Position, inout vec3 Normal, inout vec3 Tangen
 		 	 Normal.xyz = forward;
 		#endif
 	}
-	#	endif
 	#	ifdef APPLY_INSTANCED_TRANSFORMS
 	{
 		Position.xyz = (cross(a_InstanceQuat.xyz,

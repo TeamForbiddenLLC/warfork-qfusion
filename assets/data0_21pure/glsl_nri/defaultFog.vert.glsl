@@ -1,6 +1,4 @@
-#include "include/common.glsl"
-#include "include/resource.glsl"
-#include "include/attributes.glsl"
+#include "include/global.glsl"
 
 layout(location = 0) out vec2 v_FogCoord;
 
@@ -13,12 +11,7 @@ void main(void)
 	vec2 TexCoord = a_TexCoord;
 
 	QF_TransformVerts(Position, Normal, TexCoord);
-	FogGenCoord(
-			ubo.eyePlane,
-			ubo.plane,
-			ubo.scale,
-			ubo.eyeDist,
-		, Position, v_FogCoord);
+	QF_FogGenCoordTexCoord(Position, v_FogCoord);
 
 	gl_Position = ubo.mvp * Position;
 }

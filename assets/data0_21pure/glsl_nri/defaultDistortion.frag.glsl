@@ -1,5 +1,4 @@
-#include "include/common.glsl"
-#include "include/greyscale.glsl"
+#include "include/global.glsl"
 
 layout(location = 0) out vec4 v_TexCoord;
 layout(location = 1) out vec4 v_FrontColor;
@@ -7,18 +6,18 @@ layout(location = 2) out vec4 v_ProjVector;
 layout(location = 3) out vec3 v_EyeVector;
 
 #ifdef APPLY_DUDV
-layout(set = 1, binding = 0) uniform texture2D u_DuDvMapTexture;
+layout(set = DESCRIPTOR_PASS_SET, binding = 0) uniform texture2D u_DuDvMapTexture;
 #endif
 
 #ifdef APPLY_EYEDOT
-layout(set = 1, binding = 1) uniform texture2D u_NormalmapTexture;
+layout(set = DESCRIPTOR_PASS_SET, binding = 1) uniform texture2D u_NormalmapTexture;
 #endif
-layout(set = 1, binding = 2) uniform texture2D u_ReflectionTexture;
+layout(set = DESCRIPTOR_PASS_SET, binding = 2) uniform texture2D u_ReflectionTexture;
 
-layout(set = 1, binding = 3) uniform texture2D u_RefractionTexture;
-layout(set = 1, binding = 3) uniform sampler u_RefractionTextureSampler;
+layout(set = DESCRIPTOR_PASS_SET, binding = 3) uniform texture2D u_RefractionTexture;
+layout(set = DESCRIPTOR_PASS_SET, binding = 3) uniform sampler u_RefractionTextureSampler;
 
-layout(set = 2, binding = 0) uniform UBODefaultDistortion ubo;
+layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultDistortionCB pass;
 
 void main(void)
 {
@@ -35,8 +34,8 @@ void main(void)
 
 	// get projective texcoords
 	float scale = float(1.0 / float(v_ProjVector.w));
-	float inv2NW = u_TextureParams.z * 0.5; // .z - inverse width
-	float inv2NH = u_TextureParams.w * 0.5; // .w - inverse height
+	float inv2NW = pass.textureParams.z * 0.5; // .z - inverse width
+	float inv2NH = pass.textureParams.w * 0.5; // .w - inverse height
 	vec2 projCoord = (vec2(v_ProjVector.xy) * scale + vec2 (1.0)) * vec2 (0.5) + vec2(fdist.xy);
 	projCoord.s = float (clamp (float(projCoord.s), inv2NW, 1.0 - inv2NW));
 	projCoord.t = float (clamp (float(projCoord.t), inv2NH, 1.0 - inv2NH));
