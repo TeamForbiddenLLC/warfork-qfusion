@@ -1,11 +1,12 @@
-#include "common.glsl"
-#include "uniforms.glsl"
 #include "attributes.glsl"
+#include "resource.glsl"
+
+layout(set = DESCRIPTOR_OBJECT_SET, binding = 0) uniform PostProcessingCB post; 
 
 layout(location = 0) out vec2 v_TexCoord;
 
 void main(void)
 {
-    gl_Position = u_ModelViewProjectionMatrix * a_Position;
-	v_TexCoord = TextureMatrix2x3Mul(u_TextureMatrix, a_TexCoord);
+    gl_Position = post.mvp * a_Position;
+	v_TexCoord = TextureMatrix2x3Mul(post.textureMatrix, a_TexCoord);
 }

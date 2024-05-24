@@ -1,7 +1,9 @@
-#include "include/common.glsl"
+#include "include/attributes.glsl"
+#include "include/resource.glsl"
+#include "include/math_utils.glsl"
 
-layout(set = 1, binding = 0) uniform texture2D u_BaseTexture;
-layout(set = 1, binding = 1) uniform texture2D u_ColorLUT;
+layout(set = DESCRIPTOR_PASS_SET, binding = 0) uniform texture2D u_BaseTexture;
+layout(set = DESCRIPTOR_PASS_SET, binding = 1) uniform texture2D u_ColorLUT;
 
 layout(location = 0) in vec2 v_TexCoord;
 layout(location = 0) out vec4 outFragColor;

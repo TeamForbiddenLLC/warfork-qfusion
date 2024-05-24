@@ -1,14 +1,11 @@
-#include "include/common.glsl"
-#include "include/resource.glsl"
-#include "include/attributes.glsl"
-
-
-layout(set = 2, binding = 0) uniform UBODefaultDistortion ubo;
+#include "include/global.glsl"
 
 layout(location = 0) out vec4 v_TexCoord;
 layout(location = 1) out vec4 v_FrontColor;
 layout(location = 2) out vec4 v_ProjVector;
 layout(location = 3) out vec3 v_EyeVector;
+
+layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultDistortionCB pass;
 
 void main(void)
 {
@@ -21,19 +18,13 @@ void main(void)
 
 	QF_TransformVerts(Position, Normal, TexCoord);
 
-	v_FrontColor = vec4(VertexRGBGen(
-		ubo.constColor
-		ubo.rgbGenFuncArgs,
-		ubo.lightAmbient,
-		ubo.entityDist,
-		ubo.lightDiffuse,
-		ubo.lightDir, Position, Normal, inColor));
+	v_FrontColor = vec4(QF_VertexRGBGen( Position, Normal, inColor));
 
-	v_TexCoord.st = TextureMatrix2x3Mul(ubo.textureMatrix, TexCoord);
+	v_TexCoord.st = TextureMatrix2x3Mul(pass.textureMatrix, TexCoord);
 
 	vec4 textureMatrix3_[2];
-	textureMatrix3_[0] =  ubo.textureMatrix[0];
-	textureMatrix3_[1] = -ubo.textureMatrix[1];
+	textureMatrix3_[0] =  pass.textureMatrix[0];
+	textureMatrix3_[1] = -pass.textureMatrix[1];
 	v_TexCoord.pq = TextureMatrix2x3Mul(textureMatrix3_, TexCoord);
 
 #ifdef APPLY_EYEDOT
@@ -42,10 +33,10 @@ void main(void)
 	v_StrMatrix[2] = Normal;
 	v_StrMatrix[1] = TangentDir * cross(Normal, Tangent);
 
-	vec3 EyeVectorWorld = (ubo.viewOrigin - Position.xyz) * ubo.frontPlane;
+	vec3 EyeVectorWorld = (frame.viewOrigin - Position.xyz) * pass.frontPlane;
 	v_EyeVector = EyeVectorWorld * v_StrMatrix;
 #endif
 
-	gl_Position = ubo.mvp * Position;
+	gl_Position = obj.mvp * Position;
 	v_ProjVector = gl_Position;
 }
