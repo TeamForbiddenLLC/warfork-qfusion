@@ -6,8 +6,9 @@ layout(location = 0) out vec3 v_Position
 layout(location = 1) out vec4 v_EyeVector 
 layout(location = 2) out qf_lmvec01 v_LightmapTexCoord01;
 layout(location = 3) out qf_lmvec23 v_LightmapTexCoord23;
-layout(location = 5) out vec4 v_LightmapLayer0123;
+layout(location = 5) flat out ivec4 v_LightmapLayer0123;
 layout(location = 6) out mat3 v_StrMatrix; // directions of S/T/R texcoords (tangent, binormal, normal)
+layout(location = 7) out vec4 frontColor; 
 
 void main()
 {
@@ -20,8 +21,7 @@ void main()
 
 	QF_TransformVerts_Tangent(Position, Normal, Tangent, TexCoord);
 
-	vec4 outColor = QF_VertexRGBGen(
-		Position, Normal, inColor);
+	vec4 outColor = QF_VertexRGBGen(Position, Normal, inColor);
 
 #ifdef APPLY_FOG
 #if defined(APPLY_FOG_COLOR)
@@ -31,7 +31,7 @@ void main()
 #endif
 #endif // APPLY_FOG
 
-	qf_FrontColor = vec4(outColor);
+	frontColor = vec4(outColor);
 
 #if defined(APPLY_TC_MOD)
 	v_TexCoord_FogCoord.st = TextureMatrix2x3Mul(pass.textureMatrix, TexCoord);
