@@ -1,9 +1,8 @@
 #include "include/global.glsl"
 
-#ifdef APPLY_FOG
-	layout(set = 2, binding = 1) uniform FogUniforms fog;  
-	layout(location = 0) out vec2 v_FogCoord;
-#endif
+layout(set = 2, binding = 1) uniform FogUniforms fog;  
+layout(location = 0) out vec2 v_FogCoord;
+layout(location = 1) out vec4 frontColor; 
 
 uniform float u_OutlineHeight;
 
@@ -28,15 +27,9 @@ void main(void)
 			outColor, 
 			obj.blendMix);
 	#else
-		FogGenCoordTexCoord(
-			fog.eyePlane,
-			fog.plane,
-			fog.scale,
-			fog.eyeDist,
-			Position, 
-			v_FogCoord);
+		QF_FogGenCoordTexCoord(Position, v_FogCoord);
 	#endif
 #endif // APPLY_FOG
 
-	qf_FrontColor = vec4(outColor);
+	frontColor = vec4(outColor);
 }
