@@ -85,6 +85,7 @@ struct DefaultDistortionCB {
 };
 
 struct DefaultMaterialCB {
+    vec4 entityColor;
     vec4 textureMatrix[2];
     vec3 lightstyleColor[4]
     vec4 deluxLightMapScale;
