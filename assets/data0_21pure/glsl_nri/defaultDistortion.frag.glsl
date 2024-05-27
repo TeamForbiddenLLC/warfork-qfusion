@@ -5,17 +5,14 @@ layout(location = 1) out vec4 v_FrontColor;
 layout(location = 2) out vec4 v_ProjVector;
 layout(location = 3) out vec3 v_EyeVector;
 
-#ifdef APPLY_DUDV
 layout(set = DESCRIPTOR_PASS_SET, binding = 0) uniform texture2D u_DuDvMapTexture;
-#endif
-
-#ifdef APPLY_EYEDOT
+layout(set = DESCRIPTOR_PASS_SET, binding = 0) uniform sampler u_DuDvMapSampler;
 layout(set = DESCRIPTOR_PASS_SET, binding = 1) uniform texture2D u_NormalmapTexture;
-#endif
+layout(set = DESCRIPTOR_PASS_SET, binding = 1) uniform sampler u_NormalmapSampler;
 layout(set = DESCRIPTOR_PASS_SET, binding = 2) uniform texture2D u_ReflectionTexture;
-
+layout(set = DESCRIPTOR_PASS_SET, binding = 2) uniform sampler u_ReflectionSampler;
 layout(set = DESCRIPTOR_PASS_SET, binding = 3) uniform texture2D u_RefractionTexture;
-layout(set = DESCRIPTOR_PASS_SET, binding = 3) uniform sampler u_RefractionTextureSampler;
+layout(set = DESCRIPTOR_PASS_SET, binding = 4) uniform sampler u_RefractionSampler;
 
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultDistortionCB pass;
 
@@ -24,10 +21,10 @@ void main(void)
 	myhalf3 color;
 
 #ifdef APPLY_DUDV
-	vec3 displacement = vec3(qf_texture(u_DuDvMapTexture, vec2(v_TexCoord.pq) * vec2(0.25)));
+	vec3 displacement = vec3(texture(sampler2D(u_DuDvMapTexture,u_DuDvMapSampler), vec2(v_TexCoord.pq) * vec2(0.25)));
 	vec2 coord = vec2(v_TexCoord.st) + vec2(displacement) * vec2 (0.2);
 
-	vec3 fdist = vec3 (normalize(vec3(qf_texture(u_DuDvMapTexture, coord)) - vec3 (0.5))) * vec3(0.005);
+	vec3 fdist = vec3 (normalize(vec3(texture(sampler2D(u_DuDvMapTexture,u_DuDvMapSampler), coord)) - vec3 (0.5))) * vec3(0.005);
 #else
 	vec3 fdist = vec3(0.0);
 #endif
@@ -46,7 +43,7 @@ void main(void)
 #ifdef APPLY_EYEDOT
 	// calculate dot product between the surface normal and eye vector
 	// great for simulating qf_varying water translucency based on the view angle
-	myhalf3 surfaceNormal = normalize(myhalf3(qf_texture(u_NormalmapTexture, coord)) - myhalf3 (0.5));
+	myhalf3 surfaceNormal = normalize(texture(Sampler2D(u_NormalmapTexture,u_NormalmapSampler), coord).rgb - vec3(0.5));
 	vec3 eyeNormal = normalize(myhalf3(v_EyeVector));
 
 	float refrdot = float(dot(surfaceNormal, eyeNormal));
@@ -55,19 +52,19 @@ void main(void)
 	// get refraction and reflection
 
 #ifdef APPLY_REFRACTION
-	refr = (myhalf3(qf_texture(u_RefractionTexture, projCoord))) * refrdot;
+	refr = vec3(texture(sampler2D(u_RefractionTexture,u_RefractionSampler), projCoord)) * refrdot;
 #endif
 #ifdef APPLY_REFLECTION
-	refl = (myhalf3(qf_texture(u_ReflectionTexture, projCoord))) * refldot;
+	refl = (myhalf3(texture(u_ReflectionTexture, projCoord))) * refldot;
 #endif
 
 #else
 
 #ifdef APPLY_REFRACTION
-	refr = (myhalf3(qf_texture(u_RefractionTexture, projCoord)));
+	refr = (myhalf3(texture(u_RefractionTexture, projCoord)));
 #endif
 #ifdef APPLY_REFLECTION
-	refl = (myhalf3(qf_texture(u_ReflectionTexture, projCoord)));
+	refl = (myhalf3(texture(u_ReflectionTexture, projCoord)));
 #endif
 
 #endif // APPLY_EYEDOT

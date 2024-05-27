@@ -1,10 +1,4 @@
-#include "include/common.glsl"
-#include "include/lightmap.glsl"
-#include "include/dlights.glsl"
-#include "include/fog.glsl"
-#include "include/greyscale.glsl"
-
-#include "include/varying_q3a.glsl"
+#include "include/global.glsl"
 
 #if defined(APPLY_CUBEMAP) || defined(APPLY_CUBEMAP_VERTEX) || defined(APPLY_SURROUNDMAP)
 uniform samplerCube u_BaseTexture;
@@ -12,23 +6,14 @@ uniform samplerCube u_BaseTexture;
 uniform sampler2D u_BaseTexture;
 #endif
 
-#ifdef APPLY_DRAWFLAT
 uniform myhalf3 u_WallColor;
 uniform myhalf3 u_FloorColor;
-#endif
 
-#ifdef NUM_LIGHTMAPS
-uniform LightmapSampler u_LightmapTexture0;
-#if NUM_LIGHTMAPS >= 2
-uniform LightmapSampler u_LightmapTexture1;
-#if NUM_LIGHTMAPS >= 3
-uniform LightmapSampler u_LightmapTexture2;
-#if NUM_LIGHTMAPS >= 4
-uniform LightmapSampler u_LightmapTexture3;
-#endif // NUM_LIGHTMAPS >= 4
-#endif // NUM_LIGHTMAPS >= 3
-#endif // NUM_LIGHTMAPS >= 2
-#endif // NUM_LIGHTMAPS
+layout(set = DESCRIPTOR_GLOBAL_SET, binding = 0) uniform sampler lightmapTextureSample;
+layout(set = DESCRIPTOR_GLOBAL_SET, binding = 1 + (16 * 0)) uniform texture2D lightmapTexture0[16];
+layout(set = DESCRIPTOR_GLOBAL_SET, binding = 1 + (16 * 1)) uniform texture2D lightmapTexture1[16];
+layout(set = DESCRIPTOR_GLOBAL_SET, binding = 1 + (16 * 2)) uniform texture2D lightmapTexture2[16];
+layout(set = DESCRIPTOR_GLOBAL_SET, binding = 1 + (16 * 3)) uniform texture2D lightmapTexture3[16];
 
 #if defined(APPLY_SOFT_PARTICLE)
 #include "include/softparticle.glsl"
@@ -41,13 +26,13 @@ void main(void)
 
 #ifdef NUM_LIGHTMAPS
 	color = myhalf4(0.0, 0.0, 0.0, qf_FrontColor.a);
-	color.rgb += myhalf3(Lightmap(u_LightmapTexture0, v_LightmapTexCoord01.st, v_LightmapLayer0123.x)) * u_LightstyleColor[0];
+	color.rgb += myhalf3(Lightmap(lightmapTexture0, v_LightmapTexCoord01.st, v_LightmapLayer0123.x)) * u_LightstyleColor[0];
 #if NUM_LIGHTMAPS >= 2
-	color.rgb += myhalf3(Lightmap(u_LightmapTexture1, v_LightmapTexCoord01.pq, v_LightmapLayer0123.y)) * u_LightstyleColor[1];
+	color.rgb += myhalf3(Lightmap(lightmapTexture1, v_LightmapTexCoord01.pq, v_LightmapLayer0123.y)) * u_LightstyleColor[1];
 #if NUM_LIGHTMAPS >= 3
-	color.rgb += myhalf3(Lightmap(u_LightmapTexture2, v_LightmapTexCoord23.st, v_LightmapLayer0123.z)) * u_LightstyleColor[2];
+	color.rgb += myhalf3(Lightmap(lightmapTexture2, v_LightmapTexCoord23.st, v_LightmapLayer0123.z)) * u_LightstyleColor[2];
 #if NUM_LIGHTMAPS >= 4
-	color.rgb += myhalf3(Lightmap(u_LightmapTexture3, v_LightmapTexCoord23.pq, v_LightmapLayer0123.w)) * u_LightstyleColor[3];
+	color.rgb += myhalf3(Lightmap(lightmapTexture3, v_LightmapTexCoord23.pq, v_LightmapLayer0123.w)) * u_LightstyleColor[3];
 #endif // NUM_LIGHTMAPS >= 4
 #endif // NUM_LIGHTMAPS >= 3
 #endif // NUM_LIGHTMAPS >= 2

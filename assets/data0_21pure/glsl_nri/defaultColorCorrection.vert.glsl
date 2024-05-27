@@ -1,6 +1,4 @@
-#include "include/attributes.glsl"
-#include "include/resource.glsl"
-#include "include/math_utils.glsl"
+#include "include/global.glsl"
 
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 0) uniform DefaultColorCorrectionCB pass; 
 
