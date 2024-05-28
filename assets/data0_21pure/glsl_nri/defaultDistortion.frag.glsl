@@ -16,6 +16,8 @@ layout(set = DESCRIPTOR_PASS_SET, binding = 4) uniform sampler u_RefractionSampl
 
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultDistortionCB pass;
 
+layout(location = 0) out vec4 outFragColor;
+
 void main(void)
 {
 	myhalf3 color;
@@ -77,8 +79,8 @@ void main(void)
 #endif
 
 #ifdef APPLY_GREYSCALE
-	qf_FragColor = vec4(vec3(Greyscale(color)),1.0);
+	outFragColor = vec4(vec3(Greyscale(color)),1.0);
 #else
-	qf_FragColor = vec4(vec3(color),1.0);
+	outFragColor = vec4(vec3(color),1.0);
 #endif
 }

@@ -1,8 +1,8 @@
-#include "include/common.glsl"
-#include "include/rgbdepth.glsl"
 #include "include/attributes.glsl"
+#include "include/resource.glsl"
+#include "include/math_utils.glsl"
 
-qf_varying float v_Depth;
+layout(location = 0) out float v_Depth;
 
 void main(void)
 {
