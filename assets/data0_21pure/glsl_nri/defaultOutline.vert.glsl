@@ -1,6 +1,5 @@
 #include "include/global.glsl"
 
-layout(set = 2, binding = 1) uniform FogUniforms fog;  
 layout(location = 0) out vec2 v_FogCoord;
 layout(location = 1) out vec4 frontColor; 
 
@@ -22,10 +21,7 @@ void main(void)
 
 #ifdef APPLY_FOG
 	#if defined(APPLY_FOG_COLOR)
-		QF_FogGenColor(
-			Position, 
-			outColor, 
-			obj.blendMix);
+		QF_FogGenColor(Position, outColor,  obj.blendMix);
 	#else
 		QF_FogGenCoordTexCoord(Position, v_FogCoord);
 	#endif

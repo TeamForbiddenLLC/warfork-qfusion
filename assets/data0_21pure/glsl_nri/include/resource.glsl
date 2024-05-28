@@ -1,36 +1,3 @@
-//struct DefaultCellShadeUBO {
-//    vec3 viewOrigin;
-//    float entityDist;
-//    mat4 mvp;
-//    vec4 textureMatrix[2];
-//    vec4 constColor;
-//    vec4 rgbGenFuncArgs;
-//    vec3 lightAmbient;
-//    float entityDist;
-//    vec3 lightDiffuse;
-//    float frontPlane;
-//    vec3 lightDir;
-//};
-//
-//
-//struct UBOLightMap {
-//    float3 lightMapColors[4];
-//};
-//
-//
-//struct UBODefaultOutline {
-//    float outlineCutOff;
-//    float fogColor;
-//};
-//
-//struct DefaultFogUBO {
-//    mat4 mvp;
-//    vec3 color;
-//    float eyeDist;
-//    vec4 eyePlane 
-//    vec4 plane;
-//    float scale;
-//};
 
 struct VertexColoringCB {
 #ifdef APPLY_RGB_DISTANCERAMP
@@ -60,6 +27,7 @@ struct FrameCB {
   float fogScale;
   float eyeDist;
   float mirrorSide;
+  vec3 fogColor;
   mat3 viewAxis;
 };
 
@@ -76,6 +44,28 @@ struct DefaultCellShadeCB {
     vec4 textureMatrix[2];
     vec3 entityColor;
 	mat3 reflectionTexMatrix;
+};
+
+struct DefaultShadowCB {
+    mat4 shadowmapMatrix0;
+    mat4 shadowmapMatrix1;
+    mat4 shadowmapMatrix2;
+    mat4 shadowmapMatrix3;
+    vec4 shadowDir[4];
+    vec4 shadowParams[4];
+    vec4 shadowAlpha[2];
+    vec4 shadowEntitydist[4];
+};
+
+struct DefaultQ3ShaderCB {
+    vec3 wallColor;
+    float softParticleScale;
+    vec4 textureParam;
+    vec4 textureMatrix[2];
+    vec3 floorColor;
+    vec2 zRange;
+    mat4 reflectionTexMatrix;
+    vec3 floorColor;
 };
 
 struct DefaultDistortionCB {
@@ -99,46 +89,4 @@ struct DefaultFXAACB {
     vec4 textureMatrix[2];
 };
 
-
-//struct UBODefaultMaterial {
-//    vec4 constColor;
-//    vec4 rgbGenFuncArgs;
-//};
-//
-//struct UBODefaultCellShade {
-//    mat4 mvp;
-//    vec4 entityColor;
-//    vec4 textureMatrix[2];
-//    vec2 blendMix;
-//    vec3 entityDist;
-//    mat3 reflectionTextureMat;
-//};
-//
-//
-//struct DynamicLight {
-//    float4 diffuseAndInvRadius;
-//    float3 position;
-//    float invRadius;
-//};
-//
-//struct LightConstBuffer {
-//
-//};
-//
-//struct UBODynamicLights {
-//    int numberLights;
-//    DynamicLight lights[NUM_DLIGHTS];
-//};
-//
-//struct FogConstBuffer {
-//    vec3 color;
-//    float eyeDist;
-//    vec4 eyePlane 
-//    vec4 plane;
-//    float scale;
-//};
-//
-//struct UBOLightMap {
-//  int numLightMaps;
-//};
 

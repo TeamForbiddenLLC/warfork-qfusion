@@ -1,11 +1,11 @@
-#include "include/common.glsl"
-#include "include/resource.glsl"
-
+#include "include/global.glsl"
 
 layout(location = 0) in vec4 v_FogCoord
-layout(location = 1) in vec4 v_FogCoord
+layout(location = 1) in vec4 frontColor
 
 uniform float u_OutlineCutOff;
+
+layout(location = 0) out vec4 outFragColor;
 
 void main(void)
 {
@@ -16,8 +16,8 @@ void main(void)
 
 #if defined(APPLY_FOG) && !defined(APPLY_FOG_COLOR)
 	myhalf fogDensity = FogDensity(v_FogCoord);
-	qf_FragColor = vec4(vec3(mix(qf_FrontColor.rgb, u_FogColor, fogDensity)), 1.0);
+	outFragColor = vec4(vec3(mix(frontColor.rgb, frame.fogColor, fogDensity)), 1.0);
 #else
-	qf_FragColor = vec4(qf_FrontColor);
+	outFragColor = vec4(frontColor);
 #endif
 }

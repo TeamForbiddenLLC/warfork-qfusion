@@ -1,15 +1,11 @@
-#include "include/common.glsl"
-#include "include/attributes.glsl"
-#include "include/rgbgen.glsl"
-#include_if(APPLY_FOG) "include/fog.glsl"
+#include "include/global.glsl"
 
-#include "include/varying_q3a.glsl"
+layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultQ3ShaderCB pass;
 
-#if defined(APPLY_TC_GEN_CELSHADE)
-uniform mat3 u_ReflectionTexMatrix;
-#elif defined(APPLY_TC_GEN_VECTOR)
-uniform mat4 u_VectorTexMatrix;
-#endif
+layout(location = 0) out vec3 v_Position 
+layout(location = 1) out vec3 v_Normal 
+layout(location = 2) out vec2 v_TexCoord  
+layout(location = 3) out vec4 frontColor; 
 
 void main(void)
 {
@@ -23,14 +19,14 @@ void main(void)
 	myhalf4 outColor = VertexRGBGen(Position, Normal, inColor);
 
 #ifdef APPLY_FOG
-#if defined(APPLY_FOG_COLOR)
-	FogGenColor(Position, outColor, u_BlendMix);
-#else
-	FogGenCoord(Position, v_FogCoord);
-#endif
+	#if defined(APPLY_FOG_COLOR)
+		QF_FogGenColor(Position, outColor, obj.blendMix);
+	#else
+		QF_FogGenCoordTexCoord(Position, v_FogCoord);
+	#endif
 #endif // APPLY_FOG
 
-	qf_FrontColor = vec4(outColor);
+frontColor = vec4(outColor);
 
 #if defined(APPLY_CUBEMAP_VERTEX)
 

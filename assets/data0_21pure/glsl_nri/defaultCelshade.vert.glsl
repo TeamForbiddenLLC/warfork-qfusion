@@ -4,10 +4,7 @@ layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultCellShadeCB pass
 
 layout(location = 0) out vec2 v_TexCoord;
 layout(location = 1) out vec3 v_TexCoordCube;
-
-#if defined(APPLY_FOG) && !defined(APPLY_FOG_COLOR)
-	layout(location = 2) out vec2 v_FogCoord;
-#endif
+layout(location = 2) out vec2 v_FogCoord;
 
 void main(void)
 {
@@ -22,19 +19,9 @@ void main(void)
 
 #ifdef APPLY_FOG
 	#ifdef APPLY_FOG_COLOR
-		FogGenColor(
-			frame.fogEyePlane,
-			frame.fogPlane,
-			frame.fogScale,
-			frame.eyeDist, 
-			Position, outColor, frame.blendMix);
+		QF_FogGenColor(Position, outColor, obj.blendMix);
 	#else
-		FogGenCoordTexCoord(
-			frame.fogEyePlane,
-			frame.fogPlane,
-			frame.fogScale,
-			frame.eyeDist, 
-			Position, v_FogCoord);
+		QF_FogGenCoordTexCoord(Position, v_FogCoord);
 	#endif
 #endif
 

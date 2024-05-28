@@ -2,7 +2,7 @@
 
 layout(location = 0) out vec2 v_FogCoord;
 
-layout(set = 2, binding = 0) uniform DefaultFogUBO ubo;  
+//layout(set = 2, binding = 0) uniform DefaultFogUBO ubo;  
 
 void main(void)
 {
@@ -13,5 +13,5 @@ void main(void)
 	QF_TransformVerts(Position, Normal, TexCoord);
 	QF_FogGenCoordTexCoord(Position, v_FogCoord);
 
-	gl_Position = ubo.mvp * Position;
+	gl_Position = obj.mvp * Position;
 }
