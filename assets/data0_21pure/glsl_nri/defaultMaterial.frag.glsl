@@ -1,18 +1,6 @@
 #include "include/global.glsl" 
 
-struct DynamicLight {
-	vec3 position;
-	vec4 diffuseAndInvRadius;
-};
-
-struct DynamicLightConstCB {
-	int numberLights;
-	DynamicLight dynLights[16];
-};
-
-
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultMaterialCB pass;
-layout(set = DESCRIPTOR_OBJECT_SET, binding = 5) uniform DynamicLightConstCB lights;
 
 layout(set = DESCRIPTOR_GLOBAL_SET, binding = 0) uniform sampler lightmapTextureSample;
 layout(set = DESCRIPTOR_GLOBAL_SET, binding = 1 + (16 * 0)) uniform texture2D lightmapTexture0[16];

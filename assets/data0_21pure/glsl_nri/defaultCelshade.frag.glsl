@@ -1,5 +1,4 @@
 #include "include/global.glsl"
-#include "include/resource.glsl"
 
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultCellShadeCB pass;
 

@@ -3,11 +3,13 @@
 
 qf_varying float v_Depth;
 
+layout(location = 0) out vec4 outFragColor; 
+
 void main(void)
 {
 #ifdef APPLY_RGB_SHADOW_24BIT
-	qf_FragColor = encodedepthmacro24(v_Depth);
+	outFragColor = encodedepthmacro24(v_Depth);
 #else
-	qf_FragColor = encodedepthmacro16(v_Depth);
+	outFragColor  = encodedepthmacro16(v_Depth);
 #endif
 }

@@ -7,23 +7,23 @@
 		float d = step(v_ShadowProjVector[SHADOW_INDEX].w, 0.0);
 
 		# ifdef APPLY_SHADOW_NORMAL_CHECK
-		f = dot(u_ShadowDir[SHADOW_INDEX].xyz, v_Normal);
+		f = dot(pass.shadowDir[SHADOW_INDEX].xyz, v_Normal);
 		d += step(0.0, f);
 		# endif
 		
-		d += length(v_Position[SHADOW_INDEX].xyz - u_ShadowEntityDist[SHADOW_INDEX].xyz) / u_ShadowDir[SHADOW_INDEX].w;
+		d += length(v_Position[SHADOW_INDEX].xyz - pass.shadowEntitydist[SHADOW_INDEX].xyz) / u_ShadowDir[SHADOW_INDEX].w;
 
 		//shadowmaptc = (shadowmaptc + vec3 (1.0)) * vec3 (0.5);
-		shadowmaptc.xy = shadowmaptc.xy * u_ShadowmapTextureParams[SHADOW_INDEX].xy; // .x - texture width
+		shadowmaptc.xy = shadowmaptc.xy * pass.shadowParams[SHADOW_INDEX].xy; // .x - texture width
 		shadowmaptc.z = clamp(shadowmaptc.z, 0.0, 1.0);
-		shadowmaptc.xy = vec2(clamp(shadowmaptc.x, 0.0, u_ShadowmapTextureParams[SHADOW_INDEX].x), clamp(shadowmaptc.y, 0.0, u_ShadowmapTextureParams[SHADOW_INDEX].y));
+		shadowmaptc.xy = vec2(clamp(shadowmaptc.x, 0.0, pass.shadowParams[SHADOW_INDEX].x), clamp(shadowmaptc.y, 0.0, pass.shadowParams[SHADOW_INDEX].y));
 
-		vec2 ShadowMap_TextureScale = u_ShadowmapTextureParams[SHADOW_INDEX].zw;
+		vec2 ShadowMap_TextureScale = pass.shadowParams[SHADOW_INDEX].zw;
 
 		#ifdef APPLY_DITHER
 
 		# ifdef APPLY_PCF
-		#  define texval(x, y) dshadow2D(SHADOW_TEXTURE, vec3(center + vec2(x, y)*ShadowMap_TextureScale, shadowmaptc.z))
+		#  define texval(x, y) texture(sampler2DShadow(SHADOW_TEXTURE,shadowmapSampler), vec3(center + vec2(x, y)*ShadowMap_TextureScale, shadowmaptc.z))
 
 		// this method can be described as a 'dithered pinwheel' (4 texture lookups)
 		// which is a combination of the 'pinwheel' filter suggested by Lee "eihrul" Salzman and dithered 4x4 PCF,
@@ -43,7 +43,7 @@
 
 		f = dot(vec4(0.25), vec4(group1, group2, group3, group4));
 		# else
-		f = dshadow2D(SHADOW_TEXTURE, vec3(shadowmaptc.xy*ShadowMap_TextureScale, shadowmaptc.z));
+		f = texture(sampler2DShadow(SHADOW_TEXTURE, shadowmapSampler), vec3(shadowmaptc.xy*ShadowMap_TextureScale, shadowmaptc.z));
 		# endif // APPLY_PCF
 	
 		#else
@@ -64,7 +64,7 @@
 		// NOTE: we're using emulation of texture_gather now
 
 		# ifdef APPLY_PCF
-		#  define texval(off) dshadow2D(SHADOW_TEXTURE, vec3(off,shadowmaptc.z))
+		#  define texval(off) texture(sampler2DShadow(SHADOW_TEXTURE, shadowmapSampler), vec3(off,shadowmaptc.z))
 
 		#  ifdef APPLY_SHADOW_SAMPLERS
 		vec2 offset = fract(shadowmaptc.xy - 0.5);
@@ -86,11 +86,11 @@
 		
 		# else
 		
-		f = dshadow2D(SHADOW_TEXTURE, vec3(shadowmaptc.xy * ShadowMap_TextureScale, shadowmaptc.z));
+		f = texture(sampler2DShadow(SHADOW_TEXTURE, shadowmapSampler), vec3(shadowmaptc.xy * ShadowMap_TextureScale, shadowmaptc.z));
 		
 		# endif // APPLY_PCF
 		
 		#endif // APPLY_DITHER
 
-		finalcolor *= clamp(max(max(f, d), u_ShadowAlpha[SHADOW_INDEX / 4].SHADOW_INDEX_COMPONENT), 0.0, 1.0);
+		finalcolor *= clamp(max(max(f, d), pass.shadowAlpha[SHADOW_INDEX / 4].SHADOW_INDEX_COMPONENT), 0.0, 1.0);
 	}
