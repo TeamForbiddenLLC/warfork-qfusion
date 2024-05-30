@@ -99,6 +99,8 @@ typedef struct image_s
 	struct image_s *next, *prev;
 } image_t;
 
+
+
 void R_InitImages( void );
 int R_TextureTarget( int flags, int *uploadTarget );
 void R_TouchImage( image_t *image, int tags );
@@ -111,6 +113,7 @@ void R_InitViewportTexture( image_t **texture, const char *name, int id,
 	int viewportWidth, int viewportHeight, int size, int flags, int tags, int samples );
 image_t *R_GetPortalTexture( int viewportWidth, int viewportHeight, int flags, unsigned frameNum );
 image_t *R_GetShadowmapTexture( int id, int viewportWidth, int viewportHeight, int flags );
+image_t *R_CreateImage( const char *name, int width, int height, int layers, int flags, int minmipsize, int tags, int samples );
 void R_InitDrawFlatTexture( void );
 void R_FreeImageBuffers( void );
 

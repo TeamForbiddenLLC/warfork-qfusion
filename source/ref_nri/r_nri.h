@@ -92,12 +92,12 @@ bool R_InitNriBackend(const nri_init_desc_t* init, struct nri_backend_s* backend
 void R_NRI_CallbackMessage(NriMessage msg, const char* file, uint32_t line, const char* message, void* userArg);
 NriFormat R_NRIFormat(enum texture_format_e format);
 
-
 struct descriptor_simple_serializer_s {
   NriDescriptor const* descriptors[DESCRIPTOR_MAX_BINDINGS];
   uint32_t cookies[DESCRIPTOR_MAX_BINDINGS];
   uint32_t descriptorMask;
 };
+
 hash_t DescSimple_SerialHash( struct descriptor_simple_serializer_s *state );
 void DescSimple_WriteImage( struct descriptor_simple_serializer_s *state, uint32_t slot, const image_t *image );
 void DescSimple_StateCommit(struct nri_backend_s *backend, struct descriptor_simple_serializer_s *state, NriDescriptorSet* descriptor);

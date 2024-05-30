@@ -27,11 +27,13 @@ typedef uint64_t r_glslfeat_t;
 #include "r_math.h"
 #include "r_nri.h"
 #include "r_vattribs.h"
+#include "../gameshared/q_sds.h"
 
 #define GLSL_BIT(x)							(1ULL << (x))
 #define GLSL_BITS_VERSION					16
 
 #define PIPELINE_LAYOUT_HASH_SIZE 256
+#define DESCRIPTOR_REFLECTION_HASH_SIZE 1024 
 #define VERTEX_POS_BINDING_SLOT (0)
 
 #define DEFAULT_GLSL_MATERIAL_PROGRAM			"defaultMaterial"
@@ -202,58 +204,9 @@ typedef enum {
 	GLSL_STAGE_MAX
 } glsl_program_stage_t;
 
-
-struct shader_bin_data_s {
-	char *bin;
-	size_t size;
-	glsl_program_stage_t stage;
-};
-
-
-struct DynamicLights{
-    float lightDiffuse[4];
-    float position[3];
-    float invRadius;
-};
-
-struct mat4 {
-	float m[16];
-};
-
-struct Unif {
-	float shaderTime;
-
-	float mvp[4][4];
-	float mv[4][4];
-
-	struct mat4 viewOrigin;
-	struct mat4 viewAxis;
-	float viewport[4];
-
-	float texMatrix[4][2];
-	float RGBGenFuncArgs[4];
-	float AlphaGenFuncArgs[4];
-	float constColor[4];
-	float blendMix[2];
-	float glossFactors[2];
-	float u_FogScaleAndEyeDist[2];
-
-	float wallColor[3];
-	float floorColor[3];
-
-	float u_FogEyePlane[4];
-	float u_FogPlane[4];
-	float u_FogColor[3];
-
-	int u_NumDynamicLights;
-	float u_DlightPosition[3][16];
-	float u_DlightDiffuseAndInvRadius[4][16];
-	struct DynamicLights dynamicLights[16];
-};
-
-struct pipeline_hash_s {
-	uint64_t hash;
-	NriPipeline* pipeline;
+enum glsl_slot_type {
+	GLSL_REFLECTION_IMAGE,
+	GLSL_REFLECTION_SAMPLER
 };
 
 struct glsl_program_s {
@@ -267,10 +220,25 @@ struct glsl_program_s {
 	// might not need to store the bin data
 	// will have to see if I need to re-declare the pipeline
 	uint16_t shaderStageSize;
-	struct shader_bin_data_s shaderBin[GLSL_STAGE_MAX];
-	NriPipelineLayout* layout;
-	struct pipeline_hash_s pipelines[PIPELINE_LAYOUT_HASH_SIZE];
-	struct descriptor_set_allloc_s* descriptorSetAlloc[DESCRIPTOR_SET_MAX];
+	struct shader_bin_data_s {
+		char *bin;
+		size_t size;
+		glsl_program_stage_t stage;
+	} shaderBin[GLSL_STAGE_MAX];
+	NriPipelineLayout *layout;
+	struct pipeline_hash_s {
+		uint64_t hash;
+		NriPipeline *pipeline;
+	} pipelines[PIPELINE_LAYOUT_HASH_SIZE];
+	struct descriptor_set_allloc_s *descriptorSetAlloc[DESCRIPTOR_SET_MAX];
+	struct descriptor_reflection_s {
+		uint32_t dimCount: 8;
+		uint32_t isArray: 1;
+		uint32_t slotType: 8; // enum glsl_slot_type 
+		uint32_t hash;
+		uint16_t setIndex;
+		uint16_t baseRegisterIndex;
+	} descriptorReflection[DESCRIPTOR_REFLECTION_HASH_SIZE];
 
 	struct loc_s {
 		int			ModelViewMatrix,
@@ -356,7 +324,41 @@ struct glsl_program_s {
 	} loc;
 };
 
+struct glsl_descriptor_handle_s {
+	const char* name;
+	hash_t hash;
+};
 
+inline struct glsl_descriptor_handle_s Create_DescriptorHandle(const char* name) {
+	return (struct glsl_descriptor_handle_s){
+		.name = name,
+		.hash = hash_data(HASH_INITIAL_VALUE, name, strlen(name))
+	};
+}
+
+struct glsl_descriptor_data_s {
+	struct glsl_descriptor_handle_s handle;
+	uint32_t registerOffset; 
+	union {
+		const image_t* image;
+	};
+};
+
+
+void RP_BindDescriptorSets(struct frame_cmd_buffer_s* cmd, struct glsl_program_s* program, struct glsl_descriptor_data_s* data, size_t numDescriptorData);
+//struct glsl_descriptor_commit_s {
+//  NriDescriptor const* descriptors[DESCRIPTOR_MAX_BINDINGS];
+//  uint32_t cookies[DESCRIPTOR_MAX_BINDINGS];
+//  uint32_t descriptorMask;
+//};
+//
+//struct glsl_program_binder_s {
+//	struct glsl_descriptor_commit_s commit[DESCRIPTOR_SET_MAX];
+//	uint8_t setsMask;
+//};
+//void RC_SetImage(struct glsl_program_binder_s* commit, struct glsl_program_s* program, const struct glsl_descriptor_handle_s* handle, image_t* image);
+
+//const struct descriptor_reflection_s* RP_ReflectDescriptorSet(const struct glsl_program_s *program, const struct descriptor_handle_s* handle);
 void RP_Init( void );
 void RP_Shutdown( void );
 void RP_PrecachePrograms( void );

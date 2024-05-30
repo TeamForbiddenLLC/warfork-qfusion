@@ -2101,7 +2101,7 @@ static void R_UnlinkPic( image_t *image )
 	ri.Mutex_Unlock( r_imagesLock );
 }
 
-static image_t *R_CreateImage( const char *name, int width, int height, int layers, int flags, int minmipsize, int tags, int samples )
+image_t *R_CreateImage( const char *name, int width, int height, int layers, int flags, int minmipsize, int tags, int samples )
 {
 	image_t *image;
 	int name_len = strlen( name );
@@ -2145,18 +2145,18 @@ image_t *R_Create3DImage( const char *name, int width, int height, int layers, i
 	flags |= ( array ? IT_ARRAY : IT_3D );
 
 	image = R_CreateImage( name, width, height, layers, flags, 1, tags, samples );
-	R_BindImage( image );
+	RB_FlushTextureCache();
 
-	R_ScaledImageSize( width, height, &scaledWidth, &scaledHeight, flags, 1, 1, false );
-	image->upload_width = scaledWidth;
-	image->upload_height = scaledHeight;
+	//R_ScaledImageSize( width, height, &scaledWidth, &scaledHeight, flags, 1, 1, false );
+	image->upload_width = width;
+	image->upload_height = height;
 
-	R_SetupTexParameters( flags, scaledWidth, scaledHeight, 1 );
+	//R_SetupTexParameters( flags, scaledWidth, scaledHeight, 1 );
 
-	R_TextureTarget( flags, &target );
-	R_TextureFormat( flags, samples, &comp, &format, &type );
+	//R_TextureTarget( flags, &target );
+	//R_TextureFormat( flags, samples, &comp, &format, &type );
 
-	qglTexImage3DEXT( target, 0, comp, scaledWidth, scaledHeight, layers, 0, format, type, NULL );
+	//qglTexImage3DEXT( target, 0, comp, scaledWidth, scaledHeight, layers, 0, format, type, NULL );
 
 	if( !( flags & IT_NOMIPMAP ) )
 	{

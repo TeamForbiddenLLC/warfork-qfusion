@@ -71,6 +71,12 @@ static void RB_RenderMeshGLSL_Fog( const shaderpass_t *pass, r_glslfeat_t progra
 static void RB_RenderMeshGLSL_FXAA( const shaderpass_t *pass, r_glslfeat_t programFeatures );
 static void RB_RenderMeshGLSL_YUV( const shaderpass_t *pass, r_glslfeat_t programFeatures );
 
+static int __NumberLightMaps(const struct superLightStyle_s* lightStyle) {
+	int i = 0;
+	for( ; i < MAX_LIGHTMAPS && lightStyle->lightmapStyles[i] != 255; i++ ) {}
+	return i;
+}
+
 /*
 * RB_InitBuiltinPasses
 */
@@ -1485,15 +1491,15 @@ static void RB_RenderMeshGLSL_ShadowmapArray( const shaderpass_t *pass, r_glslfe
 	if( numShadows > 1 ) {
 		programFeatures |= GLSL_SHADER_SHADOWMAP_SHADOW2 << (numShadows - 2);
 	}
-	if( glConfig.ext.shadow ) {
-		programFeatures |= GLSL_SHADER_SHADOWMAP_SAMPLERS;
-	} else {
-		// pack depth into RGB triplet of the colorbuffer
-		if( glConfig.ext.rgb8_rgba8 ) {
-			// pack depth into RGB888 triplet
-			programFeatures |= GLSL_SHADER_SHADOWMAP_24BIT;
-		}
-	}
+ // if( glConfig.ext.shadow ) {
+ // 	programFeatures |= GLSL_SHADER_SHADOWMAP_SAMPLERS;
+ // } else {
+ // 	// pack depth into RGB triplet of the colorbuffer
+ // 	if( glConfig.ext.rgb8_rgba8 ) {
+ // 		// pack depth into RGB888 triplet
+ // 		programFeatures |= GLSL_SHADER_SHADOWMAP_24BIT;
+ // 	}
+ // }
 	if( rb.currentShadowBits && (rb.currentModelType == mod_brush) ) {
 		programFeatures |= GLSL_SHADER_SHADOWMAP_NORMALCHECK;
 	}
@@ -1538,9 +1544,9 @@ static void RB_RenderMeshGLSL_RGBShadow( const shaderpass_t *pass, r_glslfeat_t 
 	int program;
 	mat4_t texMatrix;
 
-	if( glConfig.ext.rgb8_rgba8 ) {
-		programFeatures |= GLSL_SHADER_RGBSHADOW_24BIT;
-	}
+	//if( glConfig.ext.rgb8_rgba8 ) {
+	//	programFeatures |= GLSL_SHADER_RGBSHADOW_24BIT;
+	//}
 
 	Matrix4_Identity( texMatrix );
 
@@ -1749,8 +1755,7 @@ static void RB_RenderMeshGLSL_Q3AShader_2(struct frame_cmd_buffer_s* cmd, const 
 	vec4_t lightAmbient, lightDiffuse;
 	mat4_t texMatrix, genVectors;
 
-	struct descriptor_simple_serializer_s materialDesc = {0};  
-	
+
 	// lightmapped surface pass
 	if( isWorldSurface && 
 		rb.superLightStyle && 
@@ -1819,7 +1824,7 @@ static void RB_RenderMeshGLSL_Q3AShader_2(struct frame_cmd_buffer_s* cmd, const 
 		Vector4Set( lightDiffuse, 1, 1, 1, 1 );
 	}
 
-	const image_t *image = RB_ShaderpassTex( pass );
+	const image_t *shaderPassImage = RB_ShaderpassTex( pass );
 	if( isLightmapped || isWorldVertexLight ) {
 		// add dynamic lights
 		if( rb.currentDlightBits ) {
@@ -1829,15 +1834,14 @@ static void RB_RenderMeshGLSL_Q3AShader_2(struct frame_cmd_buffer_s* cmd, const 
 			programFeatures |= GLSL_SHADER_COMMON_DRAWFLAT;
 		}
 		if( rb.renderFlags & RF_LIGHTMAP ) {
-			image = rsh.whiteTexture;
+			shaderPassImage = rsh.whiteTexture;
 		}
 	}
 
-	if( image->flags & IT_ALPHAMASK ) {
+	if( shaderPassImage->flags & IT_ALPHAMASK ) {
 		programFeatures |= GLSL_SHADER_Q3_ALPHA_MASK;
 	}
 
-	DescSimple_WriteImage( &materialDesc, 0, image); 
 	
 	// convert rgbgen and alphagen to GLSL feature defines
 	programFeatures |= RB_RGBAlphaGenToProgramFeatures( &pass->rgbgen, &pass->alphagen );
@@ -1860,39 +1864,46 @@ static void RB_RenderMeshGLSL_Q3AShader_2(struct frame_cmd_buffer_s* cmd, const 
 
 	RB_SetShaderpassState( state );
 
-
-	if( isLightmapped ) {
-		int i;
-
-		// bind lightmap textures and set program's features for lightstyles
-		for( i = 0; i < MAX_LIGHTMAPS && lightStyle->lightmapStyles[i] != 255; i++ )
-			RB_BindImage( i+4, rsh.worldBrushModel->lightmapImages[lightStyle->lightmapNum[i]] ); // lightmap
+	const int numLightMaps = isLightmapped ? __NumberLightMaps(lightStyle) : 0;
+	for(int i = 0; i < numLightMaps; i++) {
 		programFeatures |= ( i * GLSL_SHADER_Q3_LIGHTSTYLE0 );
-		if( mapConfig.lightmapArrays )
-			programFeatures |= GLSL_SHADER_Q3_LIGHTMAP_ARRAYS;
 	}
 
-	// update uniforms
- // struct pipeline_layout_def_s layoutDef = {
- // 	.attrib = cmd->layoutState.attrib,
- // 	.halfAttrib = cmd->layoutState.halfAttrib
- // };
 	struct glsl_program_s* program = RP_ResolveProgram(GLSL_PROGRAM_TYPE_Q3A_SHADER, NULL,	rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 	struct pipeline_hash_s* pipeline = RP_ResolvePipeline(program, &cmd->layoutConfig);
-	
-	//ResolveDescriptorSet(rsh.nri, cmd, )
+
+	size_t descriptorIndex = 0;
+	struct glsl_descriptor_data_s descriptors[64] = {0}; 
 
 	if( programFeatures & GLSL_SHADER_COMMON_SOFT_PARTICLE ) {
-		DescSimple_WriteImage( &materialDesc, 3, rsh.screenDepthTextureCopy );
-		//RB_BindImage( 3, rsh.screenDepthTextureCopy );
+		descriptors[descriptorIndex++] = (struct glsl_descriptor_data_s) {
+			.image = rsh.screenDepthTextureCopy,
+			.handle = Create_DescriptorHandle("u_DepthTexture")
+		};
+	}
+	descriptors[descriptorIndex++] = (struct glsl_descriptor_data_s) {
+		.image = shaderPassImage,
+		.handle = Create_DescriptorHandle("u_BaseTexture")
+	};
+
+	for(int i = 0; i < numLightMaps; i++) {
+		descriptors[descriptorIndex++] = (struct glsl_descriptor_data_s) {
+			.image = rsh.worldBrushModel->lightmapImages[lightStyle->lightmapNum[i]],
+			.registerOffset = i,
+			.handle =  Create_DescriptorHandle( "lightmapTexture" )
+		};
 	}
 
-	struct descriptor_set_result_s result = ResolveDescriptorSet( &rsh.nri, cmd, program->descriptorSetAlloc[DESCRIPTOR_SET_0], DescSimple_SerialHash( &materialDesc ) );
-	if( !result.found ) {
-		DescSimple_StateCommit( &rsh.nri, &materialDesc, result.set );
-	}
-	rsh.nri.coreI.CmdSetDescriptorSet(cmd->cmd, DESCRIPTOR_SET_0, result.set, NULL);
 
+	RP_BindDescriptorSets(cmd, program, descriptors, descriptorIndex);
+
+	//struct descriptor_set_result_s result = ResolveDescriptorSet( &rsh.nri, cmd, program->descriptorSetAlloc[DESCRIPTOR_SET_0], DescSimple_SerialHash( &materialDesc ) );
+	//if( !result.found ) {
+	////	DescSimple_StateCommit( &rsh.nri, &materialDesc, result.set );
+	//}
+	//rsh.nri.coreI.CmdSetDescriptorSet(cmd->cmd, DESCRIPTOR_SET_0, result.set, NULL);
+
+	//RP_BindDescriptorSets()
 
 	FR_CmdDrawElements(cmd, 
 										cmd->additional.drawElements.numElems,

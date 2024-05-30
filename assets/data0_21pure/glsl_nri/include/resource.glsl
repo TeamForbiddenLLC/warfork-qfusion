@@ -57,6 +57,13 @@ struct DefaultShadowCB {
     vec4 shadowEntitydist[4];
 };
 
+
+struct DefaultDistortionCB {
+    vec4 textureParams;
+    vec4 textureMatrix[2];
+    float frontPlane;
+};
+
 struct DefaultQ3ShaderCB {
     vec3 wallColor;
     float softParticleScale;
@@ -66,12 +73,7 @@ struct DefaultQ3ShaderCB {
     vec2 zRange;
     mat4 reflectionTexMatrix;
     vec3 floorColor;
-};
-
-struct DefaultDistortionCB {
-    vec4 textureParams;
-    vec4 textureMatrix[2];
-    float frontPlane;
+    vec3 lightstyleColor[4]
 };
 
 struct DefaultMaterialCB {
