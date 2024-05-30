@@ -202,9 +202,6 @@ typedef struct r_backend_s
 	bool noWorldLight;
 } rbackend_t;
 
-
-
-
 extern rbackend_t rb;
 
 // r_backend.c

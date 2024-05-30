@@ -602,19 +602,13 @@ void R_BuildLightmaps( model_t *mod, int numLightmaps, int w, int h, const uint8
 	layerWidth = w * ( 1 + ( int )mapConfig.deluxeMappingEnabled );
 
 	mapConfig.maxLightmapSize = 0;
-	mapConfig.lightmapArrays = mapConfig.lightmapsPacking
-		&& glConfig.ext.texture_array
-		&& ( glConfig.maxVertexAttribs > VATTRIB_LMLAYERS0123 )
-		&& ( glConfig.maxVaryingFloats >= ( 9 * 4 ) ) // 9th varying is required by material shaders
-		&& ( layerWidth <= glConfig.maxTextureSize ) && ( h <= glConfig.maxTextureSize );
+	mapConfig.lightmapArrays = false; 
+	 // = mapConfig.lightmapsPacking
+	 // && glConfig.ext.texture_array
+	 // && ( glConfig.maxVertexAttribs > VATTRIB_LMLAYERS0123 )
+	 // && ( glConfig.maxVaryingFloats >= ( 9 * 4 ) ) // 9th varying is required by material shaders
+	 // && ( layerWidth <= glConfig.maxTextureSize ) && ( h <= glConfig.maxTextureSize );
 
-	if( mapConfig.lightmapArrays )
-	{
-		mapConfig.maxLightmapSize = layerWidth;
-
-		size = layerWidth * h;
-	}
-	else
 	{
 		if( !mapConfig.lightmapsPacking )
 			size = max( w, h );
@@ -637,68 +631,7 @@ void R_BuildLightmaps( model_t *mod, int numLightmaps, int w, int h, const uint8
 	r_lightmapBufferSize = size * samples;
 	r_lightmapBuffer = R_MallocExt( r_mempool, r_lightmapBufferSize, 0, 0 );
 	r_numUploadedLightmaps = 0;
-
-	if( mapConfig.lightmapArrays )
-	{
-		int numLayers = min( glConfig.maxTextureLayers, 256 ); // layer index is a uint8_t
-		int layer = 0;
-		int lightmapNum = 0;
-		image_t *image = NULL;
-		mlightmapRect_t *rect = rects;
-		int blockSize = w * h * LIGHTMAP_BYTES;
-		float texScale = 1.0f;
-		char tempbuf[16];
-
-		if( mapConfig.deluxeMaps )
-			numLightmaps /= 2;
-
-		if( mapConfig.deluxeMappingEnabled )
-			texScale = 0.5f;
-
-		for( i = 0; i < numLightmaps; i++ )
-		{
-			if( !layer )
-			{
-				if( r_numUploadedLightmaps == MAX_LIGHTMAP_IMAGES )
-				{
-					// not sure what I'm supposed to do here.. an unrealistic scenario
-					Com_Printf( S_COLOR_YELLOW "Warning: r_numUploadedLightmaps == MAX_LIGHTMAP_IMAGES\n" );
-					break;
-				}
-				lightmapNum = r_numUploadedLightmaps++;
-				image = R_Create3DImage( va_r( tempbuf, sizeof( tempbuf ), "*lm%i", lightmapNum ), layerWidth, h,
-					( ( i + numLayers ) <= numLightmaps ) ? numLayers : numLightmaps % numLayers,
-					IT_SPECIAL, IMAGE_TAG_GENERIC, samples, true );
-				r_lightmapTextures[lightmapNum] = image;
-			}
-
-			R_BuildLightmap( w, h, false, data, r_lightmapBuffer, layerWidth * samples, samples );
-			data += blockSize;
-
-			rect->texNum = lightmapNum;
-			rect->texLayer = layer;
-			// this is not a real texture matrix, but who cares?
-			rect->texMatrix[0][0] = texScale; rect->texMatrix[0][1] = 0.0f;
-			rect->texMatrix[1][0] = 1.0f; rect->texMatrix[1][1] = 0.0f;
-			++rect;
-
-			if( mapConfig.deluxeMappingEnabled )
-				R_BuildLightmap( w, h, true, data, r_lightmapBuffer + w * samples, layerWidth * samples, samples );
-
-			if( mapConfig.deluxeMaps )
-			{
-				data += blockSize;
-				++rect;
-			}
-
-			R_ReplaceImageLayer( image, layer, &r_lightmapBuffer );
-
-			++layer;
-			if( layer == numLayers )
-				layer = 0;
-		}
-	}
-	else
+	
 	{
 		int stride = 1;
 		int dataRowSize = size * LIGHTMAP_BYTES;
