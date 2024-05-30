@@ -2008,15 +2008,76 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	return pipeline;
 }
 
-static NriDescriptorRangeDesc* __FindAndInsertNriDescriptorRange(const SpvReflectDescriptorBinding* binding, NriDescriptorRangeDesc** ranges) {
-	for(size_t i = 0; i < arrlen(ranges); i++) {
-		if((*ranges)[i].baseRegisterIndex == binding->binding) {
-			return &(*ranges)[i];
+static NriDescriptorRangeDesc *__FindAndInsertNriDescriptorRange( const SpvReflectDescriptorBinding *binding, NriDescriptorRangeDesc **ranges )
+{
+	for( size_t i = 0; i < arrlen( ranges ); i++ ) {
+		if( ( *ranges )[i].baseRegisterIndex == binding->binding ) {
+			return &( *ranges )[i];
 		}
 	}
 	const size_t insertIndex = arraddnindex( ranges, 1 );
-	memset( &(*ranges)[insertIndex], 0, sizeof( NriDescriptorRangeDesc ) );
+	memset( &( *ranges )[insertIndex], 0, sizeof( NriDescriptorRangeDesc ) );
 	return &( *ranges )[insertIndex];
+}
+
+static bool __InsertReflectionDescriptorSet( struct glsl_program_s *program, const struct descriptor_reflection_s* reflection)
+{
+	const size_t startIndex = reflection->hash % PIPELINE_LAYOUT_HASH_SIZE;
+	size_t index = startIndex;
+	do {
+		if( program->descriptorReflection[index].hash == reflection.hash || program->pipelines[index].hash == 0 ) {
+			memcpy(&program->descriptorReflection[index], reflection, sizeof(struct descriptor_reflection_s));
+			return true;
+		}
+		index = ( index + 1 ) % PIPELINE_LAYOUT_HASH_SIZE;
+	} while( index != startIndex );
+	// we've run out of slots
+	return false;
+}
+
+static const struct descriptor_reflection_s* __ReflectDescriptorSet(const struct glsl_program_s *program,const struct glsl_descriptor_handle_s* handle) {
+	const size_t startIndex = handle->hash % DESCRIPTOR_REFLECTION_HASH_SIZE;
+	size_t index = startIndex;
+	do {
+		if( program->descriptorReflection[index].hash == handle->hash ) {
+			return &program->descriptorReflection[index];
+		} else if( program->descriptorReflection[index].hash == 0 ) {
+			return NULL;
+		}
+		index = (index + 1) % DESCRIPTOR_REFLECTION_HASH_SIZE;
+	} while(index != startIndex);
+	return NULL;
+
+}
+
+void RP_BindDescriptorSets(struct frame_cmd_buffer_s* cmd, struct glsl_program_s *program, struct glsl_descriptor_data_s *data, size_t numDescriptorData )
+{
+	struct glsl_descriptor_commit_s {
+		NriDescriptor const *descriptors[DESCRIPTOR_MAX_BINDINGS];
+		uint32_t hashes[DESCRIPTOR_MAX_BINDINGS];
+		uint32_t descriptorMask;
+	} commit[DESCRIPTOR_SET_MAX] = {0};
+	uint32_t setsMask = 0;
+	
+	for(size_t i = 0; i < numDescriptorData; i++) {
+		const struct descriptor_reflection_s* refl = __ReflectDescriptorSet(program, &data[i].handle);
+
+		const uint32_t setIndex = refl->setIndex;
+		const uint32_t slotIndex = refl->baseRegisterIndex;
+
+		setsMask |= ( 1u << setIndex );
+		commit[setIndex].descriptorMask |= ( 1u << slotIndex );
+		switch(refl->slotType) {
+			case GLSL_REFLECTION_IMAGE:
+				commit[setIndex].hashes[slotIndex] |= data->image->cookie;
+				commit[setIndex].descriptors[slotIndex] = data->image->descriptor;
+				break;
+		}
+	}
+	
+	for(uint32_t setIndex = 0;setsMask > 0 && setIndex++;setsMask >>= 1) {	
+	}
+
 }
 
 struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
@@ -2294,12 +2355,20 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 				for( size_t i_binding = 0; i_binding < reflection->binding_count; i_binding++ ) {
 					const SpvReflectDescriptorBinding *reflectionBinding = reflection->bindings[i_binding];
 					assert(reflection->set < DESCRIPTOR_SET_MAX);
+					struct descriptor_reflection_s reflc = {0};
+					reflc.hash = Create_DescriptorHandle(reflectionBinding->name).hash;
+					reflc.setIndex = reflection->set;
+					reflc.baseRegisterIndex = reflectionBinding->binding;
 
+					//struct glsl_descriptor_handle_s handle = Create_DescriptorHandle(reflectionBinding->name);
+					//, reflection->set, reflectionBinding->binding );
+					
 					NriDescriptorRangeDesc *rangeDesc = __FindAndInsertNriDescriptorRange( reflectionBinding, &descRangeDescs[reflection->set] );
 					rangeDesc->descriptorNum = reflectionBinding->array.dims_count;
 					rangeDesc->baseRegisterIndex = reflectionBinding->binding;
 					rangeDesc->isArray = reflectionBinding->array.dims_count > 0;
-
+					reflc.isArray = reflectionBinding->array.dims_count > 0;
+					reflc.dimCount = max(1, reflectionBinding->array.dims_count);
 					const uint32_t bindingCount = max( reflectionBinding->array.dims_count, 1 );
 					switch( reflectionBinding->descriptor_type ) {
 						case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER:
@@ -2317,6 +2386,7 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 						case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 							rangeDesc->descriptorType = NriDescriptorType_STORAGE_TEXTURE;
 							descAlloc->config.storageTextureMaxNum += bindingCount;
+							reflc.slotType = GLSL_REFLECTION_IMAGE;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 							rangeDesc->descriptorType = NriDescriptorType_STORAGE_BUFFER;
@@ -2341,6 +2411,7 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 							assert( false );
 							break;
 					}
+					__InsertReflectionDescriptorSet(program, &reflc);
 					// rangeDesc->descriptorType
 					switch( stages[stageIdx].stage ) {
 						case GLSLANG_STAGE_VERTEX:

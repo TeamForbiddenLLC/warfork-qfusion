@@ -79,6 +79,7 @@ typedef struct superLightStyle_s
 	float			stOffset[MAX_LIGHTMAPS][2];
 } superLightStyle_t;
 
+
 #include "r_glimp.h"
 #include "r_surface.h"
 #include "r_image.h"
@@ -265,7 +266,6 @@ typedef struct
 
 	uint32_t cookie;
 } r_shared_t;
-
 
 typedef struct
 {
@@ -889,5 +889,6 @@ typedef struct
 
 extern mapconfig_t	mapConfig;
 extern refinst_t	rn;
+
 
 #endif // R_LOCAL_H

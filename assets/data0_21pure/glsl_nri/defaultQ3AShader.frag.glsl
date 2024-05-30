@@ -2,22 +2,22 @@
 
 
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultQ3ShaderCB pass;
+
 layout(set = DESCRIPTOR_PASS_SET, binding = 3) uniform sampler u_BaseSampler;
 #if defined(APPLY_CUBEMAP) || defined(APPLY_CUBEMAP_VERTEX) || defined(APPLY_SURROUNDMAP)
 	layout(set = DESCRIPTOR_PASS_SET, binding = 4) uniform textureCube u_BaseTexture;
 #else
 	layout(set = DESCRIPTOR_PASS_SET, binding = 5) uniform texture2D u_BaseTexture;
 #endif
+layout(set = DESCRIPTOR_PASS_SET, binding = 1) uniform sampler u_DepthSampler;
+layout(set = DESCRIPTOR_PASS_SET, binding = 2) uniform texture2D u_DepthTexture;
 
 layout(set = DESCRIPTOR_GLOBAL_SET, binding = 0) uniform sampler lightmapTextureSample;
-layout(set = DESCRIPTOR_GLOBAL_SET, binding = 1 + (16 * 0)) uniform texture2D lightmapTexture0[16];
-layout(set = DESCRIPTOR_GLOBAL_SET, binding = 1 + (16 * 1)) uniform texture2D lightmapTexture1[16];
-layout(set = DESCRIPTOR_GLOBAL_SET, binding = 1 + (16 * 2)) uniform texture2D lightmapTexture2[16];
-layout(set = DESCRIPTOR_GLOBAL_SET, binding = 1 + (16 * 3)) uniform texture2D lightmapTexture3[16];
+layout(set = DESCRIPTOR_GLOBAL_SET, binding = 1) uniform texture2D lightmapTexture[4];
 
-layout(set = DESCRIPTOR_PASS_SET, binding = 1) uniform texture2D u_DepthTexture;
 
 layout(location = 0) out vec4 outFragColor;
+
 
 void main(void)
 {
@@ -25,13 +25,13 @@ void main(void)
 
 #ifdef NUM_LIGHTMAPS
 	color = vec4(0.0, 0.0, 0.0, qf_FrontColor.a);
-	color.rgb += vec3(Lightmap(lightmapTexture0, v_LightmapTexCoord01.st, v_LightmapLayer0123.x)) * u_LightstyleColor[0];
+	color.rgb += texture(sampler2D(lightmapTexture[0],lightmapTextureSample), v_LightmapTexCoord01.st).rgb * pass.lightstyleColor[0];
 	#if NUM_LIGHTMAPS >= 2
-		color.rgb += vec3(Lightmap(lightmapTexture1, v_LightmapTexCoord01.pq, v_LightmapLayer0123.y)) * u_LightstyleColor[1];
+		color.rgb += texture(sampler2D(lightmapTexture[1],lightmapTextureSample), v_LightmapTexCoord01.pq).rgb * pass.lightstyleColor[1];
 		#if NUM_LIGHTMAPS >= 3
-			color.rgb += vec3(Lightmap(lightmapTexture2, v_LightmapTexCoord23.st, v_LightmapLayer0123.z)) * u_LightstyleColor[2];
+			color.rgb += texture(sampler2D(lightmapTexture[2],lightmapTextureSample), v_LightmapTexCoord23.st).rgb * pass.lightstyleColor[2];
 			#if NUM_LIGHTMAPS >= 4
-				color.rgb += vec3(Lightmap(lightmapTexture3, v_LightmapTexCoord23.pq, v_LightmapLayer0123.w)) * u_LightstyleColor[3];
+				color.rgb += texture(sampler2D(lightmapTexture[3],lightmapTextureSample), v_LightmapTexCoord23.pq).rgb * pass.lightstyleColor[3];
 			#endif // NUM_LIGHTMAPS >= 4
 		#endif // NUM_LIGHTMAPS >= 3
 	#endif // NUM_LIGHTMAPS >= 2
@@ -87,7 +87,7 @@ void main(void)
 	{
 		vec2 tc = ScreenCoord * pass.textureParam.zw;
 
-		float fragdepth = ZRange.x*ZRange.y/(ZRange.y - qf_texture(DepthTexture, tc).r*(pass.zRange.y-pass.zRange.x));
+		float fragdepth = ZRange.x*ZRange.y/(ZRange.y - texture(sampler2D(u_DepthTexture,u_DepthSampler), tc).r*(pass.zRange.y-pass.zRange.x));
 		flaot partdepth = Depth;
 		
 		myhalf d = max((fragdepth - partdepth) * u_SoftParticlesScale, 0.0);
