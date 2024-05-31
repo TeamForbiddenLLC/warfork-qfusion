@@ -2025,7 +2025,7 @@ static bool __InsertReflectionDescriptorSet( struct glsl_program_s *program, con
 	const size_t startIndex = reflection->hash % PIPELINE_LAYOUT_HASH_SIZE;
 	size_t index = startIndex;
 	do {
-		if( program->descriptorReflection[index].hash == reflection.hash || program->pipelines[index].hash == 0 ) {
+		if( program->descriptorReflection[index].hash == reflection->hash || program->pipelines[index].hash == 0 ) {
 			memcpy(&program->descriptorReflection[index], reflection, sizeof(struct descriptor_reflection_s));
 			return true;
 		}
@@ -2055,18 +2055,17 @@ void RP_BindDescriptorSets(struct frame_cmd_buffer_s* cmd, struct glsl_program_s
 	struct glsl_descriptor_commit_s {
 		NriDescriptor const *descriptors[DESCRIPTOR_MAX_BINDINGS];
 		uint32_t hashes[DESCRIPTOR_MAX_BINDINGS];
-		uint32_t descriptorMask;
+		uint32_t descriptorChangeMask;
 	} commit[DESCRIPTOR_SET_MAX] = {0};
-	uint32_t setsMask = 0;
+	uint32_t setsChangeMask = 0;
 	
 	for(size_t i = 0; i < numDescriptorData; i++) {
 		const struct descriptor_reflection_s* refl = __ReflectDescriptorSet(program, &data[i].handle);
-
 		const uint32_t setIndex = refl->setIndex;
-		const uint32_t slotIndex = refl->baseRegisterIndex;
+		const uint32_t slotIndex = refl->baseRegisterIndex + data[i].registerOffset;
 
-		setsMask |= ( 1u << setIndex );
-		commit[setIndex].descriptorMask |= ( 1u << slotIndex );
+		setsChangeMask |= ( 1u << setIndex );
+		commit[setIndex].descriptorChangeMask |= ( 1u << slotIndex );
 		switch(refl->slotType) {
 			case GLSL_REFLECTION_IMAGE:
 				commit[setIndex].hashes[slotIndex] |= data->image->cookie;
@@ -2075,7 +2074,23 @@ void RP_BindDescriptorSets(struct frame_cmd_buffer_s* cmd, struct glsl_program_s
 		}
 	}
 	
-	for(uint32_t setIndex = 0;setsMask > 0 && setIndex++;setsMask >>= 1) {	
+	for(uint32_t setIndex = 0, setMask = setsChangeMask; setMask > 0 && setIndex++; setMask >>= 1u) {	
+		struct glsl_descriptor_commit_s* c = &commit[setIndex];
+		hash_t descHash = HASH_INITIAL_VALUE;
+		for( uint32_t descMask = c->descriptorChangeMask, descIndex = 0; descMask; descMask >>= 1u, descIndex++ ) {
+			descHash = hash_u64(descHash, c->hashes[descIndex]);
+		}
+		struct descriptor_set_result_s result = ResolveDescriptorSet( &rsh.nri, cmd, program->descriptorSetAlloc[setIndex], descHash );
+		if(!result.found) {
+			for( uint32_t descMask = c->descriptorChangeMask, descIndex = 0; descMask; descMask >>= 1u, descIndex++ ) {
+				NriDescriptorRangeUpdateDesc updateDesc = { 0 };
+				updateDesc.descriptors = &c->descriptors[descIndex];
+				updateDesc.descriptorNum = 1;
+				rsh.nri.coreI.UpdateDescriptorRanges(result.set, descIndex, 1, &updateDesc);
+			}
+
+		}
+		rsh.nri.coreI.CmdSetDescriptorSet( cmd->cmd, setIndex, result.set, NULL );
 	}
 
 }
