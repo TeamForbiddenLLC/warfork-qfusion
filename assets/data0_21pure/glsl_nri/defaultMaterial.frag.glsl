@@ -254,7 +254,7 @@ void main()
 #ifdef APPLY_ENTITY_DECAL
 
 #ifdef APPLY_ENTITY_DECAL_ADD
-	decal.rgb = myhalf3(texture(sampler2D(u_EntityDecalTexture,entityDecalSampler), v_TexCoord));
+	decal.rgb = texture(sampler2D(u_EntityDecalTexture,entityDecalSampler), v_TexCoord).rgb;
 	diffuse.rgb += pass.entityColor.rgb * decal.rgb;
 #else
 	decal = vec4(pass.entityColor.rgb, 1.0) * vec4(texture(sampler2D(u_EntityDecalTexture, entityDecalSampler), v_TexCoord));

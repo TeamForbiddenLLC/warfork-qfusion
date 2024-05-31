@@ -18,8 +18,8 @@ struct VertexColoringCB {
 
 
 struct FrameCB {
-  vec4 fogEyePlane,
-  vec4 fogPlane,
+  vec4 fogEyePlane;
+  vec4 fogPlane;
 
   vec3 viewOrigin;
   float shaderTime;
@@ -32,14 +32,13 @@ struct FrameCB {
 };
 
 struct ObjectCB {
-	vec3 entityOrigin
+	vec3 entityOrigin;
     float entityDist;
 	mat4 mvp;
 	float blendMix;
 };
 
 // pass
-
 struct DefaultCellShadeCB {
     vec4 textureMatrix[2];
     vec3 entityColor;
@@ -71,9 +70,8 @@ struct DefaultQ3ShaderCB {
     vec4 textureMatrix[2];
     vec3 floorColor;
     vec2 zRange;
-    mat4 reflectionTexMatrix;
-    vec3 floorColor;
-    vec3 lightstyleColor[4]
+    mat4 genTexMatrix;
+    vec3 lightstyleColor[4];
 };
 
 struct DefaultMaterialCB {
