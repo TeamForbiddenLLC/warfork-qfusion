@@ -29,30 +29,28 @@ void main(void)
 frontColor = vec4(outColor);
 
 #if defined(APPLY_CUBEMAP_VERTEX)
-
-#if defined(APPLY_TC_GEN_CELSHADE)
-	v_TexCoord = u_ReflectionTexMatrix * reflect(normalize(Position.xyz - u_EntityDist), Normal.xyz);
-#endif // defined(APPLY_TC_GEN_CELSHADE)
-
+	#if defined(APPLY_TC_GEN_CELSHADE)
+		v_TexCoord = mat3(pass.genTexMatrix) * reflect(normalize(Position.xyz - u_EntityDist), Normal.xyz);
+	#endif // defined(APPLY_TC_GEN_CELSHADE)
 #elif !defined(APPLY_CUBEMAP) && !defined(APPLY_SURROUNDMAP)
 
-#if defined(APPLY_TC_GEN_ENV)
-		vec3 Projection;
+	#if defined(APPLY_TC_GEN_ENV)
+			vec3 Projection;
 
-		Projection = u_EntityDist - Position.xyz;
-		Projection = normalize(Projection);
+			Projection = u_EntityDist - Position.xyz;
+			Projection = normalize(Projection);
 
-		float Depth = dot(Normal.xyz, Projection) * 2.0;
-		v_TexCoord = 0.5 + (Normal.yz * Depth - Projection.yz) * vec2(0.5, -0.5);
-#elif defined(APPLY_TC_GEN_VECTOR)
-		v_TexCoord = vec2(Position * u_VectorTexMatrix); // account for u_VectorTexMatrix being transposed
-#elif defined(APPLY_TC_GEN_PROJECTION)
-		v_TexCoord = vec2(normalize(u_ModelViewProjectionMatrix * Position) * 0.5 + vec4(0.5));
-#elif defined(APPLY_TC_MOD)
-		v_TexCoord = TextureMatrix2x3Mul(u_TextureMatrix, TexCoord);
-#else
-		v_TexCoord = TexCoord;
-#endif // defined(APPLY_TC_GEN)
+			float Depth = dot(Normal.xyz, Projection) * 2.0;
+			v_TexCoord = 0.5 + (Normal.yz * Depth - Projection.yz) * vec2(0.5, -0.5);
+	#elif defined(APPLY_TC_GEN_VECTOR)
+			v_TexCoord = vec2(Position * pass.genTexMatrix); // account for u_VectorTexMatrix being transposed
+	#elif defined(APPLY_TC_GEN_PROJECTION)
+			v_TexCoord = vec2(normalize(obj.mvp * Position) * 0.5 + vec4(0.5));
+	#elif defined(APPLY_TC_MOD)
+			v_TexCoord = TextureMatrix2x3Mul(obj.textureMatrix, TexCoord);
+	#else
+			v_TexCoord = TexCoord;
+	#endif // defined(APPLY_TC_GEN)
 
 #endif // !defined(APPLY_CUBEMAP) && !defined(APPLY_SURROUNDMAP)
 

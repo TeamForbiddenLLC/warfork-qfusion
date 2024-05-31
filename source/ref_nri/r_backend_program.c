@@ -22,6 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_hasher.h"
 #include "r_local.h"
 #include "r_backend_local.h"
+#include "r_resource.h"
+
 
 #define FTABLE_SIZE_POW	12
 #define FTABLE_SIZE	( 1<<FTABLE_SIZE_POW )
@@ -1702,6 +1704,44 @@ static void RB_RenderMeshGLSL_Outline( const shaderpass_t *pass, r_glslfeat_t pr
 	RB_Cull( faceCull );
 }
 
+
+r_glslfeat_t RB_TcGenToProgramFeatures_2( int tcgen, vec_t *tcgenVec, struct mat4* mat)
+{
+	r_glslfeat_t programFeatures = 0;
+
+	Matrix4_Identity( mat->v);
+
+	switch( tcgen )
+	{
+	case TC_GEN_ENVIRONMENT:
+		programFeatures |= GLSL_SHADER_Q3_TC_GEN_ENV;
+		break;
+	case TC_GEN_VECTOR:
+		Matrix4_Identity( mat->v);
+		Vector4Copy( &tcgenVec[0], &mat->v[0] );
+		Vector4Copy( &tcgenVec[4], &mat->v[4] );
+		programFeatures |= GLSL_SHADER_Q3_TC_GEN_VECTOR;
+		break;
+	case TC_GEN_PROJECTION:
+		programFeatures |= GLSL_SHADER_Q3_TC_GEN_PROJECTION;
+		break;
+	case TC_GEN_REFLECTION_CELSHADE:
+		RB_VertexTCCelshadeMatrix( mat->v );
+		programFeatures |= GLSL_SHADER_Q3_TC_GEN_CELSHADE;
+		break;
+	case TC_GEN_REFLECTION:
+		programFeatures |= GLSL_SHADER_Q3_TC_GEN_REFLECTION;
+		break;
+	case TC_GEN_SURROUND:
+		programFeatures |= GLSL_SHADER_Q3_TC_GEN_SURROUND;
+		break;
+	default:
+		break;
+	}
+
+	return programFeatures;
+}
+
 /*
 * RB_TcGenToProgramFeatures
 */
@@ -1744,7 +1784,7 @@ r_glslfeat_t RB_TcGenToProgramFeatures( int tcgen, vec_t *tcgenVec, mat4_t texMa
 
 static void RB_RenderMeshGLSL_Q3AShader_2(struct frame_cmd_buffer_s* cmd, const shaderpass_t *pass, r_glslfeat_t programFeatures )
 {
-	int state;
+	;
 	int rgbgen = pass->rgbgen.type;
 	const mfog_t *fog = rb.fog;
 	bool isWorldSurface = rb.currentModelType == mod_brush ? true : false;
@@ -1753,7 +1793,6 @@ static void RB_RenderMeshGLSL_Q3AShader_2(struct frame_cmd_buffer_s* cmd, const 
 	bool isLightmapped = false, isWorldVertexLight = false;
 	vec3_t lightDir;
 	vec4_t lightAmbient, lightDiffuse;
-	mat4_t texMatrix, genVectors;
 
 
 	// lightmapped surface pass
@@ -1842,14 +1881,16 @@ static void RB_RenderMeshGLSL_Q3AShader_2(struct frame_cmd_buffer_s* cmd, const 
 		programFeatures |= GLSL_SHADER_Q3_ALPHA_MASK;
 	}
 
-	
+	struct block_buffer_pool_req_s passCB = BlockBufferPoolReq( &rsh.nri, &cmd->uboBlockBuffer, sizeof( struct DefaultQ3ShaderCB ) );
+	struct DefaultQ3ShaderCB* defaultQ3 = passCB.address;
+
 	// convert rgbgen and alphagen to GLSL feature defines
 	programFeatures |= RB_RGBAlphaGenToProgramFeatures( &pass->rgbgen, &pass->alphagen );
+	programFeatures |= RB_TcGenToProgramFeatures_2( pass->tcgen, pass->tcgenVec, &defaultQ3->genTexMatrix);
 
-	programFeatures |= RB_TcGenToProgramFeatures( pass->tcgen, pass->tcgenVec, texMatrix, genVectors );
 
 	// set shaderpass state (blending, depthwrite, etc)
-	state = pass->flags;
+	int state = pass->flags;
 
 	// possibly force depthwrite and give up blending when doing a lightmapped pass
 	if ( ( isLightmapped || isWorldVertexLight ) &&
@@ -1893,17 +1934,9 @@ static void RB_RenderMeshGLSL_Q3AShader_2(struct frame_cmd_buffer_s* cmd, const 
 			.handle =  Create_DescriptorHandle( "lightmapTexture" )
 		};
 	}
-
-
+	rsh.nri.coreI.CmdSetPipeline(cmd->cmd, pipeline->pipeline);
+	rsh.nri.coreI.CmdSetPipelineLayout(cmd->cmd, program->layout);
 	RP_BindDescriptorSets(cmd, program, descriptors, descriptorIndex);
-
-	//struct descriptor_set_result_s result = ResolveDescriptorSet( &rsh.nri, cmd, program->descriptorSetAlloc[DESCRIPTOR_SET_0], DescSimple_SerialHash( &materialDesc ) );
-	//if( !result.found ) {
-	////	DescSimple_StateCommit( &rsh.nri, &materialDesc, result.set );
-	//}
-	//rsh.nri.coreI.CmdSetDescriptorSet(cmd->cmd, DESCRIPTOR_SET_0, result.set, NULL);
-
-	//RP_BindDescriptorSets()
 
 	FR_CmdDrawElements(cmd, 
 										cmd->additional.drawElements.numElems,
@@ -2511,7 +2544,7 @@ static void RB_UpdateVertexAttribs( void)
 /*
 * RB_BindShader
 */
-void RB_BindShader(struct frame_cmd_buffer_s* frame, const entity_t *e, const shader_t *shader, const mfog_t *fog )
+void RB_BindShader(struct frame_cmd_buffer_s* frame, const entity_t *entity, const shader_t *shader, const mfog_t *fog )
 {
 	rb.currentShader = shader;
 	rb.fog = fog;
@@ -2520,7 +2553,7 @@ void RB_BindShader(struct frame_cmd_buffer_s* frame, const entity_t *e, const sh
 	rb.doneDepthPass = false;
 	rb.dirtyUniformState = true;
 
-	rb.currentEntity = e ? e : &rb.nullEnt;
+	rb.currentEntity = entity ? entity : &rb.nullEnt;
 	rb.currentModelType = rb.currentEntity->rtype == RT_MODEL && rb.currentEntity->model ? rb.currentEntity->model->type : mod_bad;
 	rb.currentDlightBits = 0;
 	rb.currentShadowBits = 0;
@@ -2534,7 +2567,7 @@ void RB_BindShader(struct frame_cmd_buffer_s* frame, const entity_t *e, const sh
 	rb.skyboxShader = NULL;
 	rb.skyboxSide = -1;
 
-	if( !e ) {
+	if( !entity ) {
 		rb.currentShaderTime = rb.nullEnt.shaderTime * 0.001;
 		rb.alphaHack = false;
 		rb.greyscale = false;
@@ -2548,12 +2581,12 @@ void RB_BindShader(struct frame_cmd_buffer_s* frame, const entity_t *e, const sh
 			rb.currentShaderTime = 0;
 		else
 			rb.currentShaderTime = (rb.time - rb.currentEntity->shaderTime) * 0.001;
-		rb.alphaHack = e->renderfx & RF_ALPHAHACK ? true : false;
-		rb.hackedAlpha = e->shaderRGBA[3] / 255.0;
-		rb.greyscale = e->renderfx & RF_GREYSCALE ? true : false;
-		rb.noDepthTest = e->renderfx & RF_NODEPTHTEST && e->rtype == RT_SPRITE ? true : false;
-		rb.noColorWrite = e->renderfx & RF_NOCOLORWRITE ? true : false;
-		rb.depthEqual = rb.alphaHack && (e->renderfx & RF_WEAPONMODEL);
+		rb.alphaHack = entity->renderfx & RF_ALPHAHACK ? true : false;
+		rb.hackedAlpha = entity->shaderRGBA[3] / 255.0;
+		rb.greyscale = entity->renderfx & RF_GREYSCALE ? true : false;
+		rb.noDepthTest = entity->renderfx & RF_NODEPTHTEST && entity->rtype == RT_SPRITE ? true : false;
+		rb.noColorWrite = entity->renderfx & RF_NOCOLORWRITE ? true : false;
+		rb.depthEqual = rb.alphaHack && (entity->renderfx & RF_WEAPONMODEL);
 	}
 
 	if( fog && fog->shader && !rb.noColorWrite ) {

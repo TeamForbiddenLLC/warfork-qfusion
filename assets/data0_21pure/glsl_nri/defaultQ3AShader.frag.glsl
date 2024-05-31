@@ -1,6 +1,5 @@
 #include "include/global.glsl"
 
-
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultQ3ShaderCB pass;
 
 layout(set = DESCRIPTOR_PASS_SET, binding = 3) uniform sampler u_BaseSampler;
