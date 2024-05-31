@@ -16,7 +16,7 @@ void main(void)
 #endif
 
 #if defined(APPLY_FOG) && !defined(APPLY_FOG_COLOR)
-	myhalf fogDensity = FogDensity(v_FogCoord);
+	float fogDensity = FogDensity(v_FogCoord);
 	qf_FragColor = vec4(vec3(mix(qf_FrontColor.rgb, u_FogColor, fogDensity)), 1.0);
 #else
 	qf_FragColor = vec4(qf_FrontColor);
