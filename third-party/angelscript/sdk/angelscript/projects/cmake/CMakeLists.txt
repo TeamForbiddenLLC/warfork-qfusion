@@ -167,6 +167,10 @@ if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64" AND UNIX AND NOT APPLE)
     target_compile_options(${ANGELSCRIPT_LIBRARY_NAME} PRIVATE -fPIC)
 endif()
 
+if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64" AND UNIX AND NOT APPLE)
+    target_compile_options(${ANGELSCRIPT_LIBRARY_NAME} PRIVATE -fPIC)
+endif()
+
 # Don't override the default library output path to avoid conflicts when building for multiple target platforms
 #set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/../../lib)
 target_link_libraries(${ANGELSCRIPT_LIBRARY_NAME} Threads::Threads)
