@@ -1079,11 +1079,7 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 			RB_LoadObjectMatrix( m );
 		}
 
-		RB_DrawShadedElements_2(cmd,
-			draw->drawElements.firstVert, draw->drawElements.numVerts,
-			draw->drawElements.firstElem, draw->drawElements.numElems,
-			draw->drawElements.firstVert, draw->drawElements.numVerts,
-			draw->drawElements.firstElem, draw->drawElements.numElems);
+		RB_DrawShadedElements_2(cmd);
 	}
 
 	rb.numDynamicDraws = 0;
@@ -1353,7 +1349,7 @@ static void RB_DrawElements_( void )
 
 
 
-void RB_DrawElements_2( struct frame_cmd_buffer_s *cmd, int firstVert, int numVerts, int firstElem, int numElems, int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems ) {
+void RB_DrawElements( struct frame_cmd_buffer_s *cmd, int firstVert, int numVerts, int firstElem, int numElems, int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems ) {
 	rb.currentVAttribs &= ~VATTRIB_INSTANCES_BITS;
 
 	rb.drawElements.numVerts = numVerts;
@@ -1368,38 +1364,8 @@ void RB_DrawElements_2( struct frame_cmd_buffer_s *cmd, int firstVert, int numVe
 	rb.drawShadowElements.firstElem = firstShadowElem;
 	rb.drawShadowElements.numInstances = 0;
 	
-	if ( !rb.drawElements.numVerts || !rb.drawElements.numElems ) {
-		return;
-	}
-
-	if( rb.triangleOutlines ) {
-		RB_DrawOutlinedElements();
-	} else {
-		RB_DrawShadedElements();
-	}
-
-}
-/*
-* RB_DrawElements
-*/
-void RB_DrawElements(int firstVert, int numVerts, int firstElem, int numElems,
-	int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems )
-{
-	rb.currentVAttribs &= ~VATTRIB_INSTANCES_BITS;
-
-	rb.drawElements.numVerts = numVerts;
-	rb.drawElements.numElems = numElems;
-	rb.drawElements.firstVert = firstVert;
-	rb.drawElements.firstElem = firstElem;
-	rb.drawElements.numInstances = 0;
-
-	rb.drawShadowElements.numVerts = numShadowVerts;
-	rb.drawShadowElements.numElems = numShadowElems;
-	rb.drawShadowElements.firstVert = firstShadowVert;
-	rb.drawShadowElements.firstElem = firstShadowElem;
-	rb.drawShadowElements.numInstances = 0;
-
 	RB_DrawElements_();
+
 }
 
 /*

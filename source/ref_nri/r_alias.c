@@ -589,7 +589,7 @@ void R_DrawAliasSurf( const entity_t *e, const shader_t *shader, const mfog_t *f
 	{
 		RB_BindVBO( aliasmesh->vbo->index, GL_TRIANGLES );
 
-		RB_DrawElements( 0, aliasmesh->numverts, 0, aliasmesh->numtris * 3, 
+		RB_DrawElements(NULL, 0, aliasmesh->numverts, 0, aliasmesh->numtris * 3, 
 			0, aliasmesh->numverts, 0, aliasmesh->numtris * 3 );
 	}
 	else

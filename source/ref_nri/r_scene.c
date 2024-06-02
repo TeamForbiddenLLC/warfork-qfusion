@@ -290,7 +290,7 @@ static void R_BlitTextureToScrFbo( const refdef_t *fd, image_t *image, int dstFb
 
 	RB_BindShader( NULL, NULL, &s, NULL );
 	RB_BindVBO( rsh.postProcessingVBO->index, GL_TRIANGLES );
-	RB_DrawElements( 0, 4, 0, 6, 0, 0, 0, 0 );
+	RB_DrawElements(NULL, 0, 4, 0, 6, 0, 0, 0, 0 );
 
 	RB_LoadObjectMatrix( mat4x4_identity );
 

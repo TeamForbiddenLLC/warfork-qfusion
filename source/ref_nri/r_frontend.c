@@ -579,7 +579,7 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 	
 	NRI_ABORT_ON_FAILURE(rsh.nri.coreI.BeginCommandBuffer(frame->cmd, NULL));
 	
-	FR_CmdSetDefaultState(frame);
+	//FR_CmdSetDefaultState(frame);
 	// take the frame the backend is not busy processing
  // if( glConfig.multithreading ) {
  // 	ri.Mutex_Lock( rrf.adapter.frameLock );
