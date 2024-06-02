@@ -241,7 +241,7 @@ void R_DrawBSPSurf( const entity_t *e, const shader_t *shader, const mfog_t *fog
 			drawSurf->numInstances, drawSurf->instances );
 	}
 	else {
-		RB_DrawElements( firstVert, numVerts, firstElem, numElems, 
+		RB_DrawElements(NULL, firstVert, numVerts, firstElem, numElems, 
 			firstShadowVert, numShadowVerts, firstShadowElem, numShadowElems );
 	}
 }

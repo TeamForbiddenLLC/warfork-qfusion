@@ -35,44 +35,67 @@ struct mat4 {
 struct mat3 {
 	union {
 		float v[9];
-    struct {
-      float col0[3];
-      float col1[3];
-      float col2[3];
-    };
+		struct {
+			float col0[3];
+			float col1[3];
+			float col2[3];
+		};
 	};
 };
 
 struct vec4 {
-  float v[4];
+	union {
+		float v[4];
+		struct {
+			float x;
+			float y;
+			float z;
+			float w;
+		};
+	};
 };
 
 struct vec2 {
-  float v[2];
+	union {
+		float v[2];
+		struct {
+			float x;
+			float y;
+		};
+	};
 };
 
 struct vec3 {
-  float v[3];
+	union {
+		float v[3];
+		struct {
+			float x;
+			float y;
+			float z;
+		};
+	};
 };
 
 struct FrameCB {
-  struct vec4 fogEyePlane;
-  struct vec4 fogPlane;
-
-  struct vec3 viewOrigin;
-  float shaderTime;
-  struct vec2 blendMix;
-  float fogScale;
-  float eyeDist;
-  float mirrorSide;
-  struct vec3 fogColor;
-  struct mat3 viewAxis;
+	struct vec3 viewOrigin;
+	float shaderTime;
+	struct vec2 blendMix;
+	float zNear;
+	float zFar;
+	float fogScale;
+	float eyeDist;
+	struct vec3 fogColor;
+	float mirrorSide;
+	struct mat3 viewAxis;
 };
 
 struct ObjectCB {
+	struct vec4 fogEyePlane;
+	struct vec4 fogPlane;
 	struct vec3 entityOrigin;
-  float entityDist;
+	float entityDist;
 	struct mat4 mvp;
+	struct mat4 mv;
 	float blendMix;
 };
 

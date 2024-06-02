@@ -1,6 +1,11 @@
 #include "r_frame_cmd_buffer.h"
 #include "r_local.h"
+#include "r_resource.h"
+#include "r_hasher.h"
 
+#include "../gameshared/q_math.h"
+
+#include "r_model.h"
 
 void FR_CmdSetScissor( struct frame_cmd_buffer_s *cmd, int x, int y, int w, int h )
 {
@@ -21,6 +26,44 @@ void FR_CmdSetVertexInput( struct frame_cmd_buffer_s *cmd, uint32_t slot, NriBuf
 	cmd->cmdState.vertexBuffers[slot] = buffer;
 }
 
+static inline bool __isValidFog(const mfog_t* fog) {
+	return fog && fog->shader;
+}
+
+void updateFrameUBO(struct frame_cmd_buffer_s *cmd,struct ubo_frame_instance_s* ubo,void * data, size_t size) {
+	const hash_t hash = hash_data( HASH_INITIAL_VALUE, data, size );
+	if( ubo->hash != hash ) {
+		struct block_buffer_pool_req_s poolReq = BlockBufferPoolReq( &rsh.nri, &cmd->uboBlockBuffer, sizeof( struct ObjectCB ) );
+		memcpy( poolReq.address, data, size );
+		ubo->hash = hash;
+		ubo->req = poolReq;
+	}
+}
+// struct block_buffer_pool_req_s FR_ShaderObjReqCB(struct frame_cmd_buffer_s *cmd, const struct ObjectCB* cb)
+//{
+//	const hash_t hash = hash_data(HASH_INITIAL_VALUE, cb, sizeof(struct ObjectCB));
+//	if( cmd->objHash  != hash ) {
+//		struct block_buffer_pool_req_s poolReq = BlockBufferPoolReq( &rsh.nri, &cmd->uboBlockBuffer, sizeof( struct ObjectCB ) );
+//		memcpy(poolReq.address, cb, sizeof(struct ObjectCB));
+//		cmd->objHash = hash;
+//		cmd->objBlock = poolReq;
+//	}
+//	return cmd->objBlock;
+// }
+//
+// struct block_buffer_pool_req_s FR_ShaderFrameReqCB( struct frame_cmd_buffer_s *cmd, const struct FrameCB* cb)
+//{
+//
+//	const hash_t hash = hash_data(HASH_INITIAL_VALUE, cb, sizeof(struct FrameCB));
+//	if( cmd->frameHash != hash ) {
+//		struct block_buffer_pool_req_s poolReq = BlockBufferPoolReq( &rsh.nri, &cmd->uboBlockBuffer, sizeof( struct FrameCB ) );
+//		memcpy(poolReq.address, cb, sizeof(struct FrameCB  ));
+//		cmd->frameBlock = poolReq;
+//		cmd->frameHash = hash;
+//	}
+//	return cmd->frameBlock;
+//
+// }
 
 void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint32_t instanceNum, uint32_t baseIndex, uint32_t baseVertex, uint32_t baseInstance )
 {
