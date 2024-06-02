@@ -87,8 +87,7 @@ void RB_AddDynamicMesh( const entity_t *entity, const shader_t *shader,
 	const struct mesh_s *mesh, int primitive, float x_offset, float y_offset );
 void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd);
 
-void RB_DrawElements_2( struct frame_cmd_buffer_s *cmd, int firstVert, int numVerts, int firstElem, int numElems, int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems );
-void RB_DrawElements( int firstVert, int numVerts, int firstElem, int numElems, int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems );
+void RB_DrawElements(struct frame_cmd_buffer_s *cmd, int firstVert, int numVerts, int firstElem, int numElems, int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems );
 void RB_DrawElementsInstanced( int firstVert, int numVerts, int firstElem, int numElems,
 	int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems,
 	int numInstances, instancePoint_t *instances );
