@@ -2,6 +2,7 @@
 #include "r_local.h"
 #include "r_resource.h"
 #include "r_hasher.h"
+#include "stb_ds.h"
 
 #include "../gameshared/q_math.h"
 
@@ -35,6 +36,18 @@ void updateFrameUBO(struct frame_cmd_buffer_s *cmd,struct ubo_frame_instance_s* 
 	if( ubo->hash != hash ) {
 		struct block_buffer_pool_req_s poolReq = BlockBufferPoolReq( &rsh.nri, &cmd->uboBlockBuffer, sizeof( struct ObjectCB ) );
 		memcpy( poolReq.address, data, size );
+	
+		NriBufferViewDesc bufferDesc = {
+			.buffer = poolReq.buffer,
+			.size = poolReq.bufferSize,
+			.offset = poolReq.bufferOffset,
+			.format = NriBufferViewType_CONSTANT
+		};
+
+		NriDescriptor* descriptor = 0;
+		NRI_ABORT_ON_FAILURE(rsh.nri.coreI.CreateBufferView(&bufferDesc, &descriptor));
+		arrpush(cmd->frameTemporaryDesc, descriptor);
+		ubo->descriptor = descriptor;
 		ubo->hash = hash;
 		ubo->req = poolReq;
 	}

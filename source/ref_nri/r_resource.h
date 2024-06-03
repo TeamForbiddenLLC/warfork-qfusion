@@ -76,6 +76,15 @@ struct vec3 {
 	};
 };
 
+struct VertexColoringCB {
+    struct vec4 rgbGenFuncArgs;
+    struct vec4 alphaGenFuncArgs;
+    struct vec4 colorConst;
+    struct vec4 lightAmbient;
+    struct vec4 lightDiffuse;
+    struct vec3 lightDir;
+};
+
 struct FrameCB {
 	struct vec3 viewOrigin;
 	float shaderTime;
@@ -96,7 +105,7 @@ struct ObjectCB {
 	float entityDist;
 	struct mat4 mvp;
 	struct mat4 mv;
-	float blendMix;
+	float isAlphaBlending;
 };
 
 // pass

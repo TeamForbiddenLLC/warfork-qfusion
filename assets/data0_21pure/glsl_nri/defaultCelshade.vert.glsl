@@ -11,15 +11,15 @@ void main(void)
 	vec4 Position = a_Position;
 	vec3 Normal = a_Normal.xyz;
 	vec2 TexCoord = a_TexCoord;
-	myhalf4 inColor = myhalf4(a_Color);
+	vec4 inColor = vec4(a_Color);
 
 	QF_TransformVerts(Position, Normal, TexCoord);
 
-	myhalf4 outColor = QF_VertexRGBGen(Position, Normal, inColor);
+	vec4 outColor = QF_VertexRGBGen(Position, Normal, inColor);
 
 #ifdef APPLY_FOG
 	#ifdef APPLY_FOG_COLOR
-		QF_FogGenColor(Position, outColor, obj.blendMix);
+		QF_FogGenColor(Position, outColor);
 	#else
 		QF_FogGenCoordTexCoord(Position, v_FogCoord);
 	#endif

@@ -88,19 +88,19 @@ void main()
 #endif
 
 	vec3 surfaceNormal;
-	myhalf3 surfaceNormalModelspace;
+	vec3 surfaceNormalModelspace;
 	vec3 weightedDiffuseNormalModelspace;
 
 #if !defined(APPLY_DIRECTIONAL_LIGHT) && !defined(NUM_LIGHTMAPS)
-	myhalf4 color = myhalf4 (1.0, 1.0, 1.0, 1.0);
+	vec4 color = vec4 (1.0, 1.0, 1.0, 1.0);
 #else
-	myhalf4 color = myhalf4 (0.0, 0.0, 0.0, 1.0);
+	vec4 color = vec4 (0.0, 0.0, 0.0, 1.0);
 #endif
 
-	myhalf4 decal = myhalf4 (0.0, 0.0, 0.0, 1.0);
+	vec4 decal = vec4 (0.0, 0.0, 0.0, 1.0);
 
 	// get the surface normal
-	surfaceNormal = normalize(vec3(texture(sampler2D(u_NormalmapTexture,normalSampler), v_TexCoord)) - myhalf3 (0.5));
+	surfaceNormal = normalize(vec3(texture(sampler2D(u_NormalmapTexture,normalSampler), v_TexCoord)) - vec3 (0.5));
 	surfaceNormalModelspace = normalize(v_StrMatrix * surfaceNormal);
 
 #ifdef APPLY_DIRECTIONAL_LIGHT 
@@ -181,23 +181,23 @@ void main()
 
 #ifdef APPLY_AMBIENT_COMPENSATION
 	// compensate for ambient lighting
-	color.rgb += myhalf((1.0 - max (diffuseProduct, 0.0))) * u_LightAmbient;
+	color.rgb += float((1.0 - max (diffuseProduct, 0.0))) * u_LightAmbient;
 #endif
 
 #if NUM_LIGHTMAPS >= 2
-	diffuseNormalModelspace = normalize(texture(sampler2D(lightmapTexture[1],lightmapTextureSample), v_LightmapTexCoord01.pq+vec2(pass.deluxLightMapScale.y,0.0)).rgb - myhalf3 (0.5));
+	diffuseNormalModelspace = normalize(texture(sampler2D(lightmapTexture[1],lightmapTextureSample), v_LightmapTexCoord01.pq+vec2(pass.deluxLightMapScale.y,0.0)).rgb - vec3 (0.5));
 	diffuseProduct = float (dot (surfaceNormalModelspace, diffuseNormalModelspace));
 	weightedDiffuseNormalModelspace += pass.lightstyleColor[1] * diffuseNormalModelspace;
 	color.rgb += pass.lightstyleColor[1].rgb * max (diffuseProduct, 0.0) * texture(sampler2D(lightmapTexture[1],lightmapTextureSample), v_LightmapTexCoord01.pq).rgb;
 #endif 
 #if NUM_LIGHTMAPS >= 3
-	diffuseNormalModelspace = normalize(texture(sampler2D(lightmapTexture[2],lightmapTextureSample), v_LightmapTexCoord23.st+vec2(pass.deluxLightMapScale.z,0.0)).rgb - myhalf3 (0.5));
+	diffuseNormalModelspace = normalize(texture(sampler2D(lightmapTexture[2],lightmapTextureSample), v_LightmapTexCoord23.st+vec2(pass.deluxLightMapScale.z,0.0)).rgb - vec3 (0.5));
 	diffuseProduct = float (dot (surfaceNormalModelspace, diffuseNormalModelspace));
 	weightedDiffuseNormalModelspace += pass.lightstyleColor[2] * diffuseNormalModelspace;
 	color.rgb += pass.lightstyleColor[2].rgb * max (diffuseProduct, 0.0) * texture(sampler2D(lightmapTexture[2],lightmapTextureSample), v_LightmapTexCoord23.st).rgb);
 #endif 
 #if NUM_LIGHTMAPS >= 4
-	diffuseNormalModelspace = normalize(texture(sampler2D(lightmapTexture[3],lightmapTextureSample), v_LightmapTexCoord23.pq+vec2(pass.deluxLightMapScale.w,0.0)).rgb - myhalf3 (0.5));
+	diffuseNormalModelspace = normalize(texture(sampler2D(lightmapTexture[3],lightmapTextureSample), v_LightmapTexCoord23.pq+vec2(pass.deluxLightMapScale.w,0.0)).rgb - vec3 (0.5));
 	diffuseProduct = float (dot (surfaceNormalModelspace, diffuseNormalModelspace));
 	weightedDiffuseNormalModelspace += pass.lightstyleColor[3] * diffuseNormalModelspace;
 	color.rgb += pass.lightstyleColor[3].rgb * max (diffuseProduct, 0.0) * texture(sampler2D(lightmapTexture[3],lightmapTextureSample), v_LightmapTexCoord23.pq).rgb);
@@ -215,7 +215,7 @@ void main()
 		vec3 STR2 = vec3(lights.dynLights[dlight + 2].position - Position);
 		vec3 STR3 = vec3(lights.dynLights[dlight + 3].position - Position);
 		vec4 distance = vec4(length(STR0), length(STR1), length(STR2), length(STR3));
-		vec4 falloff = clamp(myhalf4(1.0) - distance * unif.lights[dlight + 3].diffuseAndInvRadius, 0.0, 1.0);
+		vec4 falloff = clamp(vec4(1.0) - distance * unif.lights[dlight + 3].diffuseAndInvRadius, 0.0, 1.0);
 
 		falloff *= falloff;
 
@@ -230,19 +230,19 @@ void main()
 #ifdef APPLY_SPECULAR
 
 #ifdef NORMALIZE_DIFFUSE_NORMAL
-	vec3 specularNormal = normalize (vec3(normalize (weightedDiffuseNormalModelspace)) + myhalf3 (normalize (u_EntityDist - v_Position)));
+	vec3 specularNormal = normalize (vec3(normalize (weightedDiffuseNormalModelspace)) + vec3 (normalize (u_EntityDist - v_Position)));
 #else
-	vec3 specularNormal = normalize (weightedDiffuseNormalModelspace + myhalf3 (normalize (u_EntityDist - v_Position)));
+	vec3 specularNormal = normalize (weightedDiffuseNormalModelspace + vec3 (normalize (u_EntityDist - v_Position)));
 #endif
 
 	float specularProduct = float(dot (surfaceNormalModelspace, specularNormal));
-	color.rgb += (vec3(texture(sampler2D(u_GlossTexture, glossSampler), v_TexCoord)) * constants.glossFactors.x) * pow(myhalf(max(specularProduct, 0.0)), constants.glossFactors.y);
+	color.rgb += (vec3(texture(sampler2D(u_GlossTexture, glossSampler), v_TexCoord)) * constants.glossFactors.x) * pow(float(max(specularProduct, 0.0)), constants.glossFactors.y);
 #endif // APPLY_SPECULAR
 
 #if defined(APPLY_BASETEX_ALPHA_ONLY) && !defined(APPLY_DRAWFLAT)
 	color = min(color, vec4(texture(sampler2D(u_BaseTexture,baseSampler), v_TexCoord).a));
 #else
-	myhalf4 diffuse;
+	vec4 diffuse;
 
 #ifdef APPLY_DRAWFLAT
 	float n = float(step(DRAWFLAT_NORMAL_STEP, abs(v_StrMatrix[2].z)));
@@ -297,7 +297,7 @@ void main()
 #endif
 
 #if defined(APPLY_FOG) && !defined(APPLY_FOG_COLOR)
-	myhalf fogDensity = FogDensity(v_TexCoord_FogCoord.pq);
+	float fogDensity = FogDensity(v_TexCoord_FogCoord.pq);
 	color.rgb = mix(color.rgb, u_FogColor, fogDensity);
 #endif
 

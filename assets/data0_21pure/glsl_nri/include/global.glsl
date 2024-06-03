@@ -45,34 +45,9 @@ layout(set = DESCRIPTOR_OBJECT_SET, binding = 2) uniform ObjectCB obj;
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 3) uniform VertexColoringCB vc; 
 layout(set = DESCRIPTOR_FRAME_SET, binding = 0) uniform FrameCB frame; 
 
-
 void QF_FogGenCoordTexCoord(
   in vec4 Position, 
   out vec2 outTexCoord)
-{
-	// side = vec2(inside, outside)
-	vec2 side = myhalf2(step(frame.eyeDist, 0.0), step(0.0, frame.eyeDist));
-	float FDist = dot(Position.xyz, frame.fogEyePlane.xyz) - frame.fogEyePlane.w;
-	float FVdist = dot(Position.xyz, frame.fogPlane.xyz) - frame.fogPlane.w;
-	float VToEyeDist = FVdist - frame.eyeDist;
-
-	// prevent calculations that might result in infinities:
-	// always ensure that abs(NudgedVToEyeDist) >= FOG_DIST_NUDGE_FACTOR
-	myhalf NudgedVToEyeDist = step(FOG_DIST_NUDGE_FACTOR, VToEyeDist    ) * VToEyeDist +
-				step(FOG_DIST_NUDGE_FACTOR, VToEyeDist * -1.0) * VToEyeDist + 
-				(step(abs(VToEyeDist), FOG_DIST_NUDGE_FACTOR)) * FOG_DIST_NUDGE_FACTOR;
-
-	myhalf FogDistScale = FVdist / NudgedVToEyeDist;
-
-	myhalf FogS = FDist * dot(side, myhalf2(1.0, step(FVdist, 0.0) * FogDistScale));
-	myhalf FogT = -FVdist;
-	outTexCoord = vec2(FogS * fogScale, FogT * fogScale + 1.5*FOG_TEXCOORD_STEP);
-}
-
-void QF_FogGenColor(
-  in vec4 Position, 
-  inout myhalf4 outColor, 
-  in myhalf2 blendMix)
 {
 	// side = vec2(inside, outside)
 	vec2 side = vec2(step(frame.eyeDist, 0.0), step(0.0, frame.eyeDist));
@@ -82,15 +57,42 @@ void QF_FogGenColor(
 
 	// prevent calculations that might result in infinities:
 	// always ensure that abs(NudgedVToEyeDist) >= FOG_DIST_NUDGE_FACTOR
-	myhalf NudgedVToEyeDist = step(FOG_DIST_NUDGE_FACTOR, VToEyeDist    ) * VToEyeDist +
+	float NudgedVToEyeDist = step(FOG_DIST_NUDGE_FACTOR, VToEyeDist    ) * VToEyeDist +
 				step(FOG_DIST_NUDGE_FACTOR, VToEyeDist * -1.0) * VToEyeDist + 
 				(step(abs(VToEyeDist), FOG_DIST_NUDGE_FACTOR)) * FOG_DIST_NUDGE_FACTOR;
 
-	myhalf FogDistScale = FVdist / NudgedVToEyeDist;
+	float FogDistScale = FVdist / NudgedVToEyeDist;
 
-	myhalf FogDist = FDist * dot(side, myhalf2(1.0, FogDistScale));
-	myhalf FogScale = myhalf(clamp(1.0 - FogDist * frame.fogScale, 0.0, 1.0));
-	outColor *= mix(myhalf4(1.0), myhalf4(FogScale), blendMix.xxxy);
+	float FogS = FDist * dot(side, vec2(1.0, step(FVdist, 0.0) * FogDistScale));
+	float FogT = -FVdist;
+	outTexCoord = vec2(FogS * fogScale, FogT * fogScale + 1.5*FOG_TEXCOORD_STEP);
+}
+
+void QF_FogGenColor(
+  in vec4 Position, 
+  inout vec4 outColor)
+{
+	// side = vec2(inside, outside)
+	vec2 side = vec2(step(frame.eyeDist, 0.0), step(0.0, frame.eyeDist));
+	float FDist = dot(Position.xyz, frame.fogEyePlane.xyz) - frame.fogEyePlane.w;
+	float FVdist = dot(Position.xyz, frame.fogPlane.xyz) - frame.fogPlane.w;
+	float VToEyeDist = FVdist - frame.eyeDist;
+
+	// prevent calculations that might result in infinities:
+	// always ensure that abs(NudgedVToEyeDist) >= FOG_DIST_NUDGE_FACTOR
+	float NudgedVToEyeDist = step(FOG_DIST_NUDGE_FACTOR, VToEyeDist    ) * VToEyeDist +
+				step(FOG_DIST_NUDGE_FACTOR, VToEyeDist * -1.0) * VToEyeDist + 
+				(step(abs(VToEyeDist), FOG_DIST_NUDGE_FACTOR)) * FOG_DIST_NUDGE_FACTOR;
+
+	float FogDistScale = FVdist / NudgedVToEyeDist;
+
+	float FogDist = FDist * dot(side, vec2(1.0, FogDistScale));
+	float FogScale = float(clamp(1.0 - FogDist * frame.fogScale, 0.0, 1.0));
+	if(obj.isAlphaBlending) {
+		outColor *= mix(vec4(1.0), vec4(FogScale), vec4(0,0,0,1));
+	} else {
+		outColor *= mix(vec4(1.0), vec4(FogScale), vec4(1,1,1,0));
+	}
 }
 
 
@@ -125,7 +127,7 @@ vec4 QF_VertexRGBGen(
 
 #endif
 
-#define DISTANCERAMP(x1,x2,y1,y2) mix(y1, y2, smoothstep(x1, x2, myhalf(dot(obj.entityDist - Position.xyz, Normal))))
+#define DISTANCERAMP(x1,x2,y1,y2) mix(y1, y2, smoothstep(x1, x2, float(dot(obj.entityDist - Position.xyz, Normal))))
 #ifdef APPLY_RGB_DISTANCERAMP
 	Color.rgb *= DISTANCERAMP(vc.rgbGenFuncArgs[2], vc.rgbGenFuncArgs[3], vc.rgbGenFuncArgs[0], vc.rgbGenFuncArgs[1]);
 #endif

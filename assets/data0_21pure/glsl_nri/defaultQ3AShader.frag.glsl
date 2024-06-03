@@ -35,7 +35,7 @@ void main(void)
 		#endif // NUM_LIGHTMAPS >= 3
 	#endif // NUM_LIGHTMAPS >= 2
 #else
-	color = myhalf4(qf_FrontColor);
+	color = vec4(qf_FrontColor);
 #endif // NUM_LIGHTMAPS
 
 #if defined(APPLY_FOG) && !defined(APPLY_FOG_COLOR)
@@ -46,7 +46,7 @@ void main(void)
 	color.rgb += DynamicLightsColor(v_Position);
 #endif
 
-	myhalf4 diffuse;
+	vec4 diffuse;
 
 #if defined(APPLY_CUBEMAP)
 	diffuse = texture(samplerCube(u_BaseTexture,u_BaseSampler), reflect(v_Position - u_EntityDist, normalize(v_Normal)));
@@ -59,8 +59,8 @@ void main(void)
 #endif
 
 #ifdef APPLY_DRAWFLAT
-	myhalf n = myhalf(step(DRAWFLAT_NORMAL_STEP, abs(v_Normal.z)));
-	diffuse.rgb = myhalf3(mix(pass.wallColor, u_FloorColor, n));
+	float n = float(step(DRAWFLAT_NORMAL_STEP, abs(v_Normal.z)));
+	diffuse.rgb = vec3(mix(pass.wallColor, u_FloorColor, n));
 #endif
 
 #ifdef APPLY_ALPHA_MASK
@@ -71,7 +71,7 @@ void main(void)
 
 #ifdef NUM_LIGHTMAPS
 	// so that team-colored shaders work
-	color *= myhalf4(qf_FrontColor);
+	color *= vec4(qf_FrontColor);
 #endif
 
 #ifdef APPLY_GREYSCALE
@@ -89,11 +89,16 @@ void main(void)
 		float fragdepth = ZRange.x*ZRange.y/(ZRange.y - texture(sampler2D(u_DepthTexture,u_DepthSampler), tc).r*(pass.zRange.y-pass.zRange.x));
 		flaot partdepth = Depth;
 		
-		myhalf d = max((fragdepth - partdepth) * u_SoftParticlesScale, 0.0);
-		myhalf softness = 1.0 - min(1.0, d);
+		float d = max((fragdepth - partdepth) * u_SoftParticlesScale, 0.0);
+		float softness = 1.0 - min(1.0, d);
 		softness *= softness;
 		softness = 1.0 - softness * softness;
-		color *= mix(myhalf4(1.0), myhalf4(softness), obj.blendMix.xxxy);
+		if(obj.isAlphaBlending) {
+			color *= mix(vec4(1.0), vec4(softness), vec4(0,0,0,1));
+		} else {
+			color *= mix(vec4(1.0), vec4(softness), vec4(1,1,1,0));
+		}
+
 	}
 #endif
 

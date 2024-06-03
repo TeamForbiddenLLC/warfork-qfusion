@@ -6,8 +6,10 @@
 struct block_buffer_pool_req_s {
 	NriBuffer *buffer;
 	size_t bufferOffset;
+	size_t bufferSize;
 	void *address;
 };
+
 
 struct block_buffer_s {
 	NriMemory *memory;
