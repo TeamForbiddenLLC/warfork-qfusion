@@ -14,7 +14,7 @@ void main()
 {
 	vec4 Position = a_Position;
 	vec3 Normal = a_Normal.xyz;
-	myhalf4 inColor = myhalf4(a_Color);
+	vec4 inColor = vec4(a_Color);
 	vec2 TexCoord = a_TexCoord;
 	vec3 Tangent = a_SVector.xyz;
 	float TangentDir = a_SVector.w;
@@ -25,7 +25,7 @@ void main()
 
 #ifdef APPLY_FOG
 #if defined(APPLY_FOG_COLOR)
-	QF_FogGenColor(Position, outColor, obj.blendMix);
+	QF_FogGenColor(Position, outColor);
 #else
 	QF_FogGenCoordTexCoord(Position, v_TexCoord_FogCoord.pq);
 #endif
