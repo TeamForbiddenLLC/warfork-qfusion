@@ -1,29 +1,19 @@
 
 struct VertexColoringCB {
-#ifdef APPLY_RGB_DISTANCERAMP
     vec4 rgbGenFuncArgs;
-#endif
-#ifdef APPLY_ALPHA_DISTANCERAMP
     vec4 alphaGenFuncArgs;
-#endif  
-#if defined(APPLY_RGB_CONST)
     vec4 colorConst;
-#elif defined(APPLY_RGB_GEN_DIFFUSELIGHT)
     vec4 lightAmbient;
     vec4 lightDiffuse;
     vec3 lightDir;
-#endif
-
 };
 
-
 struct FrameCB {
-  vec4 fogEyePlane;
-  vec4 fogPlane;
-
   vec3 viewOrigin;
   float shaderTime;
   vec2 blendMix;
+  float zNear;
+  float zFar;
   float fogScale;
   float eyeDist;
   float mirrorSide;
@@ -32,9 +22,12 @@ struct FrameCB {
 };
 
 struct ObjectCB {
+    vec4 fogEyePlane;
+    vec4 fogPlane;
 	vec3 entityOrigin;
     float entityDist;
 	mat4 mvp;
+	mat4 mv;
 	float blendMix;
 };
 

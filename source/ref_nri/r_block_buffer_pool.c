@@ -35,7 +35,8 @@ struct block_buffer_pool_req_s BlockBufferPoolReq( struct nri_backend_s *nri, st
 	struct block_buffer_pool_req_s req = { 0 };
 	req.buffer = pool->current.buffer;
 	req.bufferOffset = pool->blockOffset;
-	req.address = ((uint8_t*)pool->current.cpuMapped) + req.bufferOffset;
+	req.bufferSize = reqSize;
+	req.address = ((uint8_t*)pool->current.cpuMapped) + pool->blockOffset;
 	pool->blockOffset += alignReqSize;
 	return req;
 }

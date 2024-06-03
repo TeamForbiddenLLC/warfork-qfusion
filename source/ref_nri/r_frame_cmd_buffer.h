@@ -41,13 +41,6 @@ struct frame_backbuffer_s {
 	NriAccessLayoutStage currentLayout;
 };
 
-//struct frame_cb_state_s {
-//	mfog_t* fog;
-//
-//	hash_t frameHash;
-//	struct block_buffer_pool_req_s blockBuffer; 
-//};
-
 // hack to store some additional managed state 
 struct frame_additional_data_s {
 	// internal state to refresh block data
@@ -58,11 +51,11 @@ struct frame_additional_data_s {
 	hash_t objHash;
 	struct block_buffer_pool_req_s objBlock;
 	struct FrameCB frame;
-
 };
 
 struct ubo_frame_instance_s {
 	hash_t hash;
+	NriDescriptor* descriptor;
 	struct block_buffer_pool_req_s req; 
 };
 
@@ -75,6 +68,8 @@ struct frame_cmd_buffer_s {
 	NriCommandAllocator *allocator;
 	NriCommandBuffer *cmd;
 
+	NriDescriptor** frameTemporaryDesc; // temporary frame descriptors that are recycled at the end of the frame	
+
 	struct FrameCB frameCB;
 	struct ObjectCB objCB;
 	struct ubo_frame_instance_s uboFrame;	
@@ -82,23 +77,6 @@ struct frame_cmd_buffer_s {
 };
 
 void UpdateFrameUBO(struct frame_cmd_buffer_s *cmd,struct ubo_frame_instance_s* frame,void * data, size_t size);
-
-
-//struct frame_obj_cb_state {
-//	entity_t* entity;
-//	mfog_t* fog;
-//	shader_t* shader;
-//
-//	struct mat4 cameraMatrix;
-//	struct mat4 objectMatrix;
-//	struct mat4 modelviewMatrix;
-//	struct mat4 projectionMatrix;
-//	struct mat4 modelviewProjectionMatrix;
-//	float zNear, zFar;
-//
-//	struct vec3 cameraOrigin;
-//	struct mat3 cameraAxis;
-//};
 
 struct frame_buffer_req_s {
 	struct block_buffer_pool_req_s frame;

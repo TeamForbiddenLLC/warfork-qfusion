@@ -348,11 +348,9 @@ void RB_ApplyTCMods( const shaderpass_t *pass, mat4_t result )
 	}
 }
 
-/*
- * RB_GetShaderpassColor
- */
-void RB_GetShaderpassColor( const shaderpass_t *pass, byte_vec4_t rgba_ )
+static struct block_buffer_pool_req_s RB_GetVertexColoringCB(struct frame_cmd_buffer_s *cmd, const shaderpass_t *pass)
 {
+
 	int c;
 	int rgba[4];
 	double temp;
@@ -362,7 +360,6 @@ void RB_GetShaderpassColor( const shaderpass_t *pass, byte_vec4_t rgba_ )
 	const shaderfunc_t *alphagenfunc = &pass->alphagen.func;
 
 	Vector4Set( rgba, 255, 255, 255, 255 );
-
 	switch( pass->rgbgen.type ) {
 		case RGB_GEN_IDENTITY:
 			break;
@@ -374,7 +371,6 @@ void RB_GetShaderpassColor( const shaderpass_t *pass, byte_vec4_t rgba_ )
 		case RGB_GEN_ENTITYWAVE:
 		case RGB_GEN_WAVE:
 		case RGB_GEN_CUSTOMWAVE:
-
 			if( rgbgenfunc->type == SHADER_FUNC_NONE ) {
 				temp = 1;
 			} else if( rgbgenfunc->type == SHADER_FUNC_RAMP ) {
@@ -451,7 +447,6 @@ void RB_GetShaderpassColor( const shaderpass_t *pass, byte_vec4_t rgba_ )
 					a = alphagenfunc->args[2] + rb.currentShaderTime * alphagenfunc->args[3];
 					a = FTABLE_EVALUATE( table, a );
 				}
-
 				a = a * alphagenfunc->args[1] + alphagenfunc->args[0];
 			}
 
@@ -467,7 +462,6 @@ void RB_GetShaderpassColor( const shaderpass_t *pass, byte_vec4_t rgba_ )
 	}
 
 	for( c = 0; c < 4; c++ ) {
-		rgba_[c] = bound( 0, rgba[c], 255 );
 	}
 }
 
@@ -698,7 +692,7 @@ static void RB_UpdateCommonUniforms_2( struct frame_cmd_buffer_s *cmd, const sha
 	}
 
 	// calculate constant color
-	RB_GetShaderpassColor( pass, constColor );
+	//RB_GetShaderpassColor( pass, constColor );
 
 	// apply modifications to texture coordinates
 	if( pass->numtcmods ) {
@@ -760,7 +754,7 @@ static void RB_UpdateCommonUniforms( int program, const shaderpass_t *pass, mat4
 	}
 
 	// calculate constant color
-	RB_GetShaderpassColor( pass, constColor );
+	//RB_GetVertexColoringCB( NULL,pass, constColor );
 
 	// apply modifications to texture coordinates
 	if( pass->numtcmods ) {
@@ -839,11 +833,40 @@ r_glslfeat_t RB_TcGenToProgramFeatures( int tcgen, vec_t *tcgenVec, struct mat4 
 	return programFeatures;
 }
 
+void RB_RenderMeshGLSLProgrammed_PostProcessing( struct frame_cmd_buffer_s *cmd, const shaderpass_t *pass, int programType ) {
+
+}
+
+static inline bool __IsAlphaBlendingGLState(int state) {
+	return ( ( state & GLSTATE_SRCBLEND_MASK ) == GLSTATE_SRCBLEND_SRC_ALPHA || ( state ) == GLSTATE_DSTBLEND_SRC_ALPHA ) ||
+		   ( ( state & GLSTATE_SRCBLEND_MASK ) == GLSTATE_SRCBLEND_ONE_MINUS_SRC_ALPHA || ( state ) == GLSTATE_DSTBLEND_ONE_MINUS_SRC_ALPHA );
+}
+
+inline struct vec4 ConstColorAdjust( bool alphaBlending, bool alphaHack, struct vec4 vec )
+{
+	if( alphaBlending ) {
+		if( alphaHack ) {
+			vec.w *= rb.alphaHack;
+		}
+	} else {
+		if( alphaHack ) {
+			vec.x *= rb.alphaHack;
+			vec.y *= rb.alphaHack;
+			vec.z *= rb.alphaHack;
+		}
+	}
+	return vec;
+}
+
 void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpass_t *pass, int programType )
 {
 	r_glslfeat_t features = 0;
 
+	RB_SetShaderpassState( pass->flags );
+	const bool isAlphaBlending = __IsAlphaBlendingGLState( rb.gl.state );
+
 	if( rb.fog ) {
+		cmd->objCB.isAlphaBlending = isAlphaBlending ? 1.0f : 0.0f; 
 		cplane_t fogPlane, vpnPlane;
 		float fog_color[3] = { 0, 0, 0 };
 		VectorScale( rb.fog->shader->fog_color, ( 1.0 / 255.0 ), fog_color );
@@ -861,6 +884,119 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 	memcpy( cmd->frameCB.viewOrigin.v, rb.cameraOrigin, sizeof( vec3_t ) );
 	memcpy( cmd->frameCB.viewAxis.v, rb.cameraAxis, sizeof( vec3_t ) );
 	cmd->frameCB.mirrorSide = ( rb.renderFlags & RF_MIRRORVIEW ) ? -1 : 1;
+
+	//
+	// generate color VertexColoringCB 
+	// 
+	{
+		struct block_buffer_pool_req_s vertexColoringReq = BlockBufferPoolReq( &rsh.nri, &cmd->uboBlockBuffer, sizeof( struct VertexColoringCB ) );
+		struct VertexColoringCB* vertexColorCB =  vertexColoringReq.address;
+		const shaderfunc_t *rgbgenfunc = &pass->rgbgen.func;
+		const shaderfunc_t *alphagenfunc = &pass->alphagen.func;
+
+		switch( pass->rgbgen.type ) {
+			case RGB_GEN_IDENTITY:
+				break;
+			case RGB_GEN_CONST:
+				vertexColorCB->colorConst.v[0] = pass->rgbgen.args[0];
+				vertexColorCB->colorConst.v[1] = pass->rgbgen.args[1];
+				vertexColorCB->colorConst.v[2] = pass->rgbgen.args[2];
+				break;
+			case RGB_GEN_ENTITYWAVE:
+			case RGB_GEN_WAVE:
+			case RGB_GEN_CUSTOMWAVE: {
+				float adjust = 0.0f;
+				if( rgbgenfunc->type == SHADER_FUNC_NONE ) {
+					adjust = 1;
+				} else if( rgbgenfunc->type == SHADER_FUNC_RAMP ) {
+					break;
+				} else if( rgbgenfunc->args[1] == 0 ) {
+					adjust = rgbgenfunc->args[0];
+				} else {
+					if( rgbgenfunc->type == SHADER_FUNC_NOISE ) {
+						adjust = RB_BackendGetNoiseValue( 0, 0, 0, ( rb.currentShaderTime + rgbgenfunc->args[2] ) * rgbgenfunc->args[3] );
+					} else {
+						float* table = RB_TableForFunc( rgbgenfunc->type );
+						adjust = rb.currentShaderTime * rgbgenfunc->args[3] + rgbgenfunc->args[2];
+						adjust = FTABLE_EVALUATE( table, adjust) * rgbgenfunc->args[1] + rgbgenfunc->args[0];
+					}
+					adjust  *= rgbgenfunc->args[1] + rgbgenfunc->args[0];
+				}
+
+				if( pass->rgbgen.type == RGB_GEN_ENTITYWAVE ) {
+					vertexColorCB->colorConst.v[0] = rb.entityColor[0] * ( 1.0 / 255.0 );
+					vertexColorCB->colorConst.v[1] = rb.entityColor[1] * ( 1.0 / 255.0 );
+					vertexColorCB->colorConst.v[2] = rb.entityColor[2] * ( 1.0 / 255.0 );
+				} else if( pass->rgbgen.type == RGB_GEN_CUSTOMWAVE ) {
+					const int u8Color = R_GetCustomColor( (int)pass->rgbgen.args[0] );
+					vertexColorCB->colorConst.v[0] = COLOR_R( u8Color ) * ( 1.0 / 255.0 );
+					vertexColorCB->colorConst.v[1] = COLOR_G( u8Color ) * ( 1.0 / 255.0 );
+					vertexColorCB->colorConst.v[2] = COLOR_B( u8Color ) * ( 1.0 / 255.0 );
+				} else {
+					vertexColorCB->colorConst.v[0] = pass->rgbgen.args[0];
+					vertexColorCB->colorConst.v[1] = pass->rgbgen.args[1];
+					vertexColorCB->colorConst.v[2] = pass->rgbgen.args[2];
+				}
+				vertexColorCB->colorConst.v[0] *= adjust;
+				vertexColorCB->colorConst.v[1] *= adjust;
+				vertexColorCB->colorConst.v[2] *= adjust;
+				break;
+			}
+			case RGB_GEN_OUTLINE:
+				vertexColorCB->colorConst.v[0] = rb.entityOutlineColor[0] * ( 1.0 / 255.0 );
+				vertexColorCB->colorConst.v[1] = rb.entityOutlineColor[1] * ( 1.0 / 255.0 );
+				vertexColorCB->colorConst.v[2] = rb.entityOutlineColor[2] * ( 1.0 / 255.0 );
+				break;
+			case RGB_GEN_ONE_MINUS_ENTITY:
+				vertexColorCB->colorConst.v[0] = ( 255 - rb.entityColor[0] ) * ( 1.0 / 255.0 );
+				vertexColorCB->colorConst.v[1] = ( 255 - rb.entityColor[1] ) * ( 1.0 / 255.0 );
+				vertexColorCB->colorConst.v[2] = ( 255 - rb.entityColor[2] ) * ( 1.0 / 255.0 );
+				break;
+			case RGB_GEN_FOG:
+				vertexColorCB->colorConst.v[0] = ( rb.texFog->shader->fog_color[0] ) * ( 1.0 / 255.0 );
+				vertexColorCB->colorConst.v[1] = ( rb.texFog->shader->fog_color[1] ) * ( 1.0 / 255.0 );
+				vertexColorCB->colorConst.v[2] = ( rb.texFog->shader->fog_color[2] ) * ( 1.0 / 255.0 );
+				break;
+			case RGB_GEN_ENVIRONMENT:
+				vertexColorCB->colorConst.v[0] = ( mapConfig.environmentColor[0] ) * ( 1.0 / 255.0 );
+				vertexColorCB->colorConst.v[1] = ( mapConfig.environmentColor[1] ) * ( 1.0 / 255.0 );
+				vertexColorCB->colorConst.v[2] = ( mapConfig.environmentColor[2] ) * ( 1.0 / 255.0 );
+				break;
+			default:
+				break;
+		}
+
+		switch( pass->alphagen.type ) {
+			case ALPHA_GEN_IDENTITY:
+				break;
+			case ALPHA_GEN_CONST:
+				vertexColorCB->colorConst.v[3] = pass->alphagen.args[0];
+				break;
+			case ALPHA_GEN_WAVE:
+				if( !alphagenfunc || alphagenfunc->type == SHADER_FUNC_NONE ) {
+					vertexColorCB->colorConst.v[3] = 1;
+				} else if( alphagenfunc->type == SHADER_FUNC_RAMP ) {
+				} else {
+					if( alphagenfunc->type == SHADER_FUNC_NOISE ) {
+						vertexColorCB->colorConst.v[3] = RB_BackendGetNoiseValue( 0, 0, 0, ( rb.currentShaderTime + alphagenfunc->args[2] ) * alphagenfunc->args[3] );
+					} else {
+						float* table = RB_TableForFunc( alphagenfunc->type );
+						vertexColorCB->colorConst.v[3] = alphagenfunc->args[2] + rb.currentShaderTime * alphagenfunc->args[3];
+						vertexColorCB->colorConst.v[3] = FTABLE_EVALUATE( table, vertexColorCB->colorConst.v[3] );
+					}
+					vertexColorCB->colorConst.v[3] *= alphagenfunc->args[1] + alphagenfunc->args[0];
+				}
+				break;
+			case ALPHA_GEN_ENTITY:
+				vertexColorCB->colorConst.v[3] = rb.entityColor[3] * ( 1.0 / 255.0 );
+				break;
+			case ALPHA_GEN_OUTLINE:
+				vertexColorCB->colorConst.v[3] = rb.entityOutlineColor[3] * ( 1.0 / 255.0 );
+			default:
+				break;
+		}
+		vertexColorCB->colorConst = ConstColorAdjust( isAlphaBlending, rb.alphaHack, vertexColorCB->colorConst );
+	}
 
 	if( rb.greyscale || pass->flags & SHADERPASS_GREYSCALE ) {
 		features |= GLSL_SHADER_COMMON_GREYSCALE;
@@ -965,7 +1101,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				Matrix4_Identity( texMatrix );
 
 				descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){ 
-					.image = base, 
+					.descriptor = base->descriptor, 
 					.handle = Create_DescriptorHandle( "u_BaseTexture" ) 
 				};
 
@@ -982,7 +1118,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				// RB_BindImage( 1, normalmap );         // normalmap
 				// DescSimple_WriteImage( &materialDesc, 1, normalmap );
 				descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){ 
-					.image = normalmap, 
+					.descriptor = normalmap->descriptor, 
 					.handle = Create_DescriptorHandle( "u_NormalmapTexture" ) 
 				};
 
@@ -990,7 +1126,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 					programFeatures |= GLSL_SHADER_MATERIAL_SPECULAR;
 					// RB_BindImage( 2, glossmap ); // gloss
 					// DescSimple_WriteImage( &materialDesc, 2, glossmap );
-					descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){ .image = normalmap, .handle = Create_DescriptorHandle( "u_GlossTexture" ) };
+					descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){ .descriptor = glossmap->descriptor, .handle = Create_DescriptorHandle( "u_GlossTexture" ) };
 				}
 
 				if( applyDecal ) {
@@ -1007,7 +1143,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 
 					// RB_BindImage( 3, decalmap ); // decal
 					// DescSimple_WriteImage( &materialDesc, 2, decalmap );
-					descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){ .image = normalmap, .handle = Create_DescriptorHandle( "u_DecalTexture" ) };
+					descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){ .descriptor = decalmap->descriptor, .handle = Create_DescriptorHandle( "u_DecalTexture" ) };
 				}
 
 				if( entdecalmap ) {
@@ -1019,7 +1155,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 
 					// RB_BindImage( 4, entdecalmap ); // decal
 					// DescSimple_WriteImage( &materialDesc, 4, entdecalmap );
-					descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){ .image = normalmap, .handle = Create_DescriptorHandle( "u_EntityDecalTexture" ) };
+					descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){ .descriptor = normalmap->descriptor, .handle = Create_DescriptorHandle( "u_EntityDecalTexture" ) };
 				}
 
 				if( offsetmappingScale > 0 )
@@ -1034,7 +1170,8 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 						const int numLightMaps = __NumberLightMaps( lightStyle );
 						for( int i = 0; i < numLightMaps; i++ ) {
 							descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){
-								.image = rsh.worldBrushModel->lightmapImages[lightStyle->lightmapNum[i]], .registerOffset = i, .handle = Create_DescriptorHandle( "lightmapTexture" ) };
+								.descriptor = rsh.worldBrushModel->lightmapImages[lightStyle->lightmapNum[i]]->descriptor, 
+								.registerOffset = i, .handle = Create_DescriptorHandle( "lightmapTexture" ) };
 						}
 
 						programFeatures |= ( numLightMaps * GLSL_SHADER_MATERIAL_LIGHTSTYLE0 );
@@ -1245,17 +1382,17 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				RP_ResolveProgram( GLSL_PROGRAM_TYPE_Q3A_SHADER, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->layoutConfig );
 
-			size_t descriptorIndex = 0;
+			size_t descriptorSize = 0;
 			struct glsl_descriptor_data_s descriptors[64] = { 0 };
 
 			if( programFeatures & GLSL_SHADER_COMMON_SOFT_PARTICLE ) {
-				descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){ .image = rsh.screenDepthTextureCopy, .handle = Create_DescriptorHandle( "u_DepthTexture" ) };
+				descriptors[descriptorSize++] = ( struct glsl_descriptor_data_s ){ .descriptor = rsh.screenDepthTextureCopy->descriptor, .handle = Create_DescriptorHandle( "u_DepthTexture" ) };
 			}
-			descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){ .image = shaderPassImage, .handle = Create_DescriptorHandle( "u_BaseTexture" ) };
+			descriptors[descriptorSize++] = ( struct glsl_descriptor_data_s ){ .descriptor = shaderPassImage->descriptor, .handle = Create_DescriptorHandle( "u_BaseTexture" ) };
 
 			for( int i = 0; i < numLightMaps; i++ ) {
-				descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){
-					.image = rsh.worldBrushModel->lightmapImages[lightStyle->lightmapNum[i]], 
+				descriptors[descriptorSize++] = ( struct glsl_descriptor_data_s ){
+					.descriptor = rsh.worldBrushModel->lightmapImages[lightStyle->lightmapNum[i]]->descriptor, 
 					.registerOffset = i, 
 					.handle = Create_DescriptorHandle( "lightmapTexture" ) };
 			}
@@ -1270,12 +1407,17 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 
 			UpdateFrameUBO( cmd, &cmd->uboFrame, &cmd->frameCB, sizeof( cmd->frameCB ) );
 			UpdateFrameUBO( cmd, &cmd->uboObject, &cmd->objCB, sizeof( cmd->objCB ) );
-			descriptors[descriptorIndex++] =
-				( struct glsl_descriptor_data_s ){ .buffer = { .nri = cmd->uboFrame.req.buffer, .offset = cmd->uboFrame.req.bufferOffset }, .handle = Create_DescriptorHandle( "frame" ) };
-			descriptors[descriptorIndex++] =
-				( struct glsl_descriptor_data_s ){ .buffer = { .nri = cmd->uboObject.req.buffer, .offset = cmd->uboObject.req.bufferOffset }, .handle = Create_DescriptorHandle( "obj" ) };
+		 
 
-			RP_BindDescriptorSets( cmd, program, descriptors, descriptorIndex );
+		 	// rsh.nri.coreI.CreateBufferView((struct NriBufferVKDesc) {
+
+		 // })
+			descriptors[descriptorSize++] =
+				( struct glsl_descriptor_data_s ){ .descriptor =  cmd->uboFrame.descriptor, .handle = Create_DescriptorHandle( "frame" ) };
+			descriptors[descriptorSize++] =
+				( struct glsl_descriptor_data_s ){ .descriptor=  cmd->uboObject.descriptor, .handle = Create_DescriptorHandle( "obj" ) };
+
+			RP_BindDescriptorSets( cmd, program, descriptors, descriptorSize );
 
 			// FR_CmdDrawElements(cmd,
 			//									cmd->additional.drawElements.numElems,
@@ -1429,8 +1571,9 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 		}
 		case GLSL_PROGRAM_TYPE_SHADOWMAP: {
 			r_glslfeat_t programFeatures = features;
-			int scissor[4], old_scissor[4];
-			shadowGroup_t *group, *shadowGroups[GLSL_SHADOWMAP_LIMIT];
+			int scissor[4] = {INT_MAX, INT_MAX, INT_MIN, INT_MIN};
+			int old_scissor[4];
+			shadowGroup_t *shadowGroups[GLSL_SHADOWMAP_LIMIT];
 
 			if( r_shadows_pcf->integer )
 				programFeatures |= GLSL_SHADER_SHADOWMAP_PCF;
@@ -1445,12 +1588,12 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				maxShadows = GLSL_SHADOWMAP_LIMIT;
 
 			int numShadows = 0;
-			while( numShadows < rsc.numShadowGroups && numShadows < maxShadows ) {
+			for(size_t i = 0; i < rsc.numShadowGroups && numShadows < maxShadows; i++ ) {
 				vec3_t bbox[8];
 				vec_t *visMins, *visMaxs;
 				int groupScissor[4] = { 0, 0, 0, 0 };
 
-				group = rsc.shadowGroups + numShadows;
+				shadowGroup_t *group = rsc.shadowGroups + i;
 				if( !( rb.currentShadowBits & group->bit ) ) {
 					continue;
 				}
@@ -1473,16 +1616,10 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 					continue;
 
 				// compute scissor in absolute coordinates
-				if( !numShadows ) {
-					Vector4Copy( groupScissor, scissor );
-					scissor[2] += scissor[0];
-					scissor[3] += scissor[1];
-				} else {
-					scissor[2] = max( scissor[2], groupScissor[0] + groupScissor[2] );
-					scissor[3] = max( scissor[3], groupScissor[1] + groupScissor[3] );
-					scissor[0] = min( scissor[0], groupScissor[0] );
-					scissor[1] = min( scissor[1], groupScissor[1] );
-				}
+				scissor[2] = max( scissor[2], groupScissor[0] + groupScissor[2] );
+				scissor[3] = max( scissor[3], groupScissor[1] + groupScissor[3] );
+				scissor[0] = min( scissor[0], groupScissor[0] );
+				scissor[1] = min( scissor[1], groupScissor[1] );
 
 				shadowGroups[numShadows++] = group;
 			}
@@ -1541,7 +1678,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				 // 	RP_UpdateBonesUniforms( program, rb.bonesData.numBones, rb.bonesData.dualQuats );
 				 // }
 
-				 // RB_DrawElementsReal( &rb.drawShadowElements );
+				  RB_DrawElementsReal( &rb.drawShadowElements );
 				}
 			}
 
@@ -1563,7 +1700,9 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			
 			struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_OUTLINE, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->layoutConfig );
+			if(program) {
 
+			}
 			// update uniforcms
 			//program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_OUTLINE, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 			//if( RB_BindProgram( program ) ) {
@@ -1599,6 +1738,9 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			const mfog_t *fog = rb.fog;
 			mat4_t reflectionMatrix;
 			mat4_t texMatrix;
+			
+			size_t descriptorSize = 0;
+			struct glsl_descriptor_data_s descriptors[64] = { 0 };
 
 			image_t *base = pass->images[0];
 			image_t *shade = pass->images[1];
@@ -1632,48 +1774,42 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 
 			// replacement images are there to ensure that the entity is still
 			// properly colored despite real images still being loaded in a separate thread
-		
-			//struct {
-			//	r_glslfeat_t feature;
-			//	r_glslfeat_t featureAdditive;
-			//	struct glsl_descriptor_data_s binding;
-			//	bool canAdd;
-			//} imageBinding[] = {
-			//	{.feature = 0, .featureAdditive = 0,},
-			//	{.feature = GLSL_SHADER_CELSHADE_DIFFUSE, .featureAdditive = 0},
-			//	{.feature = GLSL_SHADER_CELSHADE_DECAL, .featureAdditive = GLSL_SHADER_CELSHADE_DECAL_ADD},
-			//	{.feature = GLSL_SHADER_CELSHADE_ENTITY_DECAL, .featureAdditive = GLSL_SHADER_CELSHADE_ENTITY_DECAL_ADD},
-			//	{.feature = GLSL_SHADER_CELSHADE_STRIPES, .featureAdditive = GLSL_SHADER_CELSHADE_STRIPES_ADD},
-			//	{.feature = GLSL_SHADER_CELSHADE_CEL_LIGHT, .featureAdditive = GLSL_SHADER_CELSHADE_CEL_LIGHT_ADD},
-			//};
 
-#define CELSHADE_BIND( tmu, tex, feature, canAdd, replacement )                          \
-	if( tex && !tex->missing ) {                                                         \
-		image_t *btex = tex;                                                             \
-		if( rb.renderFlags & RF_SHADOWMAPVIEW ) {                                        \
-			btex = tex->flags & IT_CUBEMAP ? rsh.whiteCubemapTexture : rsh.whiteTexture; \
-		} else {                                                                         \
-			btex = tex->loaded ? tex : replacement;                                      \
-			if( btex ) {                                                                 \
-				programFeatures |= feature;                                              \
-				if( canAdd && ( btex->samples & 1 ) )                                    \
-					programFeatures |= ( ( feature ) << 1 );                             \
-			}                                                                            \
-		}                                                                                \
-		if( btex ) {                                                                     \
-			RB_BindImage( tmu, btex );                                                   \
-		}                                                                                \
-	}
-
-			CELSHADE_BIND( 1, shade, 0, false, rsh.whiteCubemapTexture );
-			CELSHADE_BIND( 2, diffuse, GLSL_SHADER_CELSHADE_DIFFUSE, false, NULL );
-			CELSHADE_BIND( 3, decal, GLSL_SHADER_CELSHADE_DECAL, true, NULL );
-			CELSHADE_BIND( 4, entdecal, GLSL_SHADER_CELSHADE_ENTITY_DECAL, true, rsh.whiteTexture );
-			CELSHADE_BIND( 5, stripes, GLSL_SHADER_CELSHADE_STRIPES, true, NULL );
-			CELSHADE_BIND( 6, light, GLSL_SHADER_CELSHADE_CEL_LIGHT, true, NULL );
-
-#undef CELSHADE_BIND
-
+			struct {
+				image_t* image;
+				image_t* overloadImage;
+				r_glslfeat_t feature;
+				r_glslfeat_t featureAdditive;
+				struct glsl_descriptor_handle_s handle;
+			} imageBinding[] = {
+				{ .image = shade, .overloadImage = NULL, .feature = 0, .featureAdditive = 0, .handle =  Create_DescriptorHandle( "u_BaseTexture" )  },
+				{ .image = diffuse, .overloadImage = NULL,.feature = GLSL_SHADER_CELSHADE_DIFFUSE, .featureAdditive = 0, .handle  =  Create_DescriptorHandle( "u_DiffuseTexture" )  },
+				{ .image = decal, .overloadImage = NULL,.feature = GLSL_SHADER_CELSHADE_DECAL, .featureAdditive = GLSL_SHADER_CELSHADE_DECAL_ADD, .handle   =  Create_DescriptorHandle( "u_DecalTexture" )  },
+				{ .image = entdecal, .overloadImage = rsh.whiteTexture,.feature = GLSL_SHADER_CELSHADE_ENTITY_DECAL, .featureAdditive = GLSL_SHADER_CELSHADE_ENTITY_DECAL_ADD, .handle    =  Create_DescriptorHandle( "u_EntityDecalTexture" )  },
+				{ .image = stripes, .overloadImage = NULL,.feature = GLSL_SHADER_CELSHADE_STRIPES, .featureAdditive = GLSL_SHADER_CELSHADE_STRIPES_ADD, .handle  =  Create_DescriptorHandle( "u_StripesTexture" ) },
+				{ .image = light, .overloadImage = NULL,.feature = GLSL_SHADER_CELSHADE_CEL_LIGHT, .featureAdditive = GLSL_SHADER_CELSHADE_CEL_LIGHT_ADD, .handle  =  Create_DescriptorHandle( "u_CelLightTexture" )  },
+			};
+			for( size_t i = 0; i < Q_ARRAY_COUNT( imageBinding ); i++ ) {
+				if( imageBinding[i].image && !imageBinding[i].image->missing ) {
+					image_t* btex = imageBinding[i].image;
+					if( rb.renderFlags & RF_SHADOWMAPVIEW ) {
+						btex = btex->flags & IT_CUBEMAP ? rsh.whiteCubemapTexture : rsh.whiteTexture;
+					} else {
+						btex = imageBinding[i].image->loaded ? imageBinding[i].image: imageBinding[i].overloadImage;
+						if( btex ) {
+							programFeatures |= imageBinding[i].feature;
+							if( imageBinding[i].featureAdditive && ( btex->samples & 1 ) )
+								programFeatures |= imageBinding[i].featureAdditive;
+						}
+					}
+					if(btex) {
+						descriptors[descriptorSize++] = ( struct glsl_descriptor_data_s ){
+							.descriptor = btex->descriptor, 
+							.handle = imageBinding[i].handle
+						};
+					}
+				}
+			}
 
 			struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_CELSHADE, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->layoutConfig );
