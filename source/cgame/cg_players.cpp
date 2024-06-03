@@ -33,7 +33,7 @@ static const char *cg_defaultSexedSounds[] =
 	"*wj_1", "*wj_2",
 	"*dash_1", "*dash_2",
 	"*taunt",
-	"*rkill_1", "*rkill_2", "*rkill_3", "*rkill_4", "*rkill_5", "*rkill_6", "*rkill_7", "*rkill_8", "*rkill_9", "*rkill_10", "*rkill_11", "*rkill_12", "*rkill_13", "*rkill_14", "*rkill_15", "*rkill_16", "*rkill_17", "*rkill_18", "*rkill_19", "*rkill_20", "*rkill_21", "*rkill_22", "*rkill_23", "*rkill_24", "*rkill_25", "*rkill_26", "*rkill_27", "*rkill_28", "*rkill_29", "*rkill_30", "*rkill_31", "*rkill_32", "*rkill_33", "*rkill_34", "*rkill_35", "*rkill_36", "*rkill_37", "*rkill_38", "*rkill_39", "*rkill_40", "*rkill_41", "*rkill_42", "*rkill_43", "*rkill_44", "*rkill_45", "*rkill_46", "*rkill_47", "*rkill_48", "*rkill_49", "*rkill_50"
+	"*rkill_1", "*rkill_2", "*rkill_3", "*rkill_4", "*rkill_5", "*rkill_6", "*rkill_7", "*rkill_8", "*rkill_9", "*rkill_10", "*rkill_11", "*rkill_12", "*rkill_13", "*rkill_14", "*rkill_15", "*rkill_16", "*rkill_17", "*rkill_18", "*rkill_19", "*rkill_20", "*rkill_21", "*rkill_22", "*rkill_23", "*rkill_24", "*rkill_25", "*rkill_26", "*rkill_27", "*rkill_28", "*rkill_29", "*rkill_30", "*rkill_31", "*rkill_32", "*rkill_33", "*rkill_34", "*rkill_35", "*rkill_36", "*rkill_37", "*rkill_38", "*rkill_39", "*rkill_40", "*rkill_41", "*rkill_42", "*rkill_43", "*rkill_44", "*rkill_45", "*rkill_46", "*rkill_47", "*rkill_48", "*rkill_49", "*rkill_50",
 	NULL
 };
 
