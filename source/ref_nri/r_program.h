@@ -341,7 +341,7 @@ inline struct glsl_descriptor_handle_s Create_DescriptorHandle(const char* name)
 struct glsl_descriptor_data_s {
 	struct glsl_descriptor_handle_s handle;
 	uint32_t registerOffset; 
-	NriDescriptor* descriptor;
+	struct nri_descriptor_s descriptor;
 };
 
 

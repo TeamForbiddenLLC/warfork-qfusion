@@ -60,7 +60,7 @@ void main(void)
 
 #ifdef APPLY_DRAWFLAT
 	float n = float(step(DRAWFLAT_NORMAL_STEP, abs(v_Normal.z)));
-	diffuse.rgb = vec3(mix(pass.wallColor, u_FloorColor, n));
+	diffuse.rgb = vec3(mix(pass.wallColor, pass.floorColor, n));
 #endif
 
 #ifdef APPLY_ALPHA_MASK

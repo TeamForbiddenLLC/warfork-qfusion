@@ -21,6 +21,7 @@
 #include "math_utils.glsl"
 #include "colorspace_utils.glsl"
 
+// default set of attributes
 #include "attributes.glsl"
 
 #ifdef APPLY_INSTANCED_TRANSFORMS
@@ -42,7 +43,6 @@
 #endif
 
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 2) uniform ObjectCB obj; 
-layout(set = DESCRIPTOR_OBJECT_SET, binding = 3) uniform VertexColoringCB vc; 
 layout(set = DESCRIPTOR_FRAME_SET, binding = 0) uniform FrameCB frame; 
 
 void QF_FogGenCoordTexCoord(
@@ -108,13 +108,13 @@ vec4 QF_VertexRGBGen(
 	vec4 Color = vec4(1.0);
 
   #if defined(APPLY_RGB_CONST)
-	  Color.rgb = vc.colorConst.rgb;
+	  Color.rgb = obj.colorConst.rgb;
   #elif defined(APPLY_RGB_VERTEX)
 	  Color.rgb = VertexColor.rgb;
   #elif defined(APPLY_RGB_ONE_MINUS_VERTEX)
 	  Color.rgb = vec3(1.0) - VertexColor.rgb;
   #elif defined(APPLY_RGB_GEN_DIFFUSELIGHT)
-	  Color.rgb = vec3(vc.lightAmbient.rgb + max(dot(vc.lightDir.xyz, Normal), 0.0) * vc.lightDiffuse.xyz);
+	  Color.rgb = vec3(vc.lightAmbient.rgb + max(dot(obj.lightDir.xyz, Normal), 0.0) * obj.lightDiffuse.xyz);
   #endif
 
   #if defined(APPLY_ALPHA_CONST)
@@ -129,18 +129,16 @@ vec4 QF_VertexRGBGen(
 
 #define DISTANCERAMP(x1,x2,y1,y2) mix(y1, y2, smoothstep(x1, x2, float(dot(obj.entityDist - Position.xyz, Normal))))
 #ifdef APPLY_RGB_DISTANCERAMP
-	Color.rgb *= DISTANCERAMP(vc.rgbGenFuncArgs[2], vc.rgbGenFuncArgs[3], vc.rgbGenFuncArgs[0], vc.rgbGenFuncArgs[1]);
+	Color.rgb *= DISTANCERAMP(obj.rgbGenFuncArgs[2], obj.rgbGenFuncArgs[3], obj.rgbGenFuncArgs[0], obj.rgbGenFuncArgs[1]);
 #endif
 
 #ifdef APPLY_ALPHA_DISTANCERAMP
-	Color.a *= DISTANCERAMP(vc.alphaGenFuncArgs[2], vc.alphaGenFuncArgs[3], vc.alphaGenFuncArgs[0], vc.alphaGenFuncArgs[1]);
+	Color.a *= DISTANCERAMP(obj.alphaGenFuncArgs[2], obj.alphaGenFuncArgs[3], obj.alphaGenFuncArgs[0], obj.alphaGenFuncArgs[1]);
 #endif
 #undef DISTANCERAMP
 
 	return Color;
 }
-
-
 
 void QF_TransformVerts(inout vec4 Position, inout vec3 Normal, inout vec3 Tangent, inout vec2 TexCoord) {
 	#	ifdef QF_NUM_BONE_INFLUENCES

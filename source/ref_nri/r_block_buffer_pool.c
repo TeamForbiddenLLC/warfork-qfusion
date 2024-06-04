@@ -41,6 +41,19 @@ struct block_buffer_pool_req_s BlockBufferPoolReq( struct nri_backend_s *nri, st
 	return req;
 }
 
+struct nri_descriptor_s BlockReqToDescriptorWrapper( struct nri_backend_s *nri, struct block_buffer_pool_req_s *req, NriBufferViewType viewType )
+{
+	NriDescriptor *descriptor = 0;
+	NriBufferViewDesc bufferDesc = { 
+		.buffer = req->buffer, 
+		.size = req->bufferSize, 
+		.offset = req->bufferOffset, 
+		.format = viewType 
+	};
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateBufferView( &bufferDesc, &descriptor ) );
+	return R_CreateDescriptorWrapper( &rsh.nri, descriptor );
+}
+
 void BlockBufferPoolReset(struct block_buffer_pool_s* pool) {
 	for( size_t i = 0; i < arrlen( pool->recycle ); i++ ) {
 	  arrpush(pool->pool, pool->recycle[i]);

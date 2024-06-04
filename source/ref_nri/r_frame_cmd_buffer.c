@@ -47,7 +47,7 @@ void updateFrameUBO(struct frame_cmd_buffer_s *cmd,struct ubo_frame_instance_s* 
 		NriDescriptor* descriptor = 0;
 		NRI_ABORT_ON_FAILURE(rsh.nri.coreI.CreateBufferView(&bufferDesc, &descriptor));
 		arrpush(cmd->frameTemporaryDesc, descriptor);
-		ubo->descriptor = descriptor;
+		ubo->descriptor = R_CreateDescriptorWrapper(&rsh.nri,descriptor);
 		ubo->hash = hash;
 		ubo->req = poolReq;
 	}

@@ -2,7 +2,6 @@
 #define R_NRI_IMP_H
 
 #include "r_hasher.h"
-#include "r_image.h"
 #define NRI_STATIC_LIBRARY 1
 #include "NRI.h"
 
@@ -19,33 +18,26 @@
 #include "vulkan/vulkan.h"
 
 const static NriSwapChainFormat DefaultSwapchainFormat = NriSwapChainFormat_BT709_G22_8BIT;
-const static NriSPIRVBindingOffsets DefaultBindingOffset = {100, 200, 300, 400}; // just ShaderMake defaults for simplicity
+const static NriSPIRVBindingOffsets DefaultBindingOffset = { 100, 200, 300, 400 }; // just ShaderMake defaults for simplicity
 
 // DirectX 12 requires ubo's be aligned by 256
 const static uint32_t UBOBlockerBufferSize = 256 * 128;
 const static uint32_t UBOBlockerBufferAlignmentReq = 256;
 
 #define NUMBER_FRAMES_FLIGHT 3
-#define NUMBER_RESERVED_BACKBUFFERS 4 
+#define NUMBER_RESERVED_BACKBUFFERS 4
 #define DESCRIPTOR_MAX_BINDINGS 32
-#define MAX_VERTEX_BINDINGS 24 
+#define MAX_VERTEX_BINDINGS 24
 #define MAX_PIPELINE_ATTACHMENTS 5
 
+#define BINDING_SETS_PER_POOL 24
 
-#define BINDING_SETS_PER_POOL 24 
+enum descriptor_set_e { DESCRIPTOR_SET_0, DESCRIPTOR_SET_1, DESCRIPTOR_SET_2, DESCRIPTOR_SET_3, DESCRIPTOR_SET_MAX };
 
-enum descriptor_set_e {
-  DESCRIPTOR_SET_0,
-  DESCRIPTOR_SET_1,
-  DESCRIPTOR_SET_2,
-  DESCRIPTOR_SET_3,
-  DESCRIPTOR_SET_MAX
-};
-
-#define R_VK_ABORT_ON_FAILURE(result) \
-	if(result != VK_SUCCESS) { \
-		Com_Printf("invalid result: %d", result); \
-		exit(0); \
+#define R_VK_ABORT_ON_FAILURE( result )             \
+	if( result != VK_SUCCESS ) {                    \
+		Com_Printf( "invalid result: %d", result ); \
+		exit( 0 );                                  \
 	}
 
 #define NRI_ABORT_ON_FAILURE( result )  \
@@ -63,6 +55,12 @@ static const char *NriResultToString[NriResult_MAX_NUM] = { [NriResult_SUCCESS] 
 															[NriResult_DEVICE_LOST] = "DEVICE_LOST",
 															[NriResult_OUT_OF_DATE] = "OUT_OF_DATE" };
 
+// a wrapper to hold onto the hash + cookie
+struct nri_descriptor_s {
+	NriDescriptor *descriptor;
+	uint32_t cookie;
+};
+
 struct nri_backend_s {
 	NriGraphicsAPI api;
 	NriHelperInterface helperI;
@@ -70,37 +68,25 @@ struct nri_backend_s {
 	NriSwapChainInterface swapChainI;
 	NriWrapperVKInterface wrapperVKI;
 	NriDevice *device;
-  
-	NriCommandQueue* graphicsCommandQueue;
 
-  union {
-  	struct {
-  //		void* vulkanLoader;
-  		VkDevice device;
-  		VkInstance instance;
-  	} vk;
-  };  
-} ;
+	NriCommandQueue *graphicsCommandQueue;
+	uint32_t cookie;
+};
+
+static inline struct nri_descriptor_s R_CreateDescriptorWrapper( struct nri_backend_s *backend, NriDescriptor *descriptor )
+{
+	return ( struct nri_descriptor_s ){ .cookie = backend->cookie++, .descriptor = descriptor };
+}
 
 typedef struct {
 	NriGraphicsAPI api;
 	bool enableApiValidation;
 	bool enableNriValidation;
-} nri_init_desc_t; 
+} nri_init_desc_t;
 
-bool R_InitNriBackend(const nri_init_desc_t* init, struct nri_backend_s* backend);
-void R_NRI_CallbackMessage(NriMessage msg, const char* file, uint32_t line, const char* message, void* userArg);
-NriFormat R_NRIFormat(enum texture_format_e format);
-
-struct descriptor_simple_serializer_s {
-  NriDescriptor const* descriptors[DESCRIPTOR_MAX_BINDINGS];
-  uint32_t cookies[DESCRIPTOR_MAX_BINDINGS];
-  uint32_t descriptorMask;
-};
-
-hash_t DescSimple_SerialHash( struct descriptor_simple_serializer_s *state );
-void DescSimple_WriteImage( struct descriptor_simple_serializer_s *state, uint32_t slot, const image_t *image );
-void DescSimple_StateCommit(struct nri_backend_s *backend, struct descriptor_simple_serializer_s *state, NriDescriptorSet* descriptor);
+bool R_InitNriBackend( const nri_init_desc_t *init, struct nri_backend_s *backend );
+void R_NRI_CallbackMessage( NriMessage msg, const char *file, uint32_t line, const char *message, void *userArg );
+NriFormat R_NRIFormat( enum texture_format_e format );
 
 struct pipeline_layout_config_s {
 	vattribmask_t attrib;
@@ -116,6 +102,5 @@ struct pipeline_layout_config_s {
 	NriInputAssemblyDesc inputAssembly;
 	NriRasterizationDesc rasterization;
 };
-
 
 #endif
