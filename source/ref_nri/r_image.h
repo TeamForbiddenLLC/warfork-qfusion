@@ -21,7 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef R_IMAGE_H
 #define R_IMAGE_H
 
-#include "NRI.h"
+#include "r_nri.h"
 
 enum
 {
@@ -75,7 +75,7 @@ typedef struct image_s
 {
 	uint32_t cookie;
 
-	NriDescriptor* descriptor;
+	struct nri_descriptor_s descriptor;
 	NriTexture* texture;
 	size_t numAllocations;
 	NriMemory* memory[4];

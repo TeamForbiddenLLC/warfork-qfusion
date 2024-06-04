@@ -20,6 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef R_RESOURCE_H
 #define R_RESOURCE_H
 
+#include "../gameshared/q_arch.h"
+
 struct mat4 {
   union {
     float v[16];
@@ -76,15 +78,6 @@ struct vec3 {
 	};
 };
 
-struct VertexColoringCB {
-    struct vec4 rgbGenFuncArgs;
-    struct vec4 alphaGenFuncArgs;
-    struct vec4 colorConst;
-    struct vec4 lightAmbient;
-    struct vec4 lightDiffuse;
-    struct vec3 lightDir;
-};
-
 struct FrameCB {
 	struct vec3 viewOrigin;
 	float shaderTime;
@@ -98,13 +91,31 @@ struct FrameCB {
 	struct mat3 viewAxis;
 };
 
+struct DynLight {
+    struct vec4 position;
+    struct vec4 diffuseAndInvRadius;
+};
+
+struct DynamicLightCB {
+    int numberLights;
+    struct DynLight dynLights[16];
+};
+
+
+
 struct ObjectCB {
 	struct vec4 fogEyePlane;
 	struct vec4 fogPlane;
 	struct vec3 entityOrigin;
-	float entityDist;
+	struct vec3 entityDist;
 	struct mat4 mvp;
 	struct mat4 mv;
+  struct vec4 rgbGenFuncArgs;
+  struct vec4 alphaGenFuncArgs;
+  struct vec4 colorConst;
+  struct vec4 lightAmbient;
+  struct vec4 lightDiffuse;
+  struct vec3 lightDir;
 	float isAlphaBlending;
 };
 
@@ -148,10 +159,14 @@ struct DefaultQ3ShaderCB {
 struct DefaultMaterialCB {
     struct vec4 entityColor;
     struct vec4 textureMatrix[2];
-    struct vec3 lightstyleColor[4];
+    struct vec4 lightstyleColor[4];
     struct vec4 deluxLightMapScale;
     float offsetScale;
     struct vec3 lightDir;
+    float glossIntensity;
+  	struct vec3 floorColor;
+    float glossExponent;
+    struct vec3 wallColor;
 };
 
 
