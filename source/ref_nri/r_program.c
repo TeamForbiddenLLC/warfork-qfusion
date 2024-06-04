@@ -2042,13 +2042,8 @@ void RP_BindDescriptorSets(struct frame_cmd_buffer_s* cmd, struct glsl_program_s
 
 		setsChangeMask |= ( 1u << setIndex );
 		commit[setIndex].descriptorChangeMask |= ( 1u << slotIndex );
-		switch(refl->slotType) {
-			case GLSL_REFLECTION_IMAGE:
-				assert(false); // TODO i need to fix this ...
-				//commit[setIndex].hashes[slotIndex] |= data->image->cookie;
-				//commit[setIndex].descriptors[slotIndex] = data->image->descriptor;
-				break;
-		}
+		commit[setIndex].descriptors[slotIndex] = data->descriptor.descriptor;
+		commit[setIndex].hashes[slotIndex] |= data->descriptor.cookie;
 	}
 	
 	for(uint32_t setIndex = 0, setMask = setsChangeMask; setMask > 0 && setIndex++; setMask >>= 1u) {	

@@ -55,7 +55,7 @@ struct frame_additional_data_s {
 
 struct ubo_frame_instance_s {
 	hash_t hash;
-	NriDescriptor* descriptor;
+	struct nri_descriptor_s descriptor;
 	struct block_buffer_pool_req_s req; 
 };
 
@@ -70,10 +70,9 @@ struct frame_cmd_buffer_s {
 
 	NriDescriptor** frameTemporaryDesc; // temporary frame descriptors that are recycled at the end of the frame	
 
-	struct FrameCB frameCB;
-	struct ObjectCB objCB;
-	struct ubo_frame_instance_s uboFrame;	
-	struct ubo_frame_instance_s uboObject;	
+	// default global ubo for the scene
+	struct ubo_frame_instance_s uboSceneFrame;	
+	struct ubo_frame_instance_s uboSceneObject;	
 };
 
 void UpdateFrameUBO(struct frame_cmd_buffer_s *cmd,struct ubo_frame_instance_s* frame,void * data, size_t size);
