@@ -1,6 +1,7 @@
 #include "include/global.glsl" 
 
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultMaterialCB pass;
+layout(set = DESCRIPTOR_OBJECT_SET, binding = 5) uniform DynamicLightCB lights; 
 
 layout(set = DESCRIPTOR_GLOBAL_SET, binding = 0) uniform sampler lightmapTextureSample;
 layout(set = DESCRIPTOR_GLOBAL_SET, binding = 1) uniform texture2D lightmapTexture[4];
@@ -236,7 +237,7 @@ void main()
 #endif
 
 	float specularProduct = float(dot (surfaceNormalModelspace, specularNormal));
-	color.rgb += (vec3(texture(sampler2D(u_GlossTexture, glossSampler), v_TexCoord)) * constants.glossFactors.x) * pow(float(max(specularProduct, 0.0)), constants.glossFactors.y);
+	color.rgb += (vec3(texture(sampler2D(u_GlossTexture, glossSampler), v_TexCoord)) * pass.glossIntensity) * pow(float(max(specularProduct, 0.0)), constants.glossExponent);
 #endif // APPLY_SPECULAR
 
 #if defined(APPLY_BASETEX_ALPHA_ONLY) && !defined(APPLY_DRAWFLAT)

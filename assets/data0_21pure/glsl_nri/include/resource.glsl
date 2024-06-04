@@ -1,12 +1,12 @@
 
-struct VertexColoringCB {
-    vec4 rgbGenFuncArgs;
-    vec4 alphaGenFuncArgs;
-    vec4 colorConst;
-    vec4 lightAmbient;
-    vec4 lightDiffuse;
-    vec3 lightDir;
-};
+//struct VertexColoringCB {
+//    vec4 rgbGenFuncArgs;
+//    vec4 alphaGenFuncArgs;
+//    vec4 colorConst;
+//    vec4 lightAmbient;
+//    vec4 lightDiffuse;
+//    vec3 lightDir;
+//};
 
 struct FrameCB {
   vec3 viewOrigin;
@@ -22,13 +22,19 @@ struct FrameCB {
 };
 
 struct ObjectCB {
-    vec4 fogEyePlane;
-    vec4 fogPlane;
-	vec3 entityOrigin;
-    float entityDist;
-	mat4 mvp;
-	mat4 mv;
-	float blendMix;
+   vec4 fogEyePlane;
+   vec4 fogPlane;
+   vec3 entityOrigin;
+   float entityDist;
+   mat4 mvp;
+   mat4 mv;
+   vec4 rgbGenFuncArgs;
+   vec4 alphaGenFuncArgs;
+   vec4 colorConst;
+   vec4 lightAmbient;
+   vec4 lightDiffuse;
+   vec3 lightDir;
+   float isAlphaBlending;
 };
 
 // pass
@@ -49,7 +55,6 @@ struct DefaultShadowCB {
     vec4 shadowEntitydist[4];
 };
 
-
 struct DefaultDistortionCB {
     vec4 textureParams;
     vec4 textureMatrix[2];
@@ -67,6 +72,16 @@ struct DefaultQ3ShaderCB {
     vec3 lightstyleColor[4];
 };
 
+struct Light {
+    vec4 position;
+    vec4 diffuseAndInvRadius;
+};
+
+struct DynamicLightCB {
+    int numberLights;
+    Light dynLights[16];
+};
+
 struct DefaultMaterialCB {
     vec4 entityColor;
     vec4 textureMatrix[2];
@@ -74,6 +89,10 @@ struct DefaultMaterialCB {
     vec4 deluxLightMapScale;
     float offsetScale;
     vec3 lightDir;
+    float glossIntensity;
+  	vec3 floorColor;
+    float glossExponent;
+    vec3 wallColor;
 };
 
 // fxaa 
