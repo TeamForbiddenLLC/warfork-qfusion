@@ -1,0 +1,21 @@
+#maps-datagrid { 
+	height: 250dp;
+	float: right;
+	margin-left: 50%;
+	margin-right: 8dp;
+	overflow-y: auto;
+	margin-top: -24dp;/*hack*/
+}
+
+#maps-datagrid datagridrow:hover, #maps-datagrid datagridrow:active, #maps-datagrid datagridrow:selected { 
+	background: #3f3c49; 
+}
+
+#mapinfo {
+	margin-top: 8dp;
+}
+
+#mapinfo levelshot {
+	width: 200dp;
+	height: 150dp;
+}
