@@ -29,6 +29,7 @@ CINEMATICS PLAYBACK ABSTRACTION LAYER
 #include "cin_local.h"
 #include "cin_roq.h"
 
+
 enum
 {
 	CIN_TYPE_NONE = -1,

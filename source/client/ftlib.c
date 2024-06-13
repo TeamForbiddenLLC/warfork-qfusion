@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "client.h"
 #include "ftlib.h"
+#include "../qcommon/mod_cmd.h"
 
 static ftlib_export_t *ftlib_export;
 static void *ftlib_libhandle = NULL;

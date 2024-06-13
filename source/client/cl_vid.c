@@ -30,6 +30,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "xpm.h"
 #include "../qcommon/mod_mem.h"
 
+#include "../qcommon/mod_cmd.h"
+
 cvar_t *vid_ref;
 cvar_t *vid_width, *vid_height;
 cvar_t *vid_xpos;          // X coordinate of window position

@@ -24,6 +24,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../client/console.h"
 #include "steam.h"
 
+#include "mod_cmd.h"
+
 #define	MAX_ALIAS_NAME	    64
 #define	ALIAS_LOOP_COUNT    16
 
