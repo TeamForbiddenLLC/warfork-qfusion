@@ -1,7 +1,6 @@
 project(qfusion)
 
 cmake_minimum_required(VERSION 2.8.12)
-
 message(STATUS "CMAKE_SYSTEM: " ${CMAKE_SYSTEM})
 message(STATUS "CMAKE_SYSTEM_NAME: " ${CMAKE_SYSTEM_NAME})
 message(STATUS "CMAKE_SYSTEM_VERSION: " ${CMAKE_SYSTEM_VERSION})
@@ -32,6 +31,7 @@ option(USE_SDL2 "Build using SDL2" OFF)
 option(BUILD_UNIT_TEST "Build with unit test" OFF)
 option(GAME_MODULES_ONLY "Only build game modules" OFF)
 option(BUILD_STEAMLIB "Include the steamlib module (requires Steamworks SDK)" OFF)
+option(USE_GRAPHICS_NRI "Build using Nvidia NRI" OFF)
 
 # We compile third-party libs from source
 
@@ -60,6 +60,18 @@ set(DISCORD_INCLUDE_DIR ${DISCORD_DIR})
 
 set(OPENAL_DIR ${CMAKE_HOME_DIRECTORY}/../libsrcs/src/openal-soft)
 set(OPENAL_INCLUDE_DIR ${OPENAL_DIR}/include/AL)
+
+set(NRI_DIR ${CMAKE_HOME_DIRECTORY}/NRI)
+set(NRI_INCLUDE_DIR ${CMAKE_HOME_DIRECTORY}/NRI/Include)
+
+if (NOT GAME_MODULES_ONLY AND USE_GRAPHICS_NRI)
+    set(NRI_STATIC_LIBRARY ON)
+    set(IS_SUBMODULE ON)
+    set(SPIRV_REFLECT_STATIC_LIB ON )
+    add_subdirectory(NRI)
+    add_subdirectory(glslang)
+    add_subdirectory(SPIRV-Reflect)
+endif()
 
 # Windows specific settings
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
@@ -178,7 +190,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR MINGW)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
 
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -D_POSIX_C_SOURCE=200112L -D_XOPEN_SOURCE=500")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -D_POSIX_C_SOURCE=200112L -D_XOPEN_SOURCE=500 -Werror=implicit-function-declaration")
 
     # default to sdl2 build on non-windows platforms
     set(USE_SDL2 1)
@@ -302,6 +314,9 @@ add_subdirectory(steamshim)
 if (NOT GAME_MODULES_ONLY)
     add_subdirectory(cin)
     add_subdirectory(ftlib)
+    if (USE_GRAPHICS_NRI)
+    	add_subdirectory(ref_nri)
+    endif() 
     add_subdirectory(ref_gl)
     add_subdirectory(snd_openal)
     add_subdirectory(ui)
