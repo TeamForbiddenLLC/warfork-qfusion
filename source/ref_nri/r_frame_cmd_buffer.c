@@ -31,7 +31,7 @@ static inline bool __isValidFog(const mfog_t* fog) {
 	return fog && fog->shader;
 }
 
-void updateFrameUBO(struct frame_cmd_buffer_s *cmd,struct ubo_frame_instance_s* ubo,void * data, size_t size) {
+void UpdateFrameUBO(struct frame_cmd_buffer_s *cmd,struct ubo_frame_instance_s* ubo,void * data, size_t size) {
 	const hash_t hash = hash_data( HASH_INITIAL_VALUE, data, size );
 	if( ubo->hash != hash ) {
 		struct block_buffer_pool_req_s poolReq = BlockBufferPoolReq( &rsh.nri, &cmd->uboBlockBuffer, sizeof( struct ObjectCB ) );
@@ -44,13 +44,22 @@ void updateFrameUBO(struct frame_cmd_buffer_s *cmd,struct ubo_frame_instance_s* 
 			.format = NriBufferViewType_CONSTANT
 		};
 
-		NriDescriptor* descriptor = 0;
+		NriDescriptor* descriptor = NULL;
 		NRI_ABORT_ON_FAILURE(rsh.nri.coreI.CreateBufferView(&bufferDesc, &descriptor));
 		arrpush(cmd->frameTemporaryDesc, descriptor);
-		ubo->descriptor = R_CreateDescriptorWrapper(&rsh.nri,descriptor);
+		ubo->descriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
 		ubo->hash = hash;
 		ubo->req = poolReq;
 	}
+}
+
+void ResetFrameCmdBuffer(struct nri_backend_s* backend,struct frame_cmd_buffer_s* cmd) {
+	cmd->backBuffer = rsh.backBuffers[rsh.nri.swapChainI.AcquireNextSwapChainTexture( rsh.swapchain )];
+	for( size_t i = 0; i < arrlen( cmd->frameTemporaryDesc ); i++ ) {
+		backend->coreI.DestroyDescriptor( cmd->frameTemporaryDesc[i] );
+	}
+	arrsetlen( cmd->frameTemporaryDesc, 0 );
+	BlockBufferPoolReset( &cmd->uboBlockBuffer );
 }
 // struct block_buffer_pool_req_s FR_ShaderObjReqCB(struct frame_cmd_buffer_s *cmd, const struct ObjectCB* cb)
 //{

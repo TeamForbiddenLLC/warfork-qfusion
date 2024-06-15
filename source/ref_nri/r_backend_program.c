@@ -864,7 +864,9 @@ inline struct vec4 ConstColorAdjust( bool alphaBlending, bool alphaHack, struct 
 	return vec;
 }
 
-void __RB_UpdateFrameObjectCB( struct frame_cmd_buffer_s *cmd, const entity_t *entity, const shaderpass_t *pass )
+
+
+static void __RB_UpdateFrameObjectCB( struct frame_cmd_buffer_s *cmd, const entity_t *entity, const shaderpass_t *pass )
 {
 	struct FrameCB frameData = {0};
 	struct ObjectCB objectData = {0};
@@ -1339,6 +1341,17 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_MATERIAL, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 				struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->layoutConfig );
 
+				rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
+				rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
+				RP_BindDescriptorSets( cmd, program, descriptors, descriptorIndex );
+				FR_CmdDrawElements(cmd, 
+					cmd->drawElements.numElems,
+					cmd->drawElements.numInstances,
+					cmd->drawElements.firstElem,
+					cmd->drawElements.firstVert,
+					0);
+				//rsh.nri.coreI.CmdDrawIndexed()
+					
 				// program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_MATERIAL, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 				// if( RB_BindProgram( program ) ) {
 				// 	// update uniforms
@@ -1493,13 +1506,13 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				};
 			}
 			descriptors[descriptorSize++] = ( struct glsl_descriptor_data_s ){ 
-				.descriptor = &shaderPassImage->descriptor, 
+				.descriptor = shaderPassImage->descriptor, 
 				.handle = Create_DescriptorHandle( "u_BaseTexture" ) 
 			};
 
 			for( int i = 0; i < numLightMaps; i++ ) {
 				descriptors[descriptorSize++] = ( struct glsl_descriptor_data_s ){
-					.descriptor = &rsh.worldBrushModel->lightmapImages[lightStyle->lightmapNum[i]]->descriptor, 
+					.descriptor = rsh.worldBrushModel->lightmapImages[lightStyle->lightmapNum[i]]->descriptor, 
 					.registerOffset = i, 
 					.handle = Create_DescriptorHandle( "lightmapTexture" ) };
 			}
@@ -1515,16 +1528,23 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 		 
 
 			descriptors[descriptorSize++] = ( struct glsl_descriptor_data_s ){ 
-				.descriptor = &cmd->uboSceneFrame.descriptor, 
+				.descriptor = cmd->uboSceneFrame.descriptor, 
 				.handle = Create_DescriptorHandle( "frame" ) 
 			};
 			descriptors[descriptorSize++] = ( struct glsl_descriptor_data_s ){ 
-				.descriptor=  &cmd->uboSceneObject.descriptor, 
+				.descriptor=  cmd->uboSceneObject.descriptor, 
 				.handle = Create_DescriptorHandle( "obj" ) 
 			};
 
-			RP_BindDescriptorSets( cmd, program, descriptors, descriptorSize );
-
+			rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
+			rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
+			RP_BindDescriptorSets( cmd, program, descriptors, descriptorSize  );
+			FR_CmdDrawElements(cmd, 
+				cmd->drawElements.numElems,
+				cmd->drawElements.numInstances,
+				cmd->drawElements.firstElem,
+				cmd->drawElements.firstVert,
+				0);
 			// FR_CmdDrawElements(cmd,
 			//									cmd->additional.drawElements.numElems,
 			//									cmd->additional.drawElements.numVerts,
@@ -1567,8 +1587,9 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 		}
 		case GLSL_PROGRAM_TYPE_DISTORTION: {
 			r_glslfeat_t programFeatures = features;
+			size_t descriptorIndex = 0;
+			struct glsl_descriptor_data_s descriptors[64] = { 0 };
 
-			int i;
 			int width = 1, height = 1;
 			image_t *portaltexture[2];
 			bool frontPlane;
@@ -1579,7 +1600,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				break;
 			}
 
-			for( i = 0; i < 2; i++ ) {
+			for(int i = 0; i < 2; i++ ) {
 				portaltexture[i] = rb.currentPortalSurface->texures[i];
 				if( !portaltexture[i] ) {
 					portaltexture[i] = rsh.blackTexture;
@@ -1630,6 +1651,16 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			struct glsl_program_s *program =
 				RP_ResolveProgram( GLSL_PROGRAM_TYPE_DISTORTION, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->layoutConfig );
+				
+			rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
+			rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
+			RP_BindDescriptorSets( cmd, program, descriptors, descriptorIndex );
+			FR_CmdDrawElements(cmd, 
+				cmd->drawElements.numElems,
+				cmd->drawElements.numInstances,
+				cmd->drawElements.firstElem,
+				cmd->drawElements.firstVert,
+				0);
 
 			// update uniforms
 			// program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_DISTORTION, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
@@ -1660,6 +1691,16 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			struct glsl_program_s *program =
 				RP_ResolveProgram( GLSL_PROGRAM_TYPE_RGB_SHADOW, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->layoutConfig );
+			
+			rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
+			rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
+			//RP_BindDescriptorSets( cmd, program, descriptors, descriptorIndex );
+			FR_CmdDrawElements(cmd, 
+				cmd->drawElements.numElems,
+				cmd->drawElements.numInstances,
+				cmd->drawElements.firstElem,
+				cmd->drawElements.firstVert,
+				0);
 
 			// update uniforms
 			// program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_RGB_SHADOW, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
@@ -1761,31 +1802,43 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				//program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_SHADOWMAP, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 				struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_SHADOWMAP, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 				struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->layoutConfig );
-				assert( program );
-				if( program ) {
-				 // for( i = 0; i < numShadows; i++ ) {
-				 // 	RB_BindImage( i, shadowGroups[i]->shadowmap );
-				 // }
+				
 
-				 // Matrix4_Identity( texMatrix );
+				rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
+				rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
+				//RP_BindDescriptorSets( cmd, program, descriptors, descriptorIndex );
+				FR_CmdDrawElements(cmd, 
+					cmd->drawElements.numElems,
+					cmd->drawElements.numInstances,
+					cmd->drawElements.firstElem,
+					cmd->drawElements.firstVert,
+					0);
 
-				 // if( rb.currentModelType == mod_brush ) {
-				 // 	RB_Scissor( rb.gl.viewport[0] + scissor[0], rb.gl.viewport[1] + scissor[1], scissor[2] - scissor[0], scissor[3] - scissor[1] );
-				 // }
+				//assert( program );
+				//if( program ) {
+				// // for( i = 0; i < numShadows; i++ ) {
+				// // 	RB_BindImage( i, shadowGroups[i]->shadowmap );
+				// // }
 
-				 // RB_SetShaderpassState( pass->flags );
+				// // Matrix4_Identity( texMatrix );
 
-				 // RB_UpdateCommonUniforms( program, pass, texMatrix );
+				// // if( rb.currentModelType == mod_brush ) {
+				// // 	RB_Scissor( rb.gl.viewport[0] + scissor[0], rb.gl.viewport[1] + scissor[1], scissor[2] - scissor[0], scissor[3] - scissor[1] );
+				// // }
 
-				 // RP_UpdateShadowsUniforms( program, numShadows, shadowGroups, rb.objectMatrix, rb.currentEntity->origin, rb.currentEntity->axis );
+				// // RB_SetShaderpassState( pass->flags );
 
-				 // // submit animation data
-				 // if( programFeatures & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
-				 // 	RP_UpdateBonesUniforms( program, rb.bonesData.numBones, rb.bonesData.dualQuats );
-				 // }
+				// // RB_UpdateCommonUniforms( program, pass, texMatrix );
 
-				  RB_DrawElementsReal( &rb.drawShadowElements );
-				}
+				// // RP_UpdateShadowsUniforms( program, numShadows, shadowGroups, rb.objectMatrix, rb.currentEntity->origin, rb.currentEntity->axis );
+
+				// // // submit animation data
+				// // if( programFeatures & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
+				// // 	RP_UpdateBonesUniforms( program, rb.bonesData.numBones, rb.bonesData.dualQuats );
+				// // }
+
+				//  RB_DrawElementsReal( &rb.drawShadowElements );
+				//}
 			}
 
 			RB_Scissor( old_scissor[0], old_scissor[1], old_scissor[2], old_scissor[3] );
@@ -1806,9 +1859,16 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			
 			struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_OUTLINE, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->layoutConfig );
-			if(program) {
-
-			}
+			
+			rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
+			rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
+			//RP_BindDescriptorSets( cmd, program, descriptors, descriptorIndex );
+			FR_CmdDrawElements(cmd, 
+				cmd->drawElements.numElems,
+				cmd->drawElements.numInstances,
+				cmd->drawElements.firstElem,
+				cmd->drawElements.firstVert,
+				0);
 			// update uniforcms
 			//program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_OUTLINE, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 			//if( RB_BindProgram( program ) ) {
@@ -1910,7 +1970,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 					}
 					if(btex) {
 						descriptors[descriptorSize++] = ( struct glsl_descriptor_data_s ){
-							.descriptor = &btex->descriptor, 
+							.descriptor = btex->descriptor, 
 							.handle = imageBinding[i].handle
 						};
 					}
@@ -2531,14 +2591,33 @@ void RB_DrawOutlinedElements( void )
 #endif
 }
 
-void RB_DrawShadedElements_2( struct frame_cmd_buffer_s *cmd )
+void RB_DrawShadedElements_2( struct frame_cmd_buffer_s *cmd,
+							  int firstVert,
+							  int numVerts,
+							  int firstElem,
+							  int numElems,
+							  int firstShadowVert,
+							  int numShadowVerts,
+							  int firstShadowElem,
+							  int numShadowElems )
 {
-	bool addGLSLOutline = false;
+		cmd->drawElements.numVerts = numVerts;
+		cmd->drawElements.numElems = numElems;
+		cmd->drawElements.firstVert = firstVert;
+		cmd->drawElements.firstElem = firstElem;
+		cmd->drawElements.numInstances = 0;
 
-	if( ENTITY_OUTLINE( rb.currentEntity ) && !( rb.renderFlags & RF_CLIPPLANE ) && ( rb.currentShader->sort == SHADER_SORT_OPAQUE ) && ( rb.currentShader->flags & SHADER_CULL_FRONT ) &&
-		!( rb.renderFlags & RF_SHADOWMAPVIEW ) ) {
-		addGLSLOutline = true;
-	}
+		cmd->drawShadowElements.numVerts = numVerts;
+		cmd->drawShadowElements.numElems = numElems;
+		cmd->drawShadowElements.firstVert = firstVert;
+		cmd->drawShadowElements.firstElem = firstElem;
+		cmd->drawShadowElements.numInstances = 0;
+	//bool addGLSLOutline = false;
+
+	//if( ENTITY_OUTLINE( rb.currentEntity ) && !( rb.renderFlags & RF_CLIPPLANE ) && ( rb.currentShader->sort == SHADER_SORT_OPAQUE ) && ( rb.currentShader->flags & SHADER_CULL_FRONT ) &&
+	//	!( rb.renderFlags & RF_SHADOWMAPVIEW ) ) {
+	//	addGLSLOutline = true;
+	//}
 	RB_SetShaderState_2( cmd );
 
 	shaderpass_t *pass;
