@@ -75,7 +75,10 @@ struct nri_backend_s {
 
 static inline struct nri_descriptor_s R_CreateDescriptorWrapper( struct nri_backend_s *backend, NriDescriptor *descriptor )
 {
-	return ( struct nri_descriptor_s ){ .cookie = backend->cookie++, .descriptor = descriptor };
+	return ( struct nri_descriptor_s ){ 
+		.cookie = backend->cookie++, 
+		.descriptor = descriptor 
+	};
 }
 
 typedef struct {

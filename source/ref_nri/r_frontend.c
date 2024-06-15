@@ -575,8 +575,8 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 		rsh.nri.coreI.ResetCommandAllocator( frame->allocator);
 	}
 	frame->frameCount = rsh.frameCnt; 
-	frame->backBuffer = rsh.backBuffers[rsh.nri.swapChainI.AcquireNextSwapChainTexture( rsh.swapchain )];
-	
+	ResetFrameCmdBuffer(&rsh.nri,frame);
+
 	NRI_ABORT_ON_FAILURE(rsh.nri.coreI.BeginCommandBuffer(frame->cmd, NULL));
 	
 	//FR_CmdSetDefaultState(frame);

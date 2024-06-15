@@ -1076,7 +1076,12 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 			RB_LoadObjectMatrix( m );
 		}
 
-		RB_DrawShadedElements_2(cmd);
+		RB_DrawShadedElements_2(cmd,
+			draw->drawElements.firstVert, draw->drawElements.numVerts,
+			draw->drawElements.firstElem, draw->drawElements.numElems,
+			draw->drawElements.firstVert, draw->drawElements.numVerts,
+			draw->drawElements.firstElem, draw->drawElements.numElems
+		);
 	}
 
 	rb.numDynamicDraws = 0;

@@ -41,16 +41,13 @@ struct frame_backbuffer_s {
 	NriAccessLayoutStage currentLayout;
 };
 
-// hack to store some additional managed state 
-struct frame_additional_data_s {
-	// internal state to refresh block data
-	hash_t frameHash;
-	struct block_buffer_pool_req_s frameBlock; 
-	struct ObjectCB obj;
 
-	hash_t objHash;
-	struct block_buffer_pool_req_s objBlock;
-	struct FrameCB frame;
+struct draw_element_s {
+	uint32_t firstVert;
+	uint32_t numVerts;
+	uint32_t firstElem;
+	uint32_t numElems;
+	uint32_t numInstances;
 };
 
 struct ubo_frame_instance_s {
@@ -73,9 +70,14 @@ struct frame_cmd_buffer_s {
 	// default global ubo for the scene
 	struct ubo_frame_instance_s uboSceneFrame;	
 	struct ubo_frame_instance_s uboSceneObject;	
+
+	// additional frame state
+	struct draw_element_s drawElements;
+	struct draw_element_s drawShadowElements;
 };
 
-void UpdateFrameUBO(struct frame_cmd_buffer_s *cmd,struct ubo_frame_instance_s* frame,void * data, size_t size);
+void ResetFrameCmdBuffer(struct nri_backend_s* backend,struct frame_cmd_buffer_s* cmd);
+void UpdateFrameUBO( struct frame_cmd_buffer_s *cmd, struct ubo_frame_instance_s *frame, void *data, size_t size );
 
 struct frame_buffer_req_s {
 	struct block_buffer_pool_req_s frame;
