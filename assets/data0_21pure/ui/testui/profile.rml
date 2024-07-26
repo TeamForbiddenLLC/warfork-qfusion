@@ -1,0 +1,32 @@
+<rml>
+<head>
+	<title>profile</title>
+	<link rel="stylesheet" type="text/css" href="css/html4.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/common.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/base.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/controls.rcss" />
+	<link type="text/css" rel="stylesheet" href="css/profile.rcss" />
+	<script src="as/base.as" />
+	<script src="as/popup.as" />
+</head>
+
+<body>
+<div id="news" src="" onload="$onNewsLoad" onimageload="$onNewsImageLoad" />
+    
+<img src="/ui/porkui/gfx/logo.tga"/>
+
+<p id="intro-text" class="intro">
+
+
+	<br/>
+   <a class="button open-in-browser" href="https://warfork.com/discord" target="_browser">Chat with us on Discord!</a>
+
+	<br/>
+	<br/>
+    
+
+
+
+</p>
+</body>
+</rml>
