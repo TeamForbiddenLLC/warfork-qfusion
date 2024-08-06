@@ -17,6 +17,7 @@
 
 DECLARE_TYPEDEF_METHOD( int, STEAMSHIM_dispatch );
 DECLARE_TYPEDEF_METHOD( int, STEAMSHIM_sendRPC, void *req, uint32_t size, void *self, STEAMSHIM_rpc_handle rpc, uint32_t *syncIndex );
+DECLARE_TYPEDEF_METHOD( struct steam_rpc_pkt_s *, STEAMSHIM_sendRPCSync, void *req, uint32_t size );
 DECLARE_TYPEDEF_METHOD( int, STEAMSHIM_waitDispatchSync, uint32_t syncIndex ); // wait on the dispatch loop does not trigger steam callbacks
 DECLARE_TYPEDEF_METHOD( void, STEAMSHIM_subscribeEvent, uint32_t id, void *self, STEAMSHIM_evt_handle evt );
 DECLARE_TYPEDEF_METHOD( void, STEAMSHIM_unsubscribeEvent, uint32_t id, STEAMSHIM_evt_handle evt );
@@ -27,6 +28,7 @@ DECLARE_TYPEDEF_METHOD( bool, STEAMSHIM_active );
 struct steam_import_s {
 	STEAMSHIM_dispatchFn STEAMSHIM_dispatch;
 	STEAMSHIM_sendRPCFn STEAMSHIM_sendRPC;
+	STEAMSHIM_sendRPCSyncFn STEAMSHIM_sendRPCSync;
 	STEAMSHIM_waitDispatchSyncFn STEAMSHIM_waitDispatchSync;
 	STEAMSHIM_subscribeEventFn STEAMSHIM_subscribeEvent;
 	STEAMSHIM_unsubscribeEventFn STEAMSHIM_unsubscribeEvent;
@@ -35,6 +37,7 @@ struct steam_import_s {
 #define DECLARE_STEAM_STRUCT() { \
 	STEAMSHIM_dispatch, \
 	STEAMSHIM_sendRPC, \
+	STEAMSHIM_sendRPCSync, \
 	STEAMSHIM_waitDispatchSync, \
 	STEAMSHIM_subscribeEvent, \
 	STEAMSHIM_unsubscribeEvent, \
@@ -49,6 +52,7 @@ static inline void Q_ImportSteamModule( const struct steam_import_s *imp )
 }
 int STEAMSHIM_dispatch() { return steam_import.STEAMSHIM_dispatch();}
 int STEAMSHIM_sendRPC( void *req, uint32_t size, void *self, STEAMSHIM_rpc_handle rpc, uint32_t *syncIndex ) { return steam_import.STEAMSHIM_sendRPC(req, size, self, rpc, syncIndex);}
+struct steam_rpc_pkt_s *STEAMSHIM_sendRPCSync( void *req, uint32_t size ) { return steam_import.STEAMSHIM_sendRPCSync(req, size); }
 int STEAMSHIM_waitDispatchSync( uint32_t syncIndex ){ return steam_import.STEAMSHIM_waitDispatchSync(syncIndex);} // wait on the dispatch loop
 void STEAMSHIM_subscribeEvent( uint32_t id, void *self, STEAMSHIM_evt_handle evt ){ return steam_import.STEAMSHIM_subscribeEvent(id, self, evt);} // wait on the dispatch loop
 void STEAMSHIM_unsubscribeEvent( uint32_t id, STEAMSHIM_evt_handle evt){ return steam_import.STEAMSHIM_unsubscribeEvent(id, evt);} // wait on the dispatch loop

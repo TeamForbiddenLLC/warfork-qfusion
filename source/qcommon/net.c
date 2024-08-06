@@ -338,21 +338,16 @@ static bool NET_SocketMakeNonBlocking( socket_handle_t handle )
 	return true;
 }
 
-struct SDR_GetPacket_Self {
-	msg_t* message;
-	netadr_t* addr;
-	int result;
-};
-static void NET_SDR_ConsumePacket(void* self, struct steam_rpc_pkt_s* rpc) {
-	struct SDR_GetPacket_Self* netRecieve = self;
-	msg_t* message = netRecieve->message;
-	netadr_t* address = netRecieve->addr;
-	struct recv_messages_recv_s *recv = &rpc->recv_messages_recv;
-	if(recv->count == 0) {
-		message->cursize = 0;
-		netRecieve->result = 0;
-		return;
-	}
+static int NET_SDR_GetPacket( const socket_t *socket, netadr_t *address, msg_t *message ) {
+	assert(socket&&socket->open&&socket->type==SOCKET_SDR);
+	struct recv_messages_req_s req;
+	req.cmd = RPC_P2P_RECV_MESSAGES;
+	req.handle = socket->handle;
+	struct recv_messages_recv_s *recv = (struct recv_messages_recv_s*)STEAMSHIM_sendRPCSync(&req, sizeof req);
+	if (recv->count == 0)
+		return 0;
+
+	message->readcount = 0;
 
 	int size = recv->messageinfo[0].count;
 	if (size > message->maxsize)
@@ -361,20 +356,8 @@ static void NET_SDR_ConsumePacket(void* self, struct steam_rpc_pkt_s* rpc) {
 
 	memcpy(message->data, recv->buffer, size);
 	NET_SteamidToAddress(recv->steamID, address);
-	netRecieve->result = 1;
-}
 
-static int NET_SDR_GetPacket( const socket_t *socket, netadr_t *address, msg_t *message ) {
-  assert(socket&&socket->open&&socket->type==SOCKET_SDR);
-	struct recv_messages_req_s req;
-	req.cmd = RPC_P2P_RECV_MESSAGES;
-	req.handle = socket->handle;
-
-	uint32_t syncIndex;
-	struct SDR_GetPacket_Self self = {message, address, -1}; 
-	STEAMSHIM_sendRPC(&req, sizeof req, &self, NET_SDR_ConsumePacket,  &syncIndex);
-	STEAMSHIM_waitDispatchSync(syncIndex);
-	return self.result;
+	return 1;
 }
 
 /*

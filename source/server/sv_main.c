@@ -199,28 +199,6 @@ static void SV_P2P_NewConnection( void *self, struct steam_evt_pkt_s *evt) {
 	}
 }
 
-static void SV_P2P_ConsumePacket(void* self, struct steam_rpc_pkt_s* rpc) {
-	socket_t* socket = self;	
-	size_t offset = 0;
-	struct recv_messages_recv_s* recv = &rpc->recv_messages_recv;	
-	for (int j = 0; j < recv->count; j++) {
-		Com_Printf("Received message %d\n", recv->messageinfo[j].count);
-
-		msg_t msg;
-		MSG_Init(&msg, recv->buffer+offset, recv->messageinfo[j].count);
-		msg.cursize = recv->messageinfo[j].count;
-		MSG_BeginReading(&msg);
-
-		if( *(int *)msg.data == -1 )
-		{
-			SV_ConnectionlessPacket( socket, &socket->address, &msg );
-			continue;
-		}
-		
-		offset += recv->messageinfo[j].count;
-	}
-}
-
 /*
 * SV_ReadPackets
 */
@@ -423,9 +401,13 @@ static void SV_ReadPackets( void )
 		struct recv_messages_req_s req;
 		req.cmd = RPC_P2P_RECV_MESSAGES;
 		req.handle = p2p_handles[i].handle;
-		uint32_t syncIndex;
-		
+		struct recv_messages_recv_s *recv = (struct recv_messages_recv_s*)STEAMSHIM_sendRPCSync(&req, sizeof req);
+
+
 		NET_SteamidToAddress(p2p_handles[i].steamid, &address);
+		size_t offset = 0;
+
+
 		socket->address = address;
 		socket->type = SOCKET_SDR;
 		socket->handle = p2p_handles[i].handle;
@@ -433,8 +415,22 @@ static void SV_ReadPackets( void )
 		socket->open = true;
 		socket->connected = true;
 
-		STEAMSHIM_sendRPC(&req, sizeof req, socket, SV_P2P_ConsumePacket,  &syncIndex);
-		STEAMSHIM_waitDispatchSync(syncIndex);
+		for (int j = 0; j < recv->count; j++) {
+			Com_Printf("Received message %d\n", recv->messageinfo[j].count);
+
+			msg_t msg;
+			MSG_Init(&msg, recv->buffer+offset, recv->messageinfo[j].count);
+			msg.cursize = recv->messageinfo[j].count;
+			MSG_BeginReading(&msg);
+
+			if( *(int *)msg.data == -1 )
+			{
+				SV_ConnectionlessPacket( socket, &address, &msg );
+				continue;
+			}
+			
+			offset += recv->messageinfo[j].count;
+		}
 	}
 
 }

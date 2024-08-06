@@ -162,6 +162,43 @@ bool STEAMSHIM_active() {
 	return ( ( GPipeRead != NULLPIPE ) && ( GPipeWrite != NULLPIPE ) );
 } 
 
+union { 
+	struct steam_rpc_pkt_s packet;
+	char maxsize[sizeof(struct steam_rpc_pkt_s) + SDR_MAX_MESSAGE_SIZE];
+} sync_stored_packet;
+
+static void CB_RPCSyncHandler( void *self, struct steam_rpc_pkt_s *packet )
+{
+	size_t size = sizeof( steam_rpc_pkt_s );
+
+	// this is a flexible-sized message
+	if (packet->common.cmd == RPC_P2P_RECV_MESSAGES && packet->recv_messages_recv.count > 0) {
+		for (size_t i = 0; i < packet->recv_messages_recv.count; i++) {
+			size += packet->recv_messages_recv.messageinfo[i].count;
+		}
+	}
+
+	memcpy( &sync_stored_packet, packet, size );
+}
+
+// do NOT call this inside the handler of an async RPC
+struct steam_rpc_pkt_s *STEAMSHIM_sendRPCSync(void *packet, uint32_t size)
+{
+	uint32_t syncIndex;
+	if( STEAMSHIM_sendRPC( packet, size, NULL, CB_RPCSyncHandler, &syncIndex ) < 0 ) {
+		return NULL;
+	}
+
+
+	while( 1 ) {
+		STEAMSHIM_dispatch();
+
+		if( sync_stored_packet.packet.common.sync == syncIndex ) {
+			return &sync_stored_packet.packet;
+		}
+	}
+}
+
 int STEAMSHIM_sendRPC( void *packet, uint32_t size, void *self, STEAMSHIM_rpc_handle rpc, uint32_t *sync )
 {
 	uint32_t syncIndex = ++SyncToken;
