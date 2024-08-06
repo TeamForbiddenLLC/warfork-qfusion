@@ -425,8 +425,7 @@ static int NET_UDP_GetPacket( const socket_t *socket, netadr_t *address, msg_t *
 static bool NET_SDR_SendPacket( const socket_t *socket, const void *data, size_t length, const netadr_t *address ) {
 	struct send_message_req_s *req = (struct send_message_req_s*)malloc(sizeof(struct send_message_req_s) + length);
 	req->cmd = RPC_P2P_SEND_MESSAGE;
-
-	req->messageReliability = 0|4|1; // 0 = unreliable, 4 = no nagle, 1 = no delay
+	req->messageReliability = 8; // reliable tcp
 	req->count = length;
 	req->handle = socket->handle;
 	memcpy(req->buffer, data, length);
