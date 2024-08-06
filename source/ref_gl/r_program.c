@@ -941,32 +941,6 @@ static const glsl_feature_t * const glsl_programtypes_features[] =
 #define QF_GLSL_ENABLE_EXT_TEXTURE_ARRAY "#extension GL_EXT_texture_array : enable\n"
 #define QF_GLSL_ENABLE_OES_TEXTURE_3D "#extension GL_OES_texture_3D : enable\n"
 
-#define QF_BUILTIN_GLSL_MACROS "" \
-"#if !defined(myhalf)\n" \
-"//#if !defined(__GLSL_CG_DATA_TYPES)\n" \
-"#define myhalf float\n" \
-"#define myhalf2 vec2\n" \
-"#define myhalf3 vec3\n" \
-"#define myhalf4 vec4\n" \
-"//#else\n" \
-"//#define myhalf half\n" \
-"//#define myhalf2 half2\n" \
-"//#define myhalf3 half3\n" \
-"//#define myhalf4 half4\n" \
-"//#endif\n" \
-"#endif\n" \
-"#ifdef GL_ES\n" \
-"#define qf_lowp_float lowp float\n" \
-"#define qf_lowp_vec2 lowp vec2\n" \
-"#define qf_lowp_vec3 lowp vec3\n" \
-"#define qf_lowp_vec4 lowp vec4\n" \
-"#else\n" \
-"#define qf_lowp_float float\n" \
-"#define qf_lowp_vec2 vec2\n" \
-"#define qf_lowp_vec3 vec3\n" \
-"#define qf_lowp_vec4 vec4\n" \
-"#endif\n"
-
 #define QF_BUILTIN_GLSL_MACROS_GLSL120 "" \
 "#define qf_varying varying\n" \
 "#define qf_flat_varying varying\n" \
@@ -990,14 +964,14 @@ static const glsl_feature_t * const glsl_programtypes_features[] =
 #define QF_BUILTIN_GLSL_MACROS_GLSL130 "" \
 "precision highp float;\n" \
 "#ifdef VERTEX_SHADER\n" \
-"  out myhalf4 qf_FrontColor;\n" \
+"  out vec4 qf_FrontColor;\n" \
 "# define qf_varying out\n" \
 "# define qf_flat_varying flat out\n" \
 "# define qf_attribute in\n" \
 "#endif\n" \
 "#ifdef FRAGMENT_SHADER\n" \
-"  in myhalf4 qf_FrontColor;\n" \
-"  out myhalf4 qf_FragColor;\n" \
+"  in vec4 qf_FrontColor;\n" \
+"  out vec4 qf_FragColor;\n" \
 "# define qf_varying in\n" \
 "# define qf_flat_varying flat in\n" \
 "#endif\n" \
@@ -1033,7 +1007,7 @@ static const glsl_feature_t * const glsl_programtypes_features[] =
 "# endif\n" \
 "# define qf_FragColor gl_FragColor\n" \
 "#endif\n" \
-" qf_varying myhalf4 qf_FrontColor;\n" \
+" qf_varying vec4 qf_FrontColor;\n" \
 "#define qf_texture texture2D\n" \
 "#define qf_textureLod texture2DLod\n" \
 "#define qf_textureCube textureCube\n" \
@@ -1061,7 +1035,7 @@ static const glsl_feature_t * const glsl_programtypes_features[] =
 "# define qf_varying in\n" \
 "# define qf_flat_varying flat in\n" \
 "#endif\n" \
-" qf_varying myhalf4 qf_FrontColor;\n" \
+" qf_varying vec4 qf_FrontColor;\n" \
 "#define qf_texture texture\n" \
 "#define qf_textureLod textureLod\n" \
 "#define qf_textureCube texture\n" \
@@ -1776,7 +1750,6 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	shaderStrings[i++] = shaderVersion;
 	shaderTypeIdx = i;
 	shaderStrings[i++] = "\n";
-	shaderStrings[i++] = QF_BUILTIN_GLSL_MACROS;
 #ifdef GL_ES_VERSION_2_0
 	if( features & GLSL_SHADER_COMMON_FRAGMENT_HIGHP ) {
 		shaderStrings[i++] = "#define QF_FRAGMENT_PRECISION_HIGH\n";
@@ -2139,7 +2112,7 @@ void RP_UpdateViewUniforms( int elem,
 * The first component corresponds to RGB, the second to ALPHA.
 * Whenever the program needs to scale source colors, the mask needs
 * to be used in the following manner:
-* color *= mix(myhalf4(1.0), myhalf4(scale), u_BlendMix.xxxy);
+* color *= mix(float4(1.0), float4(scale), u_BlendMix.xxxy);
 */
 void RP_UpdateBlendMixUniform( int elem, vec2_t blendMix )
 {
