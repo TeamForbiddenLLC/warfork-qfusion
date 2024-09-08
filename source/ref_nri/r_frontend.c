@@ -249,7 +249,7 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	nri_init_desc_t desc = {
 		.enableApiValidation = true,
 		.enableNriValidation = true,
-		.api = NriGraphicsAPI_VULKAN
+		.api = NriGraphicsAPI_VK
 	};		
 	
 	if(!R_InitNriBackend(&desc, &rsh.nri)) {
@@ -629,7 +629,7 @@ void RF_EndFrame( void )
 		NriTextureBarrierDesc textureBarrierDescs = {};
 		textureBarrierDescs.texture = frame->backBuffer.texture;
 		textureBarrierDescs.after = ( NriAccessLayoutStage ){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT };
-		textureBarrierDescs.arraySize = 1;
+		textureBarrierDescs.layerNum = 1;
 		textureBarrierDescs.mipNum = 1;
 
 		NriBarrierGroupDesc barrierGroupDesc = {};
@@ -647,7 +647,7 @@ void RF_EndFrame( void )
 		const NriTextureDesc *backBufferDesc = rsh.nri.coreI.GetTextureDesc( frame->backBuffer.texture );
 
 		NriClearDesc clearDesc = {};
-		clearDesc.value.color32f = ( NriColor32f ){ 0.0f, 0.0f, 1.0f, 1.0f };
+		clearDesc.value.color = ( NriColor ){ .f = {0.0f, 0.0f, 1.0f, 1.0f} };
 		NriRect rect3 = { 0, 0, backBufferDesc->width, backBufferDesc->height };
 		rsh.nri.coreI.CmdClearAttachments( frame->cmd, &clearDesc, 1, &rect3, 1 );
 	}
@@ -658,7 +658,7 @@ void RF_EndFrame( void )
 		textureBarrierDescs.texture = frame->backBuffer.texture;
 		textureBarrierDescs.before = ( NriAccessLayoutStage ){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT };
 		textureBarrierDescs.after = ( NriAccessLayoutStage ){ NriAccessBits_UNKNOWN, NriLayout_PRESENT };
-		textureBarrierDescs.arraySize = 1;
+		textureBarrierDescs.layerNum = 1;
 		textureBarrierDescs.mipNum = 1;
 
 		NriBarrierGroupDesc barrierGroupDesc = {};
