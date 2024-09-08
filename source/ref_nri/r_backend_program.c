@@ -848,7 +848,7 @@ static inline bool __IsAlphaBlendingGLState(int state) {
 		   ( ( state & GLSTATE_SRCBLEND_MASK ) == GLSTATE_SRCBLEND_ONE_MINUS_SRC_ALPHA || ( state ) == GLSTATE_DSTBLEND_ONE_MINUS_SRC_ALPHA );
 }
 
-inline struct vec4 ConstColorAdjust( bool alphaBlending, bool alphaHack, struct vec4 vec )
+static inline struct vec4 ConstColorAdjust( bool alphaBlending, bool alphaHack, struct vec4 vec )
 {
 	if( alphaBlending ) {
 		if( alphaHack ) {
@@ -863,8 +863,6 @@ inline struct vec4 ConstColorAdjust( bool alphaBlending, bool alphaHack, struct 
 	}
 	return vec;
 }
-
-
 
 static void __RB_UpdateFrameObjectCB( struct frame_cmd_buffer_s *cmd, const entity_t *entity, const shaderpass_t *pass )
 {

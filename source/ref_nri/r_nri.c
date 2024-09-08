@@ -42,13 +42,13 @@
 
 void R_NRI_CallbackMessage(NriMessage msg, const char* file, uint32_t line, const char* message, void* userArg) {
   switch(msg) {
-    case NriMessage_TYPE_INFO:
+    case NriMessage_INFO:
       Com_Printf(S_COLOR_BLACK "%s", message);
       break;
-    case NriMessage_TYPE_WARNING:
+    case NriMessage_WARNING:
       Com_Printf(S_COLOR_YELLOW "%s", message);
       break;
-    case NriMessage_TYPE_ERROR:
+    case NriMessage_ERROR:
       Com_Printf(S_COLOR_RED "%s", message);
       break;
     default:
@@ -78,7 +78,7 @@ static const char* R_PhysicalDeviceTypeToString(VkPhysicalDeviceType deviceType)
 bool R_InitNriBackend(const nri_init_desc_t* init, struct nri_backend_s* backend) {
 	backend->api = init->api;
 	switch( init->api ) {
-		case NriGraphicsAPI_VULKAN: {
+		case NriGraphicsAPI_VK: {
 //#if defined( _WIN32 )
 //			static const char *instanceExtensions[] = { VK_KHR_WIN32_SURFACE_EXTENSION_NAME, VK_KHR_SURFACE_EXTENSION_NAME };
 //#else
@@ -108,8 +108,8 @@ bool R_InitNriBackend(const nri_init_desc_t* init, struct nri_backend_s* backend
 			NRI_ABORT_ON_FAILURE( nriEnumerateAdapters( &bestAdapterDesc, &adapterDescsNum ) );
 
 			NriDeviceCreationDesc deviceCreationDesc = {};
-			deviceCreationDesc.graphicsAPI = NriGraphicsAPI_VULKAN;
-			deviceCreationDesc.enableAPIValidation = true;
+			deviceCreationDesc.graphicsAPI = NriGraphicsAPI_VK;
+			deviceCreationDesc.enableGraphicsAPIValidation = true;
 			deviceCreationDesc.enableNRIValidation = true;
 			deviceCreationDesc.spirvBindingOffsets = offset;
 			deviceCreationDesc.adapterDesc = &bestAdapterDesc;
@@ -308,8 +308,8 @@ NriFormat R_NRIFormat(enum texture_format_e format) {
     case R_FORMAT_D32_SFLOAT: return NriFormat_D32_SFLOAT;
     case R_FORMAT_D32_SFLOAT_S8_UINT_X24: return NriFormat_D32_SFLOAT_S8_UINT_X24;
     case R_FORMAT_R24_UNORM_X8: return NriFormat_R24_UNORM_X8;
-    case R_FORMAT_X24_R8_UINT: return NriFormat_X24_R8_UINT;
-    case R_FORMAT_X32_R8_UINT_X24: return NriFormat_X32_R8_UINT_X24;
+    //case R_FORMAT_X24_R8_UINT: return NriFormat_X24_R8_UINT;
+    //case R_FORMAT_X32_R8_UINT_X24: return NriFormat_X32_G8_UINT_X24;
     case R_FORMAT_R32_SFLOAT_X8_X24: return NriFormat_R32_SFLOAT_X8_X24;
     default:
       break;

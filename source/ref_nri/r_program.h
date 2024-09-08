@@ -331,7 +331,7 @@ struct glsl_descriptor_handle_s {
 	hash_t hash;
 };
 
-inline struct glsl_descriptor_handle_s Create_DescriptorHandle(const char* name) {
+static inline struct glsl_descriptor_handle_s Create_DescriptorHandle(const char* name) {
 	return (struct glsl_descriptor_handle_s){
 		.name = name,
 		.hash = hash_data(HASH_INITIAL_VALUE, name, strlen(name))

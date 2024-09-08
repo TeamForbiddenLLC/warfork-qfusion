@@ -1786,7 +1786,7 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 									 .width = R_KTXWidth( &ktxContext ),
 								   .height = R_KTXHeight( &ktxContext ),
 								   .usageMask = __R_NRITextureUsageBits( image->flags ),
-								   .arraySize = R_KTXIsCompressed( &ktxContext ) ? 1 : numberOfFaces,
+								   .layerNum = R_KTXIsCompressed( &ktxContext ) ? 1 : numberOfFaces,
 								   .depth = 1,
 								   .format = R_NRIFormat( dstFormat ),
 								   .sampleNum = 1,
@@ -2017,7 +2017,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 								 .height = height,
 								 .depth = 1,
 								 .usageMask = __R_NRITextureUsageBits( flags ),
-								 .arraySize = ( flags & IT_CUBEMAP ) ? 6 : 1,
+								 .layerNum = ( flags & IT_CUBEMAP ) ? 6 : 1,
 								 .format = R_NRIFormat( destFormat ),
 								 .sampleNum = 1,
 								 .type =  NriTextureType_TEXTURE_2D,
@@ -2037,7 +2037,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
   uint8_t* tmpBuffer = NULL;
   const size_t reservedSize = width * height * samples;
   if( pic ) {
-  	for( size_t index = 0; index < textureDesc.arraySize; index++ ) {
+  	for( size_t index = 0; index < textureDesc.layerNum; index++ ) {
   		if( !pic[index] ) {
   			continue;
   		}
@@ -2428,7 +2428,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	NriTextureDesc textureDesc = { .width = uploads[0].buffer.width,
 								   .height = uploads[0].buffer.height,
 								   .usageMask = __R_NRITextureUsageBits( flags ),
-								   .arraySize = uploadCount,
+								   .layerNum = uploadCount,
 								   .depth = 1,
 								   .format = R_NRIFormat( format ),
 								   .sampleNum = 1,

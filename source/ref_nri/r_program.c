@@ -1919,7 +1919,7 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 		.inputAssembly = def->inputAssembly
 	};
 
-	assert( rsh.nri.api == NriGraphicsAPI_VULKAN );
+	assert( rsh.nri.api == NriGraphicsAPI_VK );
 
 	NriVertexStreamDesc vertexStreamDesc[32] = {0};
   NriVertexAttributeDesc vertexAttributeDesc[32] = {};

@@ -81,9 +81,13 @@ static bool R_AllocTemporaryBuffer( resource_command_set_t *set, size_t reqSize,
 	NriBufferDesc bufferDesc = { .size = reqSize };
 	NRI_ABORT_ON_FAILURE( backend->coreI.CreateBuffer( backend->device, &bufferDesc, &temp.buffer ) );
 
-	NriMemoryDesc memoryDesc = {};
-	backend->coreI.GetBufferMemoryInfo( temp.buffer, NriMemoryLocation_HOST_UPLOAD, &memoryDesc );
-	NRI_ABORT_ON_FAILURE( backend->coreI.AllocateMemory( backend->device, memoryDesc.type, memoryDesc.size, &temp.memory ) );
+	struct NriMemoryDesc memoryDesc = {};
+	backend->coreI.GetBufferMemoryDesc(backend->device, &bufferDesc, NriMemoryLocation_HOST_UPLOAD, &memoryDesc );
+
+	NriAllocateMemoryDesc allocateMemoryDesc = {};
+	allocateMemoryDesc.size = memoryDesc.size;
+	allocateMemoryDesc.type = memoryDesc.type;
+	NRI_ABORT_ON_FAILURE( backend->coreI.AllocateMemory( backend->device, &allocateMemoryDesc, &temp.memory ) );
 
 	NriBufferMemoryBindingDesc bindBufferDesc = {
 		.memory = temp.memory,
@@ -222,7 +226,7 @@ void R_ResourceEndCopyTexture( texture_upload_desc_t* desc) {
   backend->coreI.CmdBarrier(commandSets[activeSet].cmd, &barrierGroupDesc);//, NULL, NriBarrierDependency_COPY_STAGE);
   
   NriTextureRegionDesc destRegionDesc = { 
-  	.arrayOffset = desc->arrayOffset, 
+  	.layerOffset = desc->arrayOffset, 
   	.mipOffset = desc->mipOffset,
   	.x = desc->x,
   	.y = desc->y,
