@@ -113,7 +113,7 @@ typedef struct r_backend_s
 
 		bool			flushTextures;
 		int				currentTMU;
-		unsigned		currentTextures[MAX_TEXTURE_UNITS];				
+		const image_t* currentTextures[MAX_TEXTURE_UNITS];				
 	} gl;
 
 	unsigned int time;

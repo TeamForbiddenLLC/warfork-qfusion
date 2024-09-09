@@ -256,28 +256,28 @@ void RFB_AttachTextureToObject( int object, image_t *texture )
 	}
 
 	fbo = r_framebuffer_objects + object - 1;
-	qglBindFramebufferEXT( GL_FRAMEBUFFER_EXT, fbo->objectID );
-
-	if( texture->flags & IT_DEPTH ) {
-		attachment = GL_DEPTH_ATTACHMENT_EXT;
-		fbo->depthTexture = texture;
-	} else {
-		attachment = GL_COLOR_ATTACHMENT0_EXT;
-		fbo->colorTexture = texture;
-#ifndef GL_ES_VERSION_2_0
-		qglDrawBuffer( GL_COLOR_ATTACHMENT0_EXT );
-		qglReadBuffer( GL_COLOR_ATTACHMENT0_EXT );
-#endif
-	}
-	texture->fbo = object;
-
-	// attach texture
-	qglFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, attachment, GL_TEXTURE_2D, texture->texnum, 0 );
-	if( ( texture->flags & ( IT_DEPTH|IT_STENCIL ) ) == ( IT_DEPTH|IT_STENCIL ) ) {
-		qglFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_2D, texture->texnum, 0 );
-	}
-
-	qglBindFramebufferEXT( GL_FRAMEBUFFER_EXT, r_bound_framebuffer_objectID ? r_bound_framebuffer_object->objectID : 0 );
+	assert(false); // broken api 
+// qglBindFramebufferEXT( GL_FRAMEBUFFER_EXT, fbo->objectID );
+// if( texture->flags & IT_DEPTH ) {
+// 	attachment = GL_DEPTH_ATTACHMENT_EXT;
+// 	fbo->depthTexture = texture;
+// } else {
+// 	attachment = GL_COLOR_ATTACHMENT0_EXT;
+// 	fbo->colorTexture = texture;
+//#ifndef GL_ES_VERSION_2_0
+//		qglDrawBuffer( GL_COLOR_ATTACHMENT0_EXT );
+//		qglReadBuffer( GL_COLOR_ATTACHMENT0_EXT );
+//#endif
+//	}
+//	texture->fbo = object;
+//
+//	// attach texture
+//	qglFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, attachment, GL_TEXTURE_2D, texture->texnum, 0 );
+//	if( ( texture->flags & ( IT_DEPTH|IT_STENCIL ) ) == ( IT_DEPTH|IT_STENCIL ) ) {
+//		qglFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_2D, texture->texnum, 0 );
+//	}
+//
+//	qglBindFramebufferEXT( GL_FRAMEBUFFER_EXT, r_bound_framebuffer_objectID ? r_bound_framebuffer_object->objectID : 0 );
 }
 
 /*

@@ -87,7 +87,6 @@ typedef struct image_s
 
 	char extension[8]; // file extension
 	int flags;
-	int texnum;			// gl texture binding need to remove
 	uint16_t width, height; // source image
 	int layers;				// texture array size
 	int upload_width, upload_height; // after power of two and picmip

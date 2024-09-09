@@ -35,10 +35,18 @@ struct frame_cmd_state_s {
 	struct NriDescriptor *bindings[DESCRIPTOR_SET_MAX][DESCRIPTOR_MAX_BINDINGS];
 };
 
-struct frame_backbuffer_s {
+struct frame_tex_buffers_s {
 	NriDescriptor *colorAttachment;
-	NriTexture *texture;
+	NriTexture *colorTexture;
+
+	NriDescriptor *depthAttachment;
+	NriTexture* depthTexture;
+
 	NriAccessLayoutStage currentLayout;
+
+	size_t memoryLen;
+	NriMemory* memory[8];
+
 };
 
 
@@ -56,16 +64,22 @@ struct ubo_frame_instance_s {
 	struct block_buffer_pool_req_s req; 
 };
 
+
 struct frame_cmd_buffer_s {
 	uint8_t frameCount; // this value is bound by NUMBER_FRAMES_FLIGHT
 	struct block_buffer_pool_s uboBlockBuffer; 
 	struct frame_cmd_state_s cmdState;
 	struct pipeline_layout_config_s layoutConfig;
-	struct frame_backbuffer_s backBuffer;
+	struct frame_tex_buffers_s textureBuffers;
+	
 	NriCommandAllocator *allocator;
 	NriCommandBuffer *cmd;
 
 	NriDescriptor** frameTemporaryDesc; // temporary frame descriptors that are recycled at the end of the frame	
+
+	// list of objects to free
+	NriTexture**  freeTextures;
+	NriMemory** freeMemory;
 
 	// default global ubo for the scene
 	struct ubo_frame_instance_s uboSceneFrame;	

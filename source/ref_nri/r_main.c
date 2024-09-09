@@ -565,11 +565,9 @@ void R_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2,
 */
 void R_UploadRawPic( image_t *texture, int cols, int rows, uint8_t *data )
 {
-	if( texture->width != cols || texture->height != rows ) {
-		uint8_t *nodata[1] = { NULL };
-		R_ReplaceImage( texture, nodata, cols, rows, texture->flags, 1, 3 );
-	}
-	R_ReplaceSubImage( texture, 0, 0, 0, &data, cols, rows );
+	assert((texture->flags & (IT_CUBEMAP | IT_ARRAY | IT_3D)) == 0);
+	uint8_t *input[1] = { data };
+	R_ReplaceImage( texture, input, cols, rows, texture->flags, 1, 3 );
 }
 
 /*
@@ -577,9 +575,7 @@ void R_UploadRawPic( image_t *texture, int cols, int rows, uint8_t *data )
 */
 void R_UploadRawYUVPic( image_t **yuvTextures, ref_img_plane_t *yuv )
 {
-	int i;
-
-	for( i = 0; i < 3; i++ ) {
+	for(int i = 0; i < 3; i++ ) {
 		uint8_t *data = yuv[i].data;
 		int flags = yuvTextures[i]->flags;
 		int stride = yuv[i].stride;
@@ -592,11 +588,11 @@ void R_UploadRawYUVPic( image_t **yuvTextures, ref_img_plane_t *yuv )
 			stride = -stride;
 		}
 
-		if( yuvTextures[i]->width != stride || yuvTextures[i]->height != height ) {
-			uint8_t *nodata[1] = { NULL };
-			R_ReplaceImage( yuvTextures[i], nodata, stride, height, flags, 1, 1 );
-		}
-		R_ReplaceSubImage( yuvTextures[i], 0, 0, 0, &data, stride, height );		
+		//if( yuvTextures[i]->width != stride || yuvTextures[i]->height != height ) {
+		uint8_t *nodata[1] = { data };
+		R_ReplaceImage( yuvTextures[i], nodata, stride, height, flags, 1, 1 );
+	 // }
+	 // R_ReplaceSubImage( yuvTextures[i], 0, 0, 0, &data, stride, height );		
 	}
 }
 

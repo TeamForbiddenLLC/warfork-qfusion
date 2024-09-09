@@ -339,9 +339,12 @@ void R_RenderScene(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 
 	fbFlags = 0;
 	rn.fbColorAttachment = rn.fbDepthAttachment = NULL;
+	rn.colorAttachment = rn.depthAttachment= NULL;
 	
 	if( !( fd->rdflags & RDF_NOWORLDMODEL ) ) {
 		if( r_soft_particles->integer && ( rsh.screenTexture != NULL ) ) {
+			rn.colorAttachment = frame->textureBuffers.colorAttachment;
+			
 			rn.fbColorAttachment = rsh.screenTexture;
 			rn.fbDepthAttachment = rsh.screenDepthTexture;
 			rn.renderFlags |= RF_SOFT_PARTICLES;
@@ -379,7 +382,7 @@ void R_RenderScene(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 
 	NriAttachmentsDesc attachmentsDesc = {};
 	attachmentsDesc.colorNum = 1;
-	const NriDescriptor *colorAttachments[] = { frame->backBuffer.colorAttachment };
+	const NriDescriptor *colorAttachments[] = { frame->textureBuffers.colorAttachment };
 	attachmentsDesc.colors = colorAttachments;
 	rsh.nri.coreI.CmdBeginRendering( frame->cmd, &attachmentsDesc );
 

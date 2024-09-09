@@ -152,6 +152,9 @@ typedef struct
 {
 	unsigned int	renderFlags;
 
+	NriDescriptor* colorAttachment;
+	NriDescriptor* depthAttachment;
+
 	image_t			*fbColorAttachment;
 	image_t			*fbDepthAttachment;
 
@@ -259,7 +262,7 @@ typedef struct
  	NriCommandQueue* cmdQueue;
  	NriSwapChain* swapchain;
 	NriFence* frameFence;
-	struct frame_backbuffer_s* backBuffers;
+	struct frame_tex_buffers_s* backBuffers;
 	struct frame_cmd_buffer_s frameCmds[NUMBER_FRAMES_FLIGHT];
 
 	byte_vec4_t		customColors[NUM_CUSTOMCOLORS];
@@ -890,5 +893,10 @@ typedef struct
 extern mapconfig_t	mapConfig;
 extern refinst_t	rn;
 
+static inline struct frame_cmd_buffer_s *R_ActiveFrameCmd()
+{
+	const uint32_t bufferedFrameIndex = rsh.frameCnt % NUMBER_FRAMES_FLIGHT;
+	return &rsh.frameCmds[bufferedFrameIndex];
+}
 
 #endif // R_LOCAL_H

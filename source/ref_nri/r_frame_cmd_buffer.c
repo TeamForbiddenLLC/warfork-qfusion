@@ -54,7 +54,7 @@ void UpdateFrameUBO(struct frame_cmd_buffer_s *cmd,struct ubo_frame_instance_s* 
 }
 
 void ResetFrameCmdBuffer(struct nri_backend_s* backend,struct frame_cmd_buffer_s* cmd) {
-	cmd->backBuffer = rsh.backBuffers[rsh.nri.swapChainI.AcquireNextSwapChainTexture( rsh.swapchain )];
+	cmd->textureBuffers = rsh.backBuffers[rsh.nri.swapChainI.AcquireNextSwapChainTexture( rsh.swapchain )];
 	for( size_t i = 0; i < arrlen( cmd->frameTemporaryDesc ); i++ ) {
 		backend->coreI.DestroyDescriptor( cmd->frameTemporaryDesc[i] );
 	}
