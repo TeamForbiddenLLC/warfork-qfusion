@@ -324,17 +324,39 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 
 	{
 
-		uint32_t swapChainTextureNum;
+		uint32_t swapChainTextureNum = 0;
 		NriTexture *const *swapChainTextures = rsh.nri.swapChainI.GetSwapChainTextures( rsh.swapchain, &swapChainTextureNum );
 		arrsetlen(rsh.backBuffers, swapChainTextureNum);
 		for( uint32_t i = 0; i < swapChainTextureNum; i++ ) {
-			rsh.backBuffers[i].texture = swapChainTextures[i];
-			NriTextureDesc* desc = rsh.nri.coreI.GetTextureDesc(swapChainTextures[i]);
-			NriTexture2DViewDesc textureViewDesc = { 
-				swapChainTextures[i], 
-				NriTexture2DViewType_COLOR_ATTACHMENT, 
-				desc->format };
-			NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &rsh.backBuffers[i].colorAttachment) );
+			rsh.backBuffers[i].memoryLen = 0;
+
+			const NriTextureDesc* swapChainDesc= rsh.nri.coreI.GetTextureDesc(swapChainTextures[i]);
+			rsh.backBuffers[i].colorTexture = swapChainTextures[i];
+			{
+				NriTexture2DViewDesc textureViewDesc = { 
+					swapChainTextures[i], 
+					NriTexture2DViewType_COLOR_ATTACHMENT, 
+					swapChainDesc->format };
+				NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &rsh.backBuffers[i].colorAttachment) );
+			}
+			NriTextureDesc textureDesc = { .width = swapChainDesc->width,
+										   .height = swapChainDesc->height,
+										   .depth = 1,
+										   .usageMask = NriTextureUsageBits_DEPTH_STENCIL_ATTACHMENT,
+										   .layerNum = 1,
+										   .format = NriFormat_D32_SFLOAT,
+										   .sampleNum = 1,
+										   .type = NriTextureType_TEXTURE_2D,
+										   .mipNum = 1 };
+			NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &rsh.backBuffers[i].depthTexture ) );
+			NriResourceGroupDesc resourceGroupDesc = {
+				.textureNum = 1,
+				.textures = &rsh.backBuffers[i].depthTexture,
+				.memoryLocation = NriMemoryLocation_DEVICE,
+			};
+			const size_t numAllocations = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
+		  NRI_ABORT_ON_FAILURE(rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, rsh.backBuffers[i].memoryLen + rsh.backBuffers[i].memory)) 
+			rsh.backBuffers[i].memoryLen += numAllocations;
 		}
 	}
 
@@ -577,6 +599,15 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 	frame->frameCount = rsh.frameCnt; 
 	ResetFrameCmdBuffer(&rsh.nri,frame);
 
+	for(size_t i = 0; i < arrlen(frame->freeMemory); i++) {
+		 rsh.nri.coreI.FreeMemory(frame->freeMemory[i]);
+	}
+	for(size_t i = 0; i < arrlen(frame->freeTextures); i++) {
+		 rsh.nri.coreI.DestroyTexture(frame->freeTextures[i]);
+	}
+	arrsetlen(frame->freeMemory, 0);
+	arrsetlen(frame->freeTextures, 0);
+
 	NRI_ABORT_ON_FAILURE(rsh.nri.coreI.BeginCommandBuffer(frame->cmd, NULL));
 	
 	//FR_CmdSetDefaultState(frame);
@@ -627,7 +658,7 @@ void RF_EndFrame( void )
 
 	{
 		NriTextureBarrierDesc textureBarrierDescs = {};
-		textureBarrierDescs.texture = frame->backBuffer.texture;
+		textureBarrierDescs.texture = frame->textureBuffers.colorTexture;
 		textureBarrierDescs.after = ( NriAccessLayoutStage ){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT };
 		textureBarrierDescs.layerNum = 1;
 		textureBarrierDescs.mipNum = 1;
@@ -640,11 +671,11 @@ void RF_EndFrame( void )
 
 	NriAttachmentsDesc attachmentsDesc = {};
 	attachmentsDesc.colorNum = 1;
-	const NriDescriptor *colorAttachments[] = { frame->backBuffer.colorAttachment };
+	const NriDescriptor *colorAttachments[] = { frame->textureBuffers.colorAttachment };
 	attachmentsDesc.colors = colorAttachments;
 	rsh.nri.coreI.CmdBeginRendering( frame->cmd, &attachmentsDesc );
 	{
-		const NriTextureDesc *backBufferDesc = rsh.nri.coreI.GetTextureDesc( frame->backBuffer.texture );
+		const NriTextureDesc *backBufferDesc = rsh.nri.coreI.GetTextureDesc( frame->textureBuffers.colorTexture );
 
 		NriClearDesc clearDesc = {};
 		clearDesc.value.color = ( NriColor ){ .f = {0.0f, 0.0f, 1.0f, 1.0f} };
@@ -655,7 +686,7 @@ void RF_EndFrame( void )
 	
 	{
 		NriTextureBarrierDesc textureBarrierDescs = {};
-		textureBarrierDescs.texture = frame->backBuffer.texture;
+		textureBarrierDescs.texture = frame->textureBuffers.colorTexture;
 		textureBarrierDescs.before = ( NriAccessLayoutStage ){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT };
 		textureBarrierDescs.after = ( NriAccessLayoutStage ){ NriAccessBits_UNKNOWN, NriLayout_PRESENT };
 		textureBarrierDescs.layerNum = 1;
@@ -750,9 +781,10 @@ void RF_AddLightStyleToScene( int style, float r, float g, float b )
 
 void RF_RenderScene( const refdef_t *fd )
 {
-	const uint32_t bufferedFrameIndex = rsh.frameCnt % NUMBER_FRAMES_FLIGHT;
-	struct frame_cmd_buffer_s* cmd = &rsh.frameCmds[bufferedFrameIndex];
-	R_RenderScene( cmd, fd );
+	//TODO: scene rendering will need to happen at some point
+	//const uint32_t bufferedFrameIndex = rsh.frameCnt % NUMBER_FRAMES_FLIGHT;
+	//struct frame_cmd_buffer_s* cmd = &rsh.frameCmds[bufferedFrameIndex];
+	//R_RenderScene( cmd, fd );
 	//rrf.frame->RenderScene( rrf.frame, fd );
 }
 

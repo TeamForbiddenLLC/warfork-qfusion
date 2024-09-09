@@ -87,7 +87,6 @@ int R_TextureTarget( int flags, int *uploadTarget )
 */
 static void R_BindImage( const image_t *tex )
 {
-	//qglBindTexture( R_TextureTarget( tex->flags, NULL ), tex->texnum );
 	RB_FlushTextureCache();
 }
 
@@ -96,9 +95,9 @@ static void R_BindImage( const image_t *tex )
 */
 static void R_UnbindImage( const image_t *tex )
 {
-	//qglBindTexture( R_TextureTarget( tex->flags, NULL ), 0 );
 	RB_FlushTextureCache();
 }
+
 
 /*
 * R_TextureMode
@@ -168,11 +167,6 @@ void R_TextureMode( char *string )
  // }
 }
 
-static void R_UnpackAlignment( int ctx, int value )
-{
-	assert(false);
-}
-
 /*
 * R_AnisotropicFilter
 */
@@ -192,7 +186,7 @@ void R_AnisotropicFilter( int value )
 	// change all the existing mipmap texture objects
 	for( i = 1, glt = images; i < MAX_GLIMAGES; i++, glt++ )
 	{
-		if( !glt->texnum ) {
+		if( !glt->texture) {
 			continue;
 		}
 		if( (glt->flags & (IT_NOFILTERING|IT_DEPTH|IT_NOMIPMAP)) ) {
@@ -220,7 +214,7 @@ void R_PrintImageList( const char *mask, bool (*filter)( const char *mask, const
 	numImages = 0;
 	for( i = 0, image = images; i < MAX_GLIMAGES; i++, image++ )
 	{
-		if( !image->texnum ) {
+		if( !image->texture) {
 			continue;
 		}
 		if( !image->upload_width || !image->upload_height || !image->layers ) {
@@ -965,6 +959,7 @@ static void R_SetupTexParameters( int flags, int upload_width, int upload_height
 	}
 }
 
+
 /*
 * R_Upload32
 */
@@ -1013,10 +1008,10 @@ static void R_Upload32( int ctx, uint8_t **data, int layer,
 
 	R_TextureFormat( flags, samples, &comp, &format, &type );
 
-	if( !( flags & ( IT_ARRAY | IT_3D ) ) ) // set in R_Create3DImage
-		R_SetupTexParameters( flags, scaledWidth, scaledHeight, minmipsize );
+ // if( !( flags & ( IT_ARRAY | IT_3D ) ) ) // set in R_Create3DImage
+ // 	R_SetupTexParameters( flags, scaledWidth, scaledHeight, minmipsize );
 
-	R_UnpackAlignment( ctx, 1 );
+	//R_UnpackAlignment( ctx, 1 );
 
 	if( ( scaledWidth == width ) && ( scaledHeight == height ) && ( flags & IT_NOMIPMAP ) )
 	{
@@ -1252,9 +1247,9 @@ static void R_UploadMipmapped( int ctx, uint8_t **data,
 	comp = R_TextureInternalFormat( pixelSize, flags, type );
 #endif
 
-	R_SetupTexParameters( flags, scaledWidth, scaledHeight, minmipsize );
+//	R_SetupTexParameters( flags, scaledWidth, scaledHeight, minmipsize );
 
-	R_UnpackAlignment( ctx, 4 );
+	//R_UnpackAlignment( ctx, 4 );
 
 	mips = ( flags & IT_NOMIPMAP ) ? 1 : R_MipCount( scaledWidth, scaledHeight, minmipsize );
 	for( i = 0; ( i < mips ) && ( mip < mipLevels ); i++, mip++ )
@@ -1481,7 +1476,7 @@ static bool R_LoadKTX( int ctx, image_t *image, const char *pathname )
 
 			R_TextureTarget( image->flags, &target );
 
-			R_SetupTexParameters( image->flags, scaledWidth, scaledHeight, image->minmipsize );
+		//	R_SetupTexParameters( image->flags, scaledWidth, scaledHeight, image->minmipsize );
 
 			for( i = 0; i < mip; ++i )
 			{
@@ -1823,7 +1818,8 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 			};
 			T_ReallocTextureBuf( &uncomp, &desc );
 			DecompressETC1( tex->buffer, tex->width, tex->height, uncomp.buffer, false );
-			texture_upload_desc_t uploadDesc = { .sliceNum = uncomp.height,
+			texture_upload_desc_t uploadDesc = { 
+												 .sliceNum = uncomp.height,
 												 .rowPitch = uncomp.width * destBlockSize, // we treat it all as RGBA8
 												 .arrayOffset = faceIdx,
 												 .mipOffset = 0,
@@ -1995,9 +1991,134 @@ static enum texture_format_e __R_ToSupportedFormat(enum texture_format_e format)
   return format;
 }
 
+static void __LoadImageLayer(struct image_s* image, size_t layer, uint8_t* buf) {
+
+	enum texture_format_e srcFormat = __R_ResolveDataFormat( image->flags, image->samples );
+	enum texture_format_e destFormat = __R_ToSupportedFormat( srcFormat );
+	const NriTextureDesc* textureDesc = rsh.nri.coreI.GetTextureDesc(image->texture);
+
+	uint32_t srcBlockSize = R_FormatBitSizePerBlock( srcFormat ) / 8;
+	uint32_t destBlockSize = R_FormatBitSizePerBlock( destFormat ) / 8;
+	uint8_t *tmpBuffer = NULL;
+	const size_t reservedSize = image->width * image->height * image->samples;
+	if( !( image->flags & IT_CUBEMAP ) && ( image->flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) ) ) {
+		arrsetlen( tmpBuffer, reservedSize );
+		R_FlipTexture( buf, tmpBuffer, image->width, image->height, image->samples, ( image->flags & IT_FLIPX ) ? true : false, ( image->flags & IT_FLIPY ) ? true : false,
+					   ( image->flags & IT_FLIPDIAGONAL ) ? true : false );
+		buf = tmpBuffer;
+	}
+
+	uint32_t w = image->width;
+	uint32_t h = image->height;
+	for( size_t i = 0; i < textureDesc->mipNum; i++ ) {
+		texture_upload_desc_t uploadDesc = { .sliceNum = h, .rowPitch = w * destBlockSize, .arrayOffset = layer, .mipOffset = i, .width = w, .height = h, .target = image->texture };
+		R_ResourceBeginCopyTexture( &uploadDesc );
+		for( size_t slice = 0; slice < textureDesc->height; slice++ ) {
+			const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
+			memset( &( (uint8_t *)uploadDesc.data )[dstRowStart], 255, uploadDesc.rowPitch );
+			for( size_t column = 0; column < textureDesc->width; column++ ) {
+				memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], &buf[( textureDesc->width * srcBlockSize * slice ) + ( column * srcBlockSize )],
+						min( srcBlockSize, destBlockSize ) );
+			}
+		}
+		R_ResourceEndCopyTexture( &uploadDesc );
+		w >>= 1;
+		h >>= 1;
+		if( w == 0 ) {
+			w = 1;
+		}
+		if( h == 0 ) {
+			h = 1;
+		}
+		R_MipMap( buf, w, h, image->samples, 1 );
+	}
+	arrfree( tmpBuffer );
+}
+static void __LoadImageInPlace(struct image_s* image, uint8_t **pic, int width, int height, int flags, int minmipsize, int tags, int samples ) {
+	assert(image);
+	assert(image->texture);
+
+	image->width = width;
+	image->height = height;
+	image->layers = 1;
+	image->flags = flags;
+	image->minmipsize = minmipsize;
+	image->tags = tags;
+	image->samples = samples;
+	image->upload_width = width;
+	image->upload_height = height;
+	
+	const uint32_t mipSize = __R_calculateMipMapLevel( flags, width, height, minmipsize );
+
+	enum texture_format_e srcFormat = __R_ResolveDataFormat( flags, samples );
+	enum texture_format_e destFormat = __R_ToSupportedFormat( srcFormat );
+	NriTextureDesc textureDesc = { .width = width,
+								   .height = height,
+								   .depth = 1,
+								   .usageMask = __R_NRITextureUsageBits( flags ),
+								   .layerNum = ( flags & IT_CUBEMAP ) ? 6 : 1,
+								   .format = R_NRIFormat( destFormat ),
+								   .sampleNum = 1,
+								   .type = NriTextureType_TEXTURE_2D,
+								   .mipNum = mipSize };
+	rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture );
+	NriResourceGroupDesc resourceGroupDesc = {
+		.textureNum = 1,
+		.textures = &image->texture,
+		.memoryLocation = NriMemoryLocation_DEVICE,
+	};
+	const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
+	assert( allocationNum <= Q_ARRAY_COUNT( image->memory ) );
+	NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, image->memory ) );
+	uint32_t srcBlockSize = R_FormatBitSizePerBlock( srcFormat ) / 8;
+	uint32_t destBlockSize = R_FormatBitSizePerBlock( destFormat ) / 8;
+	uint8_t *tmpBuffer = NULL;
+	const size_t reservedSize = width * height * samples;
+	if( pic ) {
+		for( size_t index = 0; index < textureDesc.layerNum; index++ ) {
+			if( !pic[index] ) {
+				continue;
+			}
+			uint8_t *buf = pic[index];
+			if( !( flags & IT_CUBEMAP ) && ( flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) ) ) {
+				arrsetlen( tmpBuffer, reservedSize );
+				R_FlipTexture( buf, tmpBuffer, width, height, samples, ( flags & IT_FLIPX ) ? true : false, ( flags & IT_FLIPY ) ? true : false, ( flags & IT_FLIPDIAGONAL ) ? true : false );
+				buf = tmpBuffer;
+			}
+
+			uint32_t w = width;
+			uint32_t h = height;
+			for( size_t i = 0; i < mipSize; i++ ) {
+				texture_upload_desc_t uploadDesc = { .sliceNum = h, .rowPitch = w * destBlockSize, .arrayOffset = index, .mipOffset = i, .width = w, .height = h, .target = image->texture };
+				R_ResourceBeginCopyTexture( &uploadDesc );
+				for( size_t slice = 0; slice < height; slice++ ) {
+					const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
+					memset( &( (uint8_t *)uploadDesc.data )[dstRowStart], 255, uploadDesc.rowPitch );
+					for( size_t column = 0; column < width; column++ ) {
+						memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], &buf[( width * srcBlockSize * slice ) + ( column * srcBlockSize )],
+								min( srcBlockSize, destBlockSize ) );
+					}
+				}
+				R_ResourceEndCopyTexture( &uploadDesc );
+				w >>= 1;
+				h >>= 1;
+				if( w == 0 ) {
+					w = 1;
+				}
+				if( h == 0 ) {
+					h = 1;
+				}
+				R_MipMap( buf, w, h, samples, 1 );
+			}
+		}
+	}
+	arrfree( tmpBuffer );
+
+}
+
 struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int height, int flags, int minmipsize, int tags, int samples )
 {
-	struct image_s* image = __R_AllocImage( name );
+	struct image_s *image = __R_AllocImage( name );
 	image->width = width;
 	image->height = height;
 	image->layers = 1;
@@ -2008,108 +2129,81 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	image->upload_width = width;
 	image->upload_height = height;
 
-  const uint32_t mipSize = __R_calculateMipMapLevel( flags, width, height, minmipsize );
+	const uint32_t mipSize = __R_calculateMipMapLevel( flags, width, height, minmipsize );
 
-  enum texture_format_e srcFormat = __R_ResolveDataFormat( flags, samples);
-  enum texture_format_e destFormat = __R_ToSupportedFormat( srcFormat );
-  NriTextureDesc textureDesc = { 
-  								.width = width,
-								 .height = height,
-								 .depth = 1,
-								 .usageMask = __R_NRITextureUsageBits( flags ),
-								 .layerNum = ( flags & IT_CUBEMAP ) ? 6 : 1,
-								 .format = R_NRIFormat( destFormat ),
-								 .sampleNum = 1,
-								 .type =  NriTextureType_TEXTURE_2D,
-								 .mipNum = mipSize };
-  rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture );
+	enum texture_format_e srcFormat = __R_ResolveDataFormat( flags, samples );
+	enum texture_format_e destFormat = __R_ToSupportedFormat( srcFormat );
+	NriTextureDesc textureDesc = { .width = width,
+								   .height = height,
+								   .depth = 1,
+								   .usageMask = __R_NRITextureUsageBits( flags ),
+								   .layerNum = ( flags & IT_CUBEMAP ) ? 6 : 1,
+								   .format = R_NRIFormat( destFormat ),
+								   .sampleNum = 1,
+								   .type = NriTextureType_TEXTURE_2D,
+								   .mipNum = mipSize };
+	rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture );
 
-  NriResourceGroupDesc resourceGroupDesc = {
-  	.textureNum = 1,
-  	.textures = &image->texture,
-  	.memoryLocation = NriMemoryLocation_DEVICE,
-  };
-  const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
-  assert(allocationNum <= Q_ARRAY_COUNT(image->memory));
-  NRI_ABORT_ON_FAILURE(rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, image->memory ));
-  uint32_t srcBlockSize = R_FormatBitSizePerBlock( srcFormat ) / 8;
-  uint32_t destBlockSize = R_FormatBitSizePerBlock( destFormat ) / 8;
-  uint8_t* tmpBuffer = NULL;
-  const size_t reservedSize = width * height * samples;
-  if( pic ) {
-  	for( size_t index = 0; index < textureDesc.layerNum; index++ ) {
-  		if( !pic[index] ) {
-  			continue;
-  		}
-  		uint8_t *buf = pic[index];
-  		if( !( flags & IT_CUBEMAP ) && ( flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) ) ) {
-  			arrsetlen(tmpBuffer, reservedSize);
-  			R_FlipTexture( buf, tmpBuffer, width, height, samples, ( flags & IT_FLIPX ) ? true : false, ( flags & IT_FLIPY ) ? true : false, ( flags & IT_FLIPDIAGONAL ) ? true : false );
-  			buf = tmpBuffer;
-  		}
+	NriResourceGroupDesc resourceGroupDesc = {
+		.textureNum = 1,
+		.textures = &image->texture,
+		.memoryLocation = NriMemoryLocation_DEVICE,
+	};
+	const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
+	assert( allocationNum <= Q_ARRAY_COUNT( image->memory ) );
+	NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, image->memory ) );
+	uint32_t srcBlockSize = R_FormatBitSizePerBlock( srcFormat ) / 8;
+	uint32_t destBlockSize = R_FormatBitSizePerBlock( destFormat ) / 8;
+	uint8_t *tmpBuffer = NULL;
+	const size_t reservedSize = width * height * samples;
+	if( pic ) {
+		for( size_t index = 0; index < textureDesc.layerNum; index++ ) {
+			if( !pic[index] ) {
+				continue;
+			}
+			uint8_t *buf = pic[index];
+			if( !( flags & IT_CUBEMAP ) && ( flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) ) ) {
+				arrsetlen( tmpBuffer, reservedSize );
+				R_FlipTexture( buf, tmpBuffer, width, height, samples, ( flags & IT_FLIPX ) ? true : false, ( flags & IT_FLIPY ) ? true : false, ( flags & IT_FLIPDIAGONAL ) ? true : false );
+				buf = tmpBuffer;
+			}
 
-  		uint32_t w = width;
-  		uint32_t h = height;
-		for( size_t i = 0; i < mipSize; i++ ) {
-			texture_upload_desc_t uploadDesc = { 
-					.sliceNum = h, 
-					.rowPitch = w * destBlockSize, 
-					.arrayOffset = index, 
-					.mipOffset = i, 
-					.width = w, 
-					.height = h, 
-					.target = image->texture
-			};
-			R_ResourceBeginCopyTexture( &uploadDesc );
-  			for( size_t slice = 0; slice < height; slice++ ) {
-  				const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
-  				memset( &( (uint8_t *)uploadDesc.data )[dstRowStart], 255, uploadDesc.rowPitch );
-  				for( size_t column = 0; column < width; column++ ) {
-  					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], &buf[( width * srcBlockSize * slice) + ( column * srcBlockSize )],
-  							min( srcBlockSize, destBlockSize ) );
-  				}
-  			}
-  			R_ResourceEndCopyTexture( &uploadDesc );
-  			w >>= 1;
-  			h >>= 1;
-  			if( w == 0 ) {
-  				w = 1;
-  			}
-  			if( h == 0 ) {
-  				h = 1;
-  			}
-  			R_MipMap( buf, w, h, samples, 1 );
+			uint32_t w = width;
+			uint32_t h = height;
+			for( size_t i = 0; i < mipSize; i++ ) {
+				texture_upload_desc_t uploadDesc = { .sliceNum = h, .rowPitch = w * destBlockSize, .arrayOffset = index, .mipOffset = i, .width = w, .height = h, .target = image->texture };
+				R_ResourceBeginCopyTexture( &uploadDesc );
+				for( size_t slice = 0; slice < height; slice++ ) {
+					const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
+					memset( &( (uint8_t *)uploadDesc.data )[dstRowStart], 255, uploadDesc.rowPitch );
+					for( size_t column = 0; column < width; column++ ) {
+						memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], &buf[( width * srcBlockSize * slice ) + ( column * srcBlockSize )],
+								min( srcBlockSize, destBlockSize ) );
+					}
+				}
+				R_ResourceEndCopyTexture( &uploadDesc );
+				w >>= 1;
+				h >>= 1;
+				if( w == 0 ) {
+					w = 1;
+				}
+				if( h == 0 ) {
+					h = 1;
+				}
+				R_MipMap( buf, w, h, samples, 1 );
+			}
 		}
 	}
-  }
-  arrfree(tmpBuffer);
+	arrfree( tmpBuffer );
 	return image;
-}
-
-static void R_UnlinkPic( image_t *image )
-{
-	ri.Mutex_Lock( r_imagesLock );
-
-	// remove from linked active list
-	image->prev->next = image->next;
-	image->next->prev = image->prev;
-
-	// insert into linked free list
-	image->next = free_images;
-	free_images = image;
-
-	ri.Mutex_Unlock( r_imagesLock );
 }
 
 image_t *R_CreateImage( const char *name, int width, int height, int layers, int flags, int minmipsize, int tags, int samples )
 {
-	image_t *image;
-	int name_len = strlen( name );
-	unsigned hash;
+	const int name_len = strlen( name );
+	const unsigned hash = COM_SuperFastHash( ( const uint8_t *)name, name_len, name_len );
 
-	hash = COM_SuperFastHash( ( const uint8_t *)name, name_len, name_len );
-
-	image = R_LinkPic( hash );
+	image_t* image = R_LinkPic( hash );
 	if( !image ) {
 		ri.Com_Error( ERR_DROP, "R_LoadImage: r_numImages == MAX_GLIMAGES" );
 	}
@@ -2123,7 +2217,6 @@ image_t *R_CreateImage( const char *name, int width, int height, int layers, int
 	image->minmipsize = minmipsize;
 	image->samples = samples;
 	image->fbo = 0;
-	image->texnum = 0;
 	image->registrationSequence = rsh.registrationSequence;
 	image->tags = tags;
 	image->loaded = true;
@@ -2176,40 +2269,62 @@ image_t *R_Create3DImage( const char *name, int width, int height, int layers, i
 	return image;
 }
 
+
+static void R_ReleaseNriTexture(struct image_s* image) {
+	struct frame_cmd_buffer_s *cmd = R_ActiveFrameCmd();
+	if( image->texture ) {
+		arrpush( cmd->freeTextures, image->texture );
+	}
+
+	for( size_t i = 0; i < image->numAllocations; i++ ) {
+		arrpush( cmd->freeMemory, image->memory[i] );
+	}
+	image->numAllocations = 0;
+	image->texture = NULL;
+}
+
 static void R_FreeImage( struct image_s *image )
 {
-
-	rsh.nri.coreI.DestroyTexture(image->texture);
-	R_Free( image->name );
-	for(size_t i = 0; i < image->numAllocations; i++) {
-		rsh.nri.coreI.FreeMemory(image->memory[i]);
+	{
+		R_ReleaseNriTexture(image);
+		R_Free( image->name );
+		image->name = NULL;
+		image->registrationSequence = 0;
+		image->texture = NULL;
 	}
-	image->name = NULL;
-	image->registrationSequence = 0;
-	R_UnlinkPic( image );
+	{
+		ri.Mutex_Lock( r_imagesLock );
+		// remove from linked active list
+		image->prev->next = image->next;
+		image->next->prev = image->prev;
+
+		// insert into linked free list
+		image->next = free_images;
+		free_images = image;
+		ri.Mutex_Unlock( r_imagesLock );
+	}
 }
 
 /*
-* R_ReplaceImage
 *
-* FIXME: not thread-safe!
 */
 void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int flags, int minmipsize, int samples )
 {
 	assert( image );
-	assert( image->texnum );
+	assert( image->texture );
+	// R_BindImage( image );
 
-	R_BindImage( image );
+	// if( image->width != width || image->height != height || image->samples != samples )
+	// 	R_Upload32( QGL_CONTEXT_MAIN, pic, 0, 0, 0, width, height, flags, minmipsize,
+	// 	&(image->upload_width), &(image->upload_height), samples, false, false );
+	// else
+	// 	R_Upload32( QGL_CONTEXT_MAIN, pic, 0, 0, 0, width, height, flags, minmipsize,
+	// 	&(image->upload_width), &(image->upload_height), samples, true, false );
 
-	if( image->width != width || image->height != height || image->samples != samples )
-		R_Upload32( QGL_CONTEXT_MAIN, pic, 0, 0, 0, width, height, flags, minmipsize,
-		&(image->upload_width), &(image->upload_height), samples, false, false );
-	else
-		R_Upload32( QGL_CONTEXT_MAIN, pic, 0, 0, 0, width, height, flags, minmipsize,
-		&(image->upload_width), &(image->upload_height), samples, true, false );
-
-	if( !(image->flags & IT_NO_DATA_SYNC) )
-		R_DeferDataSync();
+	// if( !(image->flags & IT_NO_DATA_SYNC) )
+	// 	R_DeferDataSync();
+	R_ReleaseNriTexture(image);
+	__LoadImageInPlace(image, pic, width,height, flags, minmipsize, image->tags, samples);
 
 	image->flags = flags;
 	image->width = width;
@@ -2226,12 +2341,14 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, int width, int height )
 {
 	assert( image );
-	assert( image->texnum );
+	assert( image->texture );
 
-	R_BindImage( image );
+	__LoadImageLayer(image, layer, pic[0]);
 
-	R_Upload32( QGL_CONTEXT_MAIN, pic, layer, x, y, width, height, image->flags, image->minmipsize,
-		NULL, NULL, image->samples, true, true );
+
+	// R_BindImage( image );
+	//R_Upload32( QGL_CONTEXT_MAIN, pic, layer, x, y, width, height, image->flags, image->minmipsize,
+	//	NULL, NULL, image->samples, true, true );
 
 	if( !(image->flags & IT_NO_DATA_SYNC) )
 		R_DeferDataSync();
@@ -2245,7 +2362,7 @@ void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, 
 void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic )
 {
 	assert( image );
-	assert( image->texnum );
+	assert(image->texture);
 
 	R_BindImage( image );
 
@@ -2834,44 +2951,44 @@ static void R_GetViewportTextureSize( const int viewportWidth, const int viewpor
 void R_InitViewportTexture( image_t **texture, const char *name, int id, 
 	int viewportWidth, int viewportHeight, int size, int flags, int tags, int samples )
 {
-	int width, height;
-	image_t *t;
+	assert(false);
+ // image_t *t;
 
-	R_GetViewportTextureSize( viewportWidth, viewportHeight, size, flags, &width, &height );
+ // R_GetViewportTextureSize( viewportWidth, viewportHeight, size, flags, &width, &height );
 
-	// create a new texture or update the old one
-	if( !( *texture ) || ( *texture )->width != width || ( *texture )->height != height )
-	{
-		uint8_t *data = NULL;
+ // // create a new texture or update the old one
+ // if( !( *texture ) || ( *texture )->width != width || ( *texture )->height != height )
+ // {
+ // 	uint8_t *data = NULL;
 
-		if( !*texture ) {
-			char uploadName[128];
+ // 	if( !*texture ) {
+ // 		char uploadName[128];
 
-			Q_snprintfz( uploadName, sizeof( uploadName ), "***%s_%i***", name, id );
-			t = *texture = R_LoadImage( uploadName, &data, width, height, flags, 1, tags, samples );
-		}
-		else { 
-			t = *texture;
-			t->width = width;
-			t->height = height;
+ // 		Q_snprintfz( uploadName, sizeof( uploadName ), "***%s_%i***", name, id );
+ // 		t = *texture = R_LoadImage( uploadName, &data, width, height, flags, 1, tags, samples );
+ // 	}
+ // 	else { 
+ // 		t = *texture;
+ // 		t->width = width;
+ // 		t->height = height;
 
-			R_BindImage( t );
+ // 		R_BindImage( t );
 
-			R_Upload32( QGL_CONTEXT_MAIN, &data, 0, 0, 0, width, height, flags, 1,
-				&t->upload_width, &t->upload_height, t->samples, false, false );
-		}
+ // 		R_Upload32( QGL_CONTEXT_MAIN, &data, 0, 0, 0, width, height, flags, 1,
+ // 			&t->upload_width, &t->upload_height, t->samples, false, false );
+ // 	}
 
-		// update FBO, if attached
-		if( t->fbo ) {
-			RFB_UnregisterObject( t->fbo );
-			t->fbo = 0;
-		}
-		if( t->flags & IT_FRAMEBUFFER ) {
-			t->fbo = RFB_RegisterObject( t->upload_width, t->upload_height, ( tags & IMAGE_TAG_BUILTIN ) != 0,
-				( flags & IT_DEPTHRB ) != 0, ( flags & IT_STENCIL ) != 0 );
-			RFB_AttachTextureToObject( t->fbo, t );
-		}
-	}
+ // 	// update FBO, if attached
+ // 	if( t->fbo ) {
+ // 		RFB_UnregisterObject( t->fbo );
+ // 		t->fbo = 0;
+ // 	}
+ // 	if( t->flags & IT_FRAMEBUFFER ) {
+ // 		t->fbo = RFB_RegisterObject( t->upload_width, t->upload_height, ( tags & IMAGE_TAG_BUILTIN ) != 0,
+ // 			( flags & IT_DEPTHRB ) != 0, ( flags & IT_STENCIL ) != 0 );
+ // 		RFB_AttachTextureToObject( t->fbo, t );
+ // 	}
+ // }
 }
 
 /*

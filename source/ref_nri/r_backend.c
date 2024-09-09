@@ -226,17 +226,15 @@ void RB_FlushTextureCache( void )
 */
 void RB_BindImage( int tmu, const image_t *tex )
 {
-	GLuint texnum;
 
 	assert( tex != NULL );
-	assert( tex->texnum != 0 );
 
 	if( tex->missing ) {
 		tex = rsh.noTexture;
 	} else if( !tex->loaded ) {
 		// not yet loaded from disk
 		tex = tex->flags & IT_CUBEMAP ? rsh.whiteCubemapTexture : rsh.whiteTexture;
-	} else if( rsh.noTexture && ( r_nobind->integer && tex->texnum != 0 ) ) {
+	} else if( rsh.noTexture && ( r_nobind->integer && tex->texture != NULL ) ) {
 		// performance evaluation option
 		tex = rsh.noTexture;
 	}
@@ -246,15 +244,12 @@ void RB_BindImage( int tmu, const image_t *tex )
 		memset( rb.gl.currentTextures, 0, sizeof( rb.gl.currentTextures ) );
 	}
 
-	texnum = tex->texnum;
-	if( rb.gl.currentTextures[tmu] == texnum )
+	if( rb.gl.currentTextures[tmu] == tex)
 		return;
 
-	rb.gl.currentTextures[tmu] = texnum;
-
-	RB_SelectTextureUnit( tmu );
-
-	qglBindTexture( R_TextureTarget( tex->flags, NULL ), tex->texnum );
+	rb.gl.currentTextures[tmu] = tex;
+	assert(false);
+	//RB_SelectTextureUnit( tmu );
 
 	rb.stats.c_totalBinds++;
 }
