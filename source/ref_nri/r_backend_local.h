@@ -26,7 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 
-#define MAX_STREAM_VBO_VERTS		8192
+#define MAX_STREAM_VBO_VERTS	    100000	
 #define MAX_STREAM_VBO_ELEMENTS		MAX_STREAM_VBO_VERTS*6
 #define MAX_STREAM_VBO_TRIANGLES	MAX_STREAM_VBO_ELEMENTS/3
 
@@ -65,7 +65,7 @@ typedef struct
 {
 	mesh_vbo_t *vbo;
 	uint8_t *vertexData;
-	uint16_t* elementData;
+	uint16_t *elementData;
 	rbDrawElements_t drawElements;
 } rbDynamicStream_t;
 
@@ -146,9 +146,6 @@ typedef struct r_backend_s
 	int	currentRegProgram;
 	int currentRegProgramType;
 	r_glslfeat_t currentRegProgramFeatures;
-
-	struct r_ring_buffer_s dynVertexBuffer;
-	struct r_ring_buffer_s dynElementBuffer;
 
 	rbDynamicStream_t dynamicStreams[RB_DYN_STREAM_NUM];
 	rbDynamicDraw_t dynamicDraws[MAX_DYNAMIC_DRAWS];

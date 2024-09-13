@@ -28,9 +28,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "stb_ds.h"
 
-
-static bool enableDebugValidation = true;
-
 static ref_frontend_t rrf;
 static ref_cmdbuf_t *RF_GetNextAdapterFrame( ref_frontendAdapter_t *adapter );
 
@@ -150,36 +147,6 @@ static void RF_AdapterShutdown( ref_frontendAdapter_t *adapter )
 	GLimp_EnableMultithreadedRendering( false );
 
 	memset( adapter, 0, sizeof( *adapter ) );
-}
-
-/*
-* RF_AdapterInit
-*/
-static bool RF_AdapterInit( ref_frontendAdapter_t *adapter )
-{
-	adapter->maxfps = 0;
-	adapter->cmdPipe = RF_CreateCmdPipe( !glConfig.multithreading );
-
- // if( glConfig.multithreading ) {
- // 	adapter->frameLock = ri.Mutex_Create();
-
- // 	GLimp_EnableMultithreadedRendering( true );
-
- // 	if( !GLimp_SharedContext_Create( &adapter->GLcontext, NULL ) ) {
- // 		return false;
- // 	}
- // 	
- // 	adapter->shutdown = false;
- // 	adapter->thread = ri.Thread_Create( RF_AdapterThreadProc, adapter );
- // 	if( !adapter->thread ) {
- // 		GLimp_EnableMultithreadedRendering( false );
- // 		return false;
- // 	}
- // }
-
-	adapter->cmdPipe->Init( adapter->cmdPipe );
-
-	return true;
 }
 
 /*
@@ -472,6 +439,7 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
  // if( RF_AdapterInit( &rrf.adapter ) != true ) {
  // 	return rserr_unknown;
  // }
+	RB_Init();
 
 	return rserr_ok;	
 }
@@ -679,10 +647,14 @@ void RF_EndFrame( void )
 
 		NriClearDesc clearDesc = {};
 		clearDesc.value.color = ( NriColor ){ .f = {0.0f, 0.0f, 1.0f, 1.0f} };
+		clearDesc.planes = NriPlaneBits_COLOR;
 		NriRect rect3 = { 0, 0, backBufferDesc->width, backBufferDesc->height };
 		rsh.nri.coreI.CmdClearAttachments( frame->cmd, &clearDesc, 1, &rect3, 1 );
 	}
 	rsh.nri.coreI.CmdEndRendering( frame->cmd );
+	
+	// render previously batched 2D geometry, if any
+	RB_FlushDynamicMeshes(frame);
 	
 	{
 		NriTextureBarrierDesc textureBarrierDescs = {};
@@ -730,20 +702,17 @@ void RF_BeginRegistration( void )
 	// sync to the backend thread to ensure it's not using old assets for drawing
 	//RF_AdapterWait( &rrf.adapter );
 	R_BeginRegistration();
-	//rrf.adapter.cmdPipe->BeginRegistration( rrf.adapter.cmdPipe );
+	RB_BeginRegistration();	
+
+//rrf.adapter.cmdPipe->BeginRegistration( rrf.adapter.cmdPipe );
 	//RF_AdapterWait( &rrf.adapter );
 }
 
 void RF_EndRegistration( void )
 {
-	// sync to the backend thread to ensure it's not using old assets for drawing
-	//RF_AdapterWait( &rrf.adapter );
-	//R_EndRegistration();
-	//rrf.adapter.cmdPipe->EndRegistration( rrf.adapter.cmdPipe );
-	//RF_AdapterWait( &rrf.adapter );
-
-	//R_EndRegistration();
-
+	R_EndRegistration();
+	RB_EndRegistration();
+	//RFB_FreeUnusedObjects(); // todo: redo fbo logic
 	// reset the cache of custom colors, otherwise RF_SetCustomColor might fail to do anything
 	memset( rrf.customColors, 0, sizeof( rrf.customColors ) );
 }
@@ -791,7 +760,8 @@ void RF_RenderScene( const refdef_t *fd )
 void RF_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	const vec4_t color, const shader_t *shader )
 {
-	R_DrawRotatedStretchPic( x, y, w, h, s1, t1, s2, t2, 0, color, shader );
+	struct frame_cmd_buffer_s *cmd = R_ActiveFrameCmd();
+	R_DrawRotatedStretchPic(cmd, x, y, w, h, s1, t1, s2, t2, 0, color, shader );
 	//rrf.frame->DrawRotatedStretchPic( rrf.frame, x, y, w, h, s1, t1, s2, t2, 0, color, shader );
 }
 

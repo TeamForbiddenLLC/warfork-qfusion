@@ -32,6 +32,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../ref_base/ref_mod.h"
 
 #include "../qcommon/mod_fs.h"
+#include "r_gpu_ring_buffer.h"
 #include "r_resource_upload.h"
 #include "r_frame_cmd_buffer.h"
 
@@ -635,7 +636,7 @@ void		R_TranslateForEntity( const entity_t *e );
 
 void		R_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	const vec4_t color, const shader_t *shader );
-void		R_DrawRotatedStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
+void		R_DrawRotatedStretchPic(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	float angle, const vec4_t color, const shader_t *shader );
 void		R_UploadRawPic( image_t *texture, int cols, int rows, uint8_t *data );
 void		R_UploadRawYUVPic( image_t **yuvTextures, ref_img_plane_t *yuv );
@@ -793,6 +794,11 @@ typedef struct mesh_vbo_s
 	NriBuffer *indexBuffer;
 	NriBuffer *instanceBuffer;
 
+	// vbo if we want to use a ring buffer and usee this like an immedate buffer
+  struct r_ring_offset_alloc_s ringOffsetVertAlloc;	
+  struct r_ring_offset_alloc_s ringOffsetIndexAlloc;	
+  struct r_ring_offset_alloc_s ringOffsetInstAlloc;	
+
 	unsigned int		index;
 	int					registrationSequence;
 	vbo_tag_t			tag;
@@ -826,8 +832,22 @@ typedef struct mesh_vbo_s
 } mesh_vbo_t;
 
 void 		R_InitVBO( void );
-mesh_vbo_t *R_CreateMeshVBO( void *owner, int numVerts, int numElems, int numInstances,
-	vattribmask_t vattribs, vbo_tag_t tag, vattribmask_t halfFloatVattribs );
+
+struct mesh_vbo_desc_s {
+	vbo_tag_t tag;
+	void *owner;
+	
+	int numVerts;
+	int numElems;
+	int numInstances;
+
+	NriMemoryLocation memoryLocation;
+	vattribmask_t vattribs;
+	vattribmask_t halfFloatVattribs;
+};
+
+mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc); 
+	//void *owner, int numVerts, int numElems, int numInstances, vattribmask_t vattribs, vbo_tag_t tag, vattribmask_t halfFloatVattribs );
 void		R_ReleaseMeshVBO( mesh_vbo_t *vbo );
 void		R_TouchMeshVBO( mesh_vbo_t *vbo );
 mesh_vbo_t *R_GetVBOByIndex( int index );

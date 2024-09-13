@@ -205,9 +205,10 @@ static unsigned R_HandleEndFrameCmd( uint8_t *pcmd )
 static unsigned R_HandleDrawStretchPicCmd( uint8_t *pcmd )
 {
 	refCmdDrawStretchPic_t *cmd = (void *)pcmd;
-	R_DrawRotatedStretchPic( cmd->x, cmd->y, cmd->w, cmd->h, cmd->s1, cmd->t1, cmd->s2, cmd->t2,
-		cmd->angle, cmd->color, cmd->shader );
-	return sizeof( *cmd );
+	//R_DrawRotatedStretchPic( cmd->x, cmd->y, cmd->w, cmd->h, cmd->s1, cmd->t1, cmd->s2, cmd->t2,
+	//	cmd->angle, cmd->color, cmd->shader );
+	//return sizeof( *cmd );
+	return 0;
 }
 
 static unsigned R_HandleDrawStretchPolyCmd( uint8_t *pcmd )

@@ -56,9 +56,21 @@ static void Mod_SkeletalBuildStaticVBOForMesh( mskmesh_t *mesh )
 	if( mesh->skin.shader ) {
 		vattribs |= mesh->skin.shader->vattribs;
 	}
+	struct mesh_vbo_desc_s meshdesc = {
+		.tag = VBO_TAG_MODEL,
+		.owner = ( void * )mesh,
 
-	mesh->vbo = R_CreateMeshVBO( ( void * )mesh, 
-		mesh->numverts, mesh->numtris * 3, 0, vattribs, VBO_TAG_MODEL, vattribs );
+		.numVerts = mesh->numverts,
+		.numElems = mesh->numtris * 3,
+		.numInstances = 0,
+		
+		.memoryLocation = NriMemoryLocation_DEVICE,
+		.vattribs = vattribs,
+		.halfFloatVattribs = vattribs
+	};
+	mesh->vbo = R_CreateMeshVBO(&meshdesc);
+ // R_CreateMeshVBO( ( void * )mesh, 
+ // 	mesh->numverts, mesh->numtris * 3, 0, vattribs, VBO_TAG_MODEL, vattribs );
 
 	if( !mesh->vbo ) {
 		return;
@@ -1358,7 +1370,7 @@ void R_DrawSkeletalSurf( const entity_t *e, const shader_t *shader, const mfog_t
 
 		dynamicMesh.stArray = skmesh->stArray;
 
-		RB_AddDynamicMesh( e, shader, fog, portalSurface, shadowBits, &dynamicMesh, GL_TRIANGLES, 0.0f, 0.0f );
+		RB_AddDynamicMesh( NULL, e, shader, fog, portalSurface, shadowBits, &dynamicMesh, GL_TRIANGLES, 0.0f, 0.0f );
 
 		RB_FlushDynamicMeshes(NULL);
 	}

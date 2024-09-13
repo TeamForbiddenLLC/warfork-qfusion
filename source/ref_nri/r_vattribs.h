@@ -49,6 +49,7 @@ typedef enum vattrib_e
 
 #define VATTRIB_BIT(va)		(1<<(va))
 
+
 typedef enum vattribbit_e
 {
 	VATTRIB_POSITION_BIT	= VATTRIB_BIT(0),

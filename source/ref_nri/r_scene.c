@@ -548,7 +548,7 @@ static void R_RenderDebugBounds( void )
 			Vector4Copy( color, colors[j] );
 		}
 
-		RB_AddDynamicMesh( rsc.worldent, rsh.whiteShader, NULL, NULL, 0, &mesh, GL_LINES, 0.0f, 0.0f );
+		RB_AddDynamicMesh(NULL, rsc.worldent, rsh.whiteShader, NULL, NULL, 0, &mesh, GL_LINES, 0.0f, 0.0f );
 	}
 
 	RB_FlushDynamicMeshes(NULL);

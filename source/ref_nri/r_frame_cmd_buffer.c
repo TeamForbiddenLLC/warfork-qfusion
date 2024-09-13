@@ -16,7 +16,7 @@ void FR_CmdSetScissor( struct frame_cmd_buffer_s *cmd, int x, int y, int w, int 
 	cmd->cmdState.scissor.h = h;
 }
 
-void FR_CmdSetVertexInput( struct frame_cmd_buffer_s *cmd, uint32_t slot, NriBuffer *buffer, uint64_t offset )
+void FR_CmdSetVertexBuffer( struct frame_cmd_buffer_s *cmd, uint32_t slot, NriBuffer *buffer, uint64_t offset )
 {
 	assert( slot < MAX_VERTEX_BINDINGS );
 	if( cmd->cmdState.vertexBuffers[slot] == buffer && cmd->cmdState.offsets[slot] == offset ) {

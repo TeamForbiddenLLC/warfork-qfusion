@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+#include "r_gpu_ring_buffer.h"
 #include "r_local.h"
 #include "qmesa.h"
 #include "r_resource_upload.h"
@@ -85,7 +86,7 @@ void R_InitVBO( void )
 		r_vbohandles[i].vbo = &r_mesh_vbo[i];
 	}
 	for( i = 0; i < MAX_MESH_VERTEX_BUFFER_OBJECTS - 1; i++ ) {
-		r_vbohandles[i].next = &r_vbohandles[i + 1];
+		r_vbohandles[i].next = &r_vbohandles[i+1];
 	}
 }
 
@@ -97,12 +98,14 @@ void R_InitVBO( void )
  *
  * Tag allows vertex buffer objects to be grouped and released simultaneously.
  */
-mesh_vbo_t *R_CreateMeshVBO( void *owner, int numVerts, int numElems, int numInstances, vattribmask_t vattribs, vbo_tag_t tag, vattribmask_t halfFloatVattribs )
+mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 {
-	assert( numVerts > 0 );
-	assert( numElems > 0 );
+	assert( desc );
+	assert( desc->numVerts > 0 );
+	assert( desc->numElems > 0 );
 
 	vattribbit_t lmattrbit;
+	vattribbit_t halfFloatVattribs = desc->halfFloatVattribs; 
 	if( !( halfFloatVattribs & VATTRIB_POSITION_BIT ) ) {
 		halfFloatVattribs &= ~( VATTRIB_AUTOSPRITE_BIT );
 	}
@@ -115,31 +118,40 @@ mesh_vbo_t *R_CreateMeshVBO( void *owner, int numVerts, int numElems, int numIns
 	halfFloatVattribs &= ~VATTRIB_INSTANCES_BITS;
 
 	size_t vertexByteStride = 0;
-	const size_t instanceByteStride = numInstances * sizeof( instancePoint_t );
-	const bool hasInstanceBuffer = ( ( vattribs & VATTRIB_INSTANCES_BITS ) == VATTRIB_INSTANCES_BITS ) && numInstances;
+	const size_t instanceByteStride = desc->numInstances * sizeof( instancePoint_t );
+	const bool hasInstanceBuffer = ( ( desc->vattribs & VATTRIB_INSTANCES_BITS ) == VATTRIB_INSTANCES_BITS ) && desc->numInstances;
 
 	vbohandle_t *vboh = r_free_vbohandles;
 	mesh_vbo_t *vbo = &r_mesh_vbo[vboh->index];
+	memset( vbo, 0, sizeof( *vbo ) );
+	vbo->index = vboh->index + 1;
+	r_free_vbohandles = vboh->next;
+
+	// link to the list of active vbo handles
+	vboh->prev = &r_vbohandles_headnode;
+	vboh->next = r_vbohandles_headnode.next;
+	vboh->next->prev = vboh;
+	vboh->prev->next = vboh;
 
 	// vertex buffer
 	{
 		vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_POSITION_BIT, halfFloatVattribs ) * 4;
 		// normals data
-		if( vattribs & VATTRIB_NORMAL_BIT ) {
+		if( desc->vattribs & VATTRIB_NORMAL_BIT ) {
 			assert( !( vertexByteStride & 3 ) );
 			vbo->normalsOffset = vertexByteStride;
 			vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_NORMAL_BIT, halfFloatVattribs ) * 4;
 		}
 
 		// s-vectors (tangent vectors)
-		if( vattribs & VATTRIB_SVECTOR_BIT ) {
+		if( desc->vattribs & VATTRIB_SVECTOR_BIT ) {
 			assert( !( vertexByteStride & 3 ) );
 			vbo->sVectorsOffset = vertexByteStride;
 			vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_SVECTOR_BIT, halfFloatVattribs ) * 4;
 		}
 
 		// texture coordinates
-		if( vattribs & VATTRIB_TEXCOORDS_BIT ) {
+		if( desc->vattribs & VATTRIB_TEXCOORDS_BIT ) {
 			assert( !( vertexByteStride & 3 ) );
 			vbo->stOffset = vertexByteStride;
 			vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_TEXCOORDS_BIT, halfFloatVattribs ) * 2;
@@ -148,17 +160,17 @@ mesh_vbo_t *R_CreateMeshVBO( void *owner, int numVerts, int numElems, int numIns
 		// lightmap texture coordinates
 		lmattrbit = VATTRIB_LMCOORDS0_BIT;
 		for( size_t i = 0; i < ( MAX_LIGHTMAPS + 1 ) / 2; i++ ) {
-			if( !( vattribs & lmattrbit ) ) {
+			if( !( desc->vattribs & lmattrbit ) ) {
 				break;
 			}
 			assert( !( vertexByteStride & 3 ) );
 			vbo->lmstOffset[i] = vertexByteStride;
-			vbo->lmstSize[i] = ( vattribs & ( lmattrbit << 1 ) ) ? 4 : 2;
+			vbo->lmstSize[i] = ( desc->vattribs & ( lmattrbit << 1 ) ) ? 4 : 2;
 			vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_LMCOORDS0_BIT, halfFloatVattribs ) * vbo->lmstSize[i];
 			lmattrbit = (vattribbit_t)( (vattribmask_t)lmattrbit << 2 );
 		}
 		// bones data for skeletal animation
-		if( ( vattribs & VATTRIB_BONES_BITS ) == VATTRIB_BONES_BITS ) {
+		if( ( desc->vattribs & VATTRIB_BONES_BITS ) == VATTRIB_BONES_BITS ) {
 			assert( SKM_MAX_WEIGHTS == 4 );
 
 			assert( !( vertexByteStride & 3 ) );
@@ -173,21 +185,21 @@ mesh_vbo_t *R_CreateMeshVBO( void *owner, int numVerts, int numElems, int numIns
 		// autosprites
 		// FIXME: autosprite2 requires waaaay too much data for such a trivial
 		// transformation..
-		if( ( vattribs & VATTRIB_AUTOSPRITE_BIT ) == VATTRIB_AUTOSPRITE_BIT ) {
+		if( ( desc->vattribs & VATTRIB_AUTOSPRITE_BIT ) == VATTRIB_AUTOSPRITE_BIT ) {
 			assert( !( vertexByteStride & 3 ) );
 			vbo->spritePointsOffset = vertexByteStride;
 			vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_AUTOSPRITE_BIT, halfFloatVattribs ) * 4;
 		}
-		NriBufferDesc vertexBufferDesc = { .size = vertexByteStride * numVerts, .usageMask = NriBufferUsageBits_VERTEX_BUFFER };
+		NriBufferDesc vertexBufferDesc = { .size = vertexByteStride * desc->numVerts, .usageMask = NriBufferUsageBits_VERTEX_BUFFER };
 		rsh.nri.coreI.CreateBuffer( rsh.nri.device, &vertexBufferDesc, &vbo->vertexBuffer );
 	}
 
-	NriBufferDesc instanceBufferDesc = { .size = numElems * sizeof( elem_t ), .usageMask = NriBufferUsageBits_INDEX_BUFFER };
-	rsh.nri.coreI.CreateBuffer( rsh.nri.device, &instanceBufferDesc, &vbo->indexBuffer );
+	NriBufferDesc indexBufferDesc = { .size = desc->numElems * sizeof( elem_t ), .usageMask = NriBufferUsageBits_INDEX_BUFFER };
+	rsh.nri.coreI.CreateBuffer( rsh.nri.device, &indexBufferDesc, &vbo->indexBuffer );
 
 	if( hasInstanceBuffer ) {
 		vbo->instancesOffset = instanceByteStride;
-		NriBufferDesc instanceBufferDesc = { .size = instanceByteStride * numInstances, .usageMask = NriBufferUsageBits_CONSTANT_BUFFER };
+		NriBufferDesc instanceBufferDesc = { .size = instanceByteStride * desc->numInstances, .usageMask = NriBufferUsageBits_CONSTANT_BUFFER };
 		rsh.nri.coreI.CreateBuffer( rsh.nri.device, &instanceBufferDesc, &vbo->instanceBuffer );
 	}
 
@@ -200,31 +212,40 @@ mesh_vbo_t *R_CreateMeshVBO( void *owner, int numVerts, int numElems, int numIns
 	NriResourceGroupDesc resourceGroupDesc = {
 		.bufferNum = 2 + ( hasInstanceBuffer ? 1 : 0 ),
 		.buffers = nriBuffers,
-		.memoryLocation = NriMemoryLocation_DEVICE,
+		.memoryLocation = desc->memoryLocation,
 	};
 	const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
 	vbo->numAllocations = allocationNum;
-	vbo->numAllocations = allocationNum;
 	R_VK_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, vbo->memory ) );
 
-	r_free_vbohandles = vboh->next;
+	if(hasInstanceBuffer) {
+		vbo->ringOffsetInstAlloc = (struct r_ring_offset_alloc_s){
+			.currentOffset = 0,
+			.maxSize = instanceByteStride * desc->numInstances,
+			.bufferAlignment = 1
+		};
+	}
 
-	// link to the list of active vbo handles
-	vboh->prev = &r_vbohandles_headnode;
-	vboh->next = r_vbohandles_headnode.next;
-	vboh->next->prev = vboh;
-	vboh->prev->next = vboh;
+	vbo->ringOffsetIndexAlloc = (struct r_ring_offset_alloc_s){
+		.currentOffset = 0,
+		.maxSize = desc->numElems * sizeof( elem_t ),
+		.bufferAlignment = 1
+	};
+	vbo->ringOffsetVertAlloc = (struct r_ring_offset_alloc_s){
+		.currentOffset = 0,
+		.maxSize =  vertexByteStride * desc->numVerts,
+		.bufferAlignment = 1
+	};
 
 	r_num_active_vbos++;
 
 	vbo->registrationSequence = rsh.registrationSequence;
 	vbo->vertexSize = vertexByteStride;
-	vbo->numVerts = numVerts;
-	vbo->numElems = numElems;
-	vbo->owner = owner;
-	vbo->index = vboh->index + 1;
-	vbo->tag = tag;
-	vbo->vertexAttribs = vattribs;
+	vbo->numVerts = desc->numVerts;
+	vbo->numElems = desc->numElems;
+	vbo->owner = desc->owner;
+	vbo->tag = desc->tag;
+	vbo->vertexAttribs = desc->vattribs;
 	vbo->halfFloatAttribs = halfFloatVattribs;
 	return vbo;
 }
@@ -275,14 +296,15 @@ void R_ReleaseMeshVBO( mesh_vbo_t *vbo )
 		rsh.nri.coreI.DestroyBuffer( vbo->vertexBuffer );
 	}
 	if( vbo->indexBuffer ) {
-		rsh.nri.coreI.DestroyBuffer( vbo->vertexBuffer );
+		rsh.nri.coreI.DestroyBuffer( vbo->indexBuffer );
 	}
 	if( vbo->instanceBuffer ) {
-		rsh.nri.coreI.DestroyBuffer( vbo->vertexBuffer );
+		rsh.nri.coreI.DestroyBuffer( vbo->instanceBuffer );
 	}
 	for( size_t i = 0; i < vbo->numAllocations; i++ ) {
 		rsh.nri.coreI.FreeMemory( vbo->memory[i] );
 	}
+	printf("freeing index: %d \n", vbo->index -1);
 
 	if( vbo->index >= 1 && vbo->index <= MAX_MESH_VERTEX_BUFFER_OBJECTS ) {
 		vbohandle_t *vboh = &r_vbohandles[vbo->index - 1];
