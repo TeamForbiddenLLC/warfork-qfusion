@@ -76,7 +76,7 @@ static bool R_AllocTemporaryBuffer( resource_command_set_t *set, size_t reqSize,
 	if( __R_AllocFromStageBuffer( set, reqSize, res ) ) {
 		return true;
 	}
-	Com_Printf( "Creating temporary buffer ran out space in staging" );
+	//Com_Printf( "Creating temporary buffer ran out space in staging" );
 	temporary_resource_buf_t temp = {};
 	NriBufferDesc bufferDesc = { .size = reqSize };
 	NRI_ABORT_ON_FAILURE( backend->coreI.CreateBuffer( backend->device, &bufferDesc, &temp.buffer ) );

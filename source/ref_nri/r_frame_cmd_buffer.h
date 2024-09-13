@@ -16,6 +16,7 @@ struct frame_cmd_vertex_input_s {
 	uint64_t offset;
 };
 
+
 // the serialized state of the pipeline
 struct frame_cmd_state_s {
 	uint32_t viewport[4];
@@ -29,6 +30,7 @@ struct frame_cmd_state_s {
   
   NriBuffer* vertexBuffers[MAX_VERTEX_BINDINGS];
   uint64_t offsets[MAX_VERTEX_BINDINGS];
+
 	uint32_t dirtyVertexBuffers;
 
 	// binding
@@ -46,9 +48,7 @@ struct frame_tex_buffers_s {
 
 	size_t memoryLen;
 	NriMemory* memory[8];
-
 };
-
 
 struct draw_element_s {
 	uint32_t firstVert;
@@ -105,8 +105,8 @@ struct frame_buffer_req_s {
 //// this is basd off the additiona/frame
 //struct block_buffer_pool_req_s FR_ShaderFrameReqCB( struct frame_cmd_buffer_s *cmd, const struct FrameCB* cb);
 
-// cmd buffer 
-void FR_CmdSetVertexInput( struct frame_cmd_buffer_s *cmd, uint32_t slot, NriBuffer *buffer, uint64_t offset );
+// cmd buffer
+void FR_CmdSetVertexBuffer( struct frame_cmd_buffer_s *cmd, uint32_t slot, NriBuffer *buffer, uint64_t offset );
 void FR_CmdSetScissor(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h );
 void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint32_t instanceNum, uint32_t baseIndex, uint32_t baseVertex, uint32_t baseInstance );
 #endif

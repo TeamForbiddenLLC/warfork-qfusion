@@ -313,7 +313,7 @@ void R_BatchSpriteSurf( const entity_t *e, const shader_t *shader, const mfog_t 
 	mesh.colorsArray[1] = NULL;
 	mesh.sVectorsArray = NULL;
 
-	RB_AddDynamicMesh( e, shader, fog, portalSurface, 0, &mesh, GL_TRIANGLES, 0.0f, 0.0f );
+	RB_AddDynamicMesh( NULL, e, shader, fog, portalSurface, 0, &mesh, GL_TRIANGLES, 0.0f, 0.0f );
 }
 
 /*
@@ -367,7 +367,20 @@ mesh_vbo_t *R_InitNullModelVBO( void )
 	vattribmask_t vattribs = VATTRIB_POSITION_BIT | VATTRIB_TEXCOORDS_BIT | VATTRIB_COLOR0_BIT;
 	mesh_vbo_t *vbo;
 	
-	vbo = R_CreateMeshVBO( &rf, 6, 6, 0, vattribs, VBO_TAG_NONE, vattribs );
+	struct mesh_vbo_desc_s meshdesc = {
+		.tag = VBO_TAG_NONE,
+		.owner = ( void * )&rf,
+
+		.numVerts = 6,
+		.numElems = 6,
+		.numInstances = 0,
+		
+		.memoryLocation = NriMemoryLocation_DEVICE,
+		.vattribs = vattribs,
+		.halfFloatVattribs = vattribs
+	};
+	vbo = R_CreateMeshVBO( &meshdesc); 
+	//vbo = R_CreateMeshVBO( &rf, 6, 6, 0, vattribs, VBO_TAG_NONE, vattribs );
 	if( !vbo ) {
 		return NULL;
 	}
@@ -491,7 +504,7 @@ void R_Set2DMode( bool enable )
 /*
 * R_DrawRotatedStretchPic
 */
-void R_DrawRotatedStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, float angle, 
+void R_DrawRotatedStretchPic(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, float angle, 
 	const vec4_t color, const shader_t *shader )
 {
 	int bcolor;
@@ -548,7 +561,7 @@ void R_DrawRotatedStretchPic( int x, int y, int w, int h, float s1, float t1, fl
 		}
 	}
 
-	RB_AddDynamicMesh( NULL, shader, NULL, NULL, 0, &pic_mesh, GL_TRIANGLES, 0.0f, 0.0f );
+	RB_AddDynamicMesh( cmd, NULL, shader, NULL, NULL, 0, &pic_mesh, GL_TRIANGLES, 0.0f, 0.0f );
 }
 
 /*
@@ -557,7 +570,7 @@ void R_DrawRotatedStretchPic( int x, int y, int w, int h, float s1, float t1, fl
 void R_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	const vec4_t color, const shader_t *shader )
 {
-	R_DrawRotatedStretchPic( x, y, w, h, s1, t1, s2, t2, 0, color, shader );
+	R_DrawRotatedStretchPic(NULL, x, y, w, h, s1, t1, s2, t2, 0, color, shader );
 }
 
 /*
@@ -675,7 +688,7 @@ void R_DrawStretchRawYUVBuiltin( int x, int y, int w, int h,
 		t1 += v_ofs, t2 -= v_ofs;
 	}
 
-	R_DrawRotatedStretchPic( x, y, w, h, s1, t1, s2, t2, 0, colorWhite, &s );
+	R_DrawRotatedStretchPic( NULL, x, y, w, h, s1, t1, s2, t2, 0, colorWhite, &s );
 
 	RB_FlushDynamicMeshes(NULL);
 }
@@ -715,7 +728,7 @@ void R_DrawStretchQuick( int x, int y, int w, int h, float s1, float t1, float s
 	p.flags = blendMask;
 	p.program_type = program_type;
 
-	R_DrawRotatedStretchPic( x, y, w, h, s1, t1, s2, t2, 0, color, &s );
+	R_DrawRotatedStretchPic(NULL, x, y, w, h, s1, t1, s2, t2, 0, color, &s );
 
 	RB_FlushDynamicMeshes(NULL);
 }
@@ -811,9 +824,21 @@ mesh_vbo_t *R_InitPostProcessingVBO( void )
 	elem_t elems[6] = { 0, 1, 2, 0, 2, 3 };
 	mesh_t mesh;
 	vattribmask_t vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT;
-	mesh_vbo_t *vbo;
 	
-	vbo = R_CreateMeshVBO( &rf, 4, 6, 0, vattribs, VBO_TAG_NONE, vattribs );
+	struct mesh_vbo_desc_s meshdesc = {
+		.tag = VBO_TAG_NONE,
+		.owner = ( void * )&rf,
+
+		.numVerts = 4,
+		.numElems = 6,
+		.numInstances = 0,
+		
+		.memoryLocation = NriMemoryLocation_DEVICE,
+		.vattribs = vattribs,
+		.halfFloatVattribs = vattribs
+	};
+	mesh_vbo_t *vbo = R_CreateMeshVBO( &meshdesc); 
+	//vbo = R_CreateMeshVBO( &rf, 4, 6, 0, vattribs, VBO_TAG_NONE, vattribs );
 	if( !vbo ) {
 		return NULL;
 	}

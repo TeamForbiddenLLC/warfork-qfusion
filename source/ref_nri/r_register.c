@@ -417,9 +417,9 @@ void R_BeginRegistration( void )
 
 	R_InitVolatileAssets();
 
-	R_DeferDataSync();
+	//R_DeferDataSync();
 
-	R_DataSync();
+	//R_DataSync();
 }
 
 /*

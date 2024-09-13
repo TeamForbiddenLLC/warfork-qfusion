@@ -29,6 +29,8 @@ const static uint32_t UBOBlockerBufferAlignmentReq = 256;
 #define DESCRIPTOR_MAX_BINDINGS 32
 #define MAX_VERTEX_BINDINGS 24
 #define MAX_PIPELINE_ATTACHMENTS 5
+#define MAX_STREAMS 8 
+#define MAX_ATTRIBUTES 32
 
 #define BINDING_SETS_PER_POOL 24
 
@@ -91,7 +93,13 @@ bool R_InitNriBackend( const nri_init_desc_t *init, struct nri_backend_s *backen
 void R_NRI_CallbackMessage( NriMessage msg, const char *file, uint32_t line, const char *message, void *userArg );
 NriFormat R_NRIFormat( enum texture_format_e format );
 
+
 struct pipeline_layout_config_s {
+	size_t numStreams;
+	NriVertexStreamDesc streams[MAX_STREAMS];
+	size_t numAttribs;
+	NriVertexAttributeDesc attribs[MAX_ATTRIBUTES];
+
 	vattribmask_t attrib;
 	vattribmask_t halfAttrib;
 	NriCullMode cullMode;

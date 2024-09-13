@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+#include "NRIDescs.h"
 #include "r_gpu_ring_buffer.h"
 #include "r_local.h"
 #include "r_backend_local.h"
@@ -42,15 +43,19 @@ static inline size_t meshOffsetVBO( mesh_vbo_t *vbo, enum vattrib_e attrib )
 		case VATTRIB_SVECTOR:
 			return vbo->sVectorsOffset;
 		case VATTRIB_COLOR0:
+			return vbo->colorsOffset[0];
 		case VATTRIB_TEXCOORDS:
+			return vbo->stOffset;
 		case VATTRIB_SPRITEPOINT:
+			return vbo->spritePointsOffset;
 		case VATTRIB_BONESINDICES:
+			return vbo->bonesIndicesOffset;
 		case VATTRIB_BONESWEIGHTS:
+			return vbo->bonesWeightsOffset;
 		case VATTRIB_LMLAYERS0123:
+			return vbo->lmlayersOffset[0];
 		case VATTRIB_INSTANCE_QUAT:
 		case VATTRIB_INSTANCE_XYZS:
-			assert( false );
-			break;
 		default:
 			break;
 	}
@@ -67,7 +72,7 @@ void RB_Init( void )
 	rb.mempool = R_AllocPool( NULL, "Rendering Backend" );
 
 	// set default OpenGL state
-	RB_SetGLDefaults();
+	//RB_SetGLDefaults();
 	rb.gl.scissor[2] = glConfig.width;
 	rb.gl.scissor[3] = glConfig.height;
 
@@ -95,24 +100,22 @@ void RB_Shutdown( void )
 */
 void RB_BeginRegistration( void )
 {
-	int i;
-
 	RB_RegisterStreamVBOs();
 	RB_BindVBO( 0, 0 );
 
-	// unbind all texture targets on all TMUs
-	for( i = MAX_TEXTURE_UNITS - 1; i >= 0; i-- ) {
-		RB_SelectTextureUnit( i );
+	//// unbind all texture targets on all TMUs
+	//for( i = MAX_TEXTURE_UNITS - 1; i >= 0; i-- ) {
+	//	RB_SelectTextureUnit( i );
 
-		qglBindTexture( GL_TEXTURE_CUBE_MAP_ARB, 0 );
-		if( glConfig.ext.texture_array )
-			qglBindTexture( GL_TEXTURE_2D_ARRAY_EXT, 0 );
-		if( glConfig.ext.texture3D )
-			qglBindTexture( GL_TEXTURE_3D_EXT, 0 );
-		qglBindTexture( GL_TEXTURE_2D, 0 );
-	}
+	//	qglBindTexture( GL_TEXTURE_CUBE_MAP_ARB, 0 );
+	//	if( glConfig.ext.texture_array )
+	//		qglBindTexture( GL_TEXTURE_2D_ARRAY_EXT, 0 );
+	//	if( glConfig.ext.texture3D )
+	//		qglBindTexture( GL_TEXTURE_3D_EXT, 0 );
+	//	qglBindTexture( GL_TEXTURE_2D, 0 );
+	//}
 
-	RB_FlushTextureCache();
+	//RB_FlushTextureCache();
 }
 
 /*
@@ -798,24 +801,37 @@ void RB_BlitFrameBufferObject( int dest, int bitMask, int mode )
 */
 void RB_RegisterStreamVBOs( void )
 {
-	int i;
-	rbDynamicStream_t *stream;
 	vattribmask_t vattribs[RB_VBO_NUM_STREAMS] = {
 		VATTRIBS_MASK & ~VATTRIB_INSTANCES_BITS,
 		COMPACT_STREAM_VATTRIBS
 	};
 
 	// allocate stream VBO's
-	for( i = 0; i < RB_VBO_NUM_STREAMS; i++ ) {
-		stream = &rb.dynamicStreams[i];
+	for(size_t i = 0; i < RB_VBO_NUM_STREAMS; i++ ) {
+		rbDynamicStream_t *stream = &rb.dynamicStreams[i];
 		if( stream->vbo ) {
 			R_TouchMeshVBO( stream->vbo );
 			continue;
 		}
-		stream->vbo = R_CreateMeshVBO( &rb,
-			MAX_STREAM_VBO_VERTS, MAX_STREAM_VBO_ELEMENTS, 0,
-			vattribs[i], VBO_TAG_STREAM, VATTRIB_TEXCOORDS_BIT|VATTRIB_NORMAL_BIT|VATTRIB_SVECTOR_BIT );
+		struct mesh_vbo_desc_s meshdesc = {
+			.tag = VBO_TAG_STREAM,
+			.owner = ( void * )&rb,
+
+			.numVerts = MAX_STREAM_VBO_VERTS,
+			.numElems = MAX_STREAM_VBO_ELEMENTS,
+			.numInstances = 0,
+			
+			.memoryLocation = NriMemoryLocation_DEVICE_UPLOAD,
+			.vattribs = vattribs[i],
+			.halfFloatVattribs = VATTRIB_TEXCOORDS_BIT|VATTRIB_NORMAL_BIT|VATTRIB_SVECTOR_BIT
+		};
+		stream->vbo = R_CreateMeshVBO( &meshdesc );
+		//stream->vbo = R_CreateMeshVBO( &rb,
+		//	MAX_STREAM_VBO_VERTS, MAX_STREAM_VBO_ELEMENTS, 0,
+		//	vattribs[i], VBO_TAG_STREAM, VATTRIB_TEXCOORDS_BIT|VATTRIB_NORMAL_BIT|VATTRIB_SVECTOR_BIT );
+
 		stream->vertexData = RB_Alloc( MAX_STREAM_VBO_VERTS * stream->vbo->vertexSize );
+		stream->elementData = RB_Alloc( MAX_STREAM_VBO_ELEMENTS * sizeof( elem_t ) );
 	}
 }
 
@@ -851,124 +867,126 @@ void RB_BindVBO( int id, int primitive )
 	RB_BindElementArrayBuffer( vbo->elemId );
 }
 
-void RB_AddDynamicMesh( const entity_t *entity, const shader_t *shader,
+void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, const shader_t *shader,
 	const struct mfog_s *fog, const struct portalSurface_s *portalSurface, unsigned int shadowBits,
 	const struct mesh_s *mesh, int primitive, float x_offset, float y_offset )
 {
-	int numVerts = mesh->numVerts, numElems = mesh->numElems;
-	bool trifan = false;
-	int scissor[4];
-	rbDynamicDraw_t *prev = NULL, *draw;
-	bool merge = false;
-	vattribmask_t vattribs;
-	int destVertOffset;
+  int numVerts = mesh->numVerts, numElems = mesh->numElems;
+  bool trifan = false;
+  int scissor[4];
+  rbDynamicDraw_t *prev = NULL, *draw;
+  bool merge = false;
+  vattribmask_t vattribs;
+  int destVertOffset;
 
-	// can't (and shouldn't because that would break batching) merge strip draw calls
-	// (consider simply disabling merge later in this case if models with tristrips are added in the future, but that's slow)
-	assert( ( primitive == GL_TRIANGLES ) || ( primitive == GL_LINES ) );
+  // can't (and shouldn't because that would break batching) merge strip draw calls
+  // (consider simply disabling merge later in this case if models with tristrips are added in the future, but that's slow)
+  assert( ( primitive == GL_TRIANGLES ) || ( primitive == GL_LINES ) );
 
-	if( !numElems ) {
-		numElems = ( max( numVerts, 2 ) - 2 ) * 3;
-		trifan = true;
-	}
-	if( !numVerts || !numElems || ( numVerts > MAX_STREAM_VBO_VERTS ) || ( numElems > MAX_STREAM_VBO_ELEMENTS ) ) {
-		return;
-	}
+  if( !numElems ) {
+  	numElems = ( max( numVerts, 2 ) - 2 ) * 3;
+  	trifan = true;
+  }
+  if( !numVerts || !numElems || ( numVerts > MAX_STREAM_VBO_VERTS ) || ( numElems > MAX_STREAM_VBO_ELEMENTS ) ) {
+  	return;
+  }
 
-	RB_GetScissor( &scissor[0], &scissor[1], &scissor[2], &scissor[3] );
+  RB_GetScissor( &scissor[0], &scissor[1], &scissor[2], &scissor[3] );
 
-	if( rb.numDynamicDraws ) {
-		prev = &rb.dynamicDraws[rb.numDynamicDraws - 1];
-	}
-	
-	enum dynamic_stream_e streamId = RB_DYN_STREAM_DEFAULT;
-	if( prev ) {
-		int prevRenderFX = 0, renderFX = 0;
-		if( prev->entity ) {
-			prevRenderFX = prev->entity->renderfx;
-		}
-		if( entity ) {
-			renderFX = entity->renderfx;
-		}
-		if( ( ( shader->flags & SHADER_ENTITY_MERGABLE ) || ( prev->entity == entity ) ) && ( prevRenderFX == renderFX ) &&
-			( prev->shader == shader ) && ( prev->fog == fog ) && ( prev->portalSurface == portalSurface ) &&
-			( ( prev->shadowBits && shadowBits ) || ( !prev->shadowBits && !shadowBits ) ) ) {
-			// don't rebind the shader to get the VBO in this case
-			streamId = prev->dynamicStreamIdx;
-			if( ( prev->shadowBits == shadowBits ) && ( prev->primitive == primitive ) &&
-				( prev->offset[0] == x_offset ) && ( prev->offset[1] == y_offset ) &&
-				!memcmp( prev->scissor, scissor, sizeof( scissor ) ) ) {
-				merge = true;
-			}
-		}
-		vattribs = prev->vattribs;
-	} else {
-		RB_BindShader( NULL,entity, shader, fog );
-		vattribs = rb.currentVAttribs;
-		streamId = ( ( vattribs & ~COMPACT_STREAM_VATTRIBS ) ? RB_DYN_STREAM_DEFAULT : RB_DYN_STREAM_COMPACT );
-	}
+  if( rb.numDynamicDraws ) {
+  	prev = &rb.dynamicDraws[rb.numDynamicDraws - 1];
+  }
+  
+  enum dynamic_stream_e streamId = RB_DYN_STREAM_DEFAULT;
+  if( prev ) {
+  	int prevRenderFX = 0, renderFX = 0;
+  	if( prev->entity ) {
+  		prevRenderFX = prev->entity->renderfx;
+  	}
+  	if( entity ) {
+  		renderFX = entity->renderfx;
+  	}
+  	if( ( ( shader->flags & SHADER_ENTITY_MERGABLE ) || ( prev->entity == entity ) ) && ( prevRenderFX == renderFX ) &&
+  		( prev->shader == shader ) && ( prev->fog == fog ) && ( prev->portalSurface == portalSurface ) &&
+  		( ( prev->shadowBits && shadowBits ) || ( !prev->shadowBits && !shadowBits ) ) ) {
+  		// don't rebind the shader to get the VBO in this case
+  		streamId = prev->dynamicStreamIdx;
+  		if( ( prev->shadowBits == shadowBits ) && ( prev->primitive == primitive ) &&
+  			( prev->offset[0] == x_offset ) && ( prev->offset[1] == y_offset ) &&
+  			!memcmp( prev->scissor, scissor, sizeof( scissor ) ) ) {
+  			merge = true;
+  		}
+  	}
+  	vattribs = prev->vattribs;
+  } else {
+  	RB_BindShader( NULL,entity, shader, fog );
+  	vattribs = rb.currentVAttribs;
+  	streamId = ( ( vattribs & ~COMPACT_STREAM_VATTRIBS ) ? RB_DYN_STREAM_DEFAULT : RB_DYN_STREAM_COMPACT );
+  }
 
-	rbDynamicStream_t *stream = &rb.dynamicStreams[streamId];
-	if( ( !merge && ( ( rb.numDynamicDraws + 1 ) > MAX_DYNAMIC_DRAWS ) ) ||
-		( ( stream->drawElements.firstVert + stream->drawElements.numVerts + numVerts ) > MAX_STREAM_VBO_VERTS ) ||
-		( ( stream->drawElements.firstElem + stream->drawElements.numElems + numElems ) > MAX_STREAM_VBO_ELEMENTS ) ) {
-		// wrap if overflows
-		RB_FlushDynamicMeshes(NULL);
+  rbDynamicStream_t *stream = &rb.dynamicStreams[streamId];
+  if( ( !merge && ( ( rb.numDynamicDraws + 1 ) > MAX_DYNAMIC_DRAWS ) ) ||
+  	( ( stream->drawElements.firstVert + stream->drawElements.numVerts + numVerts ) > MAX_STREAM_VBO_VERTS ) ||
+  	( ( stream->drawElements.firstElem + stream->drawElements.numElems + numElems ) > MAX_STREAM_VBO_ELEMENTS ) ) {
+  	// wrap if overflows
+  	RB_FlushDynamicMeshes(cmd);
 
-		stream->drawElements.firstVert = 0;
-		stream->drawElements.numVerts = 0;
-		stream->drawElements.firstElem = 0;
-		stream->drawElements.numElems = 0;
+  	stream->drawElements.firstVert = 0;
+  	stream->drawElements.numVerts = 0;
+  	stream->drawElements.firstElem = 0;
+  	stream->drawElements.numElems = 0;
 
-		merge = false;
-	}
+  	merge = false;
+  }
 
-	if( merge ) {
-		// merge continuous draw calls
-		draw = prev;
-		draw->drawElements.numVerts += numVerts;
-		draw->drawElements.numElems += numElems;
-	}
-	else {
-		draw = &rb.dynamicDraws[rb.numDynamicDraws++];
-		draw->entity = entity;
-		draw->shader = shader;
-		draw->fog = fog;
-		draw->portalSurface = portalSurface;
-		draw->shadowBits = shadowBits;
-		draw->vattribs = vattribs;
-		draw->dynamicStreamIdx = streamId;
-		draw->primitive = primitive;
-		draw->offset[0] = x_offset;
-		draw->offset[1] = y_offset;
-		memcpy( draw->scissor, scissor, sizeof( scissor ) );
-		draw->drawElements.firstVert = stream->drawElements.firstVert + stream->drawElements.numVerts;
-		draw->drawElements.numVerts = numVerts;
-		draw->drawElements.firstElem = stream->drawElements.firstElem + stream->drawElements.numElems;
-		draw->drawElements.numElems = numElems;
-		draw->drawElements.numInstances = 0;
-	}
+  if( merge ) {
+  	// merge continuous draw calls
+  	draw = prev;
+  	draw->drawElements.numVerts += numVerts;
+  	draw->drawElements.numElems += numElems;
+  }
+  else {
+  	draw = &rb.dynamicDraws[rb.numDynamicDraws++];
+  	draw->entity = entity;
+  	draw->shader = shader;
+  	draw->fog = fog;
+  	draw->portalSurface = portalSurface;
+  	draw->shadowBits = shadowBits;
+  	draw->vattribs = vattribs;
+  	draw->dynamicStreamIdx = streamId;
+  	draw->primitive = primitive;
+  	draw->offset[0] = x_offset;
+  	draw->offset[1] = y_offset;
+  	memcpy( draw->scissor, scissor, sizeof( scissor ) );
+  	draw->drawElements.firstVert = stream->drawElements.firstVert + stream->drawElements.numVerts;
+  	draw->drawElements.numVerts = numVerts;
+  	draw->drawElements.firstElem = stream->drawElements.firstElem + stream->drawElements.numElems;
+  	draw->drawElements.numElems = numElems;
+  	draw->drawElements.numInstances = 0;
+  }
 
-	destVertOffset = stream->drawElements.firstVert + stream->drawElements.numVerts;
-	R_FillVBOVertexDataBuffer( stream->vbo, vattribs, mesh,
-		stream->vertexData + destVertOffset * stream->vbo->vertexSize );
+  destVertOffset = stream->drawElements.firstVert + stream->drawElements.numVerts;
+  R_FillVBOVertexDataBuffer( stream->vbo, vattribs, mesh,
+  	stream->vertexData + destVertOffset * stream->vbo->vertexSize );
 
-	elem_t *destElems = stream->elementData + stream->drawElements.firstElem + stream->drawElements.numElems;
-	if( trifan ) {
-		R_BuildTrifanElements( destVertOffset, numElems, destElems );
-	}
-	else {
-		if( primitive == GL_TRIANGLES ) {
-			R_CopyOffsetTriangles( mesh->elems, numElems, destVertOffset, destElems );
-		}
-		else {
-			R_CopyOffsetElements( mesh->elems, numElems, destVertOffset, destElems );
-		}
-	}
+  elem_t *destElems = stream->elementData + stream->drawElements.firstElem + stream->drawElements.numElems;
+  if( trifan ) {
+  	R_BuildTrifanElements( destVertOffset, numElems, destElems );
+  }
+  else {
+  	if( primitive == GL_TRIANGLES ) {
+  		R_CopyOffsetTriangles( mesh->elems, numElems, destVertOffset, destElems );
+  	}
+  	else {
+  		R_CopyOffsetElements( mesh->elems, numElems, destVertOffset, destElems );
+  	}
+  }
 
-	stream->drawElements.numVerts += numVerts;
-	stream->drawElements.numElems += numElems;
+  stream->drawElements.numVerts += numVerts;
+  stream->drawElements.numElems += numElems;
 }
+
+
 
 /*
 * RB_FlushDynamicMeshes
@@ -984,62 +1002,64 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 		return;
 	}
 
-	struct stage_upload_s {
-		size_t vertexBufferOffset;
-		NriBuffer* vertexBuffer;
-		size_t elementBufferOffset;
-		NriBuffer* elementBuffer;
-		size_t numInputs;
-		struct stage_vertex_input_s {
-			NriBuffer *buffer;
-			uint64_t offset;
-			uint32_t slot;
-		} vertexInput[MAX_VERTEX_BINDINGS];
-	} upload[RB_DYN_STREAM_NUM] = {0};
+	struct dynamic_stream_info_s{
+		NriVertexStreamDesc vertexStream;
+		size_t numAttribs;
+		NriVertexAttributeDesc attribs[MAX_ATTRIBUTES];
+	} dynamicStreamInfo[RB_DYN_STREAM_NUM];
 
 	for(size_t i = 0; i < RB_DYN_STREAM_NUM; i++ ) {
 		rbDynamicStream_t *stream = &rb.dynamicStreams[i];
+		struct dynamic_stream_info_s* info = &dynamicStreamInfo[i];
+		info->numAttribs = 0;
+
+		if( stream->drawElements.numVerts == 0 ) {
+			continue;
+		}
+
 		// because of firstVert, upload elems first
 		if( stream->drawElements.numElems ) {
-			struct buffer_req_s req = {};
+			size_t reqOffset;
 			const size_t reqSize = stream->drawElements.numElems * sizeof( elem_t );
-			R_RequestBuffer(&rb.dynElementBuffer,reqSize, &req);
+			R_RingOffsetAllocate( &stream->vbo->ringOffsetIndexAlloc, reqSize, &reqOffset );
 
-			void* mappeData = rsh.nri.coreI.MapBuffer(req.buffer, req.offset, reqSize);
-			memcpy(mappeData, stream->elementData + stream->drawElements.firstElem, reqSize);  
-			rsh.nri.coreI.UnmapBuffer(req.buffer);
-			
-			upload[i].elementBuffer = req.buffer;
-			upload[i].elementBufferOffset = req.offset;
+			void *mappeData = rsh.nri.coreI.MapBuffer( stream->vbo->indexBuffer, reqOffset, reqSize );
+			memcpy( mappeData, stream->elementData + stream->drawElements.firstElem, reqSize );
+			rsh.nri.coreI.UnmapBuffer( stream->vbo->indexBuffer );
 
 			stream->drawElements.firstElem = 0;
 			stream->drawElements.numElems = 0;
 		}
-		if( stream->drawElements.numVerts ) {
-			struct buffer_req_s req = {};
+		{
+			size_t reqOffset;
 			const size_t reqSize = stream->drawElements.numVerts * stream->vbo->vertexSize;
-			R_RequestBuffer(&rb.dynVertexBuffer,reqSize, &req);
+			R_RingOffsetAllocate( &stream->vbo->ringOffsetVertAlloc, reqSize, &reqOffset );
 
-			void* mappeData = rsh.nri.coreI.MapBuffer(req.buffer, req.offset, reqSize);
-			memcpy(mappeData, stream->vertexData, reqSize);  
-			rsh.nri.coreI.UnmapBuffer(req.buffer);
+			void *mappeData = rsh.nri.coreI.MapBuffer( stream->vbo->vertexBuffer, reqOffset, reqSize );
+			memcpy( mappeData, stream->vertexData, reqSize );
+			rsh.nri.coreI.UnmapBuffer( stream->vbo->vertexBuffer );
 
-			upload[i].vertexBuffer = req.buffer;
-			upload[i].vertexBufferOffset = req.offset;
+			FR_CmdSetVertexBuffer(cmd, 0, stream->vbo->vertexBuffer, reqOffset);
+			info->vertexStream = (NriVertexStreamDesc) {
+				.stride = stream->vbo->vertexSize,
+				.stepRate = 0,
+				.bindingSlot = 0
+			};
 
 			stream->drawElements.firstVert = 0;
 			stream->drawElements.numVerts = 0;
 		}
 
-		enum vattrib_e attr = 0;
-		
-		for(uint32_t attrbit = stream->vbo->vertexAttribs; attrbit > 0; attrbit = attrbit >> 1, attr++) {
-			struct stage_vertex_input_s* input = &upload[i].vertexInput[upload[i].numInputs++];
-			input->buffer = upload[i].vertexBuffer;
-			input->offset = meshOffsetVBO( stream->vbo, attr ) + upload[i].vertexBufferOffset;
-			input->slot = attr;
+		if( stream->vbo->vertexAttribs & VATTRIB_POSITION_BIT ) {
+			info->attribs[info->numAttribs++] = ( NriVertexAttributeDesc ){
+				.offset = 0,
+				.format = NriFormat_RGBA32_SFLOAT,
+				.vk = { VATTRIB_POSITION },
+				.streamIndex  = 0
+			};
 		}
 	}
+
 
 	RB_GetScissor( &sx, &sy, &sw, &sh );
 
@@ -1049,10 +1069,11 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 	for( size_t i = 0; i < rb.numDynamicDraws; i++ ) {
 		rbDynamicDraw_t const *draw = rb.dynamicDraws;
 		rbDynamicStream_t *stream = &rb.dynamicStreams[draw->dynamicStreamIdx];
-		struct stage_upload_s *stage = &upload[draw->dynamicStreamIdx];
-		for( uint32_t i = 0; i < stage->numInputs; i++ ) {
-			FR_CmdSetVertexInput( cmd, stage->vertexInput[i].slot, stage->vertexInput[i].buffer, stage->vertexInput[i].offset );
-		}
+		struct dynamic_stream_info_s *info = &dynamicStreamInfo[draw->dynamicStreamIdx];
+		cmd->layoutConfig.numStreams = 1;
+		cmd->layoutConfig.streams[0] = info->vertexStream;
+		cmd->layoutConfig.numAttribs = info->numAttribs;
+		memcpy(cmd->layoutConfig.attribs, info->attribs, sizeof(NriVertexAttributeDesc) * info->numAttribs);
 
 		cmd->layoutConfig.attrib = stream->vbo->vertexAttribs;
 		cmd->layoutConfig.halfAttrib = stream->vbo->halfFloatAttribs;

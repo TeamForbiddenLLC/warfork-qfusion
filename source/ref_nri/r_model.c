@@ -674,8 +674,21 @@ merge:
 		drawSurf = &loadbmodel->drawSurfaces[startDrawSurface + i];
 
 		// don't use half-floats for XYZ due to precision issues
-		vbo->owner = R_CreateMeshVBO( drawSurf, vbo->numVerts, vbo->numElems, drawSurf->numInstances, 
-			vbo->vertexAttribs, VBO_TAG_WORLD, vbo->vertexAttribs & ~floatVattribs );
+		struct mesh_vbo_desc_s meshdesc = {
+			.tag = VBO_TAG_WORLD,
+			.owner = ( void * )drawSurf,
+
+			.numVerts = vbo->numVerts,
+			.numElems = vbo->numElems,
+			.numInstances = drawSurf->numInstances,
+			
+			.memoryLocation = NriMemoryLocation_DEVICE,
+			.vattribs = vbo->vertexAttribs,
+			.halfFloatVattribs = vbo->vertexAttribs & ~floatVattribs
+		};
+		vbo->owner = R_CreateMeshVBO(&meshdesc);
+		//vbo->owner = R_CreateMeshVBO( drawSurf, vbo->numVerts, vbo->numElems, drawSurf->numInstances, 
+		//	vbo->vertexAttribs, VBO_TAG_WORLD, vbo->vertexAttribs & ~floatVattribs );
 		drawSurf->vbo = vbo->owner;
 
 		if( drawSurf->numInstances == 0 ) {

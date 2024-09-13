@@ -82,7 +82,7 @@ void RB_BindVBO( int id, int primitive);
 //				   size_t elementOffset,
 //				   NriMemory *elementMem );
 
-void RB_AddDynamicMesh( const entity_t *entity, const shader_t *shader,
+void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, const shader_t *shader,
 	const struct mfog_s *fog, const struct portalSurface_s *portalSurface, unsigned int shadowBits,
 	const struct mesh_s *mesh, int primitive, float x_offset, float y_offset );
 void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd);

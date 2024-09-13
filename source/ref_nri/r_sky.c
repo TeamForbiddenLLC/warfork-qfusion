@@ -96,15 +96,30 @@ skydome_t *R_CreateSkydome( model_t *model )
 		mesh->xyzArray = ( vec4_t * )buffer; buffer += sizeof( vec4_t ) * POINTS_LEN;
 		mesh->normalsArray = ( vec4_t * )buffer; buffer += sizeof( vec4_t ) * POINTS_LEN;
 
+		struct mesh_vbo_desc_s spheredesc = {
+			.tag = VBO_TAG_WORLD,
+			.owner = ( void * )mesh,
+
+			.numVerts = mesh->numVerts,
+			.numElems = mesh->numElems,
+			.numInstances = 0,
+			
+			.memoryLocation = NriMemoryLocation_DEVICE,
+			.vattribs = SKYDOME_VATTRIBS,
+			.halfFloatVattribs = 0 
+		};
 		if( i != 5 ) {
+
 			skydome->sphereStCoords[i] = ( vec2_t * )buffer; buffer += sizeof( vec2_t ) * POINTS_LEN;
-			skydome->sphereVbos[i] = R_CreateMeshVBO( mesh, mesh->numVerts, mesh->numElems, 0,
-				SKYDOME_VATTRIBS, VBO_TAG_WORLD, 0 );
+			skydome->sphereVbos[i] = R_CreateMeshVBO(&spheredesc); 
+			//skydome->sphereVbos[i] = R_CreateMeshVBO( mesh, mesh->numVerts, mesh->numElems, 0,
+			//	SKYDOME_VATTRIBS, VBO_TAG_WORLD, 0 );
 		}
 
 		skydome->linearStCoords[i] = ( vec2_t * )buffer; buffer += sizeof( vec2_t ) * POINTS_LEN;
-		skydome->linearVbos[i] = R_CreateMeshVBO( mesh, mesh->numVerts, mesh->numElems, 0,
-			SKYDOME_VATTRIBS, VBO_TAG_WORLD, 0 );
+		skydome->linearVbos[i] = R_CreateMeshVBO(&spheredesc); 
+		//skydome->linearVbos[i] = R_CreateMeshVBO( mesh, mesh->numVerts, mesh->numElems, 0,
+		//	SKYDOME_VATTRIBS, VBO_TAG_WORLD, 0 );
 	}
 
 	Gen_Box( skydome );
