@@ -1900,12 +1900,16 @@ static inline struct pipeline_hash_s* __resolvePipeline(struct glsl_program_s *p
 }
 
 struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_layout_config_s *def ) {
-	
 	hash_t hash = HASH_INITIAL_VALUE;
-	hash = hash_u32(hash, def->attrib );
-	hash = hash_u32(hash, def->halfAttrib);
-	hash = hash_data(hash, &def->inputAssembly, sizeof(NriInputAssemblyDesc)); 
-	hash = hash_data(hash, &def->rasterization, sizeof(NriRasterizationDesc)); 
+	hash = hash_data( hash, &def->inputAssembly, sizeof( NriInputAssemblyDesc ) );
+	hash = hash_data( hash, &def->rasterization, sizeof( NriRasterizationDesc ) );
+	for( size_t i = 0; i < def->numStreams; i++ ) {
+		hash = hash_data( hash, &def->streams[i], sizeof( NriVertexStreamDesc ) );
+	}
+
+	for( size_t i = 0; i < def->numAttribs; i++ ) {
+		hash = hash_data( hash, &def->attribs[i], sizeof( NriVertexAttributeDesc ) );
+	}
 
 	struct pipeline_hash_s* pipeline = __resolvePipeline(program, hash);
 	if(pipeline->pipeline) {
@@ -1921,43 +1925,11 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 
 	assert( rsh.nri.api == NriGraphicsAPI_VK );
 
-	NriVertexStreamDesc vertexStreamDesc[32] = {0};
-  NriVertexAttributeDesc vertexAttributeDesc[32] = {};
-	struct attrib_init_s {
-		vattribbit_t attr;
-		size_t numChannels;
-		const char *d3dAttribute;
-		uint32_t vkAttribute;
-	} attributes[] = { 
-		{ VATTRIB_POSITION_BIT, 4, "POSITION", 0 }, 
-		{ VATTRIB_NORMAL_BIT, 4, "NORMAL", 0 }, 
-		{ VATTRIB_SVECTOR_BIT, 4, "TANGENT", 0 }, 
-		{ VATTRIB_TEXCOORDS_BIT, 2, "TEXCOORD_0", 0 }, 
-		//{ VATTRIB_LMCOORDS0_BIT, 2, "position", 0 }, 
-		//{ VATTRIB_LMCOORDS1_BIT, 2, "position", 0 }, 
-		//{ VATTRIB_LMCOORDS2_BIT, 2, "position", 0 }, 
-		//{ VATTRIB_LMCOORDS3_BIT, 2, "position", 0 }, 
-	};
-	uint32_t streamIdx = 0;
-	uint32_t attribIndex = 0;
-	uint32_t bindingSlot = 0;
-	for( size_t i = 0; i < Q_ARRAY_COUNT( attributes ); i++ ) {
-		if( def->attrib & attributes[i].attr ) {
-			vertexAttributeDesc[attribIndex].offset = 0;
-			vertexAttributeDesc[attribIndex].streamIndex = streamIdx;
-			vertexAttributeDesc[attribIndex].d3d = ( NriVertexAttributeD3D ){ attributes[i].d3dAttribute, 0 };
-			vertexAttributeDesc[attribIndex++].vk = ( NriVertexAttributeVK ){ attributes[i].vkAttribute };
-
-			vertexStreamDesc[streamIdx].bindingSlot = bindingSlot++;
-			vertexStreamDesc[streamIdx++].stride = ( ( def->halfAttrib & attributes[i].attr ) ? sizeof( uint16_t ) : sizeof( uint32_t ) ) * attributes[i].numChannels;
-		}
-	}
-
 	NriVertexInputDesc vertexInputDesc = {
-		.attributes = vertexAttributeDesc,
-		.attributeNum = attribIndex,
-		.streams = vertexStreamDesc,
-		.streamNum = streamIdx
+		.attributes = def->attribs, 
+		.attributeNum = def->numAttribs,
+		.streams = def->streams,
+		.streamNum = def->numStreams 
 	};
 
 	graphicsPipelineDesc.vertexInput = &vertexInputDesc;

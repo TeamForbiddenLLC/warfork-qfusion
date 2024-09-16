@@ -52,6 +52,7 @@ static int rb_noiseperm[NOISE_SIZE];
 static shaderpass_t r_GLSLpasses[MAX_BUILTIN_GLSLPASSES];
 
 static void RB_SetShaderpassState( int state );
+static void RB_SetShaderpassState_2(struct frame_cmd_buffer_s *cmd, int state );
 
 static int __NumberLightMaps( const struct superLightStyle_s *lightStyle )
 {
@@ -1127,7 +1128,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				programFeatures |= RB_RGBAlphaGenToProgramFeatures( &pass->rgbgen, &pass->alphagen );
 
 				// set shaderpass state (blending, depthwrite, etc)
-				RB_SetShaderpassState( pass->flags );
+				RB_SetShaderpassState_2(cmd, pass->flags );
 
 				// we only send S-vectors to GPU and recalc T-vectors as cross product
 				// in vertex shader
@@ -1522,8 +1523,6 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			mat4_t texMatrix;
 
 			RB_UpdateCommonUniforms_2( cmd, pass, texMatrix );
-
-		 
 
 			descriptors[descriptorSize++] = ( struct glsl_descriptor_data_s ){ 
 				.descriptor = cmd->uboSceneFrame.descriptor, 

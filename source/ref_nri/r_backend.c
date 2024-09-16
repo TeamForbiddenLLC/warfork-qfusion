@@ -1050,15 +1050,40 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 			stream->drawElements.numVerts = 0;
 		}
 
+		// todo move stream declearation
 		if( stream->vbo->vertexAttribs & VATTRIB_POSITION_BIT ) {
-			info->attribs[info->numAttribs++] = ( NriVertexAttributeDesc ){
-				.offset = 0,
-				.format = NriFormat_RGBA32_SFLOAT,
-				.vk = { VATTRIB_POSITION },
-				.streamIndex  = 0
+			info->attribs[info->numAttribs++] = ( NriVertexAttributeDesc ){ 
+				.offset = 0, 
+				.format = NriFormat_RGBA32_SFLOAT, 
+				.vk = { VATTRIB_POSITION }, 
+				.streamIndex = 0 
 			};
 		}
+
+		// normal
+		if( stream->vbo->vertexAttribs & VATTRIB_NORMAL_BIT ) {
+			info->attribs[info->numAttribs++] = ( NriVertexAttributeDesc ){ 
+				.offset = stream->vbo->normalsOffset, 
+				.format = NriFormat_RGBA32_SFLOAT, 
+				.vk = { VATTRIB_NORMAL}, 
+				.streamIndex = 0 
+			};
+		}
+		// s-vector
+		if( stream->vbo->vertexAttribs & VATTRIB_SVECTOR_BIT ) {
+		}
+		// color
+		if( stream->vbo->vertexAttribs & VATTRIB_COLOR0_BIT ) {
+		}
+
+		if( ( stream->vbo->vertexAttribs & VATTRIB_AUTOSPRITE_BIT ) == VATTRIB_AUTOSPRITE_BIT ) {
+		}
+		if( ( stream->vbo->vertexAttribs & VATTRIB_BONES_BITS ) == VATTRIB_BONES_BITS ) {
+		} else {
+			// TODO: figure out lightmap textures
+		}
 	}
+
 
 
 	RB_GetScissor( &sx, &sy, &sw, &sh );
@@ -1074,9 +1099,6 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 		cmd->layoutConfig.streams[0] = info->vertexStream;
 		cmd->layoutConfig.numAttribs = info->numAttribs;
 		memcpy(cmd->layoutConfig.attribs, info->attribs, sizeof(NriVertexAttributeDesc) * info->numAttribs);
-
-		cmd->layoutConfig.attrib = stream->vbo->vertexAttribs;
-		cmd->layoutConfig.halfAttrib = stream->vbo->halfFloatAttribs;
 
 		RB_BindShader( NULL, draw->entity, draw->shader, draw->fog );
 		RB_SetPortalSurface( draw->portalSurface );

@@ -100,8 +100,8 @@ struct pipeline_layout_config_s {
 	size_t numAttribs;
 	NriVertexAttributeDesc attribs[MAX_ATTRIBUTES];
 
-	vattribmask_t attrib;
-	vattribmask_t halfAttrib;
+	//vattribmask_t attrib;
+	//vattribmask_t halfAttrib;
 	NriCullMode cullMode;
 
 	size_t numFrameAttachments;
