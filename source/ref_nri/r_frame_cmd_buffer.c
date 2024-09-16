@@ -107,3 +107,4 @@ void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint
 	drawDesc.baseInstance = baseInstance;
 	rsh.nri.coreI.CmdDrawIndexed( cmd->cmd, &drawDesc );
 }
+

@@ -26,7 +26,6 @@ struct frame_cmd_state_s {
 		uint16_t w;
 		uint16_t h;
 	} scissor;
-
   
   NriBuffer* vertexBuffers[MAX_VERTEX_BINDINGS];
   uint64_t offsets[MAX_VERTEX_BINDINGS];

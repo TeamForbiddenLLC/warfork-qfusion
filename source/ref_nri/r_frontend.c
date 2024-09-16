@@ -558,26 +558,26 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 	rrf.adapter.maxfps = r_maxfps->integer;
 
 	const uint32_t bufferedFrameIndex = rsh.frameCnt % NUMBER_FRAMES_FLIGHT;
-	struct frame_cmd_buffer_s* frame = &rsh.frameCmds[bufferedFrameIndex];
+	struct frame_cmd_buffer_s *frame = &rsh.frameCmds[bufferedFrameIndex];
 
 	if( rsh.frameCnt >= NUMBER_FRAMES_FLIGHT ) {
 		rsh.nri.coreI.Wait( rsh.frameFence, 1 + rsh.frameCnt - NUMBER_FRAMES_FLIGHT );
-		rsh.nri.coreI.ResetCommandAllocator( frame->allocator);
+		rsh.nri.coreI.ResetCommandAllocator( frame->allocator );
 	}
-	frame->frameCount = rsh.frameCnt; 
-	ResetFrameCmdBuffer(&rsh.nri,frame);
+	frame->frameCount = rsh.frameCnt;
+	ResetFrameCmdBuffer( &rsh.nri, frame );
 
-	for(size_t i = 0; i < arrlen(frame->freeMemory); i++) {
-		 rsh.nri.coreI.FreeMemory(frame->freeMemory[i]);
+	for( size_t i = 0; i < arrlen( frame->freeMemory ); i++ ) {
+		rsh.nri.coreI.FreeMemory( frame->freeMemory[i] );
 	}
-	for(size_t i = 0; i < arrlen(frame->freeTextures); i++) {
-		 rsh.nri.coreI.DestroyTexture(frame->freeTextures[i]);
+	for( size_t i = 0; i < arrlen( frame->freeTextures ); i++ ) {
+		rsh.nri.coreI.DestroyTexture( frame->freeTextures[i] );
 	}
-	arrsetlen(frame->freeMemory, 0);
-	arrsetlen(frame->freeTextures, 0);
+	arrsetlen( frame->freeMemory, 0 );
+	arrsetlen( frame->freeTextures, 0 );
 
-	NRI_ABORT_ON_FAILURE(rsh.nri.coreI.BeginCommandBuffer(frame->cmd, NULL));
-	
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.BeginCommandBuffer( frame->cmd, NULL ) );
+
 	//FR_CmdSetDefaultState(frame);
 	// take the frame the backend is not busy processing
  // if( glConfig.multithreading ) {
