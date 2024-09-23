@@ -2,7 +2,6 @@
 #include "../gameshared/q_arch.h"
 #include "Extensions/NRIDeviceCreation.h"
 #include "Extensions/NRIWrapperVK.h"
-#include "NRIDescs.h"
 #include "r_local.h"
 
 #include "stb_ds.h"

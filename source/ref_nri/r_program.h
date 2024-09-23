@@ -221,7 +221,7 @@ struct glsl_program_s {
 
 	// might not need to store the bin data
 	// will have to see if I need to re-declare the pipeline
-	uint16_t shaderStageSize;
+	//uint16_t shaderStageSize;
 	struct shader_bin_data_s {
 		char *bin;
 		size_t size;
@@ -369,8 +369,7 @@ void RP_ProgramList_f( void );
 struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_layout_config_s *def );
 struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features );
 
-int	RP_RegisterProgram(int type, const char *name, const char *deformsKey, 
-	const deformv_t *deforms, int numDeforms, r_glslfeat_t features );
+struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features );
 
 int	RP_GetProgramObject( int elem );
 

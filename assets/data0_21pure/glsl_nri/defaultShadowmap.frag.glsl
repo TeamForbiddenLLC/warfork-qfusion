@@ -1,5 +1,5 @@
-#include "include/common.glsl"
-#include "include/rgbdepth.glsl"
+#include "include/global.glsl"
+#include "defaultShadowmap.res.glsl"
 
 #ifndef NUM_SHADOWS
 #define NUM_SHADOWS 1
@@ -18,6 +18,8 @@ layout(set = DESCRIPTOR_PASS_SET, binding = 2) uniform texture2D shadowmapTextur
 layout(set = DESCRIPTOR_PASS_SET, binding = 3) uniform texture2D shadowmapTexture1;
 layout(set = DESCRIPTOR_PASS_SET, binding = 4) uniform texture2D shadowmapTexture2;
 layout(set = DESCRIPTOR_PASS_SET, binding = 5) uniform texture2D shadowmapTexture3;
+
+#include "include/qf_vert_utils.glsl"
 
 void main(void)
 {

@@ -4,16 +4,32 @@
 #include "r_hasher.h"
 #include "stb_ds.h"
 
-#include "../gameshared/q_math.h"
-
 #include "r_model.h"
 
 void FR_CmdSetScissor( struct frame_cmd_buffer_s *cmd, int x, int y, int w, int h )
 {
+	if(cmd->cmdState.scissor.x != x ||
+		 cmd->cmdState.scissor.y != y ||
+		 cmd->cmdState.scissor.w != w ||
+		 cmd->cmdState.scissor.h != h ) {
+		cmd->cmdState.dirty |= CMD_DIRTY_VIEWPORT;
+	}
+
 	cmd->cmdState.scissor.x = x;
 	cmd->cmdState.scissor.y = y;
 	cmd->cmdState.scissor.w = w;
 	cmd->cmdState.scissor.h = h;
+}
+
+void FR_CmdResetAttachmentToBackbuffer( struct frame_cmd_buffer_s *cmd ) {
+	const NriDescriptor *colorAttachments[] = { cmd->textureBuffers.colorAttachment };
+	FR_CmdSetTextureAttachment(cmd, colorAttachments, 1, cmd->textureBuffers.depthAttachment);
+}
+
+void FR_CmdSetTextureAttachment( struct frame_cmd_buffer_s *cmd, NriDescriptor** colorAttachments, size_t numColors, NriDescriptor *depthAttachment ) {
+	cmd->cmdState.numColorAttachments = numColors;
+	memcpy(cmd->cmdState.colorAttachment, colorAttachments, sizeof(struct NriDescriptor*) * numColors);
+	cmd->cmdState.depthAttachment = depthAttachment;
 }
 
 void FR_CmdSetVertexBuffer( struct frame_cmd_buffer_s *cmd, uint32_t slot, NriBuffer *buffer, uint64_t offset )
@@ -99,6 +115,12 @@ void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint
 	}
 	cmd->cmdState.dirtyVertexBuffers = 0;
 
+	if( cmd->cmdState.dirty & CMD_DIRTY_VIEWPORT ) {
+		const NriViewport viewport = { cmd->cmdState.viewport[0], cmd->cmdState.viewport[1], cmd->cmdState.viewport[2], cmd->cmdState.viewport[3], 0, 1.0f };
+		rsh.nri.coreI.CmdSetViewports( cmd->cmd, &viewport, 1 );
+		cmd->cmdState.dirty &= ~CMD_DIRTY_VIEWPORT;
+	}
+
 	NriDrawIndexedDesc drawDesc = { 0 };
 	drawDesc.baseIndex = indexNum;
 	drawDesc.instanceNum = instanceNum;
@@ -107,4 +129,3 @@ void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint
 	drawDesc.baseInstance = baseInstance;
 	rsh.nri.coreI.CmdDrawIndexed( cmd->cmd, &drawDesc );
 }
-

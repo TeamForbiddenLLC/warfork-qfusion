@@ -1,7 +1,6 @@
-#include "include/common.glsl"
-#include "include/rgbdepth.glsl"
+#include "include/global.glsl" 
 
-qf_varying float v_Depth;
+layout(location = 0) in float v_Depth;
 
 layout(location = 0) out vec4 outFragColor; 
 

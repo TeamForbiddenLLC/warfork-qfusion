@@ -1,6 +1,5 @@
-#include "include/attributes.glsl"
-#include "include/resource.glsl"
-#include "include/math_utils.glsl"
+#include "include/global.glsl" 
+#include "include/qf_vert_utils.glsl"
 
 layout(location = 0) out float v_Depth;
 
@@ -12,6 +11,6 @@ void main(void)
 
 	QF_TransformVerts(Position, Normal, TexCoord);
 
-	gl_Position = u_ModelViewProjectionMatrix * Position;
+	gl_Position = obj.mvp * Position;
 	v_Depth = gl_Position.z;
 }

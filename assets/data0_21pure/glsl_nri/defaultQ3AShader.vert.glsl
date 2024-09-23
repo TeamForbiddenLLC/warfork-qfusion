@@ -1,10 +1,11 @@
 #include "include/global.glsl"
+#include "defaultQ3AShader.res.glsl"
 
-layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultQ3ShaderCB pass;
+#include "include/math_utils.glsl"
 
-layout(location = 0) out vec3 v_Position 
-layout(location = 1) out vec3 v_Normal 
-layout(location = 2) out vec2 v_TexCoord  
+layout(location = 0) out vec3 v_Position; 
+layout(location = 1) out vec3 v_Normal;
+layout(location = 2) out vec2 v_TexCoord;  
 layout(location = 3) out vec4 frontColor; 
 
 void main(void)

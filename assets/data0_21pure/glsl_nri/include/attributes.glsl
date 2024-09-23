@@ -4,8 +4,8 @@
   layout(location = 2) in vec4 a_Normal;
   layout(location = 3) in vec4 a_Color;
   layout(location = 4) in vec2 a_TexCoord;
-  layout(location = 5) in qf_lmvec01 a_LightmapCoord01;
-  layout(location = 6) in qf_lmvec23 a_LightmapCoord23;
+  layout(location = 5) in vec4 a_LightmapCoord01;
+  layout(location = 6) in vec4 a_LightmapCoord23;
   layout(location = 7) in vec4 a_LightmapLayer0123;
 
 	#if defined(APPLY_AUTOSPRITE) || defined(APPLY_AUTOSPRITE2)

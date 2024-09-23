@@ -1,6 +1,5 @@
 #include "include/global.glsl"
-
-layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultQ3ShaderCB pass;
+#include "defaultQ3AShader.res.glsl"
 
 layout(set = DESCRIPTOR_PASS_SET, binding = 3) uniform sampler u_BaseSampler;
 #if defined(APPLY_CUBEMAP) || defined(APPLY_CUBEMAP_VERTEX) || defined(APPLY_SURROUNDMAP)
@@ -93,7 +92,7 @@ void main(void)
 		float softness = 1.0 - min(1.0, d);
 		softness *= softness;
 		softness = 1.0 - softness * softness;
-		if(obj.isAlphaBlending) {
+		if(obj.isAlphaBlending > 0) {
 			color *= mix(vec4(1.0), vec4(softness), vec4(0,0,0,1));
 		} else {
 			color *= mix(vec4(1.0), vec4(softness), vec4(1,1,1,0));

@@ -1,15 +1,15 @@
 #include "include/global.glsl"
+#include "defaultShadowmap.res.glsl"
 
 #ifndef NUM_SHADOWS
 	#define NUM_SHADOWS 1
 #endif
 
-layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultShadowCB  pass;
-
 layout(location = 0) out vec3 v_Position[4]; 
 layout(location = 5) out vec3 v_ShadowProjVector[4];
 layout(location = 10) out vec3 v_Normal;
 
+#include "include/qf_vert_utils.glsl"
 
 void main(void)
 {

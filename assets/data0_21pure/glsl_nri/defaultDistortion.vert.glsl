@@ -1,11 +1,12 @@
 #include "include/global.glsl"
+#include "defaultDistortion.res.glsl"
 
 layout(location = 0) out vec4 v_TexCoord;
 layout(location = 1) out vec4 v_FrontColor;
 layout(location = 2) out vec4 v_ProjVector;
 layout(location = 3) out vec3 v_EyeVector;
 
-layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultDistortionCB pass;
+#include "include/qf_vert_utils.glsl"
 
 void main(void)
 {

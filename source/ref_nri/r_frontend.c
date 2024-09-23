@@ -288,16 +288,14 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateCommandBuffer( rsh.frameCmds[i].allocator, &rsh.frameCmds[i].cmd ) );
 		InitBlockBufferPool( &rsh.nri, &rsh.frameCmds[i].uboBlockBuffer, &uboBlockBufferDesc );
 	}
-
 	{
-
 		uint32_t swapChainTextureNum = 0;
 		NriTexture *const *swapChainTextures = rsh.nri.swapChainI.GetSwapChainTextures( rsh.swapchain, &swapChainTextureNum );
 		arrsetlen(rsh.backBuffers, swapChainTextureNum);
 		for( uint32_t i = 0; i < swapChainTextureNum; i++ ) {
 			rsh.backBuffers[i].memoryLen = 0;
 
-			const NriTextureDesc* swapChainDesc= rsh.nri.coreI.GetTextureDesc(swapChainTextures[i]);
+			const NriTextureDesc *swapChainDesc = rsh.nri.coreI.GetTextureDesc( swapChainTextures[i] );
 			rsh.backBuffers[i].colorTexture = swapChainTextures[i];
 			{
 				NriTexture2DViewDesc textureViewDesc = { 
@@ -306,24 +304,36 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 					swapChainDesc->format };
 				NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &rsh.backBuffers[i].colorAttachment) );
 			}
-			NriTextureDesc textureDesc = { .width = swapChainDesc->width,
-										   .height = swapChainDesc->height,
-										   .depth = 1,
-										   .usageMask = NriTextureUsageBits_DEPTH_STENCIL_ATTACHMENT,
-										   .layerNum = 1,
-										   .format = NriFormat_D32_SFLOAT,
-										   .sampleNum = 1,
-										   .type = NriTextureType_TEXTURE_2D,
-										   .mipNum = 1 };
-			NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &rsh.backBuffers[i].depthTexture ) );
-			NriResourceGroupDesc resourceGroupDesc = {
-				.textureNum = 1,
-				.textures = &rsh.backBuffers[i].depthTexture,
-				.memoryLocation = NriMemoryLocation_DEVICE,
-			};
-			const size_t numAllocations = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
-		  NRI_ABORT_ON_FAILURE(rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, rsh.backBuffers[i].memoryLen + rsh.backBuffers[i].memory)) 
-			rsh.backBuffers[i].memoryLen += numAllocations;
+			{
+				NriTextureDesc textureDesc = { .width = swapChainDesc->width,
+											   .height = swapChainDesc->height,
+											   .depth = 1,
+											   .usageMask = NriTextureUsageBits_DEPTH_STENCIL_ATTACHMENT,
+											   .layerNum = 1,
+											   .format = NriFormat_D32_SFLOAT,
+											   .sampleNum = 1,
+											   .type = NriTextureType_TEXTURE_2D,
+											   .mipNum = 1 };
+				NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &rsh.backBuffers[i].depthTexture ) );
+				NriResourceGroupDesc resourceGroupDesc = {
+					.textureNum = 1,
+					.textures = &rsh.backBuffers[i].depthTexture,
+					.memoryLocation = NriMemoryLocation_DEVICE,
+				};
+
+				const size_t numAllocations = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
+				NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, rsh.backBuffers[i].memoryLen + rsh.backBuffers[i].memory ) )
+				rsh.backBuffers[i].memoryLen += numAllocations;
+
+				NriTexture2DViewDesc textureViewDesc = {
+					rsh.backBuffers[i].depthTexture,
+					NriTexture2DViewType_DEPTH_STENCIL_ATTACHMENT,
+					textureDesc.format
+				};
+
+				NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &rsh.backBuffers[i].depthAttachment) );
+			}
+
 		}
 	}
 
@@ -578,6 +588,39 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 
 	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.BeginCommandBuffer( frame->cmd, NULL ) );
 
+	// set the cmdState to the backbuffer for rendering going forward
+	{
+		NriTextureBarrierDesc textureBarrierDescs = {};
+		textureBarrierDescs.texture = frame->textureBuffers.colorTexture;
+		textureBarrierDescs.after = ( NriAccessLayoutStage ){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT };
+		textureBarrierDescs.layerNum = 1;
+		textureBarrierDescs.mipNum = 1;
+
+		NriBarrierGroupDesc barrierGroupDesc = {};
+		barrierGroupDesc.textureNum = 1;
+		barrierGroupDesc.textures = &textureBarrierDescs;
+		rsh.nri.coreI.CmdBarrier( frame->cmd, &barrierGroupDesc );
+	}
+
+	{
+		NriAttachmentsDesc attachmentsDesc = {};
+		attachmentsDesc.colorNum = 1;
+		const NriDescriptor *colorAttachments[] = { frame->textureBuffers.colorAttachment };
+		attachmentsDesc.colors = colorAttachments;
+		rsh.nri.coreI.CmdBeginRendering( frame->cmd, &attachmentsDesc );
+		{
+			const NriTextureDesc *backBufferDesc = rsh.nri.coreI.GetTextureDesc( frame->textureBuffers.colorTexture );
+
+			NriClearDesc clearDesc = {};
+			clearDesc.value.color = ( NriColor ){ .f = { 0.0f, 0.0f, 1.0f, 1.0f } };
+			clearDesc.planes = NriPlaneBits_COLOR;
+			NriRect rect3 = { 0, 0, backBufferDesc->width, backBufferDesc->height };
+			rsh.nri.coreI.CmdClearAttachments( frame->cmd, &clearDesc, 1, &rect3, 1 );
+		}
+		rsh.nri.coreI.CmdEndRendering( frame->cmd );
+	}
+	FR_CmdResetAttachmentToBackbuffer(frame);
+
 	//FR_CmdSetDefaultState(frame);
 	// take the frame the backend is not busy processing
  // if( glConfig.multithreading ) {
@@ -619,42 +662,13 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 
 void RF_EndFrame( void )
 {
-	R_ResourceSubmit();
-
 	const uint32_t bufferedFrameIndex = rsh.frameCnt % NUMBER_FRAMES_FLIGHT;
 	struct frame_cmd_buffer_s *frame = &rsh.frameCmds[bufferedFrameIndex];
 
-	{
-		NriTextureBarrierDesc textureBarrierDescs = {};
-		textureBarrierDescs.texture = frame->textureBuffers.colorTexture;
-		textureBarrierDescs.after = ( NriAccessLayoutStage ){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT };
-		textureBarrierDescs.layerNum = 1;
-		textureBarrierDescs.mipNum = 1;
-
-		NriBarrierGroupDesc barrierGroupDesc = {};
-		barrierGroupDesc.textureNum = 1;
-		barrierGroupDesc.textures = &textureBarrierDescs;
-		rsh.nri.coreI.CmdBarrier( frame->cmd, &barrierGroupDesc );
-	}
-
-	NriAttachmentsDesc attachmentsDesc = {};
-	attachmentsDesc.colorNum = 1;
-	const NriDescriptor *colorAttachments[] = { frame->textureBuffers.colorAttachment };
-	attachmentsDesc.colors = colorAttachments;
-	rsh.nri.coreI.CmdBeginRendering( frame->cmd, &attachmentsDesc );
-	{
-		const NriTextureDesc *backBufferDesc = rsh.nri.coreI.GetTextureDesc( frame->textureBuffers.colorTexture );
-
-		NriClearDesc clearDesc = {};
-		clearDesc.value.color = ( NriColor ){ .f = {0.0f, 0.0f, 1.0f, 1.0f} };
-		clearDesc.planes = NriPlaneBits_COLOR;
-		NriRect rect3 = { 0, 0, backBufferDesc->width, backBufferDesc->height };
-		rsh.nri.coreI.CmdClearAttachments( frame->cmd, &clearDesc, 1, &rect3, 1 );
-	}
-	rsh.nri.coreI.CmdEndRendering( frame->cmd );
-	
 	// render previously batched 2D geometry, if any
 	RB_FlushDynamicMeshes(frame);
+
+	R_ResourceSubmit();
 	
 	{
 		NriTextureBarrierDesc textureBarrierDescs = {};
