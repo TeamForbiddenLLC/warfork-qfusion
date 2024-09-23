@@ -18,7 +18,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
-#include "NRIDescs.h"
 #include "r_gpu_ring_buffer.h"
 #include "r_local.h"
 #include "r_backend_local.h"
@@ -357,8 +356,6 @@ void RB_Cull( int cull )
 void RB_SetState_2( struct frame_cmd_buffer_s *cmd, int state )
 {
 	if( state & GLSTATE_BLEND_MASK ) {
-		// int blendsrc, blenddst;
-
 		switch( state & GLSTATE_SRCBLEND_MASK ) {
 			case GLSTATE_SRCBLEND_ZERO:
 				cmd->layoutConfig.attachment[0].colorBlend.srcFactor = NriBlendFactor_ZERO;
@@ -987,7 +984,6 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
 }
 
 
-
 /*
 * RB_FlushDynamicMeshes
 */
@@ -1071,29 +1067,64 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 		}
 		// s-vector
 		if( stream->vbo->vertexAttribs & VATTRIB_SVECTOR_BIT ) {
+			info->attribs[info->numAttribs++] = ( NriVertexAttributeDesc ){ 
+				.offset = stream->vbo->sVectorsOffset, 
+				.format = NriFormat_RGBA32_SFLOAT, 
+				.vk = { VATTRIB_NORMAL}, 
+				.streamIndex = 0 
+			};
 		}
 		// color
 		if( stream->vbo->vertexAttribs & VATTRIB_COLOR0_BIT ) {
+			info->attribs[info->numAttribs++] = ( NriVertexAttributeDesc ){ 
+				.offset = stream->vbo->sVectorsOffset, 
+				.format = NriFormat_RGBA8_UINT, 
+				.vk = { VATTRIB_COLOR0}, 
+				.streamIndex = 0 
+			};
 		}
 
 		if( ( stream->vbo->vertexAttribs & VATTRIB_AUTOSPRITE_BIT ) == VATTRIB_AUTOSPRITE_BIT ) {
+			info->attribs[info->numAttribs++] = ( NriVertexAttributeDesc ){ 
+				.offset = stream->vbo->sVectorsOffset, 
+				.format = NriFormat_RGBA8_UINT, 
+				.vk = { VATTRIB_COLOR0}, 
+				.streamIndex = 0 
+			};
 		}
 		if( ( stream->vbo->vertexAttribs & VATTRIB_BONES_BITS ) == VATTRIB_BONES_BITS ) {
+			info->attribs[info->numAttribs++] = ( NriVertexAttributeDesc ){ 
+				.offset = stream->vbo->bonesIndicesOffset , 
+				.format = NriFormat_RGBA8_UINT, 
+				.vk = { VATTRIB_BONESINDICES}, 
+				.streamIndex = 0 
+			};
+			info->attribs[info->numAttribs++] = ( NriVertexAttributeDesc ){ 
+				.offset = stream->vbo->bonesWeightsOffset, 
+				.format = NriFormat_RGBA8_UINT, 
+				.vk = { VATTRIB_BONESWEIGHTS }, 
+				.streamIndex = 0 
+			};
 		} else {
 			// TODO: figure out lightmap textures
 		}
 	}
 
-
-
 	RB_GetScissor( &sx, &sy, &sw, &sh );
 
+	NriAttachmentsDesc attachmentDesc = {};
+	attachmentDesc.colorNum = cmd->cmdState.numColorAttachments;
+	attachmentDesc.colors = cmd->cmdState.colorAttachment;
+	attachmentDesc.depthStencil = cmd->cmdState.depthAttachment;
+
+	// begin rendering pass
+	rsh.nri.coreI.CmdBeginRendering(cmd->cmd, &attachmentDesc);
 	Matrix4_Copy( rb.objectMatrix, m );
 	transx = m[12];
 	transy = m[13];
 	for( size_t i = 0; i < rb.numDynamicDraws; i++ ) {
 		rbDynamicDraw_t const *draw = rb.dynamicDraws;
-		rbDynamicStream_t *stream = &rb.dynamicStreams[draw->dynamicStreamIdx];
+		//rbDynamicStream_t *stream = &rb.dynamicStreams[draw->dynamicStreamIdx];
 		struct dynamic_stream_info_s *info = &dynamicStreamInfo[draw->dynamicStreamIdx];
 		cmd->layoutConfig.numStreams = 1;
 		cmd->layoutConfig.streams[0] = info->vertexStream;
@@ -1121,6 +1152,7 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 			draw->drawElements.firstElem, draw->drawElements.numElems
 		);
 	}
+	rsh.nri.coreI.CmdEndRendering(cmd->cmd);
 
 	rb.numDynamicDraws = 0;
 

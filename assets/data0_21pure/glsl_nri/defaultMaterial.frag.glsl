@@ -1,7 +1,5 @@
 #include "include/global.glsl" 
-
-layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultMaterialCB pass;
-layout(set = DESCRIPTOR_OBJECT_SET, binding = 5) uniform DynamicLightCB lights; 
+#include "defaultMaterial.res.glsl"
 
 layout(set = DESCRIPTOR_GLOBAL_SET, binding = 0) uniform sampler lightmapTextureSample;
 layout(set = DESCRIPTOR_GLOBAL_SET, binding = 1) uniform texture2D lightmapTexture[4];
@@ -22,13 +20,14 @@ layout(set = DESCRIPTOR_PASS_SET, binding = 10) uniform texture2D u_DecalTexture
 layout(set = DESCRIPTOR_PASS_SET, binding = 11) uniform sampler    entityDecalSampler;
 layout(set = DESCRIPTOR_PASS_SET, binding = 12) uniform texture2D u_EntityDecalTexture;
 
-layout(location = 0) in vec3 v_Position 
-layout(location = 1) in vec4 v_EyeVector 
-layout(location = 2) in qf_lmvec01 v_LightmapTexCoord01;
-layout(location = 3) in qf_lmvec23 v_LightmapTexCoord23;
+layout(location = 0) in vec3 v_Position; 
+layout(location = 1) in vec4 v_EyeVector; 
+layout(location = 2) in vec4 v_LightmapTexCoord01;
+layout(location = 3) in vec4 v_LightmapTexCoord23;
 layout(location = 5) flat in ivec4 v_LightmapLayer0123;
-layout(location = 6) in mat3 v_StrMatrix; // directions of S/T/R texcoords (tangent, binormal, normal)
-layout(location = 7) in vec4  frontColor; 
+layout(location = 6) in vec4  frontColor; 
+layout(location = 7) in vec4  v_TexCoord_FogCoord; 
+layout(location = 8) in mat3 v_StrMatrix; 
 
 layout(location = 0) out vec4 outFragColor;
 

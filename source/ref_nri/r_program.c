@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 // r_program.c - OpenGL Shading Language support
 
+#include "NRIDescs.h"
 #include "r_descriptor_pool.h"
 #include "r_local.h"
 #include "../qalgo/q_trie.h"
@@ -108,7 +109,7 @@ void RP_Init( void )
 	RP_RegisterProgram( GLSL_PROGRAM_TYPE_YUV, DEFAULT_GLSL_YUV_PROGRAM, NULL, NULL, 0, 0 );
 	RP_RegisterProgram( GLSL_PROGRAM_TYPE_COLORCORRECTION, DEFAULT_GLSL_COLORCORRECTION_PROGRAM, NULL, NULL, 0, 0 );
 	// check whether compilation of the shader with GPU skinning succeeds, if not, disable GPU bone transforms
-	int program = RP_RegisterProgram( GLSL_PROGRAM_TYPE_MATERIAL, DEFAULT_GLSL_MATERIAL_PROGRAM, NULL, NULL, 0, GLSL_SHADER_COMMON_BONE_TRANSFORMS1 );
+	RP_RegisterProgram( GLSL_PROGRAM_TYPE_MATERIAL, DEFAULT_GLSL_MATERIAL_PROGRAM, NULL, NULL, 0, GLSL_SHADER_COMMON_BONE_TRANSFORMS1 );
 }
 
 typedef struct {
@@ -1895,6 +1896,7 @@ static inline struct pipeline_hash_s* __resolvePipeline(struct glsl_program_s *p
 			return &program->pipelines[index];
 		}
 		index = (index + 1) % PIPELINE_LAYOUT_HASH_SIZE;
+	  	
 	} while(index != startIndex);
 	return NULL;
 }
@@ -1950,20 +1952,22 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 		};
 		graphicsPipelineDesc.shaderNum = 2;
 	} else {
-		return NULL;
+		assert(false && "failed to resolve bin");
 	}
 	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateGraphicsPipeline( rsh.nri.device, &graphicsPipelineDesc, &pipeline->pipeline ) );
 	return pipeline;
 }
 
-static NriDescriptorRangeDesc *__FindAndInsertNriDescriptorRange( const SpvReflectDescriptorBinding *binding, NriDescriptorRangeDesc **ranges )
+static NriDescriptorRangeDesc *__FindAndInsertNriDescriptorRange( const SpvReflectDescriptorBinding *binding, NriDescriptorRangeDesc **ranges)
 {
-	for( size_t i = 0; i < arrlen( ranges ); i++ ) {
+	assert(ranges);
+	for( size_t i = 0; i < arrlen( *ranges ); i++ ) {
 		if( ( *ranges )[i].baseRegisterIndex == binding->binding ) {
 			return &( *ranges )[i];
 		}
 	}
-	const size_t insertIndex = arraddnindex( ranges, 1 );
+	
+	const size_t insertIndex = arraddnindex( (*ranges), 1 );
 	memset( &( *ranges )[insertIndex], 0, sizeof( NriDescriptorRangeDesc ) );
 	return &( *ranges )[insertIndex];
 }
@@ -2041,9 +2045,7 @@ void RP_BindDescriptorSets(struct frame_cmd_buffer_s* cmd, struct glsl_program_s
 
 struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
 {
-	if( type <= GLSL_PROGRAM_TYPE_NONE || type >= GLSL_PROGRAM_TYPE_MAXTYPE )
-		return 0;
-
+	assert( type > GLSL_PROGRAM_TYPE_NONE && type < GLSL_PROGRAM_TYPE_MAXTYPE );
 	assert( !deforms || deformsKey );
 
 	if( !deforms )
@@ -2081,11 +2083,371 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 			return 0;
 		}
 	}
-	program = r_glslprograms + r_numglslprograms++;
+
+	return RP_RegisterProgram(type, name, deformsKey, deforms,numDeforms, features );
+
+	//program = r_glslprograms + r_numglslprograms++;
+	//sds featuresStr = sdsempty();
+	//sds fullName = sdsnew( name );
+
+	//ri.Com_DPrintf( "Registering GLSL program %s\n", fullName );
+
+	//bool error = false;
+	//struct {
+	//	glsl_program_stage_t stage;
+	//	sds source;
+	//} stages[] = {
+	//	{ .stage = GLSL_STAGE_VERTEX, .source = sdsempty() },
+	//	{ .stage = GLSL_STAGE_FRAGMENT, .source = sdsempty() },
+	//};
+	//{
+	//	sds filePath = sdsempty();
+	//	for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
+	//		stages[i].source = sdscatfmt( stages[i].source, "#version 440 \n" );
+	//		switch( stages[i].stage ) {
+	//			case GLSL_STAGE_VERTEX:
+	//				stages[i].source = sdscatfmt( stages[i].source, "#define VERTEX_SHADER\n" );
+	//				break;
+	//			case GLSL_STAGE_FRAGMENT:
+	//				stages[i].source = sdscatfmt( stages[i].source, "#define FRAGMENT_SHADER\n" );
+	//				break;
+	//			default:
+	//				assert( 0 );
+	//				break;
+	//		}
+	//		stages[i].source = sdscatfmt( stages[i].source, "#define MAX_UNIFORM_BONES %i\n", r_maxglslbones->integer );
+	//		stages[i].source = sdscat( stages[i].source, QF_BUILTIN_GLSL_MACROS_GLSL130 );
+	//		stages[i].source = sdscat( stages[i].source, QF_BUILTIN_GLSL_CONSTANTS );
+	//		stages[i].source = sdscatfmt( stages[i].source, QF_GLSL_MATH );
+	//		switch( stages[i].stage ) {
+	//			case GLSLANG_STAGE_VERTEX: {
+	//				stages[i].source = R_AppendGLSLDeformv( stages[i].source, deforms, numDeforms );
+	//				stages[i].source = sdscat( stages[i].source, QF_GLSL_WAVEFUNCS );
+	//				if( features & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
+	//					stages[i].source = sdscat( stages[i].source, QF_BUILTIN_GLSL_QUAT_TRANSFORM );
+	//				}
+	//				if( features & ( GLSL_SHADER_COMMON_INSTANCED_TRANSFORMS | GLSL_SHADER_COMMON_INSTANCED_ATTRIB_TRANSFORMS ) ) {
+	//					stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_INSTANCED_TRANSFORMS );
+	//				}
+	//				stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_TRANSFORM_VERTS );
+	//				break;
+	//			}
+	//			case GLSL_STAGE_FRAGMENT:
+	//				break;
+	//			default:
+	//				assert( 0 );
+	//				break;
+	//		}
+	//		for( feature_iter_t iter = { .it = glsl_programtypes_features[type], .bits = features }; __R_IsValidFeatureIter( &iter ); iter = __R_NextFeature( iter ) ) {
+	//			featuresStr = sdscatfmt( featuresStr, "%s\n", iter.it->define );
+	//			if( fullName ) {
+	//				fullName = sdscatfmt( fullName, "%s\n", iter.it->suffix );
+	//			}
+	//		}
+
+	//		sdsclear( filePath );
+	//		filePath = sdscatfmt( filePath, "glsl_nri/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
+	//		error = RF_AppendShaderFromFile( &stages[i].source, filePath, type, features );
+	//		if( error ) {
+	//			break;
+	//		}
+	//	}
+	//	sdsfree( filePath );
+	//}
+
+	//SpvReflectDescriptorSet** reflectionDescSets = NULL;
+	//SpvReflectBlockVariable* reflectionBlockSets[1] = {0};
+
+	//NriDescriptorSetDesc descriptorSetDesc[DESCRIPTOR_SET_MAX] = {0};
+	//NriDescriptorRangeDesc* descRangeDescs[DESCRIPTOR_SET_MAX] = {0};
+	//NriPushConstantDesc descPushConstantDescs = {0};
+
+	//for( size_t stageIdx = 0; stageIdx < Q_ARRAY_COUNT( stages ); stageIdx++ ) {
+	//	const glslang_input_t input = { 
+	//									.language = GLSLANG_SOURCE_GLSL,
+	//									.stage = __RP_GLStageToSlang( stages[stageIdx].stage ),
+	//									.client = GLSLANG_CLIENT_VULKAN,
+	//									.client_version = GLSLANG_TARGET_VULKAN_1_2,
+	//									.target_language = GLSLANG_TARGET_SPV,
+	//									.target_language_version = GLSLANG_TARGET_SPV_1_5,
+	//									.code = stages[stageIdx].source,
+	//									.default_version = 450,
+	//									.default_profile = GLSLANG_CORE_PROFILE,
+	//									.force_default_version_and_profile = false,
+	//									.forward_compatible = false,
+	//									.messages = GLSLANG_MSG_DEFAULT_BIT,
+	//									.resource = glslang_default_resource() };
+	//	glslang_shader_t *shader = glslang_shader_create( &input );
+	//	glslang_program_t *glslang_program = NULL;
+	//	if( !glslang_shader_preprocess( shader, &input ) ) {
+	//		sds errFilePath = sdscatfmt( sdsempty(), "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ) );
+	//		const char *infoLog = glslang_shader_get_info_log( shader );
+	//		const char *debugLogs = glslang_shader_get_info_debug_log( shader );
+	//		Com_Printf( S_COLOR_YELLOW "GLSL preprocess failed %s\n", fullName );
+	//		Com_Printf( S_COLOR_YELLOW "%s\n", infoLog );
+	//		Com_Printf( S_COLOR_YELLOW "%s\n", debugLogs );
+	//		Com_Printf( S_COLOR_YELLOW "dump shader: %s\n", errFilePath );
+
+	//		sds shaderErr = sdsempty();
+	//		shaderErr = sdscatfmt( shaderErr, "%s\n", input.code );
+	//		shaderErr = sdscatfmt( shaderErr, "----------- Preprocessing Failed -----------\n" );
+	//		shaderErr = sdscatfmt( shaderErr, "%s\n", infoLog );
+	//		shaderErr = sdscatfmt( shaderErr, "%s\n", debugLogs );
+	//		__RP_writeTextToFile( errFilePath, shaderErr );
+	//		sdsfree( shaderErr );
+	//		sdsfree( errFilePath );
+
+	//		error = true;
+	//		goto shader_done;
+	//	}
+
+	//	if( !glslang_shader_parse( shader, &input ) ) {
+	//		sds errFilePath = sdscatfmt( sdsempty(), "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ) );
+	//		const char *infoLog = glslang_shader_get_info_log( shader );
+	//		const char *debugLogs = glslang_shader_get_info_debug_log( shader );
+	//		// const char *preprocessedCode = glslang_shader_get_preprocessed_code( shader );
+
+	//		Com_Printf( S_COLOR_YELLOW "GLSL parsing failed %s\n", fullName );
+	//		Com_Printf( S_COLOR_YELLOW "%s\n", infoLog );
+	//		Com_Printf( S_COLOR_YELLOW "%s\n", debugLogs );
+	//		Com_Printf( S_COLOR_YELLOW "dump shader: %s\n", errFilePath );
+
+	//		sds shaderErr = sdsempty();
+	//		shaderErr = sdscatfmt( shaderErr, "%s\n", input.code );
+	//		shaderErr = sdscatfmt( shaderErr, "----------- Parsing Failed -----------\n" );
+	//		shaderErr = sdscatfmt( shaderErr, "%s\n", infoLog );
+	//		shaderErr = sdscatfmt( shaderErr, "%s\n", debugLogs );
+	//		__RP_writeTextToFile( errFilePath, shaderErr );
+	//		sdsfree( shaderErr );
+	//		sdsfree( errFilePath );
+
+	//		error = true;
+	//		goto shader_done;
+	//	}
+	//	glslang_program = glslang_program_create();
+	//	glslang_program_add_shader( glslang_program, shader );
+
+	//	if( !glslang_program_link( glslang_program, GLSLANG_MSG_SPV_RULES_BIT | GLSLANG_MSG_VULKAN_RULES_BIT ) ) {
+	//		sds errFilePath = sdscatfmt( sdsempty(), "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ) );
+
+	//		const char *infoLogs = glslang_program_get_info_log( glslang_program );
+	//		const char *debugLogs = glslang_program_get_info_debug_log( glslang_program );
+	//		// const char *preprocessedCode = glslang_shader_get_preprocessed_code( shader );
+
+	//		Com_Printf( S_COLOR_YELLOW "GLSL linking failed %s\n", fullName );
+	//		Com_Printf( S_COLOR_YELLOW "%s\n", infoLogs );
+	//		Com_Printf( S_COLOR_YELLOW "%s\n", debugLogs );
+	//		Com_Printf( S_COLOR_YELLOW "dump shader: %s\n", errFilePath );
+
+	//		sds shaderErr = sdsempty();
+	//		shaderErr = sdscatfmt( shaderErr, "%s\n", input.code );
+	//		shaderErr = sdscatfmt( shaderErr, "----------- Linking Failed -----------\n" );
+	//		shaderErr = sdscatfmt( shaderErr, "%s\n", infoLogs );
+	//		shaderErr = sdscatfmt( shaderErr, "%s\n", debugLogs );
+	//		__RP_writeTextToFile( errFilePath, shaderErr );
+	//		sdsfree( shaderErr );
+	//		sdsfree( errFilePath );
+
+	//		error = true;
+	//		goto shader_done;
+	//	}
+
+	//	const char *spirv_messages = glslang_program_SPIRV_get_messages( glslang_program );
+	//	if( spirv_messages ) {
+	//		Com_Printf( S_COLOR_BLUE "(%s) %s\b", name, spirv_messages );
+	//	}
+
+	//	glslang_program_SPIRV_generate( glslang_program, __RP_GLStageToSlang( stages[stageIdx].stage ) );
+	//	size_t binSize = glslang_program_SPIRV_get_size( glslang_program ) * sizeof( uint32_t );
+	//	struct shader_bin_data_s *binData = &program->shaderBin[program->shaderStageSize++];
+	//	binData->bin = R_Malloc( binSize );
+	//	glslang_program_SPIRV_get( glslang_program, (uint32_t *)binData->bin );
+	//	binData->stage = stages[stageIdx].stage;
+
+	//	SpvReflectShaderModule module = { 0 };
+	//	SpvReflectResult result = spvReflectCreateShaderModule( binSize / sizeof( uint32_t ), binData->bin, &module );
+	//	assert( result == SPV_REFLECT_RESULT_SUCCESS );
+
+	//	// configure push constant sets for pipeline layout
+	//	{
+	//		uint32_t pushConstantCount = 0;
+	//		result = spvReflectEnumeratePushConstantBlocks( &module, &pushConstantCount, NULL );
+	//		assert( result == SPV_REFLECT_RESULT_SUCCESS );
+	//		if(pushConstantCount > 0) {
+	//			assert( pushConstantCount == 1 ); // lets only support 1 push constant
+
+	//			result = spvReflectEnumeratePushConstantBlocks( &module, &pushConstantCount, reflectionBlockSets );
+	//			assert( result == SPV_REFLECT_RESULT_SUCCESS );
+	//			descPushConstantDescs.size = reflectionBlockSets[0]->size;
+	//			switch( stages[stageIdx].stage ) {
+	//				case GLSLANG_STAGE_VERTEX:
+	//					descPushConstantDescs.shaderStages |= NriStageBits_VERTEX_SHADER;
+	//					break;
+	//				case GLSL_STAGE_FRAGMENT:
+	//					descPushConstantDescs.shaderStages |= NriStageBits_FRAGMENT_SHADER;
+	//					break;
+	//				default:
+	//					assert( false );
+	//					break;
+	//			}
+	//		}
+	//	}
+
+	//	// configure descriptor sets for pipeline layout
+	//	{
+	//		uint32_t descCount = 0;
+	//		result = spvReflectEnumerateDescriptorSets( &module, &descCount, NULL );
+	//		assert( result == SPV_REFLECT_RESULT_SUCCESS );
+	//		arrsetlen( reflectionDescSets, descCount );
+
+	//		result = spvReflectEnumerateDescriptorSets( &module, &descCount, reflectionDescSets );
+	//		assert( result == SPV_REFLECT_RESULT_SUCCESS );
+
+	//		for( size_t i_set = 0; i_set < descCount; i_set++ ) {
+	//			const SpvReflectDescriptorSet *reflection = reflectionDescSets[i_set];
+	//			
+	//			// create the descriptor allocator
+	//			if(program->descriptorSetAlloc[reflection->set] == NULL) {
+	//				program->descriptorSetAlloc[reflection->set] = malloc(sizeof(struct descriptor_set_allloc_s));
+	//				memset(program->descriptorSetAlloc[reflection->set], 0, sizeof(struct descriptor_set_allloc_s));
+	//			}
+	//			struct descriptor_set_allloc_s* const descAlloc = program->descriptorSetAlloc[reflection->set];
+	//			descAlloc->config.layout = program->layout;
+	//			descAlloc->config.setIndex = reflection->set;
+
+	//			for( size_t i_binding = 0; i_binding < reflection->binding_count; i_binding++ ) {
+	//				const SpvReflectDescriptorBinding *reflectionBinding = reflection->bindings[i_binding];
+	//				assert(reflection->set < DESCRIPTOR_SET_MAX);
+	//				struct descriptor_reflection_s reflc = {0};
+	//				reflc.hash = Create_DescriptorHandle(reflectionBinding->name).hash;
+	//				reflc.setIndex = reflection->set;
+	//				reflc.baseRegisterIndex = reflectionBinding->binding;
+
+	//				//struct glsl_descriptor_handle_s handle = Create_DescriptorHandle(reflectionBinding->name);
+	//				//, reflection->set, reflectionBinding->binding );
+	//				
+	//				NriDescriptorRangeDesc *rangeDesc = __FindAndInsertNriDescriptorRange( reflectionBinding, &descRangeDescs[reflection->set] );
+	//				rangeDesc->descriptorNum = reflectionBinding->array.dims_count;
+	//				rangeDesc->baseRegisterIndex = reflectionBinding->binding;
+	//				rangeDesc->isArray = reflectionBinding->array.dims_count > 0;
+	//				reflc.isArray = reflectionBinding->array.dims_count > 0;
+	//				reflc.dimCount = max(1, reflectionBinding->array.dims_count);
+	//				const uint32_t bindingCount = max( reflectionBinding->array.dims_count, 1 );
+	//				switch( reflectionBinding->descriptor_type ) {
+	//					case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER:
+	//						rangeDesc->descriptorType = NriDescriptorType_SAMPLER;
+	//						descAlloc->config.samplerMaxNum += bindingCount;
+	//						break;
+	//					case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+	//						rangeDesc->descriptorType = NriDescriptorType_TEXTURE;
+	//						descAlloc->config.textureMaxNum += bindingCount;
+	//						break;
+	//					case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+	//						rangeDesc->descriptorType = NriDescriptorType_BUFFER;
+	//						descAlloc->config.bufferMaxNum += bindingCount;
+	//						break;
+	//					case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+	//						rangeDesc->descriptorType = NriDescriptorType_STORAGE_TEXTURE;
+	//						descAlloc->config.storageTextureMaxNum += bindingCount;
+	//						reflc.slotType = GLSL_REFLECTION_IMAGE;
+	//						break;
+	//					case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+	//						rangeDesc->descriptorType = NriDescriptorType_STORAGE_BUFFER;
+	//						descAlloc->config.storageBufferMaxNum += bindingCount;
+	//						break;
+	//					case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+	//						rangeDesc->descriptorType = NriDescriptorType_CONSTANT_BUFFER;
+	//						descAlloc->config.constantBufferMaxNum += bindingCount;
+	//						break;
+	//					case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+	//						rangeDesc->descriptorType = NriDescriptorType_STRUCTURED_BUFFER;
+	//						descAlloc->config.structuredBufferMaxNum += bindingCount;
+	//						break;
+	//					case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+	//						rangeDesc->descriptorType = NriDescriptorType_STORAGE_STRUCTURED_BUFFER;
+	//						descAlloc->config.storageStructuredBufferMaxNum += bindingCount;
+	//						break;
+	//					case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+	//					case SPV_REFLECT_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+	//					case SPV_REFLECT_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+	//					case SPV_REFLECT_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+	//						assert( false );
+	//						break;
+	//				}
+	//				__InsertReflectionDescriptorSet(program, &reflc);
+	//				// rangeDesc->descriptorType
+	//				switch( stages[stageIdx].stage ) {
+	//					case GLSLANG_STAGE_VERTEX:
+	//						rangeDesc->shaderStages |= NriStageBits_VERTEX_SHADER;
+	//						break;
+	//					case GLSL_STAGE_FRAGMENT:
+	//						rangeDesc->shaderStages |= NriStageBits_FRAGMENT_SHADER;
+	//						break;
+	//					default:
+	//						assert( false );
+	//						break;
+	//				}
+	//			}
+	//		}
+	//	}
+
+	//shader_done:
+	//	glslang_shader_delete( shader );
+	//	if( glslang_program ) {
+	//		glslang_program_delete( glslang_program );
+	//	}
+	//}
+	//arrfree(reflectionDescSets);
+	//NriPipelineLayoutDesc pipelineLayoutdesc = { 0 };
+	//for(size_t i = 0; i < DESCRIPTOR_SET_MAX; i++) {
+	//	if(descRangeDescs[i]) {
+	//		descriptorSetDesc[pipelineLayoutdesc.descriptorSetNum].registerSpace = i;
+	//		descriptorSetDesc[pipelineLayoutdesc.descriptorSetNum].rangeNum = arrlen(descRangeDescs[i]);
+	//		descriptorSetDesc[pipelineLayoutdesc.descriptorSetNum++].ranges = descRangeDescs[i];
+	//	}
+	//}
+	//pipelineLayoutdesc.descriptorSets = descriptorSetDesc;
+	//if( descPushConstantDescs.size > 0 ) {
+	//	pipelineLayoutdesc.pushConstantNum = 1;
+	//	pipelineLayoutdesc.pushConstants = &descPushConstantDescs;
+	//}
+
+	//NRI_ABORT_ON_FAILURE(rsh.nri.coreI.CreatePipelineLayout(rsh.nri.device, &pipelineLayoutdesc, &program->layout));
+	//
+	//for(size_t  i = 0;  i < DESCRIPTOR_SET_MAX; i++) {
+	//	arrfree( descRangeDescs[i] );
+	//}
+
+	//sdsfree( fullName );
+	//for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
+	//	sdsfree( stages[i].source );
+	//}
+
+	//program->type = type;
+	//program->features = features;
+	//program->name = R_CopyString( name );
+	//program->deformsKey = R_CopyString( deformsKey ? deformsKey : "" );
+
+	//if( !program->hash_next ) {
+	//	program->hash_next = r_glslprograms_hash[type][hashIndex];
+	//	r_glslprograms_hash[type][hashIndex] = program;
+	//}
+
+	//return program;
+}
+
+struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
+{
+	const uint32_t hashIndex = hash_u64( HASH_INITIAL_VALUE, features ) % GLSL_PROGRAMS_HASH_SIZE;
+	struct glsl_program_s *program = r_glslprograms + r_numglslprograms++;
 	sds featuresStr = sdsempty();
 	sds fullName = sdsnew( name );
-
-	ri.Com_DPrintf( "Registering GLSL program %s\n", fullName );
+	for( feature_iter_t iter = { .it = glsl_programtypes_features[type], .bits = features }; __R_IsValidFeatureIter( &iter ); iter = __R_NextFeature( iter ) ) {
+		featuresStr = sdscatfmt( featuresStr, "%s\n", iter.it->define );
+		if( fullName ) {
+			fullName = sdscatfmt( fullName, "%s\n", iter.it->suffix );
+		}
+	}
 
 	bool error = false;
 	struct {
@@ -2111,13 +2473,13 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 					break;
 			}
 			stages[i].source = sdscatfmt( stages[i].source, "#define MAX_UNIFORM_BONES %i\n", r_maxglslbones->integer );
-			stages[i].source = sdscat( stages[i].source, QF_BUILTIN_GLSL_MACROS_GLSL130 );
+			stages[i].source = sdscatfmt( stages[i].source, "%s", featuresStr );
+			//stages[i].source = sdscat( stages[i].source, QF_BUILTIN_GLSL_MACROS_GLSL130 );
 			stages[i].source = sdscat( stages[i].source, QF_BUILTIN_GLSL_CONSTANTS );
 			stages[i].source = sdscatfmt( stages[i].source, QF_GLSL_MATH );
 			switch( stages[i].stage ) {
 				case GLSLANG_STAGE_VERTEX: {
 					stages[i].source = R_AppendGLSLDeformv( stages[i].source, deforms, numDeforms );
-					stages[i].source = sdscat( stages[i].source, QF_GLSL_WAVEFUNCS );
 					if( features & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
 						stages[i].source = sdscat( stages[i].source, QF_BUILTIN_GLSL_QUAT_TRANSFORM );
 					}
@@ -2133,12 +2495,6 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 					assert( 0 );
 					break;
 			}
-			for( feature_iter_t iter = { .it = glsl_programtypes_features[type], .bits = features }; __R_IsValidFeatureIter( &iter ); iter = __R_NextFeature( iter ) ) {
-				featuresStr = sdscatfmt( featuresStr, "%s\n", iter.it->define );
-				if( fullName ) {
-					fullName = sdscatfmt( fullName, "%s\n", iter.it->suffix );
-				}
-			}
 
 			sdsclear( filePath );
 			filePath = sdscatfmt( filePath, "glsl_nri/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
@@ -2149,14 +2505,14 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 		}
 		sdsfree( filePath );
 	}
-
+	sdsfree(featuresStr);
+	
 	SpvReflectDescriptorSet** reflectionDescSets = NULL;
 	SpvReflectBlockVariable* reflectionBlockSets[1] = {0};
 
 	NriDescriptorSetDesc descriptorSetDesc[DESCRIPTOR_SET_MAX] = {0};
 	NriDescriptorRangeDesc* descRangeDescs[DESCRIPTOR_SET_MAX] = {0};
 	NriPushConstantDesc descPushConstantDescs = {0};
-
 	for( size_t stageIdx = 0; stageIdx < Q_ARRAY_COUNT( stages ); stageIdx++ ) {
 		const glslang_input_t input = { 
 										.language = GLSLANG_SOURCE_GLSL,
@@ -2192,6 +2548,7 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 			sdsfree( shaderErr );
 			sdsfree( errFilePath );
 
+			assert(false && "failed to preprocess shader");
 			error = true;
 			goto shader_done;
 		}
@@ -2216,6 +2573,7 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 			sdsfree( shaderErr );
 			sdsfree( errFilePath );
 
+			assert(false && "failed to parse shader");
 			error = true;
 			goto shader_done;
 		}
@@ -2243,6 +2601,7 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 			sdsfree( shaderErr );
 			sdsfree( errFilePath );
 
+			assert(false && "failed to link shader");
 			error = true;
 			goto shader_done;
 		}
@@ -2254,13 +2613,13 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 
 		glslang_program_SPIRV_generate( glslang_program, __RP_GLStageToSlang( stages[stageIdx].stage ) );
 		size_t binSize = glslang_program_SPIRV_get_size( glslang_program ) * sizeof( uint32_t );
-		struct shader_bin_data_s *binData = &program->shaderBin[program->shaderStageSize++];
+		struct shader_bin_data_s *binData = &program->shaderBin[stages[stageIdx].stage];
 		binData->bin = R_Malloc( binSize );
 		glslang_program_SPIRV_get( glslang_program, (uint32_t *)binData->bin );
 		binData->stage = stages[stageIdx].stage;
 
 		SpvReflectShaderModule module = { 0 };
-		SpvReflectResult result = spvReflectCreateShaderModule( binSize / sizeof( uint32_t ), binData->bin, &module );
+		SpvReflectResult result = spvReflectCreateShaderModule( binSize , binData->bin, &module );
 		assert( result == SPV_REFLECT_RESULT_SUCCESS );
 
 		// configure push constant sets for pipeline layout
@@ -2322,9 +2681,10 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 					//, reflection->set, reflectionBinding->binding );
 					
 					NriDescriptorRangeDesc *rangeDesc = __FindAndInsertNriDescriptorRange( reflectionBinding, &descRangeDescs[reflection->set] );
-					rangeDesc->descriptorNum = reflectionBinding->array.dims_count;
+					rangeDesc->descriptorNum = max(1,reflectionBinding->array.dims_count);
 					rangeDesc->baseRegisterIndex = reflectionBinding->binding;
 					rangeDesc->isArray = reflectionBinding->array.dims_count > 0;
+					assert(rangeDesc->descriptorNum > 0);
 					reflc.isArray = reflectionBinding->array.dims_count > 0;
 					reflc.dimCount = max(1, reflectionBinding->array.dims_count);
 					const uint32_t bindingCount = max( reflectionBinding->array.dims_count, 1 );
@@ -2369,7 +2729,7 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 							assert( false );
 							break;
 					}
-					__InsertReflectionDescriptorSet(program, &reflc);
+					__InsertReflectionDescriptorSet( program, &reflc );
 					// rangeDesc->descriptorType
 					switch( stages[stageIdx].stage ) {
 						case GLSLANG_STAGE_VERTEX:
@@ -2392,8 +2752,9 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 			glslang_program_delete( glslang_program );
 		}
 	}
-	arrfree(reflectionDescSets);
+	arrfree( reflectionDescSets );
 	NriPipelineLayoutDesc pipelineLayoutdesc = { 0 };
+	pipelineLayoutdesc.shaderStages = NriStageBits_GRAPHICS_SHADERS;
 	for(size_t i = 0; i < DESCRIPTOR_SET_MAX; i++) {
 		if(descRangeDescs[i]) {
 			descriptorSetDesc[pipelineLayoutdesc.descriptorSetNum].registerSpace = i;
@@ -2406,7 +2767,6 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 		pipelineLayoutdesc.pushConstantNum = 1;
 		pipelineLayoutdesc.pushConstants = &descPushConstantDescs;
 	}
-
 	NRI_ABORT_ON_FAILURE(rsh.nri.coreI.CreatePipelineLayout(rsh.nri.device, &pipelineLayoutdesc, &program->layout));
 	
 	for(size_t  i = 0;  i < DESCRIPTOR_SET_MAX; i++) {
@@ -2429,11 +2789,6 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 	}
 
 	return program;
-}
-
-int RP_RegisterProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
-{
-	return 0;
 }
 
 /*

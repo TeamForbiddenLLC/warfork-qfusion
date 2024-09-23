@@ -16,9 +16,13 @@ struct frame_cmd_vertex_input_s {
 	uint64_t offset;
 };
 
+enum CmdStateDirtyBits {
+	CMD_DIRTY_VIEWPORT = 0x1
+};
 
 // the serialized state of the pipeline
 struct frame_cmd_state_s {
+	uint32_t dirty;
 	uint32_t viewport[4];
 	struct {
 		uint16_t x;
@@ -26,10 +30,13 @@ struct frame_cmd_state_s {
 		uint16_t w;
 		uint16_t h;
 	} scissor;
-  
+
+	uint32_t numColorAttachments;
+	NriDescriptor const* colorAttachment[MAX_COLOR_ATTACHMENTS];
+	NriDescriptor const* depthAttachment;
+
   NriBuffer* vertexBuffers[MAX_VERTEX_BINDINGS];
   uint64_t offsets[MAX_VERTEX_BINDINGS];
-
 	uint32_t dirtyVertexBuffers;
 
 	// binding
@@ -105,6 +112,9 @@ struct frame_buffer_req_s {
 //struct block_buffer_pool_req_s FR_ShaderFrameReqCB( struct frame_cmd_buffer_s *cmd, const struct FrameCB* cb);
 
 // cmd buffer
+void FR_CmdResetAttachmentToBackbuffer(struct frame_cmd_buffer_s *cmd);
+void FR_CmdSetTextureAttachment(struct frame_cmd_buffer_s *cmd, NriDescriptor** colorAttachments, size_t numColors, NriDescriptor* depthAttachment);
+
 void FR_CmdSetVertexBuffer( struct frame_cmd_buffer_s *cmd, uint32_t slot, NriBuffer *buffer, uint64_t offset );
 void FR_CmdSetScissor(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h );
 void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint32_t instanceNum, uint32_t baseIndex, uint32_t baseVertex, uint32_t baseInstance );

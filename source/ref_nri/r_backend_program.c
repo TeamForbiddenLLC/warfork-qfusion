@@ -1484,7 +1484,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				state |= GLSTATE_DEPTHWRITE;
 			}
 
-			RB_SetShaderpassState( state );
+			RB_SetShaderpassState_2( cmd, state );
 
 			const int numLightMaps = isLightmapped ? __NumberLightMaps( lightStyle ) : 0;
 			for( int i = 0; i < numLightMaps; i++ ) {

@@ -1,14 +1,16 @@
 #include "include/global.glsl" 
+#include "defaultMaterial.res.glsl"
 
-layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultMaterialCB pass;
-
-layout(location = 0) out vec3 v_Position 
-layout(location = 1) out vec4 v_EyeVector 
-layout(location = 2) out qf_lmvec01 v_LightmapTexCoord01;
-layout(location = 3) out qf_lmvec23 v_LightmapTexCoord23;
+layout(location = 0) out vec3 v_Position; 
+layout(location = 1) out vec4 v_EyeVector; 
+layout(location = 2) out vec4 v_LightmapTexCoord01;
+layout(location = 3) out vec4 v_LightmapTexCoord23;
 layout(location = 5) flat out ivec4 v_LightmapLayer0123;
-layout(location = 6) out mat3 v_StrMatrix; // directions of S/T/R texcoords (tangent, binormal, normal)
-layout(location = 7) out vec4 frontColor; 
+layout(location = 6) out vec4 frontColor; 
+layout(location = 7) out vec4  v_TexCoord_FogCoord; 
+layout(location = 8) out mat3 v_StrMatrix; // directions of S/T/R texcoords (tangent, binormal, normal)
+
+#include "include/qf_vert_utils.glsl"
 
 void main()
 {

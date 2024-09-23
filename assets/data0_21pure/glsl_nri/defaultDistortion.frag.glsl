@@ -1,20 +1,20 @@
 #include "include/global.glsl"
+#include "defaultDistortion.res.glsl"
 
-layout(location = 0) out vec4 v_TexCoord;
-layout(location = 1) out vec4 v_FrontColor;
-layout(location = 2) out vec4 v_ProjVector;
-layout(location = 3) out vec3 v_EyeVector;
+layout(location = 0) in vec4 v_TexCoord;
+layout(location = 1) in vec4 v_FrontColor;
+layout(location = 2) in vec4 v_ProjVector;
+layout(location = 3) in vec3 v_EyeVector;
 
 layout(set = DESCRIPTOR_PASS_SET, binding = 0) uniform texture2D u_DuDvMapTexture;
-layout(set = DESCRIPTOR_PASS_SET, binding = 0) uniform sampler u_DuDvMapSampler;
-layout(set = DESCRIPTOR_PASS_SET, binding = 1) uniform texture2D u_NormalmapTexture;
-layout(set = DESCRIPTOR_PASS_SET, binding = 1) uniform sampler u_NormalmapSampler;
-layout(set = DESCRIPTOR_PASS_SET, binding = 2) uniform texture2D u_ReflectionTexture;
-layout(set = DESCRIPTOR_PASS_SET, binding = 2) uniform sampler u_ReflectionSampler;
-layout(set = DESCRIPTOR_PASS_SET, binding = 3) uniform texture2D u_RefractionTexture;
-layout(set = DESCRIPTOR_PASS_SET, binding = 4) uniform sampler u_RefractionSampler;
+layout(set = DESCRIPTOR_PASS_SET, binding = 1) uniform sampler u_DuDvMapSampler;
+layout(set = DESCRIPTOR_PASS_SET, binding = 2) uniform texture2D u_NormalmapTexture;
+layout(set = DESCRIPTOR_PASS_SET, binding = 3) uniform sampler u_NormalmapSampler;
+layout(set = DESCRIPTOR_PASS_SET, binding = 4) uniform texture2D u_ReflectionTexture;
+layout(set = DESCRIPTOR_PASS_SET, binding = 5) uniform sampler u_ReflectionSampler;
+layout(set = DESCRIPTOR_PASS_SET, binding = 6) uniform texture2D u_RefractionTexture;
+layout(set = DESCRIPTOR_PASS_SET, binding = 7) uniform sampler u_RefractionSampler;
 
-layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultDistortionCB pass;
 
 layout(location = 0) out vec4 outFragColor;
 
