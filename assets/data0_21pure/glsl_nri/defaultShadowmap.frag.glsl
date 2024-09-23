@@ -5,13 +5,11 @@
 #define NUM_SHADOWS 1
 #endif
 
-layout(location = 0) in vec3 v_Position[4]; 
-layout(location = 5) in vec3 v_ShadowProjVector[4];
+layout(location = 0) in vec4 v_Position[4]; 
+layout(location = 5) in vec4 v_ShadowProjVector[4];
 layout(location = 10) in vec3 v_Normal;
 
 layout(location = 0) out vec4 outFragColor;
-
-layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultShadowCB  pass;
 
 layout(set = DESCRIPTOR_PASS_SET, binding = 1) uniform sampler shadowmapSampler;
 layout(set = DESCRIPTOR_PASS_SET, binding = 2) uniform texture2D shadowmapTexture0;

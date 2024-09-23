@@ -16,33 +16,6 @@ struct DefaultCellShadeCB {
 	mat3 reflectionTexMatrix;
 };
 
-struct DefaultShadowCB {
-    mat4 shadowmapMatrix0;
-    mat4 shadowmapMatrix1;
-    mat4 shadowmapMatrix2;
-    mat4 shadowmapMatrix3;
-    vec4 shadowDir[4];
-    vec4 shadowParams[4];
-    vec4 shadowAlpha[2];
-    vec4 shadowEntitydist[4];
-};
-
-//struct DefaultDistortionCB {
-//    vec4 textureParams;
-//    vec4 textureMatrix[2];
-//    float frontPlane;
-//};
-
-//struct DefaultQ3ShaderCB {
-//    vec3 wallColor;
-//    float softParticleScale;
-//    vec4 textureParam;
-//    vec4 textureMatrix[2];
-//    vec3 floorColor;
-//    vec2 zRange;
-//    mat4 genTexMatrix;
-//    vec3 lightstyleColor[4];
-//};
 
 struct DynLight {
     vec4 position;
