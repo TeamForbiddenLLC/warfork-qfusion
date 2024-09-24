@@ -1,10 +1,12 @@
-#include "include/global.glsl"
-
-layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultCellShadeCB pass;
+#include "include/global.glsl" 
+#include "defaultCelshade.res.glsl"
 
 layout(location = 0) out vec2 v_TexCoord;
 layout(location = 1) out vec3 v_TexCoordCube;
 layout(location = 2) out vec2 v_FogCoord;
+layout(location = 3) out vec4 v_FrontColor; 
+
+#include "include/qf_vert_utils.glsl"
 
 void main(void)
 {
@@ -25,7 +27,7 @@ void main(void)
 	#endif
 #endif
 
-	qf_FrontColor = vec4(outColor);
+	v_FrontColor = vec4(outColor);
 
 #if defined(APPLY_TC_MOD)
 	v_TexCoord = TextureMatrix2x3Mul(pass.textureMatrix, TexCoord);

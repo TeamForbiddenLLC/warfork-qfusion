@@ -11,7 +11,7 @@
 		d += step(0.0, f);
 		# endif
 		
-		d += length(v_Position[SHADOW_INDEX].xyz - pass.shadowEntitydist[SHADOW_INDEX].xyz) / u_ShadowDir[SHADOW_INDEX].w;
+		d += length(v_Position[SHADOW_INDEX].xyz - pass.shadowEntitydist[SHADOW_INDEX].xyz) / pass.shadowDir[SHADOW_INDEX].w;
 
 		//shadowmaptc = (shadowmaptc + vec3 (1.0)) * vec3 (0.5);
 		shadowmaptc.xy = shadowmaptc.xy * pass.shadowParams[SHADOW_INDEX].xy; // .x - texture width

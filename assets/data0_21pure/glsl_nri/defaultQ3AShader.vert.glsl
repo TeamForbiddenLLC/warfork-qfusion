@@ -1,7 +1,7 @@
 #include "include/global.glsl"
 #include "defaultQ3AShader.res.glsl"
 
-#include "include/math_utils.glsl"
+#include "include/qf_vert_utils.glsl"
 
 layout(location = 0) out vec3 v_Position; 
 layout(location = 1) out vec3 v_Normal;
@@ -17,7 +17,7 @@ void main(void)
 
 	QF_TransformVerts(Position, Normal, TexCoord);
 
-	vec4 outColor = VertexRGBGen(Position, Normal, inColor);
+	vec4 outColor = QF_VertexRGBGen(Position, Normal, inColor);
 
 #ifdef APPLY_FOG
 	#if defined(APPLY_FOG_COLOR)
@@ -73,7 +73,7 @@ frontColor = vec4(outColor);
 #endif // LIGHTMAP_ARRAYS
 #endif // NUM_LIGHTMAPS
 
-	gl_Position = u_ModelViewProjectionMatrix * Position;
+	gl_Position = obj.mvp * Position;
 
 #if defined(APPLY_SOFT_PARTICLE)
 	vec4 modelPos = obj.mv * Position;
