@@ -1,10 +1,9 @@
-#include "include/attributes.glsl"
-#include "include/resource.glsl"
-#include "include/math_utils.glsl"
-
-layout(set = DESCRIPTOR_OBJECT_SET, binding = 0) uniform DefaultFXAACB pass; 
+#include "include/global.glsl" 
+#include "defaultFXAA.res.glsl"
 
 layout(location = 0) out vec2 v_TexCoord;
+
+#include "include/qf_vert_utils.glsl"
 
 void main(void)
 {

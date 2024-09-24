@@ -1,16 +1,20 @@
-#include "include/global.glsl"
+#include "include/global.glsl" 
 
-layout(location = 0) in vec4 v_FogCoord
-layout(location = 1) in vec4 frontColor
+#include "defaultOutline.res.glsl"
 
-uniform float u_OutlineCutOff;
+
+#include "include/qf_vert_utils.glsl"
+
+
+layout(location = 0) in vec4 v_FogCoord;
+layout(location = 1) in vec4 frontColor;
 
 layout(location = 0) out vec4 outFragColor;
 
 void main(void)
 {
 #ifdef APPLY_OUTLINES_CUTOFF
-	if (u_OutlineCutOff > 0.0 && (gl_FragCoord.z / gl_FragCoord.w > u_OutlineCutOff))
+	if (u_OutlineCutOff > 0.0 && (gl_FragCoord.z / gl_FragCoord.w > push.outlineCutoff))
 		discard;
 #endif
 

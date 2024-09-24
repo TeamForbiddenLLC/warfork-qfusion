@@ -1,8 +1,9 @@
 #include "include/global.glsl"
+#include "defaultFXAA.res.glsl"
 
 layout(location = 0) out vec2 v_FogCoord;
 
-//layout(set = 2, binding = 0) uniform DefaultFogUBO ubo;  
+#include "include/qf_vert_utils.glsl"
 
 void main(void)
 {

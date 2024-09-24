@@ -1,8 +1,11 @@
 #include "include/common.glsl"
 
-qf_varying vec2 v_TexCoord;
+layout(location = 0) in vec2 v_TexCoord;
 
-uniform sampler2D u_BaseTexture;
+// uniform sampler2D u_BaseTexture;
+
+layout(set = DESCRIPTOR_PASS_SET, binding = 0) uniform texture2D u_BaseTexture;
+layout(set = DESCRIPTOR_PASS_SET, binding = 1) uniform sampler u_BaseSampler;
 
 #ifdef APPLY_FXAA3
 
@@ -22,6 +25,8 @@ uniform sampler2D u_BaseTexture;
 #include "include/Fxaa2.h"
 
 #endif
+
+layout(location = 0) out vec4 outFragColor;
 
 void main(void)
 {
@@ -53,7 +58,7 @@ void main(void)
     float ConsoleEdgeThresholdMin = 0.05;
     vec4  Console360ConstDir = vec4(1.0, -1.0, 0.25, -0.25);
 
-    qf_FragColor = FxaaPixelShader(v_TexCoord, ConsolePosPos, u_BaseTexture, u_BaseTexture, u_BaseTexture, 
+    outFragColor = FxaaPixelShader(v_TexCoord, ConsolePosPos, sampler2D(u_BaseTexture,u_BaseSampler), sampler2D(u_BaseTexture,u_BaseSampler), sampler2D(u_BaseTexture,u_BaseSampler), 
         u_TextureParams.zw, ConsoleRcpFrameOpt, ConsoleRcpFrameOpt2, Console360RcpFrameOpt2, 
         QualitySubpix, QualityEdgeThreshold, QualityEdgeThresholdMin, ConsoleEdgeSharpness, 
         ConsoleEdgeThreshold, ConsoleEdgeThresholdMin, Console360ConstDir);

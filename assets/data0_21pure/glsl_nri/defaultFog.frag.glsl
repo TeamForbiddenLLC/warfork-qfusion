@@ -7,5 +7,5 @@ layout(location = 0) out vec4 outFragColor;
 void main(void)
 {
 	float fogDensity = FogDensity(v_FogCoord);
-	outFragColor = vec4(u_FogColor, fogDensity);
+	outFragColor = vec4(frame.fogColor, fogDensity);
 }

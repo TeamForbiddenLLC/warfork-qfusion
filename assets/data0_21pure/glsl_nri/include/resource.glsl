@@ -10,11 +10,11 @@
 
 
 // pass
-struct DefaultCellShadeCB {
-    vec4 textureMatrix[2];
-    vec3 entityColor;
-	mat3 reflectionTexMatrix;
-};
+//struct DefaultCellShadeCB {
+//    vec4 textureMatrix[2];
+//    vec3 entityColor;
+//	mat3 reflectionTexMatrix;
+//};
 
 
 struct DynLight {
@@ -41,9 +41,9 @@ struct DynLight {
 //};
 
 // fxaa 
-struct DefaultFXAACB {
-    mat4 mvp;
-    vec4 textureMatrix[2];
-};
+//struct DefaultFXAACB {
+//    mat4 mvp;
+//    vec4 textureMatrix[2];
+//};
 
 

@@ -1,6 +1,8 @@
 #include "include/global.glsl"
 #include "defaultQ3AShader.res.glsl"
 
+#include "include/qf_vert_utils.glsl"
+
 layout(set = DESCRIPTOR_PASS_SET, binding = 3) uniform sampler u_BaseSampler;
 #if defined(APPLY_CUBEMAP) || defined(APPLY_CUBEMAP_VERTEX) || defined(APPLY_SURROUNDMAP)
 	layout(set = DESCRIPTOR_PASS_SET, binding = 4) uniform textureCube u_BaseTexture;
@@ -13,16 +15,19 @@ layout(set = DESCRIPTOR_PASS_SET, binding = 2) uniform texture2D u_DepthTexture;
 layout(set = DESCRIPTOR_GLOBAL_SET, binding = 0) uniform sampler lightmapTextureSample;
 layout(set = DESCRIPTOR_GLOBAL_SET, binding = 1) uniform texture2D lightmapTexture[4];
 
+layout(location = 0) in vec3 v_Position; 
+layout(location = 1) in vec3 v_Normal;
+layout(location = 2) in vec2 v_TexCoord;  
+layout(location = 3) in vec4 frontColor; 
 
 layout(location = 0) out vec4 outFragColor;
-
 
 void main(void)
 {
 	vec4 color;
 
 #ifdef NUM_LIGHTMAPS
-	color = vec4(0.0, 0.0, 0.0, qf_FrontColor.a);
+	color = vec4(0.0, 0.0, 0.0, frontColor.a);
 	color.rgb += texture(sampler2D(lightmapTexture[0],lightmapTextureSample), v_LightmapTexCoord01.st).rgb * pass.lightstyleColor[0];
 	#if NUM_LIGHTMAPS >= 2
 		color.rgb += texture(sampler2D(lightmapTexture[1],lightmapTextureSample), v_LightmapTexCoord01.pq).rgb * pass.lightstyleColor[1];
@@ -34,7 +39,7 @@ void main(void)
 		#endif // NUM_LIGHTMAPS >= 3
 	#endif // NUM_LIGHTMAPS >= 2
 #else
-	color = vec4(qf_FrontColor);
+	color = vec4(frontColor);
 #endif // NUM_LIGHTMAPS
 
 #if defined(APPLY_FOG) && !defined(APPLY_FOG_COLOR)
@@ -70,7 +75,7 @@ void main(void)
 
 #ifdef NUM_LIGHTMAPS
 	// so that team-colored shaders work
-	color *= vec4(qf_FrontColor);
+	color *= vec4(frontColor);
 #endif
 
 #ifdef APPLY_GREYSCALE

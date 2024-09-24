@@ -1,9 +1,10 @@
-#include "include/global.glsl"
+#include "include/global.glsl" 
+#include "defaultOutline.res.glsl"
+
+#include "include/qf_vert_utils.glsl"
 
 layout(location = 0) out vec2 v_FogCoord;
 layout(location = 1) out vec4 frontColor; 
-
-uniform float u_OutlineHeight;
 
 void main(void)
 {
@@ -14,10 +15,10 @@ void main(void)
 
 	QF_TransformVerts(Position, Normal, TexCoord);
 
-	Position += vec4(Normal * u_OutlineHeight, 0.0);
-	gl_Position = u_ModelViewProjectionMatrix * Position;
+	Position += vec4(Normal * push.outlineHight, 0.0);
+	gl_Position = obj.mvp * Position;
 
-	vec4 outColor = VertexRGBGen(Position, Normal, inColor);
+	vec4 outColor = QF_VertexRGBGen(Position, Normal, inColor);
 
 #ifdef APPLY_FOG
 	#if defined(APPLY_FOG_COLOR)
