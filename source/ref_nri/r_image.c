@@ -2384,7 +2384,7 @@ void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic )
 image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmipsize, int tags )
 {
 
-	ri.Com_Printf( S_COLOR_YELLOW "loading image: %s\n", name);
+	//ri.Com_Printf( S_COLOR_YELLOW "loading image: %s\n", name);
 	
 	assert( name );
 	assert( name[0] );

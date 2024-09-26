@@ -935,83 +935,6 @@ static const glsl_feature_t *const glsl_programtypes_features[] = {
 #define QF_GLSL_ENABLE_OES_TEXTURE_3D "#extension GL_OES_texture_3D : enable\n"
 
 
-
-#define QF_BUILTIN_GLSL_MACROS_GLSL120 "" \
-"#define qf_varying varying\n" \
-"#define qf_flat_varying varying\n" \
-"#ifdef VERTEX_SHADER\n" \
-"# define qf_FrontColor gl_FrontColor\n" \
-"# define qf_attribute attribute\n" \
-"#endif\n" \
-"#ifdef FRAGMENT_SHADER\n" \
-"# define qf_FrontColor gl_Color\n" \
-"# define qf_FragColor gl_FragColor\n" \
-"#endif\n" \
-"#define qf_texture texture2D\n" \
-"#define qf_textureLod texture2DLod\n" \
-"#define qf_textureCube textureCube\n" \
-"#define qf_textureArray texture2DArray\n" \
-"#define qf_texture3D texture3D\n" \
-"#define qf_textureOffset(a,b,c,d) texture2DOffset(a,b,ivec2(c,d))\n" \
-"#define qf_shadow shadow2D\n" \
-"\n"
-
-#define QF_BUILTIN_GLSL_MACROS_GLSL130                                  \
-	""                                                                  \
-	"precision highp float;\n"                                          \
-	"#ifdef VERTEX_SHADER\n"                                            \
-	"  layout(location = 0) out vec4 qf_FrontColor;\n"                                    \
-	"# define qf_varying out\n"                                         \
-	"# define qf_flat_varying flat out\n"                               \
-	"# define qf_attribute in\n"                                        \
-	"#endif\n"                                                          \
-	"#ifdef FRAGMENT_SHADER\n"                                          \
-	"  layout(location = 0) in vec4 qf_FrontColor;\n"                                     \
-	"  layout(location = 1) out vec4 qf_FragColor;\n"                                     \
-	"# define qf_varying in\n"                                          \
-	"# define qf_flat_varying flat in\n"                                \
-	"#endif\n"                                                          \
-	"#define qf_texture texture\n"                                      \
-	"#define qf_textureCube texture\n"                                  \
-	"#define qf_textureLod textureLod\n"                                \
-	"#define qf_textureArray texture\n"                                 \
-	"#define qf_texture3D texture\n"                                    \
-	"#define qf_textureOffset(a,b,c,d) textureOffset(a,b,ivec2(c,d))\n" \
-	"#define qf_shadow texture\n"                                       \
-	"\n"
-
-#define QF_BUILTIN_GLSL_MACROS_GLSL100ES "" \
-"#define qf_varying varying\n" \
-"#define qf_flat_varying varying\n" \
-"#ifdef VERTEX_SHADER\n" \
-"# define qf_attribute attribute\n" \
-"#endif\n" \
-"#ifdef FRAGMENT_SHADER\n" \
-"# if defined(GL_FRAGMENT_PRECISION_HIGH) && defined(QF_FRAGMENT_PRECISION_HIGH)\n" \
-"   precision highp float;\n" \
-"# else\n" \
-"   precision mediump float;\n" \
-"# endif\n" \
-"# ifdef GL_EXT_texture_array\n" \
-"   precision lowp sampler2DArray;\n" \
-"# endif\n" \
-"# ifdef GL_OES_texture_3D\n" \
-"   precision lowp sampler3D;\n" \
-"# endif\n" \
-"# ifdef GL_EXT_shadow_samplers\n" \
-"   precision lowp sampler2DShadow;\n" \
-"# endif\n" \
-"# define qf_FragColor gl_FragColor\n" \
-"#endif\n" \
-" qf_varying vec4 qf_FrontColor;\n" \
-"#define qf_texture texture2D\n" \
-"#define qf_textureLod texture2DLod\n" \
-"#define qf_textureCube textureCube\n" \
-"#define qf_textureArray texture2DArray\n" \
-"#define qf_texture3D texture3D\n" \
-"#define qf_shadow shadow2DEXT\n" \
-"\n"
-
 #define QF_BUILTIN_GLSL_MACROS_GLSL300ES "" \
 "#ifdef VERTEX_SHADER\n" \
 "# define qf_varying out\n" \
@@ -1054,13 +977,6 @@ QF_GLSL_PI \
 "#ifndef MAX_UNIFORM_INSTANCES\n" \
 "#define MAX_UNIFORM_INSTANCES " STR_TOSTR( MAX_GLSL_UNIFORM_INSTANCES ) "\n" \
 "#endif\n"
-
-#define QF_BUILTIN_GLSL_UNIFORMS \
-"uniform vec3 u_QF_ViewOrigin;\n" \
-"uniform mat3 u_QF_ViewAxis;\n" \
-"uniform float u_QF_MirrorSide;\n" \
-"uniform vec3 u_QF_EntityOrigin;\n" \
-"uniform float u_QF_ShaderTime;\n"
 
 #define QF_BUILTIN_GLSL_QUAT_TRANSFORM_OVERLOAD \
 "#ifdef QF_DUAL_QUAT_TRANSFORM_TANGENT\n" \
@@ -1935,11 +1851,12 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	};
 
 	graphicsPipelineDesc.vertexInput = &vertexInputDesc;
+	graphicsPipelineDesc.pipelineLayout = program->layout; 
 	if( program->shaderBin[GLSL_STAGE_VERTEX].bin && 
 		program->shaderBin[GLSL_STAGE_FRAGMENT].bin ) {
 		shaderDesc[0] = (NriShaderDesc) {
 			.size = program->shaderBin[GLSL_STAGE_VERTEX].size,
-			.stage = NriStageBits_FRAGMENT_SHADER,
+			.stage = NriStageBits_VERTEX_SHADER,
 			.bytecode = program->shaderBin[GLSL_STAGE_VERTEX].bin,
 			.entryPointName = "main"
 		};
@@ -2448,6 +2365,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 			fullName = sdscatfmt( fullName, "%s\n", iter.it->suffix );
 		}
 	}
+	ri.Com_Printf( "Loading Shader: %s", fullName );
 
 	bool error = false;
 	struct {
@@ -2480,13 +2398,16 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 			switch( stages[i].stage ) {
 				case GLSLANG_STAGE_VERTEX: {
 					stages[i].source = R_AppendGLSLDeformv( stages[i].source, deforms, numDeforms );
-					if( features & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
-						stages[i].source = sdscat( stages[i].source, QF_BUILTIN_GLSL_QUAT_TRANSFORM );
-					}
-					if( features & ( GLSL_SHADER_COMMON_INSTANCED_TRANSFORMS | GLSL_SHADER_COMMON_INSTANCED_ATTRIB_TRANSFORMS ) ) {
-						stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_INSTANCED_TRANSFORMS );
-					}
-					stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_TRANSFORM_VERTS );
+					//TODO: need to add back implementation broken shader
+					//if( features & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
+					//	//stages[i].source = sdscat( stages[i].source, QF_BUILTIN_GLSL_QUAT_TRANSFORM );
+					//	stages[i].source = sdscat( stages[i].source, "#define APPLY_QUAT_TRANSFORM 1");
+					//}
+					//if( features & ( GLSL_SHADER_COMMON_INSTANCED_TRANSFORMS | GLSL_SHADER_COMMON_INSTANCED_ATTRIB_TRANSFORMS ) ) {
+					//	//stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_INSTANCED_TRANSFORMS );
+					//	stages[i].source = sdscat( stages[i].source, "#define APPLY_INSTANCED_TRANSFORM 1");
+					//}
+					//stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_TRANSFORM_VERTS );
 					break;
 				}
 				case GLSL_STAGE_FRAGMENT:
@@ -2512,7 +2433,6 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 
 	NriDescriptorSetDesc descriptorSetDesc[DESCRIPTOR_SET_MAX] = {0};
 	NriDescriptorRangeDesc* descRangeDescs[DESCRIPTOR_SET_MAX] = {0};
-	NriPushConstantDesc descPushConstantDescs = {0};
 	for( size_t stageIdx = 0; stageIdx < Q_ARRAY_COUNT( stages ); stageIdx++ ) {
 		const glslang_input_t input = { 
 										.language = GLSLANG_SOURCE_GLSL,
@@ -2611,10 +2531,16 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 			Com_Printf( S_COLOR_BLUE "(%s) %s\b", name, spirv_messages );
 		}
 
-		glslang_program_SPIRV_generate( glslang_program, __RP_GLStageToSlang( stages[stageIdx].stage ) );
+		//TODO: spv needs to be optimized for release
+		glslang_spv_options_t spvOptions = {};
+    spvOptions.disable_optimizer = false;
+    spvOptions.optimize_size = true;
+		spvOptions.validate = true;
+		glslang_program_SPIRV_generate_with_options( glslang_program, __RP_GLStageToSlang( stages[stageIdx].stage ), &spvOptions );
 		size_t binSize = glslang_program_SPIRV_get_size( glslang_program ) * sizeof( uint32_t );
 		struct shader_bin_data_s *binData = &program->shaderBin[stages[stageIdx].stage];
 		binData->bin = R_Malloc( binSize );
+		binData->size = binSize;
 		glslang_program_SPIRV_get( glslang_program, (uint32_t *)binData->bin );
 		binData->stage = stages[stageIdx].stage;
 
@@ -2623,29 +2549,29 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 		assert( result == SPV_REFLECT_RESULT_SUCCESS );
 
 		// configure push constant sets for pipeline layout
-		{
-			uint32_t pushConstantCount = 0;
-			result = spvReflectEnumeratePushConstantBlocks( &module, &pushConstantCount, NULL );
-			assert( result == SPV_REFLECT_RESULT_SUCCESS );
-			if(pushConstantCount > 0) {
-				assert( pushConstantCount == 1 ); // lets only support 1 push constant
+		//{
+		//	uint32_t pushConstantCount = 0;
+		//	result = spvReflectEnumeratePushConstantBlocks( &module, &pushConstantCount, NULL );
+		//	assert( result == SPV_REFLECT_RESULT_SUCCESS );
+		//	if(pushConstantCount > 0) {
+		//		assert( pushConstantCount == 1 ); // lets only support 1 push constant
 
-				result = spvReflectEnumeratePushConstantBlocks( &module, &pushConstantCount, reflectionBlockSets );
-				assert( result == SPV_REFLECT_RESULT_SUCCESS );
-				descPushConstantDescs.size = reflectionBlockSets[0]->size;
-				switch( stages[stageIdx].stage ) {
-					case GLSLANG_STAGE_VERTEX:
-						descPushConstantDescs.shaderStages |= NriStageBits_VERTEX_SHADER;
-						break;
-					case GLSL_STAGE_FRAGMENT:
-						descPushConstantDescs.shaderStages |= NriStageBits_FRAGMENT_SHADER;
-						break;
-					default:
-						assert( false );
-						break;
-				}
-			}
-		}
+		//		result = spvReflectEnumeratePushConstantBlocks( &module, &pushConstantCount, reflectionBlockSets );
+		//		assert( result == SPV_REFLECT_RESULT_SUCCESS );
+		//		descPushConstantDescs.size = reflectionBlockSets[0]->size;
+		//		switch( stages[stageIdx].stage ) {
+		//			case GLSLANG_STAGE_VERTEX:
+		//				descPushConstantDescs.shaderStages |= NriStageBits_VERTEX_SHADER;
+		//				break;
+		//			case GLSL_STAGE_FRAGMENT:
+		//				descPushConstantDescs.shaderStages |= NriStageBits_FRAGMENT_SHADER;
+		//				break;
+		//			default:
+		//				assert( false );
+		//				break;
+		//		}
+		//	}
+		//}
 
 		// configure descriptor sets for pipeline layout
 		{
@@ -2676,15 +2602,27 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 					reflc.hash = Create_DescriptorHandle(reflectionBinding->name).hash;
 					reflc.setIndex = reflection->set;
 					reflc.baseRegisterIndex = reflectionBinding->binding;
+					ri.Com_Printf( "SPV Register %s set: %d binding: %d", reflectionBinding->name, reflectionBinding->set, reflectionBinding->binding );
 
-					//struct glsl_descriptor_handle_s handle = Create_DescriptorHandle(reflectionBinding->name);
-					//, reflection->set, reflectionBinding->binding );
-					
-					NriDescriptorRangeDesc *rangeDesc = __FindAndInsertNriDescriptorRange( reflectionBinding, &descRangeDescs[reflection->set] );
+					NriDescriptorRangeDesc *rangeDesc = NULL;
+					{
+						for( size_t i = 0; i < arrlen( descRangeDescs[reflection->set] ); i++ ) {
+							if( descRangeDescs[reflection->set][i].baseRegisterIndex == reflectionBinding->binding ) {
+								rangeDesc = &descRangeDescs[reflection->set][i];
+								break;
+							}
+						}
+						if( !rangeDesc ) {
+							NriDescriptorRangeDesc input = {};
+							arrpush(descRangeDescs[reflection->set], input);
+							rangeDesc = &descRangeDescs[reflection->set][arrlen(descRangeDescs[reflection->set]) - 1];
+						}
+					}
+
 					rangeDesc->descriptorNum = max(1,reflectionBinding->array.dims_count);
 					rangeDesc->baseRegisterIndex = reflectionBinding->binding;
-					rangeDesc->isArray = reflectionBinding->array.dims_count > 0;
 					assert(rangeDesc->descriptorNum > 0);
+
 					reflc.isArray = reflectionBinding->array.dims_count > 0;
 					reflc.dimCount = max(1, reflectionBinding->array.dims_count);
 					const uint32_t bindingCount = max( reflectionBinding->array.dims_count, 1 );
@@ -2753,21 +2691,33 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 		}
 	}
 	arrfree( reflectionDescSets );
-	NriPipelineLayoutDesc pipelineLayoutdesc = { 0 };
-	pipelineLayoutdesc.shaderStages = NriStageBits_GRAPHICS_SHADERS;
-	for(size_t i = 0; i < DESCRIPTOR_SET_MAX; i++) {
-		if(descRangeDescs[i]) {
-			descriptorSetDesc[pipelineLayoutdesc.descriptorSetNum].registerSpace = i;
-			descriptorSetDesc[pipelineLayoutdesc.descriptorSetNum].rangeNum = arrlen(descRangeDescs[i]);
-			descriptorSetDesc[pipelineLayoutdesc.descriptorSetNum++].ranges = descRangeDescs[i];
+	
+	program->type = type;
+	program->features = features;
+	program->name = R_CopyString( fullName );
+	program->deformsKey = R_CopyString( deformsKey ? deformsKey : "" );
+
+	NriPipelineLayoutDesc pipelineLayoutDesc = { 0 };
+	pipelineLayoutDesc.shaderStages = NriStageBits_GRAPHICS_SHADERS;
+	for( size_t i = 0; i < DESCRIPTOR_SET_MAX; i++ ) {
+		if( descRangeDescs[i] ) {
+			ri.Com_Printf( "Using Descriptor Set[%d]", i );
+			descriptorSetDesc[pipelineLayoutDesc.descriptorSetNum].registerSpace = i;
+			descriptorSetDesc[pipelineLayoutDesc.descriptorSetNum].rangeNum = arrlen( descRangeDescs[i] );
+			descriptorSetDesc[pipelineLayoutDesc.descriptorSetNum].ranges = descRangeDescs[i];
+			for( size_t l = 0; l < arrlen( descRangeDescs[i] ); l++ ) {
+				ri.Com_Printf( "[%lu]    Register - %lu ", l, descRangeDescs[i][l].baseRegisterIndex);
+				ri.Com_Printf( "[%lu]      descriptorNum: %lu ", l, descRangeDescs[i][l].descriptorNum);
+				ri.Com_Printf( "[%lu]      DescriptorType: %s ", l, NriDescriptorTypeToString[descRangeDescs[i][l].descriptorType]);
+				ri.Com_Printf( "[%lu]      Vertex: %s", l, (descRangeDescs[i][l].shaderStages & NriStageBits_VERTEX_SHADER) ? "true" : "false");
+				ri.Com_Printf( "[%lu]      Fragment: %s ", l, (descRangeDescs[i][l].shaderStages & NriStageBits_FRAGMENT_SHADER) ? "true": "false");
+			}
+			pipelineLayoutDesc.descriptorSetNum++;
 		}
 	}
-	pipelineLayoutdesc.descriptorSets = descriptorSetDesc;
-	if( descPushConstantDescs.size > 0 ) {
-		pipelineLayoutdesc.pushConstantNum = 1;
-		pipelineLayoutdesc.pushConstants = &descPushConstantDescs;
-	}
-	NRI_ABORT_ON_FAILURE(rsh.nri.coreI.CreatePipelineLayout(rsh.nri.device, &pipelineLayoutdesc, &program->layout));
+	pipelineLayoutDesc.ignoreGlobalSPIRVOffsets = true;
+	pipelineLayoutDesc.descriptorSets = descriptorSetDesc;
+	NRI_ABORT_ON_FAILURE(rsh.nri.coreI.CreatePipelineLayout(rsh.nri.device, &pipelineLayoutDesc, &program->layout));
 	
 	for(size_t  i = 0;  i < DESCRIPTOR_SET_MAX; i++) {
 		arrfree( descRangeDescs[i] );
@@ -2778,10 +2728,6 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 		sdsfree( stages[i].source );
 	}
 
-	program->type = type;
-	program->features = features;
-	program->name = R_CopyString( name );
-	program->deformsKey = R_CopyString( deformsKey ? deformsKey : "" );
 
 	if( !program->hash_next ) {
 		program->hash_next = r_glslprograms_hash[type][hashIndex];

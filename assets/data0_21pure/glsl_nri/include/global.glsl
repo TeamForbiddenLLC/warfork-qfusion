@@ -24,27 +24,9 @@
 // default set of attributes
 #include "attributes.glsl"
 
-#ifdef APPLY_INSTANCED_TRANSFORMS
-	layout(set = DESCRIPTOR_OBJECT_SET, binding = 0) uniform vec4 instancePoints[MAX_UNIFORM_INSTANCES * 2]; 
-	#define a_InstanceQuat instancePoints[gl_InstanceID*2]
-	#define a_InstancePosAndScale instancePoints[gl_InstanceID*2+1]
-#endif
-
-#ifdef QF_NUM_BONE_INFLUENCES
-	layout(set = DESCRIPTOR_OBJECT_SET, binding = 1) uniform vec4 dualQuats[MAX_UNIFORM_BONES*2]
-	layout(location = 10) in vec4 a_BonesIndices;
-	layout(location = 11) in vec4 a_BonesWeights;
-#endif
-
-#if defined(APPLY_AUTOSPRITE2)
-	layout(location = 12) in vec4 a_SpriteRightUpAxis;
-#else
-	#define a_SpriteRightUpAxis vec4(0.0)
-#endif
 
 
-
-layout(set = DESCRIPTOR_OBJECT_SET, binding = 2) uniform ObjectCB {
+layout(set = DESCRIPTOR_OBJECT_SET, binding = 0) uniform ObjectCB {
    vec4 fogEyePlane;
    vec4 fogPlane;
    vec3 entityOrigin;
@@ -59,6 +41,12 @@ layout(set = DESCRIPTOR_OBJECT_SET, binding = 2) uniform ObjectCB {
    vec3 lightDir;
    float isAlphaBlending;
 } obj;
+
+#ifdef APPLY_INSTANCED_TRANSFORMS
+	layout(set = DESCRIPTOR_OBJECT_SET, binding = 1) uniform vec4 instancePoints[MAX_UNIFORM_INSTANCES * 2]; 
+	#define a_InstanceQuat instancePoints[gl_InstanceID*2]
+	#define a_InstancePosAndScale instancePoints[gl_InstanceID*2+1]
+#endif
 
 layout(set = DESCRIPTOR_FRAME_SET, binding = 0) uniform FrameCB {
   vec3 viewOrigin;

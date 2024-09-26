@@ -11,5 +11,3 @@ void main(void)
 	v_TexCoord = TextureMatrix2x3Mul(pass.textureMatrix, a_TexCoord);
 }
 
-
-

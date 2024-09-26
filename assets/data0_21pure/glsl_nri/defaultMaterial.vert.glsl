@@ -21,7 +21,7 @@ void main()
 	vec3 Tangent = a_SVector.xyz;
 	float TangentDir = a_SVector.w;
 
-	QF_TransformVerts_Tangent(Position, Normal, Tangent, TexCoord);
+	QF_TransformVerts(Position, Normal, Tangent, TexCoord);
 
 	vec4 outColor = QF_VertexRGBGen(Position, Normal, inColor);
 
