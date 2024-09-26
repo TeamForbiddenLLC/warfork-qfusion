@@ -20,6 +20,8 @@
 const static NriSwapChainFormat DefaultSwapchainFormat = NriSwapChainFormat_BT709_G22_8BIT;
 const static NriSPIRVBindingOffsets DefaultBindingOffset = { 100, 200, 300, 400 }; // just ShaderMake defaults for simplicity
 
+
+
 // DirectX 12 requires ubo's be aligned by 256
 const static uint32_t UBOBlockerBufferSize = 256 * 128;
 const static uint32_t UBOBlockerBufferAlignmentReq = 256;
@@ -35,7 +37,13 @@ const static uint32_t UBOBlockerBufferAlignmentReq = 256;
 
 #define BINDING_SETS_PER_POOL 24
 
-enum descriptor_set_e { DESCRIPTOR_SET_0, DESCRIPTOR_SET_1, DESCRIPTOR_SET_2, DESCRIPTOR_SET_3, DESCRIPTOR_SET_MAX };
+enum descriptor_set_e { 
+	DESCRIPTOR_SET_0, 
+	DESCRIPTOR_SET_1, 
+	DESCRIPTOR_SET_2, 
+	DESCRIPTOR_SET_3, 
+	DESCRIPTOR_SET_MAX 
+};
 
 #define R_VK_ABORT_ON_FAILURE( result )             \
 	if( result != VK_SUCCESS ) {                    \
@@ -57,6 +65,16 @@ static const char *NriResultToString[NriResult_MAX_NUM] = { [NriResult_SUCCESS] 
 															[NriResult_UNSUPPORTED] = "UNSUPPORTED",
 															[NriResult_DEVICE_LOST] = "DEVICE_LOST",
 															[NriResult_OUT_OF_DATE] = "OUT_OF_DATE" };
+
+static const char *NriDescriptorTypeToString[NriDescriptorType_MAX_NUM] = { [NriDescriptorType_SAMPLER] = "SAMPLER",
+																			[NriDescriptorType_CONSTANT_BUFFER] = "CONSTANT_BUFFER",
+																			[NriDescriptorType_TEXTURE] = "TEXTURE",
+																			[NriDescriptorType_STORAGE_TEXTURE] = "STORAGE_TEXTURE",
+																			[NriDescriptorType_BUFFER] = "BUFFER",
+																			[NriDescriptorType_STORAGE_BUFFER] = "STORAGE_BUFFER",
+																			[NriDescriptorType_STRUCTURED_BUFFER] = "STRUCTURED_BUFFER",
+																			[NriDescriptorType_STORAGE_STRUCTURED_BUFFER] = "STORAGE_STRUCTURED_BUFFER",
+																			[NriDescriptorType_ACCELERATION_STRUCTURE] = "ACCELERATION_STRUCTURE" };
 
 // a wrapper to hold onto the hash + cookie
 struct nri_descriptor_s {

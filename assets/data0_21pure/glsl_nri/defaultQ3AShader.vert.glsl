@@ -14,8 +14,9 @@ void main(void)
 	vec3 Normal = a_Normal.xyz;
 	vec2 TexCoord = a_TexCoord;
 	vec4 inColor = vec4(a_Color);
+	vec3 Tangent = vec3(0,0,0);
 
-	QF_TransformVerts(Position, Normal, TexCoord);
+	QF_TransformVerts(Position, Normal, Tangent, TexCoord);
 
 	vec4 outColor = QF_VertexRGBGen(Position, Normal, inColor);
 

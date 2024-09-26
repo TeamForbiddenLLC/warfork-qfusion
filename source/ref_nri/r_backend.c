@@ -983,6 +983,20 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
   stream->drawElements.numElems += numElems;
 }
 
+static inline NriVertexAttributeDesc toVertexAttribDesc(uint32_t streamIndex, size_t offset, vattrib_t attrib, bool halfAttrib) {
+	switch(attrib) {
+		case VATTRIB_POSITION:
+		case VATTRIB_NORMAL:
+		case VATTRIB_SVECTOR:
+			return (NriVertexAttributeDesc) {
+				.offset = offset, 
+				.format = halfAttrib ? NriFormat_RGBA16_SFLOAT: NriFormat_RGBA32_SFLOAT, 
+				.vk = { VATTRIB_POSITION }, 
+				.streamIndex = streamIndex 
+			};
+			break;
+	}
+}
 
 /*
 * RB_FlushDynamicMeshes
@@ -1070,7 +1084,7 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 			info->attribs[info->numAttribs++] = ( NriVertexAttributeDesc ){ 
 				.offset = stream->vbo->sVectorsOffset, 
 				.format = NriFormat_RGBA32_SFLOAT, 
-				.vk = { VATTRIB_NORMAL}, 
+				.vk = { VATTRIB_SVECTOR }, 
 				.streamIndex = 0 
 			};
 		}
@@ -1084,6 +1098,15 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 			};
 		}
 
+		// texcoord  
+		if( stream->vbo->vertexAttribs & VATTRIB_TEXCOORDS_BIT) {
+			info->attribs[info->numAttribs++] = ( NriVertexAttributeDesc ){ 
+				.offset = stream->vbo->stOffset, 
+				.format = NriFormat_RGBA16_SFLOAT, 
+				.vk = { VATTRIB_TEXCOORDS }, 
+				.streamIndex = 0 
+			};
+		}
 		if( ( stream->vbo->vertexAttribs & VATTRIB_AUTOSPRITE_BIT ) == VATTRIB_AUTOSPRITE_BIT ) {
 			info->attribs[info->numAttribs++] = ( NriVertexAttributeDesc ){ 
 				.offset = stream->vbo->sVectorsOffset, 

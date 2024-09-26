@@ -17,7 +17,7 @@ void main(void)
 	float TangentDir = a_SVector.w;
 	vec4 inColor = vec4(a_Color);
 
-	QF_TransformVerts(Position, Normal, TexCoord);
+	QF_TransformVerts(Position, Normal, Tangent, TexCoord);
 
 	v_FrontColor = vec4(QF_VertexRGBGen( Position, Normal, inColor));
 

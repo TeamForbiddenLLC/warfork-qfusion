@@ -8,6 +8,7 @@
   layout(location = 6) in vec4 a_LightmapCoord23;
   layout(location = 7) in vec4 a_LightmapLayer0123;
 
+
 	#if defined(APPLY_AUTOSPRITE) || defined(APPLY_AUTOSPRITE2)
 		layout(location = 8) in vec4 a_SpritePoint;
 	#else
@@ -19,4 +20,9 @@
 	#else
 		#define a_SpriteRightUpAxis vec4(0.0)
 	#endif
+  
+  #ifdef QF_NUM_BONE_INFLUENCES
+	  layout(location = 10) in vec4 a_BonesIndices;
+	  layout(location = 11) in vec4 a_BonesWeights;
+  #endif
 #endif // VERTEX_SHADER

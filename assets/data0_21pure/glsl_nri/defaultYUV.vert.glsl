@@ -1,8 +1,8 @@
-#include "include/attributes.glsl"
-#include "include/resource.glsl"
-#include "include/math_utils.glsl"
+#include "include/global.glsl"
 
 layout(location = 0) out vec2 v_TexCoord;
+
+#include "include/qf_vert_utils.glsl"
 
 void main(void)
 {
