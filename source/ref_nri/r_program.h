@@ -35,7 +35,6 @@ typedef uint64_t r_glslfeat_t;
 #define GLSL_BITS_VERSION					16
 
 #define PIPELINE_LAYOUT_HASH_SIZE 256
-#define DESCRIPTOR_REFLECTION_HASH_SIZE 1024 
 #define VERTEX_POS_BINDING_SLOT (0)
 
 #define DEFAULT_GLSL_MATERIAL_PROGRAM			"defaultMaterial"
@@ -237,10 +236,10 @@ struct glsl_program_s {
 		uint32_t dimCount: 8;
 		uint32_t isArray: 1;
 		uint32_t slotType: 8; // enum glsl_slot_type 
-		uint32_t hash;
+		hash_t hash;
 		uint16_t setIndex;
 		uint16_t baseRegisterIndex;
-	} descriptorReflection[DESCRIPTOR_REFLECTION_HASH_SIZE];
+	} descriptorReflection[PIPELINE_LAYOUT_HASH_SIZE];
 
 	struct loc_s {
 		int			ModelViewMatrix,

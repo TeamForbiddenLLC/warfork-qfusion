@@ -861,6 +861,8 @@ void		R_FreeVBOsByTag( vbo_tag_t tag );
 void		R_FreeUnusedVBOs( void );
 void 		R_ShutdownVBO( void );
 
+void R_FillNriVertexAttrib(mesh_vbo_t* vbo, NriVertexAttributeDesc* desc, size_t* numDesc);
+
 //
 // r_sky.c
 //
