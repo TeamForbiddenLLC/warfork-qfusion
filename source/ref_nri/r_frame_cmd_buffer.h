@@ -16,14 +16,25 @@ struct frame_cmd_vertex_input_s {
 	uint64_t offset;
 };
 
+enum CmdStateResetBits {
+  STATE_RESET_VERTEX_ATTACHMENT
+};
+
 enum CmdStateDirtyBits {
 	CMD_DIRTY_VIEWPORT = 0x1
+};
+
+struct screen_rect_s {
+	uint16_t x;
+	uint16_t y;
+	uint16_t w;
+	uint16_t h;
 };
 
 // the serialized state of the pipeline
 struct frame_cmd_state_s {
 	uint32_t dirty;
-	uint32_t viewport[4];
+	//uint32_t viewport[4];
 	struct {
 		uint16_t x;
 		uint16_t y;
@@ -34,16 +45,23 @@ struct frame_cmd_state_s {
 	uint32_t numColorAttachments;
 	NriDescriptor const* colorAttachment[MAX_COLOR_ATTACHMENTS];
 	NriDescriptor const* depthAttachment;
+	struct screen_rect_s viewports[MAX_COLOR_ATTACHMENTS];
 
   NriBuffer* vertexBuffers[MAX_VERTEX_BINDINGS];
   uint64_t offsets[MAX_VERTEX_BINDINGS];
 	uint32_t dirtyVertexBuffers;
+
+	NriBuffer* indexBuffer;
+	uint64_t indexBufferOffset;
+	NriIndexType indexType;
+	bool dirtyIndexBuffer;
 
 	// binding
 	struct NriDescriptor *bindings[DESCRIPTOR_SET_MAX][DESCRIPTOR_MAX_BINDINGS];
 };
 
 struct frame_tex_buffers_s {
+	struct screen_rect_s screen; 	
 	NriDescriptor *colorAttachment;
 	NriTexture *colorTexture;
 
@@ -113,9 +131,12 @@ struct frame_buffer_req_s {
 
 // cmd buffer
 void FR_CmdResetAttachmentToBackbuffer(struct frame_cmd_buffer_s *cmd);
-void FR_CmdSetTextureAttachment(struct frame_cmd_buffer_s *cmd, NriDescriptor** colorAttachments, size_t numColors, NriDescriptor* depthAttachment);
+void FR_CmdSetTextureAttachment(struct frame_cmd_buffer_s *cmd, NriDescriptor** colorAttachments, struct screen_rect_s* viewports, size_t numColors, NriDescriptor* depthAttachment);
+
+void FR_CmdResetCmdState(struct frame_cmd_buffer_s *cmd,enum CmdStateResetBits bits);
 
 void FR_CmdSetVertexBuffer( struct frame_cmd_buffer_s *cmd, uint32_t slot, NriBuffer *buffer, uint64_t offset );
+void FR_CmdSetIndexBuffer( struct frame_cmd_buffer_s *cmd, NriBuffer *buffer, uint64_t offset, NriIndexType indexType );
 void FR_CmdSetScissor(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h );
 void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint32_t instanceNum, uint32_t baseIndex, uint32_t baseVertex, uint32_t baseInstance );
 #endif

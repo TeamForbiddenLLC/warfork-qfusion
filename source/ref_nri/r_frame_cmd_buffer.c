@@ -23,13 +23,28 @@ void FR_CmdSetScissor( struct frame_cmd_buffer_s *cmd, int x, int y, int w, int 
 
 void FR_CmdResetAttachmentToBackbuffer( struct frame_cmd_buffer_s *cmd ) {
 	const NriDescriptor *colorAttachments[] = { cmd->textureBuffers.colorAttachment };
-	FR_CmdSetTextureAttachment(cmd, colorAttachments, 1, cmd->textureBuffers.depthAttachment);
+	FR_CmdSetTextureAttachment( cmd, colorAttachments, 1, cmd->textureBuffers.depthAttachment );
 }
 
-void FR_CmdSetTextureAttachment( struct frame_cmd_buffer_s *cmd, NriDescriptor** colorAttachments, size_t numColors, NriDescriptor *depthAttachment ) {
+void FR_CmdResetCmdState(struct frame_cmd_buffer_s *cmd,enum CmdStateResetBits bits) {
+	memset(cmd->cmdState.vertexBuffers, 0, sizeof(NriBuffer*) * MAX_VERTEX_BINDINGS);
+	cmd->cmdState.dirtyVertexBuffers = 0;
+}
+
+
+void FR_CmdSetTextureAttachment( struct frame_cmd_buffer_s *cmd, NriDescriptor **colorAttachments, size_t numColors, NriDescriptor *depthAttachment )
+{
 	cmd->cmdState.numColorAttachments = numColors;
-	memcpy(cmd->cmdState.colorAttachment, colorAttachments, sizeof(struct NriDescriptor*) * numColors);
+	memcpy( cmd->cmdState.colorAttachment, colorAttachments, sizeof( struct NriDescriptor * ) * numColors );
 	cmd->cmdState.depthAttachment = depthAttachment;
+}
+
+void FR_CmdSetIndexBuffer( struct frame_cmd_buffer_s *cmd, NriBuffer *buffer, uint64_t offset, NriIndexType indexType)
+{
+	cmd->cmdState.indexType = indexType;
+	cmd->cmdState.dirtyIndexBuffer = true;
+	cmd->cmdState.indexBufferOffset = offset;
+	cmd->cmdState.indexBuffer = buffer;
 }
 
 void FR_CmdSetVertexBuffer( struct frame_cmd_buffer_s *cmd, uint32_t slot, NriBuffer *buffer, uint64_t offset )
@@ -113,6 +128,12 @@ void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint
 			rsh.nri.coreI.CmdSetVertexBuffers( cmd->cmd, vertexSlot, 1, buffer, offset );
 		}
 	}
+
+	if(cmd->cmdState.dirtyIndexBuffer) {
+		rsh.nri.coreI.CmdSetIndexBuffer(cmd->cmd, cmd->cmdState.indexBuffer, cmd->cmdState.indexBufferOffset, cmd->cmdState.indexType);
+	}
+
+	cmd->cmdState.dirtyIndexBuffer = false;
 	cmd->cmdState.dirtyVertexBuffers = 0;
 
 	if( cmd->cmdState.dirty & CMD_DIRTY_VIEWPORT ) {

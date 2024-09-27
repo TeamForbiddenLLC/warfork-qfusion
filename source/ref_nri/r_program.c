@@ -1905,7 +1905,7 @@ static bool __InsertReflectionDescriptorSet( struct glsl_program_s *program, con
 }
 
 static const struct descriptor_reflection_s* __ReflectDescriptorSet(const struct glsl_program_s *program,const struct glsl_descriptor_handle_s* handle) {
-	const size_t startIndex = handle->hash % DESCRIPTOR_REFLECTION_HASH_SIZE;
+	const size_t startIndex = handle->hash % PIPELINE_LAYOUT_HASH_SIZE;
 	size_t index = startIndex;
 	do {
 		if( program->descriptorReflection[index].hash == handle->hash ) {
@@ -1913,7 +1913,7 @@ static const struct descriptor_reflection_s* __ReflectDescriptorSet(const struct
 		} else if( program->descriptorReflection[index].hash == 0 ) {
 			return NULL;
 		}
-		index = (index + 1) % DESCRIPTOR_REFLECTION_HASH_SIZE;
+		index = (index + 1) % PIPELINE_LAYOUT_HASH_SIZE;
 	} while(index != startIndex);
 	return NULL;
 
@@ -1930,13 +1930,16 @@ void RP_BindDescriptorSets(struct frame_cmd_buffer_s* cmd, struct glsl_program_s
 	
 	for(size_t i = 0; i < numDescriptorData; i++) {
 		const struct descriptor_reflection_s* refl = __ReflectDescriptorSet(program, &data[i].handle);
-		const uint32_t setIndex = refl->setIndex;
-		const uint32_t slotIndex = refl->baseRegisterIndex + data[i].registerOffset;
+		// we skip reflection if we can't resolve it for the shader
+		if( refl ) {
+			const uint32_t setIndex = refl->setIndex;
+			const uint32_t slotIndex = refl->baseRegisterIndex + data[i].registerOffset;
 
-		setsChangeMask |= ( 1u << setIndex );
-		commit[setIndex].descriptorChangeMask |= ( 1u << slotIndex );
-		commit[setIndex].descriptors[slotIndex] = data->descriptor.descriptor;
-		commit[setIndex].hashes[slotIndex] |= data->descriptor.cookie;
+			setsChangeMask |= ( 1u << setIndex );
+			commit[setIndex].descriptorChangeMask |= ( 1u << slotIndex );
+			commit[setIndex].descriptors[slotIndex] = data->descriptor.descriptor;
+			commit[setIndex].hashes[slotIndex] |= data->descriptor.cookie;
+		}
 	}
 	
 	for(uint32_t setIndex = 0, setMask = setsChangeMask; setMask > 0 && setIndex++; setMask >>= 1u) {	
@@ -2599,10 +2602,11 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 					const SpvReflectDescriptorBinding *reflectionBinding = reflection->bindings[i_binding];
 					assert(reflection->set < DESCRIPTOR_SET_MAX);
 					struct descriptor_reflection_s reflc = {0};
+					
 					reflc.hash = Create_DescriptorHandle(reflectionBinding->name).hash;
 					reflc.setIndex = reflection->set;
 					reflc.baseRegisterIndex = reflectionBinding->binding;
-					ri.Com_Printf( "SPV Register %s set: %d binding: %d", reflectionBinding->name, reflectionBinding->set, reflectionBinding->binding );
+					ri.Com_Printf( "SPV Register %s set: %d binding: %d hash: %luu", reflectionBinding->name, reflectionBinding->set, reflectionBinding->binding, reflc.hash);
 
 					NriDescriptorRangeDesc *rangeDesc = NULL;
 					{

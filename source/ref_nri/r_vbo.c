@@ -90,6 +90,9 @@ void R_InitVBO( void )
 	}
 }
 
+
+
+
 /*
  * R_CreateMeshVBO
  *
@@ -357,6 +360,133 @@ R_FillVertexBuffer_f( int, int, );
 			R_FillVertexBuffer( float, float, in, size, stride, numVerts, out );     \
 		}                                                                            \
 	} while( 0 )
+
+
+void R_FillNriVertexAttrib(mesh_vbo_t* vbo, NriVertexAttributeDesc* desc, size_t* numDesc) {
+	desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+		.offset = 0, 
+		.format = ( vbo->halfFloatAttribs & VATTRIB_POSITION_BIT ) ? NriFormat_RGBA16_SFLOAT : NriFormat_RGBA32_SFLOAT, 
+		.vk = { VATTRIB_POSITION }, 
+		.d3d = {.semanticName = "POSITION", .semanticIndex = VATTRIB_POSITION  },
+		.streamIndex = 0 };
+
+	if(  ( vbo->vertexAttribs & VATTRIB_NORMAL_BIT ) ) {
+		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+			.offset = vbo->normalsOffset, 
+			.format = ( vbo->halfFloatAttribs & VATTRIB_NORMAL_BIT ) ? NriFormat_RGBA16_SFLOAT : NriFormat_RGBA32_SFLOAT, 
+			.vk = { VATTRIB_NORMAL }, 
+			.d3d = {.semanticName = "NORMAL", .semanticIndex = VATTRIB_SVECTOR   },
+			.streamIndex = 0 };
+	}
+	
+	if( vbo->vertexAttribs & VATTRIB_SVECTOR_BIT ) {
+		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+			.offset = vbo->sVectorsOffset, 
+			.format = ( vbo->halfFloatAttribs & VATTRIB_NORMAL_BIT ) ? NriFormat_RGBA16_SFLOAT : NriFormat_RGBA32_SFLOAT, 
+			.vk = { VATTRIB_SVECTOR }, 
+			.d3d = {.semanticName = "TANGENT", .semanticIndex = VATTRIB_SVECTOR   },
+			.streamIndex = 0 };
+	}
+	
+	if( vbo->vertexAttribs & VATTRIB_COLOR0_BIT ) {
+		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+			.offset = vbo->colorsOffset[0], 
+			.format = NriFormat_RGBA8_UNORM, 
+			.vk = { VATTRIB_COLOR0 }, 
+			.d3d = {.semanticName = "COLOR0", .semanticIndex = VATTRIB_COLOR0 },
+			.streamIndex = 0 
+		};
+	}
+
+	if( ( vbo->vertexAttribs & VATTRIB_TEXCOORDS_BIT ) ) {
+		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+			.offset = vbo->stOffset, 
+			.format = ( vbo->halfFloatAttribs & VATTRIB_TEXCOORDS_BIT  ) ? NriFormat_RG16_SFLOAT : NriFormat_RG32_SFLOAT, 
+			.vk = { VATTRIB_TEXCOORDS }, 
+			.d3d = {.semanticName = "TEXCOORD0", .semanticIndex = VATTRIB_TEXCOORDS },
+			.streamIndex = 0 };
+	}
+
+	if( (vbo->vertexAttribs & VATTRIB_AUTOSPRITE_BIT) == VATTRIB_AUTOSPRITE_BIT ) {
+		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+			.offset = vbo->spritePointsOffset, 
+			.format = ( vbo->halfFloatAttribs & VATTRIB_AUTOSPRITE_BIT  ) ? NriFormat_RGBA16_SFLOAT : NriFormat_RGBA32_SFLOAT, 
+			.vk = { VATTRIB_SPRITEPOINT }, 
+			.d3d = {.semanticName = "TEXCOORD1", .semanticIndex = VATTRIB_SPRITEPOINT },
+			.streamIndex = 0 };
+	}
+	
+	if( (vbo->vertexAttribs & VATTRIB_BONES_BITS) == VATTRIB_BONES_BITS ) {
+		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+			.offset = vbo->bonesIndicesOffset , 
+			.format = NriFormat_RGBA8_UINT, 
+			.vk = { VATTRIB_BONESINDICES }, 
+			.d3d = {.semanticName = "TEXCOORD2", .semanticIndex = VATTRIB_BONESINDICES  },
+			.streamIndex = 0 };
+		
+		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+			.offset = vbo->bonesWeightsOffset , 
+			.format = NriFormat_RGBA8_UNORM, 
+			.vk = { VATTRIB_BONESWEIGHTS }, 
+			.d3d = {.semanticName = "TEXCOORD3", .semanticIndex = VATTRIB_BONESWEIGHTS  },
+			.streamIndex = 0 };
+
+	} else {
+
+		// lightmap texture coordinates - aliasing bones, so not disabling bones
+		vattrib_t lmattr = VATTRIB_LMCOORDS01;
+		vattribbit_t lmattrbit = VATTRIB_LMCOORDS0_BIT;
+
+		for(size_t i = 0; i < ( MAX_LIGHTMAPS + 1 ) / 2; i++ ) {
+			if( vbo->vertexAttribs & lmattrbit ) {
+				desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+					.offset = vbo->lmstOffset[i], 
+					.format = ( vbo->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? NriFormat_R32_SFLOAT: NriFormat_R16_SFLOAT, 
+					.vk = { lmattr }, 
+					.d3d = {.semanticName = "TEXCOORD4", .semanticIndex = lmattr  },
+					.streamIndex = 0 
+				};
+				//qglVertexAttribPointerARB( lmattr, vbo->lmstSize[i], 
+				//	FLOAT_VATTRIB_GL_TYPE( VATTRIB_LMCOORDS0_BIT, hfa ), 
+				//	GL_FALSE, vbo->vertexSize, ( const GLvoid * )vbo->lmstOffset[i] );
+			}
+
+			lmattr++;
+			lmattrbit <<= 2;
+		}
+
+		// lightmap array texture layers
+		lmattr = VATTRIB_LMLAYERS0123;
+
+		for(size_t i = 0; i < ( MAX_LIGHTMAPS + 3 ) / 4; i++ ) {
+			if( vbo->vertexAttribs & ( VATTRIB_LMLAYERS0123_BIT << i ) ) {
+				desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+					.offset = vbo->lmlayersOffset[i], 
+					.format = NriFormat_R8_UINT, 
+					.vk = { lmattr }, 
+					.d3d = {.semanticName = "TEXCOORD5", .semanticIndex = lmattr  },
+					.streamIndex = 0 
+				};
+				//qglVertexAttribPointerARB( lmattr, 4, GL_UNSIGNED_BYTE,
+				//	GL_FALSE, vbo->vertexSize, ( const GLvoid * )vbo->lmlayersOffset[i] );
+			}
+
+			lmattr++;
+		}
+
+	}
+
+
+	const vattribbit_t lightMapAttrs[] = {
+		VATTRIB_LMCOORDS0_BIT,	
+	};
+
+	if( vbo->lmstOffset[0] && ( vbo->vertexAttribs & VATTRIB_LMCOORDS0_BIT ) ) {
+	}
+
+
+}
+
 
 /*
  * R_FillVBOVertexDataBuffer

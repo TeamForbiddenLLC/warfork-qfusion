@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+#include "NRIDescs.h"
 #include "r_gpu_ring_buffer.h"
 #include "r_local.h"
 #include "r_backend_local.h"
@@ -32,34 +33,6 @@ static void RB_SetGLDefaults( void );
 static void RB_RegisterStreamVBOs( void );
 static void RB_SelectTextureUnit( int tmu );
 
-static inline size_t meshOffsetVBO( mesh_vbo_t *vbo, enum vattrib_e attrib )
-{
-	switch( attrib ) {
-		case VATTRIB_POSITION:
-			return 0;
-		case VATTRIB_NORMAL:
-			return vbo->normalsOffset;
-		case VATTRIB_SVECTOR:
-			return vbo->sVectorsOffset;
-		case VATTRIB_COLOR0:
-			return vbo->colorsOffset[0];
-		case VATTRIB_TEXCOORDS:
-			return vbo->stOffset;
-		case VATTRIB_SPRITEPOINT:
-			return vbo->spritePointsOffset;
-		case VATTRIB_BONESINDICES:
-			return vbo->bonesIndicesOffset;
-		case VATTRIB_BONESWEIGHTS:
-			return vbo->bonesWeightsOffset;
-		case VATTRIB_LMLAYERS0123:
-			return vbo->lmlayersOffset[0];
-		case VATTRIB_INSTANCE_QUAT:
-		case VATTRIB_INSTANCE_XYZS:
-		default:
-			break;
-	}
-	return 0;
-}
 
 /*
 * RB_Init
@@ -983,21 +956,6 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
   stream->drawElements.numElems += numElems;
 }
 
-static inline NriVertexAttributeDesc toVertexAttribDesc(uint32_t streamIndex, size_t offset, vattrib_t attrib, bool halfAttrib) {
-	switch(attrib) {
-		case VATTRIB_POSITION:
-		case VATTRIB_NORMAL:
-		case VATTRIB_SVECTOR:
-			return (NriVertexAttributeDesc) {
-				.offset = offset, 
-				.format = halfAttrib ? NriFormat_RGBA16_SFLOAT: NriFormat_RGBA32_SFLOAT, 
-				.vk = { VATTRIB_POSITION }, 
-				.streamIndex = streamIndex 
-			};
-			break;
-	}
-}
-
 /*
 * RB_FlushDynamicMeshes
 */
@@ -1012,8 +970,15 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 		return;
 	}
 
-	struct dynamic_stream_info_s{
-		NriVertexStreamDesc vertexStream;
+	struct dynamic_stream_info_s {
+		size_t vertexStride;
+		uint64_t vertexOffset;
+		NriBuffer* vertexBuffer;
+
+		uint64_t indexOffset;
+		NriBuffer* indexBuffer;
+
+		//NriVertexStreamDesc vertexStream;
 		size_t numAttribs;
 		NriVertexAttributeDesc attribs[MAX_ATTRIBUTES];
 	} dynamicStreamInfo[RB_DYN_STREAM_NUM];
@@ -1026,7 +991,6 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 		if( stream->drawElements.numVerts == 0 ) {
 			continue;
 		}
-
 		// because of firstVert, upload elems first
 		if( stream->drawElements.numElems ) {
 			size_t reqOffset;
@@ -1036,6 +1000,9 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 			void *mappeData = rsh.nri.coreI.MapBuffer( stream->vbo->indexBuffer, reqOffset, reqSize );
 			memcpy( mappeData, stream->elementData + stream->drawElements.firstElem, reqSize );
 			rsh.nri.coreI.UnmapBuffer( stream->vbo->indexBuffer );
+
+			info->indexOffset = reqOffset;
+			info->indexBuffer = stream->vbo->indexBuffer;
 
 			stream->drawElements.firstElem = 0;
 			stream->drawElements.numElems = 0;
@@ -1049,88 +1016,15 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 			memcpy( mappeData, stream->vertexData, reqSize );
 			rsh.nri.coreI.UnmapBuffer( stream->vbo->vertexBuffer );
 
-			FR_CmdSetVertexBuffer(cmd, 0, stream->vbo->vertexBuffer, reqOffset);
-			info->vertexStream = (NriVertexStreamDesc) {
-				.stride = stream->vbo->vertexSize,
-				.stepRate = 0,
-				.bindingSlot = 0
-			};
+			info->vertexStride = stream->vbo->vertexSize;
+			info->vertexOffset = reqOffset;
+			info->vertexBuffer = stream->vbo->vertexBuffer;
 
 			stream->drawElements.firstVert = 0;
 			stream->drawElements.numVerts = 0;
 		}
 
-		// todo move stream declearation
-		if( stream->vbo->vertexAttribs & VATTRIB_POSITION_BIT ) {
-			info->attribs[info->numAttribs++] = ( NriVertexAttributeDesc ){ 
-				.offset = 0, 
-				.format = NriFormat_RGBA32_SFLOAT, 
-				.vk = { VATTRIB_POSITION }, 
-				.streamIndex = 0 
-			};
-		}
-
-		// normal
-		if( stream->vbo->vertexAttribs & VATTRIB_NORMAL_BIT ) {
-			info->attribs[info->numAttribs++] = ( NriVertexAttributeDesc ){ 
-				.offset = stream->vbo->normalsOffset, 
-				.format = NriFormat_RGBA32_SFLOAT, 
-				.vk = { VATTRIB_NORMAL}, 
-				.streamIndex = 0 
-			};
-		}
-		// s-vector
-		if( stream->vbo->vertexAttribs & VATTRIB_SVECTOR_BIT ) {
-			info->attribs[info->numAttribs++] = ( NriVertexAttributeDesc ){ 
-				.offset = stream->vbo->sVectorsOffset, 
-				.format = NriFormat_RGBA32_SFLOAT, 
-				.vk = { VATTRIB_SVECTOR }, 
-				.streamIndex = 0 
-			};
-		}
-		// color
-		if( stream->vbo->vertexAttribs & VATTRIB_COLOR0_BIT ) {
-			info->attribs[info->numAttribs++] = ( NriVertexAttributeDesc ){ 
-				.offset = stream->vbo->sVectorsOffset, 
-				.format = NriFormat_RGBA8_UINT, 
-				.vk = { VATTRIB_COLOR0}, 
-				.streamIndex = 0 
-			};
-		}
-
-		// texcoord  
-		if( stream->vbo->vertexAttribs & VATTRIB_TEXCOORDS_BIT) {
-			info->attribs[info->numAttribs++] = ( NriVertexAttributeDesc ){ 
-				.offset = stream->vbo->stOffset, 
-				.format = NriFormat_RGBA16_SFLOAT, 
-				.vk = { VATTRIB_TEXCOORDS }, 
-				.streamIndex = 0 
-			};
-		}
-		if( ( stream->vbo->vertexAttribs & VATTRIB_AUTOSPRITE_BIT ) == VATTRIB_AUTOSPRITE_BIT ) {
-			info->attribs[info->numAttribs++] = ( NriVertexAttributeDesc ){ 
-				.offset = stream->vbo->sVectorsOffset, 
-				.format = NriFormat_RGBA8_UINT, 
-				.vk = { VATTRIB_COLOR0}, 
-				.streamIndex = 0 
-			};
-		}
-		if( ( stream->vbo->vertexAttribs & VATTRIB_BONES_BITS ) == VATTRIB_BONES_BITS ) {
-			info->attribs[info->numAttribs++] = ( NriVertexAttributeDesc ){ 
-				.offset = stream->vbo->bonesIndicesOffset , 
-				.format = NriFormat_RGBA8_UINT, 
-				.vk = { VATTRIB_BONESINDICES}, 
-				.streamIndex = 0 
-			};
-			info->attribs[info->numAttribs++] = ( NriVertexAttributeDesc ){ 
-				.offset = stream->vbo->bonesWeightsOffset, 
-				.format = NriFormat_RGBA8_UINT, 
-				.vk = { VATTRIB_BONESWEIGHTS }, 
-				.streamIndex = 0 
-			};
-		} else {
-			// TODO: figure out lightmap textures
-		}
+		R_FillNriVertexAttrib(stream->vbo, info->attribs, &info->numAttribs);
 	}
 
 	RB_GetScissor( &sx, &sy, &sw, &sh );
@@ -1150,7 +1044,11 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 		//rbDynamicStream_t *stream = &rb.dynamicStreams[draw->dynamicStreamIdx];
 		struct dynamic_stream_info_s *info = &dynamicStreamInfo[draw->dynamicStreamIdx];
 		cmd->layoutConfig.numStreams = 1;
-		cmd->layoutConfig.streams[0] = info->vertexStream;
+		cmd->layoutConfig.streams[0] = (NriVertexStreamDesc) {
+			.stride = info->vertexStride,
+			.stepRate = 0,
+			.bindingSlot = 0
+		};
 		cmd->layoutConfig.numAttribs = info->numAttribs;
 		memcpy(cmd->layoutConfig.attribs, info->attribs, sizeof(NriVertexAttributeDesc) * info->numAttribs);
 
@@ -1158,6 +1056,8 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 		RB_SetPortalSurface( draw->portalSurface );
 		RB_SetShadowBits( draw->shadowBits );
 		FR_CmdSetScissor( cmd, draw->scissor[0], draw->scissor[1], draw->scissor[2], draw->scissor[3] );
+		FR_CmdSetVertexBuffer(cmd, 0, info->vertexBuffer, info->vertexOffset);
+		FR_CmdSetIndexBuffer(cmd, info->indexBuffer, info->indexOffset, NriIndexType_UINT16);
 
 		// translate the mesh in 2D
 		if( ( offsetx != draw->offset[0] ) || ( offsety != draw->offset[1] ) ) {
