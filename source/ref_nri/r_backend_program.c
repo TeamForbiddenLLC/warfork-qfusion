@@ -1338,7 +1338,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				}
 
 				struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_MATERIAL, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-				struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->layoutConfig );
+				struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->state);
 
 				rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
 				rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
@@ -1493,14 +1493,14 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 
 			struct glsl_program_s *program =
 				RP_ResolveProgram( GLSL_PROGRAM_TYPE_Q3A_SHADER, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->layoutConfig );
+			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->state);
 
 			size_t descriptorSize = 0;
 			struct glsl_descriptor_data_s descriptors[64] = { 0 };
 
 			if( programFeatures & GLSL_SHADER_COMMON_SOFT_PARTICLE ) {
 				descriptors[descriptorSize++] = ( struct glsl_descriptor_data_s ){ 
-					.descriptor = &rsh.screenDepthTextureCopy->descriptor, 
+					.descriptor = rsh.screenDepthTextureCopy->descriptor, 
 					.handle = Create_DescriptorHandle( "u_DepthTexture" ) 
 				};
 			}
@@ -1523,13 +1523,12 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			mat4_t texMatrix;
 
 			RB_UpdateCommonUniforms_2( cmd, pass, texMatrix );
-
+			__RB_UpdateFrameObjectCB( cmd, rb.currentEntity, pass );
 			descriptors[descriptorSize++] = ( struct glsl_descriptor_data_s ){ 
 				.descriptor = cmd->uboSceneFrame.descriptor, 
-				.handle = Create_DescriptorHandle( "frame" ) 
-			};
+				.handle = Create_DescriptorHandle( "frame" ) };
 			descriptors[descriptorSize++] = ( struct glsl_descriptor_data_s ){ 
-				.descriptor=  cmd->uboSceneObject.descriptor, 
+				.descriptor = cmd->uboSceneObject.descriptor, 
 				.handle = Create_DescriptorHandle( "obj" ) 
 			};
 
@@ -1647,7 +1646,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 
 			struct glsl_program_s *program =
 				RP_ResolveProgram( GLSL_PROGRAM_TYPE_DISTORTION, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->layoutConfig );
+			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->state);
 				
 			rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
 			rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
@@ -1687,7 +1686,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 
 			struct glsl_program_s *program =
 				RP_ResolveProgram( GLSL_PROGRAM_TYPE_RGB_SHADOW, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->layoutConfig );
+			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->state);
 			
 			rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
 			rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
@@ -1798,8 +1797,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				// update uniforms
 				//program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_SHADOWMAP, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 				struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_SHADOWMAP, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-				struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->layoutConfig );
-				
+				struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->state );
 
 				rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
 				rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
@@ -1855,7 +1853,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			programFeatures |= RB_FogProgramFeatures( pass, rb.fog );
 			
 			struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_OUTLINE, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->layoutConfig );
+			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->state );
 			
 			rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
 			rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
@@ -1975,7 +1973,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			}
 
 			struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_CELSHADE, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->layoutConfig );
+			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->state );
 
 		 // // update uniforms
 		 // program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_CELSHADE, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
@@ -2010,7 +2008,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			// update uniforms
 			
 			struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_FOG, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->layoutConfig );
+			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->state );
 
 		 // program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_FOG, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 		 // if( RB_BindProgram( program ) ) {
@@ -2048,8 +2046,8 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			// update uniforms
 			
 			struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_FXAA, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->layoutConfig );
-			
+			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->state );
+
 			//program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_FXAA, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 			//if( RB_BindProgram( program ) ) {
 			//	RB_UpdateCommonUniforms( program, pass, texMatrix );
@@ -2073,7 +2071,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 
 			// update uniforms
 			struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_YUV, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->layoutConfig );
+			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->state);
 			
 		 // program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_YUV, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, features );
 		 // if( RB_BindProgram( program ) ) {
@@ -2098,7 +2096,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 
 			// update uniforms
 			struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_COLORCORRECTION, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->layoutConfig );
+			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->state);
 			//program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_COLORCORRECTION, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, features );
 			//if( RB_BindProgram( program ) ) {
 			//	RB_UpdateCommonUniforms( program, pass, texMatrix );
@@ -2442,13 +2440,13 @@ static void RB_SetShaderState_2( struct frame_cmd_buffer_s *cmd )
 
 	// Face culling
 	if( !gl_cull->integer || rb.currentEntity->rtype == RT_SPRITE ) {
-		cmd->layoutConfig.cullMode = NriCullMode_NONE;
+		cmd->state.pipelineLayout.cullMode = NriCullMode_NONE;
 	} else if( shaderFlags & SHADER_CULL_FRONT ) {
-		cmd->layoutConfig.cullMode = NriCullMode_FRONT;
+		cmd->state.pipelineLayout.cullMode = NriCullMode_FRONT;
 	} else if( shaderFlags & SHADER_CULL_BACK ) {
-		cmd->layoutConfig.cullMode = NriCullMode_BACK;
+		cmd->state.pipelineLayout.cullMode = NriCullMode_BACK;
 	} else {
-		cmd->layoutConfig.cullMode = NriCullMode_NONE;
+		cmd->state.pipelineLayout.cullMode = NriCullMode_NONE;
 	}
 
 	state = 0;

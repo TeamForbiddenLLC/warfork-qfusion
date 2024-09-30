@@ -331,103 +331,100 @@ void RB_SetState_2( struct frame_cmd_buffer_s *cmd, int state )
 	if( state & GLSTATE_BLEND_MASK ) {
 		switch( state & GLSTATE_SRCBLEND_MASK ) {
 			case GLSTATE_SRCBLEND_ZERO:
-				cmd->layoutConfig.attachment[0].colorBlend.srcFactor = NriBlendFactor_ZERO;
+				cmd->state.pipelineLayout.colorSrcFactor = NriBlendFactor_ZERO;
 				break;
 			case GLSTATE_SRCBLEND_DST_COLOR:
-				cmd->layoutConfig.attachment[0].colorBlend.srcFactor = NriBlendFactor_DST_COLOR;
+				cmd->state.pipelineLayout.colorSrcFactor = NriBlendFactor_DST_COLOR;
 				break;
 			case GLSTATE_SRCBLEND_ONE_MINUS_DST_COLOR:
-				cmd->layoutConfig.attachment[0].colorBlend.srcFactor = NriBlendFactor_ONE_MINUS_DST_COLOR;
+				cmd->state.pipelineLayout.colorSrcFactor = NriBlendFactor_ONE_MINUS_DST_COLOR;
 				break;
 			case GLSTATE_SRCBLEND_SRC_ALPHA:
-				cmd->layoutConfig.attachment[0].colorBlend.srcFactor = NriBlendFactor_SRC_ALPHA;
+				cmd->state.pipelineLayout.colorSrcFactor = NriBlendFactor_SRC_ALPHA;
 				break;
 			case GLSTATE_SRCBLEND_ONE_MINUS_SRC_ALPHA:
-				cmd->layoutConfig.attachment[0].colorBlend.srcFactor = NriBlendFactor_ONE_MINUS_SRC_ALPHA;
+				cmd->state.pipelineLayout.colorSrcFactor = NriBlendFactor_ONE_MINUS_SRC_ALPHA;
 				break;
 			case GLSTATE_SRCBLEND_DST_ALPHA:
-				cmd->layoutConfig.attachment[0].colorBlend.srcFactor = NriBlendFactor_DST_ALPHA;
+				cmd->state.pipelineLayout.colorSrcFactor = NriBlendFactor_DST_ALPHA;
 				break;
 			case GLSTATE_SRCBLEND_ONE_MINUS_DST_ALPHA:
-				cmd->layoutConfig.attachment[0].colorBlend.srcFactor = NriBlendFactor_ONE_MINUS_DST_ALPHA;
+				cmd->state.pipelineLayout.colorSrcFactor = NriBlendFactor_ONE_MINUS_DST_ALPHA;
 				break;
 			default:
 			case GLSTATE_SRCBLEND_ONE:
-				cmd->layoutConfig.attachment[0].colorBlend.srcFactor = NriBlendFactor_ONE;
+				cmd->state.pipelineLayout.colorSrcFactor = NriBlendFactor_ONE;
 				break;
 		}
 
 		switch( state & GLSTATE_DSTBLEND_MASK ) {
 			case GLSTATE_DSTBLEND_ONE:
-				cmd->layoutConfig.attachment[0].colorBlend.dstFactor = NriBlendFactor_ONE;
+				cmd->state.pipelineLayout.colorDstFactor = NriBlendFactor_ONE;
 				break;
 			case GLSTATE_DSTBLEND_SRC_COLOR:
-				cmd->layoutConfig.attachment[0].colorBlend.dstFactor = NriBlendFactor_SRC_COLOR;
+				cmd->state.pipelineLayout.colorDstFactor = NriBlendFactor_SRC_COLOR;
 				break;
 			case GLSTATE_DSTBLEND_ONE_MINUS_SRC_COLOR:
-				cmd->layoutConfig.attachment[0].colorBlend.dstFactor = NriBlendFactor_ONE_MINUS_SRC_COLOR;
+				cmd->state.pipelineLayout.colorDstFactor = NriBlendFactor_ONE_MINUS_SRC_COLOR;
 				break;
 			case GLSTATE_DSTBLEND_SRC_ALPHA:
-				cmd->layoutConfig.attachment[0].colorBlend.dstFactor = NriBlendFactor_SRC_ALPHA;
+				cmd->state.pipelineLayout.colorDstFactor = NriBlendFactor_SRC_ALPHA;
 				break;
 			case GLSTATE_DSTBLEND_ONE_MINUS_SRC_ALPHA:
-				cmd->layoutConfig.attachment[0].colorBlend.dstFactor = NriBlendFactor_ONE_MINUS_SRC_ALPHA;
+				cmd->state.pipelineLayout.colorDstFactor = NriBlendFactor_ONE_MINUS_SRC_ALPHA;
 				break;
 			case GLSTATE_DSTBLEND_DST_ALPHA:
-				cmd->layoutConfig.attachment[0].colorBlend.dstFactor = NriBlendFactor_DST_ALPHA;
+				cmd->state.pipelineLayout.colorDstFactor = NriBlendFactor_DST_ALPHA;
 				break;
 			case GLSTATE_DSTBLEND_ONE_MINUS_DST_ALPHA:
-				cmd->layoutConfig.attachment[0].colorBlend.dstFactor = NriBlendFactor_ONE_MINUS_DST_ALPHA;
+				cmd->state.pipelineLayout.colorDstFactor = NriBlendFactor_ONE_MINUS_DST_ALPHA;
 				break;
 			default:
 			case GLSTATE_DSTBLEND_ZERO:
-				cmd->layoutConfig.attachment[0].colorBlend.dstFactor = NriBlendFactor_ZERO;
+				cmd->state.pipelineLayout.colorDstFactor = NriBlendFactor_ZERO;
 				break;
 		}
 
 		if( !( rb.gl.state & GLSTATE_BLEND_MASK ) ) {
-			cmd->layoutConfig.attachment[0].blendEnabled = true;
+			cmd->state.pipelineLayout.blendEnabled = true;
 		}
 	} else {
-		cmd->layoutConfig.attachment[0].blendEnabled = false;
+		cmd->state.pipelineLayout.blendEnabled = false;
 	}
 
 	if( state & GLSTATE_NO_COLORWRITE ) {
-		cmd->layoutConfig.attachment[0].colorWriteMask = 0;
+		cmd->state.pipelineLayout.colorWriteMask = 0;
 	} else {
-		cmd->layoutConfig.attachment[0].colorWriteMask = NriColorWriteBits_RGB | ( ( state & GLSTATE_ALPHAWRITE ) ? NriColorWriteBits_A : 0 );
+		cmd->state.pipelineLayout.colorWriteMask = NriColorWriteBits_RGB | ( ( state & GLSTATE_ALPHAWRITE ) ? NriColorWriteBits_A : 0 );
 	}
 
 	if( state & GLSTATE_NO_DEPTH_TEST ) {
-		cmd->layoutConfig.depthAttachment.compareFunc = NriCompareFunc_ALWAYS;
+		cmd->state.pipelineLayout.compareFunc = NriCompareFunc_ALWAYS;
 	} else if( state & GLSTATE_DEPTHFUNC_EQ ) {
-		cmd->layoutConfig.depthAttachment.compareFunc = NriCompareFunc_EQUAL;
+		cmd->state.pipelineLayout.compareFunc = NriCompareFunc_EQUAL;
 	} else if( state & GLSTATE_DEPTHFUNC_GT ) {
-		cmd->layoutConfig.depthAttachment.compareFunc = NriCompareFunc_GREATER;
+		cmd->state.pipelineLayout.compareFunc = NriCompareFunc_GREATER;
 	} else {
-		cmd->layoutConfig.depthAttachment.compareFunc = NriCompareFunc_LESS_EQUAL;
+		cmd->state.pipelineLayout.compareFunc = NriCompareFunc_LESS_EQUAL;
 	}
 
-	cmd->layoutConfig.depthAttachment.write = ( state & GLSTATE_DEPTHWRITE );
+	cmd->state.pipelineLayout.depthWrite = ( state & GLSTATE_DEPTHWRITE );
 
-
-
-	rb.gl.depthoffset = (state & GLSTATE_OFFSET_FILL);
+	rb.gl.depthoffset = ( state & GLSTATE_OFFSET_FILL );
 	if( state & GLSTATE_OFFSET_FILL ) {
-
-		cmd->layoutConfig.viewport.depthRangeMin = rb.gl.depthmin;
-		cmd->layoutConfig.viewport.depthRangeMax = rb.gl.depthmax;
+		cmd->state.pipelineLayout.depthRangeMin = rb.gl.depthmin;
+		cmd->state.pipelineLayout.depthRangeMax = rb.gl.depthmax;
 	} else {
-		cmd->layoutConfig.viewport.depthRangeMin = rb.gl.depthmin + (4.0f / 65535.0f);
-		cmd->layoutConfig.viewport.depthRangeMax = rb.gl.depthmax;
+		cmd->state.pipelineLayout.depthRangeMin = rb.gl.depthmin + ( 4.0f / 65535.0f );
+		cmd->state.pipelineLayout.depthRangeMax = rb.gl.depthmax;
 	}
 
 	if( glConfig.stencilBits ) {
-	 //TODO: workout stencil test logic
-	 // if( state & GLSTATE_STENCIL_TEST )
-	 // 	qglEnable( GL_STENCIL_TEST );
-	 // else
-	 // 	qglDisable( GL_STENCIL_TEST );
+		// TODO: workout stencil test logic
+		//  if( state & GLSTATE_STENCIL_TEST )
+		//  	qglEnable( GL_STENCIL_TEST );
+		//  else
+		//  	qglDisable( GL_STENCIL_TEST );
 	}
 
 	rb.gl.state = state;
@@ -581,14 +578,13 @@ void RB_SetState( int state )
 	rb.gl.state = state;
 }
 
-void RB_FlipFrontFace( struct frame_cmd_buffer_s* cmd)
+void RB_FlipFrontFace( struct frame_cmd_buffer_s *cmd )
 {
-	assert(cmd);
-	rb.gl.frontFace = !rb.gl.frontFace;
-	if( rb.gl.frontFace ) {
-		cmd->layoutConfig.cullMode = NriCullMode_FRONT;
+	assert( cmd );
+	if( cmd->state.pipelineLayout.cullMode == NriCullMode_FRONT ) {
+		cmd->state.pipelineLayout.cullMode = NriCullMode_FRONT;
 	} else {
-		cmd->layoutConfig.cullMode = NriCullMode_BACK;
+		cmd->state.pipelineLayout.cullMode = NriCullMode_BACK;
 	}
 }
 
@@ -843,7 +839,12 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
 {
   int numVerts = mesh->numVerts, numElems = mesh->numElems;
   bool trifan = false;
-  int scissor[4];
+  const int scissor[4] = {
+  	cmd->state.scissors[0].x,
+  	cmd->state.scissors[0].y,
+  	cmd->state.scissors[0].width,
+  	cmd->state.scissors[0].height
+  };
   rbDynamicDraw_t *prev = NULL, *draw;
   bool merge = false;
   vattribmask_t vattribs;
@@ -860,8 +861,6 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
   if( !numVerts || !numElems || ( numVerts > MAX_STREAM_VBO_VERTS ) || ( numElems > MAX_STREAM_VBO_ELEMENTS ) ) {
   	return;
   }
-
-  RB_GetScissor( &scissor[0], &scissor[1], &scissor[2], &scissor[3] );
 
   if( rb.numDynamicDraws ) {
   	prev = &rb.dynamicDraws[rb.numDynamicDraws - 1];
@@ -962,7 +961,6 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
 void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 {
 	assert(cmd);
-	int sx, sy, sw, sh;
 	float offsetx = 0.0f, offsety = 0.0f, transx, transy;
 	mat4_t m;
 
@@ -1027,15 +1025,12 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 		R_FillNriVertexAttrib(stream->vbo, info->attribs, &info->numAttribs);
 	}
 
-	RB_GetScissor( &sx, &sy, &sw, &sh );
-
-	NriAttachmentsDesc attachmentDesc = {};
-	attachmentDesc.colorNum = cmd->cmdState.numColorAttachments;
-	attachmentDesc.colors = cmd->cmdState.colorAttachment;
-	attachmentDesc.depthStencil = cmd->cmdState.depthAttachment;
+	NriRect prevScissors[MAX_COLOR_ATTACHMENTS];
+	size_t numColorAttachments = cmd->state.numColorAttachments;
+	memcpy(prevScissors, cmd->state.scissors, sizeof(NriRect) * cmd->state.numColorAttachments); // keep a backup of the scissors
 
 	// begin rendering pass
-	rsh.nri.coreI.CmdBeginRendering(cmd->cmd, &attachmentDesc);
+  FR_CmdBeginRendering(cmd);	
 	Matrix4_Copy( rb.objectMatrix, m );
 	transx = m[12];
 	transy = m[13];
@@ -1043,19 +1038,19 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 		rbDynamicDraw_t const *draw = rb.dynamicDraws;
 		//rbDynamicStream_t *stream = &rb.dynamicStreams[draw->dynamicStreamIdx];
 		struct dynamic_stream_info_s *info = &dynamicStreamInfo[draw->dynamicStreamIdx];
-		cmd->layoutConfig.numStreams = 1;
-		cmd->layoutConfig.streams[0] = (NriVertexStreamDesc) {
+		cmd->state.numStreams = 1;
+		cmd->state.streams[0] = (NriVertexStreamDesc) {
 			.stride = info->vertexStride,
 			.stepRate = 0,
 			.bindingSlot = 0
 		};
-		cmd->layoutConfig.numAttribs = info->numAttribs;
-		memcpy(cmd->layoutConfig.attribs, info->attribs, sizeof(NriVertexAttributeDesc) * info->numAttribs);
+		cmd->state.numAttribs = info->numAttribs;
+		memcpy(cmd->state.attribs, info->attribs, sizeof(NriVertexAttributeDesc) * info->numAttribs);
 
-		RB_BindShader( NULL, draw->entity, draw->shader, draw->fog );
+		RB_BindShader( cmd, draw->entity, draw->shader, draw->fog );
 		RB_SetPortalSurface( draw->portalSurface );
 		RB_SetShadowBits( draw->shadowBits );
-		FR_CmdSetScissor( cmd, draw->scissor[0], draw->scissor[1], draw->scissor[2], draw->scissor[3] );
+		FR_CmdSetScissorAll( cmd, ( NriRect ){ draw->scissor[0], draw->scissor[1], draw->scissor[2], draw->scissor[3] } );
 		FR_CmdSetVertexBuffer(cmd, 0, info->vertexBuffer, info->vertexOffset);
 		FR_CmdSetIndexBuffer(cmd, info->indexBuffer, info->indexOffset, NriIndexType_UINT16);
 
@@ -1075,11 +1070,11 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 			draw->drawElements.firstElem, draw->drawElements.numElems
 		);
 	}
-	rsh.nri.coreI.CmdEndRendering(cmd->cmd);
+	FR_CmdEndRendering(cmd);
 
 	rb.numDynamicDraws = 0;
 
-	FR_CmdSetScissor( cmd, sx, sy, sw, sh );
+	FR_CmdSetScissor(cmd, prevScissors, numColorAttachments);
 
 	// restore the original translation in the object matrix if it has been changed
 	if( offsetx || offsety ) {

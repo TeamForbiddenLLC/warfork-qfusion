@@ -85,6 +85,15 @@ static void RP_GetUniformLocations( struct glsl_program_s *program );
 static void RP_BindAttrbibutesLocations( struct glsl_program_s *program );
 static void *RP_GetProgramBinary( int elem, int *format, unsigned *length );
 
+static struct ProgramDescriptorInfo* __GetDescriptorInfo(struct glsl_program_s* program, uint32_t set) {
+	for( size_t i = 0; i < program->numDescriptors; i++ ) {
+		if( program->descriptorInfo[i].registerSpace == set ) {
+			return &program->descriptorInfo[i];
+		}
+	}
+	return NULL;
+} 
+
 /*
  * RP_Init
  */
@@ -1817,29 +1826,53 @@ static inline struct pipeline_hash_s* __resolvePipeline(struct glsl_program_s *p
 	return NULL;
 }
 
-struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_layout_config_s *def ) {
+struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, struct frame_cmd_state_s *def )
+{
 	hash_t hash = HASH_INITIAL_VALUE;
-	hash = hash_data( hash, &def->inputAssembly, sizeof( NriInputAssemblyDesc ) );
-	hash = hash_data( hash, &def->rasterization, sizeof( NriRasterizationDesc ) );
+	//hash = hash_data( hash, &def->inputAssembly, sizeof( NriInputAssemblyDesc ) );
+	//hash = hash_data( hash, &def->rasterization, sizeof( NriRasterizationDesc ) );
 	for( size_t i = 0; i < def->numStreams; i++ ) {
 		hash = hash_data( hash, &def->streams[i], sizeof( NriVertexStreamDesc ) );
 	}
 
 	for( size_t i = 0; i < def->numAttribs; i++ ) {
-		hash = hash_data( hash, &def->attribs[i], sizeof( NriVertexAttributeDesc ) );
+		hash = hash_data( hash, &def->attribs[i], sizeof( NriVertexAttributeDesc ));
 	}
+
+	hash = hash_u32( hash, def->pipelineLayout.depthFormat );
+	for( size_t i = 0; i < def->numColorAttachments; i++ ) {
+		hash = hash_u32( hash, def->pipelineLayout.colorFormats[i] );
+	}
+	hash = hash_u32( hash, def->pipelineLayout.colorSrcFactor );
+	hash = hash_u32( hash, def->pipelineLayout.colorDstFactor );
+	hash = hash_u32( hash, def->pipelineLayout.cullMode);
+	hash = hash_u32( hash, def->pipelineLayout.blendEnabled);
+	hash = hash_u32( hash, def->pipelineLayout.compareFunc);
+	hash = hash_u32( hash, def->pipelineLayout.depthWrite);
 
 	struct pipeline_hash_s* pipeline = __resolvePipeline(program, hash);
 	if(pipeline->pipeline) {
 		return pipeline; // pipeline is present in slot
 	}
+	NriGraphicsPipelineDesc graphicsPipelineDesc = {};
+	NriColorAttachmentDesc colorAttachmentDesc[MAX_COLOR_ATTACHMENTS] = {};
+	for( size_t i = 0; i < def->numColorAttachments; i++ ) {
+		colorAttachmentDesc[i].format = def->pipelineLayout.colorFormats[i];
+		colorAttachmentDesc[i].colorBlend.srcFactor = def->pipelineLayout.colorSrcFactor; 
+		colorAttachmentDesc[i].colorBlend.dstFactor = def->pipelineLayout.colorDstFactor;
+		colorAttachmentDesc[i].colorWriteMask = def->pipelineLayout.colorWriteMask;
+		colorAttachmentDesc[i].blendEnabled = def->pipelineLayout.blendEnabled;
+	}
+	graphicsPipelineDesc.outputMerger.colorNum = def->numColorAttachments;
+	graphicsPipelineDesc.outputMerger.colors = colorAttachmentDesc;
 
-	NriShaderDesc shaderDesc[16] = {0};
-	NriGraphicsPipelineDesc graphicsPipelineDesc = {
-		.shaders = shaderDesc,
-		.rasterization = def->rasterization,
-		.inputAssembly = def->inputAssembly
-	};
+	NriShaderDesc shaderDesc[4] = {0};
+	graphicsPipelineDesc.shaders = shaderDesc;
+	graphicsPipelineDesc.rasterization.cullMode = def->pipelineLayout.cullMode;
+
+	graphicsPipelineDesc.outputMerger.depth.write = def->pipelineLayout.depthWrite;
+	graphicsPipelineDesc.outputMerger.depth.compareFunc = def->pipelineLayout.compareFunc;
+	graphicsPipelineDesc.outputMerger.depthStencilFormat = def->pipelineLayout.depthFormat;
 
 	assert( rsh.nri.api == NriGraphicsAPI_VK );
 
@@ -1939,16 +1972,21 @@ void RP_BindDescriptorSets(struct frame_cmd_buffer_s* cmd, struct glsl_program_s
 			commit[setIndex].descriptorChangeMask |= ( 1u << slotIndex );
 			commit[setIndex].descriptors[slotIndex] = data->descriptor.descriptor;
 			commit[setIndex].hashes[slotIndex] |= data->descriptor.cookie;
-		}
+		} 
 	}
 	
-	for(uint32_t setIndex = 0, setMask = setsChangeMask; setMask > 0 && setIndex++; setMask >>= 1u) {	
+	for(uint32_t setIndex = 0, setMask = setsChangeMask; setMask > 0; setMask >>= 1u, setIndex++) {	
+		if((setMask & 1) == 0) {
+			continue;
+		} 
 		struct glsl_descriptor_commit_s* c = &commit[setIndex];
 		hash_t descHash = HASH_INITIAL_VALUE;
 		for( uint32_t descMask = c->descriptorChangeMask, descIndex = 0; descMask; descMask >>= 1u, descIndex++ ) {
 			descHash = hash_u64(descHash, c->hashes[descIndex]);
 		}
-		struct descriptor_set_result_s result = ResolveDescriptorSet( &rsh.nri, cmd, program->descriptorSetAlloc[setIndex], descHash );
+
+		struct ProgramDescriptorInfo* info = &program->descriptorInfo[setIndex];
+		struct descriptor_set_result_s result = ResolveDescriptorSet( &rsh.nri, cmd, program->layout, info->setIndex, info->alloc, descHash );
 		if(!result.found) {
 			for( uint32_t descMask = c->descriptorChangeMask, descIndex = 0; descMask; descMask >>= 1u, descIndex++ ) {
 				NriDescriptorRangeUpdateDesc updateDesc = { 0 };
@@ -1956,7 +1994,6 @@ void RP_BindDescriptorSets(struct frame_cmd_buffer_s* cmd, struct glsl_program_s
 				updateDesc.descriptorNum = 1;
 				rsh.nri.coreI.UpdateDescriptorRanges(result.set, descIndex, 1, &updateDesc);
 			}
-
 		}
 		rsh.nri.coreI.CmdSetDescriptorSet( cmd->cmd, setIndex, result.set, NULL );
 	}
@@ -2432,10 +2469,9 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 	sdsfree(featuresStr);
 	
 	SpvReflectDescriptorSet** reflectionDescSets = NULL;
-	SpvReflectBlockVariable* reflectionBlockSets[1] = {0};
-
 	NriDescriptorSetDesc descriptorSetDesc[DESCRIPTOR_SET_MAX] = {0};
 	NriDescriptorRangeDesc* descRangeDescs[DESCRIPTOR_SET_MAX] = {0};
+	NriPipelineLayoutDesc pipelineLayoutDesc = { 0 };
 	for( size_t stageIdx = 0; stageIdx < Q_ARRAY_COUNT( stages ); stageIdx++ ) {
 		const glslang_input_t input = { 
 										.language = GLSLANG_SOURCE_GLSL,
@@ -2588,39 +2624,37 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 
 			for( size_t i_set = 0; i_set < descCount; i_set++ ) {
 				const SpvReflectDescriptorSet *reflection = reflectionDescSets[i_set];
-				
-				// create the descriptor allocator
-				if(program->descriptorSetAlloc[reflection->set] == NULL) {
-					program->descriptorSetAlloc[reflection->set] = malloc(sizeof(struct descriptor_set_allloc_s));
-					memset(program->descriptorSetAlloc[reflection->set], 0, sizeof(struct descriptor_set_allloc_s));
+			
+				struct ProgramDescriptorInfo* info = __GetDescriptorInfo(program, reflection->set);
+				if(!info) {
+					info = &program->descriptorInfo[program->numDescriptors];
+					info->setIndex = program->numDescriptors;
+					info->registerSpace = reflection->set; 
+					info->alloc = calloc( 1, sizeof( struct descriptor_set_allloc_s ) );
+					program->numDescriptors++;
 				}
-				struct descriptor_set_allloc_s* const descAlloc = program->descriptorSetAlloc[reflection->set];
-				descAlloc->config.layout = program->layout;
-				descAlloc->config.setIndex = reflection->set;
-
 				for( size_t i_binding = 0; i_binding < reflection->binding_count; i_binding++ ) {
 					const SpvReflectDescriptorBinding *reflectionBinding = reflection->bindings[i_binding];
 					assert(reflection->set < DESCRIPTOR_SET_MAX);
 					struct descriptor_reflection_s reflc = {0};
-					
+				
+					//info->binding = reflectionBinding->binding; 
 					reflc.hash = Create_DescriptorHandle(reflectionBinding->name).hash;
-					reflc.setIndex = reflection->set;
+					reflc.setIndex = info->setIndex;
 					reflc.baseRegisterIndex = reflectionBinding->binding;
-					ri.Com_Printf( "SPV Register %s set: %d binding: %d hash: %luu", reflectionBinding->name, reflectionBinding->set, reflectionBinding->binding, reflc.hash);
+					ri.Com_Printf( "SPV Register %s set: %d binding: %d hash: %luu", reflectionBinding->name, reflectionBinding->set, reflectionBinding->binding, reflc.hash );
 
 					NriDescriptorRangeDesc *rangeDesc = NULL;
-					{
-						for( size_t i = 0; i < arrlen( descRangeDescs[reflection->set] ); i++ ) {
-							if( descRangeDescs[reflection->set][i].baseRegisterIndex == reflectionBinding->binding ) {
-								rangeDesc = &descRangeDescs[reflection->set][i];
-								break;
-							}
+					for( size_t i = 0; i < arrlen( descRangeDescs[info->setIndex] ); i++ ) {
+						if( descRangeDescs[info->setIndex][i].baseRegisterIndex == reflectionBinding->binding ) {
+							rangeDesc = &descRangeDescs[info->setIndex][i];
+							break;
 						}
-						if( !rangeDesc ) {
-							NriDescriptorRangeDesc input = {};
-							arrpush(descRangeDescs[reflection->set], input);
-							rangeDesc = &descRangeDescs[reflection->set][arrlen(descRangeDescs[reflection->set]) - 1];
-						}
+					}
+					if( !rangeDesc ) {
+						NriDescriptorRangeDesc input = {};
+						arrpush( descRangeDescs[info->setIndex], input );
+						rangeDesc = &descRangeDescs[info->setIndex][arrlen( descRangeDescs[info->setIndex] ) - 1];
 					}
 
 					rangeDesc->descriptorNum = max(1,reflectionBinding->array.dims_count);
@@ -2633,36 +2667,36 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 					switch( reflectionBinding->descriptor_type ) {
 						case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER:
 							rangeDesc->descriptorType = NriDescriptorType_SAMPLER;
-							descAlloc->config.samplerMaxNum += bindingCount;
+							info->alloc->config.samplerMaxNum += bindingCount;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 							rangeDesc->descriptorType = NriDescriptorType_TEXTURE;
-							descAlloc->config.textureMaxNum += bindingCount;
+							info->alloc->config.textureMaxNum += bindingCount;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
 							rangeDesc->descriptorType = NriDescriptorType_BUFFER;
-							descAlloc->config.bufferMaxNum += bindingCount;
+							info->alloc->config.bufferMaxNum += bindingCount;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 							rangeDesc->descriptorType = NriDescriptorType_STORAGE_TEXTURE;
-							descAlloc->config.storageTextureMaxNum += bindingCount;
+							info->alloc->config.storageTextureMaxNum += bindingCount;
 							reflc.slotType = GLSL_REFLECTION_IMAGE;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 							rangeDesc->descriptorType = NriDescriptorType_STORAGE_BUFFER;
-							descAlloc->config.storageBufferMaxNum += bindingCount;
+							info->alloc->config.storageBufferMaxNum += bindingCount;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 							rangeDesc->descriptorType = NriDescriptorType_CONSTANT_BUFFER;
-							descAlloc->config.constantBufferMaxNum += bindingCount;
+							info->alloc->config.constantBufferMaxNum += bindingCount;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER:
 							rangeDesc->descriptorType = NriDescriptorType_STRUCTURED_BUFFER;
-							descAlloc->config.structuredBufferMaxNum += bindingCount;
+							info->alloc->config.structuredBufferMaxNum += bindingCount;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 							rangeDesc->descriptorType = NriDescriptorType_STORAGE_STRUCTURED_BUFFER;
-							descAlloc->config.storageStructuredBufferMaxNum += bindingCount;
+							info->alloc->config.storageStructuredBufferMaxNum += bindingCount;
 							break;
 						case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 						case SPV_REFLECT_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
@@ -2701,29 +2735,29 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 	program->name = R_CopyString( fullName );
 	program->deformsKey = R_CopyString( deformsKey ? deformsKey : "" );
 
-	NriPipelineLayoutDesc pipelineLayoutDesc = { 0 };
 	pipelineLayoutDesc.shaderStages = NriStageBits_GRAPHICS_SHADERS;
-	for( size_t i = 0; i < DESCRIPTOR_SET_MAX; i++ ) {
-		if( descRangeDescs[i] ) {
-			ri.Com_Printf( "Using Descriptor Set[%d]", i );
-			descriptorSetDesc[pipelineLayoutDesc.descriptorSetNum].registerSpace = i;
-			descriptorSetDesc[pipelineLayoutDesc.descriptorSetNum].rangeNum = arrlen( descRangeDescs[i] );
-			descriptorSetDesc[pipelineLayoutDesc.descriptorSetNum].ranges = descRangeDescs[i];
-			for( size_t l = 0; l < arrlen( descRangeDescs[i] ); l++ ) {
-				ri.Com_Printf( "[%lu]    Register - %lu ", l, descRangeDescs[i][l].baseRegisterIndex);
-				ri.Com_Printf( "[%lu]      descriptorNum: %lu ", l, descRangeDescs[i][l].descriptorNum);
-				ri.Com_Printf( "[%lu]      DescriptorType: %s ", l, NriDescriptorTypeToString[descRangeDescs[i][l].descriptorType]);
-				ri.Com_Printf( "[%lu]      Vertex: %s", l, (descRangeDescs[i][l].shaderStages & NriStageBits_VERTEX_SHADER) ? "true" : "false");
-				ri.Com_Printf( "[%lu]      Fragment: %s ", l, (descRangeDescs[i][l].shaderStages & NriStageBits_FRAGMENT_SHADER) ? "true": "false");
-			}
-			pipelineLayoutDesc.descriptorSetNum++;
-		}
+	pipelineLayoutDesc.descriptorSetNum = program->numDescriptors;
+	for( size_t i = 0; i < program->numDescriptors; i++ ) {
+		//			struct ProgramDescriptorInfo* info = &program->descriptorInfo[i];
+		//			info->setIndex = pipelineLayoutDesc.descriptorSetNum;
+		descriptorSetDesc[i].registerSpace = program->descriptorInfo[i].registerSpace;
+		const uint32_t setIndex = program->descriptorInfo[i].setIndex;
+		descriptorSetDesc[i].rangeNum = arrlen( descRangeDescs[setIndex] );
+		descriptorSetDesc[i].ranges = descRangeDescs[setIndex];
+		//	ri.Com_Printf( "Using Descriptor Set[%d]", i );
+		// for( size_t l = 0; l < arrlen( descRangeDescs[i] ); l++ ) {
+		// 	ri.Com_Printf( "[%lu]    Register - %lu ", l, descRangeDescs[i][l].baseRegisterIndex);
+		// 	ri.Com_Printf( "[%lu]      descriptorNum: %lu ", l, descRangeDescs[i][l].descriptorNum);
+		// 	ri.Com_Printf( "[%lu]      DescriptorType: %s ", l, NriDescriptorTypeToString[descRangeDescs[i][l].descriptorType]);
+		// 	ri.Com_Printf( "[%lu]      Vertex: %s", l, (descRangeDescs[i][l].shaderStages & NriStageBits_VERTEX_SHADER) ? "true" : "false");
+		// 	ri.Com_Printf( "[%lu]      Fragment: %s ", l, (descRangeDescs[i][l].shaderStages & NriStageBits_FRAGMENT_SHADER) ? "true": "false");
+		// }
 	}
 	pipelineLayoutDesc.ignoreGlobalSPIRVOffsets = true;
 	pipelineLayoutDesc.descriptorSets = descriptorSetDesc;
 	NRI_ABORT_ON_FAILURE(rsh.nri.coreI.CreatePipelineLayout(rsh.nri.device, &pipelineLayoutDesc, &program->layout));
-	
-	for(size_t  i = 0;  i < DESCRIPTOR_SET_MAX; i++) {
+
+	for( size_t i = 0; i < DESCRIPTOR_SET_MAX; i++ ) {
 		arrfree( descRangeDescs[i] );
 	}
 
