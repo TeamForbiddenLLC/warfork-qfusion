@@ -231,7 +231,14 @@ struct glsl_program_s {
 		uint64_t hash;
 		NriPipeline *pipeline;
 	} pipelines[PIPELINE_LAYOUT_HASH_SIZE];
-	struct descriptor_set_allloc_s *descriptorSetAlloc[DESCRIPTOR_SET_MAX];
+
+	size_t numDescriptors;
+	struct ProgramDescriptorInfo {
+		uint32_t registerSpace;
+		uint32_t setIndex;
+		struct descriptor_set_allloc_s *alloc;
+	} descriptorInfo[DESCRIPTOR_SET_MAX];
+
 	struct descriptor_reflection_s {
 		uint32_t dimCount: 8;
 		uint32_t isArray: 1;
@@ -343,7 +350,6 @@ struct glsl_descriptor_data_s {
 	struct nri_descriptor_s descriptor;
 };
 
-
 void RP_BindDescriptorSets(struct frame_cmd_buffer_s* cmd, struct glsl_program_s* program, struct glsl_descriptor_data_s* data, size_t numDescriptorData);
 //struct glsl_descriptor_commit_s {
 //  NriDescriptor const* descriptors[DESCRIPTOR_MAX_BINDINGS];
@@ -365,7 +371,7 @@ void RP_StorePrecacheList( void );
 
 void RP_ProgramList_f( void );
 
-struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_layout_config_s *def );
+struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, struct frame_cmd_state_s  *def );
 struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features );
 
 struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features );

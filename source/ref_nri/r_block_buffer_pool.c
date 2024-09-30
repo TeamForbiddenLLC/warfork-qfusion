@@ -11,9 +11,9 @@ void InitBlockBufferPool( struct nri_backend_s *nri, struct block_buffer_pool_s 
 	pool->structureStride = desc->structureStride;
 }
 
-static inline void __InitPoolBlock( struct nri_backend_s *nri, size_t blockSize, size_t structureStride, struct block_buffer_s *block )
+static inline void __InitPoolBlock( struct nri_backend_s *nri, NriBufferUsageBits usageBits, size_t blockSize, size_t structureStride, struct block_buffer_s *block )
 {
-	NriBufferDesc bufferDesc = { .size = blockSize, .structureStride = structureStride };
+	NriBufferDesc bufferDesc = { .size = blockSize, .structureStride = structureStride, .usageMask = usageBits};
 	NRI_ABORT_ON_FAILURE( nri->coreI.CreateBuffer( nri->device, &bufferDesc, &block->buffer ) )
 	NriResourceGroupDesc resourceGroupDesc = { .buffers = &block->buffer, .bufferNum = 1, .memoryLocation = NriMemoryLocation_HOST_UPLOAD };
 	assert( nri->helperI.CalculateAllocationNumber( nri->device, &resourceGroupDesc ) == 1 );
@@ -25,7 +25,7 @@ struct block_buffer_pool_req_s BlockBufferPoolReq( struct nri_backend_s *nri, st
 {
 	const size_t alignReqSize = ALIGN( reqSize, pool->alignmentReq );
 	if( !pool->current.buffer ) {
-		__InitPoolBlock( nri, pool->blockSize, pool->structureStride, &pool->current );
+		__InitPoolBlock( nri, pool->usageBits, pool->blockSize, pool->structureStride, &pool->current );
 		pool->blockOffset = 0;
 	} else if( pool->blockOffset + alignReqSize > pool->blockSize ) {
 		arrpush( pool->recycle, pool->current );
@@ -34,7 +34,7 @@ struct block_buffer_pool_req_s BlockBufferPoolReq( struct nri_backend_s *nri, st
 			memcpy( &( pool->current ), &( pool->pool[poolSize - 1] ), sizeof( struct block_buffer_s ) );
 			arrsetlen( pool->pool, poolSize - 1 );
 		} else {
-			__InitPoolBlock( nri, pool->blockSize, pool->structureStride, &pool->current );
+			__InitPoolBlock( nri, pool->usageBits, pool->blockSize, pool->structureStride, &pool->current );
 			// NriBufferDesc bufferDesc = { .size = pool->blockSize, .structureStride = pool->structureStride };
 			// NRI_ABORT_ON_FAILURE( nri->coreI.CreateBuffer( nri->device, &bufferDesc, &pool->current.buffer ) )
 			// NriResourceGroupDesc resourceGroupDesc = { .buffers = &pool->current.buffer, .bufferNum = 1, .memoryLocation = NriMemoryLocation_HOST_UPLOAD };

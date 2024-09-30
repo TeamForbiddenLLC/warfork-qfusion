@@ -294,6 +294,12 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 		arrsetlen(rsh.backBuffers, swapChainTextureNum);
 		for( uint32_t i = 0; i < swapChainTextureNum; i++ ) {
 			rsh.backBuffers[i].memoryLen = 0;
+			rsh.backBuffers->screen = (NriRect) {
+				.x = 0,
+				.y = 0,
+				.width = swapChainDesc.width,
+				.height = swapChainDesc.height
+			};
 
 			const NriTextureDesc *swapChainDesc = rsh.nri.coreI.GetTextureDesc( swapChainTextures[i] );
 			rsh.backBuffers[i].colorTexture = swapChainTextures[i];
@@ -326,9 +332,9 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 				rsh.backBuffers[i].memoryLen += numAllocations;
 
 				NriTexture2DViewDesc textureViewDesc = {
-					rsh.backBuffers[i].depthTexture,
-					NriTexture2DViewType_DEPTH_STENCIL_ATTACHMENT,
-					textureDesc.format
+					.texture = rsh.backBuffers[i].depthTexture,
+					.viewType = NriTexture2DViewType_DEPTH_STENCIL_ATTACHMENT,
+					.format = textureDesc.format
 				};
 
 				NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &rsh.backBuffers[i].depthAttachment) );

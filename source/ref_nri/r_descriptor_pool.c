@@ -79,9 +79,9 @@ static void DetachDescriptorSlot( struct descriptor_set_allloc_s *alloc, struct 
 	}
 }
 
-struct descriptor_set_result_s ResolveDescriptorSet( struct nri_backend_s *backend, struct frame_cmd_buffer_s *cmd, struct descriptor_set_allloc_s *alloc, uint32_t hash )
+struct descriptor_set_result_s ResolveDescriptorSet( struct nri_backend_s *backend, struct frame_cmd_buffer_s *cmd, NriPipelineLayout* layout, uint32_t setIndex, struct descriptor_set_allloc_s *alloc, uint32_t hash )
 {
-	NriDescriptorPool *descriptorPool;
+	NriDescriptorPool *descriptorPool = NULL;
 	struct descriptor_set_result_s result = { 0 };
 	const size_t hashIndex = hash % ALLOC_HASH_RESERVE;
 	for( struct descriptor_set_slot_s *c = alloc->hashSlots[hashIndex]; c; c = c->hNext ) {
@@ -105,7 +105,8 @@ struct descriptor_set_result_s ResolveDescriptorSet( struct nri_backend_s *backe
 	}
 
 	if( arrlen( alloc->reservedSlots ) == 0 ) {
-		const NriDescriptorPoolDesc poolDesc = { .descriptorSetMaxNum = DESCRIPTOR_MAX_SIZE,
+		const NriDescriptorPoolDesc poolDesc = { 
+												 .descriptorSetMaxNum = DESCRIPTOR_MAX_SIZE,
 												 .samplerMaxNum = alloc->config.samplerMaxNum,
 												 .constantBufferMaxNum = alloc->config.constantBufferMaxNum,
 												 .dynamicConstantBufferMaxNum = alloc->config.dynamicConstantBufferMaxNum,
@@ -118,7 +119,7 @@ struct descriptor_set_result_s ResolveDescriptorSet( struct nri_backend_s *backe
 												 .accelerationStructureMaxNum = alloc->config.accelerationStructureMaxNum };
 		NRI_ABORT_ON_FAILURE( backend->coreI.CreateDescriptorPool( backend->device, &poolDesc, &descriptorPool ) );
 		NriDescriptorSet *sets[DESCRIPTOR_SET_MAX];
-		backend->coreI.AllocateDescriptorSets( descriptorPool, alloc->config.layout, alloc->config.setIndex, sets, DESCRIPTOR_SET_MAX, 0 );
+		backend->coreI.AllocateDescriptorSets( descriptorPool, layout, setIndex, sets, DESCRIPTOR_SET_MAX, 0 );
 		for( size_t i = 0; i < DESCRIPTOR_SET_MAX; i++ ) {
 			struct descriptor_set_slot_s *slot = ReserveDescriptorSetSlot( alloc );
 			slot->descriptorSet = sets[i];

@@ -1,6 +1,7 @@
 #ifndef R_FRAME_CMD_BUFFER_H
 #define R_FRAME_CMD_BUFFER_H
 
+#include "NRIDescs.h"
 #include "r_nri.h"
 #include "r_resource.h"
 #include "r_vattribs.h"
@@ -21,31 +22,23 @@ enum CmdStateResetBits {
 };
 
 enum CmdStateDirtyBits {
-	CMD_DIRTY_VIEWPORT = 0x1
-};
-
-struct screen_rect_s {
-	uint16_t x;
-	uint16_t y;
-	uint16_t w;
-	uint16_t h;
+	CMD_DIRTY_SCISSORS = 0x1,
 };
 
 // the serialized state of the pipeline
 struct frame_cmd_state_s {
 	uint32_t dirty;
-	//uint32_t viewport[4];
-	struct {
-		uint16_t x;
-		uint16_t y;
-		uint16_t w;
-		uint16_t h;
-	} scissor;
+
+	size_t numStreams;
+	NriVertexStreamDesc streams[MAX_STREAMS];
+	size_t numAttribs;
+	NriVertexAttributeDesc attribs[MAX_ATTRIBUTES];
 
 	uint32_t numColorAttachments;
 	NriDescriptor const* colorAttachment[MAX_COLOR_ATTACHMENTS];
+	NriRect scissors[MAX_COLOR_ATTACHMENTS];
+	struct NriViewport viewports[MAX_COLOR_ATTACHMENTS];
 	NriDescriptor const* depthAttachment;
-	struct screen_rect_s viewports[MAX_COLOR_ATTACHMENTS];
 
   NriBuffer* vertexBuffers[MAX_VERTEX_BINDINGS];
   uint64_t offsets[MAX_VERTEX_BINDINGS];
@@ -58,10 +51,26 @@ struct frame_cmd_state_s {
 
 	// binding
 	struct NriDescriptor *bindings[DESCRIPTOR_SET_MAX][DESCRIPTOR_MAX_BINDINGS];
+
+	struct {
+		NriFormat colorFormats[MAX_COLOR_ATTACHMENTS];
+		NriFormat depthFormat;
+
+		NriCullMode cullMode;
+		NriBlendFactor colorSrcFactor;
+		NriBlendFactor colorDstFactor;
+
+		float depthRangeMin; 
+		float depthRangeMax;
+		bool blendEnabled;
+		NriColorWriteBits colorWriteMask;
+		NriCompareFunc compareFunc;
+		bool depthWrite;
+	} pipelineLayout;
 };
 
 struct frame_tex_buffers_s {
-	struct screen_rect_s screen; 	
+	NriRect screen; 	
 	NriDescriptor *colorAttachment;
 	NriTexture *colorTexture;
 
@@ -88,12 +97,10 @@ struct ubo_frame_instance_s {
 	struct block_buffer_pool_req_s req; 
 };
 
-
 struct frame_cmd_buffer_s {
 	uint8_t frameCount; // this value is bound by NUMBER_FRAMES_FLIGHT
 	struct block_buffer_pool_s uboBlockBuffer; 
-	struct frame_cmd_state_s cmdState;
-	struct pipeline_layout_config_s layoutConfig;
+	struct frame_cmd_state_s state;
 	struct frame_tex_buffers_s textureBuffers;
 	
 	NriCommandAllocator *allocator;
@@ -131,12 +138,25 @@ struct frame_buffer_req_s {
 
 // cmd buffer
 void FR_CmdResetAttachmentToBackbuffer(struct frame_cmd_buffer_s *cmd);
-void FR_CmdSetTextureAttachment(struct frame_cmd_buffer_s *cmd, NriDescriptor** colorAttachments, struct screen_rect_s* viewports, size_t numColors, NriDescriptor* depthAttachment);
+void FR_CmdSetTextureAttachment( struct frame_cmd_buffer_s *cmd, 
+																const NriFormat *colorformats, 
+																const NriDescriptor **colorAttachments, 
+																const NriViewport* viewports, 
+																const NriRect* scissors, 
+																size_t numAttachments, 
+																const NriFormat depthFormat, 
+																NriDescriptor *depthAttachment );
 
 void FR_CmdResetCmdState(struct frame_cmd_buffer_s *cmd,enum CmdStateResetBits bits);
-
 void FR_CmdSetVertexBuffer( struct frame_cmd_buffer_s *cmd, uint32_t slot, NriBuffer *buffer, uint64_t offset );
 void FR_CmdSetIndexBuffer( struct frame_cmd_buffer_s *cmd, NriBuffer *buffer, uint64_t offset, NriIndexType indexType );
-void FR_CmdSetScissor(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h );
+
+void FR_CmdSetScissor( struct frame_cmd_buffer_s *cmd, const NriRect *scissors, size_t numAttachments ); 
+void FR_CmdSetScissorAll( struct frame_cmd_buffer_s *cmd, const NriRect scissors); 
+
 void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint32_t instanceNum, uint32_t baseIndex, uint32_t baseVertex, uint32_t baseInstance );
+
+void FR_CmdBeginRendering(struct frame_cmd_buffer_s* cmd);
+void FR_CmdEndRendering(struct frame_cmd_buffer_s* cmd);
+
 #endif

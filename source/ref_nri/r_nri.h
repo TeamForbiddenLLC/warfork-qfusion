@@ -112,25 +112,23 @@ bool R_InitNriBackend( const nri_init_desc_t *init, struct nri_backend_s *backen
 void R_NRI_CallbackMessage( NriMessage msg, const char *file, uint32_t line, const char *message, void *userArg );
 NriFormat R_NRIFormat( enum texture_format_e format );
 
-
-struct pipeline_layout_config_s {
-	size_t numStreams;
-	NriVertexStreamDesc streams[MAX_STREAMS];
-	size_t numAttribs;
-	NriVertexAttributeDesc attribs[MAX_ATTRIBUTES];
-
-	//vattribmask_t attrib;
-	//vattribmask_t halfAttrib;
-	NriCullMode cullMode;
-
-	size_t numFrameAttachments;
-	NriViewport viewport;
-	NriColorAttachmentDesc attachment[MAX_PIPELINE_ATTACHMENTS];
-	NriDepthAttachmentDesc depthAttachment;
-	NriStencilAttachmentDesc stencilAttachment;
-
-	NriInputAssemblyDesc inputAssembly;
-	NriRasterizationDesc rasterization;
-};
+//struct gl_layout_config_s {
+//
+//	NriCullMode cullMode;
+//
+//	NriBlendFactor colorSrcFactor;
+//	NriBlendFactor colorDstFactor;
+//
+//	float depthRangeMin; 
+//	float depthRangeMax;
+//	bool blendEnabled;
+//	NriColorWriteBits colorWriteMask;
+//	NriCompareFunc compareFunc;
+//	bool depthWrite;
+//	NriStencilAttachmentDesc stencilAttachment;
+//
+//	NriInputAssemblyDesc inputAssembly;
+//	NriRasterizationDesc rasterization;
+//};
 
 #endif
