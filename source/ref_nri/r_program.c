@@ -86,9 +86,9 @@ static void RP_BindAttrbibutesLocations( struct glsl_program_s *program );
 static void *RP_GetProgramBinary( int elem, int *format, unsigned *length );
 
 static struct ProgramDescriptorInfo* __GetDescriptorInfo(struct glsl_program_s* program, uint32_t set) {
-	for( size_t i = 0; i < program->numDescriptors; i++ ) {
-		if( program->descriptorInfo[i].registerSpace == set ) {
-			return &program->descriptorInfo[i];
+	for( size_t i = 0; i < program->numSets; i++ ) {
+		if( program->descriptorSetInfo[i].registerSpace == set ) {
+			return &program->descriptorSetInfo[i];
 		}
 	}
 	return NULL;
@@ -1952,52 +1952,61 @@ static const struct descriptor_reflection_s* __ReflectDescriptorSet(const struct
 
 }
 
-void RP_BindDescriptorSets(struct frame_cmd_buffer_s* cmd, struct glsl_program_s *program, struct glsl_descriptor_data_s *data, size_t numDescriptorData )
+void RP_BindDescriptorSets(struct frame_cmd_buffer_s* cmd, struct glsl_program_s *program, struct glsl_descriptor_binding_s *bindings, size_t numDescriptorData )
 {
 	struct glsl_descriptor_commit_s {
-		NriDescriptor const *descriptors[DESCRIPTOR_MAX_BINDINGS];
-		uint32_t hashes[DESCRIPTOR_MAX_BINDINGS];
-		uint32_t descriptorChangeMask;
+		size_t numBindings;
+		struct glsl_commit_slots_s { 
+			struct glsl_descriptor_binding_s* binding;
+			const struct descriptor_reflection_s* reflection;
+		} slots[DESCRIPTOR_MAX_BINDINGS]; 
 	} commit[DESCRIPTOR_SET_MAX] = {0};
-	uint32_t setsChangeMask = 0;
 	
 	for(size_t i = 0; i < numDescriptorData; i++) {
-		const struct descriptor_reflection_s* refl = __ReflectDescriptorSet(program, &data[i].handle);
+		if(!bindings[i].descriptor.descriptor) 
+			continue;
+		const struct descriptor_reflection_s* refl = __ReflectDescriptorSet(program, &bindings[i].handle);
 		// we skip reflection if we can't resolve it for the shader
 		if( refl ) {
-			const uint32_t setIndex = refl->setIndex;
-			const uint32_t slotIndex = refl->baseRegisterIndex + data[i].registerOffset;
-
-			setsChangeMask |= ( 1u << setIndex );
-			commit[setIndex].descriptorChangeMask |= ( 1u << slotIndex );
-			commit[setIndex].descriptors[slotIndex] = data->descriptor.descriptor;
-			commit[setIndex].hashes[slotIndex] |= data->descriptor.cookie;
+			//const uint32_t setIndex = refl->setIndex;
+			//const uint32_t slotIndex = refl->baseRegisterIndex + bindings[i].registerOffset;
+			
+			struct glsl_descriptor_commit_s* glsl_commit = &commit[refl->setIndex];
+			struct glsl_commit_slots_s* slot = &glsl_commit->slots[glsl_commit->numBindings++];
+			slot->binding = &bindings[i]; 
+			slot->reflection = refl; 
+			//commit[setIndex]
+			//setsChangeMask |= ( 1u << setIndex );
+			//commit[setIndex].descriptorChangeMask |= ( 1u << slotIndex );
+			//commit[setIndex].hashes[slotIndex] = data->descriptor.descriptor;
+			//commit[setIndex].hashes = hash_u64( ( commit[setIndex].hashes == 0 ) ? HASH_INITIAL_VALUE : commit[setIndex].hashes, data->descriptor.cookie );
 		} 
 	}
-	
-	for(uint32_t setIndex = 0, setMask = setsChangeMask; setMask > 0; setMask >>= 1u, setIndex++) {	
-		if((setMask & 1) == 0) {
-			continue;
-		} 
-		struct glsl_descriptor_commit_s* c = &commit[setIndex];
-		hash_t descHash = HASH_INITIAL_VALUE;
-		for( uint32_t descMask = c->descriptorChangeMask, descIndex = 0; descMask; descMask >>= 1u, descIndex++ ) {
-			descHash = hash_u64(descHash, c->hashes[descIndex]);
-		}
 
-		struct ProgramDescriptorInfo* info = &program->descriptorInfo[setIndex];
-		struct descriptor_set_result_s result = ResolveDescriptorSet( &rsh.nri, cmd, program->layout, info->setIndex, info->alloc, descHash );
-		if(!result.found) {
-			for( uint32_t descMask = c->descriptorChangeMask, descIndex = 0; descMask; descMask >>= 1u, descIndex++ ) {
+	for( uint32_t setIndex = 0; setIndex < program->numSets; setIndex++ ) {
+		struct glsl_descriptor_commit_s *c = &commit[setIndex];
+		if( c->numBindings == 0 )
+			continue;
+		hash_t hash = HASH_INITIAL_VALUE;
+		for( size_t descIndex = 0; descIndex < commit[setIndex].numBindings; descIndex++ ) {
+			struct glsl_descriptor_binding_s *binding = commit[setIndex].slots[descIndex].binding;
+			hash = hash_u64( hash, binding->descriptor.cookie );
+		}
+		struct ProgramDescriptorInfo *info = &program->descriptorSetInfo[setIndex];
+		struct descriptor_set_result_s result = ResolveDescriptorSet( &rsh.nri, cmd, program->layout, info->setIndex, info->alloc, hash );
+		if( !result.found ) {
+			for( uint32_t bindingIndex = 0; bindingIndex < commit[setIndex].numBindings; bindingIndex++ ) {
+				struct glsl_commit_slots_s *c = &commit[setIndex].slots[bindingIndex];
 				NriDescriptorRangeUpdateDesc updateDesc = { 0 };
-				updateDesc.descriptors = &c->descriptors[descIndex];
+				const NriDescriptor *descriptors[] = { c->binding->descriptor.descriptor };
 				updateDesc.descriptorNum = 1;
-				rsh.nri.coreI.UpdateDescriptorRanges(result.set, descIndex, 1, &updateDesc);
+				updateDesc.baseDescriptor = 0;
+				updateDesc.descriptors = descriptors;
+				rsh.nri.coreI.UpdateDescriptorRanges( result.set, c->reflection->rangeOffset, 1, &updateDesc );
 			}
 		}
 		rsh.nri.coreI.CmdSetDescriptorSet( cmd->cmd, setIndex, result.set, NULL );
 	}
-
 }
 
 struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
@@ -2627,11 +2636,11 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 			
 				struct ProgramDescriptorInfo* info = __GetDescriptorInfo(program, reflection->set);
 				if(!info) {
-					info = &program->descriptorInfo[program->numDescriptors];
-					info->setIndex = program->numDescriptors;
+					info = &program->descriptorSetInfo[program->numSets];
+					info->setIndex = program->numSets;
 					info->registerSpace = reflection->set; 
 					info->alloc = calloc( 1, sizeof( struct descriptor_set_allloc_s ) );
-					program->numDescriptors++;
+					program->numSets++;
 				}
 				for( size_t i_binding = 0; i_binding < reflection->binding_count; i_binding++ ) {
 					const SpvReflectDescriptorBinding *reflectionBinding = reflection->bindings[i_binding];
@@ -2648,11 +2657,13 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 					for( size_t i = 0; i < arrlen( descRangeDescs[info->setIndex] ); i++ ) {
 						if( descRangeDescs[info->setIndex][i].baseRegisterIndex == reflectionBinding->binding ) {
 							rangeDesc = &descRangeDescs[info->setIndex][i];
+							reflc.rangeOffset = i;
 							break;
 						}
 					}
 					if( !rangeDesc ) {
 						NriDescriptorRangeDesc input = {};
+						reflc.rangeOffset = arrlen(descRangeDescs[info->setIndex]);
 						arrpush( descRangeDescs[info->setIndex], input );
 						rangeDesc = &descRangeDescs[info->setIndex][arrlen( descRangeDescs[info->setIndex] ) - 1];
 					}
@@ -2736,12 +2747,12 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 	program->deformsKey = R_CopyString( deformsKey ? deformsKey : "" );
 
 	pipelineLayoutDesc.shaderStages = NriStageBits_GRAPHICS_SHADERS;
-	pipelineLayoutDesc.descriptorSetNum = program->numDescriptors;
-	for( size_t i = 0; i < program->numDescriptors; i++ ) {
+	pipelineLayoutDesc.descriptorSetNum = program->numSets;
+	for( size_t i = 0; i < program->numSets; i++ ) {
 		//			struct ProgramDescriptorInfo* info = &program->descriptorInfo[i];
 		//			info->setIndex = pipelineLayoutDesc.descriptorSetNum;
-		descriptorSetDesc[i].registerSpace = program->descriptorInfo[i].registerSpace;
-		const uint32_t setIndex = program->descriptorInfo[i].setIndex;
+		descriptorSetDesc[i].registerSpace = program->descriptorSetInfo[i].registerSpace;
+		const uint32_t setIndex = program->descriptorSetInfo[i].setIndex;
 		descriptorSetDesc[i].rangeNum = arrlen( descRangeDescs[setIndex] );
 		descriptorSetDesc[i].ranges = descRangeDescs[setIndex];
 		//	ri.Com_Printf( "Using Descriptor Set[%d]", i );

@@ -232,12 +232,12 @@ struct glsl_program_s {
 		NriPipeline *pipeline;
 	} pipelines[PIPELINE_LAYOUT_HASH_SIZE];
 
-	size_t numDescriptors;
+	size_t numSets;
 	struct ProgramDescriptorInfo {
 		uint32_t registerSpace;
 		uint32_t setIndex;
 		struct descriptor_set_allloc_s *alloc;
-	} descriptorInfo[DESCRIPTOR_SET_MAX];
+	} descriptorSetInfo[DESCRIPTOR_SET_MAX];
 
 	struct descriptor_reflection_s {
 		uint32_t dimCount: 8;
@@ -246,6 +246,7 @@ struct glsl_program_s {
 		hash_t hash;
 		uint16_t setIndex;
 		uint16_t baseRegisterIndex;
+		uint16_t rangeOffset;
 	} descriptorReflection[PIPELINE_LAYOUT_HASH_SIZE];
 
 	struct loc_s {
@@ -344,13 +345,13 @@ static inline struct glsl_descriptor_handle_s Create_DescriptorHandle(const char
 	};
 }
 
-struct glsl_descriptor_data_s {
+struct glsl_descriptor_binding_s {
 	struct glsl_descriptor_handle_s handle;
 	uint32_t registerOffset; 
 	struct nri_descriptor_s descriptor;
 };
 
-void RP_BindDescriptorSets(struct frame_cmd_buffer_s* cmd, struct glsl_program_s* program, struct glsl_descriptor_data_s* data, size_t numDescriptorData);
+void RP_BindDescriptorSets(struct frame_cmd_buffer_s* cmd, struct glsl_program_s* program, struct glsl_descriptor_binding_s* data, size_t numDescriptorData);
 //struct glsl_descriptor_commit_s {
 //  NriDescriptor const* descriptors[DESCRIPTOR_MAX_BINDINGS];
 //  uint32_t cookies[DESCRIPTOR_MAX_BINDINGS];

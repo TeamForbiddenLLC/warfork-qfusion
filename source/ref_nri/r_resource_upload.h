@@ -42,9 +42,10 @@ typedef struct {
 } buffer_upload_desc_t;
 
 
+
 typedef struct {
-	//NriAccessLayoutStage  currentAccess;
 	NriAccessLayoutStage currentAccessAndLayout;
+	NriAccessLayoutStage postAccessAndLayout; // post access and layout when picked up by the frame
 	NriTexture *target;
 	
 	// https://github.com/microsoft/DirectXTex/wiki/Image
@@ -69,6 +70,7 @@ typedef struct {
 		NriBuffer *backing;
 		uint64_t byteOffset;
 	} internal;
+
 } texture_upload_desc_t;
 
 void R_InitResourceUpload(struct nri_backend_s* nri);
