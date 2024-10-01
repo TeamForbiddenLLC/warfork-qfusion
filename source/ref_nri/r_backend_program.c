@@ -1113,11 +1113,11 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				}
 
 				size_t descriptorIndex = 0;
-				struct glsl_descriptor_data_s descriptors[64] = { 0 };
+				struct glsl_descriptor_binding_s descriptors[64] = { 0 };
 
 				Matrix4_Identity( texMatrix );
 
-				descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){ 
+				descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
 					.descriptor = base->descriptor, 
 					.handle = Create_DescriptorHandle( "u_BaseTexture" ) 
 				};
@@ -1134,7 +1134,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				// in vertex shader
 				// RB_BindImage( 1, normalmap );         // normalmap
 				// DescSimple_WriteImage( &materialDesc, 1, normalmap );
-				descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){ 
+				descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
 					.descriptor = normalmap->descriptor, 
 					.handle = Create_DescriptorHandle( "u_NormalmapTexture" ) 
 				};
@@ -1143,7 +1143,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 					programFeatures |= GLSL_SHADER_MATERIAL_SPECULAR;
 					// RB_BindImage( 2, glossmap ); // gloss
 					// DescSimple_WriteImage( &materialDesc, 2, glossmap );
-					descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){ 
+					descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
 						.descriptor = glossmap->descriptor, 
 						.handle = Create_DescriptorHandle( "u_GlossTexture" ) 
 					};
@@ -1163,7 +1163,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 
 					// RB_BindImage( 3, decalmap ); // decal
 					// DescSimple_WriteImage( &materialDesc, 2, decalmap );
-					descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){ 
+					descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
 						.descriptor = decalmap->descriptor, 
 						.handle = Create_DescriptorHandle( "u_DecalTexture" ) 
 					};
@@ -1178,7 +1178,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 
 					// RB_BindImage( 4, entdecalmap ); // decal
 					// DescSimple_WriteImage( &materialDesc, 4, entdecalmap );
-					descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){ 
+					descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
 						.descriptor = normalmap->descriptor, 
 						.handle = Create_DescriptorHandle( "u_EntityDecalTexture" ) 
 					};
@@ -1195,7 +1195,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 						// bind lightmap textures and set program's features for lightstyles
 						const int numLightMaps = __NumberLightMaps( lightStyle );
 						for( int i = 0; i < numLightMaps; i++ ) {
-							descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){
+							descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
 								.descriptor = rsh.worldBrushModel->lightmapImages[lightStyle->lightmapNum[i]]->descriptor, 
 								.registerOffset = i, .handle = Create_DescriptorHandle( "lightmapTexture" ) };
 						}
@@ -1262,11 +1262,11 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				}
 				RB_SetShaderpassState( pass->flags );
 				__RB_UpdateFrameObjectCB( cmd, rb.currentEntity, pass );
-				descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){
+				descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
 					.descriptor = cmd->uboSceneFrame.descriptor, 
 					.handle = Create_DescriptorHandle( "frame" ) 
 				};
-				descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){
+				descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
 					.descriptor = cmd->uboSceneObject.descriptor, 
 					.handle = Create_DescriptorHandle( "obj" ) 
 				};
@@ -1320,7 +1320,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 						}
 					}
 					struct nri_descriptor_s descriptor = BlockReqToDescriptorWrapper( &rsh.nri, &lightCB, NriBufferViewType_CONSTANT );
-					descriptors[descriptorIndex++] = ( struct glsl_descriptor_data_s ){
+					descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
 						.descriptor = descriptor, 
 						.handle = Create_DescriptorHandle( "lights" ) 
 					};
@@ -1496,21 +1496,21 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->state);
 
 			size_t descriptorSize = 0;
-			struct glsl_descriptor_data_s descriptors[64] = { 0 };
+			struct glsl_descriptor_binding_s descriptors[64] = { 0 };
 
 			if( programFeatures & GLSL_SHADER_COMMON_SOFT_PARTICLE ) {
-				descriptors[descriptorSize++] = ( struct glsl_descriptor_data_s ){ 
+				descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){ 
 					.descriptor = rsh.screenDepthTextureCopy->descriptor, 
 					.handle = Create_DescriptorHandle( "u_DepthTexture" ) 
 				};
 			}
-			descriptors[descriptorSize++] = ( struct glsl_descriptor_data_s ){ 
+			descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){ 
 				.descriptor = shaderPassImage->descriptor, 
 				.handle = Create_DescriptorHandle( "u_BaseTexture" ) 
 			};
 
 			for( int i = 0; i < numLightMaps; i++ ) {
-				descriptors[descriptorSize++] = ( struct glsl_descriptor_data_s ){
+				descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){
 					.descriptor = rsh.worldBrushModel->lightmapImages[lightStyle->lightmapNum[i]]->descriptor, 
 					.registerOffset = i, 
 					.handle = Create_DescriptorHandle( "lightmapTexture" ) };
@@ -1524,10 +1524,10 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 
 			RB_UpdateCommonUniforms_2( cmd, pass, texMatrix );
 			__RB_UpdateFrameObjectCB( cmd, rb.currentEntity, pass );
-			descriptors[descriptorSize++] = ( struct glsl_descriptor_data_s ){ 
+			descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){ 
 				.descriptor = cmd->uboSceneFrame.descriptor, 
 				.handle = Create_DescriptorHandle( "frame" ) };
-			descriptors[descriptorSize++] = ( struct glsl_descriptor_data_s ){ 
+			descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){ 
 				.descriptor = cmd->uboSceneObject.descriptor, 
 				.handle = Create_DescriptorHandle( "obj" ) 
 			};
@@ -1584,7 +1584,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 		case GLSL_PROGRAM_TYPE_DISTORTION: {
 			r_glslfeat_t programFeatures = features;
 			size_t descriptorIndex = 0;
-			struct glsl_descriptor_data_s descriptors[64] = { 0 };
+			struct glsl_descriptor_binding_s descriptors[64] = { 0 };
 
 			int width = 1, height = 1;
 			image_t *portaltexture[2];
@@ -1901,7 +1901,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			mat4_t texMatrix;
 			
 			size_t descriptorSize = 0;
-			struct glsl_descriptor_data_s descriptors[64] = { 0 };
+			struct glsl_descriptor_binding_s descriptors[64] = { 0 };
 
 			image_t *base = pass->images[0];
 			image_t *shade = pass->images[1];
@@ -1964,7 +1964,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 						}
 					}
 					if(btex) {
-						descriptors[descriptorSize++] = ( struct glsl_descriptor_data_s ){
+						descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){
 							.descriptor = btex->descriptor, 
 							.handle = imageBinding[i].handle
 						};

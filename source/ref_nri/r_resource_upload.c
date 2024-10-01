@@ -7,6 +7,15 @@
 
 #define NUMBER_COMMAND_SETS 3 
 
+struct post_texture_upload_layout_s {
+		NriTexture* texture;
+		NriAccessLayoutStage after; 	
+};
+struct post_buffer_upload_layout_s {
+		NriBuffer* texture;
+		NriAccessLayoutStage after; 	
+};
+
 typedef struct {
   NriMemory* memory;
   NriBuffer* buffer;
@@ -18,6 +27,9 @@ typedef struct command_set_s{
   NriCommandBuffer* cmd;
   uint32_t reservedStageMemory;
   temporary_resource_buf_t* temporary;
+
+	struct post_texture_upload_layout_s* postTextureLayoutTransitions;
+	struct post_buffer_upload_layout_s* postBufferLayoutTransitions;
 } resource_command_set_t;
 
 typedef struct resource_stage_buffer_s{
@@ -243,22 +255,19 @@ void R_ResourceEndCopyTexture( texture_upload_desc_t* desc) {
   backend->coreI.CmdUploadBufferToTexture(commandSets[activeSet].cmd, desc->target, &destRegionDesc, desc->internal.backing, &srcLayoutDesc); 
 }
 
-void R_ResourceSubmit() {
-  R_UploadEndCommandSet(activeSet);
-  activeSet = ( activeSet + 1 ) % NUMBER_COMMAND_SETS;
+void R_ResourceSubmit()
+{
+	R_UploadEndCommandSet( activeSet );
+	activeSet = ( activeSet + 1 ) % NUMBER_COMMAND_SETS;
 	if( syncIndex >= NUMBER_COMMAND_SETS ) {
 		struct command_set_s *set = &commandSets[activeSet];
 		backend->coreI.Wait( uploadFence, 1 + syncIndex - NUMBER_COMMAND_SETS );
 		backend->coreI.ResetCommandAllocator( set->allocator );
-	   for(size_t i = 0; i < arrlen(set->temporary); i++) {
-	     backend->coreI.DestroyBuffer(set->temporary[i].buffer);
-	     backend->coreI.FreeMemory(set->temporary[i].memory);
-	   }
-	  arrsetlen(set->temporary, 0);
+		for( size_t i = 0; i < arrlen( set->temporary ); i++ ) {
+			backend->coreI.DestroyBuffer( set->temporary[i].buffer );
+			backend->coreI.FreeMemory( set->temporary[i].memory );
+		}
+		arrsetlen( set->temporary, 0 );
 	}
-  R_UploadBeginCommandSet(activeSet);
+	R_UploadBeginCommandSet( activeSet );
 }
-
-
-
-

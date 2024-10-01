@@ -2577,7 +2577,15 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 		image = NULL;
 		goto done;
 	}
-	
+	NriTexture2DViewDesc textureViewDesc = {
+		.texture = image->texture,
+		.viewType = NriTexture2DViewType_SHADER_RESOURCE_2D,
+		.format = textureDesc.format
+	};
+	NriDescriptor* descriptor = NULL;
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &descriptor) );
+	image->descriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
+
 	struct texture_buf_s transformBuffer = { 0 };
 	for( size_t index = 0; index < uploadCount; index++ ) {
 		const uint8_t channelCount = RT_NumberChannels( uploads[index].buffer.def );

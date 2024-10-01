@@ -4,7 +4,7 @@
 
 static struct descriptor_set_slot_s *ReserveDescriptorSetSlot( struct descriptor_set_allloc_s *alloc )
 {
-	if( alloc->blocks || alloc->blockIndex == RESERVE_BLOCK_SIZE ) {
+	if( alloc->blocks == NULL || alloc->blockIndex == RESERVE_BLOCK_SIZE ) {
 		struct descriptor_set_slot_s *block = calloc( RESERVE_BLOCK_SIZE, sizeof( struct descriptor_set_slot_s ) );
 		alloc->blockIndex = 0;
 		arrpush( alloc->blocks, block );
@@ -89,6 +89,7 @@ struct descriptor_set_result_s ResolveDescriptorSet( struct nri_backend_s *backe
 			c->frameCount = cmd->frameCount;
 			result.set = c->descriptorSet;
 			result.found = true;
+			assert(result.set);
 			return result;
 		}
 	}
@@ -101,27 +102,28 @@ struct descriptor_set_result_s ResolveDescriptorSet( struct nri_backend_s *backe
 		AttachDescriptorSlot( alloc, slot );
 		result.set = slot->descriptorSet;
 		result.found = true;
+		assert(result.set);
 		return result;
 	}
 
 	if( arrlen( alloc->reservedSlots ) == 0 ) {
-		const NriDescriptorPoolDesc poolDesc = { 
-												 .descriptorSetMaxNum = DESCRIPTOR_MAX_SIZE,
-												 .samplerMaxNum = alloc->config.samplerMaxNum,
-												 .constantBufferMaxNum = alloc->config.constantBufferMaxNum,
-												 .dynamicConstantBufferMaxNum = alloc->config.dynamicConstantBufferMaxNum,
-												 .textureMaxNum = alloc->config.textureMaxNum,
-												 .storageTextureMaxNum = alloc->config.storageTextureMaxNum,
-												 .bufferMaxNum = alloc->config.bufferMaxNum,
-												 .storageBufferMaxNum = alloc->config.storageBufferMaxNum,
-												 .structuredBufferMaxNum = alloc->config.structuredBufferMaxNum,
-												 .storageStructuredBufferMaxNum = alloc->config.storageStructuredBufferMaxNum,
-												 .accelerationStructureMaxNum = alloc->config.accelerationStructureMaxNum };
+		const NriDescriptorPoolDesc poolDesc = { .descriptorSetMaxNum = DESCRIPTOR_MAX_SIZE,
+												 .samplerMaxNum = alloc->config.samplerMaxNum * DESCRIPTOR_MAX_SIZE,
+												 .constantBufferMaxNum = alloc->config.constantBufferMaxNum * DESCRIPTOR_MAX_SIZE,
+												 .dynamicConstantBufferMaxNum = alloc->config.dynamicConstantBufferMaxNum * DESCRIPTOR_MAX_SIZE,
+												 .textureMaxNum = alloc->config.textureMaxNum * DESCRIPTOR_MAX_SIZE,
+												 .storageTextureMaxNum = alloc->config.storageTextureMaxNum * DESCRIPTOR_MAX_SIZE,
+												 .bufferMaxNum = alloc->config.bufferMaxNum * DESCRIPTOR_MAX_SIZE,
+												 .storageBufferMaxNum = alloc->config.storageBufferMaxNum * DESCRIPTOR_MAX_SIZE,
+												 .structuredBufferMaxNum = alloc->config.structuredBufferMaxNum * DESCRIPTOR_MAX_SIZE,
+												 .storageStructuredBufferMaxNum = alloc->config.storageStructuredBufferMaxNum * DESCRIPTOR_MAX_SIZE,
+												 .accelerationStructureMaxNum = alloc->config.accelerationStructureMaxNum * DESCRIPTOR_MAX_SIZE };
 		NRI_ABORT_ON_FAILURE( backend->coreI.CreateDescriptorPool( backend->device, &poolDesc, &descriptorPool ) );
-		NriDescriptorSet *sets[DESCRIPTOR_SET_MAX];
-		backend->coreI.AllocateDescriptorSets( descriptorPool, layout, setIndex, sets, DESCRIPTOR_SET_MAX, 0 );
-		for( size_t i = 0; i < DESCRIPTOR_SET_MAX; i++ ) {
+		NriDescriptorSet* sets[DESCRIPTOR_MAX_SIZE];
+		backend->coreI.AllocateDescriptorSets( descriptorPool, layout, setIndex, sets, DESCRIPTOR_MAX_SIZE, 0 );
+		for( size_t i = 0; i < DESCRIPTOR_MAX_SIZE; i++ ) {
 			struct descriptor_set_slot_s *slot = ReserveDescriptorSetSlot( alloc );
+			assert(sets[i]);
 			slot->descriptorSet = sets[i];
 			arrpush( alloc->reservedSlots, slot );
 		}
@@ -133,6 +135,7 @@ struct descriptor_set_result_s ResolveDescriptorSet( struct nri_backend_s *backe
 	AttachDescriptorSlot( alloc, slot );
 	result.set = slot->descriptorSet;
 	result.found = false;
+	assert(result.set);
 	return result;
 }
 
