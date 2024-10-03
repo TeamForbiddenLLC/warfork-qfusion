@@ -1,5 +1,7 @@
+project(vectmath)
 
-function(add_ref_base_test) 
+
+function(add_ref_math_test) 
 	cmake_parse_arguments(
 	   P_ARGS
 	   ""
@@ -13,23 +15,7 @@ function(add_ref_base_test)
 	qf_set_output_dir(${P_ARGS_NAME} test)
 endfunction()
 
-
-file(GLOB REF_GL_COMMON_SOURCES
-	"*.c"
-	"../gameshared/q_*.c"
-	"../qalgo/*.c"
-	"../qcommon/bsp.c"
-	"../qcommon/patch.c"
-	)
-
-
 if(BUILD_UNIT_TEST )
-	add_ref_base_test(NAME ref_base_texture_buffer_test SRCS 
-		"./test/r_texture_buffer_test.c"
-		${REF_GL_COMMON_SOURCES}
-		"./r_texture_buf.c"
-		"./r_texture_decode.c"
-		"./r_texture_format.c")
+  add_ref_math_test(NAME vec_test SRCS "test/vector_test.c")
 endif()
-
 
