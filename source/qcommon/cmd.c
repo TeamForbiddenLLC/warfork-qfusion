@@ -19,6 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 // cmd.c -- Quake script command processing module
 
+#include "mod_mem.h"
 #include "qcommon.h"
 #include "../qalgo/q_trie.h"
 #include "../client/console.h"
@@ -474,7 +475,7 @@ static void Cmd_Exec_f( void )
 	}
 
 	name_size = sizeof( char ) * ( strlen( arg ) + strlen( ".cfg" ) + 1 );
-	name = Mem_TempMalloc( name_size );
+	name = Q_Malloc( name_size );
 
 	Q_strncpyz( name, arg, name_size );
 	COM_SanitizeFilePath( name );
@@ -1000,13 +1001,12 @@ int Cmd_CompleteCountPossible( const char *partial )
 char **Cmd_CompleteBuildList( const char *partial )
 {
 	struct trie_dump_s *dump;
-	char **buf;
 	unsigned int i;
 
 	assert( cmd_function_trie );
 	assert( partial );
 	Trie_Dump( cmd_function_trie, partial, TRIE_DUMP_VALUES, &dump );
-	buf = (char **) Mem_TempMalloc( sizeof( char * ) * ( dump->size + 1 ) );
+	char **buf = Q_Malloc( sizeof( char * ) * ( dump->size + 1 ) );
 	for( i = 0; i < dump->size; ++i )
 		buf[i] = ( (cmd_function_t *) ( dump->key_value_vector[i].value ) )->name;
 	buf[dump->size] = NULL;
@@ -1131,7 +1131,7 @@ char **Cmd_CompleteFileList( const char *partial, const char *basedir, const cha
 	buf_size = 	( total + 1 ) * sizeof( char * )	// resulting pointer list with NULL ending
 				+ total_size						// actual strings
 				+ total * subdir_length;			// extra space to prepend subdirs
-	buf = ( char ** )Mem_TempMalloc( buf_size );							
+	buf = ( char ** )Q_Malloc( buf_size );							
 	list = ( char * )buf + ( total + 1 ) * sizeof( char * );
 
 	// get all files in the directory
@@ -1249,13 +1249,12 @@ Cmd_CompleteAliasBuildList
 char **Cmd_CompleteAliasBuildList( const char *partial )
 {
 	struct trie_dump_s *dump;
-	char **buf;
 	unsigned int i;
 
 	assert( cmd_alias_trie );
 	assert( partial );
 	Trie_Dump( cmd_alias_trie, partial, TRIE_DUMP_VALUES, &dump );
-	buf = (char **) Mem_TempMalloc( sizeof( char * ) * ( dump->size + 1 ) );
+	char **buf = (char **) Q_Malloc( sizeof( char * ) * ( dump->size + 1 ) );
 	for( i = 0; i < dump->size; ++i )
 		buf[i] = ( (cmd_alias_t *) ( dump->key_value_vector[i].value ) )->name;
 	buf[dump->size] = NULL;
