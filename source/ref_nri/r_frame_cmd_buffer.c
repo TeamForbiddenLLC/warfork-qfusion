@@ -90,8 +90,8 @@ void FR_CmdSetTextureAttachment( struct frame_cmd_buffer_s *cmd,
 
 void FR_CmdSetIndexBuffer( struct frame_cmd_buffer_s *cmd, NriBuffer *buffer, uint64_t offset, NriIndexType indexType)
 {
+	cmd->state.dirty |= CMD_DIRT_INDEX_BUFFER;
 	cmd->state.indexType = indexType;
-	cmd->state.dirtyIndexBuffer = true;
 	cmd->state.indexBufferOffset = offset;
 	cmd->state.indexBuffer = buffer;
 }
@@ -178,13 +178,12 @@ void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint
 			rsh.nri.coreI.CmdSetVertexBuffers( cmd->cmd, vertexSlot, 1, buffer, offset );
 		}
 	}
-
-	if(cmd->state.dirtyIndexBuffer) {
-		rsh.nri.coreI.CmdSetIndexBuffer(cmd->cmd, cmd->state.indexBuffer, cmd->state.indexBufferOffset, cmd->state.indexType);
-	}
-
-	cmd->state.dirtyIndexBuffer = false;
 	cmd->state.dirtyVertexBuffers = 0;
+
+  if( cmd->state.dirty & CMD_DIRT_INDEX_BUFFER) {
+		rsh.nri.coreI.CmdSetIndexBuffer(cmd->cmd, cmd->state.indexBuffer, cmd->state.indexBufferOffset, cmd->state.indexType);
+	  cmd->state.dirty &= ~CMD_DIRT_INDEX_BUFFER;
+	}
 
   if( cmd->state.dirty & CMD_DIRTY_SCISSORS) {
 	  rsh.nri.coreI.CmdSetScissors( cmd->cmd, cmd->state.scissors, cmd->state.numColorAttachments );

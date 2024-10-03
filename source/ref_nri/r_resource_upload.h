@@ -25,9 +25,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../gameshared/q_shared.h"
 
 static const uint32_t SizeOfStageBufferByte = 8 * MB_TO_BYTE;
+static const NriAccessLayoutStage ResourceUploadTexturePostAccess = {
+	.layout = NriLayout_COPY_DESTINATION,
+	.access = NriAccessBits_COPY_DESTINATION,
+	.stages = NriStageBits_COPY
+};
+static const NriAccessStage ResourceUploadBufferPostAccess = {
+	.access = NriLayout_COPY_DESTINATION,
+	.stages = NriStageBits_COPY
+};
 
 typedef struct {
-	NriAccessStage currentAccess;
 	NriBuffer *target;
 	size_t numBytes;
 	size_t byteOffset;
@@ -42,10 +50,7 @@ typedef struct {
 } buffer_upload_desc_t;
 
 
-
 typedef struct {
-	NriAccessLayoutStage currentAccessAndLayout;
-	NriAccessLayoutStage postAccessAndLayout; // post access and layout when picked up by the frame
 	NriTexture *target;
 	
 	// https://github.com/microsoft/DirectXTex/wiki/Image
@@ -73,17 +78,20 @@ typedef struct {
 
 } texture_upload_desc_t;
 
-void R_InitResourceUpload(struct nri_backend_s* nri);
+void R_InitResourceUpload();
 void R_ExitResourceUpload();
 
 // buffer upload
+NriAccessStage R_ResourceTransitionBuffer(NriBuffer* buffer, NriAccessStage currentAccessAndLayout);
 void R_ResourceBeginCopyBuffer( buffer_upload_desc_t *action );
 void R_ResourceEndCopyBuffer( buffer_upload_desc_t *action );
 
 // texture upload
+NriAccessLayoutStage R_ResourceTransitionTexture(NriTexture* texture, NriAccessLayoutStage currentAccessAndLayout);
 void R_ResourceBeginCopyTexture( texture_upload_desc_t *desc );
-void R_ResourceEndCopyTexture( texture_upload_desc_t* desc);
+void R_ResourceEndCopyTexture( texture_upload_desc_t* desc );
 void R_ResourceSubmit();
+
 
 #endif
 

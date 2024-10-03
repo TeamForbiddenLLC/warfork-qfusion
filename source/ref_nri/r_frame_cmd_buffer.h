@@ -23,6 +23,7 @@ enum CmdStateResetBits {
 
 enum CmdStateDirtyBits {
 	CMD_DIRTY_SCISSORS = 0x1,
+	CMD_DIRT_INDEX_BUFFER = 0x2
 };
 
 // the serialized state of the pipeline
@@ -37,7 +38,7 @@ struct frame_cmd_state_s {
 	uint32_t numColorAttachments;
 	NriDescriptor const* colorAttachment[MAX_COLOR_ATTACHMENTS];
 	NriRect scissors[MAX_COLOR_ATTACHMENTS];
-	struct NriViewport viewports[MAX_COLOR_ATTACHMENTS];
+	NriViewport viewports[MAX_COLOR_ATTACHMENTS];
 	NriDescriptor const* depthAttachment;
 
   NriBuffer* vertexBuffers[MAX_VERTEX_BINDINGS];
@@ -47,7 +48,6 @@ struct frame_cmd_state_s {
 	NriBuffer* indexBuffer;
 	uint64_t indexBufferOffset;
 	NriIndexType indexType;
-	bool dirtyIndexBuffer;
 
 	// binding
 	struct NriDescriptor *bindings[DESCRIPTOR_SET_MAX][DESCRIPTOR_MAX_BINDINGS];

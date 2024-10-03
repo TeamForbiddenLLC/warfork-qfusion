@@ -30,7 +30,7 @@ layout(set = DESCRIPTOR_OBJECT_SET, binding = 0) uniform ObjectCB {
    vec4 fogEyePlane;
    vec4 fogPlane;
    vec3 entityOrigin;
-   float entityDist;
+   float isAlphaBlending;
    mat4 mvp;
    mat4 mv;
    vec4 rgbGenFuncArgs;
@@ -39,7 +39,7 @@ layout(set = DESCRIPTOR_OBJECT_SET, binding = 0) uniform ObjectCB {
    vec4 lightAmbient;
    vec4 lightDiffuse;
    vec3 lightDir;
-   float isAlphaBlending;
+   vec3 entityDist;
 } obj;
 
 #ifdef APPLY_INSTANCED_TRANSFORMS

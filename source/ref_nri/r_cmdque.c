@@ -214,7 +214,7 @@ static unsigned R_HandleDrawStretchPicCmd( uint8_t *pcmd )
 static unsigned R_HandleDrawStretchPolyCmd( uint8_t *pcmd )
 {
 	refCmdDrawStretchOrScenePoly_t *cmd = (void *)pcmd;
-	R_DrawStretchPoly( &cmd->poly, cmd->x_offset, cmd->y_offset );
+	//R_DrawStretchPoly( &cmd->poly, cmd->x_offset, cmd->y_offset );
 	return cmd->length;
 }
 

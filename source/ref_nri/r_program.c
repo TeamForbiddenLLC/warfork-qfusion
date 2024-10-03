@@ -2640,8 +2640,24 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 					info->setIndex = program->numSets;
 					info->registerSpace = reflection->set; 
 					info->alloc = calloc( 1, sizeof( struct descriptor_set_allloc_s ) );
+					switch(reflection->set) {
+						case 0:
+							info->alloc->debugName = "GLOBAL_SET";
+							break;
+						case 1:
+							info->alloc->debugName = "FRAME_SET";
+							break;
+						case 2:
+							info->alloc->debugName = "PASS_SET";
+							break;
+						case 3:
+							info->alloc->debugName = "OBJECT_SET";
+							break;
+					}
+
 					program->numSets++;
 				}
+
 				for( size_t i_binding = 0; i_binding < reflection->binding_count; i_binding++ ) {
 					const SpvReflectDescriptorBinding *reflectionBinding = reflection->bindings[i_binding];
 					assert(reflection->set < DESCRIPTOR_SET_MAX);

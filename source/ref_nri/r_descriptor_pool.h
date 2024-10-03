@@ -28,6 +28,7 @@ struct descriptor_set_slot_s {
 
 struct descriptor_set_allloc_s {
 	// configuration for the allocator
+	const char* debugName;
 	struct {
 		//NriPipelineLayout *layout;
 		//uint32_t setIndex;
@@ -42,6 +43,7 @@ struct descriptor_set_allloc_s {
 		uint32_t storageStructuredBufferMaxNum;
 		uint32_t accelerationStructureMaxNum;
 	} config;
+	
 
 	struct descriptor_set_slot_s *hashSlots[ALLOC_HASH_RESERVE];
 	struct descriptor_set_slot_s *queueBegin;
