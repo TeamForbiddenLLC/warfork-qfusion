@@ -2341,7 +2341,7 @@ void RP_UpdateTexGenUniforms( int elem, const mat4_t reflectionMatrix, const mat
 /*
 * RP_UpdateShadowsUniforms
 */
-void RP_UpdateShadowsUniforms( int elem, int numShadows, const shadowGroup_t **groups, const mat4_t objectMatrix, 
+void RP_UpdateShadowsUniforms( int elem, int numShadows, shadowGroup_t *const *groups, const mat4_t objectMatrix, 
 	const vec3_t objectOrigin, const mat3_t objectAxis )
 {
 	int i;
