@@ -1030,7 +1030,6 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 	memcpy(prevScissors, cmd->state.scissors, sizeof(NriRect) * cmd->state.numColorAttachments); // keep a backup of the scissors
 
 	// begin rendering pass
-  FR_CmdBeginRendering(cmd);	
 	Matrix4_Copy( rb.objectMatrix, m );
 	transx = m[12];
 	transy = m[13];
@@ -1070,7 +1069,6 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 			draw->drawElements.firstElem, draw->drawElements.numElems
 		);
 	}
-	FR_CmdEndRendering(cmd);
 
 	rb.numDynamicDraws = 0;
 

@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
+#include "NRIDescs.h"
 #include "r_local.h"
 #include "r_imagelib.h"
 #include "r_nri.h"
@@ -60,6 +61,9 @@ static int gl_filter_depth = GL_LINEAR;
 
 static int gl_anisotropic_filter = 0;
 
+#define MAX_MIP_SAMPLES 16
+
+
 static void R_FreeImage( struct image_s *image );
 static NriTextureUsageBits __R_NRITextureUsageBits(int flags);
 int R_TextureTarget( int flags, int *uploadTarget )
@@ -80,6 +84,62 @@ int R_TextureTarget( int flags, int *uploadTarget )
 	if( uploadTarget )
 		*uploadTarget = target2;
 	return target;
+}
+
+static NriDescriptor *resolveSamplerDescriptor( int flags )
+{
+#define __SAMPLER_HASH_SIZE 1024
+	static struct {
+		hash_t hash;
+		NriDescriptor *descriptor;
+	} samplerDescriptors[__SAMPLER_HASH_SIZE] = {};
+
+	NriSamplerDesc samplerDesc = {};
+
+	if( flags & IT_NOFILTERING ) {
+		samplerDesc.filters.min = NriFilter_LINEAR;
+		samplerDesc.filters.mag = NriFilter_LINEAR;
+		samplerDesc.filters.mip = NriFilter_LINEAR;
+	} else if( flags & IT_DEPTH ) {
+		samplerDesc.filters.min = NriFilter_LINEAR;
+		samplerDesc.filters.mag = NriFilter_LINEAR;
+		samplerDesc.filters.mip = NriFilter_LINEAR;
+
+		samplerDesc.anisotropy = 0; // TODO: handle anisotropy
+	} else if( !( flags & IT_NOMIPMAP ) ) {
+		samplerDesc.filters.min = NriFilter_NEAREST;
+		samplerDesc.filters.mag = NriFilter_NEAREST;
+		samplerDesc.filters.mip = NriFilter_LINEAR;
+		samplerDesc.mipMax = 16;
+		samplerDesc.anisotropy = 0; // TODO: handle anisotropy
+	}
+
+	if( flags & IT_CLAMP ) {
+		samplerDesc.addressModes.u = NriAddressMode_CLAMP_TO_EDGE;
+		samplerDesc.addressModes.v = NriAddressMode_CLAMP_TO_EDGE;
+		samplerDesc.addressModes.w = NriAddressMode_CLAMP_TO_EDGE;
+	}
+
+	if( ( flags & IT_DEPTH ) && ( flags & IT_DEPTHCOMPARE ) && glConfig.ext.shadow ) {
+		samplerDesc.compareFunc = NriCompareFunc_LESS_EQUAL;
+	}
+
+	const hash_t hash = hash_data( HASH_INITIAL_VALUE, &samplerDesc, sizeof( NriSamplerDesc ) );
+	const size_t startIndex = ( hash % __SAMPLER_HASH_SIZE );
+	size_t index = startIndex;
+
+	do {
+		if( samplerDescriptors[index].hash == hash ) {
+			return samplerDescriptors[index].descriptor;
+		} else if( samplerDescriptors[index].descriptor == NULL ) {
+			samplerDescriptors[index].hash = hash;
+			rsh.nri.coreI.CreateSampler( rsh.nri.device, &samplerDesc, &samplerDescriptors[index].descriptor );
+			return samplerDescriptors[index].descriptor;
+		}
+		index = ( index + 1 ) % __SAMPLER_HASH_SIZE;
+	} while( index != startIndex );
+#undef __SAMPLER_HASH_SIZE
+	return NULL;
 }
 
 /*
@@ -1808,6 +1868,7 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 
 	if( R_KTXIsCompressed( &ktxContext ) ) {
 		struct texture_buf_s uncomp = { 0 };
+		R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
 		for( size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx ) {
 			struct texture_buf_s *tex = R_KTXResolveBuffer( &ktxContext, 0, faceIdx, 0 );
 			struct texture_buf_desc_s desc = { 
@@ -1850,6 +1911,7 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		const uint16_t numberOfMipLevels = ( image->flags & IT_NOMIPMAP ) ? 1 : R_KTXGetNumberMips( &ktxContext );
 
 		enum texture_logical_channel_e swizzleChannel[R_LOGICAL_C_MAX] = { 0 };
+		R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
 		for( uint16_t mipIndex = 0; mipIndex < numberOfMipLevels; mipIndex++ ) {
 			for( uint32_t faceIndex = 0; faceIndex < numberOfFaces; faceIndex++ ) {
 				struct texture_buf_s *texBuffer = R_KTXResolveBuffer( &ktxContext, mipIndex, faceIndex, 0 );
@@ -2010,8 +2072,16 @@ static void __LoadImageLayer(struct image_s* image, size_t layer, uint8_t* buf) 
 
 	uint32_t w = image->width;
 	uint32_t h = image->height;
+	R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
 	for( size_t i = 0; i < textureDesc->mipNum; i++ ) {
-		texture_upload_desc_t uploadDesc = { .sliceNum = h, .rowPitch = w * destBlockSize, .arrayOffset = layer, .mipOffset = i, .width = w, .height = h, .target = image->texture };
+		texture_upload_desc_t uploadDesc = { 
+			.sliceNum = h, 
+			.rowPitch = w * destBlockSize, 
+			.arrayOffset = layer, 
+			.mipOffset = i, 
+			.width = w, 
+			.height = h, 
+			.target = image->texture };
 		R_ResourceBeginCopyTexture( &uploadDesc );
 		for( size_t slice = 0; slice < textureDesc->height; slice++ ) {
 			const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
@@ -2075,6 +2145,7 @@ static void __LoadImageInPlace(struct image_s* image, uint8_t **pic, int width, 
 	uint8_t *tmpBuffer = NULL;
 	const size_t reservedSize = width * height * samples;
 	if( pic ) {
+		R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
 		for( size_t index = 0; index < textureDesc.layerNum; index++ ) {
 			if( !pic[index] ) {
 				continue;
@@ -2156,7 +2227,21 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	uint32_t destBlockSize = R_FormatBitSizePerBlock( destFormat ) / 8;
 	uint8_t *tmpBuffer = NULL;
 	const size_t reservedSize = width * height * samples;
+	
+	NriTexture2DViewDesc textureViewDesc = {
+		.texture = image->texture,
+		.viewType = (flags & IT_CUBEMAP) ? NriTexture2DViewType_SHADER_RESOURCE_CUBE: NriTexture2DViewType_SHADER_RESOURCE_2D,
+		.format = textureDesc.format
+	};
+	
+	NriDescriptor* descriptor = NULL;
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &descriptor) );
+	image->descriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
+	image->samplerDescriptor = R_CreateDescriptorWrapper(&rsh.nri, resolveSamplerDescriptor(image->flags)); 
+	assert(image->samplerDescriptor.descriptor);
+
 	if( pic ) {
+		R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
 		for( size_t index = 0; index < textureDesc.layerNum; index++ ) {
 			if( !pic[index] ) {
 				continue;
@@ -2383,8 +2468,6 @@ void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic )
 */
 image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmipsize, int tags )
 {
-
-	//ri.Com_Printf( S_COLOR_YELLOW "loading image: %s\n", name);
 	
 	assert( name );
 	assert( name[0] );
@@ -2492,7 +2575,6 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 				{ "dn", IT_FLIPDIAGONAL } 
 		} };
 
-		// resolvedPath[pathLen] = '_';
 		for( size_t i = 0; i < 2; i++ ) {
 			for( size_t u = 0; u < 6; u++ ) {
 				sdssetlen( resolvedPath, basePathLen );
@@ -2542,7 +2624,8 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	const uint32_t mipSize = __R_calculateMipMapLevel( flags, uploads[0].buffer.width, uploads[0].buffer.height, minmipsize );
 	const enum texture_format_e format = R_FORMAT_RGBA8_UNORM;
 	const uint32_t destBlockSize = R_FormatBitSizePerBlock( format ) / 8;
-	NriTextureDesc textureDesc = { .width = uploads[0].buffer.width,
+	NriTextureDesc textureDesc = { 
+									 .width = uploads[0].buffer.width,
 								   .height = uploads[0].buffer.height,
 								   .usageMask = __R_NRITextureUsageBits( flags ),
 								   .layerNum = uploadCount,
@@ -2585,6 +2668,8 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	NriDescriptor* descriptor = NULL;
 	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &descriptor) );
 	image->descriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
+	image->samplerDescriptor = R_CreateDescriptorWrapper(&rsh.nri, resolveSamplerDescriptor(image->flags)); 
+	assert(image->samplerDescriptor.descriptor);
 
 	struct texture_buf_s transformBuffer = { 0 };
 	for( size_t index = 0; index < uploadCount; index++ ) {
@@ -2609,6 +2694,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 			src = &transformBuffer;
 		}
 
+		R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
 		for( size_t i = 0; i < mipSize; i++ ) {
 			texture_upload_desc_t uploadDesc = {
 				.sliceNum = src->height,
@@ -2641,6 +2727,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 				src->height = 1;
 			}
 		}
+		image->currentLayout = ResourceUploadTexturePostAccess; 
 	}
 
 done:

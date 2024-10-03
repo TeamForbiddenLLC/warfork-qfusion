@@ -5,21 +5,15 @@
 
 #include <assert.h>
 
-#define NUMBER_COMMAND_SETS 3 
+#include "r_local.h"
 
-struct post_texture_upload_layout_s {
-		NriTexture* texture;
-		NriAccessLayoutStage after; 	
-};
-struct post_buffer_upload_layout_s {
-		NriBuffer* texture;
-		NriAccessLayoutStage after; 	
-};
+#define NUMBER_COMMAND_SETS 3 
 
 typedef struct {
   NriMemory* memory;
   NriBuffer* buffer;
 } temporary_resource_buf_t;
+
 
 typedef struct command_set_s{
   size_t offset;
@@ -28,8 +22,6 @@ typedef struct command_set_s{
   uint32_t reservedStageMemory;
   temporary_resource_buf_t* temporary;
 
-	struct post_texture_upload_layout_s* postTextureLayoutTransitions;
-	struct post_buffer_upload_layout_s* postBufferLayoutTransitions;
 } resource_command_set_t;
 
 typedef struct resource_stage_buffer_s{
@@ -53,7 +45,6 @@ static resource_command_set_t commandSets[NUMBER_COMMAND_SETS] = {};
 static NriCommandQueue* cmdQueue = NULL;
 static NriFence* uploadFence = NULL;
 
-static struct nri_backend_s* backend;
 
 static bool __R_AllocFromStageBuffer(resource_command_set_t *set, size_t reqSize, resource_stage_response_t *res ) {
 	size_t allocSize = ALIGN(reqSize, 4 ); // we round up to multiples of uint32_t
@@ -91,24 +82,24 @@ static bool R_AllocTemporaryBuffer( resource_command_set_t *set, size_t reqSize,
 	//Com_Printf( "Creating temporary buffer ran out space in staging" );
 	temporary_resource_buf_t temp = {};
 	NriBufferDesc bufferDesc = { .size = reqSize };
-	NRI_ABORT_ON_FAILURE( backend->coreI.CreateBuffer( backend->device, &bufferDesc, &temp.buffer ) );
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateBuffer( rsh.nri.device, &bufferDesc, &temp.buffer ) );
 
 	struct NriMemoryDesc memoryDesc = {};
-	backend->coreI.GetBufferMemoryDesc(backend->device, &bufferDesc, NriMemoryLocation_HOST_UPLOAD, &memoryDesc );
+	rsh.nri.coreI.GetBufferMemoryDesc(rsh.nri.device, &bufferDesc, NriMemoryLocation_HOST_UPLOAD, &memoryDesc );
 
 	NriAllocateMemoryDesc allocateMemoryDesc = {};
 	allocateMemoryDesc.size = memoryDesc.size;
 	allocateMemoryDesc.type = memoryDesc.type;
-	NRI_ABORT_ON_FAILURE( backend->coreI.AllocateMemory( backend->device, &allocateMemoryDesc, &temp.memory ) );
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.AllocateMemory( rsh.nri.device, &allocateMemoryDesc, &temp.memory ) );
 
 	NriBufferMemoryBindingDesc bindBufferDesc = {
 		.memory = temp.memory,
 		.buffer = temp.buffer,
 	};
-	NRI_ABORT_ON_FAILURE( backend->coreI.BindBufferMemory( backend->device, &bindBufferDesc, 1 ) );
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.BindBufferMemory( rsh.nri.device, &bindBufferDesc, 1 ) );
 	arrput(set->temporary, temp );
 
-	res->cpuMapping = backend->coreI.MapBuffer( temp.buffer, 0, NRI_WHOLE_SIZE );
+	res->cpuMapping = rsh.nri.coreI.MapBuffer( temp.buffer, 0, NRI_WHOLE_SIZE );
 	res->backing = temp.buffer;
 	res->byteOffset = 0;
 	return true;
@@ -119,7 +110,7 @@ static void R_UploadBeginCommandSet( uint32_t setIndex)
 	struct command_set_s* set = &commandSets[activeSet];
   stageBuffer.remaningSpace += set->reservedStageMemory; 
   set->reservedStageMemory = 0;
-	backend->coreI.BeginCommandBuffer( set->cmd, 0 );
+	rsh.nri.coreI.BeginCommandBuffer( set->cmd, 0 );
 }
 
 static void R_UploadEndCommandSet(uint32_t setIndex) {
@@ -132,41 +123,51 @@ static void R_UploadEndCommandSet(uint32_t setIndex) {
 	signalFence.fence = uploadFence;
 	signalFence.value = 1 + syncIndex;
 
-	backend->coreI.EndCommandBuffer( set->cmd );
+	rsh.nri.coreI.EndCommandBuffer( set->cmd );
 	NriQueueSubmitDesc queueSubmit = {0};
 	queueSubmit.commandBuffers = cmdBuffers;
 	queueSubmit.commandBufferNum = 1;
 	queueSubmit.signalFenceNum = 1;
 	queueSubmit.signalFences = &signalFence;
-	backend->coreI.QueueSubmit( cmdQueue, &queueSubmit );
+	rsh.nri.coreI.QueueSubmit( cmdQueue, &queueSubmit );
   syncIndex++;
 }
 
-void R_InitResourceUpload(struct nri_backend_s* nri)
+void R_InitResourceUpload()
 {
-	assert(nri);
-	backend = nri;
-
-	NRI_ABORT_ON_FAILURE( backend->coreI.GetCommandQueue( backend->device, NriCommandQueueType_GRAPHICS, &cmdQueue ) )
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.GetCommandQueue( rsh.nri.device, NriCommandQueueType_GRAPHICS, &cmdQueue ) )
 	NriBufferDesc stageBufferDesc = { .size = SizeOfStageBufferByte };
-	NRI_ABORT_ON_FAILURE( backend->coreI.CreateBuffer( backend->device, &stageBufferDesc, &stageBuffer.buffer ) )
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateBuffer( rsh.nri.device, &stageBufferDesc, &stageBuffer.buffer ) )
 
 	NriResourceGroupDesc resourceGroupDesc = { .buffers = &stageBuffer.buffer, .bufferNum = 1, .memoryLocation = NriMemoryLocation_HOST_UPLOAD };
-	assert( backend->helperI.CalculateAllocationNumber( backend->device, &resourceGroupDesc ) == 1 );
-	NRI_ABORT_ON_FAILURE( backend->helperI.AllocateAndBindMemory( backend->device, &resourceGroupDesc, &stageBuffer.memory ) );
-	NRI_ABORT_ON_FAILURE( backend->coreI.CreateFence( backend->device, 0, &uploadFence ) );
+	assert( rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc ) == 1 );
+	NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, &stageBuffer.memory ) );
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateFence( rsh.nri.device, 0, &uploadFence ) );
 
 	for( size_t i = 0; i < Q_ARRAY_COUNT( commandSets ); i++ ) {
-		NRI_ABORT_ON_FAILURE( backend->coreI.CreateCommandAllocator( cmdQueue, &commandSets[i].allocator ) );
-		NRI_ABORT_ON_FAILURE( backend->coreI.CreateCommandBuffer( commandSets[i].allocator, &commandSets[i].cmd ) );
+		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateCommandAllocator( cmdQueue, &commandSets[i].allocator ) );
+		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateCommandBuffer( commandSets[i].allocator, &commandSets[i].cmd ) );
 	}
 
 	// we just keep the buffer always mapped
-	stageBuffer.cpuMappedBuffer = backend->coreI.MapBuffer( stageBuffer.buffer, 0, NRI_WHOLE_SIZE );
+	stageBuffer.cpuMappedBuffer = rsh.nri.coreI.MapBuffer( stageBuffer.buffer, 0, NRI_WHOLE_SIZE );
 	stageBuffer.tailOffset = 0;
 	stageBuffer.remaningSpace = SizeOfStageBufferByte;
 	activeSet = 0;
 	R_UploadBeginCommandSet( 0 );
+}
+
+NriAccessStage R_ResourceTransitionBuffer(NriBuffer* buffer, NriAccessStage currentAccessAndLayout) {
+  NriBufferBarrierDesc transitionBarriers = {0};
+  transitionBarriers.before = currentAccessAndLayout;
+  transitionBarriers.buffer = buffer;
+  transitionBarriers.after = ResourceUploadBufferPostAccess;
+	
+	NriBarrierGroupDesc barrierGroupDesc = {0};
+	barrierGroupDesc.bufferNum = 1;
+	barrierGroupDesc.buffers = &transitionBarriers;
+  rsh.nri.coreI.CmdBarrier( commandSets[activeSet].cmd, &barrierGroupDesc);
+  return ResourceUploadBufferPostAccess;
 }
 
 void R_ResourceBeginCopyBuffer( buffer_upload_desc_t *action )
@@ -178,6 +179,7 @@ void R_ResourceBeginCopyBuffer( buffer_upload_desc_t *action )
 	action->data = res.cpuMapping;
 	action->internal.backing = res.backing;
 }
+
 
 void R_ResourceEndCopyBuffer( buffer_upload_desc_t *action )
 {
@@ -192,22 +194,34 @@ void R_ResourceEndCopyBuffer( buffer_upload_desc_t *action )
  //   backend->coreI.CmdPipelineBarrier( commandSets[activeSet].cmd, &transitions, NULL, NriBarrierDependency_COPY_STAGE );
  // }
 	
-  NriBufferBarrierDesc transitionBarriers = {0};
-  transitionBarriers.before = action->currentAccess;
-  transitionBarriers.after.access = NriAccessBits_COPY_DESTINATION; 
-  transitionBarriers.after.stages = NriStageBits_COPY; 
-  transitionBarriers.buffer = action->target;//otextureTransitionBarrierDesc;
-	
-	NriBarrierGroupDesc barrierGroupDesc = {0};
-	barrierGroupDesc.bufferNum = 1;
-	barrierGroupDesc.buffers = &transitionBarriers;
-  backend->coreI.CmdBarrier( commandSets[activeSet].cmd, &barrierGroupDesc);
+  //NriBufferBarrierDesc transitionBarriers = {0};
+  //transitionBarriers.before = action->currentAccess;
+  //transitionBarriers.buffer = action->target;//otextureTransitionBarrierDesc;
+  //transitionBarriers.after = ResourceUploadBufferPostAccess;
+  ////transitionBarriers.after.access = NriAccessBits_COPY_DESTINATION; 
+  ////transitionBarriers.after.stages = NriStageBits_COPY; 
+	//
+	//NriBarrierGroupDesc barrierGroupDesc = {0};
+	//barrierGroupDesc.bufferNum = 1;
+	//barrierGroupDesc.buffers = &transitionBarriers;
+  //rsh.nri.coreI.CmdBarrier( commandSets[activeSet].cmd, &barrierGroupDesc);
+
+  rsh.nri.coreI.CmdCopyBuffer(
+  	commandSets[activeSet].cmd, 
+  	action->target,
+  	action->byteOffset,
+  	action->internal.backing,
+  	action->internal.byteOffset,
+  	action->numBytes
+  );
 }
+
+
 
 void R_ResourceBeginCopyTexture( texture_upload_desc_t *desc )
 {
 	assert( desc->target );
-	const NriDeviceDesc *deviceDesc = backend->coreI.GetDeviceDesc( backend->device );
+	const NriDeviceDesc *deviceDesc = rsh.nri.coreI.GetDeviceDesc( rsh.nri.device );
 
 	const uint64_t alignedRowPitch = ALIGN( desc->rowPitch, deviceDesc->uploadBufferTextureRowAlignment );
 	const uint64_t alignedSlicePitch =  ALIGN( desc->sliceNum * alignedRowPitch, deviceDesc->uploadBufferTextureSliceAlignment );
@@ -218,24 +232,15 @@ void R_ResourceBeginCopyTexture( texture_upload_desc_t *desc )
 
 	resource_stage_response_t res = {};
 	R_AllocTemporaryBuffer( &commandSets[activeSet], alignedSlicePitch, &res );
+
 	desc->internal.byteOffset = res.byteOffset;
 	desc->data = res.cpuMapping;
 	desc->internal.backing = res.backing;
 }
 
+
 void R_ResourceEndCopyTexture( texture_upload_desc_t* desc) {
-	const NriTextureDesc* textureDesc = backend->coreI.GetTextureDesc( desc->target);
-
-  NriTextureBarrierDesc transitionBarriers = {0};
-  transitionBarriers.before = desc->currentAccessAndLayout;
-  transitionBarriers.after.layout = NriLayout_COPY_DESTINATION; 
-  transitionBarriers.after.stages = NriStageBits_COPY; 
-  transitionBarriers.texture = desc->target;//otextureTransitionBarrierDesc;
-
-	NriBarrierGroupDesc barrierGroupDesc = {0};
-	barrierGroupDesc.textureNum = 1;
-	barrierGroupDesc.textures = &transitionBarriers;
-  backend->coreI.CmdBarrier(commandSets[activeSet].cmd, &barrierGroupDesc);//, NULL, NriBarrierDependency_COPY_STAGE);
+	const NriTextureDesc* textureDesc = rsh.nri.coreI.GetTextureDesc( desc->target);
   
   NriTextureRegionDesc destRegionDesc = { 
   	.layerOffset = desc->arrayOffset, 
@@ -252,7 +257,25 @@ void R_ResourceEndCopyTexture( texture_upload_desc_t* desc) {
     .rowPitch = desc->alignRowPitch, 
     .slicePitch = desc->alignSlicePitch,
   };
-  backend->coreI.CmdUploadBufferToTexture(commandSets[activeSet].cmd, desc->target, &destRegionDesc, desc->internal.backing, &srcLayoutDesc); 
+  rsh.nri.coreI.CmdUploadBufferToTexture(
+  	commandSets[activeSet].cmd, 
+  	desc->target, 
+  	&destRegionDesc, 
+  	desc->internal.backing, 
+  	&srcLayoutDesc); 
+}
+
+NriAccessLayoutStage R_ResourceTransitionTexture(NriTexture* texture, NriAccessLayoutStage currentAccessAndLayout) {
+  NriTextureBarrierDesc transitionBarriers = {0};
+  transitionBarriers.before = currentAccessAndLayout;
+  transitionBarriers.after = ResourceUploadTexturePostAccess;
+  transitionBarriers.texture = texture;
+
+	NriBarrierGroupDesc barrierGroupDesc = {0};
+	barrierGroupDesc.textureNum = 1;
+	barrierGroupDesc.textures = &transitionBarriers;
+  rsh.nri.coreI.CmdBarrier(commandSets[activeSet].cmd, &barrierGroupDesc);//, NULL, NriBarrierDependency_COPY_STAGE);
+	return transitionBarriers.after;
 }
 
 void R_ResourceSubmit()
@@ -261,11 +284,11 @@ void R_ResourceSubmit()
 	activeSet = ( activeSet + 1 ) % NUMBER_COMMAND_SETS;
 	if( syncIndex >= NUMBER_COMMAND_SETS ) {
 		struct command_set_s *set = &commandSets[activeSet];
-		backend->coreI.Wait( uploadFence, 1 + syncIndex - NUMBER_COMMAND_SETS );
-		backend->coreI.ResetCommandAllocator( set->allocator );
+		rsh.nri.coreI.Wait( uploadFence, 1 + syncIndex - NUMBER_COMMAND_SETS );
+		rsh.nri.coreI.ResetCommandAllocator( set->allocator );
 		for( size_t i = 0; i < arrlen( set->temporary ); i++ ) {
-			backend->coreI.DestroyBuffer( set->temporary[i].buffer );
-			backend->coreI.FreeMemory( set->temporary[i].memory );
+			rsh.nri.coreI.DestroyBuffer( set->temporary[i].buffer );
+			rsh.nri.coreI.FreeMemory( set->temporary[i].memory );
 		}
 		arrsetlen( set->temporary, 0 );
 	}

@@ -101,7 +101,7 @@ struct descriptor_set_result_s ResolveDescriptorSet( struct nri_backend_s *backe
 		slot->hash = hash;
 		AttachDescriptorSlot( alloc, slot );
 		result.set = slot->descriptorSet;
-		result.found = true;
+		result.found = false;
 		assert(result.set);
 		return result;
 	}
@@ -134,6 +134,7 @@ struct descriptor_set_result_s ResolveDescriptorSet( struct nri_backend_s *backe
 
 	AttachDescriptorSlot( alloc, slot );
 	result.set = slot->descriptorSet;
+	backend->coreI.SetDescriptorSetDebugName(slot->descriptorSet, alloc->debugName);
 	result.found = false;
 	assert(result.set);
 	return result;

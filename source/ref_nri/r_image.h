@@ -71,14 +71,18 @@ enum
 	,IMAGE_TAG_WORLD	= 1<<2		// World textures.
 };
 
+
 typedef struct image_s
 {
 	uint32_t cookie;
 
+	NriAccessLayoutStage currentLayout;
 	struct nri_descriptor_s descriptor;
+	struct nri_descriptor_s samplerDescriptor; 
 	NriTexture* texture;
 	size_t numAllocations;
 	NriMemory* memory[4];
+
 
 	char			*name;						// game path, not including extension
 	int				registrationSequence;

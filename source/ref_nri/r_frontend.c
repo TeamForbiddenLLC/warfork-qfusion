@@ -294,7 +294,7 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 		arrsetlen(rsh.backBuffers, swapChainTextureNum);
 		for( uint32_t i = 0; i < swapChainTextureNum; i++ ) {
 			rsh.backBuffers[i].memoryLen = 0;
-			rsh.backBuffers->screen = (NriRect) {
+			rsh.backBuffers[i].screen = (NriRect) {
 				.x = 0,
 				.y = 0,
 				.width = swapChainDesc.width,
@@ -346,7 +346,7 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	if( err != rserr_ok ) {
 		return err;
 	}
-	R_InitResourceUpload(&rsh.nri);
+	R_InitResourceUpload();
 
 	RP_Init();
 
@@ -739,7 +739,6 @@ void RF_EndRegistration( void )
 
 void RF_RegisterWorldModel( const char *model, const dvis_t *pvsData )
 {
-	//RF_AdapterWait( &rrf.adapter );
 	R_RegisterWorldModel( model, pvsData );
 }
 
@@ -750,12 +749,12 @@ void RF_ClearScene( void )
 
 void RF_AddEntityToScene( const entity_t *ent )
 {
-	//rrf.frame->AddEntityToScene( rrf.frame, ent );
+	R_AddEntityToScene(ent);
 }
 
 void RF_AddLightToScene( const vec3_t org, float intensity, float r, float g, float b )
 {
-	//rrf.frame->AddLightToScene( rrf.frame, org, intensity, r, g, b );
+	R_AddLightToScene( org, intensity, r, g, b );
 }
 
 void RF_AddPolyToScene( const poly_t *poly )
@@ -765,7 +764,7 @@ void RF_AddPolyToScene( const poly_t *poly )
 
 void RF_AddLightStyleToScene( int style, float r, float g, float b )
 {
-	//rrf.frame->AddLightStyleToScene( rrf.frame, style, r, g, b );
+	R_AddLightStyleToScene( style, r, g, b );
 }
 
 void RF_RenderScene( const refdef_t *fd )
@@ -788,6 +787,8 @@ void RF_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2
 void RF_DrawRotatedStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, float angle, 
 	const vec4_t color, const shader_t *shader )
 {
+	struct frame_cmd_buffer_s *cmd = R_ActiveFrameCmd();
+	R_DrawRotatedStretchPic(cmd, x, y, w, h, s1, t1, s2, t2, 0, color, shader );
 	//rrf.frame->DrawRotatedStretchPic( rrf.frame, x, y, w, h, s1, t1, s2, t2, angle, color, shader );
 }
 
@@ -814,7 +815,8 @@ void RF_DrawStretchRawYUV( int x, int y, int w, int h,
 
 void RF_DrawStretchPoly( const poly_t *poly, float x_offset, float y_offset )
 {
-	//rrf.frame->DrawStretchPoly( rrf.frame, poly, x_offset, y_offset );
+	struct frame_cmd_buffer_s *cmd = R_ActiveFrameCmd();
+	R_DrawStretchPoly( cmd, poly, x_offset, y_offset );
 }
 
 void RF_SetScissor( int x, int y, int w, int h )

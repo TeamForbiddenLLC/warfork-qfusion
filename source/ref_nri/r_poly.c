@@ -73,7 +73,7 @@ void R_DrawPolys( void )
 /*
 * R_DrawStretchPoly
 */
-void R_DrawStretchPoly( const poly_t *poly, float x_offset, float y_offset )
+void R_DrawStretchPoly(struct frame_cmd_buffer_s* cmd, const poly_t *poly, float x_offset, float y_offset )
 {
 	mesh_t mesh;
 	vec4_t translated[256];
@@ -111,7 +111,7 @@ void R_DrawStretchPoly( const poly_t *poly, float x_offset, float y_offset )
 		mesh.xyzArray = translated;
 	}
 
-	RB_AddDynamicMesh( NULL, NULL, poly->shader, NULL, NULL, 0, &mesh, GL_TRIANGLES, x_offset, y_offset );
+	RB_AddDynamicMesh( cmd, NULL, poly->shader, NULL, NULL, 0, &mesh, GL_TRIANGLES, x_offset, y_offset );
 }
 
 //==================================================================================
