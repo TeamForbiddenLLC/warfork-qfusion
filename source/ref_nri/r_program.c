@@ -1866,9 +1866,13 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	graphicsPipelineDesc.outputMerger.colorNum = def->numColorAttachments;
 	graphicsPipelineDesc.outputMerger.colors = colorAttachmentDesc;
 
+	graphicsPipelineDesc.inputAssembly.topology = NriTopology_TRIANGLE_LIST;
+
 	NriShaderDesc shaderDesc[4] = {0};
 	graphicsPipelineDesc.shaders = shaderDesc;
 	graphicsPipelineDesc.rasterization.cullMode = def->pipelineLayout.cullMode;
+	graphicsPipelineDesc.rasterization.fillMode = NriFillMode_SOLID;
+	graphicsPipelineDesc.rasterization.viewportNum = def->numColorAttachments;
 
 	graphicsPipelineDesc.outputMerger.depth.write = def->pipelineLayout.depthWrite;
 	graphicsPipelineDesc.outputMerger.depth.compareFunc = def->pipelineLayout.compareFunc;
