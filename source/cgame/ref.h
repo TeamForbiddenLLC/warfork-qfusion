@@ -41,6 +41,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define RF_GREYSCALE			0x400
 #define RF_NODEPTHTEST			0x800
 #define RF_NOCOLORWRITE			0x1000
+#define RF_OUTLINE_STENCIL_0    0x2000
+#define RF_OUTLINE_STENCIL_1    0x4000
 
 // refdef flags
 #define	RDF_UNDERWATER			0x1		// warp the screen as apropriate
@@ -161,10 +163,16 @@ typedef struct entity_s
 	float rotation;
 
 	float outlineHeight;
+	float outlineGhost;
 	union
 	{
 		byte_vec4_t outlineColor;
 		uint8_t outlineRGBA[4];
+	};
+	union
+	{
+		byte_vec4_t outlineColorGhost;
+		uint8_t outlineRGBAGhost[4];
 	};
 } entity_t;
 

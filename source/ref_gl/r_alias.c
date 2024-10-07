@@ -787,7 +787,7 @@ bool R_AddAliasModelToDrawList( const entity_t *e )
 	for( i = 0, mesh = aliasmodel->meshes; i < aliasmodel->nummeshes; i++, mesh++ )
 	{
 		shader = NULL;
-
+		int order = 0;
 		if( e->customSkin ) {
 			shader = R_FindShaderForSkinFile( e->customSkin, mesh->name );
 		} else if( e->customShader ) {
@@ -795,15 +795,21 @@ bool R_AddAliasModelToDrawList( const entity_t *e )
 		} else if( mesh->numskins ) {
 			for( j = 0; j < mesh->numskins; j++ ) {
 				shader = mesh->skins[j].shader;
+				if( shader->sort == SHADER_SORT_OPAQUE ) {
+					order = R_PackOpaqueOrder( e, shader, false, false );
+				}
 				if( shader ) {
-					R_AddSurfToDrawList( rn.meshlist, e, fog, shader, distance, 0, NULL, aliasmodel->drawSurfs + i );
+					R_AddSurfToDrawList( rn.meshlist, e, fog, shader, distance, order, NULL, aliasmodel->drawSurfs + i );
 				}
 			}
 			continue;
 		}
 
 		if( shader ) {
-			R_AddSurfToDrawList( rn.meshlist, e, fog, shader, distance, 0, NULL, aliasmodel->drawSurfs + i );
+			if( shader->sort == SHADER_SORT_OPAQUE ) {
+				order = R_PackOpaqueOrder( e, shader, false, false );
+			}
+			R_AddSurfToDrawList( rn.meshlist, e, fog, shader, distance, order, NULL, aliasmodel->drawSurfs + i );
 		}
 	}
 

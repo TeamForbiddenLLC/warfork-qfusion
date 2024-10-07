@@ -703,8 +703,7 @@ static bool R_RegisterGLExtensions( void )
 			qglGetIntegerv( GL_MAX_ARRAY_TEXTURE_LAYERS_EXT, &glConfig.maxTextureLayers );
 		/* GL_EXT_packed_depth_stencil
 		 * Many OpenGL implementation don't support separate depth and stencil renderbuffers. */
-		if( !glConfig.ext.packed_depth_stencil )
-			glConfig.stencilBits = 0;
+		glConfig.stencilBits = glConfig.ext.packed_depth_stencil; 
 
 		versionMajor = versionMinor = 0;
 		sscanf( glConfig.shadingLanguageVersionString, "%d.%d", &versionMajor, &versionMinor );

@@ -863,9 +863,8 @@ void CG_DrawPlayerNames( struct qfontface_s *font, vec4_t color )
 	}
 }
 
-/*
-* CG_DrawTeamMates
-*/
+// ref: https://github.com/TeamForbiddenLLC/warfork-qfusion/pull/395
+// Note: replaced with player outline 
 void CG_DrawTeamMates( void )
 {
 	centity_t *cent;
