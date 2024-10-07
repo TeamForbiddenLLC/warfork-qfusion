@@ -22,6 +22,16 @@ static const struct base_format_def_s baseFormats[] = {
     },
   },
 
+  [R_FORMAT_RG8_UNORM] = {
+    .format = R_FORMAT_RG8_UNORM, 
+    .base = R_BASE_FORMAT_FIXED_8,
+    .fixed_8 = {
+      .numChannels = 2,
+      .channels = {R_LOGICAL_C_RED, R_LOGICAL_C_GREEN},
+      .normalized = 1,
+      .sign = 0
+    },
+  },
   [R_FORMAT_RGB8_UNORM] = {
     .format = R_FORMAT_RGB8_UNORM, 
     .base = R_BASE_FORMAT_FIXED_8,
@@ -189,6 +199,7 @@ uint32_t R_FormatChannelCount(enum texture_format_e format) {
     case R_FORMAT_RGBA32_SINT: return 4;
     case R_FORMAT_RGBA32_SFLOAT: return 4;
     case R_FORMAT_BGR8_UNORM: return 3;
+    case R_FORMAT_RGBA8_UNORM: return 4;
     default:
       assert(false);
   }

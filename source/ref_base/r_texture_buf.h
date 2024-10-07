@@ -17,13 +17,13 @@ struct texture_buf_s;
 typedef void (*free_hander_t)(void* p);
 																					
 struct texture_buf_s {
-	enum texture_buf_flags_e flags;
+  enum texture_buf_flags_e flags;
   const struct base_format_def_s* def;
 
   void* freeParam;
-	free_hander_t freeHandler;
+  free_hander_t freeHandler;
 
-	uint32_t rowPitch; // the number of bytes in a row of pixels including any alignment
+  uint32_t rowPitch; // the number of bytes in a row of pixels including any alignment
   uint16_t rowAlign;
   
   uint16_t width;
