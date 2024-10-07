@@ -134,7 +134,7 @@ static void R_UploadCinematicFrame( r_cinhandle_t *handle )
 
 			R_BindFrameBufferObject( handle->image->fbo );
 
-			R_Set2DMode( true );
+			R_Set2DMode( NULL, true );
 
 			RB_Scissor( 0, 0, handle->image->upload_width, handle->image->upload_height );
 
@@ -157,7 +157,7 @@ static void R_UploadCinematicFrame( r_cinhandle_t *handle )
 			}
 			R_BindFrameBufferObject( fbo );
 
-			R_Set2DMode( in2D );
+			R_Set2DMode( NULL,in2D );
 
 			handle->new_frame = false;
 		}

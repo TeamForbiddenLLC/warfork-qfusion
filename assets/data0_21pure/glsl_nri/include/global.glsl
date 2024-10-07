@@ -1,3 +1,4 @@
+
 #if defined(APPLY_FOG_COLOR)
   #define APPLY_ENV_MODULATE_COLOR
 #else
@@ -24,13 +25,9 @@
 // default set of attributes
 #include "attributes.glsl"
 
-
-
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 0) uniform ObjectCB {
    vec4 fogEyePlane;
    vec4 fogPlane;
-   vec3 entityOrigin;
-   float isAlphaBlending;
    mat4 mvp;
    mat4 mv;
    vec4 rgbGenFuncArgs;
@@ -38,15 +35,21 @@ layout(set = DESCRIPTOR_OBJECT_SET, binding = 0) uniform ObjectCB {
    vec4 colorConst;
    vec4 lightAmbient;
    vec4 lightDiffuse;
+   vec3 entityOrigin;
+   float isAlphaBlending;
    vec3 lightDir;
    vec3 entityDist;
 } obj;
 
-#ifdef APPLY_INSTANCED_TRANSFORMS
-	layout(set = DESCRIPTOR_OBJECT_SET, binding = 1) uniform vec4 instancePoints[MAX_UNIFORM_INSTANCES * 2]; 
-	#define a_InstanceQuat instancePoints[gl_InstanceID*2]
-	#define a_InstancePosAndScale instancePoints[gl_InstanceID*2+1]
-#endif
+layout(set = DESCRIPTOR_OBJECT_SET, binding = 1) uniform TransformCB { 
+  vec4 instancePoints[MAX_UNIFORM_INSTANCES * 2];
+}; 
+#define a_InstanceQuat instancePoints[gl_InstanceID*2]
+#define a_InstancePosAndScale instancePoints[gl_InstanceID*2+1]
+
+layout(set = DESCRIPTOR_OBJECT_SET, binding = 2) uniform BoneCB {
+  vec4 dualQuats[MAX_UNIFORM_BONES * 2];
+};
 
 layout(set = DESCRIPTOR_FRAME_SET, binding = 0) uniform FrameCB {
   vec3 viewOrigin;

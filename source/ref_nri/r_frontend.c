@@ -232,8 +232,8 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 		.backend = VID_WINDOW_VULKAN, 
 		.x = vid_xpos->integer, 
 		.y = vid_ypos->integer, 
-		.width = vid_xpos->integer, 
-		.height = vid_ypos->integer
+		.width = vid_width->integer,
+		.height = vid_height->integer,
 	};
 	if(!R_WIN_InitWindow(&winInit)) {
 		ri.Com_Error(ERR_DROP, "failed to create window" );
@@ -265,8 +265,8 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 
 	NriSwapChainDesc swapChainDesc = { 
 		.commandQueue = rsh.nri.graphicsCommandQueue,
-		.width = winInit.width, 
-		.height = winInit.height, 
+		.width = vid_width->integer, 
+		.height = vid_height->integer, 
 		.format = DefaultSwapchainFormat,
 		.textureNum = 3,
 		.window = nriWindow
@@ -387,7 +387,6 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 	rsh.nri.helperI.WaitForIdle( rsh.cmdQueue );
 	//rsh.nri.swapChainI.DestroySwapChain( rsh.swapchain );
 
-
 	win_handle_t handle = {};
 	if(!R_WIN_GetWindowHandle( &handle ) ) {
 		ri.Com_Error(ERR_DROP, "failed to resolve window handle" );
@@ -494,6 +493,7 @@ void RF_Shutdown( bool verbose )
 		//RF_DestroyCmdBuf( &rrf.frame );
 //	}
 	memset( &rrf, 0, sizeof( rrf ) );
+	rsh.nri.helperI.WaitForIdle( rsh.cmdQueue );
 
 	R_Shutdown( verbose );
 }
@@ -596,32 +596,36 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 
 	// set the cmdState to the backbuffer for rendering going forward
 	{
-		NriTextureBarrierDesc textureBarrierDescs = {};
-		textureBarrierDescs.texture = frame->textureBuffers.colorTexture;
-		textureBarrierDescs.after = ( NriAccessLayoutStage ){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT };
-		textureBarrierDescs.layerNum = 1;
-		textureBarrierDescs.mipNum = 1;
+		NriTextureBarrierDesc textureBarrierDescs[1] = {};
+		textureBarrierDescs[0].texture = frame->textureBuffers.colorTexture;
+		textureBarrierDescs[0].after = ( NriAccessLayoutStage ){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT };
 
 		NriBarrierGroupDesc barrierGroupDesc = {};
 		barrierGroupDesc.textureNum = 1;
-		barrierGroupDesc.textures = &textureBarrierDescs;
+		barrierGroupDesc.textures = textureBarrierDescs;
 		rsh.nri.coreI.CmdBarrier( frame->cmd, &barrierGroupDesc );
 	}
 
 	{
 		NriAttachmentsDesc attachmentsDesc = {};
 		attachmentsDesc.colorNum = 1;
-		const NriDescriptor *colorAttachments[] = { frame->textureBuffers.colorAttachment };
+		const NriDescriptor *colorAttachments[] = { 
+			frame->textureBuffers.colorAttachment
+		};
+		attachmentsDesc.depthStencil = frame->textureBuffers.depthAttachment;
 		attachmentsDesc.colors = colorAttachments;
 		rsh.nri.coreI.CmdBeginRendering( frame->cmd, &attachmentsDesc );
 		{
 			const NriTextureDesc *backBufferDesc = rsh.nri.coreI.GetTextureDesc( frame->textureBuffers.colorTexture );
 
-			NriClearDesc clearDesc = {};
-			clearDesc.value.color = ( NriColor ){ .f = { 0.0f, 0.0f, 1.0f, 1.0f } };
-			clearDesc.planes = NriPlaneBits_COLOR;
-			NriRect rect3 = { 0, 0, backBufferDesc->width, backBufferDesc->height };
-			rsh.nri.coreI.CmdClearAttachments( frame->cmd, &clearDesc, 1, &rect3, 1 );
+			NriClearDesc clearDesc[2] = {};
+			clearDesc[0].value.color = ( NriColor ){ .f = { 0.0f, 0.0f, 1.0f, 1.0f } };
+			clearDesc[0].planes = NriPlaneBits_COLOR;
+			
+			clearDesc[1].value.depthStencil = ( NriDepthStencil ){ .depth = 1.0f, .stencil = 0.0f };
+			clearDesc[1].planes = NriPlaneBits_DEPTH;
+
+			rsh.nri.coreI.CmdClearAttachments( frame->cmd, clearDesc, 2, NULL, 0 );
 		}
 		rsh.nri.coreI.CmdEndRendering( frame->cmd );
 	}
@@ -663,6 +667,9 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 		rf.fps.oldTime = time;
 		rf.fps.oldCount = rf.fps.count;
 	}
+	rf.width2D = -1;
+	rf.height2D = -1;
+	R_Set2DMode(frame, true );
 
 }
 
@@ -821,26 +828,38 @@ void RF_DrawStretchPoly( const poly_t *poly, float x_offset, float y_offset )
 
 void RF_SetScissor( int x, int y, int w, int h )
 {
-	//rrf.frame->SetScissor( rrf.frame, x, y, w, h );
-	//Vector4Set( rrf.scissor, x, y, w, h );
+	struct frame_cmd_buffer_s *cmd = R_ActiveFrameCmd();
+	NriRect rect;
+	rect.x = max(0,x);
+	rect.y = max(0,y);
+	rect.width = w;
+	rect.height = h;
+	FR_CmdSetScissorAll(cmd, rect);
+	Vector4Set( rrf.scissor, x, y, w, h );
 }
 
 void RF_GetScissor( int *x, int *y, int *w, int *h )
 {
- // if( x )
- // 	*x = rrf.scissor[0];
- // if( y )
- // 	*y = rrf.scissor[1];
- // if( w )
- // 	*w = rrf.scissor[2];
- // if( h )
- // 	*h = rrf.scissor[3];
+	if( x )
+		*x = rrf.scissor[0];
+	if( y )
+		*y = rrf.scissor[1];
+	if( w )
+		*w = rrf.scissor[2];
+	if( h )
+	 	*h = rrf.scissor[3];
 }
 
 void RF_ResetScissor( void )
 {
-//	rrf.frame->ResetScissor( rrf.frame );
-//	Vector4Set( rrf.scissor, 0, 0, glConfig.width, glConfig.height );
+	struct frame_cmd_buffer_s *cmd = R_ActiveFrameCmd();
+	NriRect rect;
+	rect.x = 0;
+	rect.y = 0;
+	rect.width = cmd->textureBuffers.screen.width;
+	rect.height = cmd->textureBuffers.screen.height;
+	FR_CmdSetScissorAll(cmd, rect);
+	Vector4Set( rrf.scissor, 0, 0, cmd->textureBuffers.screen.width, cmd->textureBuffers.screen.height );
 }
 
 void RF_SetCustomColor( int num, int r, int g, int b )

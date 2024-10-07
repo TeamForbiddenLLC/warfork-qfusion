@@ -101,13 +101,9 @@ struct DynamicLightCB {
     struct DynLight dynLights[16];
 };
 
-
-
 struct ObjectCB {
    struct vec4 fogEyePlane;
    struct vec4 fogPlane;
-   struct vec3 entityOrigin;
-   float isAlphaBlending;
    struct mat4 mvp;
    struct mat4 mv;
    struct vec4 rgbGenFuncArgs;
@@ -115,9 +111,12 @@ struct ObjectCB {
    struct vec4 colorConst;
    struct vec4 lightAmbient;
    struct vec4 lightDiffuse;
+   struct vec3 entityOrigin;
+   float isAlphaBlending;
    struct vec3 lightDir;
    float pad0;
    struct vec3 entityDist;
+   float pad1;
 };
 
 // pass

@@ -1,7 +1,6 @@
 #ifndef R_FRAME_CMD_BUFFER_H
 #define R_FRAME_CMD_BUFFER_H
 
-#include "NRIDescs.h"
 #include "r_nri.h"
 #include "r_resource.h"
 #include "r_vattribs.h"
@@ -150,6 +149,7 @@ void FR_CmdSetTextureAttachment( struct frame_cmd_buffer_s *cmd,
 void FR_CmdResetCmdState(struct frame_cmd_buffer_s *cmd,enum CmdStateResetBits bits);
 void FR_CmdSetVertexBuffer( struct frame_cmd_buffer_s *cmd, uint32_t slot, NriBuffer *buffer, uint64_t offset );
 void FR_CmdSetIndexBuffer( struct frame_cmd_buffer_s *cmd, NriBuffer *buffer, uint64_t offset, NriIndexType indexType );
+void FR_CmdResetCommandState(struct frame_cmd_buffer_s *cmd);
 
 void FR_CmdSetScissor( struct frame_cmd_buffer_s *cmd, const NriRect *scissors, size_t numAttachments ); 
 void FR_CmdSetScissorAll( struct frame_cmd_buffer_s *cmd, const NriRect scissors); 

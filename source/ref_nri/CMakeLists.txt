@@ -45,6 +45,7 @@ if (USE_SDL2)
 else()
 	if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 		file(GLOB REF_NRI_PLATFORM_SOURCES
+			"../win32/win_glw2.c"
 			"../win32/win_glw.c"
 			"../win32/win_qgl.c"
 			)
@@ -64,7 +65,7 @@ else()
 endif()
 
 add_library(ref_nri SHARED ${REF_NRI_HEADERS} ${REF_NRI_COMMON_SOURCES} ${REF_NRI_PLATFORM_SOURCES})
-target_include_directories(ref_nri PRIVATE ${STB_INCLUDE_DIR} "../ref_base")
+target_include_directories(ref_nri PRIVATE ${STB_INCLUDE_DIR} "../ref_base" "${NRI_DIR}/External/vulkan/include")
 target_link_libraries(ref_nri PRIVATE NRI)
 target_link_libraries(ref_nri PRIVATE spirv-reflect-static OSDependent glslang MachineIndependent GenericCodeGen glslang-default-resource-limits SPVRemapper SPIRV )
 target_link_libraries(ref_nri PRIVATE ${REF_NRI_PLATFORM_LIBRARIES})

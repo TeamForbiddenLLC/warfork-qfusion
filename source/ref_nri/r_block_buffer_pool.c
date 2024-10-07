@@ -18,7 +18,6 @@ static inline void __InitPoolBlock( struct nri_backend_s *nri, NriBufferUsageBit
 	NriResourceGroupDesc resourceGroupDesc = { .buffers = &block->buffer, .bufferNum = 1, .memoryLocation = NriMemoryLocation_HOST_UPLOAD };
 	assert( nri->helperI.CalculateAllocationNumber( nri->device, &resourceGroupDesc ) == 1 );
 	NRI_ABORT_ON_FAILURE( nri->helperI.AllocateAndBindMemory( nri->device, &resourceGroupDesc, &block->memory ) );
-	block->cpuMapped = nri->coreI.MapBuffer( block->buffer, 0, NRI_WHOLE_SIZE );
 }
 
 struct block_buffer_pool_req_s BlockBufferPoolReq( struct nri_backend_s *nri, struct block_buffer_pool_s *pool, size_t reqSize )
@@ -50,7 +49,6 @@ struct block_buffer_pool_req_s BlockBufferPoolReq( struct nri_backend_s *nri, st
 	req.buffer = pool->current.buffer;
 	req.bufferOffset = pool->blockOffset;
 	req.bufferSize = reqSize;
-	req.address = ( (uint8_t *)pool->current.cpuMapped ) + pool->blockOffset;
 	pool->blockOffset += alignReqSize;
 	return req;
 }
@@ -68,6 +66,7 @@ void BlockBufferPoolReset( struct block_buffer_pool_s *pool )
 	for( size_t i = 0; i < arrlen( pool->recycle ); i++ ) {
 		arrpush( pool->pool, pool->recycle[i] );
 	}
+	pool->blockOffset = 0;
 	arrsetlen( pool->recycle, 0 );
 }
 

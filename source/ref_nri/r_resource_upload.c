@@ -266,15 +266,15 @@ void R_ResourceEndCopyTexture( texture_upload_desc_t* desc) {
 }
 
 NriAccessLayoutStage R_ResourceTransitionTexture(NriTexture* texture, NriAccessLayoutStage currentAccessAndLayout) {
-  NriTextureBarrierDesc transitionBarriers = {0};
-  transitionBarriers.before = currentAccessAndLayout;
-  transitionBarriers.after = ResourceUploadTexturePostAccess;
-  transitionBarriers.texture = texture;
+	NriTextureBarrierDesc transitionBarriers = {0};
+	transitionBarriers.before = currentAccessAndLayout;
+	transitionBarriers.after = ResourceUploadTexturePostAccess;
+	transitionBarriers.texture = texture;
 
 	NriBarrierGroupDesc barrierGroupDesc = {0};
 	barrierGroupDesc.textureNum = 1;
 	barrierGroupDesc.textures = &transitionBarriers;
-  rsh.nri.coreI.CmdBarrier(commandSets[activeSet].cmd, &barrierGroupDesc);//, NULL, NriBarrierDependency_COPY_STAGE);
+  	rsh.nri.coreI.CmdBarrier(commandSets[activeSet].cmd, &barrierGroupDesc);//, NULL, NriBarrierDependency_COPY_STAGE);
 	return transitionBarriers.after;
 }
 

@@ -30,6 +30,15 @@ const mat4_t mat4x4_identity =
 	0, 0, 0, 1
 };
 
+const mat4_t mat4x4_correct_vk =
+{
+	1, 0, 0, 0,
+	0, 1, 0, 0,
+	0, 0, -.5f, 0,
+	0, 0, -.5f, 1
+};
+
+
 void Matrix4_Identity( mat4_t m )
 {
 	m[0] = 1, m[1] = m[2] = m[3] = 0;

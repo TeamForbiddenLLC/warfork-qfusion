@@ -244,7 +244,6 @@ typedef struct
 // Shader information
 typedef struct shader_s
 {
-	uint32_t cookie;
 	char				*name;
 	unsigned int		id;
 	int					registrationSequence;

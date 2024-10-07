@@ -311,7 +311,7 @@ void R_RenderScene(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 	if( r_norefresh->integer )
 		return;
 
-	R_Set2DMode( false );
+	R_Set2DMode(frame,  false );
 
 	RB_SetTime( fd->time );
 
@@ -398,7 +398,7 @@ void R_RenderScene(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 	rsh.nri.coreI.CmdEndRendering( frame->cmd );
 
 
-	R_Set2DMode( true );
+	R_Set2DMode(frame, true );
 
 	if( !( fd->rdflags & RDF_NOWORLDMODEL ) ) {
 		ri.Mutex_Lock( rf.speedsMsgLock );

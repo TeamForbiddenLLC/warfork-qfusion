@@ -1,6 +1,5 @@
 #include "../gameshared/q_cvar.h"
 
-
 typedef enum {
 	VID_WINDOW_VULKAN,
 	VID_WINDOW_GL

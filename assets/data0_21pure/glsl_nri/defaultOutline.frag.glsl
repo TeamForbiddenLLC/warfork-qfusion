@@ -1,10 +1,6 @@
 #include "include/global.glsl" 
-
 #include "defaultOutline.res.glsl"
-
-
 #include "include/qf_vert_utils.glsl"
-
 
 layout(location = 0) in vec4 v_FogCoord;
 layout(location = 1) in vec4 frontColor;

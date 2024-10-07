@@ -172,6 +172,15 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 			vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_LMCOORDS0_BIT, halfFloatVattribs ) * vbo->lmstSize[i];
 			lmattrbit = (vattribbit_t)( (vattribmask_t)lmattrbit << 2 );
 		}
+
+		// vertex colors
+		if( desc->vattribs & VATTRIB_COLOR0_BIT )
+		{
+			assert( !( vertexByteStride & 3 ) );
+			vbo->colorsOffset[0] = vertexByteStride;
+			vertexByteStride += sizeof( int );
+		}
+	
 		// bones data for skeletal animation
 		if( ( desc->vattribs & VATTRIB_BONES_BITS ) == VATTRIB_BONES_BITS ) {
 			assert( SKM_MAX_WEIGHTS == 4 );
