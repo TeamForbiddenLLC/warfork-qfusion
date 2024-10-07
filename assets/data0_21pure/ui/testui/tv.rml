@@ -1,0 +1,117 @@
+<!--
+Copyright (C) 2012 Jannik Kolodziej ("drahtmaul")
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
+-->
+
+<rml>
+<head>
+	<title>home</title>
+	<link type="text/template" href="template_ingame.rml" />
+	<link type="text/css" rel="stylesheet" href="css/tv.rcss" />
+	<script>
+		DataSource @chanDataSource;
+		Element @changrid;
+	
+		void onTVLoad( Element @body, Event @evt )
+		{
+			onTemplateLoad( body, evt );
+		
+			@chanDataSource = getDataSource( 'tvchannels' );		
+			@changrid = body.getElementById( 'tvchannels-datagrid' );
+		}
+
+		void onTVShow( Element @body, Event @evt )
+		{
+			setModalY( 0.5f );
+			animationsOnShow();
+		}
+
+		void onChanListDoubleClick( Element @elem, Event @ev )
+		{
+			if( ( window.supportedInputDevices & IN_DEVICE_TOUCHSCREEN ) != 0 ) {
+				return;
+			}
+
+			watchSelectedChannel();
+		}
+
+		void onWatchBtnClick( Element @elem, Event @ev )
+		{
+			watchSelectedChannel();
+		}
+
+		void onRefreshBtnClick( Element @elem, Event @ev )
+		{
+			game.execAppend('cmd channels\n');
+		}
+
+		void onDisconnectBtnClick( Element @elem, Event @ev )
+		{
+			game.execAppend('disconnect\n');
+		}
+
+		void watchSelectedChannel( void )
+		{
+			if( @changrid == null ) {
+				return;
+			}		
+			if( @chanDataSource == null ) {
+				return;
+			}
+
+			String prop = changrid.getProp( 'selected-row' );
+			if( prop != '' )
+			{
+				int selectedRow = prop.toInt();
+				if( selectedRow >= 0 )
+				{
+					String id = chanDataSource.getField( 'list', selectedRow, 'id' );
+					if( id.empty() ) {
+						return;
+					}
+					game.execAppend( 'cmd watch ' + id + '\n' );
+				}
+			}
+		}
+	</script>
+</head>
+<body template="porkui_ingame" onload="$onTVLoad" onshow="$onTVShow">
+	<div id="tv-frame">
+		<div id="menu-header1">TV</div>
+
+		<div id="menu-commands">
+			<!-- "table" for channels -->
+			<div id="tvchannels-frame">
+				<datagrid id="tvchannels-datagrid" source="tvchannels.list" ondblclick="$onChanListDoubleClick">
+					<col fields="complexname" width="350dp" formatter="colorcode">Name</col>
+					<col fields="map" width="100dp" formatter="colorcode">Map</col>
+					<col fields="players" width="75dp">Players</col>
+					<col fields="spectators" width="75dp">Viewers</col>				
+				</datagrid>
+			</div>
+
+			<a id="chasecam-button" class="tv-button" href="chasecam.rml"/>
+			<div id="refresh-button" class="tv-button" onclick="$onRefreshBtnClick"/>
+			<div id="watch-button" class="tv-button" onclick="$onWatchBtnClick"/>
+
+			<a href="index.rml" class="styled-button tv-back-button">Main menu</a>
+			<button class="tv-back-button" onclick="$onDisconnectBtnClick">Disconnect</button>
+		</div>
+	</div>
+</body>
+</rml>
