@@ -31,6 +31,7 @@ cvar_t *g_callvote_electtime;          // in seconds
 cvar_t *g_callvote_enabled;
 cvar_t *g_callvote_maxchanges;
 cvar_t *g_callvote_cooldowntime;
+cvar_t *g_callvote_usercooldowntime;
 
 enum
 {
@@ -2183,6 +2184,7 @@ static void G_CallVotes_CheckState( void )
 		G_AnnouncerSound( NULL, trap_SoundIndex( va( S_ANNOUNCER_CALLVOTE_FAILED_1_to_2, ( rand()&1 )+1 ) ), GS_MAX_TEAMS, true, NULL );
 		G_PrintMsg( NULL, "Vote %s%s%s failed\n", S_COLOR_YELLOW,
 			G_CallVotes_String( &callvoteState.vote ), S_COLOR_WHITE );
+		callvoteState.vote.caller->r.client->lastFailedCallvoteTime = game.realtime;
 		G_CallVotes_Reset( true );
 		return;
 	}
@@ -2406,6 +2408,12 @@ static void G_CallVote( edict_t *ent, bool isopcall )
 	if( !isopcall && ent->r.client->level.callvote_when && 
 		(ent->r.client->level.callvote_when + g_callvote_cooldowntime->integer * 1000 > game.realtime) ) {
 		G_PrintMsg( ent, "%sYou can not call a vote right now\n", S_COLOR_RED, callvote->name );
+		return;
+	}
+
+	// user cooldown as opposed to global cooldown
+	if ( !isopcall && ent->r.client->lastFailedCallvoteTime + g_callvote_usercooldowntime->integer * 1000 > game.realtime ) {
+		G_PrintMsg( ent, "%sYou can not call a vote right now\n", S_COLOR_RED );
 		return;
 	}
 
@@ -2677,6 +2685,7 @@ void G_CallVotes_Init( void )
 	g_callvote_enabled =		trap_Cvar_Get( "g_vote_allowed", "1", CVAR_ARCHIVE );
 	g_callvote_maxchanges =		trap_Cvar_Get( "g_vote_maxchanges", "3", CVAR_ARCHIVE );
 	g_callvote_cooldowntime =	trap_Cvar_Get( "g_vote_cooldowntime", "5", CVAR_ARCHIVE );
+	g_callvote_usercooldowntime =	trap_Cvar_Get( "g_vote_usercooldowntime", "30", CVAR_ARCHIVE );
 
 	// register all callvotes
 
