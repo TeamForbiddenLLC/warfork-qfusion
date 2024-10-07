@@ -174,7 +174,7 @@ struct base_format_def_s {
 		struct texture_format_def_fixed_8_s fixed_8;
 		struct texture_format_fixed_def_16_s fixed_16;
 		struct texture_format_fixed_def_32_s fixed_32;
-	  struct texture_format_packed_def_16_s packed_16; 
+	  	struct texture_format_packed_def_16_s packed_16; 
 	};
 };
 

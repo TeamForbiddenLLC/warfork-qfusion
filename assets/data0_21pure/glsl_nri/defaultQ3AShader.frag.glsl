@@ -62,6 +62,10 @@ void main(void)
 	diffuse = texture(sampler2D(u_BaseTexture,u_BaseSampler), v_TexCoord);
 #endif
 
+#ifdef APPLY_SINGLE_CHANNEL_R
+	diffuse = vec4(diffuse.r, diffuse.r, diffuse.r, diffuse.r);
+#endif
+
 #ifdef APPLY_DRAWFLAT
 	float n = float(step(DRAWFLAT_NORMAL_STEP, abs(v_Normal.z)));
 	diffuse.rgb = vec3(mix(pass.wallColor, pass.floorColor, n));

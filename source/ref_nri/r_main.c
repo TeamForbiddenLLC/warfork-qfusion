@@ -457,11 +457,11 @@ static mesh_t pic_mesh = { 4, pic_xyz, pic_normals, NULL, pic_st, { 0, 0, 0, 0 }
 *
 * Note that this sets the viewport to size of the active framebuffer.
 */
-void R_Set2DMode( bool enable )
+void R_Set2DMode(struct frame_cmd_buffer_s* cmd, bool enable )
 {
 
-	int width = rf.frameBufferWidth;
-	int height = rf.frameBufferHeight;
+	const int width = cmd->textureBuffers.screen.width;
+	const int height = cmd->textureBuffers.screen.height;
 
 	if( rf.in2D == true && enable == true && width == rf.width2D && height == rf.height2D ) {
 		return;
@@ -475,8 +475,10 @@ void R_Set2DMode( bool enable )
 	{
 		rf.width2D = width;
 		rf.height2D = height;
-
-		Matrix4_OrthogonalProjection( 0, width, height, 0, -99999, 99999, rn.projectionMatrix );
+		
+		mat4_t tempProjMat;
+		Matrix4_OrthogonalProjection( 0, width, height, 0, 0, 1.0f, tempProjMat );
+		Matrix4_Multiply( mat4x4_correct_vk, tempProjMat, rn.projectionMatrix);
 		Matrix4_Copy( mat4x4_identity, rn.modelviewMatrix );
 		Matrix4_Copy( rn.projectionMatrix, rn.cameraProjectionMatrix );
 
@@ -788,7 +790,7 @@ static void R_PolyBlend( void )
 	if( rsc.refdef.blend[3] < 0.01f )
 		return;
 
-	R_Set2DMode( true );
+	R_Set2DMode( NULL,true );
 	R_DrawStretchPic( 0, 0, rf.frameBufferWidth, rf.frameBufferHeight, 0, 0, 1, 1, rsc.refdef.blend, rsh.whiteShader );
 	RB_FlushDynamicMeshes(NULL);
 }
@@ -809,7 +811,7 @@ static void R_ApplyBrightness( void )
 
 	color[0] = color[1] = color[2] = c, color[3] = 1;
 
-	R_Set2DMode( true );
+	R_Set2DMode( NULL, true );
 	R_DrawStretchQuick( 0, 0, rf.frameBufferWidth, rf.frameBufferHeight, 0, 0, 1, 1,
 		color, GLSL_PROGRAM_TYPE_NONE, rsh.whiteTexture, GLSTATE_SRCBLEND_ONE|GLSTATE_DSTBLEND_ONE );
 }

@@ -56,7 +56,7 @@ vec4 QF_VertexRGBGen(
 {
 
 #if defined(APPLY_RGB_CONST) && defined(APPLY_ALPHA_CONST)
-	vec4 Color = constColor;
+	vec4 Color = obj.colorConst;
 #else
 	vec4 Color = vec4(1.0);
 
@@ -71,7 +71,7 @@ vec4 QF_VertexRGBGen(
   #endif
 
   #if defined(APPLY_ALPHA_CONST)
-	  Color.a = constColor.a;
+	  Color.a = obj.colorConst.a;
   #elif defined(APPLY_ALPHA_VERTEX)
 	  Color.a = VertexColor.a;
   #elif defined(APPLY_ALPHA_ONE_MINUS_VERTEX)

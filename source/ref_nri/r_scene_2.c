@@ -224,7 +224,7 @@ void R_RenderScene_2(r_scene_2_t* scene, const refdef_t *fd ) {
 	if( r_norefresh->integer )
 		return;
 
-	R_Set2DMode( false );
+	R_Set2DMode(NULL, false );
 
 	RB_SetTime( fd->time );
 

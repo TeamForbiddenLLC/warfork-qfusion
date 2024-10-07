@@ -18,7 +18,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
-#include "NRIDescs.h"
 #include "r_gpu_ring_buffer.h"
 #include "r_local.h"
 #include "r_backend_local.h"
@@ -694,7 +693,7 @@ void RB_Viewport( int x, int y, int w, int h )
 	rb.gl.viewport[1] = y;
 	rb.gl.viewport[2] = w;
 	rb.gl.viewport[3] = h;
-	qglViewport( x, rb.gl.fbHeight - h - y, w, h );
+	//qglViewport( x, rb.gl.fbHeight - h - y, w, h );
 }
 
 /*
@@ -848,7 +847,6 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
   rbDynamicDraw_t *prev = NULL, *draw;
   bool merge = false;
   vattribmask_t vattribs;
-  int destVertOffset;
 
   // can't (and shouldn't because that would break batching) merge strip draw calls
   // (consider simply disabling merge later in this case if models with tristrips are added in the future, but that's slow)
@@ -909,50 +907,53 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
   }
 
   if( merge ) {
-  	// merge continuous draw calls
-  	draw = prev;
-  	draw->drawElements.numVerts += numVerts;
-  	draw->drawElements.numElems += numElems;
-  }
-  else {
-  	draw = &rb.dynamicDraws[rb.numDynamicDraws++];
-  	draw->entity = entity;
-  	draw->shader = shader;
-  	draw->fog = fog;
-  	draw->portalSurface = portalSurface;
-  	draw->shadowBits = shadowBits;
-  	draw->vattribs = vattribs;
-  	draw->dynamicStreamIdx = streamId;
-  	draw->primitive = primitive;
-  	draw->offset[0] = x_offset;
-  	draw->offset[1] = y_offset;
-  	memcpy( draw->scissor, scissor, sizeof( scissor ) );
-  	draw->drawElements.firstVert = stream->drawElements.firstVert + stream->drawElements.numVerts;
-  	draw->drawElements.numVerts = numVerts;
-  	draw->drawElements.firstElem = stream->drawElements.firstElem + stream->drawElements.numElems;
-  	draw->drawElements.numElems = numElems;
-  	draw->drawElements.numInstances = 0;
+	// merge continuous draw calls
+	draw = prev;
+	draw->drawElements.numVerts += numVerts;
+	draw->drawElements.numElems += numElems;
+  } else {
+	draw = &rb.dynamicDraws[rb.numDynamicDraws++];
+	draw->entity = entity;
+	draw->shader = shader;
+	draw->fog = fog;
+	draw->portalSurface = portalSurface;
+	draw->shadowBits = shadowBits;
+	draw->vattribs = vattribs;
+	draw->dynamicStreamIdx = streamId;
+	draw->primitive = primitive;
+	draw->offset[0] = x_offset;
+	draw->offset[1] = y_offset;
+	memcpy( draw->scissor, scissor, sizeof( scissor ) );
+	draw->drawElements.firstVert = stream->drawElements.numVerts;
+	draw->drawElements.numVerts = numVerts;
+	draw->drawElements.firstElem = stream->drawElements.numElems;
+	draw->drawElements.numElems = numElems;
+	draw->drawElements.numInstances = 0;
+
+	stream->drawElements.firstElem = 0;
+	stream->drawElements.firstVert = 0;
   }
 
-  destVertOffset = stream->drawElements.firstVert + stream->drawElements.numVerts;
-  R_FillVBOVertexDataBuffer( stream->vbo, vattribs, mesh,
-  	stream->vertexData + destVertOffset * stream->vbo->vertexSize );
+  const int destVertOffset = stream->drawElements.numVerts;
+  const elem_t *destElems = stream->elementData + stream->drawElements.numElems;
 
-  elem_t *destElems = stream->elementData + stream->drawElements.firstElem + stream->drawElements.numElems;
+  R_FillVBOVertexDataBuffer( stream->vbo, vattribs, mesh, stream->vertexData + destVertOffset * stream->vbo->vertexSize );
+
   if( trifan ) {
-  	R_BuildTrifanElements( destVertOffset, numElems, destElems );
-  }
-  else {
-  	if( primitive == GL_TRIANGLES ) {
-  		R_CopyOffsetTriangles( mesh->elems, numElems, destVertOffset, destElems );
-  	}
-  	else {
-  		R_CopyOffsetElements( mesh->elems, numElems, destVertOffset, destElems );
-  	}
+	R_BuildTrifanElements( stream->drawElements.firstVert, numElems, destElems );
+  } else {
+	if( primitive == GL_TRIANGLES ) {
+		R_CopyOffsetTriangles( mesh->elems, numElems, stream->drawElements.firstVert, destElems );
+	} else {
+		R_CopyOffsetElements( mesh->elems, numElems, stream->drawElements.firstVert, destElems );
+	}
   }
 
   stream->drawElements.numVerts += numVerts;
   stream->drawElements.numElems += numElems;
+
+  stream->drawElements.firstElem += numElems;
+  stream->drawElements.firstVert += numVerts;
 }
 
 /*
@@ -996,14 +997,12 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 			R_RingOffsetAllocate( &stream->vbo->ringOffsetIndexAlloc, reqSize, &reqOffset );
 
 			void *mappeData = rsh.nri.coreI.MapBuffer( stream->vbo->indexBuffer, reqOffset, reqSize );
-			memcpy( mappeData, stream->elementData + stream->drawElements.firstElem, reqSize );
+			memcpy( mappeData, stream->elementData, reqSize );
 			rsh.nri.coreI.UnmapBuffer( stream->vbo->indexBuffer );
 
 			info->indexOffset = reqOffset;
 			info->indexBuffer = stream->vbo->indexBuffer;
 
-			stream->drawElements.firstElem = 0;
-			stream->drawElements.numElems = 0;
 		}
 		{
 			size_t reqOffset;
@@ -1018,10 +1017,12 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 			info->vertexOffset = reqOffset;
 			info->vertexBuffer = stream->vbo->vertexBuffer;
 
-			stream->drawElements.firstVert = 0;
-			stream->drawElements.numVerts = 0;
 		}
 
+		stream->drawElements.firstElem = 0;
+		stream->drawElements.numElems = 0;
+		stream->drawElements.firstVert = 0;
+		stream->drawElements.numVerts = 0;
 		R_FillNriVertexAttrib(stream->vbo, info->attribs, &info->numAttribs);
 	}
 
@@ -1034,7 +1035,7 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 	transx = m[12];
 	transy = m[13];
 	for( size_t i = 0; i < rb.numDynamicDraws; i++ ) {
-		rbDynamicDraw_t const *draw = rb.dynamicDraws;
+		rbDynamicDraw_t const *draw = &rb.dynamicDraws[i];
 		//rbDynamicStream_t *stream = &rb.dynamicStreams[draw->dynamicStreamIdx];
 		struct dynamic_stream_info_s *info = &dynamicStreamInfo[draw->dynamicStreamIdx];
 		cmd->state.numStreams = 1;
@@ -1068,6 +1069,7 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 			draw->drawElements.firstVert, draw->drawElements.numVerts,
 			draw->drawElements.firstElem, draw->drawElements.numElems
 		);
+		FR_CmdResetCommandState(cmd);
 	}
 
 	rb.numDynamicDraws = 0;

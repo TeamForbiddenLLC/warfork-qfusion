@@ -25,6 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 typedef vec_t mat4_t[16];
 
 extern const mat4_t mat4x4_identity;
+extern const mat4_t mat4x4_correct_vk;
 
 void		Matrix4_Identity( mat4_t m );
 void		Matrix4_Copy( const mat4_t m1, mat4_t m2 );

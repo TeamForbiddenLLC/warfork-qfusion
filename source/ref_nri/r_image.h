@@ -74,15 +74,14 @@ enum
 
 typedef struct image_s
 {
-	uint32_t cookie;
-
+	uint32_t cookie; 
+	const struct base_format_def_s* formatDef;
 	NriAccessLayoutStage currentLayout;
 	struct nri_descriptor_s descriptor;
-	struct nri_descriptor_s samplerDescriptor; 
+	struct nri_descriptor_s samplerDescriptor;
 	NriTexture* texture;
 	size_t numAllocations;
 	NriMemory* memory[4];
-
 
 	char			*name;						// game path, not including extension
 	int				registrationSequence;

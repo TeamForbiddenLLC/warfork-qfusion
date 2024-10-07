@@ -26,7 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 
-#define MAX_STREAM_VBO_VERTS	    100000	
+#define MAX_STREAM_VBO_VERTS	    1000000	
 #define MAX_STREAM_VBO_ELEMENTS		MAX_STREAM_VBO_VERTS*6
 #define MAX_STREAM_VBO_TRIANGLES	MAX_STREAM_VBO_ELEMENTS/3
 
