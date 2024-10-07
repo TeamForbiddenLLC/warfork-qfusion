@@ -1069,7 +1069,7 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 			draw->drawElements.firstVert, draw->drawElements.numVerts,
 			draw->drawElements.firstElem, draw->drawElements.numElems
 		);
-		FR_CmdResetCommandState(cmd);
+		FR_CmdResetCommandState(cmd, CMD_RESET_INDEX_BUFFER | CMD_RESET_VERTEX_BUFFER);
 	}
 
 	rb.numDynamicDraws = 0;

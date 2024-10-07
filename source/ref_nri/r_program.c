@@ -1959,6 +1959,21 @@ static const struct descriptor_reflection_s* __ReflectDescriptorSet(const struct
 
 }
 
+bool RP_ProgramHasUniform(const struct glsl_program_s *program,const struct glsl_descriptor_handle_s handle) {
+	const size_t startIndex = handle.hash % PIPELINE_LAYOUT_HASH_SIZE;
+	size_t index = startIndex;
+	do {
+		if( program->descriptorReflection[index].hash == handle.hash ) {
+			return true;
+		} else if( program->descriptorReflection[index].hash == 0 ) {
+			return false;
+		}
+		index = (index + 1) % PIPELINE_LAYOUT_HASH_SIZE;
+	} while(index != startIndex);
+	return false;
+}
+
+
 void RP_BindDescriptorSets(struct frame_cmd_buffer_s* cmd, struct glsl_program_s *program, struct glsl_descriptor_binding_s *bindings, size_t numDescriptorData )
 {
 	struct glsl_descriptor_commit_s {

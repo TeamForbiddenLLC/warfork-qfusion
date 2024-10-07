@@ -426,4 +426,6 @@ void RP_UpdateShadowsUniforms( int elem, int numShadows, const shadowGroup_t **g
 
 void RP_UpdateInstancesUniforms( int elem, unsigned int numInstances, instancePoint_t *instances );
 
+bool RP_ProgramHasUniform(const struct glsl_program_s *program,const struct glsl_descriptor_handle_s handle );
+
 #endif // R_PROGRAM_H
