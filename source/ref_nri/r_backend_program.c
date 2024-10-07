@@ -1266,8 +1266,6 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 					.descriptor = cmd->uboSceneObject.descriptor, 
 					.handle = Create_DescriptorHandle( "obj" ) 
 				};
-
-
 				struct block_buffer_pool_req_s passCB = BlockBufferPoolReq( &rsh.nri, &cmd->uboBlockBuffer, sizeof( struct DefaultMaterialCB) );
 				assert(false); //TODO: implement pass 
 				struct DefaultMaterialCB* passData = NULL;
@@ -1468,8 +1466,9 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			// struct DefaultQ3ShaderCB *defaultQ3 = passCB.address;
 
 			// convert rgbgen and alphagen to GLSL feature defines
+			struct DefaultQ3ShaderCB passCB = { 0 };
 			programFeatures |= RB_RGBAlphaGenToProgramFeatures( &pass->rgbgen, &pass->alphagen );
-			// programFeatures |= RB_TcGenToProgramFeatures( pass->tcgen, pass->tcgenVec, &defaultQ3->genTexMatrix );
+			programFeatures |= RB_TcGenToProgramFeatures( pass->tcgen, pass->tcgenVec, &passCB.genTexMatrix );
 
 			// set shaderpass state (blending, depthwrite, etc)
 			int state = pass->flags;
@@ -1481,19 +1480,17 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				}
 				state |= GLSTATE_DEPTHWRITE;
 			}
-
 			RB_SetShaderpassState_2( cmd, state );
 
 			const int numLightMaps = isLightmapped ? __NumberLightMaps( lightStyle ) : 0;
 			for( int i = 0; i < numLightMaps; i++ ) {
 				programFeatures |= ( i * GLSL_SHADER_Q3_LIGHTSTYLE0 );
 			}
-		
-			size_t descriptorSize = 0;
-			struct glsl_descriptor_binding_s descriptors[16] = { 0 };
 
 			size_t numTextureBarrier = 0;
 			NriTextureBarrierDesc textureBarriers[16] = {}; 
+			size_t descriptorSize = 0;
+			struct glsl_descriptor_binding_s descriptors[16] = { 0 };
 
 			if( programFeatures & GLSL_SHADER_COMMON_SOFT_PARTICLE ) {
 				descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){ 
@@ -1575,10 +1572,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
 			rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
 
-			// struct block_buffer_pool_req_s objReq = cmd->frame.frameBlock;
-			// struct block_buffer_pool_req_s frameReq = FR_ShaderFrameReqCB( cmd, &cmd->frameCB);
 			mat4_t texMatrix;
-
 			RB_UpdateCommonUniforms_2( cmd, pass, texMatrix );
 			__RB_UpdateFrameObjectCB( cmd, rb.currentEntity, pass );
 			descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){ 
@@ -1588,6 +1582,14 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				.descriptor = cmd->uboSceneObject.descriptor, 
 				.handle = Create_DescriptorHandle( "obj" ) 
 			};
+			
+			if(RP_ProgramHasUniform(program, Create_DescriptorHandle("pass"))) {
+				UpdateFrameUBO( cmd, &cmd->uboPassObject, &passCB, sizeof(struct DefaultQ3ShaderCB));
+				descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){ 
+					.descriptor = cmd->uboPassObject.descriptor, 
+					.handle = Create_DescriptorHandle( "pass" ) 
+				};
+			}
 
 			rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
 			rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
@@ -1599,44 +1601,6 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				cmd->drawElements.firstVert,
 				0);
 			FR_CmdEndRendering(cmd);
-			// FR_CmdDrawElements(cmd,
-			//									cmd->additional.drawElements.numElems,
-			//									cmd->additional.drawElements.numVerts,
-			//									cmd->additional.drawElements.numInstances,
-			//									cmd->additional.drawElements.firstVert,
-			//									cmd->additional.drawElements.firstElem);
-
-			// program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_Q3A_SHADER, NULL,	rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-			// if( RB_BindProgram( program ) )
-			//{
-			//	RB_UpdateCommonUniforms( program, pass, texMatrix );
-
-			//	RP_UpdateTexGenUniforms( program, texMatrix, genVectors );
-
-			//	RP_UpdateDiffuseLightUniforms( program, lightDir, lightAmbient, lightDiffuse );
-
-			//	// submit animation data
-			//	if( programFeatures & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
-			//		RP_UpdateBonesUniforms( program, rb.bonesData.numBones, rb.bonesData.dualQuats );
-			//	}
-
-			//	// dynamic lights
-			//	if( isLightmapped || isWorldVertexLight ) {
-			//		RP_UpdateDynamicLightsUniforms( program, lightStyle, e->origin, e->axis, rb.currentDlightBits );
-			//	}
-
-			//	// r_drawflat
-			//	if( programFeatures & GLSL_SHADER_COMMON_DRAWFLAT ) {
-			//		RP_UpdateDrawFlatUniforms( program, rsh.wallColor, rsh.floorColor );
-			//	}
-
-			//	if( programFeatures & GLSL_SHADER_COMMON_SOFT_PARTICLE ) {
-			//		RP_UpdateTextureUniforms( program,
-			//			rsh.screenDepthTexture->upload_width, rsh.screenDepthTexture->upload_height );
-			//	}
-
-			//	RB_DrawElementsReal( &rb.drawElements );
-			//}
 			break;
 		}
 		case GLSL_PROGRAM_TYPE_DISTORTION: {

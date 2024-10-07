@@ -19,10 +19,13 @@ struct frame_cmd_vertex_input_s {
 enum CmdStateResetBits {
   STATE_RESET_VERTEX_ATTACHMENT
 };
+enum CmdResetBits {
+	CMD_RESET_INDEX_BUFFER = 0x1,
+	CMD_RESET_VERTEX_BUFFER = 0x2,
+};
 
 enum CmdStateDirtyBits {
-	CMD_DIRTY_SCISSORS = 0x1,
-	CMD_DIRT_INDEX_BUFFER = 0x2
+	CMD_DIRT_INDEX_BUFFER = 0x1
 };
 
 // the serialized state of the pipeline
@@ -112,8 +115,9 @@ struct frame_cmd_buffer_s {
 	NriMemory** freeMemory;
 
 	// default global ubo for the scene
-	struct ubo_frame_instance_s uboSceneFrame;	
-	struct ubo_frame_instance_s uboSceneObject;	
+	struct ubo_frame_instance_s uboSceneFrame;
+	struct ubo_frame_instance_s uboSceneObject;
+	struct ubo_frame_instance_s uboPassObject;
 
 	// additional frame state
 	struct draw_element_s drawElements;
@@ -149,7 +153,7 @@ void FR_CmdSetTextureAttachment( struct frame_cmd_buffer_s *cmd,
 void FR_CmdResetCmdState(struct frame_cmd_buffer_s *cmd,enum CmdStateResetBits bits);
 void FR_CmdSetVertexBuffer( struct frame_cmd_buffer_s *cmd, uint32_t slot, NriBuffer *buffer, uint64_t offset );
 void FR_CmdSetIndexBuffer( struct frame_cmd_buffer_s *cmd, NriBuffer *buffer, uint64_t offset, NriIndexType indexType );
-void FR_CmdResetCommandState(struct frame_cmd_buffer_s *cmd);
+void FR_CmdResetCommandState(struct frame_cmd_buffer_s *cmd, enum CmdResetBits bits);
 
 void FR_CmdSetScissor( struct frame_cmd_buffer_s *cmd, const NriRect *scissors, size_t numAttachments ); 
 void FR_CmdSetScissorAll( struct frame_cmd_buffer_s *cmd, const NriRect scissors); 

@@ -36,7 +36,6 @@ void FR_CmdSetScissor( struct frame_cmd_buffer_s *cmd, const NriRect *scissors, 
 {
 	assert( numAttachments < MAX_COLOR_ATTACHMENTS );
 	assert( numAttachments == cmd->state.numColorAttachments );
-	cmd->state.dirty |= CMD_DIRTY_SCISSORS;
 	memcpy( cmd->state.scissors, scissors, sizeof( NriRect ) * numAttachments );
 }
 
@@ -46,7 +45,6 @@ void FR_CmdSetScissorAll( struct frame_cmd_buffer_s *cmd, const NriRect scissors
 		assert( scissors.x >= 0 && scissors.y >= 0 );
 		cmd->state.scissors[i] = scissors;
 	}
-	cmd->state.dirty |= CMD_DIRTY_SCISSORS;
 }
 
 void FR_CmdSetTextureAttachment( struct frame_cmd_buffer_s *cmd,
@@ -70,7 +68,6 @@ void FR_CmdSetTextureAttachment( struct frame_cmd_buffer_s *cmd,
 	memcpy( cmd->state.colorAttachment, colorAttachments, sizeof( struct NriDescriptor * ) * numAttachments );
 	memcpy( cmd->state.viewports, viewports, sizeof( NriViewport ) * numAttachments );
 	memcpy( cmd->state.scissors, scissors, sizeof( NriRect ) * numAttachments );
-	cmd->state.dirty |= CMD_DIRTY_SCISSORS;
 	cmd->state.depthAttachment = depthAttachment;
 }
 
@@ -90,10 +87,15 @@ void FR_CmdSetVertexBuffer( struct frame_cmd_buffer_s *cmd, uint32_t slot, NriBu
 	cmd->state.vertexBuffers[slot] = buffer;
 }
 
-void FR_CmdResetCommandState( struct frame_cmd_buffer_s *cmd )
+void FR_CmdResetCommandState( struct frame_cmd_buffer_s *cmd, enum CmdResetBits bits)
 {
-	cmd->state.dirtyVertexBuffers = 0;
-	cmd->state.dirty = 0;
+	if(bits & CMD_RESET_INDEX_BUFFER) {
+		cmd->state.dirty &= ~CMD_DIRT_INDEX_BUFFER;
+	}
+	if(bits & CMD_RESET_VERTEX_BUFFER) {
+		cmd->state.dirtyVertexBuffers = 0;
+	}
+	
 }
 
 static inline bool __isValidFog( const mfog_t *fog )
@@ -132,6 +134,7 @@ void ResetFrameCmdBuffer( struct nri_backend_s *backend, struct frame_cmd_buffer
 
 	memset( &cmd->uboSceneFrame, 0, sizeof( struct ubo_frame_instance_s ) );
 	memset( &cmd->uboSceneObject, 0, sizeof( struct ubo_frame_instance_s ) );
+	memset( &cmd->uboPassObject, 0, sizeof( struct ubo_frame_instance_s ) );
 }
 
 // struct block_buffer_pool_req_s FR_ShaderObjReqCB(struct frame_cmd_buffer_s *cmd, const struct ObjectCB* cb)
@@ -175,10 +178,8 @@ void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint
 		rsh.nri.coreI.CmdSetIndexBuffer( cmd->cmd, cmd->state.indexBuffer, cmd->state.indexBufferOffset, cmd->state.indexType );
 	}
 
-	if( cmd->state.dirty & CMD_DIRTY_SCISSORS ) {
-		rsh.nri.coreI.CmdSetScissors( cmd->cmd, cmd->state.scissors, cmd->state.numColorAttachments );
-	}
-
+	rsh.nri.coreI.CmdSetScissors( cmd->cmd, cmd->state.scissors, cmd->state.numColorAttachments );
+	
 	NriDrawIndexedDesc drawDesc = { 0 };
 	drawDesc.indexNum = indexNum;
 	drawDesc.instanceNum = max( 1, instanceNum );
