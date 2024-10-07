@@ -23,19 +23,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "steam.h"
 #include <string.h>
 
-static const SteamshimEvent* blockOnEvent(SteamshimEventType type){
-
-	while( 1 ) {
-		const SteamshimEvent *evt = STEAMSHIM_pump();
-		if (!evt) continue;
-
-		if (evt->type == type){
-			return evt;
-		} else {
-			printf("warning: ignoring event %i\n",evt->type);
-		}
-	}
-}
 cvar_t *steam_debug;
 /*
 * Steam_Init
@@ -46,7 +33,7 @@ void Steam_Init( void )
 
 	 SteamshimOptions opts;
 	 opts.debug = steam_debug->integer;
-	 opts.runserver = dedicated->integer;
+	 opts.runserver = 1;
 	 opts.runclient = !dedicated->integer;
 	int r = STEAMSHIM_init( &opts );
 	if( !r ) {
@@ -64,15 +51,3 @@ void Steam_Shutdown( void )
 	STEAMSHIM_deinit();
 }
 
-/*
-* Steam_Active
-*/
-int Steam_Active(){
-	return STEAMSHIM_alive();
-}
-
-const char *Steam_CommandLine() {
-	STEAMSHIM_requestCommandLine();
-	const SteamshimEvent *e = blockOnEvent(EVT_CL_COMMANDLINERECIEVED);
-	return e->cl_commandlinerecieved;
-}

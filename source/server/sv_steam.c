@@ -5,29 +5,17 @@
 
 static const SteamshimEvent* blockOnEvent(SteamshimEventType type){
 
-	while( 1 ) {
-		const SteamshimEvent *evt = STEAMSHIM_pump();
-		if (!evt) continue;
+	//while( 1 ) {
+	//	const SteamshimEvent *evt = STEAMSHIM_pump();
+	//	if (!evt) continue;
 
-		if (evt->type == type){
-			return evt;
-		} else {
-			printf("warning: ignoring event %i\n",evt->type);
-		}
-	}
-}
-
-/*
-* Steam_RunFrame
-*/
-void SV_Steam_RunFrame( void )
-{
-	const SteamshimEvent *evt = STEAMSHIM_pump();
-	if( evt ) {
-		switch (evt->type){
-			default: break;
-		}
-	}
+	//	if (evt->type == type){
+	//		return evt;
+	//	} else {
+	//		printf("warning: ignoring event %i\n",evt->type);
+	//	}
+	//}
+	return NULL;
 }
 
 /*
@@ -40,13 +28,13 @@ int Steam_GetAuthSessionTicket( void ( *callback )( void *, size_t ) )
 }
 
 int Steam_BeginAuthSession(uint64_t steamid, SteamAuthTicket_t *ticket){
+	return 0;
+	//STEAMSHIM_beginAuthSession(steamid,ticket);
+	//const SteamshimEvent *evt = blockOnEvent(EVT_SV_AUTHSESSIONVALIDATED);
 
-	STEAMSHIM_beginAuthSession(steamid,ticket);
-	const SteamshimEvent *evt = blockOnEvent(EVT_SV_AUTHSESSIONVALIDATED);
-
-	return evt->sv_authsessionvalidated;
+	//return evt->sv_authsessionvalidated;
 }
 
 void Steam_EndAuthSession(uint64_t steamid){
-	STEAMSHIM_endAuthSession(steamid);
+	//STEAMSHIM_endAuthSession(steamid);
 }

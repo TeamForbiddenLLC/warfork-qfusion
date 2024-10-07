@@ -23,6 +23,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 * Warsow hud scripts
 */
 
+#include <algorithm>
+#include <utility>
+#include <vector>
 #include "cg_local.h"
 
 #define TEAM_OWN    ( GS_MAX_TEAMS + 1 )
@@ -1137,6 +1140,93 @@ static void CG_DrawObituaries( int x, int y, int align, struct qfontface_s *font
 		yoffset += line_height;
 	}
 	while( i != next );
+}
+
+static void CG_DrawVoices( int x, int y, int align, struct qfontface_s *font, vec4_t color, int width, int height,
+                               int internal_align, unsigned int icon_size )
+{
+	int i, num_max;
+	unsigned line_height;
+	int xoffset, yoffset = 0;
+	struct shader_s *pic;
+	vec4_t teamcolor{0,0,0,1.0};
+
+	if ( trap_Cvar_String("cl_enablevoice")[0] != '1' ) return;
+
+	line_height = max( (unsigned)trap_SCR_FontHeight( font ), icon_size );
+	num_max = height / line_height;
+
+	if( width < (int)icon_size || !num_max )
+		return;
+
+	centity_t *cent;
+
+	typedef std::pair<centity_t*, cg_clientInfo_t *> speakpair_t;
+	std::vector<speakpair_t> speakingClients;
+
+	for( i = 0; i < gs.maxclients; i++ )
+	{
+		if( !cgs.clientInfo[i].name[0] )
+			continue;
+		cent = &cg_entities[i + 1];
+
+		if( cent->lastSpeakTime + 100 < cg.time ) {
+			cent->speaking = false;
+			continue;
+		}
+
+		if( cent->speaking )
+			speakingClients.push_back( std::make_pair( cent, &cgs.clientInfo[i] ) );
+	}
+
+	std::sort( speakingClients.begin(), speakingClients.end(), []( const speakpair_t a, const speakpair_t b ) {
+		return a.first->lastSpeakTime > b.first->lastSpeakTime;
+	} );
+
+	int maxnamewidth = 0;
+	for ( auto speaker : speakingClients)
+	{
+		auto client = speaker.second;
+		int namewidth = trap_SCR_strWidth(client->name, font, 0 );
+		maxnamewidth = max( maxnamewidth, namewidth );
+	}
+
+	for ( auto speaker : speakingClients)
+	{
+		auto cent = speaker.first;
+		auto client = speaker.second;
+
+		xoffset = 0;
+
+		int team = cent->current.team;
+
+		if( ( team == TEAM_ALPHA ) || ( team == TEAM_BETA ) )
+			CG_TeamColor( team, teamcolor );
+		teamcolor[3] = 0.25f; // make transparent
+
+
+		int xspacing = 5;
+
+		// bg rect
+		RF_DrawStretchPic( x + xoffset, y + yoffset, maxnamewidth + icon_size * 2 + xspacing*4, line_height, 0, 0, 1, 1, teamcolor, cgs.shaderWhite );
+
+		// pfp
+		RF_DrawStretchPic( x + xoffset, y + yoffset, icon_size, icon_size, 0, 0, 1, 1, colorWhite, client->avatar );
+		xoffset += icon_size + xspacing;
+
+		// name
+		trap_SCR_DrawString( x + xoffset, y + yoffset + ( line_height - trap_SCR_FontHeight( font ) ) / 2, ALIGN_LEFT_TOP, client->name, font, colorWhite );
+		xoffset += maxnamewidth;
+		xoffset += xspacing;
+
+		// voice icon
+		pic = CG_MediaShader( cgs.media.shaderChatBalloon );
+		RF_DrawStretchPic( x + xoffset, y + yoffset + ( line_height - icon_size ) / 2, icon_size, icon_size, 0, 0, 1, 1, colorWhite, pic );
+
+
+		yoffset += line_height;
+	}
+	
 }
 
 //=============================================================================
@@ -2267,6 +2357,16 @@ static bool CG_LFuncDrawObituaries( struct cg_layoutnode_s *commandnode, struct 
 	return true;
 }
 
+static bool CG_LFuncDrawVoices( struct cg_layoutnode_s *commandnode, struct cg_layoutnode_s *argumentnode, int numArguments )
+{
+	int internal_align = (int)CG_GetNumericArg( &argumentnode );
+	int icon_size = (int)CG_GetNumericArg( &argumentnode );
+
+	CG_DrawVoices( layout_cursor_x, layout_cursor_y, layout_cursor_align, CG_GetLayoutCursorFont(), layout_cursor_color,
+	                   layout_cursor_width, layout_cursor_height, internal_align, icon_size * cgs.vidHeight / 600 );
+	return true;
+}
+
 static bool CG_LFuncDrawAwards( struct cg_layoutnode_s *commandnode, struct cg_layoutnode_s *argumentnode, int numArguments )
 {
 	CG_DrawAwards( layout_cursor_x, layout_cursor_y, layout_cursor_align, CG_GetLayoutCursorFont(), layout_cursor_color );
@@ -3182,6 +3282,15 @@ static const cg_layoutcommand_t cg_LayoutCommands[] =
 		NULL,
 		2,
 		"Draws graphical death messages",
+		false
+	},
+
+	{
+		"drawVoices",
+		CG_LFuncDrawVoices,
+		NULL,
+		2,
+		"Draws voice indicators",
 		false
 	},
 

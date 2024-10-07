@@ -503,6 +503,9 @@
 						<div class="title">Don't suggest servers</div>
 						<input type="checkbox" cvar="ui_autobrowse_manual" realtime="1" />
 						<br />
+						<div class="title">Route traffic through Steam, potentially improving ping</div>
+						<input type="checkbox" cvar="cl_prefer_steam_p2p" realtime="1" />
+						<br />
 					</optionsform>
 				</panel>
 			</tabset>

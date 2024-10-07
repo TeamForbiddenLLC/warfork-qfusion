@@ -561,13 +561,24 @@
 			return;
 		}
 
+		Cvar preferp2p( 'cl_prefer_steam_p2p', '1', ::CVAR_ARCHIVE );
+
 		String prop = servergrid.getProp( 'selected-row' );
 		if( prop != '' )
 		{
 			int selectedRow = prop.toInt();
 			if( selectedRow >= 0 )
 			{
+				String steamid = browserDataSource.getField( browserTableName, selectedRow, 'steamid' );
 				String address = browserDataSource.getField( browserTableName, selectedRow, 'address' );
+
+
+				bool usep2p = (preferp2p.integer == 1) || address.empty();
+				if ( steamid != 0 && usep2p ) {
+					game.exec( 'connect "steam:' + steamid + '"\n' );
+					return;
+				}
+
 				if( address.empty() ) {
 					return;
 				}

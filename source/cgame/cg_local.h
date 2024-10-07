@@ -130,6 +130,8 @@ typedef struct
 	float yawVelocity;
 
 	struct cinematics_s *cin;
+	bool speaking;
+	int lastSpeakTime;
 } centity_t;
 
 #include "cg_pmodels.h"
@@ -703,8 +705,9 @@ extern cvar_t *cg_model;
 extern cvar_t *cg_skin;
 extern cvar_t *cg_hand;
 
+void CG_initPlayer();
+void CG_deinitPlayer(); 
 void CG_LoadClientInfo( cg_clientInfo_t *ci, const char *s, int client );
-void CG_CallbackRequestAvatar(uint64_t steamid, uint8_t *avatar);
 void CG_UpdateSexedSoundsRegistration( pmodelinfo_t *pmodelinfo );
 void CG_SexedSound( int entnum, int entchannel, const char *name, float fvol, float attn );
 void CG_SexedVSay( int entnum, int vsay, float fvol );
@@ -963,6 +966,7 @@ void CG_Init(	const char *serverName, unsigned int playerNum,
 				int vidWidth, int vidHeight, float pixelRatio,
 				bool demoplaying, const char *demoName, bool pure, unsigned int snapFrameTime,
 				int protocol, const char *demoExtension, int sharedSeed, bool gameStart );
+void CG_PlayVoice(void *buffer, size_t size, int clientnum);
 void CG_Shutdown( void );
 void CG_ValidateItemDef( int tag, char *name );
 void CG_Printf( const char *format, ... );

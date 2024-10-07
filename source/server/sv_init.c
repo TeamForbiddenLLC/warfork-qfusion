@@ -20,8 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "server.h"
 #include "../qcommon/steam.h"
-
 #include "../qcommon/sys_library.h"
+#include "../steamshim/src/mod_steam.h"
 
 server_constant_t svc;              // constant server info (trully persistant since sv_init)
 server_static_t	svs;                // persistant server info
@@ -311,6 +311,15 @@ static void SV_SpawnServer( const char *server, bool devmap )
 	Com_Printf( "-------------------------------------\n" );
 }
 
+
+static void CL_RPC_cb_listenp2p( void *self, struct steam_rpc_pkt_s *rec ){
+	svs.steamid = rec->p2p_listen_recv.steamID;
+
+	// re-update the masterserver now that we have the right steamid
+	svc.nextHeartbeat = 0;
+	SV_MasterHeartbeat();
+}
+
 /*
 * SV_InitGame
 * A brand new game has been started
@@ -368,6 +377,12 @@ void SV_InitGame( void )
 		if( !NET_OpenSocket( &svs.socket_loopback, SOCKET_LOOPBACK, &address, true ) )
 			Com_Error( ERR_FATAL, "Couldn't open loopback socket: %s\n", NET_ErrorString() );
 	}
+
+
+	struct steam_rpc_shim_common_s listenreq;
+	listenreq.cmd = RPC_P2P_LISTEN;
+	uint32_t sync;
+	STEAMSHIM_sendRPC(&listenreq, sizeof listenreq, NULL, CL_RPC_cb_listenp2p, &sync);
 
 	if( dedicated->integer || sv_maxclients->integer > 1 )
 	{
@@ -516,7 +531,7 @@ void SV_ShutdownGame( const char *finalmsg, bool reconnect )
 		return;
 
 	// clean up remaining auth tickets or clients will fail to auth later
-	if (Steam_Active()){
+	if (STEAMSHIM_active()){
 		client_t *cl;
 		int i;
 		for( i = 0, cl = svs.clients; i < sv_maxclients->integer; i++, cl++ )

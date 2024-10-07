@@ -283,6 +283,10 @@
 				<div class="title">Chat message sound</div>
 				<input cvar="cg_chatBeep" type="checkbox" realtime="1"/>
 				<br/>
+
+				<div class="title">Enable voice chat</div>
+				<input cvar="cl_enablevoice" type="checkbox" realtime="1"/>
+				<br/>
 				<br/>
 
 				<button onclick="form.restoreOptions(); soundReset();" class="button-cancel">Cancel</button>	

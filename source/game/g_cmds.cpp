@@ -1431,6 +1431,7 @@ void G_InitGameCommands( void )
 	G_AddCommand( "servermaplist", Cmd_ServerMaplist_f );
 
 	// callvotes commands
+	G_AddCommand( "ajax", G_Ajax_Cmd );
 	G_AddCommand( "callvote", G_CallVote_Cmd );
 	G_AddCommand( "vote", G_CallVotes_CmdVote );
 

@@ -17,11 +17,15 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+#include "../gameshared/q_arch.h"
+#define STEAM_DEFINE_INTERFACE_IMPL 
+#include "../steamshim/src/mod_steam.h"
 #define REF_DEFINE_INTERFACE_IMPL 1
 #include "../ref_base/ref_mod.h"
 
 
 #include "cg_local.h"
+
 
 cgame_import_t CGAME_IMPORT;
 
@@ -37,6 +41,7 @@ extern "C" QF_DLL_EXPORT cgame_export_t *GetCGameAPI( cgame_import_t *import )
 
 	Q_ImportRefModule(&import->ref_import);
 	CGAME_IMPORT = *import;
+	Q_ImportSteamModule( &import->steam_import );
 
 	globals.API = CG_API;
 
@@ -67,9 +72,8 @@ extern "C" QF_DLL_EXPORT cgame_export_t *GetCGameAPI( cgame_import_t *import )
 	globals.TouchEvent = CG_TouchEvent;
 	globals.IsTouchDown = CG_IsTouchDown;
 
-	globals.CallbackRequestAvatar = CG_CallbackRequestAvatar;
-
 	globals.GetBlocklistItem = CG_GetBlocklistItem;
+	globals.PlayVoice = CG_PlayVoice;
 
 	return &globals;
 }
