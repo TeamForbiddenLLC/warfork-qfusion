@@ -69,7 +69,7 @@ typedef struct
 	unsigned			numSliceElems, numSliceElemsReal;
 } drawList_t;
 
-typedef void (*drawSurf_cb)( const entity_t *, const struct shader_s *, const struct mfog_s *, const struct portalSurface_s *, unsigned int, void * );
-typedef void (*batchDrawSurf_cb)( const entity_t *, const struct shader_s *, const struct mfog_s *, const struct portalSurface_s *, unsigned int, void * );
+typedef void (*drawSurf_cb)(struct frame_cmd_buffer_s* cmd, const entity_t *, const struct shader_s *, const struct mfog_s *, const struct portalSurface_s *, unsigned int, void * );
+typedef void (*batchDrawSurf_cb)(struct frame_cmd_buffer_s* cmd, const entity_t *, const struct shader_s *, const struct mfog_s *, const struct portalSurface_s *, unsigned int, void * );
 
 #endif // R_MESH_H

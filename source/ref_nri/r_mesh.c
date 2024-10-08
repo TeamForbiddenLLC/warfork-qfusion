@@ -404,7 +404,7 @@ static const batchDrawSurf_cb r_batchDrawSurfCb[ST_MAX_TYPES] =
 /*
 * R_DrawSurfaces
 */
-static void _R_DrawSurfaces( drawList_t *list )
+static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 {
 	unsigned int i;
 	unsigned int sortKey;
@@ -552,7 +552,7 @@ static void _R_DrawSurfaces( drawList_t *list )
 				RB_SetPortalSurface( portalSurface );
 				RB_SetShadowBits( shadowBits );
 
-				r_drawSurfCb[drawSurfType]( entity, shader, fog, portalSurface, shadowBits, sds->drawSurf );
+				r_drawSurfCb[drawSurfType]( frame, entity, shader, fog, portalSurface, shadowBits, sds->drawSurf );
 			}
 
 			prevShaderNum = shaderNum;
@@ -565,7 +565,7 @@ static void _R_DrawSurfaces( drawList_t *list )
 		}
 
 		if( batchDrawSurf ) {
-			r_batchDrawSurfCb[drawSurfType]( entity, shader, fog, portalSurface, shadowBits, sds->drawSurf );
+			r_batchDrawSurfCb[drawSurfType](frame,  entity, shader, fog, portalSurface, shadowBits, sds->drawSurf );
 			batchFlushed = false;
 			if( depthWrite ) {
 				batchOpaque = true;
@@ -589,14 +589,14 @@ static void _R_DrawSurfaces( drawList_t *list )
 /*
 * R_DrawSurfaces
 */
-void R_DrawSurfaces( drawList_t *list )
+void R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 {
 	bool triOutlines;
 	
 	triOutlines = RB_EnableTriangleOutlines( false );
 	if( !triOutlines ) {
 		// do not recurse into normal mode when rendering triangle outlines
-		_R_DrawSurfaces( list );
+		_R_DrawSurfaces(frame, list );
 	}
 	RB_EnableTriangleOutlines( triOutlines );
 }
@@ -604,7 +604,7 @@ void R_DrawSurfaces( drawList_t *list )
 /*
 * R_DrawOutlinedSurfaces
 */
-void R_DrawOutlinedSurfaces( drawList_t *list )
+void R_DrawOutlinedSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 {
 	bool triOutlines;
 	
@@ -614,7 +614,7 @@ void R_DrawOutlinedSurfaces( drawList_t *list )
 	// properly store and restore the state, as the 
 	// R_DrawOutlinedSurfaces calls can be nested
 	triOutlines = RB_EnableTriangleOutlines( true );
-	_R_DrawSurfaces( list );
+	_R_DrawSurfaces(frame, list );
 	RB_EnableTriangleOutlines( triOutlines );
 }
 

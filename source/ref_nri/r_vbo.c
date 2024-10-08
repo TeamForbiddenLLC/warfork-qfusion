@@ -317,7 +317,6 @@ void R_ReleaseMeshVBO( mesh_vbo_t *vbo )
 	for( size_t i = 0; i < vbo->numAllocations; i++ ) {
 		rsh.nri.coreI.FreeMemory( vbo->memory[i] );
 	}
-	printf("freeing index: %d \n", vbo->index -1);
 
 	if( vbo->index >= 1 && vbo->index <= MAX_MESH_VERTEX_BUFFER_OBJECTS ) {
 		vbohandle_t *vboh = &r_vbohandles[vbo->index - 1];

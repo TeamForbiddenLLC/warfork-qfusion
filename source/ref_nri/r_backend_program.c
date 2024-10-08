@@ -1266,12 +1266,11 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 					.descriptor = cmd->uboSceneObject.descriptor, 
 					.handle = Create_DescriptorHandle( "obj" ) 
 				};
-				struct block_buffer_pool_req_s passCB = BlockBufferPoolReq( &rsh.nri, &cmd->uboBlockBuffer, sizeof( struct DefaultMaterialCB) );
-				assert(false); //TODO: implement pass 
-				struct DefaultMaterialCB* passData = NULL;
+				// struct block_buffer_pool_req_s passCB = BlockBufferPoolReq( &rsh.nri, &cmd->uboBlockBuffer, sizeof( struct DefaultMaterialCB) );
+				struct DefaultMaterialCB passCB = {};
 
 				// configure light maps
-				{
+				if(lightStyle){
 					const size_t numberLightMaps = __NumberLightMaps( lightStyle );
 					float deluxOffset[4] = { 0 };
 					for( size_t i = 0; i < numberLightMaps; i++ ) {
@@ -1281,60 +1280,80 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 							VectorScale( color, mapConfig.lightingIntensity, color );
 							deluxOffset[i] = lightStyle->stOffset[i][0];
 						}
-						memcpy( passData->lightstyleColor[i].v, color, sizeof( float ) * 3 );
+						memcpy( passCB.lightstyleColor[i].v, color, sizeof( float ) * 3 );
 					}
-					memcpy( passData->deluxLightMapScale.v, deluxOffset, sizeof( float ) * 4 );
+					memcpy( passCB.deluxLightMapScale.v, deluxOffset, sizeof( float ) * 4 );
 				}
 
-				passData->offsetScale = offsetmappingScale;
-				passData->glossIntensity = glossIntensity;
-				passData->glossExponent = glossExponent;
+				passCB.offsetScale = offsetmappingScale;
+				passCB.glossIntensity = glossIntensity;
+				passCB.glossExponent = glossExponent;
 				if(rb.currentDlightBits) {
 					const bool identityAxis = Matrix3_Compare( e->axis, axis_identity );
-					struct block_buffer_pool_req_s lightCB = BlockBufferPoolReq( &rsh.nri, &cmd->uboBlockBuffer, sizeof( struct DynamicLightCB) );
+					// struct block_buffer_pool_req_s lightCB = BlockBufferPoolReq( &rsh.nri, &cmd->uboBlockBuffer, sizeof( struct DynamicLightCB) );
 					
-					assert(false); //TODO: implement light pass impl 
-					// struct DynamicLightCB* lightData = lightCB.address;
-					// uint32_t lightBits = rb.currentDlightBits;
-					// lightData->numberLights = 0;
-					// for(size_t i = 0; lightBits > 0; i++,lightBits >>= 1) {
-					// 	if(lightBits & 1) {
-					// 		dlight_t *dl = rsc.dlights + i;
-					// 		if(!dl->intensity) {
-					// 			continue;
-					// 		}
-					// 		struct DynLight *dynLight = &lightData->dynLights[lightData->numberLights++];
-					// 		vec3_t dlorigin, tvec, dlcolor;
-					// 		VectorSubtract( dl->origin, e->origin, dlorigin );
-					// 		if( !identityAxis ) {
-					// 			VectorCopy( dlorigin, tvec );
-					// 			Matrix3_TransformVector( e->axis, tvec, dlorigin );
-					// 		}
-					// 		VectorScale( dl->color, mapConfig.mapLightColorScale, dlcolor );
-					// 		memcpy(dynLight->position.v, dlorigin, sizeof(float) * 3);
-					// 		dynLight->diffuseAndInvRadius = (struct vec4) {.x = dlcolor[0], .y = dlcolor[1], .z = dlcolor[2], .w = 1.0f/ dl->intensity};
-					// 	}
-					// }
-					// struct nri_descriptor_s descriptor = BlockReqToDescriptorWrapper( &rsh.nri, &lightCB, NriBufferViewType_CONSTANT );
-					// descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
-					// 	.descriptor = descriptor, 
-					// 	.handle = Create_DescriptorHandle( "lights" ) 
-					// };
-					// arrpush(cmd->frameTemporaryDesc, descriptor.descriptor);
+					struct DynamicLightCB lightData = {}; //= lightCB.address;
+					uint32_t lightBits = rb.currentDlightBits;
+					lightData.numberLights = 0;
+					for(size_t i = 0; lightBits > 0; i++,lightBits >>= 1) {
+						if(lightBits & 1) {
+							dlight_t *dl = rsc.dlights + i;
+							if(!dl->intensity) {
+								continue;
+							}
+							struct DynLight *dynLight = &lightData.dynLights[lightData.numberLights++];
+							vec3_t dlorigin, tvec, dlcolor;
+							VectorSubtract( dl->origin, e->origin, dlorigin );
+							if( !identityAxis ) {
+								VectorCopy( dlorigin, tvec );
+								Matrix3_TransformVector( e->axis, tvec, dlorigin );
+							}
+							VectorScale( dl->color, mapConfig.mapLightColorScale, dlcolor );
+							memcpy(dynLight->position.v, dlorigin, sizeof(float) * 3);
+							dynLight->diffuseAndInvRadius = (struct vec4) {.x = dlcolor[0], .y = dlcolor[1], .z = dlcolor[2], .w = 1.0f/ dl->intensity};
+						}
+					}
+					struct block_buffer_pool_req_s poolReq = BlockBufferPoolReq( &rsh.nri, &cmd->uboBlockBuffer, sizeof(struct DynamicLightCB) );
+					void *mem = rsh.nri.coreI.MapBuffer( poolReq.buffer, poolReq.bufferOffset, poolReq.bufferSize );
+					memcpy( mem, &lightData, sizeof(struct DynamicLightCB) );
+					rsh.nri.coreI.UnmapBuffer( poolReq.buffer );
+					
+					NriBufferViewDesc bufferDesc = { 
+						.buffer = poolReq.buffer, 
+						.size = poolReq.bufferSize, 
+						.offset = poolReq.bufferOffset, 
+						.viewType = NriBufferViewType_CONSTANT 
+					};
+					NriDescriptor *descriptor = NULL;
+					NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateBufferView( &bufferDesc, &descriptor ) );
+					descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
+						.descriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor ), 
+						.handle = Create_DescriptorHandle( "lights" ) 
+					};
+					arrpush(cmd->frameTemporaryDesc, descriptor);
+			
 				}
 
-				passData->floorColor = ( struct vec3 ){ .x = rsh.floorColor[0], .y = rsh.floorColor[1], .z = rsh.floorColor[2] };
-				passData->wallColor = ( struct vec3 ){ .x = rsh.wallColor[0], .y = rsh.wallColor[1], .z = rsh.wallColor[2] };
+				passCB.floorColor = ( struct vec3 ){ .x = rsh.floorColor[0], .y = rsh.floorColor[1], .z = rsh.floorColor[2] };
+				passCB.wallColor = ( struct vec3 ){ .x = rsh.wallColor[0], .y = rsh.wallColor[1], .z = rsh.wallColor[2] };
 
 				if(pass->numtcmods) {
 					mat4_t texMatrix;
 					Matrix4_Identity(texMatrix);
 					RB_ApplyTCMods(pass, texMatrix);
-					setTexMatrixCB( texMatrix, passData->textureMatrix );
+					setTexMatrixCB( texMatrix, passCB.textureMatrix );
 				}
 
 				struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_MATERIAL, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 				struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->state);
+
+				if(RP_ProgramHasUniform(program, Create_DescriptorHandle("pass"))) {
+					UpdateFrameUBO( cmd, &cmd->uboPassObject, &passCB, sizeof(struct DefaultQ3ShaderCB));
+					descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
+						.descriptor = cmd->uboPassObject.descriptor, 
+						.handle = Create_DescriptorHandle( "pass" ) 
+					};
+				}
 
 				rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
 				rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
@@ -2619,23 +2638,23 @@ void RB_DrawShadedElements_2( struct frame_cmd_buffer_s *cmd,
 							  int firstShadowElem,
 							  int numShadowElems )
 {
-		cmd->drawElements.numVerts = numVerts;
-		cmd->drawElements.numElems = numElems;
-		cmd->drawElements.firstVert = firstVert;
-		cmd->drawElements.firstElem = firstElem;
-		cmd->drawElements.numInstances = 0;
+	cmd->drawElements.numVerts = numVerts;
+	cmd->drawElements.numElems = numElems;
+	cmd->drawElements.firstVert = firstVert;
+	cmd->drawElements.firstElem = firstElem;
+	cmd->drawElements.numInstances = 0;
 
-		cmd->drawShadowElements.numVerts = numVerts;
-		cmd->drawShadowElements.numElems = numElems;
-		cmd->drawShadowElements.firstVert = firstVert;
-		cmd->drawShadowElements.firstElem = firstElem;
-		cmd->drawShadowElements.numInstances = 0;
-	//bool addGLSLOutline = false;
+	cmd->drawShadowElements.numVerts = numVerts;
+	cmd->drawShadowElements.numElems = numElems;
+	cmd->drawShadowElements.firstVert = firstVert;
+	cmd->drawShadowElements.firstElem = firstElem;
+	cmd->drawShadowElements.numInstances = 0;
+	bool addGLSLOutline = false;
 
-	//if( ENTITY_OUTLINE( rb.currentEntity ) && !( rb.renderFlags & RF_CLIPPLANE ) && ( rb.currentShader->sort == SHADER_SORT_OPAQUE ) && ( rb.currentShader->flags & SHADER_CULL_FRONT ) &&
-	//	!( rb.renderFlags & RF_SHADOWMAPVIEW ) ) {
-	//	addGLSLOutline = true;
-	//}
+	if( ENTITY_OUTLINE( rb.currentEntity ) && !( rb.renderFlags & RF_CLIPPLANE ) && ( rb.currentShader->sort == SHADER_SORT_OPAQUE ) && ( rb.currentShader->flags & SHADER_CULL_FRONT ) &&
+		!( rb.renderFlags & RF_SHADOWMAPVIEW ) ) {
+		addGLSLOutline = true;
+	}
 	RB_SetShaderState_2( cmd );
 
 	shaderpass_t *pass;
@@ -2646,6 +2665,26 @@ void RB_DrawShadedElements_2( struct frame_cmd_buffer_s *cmd,
 		if( pass->flags & SHADERPASS_LIGHTMAP )
 			continue;
 		RB_RenderPass( cmd, pass );
+	}
+
+	// shadow map
+	if( rb.currentShadowBits && ( rb.currentShader->sort >= SHADER_SORT_OPAQUE ) && ( rb.currentShader->sort <= SHADER_SORT_ALPHATEST ) )
+		RB_RenderPass( cmd, &r_GLSLpasses[BUILTIN_GLSLPASS_SHADOWMAP] );
+
+	// outlines
+	if( addGLSLOutline )
+		RB_RenderPass( cmd, &r_GLSLpasses[BUILTIN_GLSLPASS_OUTLINE] );
+
+	// fog
+	if( rb.texFog && rb.texFog->shader ) {
+		shaderpass_t *fogPass = &r_GLSLpasses[BUILTIN_GLSLPASS_FOG];
+
+		fogPass->images[0] = rsh.whiteTexture;
+		if( !rb.currentShader->numpasses || rb.currentShader->fog_dist || ( rb.currentShader->flags & SHADER_SKY ) )
+			fogPass->flags &= ~GLSTATE_DEPTHFUNC_EQ;
+		else
+			fogPass->flags |= GLSTATE_DEPTHFUNC_EQ;
+		RB_RenderPass( cmd, fogPass );
 	}
 }
 

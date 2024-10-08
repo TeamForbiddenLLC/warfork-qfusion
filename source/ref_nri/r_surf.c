@@ -174,7 +174,7 @@ static unsigned int R_SurfaceShadowBits( const msurface_t *surf, unsigned int ch
 /*
 * R_DrawBSPSurf
 */
-void R_DrawBSPSurf( const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int entShadowBits, drawSurfaceBSP_t *drawSurf )
+void R_DrawBSPSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int entShadowBits, drawSurfaceBSP_t *drawSurf )
 {
 	const vboSlice_t *slice;
 	const vboSlice_t *shadowSlice;
@@ -227,7 +227,19 @@ void R_DrawBSPSurf( const entity_t *e, const shader_t *shader, const mfog_t *fog
 		firstShadowElem = 0;
 	}
 
-	RB_BindVBO( drawSurf->vbo->index, GL_TRIANGLES );
+	assert(drawSurf->vbo);
+
+	cmd->state.numStreams = 1;
+	cmd->state.streams[0] = (NriVertexStreamDesc) {
+		.stride = drawSurf->vbo->vertexSize,
+		.stepRate = 0,
+		.bindingSlot = 0
+	};
+	cmd->state.numAttribs = 0;
+	R_FillNriVertexAttrib(drawSurf->vbo, cmd->state.attribs, &cmd->state.numAttribs);
+
+	FR_CmdSetVertexBuffer(cmd, 0, drawSurf->vbo->vertexBuffer, 0);
+	FR_CmdSetIndexBuffer(cmd, drawSurf->vbo->indexBuffer, 0, NriIndexType_UINT16);
 
 	RB_SetDlightBits( dlightBits );
 
@@ -236,13 +248,16 @@ void R_DrawBSPSurf( const entity_t *e, const shader_t *shader, const mfog_t *fog
 	RB_SetLightstyle( drawSurf->superLightStyle );
 
 	if( drawSurf->numInstances ) {
+		assert(false);
 		RB_DrawElementsInstanced( firstVert, numVerts, firstElem, numElems, 
 			firstShadowVert, numShadowVerts, firstShadowElem, numShadowElems,
 			drawSurf->numInstances, drawSurf->instances );
 	}
 	else {
-		RB_DrawElements(NULL, firstVert, numVerts, firstElem, numElems, 
-			firstShadowVert, numShadowVerts, firstShadowElem, numShadowElems );
+		RB_DrawShadedElements_2(cmd, firstVert, numVerts, firstElem, numElems, 
+			firstShadowVert, numShadowVerts, firstShadowElem, numShadowElems);
+		// RB_DrawElements(NULL, firstVert, numVerts, firstElem, numElems, 
+		// 	firstShadowVert, numShadowVerts, firstShadowElem, numShadowElems );
 	}
 }
 
