@@ -485,14 +485,12 @@ void R_FillNriVertexAttrib(mesh_vbo_t* vbo, NriVertexAttributeDesc* desc, size_t
 
 	}
 
-
 	const vattribbit_t lightMapAttrs[] = {
 		VATTRIB_LMCOORDS0_BIT,	
 	};
 
 	if( vbo->lmstOffset[0] && ( vbo->vertexAttribs & VATTRIB_LMCOORDS0_BIT ) ) {
 	}
-
 
 }
 

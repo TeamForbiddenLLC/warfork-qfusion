@@ -33,7 +33,7 @@ layout(set = DESCRIPTOR_OBJECT_SET, binding = 0) uniform ObjectCB {
    vec4 rgbGenFuncArgs;
    vec4 alphaGenFuncArgs;
    vec4 colorConst;
-   vec4 lightAmbient;
+   vec3 lightAmbient;
    vec4 lightDiffuse;
    vec3 entityOrigin;
    float isAlphaBlending;

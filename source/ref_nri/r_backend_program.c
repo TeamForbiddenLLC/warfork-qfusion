@@ -1117,6 +1117,10 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 					.descriptor = base->descriptor, 
 					.handle = Create_DescriptorHandle( "u_BaseTexture" ) 
 				};
+				descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
+					.descriptor = base->samplerDescriptor, 
+					.handle = Create_DescriptorHandle( "u_BaseSampler" ) 
+				};
 
 				//	DescSimple_WriteImage( &materialDesc, 0, base );
 
@@ -1132,7 +1136,11 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				// DescSimple_WriteImage( &materialDesc, 1, normalmap );
 				descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
 					.descriptor = normalmap->descriptor, 
-					.handle = Create_DescriptorHandle( "u_NormalmapTexture" ) 
+					.handle = Create_DescriptorHandle( "u_NormalTexture" ) 
+				};
+				descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
+					.descriptor = normalmap->samplerDescriptor, 
+					.handle = Create_DescriptorHandle( "u_NormalSampler" ) 
 				};
 
 				if( glossmap && glossIntensity ) {
@@ -1142,6 +1150,10 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 					descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
 						.descriptor = glossmap->descriptor, 
 						.handle = Create_DescriptorHandle( "u_GlossTexture" ) 
+					};
+					descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
+						.descriptor = glossmap->samplerDescriptor, 
+						.handle = Create_DescriptorHandle( "u_GlossSampler" ) 
 					};
 				}
 
@@ -1157,11 +1169,13 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 							programFeatures |= GLSL_SHADER_MATERIAL_DECAL_ADD;
 					}
 
-					// RB_BindImage( 3, decalmap ); // decal
-					// DescSimple_WriteImage( &materialDesc, 2, decalmap );
 					descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
 						.descriptor = decalmap->descriptor, 
 						.handle = Create_DescriptorHandle( "u_DecalTexture" ) 
+					};
+					descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
+						.descriptor = decalmap->samplerDescriptor, 
+						.handle = Create_DescriptorHandle( "u_DecalSampler" ) 
 					};
 				}
 
@@ -1178,6 +1192,10 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 						.descriptor = normalmap->descriptor, 
 						.handle = Create_DescriptorHandle( "u_EntityDecalTexture" ) 
 					};
+					descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
+						.descriptor = normalmap->samplerDescriptor, 
+						.handle = Create_DescriptorHandle( "u_EntityDecalSampler" ) 
+					};
 				}
 
 				if( offsetmappingScale > 0 )
@@ -1190,10 +1208,17 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 
 						// bind lightmap textures and set program's features for lightstyles
 						const int numLightMaps = __NumberLightMaps( lightStyle );
+						if(numLightMaps > 0) {
+							descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
+								.descriptor = rsh.worldBrushModel->lightmapImages[lightStyle->lightmapNum[0]]->samplerDescriptor, 
+								.handle = Create_DescriptorHandle( "lightmapTextureSample" ) 
+							};
+						}
 						for( int i = 0; i < numLightMaps; i++ ) {
 							descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
 								.descriptor = rsh.worldBrushModel->lightmapImages[lightStyle->lightmapNum[i]]->descriptor, 
-								.registerOffset = i, .handle = Create_DescriptorHandle( "lightmapTexture" ) };
+								.registerOffset = i, .handle = Create_DescriptorHandle( "lightmapTexture" ) 
+							};
 						}
 
 						programFeatures |= ( numLightMaps * GLSL_SHADER_MATERIAL_LIGHTSTYLE0 );
@@ -1256,16 +1281,6 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 						}
 					}
 				}
-				RB_SetShaderpassState( pass->flags );
-				__RB_UpdateFrameObjectCB( cmd, rb.currentEntity, pass );
-				descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
-					.descriptor = cmd->uboSceneFrame.descriptor, 
-					.handle = Create_DescriptorHandle( "frame" ) 
-				};
-				descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
-					.descriptor = cmd->uboSceneObject.descriptor, 
-					.handle = Create_DescriptorHandle( "obj" ) 
-				};
 				// struct block_buffer_pool_req_s passCB = BlockBufferPoolReq( &rsh.nri, &cmd->uboBlockBuffer, sizeof( struct DefaultMaterialCB) );
 				struct DefaultMaterialCB passCB = {};
 
@@ -1347,6 +1362,8 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_MATERIAL, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 				struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->state);
 
+				FR_CmdBeginRendering(cmd);
+
 				if(RP_ProgramHasUniform(program, Create_DescriptorHandle("pass"))) {
 					UpdateFrameUBO( cmd, &cmd->uboPassObject, &passCB, sizeof(struct DefaultQ3ShaderCB));
 					descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
@@ -1354,6 +1371,17 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 						.handle = Create_DescriptorHandle( "pass" ) 
 					};
 				}
+
+				RB_SetShaderpassState( pass->flags );
+				__RB_UpdateFrameObjectCB( cmd, rb.currentEntity, pass );
+				descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
+					.descriptor = cmd->uboSceneFrame.descriptor, 
+					.handle = Create_DescriptorHandle( "frame" ) 
+				};
+				descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
+					.descriptor = cmd->uboSceneObject.descriptor, 
+					.handle = Create_DescriptorHandle( "obj" ) 
+				};
 
 				rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
 				rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
@@ -1364,37 +1392,8 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 					cmd->drawElements.firstElem,
 					cmd->drawElements.firstVert,
 					0);
-				//rsh.nri.coreI.CmdDrawIndexed()
-					
-				// program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_MATERIAL, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-				// if( RB_BindProgram( program ) ) {
-				// 	// update uniforms
 
-				// 	RB_UpdateCommonUniforms( program, pass, texMatrix );
-
-				// 	RP_UpdateMaterialUniforms( program, offsetmappingScale, glossIntensity, glossExponent );
-
-				// 	RP_UpdateDiffuseLightUniforms( program, lightDir, ambient, diffuse );
-
-				// 	if( programFeatures & GLSL_SHADER_COMMON_FOG ) {
-				// 		RB_UpdateFogUniforms( program, fog );
-				// 	}
-
-				// 	// submit animation data
-				// 	if( programFeatures & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
-				// 		RP_UpdateBonesUniforms( program, rb.bonesData.numBones, rb.bonesData.dualQuats );
-				// 	}
-
-				// 	// dynamic lights
-				// 	RP_UpdateDynamicLightsUniforms( program, lightStyle, rb.currentEntity->origin, rb.currentEntity->axis, rb.currentDlightBits );
-
-				// 	// r_drawflat
-				// 	if( programFeatures & GLSL_SHADER_COMMON_DRAWFLAT ) {
-				// 		RP_UpdateDrawFlatUniforms( program, rsh.wallColor, rsh.floorColor );
-				// 	}
-
-				// 	RB_DrawElementsReal( &rb.drawElements );
-				// }
+				FR_CmdEndRendering(cmd);
 				break;
 			}
 			// render as plain Q3A shader, which is less computation-intensive
@@ -1538,10 +1537,11 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){ 
 					.descriptor = shaderPassImage->descriptor, 
 					.handle = Create_DescriptorHandle( "u_BaseTexture" ) };
-				
+
 				descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){ 
 					.descriptor = shaderPassImage->samplerDescriptor, 
 					.handle = Create_DescriptorHandle( "u_BaseSampler" ) };
+
 				if(shaderPassImage->currentLayout.layout != NriLayout_SHADER_RESOURCE) {
 					NriAccessLayoutStage after = (NriAccessLayoutStage) {
 							.layout = NriLayout_SHADER_RESOURCE,
