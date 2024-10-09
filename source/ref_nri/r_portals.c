@@ -450,7 +450,7 @@ static void R_DrawPortalsDepthMask( void )
 	RB_SetShaderStateMask( ~0, GLSTATE_DEPTHWRITE|GLSTATE_DEPTHFUNC_GT|GLSTATE_NO_COLORWRITE );
 	RB_DepthRange( depthmax, depthmax );
 
-	R_DrawSurfaces( rn.portalmasklist );
+	R_DrawSurfaces(NULL, rn.portalmasklist );
 
 	RB_DepthRange( depthmin, depthmax );
 	RB_ClearDepth( depthmax );

@@ -1852,6 +1852,7 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		.textures = &image->texture,
 		.memoryLocation = NriMemoryLocation_DEVICE,
 	};
+
 	image->formatDef = R_BaseFormatDef( dstFormat );
 	if( rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture ) != NriResult_SUCCESS ) {
 		ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name );
@@ -1863,6 +1864,18 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		ri.Com_Printf( S_COLOR_YELLOW "Failed Allocation: %s\n", image->name );
 		return false;
 	}
+
+	NriTexture2DViewDesc textureViewDesc = {
+		.texture = image->texture,
+		.viewType = (textureDesc.layerNum > 1) ? NriTexture2DViewType_SHADER_RESOURCE_CUBE: NriTexture2DViewType_SHADER_RESOURCE_2D,
+		.format = textureDesc.format
+	};
+	NriDescriptor* descriptor = NULL;
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &descriptor) );
+	image->descriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
+	image->samplerDescriptor = R_CreateDescriptorWrapper(&rsh.nri, resolveSamplerDescriptor(image->flags)); 
+	assert(image->samplerDescriptor.descriptor);
+	rsh.nri.coreI.SetTextureDebugName( image->texture, image->name );
 
 	if( R_KTXIsCompressed( &ktxContext ) ) {
 		struct texture_buf_s uncomp = { 0 };

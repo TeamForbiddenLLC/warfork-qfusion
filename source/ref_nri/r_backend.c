@@ -385,10 +385,10 @@ void RB_SetState_2( struct frame_cmd_buffer_s *cmd, int state )
 		}
 
 		if( !( rb.gl.state & GLSTATE_BLEND_MASK ) ) {
-			cmd->state.pipelineLayout.blendEnabled = true;
+			// cmd->state.pipelineLayout.blendEnabled = true;
 		}
 	} else {
-		cmd->state.pipelineLayout.blendEnabled = false;
+		//cmd->state.pipelineLayout.blendEnabled = false;
 	}
 
 	if( state & GLSTATE_NO_COLORWRITE ) {
@@ -961,8 +961,10 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
 */
 void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 {
-	assert(cmd);
-	float offsetx = 0.0f, offsety = 0.0f, transx, transy;
+	float offsetx = 0.0f;
+	float offsety = 0.0f;
+	float transx;
+	float transy;
 	mat4_t m;
 
 	if( rb.numDynamicDraws == 0 ) {

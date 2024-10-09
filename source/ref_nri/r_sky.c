@@ -277,7 +277,7 @@ static void Gen_BoxSide( skydome_t *skydome, int side, vec3_t orig, vec3_t drow,
 /*
 * R_DrawSkyBoxSide
 */
-static void R_DrawSkyBoxSide( const skydome_t *skydome, const visSkySide_t *visSide, const shader_t *skyShader, 
+static void R_DrawSkyBoxSide(struct frame_cmd_buffer_s* cmd, const skydome_t *skydome, const visSkySide_t *visSide, const shader_t *skyShader, 
 	const shader_t *skyboxShader, const mfog_t *fog, int imageIndex )
 {
 	int side = visSide->index;
@@ -288,26 +288,40 @@ static void R_DrawSkyBoxSide( const skydome_t *skydome, const visSkySide_t *visS
 
 	RB_BindShader( NULL, rsc.skyent, skyShader, fog );
 
-	RB_BindVBO( skydome->linearVbos[side]->index, GL_TRIANGLES );
+	cmd->state.numStreams = 1;
+	cmd->state.streams[0] = (NriVertexStreamDesc) {
+		.stride = skydome->linearVbos[side]->vertexSize,
+		.stepRate = 0,
+		.bindingSlot = 0
+	};
+	cmd->state.numAttribs = 0;
+	R_FillNriVertexAttrib(skydome->linearVbos[side], cmd->state.attribs, &cmd->state.numAttribs);
+
+	//RB_BindVBO( skydome->linearVbos[side]->index, GL_TRIANGLES );
 
 	RB_SetSkyboxShader( skyboxShader );
 
 	RB_SetSkyboxSide( imageIndex );
 
-	RB_DrawElements(NULL,visSide->firstVert, visSide->numVerts, visSide->firstElem, visSide->numElems, 0, 0, 0, 0 );
+	RB_DrawShadedElements_2(cmd, visSide->firstVert, visSide->numVerts, visSide->firstElem, visSide->numElems, 
+		0, 0, 0, 0);
+	// RB_DrawElements(cmd,visSide->firstVert, visSide->numVerts, visSide->firstElem, visSide->numElems, 0, 0, 0, 0 );
+	
+	FR_CmdResetCommandState(cmd, CMD_RESET_INDEX_BUFFER | CMD_RESET_VERTEX_BUFFER);
 }
 
 /*
 * R_DrawSkyBox
 */
-static void R_DrawSkyBox( const skydome_t *skydome, const visSkySide_t *visSides, const shader_t *skyShader, 
+static void R_DrawSkyBox(struct frame_cmd_buffer_s* cmd, const skydome_t *skydome, const visSkySide_t *visSides, const shader_t *skyShader, 
 	const shader_t *skyboxShader, const mfog_t *fog )
 {
 	int i;
 	const int skytexorder[6] = { SKYBOX_RIGHT, SKYBOX_FRONT, SKYBOX_LEFT, SKYBOX_BACK, SKYBOX_TOP, SKYBOX_BOTTOM };
 
-	for( i = 0; i < 6; i++ )
-		R_DrawSkyBoxSide( skydome, visSides + i, skyShader, skyboxShader, fog, skytexorder[i] );
+	for( i = 0; i < 6; i++ ) {
+		R_DrawSkyBoxSide( cmd, skydome, visSides + i, skyShader, skyboxShader, fog, skytexorder[i] );
+	}
 }
 
 /*
@@ -315,7 +329,7 @@ static void R_DrawSkyBox( const skydome_t *skydome, const visSkySide_t *visSides
 * 
 * Draw dummy skybox side to prevent the HOM effect
 */
-static void R_DrawBlackBottom( const skydome_t *skydome, const visSkySide_t *visSides, const mfog_t *fog )
+static void R_DrawBlackBottom( struct frame_cmd_buffer_s* cmd, const skydome_t *skydome, const visSkySide_t *visSides, const mfog_t *fog )
 {
 	int side = 5;
 	const visSkySide_t *visSide = visSides + side;
@@ -326,15 +340,29 @@ static void R_DrawBlackBottom( const skydome_t *skydome, const visSkySide_t *vis
 
 	RB_BindShader( NULL, rsc.skyent, rsh.envShader, fog );
 
-	RB_BindVBO( skydome->linearVbos[side]->index, GL_TRIANGLES );
+	cmd->state.numStreams = 1;
+	cmd->state.streams[0] = (NriVertexStreamDesc) {
+		.stride = skydome->linearVbos[side]->vertexSize,
+		.stepRate = 0,
+		.bindingSlot = 0
+	};
+	cmd->state.numAttribs = 0;
+	R_FillNriVertexAttrib(skydome->linearVbos[side], cmd->state.attribs, &cmd->state.numAttribs);
 
-	RB_DrawElements(NULL, visSide->firstVert, visSide->numVerts, visSide->firstElem, visSide->numElems, 0, 0, 0, 0 );
+	// RB_BindVBO( skydome->linearVbos[side]->index, GL_TRIANGLES );
+
+	// RB_DrawElements(NULL, visSide->firstVert, visSide->numVerts, visSide->firstElem, visSide->numElems, 0, 0, 0, 0 );
+
+	RB_DrawShadedElements_2(cmd, visSide->firstVert, visSide->numVerts, visSide->firstElem, visSide->numElems, 
+		0, 0, 0, 0);
+
+	FR_CmdResetCommandState(cmd, CMD_RESET_INDEX_BUFFER | CMD_RESET_VERTEX_BUFFER);
 }
 
 /*
 * R_DrawSkySurf
 */
-void R_DrawSkySurf( const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceBSP_t *drawSurf )
+void R_DrawSkySurf( struct frame_cmd_buffer_s* cmd,const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceBSP_t *drawSurf )
 {
 	int i;
 	int numVisSides;
@@ -400,14 +428,14 @@ void R_DrawSkySurf( const entity_t *e, const shader_t *shader, const mfog_t *fog
 	if( skyportal )
 	{
 		// render fake fogged skybox
-		R_DrawSkyBox( skydome, visSkySides, rsh.emptyFogShader, shader, fog );
+		R_DrawSkyBox(cmd, skydome, visSkySides, rsh.emptyFogShader, shader, fog );
 	}
 	else
 	{
 		if( shader->skyboxImages[0] )
-			R_DrawSkyBox( skydome, visSkySides, rsh.skyShader, shader, fog );
+			R_DrawSkyBox(cmd, skydome, visSkySides, rsh.skyShader, shader, fog );
 		else
-			R_DrawBlackBottom( skydome, visSkySides, fog );
+			R_DrawBlackBottom(cmd, skydome, visSkySides, fog );
 
 		if( shader->numpasses )
 		{

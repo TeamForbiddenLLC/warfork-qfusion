@@ -38,16 +38,16 @@ struct frame_cmd_state_s {
 	NriVertexAttributeDesc attribs[MAX_ATTRIBUTES];
 
 	uint32_t numColorAttachments;
-	NriDescriptor const* colorAttachment[MAX_COLOR_ATTACHMENTS];
+	NriDescriptor const *colorAttachment[MAX_COLOR_ATTACHMENTS];
 	NriRect scissors[MAX_COLOR_ATTACHMENTS];
 	NriViewport viewports[MAX_COLOR_ATTACHMENTS];
-	NriDescriptor const* depthAttachment;
+	NriDescriptor const *depthAttachment;
 
-  NriBuffer* vertexBuffers[MAX_VERTEX_BINDINGS];
-  uint64_t offsets[MAX_VERTEX_BINDINGS];
+	NriBuffer *vertexBuffers[MAX_VERTEX_BINDINGS];
+	uint64_t offsets[MAX_VERTEX_BINDINGS];
 	uint32_t dirtyVertexBuffers;
 
-	NriBuffer* indexBuffer;
+	NriBuffer *indexBuffer;
 	uint64_t indexBufferOffset;
 	NriIndexType indexType;
 
@@ -62,9 +62,8 @@ struct frame_cmd_state_s {
 		NriBlendFactor colorSrcFactor;
 		NriBlendFactor colorDstFactor;
 
-		float depthRangeMin; 
+		float depthRangeMin;
 		float depthRangeMax;
-		bool blendEnabled;
 		NriColorWriteBits colorWriteMask;
 		NriCompareFunc compareFunc;
 		bool depthWrite;
@@ -75,6 +74,12 @@ struct frame_tex_buffers_s {
 	NriRect screen; 	
 	NriDescriptor *colorAttachment;
 	NriTexture *colorTexture;
+
+	// used for post processing
+	struct pogo_buffers_s {
+		NriDescriptor *colorAttachment;
+		NriTexture *colorTexture;
+	} pogoBuffers[2];
 
 	NriDescriptor *depthAttachment;
 	NriTexture* depthTexture;
