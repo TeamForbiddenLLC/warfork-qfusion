@@ -158,6 +158,7 @@ void FTLIB_Shutdown( bool verbose );
 char *FTLIB_CopyString( const char *in );
 
 // ftlib.c
+extern shader_t *shaderWhite;
 void FTLIB_InitSubsystems( bool verbose );
 void FTLIB_ShutdownSubsystems( bool verbose );
 void FTLIB_PrecacheFonts( bool verbose );
@@ -177,7 +178,7 @@ size_t FTLIB_StrlenForWidth( const char *str, qfontface_t *font, size_t maxwidth
 int FTLIB_FontUnderline( qfontface_t *font, int *thickness );
 size_t FTLIB_FontAdvance( qfontface_t *font );
 size_t FTLIB_FontXHeight( qfontface_t *font );
-void FTLIB_DrawClampChar( int x, int y, wchar_t num, int xmin, int ymin, int xmax, int ymax, qfontface_t *font, vec4_t color );
+void FTLIB_DrawClampChar( int x, int y, wchar_t num, int xmin, int ymin, int xmax, int ymax, qfontface_t *font, vec4_t color, vec4_t bgcolor );
 void FTLIB_DrawRawChar( int x, int y, wchar_t num, qfontface_t *font, vec4_t color );
 void FTLIB_DrawClampString( int x, int y, const char *str, int xmin, int ymin, int xmax, int ymax, qfontface_t *font, vec4_t color, int flags );
 size_t FTLIB_DrawRawString( int x, int y, const char *str, size_t maxwidth, int *width, qfontface_t *font, vec4_t color, int flags );

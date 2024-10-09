@@ -52,7 +52,7 @@ public:
 
 			s = it->CString();
 			while( s ) {
-				gc = Q_GrabWCharFromColorString( &s, &num, &colorindex );
+				gc = Q_GrabWCharFromColorString( &s, &num, &colorindex, NULL, NULL, NULL );
 
 				if( gc == GRABCHAR_CHAR ) {
 					colorblock += Q_WCharToUtf8Char( num );
@@ -91,6 +91,10 @@ public:
 					if( colorindex != -1 ) {
 						formatted_data += "</span>";
 					}
+					break;
+				}
+				else if (gc == GRABCHAR_ANSI || gc == GRABCHAR_RGB ) {
+					// ignore
 					break;
 				}
 				else

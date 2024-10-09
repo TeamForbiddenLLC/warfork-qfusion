@@ -135,7 +135,7 @@ typedef struct
 	int ( *FontUnderline )( struct qfontface_s *font, int *thickness );
 	size_t ( *FontAdvance )( struct qfontface_s *font );
 	size_t ( *FontXHeight )( struct qfontface_s *font );
-	void ( *DrawClampChar )( int x, int y, wchar_t num, int xmin, int ymin, int xmax, int ymax, struct qfontface_s *font, vec4_t color );
+	void ( *DrawClampChar )( int x, int y, wchar_t num, int xmin, int ymin, int xmax, int ymax, struct qfontface_s *font, vec4_t color, vec4_t bgcolor );
 	void ( *DrawRawChar )( int x, int y, wchar_t num, struct qfontface_s *font, vec4_t color );
 	void ( *DrawClampString )( int x, int y, const char *str, int xmin, int ymin, int xmax, int ymax, struct qfontface_s *font, vec4_t color, int flags );
 	size_t ( *DrawRawString )( int x, int y, const char *str, size_t maxwidth, int *width, struct qfontface_s *font, vec4_t color, int flags );
