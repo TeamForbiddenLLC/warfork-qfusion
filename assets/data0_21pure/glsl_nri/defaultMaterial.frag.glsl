@@ -305,7 +305,7 @@ void main()
 
 #if defined(APPLY_FOG) && !defined(APPLY_FOG_COLOR)
 	float fogDensity = FogDensity(v_TexCoord_FogCoord.pq);
-	color.rgb = mix(color.rgb, u_FogColor, fogDensity);
+	color.rgb = mix(color.rgb, frame.fogColor, fogDensity);
 #endif
 
 	outFragColor = vec4(color);

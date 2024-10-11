@@ -301,6 +301,8 @@ static void R_BlitTextureToScrFbo( const refdef_t *fd, image_t *image, int dstFb
 
 void R_RenderScene(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 {
+	R_FlushTransitionBarrier(frame->cmd);
+
 	int fbFlags = 0;
 	int ppFrontBuffer = 0;
 	image_t *ppSource;

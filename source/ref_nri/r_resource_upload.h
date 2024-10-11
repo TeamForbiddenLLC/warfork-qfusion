@@ -21,22 +21,26 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef R_RESOURCE_UPLOAD_H
 #define R_RESOURCE_UPLOAD_H
 
-#include "r_nri.h"
 #include "../gameshared/q_shared.h"
+#include "r_nri.h"
+
 
 static const uint32_t SizeOfStageBufferByte = 8 * MB_TO_BYTE;
-static const NriAccessLayoutStage ResourceUploadTexturePostAccess = {
-	.layout = NriLayout_COPY_DESTINATION,
-	.access = NriAccessBits_COPY_DESTINATION,
-	.stages = NriStageBits_COPY
+static const NriAccessLayoutStage ResourceUploadTexturePostAccess = { 
+	.layout = NriLayout_COPY_DESTINATION, 
+	.access = NriAccessBits_COPY_DESTINATION, 
+	.stages = NriStageBits_COPY 
 };
-static const NriAccessStage ResourceUploadBufferPostAccess = {
-	.access = NriLayout_COPY_DESTINATION,
-	.stages = NriStageBits_COPY
+static const NriAccessStage ResourceUploadBufferPostAccess = { 
+	.access = NriLayout_COPY_DESTINATION, 
+	.stages = NriStageBits_COPY 
 };
 
 typedef struct {
 	NriBuffer *target;
+	NriAccessStage before;
+	NriAccessStage after; 
+
 	size_t numBytes;
 	size_t byteOffset;
 
@@ -49,13 +53,14 @@ typedef struct {
 	} internal;
 } buffer_upload_desc_t;
 
-
 typedef struct {
 	NriTexture *target;
-	
+	NriAccessLayoutStage before;
+	NriAccessLayoutStage after;
+
 	// https://github.com/microsoft/DirectXTex/wiki/Image
-  uint32_t sliceNum;
-  uint32_t rowPitch;
+	uint32_t sliceNum;
+	uint32_t rowPitch;
 
 	uint16_t x;
 	uint16_t y;
@@ -68,8 +73,8 @@ typedef struct {
 
 	// begin mapping
 	void *data;
-  uint32_t alignRowPitch;
-  uint32_t alignSlicePitch;
+	uint32_t alignRowPitch;
+	uint32_t alignSlicePitch;
 
 	struct {
 		NriBuffer *backing;
@@ -82,16 +87,16 @@ void R_InitResourceUpload();
 void R_ExitResourceUpload();
 
 // buffer upload
-NriAccessStage R_ResourceTransitionBuffer(NriBuffer* buffer, NriAccessStage currentAccessAndLayout);
+// NriAccessStage R_ResourceTransitionBuffer( NriBuffer *buffer, NriAccessStage currentAccessAndLayout );
 void R_ResourceBeginCopyBuffer( buffer_upload_desc_t *action );
 void R_ResourceEndCopyBuffer( buffer_upload_desc_t *action );
 
 // texture upload
-NriAccessLayoutStage R_ResourceTransitionTexture(NriTexture* texture, NriAccessLayoutStage currentAccessAndLayout);
+// void R_ResourceTransitionTexture( NriTexture *texture, NriAccessLayoutStage currentAccessAndLayout );
 void R_ResourceBeginCopyTexture( texture_upload_desc_t *desc );
-void R_ResourceEndCopyTexture( texture_upload_desc_t* desc );
+void R_ResourceEndCopyTexture( texture_upload_desc_t *desc );
 void R_ResourceSubmit();
 
+void R_FlushTransitionBarrier( NriCommandBuffer *cmd );
 
 #endif
-

@@ -806,8 +806,8 @@ typedef struct mesh_vbo_s
 	int					registrationSequence;
 	vbo_tag_t			tag;
 
-	unsigned int 		vertexId;
-	unsigned int		elemId;
+	// unsigned int 		vertexId;
+	// unsigned int		elemId;
 	void 				*owner;
 	unsigned int 		visframe;
 

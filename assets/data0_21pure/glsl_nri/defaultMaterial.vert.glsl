@@ -38,7 +38,7 @@ void main()
 	frontColor = vec4(outColor);
 
 #if defined(APPLY_TC_MOD)
-	v_TexCoord_FogCoord.st = TextureMatrix2x3Mul(pass.textureMatrix, TexCoord);
+	v_TexCoord_FogCoord.st = TextureMatrix2x3Mul(obj.textureMatrix, TexCoord);
 #else
 	v_TexCoord_FogCoord.st = TexCoord;
 #endif

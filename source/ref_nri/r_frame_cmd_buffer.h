@@ -58,6 +58,7 @@ struct frame_cmd_state_s {
 		NriFormat colorFormats[MAX_COLOR_ATTACHMENTS];
 		NriFormat depthFormat;
 
+		bool blendEnabled;
 		NriCullMode cullMode;
 		NriBlendFactor colorSrcFactor;
 		NriBlendFactor colorDstFactor;

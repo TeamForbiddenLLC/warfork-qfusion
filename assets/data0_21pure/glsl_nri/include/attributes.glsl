@@ -1,7 +1,7 @@
 #ifdef VERTEX_SHADER
   layout(location = 0) in vec4 a_Position;
-  layout(location = 1) in vec4 a_SVector;
-  layout(location = 2) in vec4 a_Normal;
+  layout(location = 1) in vec4 a_Normal;
+  layout(location = 2) in vec4 a_SVector;
   layout(location = 3) in vec4 a_Color;
   layout(location = 4) in vec2 a_TexCoord;
 
@@ -22,7 +22,8 @@
 	#endif
 
 	#if defined(APPLY_AUTOSPRITE2)
-		layout(location = 5) in vec4 a_SpriteRightUpAxis;
+		// layout(location = 5) in vec4 a_SpriteRightUpAxis;
+		#define a_SpriteRightUpAxis a_SVector
 	#else
 		#define a_SpriteRightUpAxis vec4(0.0)
 	#endif

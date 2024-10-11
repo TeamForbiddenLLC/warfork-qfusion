@@ -49,6 +49,11 @@ static float rb_inversesawtoothtable[FTABLE_SIZE];
 static float rb_noisetable[NOISE_SIZE];
 static int rb_noiseperm[NOISE_SIZE];
 
+static NriAccessLayoutStage TextureShaderLayout = {
+	.layout = NriLayout_SHADER_RESOURCE,
+	.access = NriAccessBits_SHADER_RESOURCE,
+	.stages = NriStageBits_FRAGMENT_SHADER 
+};
 
 static shaderpass_t r_GLSLpasses[MAX_BUILTIN_GLSLPASSES];
 
@@ -831,15 +836,15 @@ r_glslfeat_t RB_TcGenToProgramFeatures( int tcgen, vec_t *tcgenVec, struct mat4 
 	return programFeatures;
 }
 
-void setTexMatrixCB( const mat4_t texMatrix, struct vec4 input[2]) {
-	input[0].x = texMatrix[0]; 
-	input[0].y = texMatrix[4];
-	input[0].z = texMatrix[1]; 
+// void setTexMatrixCB( const mat4_t texMatrix, struct vec4 input[2]) {
+// 	input[0].x = texMatrix[0]; 
+// 	input[0].y = texMatrix[4];
+// 	input[0].z = texMatrix[1]; 
 	
-	input[1].x = texMatrix[5]; 
-	input[1].y = texMatrix[4];
-	input[1].z = texMatrix[13]; 
-}
+// 	input[1].x = texMatrix[5]; 
+// 	input[1].y = texMatrix[4];
+// 	input[1].z = texMatrix[13]; 
+// }
 
 
 static inline bool __IsAlphaBlendingGLState(int state) {
@@ -1002,7 +1007,18 @@ static void __RB_UpdateFrameObjectCB( struct frame_cmd_buffer_s *cmd, const enti
 			break;
 	}
 	objectData.colorConst = ConstColorAdjust( isAlphaBlending, rb.alphaHack, objectData.colorConst );
-		
+	if( pass->numtcmods )
+	{
+		mat4_t texMatrix = {};
+		RB_ApplyTCMods( pass, texMatrix );
+		objectData.texutreMatrix[0].x = texMatrix[0];
+		objectData.texutreMatrix[0].y = texMatrix[4];
+		objectData.texutreMatrix[0].z = texMatrix[1];
+		objectData.texutreMatrix[1].x = texMatrix[5];
+		objectData.texutreMatrix[1].y = texMatrix[4];
+		objectData.texutreMatrix[1].z = texMatrix[13];
+	}
+
 	UpdateFrameUBO( cmd, &cmd->uboSceneFrame, &frameData, sizeof( struct FrameCB ) );
 	UpdateFrameUBO( cmd, &cmd->uboSceneObject, &objectData, sizeof( struct ObjectCB) );
 }
@@ -1035,6 +1051,9 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			const mfog_t *fog = rb.fog;
 			mat4_t texMatrix;
 
+			// size_t numTextureBarrier = 0;
+			// NriTextureBarrierDesc textureBarriers[16] = {}; 
+
 			// handy pointers
 			const image_t *base = RB_ShaderpassTex( pass );
 			const image_t *normalmap = pass->images[1] && !pass->images[1]->missing ? pass->images[1] : rsh.blankBumpTexture;
@@ -1059,6 +1078,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			if( normalmap && ( normalmap->upload_width < 2 || normalmap->upload_height < 2 ) ) {
 				normalmap = rsh.blankBumpTexture;
 			}
+
 			if( !( ( rb.currentModelType == mod_brush && !mapConfig.deluxeMappingEnabled ) || ( normalmap == rsh.blankBumpTexture && !glossmap && !decalmap && !entdecalmap ) ) ) {
 				float offsetmappingScale = ( normalmap->samples == 4 ) ? ( r_offsetmapping_scale->value * rb.currentShader->offsetmappingScale ) : 0;
 				float glossIntensity = rb.currentShader->glossIntensity ? rb.currentShader->glossIntensity : r_lighting_glossintensity->value;
@@ -1122,7 +1142,6 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 					.handle = Create_DescriptorHandle( "u_BaseSampler" ) 
 				};
 
-				//	DescSimple_WriteImage( &materialDesc, 0, base );
 
 				// convert rgbgen and alphagen to GLSL feature defines
 				programFeatures |= RB_RGBAlphaGenToProgramFeatures( &pass->rgbgen, &pass->alphagen );
@@ -1189,11 +1208,11 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 					// RB_BindImage( 4, entdecalmap ); // decal
 					// DescSimple_WriteImage( &materialDesc, 4, entdecalmap );
 					descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
-						.descriptor = normalmap->descriptor, 
+						.descriptor = entdecalmap->descriptor, 
 						.handle = Create_DescriptorHandle( "u_EntityDecalTexture" ) 
 					};
 					descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
-						.descriptor = normalmap->samplerDescriptor, 
+						.descriptor = entdecalmap->samplerDescriptor, 
 						.handle = Create_DescriptorHandle( "u_EntityDecalSampler" ) 
 					};
 				}
@@ -1208,17 +1227,27 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 
 						// bind lightmap textures and set program's features for lightstyles
 						const int numLightMaps = __NumberLightMaps( lightStyle );
-						if(numLightMaps > 0) {
-							descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
-								.descriptor = rsh.worldBrushModel->lightmapImages[lightStyle->lightmapNum[0]]->samplerDescriptor, 
-								.handle = Create_DescriptorHandle( "lightmapTextureSample" ) 
-							};
-						}
 						for( int i = 0; i < numLightMaps; i++ ) {
+							image_t *lightmapImage = rsh.worldBrushModel->lightmapImages[lightStyle->lightmapNum[i]];
+							if(i == 0) {
+								descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
+									.descriptor = lightmapImage->samplerDescriptor, 
+									.handle = Create_DescriptorHandle( "lightmapTextureSample" ) 
+								};
+							}
 							descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
-								.descriptor = rsh.worldBrushModel->lightmapImages[lightStyle->lightmapNum[i]]->descriptor, 
+								.descriptor = lightmapImage->descriptor, 
 								.registerOffset = i, .handle = Create_DescriptorHandle( "lightmapTexture" ) 
 							};
+
+							// if(lightmapImage->currentLayout.layout != NriLayout_SHADER_RESOURCE) {
+							// 	textureBarriers[numTextureBarrier++] = (NriTextureBarrierDesc){
+							// 		.texture = lightmapImage->texture,
+							// 		.before = lightmapImage->currentLayout,
+							// 		.after = TextureShaderLayout  
+							// 	};
+							// 	lightmapImage->currentLayout = TextureShaderLayout;
+							// }
 						}
 
 						programFeatures |= ( numLightMaps * GLSL_SHADER_MATERIAL_LIGHTSTYLE0 );
@@ -1352,17 +1381,23 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				passCB.floorColor = ( struct vec3 ){ .x = rsh.floorColor[0], .y = rsh.floorColor[1], .z = rsh.floorColor[2] };
 				passCB.wallColor = ( struct vec3 ){ .x = rsh.wallColor[0], .y = rsh.wallColor[1], .z = rsh.wallColor[2] };
 
-				if(pass->numtcmods) {
-					mat4_t texMatrix;
-					Matrix4_Identity(texMatrix);
-					RB_ApplyTCMods(pass, texMatrix);
-					setTexMatrixCB( texMatrix, passCB.textureMatrix );
-				}
+				// if(pass->numtcmods) {
+				// 	mat4_t texMatrix;
+				// 	Matrix4_Identity(texMatrix);
+				// 	RB_ApplyTCMods(pass, texMatrix);
+				// 	setTexMatrixCB( texMatrix, passCB.textureMatrix );
+				// }
 
 				struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_MATERIAL, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 				struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->state);
 
-				FR_CmdBeginRendering(cmd);
+
+				// NriBarrierGroupDesc barrierGroupDesc = { 0 };
+				// barrierGroupDesc.textureNum = numTextureBarrier;
+				// barrierGroupDesc.textures = textureBarriers;
+				// rsh.nri.coreI.CmdBarrier( cmd->cmd, &barrierGroupDesc );
+
+				// FR_CmdBeginRendering(cmd);
 
 				if(RP_ProgramHasUniform(program, Create_DescriptorHandle("pass"))) {
 					UpdateFrameUBO( cmd, &cmd->uboPassObject, &passCB, sizeof(struct DefaultQ3ShaderCB));
@@ -1393,10 +1428,9 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 					cmd->drawElements.firstVert,
 					0);
 
-				FR_CmdEndRendering(cmd);
+				// FR_CmdEndRendering(cmd);
 				break;
 			}
-			// render as plain Q3A shader, which is less computation-intensive
 		}
 		case GLSL_PROGRAM_TYPE_Q3A_SHADER: {
 			r_glslfeat_t programFeatures = features;
@@ -1505,8 +1539,8 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				programFeatures |= ( i * GLSL_SHADER_Q3_LIGHTSTYLE0 );
 			}
 
-			size_t numTextureBarrier = 0;
-			NriTextureBarrierDesc textureBarriers[16] = {}; 
+			// size_t numTextureBarrier = 0;
+			// NriTextureBarrierDesc textureBarriers[16] = {}; 
 			size_t descriptorSize = 0;
 			struct glsl_descriptor_binding_s descriptors[16] = { 0 };
 
@@ -1515,19 +1549,6 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 					.descriptor = rsh.screenDepthTextureCopy->descriptor, 
 					.handle = Create_DescriptorHandle( "u_DepthTexture" ) 
 				};
-				if(rsh.screenDepthTextureCopy->currentLayout.layout != NriLayout_SHADER_RESOURCE) {
-					NriAccessLayoutStage after = (NriAccessLayoutStage) {
-							.layout = NriLayout_SHADER_RESOURCE,
-							.access = NriAccessBits_SHADER_RESOURCE,
-							.stages = NriStageBits_FRAGMENT_SHADER 
-					};
-					textureBarriers[numTextureBarrier++] = (NriTextureBarrierDesc){
-						.texture = rsh.screenDepthTextureCopy->texture,
-						.before = rsh.screenDepthTextureCopy->currentLayout,
-						.after =after  
-					};
-					rsh.screenDepthTextureCopy->currentLayout = after;
-				}
 			}
 			if( shaderPassImage ) {
 				if(RT_NumberChannels(shaderPassImage->formatDef) == 1) {
@@ -1541,20 +1562,6 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){ 
 					.descriptor = shaderPassImage->samplerDescriptor, 
 					.handle = Create_DescriptorHandle( "u_BaseSampler" ) };
-
-				if(shaderPassImage->currentLayout.layout != NriLayout_SHADER_RESOURCE) {
-					NriAccessLayoutStage after = (NriAccessLayoutStage) {
-							.layout = NriLayout_SHADER_RESOURCE,
-							.access = NriAccessBits_SHADER_RESOURCE,
-							.stages = NriStageBits_FRAGMENT_SHADER 
-					};
-					textureBarriers[numTextureBarrier++] = (NriTextureBarrierDesc){
-						.texture = shaderPassImage->texture,
-						.before = shaderPassImage->currentLayout,
-						.after = after  
-					};
-					shaderPassImage->currentLayout = after;
-				}
 			}
 
 			for( int i = 0; i < numLightMaps; i++ ) {
@@ -1563,32 +1570,19 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 					.descriptor = lightmapImage->descriptor, 
 					.registerOffset = i, 
 					.handle = Create_DescriptorHandle( "lightmapTexture" ) };
-					
-				if(lightmapImage->currentLayout.layout != NriLayout_SHADER_RESOURCE) {
-					NriAccessLayoutStage after = (NriAccessLayoutStage) {
-							.layout = NriLayout_SHADER_RESOURCE,
-							.access = NriAccessBits_SHADER_RESOURCE,
-							.stages = NriStageBits_FRAGMENT_SHADER 
+				if(i == 0) {
+					descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){
+						.descriptor = lightmapImage->samplerDescriptor, 
+						.handle = Create_DescriptorHandle( "lightmapTextureSample" ) 
 					};
-					textureBarriers[numTextureBarrier++] = (NriTextureBarrierDesc){
-						.texture = lightmapImage->texture,
-						.before = lightmapImage->currentLayout,
-						.after = after  
-					};
-					lightmapImage->currentLayout = after;
 				}
 			}
-			NriBarrierGroupDesc barrierGroupDesc = { 0 };
-			barrierGroupDesc.textureNum = numTextureBarrier;
-			barrierGroupDesc.textures = textureBarriers;
-			rsh.nri.coreI.CmdBarrier( cmd->cmd, &barrierGroupDesc ); //, NULL, NriBarrierDependency_COPY_STAGE);
   
 			struct glsl_program_s *program =
 				RP_ResolveProgram( GLSL_PROGRAM_TYPE_Q3A_SHADER, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->state);
 
-  			FR_CmdBeginRendering(cmd);	
-			rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
+  			rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
 			rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
 
 			mat4_t texMatrix;
@@ -1619,7 +1613,6 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				cmd->drawElements.firstElem,
 				cmd->drawElements.firstVert,
 				0);
-			FR_CmdEndRendering(cmd);
 			break;
 		}
 		case GLSL_PROGRAM_TYPE_DISTORTION: {
@@ -2386,27 +2379,28 @@ int RB_RegisterProgram( int type, const char *name, const char *deformsKey, cons
 int RB_BindProgram( int program )
 {
 	assert(false);
-	int object;
+	// int object;
 
-	if( program == rb.currentProgram ) {
-		return rb.currentProgramObject;
-	}
-
-	rb.currentProgram = program;
-	// if( !program ) {
-	// 	rb.currentProgramObject = 0;
-	// 	qglUseProgram( 0 );
-	// 	return 0;
+	// if( program == rb.currentProgram ) {
+	// 	return rb.currentProgramObject;
 	// }
 
-	// object = RP_GetProgramObject( program );
-	// if( object ) {
-	// 	qglUseProgram( object );
-	// }
-	rb.currentProgramObject = object;
-	rb.dirtyUniformState = true;
-	rb.stats.c_totalPrograms++;
-	return object;
+	// rb.currentProgram = program;
+	// // if( !program ) {
+	// // 	rb.currentProgramObject = 0;
+	// // 	qglUseProgram( 0 );
+	// // 	return 0;
+	// // }
+
+	// // object = RP_GetProgramObject( program );
+	// // if( object ) {
+	// // 	qglUseProgram( object );
+	// // }
+	// rb.currentProgramObject = object;
+	// rb.dirtyUniformState = true;
+	// rb.stats.c_totalPrograms++;
+	// return object;
+	return 0;
 }
 
 static void RB_RenderPass( struct frame_cmd_buffer_s *cmd, const shaderpass_t *pass )

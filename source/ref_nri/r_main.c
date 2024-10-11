@@ -1049,7 +1049,6 @@ static void R_Clear(struct frame_cmd_buffer_s* frame, int bitMask )
 	if(!hasClearOperation) 
 		return;
 	
-
 	NriAttachmentsDesc attachmentsDesc = {};
 	attachmentsDesc.depthStencil = frame->state.depthAttachment;
 	attachmentsDesc.colorNum = frame->state.numColorAttachments;
@@ -1331,7 +1330,11 @@ void R_RenderView(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 
 	if( r_speeds->integer )
 		msec = ri.Sys_Milliseconds();
+	
+	FR_CmdBeginRendering( frame );
 	R_DrawSurfaces(frame, rn.meshlist );
+	FR_CmdEndRendering(frame);
+
 	if( r_speeds->integer )
 		rf.stats.t_draw_meshes += ( ri.Sys_Milliseconds() - msec );
 

@@ -123,7 +123,7 @@ typedef struct {
 
 static bool __R_IsValidFeatureIter( feature_iter_t *iter )
 {
-	return iter->it != NULL && iter->bits > 0;
+	return iter->it != NULL;
 }
 
 static feature_iter_t __R_NextFeature( feature_iter_t iter )
@@ -1799,10 +1799,12 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	for( size_t i = 0; i < def->numColorAttachments; i++ ) {
 		hash = hash_u32( hash, def->pipelineLayout.colorFormats[i] );
 	}
+	// if(def->pipelineLayout.blendEnabled) {
+	hash = hash_u32( hash, def->pipelineLayout.blendEnabled );
 	hash = hash_u32( hash, def->pipelineLayout.colorSrcFactor );
 	hash = hash_u32( hash, def->pipelineLayout.colorDstFactor );
+	// }
 	hash = hash_u32( hash, def->pipelineLayout.cullMode);
-	// hash = hash_u32( hash, def->pipelineLayout.blendEnabled);
 	hash = hash_u32( hash, def->pipelineLayout.compareFunc);
 	hash = hash_u32( hash, def->pipelineLayout.depthWrite);
 
@@ -1817,7 +1819,7 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 		colorAttachmentDesc[i].colorBlend.srcFactor = def->pipelineLayout.colorSrcFactor; 
 		colorAttachmentDesc[i].colorBlend.dstFactor = def->pipelineLayout.colorDstFactor;
 		colorAttachmentDesc[i].colorWriteMask = def->pipelineLayout.colorWriteMask;
-		colorAttachmentDesc[i].blendEnabled = true;
+		colorAttachmentDesc[i].blendEnabled = def->pipelineLayout.blendEnabled;
 	}
 	graphicsPipelineDesc.outputMerger.colorNum = def->numColorAttachments;
 	graphicsPipelineDesc.outputMerger.colors = colorAttachmentDesc;
@@ -1828,6 +1830,7 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	graphicsPipelineDesc.shaders = shaderDesc;
 	graphicsPipelineDesc.rasterization.cullMode = def->pipelineLayout.cullMode;
 	graphicsPipelineDesc.rasterization.fillMode = NriFillMode_SOLID;
+	graphicsPipelineDesc.rasterization.frontCounterClockwise = true;
 	graphicsPipelineDesc.rasterization.viewportNum = def->numColorAttachments;
 
 	graphicsPipelineDesc.outputMerger.depth.write = def->pipelineLayout.depthWrite;
@@ -1994,7 +1997,7 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 	if( !deforms )
 		deformsKey = "";
 
-	const uint32_t hashIndex = hash_u64( HASH_INITIAL_VALUE, features ) % GLSL_PROGRAMS_HASH_SIZE;
+	const uint64_t hashIndex = hash_u64( HASH_INITIAL_VALUE, features ) % GLSL_PROGRAMS_HASH_SIZE;
 	for( struct glsl_program_s *program = r_glslprograms_hash[type][hashIndex]; program; program = program->hash_next ) {
 		if( ( program->features == features ) && !strcmp( program->deformsKey, deformsKey ) ) {
 			return program;
@@ -2032,7 +2035,7 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 
 struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
 {
-	const uint32_t hashIndex = hash_u64( HASH_INITIAL_VALUE, features ) % GLSL_PROGRAMS_HASH_SIZE;
+	const uint64_t hashIndex = hash_u64( HASH_INITIAL_VALUE, features ) % GLSL_PROGRAMS_HASH_SIZE;
 	struct glsl_program_s *program = r_glslprograms + r_numglslprograms++;
 	sds featuresStr = sdsempty();
 	sds fullName = sdsnew( name );
@@ -2172,7 +2175,12 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 
 			error = true;
 			goto shader_done;
-		}
+		} 
+		// else {
+		// 	sds shaderDebugPath = sdscatfmt( sdsempty(), "logs/shader_debug/%s_%u.%s.glsl", name, features, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ) );
+		// 	__RP_writeTextToFile( shaderDebugPath, glslang_shader_get_preprocessed_code(shader) );
+		// 	sdsfree( shaderDebugPath );
+		// }
 		glslang_program = glslang_program_create();
 		glslang_program_add_shader( glslang_program, shader );
 

@@ -117,12 +117,12 @@ struct ObjectCB {
    float pad0;
    struct vec3 entityDist;
    float pad1;
+   struct vec4 texutreMatrix[2];
 };
 
 // pass
 
 struct DefaultCellShadeCB {
-	struct vec4 textureMatrix[2];
 	struct vec3 entityColor;
 	struct mat3 reflectionTexMatrix;
 };
@@ -138,10 +138,8 @@ struct DefaultShadowCB {
     struct vec4 shadowEntitydist[4];
 };
 
-
 struct DefaultDistortionCB {
     struct vec4 textureParams;
-    struct vec4 textureMatrix[2];
     float frontPlane;
 };
 
@@ -149,7 +147,6 @@ struct DefaultQ3ShaderCB {
     struct vec3 wallColor;
     float softParticleScale;
     struct vec4 textureParam;
-    struct vec4 textureMatrix[2];
     struct vec3 floorColor;
     struct vec2 zRange;
     struct mat4 genTexMatrix;
@@ -157,16 +154,15 @@ struct DefaultQ3ShaderCB {
 };
 
 struct DefaultMaterialCB {
-    struct vec4 entityColor;
-    struct vec4 textureMatrix[2];
-    struct vec4 lightstyleColor[4];
-    struct vec4 deluxLightMapScale;
-    float offsetScale;
-    struct vec3 lightDir;
-    float glossIntensity;
-  	struct vec3 floorColor;
-    float glossExponent;
-    struct vec3 wallColor;
+  struct vec4 entityColor;
+  struct vec4 lightstyleColor[4];
+  struct vec4 deluxLightMapScale;
+  struct vec3 lightDir;
+  float glossIntensity;
+  struct vec3 floorColor;
+  float glossExponent;
+  struct vec3 wallColor;
+  float offsetScale;
 };
 
 

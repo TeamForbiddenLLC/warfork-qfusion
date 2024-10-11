@@ -1,6 +1,5 @@
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultMaterialCB {
   vec4 entityColor;
-  vec4 textureMatrix[2];
   vec3 lightstyleColor[4];
   vec4 deluxLightMapScale;
   vec3 lightDir;

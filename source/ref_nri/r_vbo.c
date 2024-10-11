@@ -202,7 +202,10 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 			vbo->spritePointsOffset = vertexByteStride;
 			vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_AUTOSPRITE_BIT, halfFloatVattribs ) * 4;
 		}
-		NriBufferDesc vertexBufferDesc = { .size = vertexByteStride * desc->numVerts, .usageMask = NriBufferUsageBits_VERTEX_BUFFER };
+		NriBufferDesc vertexBufferDesc = { 
+			.size = vertexByteStride * desc->numVerts, 
+			.usageMask = NriBufferUsageBits_VERTEX_BUFFER 
+		};
 		rsh.nri.coreI.CreateBuffer( rsh.nri.device, &vertexBufferDesc, &vbo->vertexBuffer );
 	}
 
@@ -211,7 +214,9 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 
 	if( hasInstanceBuffer ) {
 		vbo->instancesOffset = instanceByteStride;
-		NriBufferDesc instanceBufferDesc = { .size = instanceByteStride * desc->numInstances, .usageMask = NriBufferUsageBits_CONSTANT_BUFFER };
+		NriBufferDesc instanceBufferDesc = { 
+			.size = instanceByteStride * desc->numInstances, 
+			.usageMask = NriBufferUsageBits_CONSTANT_BUFFER };
 		rsh.nri.coreI.CreateBuffer( rsh.nri.device, &instanceBufferDesc, &vbo->instanceBuffer );
 	}
 
@@ -273,11 +278,16 @@ void R_UploadVBOVertexRawData( mesh_vbo_t *vbo, int vertsOffset, int numVerts, c
 		R_DeferDataSync();
 	}
 
-	buffer_upload_desc_t uploadDesc = {};
-	uploadDesc.target = vbo->vertexBuffer;
-	uploadDesc.numBytes = numVerts * vbo->vertexSize;
-	uploadDesc.byteOffset = vertsOffset * vbo->vertexSize;
-	vbo->vertexStage = R_ResourceTransitionBuffer( vbo->vertexBuffer, ( NriAccessStage ){} );
+	buffer_upload_desc_t uploadDesc = {
+		.target = vbo->vertexBuffer,
+		.numBytes = numVerts * vbo->vertexSize,
+		.byteOffset = vertsOffset * vbo->vertexSize,
+		.after = ( NriAccessStage ){
+			.access = NriAccessBits_VERTEX_BUFFER,
+			.stages = NriStageBits_VERTEX_SHADER
+		},
+	};
+	// vbo->vertexStage = R_ResourceTransitionBuffer( vbo->vertexBuffer, ( NriAccessStage ){} );
 	R_ResourceBeginCopyBuffer( &uploadDesc );
 	memcpy( uploadDesc.data, data, uploadDesc.numBytes );
 	R_ResourceEndCopyBuffer( &uploadDesc );
@@ -384,7 +394,7 @@ void R_FillNriVertexAttrib(mesh_vbo_t* vbo, NriVertexAttributeDesc* desc, size_t
 			.offset = vbo->normalsOffset, 
 			.format = ( vbo->halfFloatAttribs & VATTRIB_NORMAL_BIT ) ? NriFormat_RGBA16_SFLOAT : NriFormat_RGBA32_SFLOAT, 
 			.vk = { VATTRIB_NORMAL }, 
-			.d3d = {.semanticName = "NORMAL", .semanticIndex = VATTRIB_SVECTOR   },
+			.d3d = {.semanticName = "NORMAL", .semanticIndex = VATTRIB_NORMAL   },
 			.streamIndex = 0 };
 	}
 	
@@ -778,9 +788,9 @@ vattribmask_t R_UploadVBOVertexData( mesh_vbo_t *vbo, int vertsOffset, vattribma
 
 	assert( vbo != NULL );
 	assert( mesh != NULL );
-	if( !vbo || !vbo->vertexId ) {
-		return 0;
-	}
+	// if( !vbo || !vbo->vertexId ) {
+	// 	return 0;
+	// }CmdCopyBuffer
 
 	if( vbo->tag != VBO_TAG_STREAM ) {
 		R_DeferDataSync();
@@ -830,10 +840,15 @@ void R_UploadVBOElemData( mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, con
 {
 	assert( vbo != NULL );
 
-	buffer_upload_desc_t uploadDesc = {};
-	uploadDesc.target = vbo->indexBuffer;
-	uploadDesc.numBytes = mesh->numElems * sizeof( elem_t );
-	uploadDesc.byteOffset = elemsOffset * sizeof( elem_t );
+	buffer_upload_desc_t uploadDesc = {
+		.target = vbo->indexBuffer,
+		.numBytes = mesh->numElems * sizeof( elem_t ),
+		.byteOffset = elemsOffset * sizeof( elem_t ),
+		.after = ( NriAccessStage ){
+			.access = NriAccessBits_INDEX_BUFFER,
+			.stages = NriStageBits_INDEX_INPUT
+		},
+	};
 	//vbo->indexStage = R_ResourceTransitionBuffer( vbo->indexBuffer, (NriAccessStage){});
 	R_ResourceBeginCopyBuffer( &uploadDesc );
 	elem_t *dest = (elem_t *)uploadDesc.data;
@@ -866,11 +881,16 @@ vattribmask_t R_UploadVBOInstancesData( mesh_vbo_t *vbo, int instOffset, int num
 	}
 
 	if( vbo->instancesOffset ) {
-		buffer_upload_desc_t uploadDesc = {};
-		uploadDesc.target = vbo->instanceBuffer;
-		uploadDesc.numBytes = numInstances * sizeof( instancePoint_t );
-		uploadDesc.byteOffset = instOffset * sizeof( instancePoint_t );
-		vbo->instanceStage = R_ResourceTransitionBuffer( vbo->instanceBuffer, ( NriAccessStage ){} );
+		buffer_upload_desc_t uploadDesc = {
+			.target = vbo->instanceBuffer,
+			.numBytes = numInstances * sizeof( instancePoint_t ),
+			.byteOffset = instOffset * sizeof( instancePoint_t ),
+			.after = ( NriAccessStage ){
+				.access = NriAccessBits_CONSTANT_BUFFER,
+				.stages = NriStageBits_VERTEX_SHADER
+			},
+		};
+		// vbo->instanceStage = R_ResourceTransitionBuffer( vbo->instanceBuffer, ( NriAccessStage ){} );
 		R_ResourceBeginCopyBuffer( &uploadDesc );
 		instancePoint_t *dest = (instancePoint_t *)uploadDesc.data;
 		for( size_t i = 0; i < numInstances; i++ ) {
@@ -880,6 +900,7 @@ vattribmask_t R_UploadVBOInstancesData( mesh_vbo_t *vbo, int instOffset, int num
 	}
 	return 0;
 }
+
 void R_FreeVBOsByTag( vbo_tag_t tag )
 {
 	mesh_vbo_t *vbo;
