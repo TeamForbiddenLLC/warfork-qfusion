@@ -1372,7 +1372,7 @@ void R_DrawSkeletalSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const
 
 		RB_AddDynamicMesh( NULL, e, shader, fog, portalSurface, shadowBits, &dynamicMesh, GL_TRIANGLES, 0.0f, 0.0f );
 
-		RB_FlushDynamicMeshes(NULL);
+		RB_FlushDynamicMeshes(cmd);
 	}
 }
 

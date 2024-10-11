@@ -1567,9 +1567,9 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 	const struct base_format_def_s *definition = ktxContext.desc;
 
 	const enum texture_format_e dstFormat = R_FORMAT_RGBA8_UNORM;
-	const uint_fast16_t numberMipLevels = R_KTXGetNumberMips( &ktxContext );
 	const uint32_t numberOfFaces = R_KTXGetNumberFaces( &ktxContext );
 	const size_t destBlockSize = RT_BlockSize(R_BaseFormatDef(dstFormat));
+	const uint16_t numberOfMipLevels = R_KTXIsCompressed( &ktxContext )  ? 1 : (( image->flags & IT_NOMIPMAP ) ? 1 : R_KTXGetNumberMips( &ktxContext ));
 	NriTextureDesc textureDesc = { 
 		.width = R_KTXWidth( &ktxContext ),
 		.height = R_KTXHeight( &ktxContext ),
@@ -1579,7 +1579,7 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		.format = R_NRIFormat( dstFormat ),
 		.sampleNum = 1,
 		.type = NriTextureType_TEXTURE_2D,
-		.mipNum = numberMipLevels 
+		.mipNum = numberOfMipLevels 
 	};
 
 	NriResourceGroupDesc resourceGroupDesc = {
@@ -1646,7 +1646,7 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 				const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
 				memset( &( (uint8_t *)uploadDesc.data )[dstRowStart], 255, uploadDesc.rowPitch );
 				for( size_t column = 0; column < uncomp.width; column++ ) {
-					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], &uncomp.buffer[(uncomp.width * srcBlockSize) + ( column * srcBlockSize )], min( 4,  srcBlockSize) );
+					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], &uncomp.buffer[(uncomp.width * srcBlockSize * slice) + ( column * srcBlockSize )], min( 4,  srcBlockSize) );
 				}
 			}
 			R_ResourceEndCopyTexture( &uploadDesc );
@@ -1659,7 +1659,6 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		const bool isBGRTexture = RT_ExpectChannelsMatch( definition, expectBGR, Q_ARRAY_COUNT( expectBGR ) ) || RT_ExpectChannelsMatch( definition, expectBGRA, Q_ARRAY_COUNT( expectBGRA ) );
 		image->flags |= ( ( RT_ExpectChannelsMatch( definition, expectA, Q_ARRAY_COUNT( expectA ) ) ? IT_ALPHAMASK : 0 ) );
 		image->samples = RT_NumberChannels( definition );
-		const uint16_t numberOfMipLevels = ( image->flags & IT_NOMIPMAP ) ? 1 : R_KTXGetNumberMips( &ktxContext );
 
 		enum texture_logical_channel_e swizzleChannel[R_LOGICAL_C_MAX] = { 0 };
 		// R_ResourceTransitionTexture(image->texture, (NriAccessLayoutStage){} );
@@ -1698,7 +1697,7 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 					const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
 					memset( &( (uint8_t *)uploadDesc.data )[dstRowStart], 255, uploadDesc.rowPitch );
 					for( size_t column = 0; column < texBuffer->width; column++ ) {
-						memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], &texBuffer->buffer[(texBuffer->width * srcBlockSize) + ( column * srcBlockSize )], min( 4, srcBlockSize) );
+						memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], &texBuffer->buffer[(texBuffer->width * srcBlockSize * slice) + ( column * srcBlockSize )], min( 4, srcBlockSize) );
 					}
 				}
 				R_ResourceEndCopyTexture( &uploadDesc );
@@ -2469,10 +2468,19 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	assert(uploadCount <= 6);
 
 	const uint32_t mipSize = __R_calculateMipMapLevel( flags, uploads[0].buffer.width, uploads[0].buffer.height, minmipsize );
-	// const struct base_format_def_s* srcFormatDef = uploads[0].buffer.def;
-	const struct base_format_def_s* destFormatDef = R_BaseFormatDef(R_FORMAT_RGBA8_UNORM);
-	
+	enum texture_format_e destFormat = R_FORMAT_RGBA8_UNORM;
+	switch (uploads[0].buffer.def->format) {
+		case R_FORMAT_L8_A8_UNORM:
+			destFormat = R_FORMAT_RGBA8_UNORM;
+			break;
+		case R_FORMAT_A8_UNORM:
+			destFormat = R_FORMAT_R8_UNORM;
+			break;
+		default:
+			break;
+	}
 
+	struct base_format_def_s* destFormatDef = R_BaseFormatDef(destFormat);
 	const uint32_t destBlockSize = R_FormatBitSizePerBlock( destFormatDef->format ) / 8;
 	NriTextureDesc textureDesc = { 
 								   .width = uploads[0].buffer.width,

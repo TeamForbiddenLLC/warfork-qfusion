@@ -1435,7 +1435,7 @@ static bool R_LoadKTX( int ctx, image_t *image, const char *pathname )
 		const uint32_t numberOfFaces = R_KTXGetNumberFaces(&ktxContext);
 		
 		uint8_t *images[32 * 6] = {0};
-    enum texture_logical_channel_e swizzleChannel[R_LOGICAL_C_MAX ] = {0};
+    	enum texture_logical_channel_e swizzleChannel[R_LOGICAL_C_MAX ] = {0};
 		for( uint16_t mipIndex = 0; mipIndex < numberOfMipLevels; mipIndex++ ) {
 			for( uint32_t faceIndex = 0; faceIndex < numberOfFaces; faceIndex++ ) {
 				struct texture_buf_s *texBuffer = R_KTXResolveBuffer( &ktxContext, mipIndex, faceIndex, 0 );
