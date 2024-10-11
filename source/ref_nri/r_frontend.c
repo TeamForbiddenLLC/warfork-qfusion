@@ -288,6 +288,7 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateCommandBuffer( rsh.frameCmds[i].allocator, &rsh.frameCmds[i].cmd ) );
 		InitBlockBufferPool( &rsh.nri, &rsh.frameCmds[i].uboBlockBuffer, &uboBlockBufferDesc );
 	}
+
 	{
 		uint32_t swapChainTextureNum = 0;
 		NriTexture *const *swapChainTextures = rsh.nri.swapChainI.GetSwapChainTextures( rsh.swapchain, &swapChainTextureNum );
@@ -606,30 +607,33 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 		rsh.nri.coreI.CmdBarrier( frame->cmd, &barrierGroupDesc );
 	}
 
+	FR_CmdResetAttachmentToBackbuffer(frame);
+	if(forceClear)
 	{
+	
 		NriAttachmentsDesc attachmentsDesc = {};
-		attachmentsDesc.colorNum = 1;
-		const NriDescriptor *colorAttachments[] = { 
-			frame->textureBuffers.colorAttachment
-		};
-		attachmentsDesc.depthStencil = frame->textureBuffers.depthAttachment;
-		attachmentsDesc.colors = colorAttachments;
+		attachmentsDesc.depthStencil = frame->state.depthAttachment;
+		attachmentsDesc.colorNum = frame->state.numColorAttachments;
+		attachmentsDesc.colors = frame->state.colorAttachment;
 		rsh.nri.coreI.CmdBeginRendering( frame->cmd, &attachmentsDesc );
 		{
 			const NriTextureDesc *backBufferDesc = rsh.nri.coreI.GetTextureDesc( frame->textureBuffers.colorTexture );
 
-			NriClearDesc clearDesc[2] = {};
-			clearDesc[0].value.color = ( NriColor ){ .f = { 0.0f, 0.0f, 1.0f, 1.0f } };
-			clearDesc[0].planes = NriPlaneBits_COLOR;
-			
-			clearDesc[1].value.depthStencil = ( NriDepthStencil ){ .depth = 1.0f, .stencil = 0.0f };
-			clearDesc[1].planes = NriPlaneBits_DEPTH;
+			NriClearDesc clearDesc[MAX_COLOR_ATTACHMENTS + 1] = {};
+			size_t numClearDesc = 0;
+			for(size_t i = 0; i < attachmentsDesc.colorNum; i++) {
+				clearDesc[numClearDesc].value.color = ( NriColor ){ .f = { 0.0f, 0.0f, 0.0f, 1.0f } };
+				clearDesc[numClearDesc].planes = NriPlaneBits_COLOR;
+				numClearDesc++;
+			}
+			clearDesc[numClearDesc].value.depthStencil = ( NriDepthStencil ){ .depth = 1.0f, .stencil = 0.0f };
+			clearDesc[numClearDesc].planes = NriPlaneBits_DEPTH;
+			numClearDesc++;
 
-			rsh.nri.coreI.CmdClearAttachments( frame->cmd, clearDesc, 2, NULL, 0 );
+			rsh.nri.coreI.CmdClearAttachments( frame->cmd, clearDesc, numClearDesc, NULL, 0 );
 		}
 		rsh.nri.coreI.CmdEndRendering( frame->cmd );
 	}
-	FR_CmdResetAttachmentToBackbuffer(frame);
 
 	//FR_CmdSetDefaultState(frame);
 	// take the frame the backend is not busy processing
@@ -776,10 +780,12 @@ void RF_AddLightStyleToScene( int style, float r, float g, float b )
 
 void RF_RenderScene( const refdef_t *fd )
 {
+	struct frame_cmd_buffer_s *cmd = R_ActiveFrameCmd();
+	R_RenderScene( cmd, fd );
+	
 	//TODO: scene rendering will need to happen at some point
 	//const uint32_t bufferedFrameIndex = rsh.frameCnt % NUMBER_FRAMES_FLIGHT;
 	//struct frame_cmd_buffer_s* cmd = &rsh.frameCmds[bufferedFrameIndex];
-	//R_RenderScene( cmd, fd );
 	//rrf.frame->RenderScene( rrf.frame, fd );
 }
 
@@ -840,6 +846,7 @@ void RF_SetScissor( int x, int y, int w, int h )
 
 void RF_GetScissor( int *x, int *y, int *w, int *h )
 {
+
 	if( x )
 		*x = rrf.scissor[0];
 	if( y )
@@ -864,6 +871,11 @@ void RF_ResetScissor( void )
 
 void RF_SetCustomColor( int num, int r, int g, int b )
 {
+	if( num < 0 || num >= NUM_CUSTOMCOLORS )
+		return;
+	Vector4Set( rsh.customColors[num], (uint8_t)r, (uint8_t)g, (uint8_t)b, 255 );
+ 	// *(int *)rrf.customColors[num] = *(int *)rgba;
+
  // byte_vec4_t rgba;
 
  // Vector4Set( rgba, r, g, b, 255 );

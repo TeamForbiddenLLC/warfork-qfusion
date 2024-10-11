@@ -67,7 +67,7 @@ vec4 QF_VertexRGBGen(
   #elif defined(APPLY_RGB_ONE_MINUS_VERTEX)
 	  Color.rgb = vec3(1.0) - VertexColor.rgb;
   #elif defined(APPLY_RGB_GEN_DIFFUSELIGHT)
-	  Color.rgb = vec3(vc.lightAmbient.rgb + max(dot(obj.lightDir.xyz, Normal), 0.0) * obj.lightDiffuse.xyz);
+	  Color.rgb = vec3(obj.lightAmbient.rgb + max(dot(obj.lightDir.xyz, Normal), 0.0) * obj.lightDiffuse.xyz);
   #endif
 
   #if defined(APPLY_ALPHA_CONST)
@@ -143,14 +143,14 @@ void QF_TransformVerts(inout vec4 Position, inout vec3 Normal, inout vec3 Tangen
 			const float t = sin(TexCoord.s * arg.x + u_QF_ShaderTime * arg.z);
 			Position.xyz += max (-1.0 + arg.w, t) * arg.y * Normal.xyz;
 		#elif defined(DEFORMV_AUTOSPRITE)
-		 	 vec3 right = (1.0 + step(0.5, TexCoord.s) * -2.0) * frame.viewAxis[1] * u_QF_MirrorSide;
+		 	 vec3 right = (1.0 + step(0.5, TexCoord.s) * -2.0) * frame.viewAxis[1] * frame.mirrorSide;
 		 	 vec3 up = (1.0 + step(0.5, TexCoord.t) * -2.0) * frame.viewAxis[2];
 		 	 vec3 forward = -1.0 * frame.viewAxis[0];
 		 	 Position.xyz = a_SpritePoint.xyz + (right + up) * a_SpritePoint.w;
 		 	 Normal.xyz = forward;
 		 	 TexCoord.st = vec2(step(0.5, TexCoord.s),step(0.5, TexCoord.t));
 		#elif defined(DEFORMV_AUTOPARTICLE)
-		 	 vec3 right = (1.0 + TexCoord.s * -2.0) * frame.viewAxis[1] * u_QF_MirrorSide;
+		 	 vec3 right = (1.0 + TexCoord.s * -2.0) * frame.viewAxis[1] * frame.mirrorSide;
 		 	 vec3 up = (1.0 + TexCoord.t * -2.0) * frame.viewAxis[2];
 		 	 vec3 forward = -1.0 * frame.viewAxis[0];
 		 	 // prevent the particle from disappearing at large distances

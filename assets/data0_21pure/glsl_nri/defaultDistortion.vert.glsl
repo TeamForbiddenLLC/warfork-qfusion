@@ -21,11 +21,11 @@ void main(void)
 
 	v_FrontColor = vec4(QF_VertexRGBGen( Position, Normal, inColor));
 
-	v_TexCoord.st = TextureMatrix2x3Mul(pass.textureMatrix, TexCoord);
+	v_TexCoord.st = TextureMatrix2x3Mul(obj.textureMatrix, TexCoord);
 
 	vec4 textureMatrix3_[2];
-	textureMatrix3_[0] =  pass.textureMatrix[0];
-	textureMatrix3_[1] = -pass.textureMatrix[1];
+	textureMatrix3_[0] =  obj.textureMatrix[0];
+	textureMatrix3_[1] = -obj.textureMatrix[1];
 	v_TexCoord.pq = TextureMatrix2x3Mul(textureMatrix3_, TexCoord);
 
 #ifdef APPLY_EYEDOT

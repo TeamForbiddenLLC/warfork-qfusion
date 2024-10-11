@@ -215,7 +215,6 @@ struct glsl_program_s {
 	char *name;
 	int type;
 	r_glslfeat_t features;
-	const char *string;
 	char *deformsKey;
 	struct glsl_program_s *hash_next;
 

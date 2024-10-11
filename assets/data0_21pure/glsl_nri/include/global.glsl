@@ -26,19 +26,20 @@
 #include "attributes.glsl"
 
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 0) uniform ObjectCB {
-   vec4 fogEyePlane;
-   vec4 fogPlane;
-   mat4 mvp;
-   mat4 mv;
-   vec4 rgbGenFuncArgs;
-   vec4 alphaGenFuncArgs;
-   vec4 colorConst;
-   vec4 lightAmbient;
-   vec4 lightDiffuse;
-   vec3 entityOrigin;
-   float isAlphaBlending;
-   vec3 lightDir;
-   vec3 entityDist;
+    vec4 fogEyePlane;
+    vec4 fogPlane;
+    mat4 mvp;
+    mat4 mv;
+    vec4 rgbGenFuncArgs;
+    vec4 alphaGenFuncArgs;
+    vec4 colorConst;
+    vec3 lightAmbient;
+    vec4 lightDiffuse;
+    vec3 entityOrigin;
+    float isAlphaBlending;
+    vec3 lightDir;
+    vec3 entityDist;
+    vec4 textureMatrix[2];
 } obj;
 
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 1) uniform TransformCB { 

@@ -7,27 +7,29 @@ layout(set = DESCRIPTOR_GLOBAL_SET, binding = 1) uniform texture2D lightmapTextu
 //layout(set = DESCRIPTOR_GLOBAL_SET, binding = 1 + (16 * 2)) uniform texture2D lightmapTexture2[16];
 //layout(set = DESCRIPTOR_GLOBAL_SET, binding = 1 + (16 * 3)) uniform texture2D lightmapTexture3[16];
 
-layout(set = DESCRIPTOR_PASS_SET, binding = 3) uniform sampler   baseSampler;
+layout(set = DESCRIPTOR_PASS_SET, binding = 3) uniform sampler   u_BaseSampler;
 layout(set = DESCRIPTOR_PASS_SET, binding = 4) uniform texture2D u_BaseTexture;
-layout(set = DESCRIPTOR_PASS_SET, binding = 5) uniform sampler   normalSampler;
-layout(set = DESCRIPTOR_PASS_SET, binding = 6) uniform texture2D u_NormalmapTexture;
-layout(set = DESCRIPTOR_PASS_SET, binding = 7) uniform sampler   glossSampler;
+layout(set = DESCRIPTOR_PASS_SET, binding = 5) uniform sampler   u_NormalSampler;
+layout(set = DESCRIPTOR_PASS_SET, binding = 6) uniform texture2D u_NormalTexture;
+layout(set = DESCRIPTOR_PASS_SET, binding = 7) uniform sampler   u_GlossSampler;
 layout(set = DESCRIPTOR_PASS_SET, binding = 8) uniform texture2D u_GlossTexture;
 
-layout(set = DESCRIPTOR_PASS_SET, binding = 9) uniform sampler   decalSampler;
+layout(set = DESCRIPTOR_PASS_SET, binding = 9) uniform sampler   u_DecalSampler;
 layout(set = DESCRIPTOR_PASS_SET, binding = 10) uniform texture2D u_DecalTexture;
 
-layout(set = DESCRIPTOR_PASS_SET, binding = 11) uniform sampler    entityDecalSampler;
+layout(set = DESCRIPTOR_PASS_SET, binding = 11) uniform sampler    u_EntityDecalSampler;
 layout(set = DESCRIPTOR_PASS_SET, binding = 12) uniform texture2D u_EntityDecalTexture;
 
 layout(location = 0) in vec3 v_Position; 
-layout(location = 1) in vec4 v_EyeVector; 
+layout(location = 1) in vec3 v_EyeVector; 
 layout(location = 2) in vec4 v_LightmapTexCoord01;
 layout(location = 3) in vec4 v_LightmapTexCoord23;
-layout(location = 5) flat in ivec4 v_LightmapLayer0123;
-layout(location = 6) in vec4  frontColor; 
-layout(location = 7) in vec4  v_TexCoord_FogCoord; 
-layout(location = 8) in mat3 v_StrMatrix; 
+layout(location = 4) flat in ivec4 v_LightmapLayer0123;
+layout(location = 5) in vec4 frontColor; 
+layout(location = 6) in vec4 v_TexCoord_FogCoord;
+layout(location = 7) in vec3 v_Tangent; 
+layout(location = 8) in vec3 v_Normal; 
+layout(location = 9) in vec3 v_Binormal; 
 
 layout(location = 0) out vec4 outFragColor;
 
@@ -79,9 +81,14 @@ vec2 OffsetMapping(sampler2D NormalmapTexture, in vec2 TexCoord, in vec3 EyeVect
 
 void main()
 {
+	mat3 strMat;
+	strMat[0] = v_Tangent;
+	strMat[1] = v_Normal;
+	strMat[2] = v_Binormal;
+
 #if defined(APPLY_OFFSETMAPPING) || defined(APPLY_RELIEFMAPPING)
 	// apply offsetmapping
-	vec2 TexCoordOffset = OffsetMapping(sampler2D(u_NormalmapTexture,normalSampler), v_TexCoord_FogCoord.st, v_EyeVector, pass.offsetScale);
+	vec2 TexCoordOffset = OffsetMapping(sampler2D(u_NormalTexture,u_NormalSampler), v_TexCoord_FogCoord.st, v_EyeVector, pass.offsetScale);
 	#define v_TexCoord TexCoordOffset
 #else
 	#define v_TexCoord v_TexCoord_FogCoord.st
@@ -100,13 +107,13 @@ void main()
 	vec4 decal = vec4 (0.0, 0.0, 0.0, 1.0);
 
 	// get the surface normal
-	surfaceNormal = normalize(vec3(texture(sampler2D(u_NormalmapTexture,normalSampler), v_TexCoord)) - vec3 (0.5));
-	surfaceNormalModelspace = normalize(v_StrMatrix * surfaceNormal);
+	surfaceNormal = normalize(vec3(texture(sampler2D(u_NormalTexture,u_NormalSampler), v_TexCoord)) - vec3 (0.5));
+	surfaceNormalModelspace = normalize(strMat * surfaceNormal);
 
 #ifdef APPLY_DIRECTIONAL_LIGHT 
 	{
 		#ifdef APPLY_DIRECTIONAL_LIGHT_FROM_NORMAL
-			vec3 diffuseNormalModelspace = v_StrMatrix[2];
+			vec3 diffuseNormalModelspace = strMat[2];
 		#else
 			vec3 diffuseNormalModelspace = pass.lightDir;
 		#endif // APPLY_DIRECTIONAL_LIGHT_FROM_NORMAL
@@ -151,7 +158,7 @@ void main()
 			#ifdef APPLY_DIRECTIONAL_LIGHT_MIX
 				color.rgb += frontColor.rgb;
 			#else
-				color.rgb += u_LightDiffuse.rgb * float(max (diffuseProduct, 0.0)) + u_LightAmbient;
+				color.rgb += obj.lightDiffuse.rgb * float(max (diffuseProduct, 0.0)) + obj.lightAmbient;
 			#endif
 
 		#endif // APPLY_CELSHADING
@@ -181,7 +188,7 @@ void main()
 
 #ifdef APPLY_AMBIENT_COMPENSATION
 	// compensate for ambient lighting
-	color.rgb += float((1.0 - max (diffuseProduct, 0.0))) * u_LightAmbient;
+	color.rgb += float((1.0 - max (diffuseProduct, 0.0))) * obj.lightAmbient;
 #endif
 
 #if NUM_LIGHTMAPS >= 2
@@ -230,34 +237,34 @@ void main()
 #ifdef APPLY_SPECULAR
 
 #ifdef NORMALIZE_DIFFUSE_NORMAL
-	vec3 specularNormal = normalize (vec3(normalize (weightedDiffuseNormalModelspace)) + vec3 (normalize (u_EntityDist - v_Position)));
+	vec3 specularNormal = normalize (vec3(normalize (weightedDiffuseNormalModelspace)) + vec3 (normalize (obj.entityDist - v_Position)));
 #else
-	vec3 specularNormal = normalize (weightedDiffuseNormalModelspace + vec3 (normalize (u_EntityDist - v_Position)));
+	vec3 specularNormal = normalize (weightedDiffuseNormalModelspace + vec3 (normalize (obj.entityDist - v_Position)));
 #endif
 
 	float specularProduct = float(dot (surfaceNormalModelspace, specularNormal));
-	color.rgb += (vec3(texture(sampler2D(u_GlossTexture, glossSampler), v_TexCoord)) * pass.glossIntensity) * pow(float(max(specularProduct, 0.0)), constants.glossExponent);
+	color.rgb += (vec3(texture(sampler2D(u_GlossTexture, u_GlossSampler), v_TexCoord)) * pass.glossIntensity) * pow(float(max(specularProduct, 0.0)), pass.glossExponent);
 #endif // APPLY_SPECULAR
 
 #if defined(APPLY_BASETEX_ALPHA_ONLY) && !defined(APPLY_DRAWFLAT)
-	color = min(color, vec4(texture(sampler2D(u_BaseTexture,baseSampler), v_TexCoord).a));
+	color = min(color, vec4(texture(sampler2D(u_BaseTexture,u_BaseSampler), v_TexCoord).a));
 #else
 	vec4 diffuse;
 
 #ifdef APPLY_DRAWFLAT
-	float n = float(step(DRAWFLAT_NORMAL_STEP, abs(v_StrMatrix[2].z)));
-	diffuse = vec4(mix(constants.wallColor, constants.floorColor, n), float(texture(sampler2D(u_BaseTexture,baseSampler), v_TexCoord).a));
+	float n = float(step(DRAWFLAT_NORMAL_STEP, abs(strMat[2].z)));
+	diffuse = vec4(mix(pass.wallColor, pass.floorColor, n), float(texture(sampler2D(u_BaseTexture,u_BaseSampler), v_TexCoord).a));
 #else
-	diffuse = vec4(texture(sampler2D(u_BaseTexture,baseSampler), v_TexCoord));
+	diffuse = vec4(texture(sampler2D(u_BaseTexture,u_BaseSampler), v_TexCoord));
 #endif
 
 #ifdef APPLY_ENTITY_DECAL
 
 #ifdef APPLY_ENTITY_DECAL_ADD
-	decal.rgb = texture(sampler2D(u_EntityDecalTexture,entityDecalSampler), v_TexCoord).rgb;
+	decal.rgb = texture(sampler2D(u_EntityDecalTexture,u_EntityDecalSampler), v_TexCoord).rgb;
 	diffuse.rgb += pass.entityColor.rgb * decal.rgb;
 #else
-	decal = vec4(pass.entityColor.rgb, 1.0) * vec4(texture(sampler2D(u_EntityDecalTexture, entityDecalSampler), v_TexCoord));
+	decal = vec4(pass.entityColor.rgb, 1.0) * vec4(texture(sampler2D(u_EntityDecalTexture, u_EntityDecalSampler), v_TexCoord));
 	diffuse.rgb = mix(diffuse.rgb, decal.rgb, decal.a);
 #endif // APPLY_ENTITY_DECAL_ADD
 
@@ -269,10 +276,10 @@ void main()
 #ifdef APPLY_DECAL
 
 #ifdef APPLY_DECAL_ADD
-	decal.rgb = vec3(frontColor.rgb) * vec3(texture(sampler2D(u_DecalTexture, decalSampler), v_TexCoord));
+	decal.rgb = vec3(frontColor.rgb) * vec3(texture(sampler2D(u_DecalTexture, u_DecalSampler), v_TexCoord));
 	color.rgb += decal.rgb;
 #else
-	decal = vec4(frontColor.rgb, 1.0) * vec4(texture(sampler2D(u_DecalTexture, decalSampler), v_TexCoord));
+	decal = vec4(frontColor.rgb, 1.0) * vec4(texture(sampler2D(u_DecalTexture, u_DecalSampler), v_TexCoord));
 	color.rgb = mix(color.rgb, decal.rgb, decal.a);
 #endif // APPLY_DECAL_ADD
 	color.a *= frontColor.a;
@@ -298,7 +305,7 @@ void main()
 
 #if defined(APPLY_FOG) && !defined(APPLY_FOG_COLOR)
 	float fogDensity = FogDensity(v_TexCoord_FogCoord.pq);
-	color.rgb = mix(color.rgb, u_FogColor, fogDensity);
+	color.rgb = mix(color.rgb, frame.fogColor, fogDensity);
 #endif
 
 	outFragColor = vec4(color);

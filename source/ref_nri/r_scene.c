@@ -299,11 +299,10 @@ static void R_BlitTextureToScrFbo( const refdef_t *fd, image_t *image, int dstFb
 	RB_Scissor( 0, 0, rf.frameBufferWidth, rf.frameBufferHeight );
 }
 
-/*
-* R_RenderScene
-*/
 void R_RenderScene(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 {
+	R_FlushTransitionBarrier(frame->cmd);
+
 	int fbFlags = 0;
 	int ppFrontBuffer = 0;
 	image_t *ppSource;
@@ -380,11 +379,7 @@ void R_RenderScene(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 	VectorCopy( fd->vieworg, rn.pvsOrigin );
 	VectorCopy( fd->vieworg, rn.lodOrigin );
 
-	NriAttachmentsDesc attachmentsDesc = {};
-	attachmentsDesc.colorNum = 1;
-	const NriDescriptor *colorAttachments[] = { frame->textureBuffers.colorAttachment };
-	attachmentsDesc.colors = colorAttachments;
-	rsh.nri.coreI.CmdBeginRendering( frame->cmd, &attachmentsDesc );
+	FR_CmdResetAttachmentToBackbuffer(frame);
 
 	R_BuildShadowGroups();
 
@@ -394,9 +389,7 @@ void R_RenderScene(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 
 	R_RenderDebugBounds();
 
-	//R_BindFrameBufferObject( 0 );
-	rsh.nri.coreI.CmdEndRendering( frame->cmd );
-
+	FR_CmdResetAttachmentToBackbuffer(frame);
 
 	R_Set2DMode(frame, true );
 

@@ -76,7 +76,7 @@ typedef struct image_s
 {
 	uint32_t cookie; 
 	const struct base_format_def_s* formatDef;
-	NriAccessLayoutStage currentLayout;
+	// NriAccessLayoutStage currentLayout;
 	struct nri_descriptor_s descriptor;
 	struct nri_descriptor_s samplerDescriptor;
 	NriTexture* texture;

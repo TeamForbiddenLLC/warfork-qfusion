@@ -497,7 +497,7 @@ void R_Set2DMode(struct frame_cmd_buffer_s* cmd, bool enable )
 	else
 	{
 		// render previously batched 2D geometry, if any
-		RB_FlushDynamicMeshes(NULL);
+		RB_FlushDynamicMeshes(cmd);
 
 		RB_SetShaderStateMask( ~0, 0 );
 	}
@@ -1015,7 +1015,7 @@ static void R_SetupViewMatrices( void )
 /*
 * R_Clear
 */
-static void R_Clear( int bitMask )
+static void R_Clear(struct frame_cmd_buffer_s* frame, int bitMask )
 {
 	int bits;
 	vec4_t envColor;
@@ -1045,7 +1045,36 @@ static void R_Clear( int bitMask )
 
 	bits &= bitMask;
 
-	RB_Clear( bits, envColor[0], envColor[1], envColor[2], 1 );
+	const bool hasClearOperation = !depthPortal || clearColor || glConfig.stencilBits;
+	if(!hasClearOperation) 
+		return;
+	
+	NriAttachmentsDesc attachmentsDesc = {};
+	attachmentsDesc.depthStencil = frame->state.depthAttachment;
+	attachmentsDesc.colorNum = frame->state.numColorAttachments;
+	attachmentsDesc.colors = frame->state.colorAttachment;
+	rsh.nri.coreI.CmdBeginRendering( frame->cmd, &attachmentsDesc );
+	{
+		NriClearDesc clearDesc[MAX_COLOR_ATTACHMENTS + 1] = {};
+		size_t numClearDesc = 0;
+		if( clearColor ) {
+			for(size_t i = 0; i < attachmentsDesc.colorNum; i++) {
+				clearDesc[numClearDesc].value.color = ( NriColor ){ .f = { envColor[0], envColor[1], envColor[2], envColor[3] } };
+				clearDesc[numClearDesc].planes = NriPlaneBits_COLOR;
+				numClearDesc++;
+			}
+		}
+		if( !depthPortal ) {
+			clearDesc[numClearDesc].value.depthStencil = ( NriDepthStencil ){ .depth = 1.0f, .stencil = 0.0f };
+			clearDesc[numClearDesc].planes = NriPlaneBits_DEPTH;
+			numClearDesc++;
+		}
+		rsh.nri.coreI.CmdClearAttachments( frame->cmd, clearDesc, numClearDesc, NULL, 0 );
+	}
+	rsh.nri.coreI.CmdEndRendering( frame->cmd );
+
+
+	// RB_Clear( bits, envColor[0], envColor[1], envColor[2], 1 );
 }
 
 /*
@@ -1297,11 +1326,15 @@ void R_RenderView(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 	if( r_portalonly->integer && !( rn.renderFlags & ( RF_MIRRORVIEW|RF_PORTALVIEW ) ) )
 		return;
 
-	R_Clear( ~0 );
+	R_Clear(frame, ~0 );
 
 	if( r_speeds->integer )
 		msec = ri.Sys_Milliseconds();
-	R_DrawSurfaces( rn.meshlist );
+	
+	FR_CmdBeginRendering( frame );
+	R_DrawSurfaces(frame, rn.meshlist );
+	FR_CmdEndRendering(frame);
+
 	if( r_speeds->integer )
 		rf.stats.t_draw_meshes += ( ri.Sys_Milliseconds() - msec );
 
@@ -1312,7 +1345,7 @@ void R_RenderView(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 	rf.stats.c_slices_elems_real += rn.meshlist->numSliceElemsReal;
 
 	if( r_showtris->integer )
-		R_DrawOutlinedSurfaces( rn.meshlist );
+		R_DrawOutlinedSurfaces( frame, rn.meshlist );
 
 	R_TransformForWorld();
 
@@ -1600,7 +1633,7 @@ void R_RenderDebugSurface( const refdef_t *fd )
 								  surf->firstDrawSurfVert, surf->firstDrawSurfElem );
 				}
 				
-				R_DrawOutlinedSurfaces( rn.meshlist );
+				R_DrawOutlinedSurfaces( NULL, rn.meshlist );
 				
 				if( rn.refdef.rdflags & RDF_FLIPPED )
 					RB_FlipFrontFace(NULL);

@@ -2,13 +2,15 @@
 #include "defaultMaterial.res.glsl"
 
 layout(location = 0) out vec3 v_Position; 
-layout(location = 1) out vec4 v_EyeVector; 
+layout(location = 1) out vec3 v_EyeVector; 
 layout(location = 2) out vec4 v_LightmapTexCoord01;
 layout(location = 3) out vec4 v_LightmapTexCoord23;
-layout(location = 5) flat out ivec4 v_LightmapLayer0123;
-layout(location = 6) out vec4 frontColor; 
-layout(location = 7) out vec4  v_TexCoord_FogCoord; 
-layout(location = 8) out mat3 v_StrMatrix; // directions of S/T/R texcoords (tangent, binormal, normal)
+layout(location = 4) flat out ivec4 v_LightmapLayer0123;
+layout(location = 5) out vec4 frontColor; 
+layout(location = 6) out vec4 v_TexCoord_FogCoord; 
+layout(location = 7) out vec3 v_Tangent; 
+layout(location = 8) out vec3 v_Normal; 
+layout(location = 9) out vec3 v_Binormal; 
 
 #include "include/qf_vert_utils.glsl"
 
@@ -36,7 +38,7 @@ void main()
 	frontColor = vec4(outColor);
 
 #if defined(APPLY_TC_MOD)
-	v_TexCoord_FogCoord.st = TextureMatrix2x3Mul(pass.textureMatrix, TexCoord);
+	v_TexCoord_FogCoord.st = TextureMatrix2x3Mul(obj.textureMatrix, TexCoord);
 #else
 	v_TexCoord_FogCoord.st = TexCoord;
 #endif
@@ -51,13 +53,18 @@ void main()
 	#endif // LIGHTMAP_ARRAYS
 #endif // NUM_LIGHTMAPS
 
-	v_StrMatrix[0] = Tangent;
-	v_StrMatrix[2] = Normal;
-	v_StrMatrix[1] = TangentDir * cross(Normal, Tangent);
+	v_Tangent = Tangent;
+	v_Normal = Normal;
+	v_Binormal = TangentDir * cross(Normal, Tangent);
 
 #if defined(APPLY_SPECULAR) || defined(APPLY_OFFSETMAPPING) || defined(APPLY_RELIEFMAPPING)
-	vec3 EyeVectorWorld = set_view.viewOrigin - Position.xyz;
-	v_EyeVector = EyeVectorWorld * v_StrMatrix;
+	mat3 strMat;
+	strMat[0] = v_Tangent;
+	strMat[1] = v_Normal;
+	strMat[2] = v_Binormal;
+
+	vec3 EyeVectorWorld = frame.viewOrigin - Position.xyz;
+	v_EyeVector = EyeVectorWorld * strMat;
 #endif
 
 #if defined(NUM_DLIGHTS) || defined(APPLY_SPECULAR)

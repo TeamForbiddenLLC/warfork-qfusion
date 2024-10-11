@@ -478,7 +478,7 @@ extern cvar_t *vid_multiscreen_head;
 // r_alias.c
 //
 bool	R_AddAliasModelToDrawList( const entity_t *e );
-void	R_DrawAliasSurf( const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceAlias_t *drawSurf );
+void	R_DrawAliasSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceAlias_t *drawSurf );
 bool	R_AliasModelLerpTag( orientation_t *orient, const maliasmodel_t *aliasmodel, int framenum, int oldframenum,
 				float lerpfrac, const char *name );
 float		R_AliasModelBBox( const entity_t *e, vec3_t mins, vec3_t maxs );
@@ -564,7 +564,7 @@ void		R_SortSuperLightStyles( model_t *mod );
 void		R_TouchLightmapImages( model_t *mod );
 
 void		R_InitCoronas( void );
-void		R_BatchCoronaSurf(  const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceType_t *drawSurf );
+void		R_BatchCoronaSurf(struct frame_cmd_buffer_s* cmd,  const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceType_t *drawSurf );
 void		R_DrawCoronas( void );
 void		R_ShutdownCoronas( void );
 
@@ -623,7 +623,7 @@ bool	R_CompletelyFogged( const mfog_t *fog, vec3_t origin, float radius );
 int			R_LODForSphere( const vec3_t origin, float radius );
 float		R_DefaultFarClip( void );
 
-void		R_BatchSpriteSurf( const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceType_t *drawSurf );
+void		R_BatchSpriteSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceType_t *drawSurf );
 
 struct mesh_vbo_s *R_InitNullModelVBO( void );
 void	R_DrawNullSurf( const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceType_t *drawSurf );
@@ -680,8 +680,8 @@ vboSlice_t *R_GetVBOSlice( unsigned int index );
 void R_InitDrawLists( void );
 
 void R_SortDrawList( drawList_t *list );
-void R_DrawSurfaces( drawList_t *list );
-void R_DrawOutlinedSurfaces( drawList_t *list );
+void R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list );
+void R_DrawOutlinedSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list );
 
 void R_CopyOffsetElements( const elem_t *inelems, int numElems, int vertsOffset, elem_t *outelems );
 void R_CopyOffsetTriangles( const elem_t *inelems, int numElems, int vertsOffset, elem_t *outelems );
@@ -703,7 +703,7 @@ void R_DrawPortals( void );
 //
 // r_poly.c
 //
-void		R_BatchPolySurf( const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfacePoly_t *poly );
+void		R_BatchPolySurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfacePoly_t *poly );
 void		R_DrawPolys( void );
 void		R_DrawStretchPoly(struct frame_cmd_buffer_s* cmd, const poly_t *poly, float x_offset, float y_offset );
 bool	R_SurfPotentiallyFragmented( const msurface_t *surf );
@@ -747,7 +747,7 @@ bool	R_SurfPotentiallyShadowed( const msurface_t *surf );
 bool	R_SurfPotentiallyLit( const msurface_t *surf );
 bool	R_AddBrushModelToDrawList( const entity_t *e );
 float		R_BrushModelBBox( const entity_t *e, vec3_t mins, vec3_t maxs, bool *rotated );
-void	R_DrawBSPSurf( const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceBSP_t *drawSurf );
+void	R_DrawBSPSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceBSP_t *drawSurf );
 
 //
 // r_skin.c
@@ -763,7 +763,7 @@ shader_t	*R_FindShaderForSkinFile( const struct skinfile_s *skinfile, const char
 // r_skm.c
 //
 bool	R_AddSkeletalModelToDrawList( const entity_t *e );
-void	R_DrawSkeletalSurf( const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceSkeletal_t *drawSurf );
+void	R_DrawSkeletalSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceSkeletal_t *drawSurf );
 float		R_SkeletalModelBBox( const entity_t *e, vec3_t mins, vec3_t maxs );
 void		R_SkeletalModelFrameBounds( const model_t *mod, int frame, vec3_t mins, vec3_t maxs );
 int			R_SkeletalGetBoneInfo( const model_t *mod, int bonenum, char *name, size_t name_size, int *flags );
@@ -798,16 +798,16 @@ typedef struct mesh_vbo_s
 	NriBuffer *instanceBuffer;
 
 	// vbo if we want to use a ring buffer and usee this like an immedate buffer
-  struct r_ring_offset_alloc_s ringOffsetVertAlloc;	
-  struct r_ring_offset_alloc_s ringOffsetIndexAlloc;	
-  struct r_ring_offset_alloc_s ringOffsetInstAlloc;	
+	struct r_ring_offset_alloc_s ringOffsetVertAlloc;	
+	struct r_ring_offset_alloc_s ringOffsetIndexAlloc;	
+	struct r_ring_offset_alloc_s ringOffsetInstAlloc;	
 
 	unsigned int		index;
 	int					registrationSequence;
 	vbo_tag_t			tag;
 
-	unsigned int 		vertexId;
-	unsigned int		elemId;
+	// unsigned int 		vertexId;
+	// unsigned int		elemId;
 	void 				*owner;
 	unsigned int 		visframe;
 
@@ -882,7 +882,7 @@ enum
 
 struct skydome_s *R_CreateSkydome( model_t *model );
 void		R_TouchSkydome( struct skydome_s *skydome );
-void		R_DrawSkySurf( const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceBSP_t *drawSurf );
+void		R_DrawSkySurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceBSP_t *drawSurf );
 void		R_ClearSky( void );
 bool		R_ClipSkySurface( const msurface_t *fa );
 bool		R_AddSkySurfToDrawList( const msurface_t *fa, const portalSurface_t *portalSurface );

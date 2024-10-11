@@ -19,7 +19,15 @@ void FR_CmdResetAttachmentToBackbuffer( struct frame_cmd_buffer_s *cmd )
 	const NriTextureDesc *depthDesc = rsh.nri.coreI.GetTextureDesc( cmd->textureBuffers.depthTexture );
 
 	const NriDescriptor *colorAttachments[] = { cmd->textureBuffers.colorAttachment };
-	const struct NriViewport viewports[] = { ( NriViewport ){ .x = 0, .y = 0, .width = cmd->textureBuffers.screen.width, .height = cmd->textureBuffers.screen.height } };
+	const struct NriViewport viewports[] = { ( NriViewport ){
+		 .x = 0, 
+		 .y = 0, 
+		 .width = cmd->textureBuffers.screen.width, 
+		 .height = cmd->textureBuffers.screen.height,
+		  .depthRangeMin = 0.0f,
+		  .depthRangeMax = 1.0f
+		}  
+	};
 	const struct NriRect scissors[] = { cmd->textureBuffers.screen };
 	const NriFormat colorFormats[] = { colorDesc->format };
 

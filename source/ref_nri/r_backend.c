@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_gpu_ring_buffer.h"
 #include "r_local.h"
 #include "r_backend_local.h"
+#include <stdbool.h>
 
 // Smaller buffer for 2D polygons. Also a workaround for some instances of a hardly explainable bug on Adreno
 // that caused dynamic draws to slow everything down in some cases when normals are used with dynamic VBOs.
@@ -327,6 +328,8 @@ void RB_Cull( int cull )
 // for these we assume will just do this to the first attachment
 void RB_SetState_2( struct frame_cmd_buffer_s *cmd, int state )
 {
+	
+	cmd->state.pipelineLayout.blendEnabled = ( state & GLSTATE_BLEND_MASK );
 	if( state & GLSTATE_BLEND_MASK ) {
 		switch( state & GLSTATE_SRCBLEND_MASK ) {
 			case GLSTATE_SRCBLEND_ZERO:
@@ -385,10 +388,8 @@ void RB_SetState_2( struct frame_cmd_buffer_s *cmd, int state )
 		}
 
 		if( !( rb.gl.state & GLSTATE_BLEND_MASK ) ) {
-			cmd->state.pipelineLayout.blendEnabled = true;
+			// cmd->state.pipelineLayout.blendEnabled = true;
 		}
-	} else {
-		cmd->state.pipelineLayout.blendEnabled = false;
 	}
 
 	if( state & GLSTATE_NO_COLORWRITE ) {
@@ -822,14 +823,14 @@ void RB_BindVBO( int id, int primitive )
 
 	rb.currentVBOId = id;
 	rb.currentVBO = vbo;
-	if( !vbo ) {
-		RB_BindArrayBuffer( 0 );
-		RB_BindElementArrayBuffer( 0 );
-		return;
-	}
+	// if( !vbo ) {
+	// 	RB_BindArrayBuffer( 0 );
+	// 	RB_BindElementArrayBuffer( 0 );
+	// 	return;
+	// }
 
-	RB_BindArrayBuffer( vbo->vertexId );
-	RB_BindElementArrayBuffer( vbo->elemId );
+	// RB_BindArrayBuffer( vbo->vertexId );
+	// RB_BindElementArrayBuffer( vbo->elemId );
 }
 
 void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, const shader_t *shader,
@@ -961,8 +962,10 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
 */
 void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 {
-	assert(cmd);
-	float offsetx = 0.0f, offsety = 0.0f, transx, transy;
+	float offsetx = 0.0f;
+	float offsety = 0.0f;
+	float transx;
+	float transy;
 	mat4_t m;
 
 	if( rb.numDynamicDraws == 0 ) {
@@ -981,6 +984,8 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 		size_t numAttribs;
 		NriVertexAttributeDesc attribs[MAX_ATTRIBUTES];
 	} dynamicStreamInfo[RB_DYN_STREAM_NUM];
+
+	R_FlushTransitionBarrier(cmd->cmd);
 
 	for(size_t i = 0; i < RB_DYN_STREAM_NUM; i++ ) {
 		rbDynamicStream_t *stream = &rb.dynamicStreams[i];
@@ -1034,25 +1039,22 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 	Matrix4_Copy( rb.objectMatrix, m );
 	transx = m[12];
 	transy = m[13];
+	FR_CmdBeginRendering( cmd );
 	for( size_t i = 0; i < rb.numDynamicDraws; i++ ) {
 		rbDynamicDraw_t const *draw = &rb.dynamicDraws[i];
-		//rbDynamicStream_t *stream = &rb.dynamicStreams[draw->dynamicStreamIdx];
+		// rbDynamicStream_t *stream = &rb.dynamicStreams[draw->dynamicStreamIdx];
 		struct dynamic_stream_info_s *info = &dynamicStreamInfo[draw->dynamicStreamIdx];
 		cmd->state.numStreams = 1;
-		cmd->state.streams[0] = (NriVertexStreamDesc) {
-			.stride = info->vertexStride,
-			.stepRate = 0,
-			.bindingSlot = 0
-		};
+		cmd->state.streams[0] = ( NriVertexStreamDesc ){ .stride = info->vertexStride, .stepRate = 0, .bindingSlot = 0 };
 		cmd->state.numAttribs = info->numAttribs;
-		memcpy(cmd->state.attribs, info->attribs, sizeof(NriVertexAttributeDesc) * info->numAttribs);
+		memcpy( cmd->state.attribs, info->attribs, sizeof( NriVertexAttributeDesc ) * info->numAttribs );
 
 		RB_BindShader( cmd, draw->entity, draw->shader, draw->fog );
 		RB_SetPortalSurface( draw->portalSurface );
 		RB_SetShadowBits( draw->shadowBits );
 		FR_CmdSetScissorAll( cmd, ( NriRect ){ draw->scissor[0], draw->scissor[1], draw->scissor[2], draw->scissor[3] } );
-		FR_CmdSetVertexBuffer(cmd, 0, info->vertexBuffer, info->vertexOffset);
-		FR_CmdSetIndexBuffer(cmd, info->indexBuffer, info->indexOffset, NriIndexType_UINT16);
+		FR_CmdSetVertexBuffer( cmd, 0, info->vertexBuffer, info->vertexOffset );
+		FR_CmdSetIndexBuffer( cmd, info->indexBuffer, info->indexOffset, NriIndexType_UINT16 );
 
 		// translate the mesh in 2D
 		if( ( offsetx != draw->offset[0] ) || ( offsety != draw->offset[1] ) ) {
@@ -1063,14 +1065,11 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 			RB_LoadObjectMatrix( m );
 		}
 
-		RB_DrawShadedElements_2(cmd,
-			draw->drawElements.firstVert, draw->drawElements.numVerts,
-			draw->drawElements.firstElem, draw->drawElements.numElems,
-			draw->drawElements.firstVert, draw->drawElements.numVerts,
-			draw->drawElements.firstElem, draw->drawElements.numElems
-		);
-		FR_CmdResetCommandState(cmd, CMD_RESET_INDEX_BUFFER | CMD_RESET_VERTEX_BUFFER);
+		RB_DrawShadedElements_2( cmd, draw->drawElements.firstVert, draw->drawElements.numVerts, draw->drawElements.firstElem, draw->drawElements.numElems, draw->drawElements.firstVert,
+								 draw->drawElements.numVerts, draw->drawElements.firstElem, draw->drawElements.numElems );
+		FR_CmdResetCommandState( cmd, CMD_RESET_INDEX_BUFFER | CMD_RESET_VERTEX_BUFFER );
 	}
+	FR_CmdEndRendering( cmd );
 
 	rb.numDynamicDraws = 0;
 

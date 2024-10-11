@@ -1402,271 +1402,6 @@ typedef struct ktx_header_s
 	int bytesOfKeyValueData;
 } ktx_header_t;
 
-
-
-/*
-* R_LoadKTX
-*/
-static bool R_LoadKTX( int ctx, image_t *image, const char *pathname )
-{
-	int i, j;
-	uint8_t *buffer;
-	ktx_header_t *header;
-	bool swapEndian;
-	uint8_t *data;
-	int numFaces = ( ( image->flags & IT_CUBEMAP ) ? 6 : 1 ), numMips;
-
-	if( image->flags & ( IT_FLIPX|IT_FLIPY|IT_FLIPDIAGONAL ) )
-		return false;
-
-	R_LoadFile( pathname, ( void ** )&buffer );
-	if( !buffer )
-		return false;
-
-	header = ( ktx_header_t * )buffer;
-	if( memcmp( header->identifier, "\xABKTX 11\xBB\r\n\x1A\n", 12 ) )
-	{
-		ri.Com_DPrintf( S_COLOR_YELLOW "R_LoadKTX: Bad file identifier: %s\n", pathname );
-		goto error;
-	}
-
-	swapEndian = ( header->endianness == 0x01020304 ) ? true : false;
-	if( swapEndian )
-	{
-		for( i = 3; i < 16; ++i )
-			( ( int * )header )[i] = LongSwap( ( ( int * )header )[i] );
-	}
-
-	if( header->format && ( header->format != header->baseInternalFormat ) )
-	{
-		ri.Com_DPrintf( S_COLOR_YELLOW "R_LoadKTX: Pixel format doesn't match internal format: %s\n", pathname );
-		goto error;
-	}
-	if( !R_IsKTXFormatValid( header->format ? header->baseInternalFormat : header->internalFormat, header->type ) )
-	{
-		ri.Com_DPrintf( S_COLOR_YELLOW "R_LoadKTX: Unsupported pixel format: %s\n", pathname );
-		goto error;
-	}
-	if( ( header->pixelWidth < 1 ) || ( header->pixelHeight < 0 ) )
-	{
-		ri.Com_DPrintf( S_COLOR_YELLOW "R_LoadKTX: Zero texture size: %s\n", pathname );
-		goto error;
-	}
-	if( !header->pixelHeight )
-		header->pixelHeight = 1;
-	if( !header->type && ( ( header->pixelWidth & ( header->pixelWidth - 1 ) ) || ( header->pixelHeight & ( header->pixelHeight - 1 ) ) ) )
-	{
-		// NPOT compressed textures may crash on certain drivers/GPUs
-		ri.Com_DPrintf( S_COLOR_YELLOW "R_LoadKTX: Compressed image must be power-of-two: %s\n", pathname );
-		goto error;
-	}
-	if( ( image->flags & IT_CUBEMAP ) && ( header->pixelWidth != header->pixelHeight ) )
-	{
-		ri.Com_DPrintf( S_COLOR_YELLOW "R_LoadKTX: Not square cubemap image: %s\n", pathname );
-		goto error;
-	}
-	if( ( header->pixelDepth > 1 ) || ( header->numberOfArrayElements > 1 ) )
-	{
-		ri.Com_DPrintf( S_COLOR_YELLOW "R_LoadKTX: 3D textures and texture arrays are not supported: %s\n", pathname );
-		goto error;
-	}
-	if( header->numberOfFaces != numFaces )
-	{
-		ri.Com_DPrintf( S_COLOR_YELLOW "R_LoadKTX: Bad number of cubemap faces: %s\n", pathname );
-		goto error;
-	}
-	if( header->numberOfMipmapLevels < 1 )
-		header->numberOfMipmapLevels = 1;
-
-	numMips = R_MipCount( header->pixelWidth, header->pixelHeight, image->minmipsize );
-
-	data = buffer + sizeof( ktx_header_t ) + header->bytesOfKeyValueData;
-	
-	R_BindImage( image );
-
-	if( header->type == 0 )
-	{
-		int mips = numMips;
-		int mip;
-		int scaledWidth, scaledHeight;
-
-		if( ( header->numberOfMipmapLevels == 1 ) && ( image->flags & IT_NOMIPMAP ) )
-		{
-			mips = 1;
-		}
-		else if( header->numberOfMipmapLevels < mips )
-		{
-			ri.Com_DPrintf( S_COLOR_YELLOW "R_LoadKTX: Compressed image has too few mip levels: %s\n", pathname );
-			goto error;
-		}
-
-		mip = R_ScaledImageSize( header->pixelWidth, header->pixelHeight, &scaledWidth, &scaledHeight,
-			image->flags, mips, image->minmipsize, false );
-
-		image->upload_width = scaledWidth;
-		image->upload_height = scaledHeight;
-
-		// If different compression formats are added, make this more general-purpose!
-
-		if( !glConfig.ext.texture_compression || !( glConfig.ext.compressed_ETC1_RGB8_texture || glConfig.ext.ES3_compatibility ) || ( mip < 0 ) )
-		{
-			int inSize = ( ( ALIGN( header->pixelWidth, 4 ) * ALIGN( header->pixelHeight, 4 ) ) >> 4 ) * 8;
-			int outSize = ALIGN( header->pixelWidth * 3, 4 ) * header->pixelHeight;
-			uint8_t *in = data + sizeof( int );
-			uint8_t *decompressed[6];
-
-			for( i = 0; i < numFaces; ++i )
-			{
-				decompressed[i] = R_PrepareImageBuffer( ctx, TEXTURE_LOADING_BUF0 + i, outSize );
-				DecompressETC1( in, header->pixelWidth, header->pixelHeight, decompressed[i], glConfig.ext.bgra ? true : false );
-				in += inSize;
-			}
-
-			R_UploadMipmapped( ctx, decompressed, header->pixelWidth, header->pixelHeight, 1,
-				image->flags, image->minmipsize, &image->upload_width, &image->upload_height,
-				glConfig.ext.bgra ? GL_BGR_EXT : GL_RGB, GL_UNSIGNED_BYTE );
-		}
-		else
-		{
-			int target;
-			int compressedFormat = glConfig.ext.ES3_compatibility ? GL_COMPRESSED_RGB8_ETC2 : GL_ETC1_RGB8_OES;
-			size_t faceSize;
-
-			R_TextureTarget( image->flags, &target );
-
-		//	R_SetupTexParameters( image->flags, scaledWidth, scaledHeight, image->minmipsize );
-
-			for( i = 0; i < mip; ++i )
-			{
-				data += sizeof( int ) + numFaces * ( (
-					ALIGN( max( header->pixelWidth >> i, 1 ), 4 ) *
-					ALIGN( max( header->pixelHeight >> i, 1 ), 4 )
-				) >> 4 ) * 8;
-			}
-
-			mips -= mip;
-			for( i = 0; i < mips; ++i )
-			{
-				faceSize = ( ( ALIGN( scaledWidth, 4 ) * ALIGN( scaledHeight, 4 ) ) >> 4 ) * 8;
-				data += sizeof( int );
-				for( j = 0; j < numFaces; ++j )
-				{
-					qglCompressedTexImage2DARB( target + j, i, compressedFormat,
-						scaledWidth, scaledHeight, 0, faceSize, data );
-					data += faceSize;
-				}
-				scaledWidth >>= 1;
-				scaledHeight >>= 1;
-				if( !scaledWidth )
-					scaledWidth = 1;
-				if( !scaledHeight )
-					scaledHeight = 1;
-			}
-		}
-
-		image->samples = 3;
-	}
-	else
-	{
-		int mips = ( image->flags & IT_NOMIPMAP ) ? 1 : min( header->numberOfMipmapLevels, numMips );
-		uint8_t *images[32 * 6];
-		int mipWidth = header->pixelWidth, mipHeight = header->pixelHeight;
-		size_t pixelSize = 2;
-		size_t faceSize;
-
-		switch( header->baseInternalFormat )
-		{
-		case GL_RGBA:
-			image->samples = 4;
-			break;
-		case GL_BGRA_EXT:
-			image->samples = 4;
-			image->flags |= IT_BGRA;
-			break;
-		case GL_RGB:
-			image->samples = 3;
-			break;
-		case GL_BGR_EXT:
-			image->samples = 3;
-			image->flags |= IT_BGRA;
-			break;
-		case GL_LUMINANCE_ALPHA:
-			image->samples = 2;
-			break;
-		case GL_LUMINANCE:
-			image->samples = 1;
-			break;
-		case GL_ALPHA:
-			image->samples = 1;
-			image->flags |= IT_ALPHAMASK;
-			break;
-		}
-
-		if( header->type == GL_UNSIGNED_BYTE )
-			pixelSize = image->samples;
-
-		for( i = 0; i < mips; i++ )
-		{
-			faceSize = ALIGN( max( header->pixelWidth >> i, 1 ) * pixelSize, 4 ) * max( header->pixelHeight >> i, 1 );
-			data += sizeof( int );
-			for( j = 0; j < numFaces; j++ )
-				images[i * numFaces + j] = data + faceSize * j;
-			data += faceSize * numFaces;
-		}
-
-		if( !glConfig.ext.bgra &&
-			( ( header->baseInternalFormat == GL_BGR_EXT ) || ( header->baseInternalFormat == GL_BGRA_EXT ) ) )
-		{
-			for( i = 0; i < mips; i++ )
-			{
-				for( j = 0; j < numFaces; j++ )
-				{
-					R_SwapBlueRed( images[i * numFaces + j], mipWidth, mipHeight,
-						( header->baseInternalFormat == GL_BGR_EXT ) ? 3 : 4, 4 );
-				}
-				mipWidth >>= 1;
-				mipHeight >>= 1;
-				if( !mipWidth )
-					mipWidth = 1;
-				if( !mipHeight )
-					mipHeight = 1;
-			}
-			header->baseInternalFormat = ( ( header->baseInternalFormat == GL_BGR_EXT ) ? GL_RGB : GL_RGBA );
-		}
-		else if( swapEndian && (
-			( header->type == GL_UNSIGNED_SHORT_4_4_4_4 ) || ( header->type == GL_UNSIGNED_SHORT_5_5_5_1 ) ||
-			( header->type == GL_UNSIGNED_SHORT_5_6_5 ) ) )
-		{
-			for( i = 0; i < mips; i++ )
-			{
-				for( j = 0; j < numFaces; j++ )
-					R_EndianSwap16BitImage( ( unsigned short * )( images[i * numFaces + j] ), mipWidth, mipHeight );
-				mipWidth >>= 1;
-				mipHeight >>= 1;
-				if( !mipWidth )
-					mipWidth = 1;
-				if( !mipHeight )
-					mipHeight = 1;
-			}
-		}
-
-		R_UploadMipmapped( ctx, images, header->pixelWidth, header->pixelHeight, mips, image->flags, image->minmipsize,
-			&image->upload_width, &image->upload_height, header->baseInternalFormat, header->type );
-	}
-
-	Q_strncpyz( image->extension, ".ktx", sizeof( image->extension ) );
-	image->width = header->pixelWidth;
-	image->height = header->pixelHeight;
-
-	R_FreeFile( buffer );
-	R_DeferDataSync();
-	return true;
-
-error: // must not be reached after actually starting uploading the texture
-	R_FreeFile( buffer );
-	return false;
-}
-
 static image_t *R_LinkPic( unsigned int hash )
 {
 	if( !free_images ) {
@@ -1852,6 +1587,7 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		.textures = &image->texture,
 		.memoryLocation = NriMemoryLocation_DEVICE,
 	};
+
 	image->formatDef = R_BaseFormatDef( dstFormat );
 	if( rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture ) != NriResult_SUCCESS ) {
 		ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name );
@@ -1864,9 +1600,21 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		return false;
 	}
 
+	NriTexture2DViewDesc textureViewDesc = {
+		.texture = image->texture,
+		.viewType = (textureDesc.layerNum > 1) ? NriTexture2DViewType_SHADER_RESOURCE_CUBE: NriTexture2DViewType_SHADER_RESOURCE_2D,
+		.format = textureDesc.format
+	};
+	NriDescriptor* descriptor = NULL;
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &descriptor) );
+	image->descriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
+	image->samplerDescriptor = R_CreateDescriptorWrapper(&rsh.nri, resolveSamplerDescriptor(image->flags)); 
+	assert(image->samplerDescriptor.descriptor);
+	rsh.nri.coreI.SetTextureDebugName( image->texture, image->name );
+
 	if( R_KTXIsCompressed( &ktxContext ) ) {
 		struct texture_buf_s uncomp = { 0 };
-		image->currentLayout = R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
+		// R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
 		for( size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx ) {
 			struct texture_buf_s *tex = R_KTXResolveBuffer( &ktxContext, 0, faceIdx, 0 );
 			struct texture_buf_desc_s desc = { 
@@ -1878,13 +1626,18 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 			T_ReallocTextureBuf( &uncomp, &desc );
 			DecompressETC1( tex->buffer, tex->width, tex->height, uncomp.buffer, false );
 			texture_upload_desc_t uploadDesc = { 
-												 .sliceNum = uncomp.height,
-												 .rowPitch = uncomp.width * destBlockSize, // we treat it all as RGBA8
-												 .arrayOffset = faceIdx,
-												 .mipOffset = 0,
-												 .width = uncomp.width,
-												 .height = uncomp.height,
-												 .target = image->texture
+				.sliceNum = uncomp.height,
+				.rowPitch = uncomp.width * destBlockSize, // we treat it all as RGBA8
+				.arrayOffset = faceIdx,
+				.mipOffset = 0,
+				.width = uncomp.width,
+				.height = uncomp.height,
+				.target = image->texture,
+				.after = (NriAccessLayoutStage){
+					.layout = NriLayout_SHADER_RESOURCE,
+					.access = NriAccessBits_SHADER_RESOURCE,
+					.stages = NriStageBits_FRAGMENT_SHADER 
+				}
 
 			};
 			const size_t srcBlockSize = RT_BlockSize( uncomp.def);
@@ -1909,7 +1662,8 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		const uint16_t numberOfMipLevels = ( image->flags & IT_NOMIPMAP ) ? 1 : R_KTXGetNumberMips( &ktxContext );
 
 		enum texture_logical_channel_e swizzleChannel[R_LOGICAL_C_MAX] = { 0 };
-		image->currentLayout = R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
+		// R_ResourceTransitionTexture(image->texture, (NriAccessLayoutStage){} );
+
 		for( uint16_t mipIndex = 0; mipIndex < numberOfMipLevels; mipIndex++ ) {
 			for( uint32_t faceIndex = 0; faceIndex < numberOfFaces; faceIndex++ ) {
 				struct texture_buf_s *texBuffer = R_KTXResolveBuffer( &ktxContext, mipIndex, faceIndex, 0 );
@@ -1924,14 +1678,19 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 					T_SwizzleInplace( texBuffer, swizzleChannel );
 				}
 
-				texture_upload_desc_t uploadDesc = { .sliceNum = texBuffer->height,
-													 .rowPitch = texBuffer->width * destBlockSize,
-													 .arrayOffset = faceIndex,
-													 .mipOffset = mipIndex,
-													 .width = texBuffer->width,
-													 .height = texBuffer->height,
-													 .target = image->texture
-
+				texture_upload_desc_t uploadDesc = { 
+					.sliceNum = texBuffer->height,
+					.rowPitch = texBuffer->width * destBlockSize,
+					.arrayOffset = faceIndex,
+					.mipOffset = mipIndex,
+					.width = texBuffer->width,
+					.height = texBuffer->height,
+					.target = image->texture,
+					.after = (NriAccessLayoutStage){
+						.layout = NriLayout_SHADER_RESOURCE,
+						.access = NriAccessBits_SHADER_RESOURCE,
+						.stages = NriStageBits_FRAGMENT_SHADER 
+					}
 				};
 				const size_t srcBlockSize = RT_BlockSize( texBuffer->def);
 				R_ResourceBeginCopyTexture( &uploadDesc );
@@ -2070,7 +1829,7 @@ static void __LoadImageLayer(struct image_s* image, size_t layer, uint8_t* buf) 
 
 	uint32_t w = image->width;
 	uint32_t h = image->height;
-	image->currentLayout = R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
+	// R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
 	for( size_t i = 0; i < textureDesc->mipNum; i++ ) {
 		texture_upload_desc_t uploadDesc = { 
 			.sliceNum = h, 
@@ -2079,7 +1838,13 @@ static void __LoadImageLayer(struct image_s* image, size_t layer, uint8_t* buf) 
 			.mipOffset = i, 
 			.width = w, 
 			.height = h, 
-			.target = image->texture };
+			.target = image->texture,
+			.after = (NriAccessLayoutStage){
+				.layout = NriLayout_SHADER_RESOURCE,
+				.access = NriAccessBits_SHADER_RESOURCE,
+				.stages = NriStageBits_FRAGMENT_SHADER 
+			} 
+		};
 		R_ResourceBeginCopyTexture( &uploadDesc );
 		for( size_t slice = 0; slice < textureDesc->height; slice++ ) {
 			const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
@@ -2144,7 +1909,7 @@ static void __LoadImageInPlace(struct image_s* image, uint8_t **pic, int width, 
 	uint8_t *tmpBuffer = NULL;
 	const size_t reservedSize = width * height * samples;
 	if( pic ) {
-		image->currentLayout = R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
+		// R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
 		for( size_t index = 0; index < textureDesc.layerNum; index++ ) {
 			if( !pic[index] ) {
 				continue;
@@ -2159,7 +1924,19 @@ static void __LoadImageInPlace(struct image_s* image, uint8_t **pic, int width, 
 			uint32_t w = width;
 			uint32_t h = height;
 			for( size_t i = 0; i < mipSize; i++ ) {
-				texture_upload_desc_t uploadDesc = { .sliceNum = h, .rowPitch = w * destBlockSize, .arrayOffset = index, .mipOffset = i, .width = w, .height = h, .target = image->texture };
+				texture_upload_desc_t uploadDesc = { 
+					.sliceNum = h, 
+					.rowPitch = w * destBlockSize, 
+					.arrayOffset = index, 
+					.mipOffset = i, .width = w, 
+					.height = h, 
+					.target = image->texture, 
+					.after = (NriAccessLayoutStage){
+						.layout = NriLayout_SHADER_RESOURCE,
+						.access = NriAccessBits_SHADER_RESOURCE,
+						.stages = NriStageBits_FRAGMENT_SHADER 
+					}
+				};
 				R_ResourceBeginCopyTexture( &uploadDesc );
 				for( size_t slice = 0; slice < height; slice++ ) {
 					const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
@@ -2243,7 +2020,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	assert(image->samplerDescriptor.descriptor);
 
 	if( pic ) {
-		image->currentLayout = R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
+		//  R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
 		for( size_t index = 0; index < textureDesc.layerNum; index++ ) {
 			if( !pic[index] ) {
 				continue;
@@ -2265,7 +2042,13 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 					.mipOffset = i, 
 					.width = w, 
 					.height = h, 
-					.target = image->texture };
+					.target = image->texture,
+					.after = (NriAccessLayoutStage){
+						.layout = NriLayout_SHADER_RESOURCE,
+						.access = NriAccessBits_SHADER_RESOURCE,
+						.stages = NriStageBits_FRAGMENT_SHADER 
+					}
+				};
 				R_ResourceBeginCopyTexture( &uploadDesc );
 				for( size_t slice = 0; slice < h; slice++ ) {
 					const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
@@ -2459,7 +2242,7 @@ void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, 
 
 	uint32_t w = width;
 	uint32_t h = height;
-	image->currentLayout = R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
+	// R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
 	for( size_t i = 0; i < textureDesc->mipNum; i++ ) {
 		texture_upload_desc_t uploadDesc = { 
 			.sliceNum = h, 
@@ -2470,7 +2253,13 @@ void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, 
 			.y = y,
 			.width = w, 
 			.height = h, 
-			.target = image->texture };
+			.target = image->texture,
+			.after = (NriAccessLayoutStage){
+				.layout = NriLayout_SHADER_RESOURCE,
+				.access = NriAccessBits_SHADER_RESOURCE,
+				.stages = NriStageBits_FRAGMENT_SHADER 
+			} 
+		};
 		R_ResourceBeginCopyTexture( &uploadDesc );
 		for( size_t slice = 0; slice < h; slice++ ) {
 			const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
@@ -2757,7 +2546,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 			src = &transformBuffer;
 		}
 
-		image->currentLayout = R_ResourceTransitionTexture(image->texture, (NriAccessLayoutStage){} );
+		// R_ResourceTransitionTexture(image->texture, (NriAccessLayoutStage){} );
 		for( size_t i = 0; i < mipSize; i++ ) {
 			texture_upload_desc_t uploadDesc = {
 				.sliceNum = src->height,
@@ -2766,7 +2555,12 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 				.mipOffset = i,
 				.width = src->width,
 				.height = src->height,
-				.target = image->texture
+				.target = image->texture,
+				.after = (NriAccessLayoutStage){
+					.layout = NriLayout_SHADER_RESOURCE,
+					.access = NriAccessBits_SHADER_RESOURCE,
+					.stages = NriStageBits_FRAGMENT_SHADER 
+				}
 			};
   			const size_t srcBlockSize = RT_BlockSize( src->def);
 			R_ResourceBeginCopyTexture( &uploadDesc );
