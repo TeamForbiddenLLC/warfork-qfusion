@@ -36,6 +36,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "stb_image.h"
 
 #include "r_ktx_loader.h"
+#include <assert.h>
 #include <stdint.h>
 
 #define	MAX_GLIMAGES	    8192
@@ -64,6 +65,8 @@ static int gl_anisotropic_filter = 0;
 
 static void R_FreeImage( struct image_s *image );
 static NriTextureUsageBits __R_NRITextureUsageBits(int flags);
+static void __R_CopyTextureDataTexture(struct image_s* image, int layer, int mipOffset, int x, int y, int w, int h, enum texture_format_e srcFormat, uint8_t *data );
+
 int R_TextureTarget( int flags, int *uploadTarget )
 {
 	int target, target2;
@@ -390,28 +393,6 @@ void R_FreeImageBuffers( void )
 }
 
 /*
-* R_SwapBlueRed
-*/
-static void R_SwapBlueRed( uint8_t *data, int width, int height, int samples, int alignment )
-{
-	int i, j, k, padding;
-
-	padding = ALIGN( width * samples, alignment ) - width * samples;
-	for( i = 0; i < height; i++, data += padding )
-	{
-		for( j = 0; j < width; j++, data += samples )
-		{
-			k = data[0];
-			data[0] = data[2];
-			data[2] = k;
-			// data[0] ^= data[2];
-			// data[2] = data[0] ^ data[2];
-			// data[0] ^= data[2];
-		}
-	}
-}
-
-/*
 * R_EndianSwap16BitImage
 */
 static void R_EndianSwap16BitImage( unsigned short *data, int width, int height )
@@ -433,38 +414,7 @@ static uint8_t *_R_AllocImageBufferCb( void *ptr, size_t size, const char *filen
 	loaderCbInfo_t *cbinfo = ptr;
 	return _R_PrepareImageBuffer( cbinfo->ctx, cbinfo->side, size, filename, linenum );
 }
-
-/**
- *
- * returns stbi buffer needs to be freed with stbi_image_free
- **/
-static stbi_uc* __loadFileImageStbi(const char* filepath, int* width, int* height, enum texture_format_e* format) {
-	uint8_t * fileBuffer;
-	size_t size = R_LoadFile( filepath, ( void ** ) &fileBuffer );
-	if( fileBuffer == NULL )
-		return NULL;
-
-	int channelCount;
-	stbi_uc* stbiBuffer = stbi_load_from_memory(fileBuffer, size, 
-																						width,
-																						height,
-																						&channelCount, 0);
-	switch(channelCount) {
-		case 3:
-			*format = R_FORMAT_RGB8_UNORM;
-			break;
-		case 4:
-			*format = R_FORMAT_RGBA8_UNORM;
-			break;
-		default:
-			stbi_image_free(stbiBuffer);
-			stbiBuffer = NULL;
-			ri.Com_Printf(S_COLOR_YELLOW "unhandled channel count: %d", channelCount);
-			break;
-	}
-	R_Free(fileBuffer);
-	return stbiBuffer; 
-}
+\
 
 static void __R_stbi_free_image(void* p) {
 	stbi_uc* img = (stbi_uc*) p;
@@ -880,270 +830,270 @@ static int R_TextureInternalFormat( int samples, int flags, int pixelType )
 #endif
 
 /*
-* R_TextureFormat
-*/
-static void R_TextureFormat( int flags, int samples, int *comp, int *format, int *type )
-{
-	if( flags & IT_DEPTH )
-	{
-		if( flags & IT_STENCIL )
-		{
-			*comp = *format = GL_DEPTH_STENCIL_EXT;
-			*type = GL_UNSIGNED_INT_24_8_EXT;
-		}
-		else
-		{
-			*comp = *format = GL_DEPTH_COMPONENT;
-			if( glConfig.ext.depth24 )
-			{
-				*type = GL_UNSIGNED_INT;
-			}
-			else
-			{
-				*type = GL_UNSIGNED_SHORT;
-				if( glConfig.ext.depth_nonlinear )
-					*comp = GL_DEPTH_COMPONENT16_NONLINEAR_NV;
-			}
-		}
-	}
-	else if( flags & IT_FRAMEBUFFER )
-	{
-		if( samples == 4 )
-		{
-			*comp = *format = GL_RGBA;
-			*type = glConfig.ext.rgb8_rgba8 ? GL_UNSIGNED_BYTE : GL_UNSIGNED_SHORT_4_4_4_4;
-		}
-		else
-		{
-			*comp = *format = GL_RGB;
-			*type = glConfig.ext.rgb8_rgba8 ? GL_UNSIGNED_BYTE : GL_UNSIGNED_SHORT_5_6_5;
-		}
-	}
-	else
-	{
-		*type = GL_UNSIGNED_BYTE;
-		if( samples == 4 )
-			*format = ( flags & IT_BGRA ? GL_BGRA_EXT : GL_RGBA );
-		else if( samples == 3 )
-			*format = ( flags & IT_BGRA ? GL_BGR_EXT : GL_RGB );
-		else if( samples == 2 )
-			*format = GL_LUMINANCE_ALPHA;
-		else if( flags & IT_ALPHAMASK )
-			*format = GL_ALPHA;
-		else
-			*format = GL_LUMINANCE;
-		*comp = *format;
-#ifndef GL_ES_VERSION_2_0
-		if( !( flags & IT_3D ) )
-			*comp = R_TextureInternalFormat( samples, flags, GL_UNSIGNED_BYTE );
-#endif
-	}
-}
+// * R_TextureFormat
+// */
+// static void R_TextureFormat( int flags, int samples, int *comp, int *format, int *type )
+// {
+// 	if( flags & IT_DEPTH )
+// 	{
+// 		if( flags & IT_STENCIL )
+// 		{
+// 			*comp = *format = GL_DEPTH_STENCIL_EXT;
+// 			*type = GL_UNSIGNED_INT_24_8_EXT;
+// 		}
+// 		else
+// 		{
+// 			*comp = *format = GL_DEPTH_COMPONENT;
+// 			if( glConfig.ext.depth24 )
+// 			{
+// 				*type = GL_UNSIGNED_INT;
+// 			}
+// 			else
+// 			{
+// 				*type = GL_UNSIGNED_SHORT;
+// 				if( glConfig.ext.depth_nonlinear )
+// 					*comp = GL_DEPTH_COMPONENT16_NONLINEAR_NV;
+// 			}
+// 		}
+// 	}
+// 	else if( flags & IT_FRAMEBUFFER )
+// 	{
+// 		if( samples == 4 )
+// 		{
+// 			*comp = *format = GL_RGBA;
+// 			*type = glConfig.ext.rgb8_rgba8 ? GL_UNSIGNED_BYTE : GL_UNSIGNED_SHORT_4_4_4_4;
+// 		}
+// 		else
+// 		{
+// 			*comp = *format = GL_RGB;
+// 			*type = glConfig.ext.rgb8_rgba8 ? GL_UNSIGNED_BYTE : GL_UNSIGNED_SHORT_5_6_5;
+// 		}
+// 	}
+// 	else
+// 	{
+// 		*type = GL_UNSIGNED_BYTE;
+// 		if( samples == 4 )
+// 			*format = ( flags & IT_BGRA ? GL_BGRA_EXT : GL_RGBA );
+// 		else if( samples == 3 )
+// 			*format = ( flags & IT_BGRA ? GL_BGR_EXT : GL_RGB );
+// 		else if( samples == 2 )
+// 			*format = GL_LUMINANCE_ALPHA;
+// 		else if( flags & IT_ALPHAMASK )
+// 			*format = GL_ALPHA;
+// 		else
+// 			*format = GL_LUMINANCE;
+// 		*comp = *format;
+// #ifndef GL_ES_VERSION_2_0
+// 		if( !( flags & IT_3D ) )
+// 			*comp = R_TextureInternalFormat( samples, flags, GL_UNSIGNED_BYTE );
+// #endif
+// 	}
+// }
 
 /*
 * R_SetupTexParameters
 */
-static void R_SetupTexParameters( int flags, int upload_width, int upload_height, int minmipsize )
-{
-	int target = R_TextureTarget( flags, NULL );
-	int wrap = GL_REPEAT;
+// static void R_SetupTexParameters( int flags, int upload_width, int upload_height, int minmipsize )
+// {
+// 	int target = R_TextureTarget( flags, NULL );
+// 	int wrap = GL_REPEAT;
 
-	if( flags & IT_NOFILTERING )
-	{
-		qglTexParameteri( target, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
-		qglTexParameteri( target, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-	}
-	else if( flags & IT_DEPTH )
-	{
-		qglTexParameteri( target, GL_TEXTURE_MIN_FILTER, gl_filter_depth );
-		qglTexParameteri( target, GL_TEXTURE_MAG_FILTER, gl_filter_depth );
+// 	if( flags & IT_NOFILTERING )
+// 	{
+// 		qglTexParameteri( target, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+// 		qglTexParameteri( target, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+// 	}
+// 	else if( flags & IT_DEPTH )
+// 	{
+// 		qglTexParameteri( target, GL_TEXTURE_MIN_FILTER, gl_filter_depth );
+// 		qglTexParameteri( target, GL_TEXTURE_MAG_FILTER, gl_filter_depth );
 
-		if( glConfig.ext.texture_filter_anisotropic )
-			qglTexParameteri( target, GL_TEXTURE_MAX_ANISOTROPY_EXT, 1 );
-	}
-	else if( !( flags & IT_NOMIPMAP ) )
-	{
-		qglTexParameteri( target, GL_TEXTURE_MIN_FILTER, gl_filter_min );
-		qglTexParameteri( target, GL_TEXTURE_MAG_FILTER, gl_filter_max );
+// 		if( glConfig.ext.texture_filter_anisotropic )
+// 			qglTexParameteri( target, GL_TEXTURE_MAX_ANISOTROPY_EXT, 1 );
+// 	}
+// 	else if( !( flags & IT_NOMIPMAP ) )
+// 	{
+// 		qglTexParameteri( target, GL_TEXTURE_MIN_FILTER, gl_filter_min );
+// 		qglTexParameteri( target, GL_TEXTURE_MAG_FILTER, gl_filter_max );
 
-		if( glConfig.ext.texture_filter_anisotropic )
-			qglTexParameteri( target, GL_TEXTURE_MAX_ANISOTROPY_EXT, gl_anisotropic_filter );
+// 		if( glConfig.ext.texture_filter_anisotropic )
+// 			qglTexParameteri( target, GL_TEXTURE_MAX_ANISOTROPY_EXT, gl_anisotropic_filter );
 
-		if( minmipsize > 1 )
-		{
-			int mipwidth = upload_width, mipheight = upload_height, mip = 0;
-			while( ( mipwidth > minmipsize ) || ( mipheight > minmipsize ) )
-			{
-				++mip;
-				mipwidth >>= 1;
-				mipheight >>= 1;
-				if( !mipwidth )
-					mipwidth = 1;
-				if( !mipheight )
-					mipheight = 1;
-			}
-			qglTexParameteri( target, GL_TEXTURE_MAX_LOD_SGIS, mip );
-			qglTexParameteri( target, GL_TEXTURE_MAX_LEVEL_SGIS, mip );
-		}
-	}
-	else
-	{
-		qglTexParameteri( target, GL_TEXTURE_MIN_FILTER, gl_filter_max );
-		qglTexParameteri( target, GL_TEXTURE_MAG_FILTER, gl_filter_max );
+// 		if( minmipsize > 1 )
+// 		{
+// 			int mipwidth = upload_width, mipheight = upload_height, mip = 0;
+// 			while( ( mipwidth > minmipsize ) || ( mipheight > minmipsize ) )
+// 			{
+// 				++mip;
+// 				mipwidth >>= 1;
+// 				mipheight >>= 1;
+// 				if( !mipwidth )
+// 					mipwidth = 1;
+// 				if( !mipheight )
+// 					mipheight = 1;
+// 			}
+// 			qglTexParameteri( target, GL_TEXTURE_MAX_LOD_SGIS, mip );
+// 			qglTexParameteri( target, GL_TEXTURE_MAX_LEVEL_SGIS, mip );
+// 		}
+// 	}
+// 	else
+// 	{
+// 		qglTexParameteri( target, GL_TEXTURE_MIN_FILTER, gl_filter_max );
+// 		qglTexParameteri( target, GL_TEXTURE_MAG_FILTER, gl_filter_max );
 
-		if( glConfig.ext.texture_filter_anisotropic )
-			qglTexParameteri( target, GL_TEXTURE_MAX_ANISOTROPY_EXT, 1 );
-	}
+// 		if( glConfig.ext.texture_filter_anisotropic )
+// 			qglTexParameteri( target, GL_TEXTURE_MAX_ANISOTROPY_EXT, 1 );
+// 	}
 
-	// clamp if required
-	if( flags & IT_CLAMP )
-	{
-		if( glConfig.ext.texture_edge_clamp )
-			wrap = GL_CLAMP_TO_EDGE;
-#ifndef GL_ES_VERSION_2_0
-		else
-			wrap = GL_CLAMP;
-#endif
-	}
-	qglTexParameteri( target, GL_TEXTURE_WRAP_S, wrap );
-	qglTexParameteri( target, GL_TEXTURE_WRAP_T, wrap );
-	if( flags & IT_3D )
-		qglTexParameteri( target, GL_TEXTURE_WRAP_R_EXT, wrap );
+// 	// clamp if required
+// 	if( flags & IT_CLAMP )
+// 	{
+// 		if( glConfig.ext.texture_edge_clamp )
+// 			wrap = GL_CLAMP_TO_EDGE;
+// #ifndef GL_ES_VERSION_2_0
+// 		else
+// 			wrap = GL_CLAMP;
+// #endif
+// 	}
+// 	qglTexParameteri( target, GL_TEXTURE_WRAP_S, wrap );
+// 	qglTexParameteri( target, GL_TEXTURE_WRAP_T, wrap );
+// 	if( flags & IT_3D )
+// 		qglTexParameteri( target, GL_TEXTURE_WRAP_R_EXT, wrap );
 
-	if( ( flags & IT_DEPTH ) && ( flags & IT_DEPTHCOMPARE ) && glConfig.ext.shadow )
-	{
-		qglTexParameteri( target, GL_TEXTURE_COMPARE_MODE_ARB, GL_COMPARE_R_TO_TEXTURE_ARB );
-		qglTexParameteri( target, GL_TEXTURE_COMPARE_FUNC_ARB, GL_LEQUAL );
-	}
-}
+// 	if( ( flags & IT_DEPTH ) && ( flags & IT_DEPTHCOMPARE ) && glConfig.ext.shadow )
+// 	{
+// 		qglTexParameteri( target, GL_TEXTURE_COMPARE_MODE_ARB, GL_COMPARE_R_TO_TEXTURE_ARB );
+// 		qglTexParameteri( target, GL_TEXTURE_COMPARE_FUNC_ARB, GL_LEQUAL );
+// 	}
+// }
 
 
 /*
 * R_Upload32
 */
-static void R_Upload32( int ctx, uint8_t **data, int layer,
-	int x, int y, int width, int height,
-	int flags, int minmipsize, int *upload_width, int *upload_height, int samples,
-	bool subImage, bool noScale )
-{
-	int i, comp, format, type;
-	int target;
-	int numTextures;
-	uint8_t *scaled = NULL;
-	int scaledWidth, scaledHeight;
+// static void R_Upload32( int ctx, uint8_t **data, int layer,
+// 	int x, int y, int width, int height,
+// 	int flags, int minmipsize, int *upload_width, int *upload_height, int samples,
+// 	bool subImage, bool noScale )
+// {
+// 	int i, comp, format, type;
+// 	int target;
+// 	int numTextures;
+// 	uint8_t *scaled = NULL;
+// 	int scaledWidth, scaledHeight;
 
-	assert( samples );
+// 	assert( samples );
 
-	R_ScaledImageSize( width, height, &scaledWidth, &scaledHeight, flags, 1, minmipsize,
-		( subImage && noScale ) ? true : false );
+// 	R_ScaledImageSize( width, height, &scaledWidth, &scaledHeight, flags, 1, minmipsize,
+// 		( subImage && noScale ) ? true : false );
 
-	R_TextureTarget( flags, &target );
+// 	R_TextureTarget( flags, &target );
 
-	// don't ever bother with > maxSize textures
-	if( flags & IT_CUBEMAP )
-	{
-		numTextures = 6;
-	}
-	else
-	{
-		if( flags & ( IT_FLIPX|IT_FLIPY|IT_FLIPDIAGONAL ) )
-		{
-			uint8_t *temp = R_PrepareImageBuffer( ctx, TEXTURE_FLIPPING_BUF0, width * height * samples );
-			R_FlipTexture( data[0], temp, width, height, samples, 
-				(flags & IT_FLIPX) ? true : false, 
-				(flags & IT_FLIPY) ? true : false, 
-				(flags & IT_FLIPDIAGONAL) ? true : false );
-			data = &r_imageBuffers[ctx][TEXTURE_FLIPPING_BUF0];
-		}
+// 	// don't ever bother with > maxSize textures
+// 	if( flags & IT_CUBEMAP )
+// 	{
+// 		numTextures = 6;
+// 	}
+// 	else
+// 	{
+// 		if( flags & ( IT_FLIPX|IT_FLIPY|IT_FLIPDIAGONAL ) )
+// 		{
+// 			uint8_t *temp = R_PrepareImageBuffer( ctx, TEXTURE_FLIPPING_BUF0, width * height * samples );
+// 			R_FlipTexture( data[0], temp, width, height, samples, 
+// 				(flags & IT_FLIPX) ? true : false, 
+// 				(flags & IT_FLIPY) ? true : false, 
+// 				(flags & IT_FLIPDIAGONAL) ? true : false );
+// 			data = &r_imageBuffers[ctx][TEXTURE_FLIPPING_BUF0];
+// 		}
 
-		numTextures = 1;
-	}
+// 		numTextures = 1;
+// 	}
 
-	if( upload_width )
-		*upload_width = scaledWidth;
-	if( upload_height )
-		*upload_height = scaledHeight;
+// 	if( upload_width )
+// 		*upload_width = scaledWidth;
+// 	if( upload_height )
+// 		*upload_height = scaledHeight;
 
-	R_TextureFormat( flags, samples, &comp, &format, &type );
+// 	R_TextureFormat( flags, samples, &comp, &format, &type );
 
- // if( !( flags & ( IT_ARRAY | IT_3D ) ) ) // set in R_Create3DImage
- // 	R_SetupTexParameters( flags, scaledWidth, scaledHeight, minmipsize );
+//  // if( !( flags & ( IT_ARRAY | IT_3D ) ) ) // set in R_Create3DImage
+//  // 	R_SetupTexParameters( flags, scaledWidth, scaledHeight, minmipsize );
 
-	//R_UnpackAlignment( ctx, 1 );
+// 	//R_UnpackAlignment( ctx, 1 );
 
-	if( ( scaledWidth == width ) && ( scaledHeight == height ) && ( flags & IT_NOMIPMAP ) )
-	{
-		if( flags & ( IT_ARRAY | IT_3D ) )
-		{
-			for( i = 0; i < numTextures; i++, target++ )
-				qglTexSubImage3DEXT( target, 0, 0, 0, layer, scaledWidth, scaledHeight, 1, format, type, data[i] );
-		}
-		else if( subImage )
-		{
-			for( i = 0; i < numTextures; i++, target++ )
-				qglTexSubImage2D( target, 0, x, y, scaledWidth, scaledHeight, format, type, data[i] );
-		}
-		else
-		{
-			for( i = 0; i < numTextures; i++, target++ )
-				qglTexImage2D( target, 0, comp, scaledWidth, scaledHeight, 0, format, type, data[i] );
-		}
-	}
-	else
-	{
-		for( i = 0; i < numTextures; i++, target++ )
-		{
-			uint8_t *mip;
+// 	if( ( scaledWidth == width ) && ( scaledHeight == height ) && ( flags & IT_NOMIPMAP ) )
+// 	{
+// 		if( flags & ( IT_ARRAY | IT_3D ) )
+// 		{
+// 			for( i = 0; i < numTextures; i++, target++ )
+// 				qglTexSubImage3DEXT( target, 0, 0, 0, layer, scaledWidth, scaledHeight, 1, format, type, data[i] );
+// 		}
+// 		else if( subImage )
+// 		{
+// 			for( i = 0; i < numTextures; i++, target++ )
+// 				qglTexSubImage2D( target, 0, x, y, scaledWidth, scaledHeight, format, type, data[i] );
+// 		}
+// 		else
+// 		{
+// 			for( i = 0; i < numTextures; i++, target++ )
+// 				qglTexImage2D( target, 0, comp, scaledWidth, scaledHeight, 0, format, type, data[i] );
+// 		}
+// 	}
+// 	else
+// 	{
+// 		for( i = 0; i < numTextures; i++, target++ )
+// 		{
+// 			uint8_t *mip;
 
-			if( !scaled )
-				scaled = R_PrepareImageBuffer( ctx, TEXTURE_RESAMPLING_BUF0, 
-				scaledWidth * scaledHeight * samples );
+// 			if( !scaled )
+// 				scaled = R_PrepareImageBuffer( ctx, TEXTURE_RESAMPLING_BUF0, 
+// 				scaledWidth * scaledHeight * samples );
 
-			// resample the texture
-			mip = scaled;
-			if( data[i] )
-				R_ResampleTexture( ctx, data[i], width, height, (uint8_t *)mip, scaledWidth, scaledHeight, samples, 1 );
-			else
-				mip = NULL;
+// 			// resample the texture
+// 			mip = scaled;
+// 			if( data[i] )
+// 				R_ResampleTexture( ctx, data[i], width, height, (uint8_t *)mip, scaledWidth, scaledHeight, samples, 1 );
+// 			else
+// 				mip = NULL;
 
-			if( flags & ( IT_ARRAY | IT_3D ) )
-				qglTexSubImage3DEXT( target, 0, 0, 0, layer, scaledWidth, scaledHeight, 1, format, type, mip );
-			else if( subImage )
-				qglTexSubImage2D( target, 0, x, y, scaledWidth, scaledHeight, format, type, mip );
-			else
-				qglTexImage2D( target, 0, comp, scaledWidth, scaledHeight, 0, format, type, mip );
+// 			if( flags & ( IT_ARRAY | IT_3D ) )
+// 				qglTexSubImage3DEXT( target, 0, 0, 0, layer, scaledWidth, scaledHeight, 1, format, type, mip );
+// 			else if( subImage )
+// 				qglTexSubImage2D( target, 0, x, y, scaledWidth, scaledHeight, format, type, mip );
+// 			else
+// 				qglTexImage2D( target, 0, comp, scaledWidth, scaledHeight, 0, format, type, mip );
 
-			// mipmaps generation
-			if( !( flags & IT_NOMIPMAP ) && mip )
-			{
-				int w, h;
-				int miplevel = 0;
+// 			// mipmaps generation
+// 			if( !( flags & IT_NOMIPMAP ) && mip )
+// 			{
+// 				int w, h;
+// 				int miplevel = 0;
 
-				w = scaledWidth;
-				h = scaledHeight;
-				while( w > minmipsize || h > minmipsize )
-				{
-					R_MipMap( mip, w, h, samples, 1 );
+// 				w = scaledWidth;
+// 				h = scaledHeight;
+// 				while( w > minmipsize || h > minmipsize )
+// 				{
+// 					R_MipMap( mip, w, h, samples, 1 );
 
-					w >>= 1;
-					h >>= 1;
-					if( w < 1 )
-						w = 1;
-					if( h < 1 )
-						h = 1;
-					miplevel++;
+// 					w >>= 1;
+// 					h >>= 1;
+// 					if( w < 1 )
+// 						w = 1;
+// 					if( h < 1 )
+// 						h = 1;
+// 					miplevel++;
 
-					if( flags & ( IT_ARRAY | IT_3D ) )
-						qglTexSubImage3DEXT( target, miplevel, 0, 0, layer, w, h, 1, format, type, mip );
-					else if( subImage )
-						qglTexSubImage2D( target, miplevel, x, y, w, h, format, type, mip );
-					else
-						qglTexImage2D( target, miplevel, comp, w, h, 0, format, type, mip );
-				}
-			}
-		}
-	}
-}
+// 					if( flags & ( IT_ARRAY | IT_3D ) )
+// 						qglTexSubImage3DEXT( target, miplevel, 0, 0, layer, w, h, 1, format, type, mip );
+// 					else if( subImage )
+// 						qglTexSubImage2D( target, miplevel, x, y, w, h, format, type, mip );
+// 					else
+// 						qglTexImage2D( target, miplevel, comp, w, h, 0, format, type, mip );
+// 				}
+// 			}
+// 		}
+// 	}
+// }
 
 /*
 * R_PixelFormatSize
@@ -1565,7 +1515,6 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		goto error;
 	}
 	const struct base_format_def_s *definition = ktxContext.desc;
-
 	const enum texture_format_e dstFormat = R_FORMAT_RGBA8_UNORM;
 	const uint32_t numberOfFaces = R_KTXGetNumberFaces( &ktxContext );
 	const size_t destBlockSize = RT_BlockSize(R_BaseFormatDef(dstFormat));
@@ -1588,7 +1537,6 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		.memoryLocation = NriMemoryLocation_DEVICE,
 	};
 
-	image->formatDef = R_BaseFormatDef( dstFormat );
 	if( rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture ) != NriResult_SUCCESS ) {
 		ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name );
 		return false;
@@ -1614,7 +1562,6 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 
 	if( R_KTXIsCompressed( &ktxContext ) ) {
 		struct texture_buf_s uncomp = { 0 };
-		// R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
 		for( size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx ) {
 			struct texture_buf_s *tex = R_KTXResolveBuffer( &ktxContext, 0, faceIdx, 0 );
 			struct texture_buf_desc_s desc = { 
@@ -1625,33 +1572,12 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 			};
 			T_ReallocTextureBuf( &uncomp, &desc );
 			DecompressETC1( tex->buffer, tex->width, tex->height, uncomp.buffer, false );
-			texture_upload_desc_t uploadDesc = { 
-				.sliceNum = uncomp.height,
-				.rowPitch = uncomp.width * destBlockSize, // we treat it all as RGBA8
-				.arrayOffset = faceIdx,
-				.mipOffset = 0,
-				.width = uncomp.width,
-				.height = uncomp.height,
-				.target = image->texture,
-				.after = (NriAccessLayoutStage){
-					.layout = NriLayout_SHADER_RESOURCE,
-					.access = NriAccessBits_SHADER_RESOURCE,
-					.stages = NriStageBits_FRAGMENT_SHADER 
-				}
-
-			};
-			const size_t srcBlockSize = RT_BlockSize( uncomp.def);
-			R_ResourceBeginCopyTexture( &uploadDesc );
-			for( size_t slice = 0; slice < uncomp.height; slice++ ) {
-				const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
-				memset( &( (uint8_t *)uploadDesc.data )[dstRowStart], 255, uploadDesc.rowPitch );
-				for( size_t column = 0; column < uncomp.width; column++ ) {
-					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], &uncomp.buffer[(uncomp.width * srcBlockSize * slice) + ( column * srcBlockSize )], min( 4,  srcBlockSize) );
-				}
-			}
-			R_ResourceEndCopyTexture( &uploadDesc );
+			__R_CopyTextureDataTexture(image, faceIdx, faceIdx, 0, 0, uncomp.width, uncomp.height, R_FORMAT_RGB8_UNORM, uncomp.buffer);
+			
 		}
 		T_FreeTextureBuf(&uncomp);
+		image->samples = 3;
+
 	} else {
 		const enum texture_logical_channel_e expectBGR[] = { R_LOGICAL_C_BLUE, R_LOGICAL_C_GREEN, R_LOGICAL_C_RED };
 		const enum texture_logical_channel_e expectBGRA[] = { R_LOGICAL_C_BLUE, R_LOGICAL_C_GREEN, R_LOGICAL_C_RED, R_LOGICAL_C_ALPHA };
@@ -1677,30 +1603,7 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 					T_SwizzleInplace( texBuffer, swizzleChannel );
 				}
 
-				texture_upload_desc_t uploadDesc = { 
-					.sliceNum = texBuffer->height,
-					.rowPitch = texBuffer->width * destBlockSize,
-					.arrayOffset = faceIndex,
-					.mipOffset = mipIndex,
-					.width = texBuffer->width,
-					.height = texBuffer->height,
-					.target = image->texture,
-					.after = (NriAccessLayoutStage){
-						.layout = NriLayout_SHADER_RESOURCE,
-						.access = NriAccessBits_SHADER_RESOURCE,
-						.stages = NriStageBits_FRAGMENT_SHADER 
-					}
-				};
-				const size_t srcBlockSize = RT_BlockSize( texBuffer->def);
-				R_ResourceBeginCopyTexture( &uploadDesc );
-				for( size_t slice = 0; slice < texBuffer->height; slice++ ) {
-					const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
-					memset( &( (uint8_t *)uploadDesc.data )[dstRowStart], 255, uploadDesc.rowPitch );
-					for( size_t column = 0; column < texBuffer->width; column++ ) {
-						memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], &texBuffer->buffer[(texBuffer->width * srcBlockSize * slice) + ( column * srcBlockSize )], min( 4, srcBlockSize) );
-					}
-				}
-				R_ResourceEndCopyTexture( &uploadDesc );
+				__R_CopyTextureDataTexture(image, faceIndex, mipIndex, 0, 0, texBuffer->width, texBuffer->height, definition->format, texBuffer->buffer);
 			}
 		}
 	}
@@ -1708,7 +1611,6 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 	Q_strncpyz( image->extension, ".ktx", sizeof( image->extension ) );
 	image->width = R_KTXWidth(&ktxContext);
 	image->height = R_KTXHeight(&ktxContext);
-	image->samples = 4;
 
 	R_KTXFreeContext(&ktxContext);
 	R_FreeFile( buffer );
@@ -1749,6 +1651,7 @@ static NriTextureUsageBits __R_NRITextureUsageBits(int flags) {
 	return NriTextureUsageBits_SHADER_RESOURCE;
 }
 
+
 static enum texture_format_e __R_ResolveDataFormat( int flags, int samples )
 {
 	if( flags & IT_DEPTH ) {
@@ -1765,15 +1668,101 @@ static enum texture_format_e __R_ResolveDataFormat( int flags, int samples )
 		}
 	}
 	if( samples == 4 ) {
-		return ( flags & IT_BGRA ) ? R_FORMAT_BGRA8_UNORM : R_FORMAT_RGBA8_UNORM;
+		return R_FORMAT_RGBA8_UNORM;
 	} else if( samples == 3 ) {
-		return ( flags & IT_BGRA ? R_FORMAT_BGR8_UNORM : R_FORMAT_RGB8_UNORM );
+		return R_FORMAT_RGB8_UNORM;
 	} else if( samples == 2 ) {
 		return R_FORMAT_RG8_UNORM;
 	} else if( flags & IT_ALPHAMASK ) {
 		return R_FORMAT_R8_UNORM;
 	}
 	return R_FORMAT_R8_UNORM;
+}
+
+static enum texture_format_e __R_GetImageFormat( struct image_s* image )
+{
+	if( image->flags & IT_DEPTH ) {
+		if( image->flags & IT_STENCIL ) {
+			return R_FORMAT_D24_UNORM_S8_UINT;
+		} else {
+			return R_FORMAT_D32_SFLOAT;
+		}
+	} 
+	// else if( flags & IT_FRAMEBUFFER ) {
+	// 	// if( samples == 4 ) {
+	// 	// 	return R_FORMAT_RGBA8_UNORM;
+	// 	// } else {
+	// 	// 	return R_FORMAT_RGB8_UNORM;
+	// 	// }
+	// 	return R_FORMAT_RGBA8_UNORM;
+	// }
+	// if( samples == 4 ) {
+	// 	return R_FORMAT_RGBA8_UNORM;
+	// } else if( samples == 3 ) {
+	// 	return R_FORMAT_RGBA8_UNORM;
+	// } else if( samples == 2 ) {
+	// 	return R_FORMAT_RG8_UNORM;
+	// } else if( flags & IT_ALPHAMASK ) {
+	// 	return R_FORMAT_R8_UNORM;
+	// }
+	return R_FORMAT_RGBA8_UNORM;
+}
+
+static void __R_CopyTextureDataTexture(struct image_s* image, int layer, int mipOffset, int x, int y, int w, int h, enum texture_format_e srcFormat, uint8_t *data )
+{
+	const struct base_format_def_s *srcDef = R_BaseFormatDef( srcFormat );
+	const struct base_format_def_s *destDef = R_BaseFormatDef(__R_GetImageFormat(image));
+	
+	const size_t srcBlockSize = RT_BlockSize( srcDef);
+	const size_t destBlockSize = RT_BlockSize( destDef);
+
+	assert(destDef->format == R_FORMAT_RGBA8_UNORM);
+
+	texture_upload_desc_t uploadDesc = { 
+		.sliceNum = h, 
+		.rowPitch = w * destBlockSize, 
+		.arrayOffset = layer, 
+		.mipOffset = mipOffset, 
+		.x = x,
+		.y = y,
+		.width = w, 
+		.height = h, 
+		.target = image->texture,
+		.after = (NriAccessLayoutStage){
+			.layout = NriLayout_SHADER_RESOURCE,
+			.access = NriAccessBits_SHADER_RESOURCE,
+			.stages = NriStageBits_FRAGMENT_SHADER 
+		} 
+	};
+
+	R_ResourceBeginCopyTexture( &uploadDesc );
+	for( size_t slice = 0; slice < uploadDesc.height; slice++ ) {
+		const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
+		memset( &( (uint8_t *)uploadDesc.data )[dstRowStart], 255, uploadDesc.rowPitch );
+		for( size_t column = 0; column < uploadDesc.width; column++ ) {
+			switch( srcFormat ) {
+				case R_FORMAT_L8_A8_UNORM:
+					// assert( destFormat == R_FORMAT_RGBA8_UNORM );
+					const uint8_t luminance = data[( uploadDesc.width * srcBlockSize * slice ) + ( column * srcBlockSize )];
+					const uint8_t alpha = data[( uploadDesc.width * srcBlockSize * slice ) + ( column * srcBlockSize ) + 1];
+					uint8_t color[4] = { luminance, luminance, luminance, alpha };
+					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], color, min( sizeof( color ), destBlockSize ) );
+					break;
+				case R_FORMAT_A8_UNORM:
+				case R_FORMAT_R8_UNORM: {
+					const uint8_t c1 = data[( uploadDesc.width * srcBlockSize * slice ) + ( column * srcBlockSize )];
+					const uint8_t color[4] = { c1, c1, c1, c1 };
+					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], color, min( sizeof( color ), destBlockSize ) );
+					break;
+				}
+				default:
+					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], &data[( uploadDesc.width * srcBlockSize * slice ) + ( column * srcBlockSize )],
+							min( srcBlockSize, destBlockSize ) );
+					break;
+			}
+		}
+	}
+	R_ResourceEndCopyTexture( &uploadDesc );
 }
 
 static uint16_t __R_calculateMipMapLevel(int flags, int width, int height, uint32_t minMipSize) {
@@ -1800,167 +1789,110 @@ static uint16_t __R_calculateMipMapLevel(int flags, int width, int height, uint3
 static enum texture_format_e __R_ToSupportedFormat(enum texture_format_e format) {
   switch(format) {
   	case R_FORMAT_RGB8_UNORM:
-			return R_FORMAT_RGBA8_UNORM;
   	case R_FORMAT_BGR8_UNORM:
-			return R_FORMAT_RGBA8_UNORM;
+	case R_FORMAT_A8_UNORM:
+	case R_FORMAT_R8_UNORM:
+		return R_FORMAT_RGBA8_UNORM;
   	default:
   		break;
   }
   return format;
 }
 
-static void __LoadImageLayer(struct image_s* image, size_t layer, uint8_t* buf) {
+// static void __LoadImageInPlace(struct image_s* image, uint8_t **pic, int width, int height, int flags, int minmipsize, int tags, int samples ) {
+// 	assert(image);
+// 	assert(image->texture);
 
-	enum texture_format_e srcFormat = __R_ResolveDataFormat( image->flags, image->samples );
-	enum texture_format_e destFormat = __R_ToSupportedFormat( srcFormat );
-	const NriTextureDesc* textureDesc = rsh.nri.coreI.GetTextureDesc(image->texture);
-
-	uint32_t srcBlockSize = R_FormatBitSizePerBlock( srcFormat ) / 8;
-	uint32_t destBlockSize = R_FormatBitSizePerBlock( destFormat ) / 8;
-	uint8_t *tmpBuffer = NULL;
-	const size_t reservedSize = image->width * image->height * image->samples;
-	if( !( image->flags & IT_CUBEMAP ) && ( image->flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) ) ) {
-		arrsetlen( tmpBuffer, reservedSize );
-		R_FlipTexture( buf, tmpBuffer, image->width, image->height, image->samples, ( image->flags & IT_FLIPX ) ? true : false, ( image->flags & IT_FLIPY ) ? true : false,
-					   ( image->flags & IT_FLIPDIAGONAL ) ? true : false );
-		buf = tmpBuffer;
-	}
-
-	uint32_t w = image->width;
-	uint32_t h = image->height;
-	// R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
-	for( size_t i = 0; i < textureDesc->mipNum; i++ ) {
-		texture_upload_desc_t uploadDesc = { 
-			.sliceNum = h, 
-			.rowPitch = w * destBlockSize, 
-			.arrayOffset = layer, 
-			.mipOffset = i, 
-			.width = w, 
-			.height = h, 
-			.target = image->texture,
-			.after = (NriAccessLayoutStage){
-				.layout = NriLayout_SHADER_RESOURCE,
-				.access = NriAccessBits_SHADER_RESOURCE,
-				.stages = NriStageBits_FRAGMENT_SHADER 
-			} 
-		};
-		R_ResourceBeginCopyTexture( &uploadDesc );
-		for( size_t slice = 0; slice < textureDesc->height; slice++ ) {
-			const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
-			memset( &( (uint8_t *)uploadDesc.data )[dstRowStart], 255, uploadDesc.rowPitch );
-			for( size_t column = 0; column < textureDesc->width; column++ ) {
-				memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], &buf[( textureDesc->width * srcBlockSize * slice ) + ( column * srcBlockSize )],
-						min( srcBlockSize, destBlockSize ) );
-			}
-		}
-		R_ResourceEndCopyTexture( &uploadDesc );
-		w >>= 1;
-		h >>= 1;
-		if( w == 0 ) {
-			w = 1;
-		}
-		if( h == 0 ) {
-			h = 1;
-		}
-		R_MipMap( buf, w, h, image->samples, 1 );
-	}
-	arrfree( tmpBuffer );
-}
-static void __LoadImageInPlace(struct image_s* image, uint8_t **pic, int width, int height, int flags, int minmipsize, int tags, int samples ) {
-	assert(image);
-	assert(image->texture);
-
-	image->width = width;
-	image->height = height;
-	image->layers = 1;
-	image->flags = flags;
-	image->minmipsize = minmipsize;
-	image->tags = tags;
-	image->samples = samples;
-	image->upload_width = width;
-	image->upload_height = height;
+// 	image->width = width;
+// 	image->height = height;
+// 	image->layers = 1;
+// 	image->flags = flags;
+// 	image->minmipsize = minmipsize;
+// 	image->tags = tags;
+// 	image->samples = samples;
+// 	image->upload_width = width;
+// 	image->upload_height = height;
 	
-	const uint32_t mipSize = __R_calculateMipMapLevel( flags, width, height, minmipsize );
+// 	const uint32_t mipSize = __R_calculateMipMapLevel( flags, width, height, minmipsize );
 
-	enum texture_format_e srcFormat = __R_ResolveDataFormat( flags, samples );
-	enum texture_format_e destFormat = __R_ToSupportedFormat( srcFormat );
-	NriTextureDesc textureDesc = { .width = width,
-								   .height = height,
-								   .depth = 1,
-								   .usageMask = __R_NRITextureUsageBits( flags ),
-								   .layerNum = ( flags & IT_CUBEMAP ) ? 6 : 1,
-								   .format = R_NRIFormat( destFormat ),
-								   .sampleNum = 1,
-								   .type = NriTextureType_TEXTURE_2D,
-								   .mipNum = mipSize };
-	image->formatDef = R_BaseFormatDef(destFormat);
-	rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture );
-	NriResourceGroupDesc resourceGroupDesc = {
-		.textureNum = 1,
-		.textures = &image->texture,
-		.memoryLocation = NriMemoryLocation_DEVICE,
-	};
-	const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
-	assert( allocationNum <= Q_ARRAY_COUNT( image->memory ) );
-	NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, image->memory ) );
-	uint32_t srcBlockSize = R_FormatBitSizePerBlock( srcFormat ) / 8;
-	uint32_t destBlockSize = R_FormatBitSizePerBlock( destFormat ) / 8;
-	uint8_t *tmpBuffer = NULL;
-	const size_t reservedSize = width * height * samples;
-	if( pic ) {
-		// R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
-		for( size_t index = 0; index < textureDesc.layerNum; index++ ) {
-			if( !pic[index] ) {
-				continue;
-			}
-			uint8_t *buf = pic[index];
-			if( !( flags & IT_CUBEMAP ) && ( flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) ) ) {
-				arrsetlen( tmpBuffer, reservedSize );
-				R_FlipTexture( buf, tmpBuffer, width, height, samples, ( flags & IT_FLIPX ) ? true : false, ( flags & IT_FLIPY ) ? true : false, ( flags & IT_FLIPDIAGONAL ) ? true : false );
-				buf = tmpBuffer;
-			}
+// 	enum texture_format_e srcFormat = __R_ResolveDataFormat( image );
+// 	enum texture_format_e destFormat = __R_GetImageFormat( image );
+// 	NriTextureDesc textureDesc = { .width = width,
+// 								   .height = height,
+// 								   .depth = 1,
+// 								   .usageMask = __R_NRITextureUsageBits( flags ),
+// 								   .layerNum = ( flags & IT_CUBEMAP ) ? 6 : 1,
+// 								   .format = R_NRIFormat( destFormat ),
+// 								   .sampleNum = 1,
+// 								   .type = NriTextureType_TEXTURE_2D,
+// 								   .mipNum = mipSize };
+// 	rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture );
+// 	NriResourceGroupDesc resourceGroupDesc = {
+// 		.textureNum = 1,
+// 		.textures = &image->texture,
+// 		.memoryLocation = NriMemoryLocation_DEVICE,
+// 	};
+// 	const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
+// 	assert( allocationNum <= Q_ARRAY_COUNT( image->memory ) );
+// 	NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, image->memory ) );
+// 	uint32_t srcBlockSize = R_FormatBitSizePerBlock( srcFormat ) / 8;
+// 	uint32_t destBlockSize = R_FormatBitSizePerBlock( destFormat ) / 8;
+// 	uint8_t *tmpBuffer = NULL;
+// 	const size_t reservedSize = width * height * samples;
+// 	if( pic ) {
+// 		// R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
+// 		for( size_t index = 0; index < textureDesc.layerNum; index++ ) {
+// 			if( !pic[index] ) {
+// 				continue;
+// 			}
+// 			uint8_t *buf = pic[index];
+// 			if( !( flags & IT_CUBEMAP ) && ( flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) ) ) {
+// 				arrsetlen( tmpBuffer, reservedSize );
+// 				R_FlipTexture( buf, tmpBuffer, width, height, samples, ( flags & IT_FLIPX ) ? true : false, ( flags & IT_FLIPY ) ? true : false, ( flags & IT_FLIPDIAGONAL ) ? true : false );
+// 				buf = tmpBuffer;
+// 			}
 
-			uint32_t w = width;
-			uint32_t h = height;
-			for( size_t i = 0; i < mipSize; i++ ) {
-				texture_upload_desc_t uploadDesc = { 
-					.sliceNum = h, 
-					.rowPitch = w * destBlockSize, 
-					.arrayOffset = index, 
-					.mipOffset = i, .width = w, 
-					.height = h, 
-					.target = image->texture, 
-					.after = (NriAccessLayoutStage){
-						.layout = NriLayout_SHADER_RESOURCE,
-						.access = NriAccessBits_SHADER_RESOURCE,
-						.stages = NriStageBits_FRAGMENT_SHADER 
-					}
-				};
-				R_ResourceBeginCopyTexture( &uploadDesc );
-				for( size_t slice = 0; slice < height; slice++ ) {
-					const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
-					memset( &( (uint8_t *)uploadDesc.data )[dstRowStart], 255, uploadDesc.rowPitch );
-					for( size_t column = 0; column < width; column++ ) {
-						memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], &buf[( width * srcBlockSize * slice ) + ( column * srcBlockSize )],
-								min( srcBlockSize, destBlockSize ) );
-					}
-				}
-				R_ResourceEndCopyTexture( &uploadDesc );
-				w >>= 1;
-				h >>= 1;
-				if( w == 0 ) {
-					w = 1;
-				}
-				if( h == 0 ) {
-					h = 1;
-				}
-				R_MipMap( buf, w, h, samples, 1 );
-			}
-		}
-	}
-	arrfree( tmpBuffer );
+// 			uint32_t w = width;
+// 			uint32_t h = height;
+// 			for( size_t i = 0; i < mipSize; i++ ) {
+// 				texture_upload_desc_t uploadDesc = { 
+// 					.sliceNum = h, 
+// 					.rowPitch = w * destBlockSize, 
+// 					.arrayOffset = index, 
+// 					.mipOffset = i, .width = w, 
+// 					.height = h, 
+// 					.target = image->texture, 
+// 					.after = (NriAccessLayoutStage){
+// 						.layout = NriLayout_SHADER_RESOURCE,
+// 						.access = NriAccessBits_SHADER_RESOURCE,
+// 						.stages = NriStageBits_FRAGMENT_SHADER 
+// 					}
+// 				};
+// 				R_ResourceBeginCopyTexture( &uploadDesc );
+// 				for( size_t slice = 0; slice < height; slice++ ) {
+// 					const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
+// 					memset( &( (uint8_t *)uploadDesc.data )[dstRowStart], 255, uploadDesc.rowPitch );
+// 					for( size_t column = 0; column < width; column++ ) {
+// 						memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], &buf[( width * srcBlockSize * slice ) + ( column * srcBlockSize )],
+// 								min( srcBlockSize, destBlockSize ) );
+// 					}
+// 				}
+// 				R_ResourceEndCopyTexture( &uploadDesc );
+// 				w >>= 1;
+// 				h >>= 1;
+// 				if( w == 0 ) {
+// 					w = 1;
+// 				}
+// 				if( h == 0 ) {
+// 					h = 1;
+// 				}
+// 				R_MipMap( buf, w, h, samples, 1 );
+// 			}
+// 		}
+// 	}
+// 	arrfree( tmpBuffer );
 
-}
+// }
 
 struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int height, int flags, int minmipsize, int tags, int samples )
 {
@@ -1978,8 +1910,8 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	const uint32_t mipSize = __R_calculateMipMapLevel( flags, width, height, minmipsize );
 
 	enum texture_format_e srcFormat = __R_ResolveDataFormat( flags, samples );
-	enum texture_format_e destFormat = __R_ToSupportedFormat( srcFormat );
-	const uint32_t srcBlockSize = R_FormatBitSizePerBlock( srcFormat ) / 8;
+
+	enum texture_format_e destFormat = __R_GetImageFormat( image );
 	const uint32_t destBlockSize = R_FormatBitSizePerBlock( destFormat ) / 8;
 
 	NriTextureDesc textureDesc = { .width = width,
@@ -1991,7 +1923,6 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 								   .sampleNum = 1,
 								   .type = NriTextureType_TEXTURE_2D,
 								   .mipNum = mipSize };
-	image->formatDef = R_BaseFormatDef( srcFormat );
 	rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture );
 	rsh.nri.coreI.SetTextureDebugName( image->texture, name );
 	NriResourceGroupDesc resourceGroupDesc = {
@@ -2034,30 +1965,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 			uint32_t w = width;
 			uint32_t h = height;
 			for( size_t i = 0; i < mipSize; i++ ) {
-				texture_upload_desc_t uploadDesc = { 
-					.sliceNum = h, 
-					.rowPitch = w * destBlockSize, 
-					.arrayOffset = index, 
-					.mipOffset = i, 
-					.width = w, 
-					.height = h, 
-					.target = image->texture,
-					.after = (NriAccessLayoutStage){
-						.layout = NriLayout_SHADER_RESOURCE,
-						.access = NriAccessBits_SHADER_RESOURCE,
-						.stages = NriStageBits_FRAGMENT_SHADER 
-					}
-				};
-				R_ResourceBeginCopyTexture( &uploadDesc );
-				for( size_t slice = 0; slice < h; slice++ ) {
-					const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
-					memset( &( (uint8_t *)uploadDesc.data )[dstRowStart], 255, uploadDesc.rowPitch );
-					for( size_t column = 0; column < w; column++ ) {
-						memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], &buf[( w * srcBlockSize * slice ) + ( column * srcBlockSize )],
-								min( srcBlockSize, destBlockSize ) );
-					}
-				}
-				R_ResourceEndCopyTexture( &uploadDesc );
+				__R_CopyTextureDataTexture(image, index, i, 0, 0, w, h, srcFormat, buf);
 				w >>= 1;
 				h >>= 1;
 				if( w == 0 ) {
@@ -2186,6 +2094,7 @@ static void R_FreeImage( struct image_s *image )
 */
 void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int flags, int minmipsize, int samples )
 {
+	assert(false);
 	assert( image );
 	assert( image->texture );
 	// R_BindImage( image );
@@ -2200,7 +2109,7 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 	// if( !(image->flags & IT_NO_DATA_SYNC) )
 	// 	R_DeferDataSync();
 	R_ReleaseNriTexture(image);
-	__LoadImageInPlace(image, pic, width,height, flags, minmipsize, image->tags, samples);
+	// __LoadImageInPlace(image, pic, width,height, flags, minmipsize, image->tags, samples);
 	
 	image->flags = flags;
 	image->width = width;
@@ -2219,7 +2128,6 @@ void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, 
 	assert( image );
 	assert( image->texture );
 
-	// __LoadImageLayer(image, layer, pic[0]);
 	const size_t reservedSize = width * height * image->samples;
 	uint8_t *buf = NULL;
 	arrsetlen( buf, reservedSize );
@@ -2227,11 +2135,10 @@ void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, 
 
 	// uint8_t *buf = tmpBuffer;
 	enum texture_format_e srcFormat = __R_ResolveDataFormat( image->flags, image->samples );
-	enum texture_format_e destFormat = __R_ToSupportedFormat( srcFormat );
 	const NriTextureDesc* textureDesc = rsh.nri.coreI.GetTextureDesc(image->texture);
 
 	uint32_t srcBlockSize = R_FormatBitSizePerBlock( srcFormat ) / 8;
-	uint32_t destBlockSize = R_FormatBitSizePerBlock( destFormat ) / 8;
+	uint32_t destBlockSize = R_FormatBitSizePerBlock( __R_GetImageFormat( image ) ) / 8;
 	uint8_t *tmpBuffer = NULL;
 	if( !( image->flags & IT_CUBEMAP ) && ( image->flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) ) ) {
 		R_FlipTexture( buf, tmpBuffer, width, height, image->samples, ( image->flags & IT_FLIPX ) ? true : false, ( image->flags & IT_FLIPY ) ? true : false,
@@ -2243,32 +2150,7 @@ void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, 
 	uint32_t h = height;
 	// R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
 	for( size_t i = 0; i < textureDesc->mipNum; i++ ) {
-		texture_upload_desc_t uploadDesc = { 
-			.sliceNum = h, 
-			.rowPitch = w * destBlockSize, 
-			.arrayOffset = layer, 
-			.mipOffset = i, 
-			.x = x,
-			.y = y,
-			.width = w, 
-			.height = h, 
-			.target = image->texture,
-			.after = (NriAccessLayoutStage){
-				.layout = NriLayout_SHADER_RESOURCE,
-				.access = NriAccessBits_SHADER_RESOURCE,
-				.stages = NriStageBits_FRAGMENT_SHADER 
-			} 
-		};
-		R_ResourceBeginCopyTexture( &uploadDesc );
-		for( size_t slice = 0; slice < h; slice++ ) {
-			const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
-			memset( &( (uint8_t *)uploadDesc.data )[dstRowStart], 255, uploadDesc.rowPitch );
-			for( size_t column = 0; column < w; column++ ) {
-				memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], &buf[( w * srcBlockSize * slice ) + ( column * srcBlockSize )],
-						min( srcBlockSize, destBlockSize ) );
-			}
-		}
-		R_ResourceEndCopyTexture( &uploadDesc );
+		__R_CopyTextureDataTexture(image, layer, i, x, y, w, h, srcFormat, buf);
 		w >>= 1;
 		h >>= 1;
 		if( w == 0 ) {
@@ -2297,8 +2179,8 @@ void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic )
 
 	R_BindImage( image );
 
-	R_Upload32( QGL_CONTEXT_MAIN, pic, layer, 0, 0, image->width, image->height, image->flags, image->minmipsize,
-		NULL, NULL, image->samples, true, false );
+	// R_Upload32( QGL_CONTEXT_MAIN, pic, layer, 0, 0, image->width, image->height, image->flags, image->minmipsize,
+	// 	NULL, NULL, image->samples, true, false );
 
 	if( !(image->flags & IT_NO_DATA_SYNC) )
 		R_DeferDataSync();
@@ -2468,31 +2350,19 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	assert(uploadCount <= 6);
 
 	const uint32_t mipSize = __R_calculateMipMapLevel( flags, uploads[0].buffer.width, uploads[0].buffer.height, minmipsize );
-	enum texture_format_e destFormat = R_FORMAT_RGBA8_UNORM;
-	switch (uploads[0].buffer.def->format) {
-		case R_FORMAT_L8_A8_UNORM:
-			destFormat = R_FORMAT_RGBA8_UNORM;
-			break;
-		case R_FORMAT_A8_UNORM:
-			destFormat = R_FORMAT_R8_UNORM;
-			break;
-		default:
-			break;
-	}
-
-	struct base_format_def_s* destFormatDef = R_BaseFormatDef(destFormat);
-	const uint32_t destBlockSize = R_FormatBitSizePerBlock( destFormatDef->format ) / 8;
+	enum texture_format_e destFormat = __R_GetImageFormat(image);
+	const uint32_t destBlockSize = R_FormatBitSizePerBlock( destFormat ) / 8;
 	NriTextureDesc textureDesc = { 
-								   .width = uploads[0].buffer.width,
-								   .height = uploads[0].buffer.height,
-								   .usageMask = __R_NRITextureUsageBits( flags ),
-								   .layerNum = uploadCount,
-								   .depth = 1,
-								   .format = R_NRIFormat(destFormatDef->format),
-								   .sampleNum = 1,
-								   .type = NriTextureType_TEXTURE_2D,
-								   .mipNum = mipSize };
-	image->formatDef = destFormatDef;
+		.width = uploads[0].buffer.width,
+		.height = uploads[0].buffer.height,
+		.usageMask = __R_NRITextureUsageBits( flags ),
+		.layerNum = uploadCount,
+		.depth = 1,
+		.format = R_NRIFormat(destFormat),
+		.sampleNum = 1,
+		.type = NriTextureType_TEXTURE_2D,
+		.mipNum = mipSize 
+	};
 	if( rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture ) != NriResult_SUCCESS ) {
 		ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name );
 		R_FreeImage( image );
@@ -2534,6 +2404,8 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	struct texture_buf_s transformBuffer = { 0 };
 	for( size_t index = 0; index < uploadCount; index++ ) {
 		const uint8_t channelCount = RT_NumberChannels( uploads[index].buffer.def );
+		assert(image->samples == 0 || image->samples == channelCount);
+		image->samples = channelCount;
 
 		struct texture_buf_s* src = &uploads[index].buffer;
 		if( !isCubeMap && ( flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) ) ) {
@@ -2556,43 +2428,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 
 		// R_ResourceTransitionTexture(image->texture, (NriAccessLayoutStage){} );
 		for( size_t i = 0; i < mipSize; i++ ) {
-			texture_upload_desc_t uploadDesc = {
-				.sliceNum = src->height,
-				.rowPitch = src->width * destBlockSize,
-				.arrayOffset = index,
-				.mipOffset = i,
-				.width = src->width,
-				.height = src->height,
-				.target = image->texture,
-				.after = (NriAccessLayoutStage){
-					.layout = NriLayout_SHADER_RESOURCE,
-					.access = NriAccessBits_SHADER_RESOURCE,
-					.stages = NriStageBits_FRAGMENT_SHADER 
-				}
-			};
-  			const size_t srcBlockSize = RT_BlockSize( src->def);
-			R_ResourceBeginCopyTexture( &uploadDesc );
-			for( size_t slice = 0; slice < src->height; slice++ ) {
-				const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
-				memset( &( (uint8_t *)uploadDesc.data )[dstRowStart], 255, uploadDesc.rowPitch );
-				for( size_t column = 0; column < src->width; column++ ) {
-					switch(uploads[index].buffer.def->format) {
-						case R_FORMAT_L8_A8_UNORM:
-							const uint8_t luminance = src->buffer[( src->width * srcBlockSize * slice ) + ( column * srcBlockSize )];
-							const uint8_t alpha = src->buffer[( src->width * srcBlockSize * slice ) + ( column * srcBlockSize ) + 1];
-							uint8_t color[4] = {
-								luminance, luminance, luminance, alpha
-							};
-							memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], color, min(sizeof(color), destBlockSize));
-							break;
-						default:
-							memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], &src->buffer[( src->width * srcBlockSize * slice ) + ( column * srcBlockSize )],
-									min( srcBlockSize, destBlockSize ) );
-							break;
-					}
-				}
-			}
-			R_ResourceEndCopyTexture( &uploadDesc );
+			__R_CopyTextureDataTexture(image, index, i, 0, 0, src->width, src->height, src->def->format, src->buffer);
 			R_MipMap( src->buffer, src->width, src->height, channelCount, 1 );
 			src->width >>= 1;
 			src->height >>= 1;
@@ -2613,14 +2449,6 @@ done:
 	sdsfree( resolvedPath );
 	return image;
 }
-
-/*
-==============================================================================
-
-SCREEN SHOTS
-
-==============================================================================
-*/
 
 /*
 * R_ScreenShot

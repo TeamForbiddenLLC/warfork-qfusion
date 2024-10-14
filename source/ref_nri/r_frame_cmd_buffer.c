@@ -199,6 +199,11 @@ void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint
 
 void FR_CmdBeginRendering( struct frame_cmd_buffer_s *cmd )
 {
+	cmd->stackCmdBeingRendered++;
+	if( cmd->stackCmdBeingRendered > 1 ) {
+		return;
+	}
+
 	NriAttachmentsDesc attachmentsDesc = {};
 	attachmentsDesc.colorNum = cmd->state.numColorAttachments;
 	attachmentsDesc.colors = cmd->state.colorAttachment;
@@ -209,5 +214,9 @@ void FR_CmdBeginRendering( struct frame_cmd_buffer_s *cmd )
 
 void FR_CmdEndRendering( struct frame_cmd_buffer_s *cmd )
 {
+	cmd->stackCmdBeingRendered--;
+	if( cmd->stackCmdBeingRendered > 0 ) {
+		return;
+	}
 	rsh.nri.coreI.CmdEndRendering( cmd->cmd );
 }

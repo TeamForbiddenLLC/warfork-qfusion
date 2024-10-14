@@ -10,8 +10,8 @@ layout(set = DESCRIPTOR_OBJECT_SET, binding = 4) uniform DefaultMaterialCB {
   float offsetScale;
 } pass;
 
-layout(set = DESCRIPTOR_OBJECT_SET, binding = 5) uniform DynamicLightCB {
-  int numberLights;
-  DynLight dynLights[16];
-} lights; 
+// layout(set = DESCRIPTOR_OBJECT_SET, binding = 5) uniform DynamicLightCB {
+//  int numberLights;
+//  DynLight dynLights[16];
+// } lights; 
 

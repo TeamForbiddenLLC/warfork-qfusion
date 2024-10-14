@@ -6,7 +6,7 @@
 layout(location = 0) out vec2 v_FogCoord;
 layout(location = 1) out vec4 frontColor; 
 
-void main(void)
+void main()
 {
 	vec4 Position = a_Position;
 	vec3 Normal = a_Normal.xyz;

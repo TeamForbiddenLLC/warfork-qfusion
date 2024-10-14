@@ -834,8 +834,6 @@ static const glsl_feature_t glsl_features_q3a[] = {
 	{ GLSL_SHADER_Q3_LIGHTSTYLE2, "#define NUM_LIGHTMAPS 3\n#define qf_lmvec01 vec4\n#define qf_lmvec23 vec2\n", "_ls2" },
 	{ GLSL_SHADER_Q3_LIGHTSTYLE1, "#define NUM_LIGHTMAPS 2\n#define qf_lmvec01 vec4\n", "_ls1" },
 	{ GLSL_SHADER_Q3_LIGHTSTYLE0, "#define NUM_LIGHTMAPS 1\n#define qf_lmvec01 vec2\n", "_ls0" },
-	
-	{ GLSL_SHADER_Q3_SINGLE_CHANNEL_R, "#define APPLY_SINGLE_CHANNEL_R\n", "_r_single" },
 
 	{ GLSL_SHADER_Q3_LIGHTMAP_ARRAYS, "#define LIGHTMAP_ARRAYS\n", "_lmarray" },
 
@@ -1799,11 +1797,11 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	for( size_t i = 0; i < def->numColorAttachments; i++ ) {
 		hash = hash_u32( hash, def->pipelineLayout.colorFormats[i] );
 	}
-	// if(def->pipelineLayout.blendEnabled) {
-	hash = hash_u32( hash, def->pipelineLayout.blendEnabled );
-	hash = hash_u32( hash, def->pipelineLayout.colorSrcFactor );
-	hash = hash_u32( hash, def->pipelineLayout.colorDstFactor );
-	// }
+	if(def->pipelineLayout.blendEnabled) {
+	// hash = hash_u32( hash, def->pipelineLayout.blendEnabled );
+		hash = hash_u32( hash, def->pipelineLayout.colorSrcFactor );
+		hash = hash_u32( hash, def->pipelineLayout.colorDstFactor );
+	}
 	hash = hash_u32( hash, def->pipelineLayout.cullMode);
 	hash = hash_u32( hash, def->pipelineLayout.compareFunc);
 	hash = hash_u32( hash, def->pipelineLayout.depthWrite);
@@ -2006,7 +2004,7 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 
 	if( r_numglslprograms == MAX_GLSL_PROGRAMS ) {
 		Com_Printf( S_COLOR_YELLOW "RP_RegisterProgram: GLSL programs limit exceeded\n" );
-		return 0;
+		return NULL;
 	}
 
 	struct glsl_program_s *program;
@@ -2042,7 +2040,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 	for( feature_iter_t iter = __R_NextFeature((feature_iter_t){ .it = glsl_programtypes_features[type], .bits = features }); __R_IsValidFeatureIter( &iter ); iter = __R_NextFeature( iter ) ) {
 		featuresStr = sdscatfmt( featuresStr, "%s\n", iter.it->define );
 		if( fullName ) {
-			fullName = sdscatfmt( fullName, "%s\n", iter.it->suffix );
+			fullName = sdscatfmt( fullName, "%s", iter.it->suffix );
 		}
 	}
 	ri.Com_Printf( "Loading Shader: %s", fullName );
@@ -2109,9 +2107,12 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 	sdsfree(featuresStr);
 	
 	SpvReflectDescriptorSet** reflectionDescSets = NULL;
-	NriDescriptorSetDesc descriptorSetDesc[DESCRIPTOR_SET_MAX] = {0};
-	NriDescriptorRangeDesc* descRangeDescs[DESCRIPTOR_SET_MAX] = {0};
-	NriPipelineLayoutDesc pipelineLayoutDesc = { 0 };
+	SpvReflectBlockVariable* reflectionBlockVariables[1] = {};
+	NriDescriptorSetDesc descriptorSetDesc[DESCRIPTOR_SET_MAX] = {};
+	NriDescriptorRangeDesc* descRangeDescs[DESCRIPTOR_SET_MAX] = {};
+	NriPipelineLayoutDesc pipelineLayoutDesc = {};
+	NriRootConstantDesc rootConstantDesc = {};
+
 	for( size_t stageIdx = 0; stageIdx < Q_ARRAY_COUNT( stages ); stageIdx++ ) {
 		const glslang_input_t input = { 
 										.language = GLSLANG_SOURCE_GLSL,
@@ -2176,11 +2177,12 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 			error = true;
 			goto shader_done;
 		} 
-		// else {
-		// 	sds shaderDebugPath = sdscatfmt( sdsempty(), "logs/shader_debug/%s_%u.%s.glsl", name, features, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ) );
-		// 	__RP_writeTextToFile( shaderDebugPath, glslang_shader_get_preprocessed_code(shader) );
-		// 	sdsfree( shaderDebugPath );
-		// }
+		else {
+			sds shaderDebugPath = sdscatfmt( sdsempty(), "logs/shader_debug/%s_%u.%s.glsl", fullName, features, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ) );
+			__RP_writeTextToFile( shaderDebugPath, glslang_shader_get_preprocessed_code(shader) );
+			sdsfree( shaderDebugPath );
+		}
+
 		glslang_program = glslang_program_create();
 		glslang_program_add_shader( glslang_program, shader );
 
@@ -2233,29 +2235,33 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 		assert( result == SPV_REFLECT_RESULT_SUCCESS );
 
 		// configure push constant sets for pipeline layout
-		//{
-		//	uint32_t pushConstantCount = 0;
-		//	result = spvReflectEnumeratePushConstantBlocks( &module, &pushConstantCount, NULL );
-		//	assert( result == SPV_REFLECT_RESULT_SUCCESS );
-		//	if(pushConstantCount > 0) {
-		//		assert( pushConstantCount == 1 ); // lets only support 1 push constant
+		{
+			uint32_t pushConstantCount = 0;
+			result = spvReflectEnumeratePushConstantBlocks( &module, &pushConstantCount, NULL );
+			assert( result == SPV_REFLECT_RESULT_SUCCESS );
+			if(pushConstantCount > 0) {
+				if(pushConstantCount > 1) {
+					Com_Printf( S_COLOR_YELLOW "Push constant count is greater than 1, only supporting 1 push constant\n" );
+					error = true;
+					goto shader_done;
+				}
 
-		//		result = spvReflectEnumeratePushConstantBlocks( &module, &pushConstantCount, reflectionBlockSets );
-		//		assert( result == SPV_REFLECT_RESULT_SUCCESS );
-		//		descPushConstantDescs.size = reflectionBlockSets[0]->size;
-		//		switch( stages[stageIdx].stage ) {
-		//			case GLSLANG_STAGE_VERTEX:
-		//				descPushConstantDescs.shaderStages |= NriStageBits_VERTEX_SHADER;
-		//				break;
-		//			case GLSL_STAGE_FRAGMENT:
-		//				descPushConstantDescs.shaderStages |= NriStageBits_FRAGMENT_SHADER;
-		//				break;
-		//			default:
-		//				assert( false );
-		//				break;
-		//		}
-		//	}
-		//}
+				result = spvReflectEnumeratePushConstantBlocks( &module, &pushConstantCount, reflectionBlockVariables );
+				assert( result == SPV_REFLECT_RESULT_SUCCESS );
+				rootConstantDesc.size = reflectionBlockVariables[0]->size;
+				switch( stages[stageIdx].stage ) {
+					case GLSLANG_STAGE_VERTEX:
+						rootConstantDesc.shaderStages |= NriStageBits_VERTEX_SHADER;
+						break;
+					case GLSL_STAGE_FRAGMENT:
+						rootConstantDesc.shaderStages |= NriStageBits_FRAGMENT_SHADER;
+						break;
+					default:
+						assert( false );
+						break;
+				}
+			}
+		}
 
 		// configure descriptor sets for pipeline layout
 		{
@@ -2290,7 +2296,6 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 							info->alloc->debugName = "OBJECT_SET";
 							break;
 					}
-
 					program->numSets++;
 				}
 
@@ -2300,7 +2305,6 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 					assert(reflectionBinding->array.dims_count <= 1); //not going to handle multi-dim arrays
 					struct descriptor_reflection_s reflc = {0};
 				
-					//info->binding = reflectionBinding->binding; 
 					reflc.hash = Create_DescriptorHandle(reflectionBinding->name).hash;
 					reflc.setIndex = info->setIndex;
 					reflc.baseRegisterIndex = reflectionBinding->binding;
@@ -2375,7 +2379,6 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 							break;
 					}
 					__InsertReflectionDescriptorSet( program, &reflc );
-					// rangeDesc->descriptorType
 					switch( stages[stageIdx].stage ) {
 						case GLSLANG_STAGE_VERTEX:
 							rangeDesc->shaderStages |= NriStageBits_VERTEX_SHADER;
@@ -2403,6 +2406,11 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 	program->features = features;
 	program->name = R_CopyString( fullName );
 	program->deformsKey = R_CopyString( deformsKey ? deformsKey : "" );
+
+	if(rootConstantDesc.size > 0) {
+		pipelineLayoutDesc.rootConstantNum = 1;
+		pipelineLayoutDesc.rootConstants = &rootConstantDesc;
+	}
 
 	pipelineLayoutDesc.shaderStages = NriStageBits_GRAPHICS_SHADERS;
 	pipelineLayoutDesc.descriptorSetNum = program->numSets;

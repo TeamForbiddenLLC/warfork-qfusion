@@ -128,6 +128,8 @@ struct frame_cmd_buffer_s {
 	// additional frame state
 	struct draw_element_s drawElements;
 	struct draw_element_s drawShadowElements;
+
+	int stackCmdBeingRendered;
 };
 
 void ResetFrameCmdBuffer(struct nri_backend_s* backend,struct frame_cmd_buffer_s* cmd);

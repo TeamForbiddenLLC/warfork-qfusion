@@ -60,8 +60,8 @@ void main()
 #if defined(APPLY_SPECULAR) || defined(APPLY_OFFSETMAPPING) || defined(APPLY_RELIEFMAPPING)
 	mat3 strMat;
 	strMat[0] = v_Tangent;
-	strMat[1] = v_Normal;
-	strMat[2] = v_Binormal;
+	strMat[2] = v_Normal;
+	strMat[1] = v_Binormal;
 
 	vec3 EyeVectorWorld = frame.viewOrigin - Position.xyz;
 	v_EyeVector = EyeVectorWorld * strMat;

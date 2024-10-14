@@ -985,7 +985,9 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 		NriVertexAttributeDesc attribs[MAX_ATTRIBUTES];
 	} dynamicStreamInfo[RB_DYN_STREAM_NUM];
 
-	R_FlushTransitionBarrier(cmd->cmd);
+	if(cmd->stackCmdBeingRendered == 0) {
+		R_FlushTransitionBarrier(cmd->cmd);
+	}
 
 	for(size_t i = 0; i < RB_DYN_STREAM_NUM; i++ ) {
 		rbDynamicStream_t *stream = &rb.dynamicStreams[i];

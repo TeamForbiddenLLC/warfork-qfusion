@@ -458,13 +458,29 @@ void R_FillNriVertexAttrib(mesh_vbo_t* vbo, NriVertexAttributeDesc* desc, size_t
 
 		for(size_t i = 0; i < ( MAX_LIGHTMAPS + 1 ) / 2; i++ ) {
 			if( vbo->vertexAttribs & lmattrbit ) {
+
+				NriFormat format =  ( vbo->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? NriFormat_R16_SFLOAT: NriFormat_R32_SFLOAT;
+				switch (vbo->lmstSize[i]) {
+					case 2:
+						format =  ( vbo->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? NriFormat_RG16_SFLOAT: NriFormat_RG32_SFLOAT;
+						break;
+					case 4:
+						format =  ( vbo->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? NriFormat_RGBA16_SFLOAT: NriFormat_RGBA32_SFLOAT;
+						break;
+					default:
+						assert(false);
+						break;
+				}
 				desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
 					.offset = vbo->lmstOffset[i], 
-					.format = ( vbo->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? NriFormat_R32_SFLOAT: NriFormat_R16_SFLOAT, 
+					.format = format, 
 					.vk = { lmattr }, 
 					.d3d = {.semanticName = "TEXCOORD4", .semanticIndex = lmattr  },
 					.streamIndex = 0 
 				};
+				
+
+				
 				//qglVertexAttribPointerARB( lmattr, vbo->lmstSize[i], 
 				//	FLOAT_VATTRIB_GL_TYPE( VATTRIB_LMCOORDS0_BIT, hfa ), 
 				//	GL_FALSE, vbo->vertexSize, ( const GLvoid * )vbo->lmstOffset[i] );

@@ -27,6 +27,7 @@ layout(location = 3) in vec4 v_LightmapTexCoord23;
 layout(location = 4) flat in ivec4 v_LightmapLayer0123;
 layout(location = 5) in vec4 frontColor; 
 layout(location = 6) in vec4 v_TexCoord_FogCoord;
+
 layout(location = 7) in vec3 v_Tangent; 
 layout(location = 8) in vec3 v_Normal; 
 layout(location = 9) in vec3 v_Binormal; 
@@ -83,8 +84,8 @@ void main()
 {
 	mat3 strMat;
 	strMat[0] = v_Tangent;
-	strMat[1] = v_Normal;
-	strMat[2] = v_Binormal;
+	strMat[2] = v_Normal;
+	strMat[1] = v_Binormal;
 
 #if defined(APPLY_OFFSETMAPPING) || defined(APPLY_RELIEFMAPPING)
 	// apply offsetmapping
@@ -115,13 +116,14 @@ void main()
 		#ifdef APPLY_DIRECTIONAL_LIGHT_FROM_NORMAL
 			vec3 diffuseNormalModelspace = strMat[2];
 		#else
-			vec3 diffuseNormalModelspace = pass.lightDir;
+			vec3 diffuseNormalModelspace = obj.lightDir;
 		#endif // APPLY_DIRECTIONAL_LIGHT_FROM_NORMAL
 
-			weightedDiffuseNormalModelspace = diffuseNormalModelspace;
+		weightedDiffuseNormalModelspace = diffuseNormalModelspace;
 
-		#ifdef APPLY_CELSHADING
 		{
+		#ifdef APPLY_CELSHADING
+		
 			#ifdef APPLY_HALFLAMBERT
 				float diffuseProduct = dot (surfaceNormalModelspace, diffuseNormalModelspace);
 				float diffuseProductPositive = clamp(diffuseProduct, 0.0, 1.0) * 0.5 + 0.5;
@@ -135,31 +137,32 @@ void main()
 				float diffuseProductNegative = (-min (diffuseProduct, 0.0) - 0.3);
 			#endif // APPLY_HALFLAMBERT
 
-				// smooth the hard shadow edge
-				float hardShadow += floor(max(diffuseProduct + 0.1, 0.0) * 2.0);
-				hardShadow += floor(max(diffuseProduct + 0.055, 0.0) * 2.0);
-				hardShadow += floor(diffuseProductPositive * 2.0);
+			// smooth the hard shadow edge
+			float hardShadow += floor(max(diffuseProduct + 0.1, 0.0) * 2.0);
+			hardShadow += floor(max(diffuseProduct + 0.055, 0.0) * 2.0);
+			hardShadow += floor(diffuseProductPositive * 2.0);
 
-				diffuseProduct = 0.6 + hardShadow * 0.09 + diffuseProductPositive * 0.14;
+			diffuseProduct = 0.6 + hardShadow * 0.09 + diffuseProductPositive * 0.14;
 
-				// backlight
-				diffuseProduct += ceil(diffuseProductNegative * 2.0) * 0.085 + diffuseProductNegative * 0.085;
-				color.rgb += diffuseProduct;
-		}
+			// backlight
+			diffuseProduct += ceil(diffuseProductNegative * 2.0) * 0.085 + diffuseProductNegative * 0.085;
+			color.rgb += vec3(diffuseProduct);
+		
 		#else
+		}
 
-			#ifdef APPLY_HALFLAMBERT
-				float diffuseProduct = float ( clamp(dot (surfaceNormalModelspace, diffuseNormalModelspace), 0.0, 1.0) * 0.5 + 0.5 );
-				diffuseProduct *= diffuseProduct;
-			#else
-				float diffuseProduct = float (dot (surfaceNormalModelspace, diffuseNormalModelspace));
-			#endif // APPLY_HALFLAMBERT
+		#ifdef APPLY_HALFLAMBERT
+			float diffuseProduct = float ( clamp(dot (surfaceNormalModelspace, diffuseNormalModelspace), 0.0, 1.0) * 0.5 + 0.5 );
+			diffuseProduct *= diffuseProduct;
+		#else
+			float diffuseProduct = float (dot (surfaceNormalModelspace, diffuseNormalModelspace));
+		#endif // APPLY_HALFLAMBERT
 
-			#ifdef APPLY_DIRECTIONAL_LIGHT_MIX
-				color.rgb += frontColor.rgb;
-			#else
-				color.rgb += obj.lightDiffuse.rgb * float(max (diffuseProduct, 0.0)) + obj.lightAmbient;
-			#endif
+		#ifdef APPLY_DIRECTIONAL_LIGHT_MIX
+			color.rgb += frontColor.rgb;
+		#else
+			color.rgb += obj.lightDiffuse.rgb * float(max (diffuseProduct, 0.0)) + obj.lightAmbient;
+		#endif
 
 		#endif // APPLY_CELSHADING
 
@@ -169,9 +172,8 @@ void main()
 
 #ifdef NUM_LIGHTMAPS
 {
-	
 	// get light normal
-	vec3 diffuseNormalModelspace = normalize(texture(sampler2D(lightmapTexture[0],lightmapTextureSample), v_LightmapTexCoord01.st+vec2(pass.deluxLightMapScale.x, 0.0)).rgb - vec3(0.5));
+	vec3 diffuseNormalModelspace = normalize(texture(sampler2D(lightmapTexture[0],lightmapTextureSample), v_LightmapTexCoord01.st + vec2(pass.deluxLightMapScale.x, 0.0)).rgb - vec3(0.5));
 	// calculate directional shading
 	float diffuseProduct = float (dot (surfaceNormalModelspace, diffuseNormalModelspace));
 
@@ -180,10 +182,10 @@ void main()
 	// apply lightmap color
 	color.rgb += vec3(max (diffuseProduct, 0.0) * texture(sampler2D(lightmapTexture[0],lightmapTextureSample), v_LightmapTexCoord01.st).rgb);
 #else
-#define NORMALIZE_DIFFUSE_NORMAL
+	#define NORMALIZE_DIFFUSE_NORMAL
 	weightedDiffuseNormalModelspace = pass.lightstyleColor[0] * diffuseNormalModelspace;
 	// apply lightmap color
-	color.rgb += pass.lightstyleColor[0] * max (diffuseProduct, 0.0) * texture(sampler2D(lightmapTexture[0],lightmapTextureSample), v_LightmapTexCoord01.st).rgb;
+	color.rgb += pass.lightstyleColor[0] * float(max (diffuseProduct, 0.0)) * texture(sampler2D(lightmapTexture[0],lightmapTextureSample), v_LightmapTexCoord01.st).rgb;
 #endif // APPLY_FBLIGHTMAP
 
 #ifdef APPLY_AMBIENT_COMPENSATION
@@ -201,13 +203,13 @@ void main()
 	diffuseNormalModelspace = normalize(texture(sampler2D(lightmapTexture[2],lightmapTextureSample), v_LightmapTexCoord23.st+vec2(pass.deluxLightMapScale.z,0.0)).rgb - vec3 (0.5));
 	diffuseProduct = float (dot (surfaceNormalModelspace, diffuseNormalModelspace));
 	weightedDiffuseNormalModelspace += pass.lightstyleColor[2] * diffuseNormalModelspace;
-	color.rgb += pass.lightstyleColor[2].rgb * max (diffuseProduct, 0.0) * texture(sampler2D(lightmapTexture[2],lightmapTextureSample), v_LightmapTexCoord23.st).rgb);
+	color.rgb += pass.lightstyleColor[2].rgb * max (diffuseProduct, 0.0) * texture(sampler2D(lightmapTexture[2],lightmapTextureSample), v_LightmapTexCoord23.st).rgb;
 #endif 
 #if NUM_LIGHTMAPS >= 4
 	diffuseNormalModelspace = normalize(texture(sampler2D(lightmapTexture[3],lightmapTextureSample), v_LightmapTexCoord23.pq+vec2(pass.deluxLightMapScale.w,0.0)).rgb - vec3 (0.5));
 	diffuseProduct = float (dot (surfaceNormalModelspace, diffuseNormalModelspace));
 	weightedDiffuseNormalModelspace += pass.lightstyleColor[3] * diffuseNormalModelspace;
-	color.rgb += pass.lightstyleColor[3].rgb * max (diffuseProduct, 0.0) * texture(sampler2D(lightmapTexture[3],lightmapTextureSample), v_LightmapTexCoord23.pq).rgb);
+	color.rgb += pass.lightstyleColor[3].rgb * max (diffuseProduct, 0.0) * texture(sampler2D(lightmapTexture[3],lightmapTextureSample), v_LightmapTexCoord23.pq).rgb;
 #endif 
 
 }
@@ -236,11 +238,11 @@ void main()
 
 #ifdef APPLY_SPECULAR
 
-#ifdef NORMALIZE_DIFFUSE_NORMAL
-	vec3 specularNormal = normalize (vec3(normalize (weightedDiffuseNormalModelspace)) + vec3 (normalize (obj.entityDist - v_Position)));
-#else
-	vec3 specularNormal = normalize (weightedDiffuseNormalModelspace + vec3 (normalize (obj.entityDist - v_Position)));
-#endif
+	#ifdef NORMALIZE_DIFFUSE_NORMAL
+		vec3 specularNormal = normalize (vec3(normalize (weightedDiffuseNormalModelspace)) + vec3 (normalize (obj.entityDist - v_Position)));
+	#else
+		vec3 specularNormal = normalize (weightedDiffuseNormalModelspace + vec3 (normalize (obj.entityDist - v_Position)));
+	#endif
 
 	float specularProduct = float(dot (surfaceNormalModelspace, specularNormal));
 	color.rgb += (vec3(texture(sampler2D(u_GlossTexture, u_GlossSampler), v_TexCoord)) * pass.glossIntensity) * pow(float(max(specularProduct, 0.0)), pass.glossExponent);

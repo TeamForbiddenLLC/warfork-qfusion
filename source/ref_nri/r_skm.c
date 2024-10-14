@@ -1339,7 +1339,7 @@ void R_DrawSkeletalSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const
 	{
 		RB_BindVBO( skmesh->vbo->index, GL_TRIANGLES );
 		RB_SetBonesData( skmodel->numbones, bonePoseRelativeDQ, skmesh->maxWeights );
-		RB_DrawElements(NULL, 0, skmesh->numverts, 0, skmesh->numtris * 3, 
+		RB_DrawElements(cmd, 0, skmesh->numverts, 0, skmesh->numtris * 3, 
 			0, skmesh->numverts, 0, skmesh->numtris * 3 );
 	}
 	else
@@ -1370,7 +1370,7 @@ void R_DrawSkeletalSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const
 
 		dynamicMesh.stArray = skmesh->stArray;
 
-		RB_AddDynamicMesh( NULL, e, shader, fog, portalSurface, shadowBits, &dynamicMesh, GL_TRIANGLES, 0.0f, 0.0f );
+		RB_AddDynamicMesh( cmd, e, shader, fog, portalSurface, shadowBits, &dynamicMesh, GL_TRIANGLES, 0.0f, 0.0f );
 
 		RB_FlushDynamicMeshes(cmd);
 	}

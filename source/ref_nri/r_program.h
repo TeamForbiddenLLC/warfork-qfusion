@@ -159,7 +159,6 @@ typedef enum glsl_program_type_s
 													| GLSL_SHADER_Q3_LIGHTSTYLE2 | GLSL_SHADER_Q3_LIGHTSTYLE3))
 #define GLSL_SHADER_Q3_LIGHTMAP_ARRAYS			GLSL_BIT(41)
 #define GLSL_SHADER_Q3_ALPHA_MASK				GLSL_BIT(42)
-#define GLSL_SHADER_Q3_SINGLE_CHANNEL_R	        GLSL_BIT(43)
 
 // distortions
 #define GLSL_SHADER_DISTORTION_DUDV				GLSL_BIT(32)
@@ -374,7 +373,6 @@ void RP_ProgramList_f( void );
 
 struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, struct frame_cmd_state_s  *def );
 struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features );
-
 struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features );
 
 int	RP_GetProgramObject( int elem );

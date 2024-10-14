@@ -7,10 +7,10 @@ layout(location = 1) in vec4 frontColor;
 
 layout(location = 0) out vec4 outFragColor;
 
-void main(void)
+void main()
 {
 #ifdef APPLY_OUTLINES_CUTOFF
-	if (u_OutlineCutOff > 0.0 && (gl_FragCoord.z / gl_FragCoord.w > push.outlineCutoff))
+	if (push.outlineCutoff > 0.0 && (gl_FragCoord.z / gl_FragCoord.w > push.outlineCutoff))
 		discard;
 #endif
 

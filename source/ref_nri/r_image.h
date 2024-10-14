@@ -41,7 +41,7 @@ enum
 	,IT_DEPTHRB			= 1<<12		// framebuffer has a depth renderbuffer
 	,IT_NOFILTERING		= 1<<13
 	,IT_ALPHAMASK		= 1<<14		// image only contains an alpha mask
-	,IT_BGRA			= 1<<15
+	//,IT_BGRA			= 1<<15
 	,IT_SYNC			= 1<<16		// load image synchronously
 	,IT_DEPTHCOMPARE	= 1<<17
 	,IT_ARRAY			= 1<<18
@@ -56,7 +56,7 @@ enum
  * The loader threads may modify these flags (but no other flags),
  * so they must not be used for anything that has a long-term effect.
  */
-#define IT_LOADFLAGS		( IT_ALPHAMASK|IT_BGRA|IT_SYNC )
+#define IT_LOADFLAGS		( IT_ALPHAMASK|IT_SYNC )
 
 #define IT_SPECIAL			( IT_CLAMP|IT_NOMIPMAP|IT_NOPICMIP|IT_NOCOMPRESS )
 #define IT_SKYFLAGS			( IT_SKY|IT_NOMIPMAP|IT_CLAMP|IT_SYNC )
@@ -75,8 +75,8 @@ enum
 typedef struct image_s
 {
 	uint32_t cookie; 
-	const struct base_format_def_s* formatDef;
-	// NriAccessLayoutStage currentLayout;
+	// const struct base_format_def_s* formatDef;
+
 	struct nri_descriptor_s descriptor;
 	struct nri_descriptor_s samplerDescriptor;
 	NriTexture* texture;

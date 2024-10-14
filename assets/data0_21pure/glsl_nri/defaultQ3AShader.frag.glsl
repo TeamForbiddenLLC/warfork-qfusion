@@ -20,6 +20,11 @@ layout(location = 1) in vec3 v_Normal;
 layout(location = 2) in vec2 v_TexCoord;  
 layout(location = 3) in vec4 frontColor; 
 
+layout(location = 4) in vec4 v_LightmapTexCoord01;
+layout(location = 5) in vec4 v_LightmapTexCoord23;
+layout(location = 6) flat in ivec4 v_LightmapLayer0123;
+
+
 layout(location = 0) out vec4 outFragColor;
 
 void main(void)
@@ -60,10 +65,6 @@ void main(void)
 	diffuse = texture(samplerCube(u_BaseTexture,u_BaseSampler), v_Position - u_EntityDist);
 #else
 	diffuse = texture(sampler2D(u_BaseTexture,u_BaseSampler), v_TexCoord);
-#endif
-
-#ifdef APPLY_SINGLE_CHANNEL_R
-	diffuse = vec4(diffuse.r, diffuse.r, diffuse.r, diffuse.r);
 #endif
 
 #ifdef APPLY_DRAWFLAT

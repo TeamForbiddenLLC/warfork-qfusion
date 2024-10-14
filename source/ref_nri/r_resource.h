@@ -88,7 +88,10 @@ struct FrameCB {
 	float eyeDist;
 	struct vec3 fogColor;
 	float mirrorSide;
-	struct mat3 viewAxis;
+  union {
+	  struct mat3 viewAxis;
+    struct mat4 viewAxisPadding0;
+  };
 };
 
 struct DynLight {

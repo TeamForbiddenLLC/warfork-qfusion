@@ -13,7 +13,7 @@
 	layout(location = 7) in vec4 a_LightmapCoord23;
   #endif
   
-  layout(location = 8) in vec4 a_LightmapLayer0123;
+  	layout(location = 8) in ivec4 a_LightmapLayer0123;
 
 	#if defined(APPLY_AUTOSPRITE) || defined(APPLY_AUTOSPRITE2)
 		layout(location = 5) in vec4 a_SpritePoint;
@@ -32,3 +32,4 @@
 
   #endif
 #endif // VERTEX_SHADER
+

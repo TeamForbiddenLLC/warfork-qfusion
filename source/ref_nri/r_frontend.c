@@ -682,6 +682,7 @@ void RF_EndFrame( void )
 	const uint32_t bufferedFrameIndex = rsh.frameCnt % NUMBER_FRAMES_FLIGHT;
 	struct frame_cmd_buffer_s *frame = &rsh.frameCmds[bufferedFrameIndex];
 
+	assert(frame->stackCmdBeingRendered == 0);
 	// render previously batched 2D geometry, if any
 	RB_FlushDynamicMeshes(frame);
 
