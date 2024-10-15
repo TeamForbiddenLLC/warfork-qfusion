@@ -239,97 +239,15 @@ struct glsl_program_s {
 	} descriptorSetInfo[DESCRIPTOR_SET_MAX];
 
 	struct descriptor_reflection_s {
-		uint32_t dimCount: 8;
 		uint32_t isArray: 1;
+		uint32_t dimCount: 8;
 		uint32_t slotType: 8; // enum glsl_slot_type 
+		uint32_t setIndex: 4;
 		hash_t hash;
-		uint16_t setIndex;
 		uint16_t baseRegisterIndex;
 		uint16_t rangeOffset;
 	} descriptorReflection[PIPELINE_LAYOUT_HASH_SIZE];
 
-	struct loc_s {
-		int			ModelViewMatrix,
-					ModelViewProjectionMatrix,
-
-					ZRange,
-
-					ViewOrigin,
-					ViewAxis,
-
-					MirrorSide,
-
-					Viewport,
-
-					LightDir,
-					LightAmbient,
-					LightDiffuse,
-
-					TextureMatrix,
-
-					GlossFactors,
-
-					OffsetMappingScale,
-					OutlineHeight,
-					OutlineCutOff,
-
-					FrontPlane,
-					TextureParams,
-
-					EntityDist,
-					EntityOrigin,
-					EntityColor,
-					ConstColor,
-					RGBGenFuncArgs,
-					AlphaGenFuncArgs;
-
-					struct {
-						int Plane,
-							Color,
-							ScaleAndEyeDist,
-							EyePlane;
-					} Fog;
-
-		int			ShaderTime,
-
-					ReflectionTexMatrix,
-					VectorTexMatrix,
-
-					DeluxemapOffset,
-					LightstyleColor[MAX_LIGHTMAPS],
-
-					DynamicLightsPosition[MAX_DLIGHTS],
-					DynamicLightsDiffuseAndInvRadius[MAX_DLIGHTS >> 2],
-					NumDynamicLights,
-
-					AttrBonesIndices,
-					AttrBonesWeights,
-					DualQuats,
-
-					InstancePoints,
-
-					WallColor,
-					FloorColor,
-
-					ShadowmapTextureParams[GLSL_SHADOWMAP_LIMIT],
-					ShadowmapMatrix[GLSL_SHADOWMAP_LIMIT],
-					ShadowAlpha[( GLSL_SHADOWMAP_LIMIT + 3 ) / 4],
-					ShadowDir[GLSL_SHADOWMAP_LIMIT],
-					ShadowEntityDist[GLSL_SHADOWMAP_LIMIT],
-					
-					BlendMix,
-					
-					SoftParticlesScale;
-
-		// builtin uniforms
-		struct {
-			int		ShaderTime,
-					ViewOrigin,
-					ViewAxis,
-					MirrorSide,
-					EntityOrigin;
-		} builtin;
-	} loc;
 };
 
 struct glsl_descriptor_handle_s {

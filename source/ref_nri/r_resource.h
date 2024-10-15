@@ -168,5 +168,10 @@ struct DefaultMaterialCB {
   float offsetScale;
 };
 
+struct DefaultOutlinePushConstant {
+  float outlineHeight;
+  float outlineCutoff;
+};
+
 
 #endif

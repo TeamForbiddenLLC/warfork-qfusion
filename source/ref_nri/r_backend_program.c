@@ -2110,39 +2110,12 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 
 				rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
 				rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
-				//RP_BindDescriptorSets( cmd, program, descriptors, descriptorIndex );
 				FR_CmdDrawElements(cmd, 
 					cmd->drawElements.numElems,
 					cmd->drawElements.numInstances,
 					cmd->drawElements.firstElem,
 					cmd->drawElements.firstVert,
 					0);
-
-				//assert( program );
-				//if( program ) {
-				// // for( i = 0; i < numShadows; i++ ) {
-				// // 	RB_BindImage( i, shadowGroups[i]->shadowmap );
-				// // }
-
-				// // Matrix4_Identity( texMatrix );
-
-				// // if( rb.currentModelType == mod_brush ) {
-				// // 	RB_Scissor( rb.gl.viewport[0] + scissor[0], rb.gl.viewport[1] + scissor[1], scissor[2] - scissor[0], scissor[3] - scissor[1] );
-				// // }
-
-				// // RB_SetShaderpassState( pass->flags );
-
-				// // RB_UpdateCommonUniforms( program, pass, texMatrix );
-
-				// // RP_UpdateShadowsUniforms( program, numShadows, shadowGroups, rb.objectMatrix, rb.currentEntity->origin, rb.currentEntity->axis );
-
-				// // // submit animation data
-				// // if( programFeatures & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
-				// // 	RP_UpdateBonesUniforms( program, rb.bonesData.numBones, rb.bonesData.dualQuats );
-				// // }
-
-				//  RB_DrawElementsReal( &rb.drawShadowElements );
-				//}
 			}
 
 			RB_Scissor( old_scissor[0], old_scissor[1], old_scissor[2], old_scissor[3] );
@@ -2150,11 +2123,26 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 		}
 		case GLSL_PROGRAM_TYPE_OUTLINE: {
 			r_glslfeat_t programFeatures = features;
-			int faceCull;
-			mat4_t texMatrix;
+			// int faceCull;
+			
 			
 			size_t descriptorIndex = 0;
 			struct glsl_descriptor_binding_s descriptors[64] = { 0 };
+
+			const NriCullMode prevCullMode = cmd->state.pipelineLayout.cullMode;
+			cmd->state.pipelineLayout.cullMode = NriCullMode_BACK;
+
+			mat4_t texMatrix = {};
+			Matrix4_Identity( texMatrix );
+			if( pass->numtcmods ) {
+				RB_ApplyTCMods( pass, texMatrix );
+			}
+			objectData.texutreMatrix[0].x = texMatrix[0];
+			objectData.texutreMatrix[0].y = texMatrix[4];
+			objectData.texutreMatrix[0].z = texMatrix[1];
+			objectData.texutreMatrix[1].x = texMatrix[5];
+			objectData.texutreMatrix[1].y = texMatrix[4];
+			objectData.texutreMatrix[1].z = texMatrix[13];
 
 
 			if( rb.currentModelType == mod_brush ) {
@@ -2162,14 +2150,9 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			}
 
 			programFeatures |= RB_RGBAlphaGenToProgramFeatures( &pass->rgbgen, &pass->alphagen );
-
 			programFeatures |= RB_FogProgramFeatures( pass, rb.fog );
 			
-			struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_OUTLINE, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->state );
-			
-			rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
-			rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
+			// rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
 			//RP_BindDescriptorSets( cmd, program, descriptors, descriptorIndex );
 
 			// __RB_UpdateFrameObjectCB( cmd, rb.currentEntity, pass );
@@ -2182,40 +2165,22 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				.handle = Create_DescriptorHandle( "obj" ) 
 			};
 
+			struct DefaultOutlinePushConstant constant; 
+
+			struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_OUTLINE, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
+			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->state );
+			
+			rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
+			rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
+
 			FR_CmdDrawElements(cmd, 
 				cmd->drawElements.numElems,
 				cmd->drawElements.numInstances,
 				cmd->drawElements.firstElem,
 				cmd->drawElements.firstVert,
 				0);
-			// update uniforcms
-			//program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_OUTLINE, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-			//if( RB_BindProgram( program ) ) {
-			//	Matrix4_Identity( texMatrix );
 
-			//	faceCull = rb.gl.faceCull;
-			//	RB_Cull( GL_BACK );
-
-			//	// set shaderpass state (blending, depthwrite, etc)
-			//	RB_SetShaderpassState( pass->flags );
-
-			//	RB_UpdateCommonUniforms( program, pass, texMatrix );
-
-			//	RP_UpdateOutlineUniforms( program, rb.currentEntity->outlineHeight * r_outlines_scale->value );
-
-			//	if( programFeatures & GLSL_SHADER_COMMON_FOG ) {
-			//		RB_UpdateFogUniforms( program, rb.fog );
-			//	}
-
-			//	// submit animation data
-			//	if( programFeatures & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
-			//		RP_UpdateBonesUniforms( program, rb.bonesData.numBones, rb.bonesData.dualQuats );
-			//	}
-
-			//	RB_DrawElementsReal( &rb.drawElements );
-
-			//	RB_Cull( faceCull );
-			//}
+			cmd->state.pipelineLayout.cullMode = prevCullMode;
 			break;
 		}
 		case GLSL_PROGRAM_TYPE_CELSHADE: {
