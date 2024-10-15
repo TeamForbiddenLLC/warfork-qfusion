@@ -516,11 +516,12 @@ static void RF_CheckCvars( void )
  // 	rrf.adapter.cmdPipe->SetGamma( rrf.adapter.cmdPipe, r_gamma->value );
  // }
  // 
- // if( r_texturefilter->modified )
- // {
- // 	r_texturefilter->modified = false;
- // 	rrf.adapter.cmdPipe->SetTextureFilter( rrf.adapter.cmdPipe, r_texturefilter->integer );
- // }
+	if( r_texturefilter->modified )
+	{
+		r_texturefilter->modified = false;
+		R_AnisotropicFilter(r_texturefilter->integer);
+		//rrf.adapter.cmdPipe->SetTextureFilter( rrf.adapter.cmdPipe, r_texturefilter->integer );
+	}
 
 	if( r_wallcolor->modified || r_floorcolor->modified ) {
 		vec3_t wallColor, floorColor;

@@ -27,6 +27,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 void Mod_LoadAliasMD3Model( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *unused );
 void Mod_LoadSkeletalModel( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *unused );
 void Mod_LoadQ3BrushModel( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *format );
+void Mod_LoadQ2BrushModel( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *format ); 
+void Mod_LoadQ1BrushModel( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *format ); 
 
 model_t *Mod_LoadModel( model_t *mod, bool crash );
 
@@ -56,6 +58,11 @@ static const modelFormatDescr_t mod_supportedformats[] =
 
 	// Q3-alike .bsp models
 	{ "*", 4, q3BSPFormats, 0, ( const modelLoader_t )Mod_LoadQ3BrushModel },
+	
+	{ "*", 4, q2BSPFormats, 0, ( const modelLoader_t )Mod_LoadQ2BrushModel },
+
+	// disable this for now until q2 is ready
+	//{ "*", 0, q1BSPFormats, 0, ( const modelLoader_t )Mod_LoadQ1BrushModel },
 
 	// trailing NULL
 	{ NULL,	0, NULL, 0, NULL }
@@ -1076,7 +1083,8 @@ model_t *Mod_ForName( const char *name, bool crash )
 	//
 	// load the file
 	//
-	modfilelen = R_LoadFile( name, (void **)&buf );
+	uintptr_t group = 0;
+	modfilelen = R_LoadFileGroup( name, &group, (void **)&buf);
 	if( !buf && crash )
 		ri.Com_Error( ERR_DROP, "Mod_NumForName: %s not found", name );
 
@@ -1136,7 +1144,7 @@ model_t *Mod_ForName( const char *name, bool crash )
 	for( i = 0; i < descr->maxLods; i++ )
 	{
 		Q_snprintfz( lodname, sizeof( lodname ), "%s_%i.%s", shortname, i+1, extension );
-		R_LoadFile( lodname, (void **)&buf );
+		R_LoadFileGroup(lodname, &group, (void **)&buf );
 		if( !buf || strncmp( (const char *)buf, descr->header, descr->headerLen ) )
 			break;
 

@@ -292,14 +292,15 @@ static bool Shader_ParseConditions( const char **ptr, shader_t *shader )
 
 		if( !conditions[numConditions].operand )
 		{
+			const NriDeviceDesc* desc = rsh.nri.coreI.GetDeviceDesc( rsh.nri.device );
 			if( !Q_stricmp( tok, "maxTextureSize" ) )
-				conditions[numConditions].operand = ( int  )glConfig.maxTextureSize;
+				conditions[numConditions].operand = ( int  )desc->texture2DMaxDim;
 			else if( !Q_stricmp( tok, "maxTextureCubemapSize" ) )
-				conditions[numConditions].operand = ( int )glConfig.maxTextureCubemapSize;
+				conditions[numConditions].operand = ( int )desc->texture3DMaxDim;
 			else if( !Q_stricmp( tok, "maxTextureUnits" ) )
-				conditions[numConditions].operand = ( int )glConfig.maxTextureUnits;
+				conditions[numConditions].operand = ( int )desc->textureArrayLayerMaxNum;
 			else if( !Q_stricmp( tok, "textureCubeMap" ) )
-				conditions[numConditions].operand = ( int )glConfig.ext.texture_cube_map;
+				conditions[numConditions].operand = ( int )1;
 			else if( !Q_stricmp( tok, "GLSL" ) )
 				conditions[numConditions].operand = 1;
 			else if( !Q_stricmp( tok, "deluxeMaps" ) || !Q_stricmp( tok, "deluxe" ) )
@@ -664,7 +665,7 @@ static void Shader_NoFiltering( shader_t *shader, shaderpass_t *pass, const char
 static void Shader_SmallestMipMapSize( shader_t *shader, shaderpass_t *pass, const char **ptr )
 {
 	int size = Shader_ParseInt( ptr );
-	if( glConfig.ext.texture_lod && !r_shaderNoMipMaps )
+	if( !r_shaderNoMipMaps )
 		r_shaderMinMipSize = max( size, 1 );
 }
 

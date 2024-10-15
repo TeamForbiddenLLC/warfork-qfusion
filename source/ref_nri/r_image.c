@@ -37,7 +37,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_ktx_loader.h"
 #include <assert.h>
-#include <stdint.h>
 
 #define	MAX_GLIMAGES	    8192
 #define IMAGES_HASH_SIZE    64
@@ -65,6 +64,7 @@ static int gl_anisotropic_filter = 0;
 
 static void R_FreeImage( struct image_s *image );
 static NriTextureUsageBits __R_NRITextureUsageBits(int flags);
+static NriDescriptor *resolveSamplerDescriptor( int flags );
 static void __R_CopyTextureDataTexture(struct image_s* image, int layer, int mipOffset, int x, int y, int w, int h, enum texture_format_e srcFormat, uint8_t *data );
 
 int R_TextureTarget( int flags, int *uploadTarget )
@@ -106,13 +106,18 @@ static NriDescriptor *resolveSamplerDescriptor( int flags )
 		samplerDesc.filters.mag = NriFilter_LINEAR;
 		samplerDesc.filters.mip = NriFilter_LINEAR;
 
-		samplerDesc.anisotropy = 0; // TODO: handle anisotropy
+		samplerDesc.anisotropy = gl_anisotropic_filter;
 	} else if( !( flags & IT_NOMIPMAP ) ) {
 		samplerDesc.filters.min = NriFilter_NEAREST;
 		samplerDesc.filters.mag = NriFilter_NEAREST;
 		samplerDesc.filters.mip = NriFilter_LINEAR;
 		samplerDesc.mipMax = 16;
-		samplerDesc.anisotropy = 0; // TODO: handle anisotropy
+		samplerDesc.anisotropy = gl_anisotropic_filter;
+	} else {
+		samplerDesc.filters.min = NriFilter_LINEAR;
+		samplerDesc.filters.mag = NriFilter_LINEAR;
+		samplerDesc.filters.mip = NriFilter_LINEAR;
+		samplerDesc.anisotropy = gl_anisotropic_filter;
 	}
 
 	if( flags & IT_CLAMP ) {
@@ -228,35 +233,26 @@ void R_TextureMode( char *string )
  // }
 }
 
-/*
-* R_AnisotropicFilter
-*/
 void R_AnisotropicFilter( int value )
 {
-	int i, old;
-	image_t	*glt;
-
-	if( !glConfig.ext.texture_filter_anisotropic )
-		return;
-
-	old = gl_anisotropic_filter;
-	gl_anisotropic_filter = bound( 1, value, glConfig.maxTextureFilterAnisotropic );
+	const NriDeviceDesc* desc = rsh.nri.coreI.GetDeviceDesc( rsh.nri.device );
+	const int old = gl_anisotropic_filter;
+	gl_anisotropic_filter = bound( 1, value, desc->samplerAnisotropyMax );
 	if( gl_anisotropic_filter == old )
 		return;
 
-	// change all the existing mipmap texture objects
+	image_t	*glt;
+	size_t i;
 	for( i = 1, glt = images; i < MAX_GLIMAGES; i++, glt++ )
 	{
-		if( !glt->texture) {
+		if( !glt->texture ) {
 			continue;
 		}
 		if( (glt->flags & (IT_NOFILTERING|IT_DEPTH|IT_NOMIPMAP)) ) {
 			continue;
 		}
+		glt->samplerDescriptor = R_CreateDescriptorWrapper(&rsh.nri, resolveSamplerDescriptor(glt->flags)); 
 
-		R_BindImage( glt );
-
-		qglTexParameteri( R_TextureTarget( glt->flags, NULL ), GL_TEXTURE_MAX_ANISOTROPY_EXT, gl_anisotropic_filter );
 	}
 }
 
@@ -1910,9 +1906,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	const uint32_t mipSize = __R_calculateMipMapLevel( flags, width, height, minmipsize );
 
 	enum texture_format_e srcFormat = __R_ResolveDataFormat( flags, samples );
-
 	enum texture_format_e destFormat = __R_GetImageFormat( image );
-	const uint32_t destBlockSize = R_FormatBitSizePerBlock( destFormat ) / 8;
 
 	NriTextureDesc textureDesc = { .width = width,
 								   .height = height,
@@ -1996,6 +1990,8 @@ image_t *R_CreateImage( const char *name, int width, int height, int layers, int
 	strcpy( image->name, name );
 	image->width = width;
 	image->height = height;
+	image->upload_width = width;
+	image->upload_height = width;
 	image->layers = layers;
 	image->flags = flags;
 	image->minmipsize = minmipsize;
@@ -2013,44 +2009,97 @@ image_t *R_CreateImage( const char *name, int width, int height, int layers, int
 
 image_t *R_Create3DImage( const char *name, int width, int height, int layers, int flags, int tags, int samples, bool array )
 {
-	image_t *image;
-	int scaledWidth, scaledHeight;
-	int target, comp, format, type;
+	return NULL; assert(false);
+	// struct image_s *image = __R_AllocImage( name );
+	// image->layers = 1;
+	// image->flags = flags | IT_NOMIPMAP | ( array ? IT_ARRAY : IT_3D );
+	// image->minmipsize = minmipsize;
+	// image->tags = tags;
+	// image->samples = samples;
+	// image->upload_width = width;
+	// image->upload_height = height;
+	// image->width = width;
+	// image->height = height;
 
-	assert( array ? ( layers <= glConfig.maxTextureLayers ) : ( layers <= glConfig.maxTexture3DSize ) );
+	// enum texture_format_e srcFormat = __R_ResolveDataFormat( flags, samples );
+	// enum texture_format_e destFormat = __R_GetImageFormat( image );
+	// NriTextureDesc textureDesc = { .width = width,
+	// 							   .height = height,
+	// 							   .depth = 1,
+	// 							   .usageMask = __R_NRITextureUsageBits( flags ),
+	// 							   .layerNum = layers,
+	// 							   .format = R_NRIFormat( destFormat ),
+	// 							   .sampleNum = 1,
+	// 							   .type = array ? NriTextureType_TEXTURE_2D: NriTextureType_TEXTURE_3D,
+	// 							   .mipNum = mipSize };
+	// rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture );
+	// rsh.nri.coreI.SetTextureDebugName( image->texture, name );
+	// NriResourceGroupDesc resourceGroupDesc = {
+	// 	.textureNum = 1,
+	// 	.textures = &image->texture,
+	// 	.memoryLocation = NriMemoryLocation_DEVICE,
+	// };
 
-	flags |= ( array ? IT_ARRAY : IT_3D );
+	// const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
+	// assert( allocationNum <= Q_ARRAY_COUNT( image->memory ) );
+	// NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, image->memory ) );
+	// 	uint8_t *tmpBuffer = NULL;
+	// const size_t reservedSize = width * height * samples;
+	
+	// if(array) {
+	// 	NriTexture2DViewDesc textureViewDesc = {
+	// 		.texture = image->texture,
+	// 		.viewType = NriTexture2DViewType_SHADER_RESOURCE_2D,
+	// 		.format = textureDesc.format
+	// 	};
+		
+	// } else {
 
-	image = R_CreateImage( name, width, height, layers, flags, 1, tags, samples );
-	RB_FlushTextureCache();
+	// 	NriTexture3DViewDesc textureViewDesc = {
+	// 		.texture = image->texture,
+	// 		.viewType = NriTexture2DViewType_SHADER_RESOURCE_3D,
+	// 		.format = textureDesc.format
+	// 	};
+	// }
 
-	//R_ScaledImageSize( width, height, &scaledWidth, &scaledHeight, flags, 1, 1, false );
-	image->upload_width = width;
-	image->upload_height = height;
+	// image_t *image;
+	// int scaledWidth, scaledHeight;
+	// int target, comp, format, type;
 
-	//R_SetupTexParameters( flags, scaledWidth, scaledHeight, 1 );
+	// assert( array ? ( layers <= glConfig.maxTextureLayers ) : ( layers <= glConfig.maxTexture3DSize ) );
 
-	//R_TextureTarget( flags, &target );
-	//R_TextureFormat( flags, samples, &comp, &format, &type );
+	// flags |= ( array ? IT_ARRAY : IT_3D );
 
-	//qglTexImage3DEXT( target, 0, comp, scaledWidth, scaledHeight, layers, 0, format, type, NULL );
+	// image = R_CreateImage( name, width, height, layers, flags, 1, tags, samples );
+	// RB_FlushTextureCache();
 
-	if( !( flags & IT_NOMIPMAP ) )
-	{
-		int miplevel = 0;
-		while( scaledWidth > 1 || scaledHeight > 1 )
-		{
-			scaledWidth >>= 1;
-			scaledHeight >>= 1;
-			if( scaledWidth < 1 )
-				scaledWidth = 1;
-			if( scaledHeight < 1 )
-				scaledHeight = 1;
-			qglTexImage3DEXT( target, miplevel++, comp, scaledWidth, scaledHeight, layers, 0, format, type, NULL );
-		}
-	}
+	// //R_ScaledImageSize( width, height, &scaledWidth, &scaledHeight, flags, 1, 1, false );
+	// // image->upload_width = width;
+	// // image->upload_height = height;
 
-	return image;
+	// //R_SetupTexParameters( flags, scaledWidth, scaledHeight, 1 );
+
+	// //R_TextureTarget( flags, &target );
+	// //R_TextureFormat( flags, samples, &comp, &format, &type );
+
+	// //qglTexImage3DEXT( target, 0, comp, scaledWidth, scaledHeight, layers, 0, format, type, NULL );
+
+	// if( !( flags & IT_NOMIPMAP ) )
+	// {
+	// 	int miplevel = 0;
+	// 	while( scaledWidth > 1 || scaledHeight > 1 )
+	// 	{
+	// 		scaledWidth >>= 1;
+	// 		scaledHeight >>= 1;
+	// 		if( scaledWidth < 1 )
+	// 			scaledWidth = 1;
+	// 		if( scaledHeight < 1 )
+	// 			scaledHeight = 1;
+	// 		qglTexImage3DEXT( target, miplevel++, comp, scaledWidth, scaledHeight, layers, 0, format, type, NULL );
+	// 	}
+	// }
+
+	// return image;
 }
 
 
@@ -2175,12 +2224,42 @@ void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, 
 void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic )
 {
 	assert( image );
-	assert(image->texture);
+	assert( image->texture );
 
-	R_BindImage( image );
+	const size_t reservedSize = image->width * image->height * image->samples;
+	uint8_t *buf = NULL;
+	arrsetlen( buf, reservedSize );
+	memcpy( buf, pic[0], reservedSize );
 
-	// R_Upload32( QGL_CONTEXT_MAIN, pic, layer, 0, 0, image->width, image->height, image->flags, image->minmipsize,
-	// 	NULL, NULL, image->samples, true, false );
+	// uint8_t *buf = tmpBuffer;
+	enum texture_format_e srcFormat = __R_ResolveDataFormat( image->flags, image->samples );
+	const NriTextureDesc* textureDesc = rsh.nri.coreI.GetTextureDesc(image->texture);
+
+	uint32_t srcBlockSize = R_FormatBitSizePerBlock( srcFormat ) / 8;
+	uint32_t destBlockSize = R_FormatBitSizePerBlock( __R_GetImageFormat( image ) ) / 8;
+	uint8_t *tmpBuffer = NULL;
+	if( !( image->flags & IT_CUBEMAP ) && ( image->flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) ) ) {
+		R_FlipTexture( buf, tmpBuffer, image->width, image->height, image->samples, ( image->flags & IT_FLIPX ) ? true : false, ( image->flags & IT_FLIPY ) ? true : false,
+					   ( image->flags & IT_FLIPDIAGONAL ) ? true : false );
+		buf = tmpBuffer;
+	}
+
+	uint32_t w = image->width;
+	uint32_t h = image->height;
+	// R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
+	for( size_t i = 0; i < textureDesc->mipNum; i++ ) {
+		__R_CopyTextureDataTexture(image, layer, i, 0, 0, image->width, image->height, srcFormat, buf);
+		w >>= 1;
+		h >>= 1;
+		if( w == 0 ) {
+			w = 1;
+		}
+		if( h == 0 ) {
+			h = 1;
+		}
+		R_MipMap( buf, w, h, image->samples, 1 );
+	}
+	arrfree( buf );
 
 	if( !(image->flags & IT_NO_DATA_SYNC) )
 		R_DeferDataSync();

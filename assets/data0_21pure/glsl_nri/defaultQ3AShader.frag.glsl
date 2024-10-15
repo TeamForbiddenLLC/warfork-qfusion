@@ -98,7 +98,7 @@ void main(void)
 		float fragdepth = ZRange.x*ZRange.y/(ZRange.y - texture(sampler2D(u_DepthTexture,u_DepthSampler), tc).r*(pass.zRange.y-pass.zRange.x));
 		flaot partdepth = Depth;
 		
-		float d = max((fragdepth - partdepth) * u_SoftParticlesScale, 0.0);
+		float d = max((fragdepth - partdepth) * pass.softParticlesScale, 0.0);
 		float softness = 1.0 - min(1.0, d);
 		softness *= softness;
 		softness = 1.0 - softness * softness;

@@ -147,13 +147,13 @@ struct DefaultDistortionCB {
 };
 
 struct DefaultQ3ShaderCB {
-    struct vec3 wallColor;
-    float softParticleScale;
-    struct vec4 textureParam;
-    struct vec3 floorColor;
-    struct vec2 zRange;
     struct mat4 genTexMatrix;
-    struct vec3 lightstyleColor[4];
+    struct vec4 textureParam;
+    struct vec4 lightstyleColor[4];
+    struct vec3 wallColor;
+    float softParticlesScale;
+    struct vec4 zRange;
+    struct vec4 floorColor;
 };
 
 struct DefaultMaterialCB {

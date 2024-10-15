@@ -503,28 +503,10 @@ static int R_PackLightmaps( int num, int w, int h, int dataSize, int stride, int
 	if( maxY > maxX )
 	{
 		for(; ( num >= root ) && ( rectY < maxY ); rectY++, num -= root ) ;
-
-		//if( !glConfig.ext.texture_non_power_of_two )
-		{
-			// sample down if not a power of two
-			for( y = 1; y < rectY; y <<= 1 ) ;
-			if( y > rectY )
-				y >>= 1;
-			rectY = y;
-		}
 	}
 	else
 	{
 		for(; ( num >= root ) && ( rectX < maxX ); rectX++, num -= root ) ;
-
-		//if( !glConfig.ext.texture_non_power_of_two )
-		{
-			// sample down if not a power of two
-			for( x = 1; x < rectX; x <<= 1 ) ;
-			if( x > rectX )
-				x >>= 1;
-			rectX = x;
-		}
 	}
 
 	tw = 1.0 / (double)rectX;
@@ -610,11 +592,13 @@ void R_BuildLightmaps( model_t *mod, int numLightmaps, int w, int h, const uint8
 	 // && ( layerWidth <= glConfig.maxTextureSize ) && ( h <= glConfig.maxTextureSize );
 
 	{
+		
+		const NriDeviceDesc* desc = rsh.nri.coreI.GetDeviceDesc( rsh.nri.device );
 		if( !mapConfig.lightmapsPacking )
 			size = max( w, h );
 		else
 			for( size = 1; ( size < r_lighting_maxlmblocksize->integer ) 
-				&& ( size < glConfig.maxTextureSize ); size <<= 1 ) ;
+				&& ( size < desc->texture2DMaxDim ); size <<= 1 ) ;
 
 		if( mapConfig.deluxeMappingEnabled && ( ( size == w ) || ( size == h ) ) )
 		{

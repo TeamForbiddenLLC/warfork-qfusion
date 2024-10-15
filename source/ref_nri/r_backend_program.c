@@ -64,8 +64,7 @@ static void RB_SetShaderpassState_2(struct frame_cmd_buffer_s *cmd, int state );
 static int __NumberLightMaps( const struct superLightStyle_s *lightStyle )
 {
 	int i = 0;
-	for( ; i < MAX_LIGHTMAPS && lightStyle->lightmapStyles[i] != 255; i++ ) {
-	}
+	for( ; i < MAX_LIGHTMAPS && lightStyle->lightmapStyles[i] != 255; i++ ) {}
 	return i;
 }
 
@@ -1083,11 +1082,14 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 	const entity_t *e = rb.currentEntity;
 	struct FrameCB frameData = { 0 };
 	struct ObjectCB objectData = { 0 };
+
 	{
 
 		const bool isAlphaBlending = __IsAlphaBlendingGLState( rb.gl.state );
 		const shaderfunc_t *rgbgenfunc = &pass->rgbgen.func;
 		const shaderfunc_t *alphagenfunc = &pass->alphagen.func;
+	
+		frameData.shaderTime = rb.currentShaderTime;
 
 		if( rb.fog ) {
 			features |= GLSL_SHADER_COMMON_FOG;
@@ -1110,7 +1112,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 		frameData.zNear = rb.zNear;
 		frameData.zFar = rb.zFar;
 		memcpy( frameData.viewOrigin.v, rb.cameraOrigin, sizeof( struct vec3 ) );
-		memcpy( frameData.viewAxis.v, rb.cameraAxis, sizeof( struct vec3 ) );
+		memcpy( frameData.viewAxis.v, rb.cameraAxis, sizeof( mat3_t ) );
 		frameData.mirrorSide = ( rb.renderFlags & RF_MIRRORVIEW ) ? -1 : 1;
 
 		VectorCopy( e->origin, objectData.entityOrigin.v );
