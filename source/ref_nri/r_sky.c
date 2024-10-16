@@ -297,13 +297,17 @@ static void R_DrawSkyBoxSide(struct frame_cmd_buffer_s* cmd, const skydome_t *sk
 	cmd->state.numAttribs = 0;
 	R_FillNriVertexAttrib(skydome->linearVbos[side], cmd->state.attribs, &cmd->state.numAttribs);
 
+
+	FR_CmdSetVertexBuffer(cmd, 0, skydome->linearVbos[side]->vertexBuffer, 0);
+	FR_CmdSetIndexBuffer(cmd, skydome->linearVbos[side]->indexBuffer, sizeof(elem_t) * visSide->firstElem, NriIndexType_UINT16);
+
 	//RB_BindVBO( skydome->linearVbos[side]->index, GL_TRIANGLES );
 
 	RB_SetSkyboxShader( skyboxShader );
 
 	RB_SetSkyboxSide( imageIndex );
 
-	RB_DrawShadedElements_2(cmd, visSide->firstVert, visSide->numVerts, visSide->firstElem, visSide->numElems, 
+	RB_DrawShadedElements_2(cmd, 0, visSide->numVerts, 0, visSide->numElems, 
 		0, 0, 0, 0);
 	// RB_DrawElements(cmd,visSide->firstVert, visSide->numVerts, visSide->firstElem, visSide->numElems, 0, 0, 0, 0 );
 	
@@ -349,11 +353,10 @@ static void R_DrawBlackBottom( struct frame_cmd_buffer_s* cmd, const skydome_t *
 	cmd->state.numAttribs = 0;
 	R_FillNriVertexAttrib(skydome->linearVbos[side], cmd->state.attribs, &cmd->state.numAttribs);
 
-	// RB_BindVBO( skydome->linearVbos[side]->index, GL_TRIANGLES );
+	FR_CmdSetVertexBuffer(cmd, 0, skydome->linearVbos[side]->vertexBuffer, 0);
+	FR_CmdSetIndexBuffer(cmd, skydome->linearVbos[side]->indexBuffer, sizeof(elem_t) * visSide->firstElem, NriIndexType_UINT16);
 
-	// RB_DrawElements(NULL, visSide->firstVert, visSide->numVerts, visSide->firstElem, visSide->numElems, 0, 0, 0, 0 );
-
-	RB_DrawShadedElements_2(cmd, visSide->firstVert, visSide->numVerts, visSide->firstElem, visSide->numElems, 
+	RB_DrawShadedElements_2(cmd, 0, visSide->numVerts, 0, visSide->numElems, 
 		0, 0, 0, 0);
 
 	FR_CmdResetCommandState(cmd, CMD_RESET_INDEX_BUFFER | CMD_RESET_VERTEX_BUFFER);

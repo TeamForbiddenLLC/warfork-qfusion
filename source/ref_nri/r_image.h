@@ -88,7 +88,7 @@ typedef struct image_s
 	volatile bool loaded;
 	volatile bool missing;
 
-	char extension[8]; // file extension
+	const char* extension; // file extension
 	int flags;
 	uint16_t width, height; // source image
 	int layers;				// texture array size

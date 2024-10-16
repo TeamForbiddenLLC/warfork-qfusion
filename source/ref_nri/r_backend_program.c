@@ -25,7 +25,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_resource.h"
 
 #include "stb_ds.h"
-#include <stdint.h>
 
 #define FTABLE_SIZE_POW 12
 #define FTABLE_SIZE ( 1 << FTABLE_SIZE_POW )
@@ -1326,14 +1325,8 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				if( pass->numtcmods ) {
 					RB_ApplyTCMods( pass, texMatrix );
 				}
-				objectData.texutreMatrix[0].x = texMatrix[0];
-				objectData.texutreMatrix[0].y = texMatrix[4];
-				objectData.texutreMatrix[0].z = texMatrix[1];
-				objectData.texutreMatrix[1].x = texMatrix[5];
-				objectData.texutreMatrix[1].y = texMatrix[4];
-				objectData.texutreMatrix[1].z = texMatrix[13];
-
-
+				ObjectCB_SetTextureMatrix( &objectData, texMatrix );
+			
 				// possibly apply the "texture" fog inline
 				if( fog == rb.texFog ) {
 					if( ( rb.currentShader->numpasses == 1 ) && !rb.currentShadowBits ) {
@@ -1766,13 +1759,8 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			if(pass->numtcmods) {
 				RB_ApplyTCMods( pass, texMatrix );
 			}
-			objectData.texutreMatrix[0].x = texMatrix[0];
-			objectData.texutreMatrix[0].y = texMatrix[4];
-			objectData.texutreMatrix[0].z = texMatrix[1];
-			objectData.texutreMatrix[1].x = texMatrix[5];
-			objectData.texutreMatrix[1].y = texMatrix[4];
-			objectData.texutreMatrix[1].z = texMatrix[13];
-
+			ObjectCB_SetTextureMatrix( &objectData, texMatrix );
+			
 			// set shaderpass state (blending, depthwrite, etc)
 			int state = pass->flags;
 
@@ -2137,13 +2125,8 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			if( pass->numtcmods ) {
 				RB_ApplyTCMods( pass, texMatrix );
 			}
-			objectData.texutreMatrix[0].x = texMatrix[0];
-			objectData.texutreMatrix[0].y = texMatrix[4];
-			objectData.texutreMatrix[0].z = texMatrix[1];
-			objectData.texutreMatrix[1].x = texMatrix[5];
-			objectData.texutreMatrix[1].y = texMatrix[4];
-			objectData.texutreMatrix[1].z = texMatrix[13];
-
+			ObjectCB_SetTextureMatrix( &objectData, texMatrix );
+			
 
 			if( rb.currentModelType == mod_brush ) {
 				programFeatures |= GLSL_SHADER_OUTLINE_OUTLINES_CUTOFF;

@@ -120,8 +120,17 @@ struct ObjectCB {
    float pad0;
    struct vec3 entityDist;
    float pad1;
-   struct vec4 texutreMatrix[2];
+   float texutreMatrix[8];
 };
+
+static inline void ObjectCB_SetTextureMatrix(struct ObjectCB *cb, float* matrix) {
+	  cb->texutreMatrix[0] = matrix[0];
+    cb->texutreMatrix[1] = matrix[4];
+    cb->texutreMatrix[2] = matrix[1];
+    cb->texutreMatrix[3] = matrix[5];
+    cb->texutreMatrix[4] = matrix[12];
+    cb->texutreMatrix[5] = matrix[13];
+}
 
 // pass
 

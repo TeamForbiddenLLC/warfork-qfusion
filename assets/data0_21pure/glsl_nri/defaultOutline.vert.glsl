@@ -16,7 +16,7 @@ void main()
 
 	QF_TransformVerts(Position, Normal, Tangent, TexCoord);
 
-	Position += vec4(Normal * push.outlineHight, 0.0);
+	Position += vec4(Normal * push.outlineHeight, 0.0);
 	gl_Position = obj.mvp * Position;
 
 	vec4 outColor = QF_VertexRGBGen(Position, Normal, inColor);

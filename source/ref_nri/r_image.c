@@ -1604,9 +1604,9 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		}
 	}
 
-	Q_strncpyz( image->extension, ".ktx", sizeof( image->extension ) );
-	image->width = R_KTXWidth(&ktxContext);
-	image->height = R_KTXHeight(&ktxContext);
+	image->extension = extensionKTX;
+	image->width = image->upload_width = R_KTXWidth(&ktxContext);
+	image->height = image->upload_height = R_KTXHeight(&ktxContext);
 
 	R_KTXFreeContext(&ktxContext);
 	R_FreeFile( buffer );
@@ -1630,7 +1630,7 @@ static struct image_s *__R_AllocImage( const char *name )
 	image->name = R_MallocExt( r_imagesPool, nameLen + 1, 0, 1 );
 	strcpy( image->name, name );
 	image->registrationSequence = rsh.registrationSequence;
-	image->extension[0] = '\0';
+	image->extension = '\0';
 	image->loaded = true;
 	image->missing = false;
 	image->fbo = 0;
@@ -2001,7 +2001,7 @@ image_t *R_CreateImage( const char *name, int width, int height, int layers, int
 	image->tags = tags;
 	image->loaded = true;
 	image->missing = false;
-	image->extension[0] = '\0';
+	image->extension = '\0';
 
 	return image;
 }
@@ -2334,31 +2334,20 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	}
 	
 	sdssubstr( resolvedPath, 0, basePathLen );
-
 	image = __R_AllocImage( resolvedPath );
 	image->layers = 1;
 	image->flags = flags;
 	image->minmipsize = minmipsize;
 	image->tags = tags;
 
-	const bool isCubeMap = flags & IT_CUBEMAP;
-
-	enum image_ext_type_e { IMAGE_EXT_TGA, IMAGE_EXT_JPG, IMAGE_EXT_PNG, IMAGE_EXT_KTX };
-
-	const char *imageExtension[] = { 
-		[IMAGE_EXT_TGA] = ".tga", 
-		[IMAGE_EXT_JPG] = ".jpg", 
-		[IMAGE_EXT_PNG] = ".png", 
-		[IMAGE_EXT_KTX] = ".ktx" 
+	const char *extensions[] = {
+			extensionTGA,
+			extensionJPG,
+			extensionPNG,
+			extensionWAL,
+			extensionKTX
 	};
-	const char *extension = FS_FirstExtension( resolvedPath, imageExtension, Q_ARRAY_COUNT( imageExtension ) ); // last is KTX
-	if( extension == imageExtension[IMAGE_EXT_KTX] ) {
-		resolvedPath = sdscat( resolvedPath, extension );
-		if( __R_LoadKTX( image, resolvedPath ) ) {
-			goto done;
-		}
-		sdssetlen( resolvedPath, basePathLen ); // truncate the pathext
-	}
+	const bool isCubeMap = flags & IT_CUBEMAP;
 
 	if( isCubeMap ) {
 		static struct cubemapSufAndFlip {
@@ -2384,14 +2373,14 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 
 		for( size_t i = 0; i < 2; i++ ) {
 			for( size_t u = 0; u < 6; u++ ) {
-				sdssetlen( resolvedPath, basePathLen );
+				sdssubstr(resolvedPath, 0, basePathLen);
 				resolvedPath = sdscatfmt( resolvedPath, "_%s.tga", cubemapSides[i][u].suf );
-				sdsIncrLen( resolvedPath, 0 );
-
-				if(!__R_ReadImageFromDisk_stbi(resolvedPath, &uploads[u].buffer)) {
+				
+				if(!T_LoadImageSTBI(resolvedPath, &uploads[u].buffer)) {
 					ri.Com_DPrintf( S_COLOR_YELLOW "failed to load image %s\n", resolvedPath );
 					break;
 				}
+
 				if( uploads[u].buffer.width != uploads[u].buffer.height ) {
 					ri.Com_DPrintf( S_COLOR_YELLOW "Not square cubemap image %s\n", resolvedPath );
 					break;
@@ -2400,6 +2389,12 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 					ri.Com_DPrintf( S_COLOR_YELLOW "Different cubemap image size: %s\n", resolvedPath );
 					break;
 				}
+				
+				image->width = image->upload_width = T_PixelW(&uploads[u].buffer);
+				image->height = image->upload_height = T_PixelH(&uploads[u].buffer);
+				image->samples =  RT_NumberChannels(uploads[u].buffer.def);
+				image->extension = extensionTGA;
+
 				uploads[u].flags = cubemapSides[i][u].flags;
 				uploadCount++;
 			}
@@ -2411,21 +2406,35 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 			R_FreeImage( image );
 			goto done;
 		}
-	} else if( extension ) {
-		resolvedPath = sdscat( resolvedPath, extension );
+	} else {
+	
+		sdssubstr(resolvedPath, 0, basePathLen);
+		const char* ext = FS_FirstExtension2( resolvedPath, extensions, Q_ARRAY_COUNT(extensions)); // last is KTX
+		if(ext != NULL) {
+			resolvedPath = sdscat(resolvedPath, ext);
+			image->extension = ext;
+		}
 		struct UploadImgBuffer *upload = &uploads[uploadCount++];
-		if( !__R_ReadImageFromDisk_stbi( resolvedPath, &upload->buffer ) ) {
-			ri.Com_DPrintf( S_COLOR_YELLOW "failed to load image %s\n", resolvedPath );
+		upload->flags = flags;
+		if( ext == extensionKTX && __R_LoadKTX( image, resolvedPath ) ) {
+			goto done;
+		}
+
+		if( ( ext == extensionPNG || ext == extensionJPG || ext == extensionTGA ) && T_LoadImageSTBI( resolvedPath, &upload->buffer ) ) {
+			image->width = image->upload_width = T_PixelW( &upload->buffer );
+			image->height = image->upload_height = T_PixelH( &upload->buffer );
+			image->samples = RT_NumberChannels( upload->buffer.def );
+		}  else if( ext == extensionWAL && T_LoadImageWAL( resolvedPath, &upload->buffer ) ) {
+			image->width = image->upload_width = T_PixelW( &upload->buffer );
+			image->height = image->upload_height = T_PixelH( &upload->buffer );
+			image->samples = RT_NumberChannels( upload->buffer.def );
+		} else {
+			ri.Com_Printf( S_COLOR_YELLOW "Missing image: %s\n", image->name );
 			R_FreeImage( image );
 			image = NULL;
 			goto done;
 		}
-	} else {
-		ri.Com_DPrintf( S_COLOR_YELLOW "Can't find Image: %s\n", image->name );
-		R_FreeImage( image );
-		image = NULL;
-		goto done;
-	}
+	} 
 	assert(uploadCount <= 6);
 
 	const uint32_t mipSize = __R_calculateMipMapLevel( flags, uploads[0].buffer.width, uploads[0].buffer.height, minmipsize );
@@ -2487,7 +2496,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 		image->samples = channelCount;
 
 		struct texture_buf_s* src = &uploads[index].buffer;
-		if( !isCubeMap && ( flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) ) ) {
+		if( uploads[index].flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) ) {
 			struct texture_buf_desc_s desc = {
 				.width = uploads[index].buffer.width, 
 				.height = uploads[index].buffer.height,
@@ -2499,9 +2508,9 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 				uploads[index].buffer.buffer, transformBuffer.buffer, 
 				uploads[index].buffer.width, uploads[index].buffer.height, 
 				channelCount, 
-				( flags & IT_FLIPX ) ? true : false,
-				( flags & IT_FLIPY ) ? true : false, 
-				( flags & IT_FLIPDIAGONAL ) ? true : false );
+				( uploads[index].flags & IT_FLIPX ) ? true : false,
+				( uploads[index].flags & IT_FLIPY ) ? true : false, 
+				( uploads[index].flags & IT_FLIPDIAGONAL ) ? true : false );
 			src = &transformBuffer;
 		}
 
