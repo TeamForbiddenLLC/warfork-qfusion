@@ -2350,12 +2350,6 @@ static bool CG_LFuncDrawHelpMessage( struct cg_layoutnode_s *commandnode, struct
 	return true;
 }
 
-static bool CG_LFuncDrawTeamMates( struct cg_layoutnode_s *commandnode, struct cg_layoutnode_s *argumentnode, int numArguments )
-{
-	CG_DrawTeamMates();
-	return true;
-}
-
 static bool CG_LFuncDrawDamageNumbers( struct cg_layoutnode_s *commandnode, struct cg_layoutnode_s *argumentnode, int numArguments ) {
 	CG_DrawDamageNumbers();
 	return true;
@@ -3238,16 +3232,6 @@ static const cg_layoutcommand_t cg_LayoutCommands[] =
 		"Draws the name of the player in the crosshair",
 		false
 	},
-
-	{
-		"drawTeamMates",
-		CG_LFuncDrawTeamMates,
-		NULL,
-		0,
-		"Draws indicators where team mates are",
-		false
-	},
-
 	{
 		"drawDamageNumbers",
 		CG_LFuncDrawDamageNumbers,

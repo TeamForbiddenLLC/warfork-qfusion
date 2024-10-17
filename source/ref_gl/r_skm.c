@@ -1471,7 +1471,11 @@ bool R_AddSkeletalModelToDrawList( const entity_t *e )
 		}
 
 		if( shader ) {
-			R_AddSurfToDrawList( rn.meshlist, e, fog, shader, distance, 0, NULL, skmodel->drawSurfs + i );
+			int order = 0;
+			if( shader->sort == SHADER_SORT_OPAQUE ) {
+				order = R_PackOpaqueOrder( e, shader, false, false );
+			}
+			R_AddSurfToDrawList( rn.meshlist, e, fog, shader, distance, order, NULL, skmodel->drawSurfs + i );
 		}
 	}
 
