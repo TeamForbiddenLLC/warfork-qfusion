@@ -452,9 +452,25 @@ void R_DrawSkySurf( struct frame_cmd_buffer_s* cmd,const entity_t *e, const shad
 
 				RB_BindShader( NULL ,rsc.skyent, shader, NULL ); // must be called for every side to reset backend state
 
-				RB_BindVBO( skydome->sphereVbos[i]->index, GL_TRIANGLES );
+				cmd->state.numStreams = 1;
+				cmd->state.streams[0] = (NriVertexStreamDesc) {
+					.stride = skydome->sphereVbos[i]->vertexSize,
+					.stepRate = 0,
+					.bindingSlot = 0
+				};
+				cmd->state.numAttribs = 0;
+				R_FillNriVertexAttrib(skydome->sphereVbos[i], cmd->state.attribs, &cmd->state.numAttribs);
+			
+				FR_CmdSetVertexBuffer(cmd, 0, skydome->sphereVbos[i]->vertexBuffer, 0);
+				FR_CmdSetIndexBuffer(cmd, skydome->sphereVbos[i]->indexBuffer, sizeof(elem_t) * visSide->firstElem, NriIndexType_UINT16);
 
-				RB_DrawElements(NULL, visSide->firstVert, visSide->numVerts, visSide->firstElem, visSide->numElems, 0, 0, 0, 0 );
+
+				RB_DrawShadedElements_2(cmd, 0, visSide->numVerts, 0, visSide->numElems, 
+						0, 0, 0, 0);
+
+				// RB_BindVBO( skydome->sphereVbos[i]->index, GL_TRIANGLES );
+
+				// RB_DrawElements(NULL, visSide->firstVert, visSide->numVerts, visSide->firstElem, visSide->numElems, 0, 0, 0, 0 );
 			}
 		}
 	}

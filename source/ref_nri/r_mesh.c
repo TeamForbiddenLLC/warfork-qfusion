@@ -462,25 +462,32 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 			entityFX != prevEntityFX ) {
 
 			if( prevBatchDrawSurf && !batchDrawSurf ) {
-				RB_FlushDynamicMeshes(NULL);
+				RB_FlushDynamicMeshes(frame);
 				batchFlushed = true;
 			}
 
 			// hack the depth range to prevent view model from poking into walls
 			if( entity->flags & RF_WEAPONMODEL ) {
 				if( !depthHack ) {
-					RB_FlushDynamicMeshes(NULL);
+					RB_FlushDynamicMeshes(frame);
 					batchFlushed = true;
 					depthHack = true;
-					RB_GetDepthRange( &depthmin, &depthmax );
-					RB_DepthRange( depthmin, depthmin + 0.3 * ( depthmax - depthmin ) );
+					assert(frame->state.numColorAttachments == 1);
+					depthmin = frame->state.viewports[0].depthRangeMin;
+					depthmax = frame->state.viewports[0].depthRangeMax;
+					frame->state.viewports[0].depthRangeMax = frame->state.viewports[0].depthRangeMin + 0.3f * (frame->state.viewports[0].depthRangeMax - frame->state.viewports[0].depthRangeMin);
+					frame->state.dirty |= CMD_DIRT_VIEWPORT;
 				}
 			} else {
 				if( depthHack ) {
-					RB_FlushDynamicMeshes(NULL);
+					RB_FlushDynamicMeshes(frame);
 					batchFlushed = true;
 					depthHack = false;
-					RB_DepthRange( depthmin, depthmax );
+					assert(frame->state.numColorAttachments == 1);
+
+					frame->state.viewports[0].depthRangeMax = depthmax;
+					frame->state.viewports[0].depthRangeMin = depthmin;
+					frame->state.dirty |= CMD_DIRT_VIEWPORT;
 				}
 			}
 
@@ -489,9 +496,9 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 				bool oldCullHack = cullHack;
 				cullHack = ( ( entity->flags & RF_CULLHACK ) ? true : false );
 				if( cullHack != oldCullHack ) {
-					RB_FlushDynamicMeshes(NULL);
+					RB_FlushDynamicMeshes(frame);
 					batchFlushed = true;
-					RB_FlipFrontFace(NULL);
+					RB_FlipFrontFace(frame);
 				}
 			}
 
@@ -499,11 +506,11 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 			// to not pollute the farclip
 			infiniteProj = entity->renderfx & RF_NODEPTHTEST ? true : (shader->flags & SHADER_SKY ? true : false);
 			if( infiniteProj != prevInfiniteProj ) {
-				RB_FlushDynamicMeshes(NULL);
+				RB_FlushDynamicMeshes(frame);
 				batchFlushed = true;
 				if( infiniteProj ) {
 					Matrix4_Copy( rn.projectionMatrix, projectionMatrix );
-					Matrix4_PerspectiveProjectionToInfinity( Z_NEAR, projectionMatrix, glConfig.depthEpsilon );
+					Matrix4_PerspectiveProjectionToInfinity( Z_NEAR, projectionMatrix, DEPTH_EPSILON );
 					RB_LoadProjectionMatrix( projectionMatrix );
 				}
 				else {
@@ -519,9 +526,10 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 				depthCopied = true;
 				if( ( rn.renderFlags & RF_SOFT_PARTICLES ) && rn.fbDepthAttachment && rsh.screenTextureCopy ) {
 					// draw all dynamic surfaces that write depth before copying
+					assert(false);
 					if( batchOpaque ) {
 						batchOpaque = false;
-						RB_FlushDynamicMeshes(NULL);
+						RB_FlushDynamicMeshes(frame);
 						batchFlushed = true;
 					}
 					RB_BlitFrameBufferObject( rsh.screenTextureCopy->fbo, GL_DEPTH_BUFFER_BIT, FBO_COPY_NORMAL );
@@ -574,13 +582,17 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 	}
 
 	if( batchDrawSurf ) {
-		RB_FlushDynamicMeshes(NULL);
+		RB_FlushDynamicMeshes(frame);
 	}
 	if( depthHack ) {
-		RB_DepthRange( depthmin, depthmax );
+		// RB_DepthRange( depthmin, depthmax );
+		assert(frame->state.numColorAttachments == 1);
+		frame->state.viewports[0].depthRangeMax = depthmax;
+		frame->state.viewports[0].depthRangeMin = depthmin;
+		frame->state.dirty |= CMD_DIRT_VIEWPORT;
 	}
 	if( cullHack ) {
-		RB_FlipFrontFace(NULL);
+		RB_FlipFrontFace(frame);
 	}
 
 	RB_BindFrameBufferObject( riFBO );

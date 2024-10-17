@@ -137,6 +137,8 @@ typedef struct superLightStyle_s
 #define MAX_REF_SCENES			32 // max scenes rendered per frame
 #define MAX_REF_ENTITIES		( MAX_ENTITIES + 48 ) // must not exceed 2048 because of sort key packing
 
+
+#define DEPTH_EPSILON (1.0 / ( 1 << 14 ))
 //===================================================================
 
 typedef struct portalSurface_s
@@ -259,7 +261,7 @@ typedef struct
  
  	struct nri_backend_s nri;
 	
-	uint32_t frameCnt;
+	uint64_t frameCnt;
  	NriCommandQueue* cmdQueue;
  	NriSwapChain* swapchain;
 	NriFence* frameFence;
@@ -506,7 +508,7 @@ void		R_CinList_f( void );
 //
 void 		R_TakeScreenShot( const char *path, const char *name, const char *fmtString, int x, int y, int w, int h, bool silent, bool media );
 void		R_ScreenShot_f( void );
-void 		R_TakeEnvShot( const char *path, const char *name, unsigned maxPixels );
+void 		R_TakeEnvShot(struct frame_cmd_buffer_s* cmd, const char *path, const char *name, unsigned maxPixels );
 void		R_EnvShot_f( void );
 void		R_ImageList_f( void );
 void		R_ShaderList_f( void );

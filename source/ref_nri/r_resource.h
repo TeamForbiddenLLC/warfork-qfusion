@@ -135,8 +135,11 @@ static inline void ObjectCB_SetTextureMatrix(struct ObjectCB *cb, float* matrix)
 // pass
 
 struct DefaultCellShadeCB {
-	struct vec3 entityColor;
-	struct mat3 reflectionTexMatrix;
+	struct vec4 entityColor;
+  union {
+  	struct mat3 reflectionTexMatrix;
+    struct mat4 padMat0; // padding mat4
+  };
 };
 
 struct DefaultShadowCB {
@@ -149,6 +152,7 @@ struct DefaultShadowCB {
     struct vec4 shadowAlpha[2];
     struct vec4 shadowEntitydist[4];
 };
+
 
 struct DefaultDistortionCB {
     struct vec4 textureParams;

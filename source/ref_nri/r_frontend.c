@@ -896,8 +896,11 @@ void RF_ScreenShot( const char *path, const char *name, const char *fmtstring, b
 
 void RF_EnvShot( const char *path, const char *name, unsigned pixels )
 {
-//	if( RF_RenderingEnabled() )
-//		rrf.adapter.cmdPipe->EnvShot( rrf.adapter.cmdPipe, path, name, pixels );
+	struct frame_cmd_buffer_s *cmd = R_ActiveFrameCmd();
+	if( RF_RenderingEnabled() ) {
+		R_TakeEnvShot( cmd, path, name, pixels );
+	}
+		// rrf.adapter.cmdPipe->EnvShot( rrf.adapter.cmdPipe, path, name, pixels );
 }
 
 bool RF_RenderingEnabled( void )
@@ -990,7 +993,7 @@ void RF_TransformVectorToScreen( const refdef_t *rd, const vec3_t in, vec2_t out
 	}
 	else {
 		Matrix4_InfinitePerspectiveProjection( rd->fov_x, rd->fov_y, Z_NEAR, rrf.cameraSeparation,
-			p, glConfig.depthEpsilon );
+			p, DEPTH_EPSILON );
 	}
  	
 	if( rd->rdflags & RDF_FLIPPED ) {

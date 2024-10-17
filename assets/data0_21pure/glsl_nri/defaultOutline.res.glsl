@@ -1,5 +1,5 @@
 layout( push_constant ) uniform ConstBlock {
-  float outlineHight;
+  float outlineHeight;
   float outlineCutoff;
 } push;
 

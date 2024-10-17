@@ -195,7 +195,7 @@ void R_ScreenShot_f( void )
 /*
  * R_TakeEnvShot
  */
-void R_TakeEnvShot( const char *path, const char *name, unsigned maxPixels )
+void R_TakeEnvShot(struct frame_cmd_buffer_s* cmd, const char *path, const char *name, unsigned maxPixels )
 {
 	int i;
 	unsigned size, maxSize;
@@ -217,7 +217,7 @@ void R_TakeEnvShot( const char *path, const char *name, unsigned maxPixels )
 	if( !R_IsRenderingToScreen() || !rsh.worldModel )
 		return;
 	
-	maxSize = min( min( glConfig.width, glConfig.height ), glConfig.maxTextureSize );
+	maxSize = min( cmd->textureBuffers.screen.width, cmd->textureBuffers.screen.height );
 	if( maxSize > maxPixels )
 		maxSize = maxPixels;
 	

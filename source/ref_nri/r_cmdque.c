@@ -865,7 +865,7 @@ static unsigned R_HandleEnvShotReliableCmd( void *pcmd )
 {
 	refReliableCmdScreenShot_t *cmd = pcmd;
 
-	R_TakeEnvShot( cmd->path, cmd->name, cmd->pixels );
+	// R_TakeEnvShot( cmd->path, cmd->name, cmd->pixels );
 
 	return sizeof( *cmd );
 }

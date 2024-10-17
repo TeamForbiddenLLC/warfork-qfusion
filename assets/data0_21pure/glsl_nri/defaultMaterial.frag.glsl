@@ -262,13 +262,13 @@ void main()
 
 #ifdef APPLY_ENTITY_DECAL
 
-#ifdef APPLY_ENTITY_DECAL_ADD
-	decal.rgb = texture(sampler2D(u_EntityDecalTexture,u_EntityDecalSampler), v_TexCoord).rgb;
-	diffuse.rgb += pass.entityColor.rgb * decal.rgb;
-#else
-	decal = vec4(pass.entityColor.rgb, 1.0) * vec4(texture(sampler2D(u_EntityDecalTexture, u_EntityDecalSampler), v_TexCoord));
-	diffuse.rgb = mix(diffuse.rgb, decal.rgb, decal.a);
-#endif // APPLY_ENTITY_DECAL_ADD
+	#ifdef APPLY_ENTITY_DECAL_ADD
+		decal.rgb = texture(sampler2D(u_EntityDecalTexture, u_EntityDecalSampler), v_TexCoord).rgb;
+		diffuse.rgb += pass.entityColor.rgb * decal.rgb;
+	#else
+		decal = vec4(pass.entityColor.rgb, 1.0) * vec4(texture(sampler2D(u_EntityDecalTexture, u_EntityDecalSampler), v_TexCoord));
+		diffuse.rgb = mix(diffuse.rgb, decal.rgb, decal.a);
+	#endif // APPLY_ENTITY_DECAL_ADD
 
 #endif // APPLY_ENTITY_DECAL
 

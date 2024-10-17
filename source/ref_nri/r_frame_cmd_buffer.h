@@ -25,7 +25,9 @@ enum CmdResetBits {
 };
 
 enum CmdStateDirtyBits {
-	CMD_DIRT_INDEX_BUFFER = 0x1
+	CMD_DIRT_INDEX_BUFFER = 0x1,
+	CMD_DIRT_VIEWPORT = 0x2,
+	CMD_DIRT_SCISSOR = 0x4,
 };
 
 // the serialized state of the pipeline
@@ -106,7 +108,7 @@ struct ubo_frame_instance_s {
 };
 
 struct frame_cmd_buffer_s {
-	uint8_t frameCount; // this value is bound by NUMBER_FRAMES_FLIGHT
+	uint64_t frameCount; // this value is bound by NUMBER_FRAMES_FLIGHT
 	struct block_buffer_pool_s uboBlockBuffer; 
 	struct frame_cmd_state_s state;
 	struct frame_tex_buffers_s textureBuffers;
@@ -165,6 +167,8 @@ void FR_CmdResetCommandState(struct frame_cmd_buffer_s *cmd, enum CmdResetBits b
 
 void FR_CmdSetScissor( struct frame_cmd_buffer_s *cmd, const NriRect *scissors, size_t numAttachments ); 
 void FR_CmdSetScissorAll( struct frame_cmd_buffer_s *cmd, const NriRect scissors); 
+
+void FR_CmdSetViewportAll( struct frame_cmd_buffer_s *cmd, const NriViewport scissors );
 
 void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint32_t instanceNum, uint32_t baseIndex, uint32_t baseVertex, uint32_t baseInstance );
 

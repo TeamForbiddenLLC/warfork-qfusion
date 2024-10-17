@@ -140,7 +140,7 @@ void QF_TransformVerts(inout vec4 Position, inout vec3 Normal, inout vec3 Tangen
 			Position.xyz += DEFORMV_FUNC(frame.shaderTime,arg.x,arg.y,arg.z,arg.w) * vec3(arg.x, arg.y, arg.z);
 		#elif defined(DEFORMV_BULGE)
 			vec4 arg = DEFORMV_CONSTANT;
-			const float t = sin(TexCoord.s * arg.x + u_QF_ShaderTime * arg.z);
+			const float t = sin(TexCoord.s * arg.x + frame.shaderTime * arg.z);
 			Position.xyz += max (-1.0 + arg.w, t) * arg.y * Normal.xyz;
 		#elif defined(DEFORMV_AUTOSPRITE)
 		 	 vec3 right = (1.0 + step(0.5, TexCoord.s) * -2.0) * frame.viewAxis[1] * frame.mirrorSide;

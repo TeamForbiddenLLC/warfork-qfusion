@@ -376,10 +376,28 @@ void R_RenderScene(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 	// clip new scissor region to the one currently set
 	Vector4Set( rn.scissor, fd->scissor_x, fd->scissor_y, fd->scissor_width, fd->scissor_height );
 	Vector4Set( rn.viewport, fd->x, fd->y, fd->width, fd->height );
+
 	VectorCopy( fd->vieworg, rn.pvsOrigin );
 	VectorCopy( fd->vieworg, rn.lodOrigin );
 
+	
 	FR_CmdResetAttachmentToBackbuffer(frame);
+	FR_CmdSetViewportAll(frame, (NriViewport) {
+		.x =  0,
+		.y =   0,
+		.width = fd->width,
+		.height = fd->height,
+		.x = fd->x,
+		.y = -fd->y,
+		.depthRangeMin = 0.0f,
+		.depthRangeMax = 1.0f
+	} );
+	FR_CmdSetScissorAll(frame, (NriRect) {
+		.x = fd->scissor_x,
+		.y =  fd->scissor_y,
+		.width = fd->scissor_width,
+		.height = fd->scissor_height
+	} );
 
 	R_BuildShadowGroups();
 

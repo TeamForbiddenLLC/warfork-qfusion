@@ -697,9 +697,9 @@ void R_DrawAliasSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const sh
 		if( !calcSTVectors )
 			dynamicMesh.sVectorsArray = aliasmesh->sVectorsArray;
 
-		RB_AddDynamicMesh(NULL, e, shader, fog, portalSurface, shadowBits, &dynamicMesh, GL_TRIANGLES, 0.0f, 0.0f );
+		RB_AddDynamicMesh(cmd, e, shader, fog, portalSurface, shadowBits, &dynamicMesh, GL_TRIANGLES, 0.0f, 0.0f );
 
-		RB_FlushDynamicMeshes(NULL);
+		RB_FlushDynamicMeshes(cmd);
 	}
 }
 

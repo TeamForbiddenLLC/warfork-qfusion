@@ -192,17 +192,17 @@ typedef struct
 
 typedef struct
 {
-	const char		*rendererString;
-	const char		*vendorString;
-	const char		*versionString;
-	const char		*extensionsString;
-	const char		*glwExtensionsString;
-	const char		*shadingLanguageVersionString;
-	unsigned		versionHash;
+	// const char		*rendererString;
+	// const char		*vendorString;
+	// const char		*versionString;
+	// const char		*extensionsString;
+	// const char		*glwExtensionsString;
+	// const char		*shadingLanguageVersionString;
+	// unsigned		versionHash;
 
 	const char		*applicationName;
 	const char		*screenshotPrefix;
-	int				startupColor;
+	// int				startupColor;
 
 	int				version;
 	int				shadingLanguageVersion;
@@ -217,20 +217,20 @@ typedef struct
 	unsigned short	gammaRampSize;
 	unsigned short	originalGammaRamp[3*GAMMARAMP_STRIDE];
 
-	float			depthEpsilon;
+	// float			depthEpsilon;
 
-	int				maxTextureSize
-					,maxTextureUnits
-					,maxTextureCubemapSize
-					,maxTexture3DSize
-					,maxTextureLayers
-					,maxTextureFilterAnisotropic
-					,maxRenderbufferSize
-					,maxVaryingFloats
-					,maxVertexUniformComponents
-					,maxVertexAttribs
-					,maxFragmentUniformComponents
-					;
+	// int				maxTextureSize
+	// 				,maxTextureUnits
+	// 				,maxTextureCubemapSize
+	// 				,maxTexture3DSize
+	// 				,maxTextureLayers
+	// 				,maxTextureFilterAnisotropic
+	// 				,maxRenderbufferSize
+	// 				,maxVaryingFloats
+	// 				,maxVertexUniformComponents
+	// 				,maxVertexAttribs
+	// 				,maxFragmentUniformComponents
+	// 				;
 	unsigned int	maxGLSLBones;	// the maximum amount of bones we can handle in a vertex shader
 
 	bool			forceRGBAFramebuffers;	// PowerVR hack - its blending interprets alpha in RGB FBs as 0, not 1

@@ -23,6 +23,9 @@ static void AttachDescriptorSlot( struct descriptor_set_allloc_s *alloc, struct 
 			alloc->queueEnd->quNext = slot;
 		}
 		alloc->queueEnd = slot;
+		if(!alloc->queueBegin) {
+			alloc->queueBegin = slot;
+		}
 	}
 	{
 		const size_t hashIndex = slot->hash % ALLOC_HASH_RESERVE;
@@ -35,6 +38,7 @@ static void AttachDescriptorSlot( struct descriptor_set_allloc_s *alloc, struct 
 		alloc->hashSlots[hashIndex] = slot;
 	}
 }
+
 
 static void DetachDescriptorSlot( struct descriptor_set_allloc_s *alloc, struct descriptor_set_slot_s *slot )
 {
@@ -86,6 +90,28 @@ struct descriptor_set_result_s ResolveDescriptorSet( struct nri_backend_s *backe
 	const size_t hashIndex = hash % ALLOC_HASH_RESERVE;
 	for( struct descriptor_set_slot_s *c = alloc->hashSlots[hashIndex]; c; c = c->hNext ) {
 		if( c->hash == hash ) {
+			if( alloc->queueEnd == c ) {
+				// already at the end of the queue
+			} else if (alloc->queueBegin == c) {
+				alloc->queueBegin = c->quNext;
+				if( c->quNext ) {
+					c->quNext->quPrev = NULL;
+				}
+			} else {
+				if( c->quPrev ) {
+					c->quPrev->quNext = c->quNext;
+				}
+				if( c->quNext ) {
+					c->quNext->quPrev = c->quPrev;
+				}
+			}
+			c->quNext = NULL;
+			c->quPrev = alloc->queueEnd;
+			if( alloc->queueEnd ) {
+				alloc->queueEnd->quNext = c;
+			}
+			alloc->queueEnd = c;
+
 			c->frameCount = cmd->frameCount;
 			result.set = c->descriptorSet;
 			result.found = true;
@@ -94,7 +120,7 @@ struct descriptor_set_result_s ResolveDescriptorSet( struct nri_backend_s *backe
 		}
 	}
 
-	if( alloc->queueBegin && alloc->queueBegin->frameCount > NUMBER_FRAMES_FLIGHT && alloc->queueBegin->frameCount + NUMBER_FRAMES_FLIGHT < cmd->frameCount ) {
+	if( alloc->queueBegin && cmd->frameCount > alloc->queueBegin->frameCount + NUMBER_FRAMES_FLIGHT ) {
 		struct descriptor_set_slot_s *slot = alloc->queueBegin;
 		DetachDescriptorSlot( alloc, slot );
 		slot->frameCount = cmd->frameCount;

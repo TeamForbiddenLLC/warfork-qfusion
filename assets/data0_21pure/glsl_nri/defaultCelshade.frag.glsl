@@ -5,6 +5,7 @@
 
 layout(set = DESCRIPTOR_PASS_SET, binding = 1) uniform texture2D u_BaseTexture;
 layout(set = DESCRIPTOR_PASS_SET, binding = 2) uniform sampler u_BaseSampler;
+
 layout(set = DESCRIPTOR_PASS_SET, binding = 3) uniform textureCube u_CelShadeTexture;
 layout(set = DESCRIPTOR_PASS_SET, binding = 4) uniform sampler u_CelShadeSampler;
 layout(set = DESCRIPTOR_PASS_SET, binding = 5) uniform texture2D u_DiffuseTexture;
@@ -53,7 +54,7 @@ void main(void)
 #ifdef APPLY_STRIPES_ADD
 	outColor.rgb += vec3(pass.entityColor.rgb) * vec3(texture(sampler2D(u_StripesTexture,u_StripesSampler), v_TexCoord));
 #else
-	tempColor = vec4(ubo.entityColor.rgb, 1.0) * vec4(texture(sampler2D(u_StripesTexture,u_StripesSampler), v_TexCoord));
+	tempColor = vec4(pass.entityColor.rgb, 1.0) * vec4(texture(sampler2D(u_StripesTexture,u_StripesSampler), v_TexCoord));
 	outColor.rgb = mix(outColor.rgb, tempColor.rgb, tempColor.a);
 #endif
 #endif // APPLY_STRIPES_ADD

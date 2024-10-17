@@ -45,6 +45,7 @@ void FR_CmdSetScissor( struct frame_cmd_buffer_s *cmd, const NriRect *scissors, 
 	assert( numAttachments < MAX_COLOR_ATTACHMENTS );
 	assert( numAttachments == cmd->state.numColorAttachments );
 	memcpy( cmd->state.scissors, scissors, sizeof( NriRect ) * numAttachments );
+	cmd->state.dirty |= CMD_DIRT_SCISSOR;
 }
 
 void FR_CmdSetScissorAll( struct frame_cmd_buffer_s *cmd, const NriRect scissors )
@@ -53,6 +54,14 @@ void FR_CmdSetScissorAll( struct frame_cmd_buffer_s *cmd, const NriRect scissors
 		assert( scissors.x >= 0 && scissors.y >= 0 );
 		cmd->state.scissors[i] = scissors;
 	}
+	cmd->state.dirty |= CMD_DIRT_SCISSOR;
+}
+
+void FR_CmdSetViewportAll( struct frame_cmd_buffer_s *cmd, const NriViewport viewport ) {
+	for( size_t i = 0; i < cmd->state.numColorAttachments; i++ ) {
+		cmd->state.viewports[i] = viewport;
+	}
+	cmd->state.dirty |= CMD_DIRT_VIEWPORT;
 }
 
 void FR_CmdSetTextureAttachment( struct frame_cmd_buffer_s *cmd,
@@ -77,6 +86,8 @@ void FR_CmdSetTextureAttachment( struct frame_cmd_buffer_s *cmd,
 	memcpy( cmd->state.viewports, viewports, sizeof( NriViewport ) * numAttachments );
 	memcpy( cmd->state.scissors, scissors, sizeof( NriRect ) * numAttachments );
 	cmd->state.depthAttachment = depthAttachment;
+	
+	cmd->state.dirty |= (CMD_DIRT_SCISSOR | CMD_DIRT_VIEWPORT);
 }
 
 void FR_CmdSetIndexBuffer( struct frame_cmd_buffer_s *cmd, NriBuffer *buffer, uint64_t offset, NriIndexType indexType )
@@ -186,7 +197,15 @@ void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint
 		rsh.nri.coreI.CmdSetIndexBuffer( cmd->cmd, cmd->state.indexBuffer, cmd->state.indexBufferOffset, cmd->state.indexType );
 	}
 
-	rsh.nri.coreI.CmdSetScissors( cmd->cmd, cmd->state.scissors, cmd->state.numColorAttachments );
+	if(cmd->state.dirty & CMD_DIRT_VIEWPORT) {
+		rsh.nri.coreI.CmdSetViewports( cmd->cmd, cmd->state.viewports, cmd->state.numColorAttachments );
+		cmd->state.dirty &= ~CMD_DIRT_VIEWPORT;
+	}
+
+	if(cmd->state.dirty & CMD_DIRT_SCISSOR) {
+		rsh.nri.coreI.CmdSetScissors( cmd->cmd, cmd->state.scissors, cmd->state.numColorAttachments );
+		cmd->state.dirty &= ~CMD_DIRT_SCISSOR;
+	}
 	
 	NriDrawIndexedDesc drawDesc = { 0 };
 	drawDesc.indexNum = indexNum;
@@ -210,6 +229,8 @@ void FR_CmdBeginRendering( struct frame_cmd_buffer_s *cmd )
 	attachmentsDesc.depthStencil = cmd->state.depthAttachment;
 	rsh.nri.coreI.CmdBeginRendering( cmd->cmd, &attachmentsDesc );
 	rsh.nri.coreI.CmdSetViewports( cmd->cmd, cmd->state.viewports, cmd->state.numColorAttachments );
+	rsh.nri.coreI.CmdSetScissors( cmd->cmd, cmd->state.scissors, cmd->state.numColorAttachments );
+	cmd->state.dirty &= ~(CMD_DIRT_VIEWPORT | CMD_DIRT_SCISSOR);
 }
 
 void FR_CmdEndRendering( struct frame_cmd_buffer_s *cmd )

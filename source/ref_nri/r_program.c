@@ -181,9 +181,9 @@ static sds R_AppendGLSLDeformv( sds str, const deformv_t *deformv, int numDeform
 			 // str = sdscatfmt(str, "#define DEFORMV_ARG_2 %f", deformv->func.args[2]);
 			 // str = sdscatfmt(str, "#define DEFORMV_ARG_3 %f", deformv->func.args[3]);
 				
-				str = sdscatfmt(str, "#define DEFORMV_WAVE 1");
-				str = sdscatfmt(str, "#define DEFORMV_FUNC %s", funcs[funcType]);
-				str = sdscatfmt(str, "#define DEFORMV_CONSTANT vec4(%f,%f,%f,%f)", 
+				str = sdscatfmt(str, "#define DEFORMV_WAVE 1 \n");
+				str = sdscatfmt(str, "#define DEFORMV_FUNC %s \n", funcs[funcType]);
+				str = sdscatprintf(str, "#define DEFORMV_CONSTANT vec4(%f,%f,%f,%f) \n", 
 										deformv->func.args[0],
 										deformv->func.args[1],
 										deformv->func.args[2],
@@ -205,9 +205,9 @@ static sds R_AppendGLSLDeformv( sds str, const deformv_t *deformv, int numDeform
 		 // 	str = sdscatfmt(str, "#define DEFORMV_MOVE 1");
 		 // 	str = sdscatfmt(str, "#define DEFORMV_METHOD_%s 1", funcs[funcType]);
 				
-				str = sdscatfmt(str, "#define DEFORMV_MOVE 1");
-				str = sdscatfmt(str, "#define DEFORMV_FUNC %s", funcs[funcType]);
-				str = sdscatfmt(str, "#define DEFORMV_CONSTANT vec4(%f,%f,%f,%f)", 
+				str = sdscatfmt(str, "#define DEFORMV_MOVE 1 \n");
+				str = sdscatfmt(str, "#define DEFORMV_FUNC %s \n", funcs[funcType]);
+				str = sdscatprintf(str, "#define DEFORMV_CONSTANT vec4(%f,%f,%f,%f) \n", 
 										deformv->func.args[0],
 										deformv->func.args[1],
 										deformv->func.args[2],
@@ -231,8 +231,8 @@ static sds R_AppendGLSLDeformv( sds str, const deformv_t *deformv, int numDeform
 				break;
 			}
 			case DEFORMV_BULGE:
-				str = sdscatfmt(str, "#define DEFORMV_BULGE 1");
-				str = sdscatfmt(str, "#define DEFORMV_CONSTANT vec4(%f,%f,%f,%f)", 
+				str = sdscatfmt(str, "#define DEFORMV_BULGE 1 \n");
+				str = sdscatprintf(str, "#define DEFORMV_CONSTANT vec4(%f,%f,%f,%f) \n", 
 										deformv->func.args[0],
 										deformv->func.args[1],
 										deformv->func.args[2],
@@ -245,7 +245,7 @@ static sds R_AppendGLSLDeformv( sds str, const deformv_t *deformv, int numDeform
 
 				break;
 			case DEFORMV_AUTOSPRITE:
-				str = sdscatfmt(str, "#define DEFORMV_AUTOSPRITE 1");
+				str = sdscatfmt(str, "#define DEFORMV_AUTOSPRITE 1 \n");
 				//str = sdscatfmt( str,
 				//				 "right = (1.0 + step(0.5, TexCoord.s) * -2.0) * u_QF_ViewAxis[1] * u_QF_MirrorSide;\n;"
 				//				 "up = (1.0 + step(0.5, TexCoord.t) * -2.0) * u_QF_ViewAxis[2];\n"
@@ -256,7 +256,7 @@ static sds R_AppendGLSLDeformv( sds str, const deformv_t *deformv, int numDeform
 
 				break;
 			case DEFORMV_AUTOPARTICLE:
-				str = sdscatfmt(str, "#define DEFORMV_AUTOPARTICLE 1");
+				str = sdscatfmt(str, "#define DEFORMV_AUTOPARTICLE 1 \n");
 				//str = sdscatfmt( str,
 				//				 "right = (1.0 + TexCoord.s * -2.0) * u_QF_ViewAxis[1] * u_QF_MirrorSide;\n;"
 				//				 "up = (1.0 + TexCoord.t * -2.0) * u_QF_ViewAxis[2];\n"
@@ -268,7 +268,7 @@ static sds R_AppendGLSLDeformv( sds str, const deformv_t *deformv, int numDeform
 				//				 "Normal.xyz = forward;\n" );
 				break;
 			case DEFORMV_AUTOSPRITE2:
-				str = sdscatfmt(str, "#define DEFORMV_AUTOSPRITE2 1");
+				str = sdscatfmt(str, "#define DEFORMV_AUTOSPRITE2 1 \n");
 				//str = sdscatfmt( str,
 				//				 // local sprite axes
 				//				 "right = QF_LatLong2Norm(a_SpriteRightUpAxis.xy) * u_QF_MirrorSide;\n"
@@ -2160,10 +2160,11 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 			shaderErr = sdscatfmt( shaderErr, "%s\n", infoLog );
 			shaderErr = sdscatfmt( shaderErr, "%s\n", debugLogs );
 			__RP_writeTextToFile( errFilePath, shaderErr );
+			assert(false && "failed to preprocess shader");
+			
 			sdsfree( shaderErr );
 			sdsfree( errFilePath );
 
-			assert(false && "failed to preprocess shader");
 			error = true;
 			goto shader_done;
 		}
