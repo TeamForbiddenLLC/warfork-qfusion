@@ -722,8 +722,8 @@ void RB_BindVBO( int id, int primitive )
 		return;
 	}
 
-	RB_BindArrayBuffer( vbo->vertexId );
-	RB_BindElementArrayBuffer( vbo->elemId );
+	// RB_BindArrayBuffer( vbo->vertexId );
+	// RB_BindElementArrayBuffer( vbo->elemId );
 }
 
 /*
