@@ -327,7 +327,7 @@ static void QFT_RenderString( qfontface_t *qfont, const char *str )
 	uint8_t *src, *dest;
 
 	for( ; ; ) {
-		gc = Q_GrabWCharFromColorString( &str, &num, NULL );
+		gc = Q_GrabWCharFromColorString( &str, &num, NULL, NULL, NULL, NULL );
 		if( gc == GRABCHAR_END ) {
 			QFT_UploadRenderedGlyphs( qftGlyphTempBitmap, shader, qttf->imageCurX, qttf->imageCurY, qfont->shaderWidth, tempWidth, tempLineHeight );
 			qttf->imageCurX += tempWidth;

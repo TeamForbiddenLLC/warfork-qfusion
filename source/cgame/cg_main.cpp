@@ -441,7 +441,7 @@ const char *CG_TranslateColoredString( const char *string, char *dst, size_t dst
 		return string;
 
 	tmp = string;
-	if( Q_GrabCharFromColorString( &tmp, &c, &colorindex ) == GRABCHAR_COLOR ) {
+	if( Q_GrabCharFromColorString( &tmp, &c, &colorindex, NULL, NULL, NULL ) == GRABCHAR_COLOR ) {
 		// attempt to translate the remaining string
 		l10n = trap_L10n_TranslateString( tmp );
 	} else {
