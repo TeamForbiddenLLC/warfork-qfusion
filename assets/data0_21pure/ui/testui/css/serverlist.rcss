@@ -1,0 +1,138 @@
+/* server browser */
+
+/* notes:
+   #navibar is kind of an 'alias' for tabset tab here,
+   but server browser doesn't (and can't) use tabset.
+   the actual styling is in the base.css!
+ */
+
+#navibar a {
+	width: 120dp;
+}
+
+#serverbrowser_frame { overflow-y: auto; vertical-align: middle; }
+
+#serverblock levelshot {
+	width: 200dp;
+	height: 150dp;
+}
+
+
+#serverbrowser_datagrid datagridheader { padding-left: 18dp; }
+#serverbrowser_datagrid datagridrow { padding-left: 18dp; height: 20dp; }
+#serverbrowser_datagrid datagridrow:hover { background: #3f3c49; }
+#serverbrowser_datagrid datagridrow:selected  { background: #3f3c49; }
+#serverbrowser_datagrid datagridcolumn:hover { background: #3f3c49; }
+
+#serverbrowser_datagrid datagridrow span { 
+	display: inline; 
+	margin: 0dp;
+	padding: 0dp;
+	width: auto;	
+}
+
+#serverbrowser-manual-container {
+	position: fixed;
+	width: 100%;
+	height: 100%;
+	top: 0;
+	left: 0;
+	display: none;
+}
+
+#in-progress-spinner {
+	left: 50%;
+	top: 50%;
+	display: inline-block;
+	position: fixed;
+	width: 200dp;
+	height: 200dp;
+	margin-left: -100dp;
+	margin-top: -200dp;
+}
+
+#in-progress-title {
+	top: 50%;
+	display: inline-block;
+	position: fixed;
+}
+
+#in-progress-counter {
+	top: 50%;
+	display: inline-block;
+	position: fixed;
+	margin-top: -107dp;
+}
+
+#suggestion-modal {
+	position: fixed;
+	z-index: 999999;
+	left: 50%;
+}
+
+#suggestion-modal .modal-block-rel  {
+	top: -320dp;
+}
+
+#suggestion-spinner {
+	display: none;
+}
+
+#suggestion-contentflow {
+	height: 400dp;
+	max-height: 400dp;
+}
+
+#suggestion-contentflow .dropshadow {
+	padding-top: 0dp;
+	background-decorator: image;
+	background-image: /ui/porkui/gfx/dropshadow.tga	0 0 1 1;
+}
+
+#suggestion-contentflow .right-arrow {
+	height: 310dp;
+}
+
+#suggestion-contentflow .left-arrow {
+	height: 310dp;
+}
+
+#suggestion-serverblock levelshot {
+	width: 240dp;
+	height: 180dp;
+}
+
+#suggestion-controls {
+	padding-top: 4dp;
+}
+
+#suggestion-controls .button-apply {
+	width: 160dp;
+}
+
+#suggestion-controls .button-cancel {
+	width: 160dp;
+}
+
+#serverbrowser-manual-container { 
+	text-align: center;
+}
+
+#serverbrowser-manual-container button {
+	left: 50%;
+	top: 50%;
+	position: fixed;
+	margin-top: 30dp;
+	margin-left: -100dp;
+	width: 200dp;
+	display: inline-block;
+}
+
+
+// use with caution: causes MASSIVE slowdowns due to
+// datagrid cells' style updates
+/*
+#serverbrowser_datagrid datagridrow:nth-child(even) {
+
+}
+*/
