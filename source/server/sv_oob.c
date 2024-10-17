@@ -24,13 +24,20 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 typedef struct sv_master_s
 {
 	netadr_t address;
-	bool steam;
+	master_type_t type;
 } sv_master_t;
+
+#define WARMONGER_MAGIC "warfork"
+enum {
+	WARMONGER_ADVERTISE = 1,
+	WARMONGER_CLOSE_NOTIFY = 2,
+};
 
 static sv_master_t sv_masters[MAX_MASTERS];
 
 extern cvar_t *sv_masterservers;
 extern cvar_t *sv_masterservers_steam;
+extern cvar_t *sv_masterservers_warfork;
 extern cvar_t *sv_hostname;
 extern cvar_t *sv_skilllevel;
 extern cvar_t *sv_reconnectlimit;     // minimum seconds between connect messages
@@ -45,11 +52,21 @@ extern cvar_t *sv_iplimit;
 //==============================================================================
 
 
+static unsigned short SV_MasterPort( master_type_t type ) {
+	switch( type ) {
+		case MASTER_STEAM:
+			return PORT_MASTER_STEAM;
+		case MASTER_WARFORK:
+			return PORT_MASTER_WARFORK;
+		case MASTER_DARKPLACES:
+			return PORT_MASTER;
+	}
+}
 /*
 * SV_AddMaster_f
 * Add a master server to the list
 */
-static void SV_AddMaster_f( char *address, bool steam )
+static void SV_AddMaster_f( char *address, master_type_t type )
 {
 	int i;
 
@@ -80,9 +97,9 @@ static void SV_AddMaster_f( char *address, bool steam )
 		}
 
 		if( NET_GetAddressPort( &master->address ) == 0 )
-			NET_SetAddressPort( &master->address, steam ? PORT_MASTER_STEAM : PORT_MASTER );
+			NET_SetAddressPort( &master->address, SV_MasterPort(type) );
 
-		master->steam = steam;
+		master->type = type;
 
 		Com_Printf( "Added new master server #%i at %s\n", i, NET_AddressToString( &master->address ) );
 		return;
@@ -90,6 +107,7 @@ static void SV_AddMaster_f( char *address, bool steam )
 
 	Com_Printf( "'SV_AddMaster_f' List of master servers is already full\n" );
 }
+
 
 /*
 * SV_ResolveMaster
@@ -117,7 +135,23 @@ static void SV_ResolveMaster( void )
 			if( !master[0] )
 				break;
 
-			SV_AddMaster_f( master, false );
+			SV_AddMaster_f( master, MASTER_DARKPLACES);
+		}
+	}
+
+	// do not enable warfork master for dedicated servers - port forwarding is already expected of you
+	if (dedicated->integer == 0) {
+		mlist = sv_masterservers_warfork->string;
+		if( *mlist )
+		{
+			while( mlist )
+			{
+				master = COM_Parse( &mlist );
+				if( !master[0] )
+					break;
+
+				SV_AddMaster_f( master, MASTER_WARFORK);
+			}
 		}
 	}
 
@@ -131,7 +165,7 @@ static void SV_ResolveMaster( void )
 			if( !master[0] )
 				break;
 
-			SV_AddMaster_f( master, true );
+			SV_AddMaster_f( master, MASTER_STEAM);
 		}
 	}
 #endif
@@ -163,56 +197,6 @@ void SV_UpdateMaster( void )
 }
 
 /*
-* SV_MasterHeartbeat
-* Send a message to the master every few minutes to
-* let it know we are alive, and log information
-*/
-void SV_MasterHeartbeat( void )
-{
-	unsigned int time = Sys_Milliseconds();
-	int i;
-
-	if( svc.nextHeartbeat > time )
-		return;
-
-	svc.nextHeartbeat = time + HEARTBEAT_SECONDS * 1000;
-
-	if( !sv_public->integer || ( sv_maxclients->integer == 1 ) )
-		return;
-
-	// never go public when not acting as a game server
-	if( sv.state > ss_game )
-		return;
-
-	// send to group master
-	for( i = 0; i < MAX_MASTERS; i++ )
-	{
-		sv_master_t *master = &sv_masters[i];
-
-		if( master->address.type != NA_NOTRANSMIT )
-		{
-			socket_t *socket;
-
-			if( dedicated && dedicated->integer && sv_log_heartbeats->integer )
-				Com_Printf( "Sending heartbeat to %s\n", NET_AddressToString( &master->address ) );
-
-			socket = ( master->address.type == NA_IP6 ? &svs.socket_udp6 : &svs.socket_udp );
-
-			if( master->steam )
-			{
-				uint8_t steamHeartbeat = 'q';
-				NET_SendPacket( socket, &steamHeartbeat, sizeof( steamHeartbeat ), &master->address );
-			}
-			else
-			{
-				// warning: "DarkPlaces" is a protocol name here, not a game name. Do not replace it.
-				Netchan_OutOfBandPrint( socket, &master->address, "heartbeat DarkPlaces\n" );
-			}
-		}
-	}
-}
-
-/*
 * SV_MasterSendQuit
 * Notifies Steam master servers that the server is shutting down.
 */
@@ -233,14 +217,24 @@ void SV_MasterSendQuit( void )
 	{
 		sv_master_t *master = &sv_masters[i];
 
-		if( master->steam && ( master->address.type != NA_NOTRANSMIT ) )
+		if (master->address.type == NA_NOTRANSMIT) continue;
+
+		if( dedicated && dedicated->integer )
+			Com_Printf( "Sending quit to %s\n", NET_AddressToString( &master->address ) );
+
+		if( master->type == MASTER_STEAM )
 		{
 			socket_t *socket = ( master->address.type == NA_IP6 ? &svs.socket_udp6 : &svs.socket_udp );
 
-			if( dedicated && dedicated->integer )
-				Com_Printf( "Sending quit to %s\n", NET_AddressToString( &master->address ) );
-
 			NET_SendPacket( socket, ( const uint8_t * )quitMessage, sizeof( quitMessage ), &master->address );
+		} else if (master->type == MASTER_WARFORK) {
+			socket_t *socket = ( master->address.type == NA_IP6 ? &svs.socket_udp6 : &svs.socket_udp );
+
+			MSG_Init(&tmpMessage, tmpMessageData, sizeof(tmpMessageData));
+			MSG_WriteString(&tmpMessage, WARMONGER_MAGIC);
+			MSG_WriteByte(&tmpMessage, WARMONGER_CLOSE_NOTIFY); // close notify
+			MSG_WriteLongLong(&tmpMessage, svs.steamid);
+			NET_SendPacket( socket, tmpMessageData, tmpMessage.cursize, &master->address );
 		}
 	}
 }
@@ -327,7 +321,7 @@ static char *SV_ShortInfoString( void )
 {
 	static char string[MAX_STRING_SVCINFOSTRING];
 	char hostname[64];
-	char entry[20];
+	char entry[64];
 	size_t len;
 	int i, count, bots;
 	int maxcount;
@@ -429,6 +423,13 @@ static char *SV_ShortInfoString( void )
 	if ( Cvar_Integer("sv_useSteamAuth") )
 	{
 		Q_snprintfz( entry, sizeof( entry ), "stm\\\\1\\\\" );
+		if( MAX_SVCINFOSTRING_LEN - len > strlen( entry ) )
+		{
+			Q_strncatz( string, entry, sizeof( string ) );
+			len = strlen( string );
+		}
+
+		Q_snprintfz( entry, sizeof( entry ), "sid\\\\%llu\\\\" , svs.steamid );
 		if( MAX_SVCINFOSTRING_LEN - len > strlen( entry ) )
 		{
 			Q_strncatz( string, entry, sizeof( string ) );
@@ -595,6 +596,79 @@ static void SVC_GetStatusResponse( const socket_t *socket, const netadr_t *addre
 	SVC_SendInfoString( socket, address, "GetStatus", "statusResponse", true );
 }
 
+static void SV_SendWFHeartbeat( const socket_t *socket, const netadr_t *address )
+{
+	printf("Sending warfork heartbeat\n");
+	printf("Address: %s\n", NET_AddressToString( address ));
+
+	MSG_Init(&tmpMessage, tmpMessageData, sizeof(tmpMessageData));
+	MSG_WriteString(&tmpMessage, WARMONGER_MAGIC);
+	MSG_WriteByte(&tmpMessage, WARMONGER_ADVERTISE); // advertise
+	MSG_WriteLongLong(&tmpMessage, svs.steamid);
+
+	char *info = SV_ShortInfoString();
+	MSG_WriteString(&tmpMessage, info);
+
+	NET_SendPacket( socket, tmpMessageData, tmpMessage.cursize, address );
+}
+
+/*
+* SV_MasterHeartbeat
+* Send a message to the master every few minutes to
+* let it know we are alive, and log information
+*/
+void SV_MasterHeartbeat( void )
+{
+	unsigned int time = Sys_Milliseconds();
+	int i;
+
+	if( svc.nextHeartbeat > time )
+		return;
+
+	svc.nextHeartbeat = time + HEARTBEAT_SECONDS * 1000;
+
+	if( !sv_public->integer || ( sv_maxclients->integer == 1 ) )
+		return;
+
+	// never go public when not acting as a game server
+	if( sv.state > ss_game )
+		return;
+
+	// send to group master
+	for( i = 0; i < MAX_MASTERS; i++ )
+	{
+		sv_master_t *master = &sv_masters[i];
+
+		if( master->address.type != NA_NOTRANSMIT )
+		{
+			socket_t *socket;
+
+			if( dedicated && dedicated->integer && sv_log_heartbeats->integer )
+				Com_Printf( "Sending heartbeat to %s\n", NET_AddressToString( &master->address ) );
+
+			socket = ( master->address.type == NA_IP6 ? &svs.socket_udp6 : &svs.socket_udp );
+
+			switch( master->type ) {
+				case MASTER_STEAM:
+				{
+					uint8_t steamHeartbeat = 'q';
+					NET_SendPacket( socket, &steamHeartbeat, sizeof( steamHeartbeat ), &master->address );
+					break;
+				}
+				case MASTER_DARKPLACES:
+				{
+					// warning: "DarkPlaces" is a protocol name here, not a game name. Do not replace it.
+					Netchan_OutOfBandPrint( socket, &master->address, "heartbeat DarkPlaces\n" );
+					break;
+				}
+				case MASTER_WARFORK: {
+					SV_SendWFHeartbeat( socket, &master->address );
+					break;
+				}
+			}
+		}
+	}
+}
 
 /*
 * SVC_GetChallenge
@@ -651,6 +725,7 @@ static void SVC_DirectConnect( const socket_t *socket, const netadr_t *address )
 #ifdef TCP_ALLOW_CONNECT
 	int incoming = 0;
 #endif
+	int incomingp2p = 0;
 	char userinfo[MAX_INFO_STRING];
 	client_t *cl, *newcl;
 	int i, version, game_port, challenge;
@@ -746,6 +821,24 @@ static void SVC_DirectConnect( const socket_t *socket, const netadr_t *address )
 		incoming = i;
 	}
 #endif
+	if( socket->type == SOCKET_SDR )
+	{
+		// find the connection
+		for( i = 0; i < MAX_INCOMING_CONNECTIONS; i++ )
+		{
+			if( !svs.incomingp2p[i].active )
+				continue;
+
+			if( NET_CompareAddress( &svs.incomingp2p[i].address, address ) && socket == &svs.incomingp2p[i].socket )
+				break;
+		}
+		if( i == MAX_INCOMING_CONNECTIONS )
+		{
+			Com_Error( ERR_FATAL, "Incoming connection not found.\n" );
+			return;
+		}
+		incomingp2p = i;
+	}
 
 	// see if the challenge is valid
 	for( i = 0; i < MAX_CHALLENGES; i++ )
@@ -883,6 +976,11 @@ static void SVC_DirectConnect( const socket_t *socket, const netadr_t *address )
 		svs.incoming[incoming].socket.open = false;
 	}
 #endif
+if( socket->type == SOCKET_SDR )
+	{
+		svs.incomingp2p[incomingp2p].active = false;
+		svs.incomingp2p[incomingp2p].socket.open = false;
+	}
 }
 
 /*
@@ -1205,7 +1303,7 @@ bool SV_SteamServerQuery( const char *s, const socket_t *socket, const netadr_t 
 
 		for( i = 0; i < MAX_MASTERS; i++ )
 		{
-			if( sv_masters[i].steam && NET_CompareAddress( address, &sv_masters[i].address ) )
+			if( sv_masters[i].type == MASTER_STEAM && NET_CompareAddress( address, &sv_masters[i].address ) )
 			{
 				fromMaster = true;
 				break;
@@ -1270,7 +1368,7 @@ bool SV_SteamServerQuery( const char *s, const socket_t *socket, const netadr_t 
 			int i;
 			for( i = 0; i < MAX_MASTERS; i++ )
 			{
-				if( sv_masters[i].steam && NET_CompareAddress( address, &sv_masters[i].address ) )
+				if( sv_masters[i].type == MASTER_STEAM && NET_CompareAddress( address, &sv_masters[i].address ) )
 				{
 					Com_Printf( "Server is out of date and cannot be added to the Steam master servers.\n" );
 					printed = true;

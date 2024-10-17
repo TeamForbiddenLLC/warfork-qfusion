@@ -477,6 +477,24 @@ static void IN_SpecialUp( void ) { KeyUp( &in_special ); }
 static void IN_ZoomDown( void ) { KeyDown( &in_zoom ); }
 static void IN_ZoomUp( void ) { KeyUp( &in_zoom ); }
 
+static void IN_VoiceRecordDown( void )
+{
+	if( cls.key_dest == key_game ) {
+		struct steam_rpc_shim_common_s req;
+		req.cmd = RPC_START_VOICE_RECORDING;
+		STEAMSHIM_sendRPC(&req, sizeof req, NULL, NULL, NULL);
+	}
+}
+
+static void IN_VoiceRecordUp( void )
+{
+	if( cls.key_dest == key_game ) {
+		struct steam_rpc_shim_common_s req;
+		req.cmd = RPC_STOP_VOICE_RECORDING;
+		STEAMSHIM_sendRPC(&req, sizeof req, NULL, NULL, NULL);
+	}
+}
+
 
 /*
 * CL_KeyState
@@ -784,6 +802,9 @@ void CL_InitInput( void )
 	Cmd_AddCommand( "-special", IN_SpecialUp );
 	Cmd_AddCommand( "+zoom", IN_ZoomDown );
 	Cmd_AddCommand( "-zoom", IN_ZoomUp );
+
+	Cmd_AddCommand( "+voicerecord", IN_VoiceRecordDown );
+	Cmd_AddCommand( "-voicerecord", IN_VoiceRecordUp );
 
 	cl_ucmdMaxResend =	Cvar_Get( "cl_ucmdMaxResend", "3", CVAR_ARCHIVE );
 	cl_ucmdFPS =		Cvar_Get( "cl_ucmdFPS", "62", CVAR_DEVELOPER );

@@ -466,6 +466,10 @@
 						<div class="title">Screenshot</div>
 						<keyselect bind="screenshot"/>
 						<br />
+
+						<div class="title">Push to talk</div>
+						<keyselect bind="+voicerecord"/>
+						<br />
 					</div>
 				</panel>
 				<tab>Weapons</tab>

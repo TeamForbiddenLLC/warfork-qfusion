@@ -27,6 +27,7 @@ include times
 endif
 
 include obituaries
+include voices
 include powerups
 include picked_up_item
 include item_timers

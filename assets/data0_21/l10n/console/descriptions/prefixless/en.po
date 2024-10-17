@@ -154,6 +154,10 @@ msgid "masterservers"
 msgstr "<value> Specifies the master servers used to query a list of Warfork servers."
 
 #. Console/prefixless
+msgid "masterservers_warfork"
+msgstr "<value> Specifies the (warfork-specific) master servers used to query a list of Warfork servers."
+
+#. Console/prefixless
 msgid "model"
 msgstr "<model> Changes your Player model."
 
