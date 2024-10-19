@@ -255,7 +255,7 @@ void R_DrawBSPSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shad
 	}
 	else {
 		RB_DrawShadedElements_2(cmd, 0, numVerts, 0, numElems, 
-			firstShadowVert, numShadowVerts, firstShadowElem, numShadowElems);
+			0, numShadowVerts, 0, numShadowElems);
 	}
 	FR_CmdResetCommandState(cmd, CMD_RESET_INDEX_BUFFER | CMD_RESET_VERTEX_BUFFER);
 	

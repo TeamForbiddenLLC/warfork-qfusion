@@ -22,6 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "../gameshared/q_arch.h"
 
+#define MAX_GLSL_BONE_UNIFORMS 128
+
 struct mat4 {
   union {
     float v[16];
@@ -41,6 +43,23 @@ struct mat3 {
 			float col0[3];
 			float col1[3];
 			float col2[3];
+		};
+	};
+};
+
+
+struct dualQuat8 {
+	union {
+		float v[8];
+		struct {
+			float x1;
+			float y1;
+			float z1;
+			float w1;
+			float x2;
+			float y2;
+			float z2;
+			float w2;
 		};
 	};
 };
@@ -101,8 +120,13 @@ struct DynLight {
 
 struct DynamicLightCB {
     int numberLights;
+    int pad3[3];
     struct DynLight dynLights[16];
 };
+
+static inline size_t DynamicLightCB_Size(int numLights) {
+    return sizeof(int) + numLights * sizeof(struct DynLight);
+}
 
 struct ObjectCB {
    struct vec4 fogEyePlane;
@@ -132,6 +156,9 @@ static inline void ObjectCB_SetTextureMatrix(struct ObjectCB *cb, float* matrix)
     cb->texutreMatrix[5] = matrix[13];
 }
 
+struct DualQuatCB {
+    struct dualQuat8 bones[128];
+};
 // pass
 
 struct DefaultCellShadeCB {

@@ -51,8 +51,26 @@ void main(void)
 	float fogDensity = FogDensity(v_FogCoord);
 #endif
 
+
 #if defined(NUM_DLIGHTS)
-	color.rgb += DynamicLightsColor(v_Position);
+{
+	for (int dlight = 0; dlight < min(lights.numberLights, 16); dlight += 4)
+	{
+		vec3 STR0 = vec3(lights.dynLights[dlight].position.xyz - v_Position);
+		vec3 STR1 = vec3(lights.dynLights[dlight + 1].position.xyz - v_Position);
+		vec3 STR2 = vec3(lights.dynLights[dlight + 2].position.xyz - v_Position);
+		vec3 STR3 = vec3(lights.dynLights[dlight + 3].position.xyz - v_Position);
+		vec4 distance = vec4(length(STR0), length(STR1), length(STR2), length(STR3));
+		vec4 falloff = clamp(vec4(1.0) - (distance / lights.dynLights[dlight + 3].diffuseAndInvRadius), 0.0, 1.0);
+
+		falloff *= falloff;
+
+		color.rgb += vec3(
+			dot(lights.dynLights[dlight].diffuseAndInvRadius, falloff),
+			dot(lights.dynLights[dlight + 1].diffuseAndInvRadius, falloff),
+			dot(lights.dynLights[dlight + 2].diffuseAndInvRadius, falloff));
+	}
+}
 #endif
 
 	vec4 diffuse;

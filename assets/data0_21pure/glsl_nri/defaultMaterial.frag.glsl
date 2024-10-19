@@ -87,13 +87,13 @@ void main()
 	strMat[2] = v_Normal;
 	strMat[1] = v_Binormal;
 
-#if defined(APPLY_OFFSETMAPPING) || defined(APPLY_RELIEFMAPPING)
-	// apply offsetmapping
-	vec2 TexCoordOffset = OffsetMapping(sampler2D(u_NormalTexture,u_NormalSampler), v_TexCoord_FogCoord.st, v_EyeVector, pass.offsetScale);
-	#define v_TexCoord TexCoordOffset
-#else
+//#if defined(APPLY_OFFSETMAPPING) || defined(APPLY_RELIEFMAPPING)
+//	// apply offsetmapping
+//	vec2 TexCoordOffset = OffsetMapping(sampler2D(u_NormalTexture,u_NormalSampler), v_TexCoord_FogCoord.st, v_EyeVector, pass.offsetScale);
+//	#define v_TexCoord TexCoordOffset
+//#else
 	#define v_TexCoord v_TexCoord_FogCoord.st
-#endif
+//#endif
 
 	vec3 surfaceNormal;
 	vec3 surfaceNormalModelspace;
@@ -217,21 +217,28 @@ void main()
 
 #if defined(NUM_DLIGHTS)
 {
-	for (int dlight = 0; dlight < max(lights.numberLights, 16); dlight += 4)
+	for (int dlight = 0; dlight < min(lights.numberLights, 16); dlight += 4)
 	{
-		vec3 STR0 = vec3(lights.dynLights[dlight].position - Position);
-		vec3 STR1 = vec3(lights.dynLights[dlight + 1].position - Position);
-		vec3 STR2 = vec3(lights.dynLights[dlight + 2].position - Position);
-		vec3 STR3 = vec3(lights.dynLights[dlight + 3].position - Position);
+		vec3 STR0 = vec3(lights.dynLights[dlight].position.xyz - v_Position);
+		vec3 STR1 = vec3(lights.dynLights[dlight + 1].position.xyz - v_Position);
+		vec3 STR2 = vec3(lights.dynLights[dlight + 2].position.xyz - v_Position);
+		vec3 STR3 = vec3(lights.dynLights[dlight + 3].position.xyz - v_Position);
 		vec4 distance = vec4(length(STR0), length(STR1), length(STR2), length(STR3));
-		vec4 falloff = clamp(vec4(1.0) - distance * unif.lights[dlight + 3].diffuseAndInvRadius, 0.0, 1.0);
+		vec4 falloff = clamp(vec4(1.0) - (distance / lights.dynLights[dlight + 3].diffuseAndInvRadius), 0.0, 1.0);
 
 		falloff *= falloff;
 
+		distance = vec4(1.0) / distance;
+		falloff *= max(vec4(
+			dot(STR0 * distance.xxx, surfaceNormalModelspace),
+			dot(STR1 * distance.yyy, surfaceNormalModelspace),
+			dot(STR2 * distance.zzz, surfaceNormalModelspace),
+			dot(STR3 * distance.www, surfaceNormalModelspace)), 0.0);
+
 		color.rgb += vec3(
 			dot(lights.dynLights[dlight].diffuseAndInvRadius, falloff),
-			dot(lights.dynLights[dlight + 1].diffuseAndInvRadius[dlight + 1], falloff),
-			dot(lights.dynLights[dlight + 2].diffuseAndInvRadius[dlight + 2], falloff));
+			dot(lights.dynLights[dlight + 1].diffuseAndInvRadius, falloff),
+			dot(lights.dynLights[dlight + 2].diffuseAndInvRadius, falloff));
 	}
 }
 #endif

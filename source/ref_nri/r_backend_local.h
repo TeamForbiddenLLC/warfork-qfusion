@@ -48,7 +48,7 @@ typedef struct r_backend_stats_s
 typedef struct
 {
 	unsigned int numBones;
-	dualquat_t dualQuats[MAX_GLSL_UNIFORM_BONES];
+	dualquat_t dualQuats[128];
 	unsigned int maxWeights;
 } rbBonesData_t;
 

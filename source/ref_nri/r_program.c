@@ -1800,11 +1800,12 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	hash_t hash = HASH_INITIAL_VALUE;
 	//hash = hash_data( hash, &def->inputAssembly, sizeof( NriInputAssemblyDesc ) );
 	//hash = hash_data( hash, &def->rasterization, sizeof( NriRasterizationDesc ) );
+	assert(def->numStreams < MAX_ATTRIBUTES);
+	assert(def->numStreams < MAX_STREAMS);
 	for( size_t i = 0; i < def->numStreams; i++ ) {
 		hash = hash_data( hash, &def->streams[i], sizeof( NriVertexStreamDesc ) );
 	}
-
-	for( size_t i = 0; i < def->numAttribs; i++ ) {
+	for( size_t i = 0; i < def->numAttribs; i++ ) {	
 		hash = hash_data( hash, &def->attribs[i], sizeof( NriVertexAttributeDesc ));
 	}
 
@@ -1984,6 +1985,7 @@ void RP_BindDescriptorSets(struct frame_cmd_buffer_s* cmd, struct glsl_program_s
 		for( size_t descIndex = 0; descIndex < commit[setIndex].numBindings; descIndex++ ) {
 			struct glsl_descriptor_binding_s *binding = commit[setIndex].slots[descIndex].binding;
 			hash = hash_u64( hash, binding->descriptor.cookie );
+			hash = hash_u64( hash, commit[setIndex].slots[descIndex].reflection->hash );
 		}
 		struct ProgramDescriptorInfo *info = &program->descriptorSetInfo[setIndex];
 		struct descriptor_set_result_s result = ResolveDescriptorSet( &rsh.nri, cmd, program->layout, info->setIndex, info->alloc, hash );

@@ -74,7 +74,7 @@ enum
 
 typedef struct image_s
 {
-	uint32_t cookie; 
+	// uint32_t cookie; 
 	// const struct base_format_def_s* formatDef;
 
 	struct nri_descriptor_s descriptor;

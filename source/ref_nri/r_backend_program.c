@@ -179,6 +179,55 @@ static float *RB_TableForFunc( unsigned int func )
 	return rb_sintable; // default to sintable
 }
 
+static void __ConfigureLightCB (struct DynamicLightCB* cb,
+	const vec3_t entOrigin, const mat3_t entAxis, unsigned int dlightbits ) {
+	float colorScale = mapConfig.mapLightColorScale;
+	vec3_t dlorigin, tvec, dlcolor;
+	bool identityAxis = Matrix3_Compare( entAxis, axis_identity );
+
+	for(int i = 0; i < MAX_DLIGHTS; i++ ) {
+		dlight_t *dl = rsc.dlights + i;
+		if( !dl->intensity ) {
+			continue;
+		}
+		const size_t batchIndex = cb->numberLights / 4; 
+		const size_t batchOffset = cb->numberLights % 4;
+		struct DynLight* dynLight = &cb->dynLights[cb->numberLights++];
+
+		VectorSubtract( dl->origin, entOrigin, dlorigin );
+		if( !identityAxis ) {
+			VectorCopy( dlorigin, tvec );
+			Matrix3_TransformVector( entAxis, tvec, dlorigin );
+		}
+		VectorScale( dl->color, colorScale, dlcolor );
+		dynLight->position.x = dlorigin[0];
+		dynLight->position.y = dlorigin[1];
+		dynLight->position.z = dlorigin[2];
+
+		cb->dynLights[(batchIndex * 4)].diffuseAndInvRadius.v[batchOffset] = dlcolor[0];
+		cb->dynLights[(batchIndex * 4) + 1].diffuseAndInvRadius.v[batchOffset] = dlcolor[1];
+		cb->dynLights[(batchIndex * 4) + 2].diffuseAndInvRadius.v[batchOffset] = dlcolor[2];
+		cb->dynLights[(batchIndex * 4) + 3].diffuseAndInvRadius.v[batchOffset] = dl->intensity;
+
+		dlightbits &= ~(1<<i);
+		if( !dlightbits ) {
+			break;
+		}
+	}
+	// fill the rest with zero lights
+	while((cb->numberLights % 4) > 0) {
+		const size_t batchIndex = cb->numberLights / 4; 
+		const size_t batchOffset = cb->numberLights % 4;
+		cb->numberLights++;
+		cb->dynLights[(batchIndex * 4)].diffuseAndInvRadius.v[batchOffset] = 0;
+		cb->dynLights[(batchIndex * 4) + 1].diffuseAndInvRadius.v[batchOffset] = 0;
+		cb->dynLights[(batchIndex * 4) + 2].diffuseAndInvRadius.v[batchOffset] = 0;
+		cb->dynLights[(batchIndex * 4) + 3].diffuseAndInvRadius.v[batchOffset] = 1.0;
+	}
+	assert(cb->numberLights <= 16);
+
+}
+
 /*
  * RB_BackendGetNoiseValue
  */
@@ -1063,20 +1112,22 @@ static inline struct vec4 ConstColorAdjust( bool alphaBlending, bool alphaHack, 
 
 void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpass_t *pass, int programType )
 {
-	r_glslfeat_t features = 0;
+	size_t descriptorIndex = 0;
+	struct glsl_descriptor_binding_s descriptors[64] = { 0 };
+	r_glslfeat_t programFeatures = 0;
 
 	if( rb.greyscale || pass->flags & SHADERPASS_GREYSCALE ) {
-		features |= GLSL_SHADER_COMMON_GREYSCALE;
+		programFeatures |= GLSL_SHADER_COMMON_GREYSCALE;
 	}
 
-	features |= RB_BonesTransformsToProgramFeatures();
-	features |= RB_AutospriteProgramFeatures();
-	features |= RB_InstancedArraysProgramFeatures();
-	features |= RB_AlphatestProgramFeatures( pass );
-	features |= RB_TcModsProgramFeatures( pass );
+	programFeatures |= RB_BonesTransformsToProgramFeatures();
+	programFeatures |= RB_AutospriteProgramFeatures();
+	programFeatures |= RB_InstancedArraysProgramFeatures();
+	programFeatures |= RB_AlphatestProgramFeatures( pass );
+	programFeatures |= RB_TcModsProgramFeatures( pass );
 
 	if( ( rb.currentShader->flags & SHADER_SOFT_PARTICLE ) && rsh.screenDepthTextureCopy && ( rb.renderFlags & RF_SOFT_PARTICLES ) ) {
-		features |= GLSL_SHADER_COMMON_SOFT_PARTICLE;
+		programFeatures |= GLSL_SHADER_COMMON_SOFT_PARTICLE;
 	}
 	const entity_t *e = rb.currentEntity;
 	struct FrameCB frameData = { 0 };
@@ -1092,9 +1143,9 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 		objectData.isAlphaBlending = isAlphaBlending ? 1.0f : 0.0f;
 
 		if( rb.fog ) {
-			features |= GLSL_SHADER_COMMON_FOG;
+			programFeatures |= GLSL_SHADER_COMMON_FOG;
 			if( rb.fog == rb.colorFog ) {
-				features |= GLSL_SHADER_COMMON_FOG_RGB;
+				programFeatures |= GLSL_SHADER_COMMON_FOG_RGB;
 			}
 			cplane_t fogPlane, vpnPlane;
 			float fog_color[3] = { 0, 0, 0 };
@@ -1274,12 +1325,25 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				break;
 		}
 		// objectData.colorConst = ConstColorAdjust( isAlphaBlending, rb.alphaHack, objectData.colorConst );
+	}		
+	if(rb.currentModelType == mod_skeletal && rb.bonesData.numBones) {
+		struct DualQuatCB dualQuatCB = {0};	
+		programFeatures |= (rb.bonesData.maxWeights * GLSL_SHADER_COMMON_BONE_TRANSFORMS1);
+		assert(rb.bonesData.numBones <= 128);
+		memcpy(dualQuatCB.bones, rb.bonesData.dualQuats, sizeof(struct dualQuat8) * rb.bonesData.numBones);
+		UpdateFrameUBO( cmd, &cmd->uboBoneObject, &dualQuatCB, sizeof(struct dualQuat8) * rb.bonesData.numBones);
+		descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
+			.descriptor = cmd->uboBoneObject.descriptor, 
+			.handle = Create_DescriptorHandle( "bones" ) 
+		};
 	}
+
+	// if(rb.currentDlightBits) {
+	// 	programFeatures |= GLSL_SHADER_COMMON_DLIGHTS_16; //RB_DlightbitsToProgramFeatures( rb.currentDlightBits );
+	// }
 
 	switch( programType ) {
 		case GLSL_PROGRAM_TYPE_MATERIAL: {
-			r_glslfeat_t programFeatures = features;
-			
 			const mfog_t *fog = rb.fog;
 
 			// handy pointers
@@ -1372,12 +1436,9 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				}
 
 				// add dynamic lights
-				if( rb.currentDlightBits ) {
-					programFeatures |= RB_DlightbitsToProgramFeatures( rb.currentDlightBits );
-				}
-
-				size_t descriptorIndex = 0;
-				struct glsl_descriptor_binding_s descriptors[64] = { 0 };
+				// if( rb.currentDlightBits ) {
+				// 	programFeatures |= RB_DlightbitsToProgramFeatures( rb.currentDlightBits );
+				// }
 
 				descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
 					.descriptor = base->descriptor, 
@@ -1461,6 +1522,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 					programFeatures |= r_offsetmapping_reliefmapping->integer ? 
 						GLSL_SHADER_MATERIAL_RELIEFMAPPING : GLSL_SHADER_MATERIAL_OFFSETMAPPING;
 
+	
 				if( rb.currentModelType == mod_brush ) {
 					// world surface
 					if( rb.superLightStyle && rb.superLightStyle->lightmapNum[0] >= 0 ) {
@@ -1547,61 +1609,26 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 						}
 					}
 				}
-
-				passCB.offsetScale = offsetmappingScale;
-				passCB.glossIntensity = glossIntensity;
-				passCB.glossExponent = glossExponent;
-				if(rb.currentDlightBits) {
-					const bool identityAxis = Matrix3_Compare( e->axis, axis_identity );
-
-					struct DynamicLightCB lightData = {}; //= lightCB.address;
-					uint32_t lightBits = rb.currentDlightBits;
-					lightData.numberLights = 0;
-					for(size_t i = 0; lightBits > 0; i++,lightBits >>= 1) {
-						if(lightBits & 1) {
-							dlight_t *dl = rsc.dlights + i;
-							if(!dl->intensity) {
-								continue;
-							}
-							struct DynLight *dynLight = &lightData.dynLights[lightData.numberLights++];
-							vec3_t dlorigin, tvec, dlcolor;
-							VectorSubtract( dl->origin, e->origin, dlorigin );
-							if( !identityAxis ) {
-								VectorCopy( dlorigin, tvec );
-								Matrix3_TransformVector( e->axis, tvec, dlorigin );
-							}
-							VectorScale( dl->color, mapConfig.mapLightColorScale, dlcolor );
-							memcpy(dynLight->position.v, dlorigin, sizeof(float) * 3);
-							dynLight->diffuseAndInvRadius = (struct vec4) {.x = dlcolor[0], .y = dlcolor[1], .z = dlcolor[2], .w = 1.0f/ dl->intensity};
-						}
-					}
-					struct block_buffer_pool_req_s poolReq = BlockBufferPoolReq( &rsh.nri, &cmd->uboBlockBuffer, sizeof(struct DynamicLightCB) );
-					void *mem = rsh.nri.coreI.MapBuffer( poolReq.buffer, poolReq.bufferOffset, poolReq.bufferSize );
-					memcpy( mem, &lightData, sizeof(struct DynamicLightCB) );
-					rsh.nri.coreI.UnmapBuffer( poolReq.buffer );
-
-					NriBufferViewDesc bufferDesc = { 
-						.buffer = poolReq.buffer, 
-						.size = poolReq.bufferSize, 
-						.offset = poolReq.bufferOffset, 
-						.viewType = NriBufferViewType_CONSTANT 
-					};
-					NriDescriptor *descriptor = NULL;
-					NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateBufferView( &bufferDesc, &descriptor ) );
-					arrpush( cmd->frameTemporaryDesc, descriptor );
-
-					descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
-						.descriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor ), 
-						.handle = Create_DescriptorHandle( "lights" ) 
-					};
-					arrpush(cmd->frameTemporaryDesc, descriptor);
-			
-				}
-
 				passCB.floorColor = ( struct vec3 ){ .x = rsh.floorColor[0], .y = rsh.floorColor[1], .z = rsh.floorColor[2] };
 				passCB.wallColor = ( struct vec3 ){ .x = rsh.wallColor[0], .y = rsh.wallColor[1], .z = rsh.wallColor[2] };
 				passCB.entityColor = ( struct vec4 ){ .x = rb.entityColor[0] * (1.0 / 255.0), .y = rb.entityColor[1] * (1.0 / 255.0), .z = rb.entityColor[2] * (1.0 / 255.0), .w = rb.entityColor[3]  * (1.0 / 255.0)};
+				passCB.offsetScale = offsetmappingScale;
+				passCB.glossIntensity = glossIntensity;
+				passCB.glossExponent = glossExponent;
 
+				if(rb.currentDlightBits) {
+					struct DynamicLightCB lightData = {}; //= lightCB.address;
+					__ConfigureLightCB(&lightData, e->origin, rb.currentEntity->axis, rb.currentDlightBits);
+					if(lightData.numberLights > 0) {
+						UpdateFrameUBO( cmd, &cmd->uboLight, &lightData, DynamicLightCB_Size(lightData.numberLights)) ;
+						descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
+							.descriptor = cmd->uboLight.descriptor, 
+							.handle = Create_DescriptorHandle( "lights" ) 
+						};
+						programFeatures |= GLSL_SHADER_COMMON_DLIGHTS_16;
+					}
+				}
+	
 				assert((programFeatures & GLSL_SHADER_COMMON_DRAWFLAT) == 0);
 				struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_MATERIAL, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 				struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->state);
@@ -1613,7 +1640,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 						.handle = Create_DescriptorHandle( "pass" ) 
 					};
 				}
-
+			
 				RB_SetShaderpassState( pass->flags );
 				UpdateFrameUBO( cmd, &cmd->uboSceneFrame, &frameData, sizeof( struct FrameCB ) );
 				UpdateFrameUBO( cmd, &cmd->uboSceneObject, &objectData, sizeof( struct ObjectCB ) );
@@ -1641,7 +1668,6 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 		} 
 		// drop through and default to the Q3A shader program
 		case GLSL_PROGRAM_TYPE_Q3A_SHADER: {
-			r_glslfeat_t programFeatures = features;
 			int rgbgen = pass->rgbgen.type;
 			const mfog_t *fog = rb.fog;
 			bool isWorldSurface = rb.currentModelType == mod_brush ? true : false;
@@ -1712,7 +1738,16 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			if( isLightmapped || isWorldVertexLight ) {
 				// add dynamic lights
 				if( rb.currentDlightBits ) {
-					programFeatures |= RB_DlightbitsToProgramFeatures( rb.currentDlightBits );
+					struct DynamicLightCB lightData = {}; //= lightCB.address;
+					__ConfigureLightCB(&lightData, e->origin, rb.currentEntity->axis, rb.currentDlightBits);
+					if(lightData.numberLights > 0) {
+						UpdateFrameUBO( cmd, &cmd->uboLight, &lightData, DynamicLightCB_Size(lightData.numberLights)) ;
+						descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
+							.descriptor = cmd->uboLight.descriptor, 
+							.handle = Create_DescriptorHandle( "lights" ) 
+						};
+						programFeatures |= GLSL_SHADER_COMMON_DLIGHTS_16;
+					}
 				}
 				if( DRAWFLAT() ) {
 					programFeatures |= GLSL_SHADER_COMMON_DRAWFLAT;
@@ -1778,22 +1813,22 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			}
 			RB_SetShaderpassState_2( cmd, state );
 
-			size_t descriptorSize = 0;
-			struct glsl_descriptor_binding_s descriptors[16] = { 0 };
+			// size_t descriptorSize = 0;
+			// struct glsl_descriptor_binding_s descriptors[16] = { 0 };
 
 			if( programFeatures & GLSL_SHADER_COMMON_SOFT_PARTICLE ) {
-				descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){ 
+				descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
 					.descriptor = rsh.screenDepthTextureCopy->descriptor, 
 					.handle = Create_DescriptorHandle( "u_DepthTexture" ) 
 				};
 			}
 			if( shaderPassImage ) {
 
-				descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){ 
+				descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
 					.descriptor = shaderPassImage->descriptor, 
 					.handle = Create_DescriptorHandle( "u_BaseTexture" ) };
 
-				descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){ 
+				descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
 					.descriptor = shaderPassImage->samplerDescriptor, 
 					.handle = Create_DescriptorHandle( "u_BaseSampler" ) };
 			}
@@ -1805,12 +1840,12 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 
 			for( int i = 0; i < numLightMaps; i++ ) {
 				image_t* lightmapImage = rsh.worldBrushModel->lightmapImages[lightStyle->lightmapNum[i]];
-				descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){
+				descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
 					.descriptor = lightmapImage->descriptor, 
 					.registerOffset = i, 
 					.handle = Create_DescriptorHandle( "lightmapTexture" ) };
 				if(i == 0) {
-					descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){
+					descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
 						.descriptor = lightmapImage->samplerDescriptor, 
 						.handle = Create_DescriptorHandle( "lightmapTextureSample" ) 
 					};
@@ -1827,46 +1862,22 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				RP_ResolveProgram( GLSL_PROGRAM_TYPE_Q3A_SHADER, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->state);
 
-			// if(rb.currentDlightBits) {
-			// 	struct DynamicLightCB lightData = {};
-			// 	for(uint32_t i = 0; i < MAX_DLIGHTS; i++ ) {
-			// 		dlight_t *dl = rsc.dlights + i;
-			// 		if( !dl->intensity ) {
-			// 			continue;
-			// 		}
-			// 	}
-
-			// 	uint32_t lightBits = rb.currentDlightBits;
-			// 	lightData.numberLights = 0;
-			// 	for(size_t i = 0; lightBits > 0; i++,lightBits >>= 1) {
-			// 		if(lightBits & 1) {
-			// 			dlight_t *dl = rsc.dlights + i;
-			// 			if(!dl->intensity) {
-			// 				continue;
-			// 			}
-			// 			struct DynLight *dynLight = &lightData.dynLights[lightData.numberLights++];
-			// 			vec3_t dlorigin, tvec, dlcolor;
-			// 			VectorSubtract( dl->origin, e->origin, dlorigin );
-			// 			if( !Matrix3_Compare( e->axis, axis_identity ) ) {
-			// 				VectorCopy( dlorigin, tvec );
-			// }
-
   			rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
 			rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
 
 			UpdateFrameUBO( cmd, &cmd->uboSceneFrame, &frameData, sizeof( struct FrameCB ) );
 			UpdateFrameUBO( cmd, &cmd->uboSceneObject, &objectData, sizeof( struct ObjectCB ) );
-			descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){ 
+			descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
 				.descriptor = cmd->uboSceneFrame.descriptor, 
 				.handle = Create_DescriptorHandle( "frame" ) };
-			descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){ 
+			descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
 				.descriptor = cmd->uboSceneObject.descriptor, 
 				.handle = Create_DescriptorHandle( "obj" ) 
 			};
 			
 			if(RP_ProgramHasUniform(program, Create_DescriptorHandle("pass"))) {
 				UpdateFrameUBO( cmd, &cmd->uboPassObject, &passCB, sizeof(struct DefaultQ3ShaderCB));
-				descriptors[descriptorSize++] = ( struct glsl_descriptor_binding_s ){ 
+				descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
 					.descriptor = cmd->uboPassObject.descriptor, 
 					.handle = Create_DescriptorHandle( "pass" ) 
 				};
@@ -1874,7 +1885,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 
 			rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
 			rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
-			RP_BindDescriptorSets( cmd, program, descriptors, descriptorSize  );
+			RP_BindDescriptorSets( cmd, program, descriptors, descriptorIndex  );
 			FR_CmdDrawElements(cmd, 
 				cmd->drawElements.numElems,
 				cmd->drawElements.numInstances,
@@ -1884,9 +1895,6 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			break;
 		}
 		case GLSL_PROGRAM_TYPE_DISTORTION: {
-			r_glslfeat_t programFeatures = features;
-			size_t descriptorIndex = 0;
-			struct glsl_descriptor_binding_s descriptors[64] = { 0 };
 
 			int width = 1, height = 1;
 			image_t *portaltexture[2];
@@ -1960,21 +1968,9 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				cmd->drawElements.firstVert,
 				0);
 
-			// update uniforms
-			// program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_DISTORTION, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-			// if( RB_BindProgram( program ) ) {
-			//	RB_UpdateCommonUniforms( program, pass, texMatrix );
-
-			//	RP_UpdateDistortionUniforms( program, frontPlane );
-
-			//	RP_UpdateTextureUniforms( program, width, height );
-
-			//	RB_DrawElementsReal( &rb.drawElements );
-			//}
 			break;
 		}
 		case GLSL_PROGRAM_TYPE_RGB_SHADOW: {
-			r_glslfeat_t programFeatures = features;
 			mat4_t texMatrix;
 
 			if( glConfig.ext.rgb8_rgba8 ) {
@@ -2015,7 +2011,6 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			break;
 		}
 		case GLSL_PROGRAM_TYPE_SHADOWMAP: {
-			r_glslfeat_t programFeatures = features;
 			int scissor[4] = {INT_MAX, INT_MAX, INT_MIN, INT_MIN};
 			int old_scissor[4];
 			shadowGroup_t *shadowGroups[GLSL_SHADOWMAP_LIMIT];
@@ -2116,10 +2111,6 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			break;
 		}
 		case GLSL_PROGRAM_TYPE_OUTLINE: {
-			r_glslfeat_t programFeatures = features;
-			
-			size_t descriptorIndex = 0;
-			struct glsl_descriptor_binding_s descriptors[8] = { 0 };
 
 			const NriCullMode prevCullMode = cmd->state.pipelineLayout.cullMode;
 			cmd->state.pipelineLayout.cullMode = NriCullMode_BACK;
@@ -2172,11 +2163,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			break;
 		}
 		case GLSL_PROGRAM_TYPE_CELSHADE: {
-			r_glslfeat_t programFeatures = features;
 			const mfog_t *fog = rb.fog;
-			
-			size_t descriptorIndex = 0;
-			struct glsl_descriptor_binding_s descriptors[64] = { 0 };
 
 			image_t *base = pass->images[0];
 			image_t *shade = pass->images[1];
@@ -2312,7 +2299,6 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			break;
 		}
 		case GLSL_PROGRAM_TYPE_FOG: {
-			r_glslfeat_t programFeatures = features;
 			const mfog_t *fog = rb.fog;
 			mat4_t texMatrix = { 0 };
 
@@ -2342,7 +2328,6 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			break;
 		}
 		case GLSL_PROGRAM_TYPE_FXAA: {
-			r_glslfeat_t programFeatures = features;
 			bool fxaa3 = false;
 			const image_t *image = pass->images[0];
 			mat4_t texMatrix;
@@ -2357,7 +2342,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			if( glConfig.ext.gpu_shader5 )
 				fxaa3 = true;
 			if( fxaa3 )
-				features |= GLSL_SHADER_FXAA_FXAA3;
+				programFeatures |= GLSL_SHADER_FXAA_FXAA3;
 
 			// update uniforms
 			
@@ -2375,7 +2360,6 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			break;
 		}
 		case GLSL_PROGRAM_TYPE_YUV: {
-			r_glslfeat_t programFeatures = features;
 			mat4_t texMatrix = { 0 };
 
 			// set shaderpass state (blending, depthwrite, etc)
@@ -2399,7 +2383,6 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			break;
 		}
 		case GLSL_PROGRAM_TYPE_COLORCORRECTION: {
-			r_glslfeat_t programFeatures = features;
 			mat4_t texMatrix;
 
 			// set shaderpass state (blending, depthwrite, etc)

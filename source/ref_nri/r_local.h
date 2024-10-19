@@ -270,7 +270,7 @@ typedef struct
 
 	byte_vec4_t		customColors[NUM_CUSTOMCOLORS];
 
-	uint32_t cookie;
+	// uint32_t cookie;
 } r_shared_t;
 
 typedef struct

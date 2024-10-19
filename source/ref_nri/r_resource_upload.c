@@ -64,7 +64,9 @@ static bool __R_AllocFromStageBuffer( resource_command_set_t *set, size_t reqSiz
 		if( allocSize > stageBuffer.remaningSpace - remainingSpace ) {
 			return false;
 		}
-		set->reservedStageMemory += remainingSpace; // give the reamining space to the requesting set
+		
+		stageBuffer.remaningSpace -= remainingSpace;
+		set->reservedStageMemory += remainingSpace; // give the remaning space to the requesting set
 		stageBuffer.tailOffset = 0;
 	}
 
@@ -72,8 +74,9 @@ static bool __R_AllocFromStageBuffer( resource_command_set_t *set, size_t reqSiz
 	res->backing = stageBuffer.buffer;
 	res->cpuMapping = ( (uint8_t *)stageBuffer.cpuMappedBuffer ) + stageBuffer.tailOffset;
 
-	stageBuffer.tailOffset += allocSize;
 	set->reservedStageMemory += allocSize;
+
+	stageBuffer.tailOffset += allocSize;
 	stageBuffer.remaningSpace -= allocSize;
 	return true;
 }

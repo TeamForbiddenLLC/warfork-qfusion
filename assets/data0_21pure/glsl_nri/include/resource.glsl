@@ -17,10 +17,6 @@
 //};
 
 
-struct DynLight {
-    vec4 position;
-    vec4 diffuseAndInvRadius;
-};
 
 //struct DynamicLightCB {
 //    int numberLights;

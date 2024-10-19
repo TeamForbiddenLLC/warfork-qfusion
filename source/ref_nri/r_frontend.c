@@ -585,14 +585,6 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 	frame->frameCount = rsh.frameCnt;
 	ResetFrameCmdBuffer( &rsh.nri, frame );
 
-	for( size_t i = 0; i < arrlen( frame->freeMemory ); i++ ) {
-		rsh.nri.coreI.FreeMemory( frame->freeMemory[i] );
-	}
-	for( size_t i = 0; i < arrlen( frame->freeTextures ); i++ ) {
-		rsh.nri.coreI.DestroyTexture( frame->freeTextures[i] );
-	}
-	arrsetlen( frame->freeMemory, 0 );
-	arrsetlen( frame->freeTextures, 0 );
 
 	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.BeginCommandBuffer( frame->cmd, NULL ) );
 

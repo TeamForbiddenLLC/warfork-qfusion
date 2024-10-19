@@ -93,29 +93,31 @@ vec4 QF_VertexRGBGen(
 	return Color;
 }
 
+#ifdef VERTEX_SHADER
 void QF_TransformVerts(inout vec4 Position, inout vec3 Normal, inout vec3 Tangent, inout vec2 TexCoord) {
 	#ifdef QF_NUM_BONE_INFLUENCES
 	{
-			ivec4 Indices = ivec4(a_BonesIndices * 2.0);
-			vec4 DQReal = dualQuats[Indices.x];
-			vec4 DQDual = dualQuats[Indices.x + 1];
+		uvec4 Indices = a_BonesIndices * 2;
+		if(max (max (Indices.x, Indices.y), max (Indices.z, Indices.w)) < MAX_GLSL_BONES) {
+			vec4 DQReal = bones.dualQuats[Indices.x];
+			vec4 DQDual = bones.dualQuats[Indices.x + 1];
 			#if QF_NUM_BONE_INFLUENCES >= 2
 				DQReal *= a_BonesWeights.x;
 				DQDual *= a_BonesWeights.x;
-				vec4 DQReal1 = dualQuats[Indices.y];
-				vec4 DQDual1 = dualQuats[Indices.y + 1];
+				vec4 DQReal1 = bones.dualQuats[Indices.y];
+				vec4 DQDual1 = bones.dualQuats[Indices.y + 1];
 				float Scale = mix(-1.0, 1.0, step(0.0, dot(DQReal1, DQReal))) * a_BonesWeights.y;
 				DQReal += DQReal1 * Scale;
 				DQDual += DQDual1 * Scale;
   			#if QF_NUM_BONE_INFLUENCES >= 3
-	  			DQReal1 = dualQuats[Indices.z];
-	  			DQDual1 = dualQuats[Indices.z + 1];
+	  			DQReal1 = bones.dualQuats[Indices.z];
+	  			DQDual1 = bones.dualQuats[Indices.z + 1];
 	  			Scale = mix(-1.0, 1.0, step(0.0, dot(DQReal1, DQReal))) * a_BonesWeights.z;
 	  			DQReal += DQReal1 * Scale;
 	  			DQDual += DQDual1 * Scale;
     			#if QF_NUM_BONE_INFLUENCES >= 4
-	    			DQReal1 = dualQuats[Indices.w];
-	    			DQDual1 = dualQuats[Indices.w + 1];
+	    			DQReal1 = bones.dualQuats[Indices.w];
+	    			DQDual1 = bones.dualQuats[Indices.w + 1];
 	    			Scale = mix(-1.0, 1.0, step(0.0, dot(DQReal1, DQReal))) * a_BonesWeights.w;
 	    			DQReal += DQReal1 * Scale;
 	    			DQDual += DQDual1 * Scale;
@@ -129,6 +131,7 @@ void QF_TransformVerts(inout vec4 Position, inout vec3 Normal, inout vec3 Tangen
 				DQDual.xyz*DQReal.w - DQReal.xyz*DQDual.w) * 2.0;
 			Normal += cross(DQReal.xyz, cross(DQReal.xyz, Normal) + Normal * DQReal.w) * 2.0;
 			Tangent += cross(DQReal.xyz, cross(DQReal.xyz, Tangent) + Tangent * DQReal.w) * 2.0;
+		}
 	}
 	#endif
 	{
@@ -183,3 +186,5 @@ void QF_TransformVerts(inout vec4 Position, inout vec3 Normal, inout vec3 Tangen
 	}
 	#endif
 }
+
+#endif

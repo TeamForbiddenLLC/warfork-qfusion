@@ -120,12 +120,15 @@ struct frame_cmd_buffer_s {
 
 	// list of objects to free
 	NriTexture**  freeTextures;
+	NriBuffer** freeBuffers;
 	NriMemory** freeMemory;
 
 	// default global ubo for the scene
 	struct ubo_frame_instance_s uboSceneFrame;
 	struct ubo_frame_instance_s uboSceneObject;
 	struct ubo_frame_instance_s uboPassObject;
+	struct ubo_frame_instance_s uboBoneObject;
+	struct ubo_frame_instance_s uboLight;
 
 	// additional frame state
 	struct draw_element_s drawElements;

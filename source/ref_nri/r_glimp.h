@@ -153,7 +153,6 @@ typedef struct
 				,texture_filter_anisotropic
 				,texture_compression
 				,compressed_ETC1_RGB8_texture
-				,vertex_buffer_object
 				,GLSL
 				,GLSL_core
 				,GLSL130
@@ -162,9 +161,6 @@ typedef struct
 				,vertex_shader
 				,fragment_shader
 				,shader_objects
-				,shading_language_100
-				,shading_language_130
-				,bgra
 				,gamma_control
 				,swap_control
 				,draw_instanced

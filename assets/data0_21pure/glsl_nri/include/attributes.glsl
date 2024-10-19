@@ -6,7 +6,7 @@
   layout(location = 4) in vec2 a_TexCoord;
 
   #ifdef QF_NUM_BONE_INFLUENCES
-	layout(location = 6) in vec4 a_BonesIndices;
+	layout(location = 6) in uvec4 a_BonesIndices;
     layout(location = 7) in vec4 a_BonesWeights;
   #else
 	layout(location = 6) in vec4 a_LightmapCoord01;

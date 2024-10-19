@@ -1348,31 +1348,6 @@ typedef struct ktx_header_s
 	int bytesOfKeyValueData;
 } ktx_header_t;
 
-static image_t *R_LinkPic( unsigned int hash )
-{
-	if( !free_images ) {
-		return NULL;
-	}
-
-	ri.Mutex_Lock( r_imagesLock );
-
-	hash = hash % IMAGES_HASH_SIZE;
-	image_t *image = free_images;
-	free_images = image->next;
-	
-	memset(image, 0, sizeof(*image));
-
-	// link to the list of active images
-	image->prev = &images_hash_headnode[hash];
-	image->next = images_hash_headnode[hash].next;
-	image->next->prev = image;
-	image->prev->next = image;
-	image->cookie = ++rsh.cookie; 
-
-	ri.Mutex_Unlock( r_imagesLock );
-	assert(image);
-	return image;
-}
 static ktx_header_t* R_FetchKTXHeader(uint8_t* buffer, bool* endianess) {
 	ktx_header_t *header = (ktx_header_t *)buffer;
 	const bool swapEndian = ( header->endianness == 0x01020304 ) ? true : false;
@@ -1621,9 +1596,27 @@ error: // must not be reached after actually starting uploading the texture
 
 static struct image_s *__R_AllocImage( const char *name )
 {
-	size_t nameLen = strlen( name );
-	unsigned hash = COM_SuperFastHash( (const uint8_t *)name, nameLen, nameLen );
-	struct image_s *image = R_LinkPic( hash );
+	if( !free_images ) {
+		return NULL;
+	}
+
+	const size_t nameLen = strlen( name );
+	const unsigned hashIndex = (COM_SuperFastHash( (const uint8_t *)name, nameLen, nameLen )) % IMAGES_HASH_SIZE;
+	
+	ri.Mutex_Lock( r_imagesLock );
+	image_t *image = free_images;
+	free_images = image->next;
+	
+	memset(image, 0, sizeof(*image));
+
+	// link to the list of active images
+	image->prev = &images_hash_headnode[hashIndex];
+	image->next = images_hash_headnode[hashIndex].next;
+	image->next->prev = image;
+	image->prev->next = image;
+
+	ri.Mutex_Unlock( r_imagesLock );
+
 	if( !image ) {
 		ri.Com_Error( ERR_DROP, "R_LoadImage: r_numImages == MAX_GLIMAGES" );
 	}
@@ -1634,6 +1627,7 @@ static struct image_s *__R_AllocImage( const char *name )
 	image->loaded = true;
 	image->missing = false;
 	image->fbo = 0;
+
 	return image;
 }
 
@@ -1893,6 +1887,7 @@ static enum texture_format_e __R_ToSupportedFormat(enum texture_format_e format)
 struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int height, int flags, int minmipsize, int tags, int samples )
 {
 	struct image_s *image = __R_AllocImage( name );
+	
 	image->width = width;
 	image->height = height;
 	image->layers = 1;
@@ -1928,7 +1923,8 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
 	assert( allocationNum <= Q_ARRAY_COUNT( image->memory ) );
 	NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, image->memory ) );
-		uint8_t *tmpBuffer = NULL;
+	uint8_t *tmpBuffer = NULL;
+	image->numAllocations = allocationNum;
 	const size_t reservedSize = width * height * samples;
 	
 	NriTexture2DViewDesc textureViewDesc = {
@@ -1944,7 +1940,6 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	assert(image->samplerDescriptor.descriptor);
 
 	if( pic ) {
-		//  R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
 		for( size_t index = 0; index < textureDesc.layerNum; index++ ) {
 			if( !pic[index] ) {
 				continue;
@@ -1978,16 +1973,11 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 
 image_t *R_CreateImage( const char *name, int width, int height, int layers, int flags, int minmipsize, int tags, int samples )
 {
-	const int name_len = strlen( name );
-	const unsigned hash = COM_SuperFastHash( ( const uint8_t *)name, name_len, name_len );
-
-	image_t* image = R_LinkPic( hash );
+	image_t* image = __R_AllocImage(name);
 	if( !image ) {
 		ri.Com_Error( ERR_DROP, "R_LoadImage: r_numImages == MAX_GLIMAGES" );
 	}
-
-	image->name = R_MallocExt( r_imagesPool, name_len + 1, 0, 1 );
-	strcpy( image->name, name );
+	
 	image->width = width;
 	image->height = height;
 	image->upload_width = width;
@@ -2103,27 +2093,35 @@ image_t *R_Create3DImage( const char *name, int width, int height, int layers, i
 }
 
 
-static void R_ReleaseNriTexture(struct image_s* image) {
-	struct frame_cmd_buffer_s *cmd = R_ActiveFrameCmd();
-	if( image->texture ) {
-		arrpush( cmd->freeTextures, image->texture );
-	}
-
-	for( size_t i = 0; i < image->numAllocations; i++ ) {
-		arrpush( cmd->freeMemory, image->memory[i] );
-	}
-	image->numAllocations = 0;
-	image->texture = NULL;
-}
-
 static void R_FreeImage( struct image_s *image )
 {
 	{
-		R_ReleaseNriTexture(image);
+		struct frame_cmd_buffer_s *cmd = R_ActiveFrameCmd();	
+		if( image->texture ) {
+			arrpush( cmd->freeTextures, image->texture );
+		}
+
+		for( size_t i = 0; i < image->numAllocations; i++ ) {
+			arrpush( cmd->freeMemory, image->memory[i] );
+		}
+	
+		if(image->descriptor.descriptor) {
+			arrpush( cmd->frameTemporaryDesc, image->descriptor.descriptor);
+		}
+		
+		// R_ReleaseNriTexture(image);
+		memset(&image->descriptor, 0, sizeof(struct nri_descriptor_s));
+		memset(&image->samplerDescriptor, 0, sizeof(struct  nri_descriptor_s));
+		
 		R_Free( image->name );
+		image->flags = 0;
+		image->loaded = false;
+		image->tags = 0;
 		image->name = NULL;
 		image->registrationSequence = 0;
 		image->texture = NULL;
+		// image->cookie = 0;
+		image->numAllocations = 0;
 	}
 	{
 		ri.Mutex_Lock( r_imagesLock );
@@ -2131,11 +2129,14 @@ static void R_FreeImage( struct image_s *image )
 		image->prev->next = image->next;
 		image->next->prev = image->prev;
 
+
 		// insert into linked free list
 		image->next = free_images;
 		free_images = image;
+		image->prev = NULL;
 		ri.Mutex_Unlock( r_imagesLock );
 	}
+	
 }
 
 /*
@@ -2157,7 +2158,7 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 
 	// if( !(image->flags & IT_NO_DATA_SYNC) )
 	// 	R_DeferDataSync();
-	R_ReleaseNriTexture(image);
+	// R_ReleaseNriTexture(image);
 	// __LoadImageInPlace(image, pic, width,height, flags, minmipsize, image->tags, samples);
 	
 	image->flags = flags;
@@ -2474,7 +2475,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 		image = NULL;
 		goto done;
 	}
-	image->numAllocations = 0;
+	image->numAllocations = numAllocations;
 	if( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, image->memory ) ) {
 		ri.Com_Printf( S_COLOR_YELLOW "Failed Allocation: %s\n", image->name );
 		R_FreeImage( image );

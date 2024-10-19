@@ -145,15 +145,31 @@ void UpdateFrameUBO( struct frame_cmd_buffer_s *cmd, struct ubo_frame_instance_s
 void ResetFrameCmdBuffer( struct nri_backend_s *backend, struct frame_cmd_buffer_s *cmd )
 {
 	cmd->textureBuffers = rsh.backBuffers[rsh.nri.swapChainI.AcquireNextSwapChainTexture( rsh.swapchain )];
+	
+	for( size_t i = 0; i < arrlen( cmd->freeTextures ); i++ ) {
+		rsh.nri.coreI.DestroyTexture( cmd->freeTextures[i] );
+	}
+	for( size_t i = 0; i < arrlen( cmd->freeBuffers ); i++ ) {
+		rsh.nri.coreI.DestroyBuffer( cmd->freeBuffers[i] );
+	}
+	for( size_t i = 0; i < arrlen( cmd->freeMemory ); i++ ) {
+		rsh.nri.coreI.FreeMemory( cmd->freeMemory[i] );
+	}
 	for( size_t i = 0; i < arrlen( cmd->frameTemporaryDesc ); i++ ) {
 		backend->coreI.DestroyDescriptor( cmd->frameTemporaryDesc[i] );
 	}
-	arrsetlen( cmd->frameTemporaryDesc, 0 );
+	arrsetlen( cmd->freeMemory, 0 );
+	arrsetlen( cmd->freeTextures, 0 );
+	arrsetlen( cmd->freeBuffers, 0 );
+	arrsetlen( cmd->frameTemporaryDesc, 0);
 	BlockBufferPoolReset( &cmd->uboBlockBuffer );
 
 	memset( &cmd->uboSceneFrame, 0, sizeof( struct ubo_frame_instance_s ) );
 	memset( &cmd->uboSceneObject, 0, sizeof( struct ubo_frame_instance_s ) );
 	memset( &cmd->uboPassObject, 0, sizeof( struct ubo_frame_instance_s ) );
+	memset( &cmd->uboBoneObject, 0, sizeof( struct ubo_frame_instance_s ) );
+	memset( &cmd->uboLight, 0, sizeof( struct ubo_frame_instance_s ) );
+
 }
 
 // struct block_buffer_pool_req_s FR_ShaderObjReqCB(struct frame_cmd_buffer_s *cmd, const struct ObjectCB* cb)

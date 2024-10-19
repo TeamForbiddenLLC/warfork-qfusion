@@ -111,10 +111,9 @@ static void Mod_AliasBuildMeshesForFrame0( model_t *mod )
 
 		R_BuildTangentVectors( mesh->numverts, mesh->xyzArray, mesh->normalsArray, mesh->stArray, mesh->numtris, mesh->elems, mesh->sVectorsArray );
 
-		if( glConfig.ext.vertex_buffer_object ) {
-			// build a static vertex buffer object to be used for rendering simple models, such as items
-			Mod_AliasBuildStaticVBOForMesh( mesh );
-		}
+		// build a static vertex buffer object to be used for rendering simple models, such as items
+		Mod_AliasBuildStaticVBOForMesh( mesh );
+
 	}
 }
 
@@ -600,9 +599,20 @@ void R_DrawAliasSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const sh
 
 	if( aliasmesh->vbo != NULL && !framenum && !oldframenum )
 	{
-		RB_BindVBO( aliasmesh->vbo->index, GL_TRIANGLES );
+		// RB_BindVBO( aliasmesh->vbo->index, GL_TRIANGLES );
+		cmd->state.numStreams = 1;
+		cmd->state.streams[0] = (NriVertexStreamDesc) {
+			.stride = aliasmesh->vbo->vertexSize,
+			.stepRate = 0,
+			.bindingSlot = 0
+		};
+		cmd->state.numAttribs = 0;
+		R_FillNriVertexAttrib(aliasmesh->vbo, cmd->state.attribs, &cmd->state.numAttribs);
 
-		RB_DrawElements(NULL, 0, aliasmesh->numverts, 0, aliasmesh->numtris * 3, 
+		FR_CmdSetVertexBuffer(cmd, 0, aliasmesh->vbo->vertexBuffer, 0);
+		FR_CmdSetIndexBuffer(cmd, aliasmesh->vbo->indexBuffer, 0, NriIndexType_UINT16);
+
+		RB_DrawShadedElements_2(cmd, 0, aliasmesh->numverts, 0, aliasmesh->numtris * 3, 
 			0, aliasmesh->numverts, 0, aliasmesh->numtris * 3 );
 	}
 	else

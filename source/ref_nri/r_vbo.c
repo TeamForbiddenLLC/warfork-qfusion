@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "qmesa.h"
 #include "r_resource_upload.h"
 
+#include "stb_ds.h"
 /*
 =========================================================
 
@@ -315,17 +316,24 @@ mesh_vbo_t *R_GetVBOByIndex( int index )
 void R_ReleaseMeshVBO( mesh_vbo_t *vbo )
 {
 	// TODO: need to see if this crashes because of unrefrenced assets
+	
+	struct frame_cmd_buffer_s *cmd = R_ActiveFrameCmd();	
 	if( vbo->vertexBuffer ) {
-		rsh.nri.coreI.DestroyBuffer( vbo->vertexBuffer );
+		// rsh.nri.coreI.DestroyBuffer( vbo->vertexBuffer );
+		arrpush( cmd->freeBuffers, vbo->vertexBuffer );
 	}
 	if( vbo->indexBuffer ) {
-		rsh.nri.coreI.DestroyBuffer( vbo->indexBuffer );
+		// rsh.nri.coreI.DestroyBuffer( vbo->indexBuffer );
+		arrpush( cmd->freeBuffers, vbo->indexBuffer );
 	}
 	if( vbo->instanceBuffer ) {
-		rsh.nri.coreI.DestroyBuffer( vbo->instanceBuffer );
+		// rsh.nri.coreI.DestroyBuffer( vbo->instanceBuffer );
+		arrpush( cmd->freeBuffers, vbo->instanceBuffer );
 	}
 	for( size_t i = 0; i < vbo->numAllocations; i++ ) {
-		rsh.nri.coreI.FreeMemory( vbo->memory[i] );
+		// rsh.nri.coreI.FreeMemory( vbo->memory[i] );
+		arrpush( cmd->freeMemory, vbo->memory[i] );
+		
 	}
 
 	if( vbo->index >= 1 && vbo->index <= MAX_MESH_VERTEX_BUFFER_OBJECTS ) {

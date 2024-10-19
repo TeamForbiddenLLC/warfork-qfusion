@@ -50,9 +50,7 @@ static void Mod_SkeletalBuildStaticVBOForMesh( mskmesh_t *mesh )
 	vattribmask_t vattribs;
 	
 	vattribs = VATTRIB_POSITION_BIT | VATTRIB_TEXCOORDS_BIT | VATTRIB_NORMAL_BIT | VATTRIB_SVECTOR_BIT;
-	if( glConfig.maxGLSLBones > 0 ) {
-		vattribs |= VATTRIB_BONES_BITS;
-	}
+	vattribs |= VATTRIB_BONES_BITS;
 	if( mesh->skin.shader ) {
 		vattribs |= mesh->skin.shader->vattribs;
 	}
@@ -718,12 +716,12 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 	// creating a VBO only makes sense if GLSL is present and the number of bones
 	// we can handle on the GPU is sufficient
 	// (created after the skins because skin loading may wait for GL commands to finish)
-	if( poutmodel->numbones <= glConfig.maxGLSLBones ) {
-		for( i = 0; i < header->num_meshes; i++ ) {
-			// build a static vertex buffer object for this mesh
-			Mod_SkeletalBuildStaticVBOForMesh( &poutmodel->meshes[i] );
-		}
+	// if( poutmodel->numbones <= glConfig.maxGLSLBones ) {
+	for( i = 0; i < header->num_meshes; i++ ) {
+		// build a static vertex buffer object for this mesh
+		Mod_SkeletalBuildStaticVBOForMesh( &poutmodel->meshes[i] );
 	}
+	// }
 
 	poutmodel->drawSurfs = ( drawSurfaceSkeletal_t * )pmem; pmem += sizeof( *poutmodel->drawSurfs ) * header->num_meshes;
 	for( i = 0; i < header->num_meshes; i++ ) {
@@ -1187,7 +1185,7 @@ void R_DrawSkeletalSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const
 	const model_t *mod = drawSurf->model;
 	const mskmodel_t *skmodel = ( const mskmodel_t * )mod->extradata;
 	const mskmesh_t *skmesh = drawSurf->mesh;
-	bool hardwareTransform = skmesh->vbo != NULL && glConfig.maxGLSLBones > 0 ? true : false;
+	// bool hardwareTransform = skmesh->vbo != NULL && glConfig.maxGLSLBones > 0 ? true : false;
 	vattribmask_t vattribs;
 
 	bonePoseRelativeMat = NULL;
@@ -1321,59 +1319,73 @@ void R_DrawSkeletalSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const
 			DualQuat_Normalize( bonePoseRelativeDQ[i] );
 		}
 
-		// CPU transforms
-		if( !hardwareTransform ) {
-			bonePoseRelativeMat = ( mat4_t * )(( uint8_t * )bonePoseRelativeDQ + bonePoseRelativeDQSize);
+		// // CPU transforms
+		// if( !hardwareTransform ) {
+		// 	bonePoseRelativeMat = ( mat4_t * )(( uint8_t * )bonePoseRelativeDQ + bonePoseRelativeDQSize);
 
-			// generate matrices for all bones
-			for( i = 0; i < skmodel->numbones; i++ ) {
-				Matrix4_FromDualQuaternion( bonePoseRelativeDQ[i], bonePoseRelativeMat[i] );
-			}
+		// 	// generate matrices for all bones
+		// 	for( i = 0; i < skmodel->numbones; i++ ) {
+		// 		Matrix4_FromDualQuaternion( bonePoseRelativeDQ[i], bonePoseRelativeMat[i] );
+		// 	}
 
-			// generate matrices for all blend combinations
-			R_SkeletalBlendPoses( skmodel->numblends, skmodel->blends, skmodel->numbones, bonePoseRelativeMat );
-		}
+		// 	// generate matrices for all blend combinations
+		// 	R_SkeletalBlendPoses( skmodel->numblends, skmodel->blends, skmodel->numbones, bonePoseRelativeMat );
+		// }
 	}
 
-	if( hardwareTransform )
-	{
-		RB_BindVBO( skmesh->vbo->index, GL_TRIANGLES );
-		RB_SetBonesData( skmodel->numbones, bonePoseRelativeDQ, skmesh->maxWeights );
-		RB_DrawElements(cmd, 0, skmesh->numverts, 0, skmesh->numtris * 3, 
-			0, skmesh->numverts, 0, skmesh->numtris * 3 );
-	}
-	else
-	{
-		mesh_t dynamicMesh;
+	RB_SetBonesData( skmodel->numbones, bonePoseRelativeDQ, skmesh->maxWeights );
+	cmd->state.numStreams = 1;
+	cmd->state.streams[0] = (NriVertexStreamDesc) {
+		.stride = skmesh->vbo->vertexSize,
+		.stepRate = 0,
+		.bindingSlot = 0
+	};
+	cmd->state.numAttribs = 0;
+	R_FillNriVertexAttrib(skmesh->vbo, cmd->state.attribs, &cmd->state.numAttribs);
 
-		memset( &dynamicMesh, 0, sizeof( dynamicMesh ) );
+	FR_CmdSetVertexBuffer(cmd, 0, skmesh->vbo->vertexBuffer, 0);
+	FR_CmdSetIndexBuffer(cmd, skmesh->vbo->indexBuffer, 0, NriIndexType_UINT16);
 
-		dynamicMesh.elems = skmesh->elems;
-		dynamicMesh.numElems = skmesh->numtris * 3;
-		dynamicMesh.numVerts = skmesh->numverts;
+	RB_DrawShadedElements_2(cmd, 0, skmesh->numverts, 0, skmesh->numtris * 3, 
+		0, skmesh->numverts, 0, skmesh->numtris * 3);
+	// if( hardwareTransform )
+	// {
+		// RB_BindVBO( skmesh->vbo->index, GL_TRIANGLES );
+		// RB_DrawElements(cmd, 0, skmesh->numverts, 0, skmesh->numtris * 3, 
+		// 	0, skmesh->numverts, 0, skmesh->numtris * 3 );
+	// }
+	// else
+	// {
+	// 	mesh_t dynamicMesh;
 
-		R_GetTransformBufferForMesh( &dynamicMesh, true,
-			( vattribs & ( VATTRIB_NORMAL_BIT|VATTRIB_SVECTOR_BIT ) ) ? true : false,
-			( vattribs & VATTRIB_SVECTOR_BIT ) ? true : false );
+	// 	memset( &dynamicMesh, 0, sizeof( dynamicMesh ) );
 
-		R_SkeletalTransformVerts( skmesh->numverts, skmesh->vertexBlends, bonePoseRelativeMat,
-			( vec_t * )skmesh->xyzArray[0], ( vec_t * )( dynamicMesh.xyzArray ) );
+	// 	dynamicMesh.elems = skmesh->elems;
+	// 	dynamicMesh.numElems = skmesh->numtris * 3;
+	// 	dynamicMesh.numVerts = skmesh->numverts;
 
-		if( vattribs & VATTRIB_SVECTOR_BIT ) {
-			R_SkeletalTransformNormalsAndSVecs( skmesh->numverts, skmesh->vertexBlends, bonePoseRelativeMat,
-				( vec_t * )skmesh->normalsArray[0], ( vec_t * )( dynamicMesh.normalsArray ),
-				( vec_t * )skmesh->sVectorsArray[0], ( vec_t * )( dynamicMesh.sVectorsArray ) );
-		} else if( vattribs & VATTRIB_NORMAL_BIT ) {
-			R_SkeletalTransformNormals( skmesh->numverts, skmesh->vertexBlends, bonePoseRelativeMat,
-				( vec_t * )skmesh->normalsArray[0], ( vec_t * )( dynamicMesh.normalsArray ) );
-		}
+	// 	R_GetTransformBufferForMesh( &dynamicMesh, true,
+	// 		( vattribs & ( VATTRIB_NORMAL_BIT|VATTRIB_SVECTOR_BIT ) ) ? true : false,
+	// 		( vattribs & VATTRIB_SVECTOR_BIT ) ? true : false );
 
-		dynamicMesh.stArray = skmesh->stArray;
+	// 	R_SkeletalTransformVerts( skmesh->numverts, skmesh->vertexBlends, bonePoseRelativeMat,
+	// 		( vec_t * )skmesh->xyzArray[0], ( vec_t * )( dynamicMesh.xyzArray ) );
 
-		RB_AddDynamicMesh( cmd, e, shader, fog, portalSurface, shadowBits, &dynamicMesh, GL_TRIANGLES, 0.0f, 0.0f );
+	// 	if( vattribs & VATTRIB_SVECTOR_BIT ) {
+	// 		R_SkeletalTransformNormalsAndSVecs( skmesh->numverts, skmesh->vertexBlends, bonePoseRelativeMat,
+	// 			( vec_t * )skmesh->normalsArray[0], ( vec_t * )( dynamicMesh.normalsArray ),
+	// 			( vec_t * )skmesh->sVectorsArray[0], ( vec_t * )( dynamicMesh.sVectorsArray ) );
+	// 	} else if( vattribs & VATTRIB_NORMAL_BIT ) {
+	// 		R_SkeletalTransformNormals( skmesh->numverts, skmesh->vertexBlends, bonePoseRelativeMat,
+	// 			( vec_t * )skmesh->normalsArray[0], ( vec_t * )( dynamicMesh.normalsArray ) );
+	// 	}
 
-		RB_FlushDynamicMeshes(cmd);
-	}
+	// 	dynamicMesh.stArray = skmesh->stArray;
+
+	// 	RB_AddDynamicMesh( cmd, e, shader, fog, portalSurface, shadowBits, &dynamicMesh, GL_TRIANGLES, 0.0f, 0.0f );
+
+	// 	RB_FlushDynamicMeshes(cmd);
+	// }
 }
 
 /*

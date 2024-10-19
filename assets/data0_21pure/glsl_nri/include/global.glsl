@@ -48,9 +48,21 @@ layout(set = DESCRIPTOR_OBJECT_SET, binding = 1) uniform TransformCB {
 #define a_InstanceQuat instancePoints[gl_InstanceID*2]
 #define a_InstancePosAndScale instancePoints[gl_InstanceID*2+1]
 
+#define MAX_GLSL_BONES 128
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 2) uniform BoneCB {
-  vec4 dualQuats[MAX_UNIFORM_BONES * 2];
+  vec4 dualQuats[MAX_GLSL_BONES * 2];
+} bones;
+
+struct DynLight {
+    vec4 position;
+    vec4 diffuseAndInvRadius;
 };
+
+layout(set = DESCRIPTOR_OBJECT_SET, binding = 3) uniform DynamicLightCB {
+    int numberLights;
+    DynLight dynLights[16];
+} lights;
+
 
 layout(set = DESCRIPTOR_FRAME_SET, binding = 0) uniform FrameCB {
   vec3 viewOrigin;
