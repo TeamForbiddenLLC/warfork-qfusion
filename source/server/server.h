@@ -231,7 +231,6 @@ typedef struct
 
 typedef server_static_demo_t demorec_t;
 
-#ifdef TCP_ALLOW_CONNECT
 #define MAX_INCOMING_CONNECTIONS 256
 typedef struct
 {
@@ -240,7 +239,6 @@ typedef struct
 	socket_t socket;
 	netadr_t address;
 } incoming_t;
-#endif
 
 #define MAX_MOTD_LEN 1024
 
@@ -284,6 +282,7 @@ typedef struct
 #ifdef TCP_ALLOW_CONNECT
 	incoming_t incoming[MAX_INCOMING_CONNECTIONS]; // holds socket while tcp client is connecting
 #endif
+	incoming_t incomingp2p[MAX_INCOMING_CONNECTIONS];
 
 	server_static_demo_t demo;
 
@@ -296,6 +295,8 @@ typedef struct
 	char *motd;
 
 	void *wakelock;
+
+	uint64_t steamid;
 } server_static_t;
 
 typedef struct
@@ -307,6 +308,12 @@ typedef struct
 	bool autostarted;
 	unsigned int lastMasterResolve;
 } server_constant_t;
+
+typedef enum {
+	MASTER_WARFORK,
+	MASTER_DARKPLACES,
+	MASTER_STEAM,
+} master_type_t;
 
 //=============================================================================
 
@@ -572,7 +579,5 @@ void SV_Web_GameFrame( http_game_query_cb cb );
 // sv_steam.c
 //
 #include "../steamshim/src/steamshim_types.h"
-int Steam_GetAuthSessionTicket( void (*callback)( void *, size_t ) );
 int Steam_BeginAuthSession(uint64_t steamid, SteamAuthTicket_t *ticket);
 void Steam_EndAuthSession(uint64_t steamid);
-void SV_Steam_RunFrame( void );

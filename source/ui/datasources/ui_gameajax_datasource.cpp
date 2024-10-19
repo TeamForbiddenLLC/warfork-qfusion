@@ -124,8 +124,8 @@ int GameAjaxDataSource::GetNumRows( const String &tableName )
 
 	char baseURL[1024];
 	trap::GetBaseServerURL( baseURL, sizeof( baseURL ) );
-
 	DynTable *table, *oldTable = NULL;
+
 	DynTableList::iterator t_it = tableList.find( tableName.CString() );
 
 	if( t_it != tableList.end() ) {
@@ -145,15 +145,9 @@ int GameAjaxDataSource::GetNumRows( const String &tableName )
 
 	std::string stdTableName = tableName.CString();
 	table = __new__( DynTable )( stdTableName, now, baseURL );
+	tableList.insert({ stdTableName, __new__(DynTableFetcher)(table) });
 
-	// fetch list now and notify listeners when we get the reply in async manner
-	std::string url = std::string( baseURL ) + "/game/" + stdTableName;
-
-	trap::AsyncStream_PerformRequest(
-		url.c_str(), "GET", "", 10,
-		&GameAjaxDataSource::StreamRead, &GameAjaxDataSource::StreamDone, 
-		static_cast<void *>(__new__(SourceFetcherPair)(this, __new__(DynTableFetcher)(table)))
-	);
+	trap::Cmd_ExecuteText( EXEC_APPEND, va("ajax \"%s\"", stdTableName.c_str()) );
 
 	return oldTable != NULL ? oldTable->GetNumRows() : 0;
 }
@@ -163,82 +157,38 @@ void GameAjaxDataSource::FlushCache( void )
 	// do nothing
 }
 
-size_t GameAjaxDataSource::StreamRead( const void *buf, size_t numb, float percentage, 
-	int status, const char *contentType, void *privatep )
+void GameAjaxDataSource::AjaxResponse( const char *resource, const char *resp )
 {
-	if( status < 0 || status >= 300 ) {
-		return 0;
-	}
-	// appened new data to the global buffer
-	SourceFetcherPair *fp = static_cast< SourceFetcherPair *>( privatep );
-	DynTableFetcher *fetcher = fp->second;
-	fetcher->buf += static_cast< const char * >( buf );
-	return numb;
-}
+	
+	DynTable *table = this->tableList[resource]->table;
 
-void GameAjaxDataSource::StreamDone( int status, const char *contentType, void *privatep )
-{
-	SourceFetcherPair *fp = static_cast< SourceFetcherPair *>( privatep );
-	DynTableFetcher *fetcher = fp->second;
-	GameAjaxDataSource *ds = fp->first;
-	DynTable *table = fetcher->table;
+	char *data = strdup(resp);
 	std::string tableName = table->GetName();
 	String rocketTableName = tableName.c_str();
-	DynTableList::iterator t_it = ds->tableList.find( tableName );
-	bool hasOldTable = t_it != ds->tableList.end();
-	DynTableFetcher *oldFetcher = hasOldTable ? t_it->second : NULL;
-	DynTable *oldTable = hasOldTable ? oldFetcher->table : NULL;
-	const char *data = fetcher->buf.c_str();
 
-	// simply exit on error or if nothing has changed in table data
-	if( status < 0 || status >= 300 || ( hasOldTable && ( oldFetcher->buf == data ) ) ) {
-		__delete__( table );
-		__delete__( fetcher );
-		__delete__( fp );
+	if ( !strncmp( resp, "DONE", 4 ) ) {
+		this->NotifyRowAdd( rocketTableName, 0, table->GetNumRows() );
 		return;
 	}
 
 	// parse server response:
-	// {
-	// "key1" = "value1"
-	// "key2" = "value2"
-	// }
-	char *token;
+	// key\value\key\value\key\value\key\value\ ...
 	std::string key, value;
-	for(; ( token = COM_Parse( &data ) ) && token[0] == '{'; )
-	{
-		Row row;
 
-		while( 1 )
-		{
-			token = COM_ParseExt( &data, true );
-			if( !token[0] )
-				break; // error
-			if( token[0] == '}' )
-				break; // end of callvote
-
-			key = Q_trim( token );
-			value = COM_ParseExt( &data, true );
-			row[key] = value;
+	char *pch = strtok( data, "\\" );
+	Row row;
+	while( pch != NULL ) {
+		key = pch;
+		pch = strtok( NULL, "\\" );
+		if ( pch == NULL ) {
+			break;
 		}
-
-		table->AddRow( row );
+		value = pch;
+		pch = strtok( NULL, "\\" );
+		row.insert({ key, value });
 	}
-	
-	if( oldTable != NULL ) {
-		ds->tableList[tableName] = fetcher;
+	table->AddRow( row );
 
-		ds->NotifyRowChange( rocketTableName );
-
-		__delete__( oldTable );
-		__delete__( oldFetcher );
-	}
-	else {
-		ds->tableList[tableName] = fetcher;
-		ds->NotifyRowAdd( rocketTableName, 0, table->GetNumRows() );
-	}
-
-	__delete__( fp );
 }
 
 }

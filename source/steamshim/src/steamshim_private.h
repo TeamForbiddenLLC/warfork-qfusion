@@ -22,23 +22,6 @@ freely, subject to the following restrictions:
 #include "steamshim_types.h"
 #include <cstdint>
 
-typedef enum ShimCmd
-{
-    CMD_PUMP,
-    CMD_CL_REQUESTSTEAMID,
-    CMD_CL_REQUESTPERSONANAME,
-    CMD_CL_SETRICHPRESENCE,
-    CMD_CL_REQUESTAUTHSESSIONTICKET,
-    CMD_SV_BEGINAUTHSESSION,
-    CMD_SV_ENDAUTHSESSION,
-    CMD_CL_REQUESTAVATAR,
-    CMD_CL_OPENPROFILE,
-    CMD_CL_REQUESTCOMMANDLINE,
-    CMD_CL_REQUESTSERVERS,
-    CMD_SV_UPDATESERVERINFO,
-} ShimCmd;
-
-
 extern PipeType GPipeRead;
 extern PipeType GPipeWrite;
 extern bool debug;

@@ -639,8 +639,8 @@ static void CL_ParseServerData( msg_t *msg )
 
 	cls.wakelock = Sys_AcquireWakeLock();
 
-	if( !cls.demo.playing && ( cls.serveraddress.type == NA_IP ) )
-		Steam_AdvertiseGame( cls.serveraddress.address.ipv4.ip, NET_GetAddressPort( &cls.serveraddress ) );
+	if( !cls.demo.playing && ( cls.serveraddress.type != NA_LOOPBACK ) )
+		Steam_AdvertiseGame( &cls.serveraddress, NULL);
 
 	// separate the printfs so the server message can have a color
 	Com_Printf( S_COLOR_WHITE "\n" "=====================================\n" );
@@ -842,21 +842,37 @@ static void CL_ParseConfigstringCommand( void )
 	}
 }
 
+static void CL_RPC_cb_steamAuth( void *self, struct steam_rpc_pkt_s *rec ){
+	//SteamAuthTicket_t* ticket = (SteamAuthTicket_t*)self;
+	//ticket->pcbTicket = rec->auth_session.pcbTicket;
+	//ticket->pTicket = rec->auth_session.pcbTicket;
+
+	uint8_t messageData[MAX_MSGLEN];
+	msg_t msg;
+	MSG_Init( &msg, messageData, sizeof( messageData ) );
+	MSG_WriteByte( &msg, clc_steamauth );
+	MSG_WriteLong( &msg, rec->auth_session.pcbTicket );
+	MSG_WriteData( &msg, rec->auth_session.ticket, rec->auth_session.pcbTicket );
+	CL_Netchan_Transmit( &msg );
+}
+
 static void CL_SteamAuth(){
-	if (Steam_Active())
+	if (STEAMSHIM_active())
 	{
-		// ticket needs to be generated on demand each time we join a server
-		SteamAuthTicket_t *ticket = Steam_GetAuthSessionTicketBlocking();
-
-	  uint8_t messageData[MAX_MSGLEN];
-		msg_t msg;
-		MSG_Init(&msg, messageData, sizeof(messageData));
-	  MSG_WriteByte(&msg, clc_steamauth);
-	  MSG_WriteLong(&msg, ticket->pcbTicket);
-		MSG_WriteData(&msg, ticket->pTicket, ticket->pcbTicket);
-
-		CL_Netchan_Transmit(&msg);
+		struct steam_rpc_shim_common_s request;
+		request.cmd = RPC_AUTHSESSION_TICKET;
+		uint32_t syncIndex;
+		STEAMSHIM_sendRPC( &request, sizeof( struct steam_rpc_shim_common_s ), NULL, CL_RPC_cb_steamAuth, &syncIndex );
+		STEAMSHIM_waitDispatchSync(syncIndex);
 	}
+}
+
+static void CL_AjaxRespond_f( void )
+{
+	char *response = Cmd_Argv(1);
+	char *data = Cmd_Argv(2);
+
+	CL_UIModule_AjaxResponse(response, data);
 }
 
 typedef struct
@@ -878,6 +894,7 @@ svcmd_t svcmds[] =
 	{ "multiview", CL_Multiview_f },
 	{ "cvarinfo", CL_CvarInfoRequest_f },
 	{ "steamauth", CL_SteamAuth },
+	{ "ajaxrespond", CL_AjaxRespond_f },
 
 	{ NULL, NULL }
 };
@@ -911,6 +928,33 @@ static void CL_ParseServerCommand( msg_t *msg )
 	}
 
 	Com_Printf( "Unknown server command: %s\n", s );
+}
+
+static void CB_RPC_DecompressVoice( void *self, struct steam_rpc_pkt_s *rec )
+{
+	int clientnum = (int)self;
+	CL_GameModule_PlayVoice(rec->decompress_voice_recv.buffer, rec->decompress_voice_recv.count, clientnum);
+}
+
+static void CL_ParseVoiceData( msg_t *msg ) {
+	int client = MSG_ReadShort( msg );
+
+	int size = MSG_ReadShort( msg );
+	if (cl_enablevoice->integer != 1) {
+		MSG_SkipData(msg, size);
+		return;
+	}
+
+	if (size > VOICE_BUFFER_MAX) return;
+
+	struct decompress_voice_req_s *req = (struct decompress_voice_req_s *)malloc(sizeof(struct decompress_voice_req_s) + size);
+
+	req->cmd = RPC_DECOMPRESS_VOICE;
+	req->count = size;
+	MSG_ReadData( msg, req->buffer, size );
+
+	// yes this is bad but i'm not making an allocation for a single int
+	STEAMSHIM_sendRPC(req, sizeof(struct decompress_voice_req_s) + size, (int*)client, CB_RPC_DecompressVoice, NULL);
 }
 
 /*
@@ -1085,6 +1129,11 @@ void CL_ParseServerMessage( msg_t *msg )
 				}
 			}
 			break;
+		case svc_voice:
+			{
+				CL_ParseVoiceData( msg );
+				break;
+			}
 		}
 	}
 

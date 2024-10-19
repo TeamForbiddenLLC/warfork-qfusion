@@ -744,7 +744,7 @@ msgid "Announcer volume"
 msgstr "Announcer volume"
 
 msgid "Voice commands volume"
-msgstr "Voice commands volume"
+msgstr "Voice volume"
 
 msgid "Hit sounds volume"
 msgstr "Hit sounds volume"

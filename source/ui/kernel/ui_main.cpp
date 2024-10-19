@@ -688,6 +688,14 @@ void UI_Main::addToServerList(const char *adr, const char *info)
 	serverBrowser->addToServerList( adr, info );
 }
 
+void UI_Main::ajaxResponse( const char *resource, const char *data )
+{
+	if( !gameajax )
+		return;
+
+	gameajax->AjaxResponse( resource, data );
+}
+
 void UI_Main::forceMenuOff( void )
 {
 	forceUI( false );

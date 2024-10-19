@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ftlib.h"
 #include "../qcommon/asyncstream.h"
 #include "../qalgo/hash.h"
+#include "../steamshim/src/parent/parent.h"
 #include <stdlib.h>
 
 cvar_t *cl_stereo_separation;
@@ -37,6 +38,7 @@ cvar_t *cl_sleep;
 cvar_t *cl_pps;
 cvar_t *cl_compresspackets;
 cvar_t *cl_shownet;
+cvar_t *cl_prefer_steam_p2p;
 
 cvar_t *cl_extrapolationTime;
 cvar_t *cl_extrapolate;
@@ -72,6 +74,7 @@ cvar_t *info_password;
 cvar_t *rate;
 
 cvar_t *cl_masterservers;
+cvar_t *cl_masterservers_warfork;
 
 // wsw : debug netcode
 cvar_t *cl_debug_serverCmd;
@@ -82,6 +85,8 @@ cvar_t *cl_downloads_from_web;
 cvar_t *cl_downloads_from_web_timeout;
 cvar_t *cl_download_allow_modules;
 cvar_t *cl_checkForUpdate;
+
+cvar_t *cl_enablevoice;
 
 
 static char cl_nextString[MAX_STRING_CHARS];
@@ -415,6 +420,27 @@ static void CL_Connect( const char *servername, socket_type_t type, netadr_t *ad
 		cls.socket = &cls.socket_loopback;
 		cls.reliable = false;
 		break;
+	case SOCKET_SDR:
+		{
+			struct p2p_connect_req_s req;
+			req.cmd = RPC_P2P_CONNECT;
+			req.steamID = address->address.steamid;
+			uint32_t sync;
+			STEAMSHIM_sendRPC(&req, sizeof req, NULL, NULL, &sync);
+			// do we need to wait for connection open?
+			// STEAMSHIM_waitDispatchSync(sync);
+
+			cls.socket = &cls.socket_sdr;
+			cls.socket->address = *address;
+			cls.socket->type = SOCKET_SDR;
+			cls.socket->open = true;
+			cls.socket->remoteAddress = *address;
+			cls.socket->connected = true;
+			cls.socket->server = false;
+			cls.socket->handle = 0;
+			cls.reliable = false;
+		}
+		break;
 
 	case SOCKET_UDP:
 		cls.socket = ( address->type == NA_IP6 ?  &cls.socket_udp6 :  &cls.socket_udp );
@@ -465,6 +491,7 @@ static void CL_Connect( const char *servername, socket_type_t type, netadr_t *ad
 		Q_strncpyz( cl_connectChain, serverchain, sizeof( cl_connectChain ) );
 	}
 
+	cls.full_connect_time = Sys_Milliseconds() + 1;
 	cls.connect_time = -99999; // CL_CheckForResend() will fire immediately
 	cls.connect_count = 0;
 	cls.rejected = false;
@@ -542,6 +569,10 @@ static void CL_Connect_Cmd_f( socket_type_t socket )
 		Mem_TempFree( connectstring_base );
 		Com_Printf( "Bad server address\n" );
 		return;
+	}
+
+	if (serveraddress.type == NA_SDR) {
+		socket = SOCKET_SDR;
 	}
 
 	// wait until MM allows us to connect to a server
@@ -955,6 +986,7 @@ void CL_Disconnect( const char *message )
 			time/1000.0, cl.timedemo.frames*1000.0 / time );
 	}
 
+	cls.full_connect_time = 0;
 	cls.connect_time = 0;
 	cls.connect_count = 0;
 	cls.rejected = false;
@@ -1141,6 +1173,7 @@ void CL_Reconnect_f( void )
 	servername = TempCopyString( cls.servername );
 	servertype = cls.servertype;
 	serveraddress = cls.serveraddress;
+
 	CL_Disconnect( NULL );
 	CL_Connect( servername, servertype, &serveraddress, "" );
 	Mem_TempFree( servername );
@@ -1419,6 +1452,7 @@ void CL_ReadPackets( void )
 	{
 		&cls.socket_loopback,
 		&cls.socket_udp,
+		&cls.socket_sdr,
 		&cls.socket_udp6,
 #ifdef TCP_ALLOW_CONNECT
 		&cls.socket_tcp
@@ -1909,7 +1943,7 @@ void CL_SetClientState( int state )
 	Com_SetClientState( state );
 
 	if( state <= CA_DISCONNECTED )
-		Steam_AdvertiseGame( NULL, 0 );
+		Steam_AdvertiseGame( NULL, NULL);
 
 	switch( state )
 	{
@@ -2140,12 +2174,43 @@ static char* CL_RandomName(){
 	return name;
 }
 
+static void CL_RPC_cb_steam_id(void* self, struct steam_rpc_pkt_s* rec ) {
+  assert(rec->common.cmd == RPC_REQUEST_STEAM_ID);
+  cvar_t* steam_cvar = self;
+  char id[18];
+  Q_snprintfz( id, sizeof id, "%llu", rec->steam_id.id );
+  Cvar_ForceSet( steam_cvar->name, id );
+}
+
+static void CL_RPC_cb_persona( void *self, struct steam_rpc_pkt_s *rec )
+{
+	cvar_t *name_cvar = self;
+	assert( rec->common.cmd == RPC_PERSONA_NAME );
+	char steamname[MAX_NAME_BYTES * 4], *steamnameIn = steamname, c;
+	strncpy( steamname, (char *)rec->persona_name.buf, sizeof( steamname ) );
+
+	bool steamnamePrintable = true;
+	while( ( c = *steamnameIn ) != '\0' ) {
+		steamnameIn++;
+		if( ( c < 32 ) || ( c >= 127 ) || ( c == '\\' ) || ( c == ';' ) || ( c == '"' ) )
+			steamnamePrintable = false;
+	}
+
+	COM_RemoveColorTokens( steamname );
+
+	// if even a single character isn't printable in the username, drop it and use a random one
+	if( !steamnamePrintable || !steamname[0] || !CL_IsNameValid( steamname ) ) {
+		Cvar_Set( name_cvar->name, CL_RandomName() );
+	} else {
+		Cvar_Set( name_cvar->name, steamname );
+	}
+}
 /*
 * CL_InitLocal
 */
 static void CL_InitLocal( void )
 {
-	cvar_t *name, *color, *steam_id;
+	cvar_t *name, *color;
 
 	cls.state = CA_DISCONNECTED;
 	Com_SetClientState( CA_DISCONNECTED );
@@ -2184,7 +2249,9 @@ static void CL_InitLocal( void )
 	m_sensCap =		Cvar_Get( "m_sensCap", "0", CVAR_ARCHIVE );
 
 	cl_masterservers =	Cvar_Get( "masterservers", DEFAULT_MASTER_SERVERS_IPS, 0 );
+	cl_masterservers_warfork =	Cvar_Get( "masterservers_warfork", DEFAULT_MASTER_SERVERS_WARFORK_IPS, 0 );
 
+	cl_prefer_steam_p2p = Cvar_Get( "cl_prefer_steam_p2p", "1", CVAR_ARCHIVE );
 	cl_shownet =		Cvar_Get( "cl_shownet", "0", 0 );
 	cl_timeout =		Cvar_Get( "cl_timeout", "120", 0 );
 	cl_timedemo =		Cvar_Get( "timedemo", "0", CVAR_CHEAT );
@@ -2209,6 +2276,8 @@ static void CL_InitLocal( void )
 	cl_download_allow_modules = Cvar_Get( "cl_download_allow_modules", "1", CVAR_ARCHIVE );
 	cl_checkForUpdate =	Cvar_Get( "cl_checkForUpdate", "1", CVAR_ARCHIVE );
 
+	cl_enablevoice = Cvar_Get( "cl_enablevoice", "1", CVAR_ARCHIVE );
+
 	//
 	// userinfo
 	//
@@ -2217,41 +2286,25 @@ static void CL_InitLocal( void )
 	rate =			Cvar_Get( "rate", "60000", CVAR_DEVELOPER ); // FIXME
 
 	name = Cvar_Get( "name", "", CVAR_USERINFO | CVAR_ARCHIVE );
+	uint32_t syncIndex = 0;
 
 	if ( !CL_IsNameValid(name->string) ){
-		if ( Steam_Active() ){
-			char steamname[MAX_NAME_BYTES * 4], *steamnameIn = steamname, c;
-			Steam_GetPersonaName( steamname, sizeof( steamname ) );
-
-			bool steamnamePrintable = true;
-			while( ( c = *steamnameIn ) != '\0' )
-			{
-				steamnameIn++;
-				if( ( c < 32 ) || ( c >= 127 ) || ( c == '\\' ) || ( c == ';' ) || ( c == '"' ) )
-					steamnamePrintable = false;
-			}
-      
-      COM_RemoveColorTokens( steamname );
-
-			// if even a single character isn't printable in the username, drop it and use a random one
-			if (!steamnamePrintable || !steamname[0] || !CL_IsNameValid(steamname)){
-				Cvar_Set( name->name, CL_RandomName() );
-			}else{
-			  Cvar_Set( name->name, steamname );
-			}
+		if ( STEAMSHIM_active() ){
+			struct steam_rpc_shim_common_s request;
+			request.cmd = RPC_REQUEST_STEAM_ID;
+			STEAMSHIM_sendRPC( &request, sizeof( struct steam_rpc_shim_common_s ), name, CL_RPC_cb_persona, &syncIndex );
 		} else {
 			Cvar_Set( name->name, CL_RandomName() );
 		}
-
 	}
 
-	steam_id = Cvar_Get( "steam_id", "", CVAR_USERINFO|CVAR_READONLY);
-
-	if (Steam_Active()){
-		char id[18];
-		Q_snprintfz(id, sizeof id, "%llu", Steam_GetSteamID());
-		Cvar_ForceSet(steam_id->name, id);
+	if (STEAMSHIM_active()){
+		struct steam_rpc_shim_common_s request;
+		request.cmd = RPC_REQUEST_STEAM_ID;
+  	cvar_t *steam_id = Cvar_Get( "steam_id", "", CVAR_USERINFO | CVAR_READONLY );
+		STEAMSHIM_sendRPC(&request,sizeof(struct steam_rpc_shim_common_s), steam_id , CL_RPC_cb_steam_id, &syncIndex);
 	}
+	STEAMSHIM_waitDispatchSync(syncIndex);
 
 	Cvar_Get( "clan", "", CVAR_USERINFO | CVAR_ARCHIVE );
 	Cvar_Get( "model", DEFAULT_PLAYERMODEL, CVAR_USERINFO | CVAR_ARCHIVE );
@@ -2640,6 +2693,23 @@ void CL_SendMessagesToServer( bool sendNow )
 	}
 }
 
+static void CB_RPC_GetVoice( void *self, struct steam_rpc_pkt_s *rec )
+{
+	uint8_t data[VOICE_BUFFER_MAX + 1000];
+	msg_t msg;
+	MSG_Init(&msg, data, sizeof(data));
+	MSG_WriteByte(&msg, clc_voice);
+	MSG_WriteShort(&msg, rec->getvoice_recv.count);
+	MSG_WriteData(&msg, rec->getvoice_recv.buffer, rec->getvoice_recv.count);
+	CL_Netchan_Transmit(&msg);
+}
+
+static void CL_SendVoiceData() {
+	struct steam_rpc_shim_common_s request;
+	request.cmd = RPC_GETVOICE;
+	STEAMSHIM_sendRPC(&request, sizeof request, NULL, CB_RPC_GetVoice, NULL);
+}
+
 /*
 * CL_NetFrame
 */
@@ -2732,7 +2802,9 @@ void CL_Frame( int realmsec, int gamemsec )
 	CL_AdjustServerTime( gamemsec );
 	CL_UserInputFrame();
 	CL_NetFrame( realmsec, gamemsec );
-	CL_Steam_RunFrame();
+	if (STEAMSHIM_active()) {
+		STEAMSHIM_dispatch();
+	}
 	CL_MM_Frame();
 	
 	if( cls.state == CA_CINEMATIC )
@@ -2837,6 +2909,9 @@ void CL_Frame( int realmsec, int gamemsec )
 		if( cls.demo.avi_video )
 			RF_WriteAviFrame( frame, cl_demoavi_scissor->integer );
 	}
+
+	if (cls.state == CA_ACTIVE)
+		CL_SendVoiceData();
 
 	// update audio
 	if( cls.state != CA_ACTIVE )
@@ -2991,20 +3066,14 @@ void CL_AsyncStreamRequest( const char *url, const char **headers, int timeout, 
 	}
 }
 
-void CL_ParseSteamConnectString(const char* cmdline){
-	if (!cmdline[0]) return;
-	if (Q_strrstr(cmdline, "\"")) {
+static void CL_RPC_cb_commandLine(void *self, struct steam_rpc_pkt_s *rec ){
+	if( !rec->launch_command.buf[0] )
+		return;
+	if( Q_strrstr( (char *)rec->launch_command.buf, "\"" ) ) {
 		// block potential command injection
 		return;
 	}
-	Cbuf_ExecuteText(EXEC_NOW, va("connect \"%s\"", cmdline));
-}
-
-static void CL_SteamCommandLineInit(){
-	if (Steam_Active()) {
-		const char *cmdline = Steam_CommandLine();
-		CL_ParseSteamConnectString(cmdline);
-	}
+	Cbuf_ExecuteText( EXEC_NOW, va( "connect \"%s\"", rec->launch_command.buf ) );
 }
 
 //============================================================================
@@ -3070,7 +3139,12 @@ void CL_Init( void )
 
 	ML_Init();
 
-	CL_SteamCommandLineInit();
+	if (STEAMSHIM_active()) {
+		struct steam_rpc_shim_common_s req;
+		req.cmd = RPC_REQUEST_LAUNCH_COMMAND;
+		STEAMSHIM_sendRPC(&req, sizeof(struct steam_rpc_shim_common_s), NULL, CL_RPC_cb_commandLine, NULL);
+	}
+
 }
 
 /*
