@@ -46,7 +46,7 @@ viddef_t viddef;             // global video state; used by other modules
 
 ref_export_t re;
 
-#define VID_DEFAULTREF			"ref_gl"
+#define VID_DEFAULTREF			"ref_nri"
 
 typedef rserr_t (*vid_init_t)( int, int, int, int, int, void *, bool );
 
@@ -500,7 +500,7 @@ void VID_CheckChanges( void )
 		Cvar_GetLatchedVars( CVAR_LATCH_VIDEO );
 
 load_refresh:
-		if( !VID_LoadRefresh( vid_ref->string ) ) {
+		if( !VID_LoadRefresh( VID_DEFAULTREF) ) {
 			// reset to default
 			if( !Q_stricmp( vid_ref->string, VID_DEFAULTREF ) ) {
 				Sys_Error( "Failed to load default refresh DLL" );

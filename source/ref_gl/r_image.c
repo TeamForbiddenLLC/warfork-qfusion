@@ -1435,7 +1435,7 @@ static bool R_LoadKTX( int ctx, image_t *image, const char *pathname )
 		const uint32_t numberOfFaces = R_KTXGetNumberFaces(&ktxContext);
 		
 		uint8_t *images[32 * 6] = {0};
-    enum texture_logical_channel_e swizzleChannel[R_LOGICAL_C_MAX ] = {0};
+    	enum texture_logical_channel_e swizzleChannel[R_LOGICAL_C_MAX ] = {0};
 		for( uint16_t mipIndex = 0; mipIndex < numberOfMipLevels; mipIndex++ ) {
 			for( uint32_t faceIndex = 0; faceIndex < numberOfFaces; faceIndex++ ) {
 				struct texture_buf_s *texBuffer = R_KTXResolveBuffer( &ktxContext, mipIndex, faceIndex, 0 );
@@ -1895,8 +1895,8 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	sds resolvedPath = sdsnewlen( 0, reserveSize );
 	sdsclear( resolvedPath );
 	{
-		size_t lastDot = -1;
-		size_t lastSlash = -1;
+		int lastDot = -1;
+		int lastSlash = -1;
 		for( size_t i = ( name[0] == '/' || name[0] == '\\' ); name[i]; i++ ) {
 			const char c = name[i];
 			if( c == '\\' ) {
