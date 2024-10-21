@@ -1116,9 +1116,14 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 	struct glsl_descriptor_binding_s descriptors[64] = { 0 };
 	r_glslfeat_t programFeatures = 0;
 
-	if( rb.greyscale || pass->flags & SHADERPASS_GREYSCALE ) {
+	if( rb.greyscale || rb.currentShader->flags & SHADERPASS_GREYSCALE ) {
 		programFeatures |= GLSL_SHADER_COMMON_GREYSCALE;
 	}
+	NriDepthBiasDesc depthBiasDesc = {};
+	if(((rb.currentShader->flags & SHADER_POLYGONOFFSET) > 0)) {
+		depthBiasDesc.slope = -1.0f;
+	}
+	cmd->state.pipelineLayout.depthBias = depthBiasDesc;
 
 	programFeatures |= RB_BonesTransformsToProgramFeatures();
 	programFeatures |= RB_AutospriteProgramFeatures();
@@ -1129,10 +1134,10 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 	if( ( rb.currentShader->flags & SHADER_SOFT_PARTICLE ) && rsh.screenDepthTextureCopy && ( rb.renderFlags & RF_SOFT_PARTICLES ) ) {
 		programFeatures |= GLSL_SHADER_COMMON_SOFT_PARTICLE;
 	}
+	
 	const entity_t *e = rb.currentEntity;
 	struct FrameCB frameData = { 0 };
 	struct ObjectCB objectData = { 0 };
-
 	{
 
 		const bool isAlphaBlending = __IsAlphaBlendingGLState( rb.gl.state );
@@ -1206,7 +1211,12 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 				objectData.alphaGenFuncArgs.w = pass->alphagen.args[3];
 			}
 		}
-
+		
+		objectData.colorConst.v[0] = 1.0f;
+		objectData.colorConst.v[1] = 1.0f;
+		objectData.colorConst.v[2] = 1.0f;
+		objectData.colorConst.v[3] = 1.0f;
+		
 		switch( pass->rgbgen.type ) {
 			case RGB_GEN_IDENTITY:
 				break;
@@ -2122,7 +2132,6 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			}
 			ObjectCB_SetTextureMatrix( &objectData, texMatrix );
 			
-
 			if( rb.currentModelType == mod_brush ) {
 				programFeatures |= GLSL_SHADER_OUTLINE_OUTLINES_CUTOFF;
 			}
@@ -2130,7 +2139,9 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			programFeatures |= RB_RGBAlphaGenToProgramFeatures( &pass->rgbgen, &pass->alphagen );
 			programFeatures |= RB_FogProgramFeatures( pass, rb.fog );
 			
-
+			UpdateFrameUBO( cmd, &cmd->uboSceneFrame, &frameData, sizeof( struct FrameCB ) );
+			UpdateFrameUBO( cmd, &cmd->uboSceneObject, &objectData, sizeof( struct ObjectCB ) );
+			
 			descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
 				.descriptor = cmd->uboSceneFrame.descriptor, 
 				.handle = Create_DescriptorHandle( "frame" ) 
@@ -2189,7 +2200,6 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			}
 			ObjectCB_SetTextureMatrix( &objectData, texMatrix );
 			
-		
 			{
 				image_t* baseImage = base->loaded ? base : rsh.blackTexture;
 				descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){ 
@@ -2409,7 +2419,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 		}
 		default:
 			ri.Com_DPrintf( S_COLOR_YELLOW "WARNING: Unknown GLSL program type %i\n", programType );
-			return;
+			break;;
 	}
 }
 
@@ -2916,6 +2926,7 @@ void RB_DrawShadedElements_2( struct frame_cmd_buffer_s *cmd,
 		addGLSLOutline = true;
 	}
 	RB_SetShaderState_2( cmd );
+
 
 	shaderpass_t *pass;
 	unsigned i;

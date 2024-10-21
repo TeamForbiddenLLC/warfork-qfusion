@@ -59,14 +59,14 @@ struct frame_cmd_state_s {
 	struct {
 		NriFormat colorFormats[MAX_COLOR_ATTACHMENTS];
 		NriFormat depthFormat;
+	
+		NriDepthBiasDesc depthBias;
 
 		bool blendEnabled;
 		NriCullMode cullMode;
 		NriBlendFactor colorSrcFactor;
 		NriBlendFactor colorDstFactor;
 
-		float depthRangeMin;
-		float depthRangeMax;
 		NriColorWriteBits colorWriteMask;
 		NriCompareFunc compareFunc;
 		bool depthWrite;

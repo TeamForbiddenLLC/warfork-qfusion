@@ -13,7 +13,7 @@ void InitBlockBufferPool( struct nri_backend_s *nri, struct block_buffer_pool_s 
 
 static inline void __InitPoolBlock( struct nri_backend_s *nri, NriBufferUsageBits usageBits, size_t blockSize, size_t structureStride, struct block_buffer_s *block )
 {
-	NriBufferDesc bufferDesc = { .size = blockSize, .structureStride = structureStride, .usageMask = usageBits};
+	NriBufferDesc bufferDesc = { .size = blockSize, .structureStride = structureStride, .usage = usageBits};
 	NRI_ABORT_ON_FAILURE( nri->coreI.CreateBuffer( nri->device, &bufferDesc, &block->buffer ) )
 	NriResourceGroupDesc resourceGroupDesc = { .buffers = &block->buffer, .bufferNum = 1, .memoryLocation = NriMemoryLocation_HOST_UPLOAD };
 	assert( nri->helperI.CalculateAllocationNumber( nri->device, &resourceGroupDesc ) == 1 );

@@ -194,11 +194,11 @@ void R_ResourceEndCopyBuffer( buffer_upload_desc_t *action )
 			.stages = NriStageBits_COPY
 		};
 
-		if(bufferDesc->usageMask & NriBufferUsageBits_INDEX_BUFFER) {
+		if(bufferDesc->usage & NriBufferUsageBits_INDEX_BUFFER) {
 			transitionBarriers.after.access |= NriAccessBits_INDEX_BUFFER;
 			transitionBarriers.after.stages |= NriStageBits_INDEX_INPUT;
 		}
-		if(bufferDesc->usageMask & NriBufferUsageBits_VERTEX_BUFFER) {
+		if(bufferDesc->usage & NriBufferUsageBits_VERTEX_BUFFER) {
 			transitionBarriers.after.access |= NriAccessBits_VERTEX_BUFFER;
 			transitionBarriers.after.stages |= NriStageBits_VERTEX_SHADER;
 		}

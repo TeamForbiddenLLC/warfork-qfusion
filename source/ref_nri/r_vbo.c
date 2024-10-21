@@ -205,19 +205,19 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 		}
 		NriBufferDesc vertexBufferDesc = { 
 			.size = vertexByteStride * desc->numVerts, 
-			.usageMask = NriBufferUsageBits_VERTEX_BUFFER 
+			.usage = NriBufferUsageBits_VERTEX_BUFFER 
 		};
 		rsh.nri.coreI.CreateBuffer( rsh.nri.device, &vertexBufferDesc, &vbo->vertexBuffer );
 	}
 
-	NriBufferDesc indexBufferDesc = { .size = desc->numElems * sizeof( elem_t ), .usageMask = NriBufferUsageBits_INDEX_BUFFER };
+	NriBufferDesc indexBufferDesc = { .size = desc->numElems * sizeof( elem_t ), .usage = NriBufferUsageBits_INDEX_BUFFER };
 	rsh.nri.coreI.CreateBuffer( rsh.nri.device, &indexBufferDesc, &vbo->indexBuffer );
 
 	if( hasInstanceBuffer ) {
 		vbo->instancesOffset = instanceByteStride;
 		NriBufferDesc instanceBufferDesc = { 
 			.size = instanceByteStride * desc->numInstances, 
-			.usageMask = NriBufferUsageBits_CONSTANT_BUFFER };
+			.usage = NriBufferUsageBits_CONSTANT_BUFFER };
 		rsh.nri.coreI.CreateBuffer( rsh.nri.device, &instanceBufferDesc, &vbo->instanceBuffer );
 	}
 

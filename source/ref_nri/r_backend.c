@@ -411,13 +411,13 @@ void RB_SetState_2( struct frame_cmd_buffer_s *cmd, int state )
 	cmd->state.pipelineLayout.depthWrite = ( state & GLSTATE_DEPTHWRITE );
 
 	rb.gl.depthoffset = ( state & GLSTATE_OFFSET_FILL );
-	if( state & GLSTATE_OFFSET_FILL ) {
-		cmd->state.pipelineLayout.depthRangeMin = rb.gl.depthmin;
-		cmd->state.pipelineLayout.depthRangeMax = rb.gl.depthmax;
-	} else {
-		cmd->state.pipelineLayout.depthRangeMin = rb.gl.depthmin + ( 4.0f / 65535.0f );
-		cmd->state.pipelineLayout.depthRangeMax = rb.gl.depthmax;
-	}
+	// if( state & GLSTATE_OFFSET_FILL ) {
+	// 	cmd->state.pipelineLayout.depthRangeMin = rb.gl.depthmin;
+	// 	cmd->state.pipelineLayout.depthRangeMax = rb.gl.depthmax;
+	// } else {
+	// 	cmd->state.pipelineLayout.depthRangeMin = rb.gl.depthmin + ( 4.0f / 65535.0f );
+	// 	cmd->state.pipelineLayout.depthRangeMax = rb.gl.depthmax;
+	// }
 
 	if( glConfig.stencilBits ) {
 		// TODO: workout stencil test logic

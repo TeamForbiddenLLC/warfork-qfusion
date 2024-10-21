@@ -1808,7 +1808,7 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	for( size_t i = 0; i < def->numAttribs; i++ ) {	
 		hash = hash_data( hash, &def->attribs[i], sizeof( NriVertexAttributeDesc ));
 	}
-
+	hash = hash_data( hash, &def->pipelineLayout.depthBias, sizeof( NriDepthBiasDesc ));
 	hash = hash_u32( hash, def->pipelineLayout.depthFormat );
 	for( size_t i = 0; i < def->numColorAttachments; i++ ) {
 		hash = hash_u32( hash, def->pipelineLayout.colorFormats[i] );
@@ -1846,6 +1846,7 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	graphicsPipelineDesc.rasterization.fillMode = NriFillMode_SOLID;
 	graphicsPipelineDesc.rasterization.frontCounterClockwise = true;
 	graphicsPipelineDesc.rasterization.viewportNum = def->numColorAttachments;
+	graphicsPipelineDesc.rasterization.depthBias = def->pipelineLayout.depthBias;
 
 	graphicsPipelineDesc.outputMerger.depth.write = def->pipelineLayout.depthWrite;
 	graphicsPipelineDesc.outputMerger.depth.compareFunc = def->pipelineLayout.compareFunc;

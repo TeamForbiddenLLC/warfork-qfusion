@@ -1493,7 +1493,7 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 	NriTextureDesc textureDesc = { 
 		.width = R_KTXWidth( &ktxContext ),
 		.height = R_KTXHeight( &ktxContext ),
-		.usageMask = __R_NRITextureUsageBits( image->flags ),
+		.usage = __R_NRITextureUsageBits( image->flags ),
 		.layerNum = R_KTXIsCompressed( &ktxContext ) ? 1 : numberOfFaces,
 		.depth = 1,
 		.format = R_NRIFormat( dstFormat ),
@@ -1906,7 +1906,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	NriTextureDesc textureDesc = { .width = width,
 								   .height = height,
 								   .depth = 1,
-								   .usageMask = __R_NRITextureUsageBits( flags ),
+								   .usage = __R_NRITextureUsageBits( flags ),
 								   .layerNum = ( flags & IT_CUBEMAP ) ? 6 : 1,
 								   .format = R_NRIFormat( destFormat ),
 								   .sampleNum = 1,
@@ -2447,7 +2447,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	NriTextureDesc textureDesc = { 
 		.width = uploads[0].buffer.width,
 		.height = uploads[0].buffer.height,
-		.usageMask = __R_NRITextureUsageBits( flags ),
+		.usage = __R_NRITextureUsageBits( flags ),
 		.layerNum = uploadCount,
 		.depth = 1,
 		.format = R_NRIFormat(destFormat),

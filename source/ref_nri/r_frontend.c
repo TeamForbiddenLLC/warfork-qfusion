@@ -315,7 +315,7 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 				NriTextureDesc textureDesc = { .width = swapChainDesc->width,
 											   .height = swapChainDesc->height,
 											   .depth = 1,
-											   .usageMask = NriTextureUsageBits_DEPTH_STENCIL_ATTACHMENT,
+											   .usage = NriTextureUsageBits_DEPTH_STENCIL_ATTACHMENT,
 											   .layerNum = 1,
 											   .format = NriFormat_D32_SFLOAT,
 											   .sampleNum = 1,
