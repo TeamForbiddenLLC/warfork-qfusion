@@ -556,7 +556,7 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 			if( !batchDrawSurf ) {
 				assert( r_drawSurfCb[drawSurfType] );
 
-				RB_BindShader( NULL ,entity, shader, fog );
+				RB_BindShader( frame ,entity, shader, fog );
 				RB_SetPortalSurface( portalSurface );
 				RB_SetShadowBits( shadowBits );
 

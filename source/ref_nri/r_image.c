@@ -2288,8 +2288,8 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	sds resolvedPath = sdsnewlen( 0, reserveSize );
 	sdsclear( resolvedPath );
 	{
-		size_t lastDot = -1;
-		size_t lastSlash = -1;
+		int lastDot = -1;
+		int lastSlash = -1;
 		for( size_t i = ( name[0] == '/' || name[0] == '\\' ); name[i]; i++ ) {
 			const char c = name[i];
 			if( c == '\\' ) {
