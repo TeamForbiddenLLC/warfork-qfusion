@@ -140,163 +140,71 @@ static feature_iter_t __R_NextFeature( feature_iter_t iter )
 
 static sds R_AppendGLSLDeformv( sds str, const deformv_t *deformv, int numDeforms )
 {
-	static const char *const funcs[] = { NULL, "WAVE_SIN", "WAVE_TRIANGLE", "WAVE_SQUARE", "WAVE_SAWTOOTH", "WAVE_INVERSESAWTOOTH", NULL };
+	static const char *const funcs[] = { 
+		NULL, 
+		"WAVE_SIN", 
+		"WAVE_TRIANGLE", 
+		"WAVE_SQUARE", 
+		"WAVE_SAWTOOTH", 
+		"WAVE_INVERSESAWTOOTH", 
+		NULL };
 	static const int numSupportedFuncs = sizeof( funcs ) / sizeof( funcs[0] ) - 1;
 	if( !numDeforms ) {
 		return str;
 	}
- // str = sdscatfmt( str,
- // 				 "#define QF_APPLY_DEFORMVERTS\n"
- // 				 "#if defined(APPLY_AUTOSPRITE) || defined(APPLY_AUTOSPRITE2)\n"
- // 				 "qf_attribute vec4 a_SpritePoint;\n"
- // 				 "#else\n"
- // 				 "#define a_SpritePoint vec4(0.0)\n"
- // 				 "#endif\n"
- // 				 "\n"
- // 				 "#if defined(APPLY_AUTOSPRITE2)\n"
- // 				 "qf_attribute vec4 a_SpriteRightUpAxis;\n"
- // 				 "#else\n"
- // 				 "#define a_SpriteRightUpAxis vec4(0.0)\n"
- // 				 "#endif\n"
- // 				 "\n"
- // 				 "void QF_DeformVerts(inout vec4 Position, inout vec3 Normal, inout vec2 TexCoord)\n"
- // 				 "{\n"
- // 				 "float t = 0.0;\n"
- // 				 "vec3 dist;\n"
- // 				 "vec3 right, up, forward, newright;\n"
- // 				 "\n"
- // 				 "#if defined(WAVE_SIN)\n" );
 	const int funcType = deformv->func.type;
 	for( size_t i = 0; i < numDeforms; i++, deformv++ ) {
 		switch( deformv->type ) {
 			case DEFORMV_WAVE: {
-				if( funcType <= SHADER_FUNC_NONE || funcType > numSupportedFuncs || !funcs[funcType] ) {
-					return str;
-				}
-			 // str = sdscatfmt(str, "#define DEFORMV_METHOD_%s 1", funcs[funcType]);
-			 // 
-			 // str = sdscatfmt(str, "#define DEFORMV_FUNC %s", funcs[funcType]);
-			 // str = sdscatfmt(str, "#define DEFORMV_ARG_0 %f", deformv->func.args[0]);
-			 // str = sdscatfmt(str, "#define DEFORMV_ARG_1 %f", deformv->func.args[1]);
-			 // str = sdscatfmt(str, "#define DEFORMV_ARG_2 %f", deformv->func.args[2]);
-			 // str = sdscatfmt(str, "#define DEFORMV_ARG_3 %f", deformv->func.args[3]);
-				
+				if( funcType <= SHADER_FUNC_NONE || funcType > numSupportedFuncs || !funcs[funcType] ) 
+					break;
 				str = sdscatfmt(str, "#define DEFORMV_WAVE 1 \n");
-				str = sdscatfmt(str, "#define DEFORMV_FUNC %s \n", funcs[funcType]);
-				str = sdscatprintf(str, "#define DEFORMV_CONSTANT vec4(%f,%f,%f,%f) \n", 
+				str = sdscatfmt(str, "#define DEFORMV_WAVE_FUNC %s \n", funcs[funcType]);
+				str = sdscatprintf(str, "#define DEFORMV_WAVE_CONSTANT vec4(%f,%f,%f,%f) \n", 
 										deformv->func.args[0],
 										deformv->func.args[1],
 										deformv->func.args[2],
 										deformv->func.args[3]
 				);
-				
-				//str = sdscatfmt( str, "Position.xyz += %s(u_QF_ShaderTime,%f,%f,%f+%f*(Position.x+Position.y+Position.z),%f) * Normal.xyz;\n", funcs[funcType], 
-				//         deformv->func.args[0],
-				//				 deformv->func.args[1], 
-				//				 deformv->func.args[2], 
-				//				 deformv->func.args[3] ? deformv->args[0] : 0.0, 
-				//				 deformv->func.args[3] );
 				break;
 			}
 			case DEFORMV_MOVE: {
-				if( funcType <= SHADER_FUNC_NONE || funcType > numSupportedFuncs || !funcs[funcType] ) {
-					return str;
-				}
-		 // 	str = sdscatfmt(str, "#define DEFORMV_MOVE 1");
-		 // 	str = sdscatfmt(str, "#define DEFORMV_METHOD_%s 1", funcs[funcType]);
+				if( funcType <= SHADER_FUNC_NONE || funcType > numSupportedFuncs || !funcs[funcType] ) 
+					break;
 				
 				str = sdscatfmt(str, "#define DEFORMV_MOVE 1 \n");
-				str = sdscatfmt(str, "#define DEFORMV_FUNC %s \n", funcs[funcType]);
-				str = sdscatprintf(str, "#define DEFORMV_CONSTANT vec4(%f,%f,%f,%f) \n", 
+				str = sdscatfmt(str, "#define DEFORMV_MOVE_FUNC %s \n", funcs[funcType]);
+				str = sdscatprintf(str, "#define DEFORMV_MOVE_CONSTANT vec4(%f,%f,%f,%f) \n", 
 										deformv->func.args[0],
 										deformv->func.args[1],
 										deformv->func.args[2],
 										deformv->func.args[3]
 				);
 				
-
-				//str = sdscatfmt(str, "#define DEFORMV_ARG_0 %f", deformv->func.args[0]);
-				//str = sdscatfmt(str, "#define DEFORMV_ARG_1 %f", deformv->func.args[1]);
-				//str = sdscatfmt(str, "#define DEFORMV_ARG_2 %f", deformv->func.args[2]);
-				//str = sdscatfmt(str, "#define DEFORMV_ARG_3 %f", deformv->func.args[3]);
-				//str = sdscatfmt( str, "Position.xyz += %s(u_QF_ShaderTime,%f,%f,%f,%f) * vec3(%f, %f, %f);\n", funcs[funcType], 
-				//         deformv->func.args[0], 
-				//         deformv->func.args[1], 
-				//         deformv->func.args[2],
-				//				 deformv->func.args[3], 
-				//				 deformv->args[0], 
-				//				 deformv->args[1], 
-				//				 deformv->args[2] );
-
 				break;
 			}
 			case DEFORMV_BULGE:
 				str = sdscatfmt(str, "#define DEFORMV_BULGE 1 \n");
-				str = sdscatprintf(str, "#define DEFORMV_CONSTANT vec4(%f,%f,%f,%f) \n", 
+				str = sdscatprintf(str, "#define DEFORMV_BULGE_CONSTANT vec4(%f,%f,%f,%f) \n", 
 										deformv->func.args[0],
 										deformv->func.args[1],
 										deformv->func.args[2],
 										deformv->func.args[3]
 				);
-			 // str = sdscatfmt( str,
-			 // 				 "t = sin(TexCoord.s * %f + u_QF_ShaderTime * %f);\n"
-			 // 				 "Position.xyz += max (-1.0 + %f, t) * %f * Normal.xyz;\n",
-			 // 				 deformv->args[0], deformv->args[2], deformv->args[3], deformv->args[1] );
-
 				break;
 			case DEFORMV_AUTOSPRITE:
 				str = sdscatfmt(str, "#define DEFORMV_AUTOSPRITE 1 \n");
-				//str = sdscatfmt( str,
-				//				 "right = (1.0 + step(0.5, TexCoord.s) * -2.0) * u_QF_ViewAxis[1] * u_QF_MirrorSide;\n;"
-				//				 "up = (1.0 + step(0.5, TexCoord.t) * -2.0) * u_QF_ViewAxis[2];\n"
-				//				 "forward = -1.0 * u_QF_ViewAxis[0];\n"
-				//				 "Position.xyz = a_SpritePoint.xyz + (right + up) * a_SpritePoint.w;\n"
-				//				 "Normal.xyz = forward;\n"
-				//				 "TexCoord.st = vec2(step(0.5, TexCoord.s),step(0.5, TexCoord.t));\n" );
-
 				break;
 			case DEFORMV_AUTOPARTICLE:
 				str = sdscatfmt(str, "#define DEFORMV_AUTOPARTICLE 1 \n");
-				//str = sdscatfmt( str,
-				//				 "right = (1.0 + TexCoord.s * -2.0) * u_QF_ViewAxis[1] * u_QF_MirrorSide;\n;"
-				//				 "up = (1.0 + TexCoord.t * -2.0) * u_QF_ViewAxis[2];\n"
-				//				 "forward = -1.0 * u_QF_ViewAxis[0];\n"
-				//				 // prevent the particle from disappearing at large distances
-				//				 "t = dot(a_SpritePoint.xyz + u_QF_EntityOrigin - u_QF_ViewOrigin, u_QF_ViewAxis[0]);\n"
-				//				 "t = 1.5 + step(20.0, t) * t * 0.006;\n"
-				//				 "Position.xyz = a_SpritePoint.xyz + (right + up) * t * a_SpritePoint.w;\n"
-				//				 "Normal.xyz = forward;\n" );
 				break;
 			case DEFORMV_AUTOSPRITE2:
 				str = sdscatfmt(str, "#define DEFORMV_AUTOSPRITE2 1 \n");
-				//str = sdscatfmt( str,
-				//				 // local sprite axes
-				//				 "right = QF_LatLong2Norm(a_SpriteRightUpAxis.xy) * u_QF_MirrorSide;\n"
-				//				 "up = QF_LatLong2Norm(a_SpriteRightUpAxis.zw);\n"
-
-				//				 // mid of quad to camera vector
-				//				 "dist = u_QF_ViewOrigin - u_QF_EntityOrigin - a_SpritePoint.xyz;\n"
-
-				//				 // filter any longest-axis-parts off the camera-direction
-				//				 "forward = normalize(dist - up * dot(dist, up));\n"
-
-				//				 // the right axis vector as it should be to face the camera
-				//				 "newright = cross(up, forward);\n"
-
-				//				 // rotate the quad vertex around the up axis vector
-				//				 "t = dot(right, Position.xyz - a_SpritePoint.xyz);\n"
-				//				 "Position.xyz += t * (newright - right);\n"
-				//				 "Normal.xyz = forward;\n" );
 				break;
 			default:
 				break;
 		}
 	}
-
-	//str = sdscatfmt( str,
-	//				 "#endif\n"
-	//				 "}\n"
-	//				 "\n" );
 
 	return str;
 }
@@ -2015,7 +1923,7 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 
 	const uint64_t hashIndex = hash_u64( HASH_INITIAL_VALUE, features ) % GLSL_PROGRAMS_HASH_SIZE;
 	for( struct glsl_program_s *program = r_glslprograms_hash[type][hashIndex]; program; program = program->hash_next ) {
-		if( ( program->features == features ) && !strcmp( program->deformsKey, deformsKey ) ) {
+		if( ( program->features == features ) && strcmp( program->deformsKey, deformsKey ) == 0 ) {
 			return program;
 		}
 	}

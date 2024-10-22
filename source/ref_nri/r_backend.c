@@ -865,7 +865,7 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
   	prev = &rb.dynamicDraws[rb.numDynamicDraws - 1];
   }
   
-  enum dynamic_stream_e streamId = RB_DYN_STREAM_DEFAULT;
+  enum dynamic_stream_e streamId = RB_DYN_STREAM_NUM;
   if( prev ) {
   	int prevRenderFX = 0, renderFX = 0;
   	if( prev->entity ) {
@@ -885,11 +885,14 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
   			merge = true;
   		}
   	}
-  	vattribs = prev->vattribs;
-  } else {
-  	RB_BindShader( NULL,entity, shader, fog );
+  }
+  
+  if(streamId == RB_DYN_STREAM_NUM) {
+  	RB_BindShader( cmd,entity, shader, fog );
   	vattribs = rb.currentVAttribs;
   	streamId = ( ( vattribs & ~COMPACT_STREAM_VATTRIBS ) ? RB_DYN_STREAM_DEFAULT : RB_DYN_STREAM_COMPACT );
+  } else {
+	vattribs = prev->vattribs;
   }
 
   rbDynamicStream_t *stream = &rb.dynamicStreams[streamId];

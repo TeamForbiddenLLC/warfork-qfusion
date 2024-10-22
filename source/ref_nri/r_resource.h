@@ -105,6 +105,7 @@ struct FrameCB {
 	float zFar;
 	float fogScale;
 	float eyeDist;
+  int pad[2];
 	struct vec3 fogColor;
 	float mirrorSide;
   union {
@@ -212,6 +213,5 @@ struct DefaultOutlinePushConstant {
   float outlineHeight;
   float outlineCutoff;
 };
-
 
 #endif

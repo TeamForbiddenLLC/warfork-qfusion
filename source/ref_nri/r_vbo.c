@@ -409,7 +409,7 @@ void R_FillNriVertexAttrib(mesh_vbo_t* vbo, NriVertexAttributeDesc* desc, size_t
 	if( vbo->vertexAttribs & VATTRIB_SVECTOR_BIT ) {
 		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
 			.offset = vbo->sVectorsOffset, 
-			.format = ( vbo->halfFloatAttribs & VATTRIB_NORMAL_BIT ) ? NriFormat_RGBA16_SFLOAT : NriFormat_RGBA32_SFLOAT, 
+			.format = ( vbo->halfFloatAttribs & VATTRIB_SVECTOR_BIT ) ? NriFormat_RGBA16_SFLOAT : NriFormat_RGBA32_SFLOAT, 
 			.vk = { VATTRIB_SVECTOR }, 
 			.d3d = {.semanticName = "TANGENT", .semanticIndex = VATTRIB_SVECTOR   },
 			.streamIndex = 0 };
@@ -486,12 +486,7 @@ void R_FillNriVertexAttrib(mesh_vbo_t* vbo, NriVertexAttributeDesc* desc, size_t
 					.d3d = {.semanticName = "TEXCOORD4", .semanticIndex = lmattr  },
 					.streamIndex = 0 
 				};
-				
-
-				
-				//qglVertexAttribPointerARB( lmattr, vbo->lmstSize[i], 
-				//	FLOAT_VATTRIB_GL_TYPE( VATTRIB_LMCOORDS0_BIT, hfa ), 
-				//	GL_FALSE, vbo->vertexSize, ( const GLvoid * )vbo->lmstOffset[i] );
+			
 			}
 
 			lmattr++;
@@ -519,12 +514,6 @@ void R_FillNriVertexAttrib(mesh_vbo_t* vbo, NriVertexAttributeDesc* desc, size_t
 
 	}
 
-	const vattribbit_t lightMapAttrs[] = {
-		VATTRIB_LMCOORDS0_BIT,	
-	};
-
-	if( vbo->lmstOffset[0] && ( vbo->vertexAttribs & VATTRIB_LMCOORDS0_BIT ) ) {
-	}
 
 }
 
