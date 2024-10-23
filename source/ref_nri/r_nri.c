@@ -109,8 +109,8 @@ bool R_InitNriBackend(const nri_init_desc_t* init, struct nri_backend_s* backend
 
 			NriDeviceCreationDesc deviceCreationDesc = {};
 			deviceCreationDesc.graphicsAPI = NriGraphicsAPI_VK;
-			deviceCreationDesc.enableGraphicsAPIValidation = false;
-			deviceCreationDesc.enableNRIValidation = false;
+			deviceCreationDesc.enableGraphicsAPIValidation = true;
+			deviceCreationDesc.enableNRIValidation = true;
 			deviceCreationDesc.spirvBindingOffsets = offset;
 			deviceCreationDesc.adapterDesc = &bestAdapterDesc;
 			NRI_ABORT_ON_FAILURE( nriCreateDevice( &deviceCreationDesc, &backend->device ) );

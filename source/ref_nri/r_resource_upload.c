@@ -273,6 +273,25 @@ void R_ResourceEndCopyTexture( texture_upload_desc_t *desc )
 		};
 		arrpush(transitionTextures, postTransition );
 		arrpush(commandSets[activeSet].seenTextures, desc->target);
+	} else {
+		NriTextureBarrierDesc transitionBarriers = { 0 };
+		transitionBarriers.before = (NriAccessLayoutStage){	
+			.layout = NriLayout_COPY_DESTINATION, 
+			.access = NriAccessBits_COPY_DESTINATION, 
+			.stages = NriStageBits_COPY 
+		};
+;
+		transitionBarriers.texture = desc->target;
+		transitionBarriers.after = (NriAccessLayoutStage){	
+			.layout = NriLayout_COPY_DESTINATION, 
+			.access = NriAccessBits_COPY_DESTINATION, 
+			.stages = NriStageBits_COPY 
+		};
+
+		NriBarrierGroupDesc barrierGroupDesc = { 0 };
+		barrierGroupDesc.textureNum = 1;
+		barrierGroupDesc.textures = &transitionBarriers;
+		rsh.nri.coreI.CmdBarrier( commandSets[activeSet].cmd, &barrierGroupDesc );
 	}
 	NriTextureRegionDesc destRegionDesc = {
 		.layerOffset = desc->arrayOffset, 

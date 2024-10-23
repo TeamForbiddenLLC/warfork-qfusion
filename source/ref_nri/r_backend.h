@@ -91,6 +91,16 @@ void RB_DrawElements(struct frame_cmd_buffer_s *cmd, int firstVert, int numVerts
 void RB_DrawElementsInstanced( int firstVert, int numVerts, int firstElem, int numElems,
 	int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems,
 	int numInstances, instancePoint_t *instances );
+void RB_DrawShadedElements_2( struct frame_cmd_buffer_s *cmd,
+							  int firstVert,
+							  int numVerts,
+							  int firstElem,
+							  int numElems,
+							  int firstShadowVert,
+							  int numShadowVerts,
+							  int firstShadowElem,
+							  int numShadowElems );
+
 
 void RB_FlushTextureCache( void );
 
