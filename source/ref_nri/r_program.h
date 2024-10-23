@@ -34,7 +34,8 @@ typedef uint64_t r_glslfeat_t;
 #define GLSL_BIT(x)							(1ULL << (x))
 #define GLSL_BITS_VERSION					16
 
-#define PIPELINE_LAYOUT_HASH_SIZE 256
+#define PIPELINE_LAYOUT_HASH_SIZE 4096
+#define PIPELINE_REFLECTION_HASH_SIZE 256
 #define VERTEX_POS_BINDING_SLOT (0)
 
 #define DEFAULT_GLSL_MATERIAL_PROGRAM			"defaultMaterial"
@@ -217,6 +218,7 @@ struct glsl_program_s {
 	char *deformsKey;
 	struct glsl_program_s *hash_next;
 
+	uint32_t vertexInputMask;
 	// might not need to store the bin data
 	// will have to see if I need to re-declare the pipeline
 	//uint16_t shaderStageSize;
@@ -239,14 +241,14 @@ struct glsl_program_s {
 	} descriptorSetInfo[DESCRIPTOR_SET_MAX];
 
 	struct descriptor_reflection_s {
+		hash_t hash;
 		uint32_t isArray: 1;
 		uint32_t dimCount: 8;
 		uint32_t slotType: 8; // enum glsl_slot_type 
 		uint32_t setIndex: 4;
-		hash_t hash;
-		uint16_t baseRegisterIndex;
-		uint16_t rangeOffset;
-	} descriptorReflection[PIPELINE_LAYOUT_HASH_SIZE];
+		uint32_t baseRegisterIndex : 16;
+		uint32_t rangeOffset : 16;
+	} descriptorReflection[PIPELINE_REFLECTION_HASH_SIZE];
 
 };
 

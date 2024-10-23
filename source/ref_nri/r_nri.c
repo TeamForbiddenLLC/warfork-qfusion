@@ -5,6 +5,7 @@
 #include "r_local.h"
 
 #include "stb_ds.h"
+#include <stdbool.h>
 
 #define VK_USE_PLATFORM_XLIB_KHR 1
 #define VK_NO_PROTOTYPES 1
@@ -108,8 +109,8 @@ bool R_InitNriBackend(const nri_init_desc_t* init, struct nri_backend_s* backend
 
 			NriDeviceCreationDesc deviceCreationDesc = {};
 			deviceCreationDesc.graphicsAPI = NriGraphicsAPI_VK;
-			deviceCreationDesc.enableGraphicsAPIValidation = true;
-			deviceCreationDesc.enableNRIValidation = true;
+			deviceCreationDesc.enableGraphicsAPIValidation = false;
+			deviceCreationDesc.enableNRIValidation = false;
 			deviceCreationDesc.spirvBindingOffsets = offset;
 			deviceCreationDesc.adapterDesc = &bestAdapterDesc;
 			NRI_ABORT_ON_FAILURE( nriCreateDevice( &deviceCreationDesc, &backend->device ) );

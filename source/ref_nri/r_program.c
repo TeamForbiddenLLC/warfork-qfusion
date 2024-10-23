@@ -1705,15 +1705,20 @@ static inline struct pipeline_hash_s* __resolvePipeline(struct glsl_program_s *p
 
 struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, struct frame_cmd_state_s *def )
 {
+	size_t numAttribs = 0;
+	NriVertexAttributeDesc vertexInputAttribs[MAX_ATTRIBUTES];
+
 	hash_t hash = HASH_INITIAL_VALUE;
-	//hash = hash_data( hash, &def->inputAssembly, sizeof( NriInputAssemblyDesc ) );
-	//hash = hash_data( hash, &def->rasterization, sizeof( NriRasterizationDesc ) );
 	assert(def->numStreams < MAX_ATTRIBUTES);
 	assert(def->numStreams < MAX_STREAMS);
 	for( size_t i = 0; i < def->numStreams; i++ ) {
 		hash = hash_data( hash, &def->streams[i], sizeof( NriVertexStreamDesc ) );
 	}
 	for( size_t i = 0; i < def->numAttribs; i++ ) {	
+		if(!((1 << def->attribs[i].vk.location ) & program->vertexInputMask)) {
+			continue;
+		}
+		vertexInputAttribs[numAttribs++] = def->attribs[i];
 		hash = hash_data( hash, &def->attribs[i], sizeof( NriVertexAttributeDesc ));
 	}
 	hash = hash_data( hash, &def->pipelineLayout.depthBias, sizeof( NriDepthBiasDesc ));
@@ -1722,7 +1727,6 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 		hash = hash_u32( hash, def->pipelineLayout.colorFormats[i] );
 	}
 	if(def->pipelineLayout.blendEnabled) {
-	// hash = hash_u32( hash, def->pipelineLayout.blendEnabled );
 		hash = hash_u32( hash, def->pipelineLayout.colorSrcFactor );
 		hash = hash_u32( hash, def->pipelineLayout.colorDstFactor );
 	}
@@ -1731,6 +1735,7 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	hash = hash_u32( hash, def->pipelineLayout.depthWrite);
 
 	struct pipeline_hash_s* pipeline = __resolvePipeline(program, hash);
+	assert(pipeline);
 	if(pipeline->pipeline) {
 		return pipeline; // pipeline is present in slot
 	}
@@ -1763,8 +1768,8 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	assert( rsh.nri.api == NriGraphicsAPI_VK );
 
 	NriVertexInputDesc vertexInputDesc = {
-		.attributes = def->attribs, 
-		.attributeNum = def->numAttribs,
+		.attributes = vertexInputAttribs, 
+		.attributeNum = numAttribs,
 		.streams = def->streams,
 		.streamNum = def->numStreams 
 	};
@@ -1812,21 +1817,21 @@ static NriDescriptorRangeDesc *__FindAndInsertNriDescriptorRange( const SpvRefle
 
 static bool __InsertReflectionDescriptorSet( struct glsl_program_s *program, const struct descriptor_reflection_s* reflection)
 {
-	const size_t startIndex = reflection->hash % PIPELINE_LAYOUT_HASH_SIZE;
+	const size_t startIndex = reflection->hash % PIPELINE_REFLECTION_HASH_SIZE;
 	size_t index = startIndex;
 	do {
 		if( program->descriptorReflection[index].hash == reflection->hash || program->pipelines[index].hash == 0 ) {
 			memcpy(&program->descriptorReflection[index], reflection, sizeof(struct descriptor_reflection_s));
 			return true;
 		}
-		index = ( index + 1 ) % PIPELINE_LAYOUT_HASH_SIZE;
+		index = ( index + 1 ) % PIPELINE_REFLECTION_HASH_SIZE;
 	} while( index != startIndex );
 	// we've run out of slots
 	return false;
 }
 
 static const struct descriptor_reflection_s* __ReflectDescriptorSet(const struct glsl_program_s *program,const struct glsl_descriptor_handle_s* handle) {
-	const size_t startIndex = handle->hash % PIPELINE_LAYOUT_HASH_SIZE;
+	const size_t startIndex = handle->hash % PIPELINE_REFLECTION_HASH_SIZE;
 	size_t index = startIndex;
 	do {
 		if( program->descriptorReflection[index].hash == handle->hash ) {
@@ -1834,14 +1839,14 @@ static const struct descriptor_reflection_s* __ReflectDescriptorSet(const struct
 		} else if( program->descriptorReflection[index].hash == 0 ) {
 			return NULL;
 		}
-		index = (index + 1) % PIPELINE_LAYOUT_HASH_SIZE;
+		index = (index + 1) % PIPELINE_REFLECTION_HASH_SIZE;
 	} while(index != startIndex);
 	return NULL;
 
 }
 
 bool RP_ProgramHasUniform(const struct glsl_program_s *program,const struct glsl_descriptor_handle_s handle) {
-	const size_t startIndex = handle.hash % PIPELINE_LAYOUT_HASH_SIZE;
+	const size_t startIndex = handle.hash % PIPELINE_REFLECTION_HASH_SIZE;
 	size_t index = startIndex;
 	do {
 		if( program->descriptorReflection[index].hash == handle.hash ) {
@@ -1849,7 +1854,7 @@ bool RP_ProgramHasUniform(const struct glsl_program_s *program,const struct glsl
 		} else if( program->descriptorReflection[index].hash == 0 ) {
 			return false;
 		}
-		index = (index + 1) % PIPELINE_LAYOUT_HASH_SIZE;
+		index = (index + 1) % PIPELINE_REFLECTION_HASH_SIZE;
 	} while(index != startIndex);
 	return false;
 }
@@ -2190,6 +2195,15 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 			}
 		}
 
+		{
+			if(stages[stageIdx].stage == GLSLANG_STAGE_VERTEX) {
+				program->vertexInputMask= 0;
+				for(size_t i = 0; i < module.input_variable_count; i++) {
+					program->vertexInputMask |= (1 << module.input_variables[i]->location);
+				}
+			}
+		}
+
 		// configure descriptor sets for pipeline layout
 		{
 			uint32_t descCount = 0;
@@ -2202,7 +2216,6 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 
 			for( size_t i_set = 0; i_set < descCount; i_set++ ) {
 				const SpvReflectDescriptorSet *reflection = reflectionDescSets[i_set];
-			
 				struct ProgramDescriptorInfo* info = __GetDescriptorInfo(program, reflection->set);
 				if(!info) {
 					info = &program->descriptorSetInfo[program->numSets];

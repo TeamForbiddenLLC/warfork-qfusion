@@ -136,23 +136,37 @@ void QF_TransformVerts(inout vec4 Position, inout vec3 Normal, inout vec3 Tangen
 	#endif
 	{
 		#if defined(DEFORMV_WAVE)
-			vec4 arg = DEFORMV_CONSTANT;
-			Position.xyz += DEFORMV_FUNC(frame.shaderTime,arg.x,arg.y,arg.z+(arg.w > 0 ? arg.x : 0.0)*(Position.x+Position.y+Position.z),arg.w) * Normal.xyz;
-		#elif defined(DEFORMV_MOVE)
-			vec4 arg = DEFORMV_CONSTANT;
-			Position.xyz += DEFORMV_FUNC(frame.shaderTime,arg.x,arg.y,arg.z,arg.w) * vec3(arg.x, arg.y, arg.z);
-		#elif defined(DEFORMV_BULGE)
-			vec4 arg = DEFORMV_CONSTANT;
+		{
+			vec4 arg = DEFORMV_WAVE_CONSTANT;
+			Position.xyz += DEFORMV_WAVE_FUNC(frame.shaderTime,arg.x,arg.y,arg.z+(arg.w > 0 ? arg.x : 0.0)*(Position.x+Position.y+Position.z),arg.w) * Normal.xyz;
+		}
+		#endif
+		#if defined(DEFORMV_MOVE)
+		{
+			vec4 arg = DEFORMV_MOVE_CONSTANT;
+			Position.xyz += DEFORMV_MOVE_FUNC(frame.shaderTime,arg.x,arg.y,arg.z,arg.w) * vec3(arg.x, arg.y, arg.z);
+		}
+		#endif
+		#if defined(DEFORMV_BULGE)
+		{
+			vec4 arg = DEFORMV_BULGE_CONSTANT;
 			const float t = sin(TexCoord.s * arg.x + frame.shaderTime * arg.z);
 			Position.xyz += max (-1.0 + arg.w, t) * arg.y * Normal.xyz;
-		#elif defined(DEFORMV_AUTOSPRITE)
+		}
+		#endif
+		
+		#if defined(DEFORMV_AUTOSPRITE)
+		{
 		 	 vec3 right = (1.0 + step(0.5, TexCoord.s) * -2.0) * frame.viewAxis[1] * frame.mirrorSide;
 		 	 vec3 up = (1.0 + step(0.5, TexCoord.t) * -2.0) * frame.viewAxis[2];
 		 	 vec3 forward = -1.0 * frame.viewAxis[0];
 		 	 Position.xyz = a_SpritePoint.xyz + (right + up) * a_SpritePoint.w;
 		 	 Normal.xyz = forward;
 		 	 TexCoord.st = vec2(step(0.5, TexCoord.s),step(0.5, TexCoord.t));
-		#elif defined(DEFORMV_AUTOPARTICLE)
+		}
+		#endif
+		#if defined(DEFORMV_AUTOPARTICLE)
+		{
 		 	 vec3 right = (1.0 + TexCoord.s * -2.0) * frame.viewAxis[1] * frame.mirrorSide;
 		 	 vec3 up = (1.0 + TexCoord.t * -2.0) * frame.viewAxis[2];
 		 	 vec3 forward = -1.0 * frame.viewAxis[0];
@@ -161,7 +175,10 @@ void QF_TransformVerts(inout vec4 Position, inout vec3 Normal, inout vec3 Tangen
 		 	 t = 1.5 + step(20.0, t) * t * 0.006;
 		 	 Position.xyz = a_SpritePoint.xyz + (right + up) * t * a_SpritePoint.w;
 		 	 Normal.xyz = forward;
-		#elif defined(DEFORMV_AUTOSPRITE2)
+		}
+		#endif
+		#if defined(DEFORMV_AUTOSPRITE2)
+		{
 		 	 vec3 right = QF_LatLong2Norm(a_SpriteRightUpAxis.xy) * frame.mirrorSide;
 		 	 vec3 up = QF_LatLong2Norm(a_SpriteRightUpAxis.zw);
 		 	 // mid of quad to camera vector
@@ -175,6 +192,7 @@ void QF_TransformVerts(inout vec4 Position, inout vec3 Normal, inout vec3 Tangen
 		 	 float t = dot(right, Position.xyz - a_SpritePoint.xyz);
 		 	 Position.xyz += t * (newright - right);
 		 	 Normal.xyz = forward;
+		}
 		#endif
 	}
 	#ifdef APPLY_INSTANCED_TRANSFORMS
@@ -186,5 +204,4 @@ void QF_TransformVerts(inout vec4 Position, inout vec3 Normal, inout vec3 Tangen
 	}
 	#endif
 }
-
 #endif
