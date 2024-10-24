@@ -383,14 +383,12 @@ void R_RenderScene(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 	
 	FR_CmdResetAttachmentToBackbuffer(frame);
 	FR_CmdSetViewportAll(frame, (NriViewport) {
-		.x =  0,
-		.y =   0,
+		.x = fd->x,
+		.y = fd->y,
 		.width = fd->width,
 		.height = fd->height,
-		.x = fd->x,
-		.y = -fd->y,
-		.depthRangeMin = 0.0f,
-		.depthRangeMax = 1.0f
+		.depthMin = 0.0f,
+		.depthMax = 1.0f
 	} );
 	FR_CmdSetScissorAll(frame, (NriRect) {
 		.x = fd->scissor_x,

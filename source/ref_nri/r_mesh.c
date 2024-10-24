@@ -473,9 +473,9 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 					batchFlushed = true;
 					depthHack = true;
 					assert(frame->state.numColorAttachments == 1);
-					depthmin = frame->state.viewports[0].depthRangeMin;
-					depthmax = frame->state.viewports[0].depthRangeMax;
-					frame->state.viewports[0].depthRangeMax = frame->state.viewports[0].depthRangeMin + 0.3f * (frame->state.viewports[0].depthRangeMax - frame->state.viewports[0].depthRangeMin);
+					depthmin = frame->state.viewports[0].depthMin;
+					depthmax = frame->state.viewports[0].depthMax;
+					frame->state.viewports[0].depthMax = frame->state.viewports[0].depthMin + 0.3f * (frame->state.viewports[0].depthMax - frame->state.viewports[0].depthMin );
 					frame->state.dirty |= CMD_DIRT_VIEWPORT;
 				}
 			} else {
@@ -485,8 +485,8 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 					depthHack = false;
 					assert(frame->state.numColorAttachments == 1);
 
-					frame->state.viewports[0].depthRangeMax = depthmax;
-					frame->state.viewports[0].depthRangeMin = depthmin;
+					frame->state.viewports[0].depthMax = depthmax;
+					frame->state.viewports[0].depthMin = depthmin;
 					frame->state.dirty |= CMD_DIRT_VIEWPORT;
 				}
 			}
@@ -587,8 +587,8 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 	if( depthHack ) {
 		// RB_DepthRange( depthmin, depthmax );
 		assert(frame->state.numColorAttachments == 1);
-		frame->state.viewports[0].depthRangeMax = depthmax;
-		frame->state.viewports[0].depthRangeMin = depthmin;
+		frame->state.viewports[0].depthMax = depthmax;
+		frame->state.viewports[0].depthMin = depthmin;
 		frame->state.dirty |= CMD_DIRT_VIEWPORT;
 	}
 	if( cullHack ) {
