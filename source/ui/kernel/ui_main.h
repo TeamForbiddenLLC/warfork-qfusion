@@ -68,6 +68,7 @@ public:
 
 	void forceMenuOff( void );
 	void addToServerList( const char *adr, const char *info );
+	void ajaxResponse( const char *resource, const char *data );
 
 	void mouseMove( int contextId, int x, int y, bool absolute, bool showCursor );
 	void textInput( int contextId, wchar_t c );

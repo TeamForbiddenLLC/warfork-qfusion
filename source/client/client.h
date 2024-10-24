@@ -225,6 +225,7 @@ typedef struct
 	socket_t socket_loopback;
 	socket_t socket_udp;
 	socket_t socket_udp6;
+	socket_t socket_sdr;
 #ifdef TCP_SUPPORT
 	socket_t socket_tcp;
 #endif
@@ -243,6 +244,7 @@ typedef struct
 	socket_type_t servertype;       // socket type used to connect to the server
 	netadr_t serveraddress;         // address of that server
 	int connect_time;               // for connection retransmits
+	int full_connect_time;          // the time that the user actually clicked "connect"
 	int connect_count;
 
 	socket_t *socket;               // socket used by current connection
@@ -357,6 +359,8 @@ extern cvar_t *cl_downloads_from_web;
 extern cvar_t *cl_downloads_from_web_timeout;
 extern cvar_t *cl_download_allow_modules;
 
+extern cvar_t *cl_enablevoice;
+
 // delta from this if not from a previous frame
 extern entity_state_t cl_baselines[MAX_EDICTS];
 
@@ -420,8 +424,6 @@ void CL_Precache_f( void );
 void CL_ForwardToServer_f( void );
 void CL_ServerDisconnect_f( void );
 
-void CL_ParseSteamConnectString(const char* cmdline);
-
 size_t CL_GetBaseServerURL( char *buffer, size_t buffer_size );
 
 int CL_AddSessionHttpRequestHeaders( const char *url, const char **headers );
@@ -449,8 +451,8 @@ void CL_GameModule_AddViewAngles( vec3_t viewangles, float frametime, bool flipp
 void CL_GameModule_AddMovement( vec3_t movement );
 void CL_GameModule_TouchEvent( int id, touchevent_t type, int x, int y, unsigned int time );
 bool CL_GameModule_IsTouchDown( int id );
-void CL_GameModule_CallbackRequestAvatar( uint64_t steamid, uint8_t* avatar );
 bool CL_GameModule_GetBlocklistItem( size_t index, uint64_t* steamid_out, char* name, size_t* name_len_in_out );
+void CL_GameModule_PlayVoice( void *buffer, size_t size, int clientnum );
 
 //
 // cl_sound.c
@@ -507,6 +509,7 @@ void CL_UIModule_ForceMenuOff( void );
 void CL_UIModule_ShowQuickMenu( bool show );
 bool CL_UIModule_HaveQuickMenu( void );
 void CL_UIModule_AddToServerList( const char *adr, const char *info );
+void CL_UIModule_AjaxResponse( const char *resource, const char *data );
 void CL_UIModule_MouseMove( int dx, int dy );
 void CL_UIModule_MouseSet( int mx, int my, bool showCursor );
 
@@ -683,12 +686,4 @@ void CL_Sys_Shutdown( void );
 // cl_steam.c
 //
 
-uint64_t Steam_GetSteamID( void );
-void Steam_AdvertiseGame( const uint8_t *ip, unsigned short port );
-void Steam_GetPersonaName( char *name, size_t namesize );
-const SteamAuthTicket_t* Steam_GetAuthSessionTicketBlocking();
-void Steam_SetRichPresence( int num, const char **key, const char **val );
-void Steam_RequestAvatar(uint64_t steamid, int size);
-void CL_Steam_RunFrame( void );
-void Steam_OpenProfile( uint64_t steamid );
-
+void Steam_AdvertiseGame( netadr_t *addr, uint32_t* syncToken);

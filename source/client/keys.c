@@ -709,7 +709,7 @@ void Key_Event( int key, bool down, unsigned time )
 		{
 			if( cls.key_dest == key_game || cls.key_dest == key_menu )
 			{
-				if( cls.state != CA_DISCONNECTED && Sys_Milliseconds() - cls.connect_time > 3000)
+				if( cls.state != CA_DISCONNECTED && cls.full_connect_time != 0 && Sys_Milliseconds() - cls.full_connect_time > 2000)
 					Cbuf_AddText( "disconnect\n" );
 				else if( cls.key_dest == key_menu )
 					CL_UIModule_Keydown( key );

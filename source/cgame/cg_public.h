@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define __CG_PUBLIC_H__
 
 #include "../ref_base/ref_mod.h"
+#include "../steamshim/src/mod_steam.h"
 
 struct orientation_s;
 struct bonepose_s;
@@ -241,8 +242,7 @@ typedef struct
 		int *selected, int *firstKey );
 	unsigned int ( *IN_SupportedDevices )( void );
 
-	// steam.h
-	void ( *Steam_RequestAvatar )(uint64_t steamid, int size);
+	struct steam_import_s steam_import;
 } cgame_import_t;
 
 //
@@ -336,9 +336,6 @@ typedef struct
 	bool ( *IsTouchDown )( int id );
 
 
-	void ( *CallbackRequestAvatar )( uint64_t steamid, uint8_t *avatar );
-
-
 	/**
 	 * Retrieves the blocklist item at the given index.
 	 *
@@ -349,6 +346,9 @@ typedef struct
 	 * @return whether the index is valid
 	 */
 	bool ( *GetBlocklistItem )( size_t index, uint64_t* steamid_out, char* name, size_t* name_len_in_out );
+
+
+	void ( *PlayVoice )( void *buffer, size_t size, int clientnum );
 } cgame_export_t;
 
 #endif
