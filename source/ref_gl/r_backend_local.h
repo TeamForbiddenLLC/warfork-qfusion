@@ -100,7 +100,11 @@ typedef struct r_backend_s
 
 		bool			flushTextures;
 		int				currentTMU;
-		unsigned		currentTextures[MAX_TEXTURE_UNITS];				
+		unsigned		currentTextures[MAX_TEXTURE_UNITS];
+
+		int stencilFunc, stencilRef, stencilFuncMask;
+		int stencilSFail, stencilDPFail, stencilDPPass;
+		int stencilMask;
 	} gl;
 
 	unsigned int time;

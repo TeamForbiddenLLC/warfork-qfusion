@@ -48,6 +48,10 @@ void RB_LoadCameraMatrix( const mat4_t m );
 void RB_LoadObjectMatrix( const mat4_t m );
 void RB_LoadProjectionMatrix( const mat4_t m );
 
+void RB_SetStencilFunc( int func, int ref, int mask );
+void RB_SetStencilOp( int sfail, int dpfail, int dppass );
+void RB_SetStencilMask( int mask );
+
 void RB_DepthRange( float depthmin, float depthmax );
 void RB_GetDepthRange( float* depthmin, float *depthmax );
 void RB_DepthOffset( bool enable );

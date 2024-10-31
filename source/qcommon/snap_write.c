@@ -909,6 +909,7 @@ static bool SNAP_SnapCullEntity( cmodel_state_t *cms, edict_t *ent, edict_t *cle
 	if( frame->allentities )
 		return false;
 
+
 	// filters: transmit only to clients in the same team as this entity
 	// broadcasting is less important than team specifics
 	if( ( ent->r.svflags & SVF_ONLYTEAM ) && ( clent && ent->s.team != clent->s.team ) )

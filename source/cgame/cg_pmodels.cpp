@@ -32,6 +32,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 pmodel_t cg_entPModels[MAX_EDICTS];
 pmodelinfo_t *cg_PModelInfos;
+static cvar_t *cg_showTeamMates;
 
 //======================================================================
 //						PlayerModel Registering
@@ -42,6 +43,7 @@ pmodelinfo_t *cg_PModelInfos;
 */
 void CG_PModelsInit( void )
 {
+	cg_showTeamMates = trap_Cvar_Get( "cg_showTeamMates", "1", CVAR_ARCHIVE );
 	memset( cg_entPModels, 0, sizeof( cg_entPModels ) );
 }
 
@@ -1303,9 +1305,20 @@ void CG_AddPModel( centity_t *cent )
 	if( !( cent->effects & EF_RACEGHOST ) )
 	{
 		CG_AddCentityOutLineEffect( cent );
+
+		if( cent->current.team == cg.predictedPlayerState.stats[STAT_TEAM] && cg_showTeamMates->integer) {
+			vec4_t color;
+			CG_TeamColor( cg.predictedPlayerState.stats[STAT_TEAM], color );
+			cent->ent.outlineColorGhost[0] = color[0] * 255.0f;
+			cent->ent.outlineColorGhost[1] = color[1] * 255.0f;
+			cent->ent.outlineColorGhost[2] = color[2] * 255.0f;
+			cent->ent.outlineColorGhost[3] = 255;
+			cent->ent.outlineGhost = 1.5f;
+		}
+
 		CG_AddEntityToScene( &cent->ent );
 	}
-
+	
 	if( !cent->ent.model )
 		return;
 

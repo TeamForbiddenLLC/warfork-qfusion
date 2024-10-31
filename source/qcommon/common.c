@@ -230,7 +230,6 @@ void Com_Printf( const char *format, ... )
 	Q_vsnprintfz( msg, sizeof( msg ), format, argptr );
 	va_end( argptr );
 
-
 	QMutex_Lock( com_print_mutex );
 
 	if( rd_target )
