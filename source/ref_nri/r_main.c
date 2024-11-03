@@ -1108,7 +1108,7 @@ static void R_SetupGL(struct frame_cmd_buffer_s* frame)
 	if( rn.renderFlags & RF_FLIPFRONTFACE )
 		RB_FlipFrontFace(frame);
 
-	if( ( rn.renderFlags & RF_SHADOWMAPVIEW ) && glConfig.ext.shadow )
+	if( ( rn.renderFlags & RF_SHADOWMAPVIEW ))
 		RB_SetShaderStateMask( ~0, GLSTATE_NO_COLORWRITE );
 }
 
@@ -1117,7 +1117,7 @@ static void R_SetupGL(struct frame_cmd_buffer_s* frame)
 */
 static void R_EndGL( struct frame_cmd_buffer_s* frame )
 {
-	if( ( rn.renderFlags & RF_SHADOWMAPVIEW ) && glConfig.ext.shadow )
+	if( ( rn.renderFlags & RF_SHADOWMAPVIEW ) )
 		RB_SetShaderStateMask( ~0, 0 );
 
 	if( rn.renderFlags & RF_FLIPFRONTFACE )
@@ -1225,7 +1225,7 @@ static void R_BindRefInstFBO( void )
 void R_RenderView(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 {
 	int msec = 0;
-	bool shadowMap = rn.renderFlags & RF_SHADOWMAPVIEW ? true : false;
+	const bool shadowMap = rn.renderFlags & RF_SHADOWMAPVIEW ? true : false;
 
 	rn.refdef = *fd;
 	rn.numVisSurfaces = 0;
@@ -1312,7 +1312,7 @@ void R_RenderView(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 		R_SetupViewMatrices();
 
 		// render to depth textures, mark shadowed entities and surfaces
-		R_DrawShadowmaps();
+		R_DrawShadowmaps(frame);
 	}
 
 	R_SortDrawList( rn.meshlist );

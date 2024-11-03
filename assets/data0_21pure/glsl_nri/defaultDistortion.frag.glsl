@@ -56,16 +56,16 @@ void main(void)
 	refr = vec3(texture(sampler2D(u_RefractionTexture,u_RefractionSampler), projCoord)) * refrdot;
 #endif
 #ifdef APPLY_REFLECTION
-	refl = (vec3(texture(u_ReflectionTexture, projCoord))) * refldot;
+	refl = (vec3(texture(sampler2D(u_ReflectionTexture,u_ReflectionSampler), projCoord))) * refldot;
 #endif
 
 #else
 
 #ifdef APPLY_REFRACTION
-	refr = (vec3(texture(u_RefractionTexture, projCoord)));
+	refr = (vec3(texture(sampler2D(u_RefractionTexture,u_RefractionSampler), projCoord)));
 #endif
 #ifdef APPLY_REFLECTION
-	refl = (vec3(texture(u_ReflectionTexture, projCoord)));
+	refl = (vec3(texture(sampler2D(u_ReflectionTexture,u_ReflectionSampler), projCoord)));
 #endif
 
 #endif // APPLY_EYEDOT

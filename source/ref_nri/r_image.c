@@ -107,7 +107,7 @@ NriDescriptor *R_ResolveSamplerDescriptor( int flags )
 		samplerDesc.addressModes.w = NriAddressMode_CLAMP_TO_EDGE;
 	}
 
-	if( ( flags & IT_DEPTH ) && ( flags & IT_DEPTHCOMPARE ) && glConfig.ext.shadow ) {
+	if( ( flags & IT_DEPTH ) && ( flags & IT_DEPTHCOMPARE ) ) {
 		samplerDesc.compareFunc = NriCompareFunc_LESS_EQUAL;
 	}
 
@@ -2762,136 +2762,6 @@ static void R_InitCoronaTexture( int *w, int *h, int *flags, int *samples )
 	}
 }
 
-/*
-* R_GetViewportTextureSize
-*/
-static void R_GetViewportTextureSize( const int viewportWidth, const int viewportHeight, 
-	const int size, const int flags, int *width, int *height )
-{
-	int limit;
-	int width_, height_;
-	bool npot;
-
-	// limit the texture size to either screen resolution in case we can't use FBO
-	// or hardware limits and ensure it's a POW2-texture if we don't support such textures
-	const NriDeviceDesc* desc = rsh.nri.coreI.GetDeviceDesc( rsh.nri.device );
-	limit = desc->attachmentMaxDim;
-	if( size )
-		limit = min( limit, size );
-	if( limit < 1 )
-		limit = 1;
-	width_ = height_ = limit;
-
-	npot = glConfig.ext.texture_non_power_of_two;
-#ifdef GL_ES_VERSION_2_0
-	npot = npot || ( ( flags & ( IT_CLAMP|IT_NOMIPMAP ) ) == ( IT_CLAMP|IT_NOMIPMAP ) );
-#endif
-	if( npot )
-	{
-		width_ = min( viewportWidth, limit );
-		height_ = min( viewportHeight, limit );
-	}
-	else
-	{
-		int d;
-
-		// calculate the upper bound and make sure it's not a pow of 2
-		d = min( limit, viewportWidth );
-		if( ( d & (d-1) ) == 0 ) d--;
-		for( width_ = 2; width_ <= d; width_ <<= 1 );
-
-		d = min( limit, viewportHeight );
-		if( ( d & (d-1) ) == 0 ) d--;
-		for( height_ = 2; height_ <= d; height_ <<= 1 );
-
-		if( size ) {
-			while( width_ > size || height_ > size ) {
-				width_ >>= 1;
-				height_ >>= 1;
-			}
-		}
-	}
-
-	*width = width_;
-	*height = height_;
-}
-
-/*
-* R_InitViewportTexture
-*/
-void R_InitViewportTexture( image_t **texture, const char *name, int id, 
-	int viewportWidth, int viewportHeight, int size, int flags, int tags, int samples )
-{
-	assert(false);
- // image_t *t;
-
- // R_GetViewportTextureSize( viewportWidth, viewportHeight, size, flags, &width, &height );
-
- // // create a new texture or update the old one
- // if( !( *texture ) || ( *texture )->width != width || ( *texture )->height != height )
- // {
- // 	uint8_t *data = NULL;
-
- // 	if( !*texture ) {
- // 		char uploadName[128];
-
- // 		Q_snprintfz( uploadName, sizeof( uploadName ), "***%s_%i***", name, id );
- // 		t = *texture = R_LoadImage( uploadName, &data, width, height, flags, 1, tags, samples );
- // 	}
- // 	else { 
- // 		t = *texture;
- // 		t->width = width;
- // 		t->height = height;
-
- // 		R_BindImage( t );
-
- // 		R_Upload32( QGL_CONTEXT_MAIN, &data, 0, 0, 0, width, height, flags, 1,
- // 			&t->width, &t->height, t->samples, false, false );
- // 	}
-
- // 	// update FBO, if attached
- // 	if( t->fbo ) {
- // 		RFB_UnregisterObject( t->fbo );
- // 		t->fbo = 0;
- // 	}
- // 	if( t->flags & IT_FRAMEBUFFER ) {
- // 		t->fbo = RFB_RegisterObject( t->width, t->height, ( tags & IMAGE_TAG_BUILTIN ) != 0,
- // 			( flags & IT_DEPTHRB ) != 0, ( flags & IT_STENCIL ) != 0 );
- // 		RFB_AttachTextureToObject( t->fbo, t );
- // 	}
- // }
-}
-
-/*
-* R_GetShadowmapTexture
-*/
-image_t *R_GetShadowmapTexture( int id, int viewportWidth, int viewportHeight, int flags )
-{
-	int samples;
-
-	if( id < 0 || id >= MAX_SHADOWGROUPS ) {
-		return NULL;
-	}
-
-	if( glConfig.ext.shadow ) {
-		// render to depthbuffer, GL_ARB_shadow path
-		flags |= IT_DEPTH;
-		samples = 1;
-	} else {
-		flags |= IT_NOFILTERING;
-		samples = 3;
-	}
-
-	R_InitViewportTexture( &rsh.shadowmapTextures[id], "r_shadowmap", id, 
-		viewportWidth, viewportHeight, r_shadows_maxtexsize->integer, 
-		IT_SPECIAL|IT_FRAMEBUFFER|IT_DEPTHCOMPARE|flags, IMAGE_TAG_GENERIC, samples );
-
-	return rsh.shadowmapTextures[id];
-}
-
-/*
-* R_ReleaseBuiltinImages
-*/
 static void R_ReleaseBuiltinImages( void )
 {
 	rsh.rawTexture = NULL;
@@ -3009,8 +2879,6 @@ void R_FreeUnusedImagesByTags( int tags )
 void R_FreeUnusedImages( void )
 {
 	R_FreeUnusedImagesByTags( ~IMAGE_TAG_BUILTIN );
-
-	memset( rsh.shadowmapTextures, 0, sizeof( image_t * ) * MAX_SHADOWGROUPS );
 }
 
 /*
@@ -3050,7 +2918,6 @@ void R_ShutdownImages( void )
 	r_screenShotBuffer = NULL;
 	r_screenShotBufferSize = 0;
 
-	memset( rsh.shadowmapTextures, 0, sizeof( rsh.shadowmapTextures ) );
 
 }
 

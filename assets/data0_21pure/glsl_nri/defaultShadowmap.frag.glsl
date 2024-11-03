@@ -11,11 +11,8 @@ layout(location = 10) in vec3 v_Normal;
 
 layout(location = 0) out vec4 outFragColor;
 
-layout(set = DESCRIPTOR_PASS_SET, binding = 1) uniform sampler shadowmapSampler;
-layout(set = DESCRIPTOR_PASS_SET, binding = 2) uniform texture2D shadowmapTexture0;
-layout(set = DESCRIPTOR_PASS_SET, binding = 3) uniform texture2D shadowmapTexture1;
-layout(set = DESCRIPTOR_PASS_SET, binding = 4) uniform texture2D shadowmapTexture2;
-layout(set = DESCRIPTOR_PASS_SET, binding = 5) uniform texture2D shadowmapTexture3;
+layout(set = DESCRIPTOR_PASS_SET, binding = 2) uniform sampler shadowmapSampler;
+layout(set = DESCRIPTOR_PASS_SET, binding = 3) uniform texture2D shadowmapTexture[4];
 
 #include "include/qf_vert_utils.glsl"
 
@@ -26,7 +23,7 @@ void main(void)
 #if NUM_SHADOWS >= 1
 #define SHADOW_INDEX 0
 #define SHADOW_INDEX_COMPONENT x
-#define SHADOW_TEXTURE shadowmapTexture0
+#define SHADOW_TEXTURE shadowmapTexture[0]
 #include "defaultShadowmap.fragment.glsl"
 #undef SHADOW_TEXTURE
 #undef SHADOW_INDEX_COMPONENT
@@ -36,7 +33,7 @@ void main(void)
 #if NUM_SHADOWS >= 2
 #define SHADOW_INDEX 1
 #define SHADOW_INDEX_COMPONENT y
-#define SHADOW_TEXTURE shadowmapTexture1
+#define SHADOW_TEXTURE shadowmapTexture[1]
 #include "defaultShadowmap.fragment.glsl"
 #undef SHADOW_TEXTURE
 #undef SHADOW_INDEX_COMPONENT
@@ -46,7 +43,7 @@ void main(void)
 #if NUM_SHADOWS >= 3
 #define SHADOW_INDEX 2
 #define SHADOW_INDEX_COMPONENT z
-#define SHADOW_TEXTURE shadowmapTexture2
+#define SHADOW_TEXTURE shadowmapTexture[2]
 #include "defaultShadowmap.fragment.glsl"
 #undef SHADOW_TEXTURE
 #undef SHADOW_INDEX_COMPONENT
@@ -56,7 +53,7 @@ void main(void)
 #if NUM_SHADOWS >= 4
 #define SHADOW_INDEX 3
 #define SHADOW_INDEX_COMPONENT w
-#define SHADOW_TEXTURE shadowmapTexture3
+#define SHADOW_TEXTURE shadowmapTexture[3]
 #include "defaultShadowmap.fragment.glsl"
 #undef SHADOW_TEXTURE
 #undef SHADOW_INDEX_COMPONENT

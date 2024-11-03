@@ -140,23 +140,11 @@ enum
 
 typedef struct
 {
-	int			_extMarker;
-
-	//
-	// only uint8_ts must follow the extensionsBoolMarker
-	//
-
 	char		draw_range_elements
 				,multitexture
-				,texture_cube_map
-				,texture_edge_clamp
-				,texture_filter_anisotropic
-				,depth_texture
 				,framebuffer_object
-				,swap_control
 				,draw_instanced
 				,instanced_arrays
-				,meminfo
 				,framebuffer_blit
 				,depth24
 				,depth_nonlinear
@@ -167,9 +155,6 @@ typedef struct
 				,fragment_precision_high
 				,texture_lod
 				;
-	union { char shadow, shadow_samplers; };
-	union { char texture3D, texture_3D; };
-	union { char texture_non_power_of_two, texture_npot; };
 } glextinfo_t;
 
 typedef struct

@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 #include "r_math_util.h"
-
+#include "stb_ds.h"
 /*
 =============================================================
 
@@ -294,16 +294,20 @@ static float R_FitOccluder( const shadowGroup_t *group, refdef_t *refdef )
 */
 static float R_SetupShadowmapView( shadowGroup_t *group, refdef_t *refdef, int lod )
 {
+	return 0.0f;
 	int width, height;
 	float farClip;
-	image_t *shadowmap;
 
 	// clamp LOD to a sane value
 	clamp( lod, 0, SHADOWMAP_MAX_LOD );
-	
-	shadowmap = group->shadowmap;
-	width = shadowmap->width >> lod;
-	height = shadowmap->height >> lod;
+
+	struct shadow_fb_s* shadowmap = group->shadowmap;
+	if(!shadowmap)
+		return 0.0f;
+
+	const NriTextureDesc *textureDesc = rsh.nri.coreI.GetTextureDesc( shadowmap->depthTexture );
+	width = textureDesc->width >> lod;
+	height = textureDesc->height >> lod;
 	if( !width || !height )
 		return 0.0f;
 
@@ -332,20 +336,88 @@ static float R_SetupShadowmapView( shadowGroup_t *group, refdef_t *refdef, int l
 	// store viewport and texture parameters for group, we'll need them later as GLSL uniforms
 	group->viewportSize[0] = refdef->width;
 	group->viewportSize[1] = refdef->height;
-	group->textureSize[0] = shadowmap->width;
-	group->textureSize[1] = shadowmap->height;
+	group->textureSize[0] = textureDesc->width;
+	group->textureSize[1] = textureDesc->height;
 
 	return farClip;
 }
 
+static struct shadow_fb_s* __ResolveShadowSurface(struct frame_cmd_buffer_s *cmd, int width, int height) {
+	struct shadow_fb_s* bestFB = NULL; 
+	for(size_t i = 0; i < MAX_SHADOWGROUPS; i++ )
+	{
+		struct shadow_fb_s* shadowFB = &rsh.shadowFBs[i];
+		if((shadowFB->frameNum + NUMBER_FRAMES_FLIGHT) >= cmd->frameCount) {
+			continue;
+		}
+		if( shadowFB->depthTexture ) {
+			const NriTextureDesc *textureDesc = rsh.nri.coreI.GetTextureDesc( shadowFB->depthTexture );
+			if( textureDesc->width == width && textureDesc->height == height ) {
+				shadowFB->frameNum = cmd->frameCount;
+				return shadowFB;
+			}
+		}
+		bestFB = shadowFB;
+	}
+	if(bestFB) {
+		bestFB->frameNum = cmd->frameCount;
+		if( bestFB->depthTexture )
+			arrpush( cmd->freeTextures, bestFB->depthTexture );
+		if(bestFB->depthAttachment.descriptor)
+			arrpush( cmd->frameTemporaryDesc, bestFB->depthAttachment.descriptor);
+		if(bestFB->shaderDescriptor.descriptor)
+			arrpush( cmd->frameTemporaryDesc, bestFB->shaderDescriptor.descriptor);
+		for( size_t i = 0; i < bestFB->numAllocations; i++ )
+			arrpush( cmd->freeMemory, bestFB->memory[i] );
+		bestFB->numAllocations = 0;
+
+		const NriTextureDesc depthTextureDesc = { 
+													.width = width,
+												  .height = height,
+												  .depth = 1,
+												  .usage = NriTextureUsageBits_DEPTH_STENCIL_ATTACHMENT | NriTextureUsageBits_SHADER_RESOURCE,
+												  .layerNum = 1,
+												  .format = ShadowDepthFormat,
+												  .sampleNum = 1,
+												  .type = NriTextureType_TEXTURE_2D,
+												  .mipNum = 1 };
+		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture( rsh.nri.device, &depthTextureDesc, &bestFB->depthTexture ) );
+		NriTexture* textures[] = {bestFB->depthTexture};
+		const NriResourceGroupDesc resourceGroupDesc = {
+			.textureNum = Q_ARRAY_COUNT(textures),
+			.textures = textures,
+			.memoryLocation = NriMemoryLocation_DEVICE,
+		};
+		const size_t numAllocations = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
+		assert(numAllocations <= Q_ARRAY_COUNT(bestFB->memory));
+		bestFB->numAllocations = numAllocations;
+		NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, bestFB->memory) )
+		NriDescriptor* descriptor = NULL;
+		const NriTexture2DViewDesc textureAttachmentViewDesc = {
+				.texture = bestFB->depthTexture,
+				.viewType = NriTexture2DViewType_SHADER_RESOURCE_2D,
+				.format = depthTextureDesc.format
+		};
+		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureAttachmentViewDesc, &descriptor) );
+		bestFB->shaderDescriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
+		const NriTexture2DViewDesc depthAttachmentViewDesc = {
+				.texture = bestFB->depthTexture,
+				.viewType = NriTexture2DViewType_DEPTH_STENCIL_ATTACHMENT,
+				.format = depthTextureDesc.format
+		};
+		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &depthAttachmentViewDesc , &descriptor) );
+		bestFB->depthAttachment = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
+	}
+	return bestFB;
+}
+
+
 /*
 * R_DrawShadowmaps
 */
-void R_DrawShadowmaps( void )
+void R_DrawShadowmaps( struct frame_cmd_buffer_s* frame )
 {
-	unsigned int i;
-	image_t *shadowmap;
-	int textureWidth, textureHeight;
+	const struct frame_cmd_save_attachment_s stash = R_CmdState_StashAttachment(frame); 
 	float lodScale;
 	vec3_t lodOrigin;
 	vec3_t viewerOrigin;
@@ -376,7 +448,7 @@ void R_DrawShadowmaps( void )
 	refdef = rn.refdef;
 
 	// find lighting group containing entities with same lightingOrigin as ours
-	for( i = 0; i < rsc.numShadowGroups; i++ )
+	for(size_t i = 0; i < rsc.numShadowGroups; i++ )
 	{
 		if( !shadowBits ) {
 			break;
@@ -399,19 +471,10 @@ void R_DrawShadowmaps( void )
 		if( lod < 0 ) {
 			lod = 0;
 		}
-
+		ri.Com_Printf("%lu:%d\n", i, lod);
 		// allocate/resize the texture if needed
-		shadowmap = R_GetShadowmapTexture( i, rsc.refdef.width, rsc.refdef.height, 0 );
-
-		assert( shadowmap && shadowmap->width && shadowmap->height );
-
-		group->shadowmap = shadowmap;
-		textureWidth = shadowmap->width;
-		textureHeight = shadowmap->height;
-
-		if( !shadowmap->fbo ) {
-			continue;
-		}
+		struct shadow_fb_s* fb = __ResolveShadowSurface(frame, rsc.refdef.width, rsc.refdef.height);	
+		group->shadowmap = fb;
 
 		farClip = R_SetupShadowmapView( group, &refdef, lod );
 		if( farClip <= 0.0f ) {
@@ -422,15 +485,7 @@ void R_DrawShadowmaps( void )
 		if( refdef.width < SHADOWMAP_MIN_VIEWPORT_SIZE || refdef.height < SHADOWMAP_MIN_VIEWPORT_SIZE ) {
 			continue;
 		}
-
-		if( shadowmap->flags & IT_DEPTH ) {
-			rn.fbColorAttachment = NULL;
-			rn.fbDepthAttachment = shadowmap;
-		}
-		else {
-			rn.fbColorAttachment = shadowmap;
-			rn.fbDepthAttachment = NULL;
-		}
+		const NriTextureDesc *textureDesc = rsh.nri.coreI.GetTextureDesc( fb->depthTexture );
 		rn.farClip = farClip;
 		rn.renderFlags = RF_SHADOWMAPVIEW|RF_FLIPFRONTFACE;
 		rn.clipFlags |= 16; // clip by far plane too
@@ -443,15 +498,68 @@ void R_DrawShadowmaps( void )
 
 		// 3 pixels border on each side to prevent nasty stretching/bleeding of shadows,
 		// also accounting for smoothing done in the fragment shader
-		Vector4Set( rn.viewport, refdef.x + 3,refdef.y + textureHeight - refdef.height + 3, refdef.width - 6, refdef.height - 6 );
-		Vector4Set( rn.scissor, refdef.x, refdef.y, textureWidth, textureHeight );
+		Vector4Set( rn.viewport, refdef.x + 3,refdef.y + textureDesc->height - refdef.height + 3, refdef.width - 6, refdef.height - 6 );
+		Vector4Set( rn.scissor, refdef.x, refdef.y, textureDesc->width, textureDesc->height );
 
-		R_RenderView( NULL,&refdef );
+		const struct NriViewport viewports[] = {
+			( NriViewport ){ 
+				.x = rn.viewport[0], 
+				.y = rn.viewport[1], 
+				.width = rn.viewport[2], 
+				.height = rn.viewport[3], 
+				.depthMin = 0.0f, 
+				.depthMax = 1.0f,
+				.originBottomLeft = true
+			} 
+		};
+		const struct NriRect scissors[] = { (NriRect){
+			.x = rn.scissor[0],
+			.y = rn.scissor[1],
+			.width = rn.scissor[2],
+			.height = rn.scissor[3]
+		} };
+		FR_CmdSetTextureAttachment( frame, NULL, NULL, viewports, scissors, 0, ShadowDepthFormat, fb->depthAttachment.descriptor );
+	
+		const NriAccessLayoutStage layoutTransition = (NriAccessLayoutStage){	
+			.layout = NriLayout_DEPTH_STENCIL_ATTACHMENT, 
+			.access = NriAccessBits_DEPTH_STENCIL_ATTACHMENT_WRITE, 
+			.stages = NriStageBits_DEPTH_STENCIL_ATTACHMENT        
+		};
+
+		{
+			NriTextureBarrierDesc transitionBarriers = { 0 };
+			transitionBarriers.texture = fb->depthTexture;
+			transitionBarriers.after = layoutTransition;
+
+			NriBarrierGroupDesc barrierGroupDesc = { 0 };
+			barrierGroupDesc.textureNum = 1;
+			barrierGroupDesc.textures = &transitionBarriers;
+			rsh.nri.coreI.CmdBarrier( frame->cmd, &barrierGroupDesc );
+		}
+
+		R_RenderView( frame, &refdef );
+
+		{
+			NriTextureBarrierDesc transitionBarriers = { 0 };
+			transitionBarriers.texture = fb->depthTexture;
+			transitionBarriers.before = layoutTransition;
+			transitionBarriers.after = ( NriAccessLayoutStage ){ 
+				.layout = NriLayout_SHADER_RESOURCE, 
+				.access = NriAccessBits_SHADER_RESOURCE, 
+				.stages = NriStageBits_FRAGMENT_SHADER 
+			};
+
+			NriBarrierGroupDesc barrierGroupDesc = { 0 };
+			barrierGroupDesc.textureNum = 1;
+			barrierGroupDesc.textures = &transitionBarriers;
+			rsh.nri.coreI.CmdBarrier( frame->cmd, &barrierGroupDesc );
+		}
 
 		Matrix4_Copy( rn.cameraProjectionMatrix, group->cameraProjectionMatrix );
 
 		rsc.renderedShadowBits |= group->bit;
 	}
 
-	R_PopRefInst(NULL);
+	R_PopRefInst(frame);
+	R_CmdState_RestoreAttachment(frame, &stash);
 }

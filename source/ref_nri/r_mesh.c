@@ -472,7 +472,7 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 					RB_FlushDynamicMeshes(frame);
 					batchFlushed = true;
 					depthHack = true;
-					assert(frame->state.numColorAttachments == 1);
+					assert(frame->state.numViewports  == 1);
 					depthmin = frame->state.viewports[0].depthMin;
 					depthmax = frame->state.viewports[0].depthMax;
 					frame->state.viewports[0].depthMax = frame->state.viewports[0].depthMin + 0.3f * (frame->state.viewports[0].depthMax - frame->state.viewports[0].depthMin );
@@ -483,7 +483,7 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 					RB_FlushDynamicMeshes(frame);
 					batchFlushed = true;
 					depthHack = false;
-					assert(frame->state.numColorAttachments == 1);
+					assert(frame->state.numViewports == 1);
 
 					frame->state.viewports[0].depthMax = depthmax;
 					frame->state.viewports[0].depthMin = depthmin;
@@ -593,7 +593,7 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 	}
 	if( depthHack ) {
 		// RB_DepthRange( depthmin, depthmax );
-		assert(frame->state.numColorAttachments == 1);
+		assert(frame->state.numViewports == 1);
 		frame->state.viewports[0].depthMax = depthmax;
 		frame->state.viewports[0].depthMin = depthmin;
 		frame->state.dirty |= CMD_DIRT_VIEWPORT;

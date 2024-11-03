@@ -37,6 +37,7 @@ struct frame_cmd_save_attachment_s {
 	uint32_t numColorAttachments;
 	NriFormat colorFormats[MAX_COLOR_ATTACHMENTS];
 	NriDescriptor const *colorAttachment[MAX_COLOR_ATTACHMENTS];
+	uint32_t numViewports;
 	NriRect scissors[MAX_COLOR_ATTACHMENTS];
 	NriViewport viewports[MAX_COLOR_ATTACHMENTS];
 	NriDescriptor const *depthAttachment;
@@ -53,6 +54,7 @@ struct frame_cmd_state_s {
 
 	uint32_t numColorAttachments;
 	NriDescriptor const *colorAttachment[MAX_COLOR_ATTACHMENTS];
+	uint32_t numViewports;
 	NriRect scissors[MAX_COLOR_ATTACHMENTS];
 	NriViewport viewports[MAX_COLOR_ATTACHMENTS];
 	NriDescriptor const *depthAttachment;

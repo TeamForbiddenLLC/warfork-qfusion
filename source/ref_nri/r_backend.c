@@ -1036,8 +1036,8 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 	}
 
 	NriRect prevScissors[MAX_COLOR_ATTACHMENTS];
-	size_t numColorAttachments = cmd->state.numColorAttachments;
-	memcpy(prevScissors, cmd->state.scissors, sizeof(NriRect) * cmd->state.numColorAttachments); // keep a backup of the scissors
+	const size_t numColorAttachments = cmd->state.numViewports;
+	memcpy(prevScissors, cmd->state.scissors, sizeof(NriRect) * cmd->state.numViewports); // keep a backup of the scissors
 
 	// begin rendering pass
 	Matrix4_Copy( rb.objectMatrix, m );

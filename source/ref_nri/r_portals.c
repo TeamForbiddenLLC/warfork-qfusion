@@ -18,10 +18,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
-#include "NRIDescs.h"
 #include "r_image.h"
 #include "r_local.h"
 #include "stb_ds.h"
+
+#include "r_nri.h"
 
 static void R_DrawSkyportal(struct frame_cmd_buffer_s* frame, const entity_t *e, skyportal_t *skyportal );
 static const NriFormat PortalTextureFormat = NriFormat_RGBA8_UNORM; 
@@ -177,7 +178,6 @@ void R_ShutdownPortals() {
 }
 
 static struct portal_fb_s* __ResolvePortalSurface(struct frame_cmd_buffer_s *cmd, int width, int height, bool filtered) {
-	assert(Q_ARRAY_COUNT(rsh.portalFBs) >= MAX_PORTAL_TEXTURES);
 	struct portal_fb_s* bestFB = NULL; 
 	for(size_t i = 0; i < MAX_PORTAL_TEXTURES; i++ )
 	{

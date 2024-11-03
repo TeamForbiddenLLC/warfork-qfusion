@@ -128,9 +128,9 @@ static void R_UploadCinematicFrame( r_cinhandle_t *handle )
 				R_PushRefInst(NULL);
 			}
 
-			R_InitViewportTexture( &handle->image, handle->name, 0, 
-				handle->cyuv->image_width, handle->cyuv->image_height, 
-				0, IT_SPECIAL|IT_FRAMEBUFFER, IMAGE_TAG_GENERIC, samples );
+			//R_InitViewportTexture( &handle->image, handle->name, 0, 
+			//	handle->cyuv->image_width, handle->cyuv->image_height, 
+			//	0, IT_SPECIAL|IT_FRAMEBUFFER, IMAGE_TAG_GENERIC, samples );
 
 			R_BindFrameBufferObject( handle->image->fbo );
 

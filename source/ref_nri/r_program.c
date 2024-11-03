@@ -1709,6 +1709,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 			uint32_t pushConstantCount = 0;
 			result = spvReflectEnumeratePushConstantBlocks( &module, &pushConstantCount, NULL );
 			assert( result == SPV_REFLECT_RESULT_SUCCESS );
+			program->hasPushConstant = (pushConstantCount > 0); 
 			if(pushConstantCount > 0) {
 				if(pushConstantCount > 1) {
 					Com_Printf( S_COLOR_YELLOW "Push constant count is greater than 1, only supporting 1 push constant\n" );
