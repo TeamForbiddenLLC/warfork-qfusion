@@ -273,7 +273,6 @@ void R_RenderScene(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 	size_t numPostProcessing = 0;
 	post_processing_t postProcessingHandlers[16];
 
-	int fbFlags = 0;
 
 	if( r_norefresh->integer )
 		return;
@@ -304,7 +303,6 @@ void R_RenderScene(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 	rn.dlightBits = 0;
 	rn.shadowGroup = NULL;
 
-	fbFlags = 0;
 	rn.fbColorAttachment = rn.fbDepthAttachment = NULL;
 	rn.colorAttachment = rn.depthAttachment= NULL;
 
@@ -315,7 +313,6 @@ void R_RenderScene(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 			rn.fbColorAttachment = rsh.screenTexture;
 			rn.fbDepthAttachment = rsh.screenDepthTexture;
 			rn.renderFlags |= RF_SOFT_PARTICLES;
-			fbFlags |= 1;
 		}
 		shader_t *cc = rn.refdef.colorCorrection;
 

@@ -772,9 +772,59 @@ void RF_SetCustomColor( int num, int r, int g, int b )
  // }
 }
 
+
+struct screen_shot_self_s {
+	NriBuffer* readBackBuffer;
+};
+static void __RF_Screensot_CB(struct post_frame_self_s* self, struct frame_cmd_buffer_s* cmd) {
+
+	rsh.nri.coreI.DestroyBuffer(self->screenshot.readbackBuffer);
+	rsh.nri.coreI.FreeMemory(self->screenshot.memory);
+}
+
 void RF_ScreenShot( const char *path, const char *name, const char *fmtstring, bool silent )
 {
 	struct frame_cmd_buffer_s *cmd = R_ActiveFrameCmd();
+	RB_FlushDynamicMeshes(cmd);
+
+	const NriTextureDesc* textureDesc = rsh.nri.coreI.GetTextureDesc(cmd->textureBuffers.colorTexture);
+	NriMemoryDesc memoryDesc = {0};
+	rsh.nri.coreI.GetTextureMemoryDesc(rsh.nri.device, textureDesc, NriMemoryLocation_HOST_READBACK, &memoryDesc);
+
+  const struct base_format_def_s* formatDef = R_BaseFormatDef(R_FromNRIFormat(textureDesc->format));
+
+	struct post_frame_handler_s* frameHandler = &cmd->postFrameHandlers[cmd->numPostFrameHandlers++];
+	frameHandler->handler = __RF_Screensot_CB; 
+
+	NriBufferDesc bufferDesc = { .size = memoryDesc.size };
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateBuffer( rsh.nri.device, &bufferDesc, &frameHandler->self.screenshot.readbackBuffer ) );
+	
+	NriAllocateMemoryDesc allocateMemoryDesc = {0};
+	allocateMemoryDesc.size = memoryDesc.size;
+	allocateMemoryDesc.type = memoryDesc.type;
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.AllocateMemory( rsh.nri.device, &allocateMemoryDesc, &frameHandler->self.screenshot.memory) );
+	NriBufferMemoryBindingDesc bindBufferDesc = {
+		.memory = frameHandler->self.screenshot.memory,
+		.buffer = frameHandler->self.screenshot.readbackBuffer,
+	};
+	
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.BindBufferMemory( rsh.nri.device, &bindBufferDesc, 1 ) );
+	
+	NriTextureDataLayoutDesc dstLayoutDesc = {
+		.offset = 0,
+		.rowPitch = textureDesc->width * RT_BlockSize(formatDef),
+		.slicePitch = 0
+	};
+//	rsh.nri.coreI.CmdReadbackTextureToBuffer(cmd->cmd, frameHandler->self.screenshot.readbackBuffer, &dstLayoutDesc, cmd->textureBuffers.colorTexture)
+
+	//cmd->postFrameHandlers[cmd->numPostFrameHandlers++] = (struct post_frame_handler_s) {
+	//	.self = {
+	//		.screenshot = {
+
+	//		},
+	//	},
+	//	.handler = __RF_Screensot_CB
+	//};
  // if( RF_RenderingEnabled() )
  // 	rrf.adapter.cmdPipe->ScreenShot( rrf.adapter.cmdPipe, path, name, fmtstring, silent );
 }
