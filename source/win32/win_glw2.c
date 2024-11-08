@@ -92,6 +92,7 @@ bool R_WIN_SetWindowed(int x, int y, uint16_t width, uint16_t height) {
 		stylebits = WS_CHILD|WS_CLIPSIBLINGS|WS_CLIPCHILDREN|WS_VISIBLE;
 	}
 
+	RECT r;
 	AdjustWindowRect( &r, stylebits, FALSE );
 
 	width = r.right - r.left;

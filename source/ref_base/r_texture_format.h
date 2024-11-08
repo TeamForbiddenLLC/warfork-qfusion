@@ -147,7 +147,6 @@ struct texture_format_fixed_def_16_s {
 	enum texture_logical_channel_e channels[R_LOGICAL_C_MAX];
   uint32_t normalized: 1;
   uint32_t sign: 1;
-  uint32_t srgb: 1;
   uint32_t isInteger: 1;
 };
 
@@ -156,7 +155,6 @@ struct texture_format_fixed_def_32_s {
 	enum texture_logical_channel_e channels[R_LOGICAL_C_MAX];
   uint32_t normalized: 1;
   uint32_t sign: 1;
-  uint32_t srgb: 1;
   uint32_t isInteger: 1;
 };
 
@@ -184,10 +182,6 @@ static inline bool RT_IsSRGB(const struct base_format_def_s* def) {
 	switch( def->base ) {
 		case R_BASE_FORMAT_FIXED_8:
 			return def->fixed_8.srgb;
-		case R_BASE_FORMAT_FIXED_16:
-			return def->fixed_16.srgb;
-		case R_BASE_FORMAT_FIXED_32:
-			return def->fixed_32.srgb;
 		default:
 			break;
 	}

@@ -112,23 +112,4 @@ void R_NRI_CallbackMessage( NriMessage msg, const char *file, uint32_t line, con
 NriFormat R_ToNRIFormat( enum texture_format_e format );
 enum texture_format_e R_FromNRIFormat( NriFormat format );
 
-//struct gl_layout_config_s {
-//
-//	NriCullMode cullMode;
-//
-//	NriBlendFactor colorSrcFactor;
-//	NriBlendFactor colorDstFactor;
-//
-//	float depthRangeMin; 
-//	float depthRangeMax;
-//	bool blendEnabled;
-//	NriColorWriteBits colorWriteMask;
-//	NriCompareFunc compareFunc;
-//	bool depthWrite;
-//	NriStencilAttachmentDesc stencilAttachment;
-//
-//	NriInputAssemblyDesc inputAssembly;
-//	NriRasterizationDesc rasterization;
-//};
-
 #endif

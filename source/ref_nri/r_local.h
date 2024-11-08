@@ -38,6 +38,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 
 #include "r_nri.h"
+#include "r_texture_buf.h"
 #include "r_win.h"
 
 typedef struct { char *name; void **funcPointer; } dllfunc_t;
@@ -235,7 +236,20 @@ typedef struct
 	cplane_t		clipPlane;
 } refinst_t;
 
-//====================================================
+
+enum capture_state_e {
+	CAPTURE_STATE_NONE = 0,
+	
+	CAPTURE_STATE_RECORD_VIDEO,
+
+	// single screen shot
+	CAPTURE_STATE_RECORD_SCREENSHOT,
+	CAPTURE_STATE_FINISH_SCREENSHOT,
+
+	// env
+	CAPTURE_STATE_RECORD_ENV,
+	CAPTURE_STATE_FINISH_ENV
+};
 
 
 // globals shared by the frontend and the backend
@@ -278,6 +292,21 @@ typedef struct
 	shader_t		*whiteShader;
 	shader_t		*emptyFogShader;
 
+	struct {
+		enum capture_state_e state;
+		union {
+			struct {
+				uint64_t frameCnt;
+				sds path;
+				NriMemory *memory;
+				NriBuffer *buffer;
+				struct texture_buf_desc_s textureBuferDesc;
+			} single;
+			struct {
+			} env;
+		};
+	} screenshot;
+
 	struct shadow_fb_s shadowFBs[NUMBER_FRAMES_FLIGHT][MAX_SHADOWGROUPS];	
 	struct portal_fb_s portalFBs[MAX_PORTAL_TEXTURES];
 	struct nri_descriptor_s shadowSamplerDescriptor;
@@ -293,8 +322,6 @@ typedef struct
 	struct frame_cmd_buffer_s frameCmds[NUMBER_FRAMES_FLIGHT];
 
 	byte_vec4_t		customColors[NUM_CUSTOMCOLORS];
-
-	// uint32_t cookie;
 } r_shared_t;
 
 typedef struct

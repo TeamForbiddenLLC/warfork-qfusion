@@ -27,6 +27,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_frontend.h"
 
 #include "stb_ds.h"
+#include "r_capture.h"
 
 static ref_frontend_t rrf;
 
@@ -485,7 +486,6 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 	frame->frameCount = rsh.frameCount;
 	ResetFrameCmdBuffer( &rsh.nri, frame );
 
-
 	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.BeginCommandBuffer( frame->cmd, NULL ) );
 
 	// set the cmdState to the backbuffer for rendering going forward
@@ -576,16 +576,97 @@ void RF_EndFrame( void )
 	RB_FlushDynamicMeshes(frame);
 
 	R_ResourceSubmit();
-	
+
+	switch( rsh.screenshot.state ) {
+		case CAPTURE_STATE_RECORD_SCREENSHOT: {
+			NriMemoryDesc memoryDesc = { 0 };
+			const NriTextureDesc *textureDesc = rsh.nri.coreI.GetTextureDesc( frame->textureBuffers.colorTexture );
+			rsh.nri.coreI.GetTextureMemoryDesc( rsh.nri.device, textureDesc, NriMemoryLocation_HOST_READBACK, &memoryDesc );
+
+			const struct base_format_def_s *formatDef = R_BaseFormatDef( R_FromNRIFormat( textureDesc->format ) );
+			NriBufferDesc bufferDesc = { .size = memoryDesc.size };
+			NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateBuffer( rsh.nri.device, &bufferDesc, &rsh.screenshot.single.buffer ) );
+
+			NriAllocateMemoryDesc allocateMemoryDesc = { 0 };
+			allocateMemoryDesc.size = memoryDesc.size;
+			allocateMemoryDesc.type = memoryDesc.type;
+			NRI_ABORT_ON_FAILURE( rsh.nri.coreI.AllocateMemory( rsh.nri.device, &allocateMemoryDesc, &rsh.screenshot.single.memory ) );
+			NriBufferMemoryBindingDesc bindBufferDesc = {
+				.memory = rsh.screenshot.single.memory,
+				.buffer = rsh.screenshot.single.buffer,
+			};
+
+			rsh.screenshot.single.textureBuferDesc = (struct texture_buf_desc_s) {
+				.alignment = 1,
+				.width = textureDesc->width, 
+				.height = textureDesc->height, 
+				.def = R_BaseFormatDef(R_FromNRIFormat(textureDesc->format))
+			};
+
+			NRI_ABORT_ON_FAILURE( rsh.nri.coreI.BindBufferMemory( rsh.nri.device, &bindBufferDesc, 1 ) );
+			const uint64_t rowPitch = textureDesc->width * RT_BlockSize( formatDef );
+			const NriTextureDataLayoutDesc dstLayoutDesc = { 
+				.offset = 0, 
+				.rowPitch = rowPitch, 
+				.slicePitch = rowPitch * textureDesc->height 
+			};
+			const NriTextureRegionDesc textureRegionDesc = {
+				.x = 0, 
+				.y = 0, 
+				.z = 0, 
+				.width = textureDesc->width, 
+				.height = textureDesc->height, 
+				.depth = textureDesc->depth, 
+				.mipOffset = 0, 
+				.layerOffset = 0 
+			};
+			NriTextureBarrierDesc transitionBarriers = { 0 };
+			transitionBarriers.texture = frame->textureBuffers.colorTexture;
+			NriBarrierGroupDesc barrierGroupDesc = { 0 };
+			barrierGroupDesc.textureNum = 1;
+			barrierGroupDesc.textures = &transitionBarriers;
+
+			transitionBarriers.before = ( NriAccessLayoutStage ){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT };
+			transitionBarriers.after = ( NriAccessLayoutStage ){ .layout = NriLayout_COPY_SOURCE, .access = NriAccessBits_COPY_SOURCE, .stages = NriStageBits_COPY };
+			rsh.nri.coreI.CmdBarrier( frame->cmd, &barrierGroupDesc );
+
+			rsh.nri.coreI.CmdReadbackTextureToBuffer( frame->cmd, rsh.screenshot.single.buffer, &dstLayoutDesc, frame->textureBuffers.colorTexture, &textureRegionDesc );
+
+			transitionBarriers.before = ( NriAccessLayoutStage ){ .layout = NriLayout_COPY_SOURCE, .access = NriAccessBits_COPY_SOURCE, .stages = NriStageBits_COPY };
+			transitionBarriers.after = ( NriAccessLayoutStage ){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT };
+			rsh.nri.coreI.CmdBarrier( frame->cmd, &barrierGroupDesc );
+
+			rsh.screenshot.single.frameCnt = frame->frameCount;
+			rsh.screenshot.state = CAPTURE_STATE_FINISH_SCREENSHOT;
+			break;
+		}
+		case CAPTURE_STATE_FINISH_SCREENSHOT: {
+			if(rsh.screenshot.single.frameCnt + NUMBER_FRAMES_FLIGHT <  frame->frameCount ) {
+  			void* buffer = rsh.nri.coreI.MapBuffer(rsh.screenshot.single.buffer, 0, NRI_WHOLE_SIZE);
+				struct texture_buf_s pic = {0};
+				T_AliasTextureBuf(&pic, &rsh.screenshot.single.textureBuferDesc, buffer, 0);
+				R_SaveScreenshotBuffer(&pic, rsh.screenshot.single.path, r_screenshot_format->integer);
+
+				rsh.nri.coreI.DestroyBuffer( rsh.screenshot.single.buffer );
+				rsh.nri.coreI.FreeMemory( rsh.screenshot.single.memory );
+				sdsfree( rsh.screenshot.single.path );
+				rsh.screenshot.state = CAPTURE_STATE_NONE;
+			}
+			break;
+		}
+		default:
+			break;
+	}
+
 	{
-		NriTextureBarrierDesc textureBarrierDescs = {0};
+		NriTextureBarrierDesc textureBarrierDescs = { 0 };
 		textureBarrierDescs.texture = frame->textureBuffers.colorTexture;
 		textureBarrierDescs.before = ( NriAccessLayoutStage ){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT };
 		textureBarrierDescs.after = ( NriAccessLayoutStage ){ NriAccessBits_UNKNOWN, NriLayout_PRESENT };
 		textureBarrierDescs.layerNum = 1;
 		textureBarrierDescs.mipNum = 1;
 
-		NriBarrierGroupDesc barrierGroupDesc = {0};
+		NriBarrierGroupDesc barrierGroupDesc = { 0 };
 		barrierGroupDesc.textureNum = 1;
 		barrierGroupDesc.textures = &textureBarrierDescs;
 		rsh.nri.coreI.CmdBarrier( frame->cmd, &barrierGroupDesc );
@@ -772,61 +853,112 @@ void RF_SetCustomColor( int num, int r, int g, int b )
  // }
 }
 
-
-struct screen_shot_self_s {
-	NriBuffer* readBackBuffer;
-};
-static void __RF_Screensot_CB(struct post_frame_self_s* self, struct frame_cmd_buffer_s* cmd) {
-
-	rsh.nri.coreI.DestroyBuffer(self->screenshot.readbackBuffer);
-	rsh.nri.coreI.FreeMemory(self->screenshot.memory);
+static struct tm *__Localtime( const time_t time, struct tm* _tm )
+{
+#ifdef _WIN32
+	struct tm* __tm = localtime( &time );
+	*_tm = *__tm;
+#else
+	localtime_r( &time, _tm );
+#endif
+	return _tm;
 }
+
+
 
 void RF_ScreenShot( const char *path, const char *name, const char *fmtstring, bool silent )
 {
-	struct frame_cmd_buffer_s *cmd = R_ActiveFrameCmd();
-	RB_FlushDynamicMeshes(cmd);
+	if(rsh.screenshot.state != CAPTURE_STATE_NONE) {
+		return;
+	}
 
-	const NriTextureDesc* textureDesc = rsh.nri.coreI.GetTextureDesc(cmd->textureBuffers.colorTexture);
-	NriMemoryDesc memoryDesc = {0};
-	rsh.nri.coreI.GetTextureMemoryDesc(rsh.nri.device, textureDesc, NriMemoryLocation_HOST_READBACK, &memoryDesc);
-
-  const struct base_format_def_s* formatDef = R_BaseFormatDef(R_FromNRIFormat(textureDesc->format));
-
-	struct post_frame_handler_s* frameHandler = &cmd->postFrameHandlers[cmd->numPostFrameHandlers++];
-	frameHandler->handler = __RF_Screensot_CB; 
-
-	NriBufferDesc bufferDesc = { .size = memoryDesc.size };
-	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateBuffer( rsh.nri.device, &bufferDesc, &frameHandler->self.screenshot.readbackBuffer ) );
+	const char *extension;
+	char *checkname = NULL;
+	size_t checkname_size = 0;
 	
-	NriAllocateMemoryDesc allocateMemoryDesc = {0};
-	allocateMemoryDesc.size = memoryDesc.size;
-	allocateMemoryDesc.type = memoryDesc.type;
-	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.AllocateMemory( rsh.nri.device, &allocateMemoryDesc, &frameHandler->self.screenshot.memory) );
-	NriBufferMemoryBindingDesc bindBufferDesc = {
-		.memory = frameHandler->self.screenshot.memory,
-		.buffer = frameHandler->self.screenshot.readbackBuffer,
-	};
+	switch(r_screenshot_format->integer) 
+	{
+		case 2:
+			extension = ".jpg";
+			break;
+		case 3:
+			extension = ".tga";
+			break;
+		default:
+			extension = ".png";
+			break;
+	}
 	
-	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.BindBufferMemory( rsh.nri.device, &bindBufferDesc, 1 ) );
+	if( name && name[0] && Q_stricmp(name, "*") )
+	{
+		if( !COM_ValidateRelativeFilename( name) )
+		{
+			Com_Printf( "Invalid filename\n" );
+			return;
+		}
+		
+		const size_t checkname_size =  strlen(path) + strlen( name) + strlen( extension ) + 1;
+		checkname = alloca( checkname_size );
+		Q_snprintfz( checkname, checkname_size, "%s%s", path, name);
+		COM_DefaultExtension( checkname, extension, checkname_size );
+	}
+
+  if( !checkname )
+	{
+		const int maxFiles = 100000;
+		static int lastIndex = 0;
+		bool addIndex = false;
+		char timestampString[MAX_QPATH];
+		static char lastFmtString[MAX_QPATH];
+		struct tm newtime;
+		
+		__Localtime( time( NULL ), &newtime );
+		strftime( timestampString, sizeof( timestampString ), fmtstring, &newtime );
+
+		checkname_size = strlen(path) + strlen( timestampString ) + 5 + 1 + strlen( extension );
+		checkname = alloca( checkname_size );
+		
+		// if the string format is a constant or file already exists then iterate
+		if( !*fmtstring || !strcmp( timestampString, fmtstring  ) )
+		{
+			addIndex = true;
+			
+			// force a rescan in case some vars have changed..
+			if( strcmp( lastFmtString, fmtstring) )
+			{
+				lastIndex = 0;
+				Q_strncpyz( lastFmtString, fmtstring, sizeof( lastFmtString ) );
+				r_screenshot_fmtstr->modified = false;
+			}
 	
-	NriTextureDataLayoutDesc dstLayoutDesc = {
-		.offset = 0,
-		.rowPitch = textureDesc->width * RT_BlockSize(formatDef),
-		.slicePitch = 0
-	};
-//	rsh.nri.coreI.CmdReadbackTextureToBuffer(cmd->cmd, frameHandler->self.screenshot.readbackBuffer, &dstLayoutDesc, cmd->textureBuffers.colorTexture)
+		}
+		else
+		{
+			Q_snprintfz( checkname, checkname_size, "%s%s%s", path, timestampString, extension );
+			if( FS_FOpenAbsoluteFile( checkname, NULL, FS_READ ) != -1 )
+			{
+				lastIndex = 0;
+				addIndex = true;
+			}
+		}
+		
+		for( ; addIndex && lastIndex < maxFiles; lastIndex++ )
+		{
+			Q_snprintfz( checkname, checkname_size, "%s%s%05i%s",path, timestampString, lastIndex, extension );
+			if( FS_FOpenAbsoluteFile( checkname, NULL, FS_READ ) == -1 )
+				break; // file doesn't exist
+		}
+		
+		if( lastIndex == maxFiles )
+		{
+			Com_Printf( "Couldn't create a file\n" );
+			return;
+		}
+		lastIndex++;
+	}
 
-	//cmd->postFrameHandlers[cmd->numPostFrameHandlers++] = (struct post_frame_handler_s) {
-	//	.self = {
-	//		.screenshot = {
-
-	//		},
-	//	},
-	//	.handler = __RF_Screensot_CB
-	//};
- // if( RF_RenderingEnabled() )
- // 	rrf.adapter.cmdPipe->ScreenShot( rrf.adapter.cmdPipe, path, name, fmtstring, silent );
+	rsh.screenshot.single.path = sdsnew(checkname);
+	rsh.screenshot.state = CAPTURE_STATE_RECORD_SCREENSHOT;
 }
 
 void RF_EnvShot( const char *path, const char *name, unsigned pixels )
