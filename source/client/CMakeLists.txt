@@ -79,7 +79,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
             "${DISCORD_INCLUDE_DIR}/discord_register_win.cpp"
         )
 
-        set(CLIENT_PLATFORM_LIBRARIES ${SDL2_LIBRARY} ${SDL2MAIN_LIBRARY} "ws2_32.lib" "winmm.lib")
+        set(CLIENT_PLATFORM_LIBRARIES SDL2::SDL2 $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>  "ws2_32.lib" "winmm.lib")
     else()
         file(GLOB CLIENT_PLATFORM_SOURCES
             "../win32/win_fs.c"
@@ -139,11 +139,10 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         "${QFUSION_MAC_INFO_PLIST}"
     )
 
-    set(CLIENT_PLATFORM_LIBRARIES ${SDL2_LIBRARY} "-framework IOKit" "-framework Cocoa")
+    set(CLIENT_PLATFORM_LIBRARIES SDL2::SDL2 "-framework IOKit" "-framework Cocoa")
     set(CLIENT_BINARY_TYPE MACOSX_BUNDLE)
 
     set(BUNDLE_RESOURCES
-        ../../libsrcs/lib/mac/Frameworks
         ${QFUSION_MAC_ICON}
     )
 	if (QFUSION_DATA_DIR)
@@ -179,7 +178,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
             "${DISCORD_INCLUDE_DIR}/discord_register_linux.cpp"	
         )
 
-        set(CLIENT_PLATFORM_LIBRARIES ${SDL2_LIBRARY} "pthread" "m" "dl" "rt")
+        set(CLIENT_PLATFORM_LIBRARIES SDL2::SDL2 "pthread" "m" "dl" "rt")
     else()
         file(GLOB CLIENT_PLATFORM_SOURCES
             "../unix/unix_fs.c"
@@ -203,7 +202,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	        "${DISCORD_INCLUDE_DIR}/discord_register_linux.cpp"	
         )
     
-        set(CLIENT_PLATFORM_LIBRARIES ${SDL2_LIBRARY} "pthread" "dl" "m" "X11" "Xi" "Xext" "Xrandr" "rt")
+        set(CLIENT_PLATFORM_LIBRARIES SDL2::SDL2 "pthread" "dl" "m" "X11" "Xi" "Xext" "Xrandr" "rt")
     endif()
     set(CLIENT_BINARY_TYPE "")
 
@@ -225,8 +224,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set_target_properties(${QFUSION_CLIENT_NAME} PROPERTIES XCODE_ATTRIBUTE_LD_RUNPATH_SEARCH_PATHS "@executable_path/../Frameworks @executable_path/../Resources/base @executable_path/../Resources/libs")
     set_source_files_properties(${QFUSION_MAC_ICON} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 
-    set_source_files_properties(../../libsrcs/lib/mac/Frameworks                 PROPERTIES MACOSX_PACKAGE_LOCATION .)
-	if (QFUSION_DATA_DIR)
+    if (QFUSION_DATA_DIR)
 	    set_source_files_properties(${QFUSION_DATA_DIR}/${QFUSION_GAME_DIR}    PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 		set_source_files_properties(${QFUSION_DATA_DIR}/docs    PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 	endif()
@@ -254,7 +252,7 @@ elseif (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_HOME_DIRECTORY}/build/steam_appid.txt ${CMAKE_HOME_DIRECTORY}/build/$(CONFIGURATION)/)
 endif()
 
-target_link_libraries(${QFUSION_CLIENT_NAME} PRIVATE ${CURL_LIBRARY} ${CLIENT_PLATFORM_LIBRARIES} ${DISCORD_LIBRARY} ${STEAMSHIMPARENT_LIBRARY})
+target_link_libraries(${QFUSION_CLIENT_NAME} PRIVATE CURL::libcurl ${CLIENT_PLATFORM_LIBRARIES} ${DISCORD_LIBRARY} ${STEAMSHIMPARENT_LIBRARY})
 qf_set_output_dir(${QFUSION_CLIENT_NAME} "")
 
 if (BUILD_STEAMLIB)

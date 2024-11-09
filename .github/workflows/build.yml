@@ -12,6 +12,11 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
         DEBCONF_NONINTERACTIVE_SEEN: true
     steps:
+      - name: Configure Cache
+        shell: bash
+        run: |
+          echo "ACTIONS_CACHE_URL=$ACTIONS_CACHE_URL" >> "$GITHUB_ENV"
+          echo "ACTIONS_RUNTIME_TOKEN=$ACTIONS_ID_TOKEN_REQUEST_TOKEN" >> "$GITHUB_ENV"
       - name: Update git before checkout - https://github.com/actions/checkout/issues/335
         run: |
           apt update
@@ -28,7 +33,7 @@ jobs:
       - name: Install build dependencies
         run: |
           apt update
-          apt install -y curl clang cmake build-essential libsdl2-dev libopenal-dev libvorbis-dev libfreetype6-dev libcurl4-gnutls-dev git zip unzip python3
+          apt install -y curl clang cmake build-essential libsdl2-dev libopenal-dev libvorbis-dev libfreetype6-dev libcurl4-gnutls-dev git zip unzip python3 autoconf libtool meson automake libtool pkg-config python3-jinja2
 
       - name: Download steamworks sdk
         run: |
@@ -44,7 +49,7 @@ jobs:
         working-directory: ./source
         run: |
           export CC=clang CXX=clang++
-          cmake -DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 .
+          cmake -DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 -DVCPKG_INSTALL_OPTIONS="--binarysource=clear\;x-gha,readwrite" .
 
       - name: Build project
         working-directory: ./source
@@ -68,6 +73,11 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
         DEBCONF_NONINTERACTIVE_SEEN: true
     steps:
+      - name: Configure Cache
+        shell: bash
+        run: |
+          echo "ACTIONS_CACHE_URL=$ACTIONS_CACHE_URL" >> "$GITHUB_ENV"
+          echo "ACTIONS_RUNTIME_TOKEN=$ACTIONS_ID_TOKEN_REQUEST_TOKEN" >> "$GITHUB_ENV"
       - name: Update git before checkout - https://github.com/actions/checkout/issues/335
         run: |
           apt update
@@ -84,7 +94,7 @@ jobs:
       - name: Install build dependencies
         run: |
           apt update
-          apt install -y curl clang cmake build-essential libsdl2-dev libopenal-dev libvorbis-dev libfreetype6-dev libcurl4-gnutls-dev git zip unzip python3
+          apt install -y curl clang cmake build-essential libsdl2-dev libopenal-dev libvorbis-dev libfreetype6-dev libcurl4-gnutls-dev git zip unzip python3 autoconf libtool meson automake libtool pkg-config python3-jinja2
 
       - name: Download steamworks sdk
         run: |
@@ -100,7 +110,7 @@ jobs:
         working-directory: ./source
         run: |
           export CC=clang CXX=clang++
-          cmake -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 .
+          cmake -DCMAKE_BUILD_TYPE=DEBUG -DVCPKG_INSTALL_OPTIONS="--binarysource=clear\;x-gha,readwrite" -DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 .
 
       - name: Build project
         working-directory: ./source
@@ -115,10 +125,62 @@ jobs:
         with:
           name: linux-x86_64-debug
           path: source/Linux-x86_64-Debug.tar.gz
+  build-osx-arm:
+    runs-on: macos-latest
+    steps:
+      - name: Configure Cache
+        shell: bash
+        run: |
+          echo "ACTIONS_CACHE_URL=$ACTIONS_CACHE_URL" >> "$GITHUB_ENV"
+          echo "ACTIONS_RUNTIME_TOKEN=$ACTIONS_ID_TOKEN_REQUEST_TOKEN" >> "$GITHUB_ENV"
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '13.4.1'
+
+      - name: Install build dependencies
+        run: |
+          brew uninstall --force azure-cli
+          brew uninstall --force aws-sam-cli
+          brew install python@3 || brew link --overwrite python@3
+          brew update
+          brew install curl cmake sdl2 openal-soft libvorbis freetype git zip unzip
+
+      - name: Download steamworks sdk
+        run: |
+          curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
+          unzip third-party/steamworks/sdk.zip -d third-party/steamworks
+
+      - name: Generate makefiles
+        working-directory: ./source
+        run: cmake -DBUILD_STEAMLIB=1 -G Xcode .
+
+      - name: Build project
+        working-directory: ./source
+        run: xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration Release -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
+      
+      - name: Package warfork
+        working-directory: ./source/build
+        run: tar -czvf ../OSX-arm-Release.tar.gz Release/*.app
+
+      - name: Upload warfork artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: osx-arm-release
+          path: source/OSX-arm-Release.tar.gz
 
   build-osx:
     runs-on: macos-12
     steps:
+      - name: Configure Cache
+        shell: bash
+        run: |
+          echo "ACTIONS_CACHE_URL=$ACTIONS_CACHE_URL" >> "$GITHUB_ENV"
+          echo "ACTIONS_RUNTIME_TOKEN=$ACTIONS_ID_TOKEN_REQUEST_TOKEN" >> "$GITHUB_ENV"
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
@@ -162,6 +224,11 @@ jobs:
   build-osx-debug:
     runs-on: macos-12
     steps:
+      - name: Configure Cache
+        shell: bash
+        run: |
+          echo "ACTIONS_CACHE_URL=$ACTIONS_CACHE_URL" >> "$GITHUB_ENV"
+          echo "ACTIONS_RUNTIME_TOKEN=$ACTIONS_ID_TOKEN_REQUEST_TOKEN" >> "$GITHUB_ENV"
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
@@ -186,7 +253,7 @@ jobs:
 
       - name: Generate makefiles
         working-directory: ./source
-        run: cmake -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON -G Xcode .
+        run: cmake -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON -DVCPKG_INSTALL_OPTIONS="--binarysource=clear\;x-gha,readwrite"  -G Xcode .
 
       - name: Build project
         working-directory: ./source
@@ -205,6 +272,11 @@ jobs:
   build-win64:
     runs-on: windows-latest
     steps:
+      - name: Configure Cache
+        run: |
+          Add-Content -Path $env:GITHUB_ENV -Value "ACTIONS_CACHE_URL=$ACTIONS_CACHE_URL"
+          Add-Content -Path $env:GITHUB_ENV -Value "ACTIONS_RUNTIME_TOKEN=$ACTIONS_ID_TOKEN_REQUEST_TOKEN"
+      
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
@@ -222,7 +294,7 @@ jobs:
 
       - name: Generate makefiles
         working-directory: .\source
-        run: cmake -G "Visual Studio 17 2022" -A x64 -T "v142" -DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 .
+        run: cmake -G "Visual Studio 17 2022" -A x64 -T "v142" -DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 -DVCPKG_INSTALL_OPTIONS="--binarysource=clear\;x-gha,readwrite" .
 
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
@@ -244,6 +316,11 @@ jobs:
   build-win64-debug:
     runs-on: windows-latest
     steps:
+      - name: Configure Cache
+        run: |
+          Add-Content -Path $env:GITHUB_ENV -Value "ACTIONS_CACHE_URL=$ACTIONS_CACHE_URL"
+          Add-Content -Path $env:GITHUB_ENV -Value "ACTIONS_RUNTIME_TOKEN=$ACTIONS_ID_TOKEN_REQUEST_TOKEN"
+      
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
@@ -261,7 +338,7 @@ jobs:
 
       - name: Generate makefiles
         working-directory: .\source
-        run: cmake -G "Visual Studio 17 2022" -A x64 -T "v142" -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 .
+        run: cmake -G "Visual Studio 17 2022" -A x64 -T "v142" -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 -DVCPKG_INSTALL_OPTIONS="--binarysource=clear\;x-gha,readwrite" .
 
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1

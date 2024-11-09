@@ -1,0 +1,10 @@
+{
+  "dependencies": [
+    "curl",
+    "freetype",
+    "sdl2",
+    "libogg",
+    "libvorbis",
+    "openal-soft"
+  ]
+}
