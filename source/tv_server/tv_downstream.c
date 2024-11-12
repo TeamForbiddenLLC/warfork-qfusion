@@ -1145,7 +1145,8 @@ void TV_Downstream_MasterHeartbeat( void )
 
 		if( master->address.type != NA_NOTRANSMIT )
 		{
-			Com_Printf( "Sending heartbeat to %s\n", NET_AddressToString( &master->address ) );
+			if( tv_log_heartbeats->integer )
+				Com_Printf( "Sending heartbeat to %s\n", NET_AddressToString( &master->address ) );
 
 			socket = ( master->address.type == NA_IP6 ? &tvs.socket_udp6 : &tvs.socket_udp );
 

@@ -674,8 +674,8 @@ void		R_BatchPolySurf( const entity_t *e, const shader_t *shader, const mfog_t *
 void		R_DrawPolys( void );
 void		R_DrawStretchPoly( const poly_t *poly, float x_offset, float y_offset );
 bool	R_SurfPotentiallyFragmented( const msurface_t *surf );
-int			R_GetClippedFragments( const vec3_t origin, float radius, vec3_t axis[3], int maxfverts,
-								  vec4_t *fverts, int maxfragments, fragment_t *fragments );
+//int			R_GetClippedFragments( const vec3_t origin, float radius, vec3_t axis[3], int maxfverts,
+//								  vec4_t *fverts, int maxfragments, fragment_t *fragments );
 
 //
 // r_register.c
@@ -733,8 +733,6 @@ bool	R_AddSkeletalModelToDrawList( const entity_t *e );
 void	R_DrawSkeletalSurf( const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceSkeletal_t *drawSurf );
 float		R_SkeletalModelBBox( const entity_t *e, vec3_t mins, vec3_t maxs );
 void		R_SkeletalModelFrameBounds( const model_t *mod, int frame, vec3_t mins, vec3_t maxs );
-int			R_SkeletalGetBoneInfo( const model_t *mod, int bonenum, char *name, size_t name_size, int *flags );
-void		R_SkeletalGetBonePose( const model_t *mod, int bonenum, int frame, bonepose_t *bonepose );
 int			R_SkeletalGetNumBones( const model_t *mod, int *numFrames );
 
 void		R_InitSkeletalCache( void );

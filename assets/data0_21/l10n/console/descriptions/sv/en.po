@@ -1,13 +1,6 @@
 # (c) Team Forbidden LLC. All Rights Reserved.
 
 #. Console/sv
-msgid "sv_autoUpdate"
-msgstr "<0/1> Downloads updates automatically from our website.\n"
-"^6Disable: sv_autoUpdate \"0\"\n"
-"^6Enable: sv_autoUpdate \"1\"\n"
-"^6Note: Warfork utilizes Steam and this is not used."
-
-#. Console/sv
 msgid "sv_botpersonality"
 msgstr "<0-13> Changes the bot personality.\n"
 "^3yaw, reac, comb, yacc, off, camp, fire, armor, health, weapon, affinities, ^2{ no, gb, mg, rg, gl, rl, pg, lg, eb, ig }\n"
@@ -113,10 +106,6 @@ msgid "sv_iplimit"
 msgstr "<value>	Maximum amount of connections from a single IP address."
 
 #. Console/sv
-msgid "sv_lastAutoUpdate"
-msgstr "<value> Days since last automatic update."
-
-#. Console/sv
 msgid "sv_log_heartbeats"
 msgstr "<0/1> Prints transmitted heartbeat messages to the server console.\n"
 "^6Disable: sv_log_heartbeats \"0\"\n"
@@ -196,6 +185,12 @@ msgid "sv_public"
 msgstr "<0/1> The server will appear on the public server list.\n"
 "^6Disable: sv_public \"0\"\n"
 "^6Enable: sv_public \"1\""
+
+#. Console/sv
+msgid "sv_whitelist"
+msgstr "<steamid64:steamid64:steamid64> Specifies a list of 64-bit SteamID's (SteamID64) allowed to access the server.\n"
+"^6Note: This command requires sv_useSteamAuth \"1\". Other players attempting to connect will be kicked.\n"
+"^6Example: sv_whitelist \"76561197974895275:76561197960287930:76561198799681010\""
 
 #. Console/sv
 msgid "sv_pure"

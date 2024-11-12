@@ -1,64 +1,38 @@
 #include "../qcommon/qcommon.h"
 #include "../qcommon/steam.h"
-#include "../steamshim/src/parent/parent.h"
-#include <string.h>
+#include "../steamshim/src/steamshim_types.h"
+#include "./../steamshim/src/mod_steam.h"
 
-static void printEvent( const STEAMSHIM_Event *e )
-{
-	if( !e )
-		return;
+struct authsessioncb_self {
+	int result;
+};
 
-	Com_Printf( "%sokay, ival=%d, fval=%f, lval=%llu, name='%s').\n", e->okay ? "" : "!", e->ivalue, e->fvalue, e->lvalue, e->name );
-} 
-
-static const STEAMSHIM_Event* blockOnEvent(STEAMSHIM_EventType type){
-
-	while( 1 ) {
-		const STEAMSHIM_Event *evt = STEAMSHIM_pump();
-		if (!evt) continue;
-
-		if (evt->type == type){
-			printEvent( evt );
-			return evt;
-		} else {
-			printf("warning: ignoring event %i\n",evt->type);
-			// event gets ignored!
-			printEvent( evt );
-		}
-	}
-}
-
-/*
-* Steam_RunFrame
-*/
-void SV_Steam_RunFrame( void )
-{
-	const STEAMSHIM_Event *evt = STEAMSHIM_pump();
-	if( evt ) {
-		printEvent( evt );
-		switch (evt->type){
-			default: break;
-		}
-	}
-}
-
-/*
-* Steam_GetAuthSessionTicket
-*/
-int Steam_GetAuthSessionTicket( void ( *callback )( void *, size_t ) )
-{
-	// coolelectronics: not implementing anything here until i have a better understanding of cl_mm.c
-	return 0;
+static void BeginAuthSessionCB(struct authsessioncb_self *self, struct steam_result_recv_s *rec) {
+	self->result = rec->result;
 }
 
 int Steam_BeginAuthSession(uint64_t steamid, SteamAuthTicket_t *ticket){
+	struct begin_auth_session_req_s s;
+	s.steamID = steamid;
+	s.cmd = RPC_BEGIN_AUTH_SESSION;
+	s.cbAuthTicket = ticket->pcbTicket;
+	memcpy(s.authTicket, ticket->pTicket, ticket->pcbTicket);
 
-	STEAMSHIM_beginAuthSession(steamid,ticket);
-	const STEAMSHIM_Event *evt = blockOnEvent(SHIMEVENT_AUTHSESSIONVALIDATED);
+	uint32_t sync;
+	struct authsessioncb_self self;
+	self.result = -1;
 
-	return evt->ivalue;
+	STEAMSHIM_sendRPC(&s, sizeof s, &self, (STEAMSHIM_rpc_handle)BeginAuthSessionCB, &sync);
+	STEAMSHIM_waitDispatchSync(sync);
+
+	return self.result;
 }
 
-void Steam_EndAuthSession(uint64_t steamid){
-	STEAMSHIM_endAuthSession(steamid);
+
+void Steam_EndAuthSession(uint64_t steamid) {
+	struct steam_id_rpc_s s;
+	s.id = steamid;
+	s.cmd = RPC_END_AUTH_SESSION;
+
+	STEAMSHIM_sendRPC(&s, sizeof s, NULL, NULL, NULL);
 }

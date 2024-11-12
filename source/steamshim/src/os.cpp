@@ -19,8 +19,19 @@ freely, subject to the following restrictions:
 */
 
 #include "os.h"
-#include "parent/parent_private.h"
+#include <cstdarg>
+#include <stdarg.h>
+#include <stdio.h>
 #include <cstring>
+
+bool debug = false;
+void dbgprintf(const char *fmt, ...){
+    if (!debug) return;
+    va_list va;
+    va_start(va, fmt);
+    vprintf(fmt, va);
+    va_end(va);
+}
 
 #ifdef _WIN32
 void fail(const char *err)
@@ -58,19 +69,23 @@ bool setEnvVar(const char *key, const char *val)
     return (SetEnvironmentVariableA(key, val) != 0);
 } // setEnvVar
 
-bool launchChild(ProcessType *pid, const char* name)
+bool launchChild(ProcessType *pid)
 {
-    char *str = _strdup( GetCommandLineA() );
-
     STARTUPINFOA si = { sizeof( si ) };
     memset( pid, 0, sizeof( *pid ) );
 
-    char exename[32] = ".\\";
-    strncpy(exename+2, name, 30);
+    LPSTR args;
+    if (debug)
+        args = STEAM_BLOB_LAUNCH_NAME " steamdebug";
+    else
+        args = STEAM_BLOB_LAUNCH_NAME;
+    
+    DWORD dwAttrib = GetFileAttributesA(STEAM_BLOB_LAUNCH_NAME);
+    if (dwAttrib == INVALID_FILE_ATTRIBUTES ||
+         (dwAttrib & FILE_ATTRIBUTE_DIRECTORY)) return false;
 
-    bool bResult = ( CreateProcessA( exename, str, NULL, NULL, TRUE, 0, NULL,
+    bool bResult = ( CreateProcessA(NULL, args, NULL, NULL, TRUE, 0, NULL,
                               NULL, &si, pid) != 0);
-    free( str );
     return bResult;
 } // launchChild
 
@@ -92,20 +107,27 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 #endif
 
 #else  // everyone else that isn't Windows.
+#include <unistd.h>
 
-bool launchChild(ProcessType *pid, const char* name )
+bool launchChild(ProcessType *pid)
 {
+    const char *exename = "./" STEAM_BLOB_LAUNCH_NAME;
+
+
+    if (access(exename, F_OK) < 0) return false;
+
     *pid = fork();
     if (*pid == -1)   // failed
         return false;
     else if (*pid != 0)  // we're the parent
         return true;  // we'll let the pipe fail if this didn't work.
 
-    char exename[32] = "./";
-    strncpy(exename+2, name, 30);
+    char* GArgv[3] = {strdup(exename), NULL, NULL};
+    if (debug)
+        GArgv[1] = strdup("steamdebug");
 
-    char* GArgv[2] = {exename,NULL};
     execvp(GArgv[0], GArgv);
+
     // still here? It failed! Terminate, closing child's ends of the pipes.
     _exit(1);
 } // launchChild

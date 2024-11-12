@@ -869,6 +869,16 @@ static void CG_StartVoiceTokenEffect( int entNum, int type, int vsay )
 
 	cent = &cg_entities[entNum];
 
+	int i = 0;
+	uint64_t test_steamid;
+	while (CG_GetBlocklistItem(i, &test_steamid, NULL, NULL))  {
+		if (test_steamid == cgs.clientInfo[entNum-1].steamid) {
+			// player is blocked
+			return;
+		}
+		i++;
+	}
+
 	// ignore repeated/flooded events
 	if( cent->localEffects[LOCALEFFECT_VSAY_HEADICON_TIMEOUT] > cg.time )
 		return;

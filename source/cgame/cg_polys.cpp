@@ -453,6 +453,6 @@ void CG_AddPolys( void )
 			}
 		}
 
-		trap_R_AddPolyToScene( poly );
+		RF_AddPolyToScene( poly );
 	}
 }

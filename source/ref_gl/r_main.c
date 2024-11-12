@@ -31,7 +31,7 @@ refinst_t rn;
 
 r_scene_t rsc;
 
-
+void Mod_FixupQ1MipTex( model_t *mod );
 /*
 * R_TransformForWorld
 */
@@ -948,6 +948,8 @@ static void R_SetupFrame( void )
 
 			// load all world images if not yet
 			R_FinishLoadingImages();
+		
+			//Mod_FixupQ1MipTex(rsh.worldModel);
 		}
 	}
 	else

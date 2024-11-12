@@ -353,6 +353,10 @@ msgstr "前進ジャンプで加速"
 msgid "Disable autohop"
 msgstr "autohopを無効"
 
+#. UI option for cg_viewBob, animates view camera on landing from high jumps.
+msgid "Enable view animation"
+msgstr "ビューアニメーションを有効にする"
+
 #. Touch screen setting
 msgid "Touch look sensitivity"
 msgstr ""

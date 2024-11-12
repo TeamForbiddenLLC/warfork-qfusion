@@ -119,6 +119,11 @@ bool SV_ClientConnect( const socket_t *socket, const netadr_t *address, client_t
 			client->individual_socket = false;
 			client->socket.open = false;
 			break;
+		case SOCKET_SDR:
+				client->reliable = false;
+				client->individual_socket = true;
+				client->socket = *socket;
+				break;
 
 		default:
 			assert( false );
@@ -245,8 +250,9 @@ void SV_DropClient( client_t *drop, int type, const char *format, ... )
 
 	SV_Web_RemoveGameClient( drop->session );
 
-	if (drop->authenticated)
+	if (drop->authenticated) {
 		Steam_EndAuthSession(drop->steamid);
+	}
 
 	if( drop->download.name )
 		SV_ClientCloseDownload( drop );
@@ -371,7 +377,7 @@ static void SV_New_f( client_t *client )
 	Netchan_PushAllFragments( &client->netchan );
 
 
-	if (Cvar_Integer("sv_useSteamAuth") != 0){
+	if (Cvar_Integer("sv_useSteamAuth") != 0 && !client->tvclient){
 		// ask client to authenticate with steam
 		SV_SendServerCommand( client, "steamauth" );
 	}
@@ -505,9 +511,9 @@ static void SV_Begin_f( client_t *client )
 	}
 	// wsw : r1q2[end]
 
-	if (Cvar_Integer("sv_useSteamAuth") != 0 && !client->authenticated)
+	if (Cvar_Integer("sv_useSteamAuth") != 0 && !client->authenticated && !client->tvclient)
 	{
-		SV_DropClient( client, DROP_TYPE_GENERAL, "Client did not authenticate when steam authentication required." );
+		SV_DropClient( client, DROP_TYPE_GENERAL, "Steam authentication timed out. Please ensure Steam is running and restart Warfork." );
 		return;
 	}
 
@@ -1257,14 +1263,31 @@ void SV_ParseClientMessage( client_t *client, msg_t *msg )
 					break;
 				}
 				client->steamid = atoll(steamid);
-
+				client->authenticated = true;
 
 				int result = Steam_BeginAuthSession(client->steamid, &ticket);
 				if (result != 0){
-					SV_DropClient(client, DROP_TYPE_GENERAL, "steam auth failure");
+					SV_DropClient(client, DROP_TYPE_GENERAL, "Steam authentication failed. Make sure you aren't already connected on this account");
 					break;
 				}
-				client->authenticated = true;
+
+				if ( sv_whitelist->string[0] ){
+					bool whitelisted = false;
+
+					char *whitelist = strdup(sv_whitelist->string);
+					char *pch = strtok(whitelist, ":");
+					while (pch != NULL){
+						if (atoll(pch) == atoll(steamid)){
+							whitelisted = true;
+							break;
+						}
+						pch = strtok(NULL, ":");
+					}
+					if (!whitelisted)
+						SV_DropClient(client, DROP_TYPE_GENERAL, "you are not whitelisted!");
+					free(whitelist);
+				}
+
 
 				edict_t	*ent;
 				int edictnum;
@@ -1272,10 +1295,38 @@ void SV_ParseClientMessage( client_t *client, msg_t *msg )
 				edictnum = ( client - svs.clients ) + 1;
 				ent = EDICT_NUM( edictnum );
 
+				Com_Printf("Client %s "S_COLOR_WHITE "authenticated with steamid %llu\n", client->name, client->steamid);
 				ge->ClientAuth( ent, client->steamid);
 				
 			}
 			break;
+			case clc_voice:
+			{
+				int voiceDataSize = MSG_ReadShort(msg);
+				uint8_t voiceData[VOICE_BUFFER_MAX];
+				if (voiceDataSize > VOICE_BUFFER_MAX)
+				{
+					Com_Printf("SV_ParseClientMessage: voice data too large\n");
+					SV_DropClient(client, DROP_TYPE_GENERAL, "%s", "Error: Voice data too large");
+					return;
+				}
+				MSG_ReadData(msg, voiceData, voiceDataSize);
+
+				for (int i = 0; i < sv_maxclients->integer; i++)
+				{
+					client_t *cl = svs.clients + i;
+					if (cl->state >= CS_SPAWNED && cl->state != CS_ZOMBIE)
+					{
+						SV_InitClientMessage(cl, &tmpMessage, NULL, 0);
+						MSG_WriteByte(&tmpMessage, svc_voice);
+						MSG_WriteShort(&tmpMessage, client->edict->s.number - 1);
+						MSG_WriteShort(&tmpMessage, voiceDataSize);
+						MSG_CopyData(&tmpMessage, voiceData, voiceDataSize);
+						SV_SendMessageToClient(cl, &tmpMessage);
+					}
+				}
+				break;
+			}
 		}
 	}
 }

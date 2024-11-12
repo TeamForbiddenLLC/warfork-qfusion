@@ -141,23 +141,23 @@ void CG_DrawChat( cg_gamechat_t *chat, int x, int y, char *fontName, struct qfon
 			}
 
 			background_y = y;
-			trap_R_DrawStretchPic( x, background_y, width, height - corner_radius,
+			RF_DrawStretchPic( x, background_y, width, height - corner_radius,
 				0.0f, 0.0f, 1.0f, 0.5f, backColor, backShader );
 			background_y += height - corner_radius;
 
 			if( trap_IN_IME_GetCandidates( NULL, 0, 10, NULL, &first_candidate ) )
 			{
 				int candidates_height = ( first_candidate ? 3 : 5 ) * font_height;
-				trap_R_DrawStretchPic( x, background_y, width, candidates_height,
+				RF_DrawStretchPic( x, background_y, width, candidates_height,
 					0.0f, 0.5f, 1.0f, 0.5f, backColor, backShader );
 				background_y += candidates_height;
 			}
 
-			trap_R_DrawStretchPic( x, background_y, corner_radius, corner_radius,
+			RF_DrawStretchPic( x, background_y, corner_radius, corner_radius,
 				0.0f, 0.5f, 0.5f, 1.0f, backColor, backShader );
-			trap_R_DrawStretchPic( x + corner_radius, background_y, width - corner_radius * 2, corner_radius,
+			RF_DrawStretchPic( x + corner_radius, background_y, width - corner_radius * 2, corner_radius,
 				0.5f, 0.5f, 0.5f, 1.0f, backColor, backShader );
-			trap_R_DrawStretchPic( x + width - corner_radius, background_y, corner_radius, corner_radius,
+			RF_DrawStretchPic( x + width - corner_radius, background_y, corner_radius, corner_radius,
 				0.5f, 0.5f, 1.0f, 1.0f, backColor, backShader );
 
 			background_drawn = true;
@@ -256,7 +256,7 @@ parse_string:
 			if( pass )
 			{
 				// grab the last color token to carry it over to the next line
-				lastcolor = Q_ColorStrLastColor( lastcolor, tstr, j - s );
+				lastcolor = Q_ColorStrLastColor( lastcolor, tstr, j - s, NULL, NULL, NULL );
 			}
 
 			s = j;

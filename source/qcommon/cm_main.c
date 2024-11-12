@@ -29,13 +29,23 @@ static mempool_t *cmap_mempool;
 
 static cvar_t *cm_noAreas;
 cvar_t *cm_noCurves;
+int c_pointcontents, c_traces, c_brush_traces;
 
+void CM_LoadQ2BrushModel( cmodel_state_t *cms, void *parent, void *buf, bspFormatDesc_t *format );
+void CM_LoadQ1BrushModel( cmodel_state_t *cms, void *parent, void *buffer, bspFormatDesc_t *format );
 void CM_LoadQ3BrushModel( cmodel_state_t *cms, void *parent, void *buffer, bspFormatDesc_t *format );
 
 static const modelFormatDescr_t cm_supportedformats[] =
 {
 	// Q3-alike .bsp models
 	{ "*", 4, q3BSPFormats, 0, ( const modelLoader_t )CM_LoadQ3BrushModel },
+
+	// Q2-alike .bsp models
+	{ "*", 4, q2BSPFormats, 0, ( const modelLoader_t )CM_LoadQ2BrushModel },
+
+	// Q1-alike .bsp models
+	// disable this for now until q2 is ready
+	//{ "*", 0, q1BSPFormats, 0, ( const modelLoader_t )CM_LoadQ1BrushModel },
 
 	// trailing NULL
 	{ NULL,	0, NULL, 0, NULL }
@@ -458,6 +468,39 @@ PVS
 
 ===============================================================================
 */
+
+/*
+* CM_DecompressVis
+*
+* Decompresses RLE-compressed PVS data
+*/
+uint8_t *CM_DecompressVis( const uint8_t *in, int rowsize, uint8_t *decompressed ) {
+	int c;
+	uint8_t *out;
+	int row;
+
+	row = rowsize;
+	out = decompressed;
+
+	if( !in ) {
+		// no vis info, so make all visible
+		memset( out, 0xff, rowsize );
+	} else {
+		do {
+			if( *in ) {
+				*out++ = *in++;
+				continue;
+			}
+
+			c = in[1];
+			in += 2;
+			while( c-- )
+				*out++ = 0;
+		} while( out - decompressed < row );
+	}
+
+	return decompressed;
+}
 
 /*
 * CM_ClusterRowSize

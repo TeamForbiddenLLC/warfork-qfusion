@@ -8,6 +8,8 @@
 #include "kernel/ui_main.h"
 #include "ui_boneposes.h"
 
+#include "../ref_base/ref_mod.h"
+
 namespace WSWUI
 {
 
@@ -43,7 +45,7 @@ cgs_skeleton_t *UI_BonePoses::SkeletonForModel( struct model_s *model )
 	if( !model )
 		return NULL;
 
-	numBones = trap::R_SkeletalGetNumBones( model, &numFrames );
+	numBones = R_SkeletalGetNumBones( model, &numFrames );
 	if( !numBones || !numFrames )
 		return NULL; // no bones or frames
 
@@ -64,14 +66,14 @@ cgs_skeleton_t *UI_BonePoses::SkeletonForModel( struct model_s *model )
 	skel->numFrames = numFrames;
 	// register bones
 	for( i = 0, bone = skel->bones; i < numBones; i++, bone++ )
-		bone->parent = trap::R_SkeletalGetBoneInfo( model, i, bone->name, sizeof( bone->name ), &bone->flags );
+		bone->parent = R_SkeletalGetBoneInfo( model, i, bone->name, sizeof( bone->name ), &bone->flags );
 
 	// register poses for all frames for all bones
 	for( i = 0; i < numFrames; i++ )
 	{
 		skel->bonePoses[i] = ( bonepose_t * )buffer; buffer += numBones * sizeof( bonepose_t );
 		for( j = 0, bonePose = skel->bonePoses[i]; j < numBones; j++, bonePose++ )
-			trap::R_SkeletalGetBonePose( model, j, i, bonePose );
+			R_SkeletalGetBonePose( model, j, i, bonePose );
 	}
 
 	skel->next = skel_headnode;

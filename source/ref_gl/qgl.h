@@ -359,6 +359,36 @@ typedef unsigned int GLhandleARB;
 #define GL_TEXTURE_COMPARE_FAIL_VALUE_ARB					0x80BF
 #endif /* GL_ARB_shadow */
 
+#define GL_DEBUG_OUTPUT_SYNCHRONOUS       0x8242
+#define GL_DEBUG_NEXT_LOGGED_MESSAGE_LENGTH 0x8243
+#define GL_DEBUG_CALLBACK_FUNCTION        0x8244
+#define GL_DEBUG_CALLBACK_USER_PARAM      0x8245
+#define GL_DEBUG_SOURCE_API               0x8246
+#define GL_DEBUG_SOURCE_WINDOW_SYSTEM     0x8247
+#define GL_DEBUG_SOURCE_SHADER_COMPILER   0x8248
+#define GL_DEBUG_SOURCE_THIRD_PARTY       0x8249
+#define GL_DEBUG_SOURCE_APPLICATION       0x824A
+#define GL_DEBUG_SOURCE_OTHER             0x824B
+#define GL_DEBUG_TYPE_ERROR               0x824C
+#define GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR 0x824D
+#define GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR  0x824E
+#define GL_DEBUG_TYPE_PORTABILITY         0x824F
+#define GL_DEBUG_TYPE_PERFORMANCE         0x8250
+#define GL_DEBUG_TYPE_OTHER               0x8251
+#define GL_MAX_DEBUG_MESSAGE_LENGTH       0x9143
+#define GL_MAX_DEBUG_LOGGED_MESSAGES      0x9144
+#define GL_DEBUG_LOGGED_MESSAGES          0x9145
+#define GL_DEBUG_SEVERITY_HIGH            0x9146
+#define GL_DEBUG_SEVERITY_MEDIUM          0x9147
+#define GL_DEBUG_SEVERITY_LOW             0x9148
+#define GL_DEBUG_TYPE_MARKER              0x8268
+#define GL_DEBUG_TYPE_PUSH_GROUP          0x8269
+#define GL_DEBUG_TYPE_POP_GROUP           0x826A
+#define GL_DEBUG_SEVERITY_NOTIFICATION    0x826B
+#define GL_MAX_DEBUG_GROUP_STACK_DEPTH    0x826C
+#define GL_DEBUG_GROUP_STACK_DEPTH        0x826D
+
+
 /* GL_EXT_framebuffer_object */
 #ifndef GL_EXT_framebuffer_object
 #define GL_EXT_framebuffer_object
@@ -591,6 +621,17 @@ QGL_EGL(EGLBoolean, eglSwapBuffers, (EGLDisplay dpy, EGLSurface surface));
 QGL_EGL(EGLBoolean, eglSwapInterval, (EGLDisplay dpy, EGLint interval));
 QGL_EGL(EGLBoolean, eglTerminate, (EGLDisplay dpy));
 #endif
+
+
+typedef void (APIENTRY *DEBUGPROC)(GLenum source,
+            GLenum type,
+            GLuint id,
+            GLenum severity,
+            GLsizei length,
+            const char*message,
+            const void *userParam);
+
+QGL_FUNC_OPT(void, glDebugMessageCallback, (DEBUGPROC cb, const void* userParam));
 
 // GL Functions
 QGL_FUNC(void, glBindTexture, (GLenum target, GLuint texture));

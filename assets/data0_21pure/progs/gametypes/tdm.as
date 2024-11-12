@@ -263,8 +263,8 @@ String @GT_ScoreboardMessage( uint maxlen )
             
             if ( gametype.isInstagib )
             {
-                // "Name Clan Score Net Ping R"
-                entry = "&p " + playerID + " "
+                // "AVATAR Name Clan Score Net Ping R"
+                entry = "&p " + playerID + " " + playerID + " "
                         + ent.client.clanName + " "
                         + ( ent.client.stats.score + ent.client.stats.deaths - ent.client.stats.suicides) + " "
                         + ent.client.stats.score + " "
@@ -273,8 +273,8 @@ String @GT_ScoreboardMessage( uint maxlen )
             }
             else
             {
-                // "Name Clan Score Net Ping R"
-                entry = "&p " + playerID + " "
+                // "AVATAR Name Clan Score Net Ping R"
+                entry = "&p " + playerID + " " + playerID + " "
                         + ent.client.clanName + " "
                         + ( ent.client.stats.score + ent.client.stats.deaths - ent.client.stats.suicides) + " "
                         + ent.client.stats.score + " "
@@ -570,13 +570,13 @@ void GT_InitGametype()
     // define the scoreboard layout
     if ( gametype.isInstagib )
     {
-        G_ConfigString( CS_SCB_PLAYERTAB_LAYOUT, "%n 112 %s 52 %i 40 %i 36 %l 36 %r l1" );
-        G_ConfigString( CS_SCB_PLAYERTAB_TITLES, "Name Clan Score Net Ping R" );
+        G_ConfigString( CS_SCB_PLAYERTAB_LAYOUT, "%a l1 %n 112 %s 52 %i 40 %i 36 %l 36 %r l1" );
+        G_ConfigString( CS_SCB_PLAYERTAB_TITLES, "AVATAR Name Clan Score Net Ping R" );
     }
     else
     {
-        G_ConfigString( CS_SCB_PLAYERTAB_LAYOUT, "%n 112 %s 52 %i 40 %i 36 %l 36 %r l1" );
-        G_ConfigString( CS_SCB_PLAYERTAB_TITLES, "Name Clan Score Net Ping R" );
+        G_ConfigString( CS_SCB_PLAYERTAB_LAYOUT, "%a l1 %n 112 %s 52 %i 40 %i 36 %l 36 %r l1" );
+        G_ConfigString( CS_SCB_PLAYERTAB_TITLES, "AVATAR Name Clan Score Net Ping R" );
     }
 
     // add commands

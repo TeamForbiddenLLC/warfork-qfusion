@@ -355,6 +355,11 @@ extern cvar_t *g_allow_falldamage;
 extern cvar_t *g_allow_selfdamage;
 extern cvar_t *g_allow_teamdamage;
 extern cvar_t *g_allow_bunny;
+
+extern cvar_t *g_pmove_dashjump_timedelay;
+extern cvar_t *g_pmove_walljump_timedelay;
+extern cvar_t *g_pmove_walljump_failed_timedelay;
+
 extern cvar_t *g_ammo_respawn;
 extern cvar_t *g_weapon_respawn;
 extern cvar_t *g_health_respawn;
@@ -703,6 +708,7 @@ void G_SetBoundsForSpanEntity( edict_t *ent, vec_t size );
 //
 // g_callvotes.c
 //
+void G_Ajax_Cmd( edict_t *ent );
 void G_CallVotes_Init( void );
 void G_FreeCallvotes( void );
 void G_CallVotes_ResetClient( int n );
@@ -711,8 +717,6 @@ void G_CallVotes_Think( void );
 void G_CallVote_Cmd( edict_t *ent );
 void G_OperatorVote_Cmd( edict_t *ent );
 void G_RegisterGametypeScriptCallvote( const char *name, const char *usage, const char *type, const char *help );
-http_response_code_t G_CallVotes_WebRequest( http_query_method_t method, const char *resource, 
-	const char *query_string, char **content, size_t *content_length );
 
 //
 // g_trigger.c
@@ -901,6 +905,10 @@ void SP_target_kill( edict_t *self );
 //
 void SV_ResetPacketFiltersTimeouts( void );
 bool SV_FilterPacket( char *from );
+#define FILTER_BAN ( 1 << 0 )
+#define FILTER_MUTE ( 1 << 1 )
+#define FILTER_SHADOWMUTE ( 1 << 2 )
+bool SV_FilterSteamID( uint64_t id, int filtertype );
 void G_AddServerCommands( void );
 void G_RemoveCommands( void );
 void SV_ReadIPList( void );
@@ -978,6 +986,7 @@ bool G_RespawnLevel( void );
 void G_ResetLevel( void );
 void G_InitLevel( char *mapname, char *entities, int entstrlen, unsigned int levelTime, unsigned int serverTime, unsigned int realTime );
 const char *G_GetEntitySpawnKey( const char *key, edict_t *self );
+void G_UpdateConfigStrings();
 
 //
 // g_awards.c
@@ -1236,7 +1245,8 @@ struct gclient_s
 	int movestyle_latched;
 	bool isoperator;
 	unsigned int queueTimeStamp;
-	int muted;     // & 1 = chat disabled, & 2 = vsay disabled
+	int muted; // fallback if steam auth is disabled. see SV_FilterSteamID
+	int lastFailedCallvoteTime;
 
 	usercmd_t ucmd;
 	int timeDelta;              // time offset to adjust for shots collision (antilag)

@@ -263,6 +263,7 @@ String @GT_ScoreboardMessage( uint maxlen )
 
 		int playerID = ( ent.isGhosting() && ( match.getState() == MATCH_STATE_PLAYTIME ) ) ? -( ent.playerNum + 1 ) : ent.playerNum;
 
+        // "AVATAR Name Clan Score Ping R"
         entry = "&p " + playerID + " " + playerID + " "
                 + ent.client.clanName + " "
                 + ent.client.stats.score + " "

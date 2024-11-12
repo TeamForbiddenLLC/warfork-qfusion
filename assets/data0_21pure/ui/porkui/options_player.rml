@@ -286,6 +286,10 @@
 							<option value="3">count up</option>
 						</select>
 
+						<br/>
+						<hr class="nicehr" />
+						<br/>
+						
 						<div class="title">Crosshair</div>
 						<div id="crosshairs">
 							<div id="crosshair" class="crosshair"/>
@@ -293,6 +297,64 @@
 							<div id="crosshair-strong" class="crosshair"/>
 							<div id="crosshair-strong-white" class="crosshair crosshairwhite" onclick="nextCrosshair(cg_crosshair_strong,crosshairStrong,crosshairStrongWhite);"/>
 						</div>
+						<br/>
+
+						<div class="title">Crosshair color</div>
+						<select cvar="cg_crosshair_color" realtime="1">
+							<option value="255 255 255">White</option>
+							<option value="255 0 0">Red</option>
+							<option value="0 255 0">Green</option>
+							<option value="0 0 255">Blue</option>
+							<option value="0 255 255">Cyan</option>
+							<option value="255 0 255">Magenta</option>
+							<option value="255 255 0">Yellow</option>
+							<option value="255 128 0">Orange</option>
+							<option value='0 0 0'>Black</option>
+						</select>
+						<br/>
+
+						<div class="title">Strong crosshair color</div>
+						<select cvar="cg_crosshair_strong_color" realtime="1">
+							<option value="255 255 255">White</option>
+							<option value="255 0 0">Red</option>
+							<option value="0 255 0">Green</option>
+							<option value="0 0 255">Blue</option>
+							<option value="0 255 255">Cyan</option>
+							<option value="255 0 255">Magenta</option>
+							<option value="255 255 0">Yellow</option>
+							<option value="255 128 0">Orange</option>
+							<option value='0 0 0'>Black</option>
+						</select>
+						<br/>
+
+						<div class="title">Crosshair size</div>
+						<input cvar="cg_crosshair_size" class="slider" type="range" min="0" max="48" step="1" value="0" realtime="1"/>
+						<br/>
+
+						<div class="title">Strong crosshair size</div>
+						<input cvar="cg_crosshair_strong_size" class="slider" type="range" min="0" max="48" step="1" value="0" realtime="1"/>
+						<br/>
+
+						<div class="title">Change crosshair color on hit</div>
+						<input cvar="cg_showCrosshairDamage" type="checkbox" realtime="1"/>
+						<br/>
+
+						<div class="title">Crosshair hit color</div>
+						<select cvar="cg_crosshair_damage_color" realtime="1">
+							<option value="255 255 255">White</option>
+							<option value="255 0 0">Red</option>
+							<option value="0 255 0">Green</option>
+							<option value="0 0 255">Blue</option>
+							<option value="0 255 255">Cyan</option>
+							<option value="255 0 255">Magenta</option>
+							<option value="255 255 0">Yellow</option>
+							<option value="255 128 0">Orange</option>
+							<option value='0 0 0'>Black</option>
+						</select>
+						<br/>
+
+						<br/>
+						<hr class="nicehr" />
 						<br/>
 						
 						<div class="title">FOV</div>
@@ -381,6 +443,10 @@
 						<input cvar="cg_showZoomEffect" type="checkbox" realtime="1"/>
 						<br/>
 
+						<div class="title">Show strafe helper (in race and warmup)</div>
+						<input cvar="cg_strafeHUD" type="checkbox" realtime="1"/>
+						<br/>
+
 						<div id="hud-touchmovedir">
 							<div class="title">Show touch movement direction</div>
 							<input cvar="cg_touch_showMoveDir" type="checkbox" realtime="1"/>
@@ -458,13 +524,17 @@
 						<div class="title">Simple items</div>
 						<input cvar="cg_simpleItems" type="checkbox" realtime="1"/>
 						<br/>
+
+						<div class="title">Enable view animation</div>
+						<input cvar="cg_viewBob" type="checkbox" realtime="1"/>
+						<br/>
                         
                         <div class="title">Show damage numbers</div>
 						<input cvar="cg_damageNumbers" type="checkbox" realtime="1"/>
 						<br/>
                         
                         <div class="title">Damage numbers size</div>
-                        <select realtime="1" onchange="$damageNumbersSize">
+                        <select realtime="1" cvar="cg_damageNumbersSize" onchange="$damageNumbersSize">
                         <option value="1">Tiny</option>
                         <option value="2">Small</option>
                         <option value="3">Medium</option>
@@ -498,6 +568,9 @@
 					<optionsform id="matchbrowser-options-form" onsubmit="$OptionsForm_OnSubmit">
 						<div class="title">Don't suggest servers</div>
 						<input type="checkbox" cvar="ui_autobrowse_manual" realtime="1" />
+						<br />
+						<div class="title">Route traffic through Steam, potentially improving ping</div>
+						<input type="checkbox" cvar="cl_prefer_steam_p2p" realtime="1" />
 						<br />
 					</optionsform>
 				</panel>

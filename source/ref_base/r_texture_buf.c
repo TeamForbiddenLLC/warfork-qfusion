@@ -1,6 +1,7 @@
 #include "r_texture_buf.h"
 #include "../gameshared/q_math.h"
 #include "../gameshared/q_shared.h"
+#include "../qcommon/mod_mem.h"
 
 #include "r_texture_decode.h"
 #include "r_texture_format.h"
@@ -16,7 +17,7 @@ uint16_t T_LogicalH(const  struct texture_buf_s *buf )
 	}
 	return buf->height;
 }
-uint16_t T_LogicalW(const  struct texture_buf_s *buf )
+uint16_t T_LogicalW( const struct texture_buf_s *buf )
 {
 	switch( buf->def->base ) {
 		case R_BASE_BLOCKED_COMPRESSED:
@@ -24,7 +25,7 @@ uint16_t T_LogicalW(const  struct texture_buf_s *buf )
 		default:
 			break;
 	}
-	return buf->height;
+	return buf->width;
 }
 uint16_t T_PixelW(const  struct texture_buf_s *buf )
 {
@@ -100,7 +101,7 @@ void T_PromoteTextureBuf( struct texture_buf_s *tex )
 	assert(tex);
 	if( ( tex->flags & TEX_BUF_IS_ALIASED ) > 0 ) {
 		uint8_t *aliasBuffer = tex->buffer;
-		tex->buffer = malloc( tex->size );
+		tex->buffer = Q_Malloc( tex->size );
 		memcpy( tex->buffer, aliasBuffer, tex->size );
 		
 		// free the alias buffer
@@ -119,8 +120,8 @@ static void __T_ResetBuffer(struct texture_buf_s *buf) {
   	}
   	buf->freeHandler = NULL;
   	buf->flags = (buf->flags & ~TEX_BUF_IS_ALIASED); // we clear the alias flag
-  } else {
-  	free(buf->buffer);
+  } else if(buf->buffer) {
+  	Q_Free(buf->buffer);
   }
   buf->buffer = NULL;
 }
@@ -137,7 +138,7 @@ void T_ReallocTextureBuf( struct texture_buf_s *buf, const struct texture_buf_de
 		  buf->capacity = ( buf->capacity == 0 ) ? buf->size : ( buf->capacity >> 1 ) + buf->capacity;
 	  }
   }
-	buf->buffer = realloc( buf->buffer, buf->capacity );
+	buf->buffer = Q_Realloc( buf->buffer, buf->capacity );
 }
 
 int T_AliasTextureBuf( struct texture_buf_s *buf, const struct texture_buf_desc_s *desc, uint8_t *buffer, size_t size)

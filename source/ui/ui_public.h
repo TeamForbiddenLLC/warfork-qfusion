@@ -21,6 +21,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef __UI_PUBLIC_H__
 #define __UI_PUBLIC_H__
 
+#include "./../steamshim/src/mod_steam.h"
+#include "../ref_base/ref_mod.h"
+
 #define	UI_API_VERSION	    62
 
 typedef size_t (*ui_async_stream_read_cb_t)(const void *buf, size_t numb, float percentage, 
@@ -79,35 +82,9 @@ typedef struct
 	void ( *Cmd_Execute )( void );
 	void ( *Cmd_SetCompletionFunc )( const char *cmd_name, char **( *completion_func )( const char *partial ) );
 
-	void ( *R_ClearScene )( void );
-	void ( *R_AddEntityToScene )( const entity_t *ent );
-	void ( *R_AddLightToScene )( const vec3_t org, float intensity, float r, float g, float b );
-	void ( *R_AddPolyToScene )( const poly_t *poly );
-	void ( *R_RenderScene )( const refdef_t *fd );
-	void ( *R_EndFrame )( void );
+
+	struct ref_import_s refImport;
 	void ( *R_RegisterWorldModel )( const char *name );
-	void ( *R_ModelBounds )( const struct model_s *mod, vec3_t mins, vec3_t maxs );
-	void ( *R_ModelFrameBounds )( const struct model_s *mod, int frame, vec3_t mins, vec3_t maxs );
-	struct model_s *( *R_RegisterModel )( const char *name );
-	struct shader_s *( *R_RegisterSkin )( const char *name );
-	struct shader_s *( *R_RegisterPic )( const char *name );
-	struct shader_s *( *R_RegisterRawPic )( const char *name, int width, int height, uint8_t *data, int samples );
-	struct shader_s *( *R_RegisterLevelshot )( const char *name, struct shader_s *defaultPic, bool *matchesDefault );
-	struct skinfile_s *( *R_RegisterSkinFile )( const char *name );
-	struct shader_s *( *R_RegisterVideo )( const char *name );
-	bool ( *R_LerpTag )( orientation_t *orient, const struct model_s *mod, int oldframe, int frame, float lerpfrac, const char *name );
-	void ( *R_DrawStretchPic )( int x, int y, int w, int h, float s1, float t1, float s2, float t2, const vec4_t color, const struct shader_s *shader );
-	void ( *R_DrawStretchPoly )( const struct poly_s *poly, float x_offset, float y_offset );
-	void ( *R_DrawRotatedStretchPic )( int x, int y, int w, int h, float s1, float t1, float s2, float t2, float angle, const vec4_t color, const struct shader_s *shader );
-	void ( *R_Scissor )( int x, int y, int w, int h );
-	void ( *R_GetScissor )( int *x, int *y, int *w, int *h );
-	void ( *R_ResetScissor )( void );
-	void ( *R_GetShaderDimensions )( const struct shader_s *shader, int *width, int *height );
-	void ( *R_TransformVectorToScreen )( const refdef_t *rd, vec3_t const in, vec2_t out );
-	int ( *R_SkeletalGetNumBones )( const struct model_s *mod, int *numFrames );
-	int ( *R_SkeletalGetBoneInfo )( const struct model_s *mod, int bone, char *name, size_t name_size, int *flags );
-	void ( *R_SkeletalGetBonePose )( const struct model_s *mod, int bone, int frame, bonepose_t *bonepose );
-	struct cinematics_s *( *R_GetShaderCinematic )( struct shader_s *shader );
 
 	struct sfx_s *( *S_RegisterSound )( const char *name );
 	void ( *S_StartLocalSound )( const char *s );
@@ -185,6 +162,10 @@ typedef struct
 	void ( *L10n_LoadLangPOFile )( const char *filepath );
 	const char *( *L10n_TranslateString )( const char *string );
 	const char *( *L10n_GetUserLanguage )( void );
+
+	// steam
+	struct steam_import_s steam_import;
+	bool ( *GetBlocklistItem )( size_t index, uint64_t* steamid_out, char* name, size_t* name_len_in_out );
 } ui_import_t;
 
 typedef struct
@@ -220,6 +201,7 @@ typedef struct
 	bool ( *HaveQuickMenu )( void );
 	void ( *ShowQuickMenu )( bool show );
 	void ( *AddToServerList )( const char *adr, const char *info );
+	void ( *AjaxResponse )( const char *resource, const char *data );
 } ui_export_t;
 
 #ifdef UI_HARD_LINKED

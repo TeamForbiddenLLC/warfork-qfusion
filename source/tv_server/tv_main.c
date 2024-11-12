@@ -56,6 +56,7 @@ cvar_t *tv_compresspackets;
 cvar_t *tv_name;
 cvar_t *tv_reconnectlimit; // minimum seconds between connect messages
 
+cvar_t *tv_log_heartbeats;
 cvar_t *tv_masterservers;
 cvar_t *tv_masterservers_steam;
 
@@ -108,6 +109,7 @@ void TV_Init( void )
 	tv_autorecord = Cvar_Get( "tv_autorecord", "", CVAR_ARCHIVE );
 	tv_lobbymusic = Cvar_Get( "tv_lobbymusic", "", CVAR_ARCHIVE );
 
+	tv_log_heartbeats = Cvar_Get( "tv_log_heartbeats", "1", CVAR_ARCHIVE );
 	tv_masterservers = Cvar_Get( "tv_masterservers", DEFAULT_MASTER_SERVERS_IPS, CVAR_LATCH );
 	tv_masterservers_steam = Cvar_Get( "tv_masterservers_steam", DEFAULT_MASTER_SERVERS_STEAM_IPS, CVAR_LATCH );
 

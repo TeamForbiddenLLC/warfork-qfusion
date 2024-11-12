@@ -404,7 +404,7 @@ static bool CG_LoadPlayerModel( pmodelinfo_t *pmodelinfo, const char *filename )
 		return false;
 
 	pmodelinfo->model = CG_RegisterModel( scratch );
-	if( !trap_R_SkeletalGetNumBones( pmodelinfo->model, NULL ) )
+	if( !R_SkeletalGetNumBones( pmodelinfo->model, NULL ) )
 	{
 		// pmodels only accept skeletal models
 		pmodelinfo->model = NULL;
@@ -474,7 +474,7 @@ void CG_RegisterBasePModel( void )
 	cgs.basePModelInfo = CG_RegisterPlayerModel( filename );
 
 	Q_snprintfz( filename, sizeof( filename ), "%s/%s/%s", "models/players", DEFAULT_PLAYERMODEL, DEFAULT_PLAYERSKIN );
-	cgs.baseSkin = trap_R_RegisterSkinFile( filename );
+	cgs.baseSkin = R_RegisterSkinFile( filename );
 	if( !cgs.baseSkin )
 		CG_Error( "'Default Player Model'(%s): Skin (%s) failed to load", DEFAULT_PLAYERMODEL, filename );
 
@@ -503,7 +503,7 @@ bool CG_GrabTag( orientation_t *tag, entity_t *ent, const char *tagname )
 	if( skel )
 		return CG_SkeletalPoseGetAttachment( tag, skel, ent->boneposes, tagname );
 
-	return trap_R_LerpTag( tag, ent->model, ent->frame, ent->oldframe, ent->backlerp, tagname );
+	return RF_LerpTag( tag, ent->model, ent->frame, ent->oldframe, ent->backlerp, tagname );
 }
 
 /*
@@ -877,7 +877,7 @@ static void CG_AddHeadIcon( centity_t *cent )
 			balloon.radius = radius;
 			balloon.model = NULL;
 
-			trap_R_AddEntityToScene( &balloon );
+			RF_AddEntityToScene( &balloon );
 		}
 
 		// add stun effect: not really a head icon, but there's no point in finding the head location twice
@@ -891,7 +891,7 @@ static void CG_AddHeadIcon( centity_t *cent )
 			if( !( cent->current.effects & EF_PLAYER_STUNNED ) )
 				balloon.shaderRGBA[3] = ( 255 * ( 1.0f - cg.lerpfrac ) );
 
-			trap_R_AddEntityToScene( &balloon );
+			RF_AddEntityToScene( &balloon );
 		}
 	}
 }

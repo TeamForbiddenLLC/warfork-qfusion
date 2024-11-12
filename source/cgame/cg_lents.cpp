@@ -736,7 +736,7 @@ void CG_LaserGunImpact( const vec3_t pos, const vec3_t dir, float radius, const 
 
 	AnglesToAxis( angles, ent.axis );
 				
-	trap_R_AddEntityToScene( &ent );
+	RF_AddEntityToScene( &ent );
 }
 
 /*

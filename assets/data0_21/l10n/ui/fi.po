@@ -377,6 +377,10 @@ msgstr "Ohjattavuus eteenpäin hyppimisessä"
 msgid "Disable autohop"
 msgstr "Poista automaattinen hyppy"
 
+#. UI option for cg_viewBob, animates view camera on landing from high jumps.
+msgid "Enable view animation"
+msgstr "Kytke näkökentän täristys"
+
 #. Touch screen setting
 msgid "Touch look sensitivity"
 msgstr "Ympärillekatsomisen kosketusherkkyys"

@@ -1409,7 +1409,6 @@ String @GT_ScoreboardMessage( uint maxlen )
     if ( scoreboardMessage.length() + entry.length() < maxlen )
         scoreboardMessage += entry;
 
-    // "Name Time Ping Racing"
     for ( i = 0; @team.ent( i ) != null; i++ )
     {
         @ent = team.ent( i );
@@ -1423,7 +1422,10 @@ String @GT_ScoreboardMessage( uint maxlen )
             racing = S_COLOR_RED + "No";
 
         playerID = ( ent.isGhosting() && ( match.getState() == MATCH_STATE_PLAYTIME ) ) ? -( ent.playerNum + 1 ) : ent.playerNum;
-        entry = "&p " + playerID + " " + ent.client.clanName + " "
+
+        // "AVATAR Name Clan Time Ping Racing"
+        entry = "&p " + playerID + " " + playerID + " "
+                + ent.client.clanName + " "
                 + player.bestFinishTime + " "
                 + ent.client.ping + " " + racing + " ";
 
@@ -1771,8 +1773,8 @@ void GT_InitGametype()
         gametype.setTeamSpawnsystem( team, SPAWNSYSTEM_INSTANT, 0, 0, false );
 
     // define the scoreboard layout
-    G_ConfigString( CS_SCB_PLAYERTAB_LAYOUT, "%n 112 %s 52 %t 96 %l 48 %s 52" );
-    G_ConfigString( CS_SCB_PLAYERTAB_TITLES, "Name Clan Time Ping Racing" );
+    G_ConfigString( CS_SCB_PLAYERTAB_LAYOUT, "%a l1 %n 112 %s 52 %t 96 %l 48 %s 52" );
+    G_ConfigString( CS_SCB_PLAYERTAB_TITLES, "AVATAR Name Clan Time Ping Racing" );
 
     // add commands
     G_RegisterCommand( "gametype" );

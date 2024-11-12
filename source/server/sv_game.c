@@ -163,6 +163,43 @@ static void PF_GameCmd( edict_t *ent, const char *cmd )
 }
 
 /*
+* PF_ServerCmd
+*
+* Sends the server command to clients.
+* If ent is NULL the command will be sent to all connected clients
+*/
+static void PF_ServerCmd( edict_t *ent, const char *cmd )
+{
+	int i;
+	client_t *client;
+
+	if( !cmd || !cmd[0] )
+		return;
+
+	if( !ent )
+	{
+		for( i = 0, client = svs.clients; i < sv_maxclients->integer; i++, client++ )
+		{
+			if( client->state < CS_SPAWNED )
+				continue;
+			SV_AddServerCommand( client, cmd );
+		}
+	}
+	else
+	{
+		i = NUM_FOR_EDICT( ent );
+		if( i < 1 || i > sv_maxclients->integer )
+			return;
+
+		client = svs.clients + ( i - 1 );
+		if( client->state < CS_SPAWNED )
+			return;
+
+		SV_AddServerCommand( client, cmd );
+	}
+}
+
+/*
 * PF_dprint
 *
 * Debug print to server console
@@ -323,7 +360,14 @@ static void SV_AddPureShader( const char *name )
 
 	if( !COM_FileExtension( tempname ) )
 	{
-		extension = FS_FirstExtension( tempname, IMAGE_EXTENSIONS, NUM_IMAGE_EXTENSIONS );
+		const char *extensions[] = {
+			extensionTGA,
+			extensionJPG,
+			extensionPNG,
+			extensionWAL,
+			extensionPCX, 
+		};
+		extension = FS_FirstExtension( tempname, extensions, Q_ARRAY_COUNT(extensions));
 		if( !extension )
 			return;
 
@@ -466,6 +510,7 @@ void SV_InitGameProgs( void )
 	import.Print = PF_dprint;
 	import.Error = PF_error;
 	import.GameCmd = PF_GameCmd;
+	import.ServerCmd = PF_ServerCmd;
 
 	import.inPVS = PF_inPVS;
 

@@ -368,6 +368,10 @@ msgstr "İleri atlama üzerinde Hızlanma"
 msgid "Disable autohop"
 msgstr "Autohop Devre disi"
 
+#. UI option for cg_viewBob, animates view camera on landing from high jumps.
+msgid "Enable view animation"
+msgstr "Görünümü animasyon etkinlestirme"
+
 #. Touch screen setting
 msgid "Touch look sensitivity"
 msgstr "Dokunmatik bakmak hassasiyeti"

@@ -49,9 +49,7 @@ struct qmutex_s {
 */
 int Sys_Mutex_Create( qmutex_t **pmutex )
 {
-	qmutex_t *mutex;
-
-	mutex = ( qmutex_t * )Q_malloc( sizeof( *mutex ) );
+	qmutex_t *mutex = ( qmutex_t * )malloc( sizeof( *mutex ) );
 	if( !mutex ) {
 		return -1;
 	}
@@ -70,7 +68,7 @@ void Sys_Mutex_Destroy( qmutex_t *mutex )
 		return;
 	}
 	DeleteCriticalSection( &mutex->h );
-	Q_free( mutex );
+	free( mutex );
 }
 
 /*
@@ -105,7 +103,7 @@ int Sys_Mutex_Create( qmutex_t **pmutex )
 		return GetLastError();
 	}
 	
-	mutex = ( qmutex_t * )Q_malloc( sizeof( *mutex ) );
+	mutex = ( qmutex_t * )malloc( sizeof( *mutex ) );
 	if( !mutex ) {
 		return -1;
 	}
@@ -123,7 +121,7 @@ void Sys_Mutex_Destroy( qmutex_t *mutex )
 		return;
 	}
 	CloseHandle( mutex->h );
-	Q_free( mutex );
+	free( mutex );
 }
 
 /*
@@ -148,17 +146,20 @@ void Sys_Mutex_Unlock( qmutex_t *mutex )
 */
 int Sys_Thread_Create( qthread_t **pthread, void *(*routine) (void*), void *param )
 {
-	qthread_t *thread;
 	unsigned threadID;
-	HANDLE h;
 	
-	h = (HANDLE)_beginthreadex( NULL, 0, (unsigned (WINAPI *) (void *))routine, param, 0, &threadID );
+	qthread_t *thread = ( qthread_t * )malloc( sizeof( *thread ) );
+	if(!thread) {
+		return -1;
+	}
+
+	HANDLE h = (HANDLE)_beginthreadex( NULL, 0, (unsigned (WINAPI *) (void *))routine, param, 0, &threadID );
 
 	if( h == NULL ) {
+		free(thread);
 		return GetLastError();
 	}
 
-	thread = ( qthread_t * )Q_malloc( sizeof( *thread ) );
 	thread->h = h;
 	*pthread = thread;
 	return 0;
@@ -205,14 +206,16 @@ bool Sys_Atomic_CAS( volatile int *value, int oldval, int newval, qmutex_t *mute
 */
 int Sys_CondVar_Create( qcondvar_t **pcond )
 {
-	qcondvar_t *cond;
 	HANDLE *e = NULL;
 
 	if( !pcond ) {
 		return -1;
 	}
 
-	cond = ( qcondvar_t * )Q_malloc( sizeof( *cond ) );
+	qcondvar_t *cond = ( qcondvar_t * )malloc( sizeof( *cond ) );
+	if(!cond) {
+		return -1;
+	}
 
 	if( pInitializeConditionVariable ) {
 		pInitializeConditionVariable( &( cond->c ) );
@@ -221,7 +224,7 @@ int Sys_CondVar_Create( qcondvar_t **pcond )
 		// If some day Qfusion needs broadcast, a waiter counter should be added.
 		e = CreateEvent( NULL, FALSE, FALSE, NULL );
 		if( !e ) {
-			Q_free( cond );
+			free( cond );
 			return GetLastError();
 		}
 	}
@@ -245,7 +248,7 @@ void Sys_CondVar_Destroy( qcondvar_t *cond )
 		CloseHandle( cond->e );
 	}
 
-	Q_free( cond );
+	free( cond );
 }
 
 /*

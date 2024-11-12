@@ -186,6 +186,14 @@ struct cmodel_state_s
 	cbrush_t *oct_markbrushes[1];
 	cmodel_t oct_cmodel[1];
 
+	// ==== Q1 specific stuff ===
+	int numclipnodes;
+	cnode_t *map_clipnodes;
+
+	int nummaphulls;
+	struct chull_s *map_hulls;      // nummaphulls * numcmodels
+	// ==== Q1 specific stuff ===
+
 	int leaf_count, leaf_maxcount;
 	int *leaf_list;
 	float *leaf_mins, *leaf_maxs;
@@ -202,4 +210,6 @@ struct cmodel_state_s
 void	CM_InitBoxHull( cmodel_state_t *cms );
 void	CM_InitOctagonHull( cmodel_state_t *cms );
 
-void	CM_FloodAreaConnections( cmodel_state_t *cms );
+void    CM_FloodAreaConnections( cmodel_state_t *cms );
+
+uint8_t *CM_DecompressVis( const uint8_t *in, int rowsize, uint8_t *decompressed );

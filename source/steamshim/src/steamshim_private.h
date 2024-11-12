@@ -22,23 +22,9 @@ freely, subject to the following restrictions:
 #include "steamshim_types.h"
 #include <cstdint>
 
-typedef enum ShimCmd
-{
-    SHIMCMD_BYE,
-    SHIMCMD_PUMP,
-    SHIMCMD_REQUESTSTEAMID,
-    SHIMCMD_REQUESTPERSONANAME,
-    SHIMCMD_SETRICHPRESENCE,
-    SHIMCMD_REQUESTAUTHSESSIONTICKET,
-    SHIMCMD_BEGINAUTHSESSION,
-    SHIMCMD_ENDAUTHSESSION,
-    SHIMCMD_CREATEBEACON,
-    SHIMCMD_REQUESTAVATAR,
-} ShimCmd;
-
-
 extern PipeType GPipeRead;
 extern PipeType GPipeWrite;
+extern bool debug;
 
 class PipeBuffer
 {
@@ -47,12 +33,12 @@ class PipeBuffer
 
   bool hasmsg = false;
 
-  void WriteData(void* val, size_t vallen);
+  void WriteData(const void* val, size_t vallen);
   void WriteByte(char val);
   void WriteInt(int val);
   void WriteFloat(float val);
   void WriteLong(uint64_t val);
-  void WriteString(char *val);
+  void WriteString(const char *val);
 
   void *ReadData(size_t vallen);
   char *ReadString();

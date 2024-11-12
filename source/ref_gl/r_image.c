@@ -29,6 +29,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "stb_image.h"
 
+#include "r_texture_buffer_load.h"
+
 #define	MAX_GLIMAGES	    8192
 #define IMAGES_HASH_SIZE    64
 
@@ -412,7 +414,7 @@ static void __R_stbi_free_image(void* p) {
 	stbi_image_free(img);
 }
 
-
+// TODO: replace r_texture_buffer_load.h has a replacment 
 static bool __R_ReadImageFromDisk_stbi(char *filename, struct texture_buf_s* buffer ) {
 	uint8_t* data;
 	size_t size = R_LoadFile( filename, ( void ** ) &data );
@@ -863,9 +865,9 @@ static void R_TextureFormat( int flags, int samples, int *comp, int *format, int
 	{
 		*type = GL_UNSIGNED_BYTE;
 		if( samples == 4 )
-			*format = ( flags & IT_BGRA ? GL_BGRA_EXT : GL_RGBA );
+			*format = GL_RGBA;
 		else if( samples == 3 )
-			*format = ( flags & IT_BGRA ? GL_BGR_EXT : GL_RGB );
+			*format = GL_RGB;
 		else if( samples == 2 )
 			*format = GL_LUMINANCE_ALPHA;
 		else if( flags & IT_ALPHAMASK )
@@ -1412,10 +1414,9 @@ static bool R_LoadKTX( int ctx, image_t *image, const char *pathname )
 		  for( size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx ) {
 		  	struct texture_buf_s *tex = R_KTXResolveBuffer( &ktxContext, 0, faceIdx, 0 );
 				decompressed[faceIdx] = R_PrepareImageBuffer( ctx, TEXTURE_LOADING_BUF0 + faceIdx, ALIGN( tex->width * 3, 4 ) * tex->height);
-				DecompressETC1( tex->buffer, tex->width, tex->height, decompressed[faceIdx], glConfig.ext.bgra ? true : false );
+				DecompressETC1( tex->buffer, tex->width, tex->height, decompressed[faceIdx], false);
 		  }
-		  R_UploadMipmapped( ctx, decompressed, R_KTXWidth( &ktxContext ), R_KTXHeight( &ktxContext ), 1, image->flags, image->minmipsize, &image->upload_width, &image->upload_height,
-		  				   glConfig.ext.bgra ? GL_BGR_EXT : GL_RGB, GL_UNSIGNED_BYTE );
+		  R_UploadMipmapped( ctx, decompressed, R_KTXWidth( &ktxContext ), R_KTXHeight( &ktxContext ), 1, image->flags, image->minmipsize, &image->upload_width, &image->upload_height, GL_RGB, GL_UNSIGNED_BYTE );
 		}
 
 		image->samples = 3;
@@ -1428,7 +1429,6 @@ static bool R_LoadKTX( int ctx, image_t *image, const char *pathname )
 				RT_ExpectChannelsMatch( definition, expectBGR, Q_ARRAY_COUNT( expectBGR ) ) || 
 				RT_ExpectChannelsMatch( definition, expectBGRA, Q_ARRAY_COUNT( expectBGRA ) ); 
 		image->flags |= (
-			(isBGRTexture  ? IT_BGRA : 0 ) |
 			(RT_ExpectChannelsMatch( definition, expectA, Q_ARRAY_COUNT( expectA ) ) ? IT_ALPHAMASK : 0));
 		image->samples = RT_NumberChannels(definition);
 		const uint16_t numberOfMipLevels = ( image->flags & IT_NOMIPMAP ) ? 1 : R_KTXGetNumberMips(&ktxContext);
@@ -1439,7 +1439,7 @@ static bool R_LoadKTX( int ctx, image_t *image, const char *pathname )
 		for( uint16_t mipIndex = 0; mipIndex < numberOfMipLevels; mipIndex++ ) {
 			for( uint32_t faceIndex = 0; faceIndex < numberOfFaces; faceIndex++ ) {
 				struct texture_buf_s *texBuffer = R_KTXResolveBuffer( &ktxContext, mipIndex, faceIndex, 0 );
-				if( !glConfig.ext.bgra && isBGRTexture ) {
+				if( isBGRTexture ) {
 					const size_t numberChannels = RT_NumberChannels( definition );
 					assert( numberChannels >= 3 && numberChannels <= Q_ARRAY_COUNT( swizzleChannel ) );
 					memcpy( swizzleChannel, RT_Channels( definition ), numberChannels );
@@ -1519,7 +1519,7 @@ static bool R_LoadImageFromDisk( int ctx, image_t *image )
 			{
 				sdssubstr(pathname, 0, baseLen);
 				pathname = sdscatfmt( pathname, "_%s", cubemapSides[i][j].suf );
-				const char* extension = FS_FirstExtension( pathname, IMAGE_EXTENSIONS, NUM_IMAGE_EXTENSIONS - 1 ); // last is KTX
+				const char* extension = FS_FirstExtension2( pathname, IMAGE_EXTENSIONS, NUM_IMAGE_EXTENSIONS - 1 ); // last is KTX
 				
 				if(extension != NULL) {
 					lastExtension = extension;
@@ -1594,29 +1594,47 @@ static bool R_LoadImageFromDisk( int ctx, image_t *image )
 	{
 		struct texture_buf_s pic = {0};
 		sdssubstr(pathname, 0, baseLen);
-		const char* extension = FS_FirstExtension( pathname, IMAGE_EXTENSIONS, NUM_IMAGE_EXTENSIONS - 1 ); // last is KTX
-		if(extension != NULL) {
-			pathname = sdscat(pathname, extension);
+
+		const char *extensions[] = {
+			extensionTGA,
+			extensionJPG,
+			extensionPNG,
+			extensionWAL
+		};
+
+		const char* ext = FS_FirstExtension2( pathname, extensions, Q_ARRAY_COUNT(extensions)); // last is KTX
+		if(ext != NULL) {
+			pathname = sdscat(pathname, ext);
 		}
-		if(extension != NULL && __R_ReadImageFromDisk_stbi(pathname, &pic) )
-		{
-			image->width = T_PixelW(&pic);
-			image->height = T_PixelH(&pic);
-			image->samples =  RT_NumberChannels(pic.def);
+		if((ext == extensionPNG || ext == extensionJPG || ext == extensionTGA) && T_LoadImageSTBI(pathname, &pic)) {
+			image->width = T_PixelW( &pic );
+			image->height = T_PixelH( &pic );
+			image->samples = RT_NumberChannels( pic.def );
 
 			R_BindImage( image );
 
-			R_Upload32( ctx, &pic.buffer, 0, 0, 0, image->width, image->height, image->flags, image->minmipsize, &image->upload_width, 
-				&image->upload_height, image->samples, false, false );
+			R_Upload32( ctx, &pic.buffer, 0, 0, 0, image->width, image->height, image->flags, image->minmipsize, &image->upload_width, &image->upload_height, image->samples, false, false );
 
-			Q_strncpyz( image->extension, extension, sizeof( image->extension ) );
+			Q_strncpyz( image->extension, ext, sizeof( image->extension ) );
 			loaded = true;
-			T_FreeTextureBuf(&pic);
+			T_FreeTextureBuf( &pic );
+		} else if(ext == extensionWAL && T_LoadImageWAL(pathname, &pic)) {
+			image->width = T_PixelW( &pic );
+			image->height = T_PixelH( &pic );
+			image->samples = RT_NumberChannels( pic.def );
+			
+			R_BindImage( image );
+
+			R_Upload32( ctx, &pic.buffer, 0, 0, 0, image->width, image->height, image->flags, image->minmipsize, &image->upload_width, &image->upload_height, image->samples, false, false );
+
+			Q_strncpyz( image->extension, ext, sizeof( image->extension ) );
+			loaded = true;
+			T_FreeTextureBuf( &pic );
+
+		} else {
+			ri.Com_Printf( S_COLOR_YELLOW "Missing image: %s\n", image->name );
 		}
-		else
-		{
-			ri.Com_DPrintf( S_COLOR_YELLOW "Missing image: %s\n", image->name );
-		}
+		
 	}
 
 	if( loaded )
@@ -1724,6 +1742,9 @@ image_t *R_LoadImage( const char *name, uint8_t **pic, int width, int height, in
 
 	R_Upload32( QGL_CONTEXT_MAIN, pic, 0, 0, 0, width, height, flags, minmipsize,
 		&image->upload_width, &image->upload_height, image->samples, false, false );
+
+	R_DeferDataSync();
+	R_UnbindImage(image);
 
 	return image;
 }

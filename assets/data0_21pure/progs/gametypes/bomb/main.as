@@ -387,7 +387,7 @@ String @GT_ScoreboardMessage( uint maxlen )
 
 			if ( gametype.isInstagib )
 			{
-				// Name Clan Score Frags Ping R
+				// AVATAR Name Clan Score Frags Ping R
 
 				entry = "&p " + playerId
 					+ " " + playerId
@@ -400,7 +400,7 @@ String @GT_ScoreboardMessage( uint maxlen )
 			}
 			else
 			{
-				// Name Clan Score Frags W1 W2 W3 Ping R
+				// AVATAR Name Clan Score Frags W1 W2 W3 Ping R
 
 				entry = "&p " + playerId
 					+ " " + playerId

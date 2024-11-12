@@ -272,18 +272,6 @@ msgstr "<0/1> Disables \"unmute\" opcall.\n"
 "^6Enable: g_disable_opcall_unmute \"1\""
 
 #. Console/g
-msgid "g_disable_opcall_vmute"
-msgstr "<0/1> Disables \"vmute\" opcall.\n"
-"^6Disable: g_disable_opcall_vmute \"0\"\n"
-"^6Enable: g_disable_opcall_vmute \"1\""
-
-#. Console/g
-msgid "g_disable_opcall_vunmute"
-msgstr "<0/1> Disables \"vunmute\" opcall.\n"
-"^6Disable: g_disable_opcall_vunmute \"0\"\n"
-"^6Enable: g_disable_opcall_vunmute \"1\""
-
-#. Console/g
 msgid "g_disable_opcall_warmup_timelimit"
 msgstr "<0/1> Disables \"warmup_timelimit\" opcall.\n"
 "^6Disable: g_disable_opcall_warmup_timelimit \"0\"\n"
@@ -479,20 +467,6 @@ msgstr "<0/1> Disables \"unmute\" callvote.\n"
 "^6Note: Doesn't affect opcalls."
 
 #. Console/g
-msgid "g_disable_vote_vmute"
-msgstr "<0/1> Disables \"vmute\" callvote.\n"
-"^6Disable: g_disable_vote_vmute \"0\"\n"
-"^6Enable: g_disable_vote_vmute \"1\"\n"
-"^6Note: Doesn't affect opcalls."
-
-#. Console/g
-msgid "g_disable_vote_vunmute"
-msgstr "<0/1> Disables \"vunmute\" callvote.\n"
-"^6Disable: g_disable_vote_vunmute \"0\"\n"
-"^6Enable: g_disable_vote_vunmute \"1\"\n"
-"^6Note: Doesn't affect opcalls."
-
-#. Console/g
 msgid "g_disable_vote_warmup_timelimit"
 msgstr "<0/1> Disables \"warmup_timelimit\" callvote.\n"
 "^6Disable: g_disable_vote_warmup_timelimit \"0\"\n"
@@ -630,8 +604,20 @@ msgstr "<value> Sets the operator password. Operator is disabled if empty."
 
 #. Console/g
 msgid "g_permanent_operators"
-msgstr "<value> A comma separated list of 64-bit SteamID's (SteamID64) to grant operator access.\n"
-"^6Example: 76561197974895275,76561197960287930"
+msgstr "<value> A colon separated list of 64-bit SteamID's (SteamID64) to grant operator access.\n"
+"^6Example: 76561197974895275:76561197960287930:76561198799681010"
+
+#. Console/g
+msgid "g_pmove_dashjump_timedelay"
+msgstr "<value> The amount of time (in milliseconds) dashjump is available to be used again"
+
+#. Console/g
+msgid "g_pmove_walljump_timedelay"
+msgstr "<value> The amount of time (in milliseconds) a walljump is available again"
+
+#. Console/g
+msgid "g_pmove_walljump_failed_timedelay"
+msgstr "<value> The amount of time (in milliseconds) a walljump is available again while being stunned"
 
 #. Console/g
 msgid "g_postmatch_timelimit"

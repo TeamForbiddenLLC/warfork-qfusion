@@ -556,7 +556,7 @@ String @GT_ScoreboardMessage( uint maxlen )
 
 			int score = ent.client.stats.score + int( ent.client.stats.totalDamageGiven * 0.01 );
 
-            // "Name Score Ping C R"
+            // "AVATAR Name Score Ping C R"
             entry = "&p " + playerID + " " + playerID + " "
                     + ent.client.clanName + " "
                     + score + " "

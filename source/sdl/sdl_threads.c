@@ -39,10 +39,19 @@ struct qcondvar_s {
 */
 int Sys_Mutex_Create( qmutex_t **pmutex )
 {
-	qmutex_t *mutex;
+	if(!pmutex) 
+		return -1;
 
-	mutex = (qmutex_t *)Q_malloc(sizeof(*mutex));
+	qmutex_t *mutex = (qmutex_t *)malloc(sizeof(*mutex));
+	
+	if(!mutex) 
+		return -1;
+	
 	mutex->m = SDL_CreateMutex();
+	if(!mutex->m) {
+		free(mutex);
+		return -1;
+	}
 
 	*pmutex = mutex;
 	return 0;
@@ -58,7 +67,7 @@ void Sys_Mutex_Destroy( qmutex_t *mutex )
 	}
 
 	SDL_DestroyMutex(mutex->m);
-	Q_free(mutex);
+	free(mutex);
 }
 
 /*
@@ -82,10 +91,19 @@ void Sys_Mutex_Unlock( qmutex_t *mutex )
 */
 int Sys_Thread_Create( qthread_t **pthread, void *(*routine) (void*), void *param )
 {
-	qthread_t *thread;
+	if(!pthread) 
+		return -1;
+	
+	qthread_t *thread = (qthread_t *)malloc( sizeof( *thread ) );
+	if( !thread ) 
+		return -1;
+	
 
-	thread = (qthread_t *)Q_malloc(sizeof(*thread));
-	thread->t = SDL_CreateThread((SDL_ThreadFunction)routine, NULL, param);
+	thread->t = SDL_CreateThread( (SDL_ThreadFunction)routine, NULL, param );
+	if( !thread->t ) {
+		free(thread);
+		return -1;
+	}
 
 	*pthread = thread;
 	return 0;
@@ -133,16 +151,16 @@ bool Sys_Atomic_CAS( volatile int *value, int oldval, int newval, qmutex_t *mute
 */
 int Sys_CondVar_Create( qcondvar_t **pcond )
 {
-	qcondvar_t *cond;
-
-	if( !pcond ) {
+	if( !pcond )
 		return -1;
-	}
+	
 
-	cond = ( qcondvar_t * )Q_malloc( sizeof( *cond ) );
+	qcondvar_t *const cond = (qcondvar_t *)malloc( sizeof( *cond ) );
+	if(!cond)
+		return -1;
 	cond->c = SDL_CreateCond();
 	if( !cond->c ) {
-		Q_free( cond );
+		free( cond );
 		return -1;
 	}
 
@@ -160,7 +178,7 @@ void Sys_CondVar_Destroy( qcondvar_t *cond )
 	}
 
 	SDL_DestroyCond( cond->c );
-	Q_free( cond );
+	free( cond );
 }
 
 /*

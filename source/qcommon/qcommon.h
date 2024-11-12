@@ -79,6 +79,7 @@ void MSG_WriteByte( msg_t *sb, int c );
 void MSG_WriteShort( msg_t *sb, int c );
 void MSG_WriteInt3( msg_t *sb, int c );
 void MSG_WriteLong( msg_t *sb, int c );
+void MSG_WriteLongLong( msg_t *sb, long long c );
 void MSG_WriteFloat( msg_t *sb, float f );
 void MSG_WriteString( msg_t *sb, const char *s );
 #define MSG_WriteCoord( sb, f ) ( MSG_WriteInt3( ( sb ), Q_rint( ( f*PM_VECTOR_SNAP ) ) ) )
@@ -207,6 +208,7 @@ PROTOCOL
 
 #define	PORT_MASTER			27950
 #define	PORT_MASTER_STEAM	27011
+#define	PORT_MASTER_WARFORK			27951
 #define	PORT_SERVER			44400
 #define	PORT_HTTP_SERVER	44444
 #define PORT_TV_SERVER		44440
@@ -247,6 +249,7 @@ enum svc_ops_e
 	svc_servercs,			//tmp jalfixme : send reliable commands as unreliable
 	svc_frame,
 	svc_demoinfo,
+	svc_voice,
 	svc_extension			// for future expansion
 };
 
@@ -263,6 +266,7 @@ enum clc_ops_e
 	clc_svcack,
 	clc_clientcommand,      // [string] message
 	clc_extension,
+	clc_voice,
 	clc_steamauth,
 };
 
@@ -471,7 +475,7 @@ NET
 
 #define	PACKET_HEADER			10          // two ints, and a short
 
-#define	MAX_RELIABLE_COMMANDS	64          // max string commands buffered for restransmit
+#define	MAX_RELIABLE_COMMANDS	256 // max string commands buffered for restransmit
 #define	MAX_PACKETLEN			1400        // max size of a network packet
 #define	MAX_MSGLEN				32768       // max length of a message, which may be fragmented into multiple packets
 
@@ -486,6 +490,7 @@ typedef enum
 	NA_LOOPBACK,
 	NA_IP,
 	NA_IP6,
+	NA_SDR,
 } netadrtype_t;
 
 typedef struct netadr_ipv4_s
@@ -508,13 +513,15 @@ typedef struct netadr_s
 	{
 		netadr_ipv4_t ipv4;
 		netadr_ipv6_t ipv6;
+		uint64_t steamid;
 	} address;
 } netadr_t;
 
 typedef enum
 {
 	SOCKET_LOOPBACK,
-	SOCKET_UDP
+	SOCKET_UDP,
+	SOCKET_SDR
 #ifdef TCP_SUPPORT
 	, SOCKET_TCP
 #endif
@@ -720,6 +727,7 @@ static const struct fs_import_s default_fs_imports_s = {
 	.FS_PakFileExists = FS_PakFileExists,
 	.FS_FileMTime = FS_FileMTime,
 	.FS_BaseFileMTime = FS_BaseFileMTime,
+	.FS_FirstExtension2 = FS_FirstExtension2,
 	.FS_FirstExtension = FS_FirstExtension,
 	.FS_PakNameForFile = FS_PakNameForFile,
 	.FS_IsPureFile = FS_IsPureFile,
@@ -871,9 +879,6 @@ extern mempool_t *zoneMemPool;
 #define Mem_TempMalloc( size ) Mem_Alloc( tempMemPool, size )
 #define Mem_TempFree( data ) Mem_Free( data )
 
-void *Q_malloc( size_t size );
-void *Q_realloc( void *buf, size_t newsize );
-void Q_free( void *buf );
 void Qcommon_InitCvarDescriptions( void );
 
 void Qcommon_Init( int argc, char **argv );
@@ -1004,17 +1009,5 @@ MULTITHREADING
 ==============================================================
 */
 #include "qthreads.h"
-
-/*
-==============================================================
-
-AUTOMATIC UPDATES
-
-==============================================================
-*/
-void Com_Autoupdate_Init( void );
-void Com_Autoupdate_Run( bool checkOnly, void (*newfiles_cb)(void) );
-void Com_Autoupdate_Cancel( void );
-void Com_Autoupdate_Shutdown( void );
 
 #endif // __QCOMMON_H

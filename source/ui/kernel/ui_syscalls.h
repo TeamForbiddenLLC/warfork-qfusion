@@ -2,6 +2,7 @@
 #define __UI_SYSCALLS_H__
 
 #include "ui_public.h"
+#include <cstdint>
 
 // in ui_public.cpp
 extern "C" QF_DLL_EXPORT ui_export_t *GetUIAPI( ui_import_t *import );
@@ -40,116 +41,8 @@ namespace trap
 			UI_IMPORT.Cmd_Execute ();
 		}
 
-		inline void R_ClearScene( void ) {
-			UI_IMPORT.R_ClearScene ();
-		}
-
-		inline void R_Scissor( int x, int y, int w, int h ) {
-			UI_IMPORT.R_Scissor( x, y, w, h );
-		}
-
-		inline void R_GetScissor( int *x, int *y, int* w, int *h ) {
-			UI_IMPORT.R_GetScissor( x, y, w, h );
-		}
-
-		inline void R_ResetScissor( void ) {
-			UI_IMPORT.R_ResetScissor();
-		}
-
-		inline void R_AddEntityToScene( entity_t *ent ) {
-			UI_IMPORT.R_AddEntityToScene( ent );
-		}
-
-		inline void R_AddLightToScene( vec3_t org, float intensity, float r, float g, float b ) {
-			UI_IMPORT.R_AddLightToScene( org, intensity, r, g, b );
-		}
-
-		inline void R_AddPolyToScene( poly_t *poly ) {
-			UI_IMPORT.R_AddPolyToScene( poly );
-		}
-
-		inline void R_RenderScene( refdef_t *fd ) {
-			UI_IMPORT.R_RenderScene( fd );
-		}
-
-		inline void R_EndFrame( void ) {
-			UI_IMPORT.R_EndFrame ();
-		}
-
 		inline void R_RegisterWorldModel( const char *name ) {
 			UI_IMPORT.R_RegisterWorldModel( name);
-		}
-
-		inline void R_ModelBounds( struct model_s *mod, vec3_t mins, vec3_t maxs ) {
-			UI_IMPORT.R_ModelBounds( mod, mins, maxs );
-		}
-
-		inline void R_ModelFrameBounds( struct model_s *mod, int frame, vec3_t mins, vec3_t maxs ) {
-			UI_IMPORT.R_ModelFrameBounds( mod, frame, mins, maxs );
-		}
-
-		inline struct model_s *R_RegisterModel( const char *name ) {
-			return UI_IMPORT.R_RegisterModel( name );
-		}
-
-		inline struct shader_s *R_RegisterSkin( const char *name ) {
-			return UI_IMPORT.R_RegisterSkin( name );
-		}
-
-		inline struct shader_s *R_RegisterPic( const char *name ) {
-			return UI_IMPORT.R_RegisterPic( name );
-		}
-
-		inline struct shader_s *R_RegisterRawPic( const char *name, int width, int height, uint8_t *data, int samples ) {
-			return UI_IMPORT.R_RegisterRawPic( name, width, height, data, samples );
-		}
-
-		inline struct shader_s *R_RegisterLevelshot( const char *name, struct shader_s *defaultPic, bool *matchesDefault ) {
-			return UI_IMPORT.R_RegisterLevelshot( name, defaultPic, matchesDefault );
-		}
-
-		inline struct skinfile_s *R_RegisterSkinFile( const char *name ) {
-			return UI_IMPORT.R_RegisterSkinFile( name );
-		}
-
-		inline struct shader_s *R_RegisterVideo( const char *name ) {
-			return UI_IMPORT.R_RegisterVideo( name );
-		}
-
-		inline void R_GetShaderDimensions( const struct shader_s *shader, int *width, int *height ) {
-			UI_IMPORT.R_GetShaderDimensions( shader, width, height );
-		}
-
-		inline bool R_LerpTag( orientation_t *orient, struct model_s *mod, int oldframe, int frame, float lerpfrac, const char *name ) {
-			return UI_IMPORT.R_LerpTag( orient, mod, oldframe, frame, lerpfrac, name );
-		}
-
-		inline void R_DrawStretchPoly( const poly_t *poly, float x_offset, float y_offset ) {
-			UI_IMPORT.R_DrawStretchPoly( poly, x_offset, y_offset );
-		}
-
-		inline void R_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, vec4_t color, struct shader_s *shader ) {
-			UI_IMPORT.R_DrawStretchPic( x, y, w, h, s1, t1, s2, t2, color, shader );
-		}
-
-		inline void R_DrawRotatedStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, float angle, vec4_t color, struct shader_s *shader ) {
-			UI_IMPORT.R_DrawRotatedStretchPic( x, y, w, h, s1, t1, s2, t2, angle, color, shader );
-		}
-
-		inline void R_TransformVectorToScreen( refdef_t *rd, vec3_t in, vec2_t out ) {
-			UI_IMPORT.R_TransformVectorToScreen( rd, in, out );
-		}
-
-		inline int R_SkeletalGetNumBones( struct model_s *mod, int *numFrames ) {
-			return UI_IMPORT.R_SkeletalGetNumBones( mod, numFrames );
-		}
-
-		inline int R_SkeletalGetBoneInfo( struct model_s *mod, int bone, char *name, int size, int *flags ) {
-			return UI_IMPORT.R_SkeletalGetBoneInfo( mod, bone, name, size, flags );
-		}
-
-		inline void R_SkeletalGetBonePose( struct model_s *mod, int bone, int frame, bonepose_t *bonepose ) {
-			UI_IMPORT.R_SkeletalGetBonePose( mod, bone, frame, bonepose );
 		}
 
 		inline const char *ML_GetFullname( const char *name ) {
@@ -455,6 +348,10 @@ namespace trap
 
 		inline const char *L10n_GetUserLanguage( void ) {
 			return UI_IMPORT.L10n_GetUserLanguage();
+		}
+
+		inline bool GetBlocklistItem( size_t index, uint64_t* steamid_out, char* name, size_t* name_len_in_out ) {
+			return UI_IMPORT.GetBlocklistItem( index, steamid_out, name, name_len_in_out );
 		}
 }
 

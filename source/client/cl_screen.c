@@ -270,7 +270,7 @@ void SCR_DrawRawChar( int x, int y, wchar_t num, qfontface_t *font, vec4_t color
 
 void SCR_DrawClampChar( int x, int y, wchar_t num, int xmin, int ymin, int xmax, int ymax, qfontface_t *font, vec4_t color )
 {
-	FTLIB_DrawClampChar( x, y, num, xmin, ymin, xmax, ymax, font, color );
+	FTLIB_DrawClampChar( x, y, num, xmin, ymin, xmax, ymax, font, color, NULL );
 }
 
 void SCR_DrawClampString( int x, int y, const char *str, int xmin, int ymin, int xmax, int ymax, qfontface_t *font, vec4_t color, int flags )
@@ -346,7 +346,7 @@ size_t SCR_DrawStringWidth( int x, int y, int align, const char *str, size_t max
 */
 struct shader_s *SCR_RegisterPic( const char *name )
 {
-	return re.RegisterPic( name );
+	return R_RegisterPic( name );
 }
 
 /*
@@ -354,7 +354,7 @@ struct shader_s *SCR_RegisterPic( const char *name )
 */
 void SCR_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, const float *color, const struct shader_s *shader )
 {
-	re.DrawStretchPic( x, y, w, h, s1, t1, s2, t2, color, shader );
+	RF_DrawStretchPic( x, y, w, h, s1, t1, s2, t2, color, shader );
 }
 
 /*
@@ -364,7 +364,7 @@ void SCR_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s
 */
 void SCR_DrawFillRect( int x, int y, int w, int h, vec4_t color )
 {
-	re.DrawStretchPic( x, y, w, h, 0, 0, 1, 1, color, cls.whiteShader );
+	RF_DrawStretchPic( x, y, w, h, 0, 0, 1, 1, color, cls.whiteShader );
 }
 
 /*
@@ -390,7 +390,7 @@ void SCR_DrawClampFillRect( int x, int y, int w, int h, int xmin, int ymin, int 
 	if( ( w <= 0 ) || ( h <= 0 ) )
 		return;
 
-	re.DrawStretchPic( x, y, w, h, 0, 0, 1, 1, color, cls.whiteShader );
+	RF_DrawStretchPic( x, y, w, h, 0, 0, 1, 1, color, cls.whiteShader );
 }
 
 /*
@@ -628,8 +628,8 @@ void SCR_EndLoadingPlaque( void )
 */
 void SCR_RegisterConsoleMedia()
 {
-	cls.whiteShader = re.RegisterPic( "$whiteimage" );
-	cls.consoleShader = re.RegisterPic( "gfx/ui/console" );
+	cls.whiteShader = R_RegisterPic( "$whiteimage" );
+	cls.consoleShader = R_RegisterPic( "gfx/ui/console" );
 
 	SCR_InitFonts();
 }
@@ -696,7 +696,7 @@ void SCR_UpdateScreen( void )
 		return;
 	}
 
-	if( !scr_initialized || !con_initialized || !cls.mediaInitialized || !re.RenderingEnabled() )
+	if( !scr_initialized || !con_initialized || !cls.mediaInitialized || !RF_RenderingEnabled() )
 		return;     // not ready yet
 
 	Con_CheckResize();
@@ -731,7 +731,7 @@ void SCR_UpdateScreen( void )
 
 	for( i = 0; i < numframes; i++ )
 	{
-		re.BeginFrame( separation[i], forceclear, forcevsync );
+		RF_BeginFrame( separation[i], forceclear, forcevsync );
 
 		if( scr_draw_loading == 2 )
 		{ 
@@ -786,6 +786,6 @@ void SCR_UpdateScreen( void )
 		// wsw : aiwa : call any listeners so they can draw their stuff
 		Dynvar_CallListeners( updatescreen, NULL );
 
-		re.EndFrame();
+		RF_EndFrame();
 	}
 }

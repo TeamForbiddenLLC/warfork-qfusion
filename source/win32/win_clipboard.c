@@ -19,7 +19,7 @@ char *Sys_GetClipboardData( bool primary )
 			if( ( cliptext = GlobalLock( hClipboardData ) ) != 0 )
 			{
 				utf8size = WideCharToMultiByte( CP_UTF8, 0, cliptext, -1, NULL, 0, NULL, NULL );
-				utf8text = Q_malloc( utf8size );
+				utf8text = malloc( utf8size );
 				WideCharToMultiByte( CP_UTF8, 0, cliptext, -1, utf8text, utf8size, NULL, NULL );
 				GlobalUnlock( hClipboardData );
 			}
@@ -79,5 +79,5 @@ bool Sys_SetClipboardData( const char *data )
 */
 void Sys_FreeClipboardData( char *data )
 {
-	Q_free( data );
+	free( data );
 }

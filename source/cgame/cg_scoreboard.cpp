@@ -41,7 +41,7 @@ static void CG_DrawAlignPic( int x, int y, int width, int height, int align, con
 	x = CG_HorizontalAlignForWidth( x, align, width );
 	y = CG_VerticalAlignForHeight( y, align, height );
 
-	trap_R_DrawStretchPic( x, y, width, height, 0, 0, 1, 1, color, shader );
+	RF_DrawStretchPic( x, y, width, height, 0, 0, 1, 1, color, shader );
 }
 
 /*
@@ -195,7 +195,7 @@ static int SCB_DrawPlayerStats( int x, int y, struct qfontface_s *font )
 		yoffset += trap_SCR_FontHeight( font );
 
 		// box
-		trap_R_DrawStretchPic( x + xoffset - SCB_TINYFIELD_PIXELWIDTH/2, y + yoffset, width + SCB_TINYFIELD_PIXELWIDTH,
+		RF_DrawStretchPic( x + xoffset - SCB_TINYFIELD_PIXELWIDTH/2, y + yoffset, width + SCB_TINYFIELD_PIXELWIDTH,
 			lines * trap_SCR_FontHeight( font ), 0, 0, 1, 1, color, cgs.shaderWhite );
 
 		return ( trap_SCR_FontHeight( font ) * ( 2+lines ) );
@@ -571,8 +571,9 @@ static int SCR_DrawTeamTab( const char **ptrptr, int *curteam, int x, int y, int
 			continue;
 
 		if (strcmp(token,"AVATAR") == 0){
-			// special case, don't draw any text, just skip ahead 32px
-			xoffset += 32;
+			// special case, don't draw any text, just skip ahead by avatarsize
+			int avatarsize = trap_SCR_FontHeight( font ) * 1.25;
+			xoffset += avatarsize;
 			continue;
 		}
 
@@ -629,7 +630,7 @@ static void SCR_DrawPlayerIcons( struct qfontface_s *font )
 	{
 		scr_playericon_t &icon = scr_playericons[i];
 		color[3] = icon.alpha;
-		trap_R_DrawStretchPic( icon.x, icon.y, height, height, 0, 0, 1, 1, color, icon.image );
+		RF_DrawStretchPic( icon.x, icon.y, height, height, 0, 0, 1, 1, color, icon.image );
 	}
 
 	scr_numplayericons = 0;
@@ -656,7 +657,7 @@ static void SCR_AddPlayerIcon( struct shader_s *image, int x, int y, float alpha
 /*
 * SCR_DrawPlayerTab
 */
-static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int panelWidth, struct qfontface_s *font, int pass )
+static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int panelWidth, struct qfontface_s *font, int pass, bool last )
 {
 	int dir, align, i, columncount;
 	char type, string[MAX_STRING_CHARS];
@@ -682,13 +683,17 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 	xoffset = 0;
 	yoffset = 0;
 
-	height = 32;
 
-	int textoffset = (32-trap_SCR_FontHeight( font ))/2;
+	int avatarsize = trap_SCR_FontHeight( font )*1.25;
+
+	height = avatarsize;
+
+	int textoffset = (avatarsize-trap_SCR_FontHeight( font ))/2;
 
 	// start from the center again
 	xoffset = CG_HorizontalAlignForWidth( 0, align, panelWidth );
 	xoffset += ( SCB_CENTERMARGIN * dir );
+	int xstart = x + xoffset;
 
 	// draw the background
 	columncount = 0;
@@ -803,7 +808,7 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 				}
 				if (i >= 0 && i < gs.maxclients && cgs.clientInfo[i].steamid)
 					avatar = cgs.clientInfo[i].avatar;
-				width = 32;
+				width = avatarsize;
 			break;
 		}
 
@@ -822,7 +827,7 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 			color[3] = 0.3;
 
 		if( !pass ) {
-			trap_R_DrawStretchPic( x + xoffset, y + yoffset, width, height, 0, 0, 1, 1, teamcolor, cgs.shaderWhite );
+			RF_DrawStretchPic( x + xoffset, y + yoffset, width, height, 0, 0, 1, 1, teamcolor, cgs.shaderWhite );
 
 			if( icon )
 				SCR_AddPlayerIcon( icon, x + xoffset, y + yoffset, color[3], font );
@@ -833,14 +838,15 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 				if (trans)
 					avColor[3] = 0.3;
 
-				trap_R_DrawStretchPic(x+xoffset,y+yoffset,32,32,0,0,1,1,avColor,avatar);
+				RF_DrawStretchPic(x+xoffset,y+yoffset,avatarsize,avatarsize,0,0,1,1,avColor,avatar);
 			}
 		}
 
 		// draw the column value
 		if( pass && string[0] )
 		{
-			trap_SCR_DrawClampString( x + xoffset, y + yoffset + textoffset, string,
+			// offset text by 2px so it isn't up against the cell wall
+			trap_SCR_DrawClampString( x + 2 + xoffset, y + yoffset + textoffset, string,
 				x + xoffset, y + yoffset + textoffset,
 				x + xoffset + width, y + yoffset + height + textoffset, font, color );
 		}
@@ -849,6 +855,18 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 
 		xoffset += width;
 	}
+
+	int gap = trap_SCR_FontHeight(font) / 4;
+	if (pass && !last){
+		// draw scoreboard separator
+		
+		if( ( team == TEAM_ALPHA ) || ( team == TEAM_BETA ) )
+			CG_TeamColor( team, teamcolor );
+		teamcolor[3] = SCB_BACKGROUND_ALPHA - 0.17;
+		RF_DrawStretchPic( xstart, y + yoffset + avatarsize,panelWidth+gap, gap, 0, 0, 1, 1,teamcolor, cgs.shaderWhite );
+	}
+
+	height += gap;
 
 	yoffset += height;
 	return yoffset;
@@ -942,6 +960,10 @@ void CG_DrawScoreboard( void )
 			panelWidth += width;
 	}
 
+	// count how many entries per team
+	int numentries[GS_MAX_TEAMS] = {0};
+	int entry[GS_MAX_TEAMS] = {0};
+
 	// parse and draw the scoreboard message
 	for ( pass = 0; pass < 2; pass++ )
 	{
@@ -952,6 +974,7 @@ void CG_DrawScoreboard( void )
 		while ( ptr )
 		{
 			token = COM_ParseExt( &ptr, true );
+			
 			if ( token[0] != '&' )
 				break;
 
@@ -962,7 +985,15 @@ void CG_DrawScoreboard( void )
 			}
 			else if ( !Q_stricmp( token, "&p" ) ) // player tab
 			{
-				yoffset += SCR_DrawPlayerTab( &ptr, team, xpos, ypos + yoffset, panelWidth, font, pass );
+				bool islast = false;
+				if (pass && entry[team] == numentries[team] - 1)
+					islast = true;
+				yoffset += SCR_DrawPlayerTab( &ptr, team, xpos, ypos + yoffset, panelWidth, font, pass, islast );
+
+				if (pass)
+					entry[team]++;
+				else 
+					numentries[team]++;
 			}
 			else if ( !Q_stricmp( token, "&w" ) ) // list of challengers
 			{

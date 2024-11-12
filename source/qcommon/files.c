@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "wswcurl.h"
 #include "../qalgo/md5.h"
 #include "../qalgo/q_trie.h"
+#include "../gameshared/q_sds.h"
 
 /*
 =============================================================================
@@ -641,8 +642,8 @@ bool FS_IsExplicitPurePak( const char *pakname, bool *wrongver )
 
 	// check version match
 	if( wrongver ) {
-		begin = pakbasename + pakbasename_len - strlen( APP_VERSION_STR_MAJORMINOR "pure" ) - extension_len;
-		*wrongver = begin < pakbasename || Q_strnicmp( begin,  APP_VERSION_STR_MAJORMINOR, strlen( APP_VERSION_STR_MAJORMINOR ) ) != 0;
+		begin = pakbasename + pakbasename_len - strlen( APP_PK3_VERSION "pure" ) - extension_len;
+		*wrongver = begin < pakbasename || Q_strnicmp( begin, APP_PK3_VERSION, strlen( APP_PK3_VERSION ) ) != 0;
 	}
 
 	return pure;
@@ -768,6 +769,76 @@ static void FS_CloseFileHandle( filehandle_t *fh )
 	fs_free_filehandles = fh;
 
 	QMutex_Unlock( fs_fh_mutex );
+}
+
+
+/**
+ * this method does not try and strip the extension from the filepath.
+ * takes the filepath tacks on the extension and tries to find a valid file.
+ **/
+const char *FS_FirstExtension2( const char *filename, const char *extensions[], int num_extensions ) {
+	
+	if( !COM_ValidateRelativeFilename( filename ) )
+		return NULL;
+
+	// search through the path, one element at a time
+	QMutex_Lock( fs_searchpaths_mutex );
+	const char *implicitpure = NULL;
+	bool purepass = true;
+	const char *result = NULL;
+
+	sds filepath = sdsempty();
+	filepath = sdscat(filepath, filename);
+	size_t basepathLen = sdslen(filepath);
+	searchpath_t* search = fs_searchpaths;
+	while( search ) {
+		if( search->pack ) // is the element a pak file?
+		{
+			if( ( search->pack->pure > FS_PURE_NONE ) == purepass ) {
+				for(size_t i = 0; i < num_extensions; i++ ) {
+				  sdssubstr(filepath, 0, basepathLen);
+				  filepath = sdscat(filepath, extensions[i]);
+				  if( FS_SearchPakForFile( search->pack, filepath, NULL ) ) {
+				  	if( !purepass || search->pack->pure == FS_PURE_EXPLICIT ) {
+				  		result = extensions[i];
+				  		goto return_result;
+				  	} else if( implicitpure == NULL ) {
+				  		implicitpure = extensions[i];
+				  		break;
+				  	}
+				  }
+				}
+			}
+		} else {
+			if( !purepass ) {
+				for(size_t i = 0; i < num_extensions; i++ ) {
+					void *vfsHandle = NULL; // search in VFS as well
+				  sdssubstr(filepath, 0, basepathLen);
+				  filepath = sdscat(filepath, extensions[i]);
+					if( FS_SearchDirectoryForFile( search, filepath, NULL, 0, &vfsHandle ) ) {
+						result = extensions[i];
+						goto return_result;
+					}
+				}
+			}
+		}
+
+		if( !search->next && purepass ) {
+			if( implicitpure ) {
+				result = implicitpure;
+				goto return_result;
+			}
+			search = fs_searchpaths;
+			purepass = false;
+		} else {
+			search = search->next;
+		}
+	}
+
+return_result:
+	QMutex_Unlock( fs_searchpaths_mutex );
+	sdsfree(filepath);
+	return result;
 }
 
 /*
@@ -1023,7 +1094,7 @@ int FS_FOpenAbsoluteFile( const char *filename, int *filenum, int mode )
 		return -1;
 	}
 
-	end = (mode == FS_WRITE || FS_FileLength( f, false ));
+	end = (mode == FS_WRITE ? 0 : FS_FileLength( f, false ));
 
 	*filenum = FS_OpenFileHandle();
 	file = &fs_filehandles[*filenum - 1];
@@ -2685,8 +2756,6 @@ static pack_t *FS_LoadPK3File( const char *packfilename, bool silent )
 	// read manifest file if it's a module pk3
 	if( modulepack && manifestFilesize > 0 )
 		FS_ReadPackManifest( pack );
-
-	if( !silent ) Com_Printf( "Added pk3 file %s (%i files)\n", pack->filename, pack->numFiles );
 
 	return pack;
 

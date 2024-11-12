@@ -139,10 +139,10 @@ struct model_s *CG_RegisterModel( const char *name )
 {
 	struct model_s *model;
 
-	model = trap_R_RegisterModel( name );
+	model = R_RegisterModel( name );
 
 	// precache bones
-	if( trap_R_SkeletalGetNumBones( model, NULL ) )
+	if( R_SkeletalGetNumBones( model, NULL ) )
 		CG_SkeletonForModel( model );
 
 	return model;
@@ -236,7 +236,7 @@ static cgs_media_handle_t *CG_RegisterMediaShader( const char *name, bool precac
 	shader_headnode = mediashader;
 
 	if( precache )
-		mediashader->data = ( void * )trap_R_RegisterPic( mediashader->name );
+		mediashader->data = ( void * )R_RegisterPic( mediashader->name );
 
 	return mediashader;
 }
@@ -247,7 +247,7 @@ static cgs_media_handle_t *CG_RegisterMediaShader( const char *name, bool precac
 struct shader_s *CG_MediaShader( cgs_media_handle_t *mediashader )
 {
 	if( !mediashader->data )
-		mediashader->data = ( void * )trap_R_RegisterPic( mediashader->name );
+		mediashader->data = ( void * )R_RegisterPic( mediashader->name );
 	return ( struct shader_s * )mediashader->data;
 }
 
@@ -411,7 +411,7 @@ void CG_RegisterLevelMinimap( void )
 		file = trap_FS_FOpenFile( minimap, NULL, FS_READ );
 		if( file != -1 )
 		{
-			cgs.shaderMiniMap = trap_R_RegisterPic( minimap );
+			cgs.shaderMiniMap = R_RegisterPic( minimap );
 			break;
 		}
 	}

@@ -351,6 +351,10 @@ msgstr ""
 msgid "Disable autohop"
 msgstr "Avaktivera autohop"
 
+#. UI option for cg_viewBob, animates view camera on landing from high jumps.
+msgid "Enable view animation"
+msgstr "Aktivera vy-animationer"
+
 #. Touch screen setting
 msgid "Touch look sensitivity"
 msgstr ""

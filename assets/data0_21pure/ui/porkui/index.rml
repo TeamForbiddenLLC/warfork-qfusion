@@ -101,6 +101,21 @@
 			
 			friends_container.css( 'height', news_container.css( 'height' ) );
 
+			window.setTimeout(checkSteamState,100);
+		}
+
+		bool checkSteamState() {
+			String steamid = game.cvar("steam_id");
+			if (steamid.empty()) {
+				window.modal("modal_basic.rml?text=Steam%20could%20not%20be%20found!%20You%20will%20not%20be%20able%20to%20connect%20to%20online%20servers.%20Ensure%20steam%20is%20running%20and%20disable%20your%20antivirus%20and%20reinstall%20warfork%20if%20problems%20continue&ok=Restart&cancel=Continue%20without%20online");
+
+				int val = window.getModalValue();
+
+				if (val == 0) {
+					game.execAppend("quit");
+				}
+			}
+			return true;
 		}
 
 		void onHomeShow( Element @body, Event @event )

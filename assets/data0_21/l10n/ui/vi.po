@@ -365,6 +365,10 @@ msgstr "Tăng tốc khi nhảy về phía trước"
 msgid "Disable autohop"
 msgstr "Tắt tự động nhảy"
 
+#. UI option for cg_viewBob, animates view camera on landing from high jumps.
+msgid "Enable view animation"
+msgstr "Bật Animation View"
+
 #. Touch screen setting
 msgid "Touch look sensitivity"
 msgstr "Độ Nhạy Chuột Cảm Ứng"

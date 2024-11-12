@@ -39,6 +39,11 @@ static inline void trap_GameCmd( struct edict_s *ent, const char *cmd )
 	GAME_IMPORT.GameCmd( ent, cmd );
 }
 
+static inline void trap_ServerCmd( struct edict_s *ent, const char *cmd )
+{
+	GAME_IMPORT.ServerCmd( ent, cmd );
+}
+
 static inline void trap_ConfigString( int num, const char *string )
 {
 	GAME_IMPORT.ConfigString( num, string );

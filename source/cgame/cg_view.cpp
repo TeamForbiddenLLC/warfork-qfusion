@@ -280,6 +280,57 @@ static float CG_CalcViewFov( void )
 }
 
 /*
+* CG_CalcViewBob
+*/
+static void CG_CalcViewBob( void )
+{
+	float bobMove, bobTime, bobScale;
+
+	if( !cg.view.drawWeapon )
+		return;
+
+	// calculate speed and cycle to be used for all cyclic walking effects
+	cg.xyspeed = sqrt( cg.predictedPlayerState.pmove.velocity[0]*cg.predictedPlayerState.pmove.velocity[0] + cg.predictedPlayerState.pmove.velocity[1]*cg.predictedPlayerState.pmove.velocity[1] );
+
+	bobScale = 0;
+	if( cg.xyspeed < 5 )
+		cg.oldBobTime = 0;  // start at beginning of cycle again
+	else if( cg_gunbob->integer )
+	{
+		if( !ISVIEWERENTITY( cg.view.POVent ) )
+			bobScale = 0.0f;
+		else if( CG_PointContents( cg.view.origin ) & MASK_WATER )
+			bobScale =  0.75f;
+		else
+		{
+			centity_t *cent;
+			vec3_t mins, maxs;
+			trace_t	trace;
+
+			cent = &cg_entities[cg.view.POVent];
+			GS_BBoxForEntityState( &cent->current, mins, maxs );
+			maxs[2] = mins[2];
+			mins[2] -= ( 1.6f*STEPSIZE );
+
+			CG_Trace( &trace, cg.predictedPlayerState.pmove.origin, mins, maxs, cg.predictedPlayerState.pmove.origin, cg.view.POVent, MASK_PLAYERSOLID );
+			if( trace.startsolid || trace.allsolid )
+			{
+				if( cg.predictedPlayerState.pmove.stats[PM_STAT_CROUCHTIME] )
+					bobScale = 1.5f;
+				else
+					bobScale = 2.5f;
+			}
+		}
+	}
+
+	bobMove = cg.frameTime * bobScale;
+	bobTime = ( cg.oldBobTime += bobMove );
+
+	cg.bobCycle = (int)bobTime;
+	cg.bobFracSin = fabs( sin( bobTime*M_PI ) );
+}
+
+/*
 * CG_ResetKickAngles
 */
 void CG_ResetKickAngles( void )
@@ -382,8 +433,16 @@ void CG_StartKickAnglesEffect( vec3_t source, float knockback, float radius, int
 */
 void CG_StartFallKickEffect( int bounceTime )
 {
+
 	cg.fallEffectTime = 0;
 	cg.fallEffectRebounceTime = 0;
+
+	if( !cg_viewBob->integer )
+	{
+		cg.fallEffectTime = 0;
+		cg.fallEffectRebounceTime = 0;
+		return;
+	}
 
 	if( cg.fallEffectTime > cg.time )
 		cg.fallEffectRebounceTime = 0;
@@ -462,11 +521,11 @@ void CG_AddEntityToScene( entity_t *ent )
 {
 	if( ent->model && ( !ent->boneposes || !ent->oldboneposes ) )
 	{
-		if( trap_R_SkeletalGetNumBones( ent->model, NULL ) )
+		if( R_SkeletalGetNumBones( ent->model, NULL ) )
 			CG_SetBoneposesForTemporaryEntity( ent );
 	}
 
-	trap_R_AddEntityToScene( ent );
+	RF_AddEntityToScene( ent );
 }
 
 //============================================================================
@@ -868,7 +927,7 @@ static void CG_SetupViewDef( cg_viewdef_t *view, int type, bool flipped )
 
 			CG_ViewSmoothPredictedSteps( view->origin ); // smooth out stair climbing
 
-			if( !cg_thirdPerson->integer ) {
+			if( cg_viewBob->integer && !cg_thirdPerson->integer ) {
 				view->origin[2] += CG_ViewSmoothFallKick() * 6.5f;
 			}
 		}
@@ -887,6 +946,8 @@ static void CG_SetupViewDef( cg_viewdef_t *view, int type, bool flipped )
 		}
 
 		view->refdef.fov_x = CG_CalcViewFov();
+
+		CG_CalcViewBob();
 
 		VectorCopy( cg.predictedPlayerState.pmove.velocity, view->velocity );
 	}
@@ -1017,7 +1078,7 @@ void CG_RenderView( float frameTime, float realFrameTime, int realTime, unsigned
 	{
 		CG_AddLocalSounds();
 
-		trap_R_DrawStretchPic( 0, 0, cgs.vidWidth, cgs.vidHeight, 0, 0, 1, 1, colorBlack, cgs.shaderWhite );
+		RF_DrawStretchPic( 0, 0, cgs.vidWidth, cgs.vidHeight, 0, 0, 1, 1, colorBlack, cgs.shaderWhite );
 
 		trap_S_Update( vec3_origin, vec3_origin, axis_identity, cgs.clientInfo[cgs.playerNum].name );
 
@@ -1068,7 +1129,7 @@ void CG_RenderView( float frameTime, float realFrameTime, int realTime, unsigned
 
 	CG_ClearFragmentedDecals();
 
-	trap_R_ClearScene();
+	RF_ClearScene();
 
 	if( CG_DemoCam_Update() )
 		CG_SetupViewDef( &cg.view, CG_DemoCam_GetViewType(), flipped );
@@ -1121,7 +1182,7 @@ void CG_RenderView( float frameTime, float realFrameTime, int realTime, unsigned
 	CG_AddLocalSounds();
 	CG_SetSceneTeamColors(); // update the team colors in the renderer
 
-	trap_R_RenderScene( &cg.view.refdef );
+	RF_RenderScene( &cg.view.refdef );
 
 	cg.oldAreabits = true;
 

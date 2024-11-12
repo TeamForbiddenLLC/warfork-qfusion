@@ -1,0 +1,8 @@
+setAlign #LEFT #MIDDLE
+setCursor #WIDTH - 6 * 1.333 * %VIDHEIGHT / %VIDWIDTH, 18
+setSize 300 * 1.333 * %VIDHEIGHT / %VIDWIDTH, 140
+setFontFamily con_fontSystem
+setFontSize %VIDHEIGHT / 50
+
+setCursor 10, #HEIGHT / 2
+drawVoices #LEFT 18

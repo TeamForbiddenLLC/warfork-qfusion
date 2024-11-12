@@ -380,6 +380,10 @@ msgstr "Beschleunigung bei Vorwärtsspringen"
 msgid "Disable autohop"
 msgstr "Autohop abschalten"
 
+#. UI option for cg_viewBob, animates view camera on landing from high jumps.
+msgid "Enable view animation"
+msgstr "Animierte Blickfeld-Kamera einschalten"
+
 #. Touch screen setting
 msgid "Touch look sensitivity"
 msgstr "Touch Umsehen-Sensitivität"

@@ -18,51 +18,72 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 */
 
-#ifndef STEAMSHIM_H
-#define STEAMSHIM_H
+#pragma once
+#include <stdint.h>
 
 #include "steamshim_types.h"
-#include <stdint.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define AUTH_TICKET_MAXSIZE 1024
+#define STEAM_MAX_AVATAR_SIZE ( 128 * 128 * 4 )
+#define STEAM_AUTH_TICKET_MAXSIZE 1024
 
-typedef enum STEAMSHIM_EventType
-{
-    SHIMEVENT_BYE,
-    SHIMEVENT_STATSRECEIVED,
-    SHIMEVENT_STATSSTORED,
-    SHIMEVENT_SETACHIEVEMENT,
-    SHIMEVENT_GETACHIEVEMENT,
-    SHIMEVENT_RESETSTATS,
-    SHIMEVENT_SETSTATI,
-    SHIMEVENT_GETSTATI,
-    SHIMEVENT_SETSTATF,
-    SHIMEVENT_GETSTATF,
-    SHIMEVENT_STEAMIDRECIEVED,
-    SHIMEVENT_PERSONANAMERECIEVED,
-    SHIMEVENT_AUTHSESSIONTICKETRECIEVED,
-    SHIMEVENT_AUTHSESSIONVALIDATED,
-    SHIMEVENT_BEACONCREATED,
-    SHIMEVENT_AVATARRECIEVED,
-} STEAMSHIM_EventType;
+typedef enum eventtype {
 
-/* not all of these fields make sense in a given event. */
-typedef struct STEAMSHIM_Event
-{
-    STEAMSHIM_EventType type;
-    int okay;
-    int ivalue;
-    float fvalue;
-    uint64_t lvalue;
-    char name[STEAM_AVATAR_SIZE];
-} STEAMSHIM_Event;
+	EVT_CL_STEAMIDRECIEVED,
+	EVT_CL_PERSONANAMERECIEVED,
+	EVT_CL_AUTHSESSIONTICKETRECIEVED,
+	EVT_CL_AVATARRECIEVED,
+	EVT_CL_COMMANDLINERECIEVED,
+
+	EVT_CL_GAMEJOINREQUESTED,
+	EVT_CL_SERVERRECIEVED,
+
+	EVT_SV_AUTHSESSIONVALIDATED,
+} SteamshimEventType;
+
+typedef uint64_t Event_cl_steamidrecieved_t;
+typedef char *Event_cl_personanamerecieved_t;
+typedef struct Event_cl_authsessionticketrecieved {
+	char pTicket[AUTH_TICKET_MAXSIZE];
+	long pcbTicket;
+} Event_cl_authsessionticketrecieved_t;
+typedef struct Event_cl_avatarrecieved {
+	uint8_t *avatar;
+	uint64_t steamid;
+} Event_cl_avatarrecieved_t;
+typedef char *Event_cl_commandlinerecieved_t;
+typedef struct Event_cl_gamejoinrequested {
+	uint64_t steamIDFriend;
+	char *connectString;
+} Event_cl_gamejoinrequested_t;
+typedef struct Event_cl_serverrecieved {
+	char *serverName;
+} Event_cl_serverrecieved_t;
+typedef int Event_sv_authsessionvalidated_t;
+
+typedef struct SteamshimEvent {
+	SteamshimEventType type;
+	union {
+		Event_cl_steamidrecieved_t cl_steamidrecieved;
+		Event_cl_personanamerecieved_t cl_personanamerecieved;
+		Event_cl_authsessionticketrecieved_t cl_authsessionticketrecieved;
+		Event_cl_avatarrecieved_t cl_avatarrecieved;
+		Event_cl_commandlinerecieved_t cl_commandlinerecieved;
+		Event_cl_gamejoinrequested_t cl_gamejoinrequested;
+		Event_cl_serverrecieved_t cl_serverrecieved;
+		Event_sv_authsessionvalidated_t sv_authsessionvalidated;
+	};
+} SteamshimEvent;
+
+typedef enum {
+	AVATAR_SMALL,
+	AVATAR_MEDIUM,
+	AVATAR_LARGE,
+} SteamAvatarSize;
+
 
 #ifdef __cplusplus
 }
 #endif
-
-#endif
-

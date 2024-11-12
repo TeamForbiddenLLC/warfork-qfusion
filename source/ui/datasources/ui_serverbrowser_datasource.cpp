@@ -21,6 +21,13 @@ namespace WSWUI {
 
 //=====================================
 
+static uint16_t be16toh(uint16_t x) {
+	volatile uint16_t num = 1;
+	if (*(char *)&num == 0)
+		return x;
+	return (x & 0xFF) << 8 | (x >> 8);
+}
+
 namespace {
 
 	void DEBUG_PRINT_SERVERINFO( const ServerInfo &info )
@@ -29,7 +36,7 @@ namespace {
 					info.address.c_str(), info.hostname.c_str(), info.map.c_str(),
 					info.curuser, info.maxuser, info.gametype.c_str(),
 					info.modname.c_str(), int(info.instagib), info.skilllevel,
-					int(info.password), int(info.mm), info.ping );
+					int(info.password), int(info.steam), info.ping );
 	}
 
 	// TODO: move this as general utility
@@ -43,7 +50,7 @@ ServerInfo::ServerInfo( const char *adr, const char *info )
 	:	has_changed(false), ping_updated(false), has_ping(false), address( adr ),
 		iaddress( addr_to_int( adr ) ), hostname(""), cleanname(""), map(""), curuser(0),
 		maxuser(0), bots(0), gametype(""), modname(""), instagib(false), race(false), skilllevel(0),
-		password(false), mm(false), tv(false), ping(0), ping_retries(0), favorite(false)
+		password(false), steam(false), tv(false), ping(0), ping_retries(0), favorite(false)
 {
 	if( info )
 		fromInfo( info );
@@ -80,7 +87,8 @@ void ServerInfo::fromOther( const ServerInfo &other )
 	race = other.race;
 	skilllevel = other.skilllevel;
 	password = other.password;
-	mm = other.mm;
+	steam = other.steam;
+	steamid = other.steamid;
 	tv = other.tv;
 	ping = other.ping;
 	ping_retries = other.ping_retries;
@@ -204,13 +212,30 @@ void ServerInfo::fromInfo( const char *info )
 				}
 			}
 		}
-		else if( cmd == "mm" ) { // MATCHMAKING
-			int tmpmm;
+		// else if( cmd == "mm" ) { // MATCHMAKING
+		// 	int tmpmm;
+		// 	std::stringstream toint( value );
+		// 	toint >> tmpmm;
+		// 	if( !toint.fail() && (tmpmm != 0) != mm ) {
+		// 		has_changed = true;
+		// 		mm = tmpmm != 0;
+		// 	}
+		// }
+		else if( cmd == "stm" ) { // STEAM AUTHENTICATED
+			int tmpstm;
 			std::stringstream toint( value );
-			toint >> tmpmm;
-			if( !toint.fail() && (tmpmm != 0) != mm ) {
+			toint >> tmpstm;
+			if( !toint.fail() && (tmpstm != 0) != steam) {
 				has_changed = true;
-				mm = tmpmm != 0;
+				steam = tmpstm != 0;
+			}
+		} else if ( cmd == "sid") {
+			long long tmpsid;
+			std::stringstream toint( value );
+			toint >> tmpsid;
+			if( !toint.fail() && tmpsid != steamid) {
+				has_changed = true;
+				steamid = tmpsid;
 			}
 		}
 		else if( cmd == "mo" ) { // MOD NAME
@@ -336,14 +361,14 @@ void ServerInfo::fixStrings()
 // 3) hostname ASC
 bool ServerInfo::DefaultCompareBinary( const ServerInfo *lhs, const ServerInfo *rhs )
 {
+	if( lhs->steam > rhs->steam ) return true;
+	if( lhs->steam < rhs->steam ) return false;
+
 	if( lhs->curuser > rhs->curuser ) return true;
 	if( lhs->curuser < rhs->curuser ) return false;
 
 	if( lhs->ping < rhs->ping ) return true;
 	if( lhs->ping > rhs->ping ) return false;
-
-	//if( lhs->mm > rhs->mm ) return true;
-	//if( lhs->mm < rhs->mm ) return false;
 
 	return LessPtrBinary<std::string, &ServerInfo::locleanname>( lhs, rhs );
 }
@@ -486,8 +511,10 @@ void ServerBrowserDataSource::GetRow( StringList &row, const String &table, int 
 			row.push_back( va( "%d", info.skilllevel ) );
 		else if( *it == "password" )
 			row.push_back( info.password ? "yes" : "no" );
-		else if( *it == "mm" )
-			row.push_back( info.mm ? "yes" : "no" );
+		else if( *it == "steam" )
+			row.push_back( info.steam ? "yes" : "no" );
+		else if ( *it == "steamid" )
+			row.push_back( va( "%llu", info.steamid ) );
 		else if( *it == "ping" )
 			row.push_back( va( "%d", info.ping ) );
 		else if( *it == "address" )
@@ -540,8 +567,16 @@ void ServerBrowserDataSource::addServerToTable( ServerInfo &info, const String &
 	ReferenceList &referenceList = referenceListMap[tableName];
 
 	// Show/sort with referenceList
-	ReferenceList::iterator it = find_if( referenceList,
-							ServerInfo::EqualUnary<uint64_t, &ServerInfo::iaddress>( info.iaddress ) );
+	ReferenceList::iterator it;
+
+	if (info.steamid != 0) {
+		// TODO: this is really abusable
+		it = find_if( referenceList,
+								ServerInfo::EqualUnary<uint64_t, &ServerInfo::steamid>( info.steamid) );
+	} else {
+		it = find_if( referenceList,
+								ServerInfo::EqualUnary<uint64_t, &ServerInfo::iaddress>( info.iaddress ) );
+	}
 
 	if( it == referenceList.end() ) {
 		// server isnt in the list, use insertion sort to put it in
@@ -554,7 +589,7 @@ void ServerBrowserDataSource::addServerToTable( ServerInfo &info, const String &
 
 		// notify rocket on the addition of row
 		NotifyRowAdd( tableName, std::distance( referenceList.begin(), it ) /*referenceList.size()-1 */, 1 );
-	}
+	;}
 	else {
 		// notify rocket on the change of a row
 		NotifyRowChange( tableName, std::distance( referenceList.begin(), it ), 1 );
@@ -566,8 +601,14 @@ void ServerBrowserDataSource::removeServerFromTable( ServerInfo &info, const Str
 	ReferenceList &referenceList = referenceListMap[tableName];
 
 	// notify rocket + remove from referenceList
-	ReferenceList::iterator it = find_if( referenceList,
-							ServerInfo::EqualUnary<uint64_t, &ServerInfo::iaddress>( info.iaddress ) );
+	ReferenceList::iterator it;
+	if (info.p2p) {
+		it = find_if( referenceList,
+								ServerInfo::EqualUnary<uint64_t, &ServerInfo::steamid>( info.steamid) );
+	} else {
+		it = find_if( referenceList,
+								ServerInfo::EqualUnary<uint64_t, &ServerInfo::iaddress>( info.iaddress ) );
+	}
 
 	if( it != referenceList.end() ) {
 		int index = std::distance( referenceList.begin(), it );
@@ -623,6 +664,58 @@ void ServerBrowserDataSource::updateFrame()
 	}
 }
 
+
+class WFMasterFetcher {
+	private:
+	ServerBrowserDataSource *source;
+	std::vector<char> buf;
+
+	public:
+	WFMasterFetcher(ServerBrowserDataSource *source) : source(source) { }
+	static size_t StreamRead( const void *buf, size_t numb, float percentage, 
+		int status, const char *contentType, void *privatep )
+	{
+		WFMasterFetcher *t = static_cast<WFMasterFetcher*>(privatep);
+		if( status < 0 || status >= 300 ) {
+			return 0;
+		}
+
+		t->buf.insert(t->buf.end(), (char*)buf, (char*)buf+numb);
+		return numb;
+	}
+
+	static void StreamDone( int status, const char *contentType, void *privatep )
+	{
+		WFMasterFetcher *t = static_cast<WFMasterFetcher*>(privatep);
+		if (status < 0 || status >= 300) {
+			return delete t;
+		}
+		size_t cur = 0;
+
+		if (t->buf.size() < 2) {
+			return delete t;
+		}
+
+		short numServers = be16toh(*(short *)&t->buf[cur]);
+		cur += sizeof(short);
+
+		for (int i = 0; i < numServers; i++) {
+			if (t->buf.size() - cur < 8) {
+				return delete t;
+			}
+
+			long long steamid = *(long long *)&t->buf[cur];
+			cur += sizeof(long long);
+
+			char *info = &t->buf[cur];
+			t->source->addToServerListWarfork(info);
+			cur += strlen(info) + 1;
+		}
+
+		delete t;
+	}
+};
+
 // initiates master server query
 void ServerBrowserDataSource::startFullUpdate( void )
 {
@@ -662,7 +755,23 @@ void ServerBrowserDataSource::startFullUpdate( void )
 
 	// query for LAN servers too
 	trap::Cmd_ExecuteText( EXEC_APPEND, "requestservers local full empty\n" );
+
+
+	std::vector<std::string> masterServersWF;
+	tokenize( trap::Cvar_String("masterservers_warfork"), ' ', masterServersWF );
+
+	for( std::vector<std::string>::iterator it = masterServersWF.begin(); it != masterServersWF.end(); ++it ) {
+		char url[256];
+		snprintf(url, sizeof(url), "http://%s:%i/", it->c_str(), 27951);
+
+
+		auto fetcher = new WFMasterFetcher(this);
+		printf("Fetching %s\n", url);
+		trap::AsyncStream_PerformRequest(url, "GET", "", 5000, &WFMasterFetcher::StreamRead, &WFMasterFetcher::StreamDone, fetcher);
+	}
+
 }
+
 
 // callback from client propagates to here
 void ServerBrowserDataSource::addToServerList( const char *adr, const char *info )
@@ -739,6 +848,15 @@ void ServerBrowserDataSource::addToServerList( const char *adr, const char *info
 	serverInfo.setChanged( false );
 }
 
+
+void ServerBrowserDataSource::addToServerListWarfork( const char *info ) {
+	ServerInfo *newInfo = new ServerInfo( "", info );
+	newInfo->p2p = true;
+	newInfo->fixStrings();
+
+	this->addServerToTable(*newInfo, TABLE_NAME_ALL);
+}
+
 // refreshes (pings) current list
 void ServerBrowserDataSource::startRefresh( void )
 {
@@ -799,7 +917,7 @@ void ServerBrowserDataSource::compileSuggestionsList( void )
 			}
 			else {
 				ServerInfo *gtBestInfo = *(gtBest->second).begin();
-				if( gtBestInfo->curuser < info->curuser || int(gtBestInfo->mm) < int(info->mm) ) {
+				if( gtBestInfo->curuser < info->curuser || int(gtBestInfo->steam) < int(info->steam) ) {
 					insertInfo = true;
 				}
 			}
@@ -863,8 +981,8 @@ void ServerBrowserDataSource::sortByField( const char *field )
 		sortCompare = ServerInfo::LessPtrBinary<int, &ServerInfo::skilllevel>;
 	else if( column == "password" )
 		sortCompare = ServerInfo::LessPtrBinary<bool, &ServerInfo::password>;
-	else if( column == "mm" )
-		sortCompare = ServerInfo::LessPtrBinary<bool, &ServerInfo::mm>;
+	else if( column == "steam" )
+		sortCompare = ServerInfo::LessPtrBinary<bool, &ServerInfo::steam>;
 	else if( column == "ping" )
 		sortCompare = ServerInfo::LessPtrBinary<unsigned int, &ServerInfo::ping>;
 	else if( column.empty() )

@@ -50,11 +50,11 @@ void CG_SetSceneTeamColors( void )
 	vec4_t color;
 
 	// send always white for the team spectators
-	trap_R_SetCustomColor( TEAM_SPECTATOR, 255, 255, 255 );
+	RF_SetCustomColor( TEAM_SPECTATOR, 255, 255, 255 );
 	for( team = TEAM_PLAYERS; team < GS_MAX_TEAMS; team++ )
 	{
 		CG_TeamColor( team, color );
-		trap_R_SetCustomColor( team, (uint8_t)( color[0] * 255 ), (uint8_t)( color[1] * 255 ), (uint8_t)( color[2] * 255 ) ); // update the renderer
+		RF_SetCustomColor( team, (uint8_t)( color[0] * 255 ), (uint8_t)( color[1] * 255 ), (uint8_t)( color[2] * 255 ) ); // update the renderer
 	}
 }
 
@@ -90,10 +90,10 @@ static void CG_RegisterForceModel( cvar_t *teamForceModel, cvar_t *teamForceMode
 		{
 			// when we register a new model, we must re-register the skin, even if the cvar is not modified
 			if( !cgs.pure || trap_FS_IsPureFile( va( "models/players/%s/%s.skin", teamForceModel->string, teamForceSkin->string ) ) )
-				skin = trap_R_RegisterSkinFile( va( "models/players/%s/%s", teamForceModel->string, teamForceSkin->string ) );
+				skin = R_RegisterSkinFile( va( "models/players/%s/%s", teamForceModel->string, teamForceSkin->string ) );
 			// if the skin failed, we can still try with default value (so only setting model cvar has a visible effect)
 			if( !skin )
-				skin = trap_R_RegisterSkinFile( va( "models/players/%s/%s", teamForceModel->string, teamForceSkin->dvalue ) );
+				skin = R_RegisterSkinFile( va( "models/players/%s/%s", teamForceModel->string, teamForceSkin->dvalue ) );
 		}
 
 		if( pmodelinfo && skin )

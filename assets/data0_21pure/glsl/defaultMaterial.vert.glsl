@@ -10,14 +10,14 @@ void main()
 {
 	vec4 Position = a_Position;
 	vec3 Normal = a_Normal.xyz;
-	myhalf4 inColor = myhalf4(a_Color);
+	vec4 inColor = vec4(a_Color);
 	vec2 TexCoord = a_TexCoord;
 	vec3 Tangent = a_SVector.xyz;
 	float TangentDir = a_SVector.w;
 
 	QF_TransformVerts_Tangent(Position, Normal, Tangent, TexCoord);
 
-	myhalf4 outColor = VertexRGBGen(Position, Normal, inColor);
+	vec4 outColor = VertexRGBGen(Position, Normal, inColor);
 
 #ifdef APPLY_FOG
 #if defined(APPLY_FOG_COLOR)

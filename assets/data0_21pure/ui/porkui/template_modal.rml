@@ -42,6 +42,20 @@
 			else {
 				other_button.setInnerRML( other );
 			}
+
+			String ok = '';
+			dict.get( 'ok', ok );
+			Element @ok_button = body.getElementById( 'button-ok' );
+			if (!ok.empty()) {
+				ok_button.setInnerRML( ok );
+			}
+
+			String canceltext = '';
+			dict.get( 'cancel', canceltext );
+			Element @cancel_button = body.getElementById( 'button-cancel' );
+			if (!canceltext.empty()) {
+				cancel_button.setInnerRML( canceltext );
+			}
 		}
 		
 		void onModalLoad( Element @body, Event @evt )
@@ -122,7 +136,7 @@
 				</div>
 
 				<div id="modal-controls">
-					<button class="button-apply" onclick="$onOKClick">OK</button>
+					<button class="button-apply" onclick="$onOKClick" id="button-ok">OK</button>
 					<button class="button-cancel" onclick="$onCancelClick" id="button-cancel">Cancel</button>
 					<button class="button-other" onclick="$onOtherClick" id="button-other">Other</button>
 				</div>

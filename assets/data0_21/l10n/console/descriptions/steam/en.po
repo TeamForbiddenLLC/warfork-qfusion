@@ -1,0 +1,7 @@
+# (c) Team Forbidden LLC. All Rights Reserved.
+
+#. Console/steam
+msgid "steam_debug"
+msgstr "<0/1> Prints Steam debug messages to console.\n"
+"^6Disable: steam_debug \"0\"\n"
+"^6Enable: steam_debug \"1\""

@@ -243,11 +243,9 @@ const char *Sys_FS_GetHomeDirectory( void )
 
 		if( base ) {
 #ifdef __MACOSX__
-			Q_snprintfz( home, sizeof( home ), "%s/%s%s-%d.%d", base, local, APPLICATION,
-				APP_VERSION_MAJOR, APP_VERSION_MINOR );
+			Q_snprintfz( home, sizeof( home ), "%s/%s" APP_HOME_OSX_DIR_FS , base, local );
 #else
-			Q_snprintfz( home, sizeof( home ), "%s/%s%c%s-%d.%d", base, local, tolower( *( (const char *)APPLICATION ) ),
-				( (const char *)APPLICATION ) + 1, APP_VERSION_MAJOR, APP_VERSION_MINOR );
+			Q_snprintfz( home, sizeof( home ), "%s/%s" APP_HOME_UNIX_DIR_FS , base, local);
 #endif
 		}
 #endif
@@ -268,8 +266,8 @@ const char *Sys_FS_GetCacheDirectory( void )
 	if( cache[0] == '\0' )
 	{
 #ifdef __ANDROID__
-		Q_snprintfz( cache, sizeof( cache ), "%s/cache/%d.%d",
-			sys_android_internalDataPath, APP_VERSION_MAJOR, APP_VERSION_MINOR );
+		Q_snprintfz( cache, sizeof( cache ), "%s/cache/%s",
+			sys_android_internalDataPath, APP_HOME_UNIX_DIR_FS );
 #else
 		const char *homeEnv = getenv( "HOME" );
 		const char *base = NULL, *local = "";
@@ -288,11 +286,9 @@ const char *Sys_FS_GetCacheDirectory( void )
 
 		if( base ) {
 #ifdef __MACOSX__
-			Q_snprintfz( cache, sizeof( cache ), "%s/%s%s-%d.%d", base, local, APPLICATION,
-					APP_VERSION_MAJOR, APP_VERSION_MINOR );
+			Q_snprintfz( cache, sizeof( cache ), "%s/%s%s", base, local, APP_HOME_OSX_DIR_FS );
 #else
-			Q_snprintfz( cache, sizeof( cache ), "%s/%s%c%s-%d.%d", base, local, tolower( *( (const char *)APPLICATION ) ),
-				( (const char *)APPLICATION ) + 1, APP_VERSION_MAJOR, APP_VERSION_MINOR );
+			Q_snprintfz( cache, sizeof( cache ), "%s/%s%s", base, local, APP_HOME_UNIX_DIR_FS );
 #endif
 		}
 #endif

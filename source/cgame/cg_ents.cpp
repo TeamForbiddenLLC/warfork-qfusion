@@ -628,7 +628,7 @@ static void CG_AddLinkedModel( centity_t *cent )
 	Matrix3_Copy( cent->ent.axis, ent.axis );
 
 	if( cent->item && ( cent->effects & EF_AMMOBOX ) )  // ammobox icon hack
-		ent.customShader = trap_R_RegisterPic( cent->item->icon );
+		ent.customShader = R_RegisterPic( cent->item->icon );
 
 	if( cent->item && ( cent->item->type & IT_WEAPON ) )
 	{
@@ -958,7 +958,7 @@ void CG_AddFlagModelOnTag( centity_t *cent, byte_vec4_t teamcolor, const char *t
 		return;
 
 	memset( &flag, 0, sizeof( entity_t ) );
-	flag.model = trap_R_RegisterModel( PATH_FLAG_MODEL );
+	flag.model = R_RegisterModel( PATH_FLAG_MODEL );
 	if( !flag.model )
 		return;
 
@@ -1318,7 +1318,7 @@ static void CG_UpdateItemEnt( centity_t *cent )
 			cent->effects &= ~EF_ROTATE_AND_BOB;
 
 		cent->ent.customShader = NULL;
-		cent->ent.customShader = trap_R_RegisterPic( cent->item->simpleitem );
+		cent->ent.customShader = R_RegisterPic( cent->item->simpleitem );
 	}
 	else
 	{
@@ -1647,8 +1647,8 @@ static void CG_UpdateVideoSpeakerEnt( centity_t *cent )
 	VectorCopy( cent->current.origin, cent->ent.origin );
 	VectorCopy( cent->current.origin2, cent->ent.origin2 );
 
-	shader = trap_R_GetShaderForOrigin( cent->ent.origin2 );
-	cent->cin = trap_R_GetShaderCinematic( shader );
+	shader = RF_GetShaderForOrigin( cent->ent.origin2 );
+	cent->cin = RF_GetShaderCinematic( shader );
 }
 
 /*

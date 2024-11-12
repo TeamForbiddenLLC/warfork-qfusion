@@ -297,14 +297,9 @@ void		R_PrintShaderCache( const char *name );
 shader_t	*R_ShaderById( unsigned int id );
 
 shader_t	*R_LoadShader( const char *name, shaderType_e type, bool forceDefault );
+shader_t	*R_LoadShaderText( const char *name, shaderType_e type, bool forceDefault, const char* text);
 
 shader_t	*R_RegisterShader( const char *name, shaderType_e type );
-shader_t	*R_RegisterPic( const char *name );
-shader_t	*R_RegisterRawPic( const char *name, int width, int height, uint8_t *data, int samples );
-shader_t	*R_RegisterRawAlphaMask( const char *name, int width, int height, uint8_t *data );
-shader_t	*R_RegisterLevelshot( const char *name, shader_t *defaultShader, bool *matchesDefault );
-shader_t	*R_RegisterSkin( const char *name );
-shader_t	*R_RegisterVideo( const char *name );
 
 unsigned	R_PackShaderOrder( const shader_t *shader );
 
@@ -312,10 +307,6 @@ void		R_TouchShader( shader_t *s );
 void		R_TouchShadersByName( const char *name );
 void		R_FreeUnusedShadersByType( const shaderType_e *types, unsigned int numTypes );
 void		R_FreeUnusedShaders( void );
-
-void		R_RemapShader( const char *from, const char *to, int timeOffset );
-
-void		R_GetShaderDimensions( const shader_t *shader, int *width, int *height );
 
 void		R_ReplaceRawSubPic( shader_t *shader, int x, int y, int width, int height, uint8_t *data );
 

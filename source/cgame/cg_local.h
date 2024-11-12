@@ -130,6 +130,8 @@ typedef struct
 	float yawVelocity;
 
 	struct cinematics_s *cin;
+	bool speaking;
+	int lastSpeakTime;
 } centity_t;
 
 #include "cg_pmodels.h"
@@ -703,8 +705,9 @@ extern cvar_t *cg_model;
 extern cvar_t *cg_skin;
 extern cvar_t *cg_hand;
 
+void CG_initPlayer();
+void CG_deinitPlayer(); 
 void CG_LoadClientInfo( cg_clientInfo_t *ci, const char *s, int client );
-void CG_CallbackRequestAvatar(uint64_t steamid, char *avatar);
 void CG_UpdateSexedSoundsRegistration( pmodelinfo_t *pmodelinfo );
 void CG_SexedSound( int entnum, int entchannel, const char *name, float fvol, float attn );
 void CG_SexedVSay( int entnum, int vsay, float fvol );
@@ -963,6 +966,7 @@ void CG_Init(	const char *serverName, unsigned int playerNum,
 				int vidWidth, int vidHeight, float pixelRatio,
 				bool demoplaying, const char *demoName, bool pure, unsigned int snapFrameTime,
 				int protocol, const char *demoExtension, int sharedSeed, bool gameStart );
+void CG_PlayVoice(void *buffer, size_t size, int clientnum);
 void CG_Shutdown( void );
 void CG_ValidateItemDef( int tag, char *name );
 void CG_Printf( const char *format, ... );
@@ -971,6 +975,11 @@ void CG_Reset( void );
 void CG_Precache( void );
 char *_CG_CopyString( const char *in, const char *filename, int fileline );
 #define CG_CopyString( in ) _CG_CopyString( in, __FILE__, __LINE__ )
+
+
+bool CG_GetBlocklistItem(size_t index, uint64_t* steamid_out, char* name, size_t* name_len_in_out);
+void CG_ReadBlockList( void );
+bool CG_FilterSteamID( uint64_t steamid );
 
 void CG_UseItem( const char *name );
 void CG_RegisterCGameCommands( void );
@@ -1034,6 +1043,9 @@ extern cvar_t *cg_thirdPersonAngle;
 extern cvar_t *cg_thirdPersonRange;
 
 extern cvar_t *cg_colorCorrection;
+
+// Viewport bobbing on fall/high jumps
+extern cvar_t *cg_viewBob;
 
 void CG_ResetKickAngles( void );
 void CG_ResetColorBlend( void );

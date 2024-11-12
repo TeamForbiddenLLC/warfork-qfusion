@@ -63,42 +63,42 @@ static void CL_FTLibModule_MemEmptyPool( mempool_t *pool, const char *filename, 
 
 static struct shader_s *CL_FTLibModule_RegisterPic( const char *name )
 {
-	return re.RegisterPic( name );
+	return R_RegisterPic( name );
 }
 
 static struct shader_s *CL_FTLibModule_RegisterRawPic( const char *name, int width, int height, uint8_t *data, int samples )
 {
-	return re.RegisterRawPic( name, width, height, data, samples );
+	return R_RegisterRawPic( name, width, height, data, samples );
 }
 
 static struct shader_s *CL_FTLibModule_RegisterRawAlphaMask( const char *name, int width, int height, uint8_t *data )
 {
-	return re.RegisterRawAlphaMask( name, width, height, data );
+	return R_RegisterRawAlphaMask( name, width, height, data );
 }
 
 static void CL_FTLibModule_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, const vec4_t color, const struct shader_s *shader )
 {
-	re.DrawStretchPic( x, y, w, h, s1, t1, s2, t2, color, shader );
+	RF_DrawStretchPic( x, y, w, h, s1, t1, s2, t2, color, shader );
 }
 
 static void CL_FTLibModule_ReplaceRawSubPic( struct shader_s *shader, int x, int y, int width, int height, uint8_t *data )
 {
-	re.ReplaceRawSubPic( shader, x, y, width, height, data );
+	RF_ReplaceRawSubPic( shader, x, y, width, height, data );
 }
 
 static void CL_FTLibModule_Scissor( int x, int y, int w, int h )
 {
-	re.Scissor( x, y, w, h );
+	RF_SetScissor( x, y, w, h );
 }
 
 static void CL_FTLibModule_GetScissor( int *x, int *y, int *w, int *h )
 {
-	re.GetScissor( x, y, w, h );
+	RF_GetScissor( x, y, w, h );
 }
 
 static void CL_FTLibModule_ResetScissor( void )
 {
-	re.ResetScissor();
+	RF_ResetScissor();
 }
 
 /*
@@ -145,6 +145,7 @@ void FTLIB_LoadLibrary( bool verbose )
 	import.FS_GetFileList = &FS_GetFileList;
 	import.FS_IsUrl = &FS_IsUrl;
 
+	import.refImport = RF_Forward_Mod();
 	import.R_RegisterPic = &CL_FTLibModule_RegisterPic;
 	import.R_RegisterRawPic = &CL_FTLibModule_RegisterRawPic;
 	import.R_RegisterRawAlphaMask = &CL_FTLibModule_RegisterRawAlphaMask;
@@ -383,10 +384,10 @@ void FTLIB_DrawRawChar( int x, int y, wchar_t num, struct qfontface_s *font, vec
 /*
 * FTLIB_DrawClampChar
 */
-void FTLIB_DrawClampChar( int x, int y, wchar_t num, int xmin, int ymin, int xmax, int ymax, struct qfontface_s *font, vec4_t color )
+void FTLIB_DrawClampChar( int x, int y, wchar_t num, int xmin, int ymin, int xmax, int ymax, struct qfontface_s *font, vec4_t color, vec4_t bgcolor )
 {
 	if( ftlib_export ) {
-		ftlib_export->DrawClampChar( x, y, num, xmin, ymin, xmax, ymax, font, color );
+		ftlib_export->DrawClampChar( x, y, num, xmin, ymin, xmax, ymax, font, color, bgcolor );
 	}
 }
 

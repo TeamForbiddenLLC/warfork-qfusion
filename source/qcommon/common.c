@@ -30,6 +30,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../qalgo/md5.h"
 #include "../matchmaker/mm_common.h"
 #include "compression.h"
+#include "mem.h"
+
 
 
 #include "./mod_cmd.h"
@@ -81,8 +83,6 @@ unsigned int time_after_game;
 unsigned int time_before_ref;
 unsigned int time_after_ref;
 
-// debug/performance counter vars
-int c_pointcontents, c_traces, c_brush_traces;
 
 /*
 ==============================================================
@@ -233,6 +233,8 @@ void Com_Printf( const char *format, ... )
 	va_start( argptr, format );
 	Q_vsnprintfz( msg, sizeof( msg ), format, argptr );
 	va_end( argptr );
+
+	printf("%s\n", msg);
 
 	QMutex_Lock( com_print_mutex );
 
@@ -639,6 +641,7 @@ void Com_FreePureList( purelist_t **purelist )
 	*purelist = NULL;
 }
 
+//============================================================================
 
 void Key_Init( void );
 void Key_Shutdown( void );
@@ -675,44 +678,6 @@ static void Com_Lag_f( void )
 	Com_Printf( "Lagged %i milliseconds\n", msecs );
 }
 #endif
-
-/*
-* Q_malloc
-* 
-* Just like malloc(), but die if allocation fails
-*/
-void *Q_malloc( size_t size )
-{
-	void *buf = malloc( size );
-
-	if( !buf )
-		Sys_Error( "Q_malloc: failed on allocation of %i bytes.\n", size );
-
-	return buf;
-}
-
-/*
-* Q_realloc
-* 
-* Just like realloc(), but die if reallocation fails
-*/
-void *Q_realloc( void *buf, size_t newsize )
-{
-	void *newbuf = realloc( buf, newsize );
-
-	if( !newbuf && newsize )
-		Sys_Error( "Q_realloc: failed on allocation of %i bytes.\n", newsize );
-
-	return newbuf;
-}
-
-/*
-* Q_free
-*/
-void Q_free( void *buf )
-{
-	free( buf );
-}
 
 /*
 * Qcommon_InitCommands
@@ -780,7 +745,9 @@ void Qcommon_InitCvarDescriptions( void )
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/rcon" );
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/s" );
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/scr" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/steam" );    
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/sv" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/tv" );	
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/ui" );
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/vid" );
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/vsay" );
@@ -917,8 +884,6 @@ void Qcommon_Init( int argc, char **argv )
 
 	NET_Init();
 	Netchan_Init();
-
-	Com_Autoupdate_Init();
 
 	CM_Init();
 
@@ -1080,11 +1045,11 @@ void Qcommon_Shutdown( void )
 	NET_Shutdown();
 	Key_Shutdown();
 
-	Com_Autoupdate_Shutdown();
 
 	Qcommon_ShutdownCommands();
 	Memory_ShutdownCommands();
 
+	// Mem_DumpMemoryReport();
 	Com_CloseConsoleLog( true, true );
 
    Qcommon_ShutdownCvarDescriptions();

@@ -18,7 +18,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+#include <cstdint>
+#include <map>
+#include <string>
 #include "cg_local.h"
+
+#include "../qcommon/steam.h"
 
 /*
 ==========================================================================
@@ -49,6 +54,10 @@ static void CG_SC_ChatPrint( void )
 
 	if( filter->integer & (teamonly ? 2 : 1) )
 		return;
+
+	if (*cgs.configStrings[CS_USESTEAMAUTH] == '1')
+		if (CG_FilterSteamID(cgs.clientInfo[who-1].steamid))
+			return;
 
 	if( !name )
 		CG_LocalPrint( S_COLOR_GREEN "console: %s\n", text );
@@ -170,11 +179,11 @@ void CG_ConfigString( int i, const char *s )
 	}
 	else if( i >= CS_IMAGES && i < CS_IMAGES+MAX_IMAGES )
 	{
-		cgs.imagePrecache[i-CS_IMAGES] = trap_R_RegisterPic( cgs.configStrings[i] );
+		cgs.imagePrecache[i-CS_IMAGES] = R_RegisterPic( cgs.configStrings[i] );
 	}
 	else if( i >= CS_SKINFILES && i < CS_SKINFILES+MAX_SKINFILES )
 	{
-		cgs.skinPrecache[i-CS_SKINFILES] = trap_R_RegisterSkinFile( cgs.configStrings[i] );
+		cgs.skinPrecache[i-CS_SKINFILES] = R_RegisterSkinFile( cgs.configStrings[i] );
 	}
 	else if( i >= CS_LIGHTS && i < CS_LIGHTS+MAX_LIGHTSTYLES )
 	{
@@ -939,10 +948,109 @@ void CG_GameCommand( const char *command )
 /*
 ==========================================================================
 
+BLOCKLIST
+
+==========================================================================
+*/
+
+static std::map<uint64_t, std::string> blocklist;
+
+bool CG_GetBlocklistItem(size_t index, uint64_t* steamid_out, char* name, size_t* name_len_in_out) {
+	if (index >= blocklist.size()) {
+		return false;
+	}
+
+	auto it = blocklist.begin();
+	for (size_t i = 0; i < index; i++)
+		it++;
+
+	if (steamid_out)
+		*steamid_out = it->first;
+
+	if (!name || !name_len_in_out) {
+		return true;
+	}
+
+	Q_strncpyz(name, it->second.c_str(), *name_len_in_out);
+	*name_len_in_out = it->second.length();
+
+	return true;
+}
+
+void CG_ReadBlockList( void )
+{
+	trap_Cmd_ExecuteText( EXEC_APPEND, "exec blocklist.cfg silent\n" );
+}
+
+static void CG_WriteBlockList( void )
+{
+	int file;
+	char name[MAX_QPATH];
+	char string[MAX_STRING_CHARS] = {0};
+	int i;
+
+	Q_strncpyz( name, "blocklist.cfg", sizeof( name ) );
+
+	if( trap_FS_FOpenFile( name, &file, FS_WRITE ) == -1 )
+	{
+		CG_Printf( "Couldn't open %s\n", name );
+		return;
+	}
+
+	for( auto const &it : blocklist )
+	{
+		Q_snprintfz( string, sizeof( string ), "block \"%s\" \"%llu\"\r\n", it.second.c_str(), it.first);
+		trap_FS_Write( string, strlen( string ), file );
+	}
+
+	trap_FS_FCloseFile( file );
+}
+
+static void CG_Cmd_Block_f( void )
+{
+	if( trap_Cmd_Argc() < 2 )
+	{
+		CG_Printf( "Usage: 'block <name> <steamid>'\n" );
+		return;
+	}
+
+	if (blocklist.find(atoll(trap_Cmd_Argv( 2 ))) != blocklist.end())
+	{
+		CG_Printf( "Player already blocked\n" );
+		return;
+	}
+
+	blocklist[atoll(trap_Cmd_Argv( 2 ))] = std::string(trap_Cmd_Argv( 1 ));
+
+	CG_WriteBlockList();
+}
+static void CG_Cmd_Unblock_f( void )
+{
+	if( trap_Cmd_Argc() < 1 )
+	{
+		CG_Printf( "Usage: 'unblock <steamid>'\n" );
+		return;
+	}
+
+	blocklist.erase( atoll(trap_Cmd_Argv( 1 )) );
+
+	CG_WriteBlockList();
+}
+
+bool CG_FilterSteamID( uint64_t steamid )
+{
+	return blocklist.find(steamid) != blocklist.end();
+}
+
+/*
+==========================================================================
+
 CGAME COMMANDS
 
 ==========================================================================
 */
+
+
 
 /*
 * CG_UseItem
@@ -1294,6 +1402,8 @@ static const cgcmd_t cgcmds[] =
 	{ "viewpos", CG_Viewpos_f, true },
 	{ "players", NULL, false },
 	{ "spectators", NULL, false },
+	{ "block", CG_Cmd_Block_f, false },
+	{ "unblock", CG_Cmd_Unblock_f, false },
 
 	{ NULL, NULL, false }
 };

@@ -18,9 +18,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+#include "r_frontend.h"
 #include "r_local.h"
 #include "r_cmdque.h"
-#include "r_frontend.h"
+
+#include "../ref_base/ref_mod.h"
 
 static ref_frontend_t rrf;
 static ref_cmdbuf_t *RF_GetNextAdapterFrame( ref_frontendAdapter_t *adapter );
@@ -260,6 +262,11 @@ rserr_t RF_SetWindow( void *hinstance, void *wndproc, void *parenthWnd )
 		rrf.adapter.cmdPipe->SurfaceChange( rrf.adapter.cmdPipe );
 
 	return err;
+}
+
+struct ref_import_s RF_Forward_Mod() {
+	assert(0); // we don't implement this for the core mod
+	return (struct ref_import_s){0};
 }
 
 void RF_AppActivate( bool active, bool destroy )

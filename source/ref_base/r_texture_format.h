@@ -147,7 +147,6 @@ struct texture_format_fixed_def_16_s {
 	enum texture_logical_channel_e channels[R_LOGICAL_C_MAX];
   uint32_t normalized: 1;
   uint32_t sign: 1;
-  uint32_t srgb: 1;
   uint32_t isInteger: 1;
 };
 
@@ -156,7 +155,6 @@ struct texture_format_fixed_def_32_s {
 	enum texture_logical_channel_e channels[R_LOGICAL_C_MAX];
   uint32_t normalized: 1;
   uint32_t sign: 1;
-  uint32_t srgb: 1;
   uint32_t isInteger: 1;
 };
 
@@ -174,12 +172,21 @@ struct base_format_def_s {
 		struct texture_format_def_fixed_8_s fixed_8;
 		struct texture_format_fixed_def_16_s fixed_16;
 		struct texture_format_fixed_def_32_s fixed_32;
-	  struct texture_format_packed_def_16_s packed_16; 
+	  	struct texture_format_packed_def_16_s packed_16; 
 	};
 };
 
 const struct base_format_def_s* R_BaseFormatDef(enum texture_format_e format);
 const size_t RT_BlockSize(const struct base_format_def_s* defs);
+static inline bool RT_IsSRGB(const struct base_format_def_s* def) {
+	switch( def->base ) {
+		case R_BASE_FORMAT_FIXED_8:
+			return def->fixed_8.srgb;
+		default:
+			break;
+	}
+	return false;
+} 
 const uint_fast16_t RT_NumberChannels(const struct base_format_def_s* defs);
 const enum texture_logical_channel_e* RT_Channels(const struct base_format_def_s* defs);
 const bool RT_ExpectChannelsMatch( const struct base_format_def_s *defs, const enum texture_logical_channel_e *channels, uint16_t numChannels );

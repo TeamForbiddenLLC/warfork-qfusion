@@ -39,13 +39,12 @@ enum
 	,IT_DEPTHRB			= 1<<12		// framebuffer has a depth renderbuffer
 	,IT_NOFILTERING		= 1<<13
 	,IT_ALPHAMASK		= 1<<14		// image only contains an alpha mask
-	,IT_BGRA			= 1<<15
-	,IT_SYNC			= 1<<16		// load image synchronously
-	,IT_DEPTHCOMPARE	= 1<<17
-	,IT_ARRAY			= 1<<18
-	,IT_3D				= 1<<19
-	,IT_STENCIL			= 1<<20		// for IT_DEPTH or IT_DEPTHRB textures, whether there's stencil
-	,IT_NO_DATA_SYNC	= 1<<21		// owned by the drawing thread, do not sync in the frontend thread
+	,IT_SYNC			= 1<<15		// load image synchronously
+	,IT_DEPTHCOMPARE	= 1<<16
+	,IT_ARRAY			= 1<<17
+	,IT_3D				= 1<<18
+	,IT_STENCIL			= 1<<19		// for IT_DEPTH or IT_DEPTHRB textures, whether there's stencil
+	,IT_NO_DATA_SYNC	= 1<<20		// owned by the drawing thread, do not sync in the frontend thread
 };
 
 /**
@@ -54,7 +53,7 @@ enum
  * The loader threads may modify these flags (but no other flags),
  * so they must not be used for anything that has a long-term effect.
  */
-#define IT_LOADFLAGS		( IT_ALPHAMASK|IT_BGRA|IT_SYNC )
+#define IT_LOADFLAGS		( IT_ALPHAMASK|IT_SYNC )
 
 #define IT_SPECIAL			( IT_CLAMP|IT_NOMIPMAP|IT_NOPICMIP|IT_NOCOMPRESS )
 #define IT_SKYFLAGS			( IT_SKY|IT_NOMIPMAP|IT_CLAMP|IT_SYNC )

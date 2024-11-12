@@ -35,7 +35,7 @@ UI_RenderInterface::UI_RenderInterface( int vidWidth, int vidHeight, float pixel
 	scissorWidth = vid_width;
 	scissorHeight = vid_height;
 
-	whiteShader = trap::R_RegisterPic( "$whiteimage" );
+	whiteShader = R_RegisterPic( "$whiteimage" );
 }
 
 UI_RenderInterface::~UI_RenderInterface()
@@ -70,7 +70,7 @@ void UI_RenderInterface::RenderCompiledGeometry(Rocket::Core::CompiledGeometryHa
 
 	poly_t *poly = ( poly_t * )geometry;
 
-	trap::R_DrawStretchPoly( poly, translation.x, translation.y );
+	RF_DrawStretchPoly(poly, translation.x, translation.y);
 }
 
 void UI_RenderInterface::RenderGeometry(Rocket::Core::Vertex *vertices, int num_vertices, int *indices, int num_indices, Rocket::Core::TextureHandle texture, const Rocket::Core::Vector2f & translation)
@@ -79,7 +79,7 @@ void UI_RenderInterface::RenderGeometry(Rocket::Core::Vertex *vertices, int num_
 
 	poly = RocketGeometry2Poly( true, vertices, num_vertices, indices, num_indices, texture );
 
-	trap::R_DrawStretchPoly( poly, translation.x, translation.y );
+	RF_DrawStretchPoly( poly, translation.x, translation.y );
 }
 
 void UI_RenderInterface::SetScissorRegion(int x, int y, int width, int height)
@@ -90,15 +90,15 @@ void UI_RenderInterface::SetScissorRegion(int x, int y, int width, int height)
 	scissorHeight = height;
 
 	if( scissorEnabled )
-		trap::R_Scissor( x, y, width, height );
+		RF_SetScissor( x, y, width, height );
 }
 
 void UI_RenderInterface::EnableScissorRegion(bool enable)
 {
 	if( enable )
-		trap::R_Scissor( scissorX, scissorY, scissorWidth, scissorHeight );
+		RF_SetScissor( scissorX, scissorY, scissorWidth, scissorHeight );
 	else
-		trap::R_ResetScissor();
+		RF_ResetScissor();
 
 	scissorEnabled = enable;
 }
@@ -114,7 +114,7 @@ bool UI_RenderInterface::GenerateTexture(Rocket::Core::TextureHandle & texture_h
 	Rocket::Core::String name( MAX_QPATH, "ui_raw_%d", texCounter++ );
 
 	// Com_Printf("RenderInterface::GenerateTexture: going to register %s %dx%d\n", name.CString(), source_dimensions.x, source_dimensions.y );
-	shader = trap::R_RegisterRawPic( name.CString(), source_dimensions.x, source_dimensions.y, (uint8_t*)source, source_samples );
+	shader = R_RegisterRawPic( name.CString(), source_dimensions.x, source_dimensions.y, (uint8_t*)source, source_samples );
 	if( !shader )
 	{
 		Com_Printf(S_COLOR_RED"Warning: RenderInterface couldnt register raw pic %s!\n", name.CString() );
@@ -148,7 +148,7 @@ bool UI_RenderInterface::LoadTexture(Rocket::Core::TextureHandle & texture_handl
 	}
 
 	if( !shader ) {
-		shader = trap::R_RegisterPic( source2.CString() );
+		shader = R_RegisterPic( source2.CString() );
 	}
 
 	if( !shader )
@@ -157,7 +157,7 @@ bool UI_RenderInterface::LoadTexture(Rocket::Core::TextureHandle & texture_handl
 		return false;
 	}
 
-	trap::R_GetShaderDimensions( shader, &texture_dimensions.x, &texture_dimensions.y );
+	R_GetShaderDimensions( shader, &texture_dimensions.x, &texture_dimensions.y );
 
 	if( source2[0] != '?' ) {
 		AddShaderToCache( source2 );
@@ -252,7 +252,7 @@ void UI_RenderInterface::TouchAllCachedShaders( void )
 	ShaderMap::const_iterator it;
 
 	for( it = shaderMap.begin(); it != shaderMap.end(); ++it ) {
-		trap::R_RegisterPic( it->first.CString() );
+		R_RegisterPic( it->first.CString() );
 	}
 }
 

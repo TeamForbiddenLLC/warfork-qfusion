@@ -199,8 +199,8 @@ String @GT_ScoreboardMessage( uint maxlen )
 
             int playerID = ( ent.isGhosting() && ( match.getState() == MATCH_STATE_PLAYTIME ) ) ? -( ent.playerNum + 1 ) : ent.playerNum;
 
-            // "Name Clan Score Frags Sui Ping R"
-            entry = "&p " + playerID + " "
+            // "AVATAR Name Clan Score Frags Sui Ping R"
+            entry = "&p " + playerID + " " + playerID + " "
                     + ent.client.clanName + " "
                     + ent.client.stats.score + " "
                     + ent.client.stats.frags + " "
@@ -513,8 +513,8 @@ void GT_InitGametype()
         gametype.setTeamSpawnsystem( team, SPAWNSYSTEM_INSTANT, 0, 0, false );
 
     // define the scoreboard layout
-    G_ConfigString( CS_SCB_PLAYERTAB_LAYOUT, "%n 112 %s 52 %i 44 %i 42 %i 38 %l 38 %r l1" );
-    G_ConfigString( CS_SCB_PLAYERTAB_TITLES, "Name Clan Score Frags Sui Ping R" );
+    G_ConfigString( CS_SCB_PLAYERTAB_LAYOUT, "%a l1 %n 112 %s 52 %i 44 %i 42 %i 38 %l 38 %r l1" );
+    G_ConfigString( CS_SCB_PLAYERTAB_TITLES, "AVATAR Name Clan Score Frags Sui Ping R" );
 
     // add commands
     G_RegisterCommand( "drop" );

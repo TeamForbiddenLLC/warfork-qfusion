@@ -211,6 +211,9 @@
 			showMenuButton( 'btn-disconnect' );
 
 			showMenuButton( 'link-main' );			
+			if ( game.cs( CS_USESTEAMAUTH ) == "1") {
+				showMenuButton( 'link-players' );			
+			}
 			showMenuButton( 'btn-return' );
 
 			setModalY( 0.5f );
@@ -247,9 +250,11 @@
 
 			<a id="link-callvotes" href="callvotes.rml" class="styled-button">Call a vote</a>
 
+
 			<a id="link-chasecam" href="chasecam.rml" class="styled-button">Chasecam</a>
 
 			<br/>
+			<a id="link-players" href="blocklist.rml" class="styled-button">Players</a>
 			<a id="link-main" href="index.rml" class="styled-button">Main menu</a>
 			<button id="btn-return" command="" onclick="$onCmdButtonClick">Return to game</button>
 		</div>

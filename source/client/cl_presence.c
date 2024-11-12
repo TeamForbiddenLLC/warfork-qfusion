@@ -22,6 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "client.h"
 #include "../gameshared/gs_public.h"
+#include "../steamshim/src/packet_utils.h"
+#include "../steamshim/src/parent/parent.h"
 
 #include "discord_register.h"
 #include "discord_rpc.h"
@@ -201,7 +203,6 @@ static const char *valid_maps[] = {
 	"actdm1",
 	"ae",
 	"aerorun",
-	"air_sac_",
 	"air-nasa",
 	"airfun",
 	"alley",
@@ -211,7 +212,6 @@ static const char *valid_maps[] = {
 	"aow-fragland_b5",
 	"aow-fragland_b7-1",
 	"army",
-	"auh3dm1",
 	"b1601763810",
 	"baby_wca1",
 	"billyhill",
@@ -300,7 +300,9 @@ static const char *valid_maps[] = {
 	"ictfmoar",
 	"ik3dm2",
 	"industrial",
-	"infinirace",	
+	"infinifinal",
+	"infinirace",
+	"infinirace_covered",
 	"instactf1",
 	"instactf1-x",
 	"ionicsslidehouse",
@@ -351,7 +353,7 @@ static const char *valid_maps[] = {
 	"paswdm1_b2",
 	"paswdm1_b2_sounds",
 	"plduel2",
-	"pressure",	
+	"pressure",
 	"pro-ct3tourney2",
 	"psl_koth",
 	"pukka3tourney3",
@@ -361,14 +363,14 @@ static const char *valid_maps[] = {
 	"rab3_duel1_v1",
 	"rab3dm1",
 	"rab3dm1_b1",
-	"raketliga_slide",		
+	"raketliga_slide",
 	"rats_waitingroom",
 	"reactors",
 	"reactors_2",
 	"reqbath",
 	"reqkitchen",
 	"retard2",
-	"return",	
+	"return",
 	"rota3ctf1",
 	"rota3ctf2",
 	"scduel1a3",
@@ -376,8 +378,8 @@ static const char *valid_maps[] = {
 	"sf-xmas08",
 	"sfkoth1_b1",
 	"shepas",
-	"shibam",
 	"shiz_q1dm2",
+	"shredder",
 	"sinister",
 	"sinjage_",
 	"skyscrapers",
@@ -511,10 +513,31 @@ static cl_presence_state_t cl_presence_state;
 
 void UpdatePresenceIfChanged( RichPresence presence )
 {
-	if( memcmp( &cl_presence_state.steam_old_presence, &presence, sizeof( presence ) ) != 0 && Steam_Active()) {
-		char* keys[3] = {"score", "details","steam_display"};
-		char* values[3] = {presence.state,presence.state,"#Status_Score"};
-		Steam_SetRichPresence(3, keys, values);
+	if( memcmp( &cl_presence_state.steam_old_presence, &presence, sizeof( presence ) ) != 0 && STEAMSHIM_active()) {
+		char rpc_packet[sizeof( struct buffer_rpc_s ) + 256];
+		struct buffer_rpc_s *req = (struct buffer_rpc_s *)rpc_packet;
+		req->cmd = RPC_SET_RICH_PRESENCE;
+		char steam_display[128];
+		Q_snprintfz( steam_display, sizeof steam_display, "%s | %s", presence.state, presence.details );
+
+		{
+			const char *pairs[] = { "score", steam_display };
+			const size_t bufferLen = pack_cstr_null_terminated( (char*)req->buf, 256, pairs, 2 );
+			STEAMSHIM_sendRPC( req, bufferLen + sizeof( struct buffer_rpc_s ), NULL, NULL, NULL);
+		}
+		
+		{
+			const char *pairs[] = { "details", presence.details};
+			const size_t bufferLen = pack_cstr_null_terminated( (char *)req->buf, 256, pairs, 2 );
+			STEAMSHIM_sendRPC( req, bufferLen + sizeof( struct buffer_rpc_s ), NULL, NULL, NULL);
+		}
+		
+		{
+			const char *pairs[] = { "steam_display", "#Status_Score"};
+			const size_t bufferLen = pack_cstr_null_terminated( (char *)req->buf, 256, pairs, 2 );
+			STEAMSHIM_sendRPC( req, bufferLen + sizeof( struct buffer_rpc_s ), NULL, NULL, NULL);
+		}
+
 		cl_presence_state.steam_old_presence = presence;
 	}
 
@@ -587,7 +610,7 @@ static const char *CL_PlayerStatus( snapshot_t *frame )
 
 void CL_UpdatePresence( void )
 {
-	if( cl_presence_state.discord_initialized || Steam_Active() ) {
+	if( cl_presence_state.discord_initialized || STEAMSHIM_active() ) {
 		unsigned int now = Sys_Milliseconds();
 		if( cl_presence_state.next_update <= now ) {
 			// Discord rate limit is 15s, but this has been tested and is fine!

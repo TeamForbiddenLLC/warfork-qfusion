@@ -154,6 +154,10 @@ msgid "masterservers"
 msgstr "<value> Specifies the master servers used to query a list of Warfork servers."
 
 #. Console/prefixless
+msgid "masterservers_warfork"
+msgstr "<value> Specifies the (warfork-specific) master servers used to query a list of Warfork servers."
+
+#. Console/prefixless
 msgid "model"
 msgstr "<model> Changes your Player model."
 
@@ -412,6 +416,14 @@ msgstr "<type name> Adds a camera to your democam path.\n"
 #. Console/prefixless
 msgid "addip"
 msgstr "<ip address> Adds IP addresses to the filter list."
+
+#. Console/prefixless
+msgid "ban"
+msgstr "<steamid64> <minutes> Bans a player by SteamID for a specified duration."
+
+#. Console/prefixless
+msgid "mute"
+msgstr "<steamid64> <shadow 0/1> <minutes> Mutes a player by SteamID for a specified duration. If shadow is 1 the player will not be able to tell if they are muted."
 
 #. Console/prefixless
 msgid "addnode"
@@ -836,7 +848,8 @@ msgstr "[ip:port] Used by the Server Browser to initiate ping requests to server
 
 #. Console/prefixless
 msgid "players"
-msgstr "Lists all players in-game."
+msgstr "Lists all players in-game.\n"
+"^6Note: Displays the Player ID, Operator Status, and Steam ID."
 
 #. Console/prefixless
 msgid "position"
@@ -882,6 +895,14 @@ msgstr "<name> Records a demo with the specified name.\n"
 #. Console/prefixless
 msgid "removeip"
 msgstr "<ip address> Removes IP addresses from the filter list."
+
+#. Console/prefixless
+msgid "removeban"
+msgstr "<steamid64> Unbans a player by SteamID."
+
+#. Console/prefixless
+msgid "removemute"
+msgstr "<steamid64> Unmutes a player by SteamID."
 
 #. Console/prefixless
 msgid "requestservers"
@@ -1024,7 +1045,7 @@ msgstr "<id\playername> Prints your or a specified players stats.\n"
 #. Console/prefixless
 msgid "status"
 msgstr "Displays the server status in console.\n"
-"^6Note: Map, Player ID, Score, Ping, Player Names, Last Message, Address, Port, Rate, etc."
+"^6Note: This command is restricted to rcon. Displays the Map, Player ID, Steam ID, Score, Ping, Player Names, Last Message, Address, Port, Rate, etc."
 
 #. Console/prefixless
 msgid "stop"

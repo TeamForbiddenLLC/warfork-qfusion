@@ -467,7 +467,9 @@ void G_AddPlayerReport( edict_t *ent, bool final )
 	int i, mm_session;
 	cvar_t *report_bots;
 
-	// TODO: check if MM is enabled
+	// Check if MM is enabled before proceeding
+	if( !sv_mm_enable->integer )
+		return;
 
 	if( GS_RaceGametype() )
 	{

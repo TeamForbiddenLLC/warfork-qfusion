@@ -21,6 +21,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef _FTLIB_PUBLIC_H_
 #define _FTLIB_PUBLIC_H_
 
+#include "../ref_base/ref_mod.h"
+
 // ftlib_public.h - font provider subsystem
 
 #define	FTLIB_API_VERSION			11
@@ -87,6 +89,7 @@ typedef struct
 	void ( *Sys_UnloadLibrary )( void **lib );
 
 	// renderer
+	struct ref_import_s refImport;
 	struct shader_s *( *R_RegisterPic )( const char *name );
 	struct shader_s * ( *R_RegisterRawPic )( const char *name, int width, int height, uint8_t *data, int samples );
 	struct shader_s * ( *R_RegisterRawAlphaMask )( const char *name, int width, int height, uint8_t *data );
@@ -132,7 +135,7 @@ typedef struct
 	int ( *FontUnderline )( struct qfontface_s *font, int *thickness );
 	size_t ( *FontAdvance )( struct qfontface_s *font );
 	size_t ( *FontXHeight )( struct qfontface_s *font );
-	void ( *DrawClampChar )( int x, int y, wchar_t num, int xmin, int ymin, int xmax, int ymax, struct qfontface_s *font, vec4_t color );
+	void ( *DrawClampChar )( int x, int y, wchar_t num, int xmin, int ymin, int xmax, int ymax, struct qfontface_s *font, vec4_t color, vec4_t bgcolor );
 	void ( *DrawRawChar )( int x, int y, wchar_t num, struct qfontface_s *font, vec4_t color );
 	void ( *DrawClampString )( int x, int y, const char *str, int xmin, int ymin, int xmax, int ymax, struct qfontface_s *font, vec4_t color, int flags );
 	size_t ( *DrawRawString )( int x, int y, const char *str, size_t maxwidth, int *width, struct qfontface_s *font, vec4_t color, int flags );

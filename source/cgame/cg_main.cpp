@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "cg_local.h"
-
+#include "../ref_base/ref_mod.h"
 cg_static_t cgs;
 cg_state_t cg;
 
@@ -151,6 +151,8 @@ cvar_t *cg_playList;
 cvar_t *cg_playListShuffle;
 
 cvar_t *cg_flashWindowCount;
+
+cvar_t *cg_viewBob;
 
 /*
 * CG_API
@@ -439,7 +441,7 @@ const char *CG_TranslateColoredString( const char *string, char *dst, size_t dst
 		return string;
 
 	tmp = string;
-	if( Q_GrabCharFromColorString( &tmp, &c, &colorindex ) == GRABCHAR_COLOR ) {
+	if( Q_GrabCharFromColorString( &tmp, &c, &colorindex, NULL, NULL, NULL ) == GRABCHAR_COLOR ) {
 		// attempt to translate the remaining string
 		l10n = trap_L10n_TranslateString( tmp );
 	} else {
@@ -632,7 +634,7 @@ static void CG_RegisterShaders( void )
 		if( !CG_LoadingItemName( name ) )
 			return;
 
-		cgs.imagePrecache[i] = trap_R_RegisterPic( name );
+		cgs.imagePrecache[i] = R_RegisterPic( name );
 	}
 
 	if( cgs.precacheShadersStart != MAX_IMAGES )
@@ -671,7 +673,7 @@ static void CG_RegisterSkinFiles( void )
 		if( !CG_LoadingItemName( name ) )
 			return;
 
-		cgs.skinPrecache[i] = trap_R_RegisterSkinFile( name );
+		cgs.skinPrecache[i] = R_RegisterSkinFile( name );
 	}
 
 	cgs.precacheSkinsStart = MAX_SKINFILES;
@@ -886,6 +888,8 @@ static void CG_RegisterVariables( void )
 
 	cg_flashWindowCount = trap_Cvar_Get( "cg_flashWindowCount", "4", CVAR_ARCHIVE );
 
+	cg_viewBob = trap_Cvar_Get( "cg_viewBob", "0", CVAR_ARCHIVE );
+
 	cg_gamepad_moveThres = trap_Cvar_Get( "cg_gamepad_moveThres", "0.239", CVAR_ARCHIVE );
 	cg_gamepad_runThres = trap_Cvar_Get( "cg_gamepad_runThres", "0.75", CVAR_ARCHIVE );
 	cg_gamepad_strafeThres = trap_Cvar_Get( "cg_gamepad_strafeThres", "0.239", CVAR_ARCHIVE );
@@ -1094,6 +1098,50 @@ void CG_StartBackgroundTrack( void )
 		trap_S_StartBackgroundTrack( cg_playList->string, NULL, cg_playListShuffle->integer ? 1 : 0 );
 }
 
+void CG_PlayVoice(void *buffer, size_t size, int clientnum) {
+	int bytes_per_sample = 2;
+
+	double sum = 0;
+	double max = 0;
+	int nsamples = size / bytes_per_sample;
+
+	int16_t *buf = (int16_t*)buffer;
+	for (int i = 0; i < nsamples; i++) {
+		sum += buf[i] * buf[i];
+		if (abs(buf[i]) > max) {
+			max = abs(buf[i]);
+		}
+	}
+
+	double rms = sqrt(sum / nsamples);
+	if (rms < 1000) {
+		return;
+	}
+
+	float norm = 32767.0f / max;
+	for (int i = 0; i < nsamples; i++) {
+		buf[i] = (int16_t)(buf[i] * norm);
+	}
+
+	int entnum = clientnum + 1;
+	centity_t *ent = &cg_entities[entnum];
+	ent->speaking = true;
+	ent->lastSpeakTime = cg.time;
+
+	int i = 0;
+	uint64_t test_steamid;
+	while (CG_GetBlocklistItem(i, &test_steamid, NULL, NULL))  {
+		if (test_steamid == cgs.clientInfo[clientnum].steamid) {
+			// player is blocked
+			return;
+		}
+		i++;
+	}
+
+	// should voice be global or come from the player's position?
+	trap_S_PositionedRawSamples(-9999, cg_volume_voicechats->integer, 0, size / bytes_per_sample, VOICE_SAMPLE_RATE, bytes_per_sample, 1, (const unsigned char*)buffer);
+}
+
 /*
 * CG_Reset
 */
@@ -1200,7 +1248,7 @@ void CG_Init( const char *serverName, unsigned int playerNum,
 
 	// register fonts here so loading screen works
 	CG_RegisterFonts();
-	cgs.shaderWhite = trap_R_RegisterPic( "$whiteimage" );
+	cgs.shaderWhite = R_RegisterPic( "$whiteimage" );
 
 	// l10n
 	CG_InitL10n();
@@ -1220,6 +1268,8 @@ void CG_Init( const char *serverName, unsigned int playerNum,
 	CG_ClearPolys();
 	CG_ClearEffects();
 
+	CG_ReadBlockList();
+
 	CG_InitChat( &cg.chat );
 
 	// start up announcer events queue from clean
@@ -1233,6 +1283,8 @@ void CG_Init( const char *serverName, unsigned int playerNum,
 	CG_ConfigString( CS_AUTORECORDSTATE, cgs.configStrings[CS_AUTORECORDSTATE] );
 
 	CG_DemocamInit();
+	
+	CG_initPlayer();
 }
 
 /*
@@ -1240,6 +1292,7 @@ void CG_Init( const char *serverName, unsigned int playerNum,
 */
 void CG_Shutdown( void )
 {
+	CG_deinitPlayer();
 	CG_FreeLocalEntities();
 	CG_DemocamShutdown();
 	CG_ScreenShutdown();

@@ -84,7 +84,7 @@ public:
 			Initialized = true;
 
 			if( !colorCorrection.Empty() ) {
-				colorCorrectionShader = trap::R_RegisterPic( colorCorrection.CString() );
+				colorCorrectionShader = R_RegisterPic( colorCorrection.CString() );
 			}
 
 			trap::R_RegisterWorldModel( mapName.CString() );
@@ -114,18 +114,18 @@ public:
 
 		// clip scissor region to parent
 		int scissor_x, scissor_y, scissor_w, scissor_h;
-		trap::R_GetScissor( &scissor_x, &scissor_y, &scissor_w, &scissor_h );
+		RF_GetScissor( &scissor_x, &scissor_y, &scissor_w, &scissor_h );
 		refdef.scissor_x = std::max( scissor_x, refdef.x );
 		refdef.scissor_y = std::max( scissor_y, refdef.y );
 		refdef.scissor_width = std::min( scissor_w, refdef.width );
 		refdef.scissor_height = std::min( scissor_h, refdef.height );
 		refdef.colorCorrection = colorCorrectionShader;
 
-		trap::R_ClearScene();
+		RF_ClearScene();
 
-		trap::R_RenderScene( &refdef );
+		RF_RenderScene( &refdef );
 
-		trap::R_Scissor( scissor_x, scissor_y, scissor_w, scissor_h );
+		RF_SetScissor( scissor_x, scissor_y, scissor_w, scissor_h );
 
 		if( firstRender ) {			
 			this->DispatchEvent( "firstrender", parameters, false );

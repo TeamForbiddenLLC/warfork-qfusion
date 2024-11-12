@@ -687,7 +687,7 @@ static void CG_DrawEntityNumbers( void )
 		if( trace.fraction == 1.0f )
 		{
 			// find the 3d point in 2d screen
-			trap_R_TransformVectorToScreen( &cg.view.refdef, eorigin, coords );
+			RF_TransformVectorToScreen( &cg.view.refdef, eorigin, coords );
 			if( ( coords[0] < 0 || coords[0] > cgs.vidWidth ) || ( coords[1] < 0 || coords[1] > cgs.vidHeight ) )
 				return;
 
