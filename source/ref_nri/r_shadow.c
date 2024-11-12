@@ -427,7 +427,7 @@ void R_DrawShadowmaps( struct frame_cmd_buffer_s* frame )
 	if( !shadowBits )
 		return;
 
-	if( !R_PushRefInst(NULL) ) {
+	if( !R_PushRefInst(frame) ) {
 		return;
 	}
 
