@@ -4,7 +4,13 @@
     "freetype",
     {
       "name": "sdl2",
-      "features": ["vulkan","wayland", "x11"],
+      "features": ["vulkan", {
+        "name": "wayland",
+        "platform": "linux"
+      }, {
+        "name": "x11",
+        "platform": "linux"
+      }],
       "platform": "linux | osx"
     },
     "libogg",

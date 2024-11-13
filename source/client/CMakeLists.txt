@@ -148,6 +148,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
     set(BUNDLE_RESOURCES
         ${QFUSION_MAC_ICON}
+        $ENV{VULKAN_SDK}/share/vulkan
     )
 	if (QFUSION_DATA_DIR)
 		list(APPEND BUNDLE_RESOURCES

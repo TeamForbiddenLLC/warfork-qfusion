@@ -36,8 +36,13 @@ file(GLOB STB_HEADERS
 add_library(ref_nri SHARED ${REF_NRI_HEADERS} ${REF_NRI_COMMON_SOURCES} ${REF_NRI_PLATFORM_SOURCES})
 target_include_directories(ref_nri PRIVATE ${STB_INCLUDE_DIR} "../ref_base" "${NRI_DIR}/External/vulkan/include")
 target_link_libraries(ref_nri PRIVATE NRI)
-target_link_libraries(ref_nri PRIVATE glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV glslang::SPVRemapper)
+target_link_libraries(ref_nri PRIVATE glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV glslang::SPVRemapper )
 target_include_directories(ref_nri PRIVATE ${NRI_INCLUDE_DIR})
 target_include_directories(ref_nri PRIVATE ${MINIZ_INCLUDE_DIR})
 qf_set_output_dir(ref_nri libs)
 
+
+add_custom_command ( TARGET ref_nri POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    $<TARGET_FILE:Vulkan::Vulkan> $<TARGET_FILE_DIR:ref_nri>
+)
