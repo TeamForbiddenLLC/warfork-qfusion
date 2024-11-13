@@ -97,6 +97,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
             "../win32/win_vid.c"
             "../win32/conproc.c"
 
+            "win/win32_glw.c"
+
             "../win32/qfusion.rc"
             
             "${DISCORD_INCLUDE_DIR}/connection_win.cpp"	    
@@ -130,6 +132,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         "../sdl/sdl_time.c"
         "../sdl/sdl_lib.c"
         "../sdl/sdl_client.c"
+        
+        "./win/sdl_win.c"
 
         "../mac/mac_sys.m"
         
@@ -174,6 +178,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
             "../sdl/sdl_lib.c"
             "../sdl/sdl_client.c"
 
+            "./win/sdl_win.c"
+
         	"${DISCORD_INCLUDE_DIR}/connection_unix.cpp"	    
             "${DISCORD_INCLUDE_DIR}/discord_register_linux.cpp"	
         )
@@ -212,7 +218,6 @@ endif()
 add_executable(${QFUSION_CLIENT_NAME} ${CLIENT_BINARY_TYPE} ${CLIENT_HEADERS} ${CLIENT_PLATFORM_HEADERS} ${CLIENT_COMMON_SOURCES} ${CLIENT_PLATFORM_SOURCES} ${BUNDLE_RESOURCES} )
 add_dependencies(${QFUSION_CLIENT_NAME} angelwrap cgame cin ftlib game ref_gl snd_openal ui)
 set(STEAMSHIMPARENT_LIBRARY steamshim_parent)
-
 
 execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY ${CMAKE_HOME_DIRECTORY}/.. OUTPUT_VARIABLE GIT_COMMIT_HASH OUTPUT_STRIP_TRAILING_WHITESPACE)
 file(WRITE ${CMAKE_HOME_DIRECTORY}/build/commit.txt ${GIT_COMMIT_HASH})

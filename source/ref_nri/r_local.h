@@ -39,7 +39,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_nri.h"
 #include "r_texture_buf.h"
-#include "r_win.h"
+#include "../qcommon/mod_win.h"
 
 typedef struct { char *name; void **funcPointer; } dllfunc_t;
 
@@ -765,7 +765,6 @@ rserr_t		R_Init( const char *applicationName, const char *screenshotPrefix, int 
 void R_DestroyVolatileAssets( void );
 void		R_BeginRegistration( void );
 void		R_EndRegistration( void );
-rserr_t		R_SetMode( int x, int y, int width, int height, int displayFrequency, bool fullScreen, bool stereo );
 
 //
 // r_scene.c

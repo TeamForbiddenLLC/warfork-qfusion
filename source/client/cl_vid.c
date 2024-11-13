@@ -320,6 +320,7 @@ static bool VID_LoadRefresh( const char *name )
 	
 	static ref_import_t import;
 	static struct mem_import_s memImport;
+	struct win_import_s winImport = (struct win_import_s)DECLARE_WIN_STRUCT();
 	memImport = (struct mem_import_s)DECLARE_MEM_STRUCT( vid_ref_mempool );
 
 	size_t file_size;
@@ -328,8 +329,9 @@ static bool VID_LoadRefresh( const char *name )
 	GetRefAPI_t GetRefAPI_f;
 
 	VID_UnloadRefresh();
-	
 
+
+	import.winImport = &winImport;
 	import.memImport = &memImport;
 	import.fsImport = &default_fs_imports_s;
 	import.Com_Error = &Com_Error;

@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../cgame/ref.h"
 
 #include "../qcommon/mod_mem.h"
+#include "../qcommon/mod_win.h"
 #include "ref_mod.h"
 
 #define REF_API_VERSION 21
@@ -107,6 +108,7 @@ typedef struct
 	
 	const struct fs_import_s* fsImport;
 	const struct mem_import_s* memImport;
+	const struct win_import_s* winImport;
 } ref_import_t;
 
 
