@@ -30,6 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "xpm.h"
 
 #include "../qcommon/mod_mem.h"
+#include "../qcommon/mod_win.h"
 #include "../qcommon/mod_cvar.h"
 
 cvar_t *vid_ref;
@@ -324,6 +325,7 @@ static bool VID_LoadRefresh( const char *name )
 	struct mem_import_s memImport = DECLARE_MEM_STRUCT( vid_ref_mempool );
 	struct cmd_import_s cmdImport = DECLARE_CMD_STRUCT();
 	struct cvar_import_s cvarImport = DECLARE_CVAR_STRUCT();	
+	struct win_import_s winImport = DECLARE_WIN_STRUCT();
 
 	size_t file_size;
 	char *file;
@@ -331,8 +333,9 @@ static bool VID_LoadRefresh( const char *name )
 	GetRefAPI_t GetRefAPI_f;
 
 	VID_UnloadRefresh();
-	
 
+
+	import.winImport = &winImport;
 	import.memImport = &memImport;
 	import.cmdImport = &cmdImport;
 	import.cvarImport = &cvarImport;

@@ -338,8 +338,6 @@ rserr_t RF_SetWindow( void *hinstance, void *wndproc, void *parenthWnd )
 
 void RF_AppActivate( bool active, bool destroy )
 {
-	//R_Flush();
-	GLimp_AppActivate( active, destroy );
 }
 
 void RF_Shutdown( bool verbose )
@@ -1006,7 +1004,8 @@ void RF_EnvShot( const char *path, const char *name, unsigned pixels )
 
 bool RF_RenderingEnabled( void )
 {
-	return GLimp_RenderingEnabled();
+	return true;
+	//return GLimp_RenderingEnabled();
 }
 
 const char *RF_GetSpeedsMessage( char *out, size_t size )

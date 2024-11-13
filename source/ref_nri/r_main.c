@@ -1358,9 +1358,7 @@ void R_SetDrawBuffer( const char *drawbuffer )
 */
 bool R_IsRenderingToScreen( void )
 {
-	bool surfaceRenderable = true;
-	GLimp_GetWindowSurface( &surfaceRenderable );
-	return surfaceRenderable;
+	return true;
 }
 
 /*

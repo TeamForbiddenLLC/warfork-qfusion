@@ -130,7 +130,6 @@ cvar_t *r_usenotexture;
 cvar_t *r_maxglslbones;
 
 cvar_t *gl_drawbuffer;
-cvar_t *gl_driver;
 cvar_t *gl_cull;
 cvar_t *r_multithreading;
 
@@ -262,12 +261,6 @@ static void R_Register( const char *screenshotsPrefix )
 	gl_cull = Cvar_Get( "gl_cull", "1", 0 );
 	gl_drawbuffer = Cvar_Get( "gl_drawbuffer", "GL_BACK", 0 );
 
-	driver = QGL_GetDriverInfo();
-	if( driver && driver->dllcvarname )
-		gl_driver = Cvar_Get( driver->dllcvarname, driver->dllname, CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
-	else
-		gl_driver = NULL;
-
 	Cmd_AddCommand( "imagelist", R_ImageList_f );
 	Cmd_AddCommand( "shaderlist", R_ShaderList_f );
 	Cmd_AddCommand( "shaderdump", R_ShaderDump_f );
@@ -324,29 +317,6 @@ static rserr_t R_PostInit( void )
 	R_ClearRefInstStack();
 
 	return rserr_ok;
-}
-
-/*
-* R_SetMode
-*/
-rserr_t R_SetMode( int x, int y, int width, int height, int displayFrequency, bool fullScreen, bool stereo )
-{
-	rserr_t err;
-	
-	err = GLimp_SetMode( x, y, width, height, displayFrequency, fullScreen, stereo );
-	if( err != rserr_ok )
-	{
-		Com_Printf( "Could not GLimp_SetMode()\n" );
-		return err;
-	}
-
-	if( r_postinit )
-	{
-		err = R_PostInit();
-		r_postinit = false;
-	}
-
-	return err;
 }
 
 /*

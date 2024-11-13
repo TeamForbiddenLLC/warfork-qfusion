@@ -94,13 +94,6 @@ typedef enum
 	qgl_initerr_unknown
 } qgl_initerr_t;
 
-QGL_EXTERN	const qgl_driverinfo_t	*QGL_GetDriverInfo( void );
-QGL_EXTERN	qgl_initerr_t			QGL_Init( const char *dllname );
-QGL_EXTERN	void					QGL_Shutdown( void );
-
-QGL_EXTERN	void					*qglGetProcAddress( const GLubyte * );
-QGL_EXTERN	const char				*(*qglGetGLWExtensionsString)( void );
-
 /*
 ** extension constants
 */
