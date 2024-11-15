@@ -445,30 +445,33 @@ then searches for a command or variable that matches the first token.
 
 */
 
-typedef void ( *xcommand_t )( void );
-typedef char ** ( *xcompletionf_t )( const char *partial );
 
+//typedef void ( *xcommand_t )( void );
+//typedef char ** ( *xcompletionf_t )( const char *partial );
+//
+//void	    Cmd_AddCommand( const char *cmd_name, xcommand_t function );
+//void	    Cmd_RemoveCommand( const char *cmd_name );
+//bool    Cmd_Exists( const char *cmd_name );
+//bool	Cmd_CheckForCommand( char *text );
+//void	    Cmd_WriteAliases( int file );
+//int			Cmd_CompleteAliasCountPossible( const char *partial );
+//char		**Cmd_CompleteAliasBuildList( const char *partial );
+//int			Cmd_CompleteCountPossible( const char *partial );
+//char		**Cmd_CompleteBuildList( const char *partial );
+//char		**Cmd_CompleteBuildArgList( const char *partial );
+//char		**Cmd_CompleteBuildArgListExt( const char *command, const char *arguments );
+//char		**Cmd_CompleteFileList( const char *partial, const char *basedir, const char *extension, bool subdirectories );
+//int			Cmd_Argc( void );
+//char		*Cmd_Argv( int arg );
+//char		*Cmd_Args( void );
+//void	    Cmd_TokenizeString( const char *text );
+//void	    Cmd_ExecuteString( const char *text );
+//void		Cmd_SetCompletionFunc( const char *cmd_name, xcompletionf_t completion_func );
+
+#include "mod_cmd.h"
 void	    Cmd_PreInit( void );
 void	    Cmd_Init( void );
 void	    Cmd_Shutdown( void );
-void	    Cmd_AddCommand( const char *cmd_name, xcommand_t function );
-void	    Cmd_RemoveCommand( const char *cmd_name );
-bool    Cmd_Exists( const char *cmd_name );
-bool	Cmd_CheckForCommand( char *text );
-void	    Cmd_WriteAliases( int file );
-int			Cmd_CompleteAliasCountPossible( const char *partial );
-char		**Cmd_CompleteAliasBuildList( const char *partial );
-int			Cmd_CompleteCountPossible( const char *partial );
-char		**Cmd_CompleteBuildList( const char *partial );
-char		**Cmd_CompleteBuildArgList( const char *partial );
-char		**Cmd_CompleteBuildArgListExt( const char *command, const char *arguments );
-char		**Cmd_CompleteFileList( const char *partial, const char *basedir, const char *extension, bool subdirectories );
-int			Cmd_Argc( void );
-char		*Cmd_Argv( int arg );
-char		*Cmd_Args( void );
-void	    Cmd_TokenizeString( const char *text );
-void	    Cmd_ExecuteString( const char *text );
-void		Cmd_SetCompletionFunc( const char *cmd_name, xcompletionf_t completion_func );
 
 /*
 ==============================================================
