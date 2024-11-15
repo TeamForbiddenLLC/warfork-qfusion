@@ -100,11 +100,18 @@ jobs:
         working-directory: ./source
         run: |
           export CC=clang CXX=clang++
-          cmake -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 .
+          cmake -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 -DBUILD_UNIT_TEST=1 .
 
       - name: Build project
         working-directory: ./source
         run: make -j8
+
+      - name: Run unit tests
+        working-directory: ./source/build
+        run: |
+          for exc in ./tests/*; do
+            $exc
+          done || exit 1
       
       - name: Package warfork
         working-directory: ./source/build

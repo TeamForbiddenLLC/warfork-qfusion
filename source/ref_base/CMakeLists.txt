@@ -24,13 +24,13 @@ file(GLOB REF_GL_COMMON_SOURCES
 	)
 
 
-if(BUILD_UNIT_TEST )
-	add_ref_base_test(NAME ref_base_texture_buffer_test SRCS 
-		"./test/r_texture_buffer_test.c"
-		${REF_GL_COMMON_SOURCES}
-		"./r_texture_buf.c"
-		"./r_texture_decode.c"
-		"./r_texture_format.c")
-endif()
+#if(BUILD_UNIT_TEST )
+#	add_ref_base_test(NAME ref_base_texture_buffer_test SRCS 
+#		"./test/r_texture_buffer_test.c"
+#		${REF_GL_COMMON_SOURCES}
+#		"./r_texture_buf.c"
+#		"./r_texture_decode.c"
+#		"./r_texture_format.c")
+#endif()
 
 

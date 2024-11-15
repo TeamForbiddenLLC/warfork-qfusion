@@ -39,11 +39,6 @@ set(ANGELSCRIPT_DIR ${CMAKE_HOME_DIRECTORY}/../third-party/angelscript/sdk/angel
 set(ANGELSCRIPT_INCLUDE_DIR ${ANGELSCRIPT_DIR}/include/)
 add_subdirectory(${ANGELSCRIPT_DIR}/projects/cmake ${ANGELSCRIPT_DIR}/lib/)
 
-set(CMOCKA_DIR ${CMAKE_HOME_DIRECTORY}/../third-party/cmocka)
-set(CMOCKA_INCLUDE_DIR ${CMOCKA_DIR}/include/)
-set(CMOCKA_SRC_DIR ${CMOCKA_DIR}/src/)
-set(CMOCKA_SRC_FILES ${CMOCKA_SRC_DIR}/cmocka.c)
-
 set(LIBROCKET_DIR ${CMAKE_HOME_DIRECTORY}/../third-party/libRocket)
 set(LIBROCKET_INCLUDE_DIR ${LIBROCKET_DIR}/Include)
 set(LIBROCKET_SOURCE_DIR ${LIBROCKET_DIR}/Source)
@@ -54,6 +49,8 @@ set(MINIZ_SOURCE_DIR ${MINIZ_DIR})
 
 set(STB_DIR ${CMAKE_HOME_DIRECTORY}/../third-party/stb)
 set(STB_INCLUDE_DIR ${STB_DIR})
+
+set(UTEST_INCLUDE_DIR ${CMAKE_HOME_DIRECTORY}/../third-party/utest)
 
 set(DISCORD_DIR ${CMAKE_HOME_DIRECTORY}/../third-party/discord)
 set(DISCORD_INCLUDE_DIR ${DISCORD_DIR})
@@ -309,6 +306,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
     capitalize(QFUSION_CLIENT_NAME)
 endif()
+
+add_subdirectory(qcore)
 
 add_subdirectory(ref_base)
 add_subdirectory(angelwrap)
