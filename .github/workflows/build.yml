@@ -109,7 +109,7 @@ jobs:
       - name: Run unit tests
         working-directory: ./source/build
         run: |
-          for exc in ./tests/*; do
+          for exc in ./test/*; do
             $exc
           done || exit 1
       
