@@ -136,7 +136,7 @@ jobs:
       - name: Unit Test
         working-directory: ./source/build/${{matrix.config.build_folder}}
         run: |  
-          for exc in ./test/*; do
+          for exc in ./test/*!(*.dSYM); do
             $exc
           done || exit 1
 
