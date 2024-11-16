@@ -1112,7 +1112,7 @@ static int doubleToShorQStr(struct QStrSpan str, double d, int precision)
     return end > 0 ? (size_t)end : 0;
 }
 
-int qPrettyPrintBytes(struct QStrSpan slice, ssize_t numBytes)
+int qPrettyPrintBytes(struct QStrSpan slice, size_t numBytes)
 {
     const struct QStrSpan strs[] = {
         qCToStrRef("B"), qCToStrRef("KB"), qCToStrRef("MB"), qCToStrRef("GB"), qCToStrRef("TB"),

@@ -21,7 +21,7 @@ function(add_qcore_test)
 endfunction()
 
 
-if(BUILD_UNIT_TEST )
+if(BUILD_UNIT_TEST)
     add_qcore_test(NAME qstr_test SRCS 
 		"./test/qstr_test.c")
 endif()

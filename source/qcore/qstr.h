@@ -339,7 +339,7 @@ int qStrLastIndexOfCaselessOffset(const struct QStrSpan haystack, size_t offset,
 int qStrIndexOfAny(const struct QStrSpan haystack, const struct QStrSpan characters);
 int qStrLastIndexOfAny(const struct QStrSpan haystack, const struct QStrSpan characters);
 
-int qPrettyPrintBytes(struct QStrSpan slice,ssize_t numBytes);
+int qPrettyPrintBytes(struct QStrSpan slice, size_t numBytes);
 int qPrettyPrintDuration(struct QStrSpan slice,double nanoseconds);
 
 #ifdef __cplusplus

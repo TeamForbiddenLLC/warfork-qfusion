@@ -1,10 +1,15 @@
 name: Build
 
 on: [push, pull_request]
-
 jobs:
-
-  build-linux64:
+  linux:
+    strategy:
+      max-parallel: 1
+      matrix:
+        config:
+          - { name: "Linux-x86_64-Release", type: "release", cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1" }
+          - { name: "Linux-x86_64-Debug", type: "debug", cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1" }
+    name: ${{ matrix.config.name }}
     runs-on: ubuntu-22.04
     container:
       image: ubuntu:22.04
@@ -12,10 +17,12 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
         DEBCONF_NONINTERACTIVE_SEEN: true
     steps:
-      - name: Update git before checkout - https://github.com/actions/checkout/issues/335
+      - name: Setup
         run: |
+          echo "ACTIONS_CACHE_URL=$ACTIONS_CACHE_URL" >> "$GITHUB_ENV"
+          echo "ACTIONS_RUNTIME_TOKEN=$ACTIONS_ID_TOKEN_REQUEST_TOKEN" >> "$GITHUB_ENV"
           apt update
-          apt install -y git
+          apt install -y git curl clang cmake build-essential libsdl2-dev libopenal-dev libvorbis-dev libfreetype6-dev libcurl4-gnutls-dev git zip unzip python3
 
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -25,107 +32,66 @@ jobs:
       - name: Add safe directory - https://github.com/actions/checkout/issues/1169
         run: git config --system --add safe.directory /__w/warfork-qfusion/warfork-qfusion
 
-      - name: Install build dependencies
-        run: |
-          apt update
-          apt install -y curl clang cmake build-essential libsdl2-dev libopenal-dev libvorbis-dev libfreetype6-dev libcurl4-gnutls-dev git zip unzip python3
-
       - name: Download steamworks sdk
         run: |
           curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
           unzip third-party/steamworks/sdk.zip -d third-party/steamworks
 
-      - name: Setup glslang
-        working-directory: ./source/glslang
-        run: |
-          python3 ./update_glslang_sources.py
-
-      - name: Generate makefiles
+      - name: Building Release
+        if: matrix.config.type == 'release'
         working-directory: ./source
         run: |
           export CC=clang CXX=clang++
-          cmake -DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 .
+          cmake ${{matrix.config.cmake_args}} -DCMAKE_BUILD_TYPE=Release .
+          make -j8
 
-      - name: Build project
+      - name: Building Debug
+        if: matrix.config.type == 'debug'
         working-directory: ./source
-        run: make -j8
+        run: |
+          export CC=clang CXX=clang++
+          cmake ${{matrix.config.cmake_args}} -DCMAKE_BUILD_TYPE=Debug .
+          make -j8
       
-      - name: Package warfork
+      - name: Unit Test 
         working-directory: ./source/build
-        run: tar -czvf ../Linux-x86_64-Release.tar.gz * --exclude *.a --exclude base*/*.a libs/*.a
-
-      - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: linux-x86_64-release
-          path: source/Linux-x86_64-Release.tar.gz
-
-  build-linux64-debug:
-    runs-on: ubuntu-22.04
-    container:
-      image: ubuntu:22.04
-      env:
-        DEBIAN_FRONTEND: noninteractive
-        DEBCONF_NONINTERACTIVE_SEEN: true
-    steps:
-      - name: Update git before checkout - https://github.com/actions/checkout/issues/335
-        run: |
-          apt update
-          apt install -y git
-
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Add safe directory - https://github.com/actions/checkout/issues/1169
-        run: git config --system --add safe.directory /__w/warfork-qfusion/warfork-qfusion
-
-      - name: Install build dependencies
-        run: |
-          apt update
-          apt install -y curl clang cmake build-essential libsdl2-dev libopenal-dev libvorbis-dev libfreetype6-dev libcurl4-gnutls-dev git zip unzip python3
-
-      - name: Download steamworks sdk
-        run: |
-          curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
-          unzip third-party/steamworks/sdk.zip -d third-party/steamworks
-
-      - name: Setup glslang
-        working-directory: ./source/glslang
-        run: |
-          python3 ./update_glslang_sources.py
-
-      - name: Generate makefiles
-        working-directory: ./source
-        run: |
-          export CC=clang CXX=clang++
-          cmake -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 -DBUILD_UNIT_TEST=1 .
-
-      - name: Build project
-        working-directory: ./source
-        run: make -j8
-
-      - name: Run unit tests
-        working-directory: ./source/build
-        run: |
+        shell: bash
+        run: |  
           for exc in ./test/*; do
             $exc
           done || exit 1
       
       - name: Package warfork
         working-directory: ./source/build
-        run: tar -czvf ../Linux-x86_64-Debug.tar.gz * --exclude *.a --exclude base*/*.a libs/*.a
+        run: tar --exclude='*.a' --exclude='base*/*.a' --exclude='libs/*.a' --exclude='test' -zcvf ../${{matrix.config.name}}.tar.gz * 
 
       - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3 
         with:
-          name: linux-x86_64-debug
-          path: source/Linux-x86_64-Debug.tar.gz
+          name: ${{matrix.config.name}}
+          path: source/${{matrix.config.name}}.tar.gz
 
-  build-osx:
-    runs-on: macos-12
+  osx:
+    strategy:
+      max-parallel: 1
+      matrix:
+        config:
+          - { agent: "macos-12", name: "OSX-x86_64-Release", xcode-version: '13.4.1', type: "release", cmake_args: "-DBUILD_STEAMLIB=1" , build_folder: "Release" }
+          - { agent: "macos-12", name: "OSX-x86_64-Debug", xcode-version: '13.4.1', type: "debug", cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON", build_folder: "Debug"  }
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.agent }}
     steps:
+      - name: Setup
+        shell: bash
+        run: |
+          echo "ACTIONS_CACHE_URL=$ACTIONS_CACHE_URL" >> "$GITHUB_ENV"
+          echo "ACTIONS_RUNTIME_TOKEN=$ACTIONS_ID_TOKEN_REQUEST_TOKEN" >> "$GITHUB_ENV"
+          brew uninstall --force azure-cli
+          brew uninstall --force aws-sam-cli
+          brew install python@3 || brew link --overwrite python@3
+          brew update
+          brew install curl cmake sdl2 openal-soft libvorbis freetype git zip unzip
+
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
@@ -133,156 +99,101 @@ jobs:
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '13.4.1'
-
-      - name: Install build dependencies
-        run: |
-          brew uninstall --force azure-cli
-          brew uninstall --force aws-sam-cli
-          brew install python@3 || brew link --overwrite python@3
-          brew update
-          brew install curl cmake sdl2 openal-soft libvorbis freetype git zip unzip
+          xcode-version: ${{matrix.config.xcode-version}}
 
       - name: Download steamworks sdk
         run: |
           curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
           unzip third-party/steamworks/sdk.zip -d third-party/steamworks
 
-      - name: Generate makefiles
+      - name: Building Release
+        if: matrix.config.type == 'release'
         working-directory: ./source
-        run: cmake -DBUILD_STEAMLIB=1 -G Xcode .
+        run: |
+          cmake ${{matrix.config.cmake_args}} -DCMAKE_BUILD_TYPE=RELEASE -G Xcode .
+          xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration Release -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
-      - name: Build project
+      - name: Building Debug
+        if: matrix.config.type == 'debug'
         working-directory: ./source
-        run: xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration Release -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
-      
+        run: |
+          cmake ${{matrix.config.cmake_args}} -DCMAKE_BUILD_TYPE=DEBUG -G Xcode .
+          xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration Debug -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
+
       - name: Package warfork
         working-directory: ./source/build
-        run: tar -czvf ../OSX-x86_64-Release.tar.gz Release/*.app
+        run: tar --exclude='test' -czvf ../${{matrix.config.name}}.tar.gz ${{matrix.config.build_folder}}/*.app
+      
+      - name: Unit Test
+        working-directory: ./source/build/${{matrix.config.build_folder}}
+        run: |  
+          for exc in ./test/*; do
+            $exc
+          done || exit 1
 
       - name: Upload warfork artifact
         uses: actions/upload-artifact@v3
         with:
-          name: osx-x86_64-release
-          path: source/OSX-x86_64-Release.tar.gz
+          name: ${{matrix.config.name}}
+          path: source/${{matrix.config.name}}.tar.gz
 
-  build-osx-debug:
-    runs-on: macos-12
+  windows:
+    strategy:
+      max-parallel: 1
+      matrix:
+        config:
+          - { agent: "windows-latest", name: "win-x86_64-Release", vs_version: 'Visual Studio 17 2022', type: "release", cmake_args: "-DBUILD_STEAMLIB=1", build_folder: "Release" }
+          - { agent: "windows-latest", name: "win-x86_64-Debug", vs_version: 'Visual Studio 17 2022', type: "debug", cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON", build_folder: "Debug" }
+  
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.agent }}
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '13.4.1'
-
-      - name: Install build dependencies
+      - name: Setup
         run: |
-          brew uninstall --force azure-cli
-          brew uninstall --force aws-sam-cli
-          brew install python@3 || brew link --overwrite python@3
-          brew update
-          brew install curl cmake sdl2 openal-soft libvorbis freetype git zip unzip
-
-      - name: Download steamworks sdk
-        run: |
-          curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
-          unzip third-party/steamworks/sdk.zip -d third-party/steamworks
-
-      - name: Generate makefiles
-        working-directory: ./source
-        run: cmake -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON -G Xcode .
-
-      - name: Build project
-        working-directory: ./source
-        run: xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration Debug -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
+          Add-Content -Path $env:GITHUB_ENV -Value "ACTIONS_CACHE_URL=$ACTIONS_CACHE_URL"
+          Add-Content -Path $env:GITHUB_ENV -Value "ACTIONS_RUNTIME_TOKEN=$ACTIONS_ID_TOKEN_REQUEST_TOKEN"
       
-      - name: Package warfork
-        working-directory: ./source/build
-        run: tar -czvf ../OSX-x86_64-Debug.tar.gz Debug/*.app
-
-      - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: osx-x86_64-debug
-          path: source/OSX-x86_64-Debug.tar.gz
-
-  build-win64:
-    runs-on: windows-latest
-    steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           submodules: recursive
-
+          
       - name: Download steamworks sdk
         run: |
           curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
           7z x third-party/steamworks/sdk.zip -othird-party/steamworks
-
-      - name: Setup glslang
-        working-directory: ./source/glslang
-        run: |
-          python3 ./update_glslang_sources.py
-
-      - name: Generate makefiles
-        working-directory: .\source
-        run: cmake -G "Visual Studio 17 2022" -A x64 -T "v142" -DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 .
-
+      
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
 
-      - name: Build project
+      - name: Building Debug
+        if: matrix.config.type == 'debug' 
         working-directory: .\source
-        run: msbuild qfusion.sln /p:configuration=Release /maxcpucount:8
+        run: |
+          cmake  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 .
+          msbuild qfusion.sln /p:configuration=Debug /maxcpucount:8
+
+      - name: Building Release
+        if: matrix.config.type == 'release'
+        working-directory: .\source
+        run: |
+          cmake  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DCMAKE_BUILD_TYPE=RELEASE .
+          msbuild qfusion.sln /p:configuration=Release /maxcpucount:8
+      
+      - name: Unit Test 
+        shell: bash
+        working-directory: .\source\build\${{matrix.config.build_folder}}
+        run: |  
+          for exc in ./test/*; do
+            $exc
+          done || exit 1
 
       - name: Package warfork
-        working-directory: .\source\build\Release
-        run: 7z a ..\..\win-x86_64-Release.zip * '-xr!*.exp' '-xr!*.lib'
-
+        working-directory: .\source\build\${{matrix.config.build_folder}}
+        run: 7z a ..\..\${{matrix.config.name}}.zip * '-xr!*.exp' '-xr!*.lib' '-xr!test'
+      
       - name: Upload warfork artifact
         uses: actions/upload-artifact@v3
         with:
-          name: win-x86_64-release
-          path: source\win-x86_64-Release.zip
-
-  build-win64-debug:
-    runs-on: windows-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Download steamworks sdk
-        run: |
-          curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
-          7z x third-party/steamworks/sdk.zip -othird-party/steamworks
-
-      - name: Setup glslang
-        working-directory: ./source/glslang
-        run: |
-          python3 ./update_glslang_sources.py
-
-      - name: Generate makefiles
-        working-directory: .\source
-        run: cmake -G "Visual Studio 17 2022" -A x64 -T "v142" -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 .
-
-      - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v1.1
-
-      - name: Build project
-        working-directory: .\source
-        run: msbuild qfusion.sln /p:configuration=Debug /maxcpucount:8
-
-      - name: Package warfork
-        working-directory: .\source\build\Debug
-        run: 7z a ..\..\win-x86_64-Debug.zip * '-xr!*.exp' '-xr!*.lib'
-
-      - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: win-x86_64-debug
-          path: source\win-x86_64-Debug.zip
+          name: ${{matrix.config.name}}
+          path: source\${{matrix.config.name}}.zip
