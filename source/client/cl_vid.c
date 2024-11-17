@@ -318,9 +318,9 @@ static bool VID_LoadRefresh( const char *name )
 	}
 	vid_ref_mempool = Q_CreatePool( NULL, "Refresh" );
 	
-	static ref_import_t import;
-	static struct mem_import_s memImport;
-	memImport = (struct mem_import_s)DECLARE_MEM_STRUCT( vid_ref_mempool );
+	ref_import_t import;
+	struct mem_import_s memImport = DECLARE_MEM_STRUCT( vid_ref_mempool );
+	struct cmd_import_s cmdImport = DECLARE_CMD_STRUCT();
 
 	size_t file_size;
 	char *file;
