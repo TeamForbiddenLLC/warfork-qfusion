@@ -111,10 +111,6 @@ jobs:
           curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
           unzip third-party/steamworks/sdk.zip -d third-party/steamworks
 
-      - name: Setup glslang
-        working-directory: ./source/glslang
-        run: |
-          python3 ./update_glslang_sources.py
       - name: Building Release
         if: matrix.config.type == 'release'
         working-directory: ./source
