@@ -1,19 +1,19 @@
 #include "../qstr.h"
 #include "utest.h"
 
-UTEST(Core, qCaselessCompare)
+UTEST(qstr, qCaselessCompare)
 {
     EXPECT_EQ(qStrCaselessCompare(qCToStrRef("test"), qCToStrRef("TEST")), 0);
     EXPECT_EQ(qStrCaselessCompare(qCToStrRef("testAA"), qCToStrRef("TEST")), 1);
 }
 
-UTEST(Core, qCompare)
+UTEST(qstr, qCompare)
 {
     EXPECT_EQ(qStrCompare(qCToStrRef("test"), qCToStrRef("TEST")), 32);
     EXPECT_EQ(qStrCompare(qCToStrRef("Test"), qCToStrRef("test")), -32);
 }
 
-UTEST(Core, qIndexOf)
+UTEST(qstr, qIndexOf)
 {
     EXPECT_EQ(qStrIndexOf(qCToStrRef("foo foo"), qCToStrRef("foo")), 0);
     EXPECT_EQ(qStrIndexOf(qCToStrRef("banana"), qCToStrRef("ana")), 1);
@@ -29,7 +29,7 @@ UTEST(Core, qIndexOf)
     EXPECT_EQ(qStrIndexOf(qCToStrRef("abc"), qCToStrRef("abcd")), -1);
 }
 
-UTEST(Core, qStrReadDouble) 
+UTEST(qstr, qStrReadDouble) 
 {
     double result = 0;
     EXPECT_TRUE(qStrReadDouble(qCToStrRef(".01"), &result));
@@ -45,7 +45,7 @@ UTEST(Core, qStrReadDouble)
     EXPECT_NEAR(result, -5.01f, .0001f);
 }
 
-UTEST(Core, qStrReadFloat)
+UTEST(qstr, qStrReadFloat)
 {
     float result = 0;
     EXPECT_TRUE(qStrReadFloat(qCToStrRef(".01"), &result));
@@ -62,7 +62,7 @@ UTEST(Core, qStrReadFloat)
 
 }
 
-UTEST(Core, qLastIndexOf)
+UTEST(qstr, qLastIndexOf)
 {
     EXPECT_EQ(qStrLastIndexOf(qCToStrRef("foo foo"), qCToStrRef(" ")), 3);
     EXPECT_EQ(qStrLastIndexOf(qCToStrRef("foo foo"), qCToStrRef("foo")), 4);
@@ -79,7 +79,7 @@ UTEST(Core, qLastIndexOf)
     EXPECT_EQ(qStrLastIndexOf(qCToStrRef("abc"), qCToStrRef("abcd")), -1);
 }
 
-UTEST(Core, qEq)
+UTEST(qstr, qEq)
 {
     EXPECT_EQ(qStrEqual(qCToStrRef("Hello world"), qCToStrRef("Hello world")), 1);
     EXPECT_EQ(qStrEqual(qCToStrRef("Helloworld"), qCToStrRef("Hello world")), 0);
@@ -87,7 +87,7 @@ UTEST(Core, qEq)
     EXPECT_EQ(qStrEqual(qCToStrRef("Hello"), qCToStrRef("Hello ")), 0);
 }
 
-UTEST(Core, qDuplicate)
+UTEST(qstr, qDuplicate)
 {
     struct QStr s1 = { 0 };
     EXPECT_EQ(qStrAssign(&s1, qCToStrRef("Hello World")), true);
@@ -97,7 +97,7 @@ UTEST(Core, qDuplicate)
     qStrFree(&s2);
 }
 
-UTEST(Core, qIterateRev)
+UTEST(qstr, qIterateRev)
 {
     struct QStrSpan           buf = qCToStrRef("one two three four five");
     struct qStrSplitIterable iterable = { buf, qCToStrRef(" "), buf.len };
@@ -121,21 +121,21 @@ UTEST(Core, qIterateRev)
     EXPECT_EQ(qStrEmpty(s), 1);
 }
 
-UTEST(Core, qReadull)
+UTEST(qstr, qReadull)
 {
     unsigned long long res = 0;
     EXPECT_EQ(qStrReadull(qCToStrRef("123456"), &res), 1);
     EXPECT_EQ(res, 123456);
 }
 
-UTEST(Core, qReadu32)
+UTEST(qstr, qReadu32)
 {
     long long res = 0;
     EXPECT_EQ(qStrReadll(qCToStrRef("123456"), &res), 1);
     EXPECT_EQ(res, 123456);
 }
 
-UTEST(Core, qIterateWhiteSpace)
+UTEST(qstr, qIterateWhiteSpace)
 {
     struct qStrSplitIterable iterable = { qCToStrRef("one  two"), qCToStrRef(" "), 0 };
     struct QStrSpan           s = { 0 };
@@ -154,7 +154,7 @@ UTEST(Core, qIterateWhiteSpace)
     EXPECT_EQ(qStrEmpty(s), 1);
 }
 
-UTEST(Core, qIterateCount)
+UTEST(qstr, qIterateCount)
 {
     {
         struct qStrSplitIterable iterable = { qCToStrRef("one two three four five"), qCToStrRef(" "), 0 };
@@ -185,7 +185,7 @@ UTEST(Core, qIterateCount)
     }
 }
 
-UTEST(Core, qIterate)
+UTEST(qstr, qIterate)
 {
     struct qStrSplitIterable iterable = { qCToStrRef("one two three four five"), qCToStrRef(" "),  0 };
 
@@ -209,7 +209,7 @@ UTEST(Core, qIterate)
     EXPECT_EQ(qStrEmpty(s), 1);
 }
 
-UTEST(Core, qfmtWriteLongLong)
+UTEST(qstr, qfmtWriteLongLong)
 {
     char   test_buffer[QSTR_LLSTR_SIZE];
     size_t len = qstrfmtll((struct QStrSpan){  test_buffer, QSTR_LLSTR_SIZE }, 12481);
@@ -217,7 +217,7 @@ UTEST(Core, qfmtWriteLongLong)
     EXPECT_EQ(qStrEqual(qCToStrRef("12481"), (struct QStrSpan){ test_buffer, len }), true);
 }
 
-UTEST(Core, qCaselessEq)
+UTEST(qstr, qCaselessEq)
 {
     EXPECT_EQ(qStrCaselessEqual(qCToStrRef("Hello world"), qCToStrRef("Hello world")), 1);
     EXPECT_EQ(qStrCaselessEqual(qCToStrRef("Helloworld"), qCToStrRef("Hello world")), 0);
@@ -225,7 +225,7 @@ UTEST(Core, qCaselessEq)
     EXPECT_EQ(qStrCaselessEqual(qCToStrRef("Hello"), qCToStrRef("Hello ")), 0);
 }
 
-UTEST(Core, qCatJoin)
+UTEST(qstr, qCatJoin)
 {
     struct QStr     buf = { 0 };
     struct QStrSpan slices[] = {
@@ -239,7 +239,7 @@ UTEST(Core, qCatJoin)
     qStrFree(&buf);
 }
 
-UTEST(Core, qCatJoinCstr)
+UTEST(qstr, qCatJoinCstr)
 {
     struct QStr buf = { 0 };
     const char* slices[] = {
@@ -253,7 +253,7 @@ UTEST(Core, qCatJoinCstr)
     qStrFree(&buf);
 }
 
-UTEST(Core, appendSlice)
+UTEST(qstr, appendSlice)
 {
     struct QStr buf = { 0 };
     qStrAssign(&buf, qCToStrRef("Hello"));
@@ -262,7 +262,7 @@ UTEST(Core, appendSlice)
     qStrFree(&buf);
 }
 
-UTEST(Core, qcatprintf)
+UTEST(qstr, qcatprintf)
 {
     struct QStr buf = { 0 };
     EXPECT_EQ(qstrcatprintf(&buf, "Hello %s", "world"), true);
@@ -281,7 +281,7 @@ UTEST(Core, qcatprintf)
     qStrFree(&buf);
 }
 
-UTEST(Core, qcatfmt)
+UTEST(qstr, qcatfmt)
 {
     struct QStr s = { 0 };
     {
@@ -302,7 +302,7 @@ UTEST(Core, qcatfmt)
     qStrFree(&s);
 }
 
-UTEST(Core, updateLen)
+UTEST(qstr, updateLen)
 {
     struct QStr buf = { 0 };
     qStrAssign(&buf, qCToStrRef("Hello World"));
@@ -315,7 +315,7 @@ UTEST(Core, updateLen)
     qStrFree(&buf);
 }
 
-UTEST(Core, qStrAssign)
+UTEST(qstr, qStrAssign)
 {
     struct QStr buf = { 0 };
     {
@@ -329,7 +329,7 @@ UTEST(Core, qStrAssign)
     qStrFree(&buf);
 }
 
-UTEST(Core, q_rtrim)
+UTEST(qstr, q_rtrim)
 {
     EXPECT_EQ(qStrEqual(qStrRTrim(qCToStrRef("Hello world  ")), qCToStrRef("Hello world")), true);
     EXPECT_EQ(qStrEqual(qStrRTrim(qCToStrRef("  Hello world  ")), qCToStrRef("  Hello world")), true);
@@ -339,7 +339,7 @@ UTEST(Core, q_rtrim)
     EXPECT_EQ(qStrEqual(qStrRTrim(qCToStrRef("\t")), qCToStrRef("")), true);
 }
 
-UTEST(Core, q_ltrim)
+UTEST(qstr, q_ltrim)
 {
     EXPECT_EQ(qStrEqual(qStrLTrim(qCToStrRef("Hello world  ")), qCToStrRef("Hello world  ")), true);
     EXPECT_EQ(qStrEqual(qStrLTrim(qCToStrRef("  ")), qCToStrRef("")), true);
@@ -348,7 +348,7 @@ UTEST(Core, q_ltrim)
     EXPECT_EQ(qStrEqual(qStrLTrim(qCToStrRef("\t")), qCToStrRef("")), true);
 }
 
-UTEST(Core, qStrTrim)
+UTEST(qstr, qStrTrim)
 {
     {
         struct QStr buf = { 0 };
@@ -366,7 +366,7 @@ UTEST(Core, qStrTrim)
     EXPECT_EQ(qStrEqual(qStrTrim(qCToStrRef("\t")), qCToStrRef("")), true);
 }
 
-UTEST(Core, qsscanf)
+UTEST(qstr, qsscanf)
 {
     {
         uint32_t a = 0;
@@ -378,7 +378,7 @@ UTEST(Core, qsscanf)
     }
 }
 
-// UTEST(Core, qSliceToUtf16CodePoint) {
+// UTEST(qstr, qSliceToUtf16CodePoint) {
 //   unsigned char leftPointingMagnify[] = {0x3D,0xD8,0x0D,0xDD};
 //
 //   struct tf_utf_result_s res;
@@ -434,7 +434,7 @@ UTEST(Core, qsscanf)
 //
 // }
 
-// UTEST(Core, qSliceToUtf8CodePoint) {
+// UTEST(qstr, qSliceToUtf8CodePoint) {
 //   char smilyCat[] = {0xF0, 0x9F, 0x98, 0xBC};
 //   struct qStrSplitIterable iter = {
 //     .buffer = (struct QStrSpan) {
@@ -467,7 +467,7 @@ UTEST(Core, qsscanf)
 //   }, 1), 1);
 // }
 
-// UTEST(Core, qUtf8CodePointIter) {
+// UTEST(qstr, qUtf8CodePointIter) {
 //   {
 //     unsigned char smilyCat[] = {0xF0, 0x9F, 0x98, 0xBC};
 //     struct qStrSplitIterable iter = {

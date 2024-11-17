@@ -24,6 +24,8 @@ endfunction()
 if(BUILD_UNIT_TEST)
     add_qcore_test(NAME qstr_test SRCS 
 		"./test/qstr_test.c")
+    add_qcore_test(NAME qstr_utf_test SRCS 
+		"./test/qstr_utf_test.c")
 endif()
 
 
