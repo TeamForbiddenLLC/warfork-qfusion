@@ -26,6 +26,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define STB_DS_IMPLEMENTATION 1
 #include "stb_ds.h"
 
+#include "../qcommon/mod_cmd.h"
+
 glconfig_t glConfig;
 
 r_shared_t rsh;
@@ -265,7 +267,7 @@ static void R_Register( const char *screenshotsPrefix )
 	else
 		gl_driver = NULL;
 
-	ri.Cmd_AddCommand( "imagelist", R_ImageList_f );
+	Cmd_AddCommand( "imagelist", R_ImageList_f );
 	ri.Cmd_AddCommand( "shaderlist", R_ShaderList_f );
 	ri.Cmd_AddCommand( "shaderdump", R_ShaderDump_f );
 	ri.Cmd_AddCommand( "screenshot", R_ScreenShot_f );

@@ -331,6 +331,7 @@ static bool VID_LoadRefresh( const char *name )
 	
 
 	import.memImport = &memImport;
+	import.cmdImport = &cmdImport;
 	import.fsImport = &default_fs_imports_s;
 	import.Com_Error = &Com_Error;
 	import.Com_Printf = &Com_Printf;

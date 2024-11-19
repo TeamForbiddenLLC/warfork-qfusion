@@ -58,7 +58,7 @@ extern "C"
 QF_DLL_EXPORT ref_export_t *GetRefAPI( ref_import_t *import )
 {
 	static ref_export_t globals;
-	fs_import = *import->fsImport;
+	Q_ImportFsModule(import->fsImport);
 	Q_ImportMemModule(import->memImport);	
 	Q_ImportCmdModule(import->cmdImport);
 

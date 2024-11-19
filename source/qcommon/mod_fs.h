@@ -235,6 +235,10 @@ bool FS_IsPakValid(const char *filename, unsigned *checksum ){ return fs_import.
 bool FS_AddPurePak(unsigned checksum ){ return fs_import.FS_AddPurePak(checksum);}
 void FS_RemovePurePaks(void ){ fs_import.FS_RemovePurePaks();}
 void FS_AddFileToMedia(const char *filename ){ fs_import.FS_AddFileToMedia(filename);}
+static inline void Q_ImportFsModule(struct fs_import_s* mod) {
+  fs_import = *mod;
+}
+
 #endif
 
 
