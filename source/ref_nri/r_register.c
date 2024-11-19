@@ -268,13 +268,13 @@ static void R_Register( const char *screenshotsPrefix )
 		gl_driver = NULL;
 
 	Cmd_AddCommand( "imagelist", R_ImageList_f );
-	ri.Cmd_AddCommand( "shaderlist", R_ShaderList_f );
-	ri.Cmd_AddCommand( "shaderdump", R_ShaderDump_f );
-	ri.Cmd_AddCommand( "screenshot", R_ScreenShot_f );
-	ri.Cmd_AddCommand( "envshot", R_EnvShot_f );
-	ri.Cmd_AddCommand( "modellist", Mod_Modellist_f );
-	ri.Cmd_AddCommand( "glslprogramlist", RP_ProgramList_f );
-	ri.Cmd_AddCommand( "cinlist", R_CinList_f );
+	Cmd_AddCommand( "shaderlist", R_ShaderList_f );
+	Cmd_AddCommand( "shaderdump", R_ShaderDump_f );
+	Cmd_AddCommand( "screenshot", R_ScreenShot_f );
+	Cmd_AddCommand( "envshot", R_EnvShot_f );
+	Cmd_AddCommand( "modellist", Mod_Modellist_f );
+	Cmd_AddCommand( "glslprogramlist", RP_ProgramList_f );
+	Cmd_AddCommand( "cinlist", R_CinList_f );
 }
 
 rserr_t R_Init( const char *applicationName, const char *screenshotPrefix, int startupColor,

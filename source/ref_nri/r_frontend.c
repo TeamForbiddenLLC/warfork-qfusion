@@ -343,15 +343,15 @@ void RF_Shutdown( bool verbose )
 	memset( &rrf, 0, sizeof( rrf ) );
 	rsh.nri.helperI.WaitForIdle( rsh.cmdQueue );
 
-	ri.Cmd_RemoveCommand( "modellist" );
-	ri.Cmd_RemoveCommand( "screenshot" );
-	ri.Cmd_RemoveCommand( "envshot" );
-	ri.Cmd_RemoveCommand( "imagelist" );
-	ri.Cmd_RemoveCommand( "gfxinfo" );
-	ri.Cmd_RemoveCommand( "shaderdump" );
-	ri.Cmd_RemoveCommand( "shaderlist" );
-	ri.Cmd_RemoveCommand( "glslprogramlist" );
-	ri.Cmd_RemoveCommand( "cinlist" );
+	Cmd_RemoveCommand( "modellist" );
+	Cmd_RemoveCommand( "screenshot" );
+	Cmd_RemoveCommand( "envshot" );
+	Cmd_RemoveCommand( "imagelist" );
+	Cmd_RemoveCommand( "gfxinfo" );
+	Cmd_RemoveCommand( "shaderdump" );
+	Cmd_RemoveCommand( "shaderlist" );
+	Cmd_RemoveCommand( "glslprogramlist" );
+	Cmd_RemoveCommand( "cinlist" );
 
 	// free shaders, models, etc.
 
