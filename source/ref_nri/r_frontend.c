@@ -405,7 +405,7 @@ static void RF_CheckCvars( void )
 	// disallow bogus r_maxfps values, reset to default value instead
 	if( r_maxfps->modified ) {
 		if( r_maxfps->integer <= 0 ) {
-			ri.Cvar_ForceSet( r_maxfps->name, r_maxfps->dvalue );
+			Cvar_ForceSet( r_maxfps->name, r_maxfps->dvalue );
 		}
 		r_maxfps->modified = false;
 	}
@@ -458,10 +458,10 @@ static void RF_CheckCvars( void )
 	// keep r_outlines_cutoff value in sane bounds to prevent wallhacking
 	if( r_outlines_scale->modified ) {
 		if( r_outlines_scale->value < 0 ) {
-			ri.Cvar_ForceSet( r_outlines_scale->name, "0" );
+			Cvar_ForceSet( r_outlines_scale->name, "0" );
 		}
 		else if( r_outlines_scale->value > 3 ) {
-			ri.Cvar_ForceSet( r_outlines_scale->name, "3" );
+			Cvar_ForceSet( r_outlines_scale->name, "3" );
 		}
 		r_outlines_scale->modified = false;
 	}

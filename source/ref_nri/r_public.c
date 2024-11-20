@@ -17,6 +17,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+#define CVAR_DEFINE_INTERFACE_IMPL 1
+#include "../qcommon/mod_cvar.h"
 
 #define FS_DEFINE_INTERFACE_IMPL 1
 #include "../qcommon/mod_fs.h"
@@ -61,6 +63,7 @@ QF_DLL_EXPORT ref_export_t *GetRefAPI( ref_import_t *import )
 	Q_ImportFsModule(import->fsImport);
 	Q_ImportMemModule(import->memImport);	
 	Q_ImportCmdModule(import->cmdImport);
+	Q_ImportCvarModule(import->cvarImport);
 
 	ri = *import;
 

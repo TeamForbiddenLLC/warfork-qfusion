@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "../qcommon/mod_mem.h"
 #include "../qcommon/mod_cmd.h"
+#include "../qcommon/mod_cvar.h"
 #include "ref_mod.h"
 
 
@@ -110,6 +111,7 @@ typedef struct
 	const struct cmd_import_s* cmdImport; 
 	const struct fs_import_s* fsImport;
 	const struct mem_import_s* memImport;
+	const struct cvar_import_s* cvarImport;
 } ref_import_t;
 
 

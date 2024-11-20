@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../qalgo/glob.h"
 
 #include "../qcommon/mod_cmd.h"
+#include "../qcommon/mod_cvar.h"
 
 /*
  * R_Localtime
@@ -181,14 +182,14 @@ void R_ScreenShot_f( void )
 	{
 		strftime( timestamp_str, sizeof( timestamp_str ), r_screenshot_fmtstr->string, &newtime );
 		if( !COM_ValidateRelativeFilename( timestamp_str ) )
-			ri.Cvar_ForceSet( r_screenshot_fmtstr->name, r_screenshot_fmtstr->dvalue );
+			Cvar_ForceSet( r_screenshot_fmtstr->name, r_screenshot_fmtstr->dvalue );
 		else
 			break;
 	}
 	
 	// hm... shouldn't really happen, but check anyway
 	if( i == 2 )
-		ri.Cvar_ForceSet( r_screenshot_fmtstr->name, glConfig.screenshotPrefix );
+		Cvar_ForceSet( r_screenshot_fmtstr->name, glConfig.screenshotPrefix );
 
 	RF_ScreenShot( path, name, r_screenshot_fmtstr->string,
 				  Cmd_Argc() >= 3 && !Q_stricmp( Cmd_Argv( 2 ), "silent" ) ? true : false );
