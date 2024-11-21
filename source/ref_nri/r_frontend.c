@@ -566,7 +566,7 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 
 }
 
-static inline __R_PolyBlendPostPass(struct frame_cmd_buffer_s* frame) {
+static inline void __R_PolyBlendPostPass(struct frame_cmd_buffer_s* frame) {
 	if( !r_polyblend->integer )
 		return;
 	if( rsc.refdef.blend[3] < 0.01f )
@@ -580,7 +580,7 @@ static inline __R_PolyBlendPostPass(struct frame_cmd_buffer_s* frame) {
 	RB_FlushDynamicMeshes( frame );
 }
 
-static inline __R_ApplyBrightnessBlend(struct frame_cmd_buffer_s* frame) {
+static inline void __R_ApplyBrightnessBlend(struct frame_cmd_buffer_s* frame) {
 
 	float c = r_brightness->value;
 	if( c < 0.005 )
