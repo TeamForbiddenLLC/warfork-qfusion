@@ -68,7 +68,7 @@ void RB_SetZClip( float zNear, float zFar );
 
 void RB_BindFrameBufferObject( int object );
 int RB_BoundFrameBufferObject( void );
-void RB_BlitFrameBufferObject( int dest, int bitMask, int mode );
+//void RB_BlitFrameBufferObject( int dest, int bitMask, int mode );
 
 void RB_BindVBO( int id, int primitive);
 //void RB_BindVBO_2( NriCommandBuffer* cmd,

@@ -567,10 +567,10 @@ void R_DrawRotatedStretchPic(struct frame_cmd_buffer_s* cmd, int x, int y, int w
 /*
 * R_DrawStretchPic
 */
-void R_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
+void R_DrawStretchPic(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	const vec4_t color, const shader_t *shader )
 {
-	R_DrawRotatedStretchPic(NULL, x, y, w, h, s1, t1, s2, t2, 0, color, shader );
+	R_DrawRotatedStretchPic(cmd, x, y, w, h, s1, t1, s2, t2, 0, color, shader );
 }
 
 /*
@@ -612,7 +612,7 @@ void R_UploadRawYUVPic( image_t **yuvTextures, ref_img_plane_t *yuv )
 /*
 * R_DrawStretchRaw
 */
-void R_DrawStretchRaw( int x, int y, int w, int h, float s1, float t1, float s2, float t2 )
+void R_DrawStretchRaw(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2 )
 {
 	float h_scale, v_scale;
 
@@ -623,7 +623,7 @@ void R_DrawStretchRaw( int x, int y, int w, int h, float s1, float t1, float s2,
 	t1 *= v_scale;
 	t2 *= v_scale;
 
-	R_DrawStretchQuick( x, y, w, h, s1, t1, s2, t2, colorWhite, GLSL_PROGRAM_TYPE_NONE, rsh.rawTexture, 0 );
+	R_DrawStretchQuick(cmd, x, y, w, h, s1, t1, s2, t2, colorWhite, GLSL_PROGRAM_TYPE_NONE, rsh.rawTexture, 0 );
 }
 
 /*
@@ -704,7 +704,7 @@ void R_DrawStretchRawYUV( int x, int y, int w, int h, float s1, float t1, float 
 /*
 * R_DrawStretchQuick
 */
-void R_DrawStretchQuick( int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
+void R_DrawStretchQuick(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	const vec4_t color, int program_type, image_t *image, int blendMask )
 {
 	static char *s_name = "$builtinimage";
@@ -728,9 +728,8 @@ void R_DrawStretchQuick( int x, int y, int w, int h, float s1, float t1, float s
 	p.flags = blendMask;
 	p.program_type = program_type;
 
-	R_DrawRotatedStretchPic(NULL, x, y, w, h, s1, t1, s2, t2, 0, color, &s );
-
-	RB_FlushDynamicMeshes(NULL);
+	R_DrawRotatedStretchPic(cmd, x, y, w, h, s1, t1, s2, t2, 0, color, &s );
+	RB_FlushDynamicMeshes(cmd);
 }
 
 /*
@@ -738,14 +737,14 @@ void R_DrawStretchQuick( int x, int y, int w, int h, float s1, float t1, float s
 */
 void R_BindFrameBufferObject( int object )
 {
-	int width, height;
+	//int width, height;
 
-	RFB_GetObjectSize( object, &width, &height );
+	//RFB_GetObjectSize( object, &width, &height );
 
-	rf.frameBufferWidth = width;
-	rf.frameBufferHeight = height;
+	//rf.frameBufferWidth = width;
+	//rf.frameBufferHeight = height;
 
-	RB_BindFrameBufferObject( object );
+	//RB_BindFrameBufferObject( object );
 
 	RB_Viewport( rn.viewport[0], rn.viewport[1], rn.viewport[2], rn.viewport[3] );
 	RB_Scissor( rn.scissor[0], rn.scissor[1], rn.scissor[2], rn.scissor[3] );
@@ -768,50 +767,6 @@ void R_Scissor( int x, int y, int w, int h )
 void R_GetScissor( int *x, int *y, int *w, int *h )
 {
 	RB_GetScissor( x, y, w, h );
-}
-
-/*
-* R_ResetScissor
-*/
-void R_ResetScissor( void )
-{
-	RB_Scissor( 0, 0, rf.frameBufferWidth, rf.frameBufferHeight );
-}
-
-/*
-* R_PolyBlend
-*/
-static void R_PolyBlend( void )
-{
-	if( !r_polyblend->integer )
-		return;
-	if( rsc.refdef.blend[3] < 0.01f )
-		return;
-
-	R_Set2DMode( NULL,true );
-	R_DrawStretchPic( 0, 0, rf.frameBufferWidth, rf.frameBufferHeight, 0, 0, 1, 1, rsc.refdef.blend, rsh.whiteShader );
-	RB_FlushDynamicMeshes(NULL);
-}
-
-/*
-* R_ApplyBrightness
-*/
-static void R_ApplyBrightness( void )
-{
-	float c;
-	vec4_t color;
-
-	c = r_brightness->value;
-	if( c < 0.005 )
-		return;
-	else if( c > 1.0 )
-		c = 1.0;
-
-	color[0] = color[1] = color[2] = c, color[3] = 1;
-
-	R_Set2DMode( NULL, true );
-	R_DrawStretchQuick( 0, 0, rf.frameBufferWidth, rf.frameBufferHeight, 0, 0, 1, 1,
-		color, GLSL_PROGRAM_TYPE_NONE, rsh.whiteTexture, GLSTATE_SRCBLEND_ONE|GLSTATE_DSTBLEND_ONE );
 }
 
 /*
@@ -1631,30 +1586,6 @@ void R_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 
 	//R_Set2DMode( true );
 }
-
-/*
-* R_EndFrame
-*/
-void R_EndFrame( void )
-{
-	// render previously batched 2D geometry, if any
-	RB_FlushDynamicMeshes(NULL);
-
-	R_PolyBlend();
-	
-	R_ApplyBrightness();
-
-	// reset the 2D state so that the mode will be 
-	// properly set back again in R_BeginFrame
-//	R_Set2DMode( false );
-
-//	RB_EndFrame();
-
-//	GLimp_EndFrame();
-
-	//assert( qglGetError() == GL_NO_ERROR );
-}
-
 
 /*
 * R_CopyString

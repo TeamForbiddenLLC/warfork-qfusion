@@ -365,8 +365,6 @@ typedef struct
 	bool 			in2D;
 	int				width2D, height2D;
 
-	int				frameBufferWidth, frameBufferHeight;
-
 	float			cameraSeparation;
 	int 			swapInterval;
 
@@ -574,29 +572,29 @@ bool	R_VisCullSphere( const vec3_t origin, float radius );
 int			R_CullModelEntity( const entity_t *e, vec3_t mins, vec3_t maxs, float radius, bool sphereCull, bool pvsCull );
 bool	R_CullSpriteEntity( const entity_t *e );
 
+////
+//// r_framebuffer.c
+////
+//enum
+//{
+//	FBO_COPY_NORMAL = 0,
+//	FBO_COPY_CENTREPOS = 1,
+//	FBO_COPY_INVERT_Y = 2
+//};
 //
-// r_framebuffer.c
-//
-enum
-{
-	FBO_COPY_NORMAL = 0,
-	FBO_COPY_CENTREPOS = 1,
-	FBO_COPY_INVERT_Y = 2
-};
-
-void		RFB_Init( void );
-int			RFB_RegisterObject( int width, int height, bool builtin, bool depthRB, bool stencilRB );
-void		RFB_UnregisterObject( int object );
-void		RFB_TouchObject( int object );
-void		RFB_BindObject( int object );
-int			RFB_BoundObject( void );
-void		RFB_AttachTextureToObject( int object, image_t *texture );
-image_t		*RFB_GetObjectTextureAttachment( int object, bool depth );
-void		RFB_BlitObject( int dest, int bitMask, int mode );
-bool	RFB_CheckObjectStatus( void );
-void		RFB_GetObjectSize( int object, int *width, int *height );
-void		RFB_FreeUnusedObjects( void );
-void		RFB_Shutdown( void );
+//void		RFB_Init( void );
+//int			RFB_RegisterObject( int width, int height, bool builtin, bool depthRB, bool stencilRB );
+//void		RFB_UnregisterObject( int object );
+//void		RFB_TouchObject( int object );
+//void		RFB_BindObject( int object );
+//int			RFB_BoundObject( void );
+//void		RFB_AttachTextureToObject( int object, image_t *texture );
+//image_t		*RFB_GetObjectTextureAttachment( int object, bool depth );
+//void		RFB_BlitObject( int dest, int bitMask, int mode );
+//bool	RFB_CheckObjectStatus( void );
+//void		RFB_GetObjectSize( int object, int *width, int *height );
+//void		RFB_FreeUnusedObjects( void );
+//void		RFB_Shutdown( void );
 
 //
 // r_light.c
@@ -647,7 +645,6 @@ void		R_FreeFile_( void *buffer, const char *filename, int fileline );
 
 bool		R_IsRenderingToScreen( void );
 void		R_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync );
-void    R_EndFrame( void );
 void		R_SetWallFloorColors( const vec3_t wallColor, const vec3_t floorColor );
 void		R_SetDrawBuffer( const char *drawbuffer );
 void		R_Set2DMode(struct frame_cmd_buffer_s* cmd, bool enable );
@@ -678,7 +675,7 @@ void		R_TransformForWorld( void );
 void		R_TransformForEntity( const entity_t *e );
 void		R_TranslateForEntity( const entity_t *e );
 
-void		R_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
+void		R_DrawStretchPic(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	const vec4_t color, const shader_t *shader );
 void		R_DrawRotatedStretchPic(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	float angle, const vec4_t color, const shader_t *shader );
@@ -686,9 +683,9 @@ void		R_UploadRawPic( image_t *texture, int cols, int rows, uint8_t *data );
 void		R_UploadRawYUVPic( image_t **yuvTextures, ref_img_plane_t *yuv );
 void		R_DrawStretchRawYUVBuiltin( int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	image_t **yuvTextures, int flip );
-void		R_DrawStretchRaw( int x, int y, int w, int h, float s1, float t1, float s2, float t2 );
+void		R_DrawStretchRaw(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2 );
 void		R_DrawStretchRawYUV( int x, int y, int w, int h, float s1, float t1, float s2, float t2 );
-void		R_DrawStretchQuick( int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
+void		R_DrawStretchQuick(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	const vec4_t color, int program_type, image_t *image, int blendMask );
 
 void		R_InitCustomColors( void );
@@ -705,7 +702,6 @@ void		R_BindFrameBufferObject( int object );
 
 void		R_Scissor( int x, int y, int w, int h );
 void		R_GetScissor( int *x, int *y, int *w, int *h );
-void		R_ResetScissor( void );
 
 //
 // r_mesh.c

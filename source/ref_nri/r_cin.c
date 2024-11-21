@@ -116,13 +116,11 @@ static void R_UploadCinematicFrame( r_cinhandle_t *handle )
 		}
 		
 		if( handle->new_frame ) {
-			int fbo;
 			bool in2D;
 			
 			// render/convert three 8-bit YUV images into RGB framebuffer
 
 			in2D = rf.in2D;	
-			fbo = RFB_BoundObject();
 
 			if( !in2D ) {
 				R_PushRefInst(NULL);
@@ -132,7 +130,7 @@ static void R_UploadCinematicFrame( r_cinhandle_t *handle )
 			//	handle->cyuv->image_width, handle->cyuv->image_height, 
 			//	0, IT_SPECIAL|IT_FRAMEBUFFER, IMAGE_TAG_GENERIC, samples );
 
-			R_BindFrameBufferObject( handle->image->fbo );
+//		R_BindFrameBufferObject( handle->image->fbo );
 
 			R_Set2DMode( NULL, true );
 
@@ -155,8 +153,6 @@ static void R_UploadCinematicFrame( r_cinhandle_t *handle )
 			if( !in2D ) {
 				R_PopRefInst(NULL);
 			}
-			R_BindFrameBufferObject( fbo );
-
 			R_Set2DMode( NULL,in2D );
 
 			handle->new_frame = false;

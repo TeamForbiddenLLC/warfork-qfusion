@@ -428,13 +428,10 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 	int entityFX = 0, prevEntityFX = -1;
 	mat4_t projectionMatrix;
 	unsigned int shadowBits = 0;
-	int riFBO = 0;
 
 	if( !list->numDrawSurfs ) {
 		return;
 	}
-
-	riFBO = RB_BoundFrameBufferObject();
 
 	for( i = 0; i < list->numDrawSurfs; i++ ) {
 		sds = list->drawSurfs + i;
@@ -530,8 +527,6 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 					FR_CmdEndRendering(frame);
 
 					FR_CmdBeginRendering(frame);
-					
-
 					// draw all dynamic surfaces that write depth before copying
 					assert(false);
 					if( batchOpaque ) {
@@ -539,7 +534,7 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 						RB_FlushDynamicMeshes(frame);
 						batchFlushed = true;
 					}
-					RB_BlitFrameBufferObject( rsh.screenTextureCopy->fbo, GL_DEPTH_BUFFER_BIT, FBO_COPY_NORMAL );
+//					RB_BlitFrameBufferObject( rsh.screenTextureCopy->fbo, GL_DEPTH_BUFFER_BIT, FBO_COPY_NORMAL );
 				}
 			}
 
@@ -602,7 +597,6 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 		RB_FlipFrontFace(frame);
 	}
 
-	RB_BindFrameBufferObject( riFBO );
 }
 
 /*

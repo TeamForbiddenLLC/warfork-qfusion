@@ -90,7 +90,6 @@ typedef struct image_s
 	int layers;				// texture array size
 	int minmipsize;	   // size of the smallest mipmap that should be used
 	int samples;
-	int fbo;			   // frame buffer object texture is attached to
 	unsigned int framenum; // rf.frameCount texture was updated (rendered to)
 	int tags;			   // usage tags of the image
 	struct image_s *next, *prev;

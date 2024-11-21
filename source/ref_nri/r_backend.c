@@ -555,69 +555,15 @@ void RB_FlipFrontFace( struct frame_cmd_buffer_s *cmd )
 }
 
 /*
-* RB_BindArrayBuffer
-*/
-void RB_BindArrayBuffer( int buffer )
-{
-	if( buffer != rb.gl.currentArrayVBO )
-	{
-		qglBindBufferARB( GL_ARRAY_BUFFER_ARB, buffer );
-		rb.gl.currentArrayVBO = buffer;
-		rb.gl.lastVAttribs = 0;
-	}
-}
-
-/*
-* RB_BindElementArrayBuffer
-*/
-void RB_BindElementArrayBuffer( int buffer )
-{
-	if( buffer != rb.gl.currentElemArrayVBO )
-	{
-		qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, buffer );
-		rb.gl.currentElemArrayVBO = buffer;
-	}
-}
-
-/*
-* RB_EnableVertexAttrib
-*/
-static void RB_EnableVertexAttrib( int index, bool enable )
-{
-	unsigned int bit;
-	unsigned int diff;
-
-	bit = 1 << index;
-	diff = (rb.gl.vertexAttribEnabled & bit) ^ (enable ? bit : 0);
-	if( !diff ) {
-		return;
-	}
-
-	if( enable ) {
-		rb.gl.vertexAttribEnabled |= bit;
-		qglEnableVertexAttribArrayARB( index );
-	}
-	else {
-		rb.gl.vertexAttribEnabled &= ~bit;
-		qglDisableVertexAttribArrayARB( index );
-	}
-}
-
-/*
 * RB_Scissor
 */
 void RB_Scissor( int x, int y, int w, int h )
 {
-	if( ( rb.gl.scissor[0] == x ) && ( rb.gl.scissor[1] == y ) &&
-		( rb.gl.scissor[2] == w ) && ( rb.gl.scissor[3] == h ) ) {
-		return;
-	}
 
 	rb.gl.scissor[0] = x;
 	rb.gl.scissor[1] = y;
 	rb.gl.scissor[2] = w;
 	rb.gl.scissor[3] = h;
-	rb.gl.scissorChanged = true;
 }
 
 /*
@@ -645,10 +591,6 @@ void RB_GetScissor( int *x, int *y, int *w, int *h )
 void RB_ApplyScissor( void )
 {
 	int h = rb.gl.scissor[3];
-	if( rb.gl.scissorChanged ) {
-		rb.gl.scissorChanged = false;
-		qglScissor( rb.gl.scissor[0], rb.gl.fbHeight - h - rb.gl.scissor[1], rb.gl.scissor[2], h );
-	}
 }
 
 /*
@@ -696,17 +638,17 @@ void RB_Clear( int bits, float r, float g, float b, float a )
 */
 void RB_BindFrameBufferObject( int object )
 {
-	int width, height;
-
-	RFB_BindObject( object );
-
-	RFB_GetObjectSize( object, &width, &height );
-
-	if( rb.gl.fbHeight != height )
-		rb.gl.scissorChanged = true;
-
-	rb.gl.fbWidth = width;
-	rb.gl.fbHeight = height;
+//	int width, height;
+//
+//	RFB_BindObject( object );
+//
+//	RFB_GetObjectSize( object, &width, &height );
+//
+//	if( rb.gl.fbHeight != height )
+//		rb.gl.scissorChanged = true;
+//
+//	rb.gl.fbWidth = width;
+//	rb.gl.fbHeight = height;
 }
 
 /*
@@ -714,16 +656,16 @@ void RB_BindFrameBufferObject( int object )
 */
 int RB_BoundFrameBufferObject( void )
 {
-	return RFB_BoundObject();
+	return 0; //RFB_BoundObject();
 }
 
 /*
 * RB_BlitFrameBufferObject
 */
-void RB_BlitFrameBufferObject( int dest, int bitMask, int mode )
-{
-	RFB_BlitObject( dest, bitMask, mode );
-}
+//void RB_BlitFrameBufferObject( int dest, int bitMask, int mode )
+//{
+//	RFB_BlitObject( dest, bitMask, mode );
+//}
 
 /*
 * RB_RegisterStreamVBOs
@@ -789,14 +731,6 @@ void RB_BindVBO( int id, int primitive )
 
 	rb.currentVBOId = id;
 	rb.currentVBO = vbo;
-	// if( !vbo ) {
-	// 	RB_BindArrayBuffer( 0 );
-	// 	RB_BindElementArrayBuffer( 0 );
-	// 	return;
-	// }
-
-	// RB_BindArrayBuffer( vbo->vertexId );
-	// RB_BindElementArrayBuffer( vbo->elemId );
 }
 
 void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, const shader_t *shader,
@@ -1054,151 +988,6 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 	}
 }
 
-/*
-* RB_EnableVertexAttribs
-*/
-static void RB_EnableVertexAttribs( void )
-{
-	vattribmask_t vattribs = rb.currentVAttribs;
-	mesh_vbo_t *vbo = rb.currentVBO;
-	vattribmask_t hfa = vbo->halfFloatAttribs;
-
-	assert( vattribs & VATTRIB_POSITION_BIT );
-
-	if( ( vattribs == rb.gl.lastVAttribs ) && ( hfa == rb.gl.lastHalfFloatVAttribs ) ) {
-		return;
-	}
-
-	rb.gl.lastVAttribs = vattribs;
-	rb.gl.lastHalfFloatVAttribs = hfa;
-
-	// xyz position
-	RB_EnableVertexAttrib( VATTRIB_POSITION, true );
-	qglVertexAttribPointerARB( VATTRIB_POSITION, 4, FLOAT_VATTRIB_GL_TYPE( VATTRIB_POSITION_BIT, hfa ), 
-		GL_FALSE, vbo->vertexSize, ( const GLvoid * )0 );
-
-	// normal
-	if( vattribs & VATTRIB_NORMAL_BIT ) {
-		RB_EnableVertexAttrib( VATTRIB_NORMAL, true );
-		qglVertexAttribPointerARB( VATTRIB_NORMAL, 4, FLOAT_VATTRIB_GL_TYPE( VATTRIB_NORMAL_BIT, hfa ), 
-			GL_FALSE, vbo->vertexSize, ( const GLvoid * )vbo->normalsOffset );
-	}
-	else {
-		RB_EnableVertexAttrib( VATTRIB_NORMAL, false );
-	}
-
-	// s-vector
-	if( vattribs & VATTRIB_SVECTOR_BIT ) {
-		RB_EnableVertexAttrib( VATTRIB_SVECTOR, true );
-		qglVertexAttribPointerARB( VATTRIB_SVECTOR, 4, FLOAT_VATTRIB_GL_TYPE( VATTRIB_SVECTOR_BIT, hfa ), 
-			GL_FALSE, vbo->vertexSize, ( const GLvoid * )vbo->sVectorsOffset );
-	}
-	else {
-		RB_EnableVertexAttrib( VATTRIB_SVECTOR, false );
-	}
-	
-	// color
-	if( vattribs & VATTRIB_COLOR0_BIT ) {
-		RB_EnableVertexAttrib( VATTRIB_COLOR0, true );
-		qglVertexAttribPointerARB( VATTRIB_COLOR0, 4, GL_UNSIGNED_BYTE, 
-			GL_TRUE, vbo->vertexSize, (const GLvoid * )vbo->colorsOffset[0] );
-	}
-	else {
-		RB_EnableVertexAttrib( VATTRIB_COLOR0, false );
-	}
-
-	// texture coordinates
-	if( vattribs & VATTRIB_TEXCOORDS_BIT ) {
-		RB_EnableVertexAttrib( VATTRIB_TEXCOORDS, true );
-		qglVertexAttribPointerARB( VATTRIB_TEXCOORDS, 2, FLOAT_VATTRIB_GL_TYPE( VATTRIB_TEXCOORDS_BIT, hfa ), 
-			GL_FALSE, vbo->vertexSize, ( const GLvoid * )vbo->stOffset );
-	}
-	else {
-		RB_EnableVertexAttrib( VATTRIB_TEXCOORDS, false );
-	}
-
-	if( (vattribs & VATTRIB_AUTOSPRITE_BIT) == VATTRIB_AUTOSPRITE_BIT ) {
-		// submit sprite point
-		RB_EnableVertexAttrib( VATTRIB_SPRITEPOINT, true );
-		qglVertexAttribPointerARB( VATTRIB_SPRITEPOINT, 4, FLOAT_VATTRIB_GL_TYPE( VATTRIB_AUTOSPRITE_BIT, hfa ), 
-			GL_FALSE, vbo->vertexSize, ( const GLvoid * )vbo->spritePointsOffset );
-	}
-	else {
-		RB_EnableVertexAttrib( VATTRIB_SPRITEPOINT, false );
-	}
-
-	// bones (skeletal models)
-	if( (vattribs & VATTRIB_BONES_BITS) == VATTRIB_BONES_BITS ) {
-		// submit indices
-		RB_EnableVertexAttrib( VATTRIB_BONESINDICES, true );
-		qglVertexAttribPointerARB( VATTRIB_BONESINDICES, 4, GL_UNSIGNED_BYTE, 
-			GL_FALSE, vbo->vertexSize, ( const GLvoid * )vbo->bonesIndicesOffset );
-
-		// submit weights
-		RB_EnableVertexAttrib( VATTRIB_BONESWEIGHTS, true );
-		qglVertexAttribPointerARB( VATTRIB_BONESWEIGHTS, 4, GL_UNSIGNED_BYTE, 
-			GL_TRUE, vbo->vertexSize, ( const GLvoid * )vbo->bonesWeightsOffset );
-	}
-	else {
-		int i;
-		vattrib_t lmattr;
-		vattribbit_t lmattrbit;
-
-		// lightmap texture coordinates - aliasing bones, so not disabling bones
-		lmattr = VATTRIB_LMCOORDS01;
-		lmattrbit = VATTRIB_LMCOORDS0_BIT;
-
-		for( i = 0; i < ( MAX_LIGHTMAPS + 1 ) / 2; i++ ) {
-			if( vattribs & lmattrbit ) {
-				RB_EnableVertexAttrib( lmattr, true );
-				qglVertexAttribPointerARB( lmattr, vbo->lmstSize[i], 
-					FLOAT_VATTRIB_GL_TYPE( VATTRIB_LMCOORDS0_BIT, hfa ), 
-					GL_FALSE, vbo->vertexSize, ( const GLvoid * )vbo->lmstOffset[i] );
-			}
-			else {
-				RB_EnableVertexAttrib( lmattr, false );
-			}
-
-			lmattr++;
-			lmattrbit <<= 2;
-		}
-
-		// lightmap array texture layers
-		lmattr = VATTRIB_LMLAYERS0123;
-
-		for( i = 0; i < ( MAX_LIGHTMAPS + 3 ) / 4; i++ ) {
-			if( vattribs & ( VATTRIB_LMLAYERS0123_BIT << i ) ) {
-				RB_EnableVertexAttrib( lmattr, true );
-				qglVertexAttribPointerARB( lmattr, 4, GL_UNSIGNED_BYTE,
-					GL_FALSE, vbo->vertexSize, ( const GLvoid * )vbo->lmlayersOffset[i] );
-			}
-			else {
-				RB_EnableVertexAttrib( lmattr, false );
-			}
-
-			lmattr++;
-		}
-	}
-
-	if( (vattribs & VATTRIB_INSTANCES_BITS) == VATTRIB_INSTANCES_BITS ) {
-		RB_EnableVertexAttrib( VATTRIB_INSTANCE_QUAT, true );
-		qglVertexAttribPointerARB( VATTRIB_INSTANCE_QUAT, 4, GL_FLOAT, GL_FALSE, 8 * sizeof( vec_t ), 
-			( const GLvoid * )vbo->instancesOffset );
-		qglVertexAttribDivisorARB( VATTRIB_INSTANCE_QUAT, 1 );
-
-		RB_EnableVertexAttrib( VATTRIB_INSTANCE_XYZS, true );
-		qglVertexAttribPointerARB( VATTRIB_INSTANCE_XYZS, 4, GL_FLOAT, GL_FALSE, 8 * sizeof( vec_t ), 
-			( const GLvoid * )( vbo->instancesOffset + sizeof( vec_t ) * 4 ) );
-		qglVertexAttribDivisorARB( VATTRIB_INSTANCE_XYZS, 1 );
-	} else {
-		RB_EnableVertexAttrib( VATTRIB_INSTANCE_QUAT, false );
-		RB_EnableVertexAttrib( VATTRIB_INSTANCE_XYZS, false );
-	}
-}
-
-/*
-* RB_DrawElementsReal
-*/
 void RB_DrawElementsReal( rbDrawElements_t *de )
 {
 	int firstVert, numVerts, firstElem, numElems;
@@ -1298,7 +1087,7 @@ static void RB_DrawElements_( void )
 
 	assert( rb.currentShader != NULL );
 
-	RB_EnableVertexAttribs();
+	//RB_EnableVertexAttribs();
 
 	if( rb.triangleOutlines ) {
 		//RB_DrawOutlinedElements();

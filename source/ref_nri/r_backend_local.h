@@ -100,12 +100,6 @@ typedef struct r_backend_s
 
 		int				viewport[4];
 		int				scissor[4];
-		bool			scissorChanged;
-
-		unsigned int	vertexAttribEnabled;
-		vattribmask_t	lastVAttribs, lastHalfFloatVAttribs;
-
-		int				fbWidth, fbHeight;
 
 		float			depthmin, depthmax;
 
@@ -213,7 +207,6 @@ void RB_DrawElementsReal( rbDrawElements_t *de );
 void RB_InitShading( void );
 void RB_DrawShadedElements( void );
 void RB_BindArrayBuffer( int buffer );
-void RB_BindElementArrayBuffer( int buffer );
 void RB_SetInstanceData( int numInstances, instancePoint_t *instances );
 bool RB_ScissorForBounds( vec3_t bbox[8], int *x, int *y, int *w, int *h );
 

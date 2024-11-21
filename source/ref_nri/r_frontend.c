@@ -566,6 +566,39 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 
 }
 
+static inline __R_PolyBlendPostPass(struct frame_cmd_buffer_s* frame) {
+	if( !r_polyblend->integer )
+		return;
+	if( rsc.refdef.blend[3] < 0.01f )
+		return;
+
+	NriViewport* viewport = &frame->state.viewports[0];
+	R_Set2DMode( frame, true );
+	R_DrawStretchPic(frame, 0, 0, 
+									viewport->width, 
+									viewport->height, 0, 0, 1, 1, rsc.refdef.blend, rsh.whiteShader );
+	RB_FlushDynamicMeshes( frame );
+}
+
+static inline __R_ApplyBrightnessBlend(struct frame_cmd_buffer_s* frame) {
+
+	float c = r_brightness->value;
+	if( c < 0.005 )
+		return;
+	else if( c > 1.0 )
+		c = 1.0;
+
+	vec4_t color;
+	color[0] = color[1] = color[2] = c;
+	color[3] = 1;
+	
+	NriViewport* viewport = &frame->state.viewports[0];
+	
+	R_Set2DMode( frame, true );
+	R_DrawStretchQuick(frame, 0, 0, viewport->width, viewport->height, 0, 0, 1, 1,
+		color, GLSL_PROGRAM_TYPE_NONE, rsh.whiteTexture, GLSTATE_SRCBLEND_ONE|GLSTATE_DSTBLEND_ONE );
+}
+
 void RF_EndFrame( void )
 {
 	const uint32_t bufferedFrameIndex = rsh.swapchainCount % NUMBER_FRAMES_FLIGHT;
@@ -574,6 +607,10 @@ void RF_EndFrame( void )
 	assert(frame->stackCmdBeingRendered == 0);
 	// render previously batched 2D geometry, if any
 	RB_FlushDynamicMeshes(frame);
+
+	__R_PolyBlendPostPass(frame);
+
+	__R_ApplyBrightnessBlend(frame);
 
 	R_ResourceSubmit();
 
