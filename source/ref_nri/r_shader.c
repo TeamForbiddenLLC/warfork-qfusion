@@ -25,6 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../qalgo/hash.h"
 #include "../gameshared/q_sds.h"
 #include "../gameshared/q_arch.h"
+#include "../qcommon/mod_mem.h"
 
 #define SHADERS_HASH_SIZE	128
 #define SHADERCACHE_HASH_SIZE	128
@@ -1860,7 +1861,7 @@ static void Shader_MakeCache( const char *filename )
 
 	if( !cacheMemSize )
 	{
-		R_Free( buf );
+		Q_Free( buf );
 		goto done;
 	}
 
@@ -1886,7 +1887,7 @@ static void Shader_MakeCache( const char *filename )
 
 set_path_and_offset:
 		if( cache->filename )
-			R_Free( cache->filename );
+			Q_Free( cache->filename );
 		cache->filename = R_CopyString( filename );
 		cache->buffer = buf;
 		cache->offset = ptr - buf;
@@ -1898,7 +1899,7 @@ done:
 	if( temp )
 		R_FreeFile( temp );
 	if( pathName )
-		R_Free( pathName );
+		Q_Free( pathName );
 }
 
 /*
@@ -2019,12 +2020,12 @@ static void R_FreeShader( shader_t *shader )
 	}
 
 	if( shader->deforms ) {
-		R_Free( shader->deforms );
+		Q_Free( shader->deforms );
 		shader->deforms = 0;
 	}
 	shader->numdeforms = 0;
 	shader->deformsKey = NULL;
-	R_Free( shader->passes );
+	Q_Free( shader->passes );
 	shader->passes = NULL;
 	shader->numpasses = 0;
 	shader->name = NULL;
@@ -2153,8 +2154,8 @@ void R_ShutdownShaders( void )
 		R_FreeShader( s );
 	}
 
-	R_Free( r_shaderTemplateBuf );
-	R_Free( r_shortShaderName );
+	Q_Free( r_shaderTemplateBuf );
+	Q_Free( r_shortShaderName );
 
 	r_shaderTemplateBuf = NULL;
 	r_shortShaderName = NULL;
@@ -2359,7 +2360,8 @@ static void __Shader_Defaults(shader_t*s, shaderType_e type, const char* longnam
 	switch( type ) {
 		case SHADER_TYPE_VERTEX:
 			// vertex lighting
-			data = R_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			data = Q_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			memset(data, 0, shortname_length + 1 + sizeof( shaderpass_t ));
 			s->flags = SHADER_DEPTHWRITE|SHADER_CULL_FRONT;
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT|VATTRIB_COLOR0_BIT;
 			s->sort = SHADER_SORT_OPAQUE;
@@ -2380,7 +2382,8 @@ static void __Shader_Defaults(shader_t*s, shaderType_e type, const char* longnam
 			// deluxemapping
 			Shaderpass_LoadMaterial( &materialImages[0], &materialImages[1], &materialImages[2], shortname, 0, s->imagetags );
 
-			data = R_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			data = Q_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			memset(data, 0, shortname_length + 1 + sizeof( shaderpass_t ));
 			s->flags = SHADER_DEPTHWRITE|SHADER_CULL_FRONT|SHADER_LIGHTMAP;
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT|VATTRIB_LMCOORDS0_BIT|VATTRIB_NORMAL_BIT|VATTRIB_SVECTOR_BIT;
 			s->sort = SHADER_SORT_OPAQUE;
@@ -2401,7 +2404,8 @@ static void __Shader_Defaults(shader_t*s, shaderType_e type, const char* longnam
 			pass->images[3] = materialImages[2]; // decalmap
 			break;
 		case SHADER_TYPE_CORONA:
-			data = R_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) * 1 );
+			data = Q_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) * 1 );
+			memset(data, 0, shortname_length + 1 + sizeof( shaderpass_t ) * 1 );
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT|VATTRIB_COLOR0_BIT;
 			s->sort = SHADER_SORT_ADDITIVE;
 			s->numpasses = 1;
@@ -2421,7 +2425,8 @@ static void __Shader_Defaults(shader_t*s, shaderType_e type, const char* longnam
 			// load material images
 			Shaderpass_LoadMaterial( &materialImages[0], &materialImages[1], &materialImages[2], shortname, 0, s->imagetags );
 
-			data = R_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			data = Q_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			memset(data, 0, shortname_length + 1 + sizeof( shaderpass_t ));
 			s->flags = SHADER_DEPTHWRITE|SHADER_CULL_FRONT;
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT|VATTRIB_NORMAL_BIT;
 			s->sort = SHADER_SORT_OPAQUE;
@@ -2445,7 +2450,8 @@ static void __Shader_Defaults(shader_t*s, shaderType_e type, const char* longnam
 		case SHADER_TYPE_2D:
 		case SHADER_TYPE_2D_RAW:
 		case SHADER_TYPE_VIDEO:
-			data = R_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			data = Q_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			memset(data, 0, shortname_length + 1 + sizeof( shaderpass_t ));
 
 			s->flags = 0;
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT|VATTRIB_COLOR0_BIT;
@@ -2475,7 +2481,8 @@ static void __Shader_Defaults(shader_t*s, shaderType_e type, const char* longnam
 			break;
 		case SHADER_TYPE_OPAQUE_ENV:
 			// pad to 4 floats
-			data = R_Malloc( ALIGN( sizeof( shaderpass_t ), 16 ) + 4 * sizeof( float ) + shortname_length + 1 );
+			data = Q_Malloc( ALIGN( sizeof( shaderpass_t ), 16 ) + 4 * sizeof( float ) + shortname_length + 1 );
+			memset(data, 0, ALIGN( sizeof( shaderpass_t ), 16 ) + 4 * sizeof( float ) + shortname_length + 1);
 
 			s->vattribs = VATTRIB_POSITION_BIT;
 			s->sort = SHADER_SORT_OPAQUE;
@@ -2495,7 +2502,8 @@ static void __Shader_Defaults(shader_t*s, shaderType_e type, const char* longnam
 			pass->images[0] = rsh.whiteTexture;
 			break;
 		case SHADER_TYPE_SKYBOX:
-			data = R_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			data = Q_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			memset(data, 0, shortname_length + 1 + sizeof( shaderpass_t ) );
 
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT;
 			s->sort = SHADER_SORT_SKY;
@@ -2514,7 +2522,8 @@ static void __Shader_Defaults(shader_t*s, shaderType_e type, const char* longnam
 			pass->images[0] = rsh.whiteTexture;
 			break;
 		case SHADER_TYPE_FOG:
-			data = R_Malloc( shortname_length + 1 );
+			data = Q_Malloc( shortname_length + 1 );
+			memset(data, 0, shortname_length + 1);
 
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT;
 			s->sort = SHADER_SORT_FOG;
@@ -2860,7 +2869,8 @@ create_default:
 		switch( type ) {
 		case SHADER_TYPE_VERTEX:
 			// vertex lighting
-			data = R_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			data = Q_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			memset(data, 0, shortname_length + 1 + sizeof( shaderpass_t ));
 			s->flags = SHADER_DEPTHWRITE|SHADER_CULL_FRONT;
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT|VATTRIB_COLOR0_BIT;
 			s->sort = SHADER_SORT_OPAQUE;
@@ -2881,7 +2891,8 @@ create_default:
 			// deluxemapping
 			Shaderpass_LoadMaterial( &materialImages[0], &materialImages[1], &materialImages[2], shortname, 0, s->imagetags );
 
-			data = R_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			data = Q_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			memset(data, 0, shortname_length + 1 + sizeof( shaderpass_t ));
 			s->flags = SHADER_DEPTHWRITE|SHADER_CULL_FRONT|SHADER_LIGHTMAP;
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT|VATTRIB_LMCOORDS0_BIT|VATTRIB_NORMAL_BIT|VATTRIB_SVECTOR_BIT;
 			s->sort = SHADER_SORT_OPAQUE;
@@ -2902,7 +2913,8 @@ create_default:
 			pass->images[3] = materialImages[2]; // decalmap
 			break;
 		case SHADER_TYPE_CORONA:
-			data = R_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) * 1 );
+			data = Q_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) * 1 );
+			memset(data, 0, shortname_length + 1 + sizeof( shaderpass_t ) * 1 );
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT|VATTRIB_COLOR0_BIT;
 			s->sort = SHADER_SORT_ADDITIVE;
 			s->numpasses = 1;
@@ -2922,7 +2934,8 @@ create_default:
 			// load material images
 			Shaderpass_LoadMaterial( &materialImages[0], &materialImages[1], &materialImages[2], shortname, 0, s->imagetags );
 
-			data = R_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			data = Q_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			memset(data, 0, shortname_length + 1 + sizeof( shaderpass_t ));
 			s->flags = SHADER_DEPTHWRITE|SHADER_CULL_FRONT;
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT|VATTRIB_NORMAL_BIT;
 			s->sort = SHADER_SORT_OPAQUE;
@@ -2946,7 +2959,8 @@ create_default:
 		case SHADER_TYPE_2D:
 		case SHADER_TYPE_2D_RAW:
 		case SHADER_TYPE_VIDEO:
-			data = R_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			data = Q_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			memset(data, 0, shortname_length + 1 + sizeof( shaderpass_t ));
 
 			s->flags = 0;
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT|VATTRIB_COLOR0_BIT;
@@ -2976,7 +2990,8 @@ create_default:
 			break;
 		case SHADER_TYPE_OPAQUE_ENV:
 			// pad to 4 floats
-			data = R_Malloc( ALIGN( sizeof( shaderpass_t ), 16 ) + 4 * sizeof( float ) + shortname_length + 1 );
+			data = Q_Malloc( ALIGN( sizeof( shaderpass_t ), 16 ) + 4 * sizeof( float ) + shortname_length + 1 );
+			memset(data, 0, ALIGN( sizeof( shaderpass_t ), 16 ) + 4 * sizeof( float ) + shortname_length + 1);
 
 			s->vattribs = VATTRIB_POSITION_BIT;
 			s->sort = SHADER_SORT_OPAQUE;
@@ -2996,7 +3011,8 @@ create_default:
 			pass->images[0] = rsh.whiteTexture;
 			break;
 		case SHADER_TYPE_SKYBOX:
-			data = R_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			data = Q_Malloc( shortname_length + 1 + sizeof( shaderpass_t ) );
+			memset(data, 0, shortname_length + 1 + sizeof( shaderpass_t ) );
 
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT;
 			s->sort = SHADER_SORT_SKY;
@@ -3015,7 +3031,8 @@ create_default:
 			pass->images[0] = rsh.whiteTexture;
 			break;
 		case SHADER_TYPE_FOG:
-			data = R_Malloc( shortname_length + 1 );
+			data = Q_Malloc( shortname_length + 1 );
+			memset(data, 0, shortname_length + 1);
 
 			s->vattribs = VATTRIB_POSITION_BIT|VATTRIB_TEXCOORDS_BIT;
 			s->sort = SHADER_SORT_FOG;
@@ -3249,7 +3266,7 @@ shader_t *R_LoadShader( const char *name, shaderType_e type, bool forceDefault )
 	nameLength = strlen( name );
 	if( nameLength + 1 > r_shortShaderNameSize || r_shortShaderNameSize < MAX_QPATH ) {
 		if( r_shortShaderName ) {
-			R_Free( r_shortShaderName );
+			Q_Free( r_shortShaderName );
 			r_shortShaderName = NULL;
 		}
 		r_shortShaderNameSize = max( nameLength + 1, MAX_QPATH );

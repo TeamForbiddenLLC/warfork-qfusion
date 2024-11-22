@@ -24,6 +24,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_local.h"
 #include "iqm.h"
 
+#include "../qcommon/mod_mem.h"
+
 void Mod_LoadAliasMD3Model( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *unused );
 void Mod_LoadSkeletalModel( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *unused );
 void Mod_LoadQ3BrushModel( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *format );
@@ -736,14 +738,14 @@ merge:
 		R_UploadVBOInstancesData( vbo, 0, surf->numInstances, surf->instances );
 	}
 
-	R_Free( tempVBOs );
-	R_Free( surfmap );
-	R_Free( surfaces );
+	Q_Free( tempVBOs );
+	Q_Free( surfmap );
+	Q_Free( surfaces );
 
 	if( visdata )
-		R_Free( visdata );
+		Q_Free( visdata );
 	if( areadata )
-		R_Free( areadata );
+		Q_Free( areadata );
 
 	return num_vbos;
 }
@@ -898,12 +900,13 @@ void Mod_Modellist_f( void )
 */
 void R_InitModels( void )
 {
-	mod_mempool = R_AllocPool( r_mempool, "Models" );
+	mod_mempool = Q_CreatePool( r_mempool, "Models" );
 	memset( mod_novis, 0xff, sizeof( mod_novis ) );
 	mod_isworldmodel = false;
 	mod_worldvis = NULL;
 	r_prevworldmodel = NULL;
-	mod_mapConfigs = R_MallocExt( mod_mempool, sizeof( *mod_mapConfigs ) * MAX_MOD_KNOWN, 0, 1 );
+	mod_mapConfigs = Q_Calloc(MAX_MOD_KNOWN,  sizeof( *mod_mapConfigs ));
+	Q_LinkToPool(mod_mapConfigs, mod_mempool);
 }
 
 /*
@@ -911,7 +914,7 @@ void R_InitModels( void )
 */
 static void Mod_Free( model_t *model )
 {
-	R_FreePool( &model->mempool );
+	Q_FreePool(model->mempool );
 	memset( model, 0, sizeof( *model ) );
 	model->type = mod_free;
 }
@@ -965,7 +968,8 @@ void R_ShutdownModels( void )
 	mod_numknown = 0;
 	memset( mod_known, 0, sizeof( mod_known ) );
 
-	R_FreePool( &mod_mempool );
+	Q_FreePool( mod_mempool );
+	mod_mempool = NULL;
 }
 
 /*
@@ -1090,11 +1094,11 @@ model_t *Mod_ForName( const char *name, bool crash )
 
 	// free data we may still have from the previous load attempt for this model slot
 	if( mod->mempool ) {
-		R_FreePool( &mod->mempool );
+		Q_FreePool( mod->mempool );
 	}
 
 	mod->type = mod_bad;
-	mod->mempool = R_AllocPool( mod_mempool, name );
+	mod->mempool = Q_CreatePool( mod_mempool, name );
 	mod->name = Mod_Malloc( mod, strlen( name ) + 1 );
 	strcpy( mod->name, name );
 
@@ -1154,7 +1158,7 @@ model_t *Mod_ForName( const char *name, bool crash )
 
 		lod->type = mod_bad;
 		lod->lodnum = i+1;
-		lod->mempool = R_AllocPool( mod_mempool, lodname );
+		lod->mempool = Q_CreatePool( mod_mempool, lodname );
 		lod->name = Mod_Malloc( lod, strlen( lodname ) + 1 );
 		strcpy( lod->name, lodname );
 
@@ -1394,7 +1398,7 @@ void R_GetTransformBufferForMesh( mesh_t *mesh, bool positions, bool normals, bo
 	if( bufSize > r_modelTransformBufSize ) {
 		r_modelTransformBufSize = bufSize;
 		if( r_modelTransformBuf )
-			R_Free( r_modelTransformBuf );
+			Q_Free( r_modelTransformBuf );
 		r_modelTransformBuf = R_Malloc( bufSize );
 	}
 

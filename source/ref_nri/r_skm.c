@@ -23,6 +23,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_local.h"
 #include "iqm.h"
 
+ #include "../qcommon/mod_mem.h"
+
 // typedefs
 typedef struct iqmheader iqmheader_t;
 typedef struct iqmvertexarray iqmvertexarray_t;
@@ -757,12 +759,12 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 	mod->registrationSequence = rsh.registrationSequence;
 	mod->touch = &Mod_TouchSkeletalModel;
 
-	R_Free( baseposes );
+	Q_Free( baseposes );
 	return;
 
 error:
 	if( baseposes ) {
-		R_Free( baseposes );
+		Q_Free( baseposes );
 	}
 	mod->type = mod_bad;
 }
@@ -931,7 +933,7 @@ static skmcacheentry_t *r_skmcachekeys[MAX_REF_ENTITIES*(MOD_MAX_LODS+1)];		// e
 */
 void R_InitSkeletalCache( void )
 {
-	r_skmcachepool = R_AllocPool( r_mempool, "SKM Cache" );
+	r_skmcachepool = Q_CreatePool( r_mempool, "SKM Cache" );
 
 	r_skmcache_head = NULL;
 	r_skmcache_free = NULL;
@@ -1051,7 +1053,8 @@ void R_ShutdownSkeletalCache( void )
 	if( !r_skmcachepool )
 		return;
 
-	R_FreePool( &r_skmcachepool );
+	Q_FreePool( r_skmcachepool );
+	r_skmcachepool = NULL;
 
 	r_skmcache_head = NULL;
 	r_skmcache_free = NULL;

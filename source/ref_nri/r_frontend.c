@@ -29,6 +29,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "stb_ds.h"
 #include "r_capture.h"
 
+
+#include "../qcommon/mod_mem.h"
 static ref_frontend_t rrf;
 
 static void __ShutdownSwapchainTexture();
@@ -110,7 +112,7 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	rf.speedsMsgLock = ri.Mutex_Create();
 	rf.debugSurfaceLock = ri.Mutex_Create();
 
-	r_mempool = R_AllocPool( NULL, "Rendering Frontend" );
+	r_mempool = Q_CreatePool( NULL, "Rendering Frontend" );
 	rserr_t err = R_Init( applicationName, screenshotPrefix, startupColor,
 		iconResource, iconXPM, hinstance, wndproc, parenthWnd, verbose );
 	
@@ -393,7 +395,7 @@ void RF_Shutdown( bool verbose )
 	ri.Mutex_Destroy( &rf.speedsMsgLock );
 	ri.Mutex_Destroy( &rf.debugSurfaceLock );
 
-	R_FreePool( &r_mempool );
+	Q_FreePool( &r_mempool );
 
 	R_WIN_Shutdown();
 

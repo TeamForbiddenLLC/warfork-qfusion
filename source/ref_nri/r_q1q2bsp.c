@@ -29,6 +29,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_texture_format.h"
 #include "../ref_base/r_math_util.h"
 
+#include "../qcommon/mod_mem.h"
+
 #define LIGHTGRID_HASH_SIZE 8192
 
 typedef struct {
@@ -792,7 +794,7 @@ static mesh_t* Mod_BuildMeshForWarpSurface( q2msurface_t *fa, msurface_t *out )
 		mesh->numVerts += poly->numverts + 2;
 		mesh->numElems += ( poly->numverts + 2 - 2 ) * 3;
 
-		R_Free( poly );
+		Q_Free( poly );
 	}
 
 	for( i = 0; i < mesh->numVerts; i++ ) {
@@ -1288,58 +1290,58 @@ static void Mod_Finish( void )
 		mapConfig.ambient[i] = ambient[i];
 
 	if( loadmodel_lightmapRects ) {
-		R_Free( loadmodel_lightmapRects );
+		Q_Free( loadmodel_lightmapRects );
 		loadmodel_lightmapRects = NULL;
 	}
 
 	if( loadmodel_lightdata ) {
-		R_Free( loadmodel_lightdata );
+		Q_Free( loadmodel_lightdata );
 		loadmodel_lightdata = NULL;
 	}
 	loadmodel_lightdatasize = 0;
 
 	if( loadmodel_nodefaceinfo ) {
-		R_Free( loadmodel_nodefaceinfo );
+		Q_Free( loadmodel_nodefaceinfo );
 		loadmodel_nodefaceinfo = NULL;
 	}
 
 	if( loadmodel_surfaces ) {
-		Mod_MemFree( loadmodel_surfaces );
+		Q_Free( loadmodel_surfaces );
 		loadmodel_surfaces = NULL;
 	}
 	loadmodel_numsurfaces = 0;
 
 	if( loadmodel_vertexes ) {
-		Mod_MemFree( loadmodel_vertexes );
+		Q_Free( loadmodel_vertexes );
 		loadmodel_vertexes = NULL;
 	}
 	loadmodel_numvertexes = 0;
 
 	if( loadmodel_edges ) {
-		Mod_MemFree( loadmodel_edges );
+		Q_Free( loadmodel_edges );
 		loadmodel_edges = NULL;
 	}
 	loadmodel_numedges = 0;
 
 	if( loadmodel_texinfo ) {
-		Mod_MemFree( loadmodel_texinfo );
+		Q_Free( loadmodel_texinfo );
 		loadmodel_texinfo = NULL;
 	}
 	loadmodel_numtexinfo = 0;
 
 	if( loadmodel_surfedges ) {
-		Mod_MemFree( loadmodel_surfedges );
+		Q_Free( loadmodel_surfedges );
 		loadmodel_surfedges = NULL;
 	}
 	loadmodel_numsurfedges = 0;
 
 	if( loadmodel_lighthash ) {
-		R_Free( loadmodel_lighthash );
+		Q_Free( loadmodel_lighthash );
 		loadmodel_lighthash = NULL;
 	}
 
 	if( loadmodel_lighthash_table ) {
-		R_Free( loadmodel_lighthash_table );
+		Q_Free( loadmodel_lighthash_table );
 		loadmodel_lighthash_table = NULL;
 	}
 	loadmodel_numlighthashelems = 0;
@@ -2095,7 +2097,7 @@ static void Mod_Q1LoadLighting( const lump_t *l )
 			out[0] = out[1] = out[2] = in[i];
 	}
 
-	R_Free( tempname );
+	Q_Free( tempname );
 
 	if( litdata ) {
 		R_FreeFile( litdata );

@@ -628,9 +628,6 @@ extern mempool_t *r_mempool;
 
 #define	R_Malloc( size ) ri.Mem_AllocExt( r_mempool, size, 16, 1, __FILE__, __LINE__ )
 #define	R_Realloc( data, size ) ri.Mem_Realloc( data, size, __FILE__, __LINE__ )
-#define	R_Free( data ) ri.Mem_Free( data, __FILE__, __LINE__ )
-#define R_AllocPool( parent, name ) ri.Mem_AllocPool( parent, name, __FILE__, __LINE__ )
-#define R_FreePool( pool ) ri.Mem_FreePool( pool, __FILE__, __LINE__ )
 #define R_MallocExt(pool,size,align,z) ri.Mem_AllocExt(pool,size,align,z,__FILE__,__LINE__)
 
 char		*R_CopyString_( const char *in, const char *filename, int fileline );

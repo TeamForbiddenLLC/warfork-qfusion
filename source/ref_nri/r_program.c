@@ -38,6 +38,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "../../gameshared/q_arch.h"
 
+#include "../qcommon/mod_mem.h"
+
 #define MAX_GLSL_PROGRAMS			1024
 #define GLSL_PROGRAMS_HASH_SIZE		256
 
@@ -502,9 +504,9 @@ static void RF_DeleteProgram( struct glsl_program_s *program )
 	struct glsl_program_s *hash_next;
 
 	if( program->name )
-		R_Free( program->name );
+		Q_Free( program->name );
 	if( program->deformsKey )
-		R_Free( program->deformsKey );
+		Q_Free( program->deformsKey );
 
 	if(program->layout)
 		rsh.nri.coreI.DestroyPipelineLayout(program->layout);
@@ -515,7 +517,7 @@ static void RF_DeleteProgram( struct glsl_program_s *program )
 	}
 	for( size_t i = 0; i < GLSL_STAGE_MAX; i++ ) {
 		if( program->shaderBin[i].bin)
-			R_Free(program->shaderBin[i].bin);
+			Q_Free(program->shaderBin[i].bin);
 	}
 
 	for( size_t i = 0; i < DESCRIPTOR_SET_MAX; i++ ) {
@@ -1173,7 +1175,7 @@ static bool __RF_AppendShaderFromFile( sds *str, const char *rootFile, const cha
 		*str = sdscat( *str, startBuf );
 	}
 done:
-	R_Free( fileContents );
+	Q_Free( fileContents );
 	sdsfree( includeFilePath );
 	return error;
 }

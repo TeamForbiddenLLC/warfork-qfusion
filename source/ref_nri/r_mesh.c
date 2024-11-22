@@ -22,6 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 
+#include "../qcommon/mod_mem.h"
+
 drawList_t r_worldlist;
 drawList_t r_shadowlist;
 drawList_t r_portalmasklist;
@@ -81,10 +83,10 @@ static void R_ReserveDrawSurfaces( drawList_t *list, int minMeshes )
 	oldSize = maxMeshes;
 	newSize = max( minMeshes, oldSize * 2 );
 
-	newDs = R_Malloc( newSize * sizeof( sortedDrawSurf_t ) );
+	newDs = Q_Calloc( newSize, sizeof( sortedDrawSurf_t ) );
 	if( ds ) {
 		memcpy( newDs, ds, oldSize * sizeof( sortedDrawSurf_t ) );
-		R_Free( ds );
+		Q_Free( ds );
 	}
 	
 	list->drawSurfs = newDs;
@@ -288,7 +290,7 @@ static void R_ReserveVBOSlices( drawList_t *list, unsigned int minSlices )
 	newSlices = R_Malloc( newSize * sizeof( vboSlice_t ) );
 	if( slices ) {
 		memcpy( newSlices, slices, oldSize * sizeof( vboSlice_t ) );
-		R_Free( slices );
+		Q_Free( slices );
 	}
 
 	list->vboSlices = newSlices;
@@ -758,5 +760,5 @@ void R_BuildTangentVectors( int numVertexes, vec4_t *xyzArray, vec4_t *normalsAr
 	}
 
 	if( tVectorsArray != stackTVectorsArray )
-		R_Free( tVectorsArray );
+		Q_Free( tVectorsArray );
 }
