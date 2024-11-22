@@ -31,25 +31,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <glslang/Include/glslang_c_shader_types.h>
 #include "spirv_reflect.h"
 
-#include "../gameshared/q_sds.h"
 #include "r_vattribs.h"
 #include "r_nri.h"
 #include "stb_ds.h"
+#include "qstr.h"
 
 #include "../../gameshared/q_arch.h"
 
+
 #define MAX_GLSL_PROGRAMS			1024
 #define GLSL_PROGRAMS_HASH_SIZE		256
-
-#ifdef GL_ES_VERSION_2_0
-#define GLSL_DEFAULT_CACHE_FILE_NAME	"glsl/glsles.cache.default"
-#else
-#define GLSL_DEFAULT_CACHE_FILE_NAME	"glsl/glsl.cache.default"
-#endif
-
-#define GLSL_CACHE_FILE_NAME			"cache/glsl.cache"
-#define GLSL_BINARY_CACHE_FILE_NAME		"cache/glsl.cache.bin"
-
 
 typedef struct {
 	r_glslfeat_t bit;
@@ -139,8 +130,7 @@ static feature_iter_t __R_NextFeature( feature_iter_t iter )
 	return iter;
 }
 
-static sds R_AppendGLSLDeformv( sds str, const deformv_t *deformv, int numDeforms )
-{
+static void __appendGLSLDeformv( struct QStr* str, const deformv_t *deformv, int numDeforms ) {
 	static const char *const funcs[] = { 
 		NULL, 
 		"WAVE_SIN", 
@@ -151,17 +141,18 @@ static sds R_AppendGLSLDeformv( sds str, const deformv_t *deformv, int numDeform
 		NULL };
 	static const int numSupportedFuncs = sizeof( funcs ) / sizeof( funcs[0] ) - 1;
 	if( !numDeforms ) {
-		return str;
+		return;
 	}
+
 	const int funcType = deformv->func.type;
 	for( size_t i = 0; i < numDeforms; i++, deformv++ ) {
 		switch( deformv->type ) {
 			case DEFORMV_WAVE: {
 				if( funcType <= SHADER_FUNC_NONE || funcType > numSupportedFuncs || !funcs[funcType] ) 
 					break;
-				str = sdscatfmt(str, "#define DEFORMV_WAVE 1 \n");
-				str = sdscatfmt(str, "#define DEFORMV_WAVE_FUNC %s \n", funcs[funcType]);
-				str = sdscatprintf(str, "#define DEFORMV_WAVE_CONSTANT vec4(%f,%f,%f,%f) \n", 
+				qStrAppendSlice(str, qCToStrRef("#define DEFORMV_WAVE 1 \n"));
+				qstrcatfmt(str, "#define DEFORMV_WAVE_FUNC %s \n", funcs[funcType]);
+				qstrcatprintf(str, "#define DEFORMV_WAVE_CONSTANT vec4(%f,%f,%f,%f) \n", 
 										deformv->func.args[0],
 										deformv->func.args[1],
 										deformv->func.args[2],
@@ -173,9 +164,9 @@ static sds R_AppendGLSLDeformv( sds str, const deformv_t *deformv, int numDeform
 				if( funcType <= SHADER_FUNC_NONE || funcType > numSupportedFuncs || !funcs[funcType] ) 
 					break;
 				
-				str = sdscatfmt(str, "#define DEFORMV_MOVE 1 \n");
-				str = sdscatfmt(str, "#define DEFORMV_MOVE_FUNC %s \n", funcs[funcType]);
-				str = sdscatprintf(str, "#define DEFORMV_MOVE_CONSTANT vec4(%f,%f,%f,%f) \n", 
+				qStrAppendSlice(str, qCToStrRef("#define DEFORMV_MOVE 1 \n"));
+				qstrcatfmt(str, "#define DEFORMV_MOVE_FUNC %s \n", funcs[funcType]);
+				qstrcatprintf(str, "#define DEFORMV_MOVE_CONSTANT vec4(%f,%f,%f,%f) \n", 
 										deformv->func.args[0],
 										deformv->func.args[1],
 										deformv->func.args[2],
@@ -185,8 +176,8 @@ static sds R_AppendGLSLDeformv( sds str, const deformv_t *deformv, int numDeform
 				break;
 			}
 			case DEFORMV_BULGE:
-				str = sdscatfmt(str, "#define DEFORMV_BULGE 1 \n");
-				str = sdscatprintf(str, "#define DEFORMV_BULGE_CONSTANT vec4(%f,%f,%f,%f) \n", 
+				qStrAppendSlice(str,  qCToStrRef("#define DEFORMV_BULGE 1 \n"));
+				qstrcatprintf(str, "#define DEFORMV_BULGE_CONSTANT vec4(%f,%f,%f,%f) \n", 
 										deformv->func.args[0],
 										deformv->func.args[1],
 										deformv->func.args[2],
@@ -194,20 +185,18 @@ static sds R_AppendGLSLDeformv( sds str, const deformv_t *deformv, int numDeform
 				);
 				break;
 			case DEFORMV_AUTOSPRITE:
-				str = sdscatfmt(str, "#define DEFORMV_AUTOSPRITE 1 \n");
+				qStrAppendSlice(str,  qCToStrRef("#define DEFORMV_AUTOSPRITE 1 \n"));
 				break;
 			case DEFORMV_AUTOPARTICLE:
-				str = sdscatfmt(str, "#define DEFORMV_AUTOPARTICLE 1 \n");
+				qStrAppendSlice(str,  qCToStrRef("#define DEFORMV_AUTOPARTICLE 1 \n"));
 				break;
 			case DEFORMV_AUTOSPRITE2:
-				str = sdscatfmt(str, "#define DEFORMV_AUTOSPRITE2 1 \n");
+				qStrAppendSlice(str,  qCToStrRef("#define DEFORMV_AUTOSPRITE2 1 \n"));
 				break;
 			default:
 				break;
 		}
 	}
-
-	return str;
 }
 
 /*
@@ -224,192 +213,6 @@ static sds R_AppendGLSLDeformv( sds str, const deformv_t *deformv, int numDeform
 */
 void RP_PrecachePrograms( void )
 {
-//
-//	int version;
-//	char *buffer = NULL, *data, **ptr;
-//	const char *token;
-//	int handleBin;
-//	size_t binaryCacheSize = 0;
-//	bool isDefaultCache = false;
-//	char tempbuf[MAX_TOKEN_CHARS];
-//
-//	R_LoadCacheFile( GLSL_CACHE_FILE_NAME, ( void ** )&buffer );
-//	if( !buffer ) {
-//		isDefaultCache = true;
-//		r_glslbincache_storemode = FS_WRITE;
-//
-//		// load default glsl cache list, supposedly shipped with the game
-//		R_LoadFile( GLSL_DEFAULT_CACHE_FILE_NAME, ( void ** )&buffer );
-//		if( !buffer ) {
-//			return;
-//		}
-//	}
-//
-//#define CLOSE_AND_DROP_BINARY_CACHE() do { \
-//		ri.FS_FCloseFile( handleBin ); \
-//		handleBin = 0; \
-//		r_glslbincache_storemode = FS_WRITE; \
-//	} while(0)
-//
-//	handleBin = 0;
-//	if( glConfig.ext.get_program_binary && !isDefaultCache ) {
-//		r_glslbincache_storemode = FS_APPEND;
-//		if( ri.FS_FOpenFile( GLSL_BINARY_CACHE_FILE_NAME, &handleBin, FS_READ|FS_CACHE ) != -1 ) {
-//			unsigned hash;
-//
-//			version = 0;
-//			hash = 0;
-//
-//			ri.FS_Seek( handleBin, 0, FS_SEEK_END );
-//			binaryCacheSize = ri.FS_Tell( handleBin );
-//			ri.FS_Seek( handleBin, 0, FS_SEEK_SET );
-//
-//			ri.FS_Read( &version, sizeof( version ), handleBin );
-//			ri.FS_Read( &hash, sizeof( hash ), handleBin );
-//			
-//			if( binaryCacheSize < 8 || version != GLSL_BITS_VERSION || hash != glConfig.versionHash ) {
-//				CLOSE_AND_DROP_BINARY_CACHE();
-//			}
-//		}
-//	}
-//
-//	data = buffer;
-//	ptr = &data;
-//
-//	token = COM_Parse_r( tempbuf, sizeof( tempbuf ), ptr );
-//	if( strcmp( token, rf.applicationName ) ) {
-//		ri.Com_DPrintf( "Ignoring %s: unknown application name \"%s\", expected \"%s\"\n", 
-//			token, rf.applicationName );
-//		return;
-//	}
-//
-//	token = COM_Parse_r( tempbuf, sizeof( tempbuf ), ptr );
-//	version = atoi( token );
-//	if( version != GLSL_BITS_VERSION ) {
-//		// ignore cache files with mismatching version number
-//		ri.Com_DPrintf( "Ignoring %s: found version %i, expected %i\n", version, GLSL_BITS_VERSION );
-//	}
-//	else {
-//		while( 1 ) {
-//			int type;
-//			r_glslfeat_t lb, hb;
-//			r_glslfeat_t features;
-//			char name[256];
-//			void *binary = NULL;
-//			int binaryFormat = 0;
-//			unsigned binaryLength = 0;
-//			int binaryPos = 0;
-//
-//			// read program type
-//			token = COM_Parse_r( tempbuf, sizeof( tempbuf ), ptr );
-//			if( !token[0] ) {
-//				break;
-//			}
-//			type = atoi( token );
-//
-//			// read lower bits
-//			token = COM_ParseExt_r( tempbuf, sizeof( tempbuf ), ptr, false );
-//			if( !token[0] ) {
-//				break;
-//			}
-//			lb = atoi( token );
-//
-//			// read higher bits
-//			token = COM_ParseExt_r( tempbuf, sizeof( tempbuf ), ptr, false );
-//			if( !token[0] ) {
-//				break;
-//			}
-//			hb = atoi( token );
-//
-//			// read program full name
-//			token = COM_ParseExt_r( tempbuf, sizeof( tempbuf ), ptr, false );
-//			if( !token[0] ) {
-//				break;
-//			}
-//
-//			Q_strncpyz( name, token, sizeof( name ) );
-//			features = (hb << 32) | lb;
-//#ifdef GL_ES_VERSION_2_0
-//			if( isDefaultCache ) {
-//				if( glConfig.ext.fragment_precision_high ) {
-//					features |= GLSL_SHADER_COMMON_FRAGMENT_HIGHP;
-//				}
-//				else {
-//					features &= ~GLSL_SHADER_COMMON_FRAGMENT_HIGHP;
-//				}
-//			}
-//#endif
-//
-//			// read optional binary cache
-//			token = COM_ParseExt_r( tempbuf, sizeof( tempbuf ), ptr, false );
-//			if( handleBin && token[0] ) {
-//				binaryPos = atoi( token );
-//				if( binaryPos ) {
-//					bool err = false;
-//					
-//					err = !err && ri.FS_Seek( handleBin, binaryPos, FS_SEEK_SET ) < 0;
-//					err = !err && ri.FS_Read( &binaryFormat, sizeof( binaryFormat ), handleBin ) != sizeof( binaryFormat );
-//					err = !err && ri.FS_Read( &binaryLength, sizeof( binaryLength ), handleBin ) != sizeof( binaryLength );
-//					if( err || binaryLength >= binaryCacheSize ) {
-//						binaryLength = 0;
-//						CLOSE_AND_DROP_BINARY_CACHE();
-//					}
-//
-//					if( binaryLength ) {
-//						binary = R_Malloc( binaryLength );
-//						if( binary != NULL && ri.FS_Read( binary, binaryLength, handleBin ) != (int)binaryLength ) {
-//							R_Free( binary );
-//							binary = NULL;
-//							CLOSE_AND_DROP_BINARY_CACHE();
-//						}
-//					}
-//				}
-//			}
-//
-//			if( binary ) {
-//				int elem;
-//
-//				ri.Com_DPrintf( "Loading binary program %s...\n", name );
-//
-//				elem = RP_RegisterProgramBinary( type, name, NULL, NULL, 0, features, 
-//					binaryFormat, binaryLength, binary );
-//
-//				if( RP_GetProgramObject( elem ) == 0 ) {
-//					// check whether the program actually exists
-//					elem = 0;
-//				}
-//
-//				if( !elem ) {
-//					// rewrite this binary cache on exit
-//					CLOSE_AND_DROP_BINARY_CACHE();
-//				}
-//				else {
-//					struct glsl_program_s *program = r_glslprograms + elem - 1;
-//					program->binaryCachePos = binaryPos;
-//				}
-//
-//				R_Free( binary );
-//				binary = NULL;
-//
-//				if( elem ) {
-//					continue;
-//				}
-//				// fallthrough to regular registration
-//			}
-//			
-//			ri.Com_DPrintf( "Loading program %s...\n", name );
-//
-//			RP_RegisterProgram( type, name, NULL, NULL, 0, features );
-//		}
-//	}
-//
-//#undef CLOSE_AND_DROP_BINARY_CACHE
-//
-//	R_FreeFile( buffer );
-//
-//	if( handleBin ) {
-//		ri.FS_FCloseFile( handleBin );
-//	}
 }
 
 /*
@@ -420,78 +223,6 @@ void RP_PrecachePrograms( void )
  */
 void RP_StorePrecacheList( void )
 {
- // unsigned int i;
- // int handle, handleBin;
- // struct glsl_program_s *program;
- // unsigned dummy;
-
- // handle = 0;
- // if( ri.FS_FOpenFile( GLSL_CACHE_FILE_NAME, &handle, FS_WRITE | FS_CACHE ) == -1 ) {
- // 	Com_Printf( S_COLOR_YELLOW "Could not open %s for writing.\n", GLSL_CACHE_FILE_NAME );
- // 	return;
- // }
-
- // handleBin = 0;
- // if( glConfig.ext.get_program_binary ) {
- // 	if( ri.FS_FOpenFile( GLSL_BINARY_CACHE_FILE_NAME, &handleBin, r_glslbincache_storemode | FS_CACHE ) == -1 ) {
- // 		Com_Printf( S_COLOR_YELLOW "Could not open %s for writing.\n", GLSL_BINARY_CACHE_FILE_NAME );
- // 	} else if( r_glslbincache_storemode == FS_WRITE ) {
- // 		dummy = 0;
- // 		ri.FS_Write( &dummy, sizeof( dummy ), handleBin );
-
- // 		dummy = glConfig.versionHash;
- // 		ri.FS_Write( &dummy, sizeof( dummy ), handleBin );
- // 	} else {
- // 		ri.FS_Seek( handleBin, 0, FS_SEEK_END );
- // 	}
- // }
-
- // ri.FS_Printf( handle, "%s\n", rf.applicationName );
- // ri.FS_Printf( handle, "%i\n", GLSL_BITS_VERSION );
-
- // for( i = 0, program = r_glslprograms; i < r_numglslprograms; i++, program++ ) {
- // 	void *binary = NULL;
- // 	int binaryFormat = 0;
- // 	unsigned binaryLength = 0;
- // 	int binaryPos = 0;
-
- // 	if( *program->deformsKey ) {
- // 		continue;
- // 	}
- // 	if( !program->features ) {
- // 		continue;
- // 	}
-
- // 	if( handleBin ) {
- // 		if( r_glslbincache_storemode == FS_APPEND && program->binaryCachePos ) {
- // 			// this program is already cached
- // 			binaryPos = program->binaryCachePos;
- // 		} else {
- // 			binary = RP_GetProgramBinary( i + 1, &binaryFormat, &binaryLength );
- // 			if( binary ) {
- // 				binaryPos = ri.FS_Tell( handleBin );
- // 			}
- // 		}
- // 	}
-
- // 	ri.FS_Printf( handle, "%i %i %i \"%s\" %u\n", program->type, (int)( program->features & ULONG_MAX ), (int)( ( program->features >> 32 ) & ULONG_MAX ), program->name, binaryPos );
-
- // 	if( binary ) {
- // 		ri.FS_Write( &binaryFormat, sizeof( binaryFormat ), handleBin );
- // 		ri.FS_Write( &binaryLength, sizeof( binaryLength ), handleBin );
- // 		ri.FS_Write( binary, binaryLength, handleBin );
- // 		R_Free( binary );
- // 	}
- // }
-
- // ri.FS_FCloseFile( handle );
- // ri.FS_FCloseFile( handleBin );
-
- // if( handleBin && ri.FS_FOpenFile( GLSL_BINARY_CACHE_FILE_NAME, &handleBin, FS_UPDATE | FS_CACHE ) != -1 ) {
- // 	dummy = GLSL_BITS_VERSION;
- // 	ri.FS_Write( &dummy, sizeof( dummy ), handleBin );
- // 	ri.FS_FCloseFile( handleBin );
- // }
 }
 
 /*
@@ -1040,7 +771,7 @@ QF_GLSL_PI \
 
 #define PARSER_MAX_STACKDEPTH 16
 
-static bool __RF_AppendShaderFromFile( sds *str, const char *rootFile, const char *fileName, int stackDepth, int programType, r_glslfeat_t features )
+static bool __RF_AppendShaderFromFile( struct QStr *str, const char *rootFile, const char *fileName, int stackDepth, int programType, r_glslfeat_t features )
 {
 	char tempbuf[MAX_TOKEN_CHARS];
 	char *fileContents = NULL;
@@ -1067,7 +798,7 @@ static bool __RF_AppendShaderFromFile( sds *str, const char *rootFile, const cha
 	char *prevIt = NULL;
 	char *startBuf = NULL;
 	bool error = false;
-	sds includeFilePath = sdsempty();
+	struct QStr includeFilePath = {0};
 	while( 1 ) {
 		prevIt = it;
 		char *token = COM_ParseExt_r( tempbuf, sizeof( tempbuf ), &it, true );
@@ -1126,7 +857,7 @@ static bool __RF_AppendShaderFromFile( sds *str, const char *rootFile, const cha
 		if( startBuf && prevIt > startBuf ) {
 			// cut the string at the beginning of the #include
 			*prevIt = '\0';
-			( *str ) = sdscat( *str, startBuf );
+			qstrcatfmt( str, "%s", startBuf );
 			startBuf = NULL;
 		}
 
@@ -1148,37 +879,37 @@ static bool __RF_AppendShaderFromFile( sds *str, const char *rootFile, const cha
 		// with the leading "/". in that case, go back to to top directory
 		COM_SanitizeFilePath( token );
 
-		sdsclear( includeFilePath );
-		includeFilePath = sdsMakeRoomFor( includeFilePath, strlen( fileName ) + 1 + strlen( token ) + 1 );
+		qStrClear( &includeFilePath );
+		qStrMakeRoomFor(&includeFilePath, strlen( fileName ) + 1 + strlen( token ) + 1 );
 
 		// tempFilename = R_Malloc( tempFilenameSize );
 
 		if( *token != '/' ) {
-			includeFilePath = sdscat( includeFilePath, fileName );
-			COM_StripFilename( includeFilePath );
+			qStrAppendSlice( &includeFilePath, qCToStrRef(fileName) );
+			COM_StripFilename( includeFilePath.buf);
 		} else {
 			token++;
-			includeFilePath = sdscat( includeFilePath, rootFile );
-			COM_StripFilename( includeFilePath );
+			qStrAppendSlice( &includeFilePath, qCToStrRef(rootFile) );
+			COM_StripFilename( includeFilePath.buf );
 		}
-		sdsupdatelen( includeFilePath );
-		includeFilePath = sdscat( includeFilePath, ( *includeFilePath ? "/" : "" ) );
-		includeFilePath = sdscat( includeFilePath, token );
-		if( __RF_AppendShaderFromFile( str, rootFile, includeFilePath, stackDepth + 1, programType, features ) ) {
+		qStrUpdateLen(&includeFilePath);
+		qStrAppendSlice( &includeFilePath, ( includeFilePath.buf[0] ? qCToStrRef("/") : qCToStrRef("") ) );
+		qStrAppendSlice( &includeFilePath, qCToStrRef(token) );
+		if( __RF_AppendShaderFromFile( str, rootFile, includeFilePath.buf, stackDepth + 1, programType, features ) ) {
 			error = true;
 			goto done;
 		}
 	}
 	if( startBuf ) {
-		*str = sdscat( *str, startBuf );
+			qstrcatfmt( str, "%s", startBuf );
 	}
 done:
 	R_Free( fileContents );
-	sdsfree( includeFilePath );
+	qStrFree( &includeFilePath );
 	return error;
 }
 
-static bool RF_AppendShaderFromFile( sds *str, const char *fileName, int programType, r_glslfeat_t features )
+static bool RF_AppendShaderFromFile( struct QStr *str, const char *fileName, int programType, r_glslfeat_t features )
 {
 	return __RF_AppendShaderFromFile( str, fileName, fileName, 1, programType, features );
 }
@@ -1188,25 +919,24 @@ void RP_ProgramList_f( void )
 	Com_Printf( "------------------\n" );
 	size_t i;
 	struct glsl_program_s *program;
+	struct QStr fullName = {0};
 	for( i = 0, program = r_glslprograms; i < MAX_GLSL_PROGRAMS; i++, program++ ) {
 		if( !program->name )
 			break;
 
-		sds fullName = sdsempty();
-		fullName = sdscat( fullName, program->name );
+		qStrClear(&fullName);
+		qStrAppendSlice(&fullName, qCToStrRef(program->name));
 		for( feature_iter_t iter = __R_NextFeature((feature_iter_t){ .it = glsl_programtypes_features[program->type], .bits = program->features }); __R_IsValidFeatureIter( &iter ); iter = __R_NextFeature( iter ) ) {
-			if( iter.it->suffix ) {
-				fullName = sdscat( fullName, iter.it->suffix );
-			}
+			qStrAppendSlice(&fullName, qCToStrRef(iter.it->suffix));	
 		}
-		Com_Printf( " %3i %s", i + 1, fullName );
-		sdsfree( fullName );
+		Com_Printf( " %3i %s", i + 1, fullName.buf );
 
 		if( *program->deformsKey ) {
 			Com_Printf( " dv:%s", program->deformsKey );
 		}
 		Com_Printf( "\n" );
 	}
+	qStrFree(&fullName);
 	Com_Printf( "%i programs total\n", i );
 }
 
@@ -1504,76 +1234,57 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 {
 	const uint64_t hashIndex = hash_u64( HASH_INITIAL_VALUE, features ) % GLSL_PROGRAMS_HASH_SIZE;
 	struct glsl_program_s *program = r_glslprograms + r_numglslprograms++;
-	sds featuresStr = sdsempty();
-	sds fullName = sdsnew( name );
-	for( feature_iter_t iter = __R_NextFeature((feature_iter_t){ .it = glsl_programtypes_features[type], .bits = features }); __R_IsValidFeatureIter( &iter ); iter = __R_NextFeature( iter ) ) {
-		featuresStr = sdscatfmt( featuresStr, "%s\n", iter.it->define );
-		if( fullName ) {
-			fullName = sdscatfmt( fullName, "%s", iter.it->suffix );
+	struct QStr featuresStr = {0};
+	struct QStr fullName = {0};
+	qStrAppendSlice(&fullName, qCToStrRef(name));
+	for( feature_iter_t iter = __R_NextFeature( ( feature_iter_t ){ .it = glsl_programtypes_features[type], .bits = features } ); __R_IsValidFeatureIter( &iter ); iter = __R_NextFeature( iter ) ) {
+		qstrcatfmt(&featuresStr,"%s\n", iter.it->define);	
+		if( !qStrEmpty(fullName) ) {
+			qStrAppendSlice(&fullName, qCToStrRef(iter.it->suffix));	
 		}
 	}
-	ri.Com_Printf( "Loading Shader: %s", fullName );
+	ri.Com_Printf( "Loading Shader: %.*s", fullName.len, fullName.buf);
 
 	bool error = false;
 	struct {
 		glsl_program_stage_t stage;
-		sds source;
+		struct QStr source;
 	} stages[] = {
-		{ .stage = GLSL_STAGE_VERTEX, .source = sdsempty() },
-		{ .stage = GLSL_STAGE_FRAGMENT, .source = sdsempty() },
+		{ .stage = GLSL_STAGE_VERTEX, .source = {0} },
+		{ .stage = GLSL_STAGE_FRAGMENT, .source = {0} },
 	};
 	{
-		sds filePath = sdsempty();
+		struct QStr filePath = {0};
 		for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
-			stages[i].source = sdscatfmt( stages[i].source, "#version 440 \n" );
+			qStrAppendSlice(&stages[i].source, qCToStrRef("#version 440 \n"));
 			switch( stages[i].stage ) {
 				case GLSL_STAGE_VERTEX:
-					stages[i].source = sdscatfmt( stages[i].source, "#define VERTEX_SHADER\n" );
+					qStrAppendSlice(&stages[i].source, qCToStrRef("#define VERTEX_SHADER\n"));
 					break;
 				case GLSL_STAGE_FRAGMENT:
-					stages[i].source = sdscatfmt( stages[i].source, "#define FRAGMENT_SHADER\n" );
+					qStrAppendSlice(&stages[i].source, qCToStrRef("#define FRAGMENT_SHADER\n"));
 					break;
 				default:
 					assert( 0 );
 					break;
 			}
-			// stages[i].source = sdscatfmt( stages[i].source, "#define MAX_UNIFORM_BONES %i\n", r_maxglslbones->integer );
-			stages[i].source = sdscatfmt( stages[i].source, "%s", featuresStr );
-			//stages[i].source = sdscat( stages[i].source, QF_BUILTIN_GLSL_MACROS_GLSL130 );
-			stages[i].source = sdscat( stages[i].source, QF_BUILTIN_GLSL_CONSTANTS );
-			stages[i].source = sdscatfmt( stages[i].source, QF_GLSL_MATH );
-			switch( stages[i].stage ) {
-				case GLSLANG_STAGE_VERTEX: {
-					stages[i].source = R_AppendGLSLDeformv( stages[i].source, deforms, numDeforms );
-					//TODO: need to add back implementation broken shader
-					//if( features & GLSL_SHADER_COMMON_BONE_TRANSFORMS ) {
-					//	//stages[i].source = sdscat( stages[i].source, QF_BUILTIN_GLSL_QUAT_TRANSFORM );
-					//	stages[i].source = sdscat( stages[i].source, "#define APPLY_QUAT_TRANSFORM 1");
-					//}
-					//if( features & ( GLSL_SHADER_COMMON_INSTANCED_TRANSFORMS | GLSL_SHADER_COMMON_INSTANCED_ATTRIB_TRANSFORMS ) ) {
-					//	//stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_INSTANCED_TRANSFORMS );
-					//	stages[i].source = sdscat( stages[i].source, "#define APPLY_INSTANCED_TRANSFORM 1");
-					//}
-					//stages[i].source = sdscatfmt( stages[i].source, "%s\n", QF_BUILTIN_GLSL_TRANSFORM_VERTS );
-					break;
-				}
-				case GLSL_STAGE_FRAGMENT:
-					break;
-				default:
-					assert( 0 );
-					break;
+			qStrAppendSlice(&stages[i].source, qToStrRef(featuresStr));
+			qStrAppendSlice(&stages[i].source, qCToStrRef(QF_BUILTIN_GLSL_CONSTANTS ));
+			qStrAppendSlice(&stages[i].source, qCToStrRef(QF_GLSL_MATH ));
+			if(stages[i].stage == GLSLANG_STAGE_VERTEX) {
+				__appendGLSLDeformv(&stages[i].source, deforms, numDeforms );
 			}
 
-			sdsclear( filePath );
-			filePath = sdscatfmt( filePath, "glsl_nri/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
-			error = RF_AppendShaderFromFile( &stages[i].source, filePath, type, features );
+			qStrClear( &filePath );
+			qstrcatfmt( &filePath, "glsl_nri/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
+			error = RF_AppendShaderFromFile( &stages[i].source, filePath.buf, type, features );
 			if( error ) {
 				break;
 			}
 		}
-		sdsfree( filePath );
+		qStrFree(&filePath);
 	}
-	sdsfree(featuresStr);
+	qStrFree(&featuresStr);
 	
 	SpvReflectDescriptorSet** reflectionDescSets = NULL;
 	SpvReflectBlockVariable* reflectionBlockVariables[1] = {0};
@@ -1592,7 +1303,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 										.client_version = GLSLANG_TARGET_VULKAN_1_2,
 										.target_language = GLSLANG_TARGET_SPV,
 										.target_language_version = GLSLANG_TARGET_SPV_1_5,
-										.code = stages[stageIdx].source,
+										.code = stages[stageIdx].source.buf,
 										.default_version = 450,
 										.default_profile = GLSLANG_CORE_PROFILE,
 										.force_default_version_and_profile = false,
@@ -1602,82 +1313,84 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 		glslang_shader_t *shader = glslang_shader_create( &input );
 		glslang_program_t *glslang_program = NULL;
 		if( !glslang_shader_preprocess( shader, &input ) ) {
-			sds errFilePath = sdscatfmt( sdsempty(), "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ) );
+			struct QStr errFilePath = {0};
+			qstrcatfmt( &errFilePath, "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ) );
 			const char *infoLog = glslang_shader_get_info_log( shader );
 			const char *debugLogs = glslang_shader_get_info_debug_log( shader );
-			Com_Printf( S_COLOR_YELLOW "GLSL preprocess failed %s\n", fullName );
+			Com_Printf( S_COLOR_YELLOW "GLSL preprocess failed %.*s\n", fullName.len, fullName.buf );
 			Com_Printf( S_COLOR_YELLOW "%s\n", infoLog );
 			Com_Printf( S_COLOR_YELLOW "%s\n", debugLogs );
-			Com_Printf( S_COLOR_YELLOW "dump shader: %s\n", errFilePath );
+			Com_Printf( S_COLOR_YELLOW "dump shader: %.*s\n", errFilePath.len, errFilePath.buf);
 
-			sds shaderErr = sdsempty();
-			shaderErr = sdscatfmt( shaderErr, "%s\n", input.code );
-			shaderErr = sdscatfmt( shaderErr, "----------- Preprocessing Failed -----------\n" );
-			shaderErr = sdscatfmt( shaderErr, "%s\n", infoLog );
-			shaderErr = sdscatfmt( shaderErr, "%s\n", debugLogs );
-			__RP_writeTextToFile( errFilePath, shaderErr );
+			struct QStr shaderErr  = {0};
+			qstrcatfmt( &shaderErr, "%s\n", input.code );
+			qstrcatfmt( &shaderErr, "----------- Preprocessing Failed -----------\n" );
+			qstrcatfmt( &shaderErr, "%s\n", infoLog );
+			qstrcatfmt( &shaderErr, "%s\n", debugLogs );
+			__RP_writeTextToFile( errFilePath.buf, shaderErr.buf);
 			assert(false && "failed to preprocess shader");
 			
-			sdsfree( shaderErr );
-			sdsfree( errFilePath );
+			qStrFree( &shaderErr );
+			qStrFree( &errFilePath );
 
 			error = true;
 			goto shader_done;
 		}
 
 		if( !glslang_shader_parse( shader, &input ) ) {
-			sds errFilePath = sdscatfmt( sdsempty(), "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ) );
+			struct QStr errFilePath = {0};
+			qstrcatfmt( &errFilePath, "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ) );
 			const char *infoLog = glslang_shader_get_info_log( shader );
 			const char *debugLogs = glslang_shader_get_info_debug_log( shader );
-			// const char *preprocessedCode = glslang_shader_get_preprocessed_code( shader );
 
-			Com_Printf( S_COLOR_YELLOW "GLSL parsing failed %s\n", fullName );
+			Com_Printf( S_COLOR_YELLOW "GLSL parsing failed %.*s\n", fullName.len, fullName.buf);
 			Com_Printf( S_COLOR_YELLOW "%s\n", infoLog );
 			Com_Printf( S_COLOR_YELLOW "%s\n", debugLogs );
-			Com_Printf( S_COLOR_YELLOW "dump shader: %s\n", errFilePath );
+			Com_Printf( S_COLOR_YELLOW "dump shader: %.*s\n", errFilePath.len, errFilePath.buf);
 
-			sds shaderErr = sdsempty();
-			shaderErr = sdscatfmt( shaderErr, "%s\n", input.code );
-			shaderErr = sdscatfmt( shaderErr, "----------- Parsing Failed -----------\n" );
-			shaderErr = sdscatfmt( shaderErr, "%s\n", infoLog );
-			shaderErr = sdscatfmt( shaderErr, "%s\n", debugLogs );
-			__RP_writeTextToFile( errFilePath, shaderErr );
+			struct QStr shaderErr  = {0};
+			qstrcatfmt( &shaderErr, "%s\n", input.code );
+			qstrcatfmt( &shaderErr, "----------- Parsing Failed -----------\n" );
+			qstrcatfmt( &shaderErr, "%s\n", infoLog );
+			qstrcatfmt( &shaderErr, "%s\n", debugLogs );
+			__RP_writeTextToFile( errFilePath.buf, shaderErr.buf );
 			assert(false && "failed to parse shader");
-			sdsfree( shaderErr );
-			sdsfree( errFilePath );
+			qStrFree( &shaderErr );
+			qStrFree( &errFilePath );
 
 			error = true;
 			goto shader_done;
 		} 
 		else {
-			sds shaderDebugPath = sdscatfmt( sdsempty(), "logs/shader_debug/%s_%u.%s.glsl", fullName, features, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ) );
-			__RP_writeTextToFile( shaderDebugPath, glslang_shader_get_preprocessed_code(shader) );
-			sdsfree( shaderDebugPath );
+			struct QStr shaderDebugPath = {0};
+			qstrcatfmt(&shaderDebugPath,"logs/shader_debug/%S_%u.%s.glsl", qToStrRef(fullName), features, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ) );
+			__RP_writeTextToFile( shaderDebugPath.buf, glslang_shader_get_preprocessed_code(shader) );
+			qStrFree( &shaderDebugPath );
 		}
 
 		glslang_program = glslang_program_create();
 		glslang_program_add_shader( glslang_program, shader );
 
 		if( !glslang_program_link( glslang_program, GLSLANG_MSG_SPV_RULES_BIT | GLSLANG_MSG_VULKAN_RULES_BIT ) ) {
-			sds errFilePath = sdscatfmt( sdsempty(), "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ) );
+			struct QStr errFilePath = {0};
+			qstrcatfmt( &errFilePath, "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ));
 
 			const char *infoLogs = glslang_program_get_info_log( glslang_program );
 			const char *debugLogs = glslang_program_get_info_debug_log( glslang_program );
-			// const char *preprocessedCode = glslang_shader_get_preprocessed_code( shader );
 
-			Com_Printf( S_COLOR_YELLOW "GLSL linking failed %s\n", fullName );
+			Com_Printf( S_COLOR_YELLOW "GLSL linking failed %.*s\n", fullName.len, fullName.buf);
 			Com_Printf( S_COLOR_YELLOW "%s\n", infoLogs );
 			Com_Printf( S_COLOR_YELLOW "%s\n", debugLogs );
-			Com_Printf( S_COLOR_YELLOW "dump shader: %s\n", errFilePath );
+			Com_Printf( S_COLOR_YELLOW "dump shader: %.*s\n", errFilePath.len, errFilePath.buf);
 
-			sds shaderErr = sdsempty();
-			shaderErr = sdscatfmt( shaderErr, "%s\n", input.code );
-			shaderErr = sdscatfmt( shaderErr, "----------- Linking Failed -----------\n" );
-			shaderErr = sdscatfmt( shaderErr, "%s\n", infoLogs );
-			shaderErr = sdscatfmt( shaderErr, "%s\n", debugLogs );
-			__RP_writeTextToFile( errFilePath, shaderErr );
-			sdsfree( shaderErr );
-			sdsfree( errFilePath );
+			struct QStr shaderErr  = {0};
+			qstrcatfmt( &shaderErr, "%s\n", input.code );
+			qstrcatfmt( &shaderErr, "----------- Linking Failed -----------\n" );
+			qstrcatfmt( &shaderErr, "%s\n", infoLogs );
+			qstrcatfmt( &shaderErr, "%s\n", debugLogs );
+			__RP_writeTextToFile( errFilePath.buf, shaderErr.buf);
+			qStrFree( &shaderErr );
+			qStrFree( &errFilePath );
 
 			assert(false && "failed to link shader");
 			error = true;
@@ -1886,7 +1599,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 	
 	program->type = type;
 	program->features = features;
-	program->name = R_CopyString( fullName );
+	program->name = R_CopyString( fullName.buf );
 	program->deformsKey = R_CopyString( deformsKey ? deformsKey : "" );
 
 	if(rootConstantDesc.size > 0) {
@@ -1920,9 +1633,9 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 		arrfree( descRangeDescs[i] );
 	}
 
-	sdsfree( fullName );
+	qStrFree( &fullName );
 	for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
-		sdsfree( stages[i].source );
+		qStrFree( &stages[i].source );
 	}
 
 

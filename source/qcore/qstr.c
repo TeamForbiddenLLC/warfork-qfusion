@@ -176,8 +176,10 @@ bool qStrClear(struct QStr* str)
 
 void qStrFree(struct QStr* str)
 {
-    free(str->buf);
-    str->len = 0;
+	if( str->buf ) {
+		free( str->buf );
+	}
+	str->len = 0;
     str->alloc = 0;
     str->buf = NULL;
 }
@@ -340,14 +342,16 @@ bool qstrcatfmt(struct QStr* s, char const* fmt, ...)
                 num = va_arg(ap, int);
                 s->buf[s->len++] = num;
                 break;
-            case 's':
-            {
-                char* str = va_arg(ap, char*);
-                if (!qStrMakeRoomFor(s, strlen(str)))
-                    return false;
-                break;
-            }
-            case 'S':
+			case 's': {
+				char *str = va_arg( ap, char * );
+				const size_t len = strlen( str );
+				if( !qStrMakeRoomFor( s, len ) )
+					return false;
+				memcpy( s->buf + s->len, str, len );
+				s->len += len;
+				break;
+			}
+			case 'S':
             {
                 const struct QStrSpan str = va_arg(ap, struct QStrSpan);
                 if (!qStrMakeRoomFor(s, str.len))

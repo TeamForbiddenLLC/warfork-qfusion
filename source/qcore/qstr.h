@@ -57,10 +57,11 @@ struct QStrSpan {
   size_t len;
 }; 
 
+
 static inline struct QStrSpan qCToStrRef(const char* c) { 
   struct QStrSpan result;
   result.buf = (char*)c;
-  result.len = (size_t)strlen(c);
+  result.len = c ? (size_t)strlen(c) : 0;
   return result; 
 }
 static inline struct QStrSpan qToStrRef(struct QStr str) { 

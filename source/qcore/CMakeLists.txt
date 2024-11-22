@@ -4,7 +4,7 @@ file (GLOB QCORE_SOURCE
     "./*.c")
 
 add_library(qcore STATIC ${QCORE_SOURCE})
-target_include_directories (qcore PRIVATE "./")
+target_include_directories (qcore PUBLIC "./")
 
 function(add_qcore_test) 
 	cmake_parse_arguments(
