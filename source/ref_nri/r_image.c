@@ -39,6 +39,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_ktx_loader.h"
 #include <assert.h>
 
+#include <qstr.h>
+
 #define	MAX_GLIMAGES	    8192
 #define IMAGES_HASH_SIZE    64
 #define IMAGE_SAMPLER_HASH_SIZE 1024
@@ -1697,17 +1699,18 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	size_t uploadCount = 0;
 
 	const size_t reserveSize = strlen( name ) + ( suffix ? strlen( suffix ) : 0 ) + 15;
-	sds resolvedPath = sdsnewlen( 0, reserveSize );
-	sdsclear( resolvedPath );
+
+	struct QStr resolvedPath = {0};
+	qStrSetResv(&resolvedPath, reserveSize);
 	{
 		int lastDot = -1;
 		int lastSlash = -1;
 		for( size_t i = ( name[0] == '/' || name[0] == '\\' ); name[i]; i++ ) {
 			const char c = name[i];
 			if( c == '\\' ) {
-				resolvedPath = sdscat( resolvedPath, "/" );
+				qStrAppendChar( &resolvedPath, '/' );
 			} else {
-				resolvedPath = sdscatfmt( resolvedPath, "%c", tolower( c ) );
+				qStrAppendChar( &resolvedPath, tolower( c ));
 			}
 			switch( c ) {
 				case '.':
@@ -1721,33 +1724,33 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 		// don't confuse paths such as /ui/xyz.cache/123 with file extensions
 		if( lastDot >= lastSlash ) {
 			// truncate string omitting the extension
-			sdssubstr( resolvedPath, 0, lastDot );
+			qStrSetLen( &resolvedPath, lastDot );
 		}
 	}
 	if( suffix ) {
 		for( size_t i = 0; suffix[i]; i++ ) {
-			resolvedPath = sdscatfmt( resolvedPath, "%c", tolower( suffix[i] ) );
+			qStrAppendChar( &resolvedPath, tolower( suffix[i] ));
 		}
 	}
 
-	const uint32_t basePathLen = sdslen(resolvedPath);
-	sdssubstr(resolvedPath, 0, basePathLen);
+	const uint32_t basePathLen = resolvedPath.len;
+	qStrSetLen( &resolvedPath, basePathLen);
 
 	image_t	*image = NULL;
-	const uint32_t key = COM_SuperFastHash( (uint8_t *)resolvedPath, strlen(resolvedPath), strlen(resolvedPath) ) % IMAGES_HASH_SIZE;
+	const uint32_t key = COM_SuperFastHash( (uint8_t *)resolvedPath.buf, resolvedPath.len, resolvedPath.len ) % IMAGES_HASH_SIZE;
 	const image_t* hnode = &images_hash_headnode[key];
 	const int searchFlags = flags & ~IT_LOADFLAGS;
 	for( image = hnode->prev; image != hnode; image = image->prev )
 	{
 		if( ( ( image->flags & ~IT_LOADFLAGS ) == searchFlags ) &&
-			!strcmp( image->name, resolvedPath) && ( image->minmipsize == minmipsize ) ) {
+			!strcmp( image->name, resolvedPath.buf) && ( image->minmipsize == minmipsize ) ) {
 			R_TouchImage( image, tags );
 			goto done;
 		}
 	}
 	
-	sdssubstr( resolvedPath, 0, basePathLen );
-	image = __R_AllocImage( resolvedPath );
+	qStrSetLen( &resolvedPath, basePathLen);
+	image = __R_AllocImage( resolvedPath.buf);
 	image->layers = 1;
 	image->flags = flags;
 	image->minmipsize = minmipsize;
@@ -1761,13 +1764,13 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 			extensionKTX
 	};
 	
-	const char *ext = FS_FirstExtension2( resolvedPath, extensions, Q_ARRAY_COUNT( extensions ) ); // last is KTX
+	const char *ext = FS_FirstExtension2( resolvedPath.buf, extensions, Q_ARRAY_COUNT( extensions ) ); // last is KTX
 	if( ext != NULL ) {
-		resolvedPath = sdscat( resolvedPath, ext );
+		qStrAppendSlice(&resolvedPath, qCToStrRef(ext));
 		image->extension = ext;
 	}
 		
-	if( ext == extensionKTX && __R_LoadKTX( image, resolvedPath ) ) {
+	if( ext == extensionKTX && __R_LoadKTX( image, resolvedPath.buf ) ) {
 		goto done;
 	}
 
@@ -1795,10 +1798,10 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 
 		for( size_t i = 0; i < 2; i++ ) {
 			for( size_t u = 0; u < 6; u++ ) {
-				sdssubstr(resolvedPath, 0, basePathLen);
-				resolvedPath = sdscatfmt( resolvedPath, "_%s.tga", cubemapSides[i][u].suf );
+				qStrSetLen( &resolvedPath, basePathLen);
+				qstrcatfmt(&resolvedPath, "_%s.tga", cubemapSides[i][u].suf );
 				
-				if(!T_LoadImageSTBI(resolvedPath, &uploads[u].buffer)) {
+				if(!T_LoadImageSTBI(resolvedPath.buf, &uploads[u].buffer)) {
 					ri.Com_DPrintf( S_COLOR_YELLOW "failed to load image %s\n", resolvedPath );
 					break;
 				}
@@ -1821,7 +1824,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 				uploadCount++;
 			}
 		}
-		sdssetlen( resolvedPath, basePathLen ); // truncate the pathext + cubemap
+		qStrSetLen( &resolvedPath, basePathLen); // truncate the pathext + cubemap
 		if( uploadCount != 6 ) {
 			ri.Com_DPrintf( S_COLOR_YELLOW "Missing image: %s\n", image->name );
 			__FreeImage( R_ActiveFrameCmd(),image );
@@ -1832,11 +1835,11 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	
 		struct UploadImgBuffer *upload = &uploads[uploadCount++];
 		upload->flags = flags;
-		if( ( ext == extensionPNG || ext == extensionJPG || ext == extensionTGA ) && T_LoadImageSTBI( resolvedPath, &upload->buffer ) ) {
+		if( ( ext == extensionPNG || ext == extensionJPG || ext == extensionTGA ) && T_LoadImageSTBI( resolvedPath.buf, &upload->buffer ) ) {
 			image->width = image->width = T_PixelW( &upload->buffer );
 			image->height = image->height = T_PixelH( &upload->buffer );
 			image->samples = RT_NumberChannels( upload->buffer.def );
-		}  else if( ext == extensionWAL && T_LoadImageWAL( resolvedPath, &upload->buffer ) ) {
+		}  else if( ext == extensionWAL && T_LoadImageWAL( resolvedPath.buf, &upload->buffer ) ) {
 			image->width = image->width = T_PixelW( &upload->buffer );
 			image->height = image->height = T_PixelH( &upload->buffer );
 			image->samples = RT_NumberChannels( upload->buffer.def );
@@ -1944,7 +1947,7 @@ done:
 	for( size_t i = 0; i < uploadCount; i++ ) {
 		T_FreeTextureBuf(&uploads[i].buffer);
 	}
-	sdsfree( resolvedPath );
+	qStrFree(&resolvedPath);
 	return image;
 }
 

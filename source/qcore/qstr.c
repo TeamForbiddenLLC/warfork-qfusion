@@ -120,7 +120,7 @@ bool qStrAssign(struct QStr* str, struct QStrSpan slice)
     return true;
 }
 
-bool bstrresize(struct QStr* str, size_t len)
+bool qStrResize(struct QStr* str, size_t len)
 {
     str->buf = (char*)realloc(str->buf, len + 1);
     if (str->buf == NULL)
@@ -138,7 +138,7 @@ bool qStrSetLen(struct QStr* str, size_t len)
     if (len > str->alloc)
     {
         assert(len > str->len);
-        size_t reqSize = len;
+        size_t reqSize = len + 1;
         if (reqSize < TFSTR_MAX_PREALLOC)
         {
             reqSize *= 2;
@@ -153,6 +153,7 @@ bool qStrSetLen(struct QStr* str, size_t len)
         str->alloc = reqSize;
     }
     str->len = len;
+    str->buf[len] = '\0'; // add null terminator for backwards compatibility
     return true;
 }
 
@@ -169,7 +170,7 @@ bool qStrClear(struct QStr* str)
     if (!qStrSetLen(str, 0))
         return false;
     if(str->buf != NULL) {
-        str->buf[0] = 0;
+        str->buf[0] = '\0';
     }
     return true;
 }
@@ -345,7 +346,7 @@ bool qstrcatfmt(struct QStr* s, char const* fmt, ...)
 			case 's': {
 				char *str = va_arg( ap, char * );
 				const size_t len = strlen( str );
-				if( !qStrMakeRoomFor( s, len ) )
+				if( !qStrMakeRoomFor( s, len + 1 ) )
 					return false;
 				memcpy( s->buf + s->len, str, len );
 				s->len += len;
@@ -354,7 +355,7 @@ bool qstrcatfmt(struct QStr* s, char const* fmt, ...)
 			case 'S':
             {
                 const struct QStrSpan str = va_arg(ap, struct QStrSpan);
-                if (!qStrMakeRoomFor(s, str.len))
+                if (!qStrMakeRoomFor(s, str.len + 1))
                     return false;
                 memcpy(s->buf + s->len, str.buf, str.len);
                 s->len += str.len;

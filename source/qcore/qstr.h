@@ -171,7 +171,7 @@ struct qStrSplitIterable {
  *
  * The the slice does not have a null terminator.
  *
- * struct bstr_split_iterator_s iterable = {
+ * struct bstr_split_iterator_s iterable = {qstr
  *     .delim = bstr_ref(" "),
  *     .buffer = bstr_ref("one two three four five"),
  *     .cursor = 0
