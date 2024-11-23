@@ -26,6 +26,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../gameshared/q_sds.h"
 #include "../gameshared/q_arch.h"
 
+#include "qstr.h"
+
 #define SHADERS_HASH_SIZE	128
 #define SHADERCACHE_HASH_SIZE	128
 
@@ -68,9 +70,6 @@ static char		r_shaderDeformvKey[1024];
 static image_t	*r_defaultImage;
 
 static char *r_shaderTemplateBuf;
-
-static char *r_shortShaderName;
-static size_t r_shortShaderNameSize;
 
 static bool Shader_Parsetok( shader_t *shader, shaderpass_t *pass, const shaderkey_t *keys, const char *token, const char **ptr );
 static void Shader_MakeCache( const char *filename );
@@ -2154,11 +2153,8 @@ void R_ShutdownShaders( void )
 	}
 
 	R_Free( r_shaderTemplateBuf );
-	R_Free( r_shortShaderName );
 
 	r_shaderTemplateBuf = NULL;
-	r_shortShaderName = NULL;
-	r_shortShaderNameSize = 0;
 
 	memset( shadercache_hash, 0, sizeof( shadercache_hash ) );
 }
@@ -2745,41 +2741,34 @@ void R_UploadCinematicShader( const shader_t *shader )
 	}
 }
 
-/*
-* R_ShaderCleanName
-*/
-static size_t R_ShaderCleanName( const char *name, char *shortname, size_t shortname_size )
+static struct QStrSpan __ShaderCleanName( struct QStrSpan name, struct QStrSpan buffer)
 {
-	int i;
-	size_t length = 0;
+	assert( buffer.len >= ( name.len + 1 ) );
+	struct QStrSpan result;
+	result.len = 0;
+	result.buf = buffer.buf;
+	size_t i = 0;
 	size_t lastDot = 0;
 	size_t lastSlash = 0;
-
-	for( i = 0; name[i] && (name[i] == '/' || name[i] == '\\'); i++ );
-
-	for( length = 0; name[i] && ( length < shortname_size-1 ); i++ )
-	{
-		if( name[i] == '.' )
-			lastDot = length;
-		if( name[i] == '\\' )
-			shortname[length] = '/';
-		else
-			shortname[length] = tolower( name[i] );
-		if( shortname[length] == '/' )
-			lastSlash = length;
-		length++;
+	for( i = 0; name.buf[i] && ( name.buf[i] == '/' || name.buf[i] == '\\' ) && i < name.len; i++ ) {}
+	for( ; i < name.len; i++ ) {
+		if( name.buf[i] == '.' )
+			lastDot = result.len;
+		if( name.buf[i] == '/' )
+			lastSlash = result.len;
+		if( name.buf[i] == '\\' ) {
+			result.buf[result.len++] = '/';
+		} else {
+			result.buf[result.len++] = tolower( name.buf[i] );
+		}
 	}
-
-	if( !length )
-		return 0;
-	if( lastDot < lastSlash )
-		lastDot = 0;
-	if( lastDot )
-		length = lastDot;
-	shortname[length] = 0;
-
-	return length;
+	if( lastDot > lastSlash) {
+		result.len = lastDot;
+	}
+	result.buf[result.len] = 0;
+	return result;
 }
+
 
 static void __Shader_Begin() {
 	r_shaderNoMipMaps =	false;
@@ -3085,52 +3074,49 @@ shader_t *R_ShaderById( unsigned int id )
 */
 void R_TouchShadersByName( const char *name )
 {
-	unsigned int shortNameSize;
-	char *shortName;
-	unsigned int nameLength;
-	unsigned int key;
-	shader_t *hnode, *s;
 
 	if( !name || !name[0] )
 		return;
 
-	shortNameSize = strlen( name ) + 1;
-	shortName = alloca( shortNameSize );
-	nameLength = R_ShaderCleanName( name, shortName, shortNameSize );
-	if( !nameLength )
+	const size_t shortNameSize = strlen( name ) + 1;
+	struct QStrSpan shortName = __ShaderCleanName(qCToStrRef(name), (struct QStrSpan) {
+		.buf = alloca(shortNameSize),
+		.len = shortNameSize 
+	});
+	if( qStrEmpty(shortName))
 		return;
 
-	key = COM_SuperFastHash( ( const uint8_t * )shortName, nameLength, nameLength ) % SHADERS_HASH_SIZE;
-	hnode = &r_shaders_hash_headnode[key];
-	for( s = hnode->next; s != hnode; s = s->next ) {
-		if( !strcmp( s->name, shortName ) ) {
+	const unsigned int key = COM_SuperFastHash( (unsigned char*)shortName.buf, shortName.len, shortName.len ) % SHADERS_HASH_SIZE;
+	shader_t *hnode = &r_shaders_hash_headnode[key];
+	for(shader_t *s = hnode->next; s != hnode; s = s->next ) {
+		if( !strcmp( s->name, shortName.buf ) ) {
 			R_TouchShader( s );
 		}
 	}
 }
 
-static shader_t *__queryShader( const char *name, shaderType_e type, sds* shortName, size_t* hashKey)
+static shader_t *__queryShader( struct QStrSpan shortName, shaderType_e type, size_t* hashKey)
 {
-	if( !name || !name[0] )
-		return NULL;
+	//if( !name || !name[0] )
+	//	return NULL;
 
-	assert(shortName);
+	//assert(shortName);
 
-	(*shortName) = sdsnewlen( SDS_NOINIT, strlen( name ));
-	const size_t nameLength = R_ShaderCleanName( name, (*shortName), sdslen(*shortName));
-	sdsupdatelen((*shortName));
-	if( !nameLength )
-		return NULL;
+	//(*shortName) = sdsnewlen( SDS_NOINIT, strlen( name ));
+	//const size_t nameLength = R_ShaderCleanName( name, (*shortName), sdslen(*shortName));
+	//sdsupdatelen((*shortName));
+	//if( !nameLength )
+	//	return NULL;
 
 	// test if already loaded
-	size_t key = COM_SuperFastHash( (const uint8_t *)*shortName, nameLength, nameLength ) % SHADERS_HASH_SIZE;
+	size_t key = COM_SuperFastHash( (const uint8_t *)shortName.buf, shortName.len, shortName.len) % SHADERS_HASH_SIZE;
 	if(hashKey) 
 		*hashKey = key;
 	shader_t *hnode = &r_shaders_hash_headnode[key];
 
 	// scan all instances of the same shader for exact match of the type
 	for( shader_t *s = hnode->next; s != hnode; s = s->next ) {
-		if( strcmp( s->name, *shortName) ) {
+		if( strcmp( s->name, shortName.buf) ) {
 			continue;
 		}
 		if( s->type == type ) {
@@ -3160,11 +3146,15 @@ shader_t *__retrieveFromFreeList() {
 
 shader_t *R_LoadShaderText( const char *name, shaderType_e type, bool forceDefault, const char *text )
 {
-	sds shortName = NULL;
 	size_t hashKey = 0;
-	shader_t *shader = __queryShader( name, type, &shortName, &hashKey );
+	const size_t shortNameSize = strlen( name ) + 1;
+	struct QStrSpan shortName = __ShaderCleanName(qCToStrRef(name), (struct QStrSpan) {
+		.buf = alloca(shortNameSize),
+		.len = shortNameSize 
+	});
+
+	shader_t *shader = __queryShader( shortName, type, &hashKey );
 	if( shader ) {
-		sdsfree( shortName );
 		return shader;
 	}
 	shader = __retrieveFromFreeList();
@@ -3175,7 +3165,7 @@ shader_t *R_LoadShaderText( const char *name, shaderType_e type, bool forceDefau
 	shader->prev = prev;
 	shader->id = shader - r_shaders;
 
-	shader->name = shortName; // HACK, will be copied over in Shader_Finish
+	shader->name = shortName.buf; // HACK, will be copied over in Shader_Finish
 	shader->type = type;
 
 	if( type >= SHADER_TYPE_BSP_MIN && type <= SHADER_TYPE_BSP_MAX )
@@ -3196,7 +3186,7 @@ shader_t *R_LoadShaderText( const char *name, shaderType_e type, bool forceDefau
 	const char* token = COM_ParseExt( &ptr, true );
 
 	if( !ptr || token[0] != '{' ) {
-		__Shader_Defaults( shader, type, name, shortName, strlen( shortName ) );
+		__Shader_Defaults( shader, type, name, shortName.buf, shortName.len );
 		goto finish;
 	}
 
@@ -3224,7 +3214,6 @@ finish:
 	shader->next = hnode->next;
 	shader->next->prev = shader;
 	shader->prev->next = shader;
-	sdsfree( shortName );
 	
 	assert(shader->next);
 	assert(shader->prev);
@@ -3237,37 +3226,29 @@ finish:
 */
 shader_t *R_LoadShader( const char *name, shaderType_e type, bool forceDefault )
 {
-	unsigned int key, nameLength;
-	char *shortname;
+	unsigned int key ;
 	shader_t *s;
 	shader_t *hnode, *prev, *next;
 
 	if( !name || !name[0] )
 		return NULL;
 
-	// alloc buffer to hold clean shader name
-	nameLength = strlen( name );
-	if( nameLength + 1 > r_shortShaderNameSize || r_shortShaderNameSize < MAX_QPATH ) {
-		if( r_shortShaderName ) {
-			R_Free( r_shortShaderName );
-			r_shortShaderName = NULL;
-		}
-		r_shortShaderNameSize = max( nameLength + 1, MAX_QPATH );
-		r_shortShaderName = R_Malloc( r_shortShaderNameSize );
-	}
+	const size_t shortNameSize = strlen( name ) + 1;
+	struct QStrSpan shortName = __ShaderCleanName(qCToStrRef(name), (struct QStrSpan) {
+		.buf = alloca(shortNameSize),
+		.len = shortNameSize 
+	});
 
-	shortname = r_shortShaderName;
-	nameLength = R_ShaderCleanName( name, r_shortShaderName, r_shortShaderNameSize );
-	if( !nameLength )
+	if(qStrEmpty(shortName) )
 		return NULL;
 
 	// test if already loaded
-	key = COM_SuperFastHash( ( const uint8_t *)shortname, nameLength, nameLength ) % SHADERS_HASH_SIZE;
+	key = COM_SuperFastHash( (uint8_t*)shortName.buf, shortName.len, shortName.len) % SHADERS_HASH_SIZE;
 	hnode = &r_shaders_hash_headnode[key];
 
 	// scan all instances of the same shader for exact match of the type
 	for( s = hnode->next; s != hnode; s = s->next ) {
-		if( strcmp( s->name, shortname ) ) {
+		if( strcmp( s->name, shortName.buf) ) {
 			continue;
 		}
 		if( s->type == type ) {
@@ -3296,7 +3277,7 @@ shader_t *R_LoadShader( const char *name, shaderType_e type, bool forceDefault )
 	s->next = next;
 	s->prev = prev;
 	s->id = s - r_shaders;
-	R_LoadShaderReal( s, shortname, nameLength, name, type, forceDefault );
+	R_LoadShaderReal( s, shortName.buf, shortName.len, name, type, forceDefault );
 
 	// add to linked lists
 	s->prev = hnode;
