@@ -42,7 +42,6 @@
 #include "qarch.h"
 #include "qtypes.h"
 
-
 #define QSTR_LLSTR_SIZE 21
 #define QSTR_LSTR_SIZE 16 
 
@@ -64,6 +63,7 @@ static inline struct QStrSpan qCToStrRef(const char* c) {
   result.len = c ? (size_t)strlen(c) : 0;
   return result; 
 }
+
 static inline struct QStrSpan qToStrRef(struct QStr str) { 
   struct QStrSpan result;
   result.buf = (char*)str.buf;
@@ -103,11 +103,11 @@ struct QStrSpan qStrTrim(struct QStrSpan slice);
 struct QStrSpan qStrRTrim(struct QStrSpan  slice);
 struct QStrSpan qStrLTrim(struct QStrSpan  slice);
 
-/* Enlarge the free space at the end of the TStr string so that the caller
+/* Enlarge the free space at the end of the QStr string so that the caller
  * is sure that after calling this function can overwrite up to addlen
  * bytes after the end of the string, plus one more byte for nul term.
  *
- * Note: this does not change the *length* of the TStr string as len 
+ * Note: this does not change the *length* of the QStr string as len 
  * but only the free buffer space we have. */
 bool qStrMakeRoomFor(struct QStr* str, size_t addlen);
 /* 
@@ -120,7 +120,7 @@ bool qStrMakeRoomFor(struct QStr* str, size_t addlen);
  **/
 bool qStrSetLen(struct QStr* str, size_t len);
 /**
- * set the amount of memory reserved by the TStr. will only ever increase
+ * set the amount of memory reserved by the QStr. will only ever increase
  * the size of the string 
  * 
  * A reserved string can be assigned with bstrAssign
@@ -128,7 +128,7 @@ bool qStrSetLen(struct QStr* str, size_t len);
 bool qStrSetResv(struct QStr* str, size_t reserveLen); 
 
 /** 
- * Modify an TStr string in-place to make it empty (zero length) set null terminator.
+ * Modify an QStr string in-place to make it empty (zero length) set null terminator.
  * However all the existing buffer is not discarded but set as free space
  * so that next append operations will not require allocations up to the
  * number of bytes previously available. 
@@ -136,7 +136,7 @@ bool qStrSetResv(struct QStr* str, size_t reserveLen);
 bool qStrClear(struct QStr* str);
 
 /**
- * takes a TStr and duplicates the underlying buffer.
+ * takes a QStr and duplicates the underlying buffer.
  *
  * the buffer is trimmed down to the length of the string.
  *
@@ -146,10 +146,10 @@ struct QStr qStrDup(const struct QStr* str);
 bool qStrAppendSlice(struct QStr* str, const struct QStrSpan slice);
 bool qStrAppendChar(struct QStr* str, char b);
 bool qStrInsertChar(struct QStr* str, size_t i, char b);
-bool qStrInserSlice(struct QStr* str, size_t i, const struct QStrSpan slice);
+bool qStrInsertSlice(struct QStr* str, size_t i, const struct QStrSpan slice);
 bool qStrAssign(struct QStr* str, struct QStrSpan slice);
 /**
- * resizes the allocation of the TStr will truncate if the allocation is less then the size 
+ * resizes the allocation of the QStr will truncate if the allocation is less then the size 
  *
  * the buffer is trimmed down to the length of the string.
  *
@@ -207,13 +207,13 @@ struct QStrSpan qStrSplitIter(struct qStrSplitIterable*);
  **/
 struct QStrSpan qStrSplitRevIter(struct qStrSplitIterable*);
 
-/* Set the TStr string length to the length as obtained with strlen(), so
+/* Set the QStr string length to the length as obtained with strlen(), so
  * considering as content only up to the first null term character.
  *
- * This function is useful when the TStr string has been changed where
+ * This function is useful when the QStr string has been changed where
  * the length is not correctly updated. using vsprintf for instance.
  *
- * After the call, slices are not valid if they reference this TStr 
+ * After the call, slices are not valid if they reference this QStr 
  * 
  * s = tfEmpty();
  * s[2] = '\0';
@@ -225,11 +225,16 @@ struct QStrSpan qStrSplitRevIter(struct qStrSplitIterable*);
  * remains 6 bytes. 
  ** */
 bool qStrUpdateLen(struct QStr* str);
+/**
+ * By default, the QStr string is not null terminated. This function will set the null terminator
+ * and ensure that enough space is reserved for the null terminator.
+ */
+void qStrSetNullTerm(struct QStr* str);
 
-/* Append to the TStr string 's' a string obtained using printf-alike format
+/* Append to the QStr string 's' a string obtained using printf-alike format
  * specifier.
  *
- * After the call, the modified TStr string is no longer valid and all the
+ * After the call, the modified QStr string is no longer valid and all the
  * references must be substituted with the new pointer returned by the call.
  *
  * Example:
@@ -247,7 +252,7 @@ int qstrvsscanf(struct QStrSpan slice, const char* fmt, va_list ap);
 
 /* This function is similar to tfcatprintf, but much faster as it does
  * not rely on sprintf() family functions implemented by the libc that
- * are often very slow. Moreover directly handling the TStr as
+ * are often very slow. Moreover directly handling the QStr as
  * new data is concatenated provides a performance improvement.
  *
  * However this function only handles an incompatible subset of printf-alike
@@ -270,11 +275,11 @@ bool qstrcatfmt(struct QStr*, char const *fmt, ...);
  * join an array of slices and cat them to bstr. faster since the lengths are known ahead of time.
  * the buffer can be pre-reserved upfront.
  *
- * this modifies TStr so slices that reference this TStr can become invalid.
+ * this modifies QStr so slices that reference this QStr can become invalid.
  **/
 bool qstrcatjoin(struct QStr*, struct QStrSpan* slices, size_t numSlices, struct QStrSpan sep);
 /*
- * join an array of strings and cat them to TStr 
+ * join an array of strings and cat them to QStr 
  **/
 bool qstrcatjoinCStr(struct QStr*, const char** argv, size_t argc, struct QStrSpan sep);
 

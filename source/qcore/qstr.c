@@ -42,7 +42,7 @@
 #define   wspace(c) (isspace ((unsigned char) c))
 
 #define CHAR_TABLE_LEN (1 << CHAR_BIT)
-#define TFSTR_MAX_PREALLOC (1024*1024)
+#define QSTR_MAX_PREALLOC (1024*1024)
 
 static inline bool charToDigit(uint8_t c , uint8_t base, uint8_t* res) {
   uint8_t val = 0;
@@ -137,23 +137,22 @@ bool qStrSetLen(struct QStr* str, size_t len)
 {
     if (len > str->alloc)
     {
-        assert(len > str->len);
         size_t reqSize = len + 1;
-        if (reqSize < TFSTR_MAX_PREALLOC)
+        if (reqSize < QSTR_MAX_PREALLOC)
         {
             reqSize *= 2;
         }
         else
         {
-            reqSize += TFSTR_MAX_PREALLOC;
+            reqSize += QSTR_MAX_PREALLOC;
         }
         str->buf = (char*)realloc(str->buf, reqSize);
         if (str->buf == NULL)
             return false;
         str->alloc = reqSize;
     }
-    str->len = len;
-    str->buf[len] = '\0'; // add null terminator for backwards compatibility
+    if(str->buf)
+        str->len = len;
     return true;
 }
 
@@ -162,6 +161,7 @@ bool qStrUpdateLen(struct QStr* str)
     size_t len = strlen(str->buf);
     str->len = len;
     assert(str->len < str->alloc); // the buffer has overrun
+    
     return true;
 }
 
@@ -175,15 +175,24 @@ bool qStrClear(struct QStr* str)
     return true;
 }
 
-void qStrFree(struct QStr* str)
+void qStrFree( struct QStr *str )
 {
-	if( str->buf ) {
+	if( str->buf) {
 		free( str->buf );
 	}
 	str->len = 0;
-    str->alloc = 0;
-    str->buf = NULL;
+	str->alloc = 0;
+	str->buf = NULL;
 }
+
+void qStrSetNullTerm(struct QStr* str) {
+    qStrMakeRoomFor(str,  1);
+    if(str->buf) {
+        assert(str->len + 1 <= str->alloc); // we've overrun the buffer
+        str->buf[str->len] = '\0';
+    }
+}
+
 
 bool qStrSetResv(struct QStr* str, size_t reserveLen)
 {
@@ -343,19 +352,19 @@ bool qstrcatfmt(struct QStr* s, char const* fmt, ...)
                 num = va_arg(ap, int);
                 s->buf[s->len++] = num;
                 break;
-			case 's': {
-				char *str = va_arg( ap, char * );
-				const size_t len = strlen( str );
-				if( !qStrMakeRoomFor( s, len + 1 ) )
-					return false;
-				memcpy( s->buf + s->len, str, len );
-				s->len += len;
-				break;
-			}
-			case 'S':
+            case 's': {
+                char *str = va_arg( ap, char * );
+                const size_t len = strlen( str );
+                if( !qStrMakeRoomFor( s, len ) )
+                    return false;
+                memcpy( s->buf + s->len, str, len );
+                s->len += len;
+                break;
+            }
+            case 'S':
             {
                 const struct QStrSpan str = va_arg(ap, struct QStrSpan);
-                if (!qStrMakeRoomFor(s, str.len + 1))
+                if (!qStrMakeRoomFor(s, str.len))
                     return false;
                 memcpy(s->buf + s->len, str.buf, str.len);
                 s->len += str.len;
@@ -694,7 +703,7 @@ bool qstrcatprintf(struct QStr* s, const char* fmt, ...)
     return result;
 }
 
-bool bstrInserSlice(struct QStr* str, size_t offset, const struct QStrSpan slice)
+bool qStrInsertSlice(struct QStr* str, size_t offset, const struct QStrSpan slice)
 {
     assert(offset <= str->len);
     if (!qStrMakeRoomFor(str, slice.len + 1))
@@ -709,13 +718,13 @@ bool bstrInserSlice(struct QStr* str, size_t offset, const struct QStrSpan slice
     return true;
 }
 
-bool bstrAppendChar(struct QStr* str, char b) {
+bool qStrAppendChar(struct QStr* str, char b) {
     return qStrAppendSlice(str, (struct QStrSpan){ &b,  1 }); 
 }
 
-bool bstrInsertChar(struct QStr* str, size_t i, char b)
+bool qStrInsertChar(struct QStr* str, size_t i, char b)
 {
-    return bstrInserSlice(str, i, (struct QStrSpan){ &b,  1 });
+    return qStrInsertSlice(str, i, (struct QStrSpan){ &b,  1 });
 }
 
 bool qStrMakeRoomFor(struct QStr* str, size_t addlen)
@@ -725,13 +734,13 @@ bool qStrMakeRoomFor(struct QStr* str, size_t addlen)
         return true;
 
     size_t reqSize = str->len + addlen;
-    if (reqSize < TFSTR_MAX_PREALLOC)
+    if (reqSize < QSTR_MAX_PREALLOC)
     {
         reqSize *= 2;
     }
     else
     {
-        reqSize += TFSTR_MAX_PREALLOC;
+        reqSize += QSTR_MAX_PREALLOC;
     }
     str->buf = (char*)realloc(str->buf, reqSize);
     if (!str->buf)
@@ -907,7 +916,7 @@ static inline int qStrIndexOfCmp(const struct QStrSpan haystack, size_t offset, 
     return -1;
 }
 
-static inline int bstrLastIndexOfCmp(const struct QStrSpan haystack, size_t offset, const struct QStrSpan needle,
+static inline int qstrLastIndexOfCmp(const struct QStrSpan haystack, size_t offset, const struct QStrSpan needle,
                                      qStrCmpHandle handle)
 {
     if (needle.len > haystack.len || needle.len == 0)
@@ -986,22 +995,22 @@ int qStrIndexOfCaselessOffset(const struct QStrSpan haystack, size_t offset, con
 
 int qStrLastIndexOf(const struct QStrSpan haystack, const struct QStrSpan needle)
 {
-    return bstrLastIndexOfCmp(haystack, haystack.len, needle, qStrEqual);
+    return qstrLastIndexOfCmp(haystack, haystack.len, needle, qStrEqual);
 }
 
 int qStrLastIndexOfOffset(const struct QStrSpan haystack, size_t offset, const struct QStrSpan needle)
 {
-    return bstrLastIndexOfCmp(haystack, offset, needle, qStrEqual);
+    return qstrLastIndexOfCmp(haystack, offset, needle, qStrEqual);
 }
 
 int qStrLastIndexOfCaseless(const struct QStrSpan haystack, const struct QStrSpan needle)
 {
-    return bstrLastIndexOfCmp(haystack, haystack.len, needle, qStrCaselessEqual);
+    return qstrLastIndexOfCmp(haystack, haystack.len, needle, qStrCaselessEqual);
 }
 
 int qStrLastIndexOfCaselessOffset(const struct QStrSpan haystack, size_t offset, const struct QStrSpan needle)
 {
-    return bstrLastIndexOfCmp(haystack, offset, needle, qStrCaselessEqual);
+    return qstrLastIndexOfCmp(haystack, offset, needle, qStrCaselessEqual);
 }
 
 int qStrIndexOfAny(const struct QStrSpan haystack, const struct QStrSpan characters)
@@ -1034,7 +1043,6 @@ bool qstrcatjoin(struct QStr* str, struct QStrSpan* slices, size_t numSlices, st
             reserveLen += slices[i].len;
             reserveLen += sep.len;
         }
-        reserveLen += 1; // space for the null terminator
         if (!qStrMakeRoomFor(str, reserveLen))
             return false;
     }
@@ -1059,7 +1067,7 @@ bool qstrcatjoinCStr(struct QStr* str, const char** argv, size_t argc, struct QS
     for (size_t i = 0; i < argc; i++)
     {
         const size_t argLen = strlen(argv[i]);
-        if (!qStrMakeRoomFor(str, argLen + sep.len))
+        if (!qStrMakeRoomFor(str, argLen + sep.len + 1))
             return false;
         memcpy(str->buf + str->len, argv[i], argLen);
         str->len += argLen;

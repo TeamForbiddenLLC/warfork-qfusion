@@ -26,6 +26,8 @@ if(BUILD_UNIT_TEST)
 		"./test/qstr_test.c")
     add_qcore_test(NAME qstr_utf_test SRCS 
 		"./test/qstr_utf_test.c")
+    add_qcore_test(NAME scratch_alloc_test SRCS 
+		"./test/scratch_alloc_test.c")
 endif()
 
 

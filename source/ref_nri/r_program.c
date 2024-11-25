@@ -893,6 +893,7 @@ static bool __RF_AppendShaderFromFile( struct QStr *str, const char *rootFile, c
 			COM_StripFilename( includeFilePath.buf );
 		}
 		qStrUpdateLen(&includeFilePath);
+		qStrSetNullTerm(&includeFilePath);
 		qStrAppendSlice( &includeFilePath, ( includeFilePath.buf[0] ? qCToStrRef("/") : qCToStrRef("") ) );
 		qStrAppendSlice( &includeFilePath, qCToStrRef(token) );
 		if( __RF_AppendShaderFromFile( str, rootFile, includeFilePath.buf, stackDepth + 1, programType, features ) ) {
@@ -929,7 +930,7 @@ void RP_ProgramList_f( void )
 		for( feature_iter_t iter = __R_NextFeature((feature_iter_t){ .it = glsl_programtypes_features[program->type], .bits = program->features }); __R_IsValidFeatureIter( &iter ); iter = __R_NextFeature( iter ) ) {
 			qStrAppendSlice(&fullName, qCToStrRef(iter.it->suffix));	
 		}
-		Com_Printf( " %3i %s", i + 1, fullName.buf );
+		Com_Printf( " %3i %.*s", i + 1, fullName.len, fullName.buf );
 
 		if( *program->deformsKey ) {
 			Com_Printf( " dv:%s", program->deformsKey );
@@ -1271,12 +1272,13 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 			qStrAppendSlice(&stages[i].source, qToStrRef(featuresStr));
 			qStrAppendSlice(&stages[i].source, qCToStrRef(QF_BUILTIN_GLSL_CONSTANTS ));
 			qStrAppendSlice(&stages[i].source, qCToStrRef(QF_GLSL_MATH ));
-			if(stages[i].stage == GLSLANG_STAGE_VERTEX) {
+			if(stages[i].stage == GLSL_STAGE_VERTEX) {
 				__appendGLSLDeformv(&stages[i].source, deforms, numDeforms );
 			}
 
 			qStrClear( &filePath );
 			qstrcatfmt( &filePath, "glsl_nri/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
+			qStrSetNullTerm(&filePath);
 			error = RF_AppendShaderFromFile( &stages[i].source, filePath.buf, type, features );
 			if( error ) {
 				break;
@@ -1296,6 +1298,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 	program->hasPushConstant = false;
 
 	for( size_t stageIdx = 0; stageIdx < Q_ARRAY_COUNT( stages ); stageIdx++ ) {
+		qStrSetNullTerm(&stages[stageIdx].source);
 		const glslang_input_t input = { 
 										.language = GLSLANG_SOURCE_GLSL,
 										.stage = __RP_GLStageToSlang( stages[stageIdx].stage ),
@@ -1599,6 +1602,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 	
 	program->type = type;
 	program->features = features;
+	qStrSetNullTerm(&fullName);
 	program->name = R_CopyString( fullName.buf );
 	program->deformsKey = R_CopyString( deformsKey ? deformsKey : "" );
 

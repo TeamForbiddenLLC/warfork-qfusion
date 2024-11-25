@@ -2765,7 +2765,7 @@ static struct QStrSpan __ShaderCleanName( struct QStrSpan name, struct QStrSpan 
 	if( lastDot > lastSlash) {
 		result.len = lastDot;
 	}
-	result.buf[result.len] = 0;
+	result.buf[result.len] = '\0';
 	return result;
 }
 

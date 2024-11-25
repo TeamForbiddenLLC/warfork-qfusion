@@ -61,10 +61,11 @@ jobs:
       - name: Unit Test 
         working-directory: ./source/build
         shell: bash
-        run: |  
+        run: |
+          set -e
           for exc in ./test/*; do
             $exc
-          done || exit 1
+          done
       
       - name: Package warfork
         working-directory: ./source/build
@@ -131,10 +132,11 @@ jobs:
       
       - name: Unit Test
         working-directory: ./source/build/${{matrix.config.build_folder}}
-        run: |  
+        run: | 
+          set -e
           for exc in ./test/*[^.dSYM]; do
             $exc
-          done || exit 1
+          done
 
       - name: Upload warfork artifact
         uses: actions/upload-artifact@v3
@@ -193,10 +195,11 @@ jobs:
       - name: Unit Test 
         shell: bash
         working-directory: .\source\build\${{matrix.config.build_folder}}
-        run: |  
+        run: | 
+          set -e
           for exc in ./test/*; do
             $exc
-          done || exit 1
+          done
 
       - name: Package warfork
         working-directory: .\source\build\${{matrix.config.build_folder}}

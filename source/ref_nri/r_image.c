@@ -1723,7 +1723,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 			}
 		}
 		// don't confuse paths such as /ui/xyz.cache/123 with file extensions
-		if( lastDot >= lastSlash ) {
+		if( lastDot >= lastSlash && lastDot >= 0) {
 			// truncate string omitting the extension
 			qStrSetLen( &resolvedPath, lastDot );
 		}
@@ -1736,6 +1736,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 
 	const uint32_t basePathLen = resolvedPath.len;
 	qStrSetLen( &resolvedPath, basePathLen);
+	qStrSetNullTerm(&resolvedPath);
 
 	image_t	*image = NULL;
 	const uint32_t key = COM_SuperFastHash( (uint8_t *)resolvedPath.buf, resolvedPath.len, resolvedPath.len ) % IMAGES_HASH_SIZE;
@@ -1751,6 +1752,8 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	}
 	
 	qStrSetLen( &resolvedPath, basePathLen);
+	qStrSetNullTerm(&resolvedPath);
+
 	image = __R_AllocImage( resolvedPath.buf);
 	image->layers = 1;
 	image->flags = flags;
@@ -1765,12 +1768,14 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 			extensionKTX
 	};
 	
+	qStrSetNullTerm(&resolvedPath);
 	const char *ext = FS_FirstExtension2( resolvedPath.buf, extensions, Q_ARRAY_COUNT( extensions ) ); // last is KTX
 	if( ext != NULL ) {
 		qStrAppendSlice(&resolvedPath, qCToStrRef(ext));
 		image->extension = ext;
 	}
 		
+	qStrSetNullTerm(&resolvedPath);
 	if( ext == extensionKTX && __R_LoadKTX( image, resolvedPath.buf ) ) {
 		goto done;
 	}
@@ -1801,7 +1806,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 			for( size_t u = 0; u < 6; u++ ) {
 				qStrSetLen( &resolvedPath, basePathLen);
 				qstrcatfmt(&resolvedPath, "_%s.tga", cubemapSides[i][u].suf );
-				
+				qStrSetNullTerm(&resolvedPath);
 				if(!T_LoadImageSTBI(resolvedPath.buf, &uploads[u].buffer)) {
 					ri.Com_DPrintf( S_COLOR_YELLOW "failed to load image %s\n", resolvedPath );
 					break;
@@ -1826,6 +1831,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 			}
 		}
 		qStrSetLen( &resolvedPath, basePathLen); // truncate the pathext + cubemap
+		qStrSetNullTerm(&resolvedPath);
 		if( uploadCount != 6 ) {
 			ri.Com_DPrintf( S_COLOR_YELLOW "Missing image: %s\n", image->name );
 			__FreeImage( R_ActiveFrameCmd(),image );
@@ -1836,6 +1842,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	
 		struct UploadImgBuffer *upload = &uploads[uploadCount++];
 		upload->flags = flags;
+		qStrSetNullTerm(&resolvedPath);
 		if( ( ext == extensionPNG || ext == extensionJPG || ext == extensionTGA ) && T_LoadImageSTBI( resolvedPath.buf, &upload->buffer ) ) {
 			image->width = image->width = T_PixelW( &upload->buffer );
 			image->height = image->height = T_PixelH( &upload->buffer );
