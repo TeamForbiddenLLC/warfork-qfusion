@@ -197,7 +197,7 @@ jobs:
         working-directory: .\source\build\${{matrix.config.build_folder}}
         run: | 
           set -e
-          for exc in ./test/*; do
+          for exc in ./test/*[^.pdb]; do
             $exc
           done
 
