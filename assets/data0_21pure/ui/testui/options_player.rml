@@ -1,7 +1,7 @@
 <rml>
 <head>
 	<title>options</title>
-	<link type="text/template" href="template.rml" />
+	<link type="text/template" href="options.rml" />
 	<link rel="stylesheet" type="text/css" href="css/modelview.rcss" />
 	<link rel="stylesheet" type="text/css" href="css/options/player.rcss" />
 	<script src="as/modelview.as"></script>
@@ -87,6 +87,7 @@
 				}
 				rml += '<div class="title">Name</div><input cvar="name" type="text" value="Player"/><br/>';
 				rml += '<div class="title">Clan</div><input cvar="clan" type="text" value=""/><br/>';
+							
 				if( softKeyboard ) {
 					rml += '<br/><hr class="nicehr"/>'; // no br in the end intentionally
 				}
@@ -218,29 +219,13 @@
               break;
           }
         }
-
-        void newUiModal(void)
-		{
-			window.modal('modal_basic.rml?text=Warning%3A%20Experemental%20UI%20is%20still%20under%20development%20and%20may%20contain%20bugs%20or%20incomplete%20features.%20You%20will%20have%20an%20option%20to%20switch%20back%20to%20legacy%20(this)%20version.%20Please%20use%20it%20at%20your%20own%20risk%20and%20report%20any%20issues%20you%20encounter%20on%20our%20GitHub%20or%20in%20Discord.%20Thank%20you%20for%20your%20understanding%20and%20support&ypos=0.25');
-			if(window.getModalValue() == 0) 
-			{
-				switchToNewUi();
-			}
-		}
-		
-
-        void switchToNewUi(void)
-        {
-              game.execAppend( "ui_basepath ui/testui; ui_reload\n" );
-        }
            
            
 	</script>
 </head>
-<body template="porkui" onload="$onPlayerLoad" onshow="$onPlayerShow">
+<body template="options" onload="$onPlayerLoad" onshow="$onPlayerShow">
 
-	<!-- divide the screen to two vertical contexts -->	
-	<div id="leftside">
+	<div>
 	
 		<!-- player setup -->
 		<div id="player-setup">
@@ -272,6 +257,63 @@
 
 						<div id="nameclan"/>
 						
+						<br/><br/>
+						
+						<div class="table">
+						   <div class="caption">Color Codes</div>
+						   <p>Color codes can be used in nick, clan and chat!</p>
+						   <br/>
+						   <div class="row">
+							  <div class="cell header">Code</div>
+							  <div class="cell header">Color</div>
+							  <div class="cell"> </div>
+							  <div class="cell"> </div>
+							  <div class="cell header">Code</div>
+							  <div class="cell header">Color</div>
+							</div>
+						   <div class="row">
+							  <div class="cell">^0</div>
+							  <div class="cell"><span style="color:black; background-color: white;">Black</span></div>
+							  <div class="cell"> </div>
+							  <div class="cell"> </div>
+							  <div class="cell">^5</div>
+							  <div class="cell"><span style="color:#00FEFF;">Cyan</span></div>
+						   </div>
+						   <div class="row">
+							  <div class="cell">^1</div>
+							  <div class="cell"><span style="color:red;">Red</span></div>
+							  <div class="cell"> </div>
+							  <div class="cell"> </div>
+							  <div class="cell">^6</div>
+							  <div class="cell"><span style="color:#FF03FF;">Magenta</span></div>
+						   </div>
+						   <div class="row">
+							  <div class="cell">^2</div>
+							  <div class="cell"><span style="color:lime;">Green</span></div>
+							  <div class="cell"> </div>
+							  <div class="cell"> </div>
+							  <div class="cell">^7</div>
+							  <div class="cell"><span style="color:white;">White</span></div>
+						   </div>
+						   <div class="row">
+							  <div class="cell">^3</div>
+							  <div class="cell"><span style="color:yellow;">Yellow</span></div>
+							  <div class="cell"> </div>
+							  <div class="cell"> </div>
+							  <div class="cell">^8</div>
+							  <div class="cell"><span style="color:orange;">Orange</span></div>
+						   </div>
+						   <div class="row">
+							  <div class="cell">^4</div>
+							  <div class="cell"><span style="color:blue;">Blue</span></div>
+							  <div class="cell"> </div>
+							  <div class="cell"> </div>
+							  <div class="cell">^9</div>
+							  <div class="cell"><span style="color:gray;">Gray</span></div>
+						   </div>
+						</div>
+
+
 						<br/>
 						<button onclick="playerform.restoreOptions();mSetup.Reset(self);" class="button-cancel">Cancel</button>
 						<button onclick="playerform.applyOptions();mSetup.Fix(self);notificationPopup('Saved');" class="button-apply">Save changes</button>
@@ -301,10 +343,6 @@
 							<option value="3">count up</option>
 						</select>
 
-						<br/>
-						<hr class="nicehr" />
-						<br/>
-						
 						<div class="title">Crosshair</div>
 						<div id="crosshairs">
 							<div id="crosshair" class="crosshair"/>
@@ -312,64 +350,6 @@
 							<div id="crosshair-strong" class="crosshair"/>
 							<div id="crosshair-strong-white" class="crosshair crosshairwhite" onclick="nextCrosshair(cg_crosshair_strong,crosshairStrong,crosshairStrongWhite);"/>
 						</div>
-						<br/>
-
-						<div class="title">Crosshair color</div>
-						<select cvar="cg_crosshair_color" realtime="1">
-							<option value="255 255 255">White</option>
-							<option value="255 0 0">Red</option>
-							<option value="0 255 0">Green</option>
-							<option value="0 0 255">Blue</option>
-							<option value="0 255 255">Cyan</option>
-							<option value="255 0 255">Magenta</option>
-							<option value="255 255 0">Yellow</option>
-							<option value="255 128 0">Orange</option>
-							<option value='0 0 0'>Black</option>
-						</select>
-						<br/>
-
-						<div class="title">Strong crosshair color</div>
-						<select cvar="cg_crosshair_strong_color" realtime="1">
-							<option value="255 255 255">White</option>
-							<option value="255 0 0">Red</option>
-							<option value="0 255 0">Green</option>
-							<option value="0 0 255">Blue</option>
-							<option value="0 255 255">Cyan</option>
-							<option value="255 0 255">Magenta</option>
-							<option value="255 255 0">Yellow</option>
-							<option value="255 128 0">Orange</option>
-							<option value='0 0 0'>Black</option>
-						</select>
-						<br/>
-
-						<div class="title">Crosshair size</div>
-						<input cvar="cg_crosshair_size" class="slider" type="range" min="0" max="48" step="1" value="0" realtime="1"/>
-						<br/>
-
-						<div class="title">Strong crosshair size</div>
-						<input cvar="cg_crosshair_strong_size" class="slider" type="range" min="0" max="48" step="1" value="0" realtime="1"/>
-						<br/>
-
-						<div class="title">Change crosshair color on hit</div>
-						<input cvar="cg_showCrosshairDamage" type="checkbox" realtime="1"/>
-						<br/>
-
-						<div class="title">Crosshair hit color</div>
-						<select cvar="cg_crosshair_damage_color" realtime="1">
-							<option value="255 255 255">White</option>
-							<option value="255 0 0">Red</option>
-							<option value="0 255 0">Green</option>
-							<option value="0 0 255">Blue</option>
-							<option value="0 255 255">Cyan</option>
-							<option value="255 0 255">Magenta</option>
-							<option value="255 255 0">Yellow</option>
-							<option value="255 128 0">Orange</option>
-							<option value='0 0 0'>Black</option>
-						</select>
-						<br/>
-
-						<br/>
-						<hr class="nicehr" />
 						<br/>
 						
 						<div class="title">FOV</div>
@@ -458,10 +438,6 @@
 						<input cvar="cg_showZoomEffect" type="checkbox" realtime="1"/>
 						<br/>
 
-						<div class="title">Show strafe helper (in race and warmup)</div>
-						<input cvar="cg_strafeHUD" type="checkbox" realtime="1"/>
-						<br/>
-
 						<div id="hud-touchmovedir">
 							<div class="title">Show touch movement direction</div>
 							<input cvar="cg_touch_showMoveDir" type="checkbox" realtime="1"/>
@@ -543,13 +519,17 @@
 						<div class="title">Enable view animation</div>
 						<input cvar="cg_viewBob" type="checkbox" realtime="1"/>
 						<br/>
+
+						<div class="title">Show critical hit effect</div>
+						<input cvar="cg_cartoonHitEffect" type="checkbox" realtime="1"/>
+						<br/>
                         
                         <div class="title">Show damage numbers</div>
 						<input cvar="cg_damageNumbers" type="checkbox" realtime="1"/>
 						<br/>
                         
                         <div class="title">Damage numbers size</div>
-                        <select realtime="1" cvar="cg_damageNumbersSize" onchange="$damageNumbersSize">
+                        <select realtime="1" onchange="$damageNumbersSize">
                         <option value="1">Tiny</option>
                         <option value="2">Small</option>
                         <option value="3">Medium</option>
@@ -574,11 +554,7 @@
 							<option value="12">Light Blue</option> 							
 						</select>
 						<br/>                    
-						<br/>                    
-						<br/>
-
-                        <button onclick="newUiModal();">Switch to new experemental UI</button> 
-                                   
+                                                                     
 					</optionsform>
 				</panel>
 
@@ -588,25 +564,24 @@
 						<div class="title">Don't suggest servers</div>
 						<input type="checkbox" cvar="ui_autobrowse_manual" realtime="1" />
 						<br />
-						<div class="title">Route traffic through Steam, potentially improving ping</div>
-						<input type="checkbox" cvar="cl_prefer_steam_p2p" realtime="1" />
-						<br />
 					</optionsform>
 				</panel>
 			</tabset>
 		</div>
 	</div>
-
+	
+	<!-- options navigation -->
+<!--
 	<div id="sidebar">
 		<div id="sidebar2">
-			<!-- options navigation -->
 			<a href="#" onclick="animOpenMenu('options_player.rml');">Player</a>
 			<a href="#" onclick="animOpenMenu('options_teams.rml');">Teams</a>
 			<a href="#" onclick="animOpenMenu('options_video.rml');">Video</a>
 			<a href="#" onclick="animOpenMenu('options_audio.rml');">Audio</a>
 			<a href="#" onclick="animOpenMenu('options_input.rml');">Input</a>
 		</div>
-	</div>
+	</div> 
+-->
 
 </body>
 </rml>

@@ -1,0 +1,22 @@
+
+/* Common classes */
+
+/* Utility class for nice looking hr */
+.nicehr {
+	width: 95%;
+	margin-left: auto;
+	margin-right: auto;
+	border-top: 1dp #121017;
+	border-bottom: 1dp #2c2839;
+}
+
+.w100p { width: 100%; }
+
+.hide  { display: none; }
+br     { clear: both; margin-bottom: 8dp; }
+
+.dropshadow {
+	padding-top: 16dp;
+	background-decorator: image;
+	background-image: /ui/porkui/gfx/dropshadow.tga	0 0 1 1;
+}
