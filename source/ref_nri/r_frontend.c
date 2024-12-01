@@ -61,32 +61,34 @@ static void __R_InitVolatileAssets( void )
 }
 
 static void __ShutdownSwapchainTexture() {
-	if(!rsh.swapchain)
-		return;
+	if(rsh.swapchain) {
+		for( size_t i = 0; i < arrlen( rsh.backBuffers ); i++ ) {
+			struct frame_tex_buffers_s *backBuffer = &rsh.backBuffers[i];
+			assert( backBuffer->colorAttachment );
+			assert( backBuffer->colorTexture );
+			assert( backBuffer->depthAttachment );
+			assert( backBuffer->depthTexture );
 
-	for( size_t i = 0; i < arrlen( rsh.backBuffers ); i++ ) {
-		struct frame_tex_buffers_s *backBuffer = &rsh.backBuffers[i];
-		assert( backBuffer->colorAttachment );
-		assert( backBuffer->colorTexture );
-		assert( backBuffer->depthAttachment );
-		assert( backBuffer->depthTexture );
+			for( size_t pogoIdx = 0; pogoIdx < Q_ARRAY_COUNT( rsh.backBuffers->pogoBuffers ); pogoIdx++ ) {
+				rsh.nri.coreI.DestroyDescriptor( backBuffer->pogoBuffers[pogoIdx].colorAttachment );
+				rsh.nri.coreI.DestroyDescriptor( backBuffer->pogoBuffers[pogoIdx].shaderDescriptor.descriptor );
+				rsh.nri.coreI.DestroyTexture( backBuffer->pogoBuffers[pogoIdx].colorTexture );
+			}
+			rsh.nri.coreI.DestroyDescriptor( backBuffer->colorAttachment );
+			rsh.nri.coreI.DestroyDescriptor( backBuffer->depthAttachment );
+			rsh.nri.coreI.DestroyTexture( backBuffer->depthTexture );
 
-		for( size_t pogoIdx = 0; pogoIdx < Q_ARRAY_COUNT( rsh.backBuffers->pogoBuffers ); pogoIdx++ ) {
-			rsh.nri.coreI.DestroyDescriptor( backBuffer->pogoBuffers[pogoIdx].colorAttachment );
-			rsh.nri.coreI.DestroyDescriptor( backBuffer->pogoBuffers[pogoIdx].shaderDescriptor.descriptor );
-			rsh.nri.coreI.DestroyTexture( backBuffer->pogoBuffers[pogoIdx].colorTexture );
+			for( size_t mIdx = 0; mIdx < backBuffer->memoryLen; mIdx++ ) {
+				assert( backBuffer->memory[mIdx] );
+				rsh.nri.coreI.FreeMemory( backBuffer->memory[mIdx] );
+			}
 		}
-		rsh.nri.coreI.DestroyDescriptor( backBuffer->colorAttachment );
-		rsh.nri.coreI.DestroyDescriptor( backBuffer->depthAttachment );
-		rsh.nri.coreI.DestroyTexture( backBuffer->depthTexture );
-
-		for( size_t mIdx = 0; mIdx < backBuffer->memoryLen; mIdx++ ) {
-			assert( backBuffer->memory[mIdx] );
-			rsh.nri.coreI.FreeMemory( backBuffer->memory[mIdx] );
-		}
+		rsh.nri.swapChainI.DestroySwapChain( rsh.swapchain );
+		arrfree(rsh.backBuffers);
 	}
-	arrfree(rsh.backBuffers);
-	rsh.nri.swapChainI.DestroySwapChain( rsh.swapchain );
+	if(rsh.frameFence) {
+		rsh.nri.coreI.DestroyFence(rsh.frameFence);
+	}
 	rsh.frameFence = NULL;
 	rsh.swapchainCount = 0;
 	rsh.swapchain = NULL;
@@ -146,6 +148,7 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	}
 
 	rsh.shadowSamplerDescriptor = R_CreateDescriptorWrapper( &rsh.nri, R_ResolveSamplerDescriptor( IT_DEPTHCOMPARE | IT_SPECIAL | IT_DEPTH ) );
+	assert(rsh.frameFence == NULL);
 	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateFence( rsh.nri.device, 0, &rsh.frameFence ) );
 	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.GetCommandQueue(rsh.nri.device, NriCommandQueueType_GRAPHICS, &rsh.cmdQueue) )
 
@@ -234,6 +237,8 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 		NriSwapChainDesc swapChainDesc = { .commandQueue = rsh.nri.graphicsCommandQueue, .width = width, .height = height, .format = DefaultSwapchainFormat, .textureNum = 3, .window = nriWindow };
 		__ShutdownSwapchainTexture();
 
+		assert(rsh.frameFence == NULL);
+		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateFence( rsh.nri.device, 0, &rsh.frameFence ) );
 		NRI_ABORT_ON_FAILURE( rsh.nri.swapChainI.CreateSwapChain( rsh.nri.device, &swapChainDesc, &rsh.swapchain ) );
 
 		uint32_t swapChainTextureNum = 0;
@@ -377,19 +382,13 @@ void RF_Shutdown( bool verbose )
 	RP_Shutdown();
 
 	R_ExitResourceUpload();
-
-	__ShutdownSwapchainTexture();
+	
 	for(size_t i = 0; i < NUMBER_FRAMES_FLIGHT; i++) {
 		FrameCmdBufferFree(&rsh.frameCmds[i]);
 	}
 
-	rsh.swapchainCount = 0;
+	__ShutdownSwapchainTexture();
 
-	rsh.nri.coreI.DestroyFence(rsh.frameFence);
-	rsh.nri.swapChainI.DestroySwapChain(rsh.swapchain);
-
-	rsh.swapchain = NULL;
-	rsh.frameFence = NULL;
 	ri.Mutex_Destroy( &rf.speedsMsgLock );
 	ri.Mutex_Destroy( &rf.debugSurfaceLock );
 
