@@ -24,7 +24,7 @@
 
 namespace WSWUI
 {
-	using namespace Rocket::Core;
+	using namespace Rml::Core;
 
 	class NinePatchDecorator : public Decorator
 	{

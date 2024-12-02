@@ -28,7 +28,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 namespace WSWUI
 {
 
-using namespace Rocket::Core;
+using namespace Rml::Core;
 
 // forward-declare the instancer for keyselects
 class UI_WorldviewWidgetInstancer;
@@ -69,7 +69,7 @@ public:
 	virtual void OnRender()
 	{
 		bool firstRender = false;
-		Rocket::Core::Dictionary parameters;
+		Rml::Core::Dictionary parameters;
 
 		Element::OnRender();
 
@@ -93,7 +93,7 @@ public:
 		}
 
 		// refdef setup
-		Rocket::Core::Vector2f box = GetBox().GetSize(Rocket::Core::Box::CONTENT);
+		Rml::Vector2f box = GetBox().GetSize(Rml::Core::Box::CONTENT);
 		refdef.width = box.x;
 		refdef.height = box.y;
 		refdef.fov_x = fovX;
@@ -108,7 +108,7 @@ public:
 		}
 		AnglesToAxis( viewAngles, refdef.viewaxis );
 
-		Rocket::Core::Vector2f offset = GetAbsoluteOffset(Rocket::Core::Box::CONTENT);
+		Rml::Vector2f offset = GetAbsoluteOffset(Rml::Core::Box::CONTENT);
 		refdef.x = offset.x;
 		refdef.y = offset.y;
 
@@ -132,11 +132,11 @@ public:
 		}
 	}
 
-	virtual void OnPropertyChange(const Rocket::Core::PropertyNameList& changed_properties)
+	virtual void OnPropertyChange(const Rml::Core::PropertyNameList& changed_properties)
 	{
 		Element::OnPropertyChange(changed_properties);
 
-		for (Rocket::Core::PropertyNameList::const_iterator it = changed_properties.begin(); it != changed_properties.end(); ++it)
+		for (Rml::Core::PropertyNameList::const_iterator it = changed_properties.begin(); it != changed_properties.end(); ++it)
 		{
 			if (*it == "worldmodel")
 			{
@@ -238,7 +238,7 @@ public:
 	}
 
 	// Called for every event sent to this element or one of its descendants.
-	void ProcessEvent( Rocket::Core::Event& evt )
+	void ProcessEvent( Rml::Event& evt )
 	{
 		if( evt == "invalidate" ) {
 			Initialized = false;

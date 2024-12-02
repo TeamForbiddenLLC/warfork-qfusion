@@ -887,7 +887,7 @@ void UI_Main::M_Menu_Open_Cmd_f_( bool modal )
 	if( trap::Cmd_Argc() < 2 )
 		return;
 
-	Rocket::Core::URL url;
+	Rml::Core::URL url;
 
 	url.SetFileName( trap::Cmd_Argv( 1 ) );
 	url.SetExtension( "rml" );
@@ -896,7 +896,7 @@ void UI_Main::M_Menu_Open_Cmd_f_( bool modal )
 		url.SetParameter( trap::Cmd_Argv( i ), trap::Cmd_Argv( i+1 ) );
 	}
 
-	Rocket::Core::String urlString = url.GetURL();
+	Rml::String urlString = url.GetURL();
 	//Com_Printf( "UI_Main::M_Menu_Open_f %s\n", urlString.CString() );
 
 	NavigationStack *nav = self->navigations[UI_CONTEXT_MAIN].front();
@@ -937,7 +937,7 @@ void UI_Main::M_Menu_Quick_f( void )
 		return;
 	}
 
-	Rocket::Core::URL url;
+	Rml::Core::URL url;
 
 	url.SetFileName( trap::Cmd_Argv( 1 ) );
 	url.SetExtension( "rml" );
@@ -946,7 +946,7 @@ void UI_Main::M_Menu_Quick_f( void )
 		url.SetParameter( trap::Cmd_Argv( i ), trap::Cmd_Argv( i+1 ) );
 	}
 
-	Rocket::Core::String urlString = url.GetURL();
+	Rml::String urlString = url.GetURL();
 	if( urlString == self->quickMenuURL )
 		return;
 

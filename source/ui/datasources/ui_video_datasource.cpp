@@ -31,7 +31,7 @@ namespace WSWUI
 {
 
 VideoDataSource::VideoDataSource( void ) :
-	Rocket::Controls::DataSource( VIDEO_SOURCE )
+	Rml::DataSource( VIDEO_SOURCE )
 {
 	updateVideoModeList();
 }

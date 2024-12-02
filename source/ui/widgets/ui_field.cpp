@@ -24,19 +24,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "widgets/ui_widgets.h"
 #include "widgets/ui_field.h"
 
-#include <Rocket/Controls.h>
-#include <Rocket/Controls/DataFormatter.h>
+#include <RmlUi/Core/Controls.h>
+#include <RmlUi/Core/Controls/DataFormatter.h>
 
 namespace WSWUI {
 
-using namespace Rocket::Core;
+using namespace Rml::Core;
 
 ElementField::ElementField( const String &tag ) : Element(tag), data_formatter(NULL)
 {
 }
 
 // Called when attributes on the element are changed.
-void ElementField::OnAttributeChange( const Rocket::Core::AttributeNameList& changed_attributes )
+void ElementField::OnAttributeChange( const Rml::Core::AttributeNameList& changed_attributes )
 {
 	Element::OnAttributeChange(changed_attributes);
 
@@ -54,7 +54,7 @@ void ElementField::OnAttributeChange( const Rocket::Core::AttributeNameList& cha
 			formatterChanged = true;
 		}
 		else {
-			data_formatter = Rocket::Controls::DataFormatter::GetDataFormatter( formatter );
+			data_formatter = Rml::DataFormatter::GetDataFormatter( formatter );
 			if( !data_formatter ) {
 				Com_Printf( S_COLOR_YELLOW "WARNING: Unable to find data formatter named '%s', formatting skipped.", formatter.CString() );
 			}

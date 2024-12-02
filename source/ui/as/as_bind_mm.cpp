@@ -87,7 +87,7 @@ public:
 		const int pstate = state;
 		state = trap::MM_GetLoginState();
 
-		Rocket::Core::Dictionary ev_parms;
+		Rml::Core::Dictionary ev_parms;
 
 		if( pstate != state ) {
 			ev_parms.Set( "state", pstate );
@@ -123,11 +123,11 @@ private:
 	int state;
 	ASInterface *asmodule;
 
-	void dispatchEvent( const char *event, const Rocket::Core::Dictionary &parms )
+	void dispatchEvent( const char *event, const Rml::Core::Dictionary &parms )
 	{
-		Rocket::Core::Event *ev = Rocket::Core::Factory::InstanceEvent( NULL, event, parms, false );
+		Rml::Event *ev = Rml::Core::Factory::InstanceEvent( NULL, event, parms, false );
 
-		ev->SetPhase( Rocket::Core::Event::PHASE_BUBBLE ); // FIXME?
+		ev->SetPhase( Rml::Event::PHASE_BUBBLE ); // FIXME?
 
 		for( ListenersList::iterator it = listeners.begin(); it != listeners.end(); ) {
 			EventCallback func = it->second;
@@ -164,7 +164,7 @@ erase:
 		listeners.clear();
 	}
 
-	typedef ASBind::FunctionPtr<void( Rocket::Core::Event* )> EventCallback;
+	typedef ASBind::FunctionPtr<void( Rml::Event* )> EventCallback;
 	typedef std::pair<std::string, EventCallback> Listener;
 	typedef std::vector<Listener> ListenersList;
 	ListenersList listeners;

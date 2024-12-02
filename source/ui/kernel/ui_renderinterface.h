@@ -10,13 +10,13 @@
 #ifndef UI_RENDERINTERFACE_H_
 #define UI_RENDERINTERFACE_H_
 
-#include <Rocket/Core/RenderInterface.h>
+#include <RmlUi/Core/RenderInterface.h>
 #include "kernel/ui_polyallocator.h"
 
 namespace WSWUI
 {
 
-class UI_RenderInterface : public Rocket::Core::RenderInterface
+class UI_RenderInterface : public Rml::RenderInterface
 {
 public:
 	UI_RenderInterface( int vidWidth, int vidHeight, float pixelRatio );
@@ -25,27 +25,33 @@ public:
 	//// Implement the RenderInterface
 
 	/// Called by Rocket when it wants to render geometry that it does not wish to optimise.
-	virtual void RenderGeometry(Rocket::Core::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rocket::Core::TextureHandle texture, const Rocket::Core::Vector2f& translation);
+	virtual void RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rml::TextureHandle texture, const Rml::Vector2f& translation);
 
 	/// Called by Rocket when it wants to compile geometry it believes will be static for the forseeable future.
-	virtual Rocket::Core::CompiledGeometryHandle CompileGeometry(Rocket::Core::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rocket::Core::TextureHandle texture);
+	virtual Rml::CompiledGeometryHandle CompileGeometry(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rml::TextureHandle texture);
 
 	/// Called by Rocket when it wants to render application-compiled geometry.
-	virtual void RenderCompiledGeometry(Rocket::Core::CompiledGeometryHandle geometry, const Rocket::Core::Vector2f& translation);
+	virtual void RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, const Rml::Vector2f& translation);
 	/// Called by Rocket when it wants to release application-compiled geometry.
-	virtual void ReleaseCompiledGeometry(Rocket::Core::CompiledGeometryHandle geometry);
+	virtual void ReleaseCompiledGeometry(Rml::CompiledGeometryHandle geometry);
 
 	/// Called by Rocket when it wants to enable or disable scissoring to clip content.
 	virtual void EnableScissorRegion(bool enable);
 	/// Called by Rocket when it wants to change the scissor region.
 	virtual void SetScissorRegion(int x, int y, int width, int height);
 
-	/// Called by Rocket when a texture is required by the library.
-	virtual bool LoadTexture(Rocket::Core::TextureHandle& texture_handle, Rocket::Core::Vector2i& texture_dimensions, const Rocket::Core::String& source);
-	/// Called by Rocket when a texture is required to be built from an internally-generated sequence of pixels.
-	virtual bool GenerateTexture(Rocket::Core::TextureHandle& texture_handle, const Rocket::Core::byte* source, const Rocket::Core::Vector2i& source_dimensions, int source_samples);
-	/// Called by Rocket when a loaded texture is no longer required.
-	virtual void ReleaseTexture(Rocket::Core::TextureHandle texture_handle);
+
+	virtual Rml::TextureHandle LoadTexture(Rml::Vector2i& texture_dimensions, const Rml::String& source);
+	virtual Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte> source, Rml::Vector2i source_dimensions);
+	virtual void ReleaseTexture(Rml::TextureHandle texture);
+
+
+	///// Called by Rocket when a texture is required by the library.
+	//virtual bool LoadTexture(Rml::TextureHandle& texture_handle, Rml::Core::Vector2i& texture_dimensions, const Rml::String& source);
+	///// Called by Rocket when a texture is required to be built from an internally-generated sequence of pixels.
+	//virtual bool GenerateTexture(Rml::TextureHandle& texture_handle, const Rml::Core::byte* source, const Rml::Core::Vector2i& source_dimensions, int source_samples);
+	///// Called by Rocket when a loaded texture is no longer required.
+	//virtual void ReleaseTexture(Rml::TextureHandle texture_handle);
 
 	/// Returns the number of pixels per inch.
 	virtual float GetPixelsPerInch(void);
@@ -56,7 +62,7 @@ public:
 	int GetWidth( void );
 	int GetHeight( void );
 
-	void AddShaderToCache( const Rocket::Core::String &shader );
+	void AddShaderToCache( const Rml::String &shader );
 	void ClearShaderCache( void );
 	void TouchAllCachedShaders( void );
 
@@ -75,10 +81,10 @@ private:
 	PolyAllocator polyAlloc;
 	struct shader_s *whiteShader;
 
-	typedef std::map<Rocket::Core::String, char> ShaderMap;
+	typedef std::map<Rml::String, char> ShaderMap;
 	ShaderMap shaderMap;
 
-	poly_t *RocketGeometry2Poly(bool temp, Rocket::Core::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rocket::Core::TextureHandle texture);
+	poly_t *RocketGeometry2Poly(bool temp, Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rml::TextureHandle texture);
 };
 
 }

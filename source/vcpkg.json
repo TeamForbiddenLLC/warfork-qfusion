@@ -1,0 +1,22 @@
+{
+  "dependencies": [
+    "curl",
+    "freetype",
+    {
+      "name": "sdl2",
+      "features": ["vulkan", {
+        "name": "wayland",
+        "platform": "linux"
+      }, {
+        "name": "x11",
+        "platform": "linux"
+      }],
+      "platform": "linux | osx"
+    },
+    "libogg",
+    "libvorbis",
+    "openal-soft",
+    "glslang",
+    "rmlui"
+  ]
+}

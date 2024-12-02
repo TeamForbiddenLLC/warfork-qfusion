@@ -6,9 +6,9 @@
 #include "as/asui_local.h"
 #include "as/asui_url.h"
 
-#include <Rocket/Controls.h>
-#include <Rocket/Controls/ElementTabSet.h>
-#include <Rocket/Controls/ElementFormControlDataSelect.h>
+//#include <RmlUi/Core/Controls.h>
+#include <RmlUi/Core/Elements/ElementTabSet.h>
+//#include <RmlUi/Core/Elements/ElementFormControlDataSelect.h>
 #include "widgets/ui_image.h"
 
 // macro to addref a return object (rocket element)
@@ -28,14 +28,15 @@ static asITypeInfo *elementsArrayType;
 class ASStringsArray : public CScriptArrayInterface {};
 static asITypeInfo *stringsArrayType;
 
-typedef Rocket::Controls::ElementForm ElementForm;
-typedef Rocket::Controls::ElementFormControl ElementFormControl;
-typedef Rocket::Controls::ElementFormControlDataSelect ElementFormControlDataSelect;
+typedef Rml::Element Element;
+typedef Rml::ElementForm ElementForm;
+typedef Rml::ElementFormControl ElementFormControl;
+typedef Rml::ElementFormControlDataSelect ElementFormControlDataSelect;
 
-typedef Rocket::Controls::ElementDataGrid ElementDataGrid;
-typedef Rocket::Controls::ElementDataGridRow ElementDataGridRow;
+//typedef Rml::ElementDataGrid ElementDataGrid;
+//typedef Rml::ElementDataGridRow ElementDataGridRow;
 
-typedef Rocket::Controls::ElementTabSet ElementTabSet;
+typedef Rml::ElementTabSet ElementTabSet;
 
 typedef WSWUI::ElementImage ElementImage;
 
@@ -43,14 +44,14 @@ typedef WSWUI::ElementImage ElementImage;
 
 //==========================================================
 
-ASBIND_TYPE( Rocket::Controls::ElementForm, ElementForm );
-ASBIND_TYPE( Rocket::Controls::ElementFormControl, ElementFormControl );
-ASBIND_TYPE( Rocket::Controls::ElementFormControlDataSelect, ElementFormControlDataSelect );
+ASBIND_TYPE( Rml::ElementForm, ElementForm );
+ASBIND_TYPE( Rml::ElementFormControl, ElementFormControl );
+ASBIND_TYPE( Rml::ElementFormControlDataSelect, ElementFormControlDataSelect );
 
-ASBIND_TYPE( Rocket::Controls::ElementDataGrid, ElementDataGrid );
-ASBIND_TYPE( Rocket::Controls::ElementDataGridRow, ElementDataGridRow );
+ASBIND_TYPE( Rml::ElementDataGrid, ElementDataGrid );
+ASBIND_TYPE( Rml::ElementDataGridRow, ElementDataGridRow );
 
-ASBIND_TYPE( Rocket::Controls::ElementTabSet, ElementTabSet );
+ASBIND_TYPE( Rml::ElementTabSet, ElementTabSet );
 
 ASBIND_TYPE( WSWUI::ElementImage, ElementImage );
 
@@ -67,7 +68,7 @@ namespace ASUI {
 
 void PrebindEvent( ASInterface *as )
 {
-	ASBind::Class<Rocket::Core::Event, ASBind::class_ref>( as->getEngine() );
+	ASBind::Class<Rml::Event, ASBind::class_ref>( as->getEngine() );
 }
 
 static Element *Event_GetTargetElement( Event *self ) {
@@ -81,28 +82,28 @@ static asstring_t *Event_GetType( Event *self ) {
 }
 
 static asstring_t *Event_GetParameterS( Event *self, const asstring_t &a, const asstring_t &b ) {
-	Rocket::Core::String name = ASSTR(a);
-	Rocket::Core::String default_value = ASSTR(b);
+	Rml::String name = ASSTR(a);
+	Rml::String default_value = ASSTR(b);
 	return ASSTR( self->GetParameter( name, default_value ) );
 }
 
 static int Event_GetParameterI( Event *self, const asstring_t &a, const int default_value ) {
-	Rocket::Core::String name = ASSTR(a);
+	Rml::String name = ASSTR(a);
 	return self->GetParameter( name, default_value );
 }
 
 static unsigned Event_GetParameterU( Event *self, const asstring_t &a, const unsigned default_value ) {
-	Rocket::Core::String name = ASSTR(a);
+	Rml::String name = ASSTR(a);
 	return self->GetParameter( name, default_value );
 }
 
 static float Event_GetParameterF( Event *self, const asstring_t &a, const float default_value ) {
-	Rocket::Core::String name = ASSTR(a);
+	Rml::String name = ASSTR(a);
 	return self->GetParameter( name, default_value );
 }
 
 static bool Event_GetParameterB( Event *self, const asstring_t &a, const bool default_value ) {
-	Rocket::Core::String name = ASSTR(a);
+	Rml::String name = ASSTR(a);
 	return self->GetParameter( name, default_value );
 }
 
@@ -110,11 +111,11 @@ static CScriptDictionaryInterface *Event_GetParameters( Event *self ) {
 	CScriptDictionaryInterface *dict = UI_Main::Get()->getAS()->createDictionary();
 	int stringObjectTypeId = UI_Main::Get()->getAS()->getStringObjectType()->GetTypeId();
 
-	const Rocket::Core::Dictionary *parameters = self->GetParameters();
+	const Rml::Core::Dictionary *parameters = self->GetParameters();
 
 	int index = 0;
-	Rocket::Core::String name;
-	Rocket::Core::String value;
+	Rml::String name;
+	Rml::String value;
 	while( parameters->Iterate( index, name, value ) ) {
 		dict->Set( *(ASSTR( name )), ASSTR( value ), stringObjectTypeId );
 	}
@@ -154,7 +155,7 @@ void BindEvent( ASInterface *as )
 	;
 
 	// reference (without factory)
-	ASBind::GetClass<Rocket::Core::Event>( as->getEngine() )
+	ASBind::GetClass<Rml::Event>( as->getEngine() )
 		.refs( &Event::AddReference, &Event::RemoveReference )
 
 		.method( &Event_GetType, "getType", true )
@@ -178,7 +179,7 @@ void BindEvent( ASInterface *as )
 // EVENT LISTENER IS DANGEROUS, USES DUMMY REFERENCING!
 void PrebindEventListener( ASInterface *as )
 {
-	ASBind::Class<Rocket::Core::EventListener, ASBind::class_nocount>( as->getEngine() )
+	ASBind::Class<Rml::EventListener, ASBind::class_nocount>( as->getEngine() )
 		;
 }
 
@@ -193,7 +194,7 @@ void PrebindEventListener( ASInterface *as )
 // 	1) we need to wrap a few functions to handle reference-counting
 // 	2) we need few wrapper functions to look-a-like jquery
 //	3) we need to provide separate api for Form, Controls etc..
-//	4) we need to convert all Rocket::Core::String to asstring_t*
+//	4) we need to convert all Rml::String to asstring_t*
 // and thats why you have loads of misc functions in the end that use strings
 
 // dummy funcdef
@@ -393,7 +394,7 @@ static ElementDocument *Element_GetOwnerDocument( Element *elem ) {
 
 //
 //
-// NOW THE TEDIOUS PART OF WRAPPING REST OF THE FUNCTIONS USING Rocket::Core::String to use asstring_t* ...
+// NOW THE TEDIOUS PART OF WRAPPING REST OF THE FUNCTIONS USING Rml::String to use asstring_t* ...
 
 static bool Element_SetProperty( Element *elem, const asstring_t &a, const asstring_t &b ) {
 	return elem->SetProperty( ASSTR(a), ASSTR(b) );
@@ -990,14 +991,15 @@ static Element *ElementImage_CastToElement( ElementImage *self ) {
 }
 
 static float ElementImage_GetWidth( ElementImage *self ) {
-	Rocket::Core::Vector2f dimensions;
+	Rml::Vector2f dimensions;
 	self->GetIntrinsicDimensions( dimensions );
 	return dimensions.x;
 }
 
 static float ElementImage_GetHeight( ElementImage *self ) {
-	Rocket::Core::Vector2f dimensions;
-	self->GetIntrinsicDimensions( dimensions );
+	Rml::Vector2f dimensions;
+	float ratio;
+	self->GetIntrinsicDimensions( dimensions, ratio);
 	return dimensions.y;
 }
 
@@ -1011,7 +1013,7 @@ static void BindElementImage( ASInterface *as )
 	asIScriptEngine *engine = as->getEngine();
 
 	ASBind::GetClass<ElementImage>( engine )
-		.refs( &ElementImage::AddReference, &ElementImage::RemoveReference )
+		//.refs( &ElementImage::AddReference, &ElementImage::RemoveReference )
 
 		.method( ElementImage_GetWidth, "get_width", true )
 		.method( ElementImage_GetHeight, "get_height", true )
@@ -1020,7 +1022,7 @@ static void BindElementImage( ASInterface *as )
 		;
 
 	// Cast behavior for the Element class
-	ASBind::GetClass<Element>( engine )
+	ASBind::GetClass<Rml::Element>( engine )
 		.refcast( &Element_CastToElementImage, true, true )
 		;
 }
@@ -1033,7 +1035,7 @@ static void BindElementImage( ASInterface *as )
 
 void PrebindElement( ASInterface *as )
 {
-	ASBind::Class<Rocket::Core::Element, ASBind::class_ref>( as->getEngine() );
+	ASBind::Class<Rml::Element, ASBind::class_ref>( as->getEngine() );
 
 	PreBindElementDocument( as );
 
@@ -1066,7 +1068,7 @@ void BindElement( ASInterface *as )
 		.factory( &Element_Factory )
 		.factory( &Element_Factory2 )
 		.factory( &Element_FactoryRML )
-		.refs( &Element::AddReference, &Element::RemoveReference )
+		//.refs( &Element::AddReference, &Element::RemoveReference )
 
 		// css/style
 		.method( &Element_SetProperty, "setProp", true )
@@ -1117,13 +1119,13 @@ void BindElement( ASInterface *as )
 		.constmethod( &Element_GetInnerRML, "getInnerRML", true )
 		.method( &Element_SetInnerRML, "setInnerRML", true )
 
-		.method( &Element::Focus, "focus" )
-		.method( &Element::Blur, "unfocus" )
-		.method( &Element::Click, "click" )
+		.method( &Rml::Element::Focus, "focus" )
+		.method( &Rml::Element::Blur, "unfocus" )
+		.method( &Rml::Element::Click, "click" )
 		.method2( &Element_AppendChild, "void addChild( Element @el, bool dom_element = true )", true )
 		.method( &Element_InsertBefore, "insertChild", true )
 		.method( &Element_RemoveChild, "removeChild", true )
-		.method( &Element::HasChildNodes, "hasChildren" )
+		.method( &Rml::Element::HasChildNodes, "hasChildren" )
 		.method( Element_Clone, "clone", true )
 
 		.method( Element_GetElementById, "getElementById", true )
@@ -1134,26 +1136,26 @@ void BindElement( ASInterface *as )
 		.method2( Element_AddEventListener, "void addEventListener( const String &event, DOMEventListenerCallback @callback )", true )
 		.method( Element_RemoveEventListener, "removeEventListener", true )
 
-		.method( &Element::GetClientLeft, "clientLeft" )
-		.method( &Element::GetClientTop, "clientTop" )
-		.method( &Element::GetClientHeight, "clientHeight" )
-		.method( &Element::GetClientWidth, "clientWidth" )
+		.method( &Rml::Element::GetClientLeft, "clientLeft" )
+		.method( &Rml::Element::GetClientTop, "clientTop" )
+		.method( &Rml::Element::GetClientHeight, "clientHeight" )
+		.method( &Rml::Element::GetClientWidth, "clientWidth" )
 
-		.method( &Element::GetOffsetParent, "offsetParent" )
-		.method( &Element::GetOffsetLeft, "offsetLeft" )
-		.method( &Element::GetOffsetTop, "offsetTop" )
-		.method( &Element::GetOffsetHeight, "offsetHeight" )
-		.method( &Element::GetOffsetWidth, "offsetWidth" )
+		.method( &Rml::Element::GetOffsetParent, "offsetParent" )
+		.method( &Rml::Element::GetOffsetLeft, "offsetLeft" )
+		.method( &Rml::Element::GetOffsetTop, "offsetTop" )
+		.method( &Rml::Element::GetOffsetHeight, "offsetHeight" )
+		.method( &Rml::Element::GetOffsetWidth, "offsetWidth" )
 
-		.method( &Element::GetScrollLeft, "scrollLeft" )
-		.method( &Element::SetScrollLeft, "scrollLeft" )
-		.method( &Element::GetScrollTop, "scrollTop" )
-		.method( &Element::SetScrollTop, "scrollTop" )
-		.method( &Element::GetScrollHeight, "scrollHeight" )
-		.method( &Element::GetScrollWidth, "scrollWidth" )
+		.method( &Rml::Element::GetScrollLeft, "scrollLeft" )
+		.method( &Rml::Element::SetScrollLeft, "scrollLeft" )
+		.method( &Rml::Element::GetScrollTop, "scrollTop" )
+		.method( &Rml::Element::SetScrollTop, "scrollTop" )
+		.method( &Rml::Element::GetScrollHeight, "scrollHeight" )
+		.method( &Rml::Element::GetScrollWidth, "scrollWidth" )
 
-		.method( &Element::GetAbsoluteLeft, "absLeft" )
-		.method( &Element::GetAbsoluteTop, "absTop" )
+		.method( &Rml::Element::GetAbsoluteLeft, "absLeft" )
+		.method( &Rml::Element::GetAbsoluteTop, "absTop" )
 		;
 
 	// cache type id for array<Element @>

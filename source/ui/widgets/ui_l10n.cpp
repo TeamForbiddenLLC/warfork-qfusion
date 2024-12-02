@@ -24,19 +24,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "widgets/ui_widgets.h"
 #include "widgets/ui_l10n.h"
 
-#include <Rocket/Controls.h>
-#include <Rocket/Controls/DataFormatter.h>
+#include <RmlUi/Core/Controls.h>
+#include <RmlUi/Core/Controls/DataFormatter.h>
 
 namespace WSWUI {
 
-using namespace Rocket::Core;
+using namespace Rml::Core;
 
 ElementL10n::ElementL10n( const String &tag ) : Element(tag), data_formatter(NULL), num_args(0)
 {
 }
 
 // Called when attributes on the element are changed.
-void ElementL10n::OnAttributeChange( const Rocket::Core::AttributeNameList& changed_attributes )
+void ElementL10n::OnAttributeChange( const Rml::Core::AttributeNameList& changed_attributes )
 {
 	Element::OnAttributeChange(changed_attributes);
 
@@ -54,7 +54,7 @@ void ElementL10n::OnAttributeChange( const Rocket::Core::AttributeNameList& chan
 			updateRML = true;
 		}
 		else {
-			data_formatter = Rocket::Controls::DataFormatter::GetDataFormatter( formatter );
+			data_formatter = Rml::DataFormatter::GetDataFormatter( formatter );
 			if( !data_formatter ) {
 				Com_Printf( S_COLOR_YELLOW "WARNING: Unable to find data formatter named '%s', formatting skipped.", formatter.CString() );
 			}

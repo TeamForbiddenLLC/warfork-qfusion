@@ -6,14 +6,14 @@
 #include "widgets/ui_widgets.h"
 #include "widgets/ui_optionsform.h"
 
-#include <Rocket/Controls.h>
+#include <RmlUi/Core/Controls.h>
 
 namespace WSWUI
 {
 
 // we use this alot
-typedef Rocket::Core::Element Element;
-typedef Rocket::Controls::ElementFormControl ElementFormControl;
+typedef Rml::Element Element;
+typedef Rml::ElementFormControl ElementFormControl;
 
 //===================================
 
@@ -56,10 +56,10 @@ const CvarStorage::CvarMap &CvarStorage::getMap()
 //================================================
 
 // Event listener for controls, sets the corresponding cvar to controls new value
-class CvarChangeListener : public Rocket::Core::EventListener
+class CvarChangeListener : public Rml::EventListener
 {
 public:
-	CvarChangeListener() : Rocket::Core::EventListener() {}
+	CvarChangeListener() : Rml::EventListener() {}
 
 	// helper to set cvar value from element, TODO: refactor out of this class
 	static void setCvar( Element *elem )
@@ -91,7 +91,7 @@ public:
 		}
 	}
 
-	void ProcessEvent( Rocket::Core::Event &ev )
+	void ProcessEvent( Rml::Event &ev )
 	{
 		if( ev.GetType() == "change" )
 			setCvar( ev.GetTargetElement() );
@@ -101,7 +101,7 @@ public:
 //================================================
 
 /*
-	OptionsForm is derived from regular Rocket::Controls::Form and it has the addition of
+	OptionsForm is derived from regular Rml::Form and it has the addition of
 	scanning its children for elements that have attribute called "cvar", which ties
 	the control's value to the cvars value.
 
@@ -131,7 +131,7 @@ public:
 
 // Ctor
 OptionsForm::OptionsForm( const String &tag )
-	: Rocket::Controls::ElementForm( tag ), cvarListener( __new__( CvarChangeListener ) )
+	: Rml::ElementForm( tag ), cvarListener( __new__( CvarChangeListener ) )
 {}
 
 // Dtor
@@ -142,23 +142,23 @@ OptionsForm::~OptionsForm()
 }
 
 // Rocket Form
-void OptionsForm::ProcessEvent( Rocket::Core::Event &ev )
+void OptionsForm::ProcessEvent( Rml::Event &ev )
 {
 	// we want to handle onsubmit
 	// Com_Printf("OptionsForm::ProcessEvent %s\n", ev.GetType().CString() );
 
-	Rocket::Controls::ElementForm::ProcessEvent( ev );
+	Rml::ElementForm::ProcessEvent( ev );
 }
 
 // predicate for foreachChildren
 namespace {
 
-	// std::bind2nd( std::mem_fun(&Rocket::Core::Element::HasAttribute), "cvar" ) fails on me?
-	bool has_attr_cvar( Rocket::Core::Element *elem ) {
+	// std::bind2nd( std::mem_fun(&Rml::Element::HasAttribute), "cvar" ) fails on me?
+	bool has_attr_cvar( Rml::Element *elem ) {
 		return elem->HasAttribute( "cvar" );
 	}
 
-	bool is_realtime_control( Rocket::Core::Element *elem ) {
+	bool is_realtime_control( Rml::Element *elem ) {
 		return ( elem->GetAttribute<int>( "realtime", 0 ) != 0 );
 	}
 
@@ -212,14 +212,14 @@ namespace {
 	// attach cvar listener to element (if realtime) and add to storage
 	// used in storeOptions (initial loading of form)
 	struct attach_and_add {
-		Rocket::Core::EventListener *listener;
+		Rml::EventListener *listener;
 		CvarStorage &cvars;
 
-		attach_and_add( Rocket::Core::EventListener *_listener, CvarStorage &_cvars )
+		attach_and_add( Rml::EventListener *_listener, CvarStorage &_cvars )
 			: listener( _listener ), cvars( _cvars )
 		{}
 
-		inline void operator()( Rocket::Core::Element *elem )
+		inline void operator()( Rml::Element *elem )
 		{
 			ElementFormControl *control = dynamic_cast<ElementFormControl*>( elem );
 			if( control != 0 && control->HasAttribute( "cvar" ) )
@@ -293,7 +293,7 @@ void OptionsForm::applyOptions()
 
 //====================================================
 
-Rocket::Core::ElementInstancer *GetOptionsFormInstancer( void )
+Rml::ElementInstancer *GetOptionsFormInstancer( void )
 {
 	return __new__( GenericElementInstancer<OptionsForm> )();
 }

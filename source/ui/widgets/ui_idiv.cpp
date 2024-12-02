@@ -26,7 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 namespace WSWUI {
 
-using namespace Rocket::Core;
+using namespace Rml::Core;
 
 InlineDiv::InlineDiv( const String &tag ) : Element( tag ), timeout( WSW_UI_STREAMCACHE_TIMEOUT ), onAddLoad( false ), loading( false )
 {
@@ -122,7 +122,7 @@ void InlineDiv::LoadSource()
 	else {
 		// get full path to the source.
 		// without the leading "/", path is considered to be relative to the document
-		Rocket::Core::ElementDocument* document = GetOwnerDocument();
+		Rml::ElementDocument* document = GetOwnerDocument();
 
 		if( !document && source.Substring( 0, 1 ) != "/" ) {
 			onAddLoad = true;
@@ -149,7 +149,7 @@ void InlineDiv::LoadSource()
 }
 
 // Called when attributes on the element are changed.
-void InlineDiv::OnAttributeChange( const Rocket::Core::AttributeNameList& changed_attributes )
+void InlineDiv::OnAttributeChange( const Rml::Core::AttributeNameList& changed_attributes )
 {
 	Element::OnAttributeChange(changed_attributes);
 

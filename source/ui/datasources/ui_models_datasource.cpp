@@ -12,7 +12,7 @@ namespace WSWUI
 {
 
 ModelsDataSource::ModelsDataSource( void ) :
-	Rocket::Controls::DataSource( MODELS_SOURCE )
+	Rml::DataSource( MODELS_SOURCE )
 {
 	UpdateModelsList();
 }

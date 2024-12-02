@@ -23,12 +23,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "kernel/ui_utils.h"
 #include "widgets/ui_widgets.h"
 
-#include <Rocket/Controls.h>
+#include <RmlUi/Core/Controls.h>
 
 namespace WSWUI
 {
-using namespace Rocket::Core;
-using namespace Rocket::Controls;
+using namespace Rml::Core;
+using namespace Rml;
 
 class SelectableDataGrid : public ElementDataGrid
 {
@@ -49,7 +49,7 @@ public:
 
 	/// Called for every event sent to this element or one of its descendants.
 	/// @param[in] event The event to process.
-	void ProcessEvent( Rocket::Core::Event& evt )
+	void ProcessEvent( Rml::Event& evt )
 	{
 		ElementDataGrid::ProcessEvent( evt );
 
@@ -90,7 +90,7 @@ public:
 			{
 				ElementDataGridRow *row = static_cast<ElementDataGridRow*>( elem );
 				int index = row->GetTableRelativeIndex();
-				Rocket::Core::String indexStr(toString( index ).c_str());
+				Rml::String indexStr(toString( index ).c_str());
 					
 				// this should never happen
 				if( index >= this->GetNumRows() )
@@ -116,7 +116,7 @@ public:
 					row->AddReference();
 				}
 				
-				Rocket::Core::Dictionary parameters;
+				Rml::Core::Dictionary parameters;
 				parameters.Set( "index", indexStr );
 				parameters.Set( "column_index", column );
 				if( evt == "click" )
@@ -139,7 +139,7 @@ public:
 			int firstRowAdded = evt.GetParameter< int >( "first_row_added", 0 );
 			if( lastSelectedRowIndex >= firstRowAdded ) {
 				lastSelectedRowIndex += numRowsAdded;
-				Rocket::Core::String indexStr( toString( lastSelectedRowIndex ).c_str() );
+				Rml::String indexStr( toString( lastSelectedRowIndex ).c_str() );
 				this->SetProperty( "selected-row", indexStr );
 			}
 		}
@@ -172,7 +172,7 @@ private:
 
 //=====================
 
-Rocket::Core::ElementInstancer *GetSelectableDataGridInstancer(void)
+Rml::ElementInstancer *GetSelectableDataGridInstancer(void)
 {
 	return __new__(GenericElementInstancer<SelectableDataGrid>)();
 }

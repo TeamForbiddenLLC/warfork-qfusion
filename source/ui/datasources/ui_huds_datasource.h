@@ -8,7 +8,7 @@ namespace WSWUI
 {
 
 class HudsDataSource :
-	public Rocket::Controls::DataSource
+	public Rml::DataSource
 {
 public:
 	HudsDataSource( void );

@@ -7,7 +7,7 @@
 
 namespace ASUI {
 
-using namespace Rocket::Core;
+using namespace Rml::Core;
 
 UI_ScriptDocument::UI_ScriptDocument( const String &tag )
 	: ElementDocument( tag ), numScriptsAdded( 0 ), as( NULL ), module( NULL ), isLoading( false ), numScripts( 0 ), owner( NULL )
@@ -56,7 +56,7 @@ void UI_ScriptDocument::LoadScript( Stream *stream, const String &source_name )
 	}
 }
 
-void UI_ScriptDocument::ProcessEvent( Rocket::Core::Event &event )
+void UI_ScriptDocument::ProcessEvent( Rml::Event &event )
 {
 	if( event.GetType() == "afterLoad" && event.GetTargetElement() == this ) {
 		if( module ) {
@@ -70,7 +70,7 @@ void UI_ScriptDocument::ProcessEvent( Rocket::Core::Event &event )
 
 		// handle postponed onload events (HOWTO handle these in cached documents?)
 		for( PostponedList::iterator it = onloads.begin(); it != onloads.end(); ++it ) {
-			Rocket::Core::Event *load = *it;
+			Rml::Event *load = *it;
 			this->DispatchEvent( load->GetType(), *(load->GetParameters()), true );
 			load->RemoveReference();
 		}
@@ -92,17 +92,17 @@ void UI_ScriptDocument::ProcessEvent( Rocket::Core::Event &event )
 	}
 
 	if( isLoading ) {
-		Rocket::Core::Event *instanced = Rocket::Core::Factory::InstanceEvent( event.GetTargetElement(),
+		Rml::Event *instanced = Rml::Core::Factory::InstanceEvent( event.GetTargetElement(),
 			event.GetType(), *event.GetParameters(), true );
 		onloads.push_back( instanced );
 		event.StopPropagation();
 		return;
 	}
 
-	Rocket::Core::ElementDocument::ProcessEvent( event );
+	Rml::ElementDocument::ProcessEvent( event );
 }
 
-Rocket::Core::ScriptObject UI_ScriptDocument::GetScriptObject( void ) const
+Rml::ScriptObject UI_ScriptDocument::GetScriptObject( void ) const
 {
 	return owner;
 }

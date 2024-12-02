@@ -6,8 +6,8 @@
 #define TVCHANNELS_SOURCE "tvchannels"
 #define MAINTABLE_NAME "list"
 
-using namespace Rocket::Core;
-using namespace Rocket::Controls;
+using namespace Rml::Core;
+using namespace Rml;
 
 namespace WSWUI
 {

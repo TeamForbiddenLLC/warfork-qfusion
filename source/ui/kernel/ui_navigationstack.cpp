@@ -6,7 +6,7 @@
 
 namespace WSWUI {
 
-namespace Core = Rocket::Core;
+namespace Core = Rml::Core;
 
 //==========================================
 
@@ -135,8 +135,8 @@ void DocumentCache::clearCaches()
 	documentSet.clear();
 
 	// here we also do this
-	Rocket::Core::Factory::ClearStyleSheetCache();
-	Rocket::Core::Factory::ClearTemplateCache();
+	Rml::Core::Factory::ClearStyleSheetCache();
+	Rml::Core::Factory::ClearTemplateCache();
 	// and if in the future Rocket offers more cache-cleaning functions, call 'em
 }
 
@@ -153,7 +153,7 @@ void DocumentCache::printCache()
 // the assets or invalidate them
 void DocumentCache::invalidateAssets(void)
 {
-	Rocket::Core::Dictionary parameters;
+	Rml::Core::Dictionary parameters;
 	for( DocumentSet::iterator it = documentSet.begin(); it != documentSet.end(); ++it ) {
 		( *it )->getRocketDocument()->DispatchEvent( "invalidate", parameters, true );
 	}
@@ -336,7 +336,7 @@ void NavigationStack::attachMainEventListenerToTop( Document *prev )
 	// global event listeners, TODO: if we ever change eventlistener to be
 	// dynamically instanced, then we cant call GetMainListener every time?
 	// only for UI documents!
-	Rocket::Core::EventListener *listener = UI_GetMainListener();
+	Rml::EventListener *listener = UI_GetMainListener();
 
 	if( prev && prev->getRocketDocument() ) {
 		top->getRocketDocument()->RemoveEventListener( "keydown", listener );

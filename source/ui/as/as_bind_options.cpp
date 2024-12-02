@@ -47,7 +47,7 @@ void BindOptionsForm( ASInterface *as )
 		;
 
 	// Cast behavior for the Element class
-	ASBind::GetClass<Rocket::Core::Element>( engine )
+	ASBind::GetClass<Rml::Element>( engine )
 		.refcast( &Element_CastToOptionsForm, true, true )
 		;
 }

@@ -36,18 +36,18 @@ namespace WSWUI
 {
 	// this element does nothing but formatting its "value" with specified "formatter"
 	// and the emitting the output as text
-	class ElementL10n : public Rocket::Core::Element
+	class ElementL10n : public Rml::Element
 	{
 	public:
-		ElementL10n(const Rocket::Core::String& tag);
+		ElementL10n(const Rml::String& tag);
 		virtual ~ElementL10n(){}
 
 		/// Checks for changes to source address.
-		virtual void OnAttributeChange(const Rocket::Core::AttributeNameList&);
+		virtual void OnAttributeChange(const Rml::Core::AttributeNameList&);
 
 	private:
-		Rocket::Controls::DataFormatter *data_formatter;
-		Rocket::Core::String format;
+		Rml::DataFormatter *data_formatter;
+		Rml::String format;
 		unsigned int num_args;
 
 

@@ -210,7 +210,7 @@ private:
 	BlockedPlayersDataSource *blockedplayers;
 
 	UI_Navigation navigations[UI_NUM_CONTEXTS];
-	Rocket::Core::String quickMenuURL;
+	Rml::String quickMenuURL;
 
 	StreamCache *streamCache;
 

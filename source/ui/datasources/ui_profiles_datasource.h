@@ -8,7 +8,7 @@ namespace WSWUI
 {
 
 class ProfilesDataSource :
-	public Rocket::Controls::DataSource
+	public Rml::DataSource
 {
 public:
 	ProfilesDataSource( void );

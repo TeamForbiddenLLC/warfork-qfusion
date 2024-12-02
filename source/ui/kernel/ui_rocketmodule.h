@@ -5,7 +5,6 @@
 #include "kernel/ui_fileinterface.h"
 #include "kernel/ui_renderinterface.h"
 #include "kernel/ui_keyconverter.h"
-#include "kernel/ui_fontproviderinterface.h"
 
 namespace WSWUI
 {
@@ -13,8 +12,8 @@ namespace WSWUI
 	class RocketModule
 	{
 		// some typical Rocket shortcuts
-		typedef Rocket::Core::Element Element;
-		typedef Rocket::Core::Event Event;
+		typedef Rml::Element Element;
+		typedef Rml::Event Event;
 
 	public:
 		RocketModule( int vidWidth, int vidHeight, float pixelRatio );
@@ -47,12 +46,12 @@ namespace WSWUI
 		void update( void );
 		void render( int contextId );
 
-		Rocket::Core::ElementDocument *loadDocument( int contextId, const char *filename, bool show=false, void *user_data = NULL );
-		void closeDocument( Rocket::Core::ElementDocument *doc );
+		Rml::ElementDocument *loadDocument( int contextId, const char *filename, bool show=false, void *user_data = NULL );
+		void closeDocument( Rml::ElementDocument *doc );
 
 		// called from ElementInstancer after it instances an element, set up default
 		// attributes, properties, events etc..
-		void registerElementDefaults( Rocket::Core::Element *);
+		void registerElementDefaults( Rml::Element *);
 
 		// GET/SET Submodules
 		UI_SystemInterface *getSystemInterface() { return systemInterface; }
@@ -62,24 +61,24 @@ namespace WSWUI
 		void clearShaderCache( void );
 		void touchAllCachedShaders( void );
 
-		int idForContext( Rocket::Core::Context *context );
+		int idForContext( Rml::Context *context );
 
 	private:
-		void registerElement( const char *tag, Rocket::Core::ElementInstancer* );
-		void registerFontEffect( const char *name, Rocket::Core::FontEffectInstancer *);
-		void registerDecorator( const char *name, Rocket::Core::DecoratorInstancer *);
-		void registerEventInstancer( Rocket::Core::EventInstancer *);
-		void registerEventListener( Rocket::Core::EventListenerInstancer *);
+		void registerElement( const char *tag, Rml::ElementInstancer* );
+		void registerFontEffect( const char *name, Rml::FontEffectInstancer *);
+		void registerDecorator( const char *name, Rml::DecoratorInstancer *);
+		void registerEventInstancer( Rml::EventInstancer *);
+		void registerEventListener( Rml::EventListenerInstancer *);
 
 		// translates UI_CONTEXT_ constants to rocket contexts and vise versa
-		Rocket::Core::Context *contextForId( int contextId );
+		Rml::Context *contextForId( int contextId );
 
 		bool rocketInitialized;
 		unsigned int hideCursorBits;
 
 		struct contextTouch {
 			int id;
-			Rocket::Core::Vector2f origin;
+			Rml::Vector2f origin;
 			int y;
 			bool scroll;
 		};
@@ -88,14 +87,13 @@ namespace WSWUI
 		UI_SystemInterface *systemInterface;
 		UI_FileInterface *fsInterface;
 		UI_RenderInterface *renderInterface;
-		UI_FontProviderInterface *fontProviderInterface;
 
-		Rocket::Core::Context *contextMain;
-		Rocket::Core::Context *contextQuick;
+		Rml::Context *contextMain;
+		Rml::Context *contextQuick;
 
 		// hold this so we can unref these in the end
-		std::list<Rocket::Core::ElementInstancer*> elementInstancers;
-		Rocket::Core::EventListenerInstancer *scriptEventListenerInstancer;
+		std::list<Rml::ElementInstancer*> elementInstancers;
+		Rml::EventListenerInstancer *scriptEventListenerInstancer;
 	};
 }
 

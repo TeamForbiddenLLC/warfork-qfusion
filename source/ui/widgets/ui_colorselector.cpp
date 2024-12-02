@@ -51,7 +51,7 @@
 namespace WSWUI
 {
 
-	using namespace Rocket::Core;
+	using namespace Rml::Core;
 
 	// forward decl
 	class ColorBlock;
@@ -133,7 +133,7 @@ namespace WSWUI
 	//===================================================
 
 	// Main colorselector widget
-	class ColorSelector : public Rocket::Controls::ElementFormControl
+	class ColorSelector : public Rml::ElementFormControl
 	{
 	public:
 		ColorSelector( const String &tag, const XMLAttributes &attr ) : ElementFormControl( tag ), cvar( 0 )
@@ -232,7 +232,7 @@ namespace WSWUI
 		// Element method
 		virtual void OnChildAdd( Element* child )
 		{
-			Rocket::Controls::ElementFormControl::OnChildAdd( child );
+			Rml::ElementFormControl::OnChildAdd( child );
 
 			ColorBlock *cb = dynamic_cast<ColorBlock*>( child );
 			if( cb )

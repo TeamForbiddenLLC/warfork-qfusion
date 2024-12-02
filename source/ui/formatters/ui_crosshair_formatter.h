@@ -26,10 +26,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 namespace WSWUI
 {
 
-class CrosshairFormatter : public Rocket::Controls::DataFormatter
+class CrosshairFormatter : public Rml::DataFormatter
 {
 public:
-	CrosshairFormatter() : Rocket::Controls::DataFormatter("crosshair") {}
+	CrosshairFormatter() : Rml::DataFormatter("crosshair") {}
 
 	// CrosshairDataSource contains the reference to the .tga crosshair images
 	// this formatter shows them into an <img> html tag

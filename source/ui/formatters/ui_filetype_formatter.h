@@ -26,22 +26,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 namespace WSWUI
 {
 
-class FiletypeFormatter : public Rocket::Controls::DataFormatter
+class FiletypeFormatter : public Rml::DataFormatter
 {
 public:
-	FiletypeFormatter() : Rocket::Controls::DataFormatter("filetype") {}
+	FiletypeFormatter() : Rml::DataFormatter("filetype") {}
 
 	// Encloses filename into a <filetype> tag and sets its class to file extension (e.g. "mp3") .
 	// Directories have their own tag <dirtype> with the only possible class "back" for ".." directories.
-	void FormatData( Rocket::Core::String& formatted_data, const Rocket::Core::StringList& raw_data )
+	void FormatData( Rml::String& formatted_data, const Rml::StringList& raw_data )
 	{
-		const Rocket::Core::String &name = raw_data[0];
+		const Rml::String &name = raw_data[0];
 		if( name == ".." ) {
 			formatted_data = "<dirtype class=\"back\">..</dirtype>";
 		}
 		else {
-			Rocket::Core::String::size_type nameLength = name.Length();
-			Rocket::Core::String::size_type delimPos = name.RFind( "/" );
+			Rml::String::size_type nameLength = name.Length();
+			Rml::String::size_type delimPos = name.RFind( "/" );
 			if ( delimPos != name.npos && delimPos + 1 == nameLength ) {
 				formatted_data = String("<dirtype>") + name.Substring( 0, nameLength - 1 ) + "</dirtype>";
 			}

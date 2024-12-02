@@ -10,23 +10,23 @@
 
 #include "kernel/ui_main.h"
 #include "kernel/ui_eventlistener.h"
-#include <Rocket/Core/Element.h>
+#include <RmlUi/Core/Element.h>
 
 namespace WSWUI
 {
 
 	// "my generic element instancer"
 	template<typename T>
-	struct GenericElementInstancer : Rocket::Core::ElementInstancer
+	struct GenericElementInstancer : Rml::ElementInstancer
 	{
-		Rocket::Core::Element *InstanceElement(Rocket::Core::Element *parent, const String &tag, const Rocket::Core::XMLAttributes &attributes)
+		Rml::Element *InstanceElement(Rml::Element *parent, const String &tag, const Rml::Core::XMLAttributes &attributes)
 		{
-			Rocket::Core::Element *elem = __new__(T)( tag );
+			Rml::Element *elem = __new__(T)( tag );
 			UI_Main::Get()->getRocket()->registerElementDefaults(elem);
 			return elem;
 		}
 
-		void ReleaseElement(Rocket::Core::Element *element)
+		void ReleaseElement(Rml::Element *element)
 		{
 			__delete__(element);
 		}
@@ -39,16 +39,16 @@ namespace WSWUI
 
 	// "my generic element instancer" that sends attributes to the child
 	template<typename T>
-	struct GenericElementInstancerAttr : Rocket::Core::ElementInstancer
+	struct GenericElementInstancerAttr : Rml::ElementInstancer
 	{
-		Rocket::Core::Element *InstanceElement(Rocket::Core::Element *parent, const String &tag, const Rocket::Core::XMLAttributes &attributes)
+		Rml::Element *InstanceElement(Rml::Element *parent, const String &tag, const Rml::Core::XMLAttributes &attributes)
 		{
-			Rocket::Core::Element *elem = __new__(T)( tag, attributes );
+			Rml::Element *elem = __new__(T)( tag, attributes );
 			UI_Main::Get()->getRocket()->registerElementDefaults(elem);
 			return elem;
 		}
 
-		void ReleaseElement(Rocket::Core::Element *element)
+		void ReleaseElement(Rml::Element *element)
 		{
 			__delete__(element);
 		}
@@ -63,9 +63,9 @@ namespace WSWUI
 	template<typename T>
 	struct GenericElementInstancerSoftKeyboard : GenericElementInstancer<T>
 	{
-		Rocket::Core::Element *InstanceElement(Rocket::Core::Element *parent, const String &tag, const Rocket::Core::XMLAttributes &attributes)
+		Rml::Element *InstanceElement(Rml::Element *parent, const String &tag, const Rml::Core::XMLAttributes &attributes)
 		{
-			Rocket::Core::Element *elem = GenericElementInstancer<T>::InstanceElement( parent, tag, attributes );
+			Rml::Element *elem = GenericElementInstancer<T>::InstanceElement( parent, tag, attributes );
 			elem->AddEventListener( "click", UI_GetSoftKeyboardListener() );
 			elem->AddEventListener( "blur", UI_GetSoftKeyboardListener() );
 			return elem;
@@ -74,22 +74,22 @@ namespace WSWUI
 
 	//=======================================
 
-	Rocket::Core::ElementInstancer *GetKeySelectInstancer( void );
-	Rocket::Core::ElementInstancer *GetAnchorWidgetInstancer( void );
-	Rocket::Core::ElementInstancer *GetOptionsFormInstancer( void );
-	Rocket::Core::ElementInstancer *GetLevelShotInstancer(void);
-	Rocket::Core::ElementInstancer *GetSelectableDataGridInstancer(void);
-	Rocket::Core::ElementInstancer *GetDataSpinnerInstancer( void );
-	Rocket::Core::ElementInstancer *GetModelviewInstancer( void );
-	Rocket::Core::ElementInstancer *GetWorldviewInstancer( void );
-	Rocket::Core::ElementInstancer *GetColorBlockInstancer( void );
-	Rocket::Core::ElementInstancer *GetColorSelectorInstancer( void );
-	Rocket::Core::ElementInstancer *GetInlineDivInstancer( void );
-	Rocket::Core::ElementInstancer *GetImageWidgetInstancer( void );
-	Rocket::Core::ElementInstancer *GetElementFieldInstancer( void );
-	Rocket::Core::ElementInstancer *GetVideoInstancer( void );
-	Rocket::Core::ElementInstancer *GetIFrameWidgetInstancer( void );
-	Rocket::Core::ElementInstancer *GetElementL10nInstancer( void );
+	Rml::ElementInstancer *GetKeySelectInstancer( void );
+	Rml::ElementInstancer *GetAnchorWidgetInstancer( void );
+	Rml::ElementInstancer *GetOptionsFormInstancer( void );
+	Rml::ElementInstancer *GetLevelShotInstancer(void);
+	Rml::ElementInstancer *GetSelectableDataGridInstancer(void);
+	Rml::ElementInstancer *GetDataSpinnerInstancer( void );
+	Rml::ElementInstancer *GetModelviewInstancer( void );
+	Rml::ElementInstancer *GetWorldviewInstancer( void );
+	Rml::ElementInstancer *GetColorBlockInstancer( void );
+	Rml::ElementInstancer *GetColorSelectorInstancer( void );
+	Rml::ElementInstancer *GetInlineDivInstancer( void );
+	Rml::ElementInstancer *GetImageWidgetInstancer( void );
+	Rml::ElementInstancer *GetElementFieldInstancer( void );
+	Rml::ElementInstancer *GetVideoInstancer( void );
+	Rml::ElementInstancer *GetIFrameWidgetInstancer( void );
+	Rml::ElementInstancer *GetElementL10nInstancer( void );
 }
 
 #endif /* __WIDGETS_H__ */

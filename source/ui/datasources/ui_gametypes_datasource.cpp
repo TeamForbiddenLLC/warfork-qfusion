@@ -6,7 +6,7 @@
 
 namespace WSWUI
 {
-	GameTypesDataSource::GameTypesDataSource():Rocket::Controls::DataSource("gametypes_source")
+	GameTypesDataSource::GameTypesDataSource():Rml::DataSource("gametypes_source")
 	{
 		std::vector<std::string> listedGameTypes;
 		getFileList(listedGameTypes, "progs/gametypes", ".gt");
@@ -67,14 +67,14 @@ namespace WSWUI
 		}
 	}
 
-	void GameTypesDataSource::GetRow(Rocket::Core::StringList &row, const Rocket::Core::String&, int row_index, const Rocket::Core::StringList& cols)
+	void GameTypesDataSource::GetRow(Rml::StringList &row, const Rml::String&, int row_index, const Rml::StringList& cols)
 	{
 		if(row_index < 0 || (size_t)row_index >= gameTypes.size())
 		{
 			return;
 		}
 
-		for(Rocket::Core::StringList::const_iterator it = cols.begin();
+		for(Rml::StringList::const_iterator it = cols.begin();
 			 it != cols.end();
 			 ++it){
 			if(*it == "name") row.push_back(gameTypes[row_index].name.c_str());
@@ -84,7 +84,7 @@ namespace WSWUI
 		}
 	}
 
-	int GameTypesDataSource::GetNumRows(const Rocket::Core::String &)
+	int GameTypesDataSource::GetNumRows(const Rml::String &)
 	{
 		return gameTypes.size();
 	}

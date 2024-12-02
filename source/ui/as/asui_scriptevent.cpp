@@ -18,7 +18,7 @@
 namespace ASUI
 {
 
-using namespace Rocket::Core;
+using namespace Rml::Core;
 
 //===================================================
 
@@ -32,13 +32,13 @@ class ScriptEventListener : public EventListener
 {
 	ASInterface *asmodule;
 	// We have to make Event const, cause we cant use &inout with value-types
-	ASBind::FunctionPtr<void( Rocket::Core::Element*, Rocket::Core::Event* )> funcPtr;
+	ASBind::FunctionPtr<void( Rml::Element*, Rml::Event* )> funcPtr;
 	String funcName;
 	String script;
 	bool loaded;
 	bool released;
 	int uniqueId;
-	Rocket::Core::Element *target;
+	Rml::Element *target;
 
 	/** DAMN MIXTURE OF Rocket::String, std::string and std::ostringstream!! **/
 
@@ -297,7 +297,7 @@ public:
 	{
 	}
 
-	virtual Rocket::Core::EventListener* InstanceEventListener( const String& value, Element *elem )
+	virtual Rml::EventListener* InstanceEventListener( const String& value, Element *elem )
 	{
 		if( !value.Length() )
 			return 0;

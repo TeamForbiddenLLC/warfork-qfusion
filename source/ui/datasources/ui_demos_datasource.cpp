@@ -206,7 +206,7 @@ void DemosDataSource::GetRow( StringList& row, const String& table, int row_inde
 
 	for( StringList::const_iterator it = columns.begin(); it != columns.end(); ++it )
 	{
-		const Rocket::Core::String &col = *it;
+		const Rml::String &col = *it;
 
 		if( col == FIELD_NAME ) {
 			row.push_back( demoPath.GetItemName( row_index ).c_str() );

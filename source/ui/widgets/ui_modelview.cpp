@@ -17,7 +17,7 @@
 namespace WSWUI
 {
 
-using namespace Rocket::Core;
+using namespace Rml::Core;
 
 // forward-declare the instancer for keyselects
 class UI_ModelviewWidgetInstancer;
@@ -114,7 +114,7 @@ public:
 			entity.origin[0] = xoffset;
 		}
 
-		Rocket::Core::Vector2f offset = GetAbsoluteOffset(Rocket::Core::Box::CONTENT);
+		Rml::Vector2f offset = GetAbsoluteOffset(Rml::Core::Box::CONTENT);
 		refdef.x = offset.x;
 		refdef.y = offset.y;
 
@@ -139,20 +139,20 @@ public:
 		time = curtime;
 	}
 
-	virtual void OnPropertyChange(const Rocket::Core::PropertyNameList& changed_properties)
+	virtual void OnPropertyChange(const Rml::Core::PropertyNameList& changed_properties)
 	{
 		Element::OnPropertyChange(changed_properties);
 
-		for (Rocket::Core::PropertyNameList::const_iterator it = changed_properties.begin(); it != changed_properties.end(); ++it)
+		for (Rml::Core::PropertyNameList::const_iterator it = changed_properties.begin(); it != changed_properties.end(); ++it)
 		{
 			if (*it == "model-modelpath")
 			{
-				modelName = GetProperty(*it)->Get<Rocket::Core::String>();
+				modelName = GetProperty(*it)->Get<Rml::String>();
 				Initialized = false;
 			}
-			else if (*it == "model-skinpath" && GetProperty(*it)->Get<Rocket::Core::String>().Length() > 0)
+			else if (*it == "model-skinpath" && GetProperty(*it)->Get<Rml::String>().Length() > 0)
 			{
-				skinName = GetProperty(*it)->Get<Rocket::Core::String>();
+				skinName = GetProperty(*it)->Get<Rml::String>();
 				Initialized = false;
 			}
 			else if (*it == "model-scale")
@@ -165,12 +165,12 @@ public:
 			}
 			else if (*it == "model-outline-color")
 			{
-				Rocket::Core::Colourb color = GetProperty(*it)->Get<Rocket::Core::Colourb>();
+				Rml::Core::Colourb color = GetProperty(*it)->Get<Rml::Core::Colourb>();
 				Vector4Set(entity.outlineRGBA, color.red, color.green, color.blue, color.alpha);
 			}
 			else if (*it == "model-shader-color")
 			{
-				Rocket::Core::Colourb color = GetProperty(*it)->Get<Rocket::Core::Colourb>();
+				Rml::Core::Colourb color = GetProperty(*it)->Get<Rml::Core::Colourb>();
 				int shaderColor = COM_ValidatePlayerColor( COLOR_RGB( color.red, color.green, color.blue ) );
 				Vector4Set(entity.shaderRGBA, COLOR_R( shaderColor ), COLOR_G( shaderColor ), COLOR_B( shaderColor ), color.alpha);
 			}
@@ -231,7 +231,7 @@ public:
 			}
 			else if (*it == "model-rotation-autocenter")
 			{
-				AutoRotationCenter = (GetProperty(*it)->Get<Rocket::Core::String>().ToLower() == "true");
+				AutoRotationCenter = (GetProperty(*it)->Get<Rml::String>().ToLower() == "true");
 			}
 		}
 
@@ -269,7 +269,7 @@ public:
 	}
 
 	// Called for every event sent to this element or one of its descendants.
-	void ProcessEvent( Rocket::Core::Event& evt )
+	void ProcessEvent( Rml::Event& evt )
 	{
 		if( evt == "invalidate" ) {
 			Initialized = false;
@@ -308,7 +308,7 @@ private:
 			return;
 
 		// refdef setup
-		Rocket::Core::Vector2f box = GetBox().GetSize(Rocket::Core::Box::CONTENT);
+		Rml::Vector2f box = GetBox().GetSize(Rml::Core::Box::CONTENT);
 		refdef.x = 0;
 		refdef.y = 0;
 		refdef.width = box.x;

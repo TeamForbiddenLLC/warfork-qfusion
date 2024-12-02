@@ -7,11 +7,11 @@ namespace WSWUI
 {
 	struct shader_s *LevelShot::fallbackShader = NULL;
 
-	LevelShot::LevelShot(const Rocket::Core::String& tag) : ElementImage(tag), srcProcessed(false)
+	LevelShot::LevelShot(const Rml::String& tag) : ElementImage(tag), srcProcessed(false)
 	{
 	} 
 
-	void LevelShot::OnAttributeChange(const Rocket::Core::AttributeNameList& anl)
+	void LevelShot::OnAttributeChange(const Rml::Core::AttributeNameList& anl)
 	{
 		ElementImage::OnAttributeChange( anl );
 
@@ -19,7 +19,7 @@ namespace WSWUI
 		{
 			if(!srcProcessed)
 			{
-				Rocket::Core::String fullPath = getImagePath(GetAttribute<Rocket::Core::String>("src", ""));
+				Rml::String fullPath = getImagePath(GetAttribute<Rml::String>("src", ""));
 
 				if( !fullPath.Empty() ) {
 					// precache fallback shader
@@ -50,7 +50,7 @@ namespace WSWUI
 		}
 	}
 
-	Rocket::Core::String LevelShot::getImagePath(const Rocket::Core::String& mapname)
+	Rml::String LevelShot::getImagePath(const Rml::String& mapname)
 	{
 		if (mapname.Empty()) {
 			return "";
@@ -58,7 +58,7 @@ namespace WSWUI
 		return "/levelshots/" + mapname + ".jpg";
 	}
 
-	Rocket::Core::ElementInstancer *GetLevelShotInstancer(void)
+	Rml::ElementInstancer *GetLevelShotInstancer(void)
 	{
 		return __new__( GenericElementInstancer<LevelShot> )(); 
 	}

@@ -88,7 +88,7 @@ private:
 	DemoList::size_type updateIndex;
 };
 
-class DemosDataSource : public Rocket::Controls::DataSource
+class DemosDataSource : public Rml::DataSource
 {
 public:
 	DemosDataSource( const std::string &demoExtension );

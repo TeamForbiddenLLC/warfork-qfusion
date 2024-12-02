@@ -28,7 +28,7 @@ namespace WSWUI
 
 class DynTable;
 
-class GameAjaxDataSource : public Rocket::Controls::DataSource
+class GameAjaxDataSource : public Rml::DataSource
 {
 public:
 	GameAjaxDataSource( void );
@@ -57,8 +57,8 @@ private:
 	DynTableList tableList;
 };
 
-Rocket::Controls::DataSource *GetCallvotesDataSourceInstance();
-void DestroyCallvotesDataSourceInstance(Rocket::Controls::DataSource *instance);
+Rml::DataSource *GetCallvotesDataSourceInstance();
+void DestroyCallvotesDataSourceInstance(Rml::DataSource *instance);
 
 }
 #endif

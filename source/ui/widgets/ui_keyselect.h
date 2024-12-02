@@ -18,14 +18,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
-#include <Rocket/Core/Element.h>
-#include <Rocket/Core/EventListener.h>
+#include <RmlUi/Core/Element.h>
+#include <RmlUi/Core/EventListener.h>
 
 #include "kernel/ui_main.h"
 
 namespace WSWUI
 {
-using namespace Rocket::Core;
+using namespace Rml::Core;
 
 // forward-declare the instancer for keyselects
 class UI_KeySelectInstancer;

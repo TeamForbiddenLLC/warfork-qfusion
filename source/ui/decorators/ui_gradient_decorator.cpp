@@ -16,12 +16,12 @@
 
 namespace WSWUI
 {
-	typedef Rocket::Core::Element Element;
-	typedef Rocket::Core::Decorator Decorator;
-	typedef Rocket::Core::DecoratorDataHandle DecoratorDataHandle;
-	typedef Rocket::Core::DecoratorInstancer DecoratorInstancer;
-	typedef Rocket::Core::PropertyDictionary PropertyDictionary;
-	typedef Rocket::Core::Colourb Colourb;
+	typedef Rml::Element Element;
+	typedef Rml::Core::Decorator Decorator;
+	typedef Rml::Core::DecoratorDataHandle DecoratorDataHandle;
+	typedef Rml::DecoratorInstancer DecoratorInstancer;
+	typedef Rml::Core::PropertyDictionary PropertyDictionary;
+	typedef Rml::Core::Colourb Colourb;
 
 	//=======================================================
 
@@ -63,8 +63,8 @@ namespace WSWUI
 		virtual void RenderElement( Element* element, DecoratorDataHandle element_data )
 		{
 			// just testing here, so lets use renderinterface directly
-			typedef Rocket::Core::Vertex Vertex;
-			typedef Rocket::Core::Vector2f Vector2f;
+			typedef Rml::Vertex Vertex;
+			typedef Rml::Vector2f Vector2f;
 
 			// fetch the corners (WIP add some borders to debug the drawing area)
 			Vector2f topleft = Vector2f( element->GetAbsoluteLeft() + element->GetClientLeft(),
@@ -95,7 +95,7 @@ namespace WSWUI
 			int indices[6] = { 0, 1, 2, 0, 2, 3 };
 
 			// bang
-			Rocket::Core::RenderInterface *renderer = element->GetRenderInterface();
+			Rml::Core::RenderInterface *renderer = element->GetRenderInterface();
 			renderer->RenderGeometry( vertex, 4, indices, 6, 0, Vector2f( 0.0, 0.0 ) );
 			// C'MON! you say GetRenderInterface wont give a reference to refcounted object??
 			// renderer->RemoveReference();

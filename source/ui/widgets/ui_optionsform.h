@@ -40,17 +40,17 @@ namespace WSWUI
 
 	//================================================
 
-	class OptionsForm : public Rocket::Controls::ElementForm
+	class OptionsForm : public Rml::ElementForm
 	{
 		CvarStorage cvars;
-		Rocket::Core::EventListener *cvarListener;
+		Rml::EventListener *cvarListener;
 
 	public:
-		OptionsForm( const Rocket::Core::String &tag );
+		OptionsForm( const Rml::String &tag );
 		~OptionsForm();
 
 		// Rocket Form
-		virtual void ProcessEvent( Rocket::Core::Event &ev );
+		virtual void ProcessEvent( Rml::Event &ev );
 
 		// move stored cvar values back to cvars (i.e. Cancel)
 		void restoreOptions();

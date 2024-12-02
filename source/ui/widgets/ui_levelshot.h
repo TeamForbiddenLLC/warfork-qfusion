@@ -16,13 +16,13 @@ namespace WSWUI
 	{
 	public:
 		/// Initializes the levelshot element
-		explicit LevelShot(const Rocket::Core::String&);
+		explicit LevelShot(const Rml::String&);
 	
-		virtual void OnAttributeChange(const Rocket::Core::AttributeNameList&);
+		virtual void OnAttributeChange(const Rml::Core::AttributeNameList&);
 
 	private:
 		/// Generates the path to the preview image from the given map name
-		static Rocket::Core::String getImagePath(const Rocket::Core::String&);
+		static Rml::String getImagePath(const Rml::String&);
 
 		static shader_s *fallbackShader;
 

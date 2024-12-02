@@ -26,7 +26,7 @@ struct TVChannel
 	}
 };
 
-class TVChannelsDataSource : public Rocket::Controls::DataSource
+class TVChannelsDataSource : public Rml::DataSource
 {
 public:
 	TVChannelsDataSource( void );

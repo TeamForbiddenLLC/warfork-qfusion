@@ -31,7 +31,7 @@ namespace WSWUI
 {
 
 HudsDataSource::HudsDataSource( void ) :
-	Rocket::Controls::DataSource( HUDS_SOURCE )
+	Rml::DataSource( HUDS_SOURCE )
 {
 	UpdateHudsList();
 }

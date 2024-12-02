@@ -30,7 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 namespace WSWUI 
 {
 
-using namespace Rocket::Core;
+using namespace Rml::Core;
 
 	UI_KeySelect::UI_KeySelect( const String &tag, const String &bind, UI_KeySelectInstancer *instancer ) 
 		: Element( tag ), cmd( bind )

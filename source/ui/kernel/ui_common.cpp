@@ -12,9 +12,9 @@ namespace WSWUI
 // predicate looks like bool(Element*) and should return true if it wants
 // the element given as parameter to be included on the list
 template<typename T, typename Function>
-void collectChildren( Rocket::Core::Element *elem, T &container, Function predicate )
+void collectChildren( Rml::Element *elem, T &container, Function predicate )
 {
-	Rocket::Core::Element *child = elem->GetFirstChild();
+	Rml::Element *child = elem->GetFirstChild();
 	while( child )
 	{
 		if( predicate( child ) )
@@ -33,7 +33,7 @@ void collectChildren( Rocket::Core::Element *elem, T &container, Function predic
 template<typename T>
 void releaseCollectedChildren( T &container )
 {
-	std::for_each( container.begin(), container.end(), std::mem_fun( &Rocket::Core::Element::RemoveReference ) );
+	std::for_each( container.begin(), container.end(), std::mem_fun( &Rml::Element::RemoveReference ) );
 	container.clear();
 }
 }

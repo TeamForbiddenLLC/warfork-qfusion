@@ -4,7 +4,7 @@ namespace WSWUI
 {
 
 class VideoDataSource :
-	public Rocket::Controls::DataSource
+	public Rml::DataSource
 {
 public:
 	VideoDataSource(void);

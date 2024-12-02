@@ -30,7 +30,7 @@ namespace WSWUI
 {
 
 ModsDataSource::ModsDataSource( void ) :
-	Rocket::Controls::DataSource( SOURCE_NAME )
+	Rml::DataSource( SOURCE_NAME )
 	{
 		UpdatePath();
 	}

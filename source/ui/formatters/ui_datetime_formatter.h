@@ -27,13 +27,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 namespace WSWUI
 {
 
-class DatetimeFormatter : public Rocket::Controls::DataFormatter
+class DatetimeFormatter : public Rml::DataFormatter
 {
 public:
-	DatetimeFormatter() : Rocket::Controls::DataFormatter("datetime") {}
+	DatetimeFormatter() : Rml::DataFormatter("datetime") {}
 
 	// Expects unix time as input. Formats input as "YY/MM/DD hh:mm"
-	void FormatData( Rocket::Core::String& formatted_data, const Rocket::Core::StringList& raw_data )
+	void FormatData( Rml::String& formatted_data, const Rml::StringList& raw_data )
 	{
 		if( raw_data[0].Empty() ) {
 			formatted_data = "";
@@ -45,7 +45,7 @@ public:
 		struct tm *nt = ::localtime( &time );
 
 		if( nt ) {
-			formatted_data = Rocket::Core::String( 32,
+			formatted_data = Rml::String( 32,
 				"%02d/%02d/%02d %02d:%02d", 
 				nt->tm_year+1900, nt->tm_mon + 1, nt->tm_mday, nt->tm_hour, nt->tm_min
 			);

@@ -9,7 +9,7 @@
 
 namespace WSWUI
 {
-    MapsDataSource::MapsDataSource():Rocket::Controls::DataSource( MAPS_SOURCE )
+    MapsDataSource::MapsDataSource():Rml::DataSource( MAPS_SOURCE )
 	{
 		getMapsList( mapList );
 
@@ -31,12 +31,12 @@ namespace WSWUI
 		}
 	}
 
-	void MapsDataSource::GetRow( Rocket::Core::StringList &row, const Rocket::Core::String&, int row_index, const Rocket::Core::StringList& cols )
+	void MapsDataSource::GetRow( Rml::StringList &row, const Rml::String&, int row_index, const Rml::StringList& cols )
 	{
 		if( row_index < 0 || (size_t)row_index > mapList.size() )
 			return;
 
-		for( Rocket::Core::StringList::const_iterator it = cols.begin(); it != cols.end(); ++it )
+		for( Rml::StringList::const_iterator it = cols.begin(); it != cols.end(); ++it )
 		{
 			if( *it == MAP_TITLE )
 				row.push_back(mapList[row_index].second.empty() ? mapList[row_index].first.c_str() : mapList[row_index].second.c_str());
@@ -47,7 +47,7 @@ namespace WSWUI
 		}
 	}
 
-	int MapsDataSource::GetNumRows(const Rocket::Core::String&)
+	int MapsDataSource::GetNumRows(const Rml::String&)
 	{
 		return mapList.size();
 	}

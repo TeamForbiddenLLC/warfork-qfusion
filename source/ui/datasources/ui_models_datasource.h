@@ -7,7 +7,7 @@
 namespace WSWUI
 {
 class ModelsDataSource :
-	public Rocket::Controls::DataSource
+	public Rml::DataSource
 {
 public:
 	ModelsDataSource(void);

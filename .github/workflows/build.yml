@@ -1,4 +1,4 @@
-name: Build
+ame: Build
 
 on: [push, pull_request]
 jobs:
@@ -47,7 +47,7 @@ jobs:
         working-directory: ./source
         run: |
           export CC=clang CXX=clang++
-          cmake ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Release .
+          cmake ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DVCPKG_INSTALL_OPTIONS="--binarysource=clear\;x-gha,readwrite" -DCMAKE_BUILD_TYPE=Release .
           make -j8
 
       - name: Building Debug
@@ -55,7 +55,7 @@ jobs:
         working-directory: ./source
         run: |
           export CC=clang CXX=clang++
-          cmake ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Debug .
+          cmake ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Debug -DVCPKG_INSTALL_OPTIONS="--binarysource=clear\;x-gha,readwrite" .
           make -j8
       
       - name: Unit Test 
@@ -116,14 +116,14 @@ jobs:
         if: matrix.config.type == 'release'
         working-directory: ./source
         run: |
-          cmake ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RELEASE -G Xcode .
+          cmake ${{matrix.config.cmake_args}} -DVCPKG_INSTALL_OPTIONS="--binarysource=clear\;x-gha,readwrite" -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RELEASE -G Xcode .
           xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration Release -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
       - name: Building Debug
         if: matrix.config.type == 'debug'
         working-directory: ./source
         run: |
-          cmake ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=DEBUG -G Xcode .
+          cmake ${{matrix.config.cmake_args}} -DVCPKG_INSTALL_OPTIONS="--binarysource=clear\;x-gha,readwrite" -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=DEBUG -G Xcode .
           xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration Debug -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
       - name: Package warfork
@@ -182,14 +182,14 @@ jobs:
         if: matrix.config.type == 'debug' 
         working-directory: .\source
         run: |
-          cmake  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 .
+          cmake  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DVCPKG_INSTALL_OPTIONS="--binarysource=clear\;x-gha,readwrite" -DBUILD_UNIT_TEST=1 .
           msbuild qfusion.sln /p:configuration=Debug /maxcpucount:8
 
       - name: Building Release
         if: matrix.config.type == 'release'
         working-directory: .\source
         run: |
-          cmake  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RELEASE .
+          cmake  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DVCPKG_INSTALL_OPTIONS="--binarysource=clear\;x-gha,readwrite" -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RELEASE .
           msbuild qfusion.sln /p:configuration=Release /maxcpucount:8
       
       - name: Unit Test 

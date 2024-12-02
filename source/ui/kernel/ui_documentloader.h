@@ -55,8 +55,8 @@ namespace WSWUI {
 
 		const std::string &getName() const { return documentName; }
 		// addref? nah.. make sure you dont leave a pointer hanging and also check for NULL
-		void setRocketDocument(Rocket::Core::ElementDocument *elem) { rocketDocument = elem; }
-		Rocket::Core::ElementDocument *getRocketDocument() { return rocketDocument; }
+		void setRocketDocument(Rml::ElementDocument *elem) { rocketDocument = elem; }
+		Rml::ElementDocument *getRocketDocument() { return rocketDocument; }
 
 		// refcount wrappers for rocket's element,
 		// USE THESE! instead of direct Add/RemoveReference
@@ -79,7 +79,7 @@ namespace WSWUI {
 	private:
 		// this will also be the name for the asmodule!
 		std::string documentName;
-		Rocket::Core::ElementDocument *rocketDocument;
+		Rml::ElementDocument *rocketDocument;
 		NavigationStack *stack;
 		bool viewed;
 	};
@@ -104,7 +104,7 @@ namespace WSWUI {
 		// TODO: proper PostponedEvent that handles reference counting and event instancing!
 
 		// mechanism that calls onload events after all of AS scripts are built
-		typedef std::pair<Rocket::Core::EventListener*, Rocket::Core::Event*>
+		typedef std::pair<Rml::EventListener*, Rml::Event*>
 			PostponedEvent;
 		typedef std::list<PostponedEvent> PostponedList;
 

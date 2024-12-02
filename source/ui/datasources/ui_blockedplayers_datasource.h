@@ -5,13 +5,13 @@ namespace WSWUI
 {
 
 class BlockedPlayersDataSource :
-	public Rocket::Controls::DataSource
+	public Rml::DataSource
 {
 public:
 	BlockedPlayersDataSource( );
 
-	virtual void GetRow( Rocket::Core::StringList& row, const Rocket::Core::String& table, int row_index, const Rocket::Core::StringList& columns );
-	virtual int GetNumRows( const Rocket::Core::String& table );
+	virtual void GetRow( Rml::StringList& row, const Rml::String& table, int row_index, const Rml::StringList& columns );
+	virtual int GetNumRows( const Rml::String& table );
 
 };
 

@@ -23,13 +23,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "widgets/ui_widgets.h"
 #include "kernel/ui_main.h"
 
-#include <Rocket/Controls.h>
-#include <Rocket/Controls/DataSource.h>
+#include <RmlUi/Core/Controls.h>
+#include <RmlUi/Core/Controls/DataSource.h>
 
 namespace WSWUI
 {
-using namespace Rocket::Core;
-using namespace Rocket::Controls;
+using namespace Rml::Core;
+using namespace Rml;
 
 class UI_DataSpinner : public ElementFormControl
 {
@@ -72,7 +72,7 @@ public:
 		SetAttribute("value", value.CString());
 
 		// this calls out onchange event
-		Rocket::Core::Dictionary parameters;
+		Rml::Core::Dictionary parameters;
 		parameters.Set("value", value);
 		DispatchEvent("change", parameters);
 	}
@@ -95,7 +95,7 @@ public:
 	}
 
 	// Called when attributes on the element are changed.
-	void OnAttributeChange( const Rocket::Core::AttributeNameList& changed_attributes )
+	void OnAttributeChange( const Rml::Core::AttributeNameList& changed_attributes )
 	{
 		Element::OnAttributeChange( changed_attributes );
 
@@ -133,9 +133,9 @@ private:
 		}
 
 		StringList data_source_parts;
-		Rocket::Core::StringUtilities::ExpandString(data_source_parts, data_source_name, '.');
+		Rml::StringUtilities::ExpandString(data_source_parts, data_source_name, '.');
 
-		Rocket::Controls::DataSource* new_data_source = Rocket::Controls::DataSource::GetDataSource(data_source_parts[0].CString());
+		Rml::DataSource* new_data_source = Rml::DataSource::GetDataSource(data_source_parts[0].CString());
 
 		if (data_source_parts.size() != 2 || !new_data_source)
 		{
@@ -296,13 +296,13 @@ public:
 	/// @param[in] parent The element the new element is destined to be parented to.
 	/// @param[in] tag The tag of the element to instance.
 	/// @param[in] attributes Dictionary of attributes.
-	Rocket::Core::Element *InstanceElement( Rocket::Core::Element *parent, const String &tag, const XMLAttributes &attr )
+	Rml::Element *InstanceElement( Rml::Element *parent, const String &tag, const XMLAttributes &attr )
 	{
 		return __new__( UI_DataSpinner )( tag, attr );
 	}
 	/// Releases an element instanced by this instancer.
 	/// @param[in] element The element to release.
-	void ReleaseElement( Rocket::Core::Element *element )
+	void ReleaseElement( Rml::Element *element )
 	{
 		__delete__( element );
 	}

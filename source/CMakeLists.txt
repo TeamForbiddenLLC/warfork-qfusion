@@ -1,3 +1,6 @@
+
+set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
+
 project(qfusion)
 
 cmake_minimum_required(VERSION 2.8.12)
@@ -62,12 +65,12 @@ set(NRI_DIR ${CMAKE_HOME_DIRECTORY}/NRI)
 set(NRI_INCLUDE_DIR ${CMAKE_HOME_DIRECTORY}/NRI/Include)
 
 if (NOT GAME_MODULES_ONLY AND USE_GRAPHICS_NRI)
+    find_package(glslang CONFIG REQUIRED)
     set(NRI_STATIC_LIBRARY ON)
     set(IS_SUBMODULE ON)
     set(NRI_ENABLE_D3D12_SUPPORT OFF)
     set(NRI_ENABLE_D3D11_SUPPORT OFF)
     add_subdirectory(NRI)
-    add_subdirectory(glslang)
 endif()
 
 # Windows specific settings
@@ -111,12 +114,9 @@ endif()
 
 # OS X specific settings
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    set(ARCHS_STANDARD_32_64_BIT "x86_64")                         # Compile only 64-bit version
-    set(CMAKE_XCODE_ATTRIBUTE_MACOSX_DEPLOYMENT_TARGET "10.11")     # Use 10.11 as deployment target
     set(CMAKE_XCODE_ATTRIBUTE_GCC_C_LANGUAGE_STANDARD "gnu99")     # Use GNU99 standart for compiling C files
-    set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD "c++11") # Use C++11 standart for compiling C++ files
+    set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD "c++17") # Use C++11 standart for compiling C++ files
     set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LIBRARY "libc++")          # Use modern libc++ instead of libstdc++
-    set(CMAKE_FRAMEWORK_PATH "../libsrcs/lib/mac/Frameworks")
     set(CMAKE_MACOSX_RPATH 1)
     set(USE_SDL2 1)
 
@@ -237,15 +237,16 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 endif()
 
 if (NOT GAME_MODULES_ONLY)
-    find_package(Ogg REQUIRED)
-    find_package(Vorbis REQUIRED)
+    find_package(Ogg CONFIG REQUIRED)
+    find_package(Vorbis CONFIG REQUIRED)
     find_package(CURL REQUIRED)
     find_package(Freetype REQUIRED)
-    find_package(OpenAL REQUIRED)
+    find_package(OpenAL CONFIG REQUIRED)
+    find_package(RmlUi CONFIG REQUIRED)
 
     if (USE_SDL2)
+        find_package(SDL2 CONFIG REQUIRED)
         set(USE_SDL2 1)
-        find_package(SDL2 REQUIRED)
         add_definitions(-DUSE_SDL2)
     endif()
 endif()

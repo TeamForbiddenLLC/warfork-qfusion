@@ -13,7 +13,7 @@
 
 namespace WSWUI {
 
-using namespace Rocket::Core::Input;
+using namespace Rml::Core::Input;
 
 /* Special punctuation characters */
 const char * KeyConverter::oem_keys = ";=,-./`[\\]'";

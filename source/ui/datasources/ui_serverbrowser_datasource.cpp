@@ -450,7 +450,7 @@ void ServerInfoFetcher::startQuery( const std::string &adr )
 // ServerBrowserDataSource
 
 ServerBrowserDataSource::ServerBrowserDataSource() :
-		Rocket::Controls::DataSource("serverbrowser_source"),
+		Rml::DataSource("serverbrowser_source"),
 		serverList(),
 		fetcher(), active(false), updateId(0), lastActiveTime(0),
 		lastUpdateTime(0)

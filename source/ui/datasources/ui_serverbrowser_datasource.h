@@ -243,7 +243,7 @@ namespace WSWUI {
 
 	//================================================
 
-	class ServerBrowserDataSource : public Rocket::Controls::DataSource
+	class ServerBrowserDataSource : public Rml::DataSource
 	{
 		// typedefs
 		// use set for serverinfo list to keep unique elements
@@ -293,7 +293,7 @@ namespace WSWUI {
 		int numNotifies;
 
 	public:
-		ServerBrowserDataSource(); // : Rocket::Core::DataSource("serverbrowser_source")
+		ServerBrowserDataSource(); // : Rml::Core::DataSource("serverbrowser_source")
 		virtual ~ServerBrowserDataSource();
 
 		//
@@ -314,10 +314,10 @@ namespace WSWUI {
 
 	#if 0
 		// benchmarking edition ltd
-		void NotifyRowAdd (const Rocket::Core::String &table, int first_row_added, int num_rows_added)
+		void NotifyRowAdd (const Rml::String &table, int first_row_added, int num_rows_added)
 		{
 			BenchmarkTimer bt;
-			Rocket::Controls::DataSource::NotifyRowAdd( table, first_row_added, num_rows_added );
+			Rml::DataSource::NotifyRowAdd( table, first_row_added, num_rows_added );
 			//Com_Printf("NotifyRowAdd %u\n", bt() );
 
 			numNotifies++;
@@ -328,7 +328,7 @@ namespace WSWUI {
 		void NotifyRowRemove(const String &table, int first_row_removed, int num_rows_removed)
 		{
 			BenchmarkTimer bt;
-			Rocket::Controls::DataSource::NotifyRowRemove( table, first_row_removed, num_rows_removed );
+			Rml::DataSource::NotifyRowRemove( table, first_row_removed, num_rows_removed );
 			//Com_Printf("NotifyRowRemove %u\n", bt() );
 			numNotifies++;
 		}
@@ -338,7 +338,7 @@ namespace WSWUI {
 		void NotifyRowChange(const String &table, int first_row_changed, int num_rows_changed)
 		{
 			BenchmarkTimer bt;
-			Rocket::Controls::DataSource::NotifyRowChange( table, first_row_changed, num_rows_changed );
+			Rml::DataSource::NotifyRowChange( table, first_row_changed, num_rows_changed );
 			//Com_Printf("NotifyRowChange %u\n", bt() );
 			numNotifies++;
 		}
@@ -348,7 +348,7 @@ namespace WSWUI {
 		void NotifyRowChange(const String &table)
 		{
 			BenchmarkTimer bt;
-			Rocket::Controls::DataSource::NotifyRowChange( table );
+			Rml::DataSource::NotifyRowChange( table );
 			//Com_Printf("NotifyRowChange(full) %u\n", bt() );
 			numNotifies++;
 		}

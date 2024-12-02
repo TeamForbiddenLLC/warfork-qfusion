@@ -9,7 +9,7 @@
 #include "kernel/ui_common.h"
 #include "kernel/ui_systeminterface.h"
 
-using namespace Rocket::Core;
+using namespace Rml::Core;
 
 namespace WSWUI
 {
@@ -62,7 +62,7 @@ bool UI_SystemInterface::LogMessage(Log::Type type, const String& message)
 	return true;
 }
 
-int UI_SystemInterface::TranslateString(Rocket::Core::String& translated, const Rocket::Core::String& input)
+int UI_SystemInterface::TranslateString(Rml::String& translated, const Rml::String& input)
 {
 	const char *l10ned;
 	

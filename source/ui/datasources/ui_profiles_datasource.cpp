@@ -31,7 +31,7 @@ namespace WSWUI
 {
 
 ProfilesDataSource::ProfilesDataSource( void ) :
-	Rocket::Controls::DataSource( PROFILES_SOURCE )
+	Rml::DataSource( PROFILES_SOURCE )
 {
 	UpdateProfiles();
 }

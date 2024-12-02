@@ -20,15 +20,15 @@ namespace WSWUI
 	// predicate looks like bool(Element*) and should return true if it wants
 	// the element given as parameter to be included on the list
 	template<typename T, typename Function>
-	void collectChildren( Rocket::Core::Element *elem, T &container, Function predicate = unary_true<Rocket::Core::Element*> )
+	void collectChildren( Rml::Element *elem, T &container, Function predicate = unary_true<Rml::Element*> )
 	{
 		// insert top-first
-		Rocket::Core::Element *child = elem->GetFirstChild();
+		Rml::Element *child = elem->GetFirstChild();
 		while( child )
 		{
 			if( predicate( child ) )
 			{
-				child->AddReference();
+				//child->AddReference();
 				container.push_back( child );
 			}
 			// recurse
@@ -40,17 +40,17 @@ namespace WSWUI
 
 	// as above but start collecting from the given element
 	template<typename T, typename Function>
-	void collectElements( Rocket::Core::Element *elem, T &container, Function predicate = unary_true<Rocket::Core::Element*> )
+	void collectElements( Rml::Element *elem, T &container, Function predicate = unary_true<Rml::Element*> )
 	{
 		// insert bottom-first
-		Rocket::Core::Element *child = elem->GetFirstChild();
+		Rml::Element *child = elem->GetFirstChild();
 		while( child )
 		{
 			collectElements( child, container, predicate );
 			child = child->GetNextSibling();
 		}
 
-		elem->AddReference();
+	 //	elem->AddReference();
 		container.push_back( elem );
 	}
 
@@ -58,18 +58,18 @@ namespace WSWUI
 	template<typename T>
 	void releaseCollectedElements( T &container )
 	{
-		std::for_each( container.begin(), container.end(), std::mem_fun( &Rocket::Core::Element::RemoveReference ) );
+		//std::for_each( container.begin(), container.end(), std::mem_fun( &Rml::Element::RemoveReference ) );
 		container.clear();
 	}
 
 	// inline action for elements, Function should take 1 parameter, the element itself
 	template<typename Function>
-	void foreachElem( Rocket::Core::Element *elem, Function function, bool doRoot = true )
+	void foreachElem( Rml::Element *elem, Function function, bool doRoot = true )
 	{
 		if( doRoot )
 			function( elem );
 
-		Rocket::Core::Element *child = elem->GetFirstChild();
+		Rml::Element *child = elem->GetFirstChild();
 		while( child )
 		{
 			function( child );

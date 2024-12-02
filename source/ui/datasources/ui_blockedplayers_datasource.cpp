@@ -8,14 +8,14 @@
 
 namespace WSWUI
 {
-    BlockedPlayersDataSource::BlockedPlayersDataSource():Rocket::Controls::DataSource( "blockedplayers" )
+    BlockedPlayersDataSource::BlockedPlayersDataSource():Rml::DataSource( "blockedplayers" )
 	{
 
 	}
 	
-	void BlockedPlayersDataSource::GetRow( Rocket::Core::StringList &row, const Rocket::Core::String&, int row_index, const Rocket::Core::StringList& cols )
+	void BlockedPlayersDataSource::GetRow( Rml::StringList &row, const Rml::String&, int row_index, const Rml::StringList& cols )
 	{
-		for( Rocket::Core::StringList::const_iterator it = cols.begin(); it != cols.end(); ++it )
+		for( Rml::StringList::const_iterator it = cols.begin(); it != cols.end(); ++it )
 		{
 			uint64_t steamid;
 
@@ -33,7 +33,7 @@ namespace WSWUI
 		}
 	}
 
-	int BlockedPlayersDataSource::GetNumRows(const Rocket::Core::String&)
+	int BlockedPlayersDataSource::GetNumRows(const Rml::String&)
 	{
 		size_t i = 0;
 		for (;;i++) {

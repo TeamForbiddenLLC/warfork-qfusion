@@ -27,12 +27,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 namespace WSWUI
 {
 
-class ServerFlagsFormatter : public Rocket::Controls::DataFormatter
+class ServerFlagsFormatter : public Rml::DataFormatter
 {
 public:
-	ServerFlagsFormatter() : Rocket::Controls::DataFormatter("serverflags") {}
+	ServerFlagsFormatter() : Rml::DataFormatter("serverflags") {}
 
-	void FormatData( Rocket::Core::String& formatted_data, const Rocket::Core::StringList& raw_data )
+	void FormatData( Rml::String& formatted_data, const Rml::StringList& raw_data )
 	{
 		formatted_data = "";
 

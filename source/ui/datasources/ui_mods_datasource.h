@@ -7,7 +7,7 @@
 namespace WSWUI
 {
 class ModsDataSource :
-	public Rocket::Controls::DataSource
+	public Rml::DataSource
 {
 public:
 	ModsDataSource(void);

@@ -6,7 +6,7 @@
 
 namespace WSWUI {
 
-namespace Core = Rocket::Core;
+namespace Core = Rml::Core;
 
 //==========================================
 
@@ -52,7 +52,7 @@ void Document::Show( bool show, bool modal )
 {
 	if( rocketDocument ) {
 		if( show ) {
-			rocketDocument->Show( modal ? Rocket::Core::ElementDocument::MODAL : 0 );
+			rocketDocument->Show( modal ? Rml::ElementDocument::MODAL : 0 );
 		}
 		else {
 			rocketDocument->Hide();
@@ -108,7 +108,7 @@ Document *DocumentLoader::loadDocument(const char *path, NavigationStack *stack)
 	loadedDocument = __new__( Document )( path, stack );
 
 	// load the .rml
-	Rocket::Core::ElementDocument *rocketDocument = rm->loadDocument( contextId, path, /* true */ false, loadedDocument );
+	Rml::ElementDocument *rocketDocument = rm->loadDocument( contextId, path, /* true */ false, loadedDocument );
 	loadedDocument->setRocketDocument( rocketDocument );
 
 	if( !rocketDocument ) {
@@ -118,7 +118,7 @@ Document *DocumentLoader::loadDocument(const char *path, NavigationStack *stack)
 	}
 
 	// handle postponed onload events (HOWTO handle these in cached documents?)
-	Rocket::Core::Dictionary ev_parms;
+	Rml::Core::Dictionary ev_parms;
 	ev_parms.Set( "owner", loadedDocument );
 	rocketDocument->DispatchEvent( "afterLoad", ev_parms );
 
@@ -130,10 +130,10 @@ void DocumentLoader::closeDocument(Document *document)
 {
 	UI_Main *ui = UI_Main::Get();
 	RocketModule *rm = ui->getRocket();
-	Rocket::Core::ElementDocument *rocketDocument = document->getRocketDocument();
+	Rml::ElementDocument *rocketDocument = document->getRocketDocument();
 
 	// handle postponed onload events (HOWTO handle these in cached documents?)
-	Rocket::Core::Dictionary ev_parms;
+	Rml::Core::Dictionary ev_parms;
 	rocketDocument->DispatchEvent( "beforeUnload", ev_parms );
 
 	rm->closeDocument(rocketDocument);

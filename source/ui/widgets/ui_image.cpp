@@ -85,14 +85,14 @@ void ElementImage::OnRender()
 		GenerateGeometry();
 
 	// Render the geometry beginning at this element's content region.
-	geometry.Render(GetAbsoluteOffset(Rocket::Core::Box::CONTENT));
+	geometry.Render(GetAbsoluteOffset(Rml::Core::Box::CONTENT));
 }
 
 // Called when attributes on the element are changed.
-void ElementImage::OnAttributeChange(const Rocket::Core::AttributeNameList& changed_attributes)
+void ElementImage::OnAttributeChange(const Rml::Core::AttributeNameList& changed_attributes)
 {
 	// Call through to the base element's OnAttributeChange().
-	Rocket::Core::Element::OnAttributeChange(changed_attributes);
+	Rml::Element::OnAttributeChange(changed_attributes);
 
 	float dirty_layout = false;
 
@@ -123,7 +123,7 @@ void ElementImage::OnAttributeChange(const Rocket::Core::AttributeNameList& chan
 
 			if (coords_list.size() != 4)
 			{
-				Rocket::Core::Log::Message(Log::LT_WARNING, "Element '%s' has an invalid 'coords' attribute; coords requires 4 values, found %d.", GetAddress().CString(), coords_list.size());
+				Rml::Core::Log::Message(Log::LT_WARNING, "Element '%s' has an invalid 'coords' attribute; coords requires 4 values, found %d.", GetAddress().CString(), coords_list.size());
 				ResetCoords();
 			}
 			else
@@ -135,7 +135,7 @@ void ElementImage::OnAttributeChange(const Rocket::Core::AttributeNameList& chan
 				if (coords[0] < 0 || coords[2] < coords[0] ||
 					coords[1] < 0 || coords[3] < coords[1])
 				{
-					Rocket::Core::Log::Message(Log::LT_WARNING, "Element '%s' has an invalid 'coords' attribute; invalid coordinate values specified.", GetAddress().CString());
+					Rml::Core::Log::Message(Log::LT_WARNING, "Element '%s' has an invalid 'coords' attribute; invalid coordinate values specified.", GetAddress().CString());
 					ResetCoords();
 				}
 				else
@@ -158,7 +158,7 @@ void ElementImage::OnAttributeChange(const Rocket::Core::AttributeNameList& chan
 }
 
 // Regenerates the element's geometry.
-void ElementImage::ProcessEvent(Rocket::Core::Event& event)
+void ElementImage::ProcessEvent(Rml::Event& event)
 {
 	Element::ProcessEvent(event);
 
@@ -174,7 +174,7 @@ void ElementImage::GenerateGeometry()
 	// Release the old geometry before specifying the new vertices.
 	geometry.Release(true);
 
-	std::vector< Rocket::Core::Vertex >& vertices = geometry.GetVertices();
+	std::vector< Rml::Vertex >& vertices = geometry.GetVertices();
 	std::vector< int >& indices = geometry.GetIndices();
 
 	vertices.resize(4);
@@ -202,10 +202,10 @@ void ElementImage::GenerateGeometry()
 		texcoords[1] = Vector2f(1, 1);
 	}
 
-	Rocket::Core::GeometryUtilities::GenerateQuad(&vertices[0],									// vertices to write to
+	Rml::Core::GeometryUtilities::GenerateQuad(&vertices[0],									// vertices to write to
 												  &indices[0],									// indices to write to
 												  Vector2f(0, 0),					// origin of the quad
-												  GetBox().GetSize(Rocket::Core::Box::CONTENT),	// size of the quad
+												  GetBox().GetSize(Rml::Core::Box::CONTENT),	// size of the quad
 												  Colourb(255, 255, 255, 255),		// colour of the vertices
 												  texcoords[0],									// top-left texture coordinate
 												  texcoords[1]);								// top-right texture coordinate
@@ -255,7 +255,7 @@ bool ElementImage::LoadDiskTexture()
 
 	geometry_dirty = true;
 
-	Rocket::Core::ElementDocument* document = GetOwnerDocument();
+	Rml::ElementDocument* document = GetOwnerDocument();
 	URL source_url(document == NULL ? "" : document->GetSourceURL());
 
 	if (!texture.Load(image_source, source_url.GetPath()))

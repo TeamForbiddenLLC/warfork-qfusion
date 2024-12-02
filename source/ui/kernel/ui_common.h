@@ -12,23 +12,13 @@ namespace WSWUI
 {
 
 	// some useful shortcuts
-	typedef Rocket::Core::Vector2i Vector2i;
-	typedef Rocket::Core::String String;
-	typedef Rocket::Core::StringList StringList;
+	typedef Rml::Vector2i Vector2i;
+	typedef Rml::String String;
+	typedef Rml::StringList StringList;
 
-	// Rocket string -> std::string conversions (better would be to just consistently use
-	// one of them.. in that case it'd be std::string)
-	// TODO: versions for __stl_string (too)
-	inline bool operator==( const std::string &lhs, const String &rhs ) {
-		return ( lhs == rhs.CString() );
-	}
 
 	inline bool operator==( const String &lhs, const std::string &rhs ) {
 		return ( lhs == rhs.c_str() );
-	}
-
-	inline bool operator!=( const std::string &lhs, const String &rhs ) {
-		return ( lhs != rhs.CString() );
 	}
 
 	inline bool operator!=( const String &lhs, const std::string &rhs ) {

@@ -28,15 +28,15 @@
 #ifndef ROCKETCOREELEMENTIMAGE_H
 #define ROCKETCOREELEMENTIMAGE_H
 
-#include <Rocket/Core/Header.h>
-#include <Rocket/Core/Element.h>
-#include <Rocket/Core/Geometry.h>
-#include <Rocket/Core/Texture.h>
+#include <RmlUi/Core/Header.h>
+#include <RmlUi/Core/Element.h>
+#include <RmlUi/Core/Geometry.h>
+#include <RmlUi/Core/Texture.h>
 
 namespace WSWUI
 {
 
-using namespace Rocket::Core;
+using namespace Rml::Core;
 
 #define WSW_UI_IMAGES_CACHE_TTL		60*24			// TTL of one day (in minutes)
 
