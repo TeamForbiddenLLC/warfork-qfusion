@@ -295,7 +295,7 @@ void R_PrintImageList( const char *mask, bool (*filter)( const char *mask, const
 		if( !image->width || !image->height || !image->layers ) {
 			continue;
 		}
-		if( filter && !filter( mask, image->name ) ) {
+		if( filter && !filter( mask, image->name.buf) ) {
 			continue;
 		}
 		if( !image->loaded || image->missing ) {
@@ -1050,7 +1050,7 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 	image->descriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
 	image->samplerDescriptor = R_CreateDescriptorWrapper(&rsh.nri, R_ResolveSamplerDescriptor(image->flags)); 
 	assert(image->samplerDescriptor.descriptor);
-	rsh.nri.coreI.SetTextureDebugName( image->texture, image->name );
+	rsh.nri.coreI.SetTextureDebugName( image->texture, image->name.buf );
 
 	if( R_KTXIsCompressed( &ktxContext ) ) {
 		struct texture_buf_s uncomp = { 0 };
@@ -1115,15 +1115,11 @@ error: // must not be reached after actually starting uploading the texture
 }
 
 
-static struct image_s *__R_AllocImage( const char *name )
-{
+static struct image_s *__R_AllocImage( const struct QStrSpan name) {
 	if( !free_images ) {
 		return NULL;
 	}
-
-	const size_t nameLen = strlen( name );
-	const unsigned hashIndex = (COM_SuperFastHash( (const uint8_t *)name, nameLen, nameLen )) % IMAGES_HASH_SIZE;
-	
+	const unsigned hashIndex = hash_data_hsieh(HASH_INITIAL_VALUE, name.buf, name.len) % IMAGES_HASH_SIZE;
 	ri.Mutex_Lock( r_imagesLock );
 	image_t *image = free_images;
 	free_images = image->next;
@@ -1141,18 +1137,16 @@ static struct image_s *__R_AllocImage( const char *name )
 	if( !image ) {
 		ri.Com_Error( ERR_DROP, "R_LoadImage: r_numImages == MAX_GLIMAGES" );
 	}
-	image->name = Q_Malloc(nameLen + 1);
-	memset(image->name, 0, nameLen + 1);
-	Q_LinkToPool(image->name, r_imagesPool);
-	strcpy( image->name, name );
+	struct QStr value = {0};
+	qStrAppendSlice(&value, name);
+	image->name = value; 
 	image->registrationSequence = rsh.registrationSequence;
-	image->extension = '\0';
+	image->extension = NULL;
 	image->loaded = true;
 	image->missing = false;
 
 	return image;
 }
-
 
 static NriTextureUsageBits __R_NRITextureUsageBits(int flags) {
 	if( flags & IT_DEPTH ) {
@@ -1305,104 +1299,10 @@ static uint16_t __R_calculateMipMapLevel(int flags, int width, int height, uint3
 	return  max(1,( flags & IT_NOMIPMAP ) ? 1 :ceil(log2(max(width, height))));
 }
 
-// static void __LoadImageInPlace(struct image_s* image, uint8_t **pic, int width, int height, int flags, int minmipsize, int tags, int samples ) {
-// 	assert(image);
-// 	assert(image->texture);
-
-// 	image->width = width;
-// 	image->height = height;
-// 	image->layers = 1;
-// 	image->flags = flags;
-// 	image->minmipsize = minmipsize;
-// 	image->tags = tags;
-// 	image->samples = samples;
-// 	image->width = width;
-// 	image->height = height;
-	
-// 	const uint32_t mipSize = __R_calculateMipMapLevel( flags, width, height, minmipsize );
-
-// 	enum texture_format_e srcFormat = __R_ResolveDataFormat( image );
-// 	enum texture_format_e destFormat = __R_GetImageFormat( image );
-// 	NriTextureDesc textureDesc = { .width = width,
-// 								   .height = height,
-// 								   .depth = 1,
-// 								   .usageMask = __R_NRITextureUsageBits( flags ),
-// 								   .layerNum = ( flags & IT_CUBEMAP ) ? 6 : 1,
-// 								   .format = R_NRIFormat( destFormat ),
-// 								   .sampleNum = 1,
-// 								   .type = NriTextureType_TEXTURE_2D,
-// 								   .mipNum = mipSize };
-// 	rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture );
-// 	NriResourceGroupDesc resourceGroupDesc = {
-// 		.textureNum = 1,
-// 		.textures = &image->texture,
-// 		.memoryLocation = NriMemoryLocation_DEVICE,
-// 	};
-// 	const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
-// 	assert( allocationNum <= Q_ARRAY_COUNT( image->memory ) );
-// 	NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, image->memory ) );
-// 	uint32_t srcBlockSize = R_FormatBitSizePerBlock( srcFormat ) / 8;
-// 	uint32_t destBlockSize = R_FormatBitSizePerBlock( destFormat ) / 8;
-// 	uint8_t *tmpBuffer = NULL;
-// 	const size_t reservedSize = width * height * samples;
-// 	if( pic ) {
-// 		// R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
-// 		for( size_t index = 0; index < textureDesc.layerNum; index++ ) {
-// 			if( !pic[index] ) {
-// 				continue;
-// 			}
-// 			uint8_t *buf = pic[index];
-// 			if( !( flags & IT_CUBEMAP ) && ( flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) ) ) {
-// 				arrsetlen( tmpBuffer, reservedSize );
-// 				R_FlipTexture( buf, tmpBuffer, width, height, samples, ( flags & IT_FLIPX ) ? true : false, ( flags & IT_FLIPY ) ? true : false, ( flags & IT_FLIPDIAGONAL ) ? true : false );
-// 				buf = tmpBuffer;
-// 			}
-
-// 			uint32_t w = width;
-// 			uint32_t h = height;
-// 			for( size_t i = 0; i < mipSize; i++ ) {
-// 				texture_upload_desc_t uploadDesc = { 
-// 					.sliceNum = h, 
-// 					.rowPitch = w * destBlockSize, 
-// 					.arrayOffset = index, 
-// 					.mipOffset = i, .width = w, 
-// 					.height = h, 
-// 					.target = image->texture, 
-// 					.after = (NriAccessLayoutStage){
-// 						.layout = NriLayout_SHADER_RESOURCE,
-// 						.access = NriAccessBits_SHADER_RESOURCE,
-// 						.stages = NriStageBits_FRAGMENT_SHADER 
-// 					}
-// 				};
-// 				R_ResourceBeginCopyTexture( &uploadDesc );
-// 				for( size_t slice = 0; slice < height; slice++ ) {
-// 					const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
-// 					memset( &( (uint8_t *)uploadDesc.data )[dstRowStart], 255, uploadDesc.rowPitch );
-// 					for( size_t column = 0; column < width; column++ ) {
-// 						memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], &buf[( width * srcBlockSize * slice ) + ( column * srcBlockSize )],
-// 								min( srcBlockSize, destBlockSize ) );
-// 					}
-// 				}
-// 				R_ResourceEndCopyTexture( &uploadDesc );
-// 				w >>= 1;
-// 				h >>= 1;
-// 				if( w == 0 ) {
-// 					w = 1;
-// 				}
-// 				if( h == 0 ) {
-// 					h = 1;
-// 				}
-// 				R_MipMap( buf, w, h, samples, 1 );
-// 			}
-// 		}
-// 	}
-// 	arrfree( tmpBuffer );
-
-// }
-
 struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int height, int flags, int minmipsize, int tags, int samples )
 {
-	struct image_s *image = __R_AllocImage( name );
+	
+	struct image_s *image = __R_AllocImage( qCToStrRef(name) );
 	
 	image->width = width;
 	image->height = height;
@@ -1489,7 +1389,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 
 image_t *R_CreateImage( const char *name, int width, int height, int layers, int flags, int minmipsize, int tags, int samples )
 {
-	image_t* image = __R_AllocImage(name);
+	image_t* image = __R_AllocImage(qCToStrRef(name));
 	if( !image ) {
 		ri.Com_Error( ERR_DROP, "R_LoadImage: r_numImages == MAX_GLIMAGES" );
 	}
@@ -1516,12 +1416,11 @@ static void __FreeImage( struct frame_cmd_buffer_s *cmd, struct image_s *image )
 		// R_ReleaseNriTexture(image);
 		memset(&image->descriptor, 0, sizeof(struct nri_descriptor_s));
 		memset(&image->samplerDescriptor, 0, sizeof(struct  nri_descriptor_s));
-		
-		Q_Free( image->name );
+	
+		qStrFree(&image->name);
 		image->flags = 0;
 		image->loaded = false;
 		image->tags = 0;
-		image->name = NULL;
 		image->registrationSequence = 0;
 		image->texture = NULL;
 		image->descriptor = (struct nri_descriptor_s){0};
@@ -1563,7 +1462,7 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 									   .type = NriTextureType_TEXTURE_2D,
 									   .mipNum = mipSize };
 		rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture );
-		rsh.nri.coreI.SetTextureDebugName( image->texture, image->name );
+		rsh.nri.coreI.SetTextureDebugName( image->texture, image->name.buf );
 		NriResourceGroupDesc resourceGroupDesc = {
 			.textureNum = 1,
 			.textures = &image->texture,
@@ -1739,13 +1638,14 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	qStrSetNullTerm(&resolvedPath);
 
 	image_t	*image = NULL;
-	const uint32_t key = COM_SuperFastHash( (uint8_t *)resolvedPath.buf, resolvedPath.len, resolvedPath.len ) % IMAGES_HASH_SIZE;
+
+	const unsigned key  = hash_data_hsieh(HASH_INITIAL_VALUE, resolvedPath.buf, resolvedPath.len) % IMAGES_HASH_SIZE;
 	const image_t* hnode = &images_hash_headnode[key];
 	const int searchFlags = flags & ~IT_LOADFLAGS;
 	for( image = hnode->prev; image != hnode; image = image->prev )
 	{
 		if( ( ( image->flags & ~IT_LOADFLAGS ) == searchFlags ) &&
-			!strcmp( image->name, resolvedPath.buf) && ( image->minmipsize == minmipsize ) ) {
+			!qStrCompare( qToStrRef(image->name), qToStrRef(resolvedPath)) && ( image->minmipsize == minmipsize ) ) {
 			R_TouchImage( image, tags );
 			goto done;
 		}
@@ -1754,7 +1654,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	qStrSetLen( &resolvedPath, basePathLen);
 	qStrSetNullTerm(&resolvedPath);
 
-	image = __R_AllocImage( resolvedPath.buf);
+	image = __R_AllocImage( qToStrRef(resolvedPath));
 	image->layers = 1;
 	image->flags = flags;
 	image->minmipsize = minmipsize;
@@ -1833,7 +1733,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 		qStrSetLen( &resolvedPath, basePathLen); // truncate the pathext + cubemap
 		qStrSetNullTerm(&resolvedPath);
 		if( uploadCount != 6 ) {
-			ri.Com_DPrintf( S_COLOR_YELLOW "Missing image: %s\n", image->name );
+			ri.Com_DPrintf( S_COLOR_YELLOW "Missing image: %s\n", image->name.buf );
 			__FreeImage( R_ActiveFrameCmd(),image );
 			image = NULL;
 			goto done;
@@ -1852,7 +1752,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 			image->height = image->height = T_PixelH( &upload->buffer );
 			image->samples = RT_NumberChannels( upload->buffer.def );
 		} else {
-			ri.Com_Printf( S_COLOR_YELLOW "Missing image: %s\n", image->name );
+			ri.Com_Printf( S_COLOR_YELLOW "Missing image: %s\n", image->name.buf );
 			__FreeImage( R_ActiveFrameCmd(),image );
 			image = NULL;
 			goto done;
@@ -1878,12 +1778,12 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 		.mipNum = mipSize 
 	};
 	if( rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture ) != NriResult_SUCCESS ) {
-		ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name );
+		ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name.buf );
 		__FreeImage( R_ActiveFrameCmd(),image );
 		image = NULL;
 		goto done;
 	}
-	rsh.nri.coreI.SetTextureDebugName( image->texture, image->name );
+	rsh.nri.coreI.SetTextureDebugName( image->texture, image->name.buf );
 
 	NriResourceGroupDesc resourceGroupDesc = {
 		.textureNum = 1,
@@ -1894,7 +1794,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	assert( numAllocations <= Q_ARRAY_COUNT( image->memory ) );
 	image->numAllocations = numAllocations;
 	if( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, image->memory ) ) {
-		ri.Com_Printf( S_COLOR_YELLOW "Failed Allocation: %s\n", image->name );
+		ri.Com_Printf( S_COLOR_YELLOW "Failed Allocation: %s\n", image->name.buf );
 		__FreeImage(R_ActiveFrameCmd(), image );
 		image = NULL;
 		goto done;
@@ -2293,7 +2193,7 @@ void R_FreeUnusedImagesByTags( int tags )
 	int keeptags = ~tags;
 
 	for( i = 0, image = images; i < MAX_GLIMAGES; i++, image++ ) {
-		if( !image->name ) {
+		if(qStrEmpty(image->name)) {
 			// free image
 			continue;
 		}
@@ -2341,7 +2241,7 @@ void R_ShutdownImages( void )
 	R_ReleaseBuiltinImages();
 
 	for( i = 0, image = images; i < MAX_GLIMAGES; i++, image++ ) {
-		if( !image->name ) {
+		if(qStrEmpty(image->name) ) {
 			// free texture
 			continue;
 		}

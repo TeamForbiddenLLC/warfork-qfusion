@@ -12,6 +12,8 @@
 #include "../gameshared/q_sds.h"
 
 
+#include "qhash.h"
+
 #define POGO_BUFFER_TEXTURE_FORMAT NriFormat_RGBA8_UNORM
 
 typedef struct mesh_vbo_s mesh_vbo_t;

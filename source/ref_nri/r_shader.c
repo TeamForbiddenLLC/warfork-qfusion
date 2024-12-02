@@ -1318,7 +1318,7 @@ static void Shaderpass_Material( shader_t *shader, shaderpass_t *pass, const cha
 	// load default images
 	pass->program_type = GLSL_PROGRAM_TYPE_MATERIAL;
 	Shaderpass_LoadMaterial( &pass->images[1], &pass->images[2], &pass->images[3],
-		pass->images[0]->name, flags, shader->imagetags );
+		pass->images[0]->name.buf, flags, shader->imagetags );
 }
 
 static void Shaderpass_Distortion( shader_t *shader, shaderpass_t *pass, const char **ptr )

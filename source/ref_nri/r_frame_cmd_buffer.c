@@ -1,12 +1,13 @@
 #include "r_frame_cmd_buffer.h"
 
-#include "r_hasher.h"
 #include "r_local.h"
 #include "r_nri.h"
 #include "r_resource.h"
-#include "stb_ds.h"
 
 #include "r_model.h"
+
+#include "stb_ds.h"
+#include "qhash.h"
 
 void FR_CmdResetAttachmentToBackbuffer( struct frame_cmd_buffer_s *cmd )
 {

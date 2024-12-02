@@ -30,6 +30,8 @@ typedef uint64_t r_glslfeat_t;
 #include "r_resource.h"
 
 
+#include "qhash.h"
+
 #define GLSL_BIT(x)							(1ULL << (x))
 #define GLSL_BITS_VERSION					16
 

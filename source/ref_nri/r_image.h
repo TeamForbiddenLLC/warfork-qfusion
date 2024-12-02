@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef R_IMAGE_H
 #define R_IMAGE_H
 
+#include "qstr.h"
 #include "r_nri.h"
 
 enum
@@ -79,7 +80,7 @@ typedef struct image_s
 	size_t numAllocations;
 	NriMemory* memory[4];
 
-	char			*name;						// game path, not including extension
+	struct QStr name;// game path, not including extension 
 	int				registrationSequence;
 	volatile bool loaded;
 	volatile bool missing;

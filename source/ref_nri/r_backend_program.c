@@ -20,10 +20,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_backend_local.h"
 #include "r_descriptor_pool.h"
-#include "r_hasher.h"
 #include "r_local.h"
 #include "r_resource.h"
 #include "stb_ds.h"
+
+#include "qhash.h"
 
 #define FTABLE_SIZE_POW 12
 #define FTABLE_SIZE ( 1 << FTABLE_SIZE_POW )

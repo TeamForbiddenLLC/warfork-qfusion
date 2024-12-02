@@ -1,8 +1,8 @@
 #ifndef R_NRI_IMP_H
 #define R_NRI_IMP_H
 
-#include "r_hasher.h"
 #define NRI_STATIC_LIBRARY 1
+#include "qarch.h"
 #include "NRI.h"
 
 #include "r_texture_format.h"
