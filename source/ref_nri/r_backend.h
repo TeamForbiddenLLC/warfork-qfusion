@@ -52,13 +52,7 @@ void RB_SetState( int state );
 void RB_FlipFrontFace( struct frame_cmd_buffer_s* cmd);
 void RB_Scissor( int x, int y, int w, int h );
 void RB_GetScissor( int *x, int *y, int *w, int *h );
-void RB_ApplyScissor( void );
-//void RB_Clear( int bits, float r, float g, float b, float a );
 void RB_SetZClip( float zNear, float zFar );
-
-void RB_BindFrameBufferObject( int object );
-int RB_BoundFrameBufferObject( void );
-//void RB_BlitFrameBufferObject( int dest, int bitMask, int mode );
 
 void RB_BindVBO( int id, int primitive);
 
@@ -80,9 +74,6 @@ void RB_DrawShadedElements_2( struct frame_cmd_buffer_s *cmd,
 							  int numShadowVerts,
 							  int firstShadowElem,
 							  int numShadowElems );
-
-
-void RB_FlushTextureCache( void );
 
 // shader
 void RB_BindShader(struct frame_cmd_buffer_s* frame,  const entity_t *e, const struct shader_s *shader, const struct mfog_s *fog );

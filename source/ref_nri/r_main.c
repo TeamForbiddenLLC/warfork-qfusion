@@ -1332,7 +1332,6 @@ void R_DeferDataSync( void )
 		return;
 
 	rf.dataSync = true;
-	RB_FlushTextureCache();
 }
 
 
@@ -1511,55 +1510,6 @@ void R_RenderDebugSurface( const refdef_t *fd )
 	ri.Mutex_Lock( rf.debugSurfaceLock );
 	rf.debugSurface = debugSurf;
 	ri.Mutex_Unlock( rf.debugSurfaceLock );
-}
-
-/*
-* R_BeginFrame
-*/
-void R_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
-{
-	const unsigned int time = ri.Sys_Milliseconds();
-
-	//GLimp_BeginFrame();
-
-	//RB_BeginFrame();
-
-//#ifndef GL_ES_VERSION_2_0
-//	if( cameraSeparation && ( !glConfig.stereoEnabled || !R_IsRenderingToScreen() ) )
-//		cameraSeparation = 0;
-//
-//	if( rf.cameraSeparation != cameraSeparation ) {
-//		rf.cameraSeparation = cameraSeparation;
-//		if( cameraSeparation < 0 )
-//			qglDrawBuffer( GL_BACK_LEFT );
-//		else if( cameraSeparation > 0 )
-//			qglDrawBuffer( GL_BACK_RIGHT );
-//		else
-//			qglDrawBuffer( GL_BACK );
-//	}
-//#endif
-
-//	if( forceClear )
-//	{
-//		RB_Clear( GL_COLOR_BUFFER_BIT, 0, 0, 0, 1 );
-//	}
-
-	// set swap interval (vertical synchronization)
-	//rf.swapInterval = R_SetSwapInterval( ( r_swapinterval->integer || forceVsync ) ? 1 : 0, rf.swapInterval );
-
-	memset( &rf.stats, 0, sizeof( rf.stats ) );
-
-    // update fps meter
-	rf.fps.count++;
-	rf.fps.time = time;
-	if( rf.fps.time - rf.fps.oldTime >= 250 ) {
-		rf.fps.average = time - rf.fps.oldTime;
-		rf.fps.average = 1000.0f * (rf.fps.count - rf.fps.oldCount) / (float)rf.fps.average + 0.5f;
-		rf.fps.oldTime = time;
-		rf.fps.oldCount = rf.fps.count;
-	}
-
-	//R_Set2DMode( true );
 }
 
 /*

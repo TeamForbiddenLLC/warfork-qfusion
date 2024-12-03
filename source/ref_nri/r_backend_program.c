@@ -2154,7 +2154,6 @@ static void RB_SetShaderpassState_2( struct frame_cmd_buffer_s *cmd, int state )
 	RB_SetState_2( cmd, state );
 }
 
-
 void RB_DrawShadedElements_2( struct frame_cmd_buffer_s *cmd,
 							  int firstVert,
 							  int numVerts,

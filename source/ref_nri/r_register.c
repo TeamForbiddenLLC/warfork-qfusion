@@ -250,7 +250,6 @@ static void R_Register( const char *screenshotsPrefix )
 
 
 	gl_cull = Cvar_Get( "gl_cull", "1", 0 );
-	gl_drawbuffer = Cvar_Get( "gl_drawbuffer", "GL_BACK", 0 );
 
 	Cmd_AddCommand( "imagelist", R_ImageList_f );
 	Cmd_AddCommand( "shaderlist", R_ShaderList_f );

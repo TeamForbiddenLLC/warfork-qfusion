@@ -115,7 +115,6 @@ void RB_BeginFrame( void )
 	// start fresh each frame
 	RB_SetShaderStateMask( ~0, 0 );
 	RB_BindVBO( 0, 0 );
-	RB_FlushTextureCache();
 }
 
 void RB_EndFrame( void )
@@ -135,7 +134,7 @@ void RB_DepthRange( float depthmin, float depthmax )
 	// depthmin == depthmax is a special case when a specific depth value is going to be written
 	if( ( depthmin != depthmax ) && !rb.gl.depthoffset )
 		depthmin += 4.0f / 65535.0f;
-	qglDepthRange( depthmin, depthmax );
+	//qglDepthRange( depthmin, depthmax );
 }
 
 /*
@@ -481,20 +480,6 @@ void RB_GetScissor( int *x, int *y, int *w, int *h )
 	if( h ) {
 		*h = rb.gl.scissor[3];
 	}
-}
-
-/*
-* RB_ApplyScissor
-*/
-void RB_ApplyScissor( void )
-{
-}
-
-/*
-* RB_BindFrameBufferObject
-*/
-void RB_BindFrameBufferObject( int object )
-{
 }
 
 /*
