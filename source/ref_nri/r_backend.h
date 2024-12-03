@@ -66,21 +66,7 @@ void RB_Viewport( int x, int y, int w, int h );
 void RB_Clear( int bits, float r, float g, float b, float a );
 void RB_SetZClip( float zNear, float zFar );
 
-void RB_BindFrameBufferObject( int object );
-int RB_BoundFrameBufferObject( void );
-//void RB_BlitFrameBufferObject( int dest, int bitMask, int mode );
-
 void RB_BindVBO( int id, int primitive);
-//void RB_BindVBO_2( NriCommandBuffer* cmd,
-//					vattribmask_t attrib,
-//				   unsigned int firstVert,
-//				   unsigned int numVerts,
-//				   unsigned int firstElem,
-//				   unsigned int numElems,
-//				   size_t vertexOffset,
-//				   NriMemory *vertexMem,
-//				   size_t elementOffset,
-//				   NriMemory *elementMem );
 
 void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, const shader_t *shader,
 	const struct mfog_s *fog, const struct portalSurface_s *portalSurface, unsigned int shadowBits,
@@ -100,9 +86,6 @@ void RB_DrawShadedElements_2( struct frame_cmd_buffer_s *cmd,
 							  int numShadowVerts,
 							  int firstShadowElem,
 							  int numShadowElems );
-
-
-void RB_FlushTextureCache( void );
 
 // shader
 void RB_BindShader(struct frame_cmd_buffer_s* frame,  const entity_t *e, const struct shader_s *shader, const struct mfog_s *fog );

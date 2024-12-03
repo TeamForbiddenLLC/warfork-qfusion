@@ -171,7 +171,6 @@ NriDescriptor *R_ResolveSamplerDescriptor( int flags )
 */
 static void R_BindImage( const image_t *tex )
 {
-	RB_FlushTextureCache();
 }
 
 /*
@@ -179,7 +178,6 @@ static void R_BindImage( const image_t *tex )
 */
 static void R_UnbindImage( const image_t *tex )
 {
-	RB_FlushTextureCache();
 }
 
 
@@ -847,94 +845,6 @@ static bool R_IsKTXFormatValid( int format, int type )
 		return ( format == GL_ETC1_RGB8_OES ) ? true : false;
 	}
 	return false;
-}
-
-typedef struct ktx_header_s
-{
-	char identifier[12];
-	int endianness;
-	int type;
-	int typeSize;
-	int format;
-	int internalFormat;
-	int baseInternalFormat;
-	int pixelWidth;
-	int pixelHeight;
-	int pixelDepth;
-	int numberOfArrayElements;
-	int numberOfFaces;
-	int numberOfMipmapLevels;
-	int bytesOfKeyValueData;
-} ktx_header_t;
-
-static ktx_header_t* R_FetchKTXHeader(uint8_t* buffer, bool* endianess) {
-	ktx_header_t *header = (ktx_header_t *)buffer;
-	const bool swapEndian = ( header->endianness == 0x01020304 ) ? true : false;
-	if(endianess) {
-		(*endianess) = swapEndian;
-	}
-	if( swapEndian )
-	{
-		header->type = LongSwap(header->type);
-		header->typeSize = LongSwap(header->typeSize);
-		header->format = LongSwap(header->format);
-		header->internalFormat = LongSwap(header->internalFormat);
-		header->baseInternalFormat = LongSwap(header->baseInternalFormat);
-		header->pixelWidth = LongSwap(header->pixelWidth);
-		header->pixelHeight = LongSwap(header->pixelHeight);
-		header->pixelDepth = LongSwap(header->pixelDepth);
-		header->numberOfArrayElements = LongSwap(header->numberOfArrayElements);
-		header->numberOfFaces = LongSwap(header->numberOfFaces);
-		header->numberOfMipmapLevels = LongSwap(header->numberOfMipmapLevels);
-		header->bytesOfKeyValueData = LongSwap(header->bytesOfKeyValueData);
-	}
-	return header;
-}
-static bool R_ValidateKTXHeader(const ktx_header_t* header, const int flags,const char* pathname, const uint16_t expectedNumFaces) {
-	assert(header);
-	bool result = true;
-
-	if( memcmp( header->identifier, "\xABKTX 11\xBB\r\n\x1A\n", 12 ) ) {
-		ri.Com_DPrintf( S_COLOR_YELLOW "R_LoadKTX: Bad file identifier: %s\n", pathname );
-		result = false;
-	}
-
-	if( header->format && ( header->format != header->baseInternalFormat ) ) {
-		ri.Com_DPrintf( S_COLOR_YELLOW "R_LoadKTX: Pixel format doesn't match internal format: %s\n", pathname );
-		result = false;
-	}
-	if( !R_IsKTXFormatValid( header->format ? header->baseInternalFormat : header->internalFormat, header->type ) ) {
-		ri.Com_DPrintf( S_COLOR_YELLOW "R_LoadKTX: Unsupported pixel format: %s\n", pathname );
-		result = false;
-	}
-	if( ( header->pixelWidth < 1 ) || ( header->pixelHeight < 0 ) )
-	{
-		ri.Com_DPrintf( S_COLOR_YELLOW "R_LoadKTX: Zero texture size: %s\n", pathname );
-		result = false; 
-	}
-	if( !header->type && ( ( header->pixelWidth & ( header->pixelWidth - 1 ) ) || ( header->pixelHeight & ( header->pixelHeight - 1 ) ) ) )
-	{
-		// NPOT compressed textures may crash on certain drivers/GPUs
-		ri.Com_DPrintf( S_COLOR_YELLOW "R_LoadKTX: Compressed image must be power-of-two: %s\n", pathname );
-		result = false; 
-	}
-	if( ( flags & IT_CUBEMAP ) && ( header->pixelWidth != header->pixelHeight ) )
-	{
-		ri.Com_DPrintf( S_COLOR_YELLOW "R_LoadKTX: Not square cubemap image: %s\n", pathname );
-		result = false;
-	}
-	if( ( header->pixelDepth > 1 ) || ( header->numberOfArrayElements > 1 ) )
-	{
-		ri.Com_DPrintf( S_COLOR_YELLOW "R_LoadKTX: 3D textures and texture arrays are not supported: %s\n", pathname );
-		result = false;
-	}
-	if( header->numberOfFaces != expectedNumFaces)
-	{
-		ri.Com_DPrintf( S_COLOR_YELLOW "R_LoadKTX: Bad number of cubemap faces: %s\n", pathname );
-		result = false;
-	}
-
-	return result;
 }
 
 //TODO: move ktx loader to a seperate file

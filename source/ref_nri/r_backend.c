@@ -29,9 +29,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 rbackend_t rb;
 
-static void RB_SetGLDefaults( void );
 static void RB_RegisterStreamVBOs( void );
-static void RB_SelectTextureUnit( int tmu );
 
 
 /*
@@ -122,7 +120,6 @@ void RB_BeginFrame( void )
 	// start fresh each frame
 	RB_SetShaderStateMask( ~0, 0 );
 	RB_BindVBO( 0, 0 );
-	RB_FlushTextureCache();
 }
 
 /*
@@ -145,56 +142,6 @@ void RB_StatsMessage( char *msg, size_t size )
 	);
 }
 
-/*
-* RB_SetGLDefaults
-*/
-static void RB_SetGLDefaults( void )
-{
-	if( glConfig.stencilBits )
-	{
-		qglStencilMask( ( GLuint ) ~0 );
-		qglStencilFunc( GL_EQUAL, 128, 0xFF );
-		qglStencilOp( GL_KEEP, GL_KEEP, GL_INCR );
-	}
-
-	qglDisable( GL_CULL_FACE );
-	qglFrontFace( GL_CCW );
-	qglDisable( GL_BLEND );
-	qglDepthFunc( GL_LEQUAL );
-	qglDepthMask( GL_FALSE );
-	qglDisable( GL_POLYGON_OFFSET_FILL );
-	qglPolygonOffset( -1.0f, 0.0f ); // units will be handled by RB_DepthOffset
-	qglColorMask( GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE );
-	qglEnable( GL_DEPTH_TEST );
-#ifndef GL_ES_VERSION_2_0
-	qglPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-#endif
-	qglFrontFace( GL_CCW );
-	qglEnable( GL_SCISSOR_TEST );
-}
-
-/*
-* RB_SelectTextureUnit
-*/
-static void RB_SelectTextureUnit( int tmu )
-{
-	if( tmu == rb.gl.currentTMU )
-		return;
-
-	rb.gl.currentTMU = tmu;
-	qglActiveTextureARB( tmu + GL_TEXTURE0_ARB );
-#ifndef GL_ES_VERSION_2_0
-	qglClientActiveTextureARB( tmu + GL_TEXTURE0_ARB );
-#endif
-}
-
-/*
-* RB_FlushTextureCache
-*/
-void RB_FlushTextureCache( void )
-{
-	rb.gl.flushTextures = true;
-}
 
 /*
 * RB_DepthRange
@@ -208,7 +155,7 @@ void RB_DepthRange( float depthmin, float depthmax )
 	// depthmin == depthmax is a special case when a specific depth value is going to be written
 	if( ( depthmin != depthmax ) && !rb.gl.depthoffset )
 		depthmin += 4.0f / 65535.0f;
-	qglDepthRange( depthmin, depthmax );
+	//qglDepthRange( depthmin, depthmax );
 }
 
 /*
@@ -633,39 +580,6 @@ void RB_Clear( int bits, float r, float g, float b, float a )
 	RB_DepthRange( 0.0f, 1.0f );
 }
 
-/*
-* RB_BindFrameBufferObject
-*/
-void RB_BindFrameBufferObject( int object )
-{
-//	int width, height;
-//
-//	RFB_BindObject( object );
-//
-//	RFB_GetObjectSize( object, &width, &height );
-//
-//	if( rb.gl.fbHeight != height )
-//		rb.gl.scissorChanged = true;
-//
-//	rb.gl.fbWidth = width;
-//	rb.gl.fbHeight = height;
-}
-
-/*
-* RB_BoundFrameBufferObject
-*/
-int RB_BoundFrameBufferObject( void )
-{
-	return 0; //RFB_BoundObject();
-}
-
-/*
-* RB_BlitFrameBufferObject
-*/
-//void RB_BlitFrameBufferObject( int dest, int bitMask, int mode )
-//{
-//	RFB_BlitObject( dest, bitMask, mode );
-//}
 
 /*
 * RB_RegisterStreamVBOs
