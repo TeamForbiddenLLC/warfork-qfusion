@@ -173,9 +173,6 @@ typedef struct
 	int				version;
 	int				shadingLanguageVersion;
 
-	int				width, height;
-	bool			fullScreen;
-
 	bool			stereoEnabled;
 	int				stencilBits;
 
