@@ -435,14 +435,6 @@ static void RF_CheckCvars( void )
 		}
 		//rrf.adapter.cmdPipe->SetWallFloorColors( rrf.adapter.cmdPipe, wallColor, floorColor );		
 	}
-
-	if( gl_drawbuffer->modified )
-	{
-		gl_drawbuffer->modified = false;
-		Q_strncpyz( rf.drawBuffer, gl_drawbuffer->string, sizeof( rf.drawBuffer ) );
-		rf.newDrawBuffer = true;
-		//rrf.adapter.cmdPipe->SetDrawBuffer( rrf.adapter.cmdPipe, gl_drawbuffer->string );
-	}
 	
 	// texturemode stuff
 	if( r_texturemode->modified )
