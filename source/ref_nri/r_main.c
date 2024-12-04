@@ -1345,15 +1345,6 @@ void R_SetWallFloorColors( const vec3_t wallColor, const vec3_t floorColor )
 }
 
 /*
-* R_SetDrawBuffer
-*/
-void R_SetDrawBuffer( const char *drawbuffer )
-{
-	Q_strncpyz( rf.drawBuffer, drawbuffer, sizeof( rf.drawBuffer ) );
-	rf.newDrawBuffer = true;
-}
-
-/*
 * R_IsRenderingToScreen
 */
 bool R_IsRenderingToScreen( void )
@@ -1545,22 +1536,6 @@ void R_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 //			qglDrawBuffer( GL_BACK );
 //	}
 //#endif
-
-	// draw buffer stuff
-	if( rf.newDrawBuffer )
-	{
-		rf.newDrawBuffer = false;
-//
-//#ifndef GL_ES_VERSION_2_0
-//		if( cameraSeparation == 0 || !glConfig.stereoEnabled )
-//		{
-//			if( Q_stricmp( rf.drawBuffer, "GL_FRONT" ) == 0 )
-//				qglDrawBuffer( GL_FRONT );
-//			else
-//				qglDrawBuffer( GL_BACK );
-//		}
-//#endif
-	}
 
 //	if( forceClear )
 //	{

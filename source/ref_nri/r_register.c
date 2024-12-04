@@ -129,7 +129,6 @@ cvar_t *r_usenotexture;
 
 cvar_t *r_maxglslbones;
 
-cvar_t *gl_drawbuffer;
 cvar_t *gl_cull;
 cvar_t *r_multithreading;
 
