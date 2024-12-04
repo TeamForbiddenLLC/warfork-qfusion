@@ -2235,24 +2235,6 @@ static void RB_SetShaderpassState_2( struct frame_cmd_buffer_s *cmd, int state )
 	RB_SetState_2( cmd, state );
 }
 
-/*
- * RB_CleanSinglePass
- *
- * Attempts to reuse current GLSL state: since the dirty flag
- * is not set and there have been no uniform updates, we can simply
- * call glDrawElements with fresh vertex data
- */
-static bool RB_CleanSinglePass( void )
-{
-	// reuse current GLSL state (same program bound, same uniform values)
-	if( !rb.dirtyUniformState && rb.donePassesTotal == 1 ) {
-		RB_DrawElementsReal( &rb.drawElements );
-		return true;
-	}
-	return false;
-}
-
-
 void RB_DrawShadedElements_2( struct frame_cmd_buffer_s *cmd,
 							  int firstVert,
 							  int numVerts,

@@ -105,7 +105,6 @@ typedef struct r_backend_s
 
 		bool			depthoffset;
 
-		bool			flushTextures;
 		int				currentTMU;
 	} gl;
 
