@@ -92,21 +92,13 @@ typedef struct r_backend_s
 	{
 		int				state;
 
-		int 			currentArrayVBO;
-		int 			currentElemArrayVBO;
-
 		int				faceCull;
-		bool			frontFace;
-
 		int				viewport[4];
 		int				scissor[4];
 
 		float			depthmin, depthmax;
 
 		bool			depthoffset;
-
-		bool			flushTextures;
-		int				currentTMU;
 	} gl;
 
 	unsigned int time;
@@ -131,13 +123,6 @@ typedef struct r_backend_s
 	rbBonesData_t bonesData;
 	const portalSurface_t *currentPortalSurface;
 	
-	// glUseProgram cache
-	int	currentProgram;
-	int currentProgramObject;
-
-	// RP_RegisterProgram cache
-	int	currentRegProgram;
-	int currentRegProgramType;
 	r_glslfeat_t currentRegProgramFeatures;
 
 	rbDynamicStream_t dynamicStreams[RB_DYN_STREAM_NUM];
@@ -198,7 +183,6 @@ extern rbackend_t rb;
 #define RB_Alloc(size) R_MallocExt( rb.mempool, size, 16, 1 )
 #define RB_Free(data) R_Free(data)
 
-void RB_DrawElementsReal( rbDrawElements_t *de );
 #define RB_IsAlphaBlending(blendsrc,blenddst) \
 	( (blendsrc) == GLSTATE_SRCBLEND_SRC_ALPHA || (blenddst) == GLSTATE_DSTBLEND_SRC_ALPHA ) || \
 	( (blendsrc) == GLSTATE_SRCBLEND_ONE_MINUS_SRC_ALPHA || (blenddst) == GLSTATE_DSTBLEND_ONE_MINUS_SRC_ALPHA )
@@ -207,7 +191,6 @@ void RB_DrawElementsReal( rbDrawElements_t *de );
 void RB_InitShading( void );
 void RB_DrawShadedElements( void );
 void RB_BindArrayBuffer( int buffer );
-void RB_SetInstanceData( int numInstances, instancePoint_t *instances );
 bool RB_ScissorForBounds( vec3_t bbox[8], int *x, int *y, int *w, int *h );
 
 #endif // R_BACKEND_LOCAL_H

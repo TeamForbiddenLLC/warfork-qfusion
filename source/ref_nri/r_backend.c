@@ -31,7 +31,6 @@ rbackend_t rb;
 
 static void RB_SetGLDefaults( void );
 static void RB_RegisterStreamVBOs( void );
-static void RB_SelectTextureUnit( int tmu );
 
 
 /*
@@ -42,11 +41,6 @@ void RB_Init( void )
 	memset( &rb, 0, sizeof( rb ) );
 
 	rb.mempool = R_AllocPool( NULL, "Rendering Backend" );
-
-	// set default OpenGL state
-	//RB_SetGLDefaults();
-	rb.gl.scissor[2] = glConfig.width;
-	rb.gl.scissor[3] = glConfig.height;
 
 	// initialize shading
 	RB_InitShading();
@@ -174,26 +168,10 @@ static void RB_SetGLDefaults( void )
 }
 
 /*
-* RB_SelectTextureUnit
-*/
-static void RB_SelectTextureUnit( int tmu )
-{
-	if( tmu == rb.gl.currentTMU )
-		return;
-
-	rb.gl.currentTMU = tmu;
-	qglActiveTextureARB( tmu + GL_TEXTURE0_ARB );
-#ifndef GL_ES_VERSION_2_0
-	qglClientActiveTextureARB( tmu + GL_TEXTURE0_ARB );
-#endif
-}
-
-/*
 * RB_FlushTextureCache
 */
 void RB_FlushTextureCache( void )
 {
-	rb.gl.flushTextures = true;
 }
 
 /*
@@ -985,86 +963,6 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 		m[12] = transx;
 		m[13] = transy;
 		RB_LoadObjectMatrix( m );
-	}
-}
-
-void RB_DrawElementsReal( rbDrawElements_t *de )
-{
-	int firstVert, numVerts, firstElem, numElems;
-	int numInstances;
-
-	if( ! ( r_drawelements->integer || rb.currentEntity == &rb.nullEnt ) || !de )
-		return;
-
-	RB_ApplyScissor();
-
-	numVerts = de->numVerts;
-	numElems = de->numElems;
-	firstVert = de->firstVert;
-	firstElem = de->firstElem;
-	numInstances = de->numInstances;
-
-	if( numInstances ) {
-		if( glConfig.ext.instanced_arrays ) {
-			// the instance data is contained in vertex attributes
-			qglDrawElementsInstancedARB( rb.primitive, numElems, GL_UNSIGNED_SHORT, 
-				(GLvoid *)(firstElem * sizeof( elem_t )), numInstances );
-
-			rb.stats.c_totalDraws++;
-		} else if( glConfig.ext.draw_instanced ) {
-			int i, numUInstances = 0;
-
-			// manually update uniform values for instances for currently bound program,
-			// respecting the MAX_GLSL_UNIFORM_INSTANCES limit
-			for( i = 0; i < numInstances; i += numUInstances ) {
-				numUInstances = min( numInstances - i, MAX_GLSL_UNIFORM_INSTANCES );
-
-				RB_SetInstanceData( numUInstances, rb.drawInstances + i );
-
-				qglDrawElementsInstancedARB( rb.primitive, numElems, GL_UNSIGNED_SHORT, 
-					(GLvoid *)(firstElem * sizeof( elem_t )), numUInstances );
-
-				rb.stats.c_totalDraws++;
-			}
-		} else {
-			int i;
-
-			// manually update uniform values for instances for currently bound program,
-			// one by one
-			for( i = 0; i < numInstances; i++ ) {
-				RB_SetInstanceData( 1, rb.drawInstances + i );
-
-				if( glConfig.ext.draw_range_elements ) {
-					qglDrawRangeElementsEXT( rb.primitive, 
-						firstVert, firstVert + numVerts - 1, numElems, 
-						GL_UNSIGNED_SHORT, (GLvoid *)(firstElem * sizeof( elem_t )) );
-				} else {
-					qglDrawElements( rb.primitive, numElems, GL_UNSIGNED_SHORT,
-						(GLvoid *)(firstElem * sizeof( elem_t )) );
-				}
-
-				rb.stats.c_totalDraws++;
-			}
-		}
-	}
-	else {
-		numInstances = 1;
-
-		if( glConfig.ext.draw_range_elements ) {
-			qglDrawRangeElementsEXT( rb.primitive, 
-				firstVert, firstVert + numVerts - 1, numElems, 
-				GL_UNSIGNED_SHORT, (GLvoid *)(firstElem * sizeof( elem_t )) );
-		} else {
-			qglDrawElements( rb.primitive, numElems, GL_UNSIGNED_SHORT,
-				(GLvoid *)(firstElem * sizeof( elem_t )) );
-		}
-
-		rb.stats.c_totalDraws++;
-	}
-
-	rb.stats.c_totalVerts += numVerts * numInstances;
-	if( rb.primitive == GL_TRIANGLES ) {
-		rb.stats.c_totalTris += numElems * numInstances / 3;
 	}
 }
 
