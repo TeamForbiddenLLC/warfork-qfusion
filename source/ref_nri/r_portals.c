@@ -349,7 +349,7 @@ static void R_DrawPortalSurface( struct frame_cmd_buffer_s *cmd, portalSurface_t
 	best_d = 100000000;
 	for( i = rsc.numLocalEntities; i < rsc.numEntities; i++ )
 	{
-		ent = R_NUM2ENT(i);
+		ent = &rsc.entities[i];
 		if( ent->rtype != RT_PORTALSURFACE )
 			continue;
 

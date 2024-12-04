@@ -1246,7 +1246,7 @@ void R_DrawSkeletalSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const
 	bonePoseRelativeDQSize = sizeof( dualquat_t ) * skmodel->numbones;
 
 	// fetch bones tranforms from cache (both matrices and dual quaternions)
-	bonePoseRelativeDQ = ( dualquat_t * )R_GetSkeletalCache( R_ENT2NUM( e ), mod->lodnum );
+	bonePoseRelativeDQ = ( dualquat_t * )R_GetSkeletalCache(  e - rsc.entities, mod->lodnum );
 	if( bonePoseRelativeDQ ) {
 		bonePoseRelativeMat = ( mat4_t * )(( uint8_t * )bonePoseRelativeDQ + bonePoseRelativeDQSize);
 	}
@@ -1310,8 +1310,7 @@ void R_DrawSkeletalSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const
 			}
 		}
 
-		bonePoseRelativeDQ = ( dualquat_t * )R_AllocSkeletalDataCache( R_ENT2NUM( e ), mod->lodnum, 
-			bonePoseRelativeDQSize + bonePoseRelativeMatSize );
+		bonePoseRelativeDQ = (dualquat_t *)R_AllocSkeletalDataCache( e - rsc.entities, mod->lodnum, bonePoseRelativeDQSize + bonePoseRelativeMatSize );
 
 		// generate dual quaternions for all bones
 		for( i = 0; i < skmodel->numbones; i++ ) {
@@ -1460,7 +1459,7 @@ bool R_AddSkeletalModelToDrawList( const entity_t *e )
 		if( e->renderfx & RF_WEAPONMODEL ) {
 			return true;
 		}
-		if( rsc.entShadowGroups[R_ENT2NUM(e)] != rn.shadowGroup->id ) {
+		if( rsc.entShadowGroups[(e - rsc.entities)] != rn.shadowGroup->id ) {
 			return true;
 		}
 	}

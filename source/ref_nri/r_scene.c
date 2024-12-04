@@ -34,21 +34,21 @@ void R_ClearScene( void )
 	rsc.numDlights = 0;
 	rsc.numPolys = 0;
 
-	rsc.worldent = R_NUM2ENT( rsc.numLocalEntities );
+	rsc.worldent = &rsc.entities[rsc.numLocalEntities];
 	rsc.worldent->scale = 1.0f;
 	rsc.worldent->model = rsh.worldModel;
 	rsc.worldent->rtype = RT_MODEL;
 	Matrix3_Identity( rsc.worldent->axis );
 	rsc.numLocalEntities++;
 
-	rsc.polyent = R_NUM2ENT( rsc.numLocalEntities );
+	rsc.polyent = &rsc.entities[rsc.numLocalEntities];
 	rsc.polyent->scale = 1.0f;
 	rsc.polyent->model = NULL;
 	rsc.polyent->rtype = RT_MODEL;
 	Matrix3_Identity( rsc.polyent->axis );
 	rsc.numLocalEntities++;
 
-	rsc.skyent = R_NUM2ENT( rsc.numLocalEntities );
+	rsc.skyent = &rsc.entities[rsc.numLocalEntities];
 	*rsc.skyent = *rsc.worldent;
 	rsc.numLocalEntities++;
 
@@ -77,7 +77,7 @@ void R_AddEntityToScene( const entity_t *ent )
 	if( ( ( rsc.numEntities - rsc.numLocalEntities ) < MAX_ENTITIES ) && ent )
 	{
 		int eNum = rsc.numEntities;
-		entity_t *de = R_NUM2ENT(eNum);
+		entity_t *de = &rsc.entities[eNum];
 
 		*de = *ent;
 		if( r_outlines_scale->value <= 0 )

@@ -462,7 +462,7 @@ bool R_AddBrushModelToDrawList( const entity_t *e )
 
 	// never render weapon models or non-occluders into shadowmaps
 	if( rn.renderFlags & RF_SHADOWMAPVIEW ) {
-		if( rsc.entShadowGroups[R_ENT2NUM(e)] != rn.shadowGroup->id ) {
+		if( rsc.entShadowGroups[e - rsc.entities] != rn.shadowGroup->id ) {
 			return true;
 		}
 	}

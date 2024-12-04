@@ -31,7 +31,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 static ref_frontend_t rrf;
 
-static void __ShutdownSwapchainTexture();
+static void __DisposeSwapchainTexture();
 
 static void __R_InitVolatileAssets( void )
 {
@@ -60,7 +60,7 @@ static void __R_InitVolatileAssets( void )
 	}
 }
 
-static void __ShutdownSwapchainTexture() {
+static void __DisposeSwapchainTexture() {
 	if(rsh.swapchain) {
 		for( size_t i = 0; i < arrlen( rsh.backBuffers ); i++ ) {
 			struct frame_tex_buffers_s *backBuffer = &rsh.backBuffers[i];
@@ -235,7 +235,7 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 		}
 
 		NriSwapChainDesc swapChainDesc = { .commandQueue = rsh.nri.graphicsCommandQueue, .width = width, .height = height, .format = DefaultSwapchainFormat, .textureNum = 3, .window = nriWindow };
-		__ShutdownSwapchainTexture();
+		__DisposeSwapchainTexture();
 
 		assert(rsh.frameFence == NULL);
 		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateFence( rsh.nri.device, 0, &rsh.frameFence ) );
@@ -385,7 +385,7 @@ void RF_Shutdown( bool verbose )
 		FrameCmdBufferFree(&rsh.frameCmds[i]);
 	}
 
-	__ShutdownSwapchainTexture();
+	__DisposeSwapchainTexture();
 
 	ri.Mutex_Destroy( &rf.speedsMsgLock );
 	ri.Mutex_Destroy( &rf.debugSurfaceLock );

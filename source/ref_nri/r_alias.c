@@ -787,7 +787,7 @@ bool R_AddAliasModelToDrawList( const entity_t *e )
 		if( e->renderfx & RF_WEAPONMODEL ) {
 			return true;
 		}
-		if( rsc.entShadowGroups[R_ENT2NUM(e)] != rn.shadowGroup->id ) {
+		if( rsc.entShadowGroups[e - rsc.entities] != rn.shadowGroup->id ) {
 			return true;
 		}
 	}

@@ -418,9 +418,6 @@ extern r_shared_t rsh;
 extern r_scene_t rsc;
 extern r_globals_t rf;
 
-#define R_ENT2NUM(ent) ((ent)-rsc.entities)
-#define R_NUM2ENT(num) (rsc.entities+(num))
-
 extern cvar_t *vid_width; 
 extern cvar_t *vid_height;
 extern cvar_t *vid_xpos;          // X coordinate of window position

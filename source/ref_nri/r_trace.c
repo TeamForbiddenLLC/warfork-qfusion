@@ -308,7 +308,7 @@ static msurface_t *R_TransformedTraceLine( rtrace_t *tr, const vec3_t start, con
 		tr->shader = trace_surface->shader;
 		tr->plane = trace_plane;
 		tr->surfFlags = trace_surface->flags;
-		tr->ent = R_ENT2NUM(test);
+		tr->ent = (test - rsc.entities);
 	}
 
 	tr->fraction = trace_fraction;

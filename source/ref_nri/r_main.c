@@ -1084,7 +1084,7 @@ static void R_EndGL( struct frame_cmd_buffer_s* frame )
 static void R_DrawEntities( void )
 {
 	unsigned int i;
-	entity_t *e;
+	;
 	bool shadowmap = ( ( rn.renderFlags & RF_SHADOWMAPVIEW ) != 0 );
 	bool culled = true;
 
@@ -1092,7 +1092,7 @@ static void R_DrawEntities( void )
 	{
 		for( i = 0; i < rsc.numBmodelEntities; i++ )
 		{
-			e = rsc.bmodelEntities[i];
+			entity_t *e = rsc.bmodelEntities[i];
 			if( !r_lerpmodels->integer )
 				e->backlerp = 0;
 			e->outlineHeight = rsc.worldent->outlineHeight;
@@ -1104,7 +1104,7 @@ static void R_DrawEntities( void )
 
 	for( i = rsc.numLocalEntities; i < rsc.numEntities; i++ )
 	{
-		e = R_NUM2ENT(i);
+		entity_t *e = &rsc.entities[i];
 		culled = true;
 
 		if( !r_lerpmodels->integer )
@@ -1487,7 +1487,7 @@ void R_RenderDebugSurface( const refdef_t *fd )
 			
 			R_ClearDrawList( rn.portalmasklist );
 			
-			if( R_AddSurfToDrawList( rn.meshlist, R_NUM2ENT(tr.ent), NULL, surf->shader, 0, 0, NULL, surf->drawSurf ) ) {
+			if( R_AddSurfToDrawList( rn.meshlist, &rsc.entities[tr.ent], NULL, surf->shader, 0, 0, NULL, surf->drawSurf ) ) {
 				if( rn.refdef.rdflags & RDF_FLIPPED ) {
 					RB_FlipFrontFace(NULL);
 				}
