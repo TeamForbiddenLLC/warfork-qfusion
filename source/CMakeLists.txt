@@ -112,7 +112,7 @@ endif()
 # OS X specific settings
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(ARCHS_STANDARD_32_64_BIT "x86_64")                         # Compile only 64-bit version
-    set(CMAKE_XCODE_ATTRIBUTE_MACOSX_DEPLOYMENT_TARGET "10.11")     # Use 10.11 as deployment target
+    set(CMAKE_XCODE_ATTRIBUTE_MACOSX_DEPLOYMENT_TARGET "10.13")     # Use 10.11 as deployment target
     set(CMAKE_XCODE_ATTRIBUTE_GCC_C_LANGUAGE_STANDARD "gnu99")     # Use GNU99 standart for compiling C files
     set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD "c++11") # Use C++11 standart for compiling C++ files
     set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LIBRARY "libc++")          # Use modern libc++ instead of libstdc++
