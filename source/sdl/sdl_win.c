@@ -107,6 +107,13 @@ bool R_WIN_InitWindow(win_init_t* init) {
   }
 	r_winState.sdl_window= SDL_CreateWindow( r_winState.applicationName, 
 		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, init->width, init->height, winFlags);
+	// Check that the window was successfully created
+	if (r_winState.sdl_window == NULL) {
+		// In the case that the window could not be made...
+		SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Could not create window: %s\n", SDL_GetError());
+		return false;
+	}	
+
 	SDL_SetWindowPosition( r_winState.sdl_window, init->x, init->y );
 
   if( r_winState.wndproc ) {
