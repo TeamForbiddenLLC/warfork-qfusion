@@ -322,6 +322,12 @@ typedef struct
 	byte_vec4_t		customColors[NUM_CUSTOMCOLORS];
 } r_shared_t;
 
+typedef struct {
+	vec3_t mins;
+	vec3_t maxs;
+	byte_vec4_t color;
+} r_debug_bound_t;
+
 typedef struct
 {
 	// bumped each R_ClearScene
@@ -352,6 +358,8 @@ typedef struct
 	unsigned int	entShadowBits[MAX_REF_ENTITIES];
 
 	float			farClipMin, farClipBias;
+	
+	r_debug_bound_t* debugBounds;
 
 	unsigned int	renderedShadowBits;
 
@@ -769,6 +777,7 @@ extern drawList_t r_worldlist, r_portalmasklist;
 
 void R_AddDebugBounds( const vec3_t mins, const vec3_t maxs, const byte_vec4_t color );
 void R_ClearScene( void );
+void R_DisposeScene(r_scene_t* scene);
 void R_AddEntityToScene( const entity_t *ent );
 void R_AddLightToScene( const vec3_t org, float intensity, float r, float g, float b );
 void R_AddPolyToScene( const poly_t *poly );

@@ -295,6 +295,7 @@ static void R_DrawSkyBoxSide(struct frame_cmd_buffer_s* cmd, const skydome_t *sk
 		.bindingSlot = 0
 	};
 	cmd->state.numAttribs = 0;
+	cmd->state.pipelineLayout.topology = NriTopology_TRIANGLE_LIST;
 	R_FillNriVertexAttrib(skydome->linearVbos[side], cmd->state.attribs, &cmd->state.numAttribs);
 
 
@@ -351,6 +352,7 @@ static void R_DrawBlackBottom( struct frame_cmd_buffer_s* cmd, const skydome_t *
 		.bindingSlot = 0
 	};
 	cmd->state.numAttribs = 0;
+	cmd->state.pipelineLayout.topology = NriTopology_TRIANGLE_LIST;
 	R_FillNriVertexAttrib(skydome->linearVbos[side], cmd->state.attribs, &cmd->state.numAttribs);
 
 	FR_CmdSetVertexBuffer(cmd, 0, skydome->linearVbos[side]->vertexBuffer, 0);
@@ -459,6 +461,7 @@ void R_DrawSkySurf( struct frame_cmd_buffer_s* cmd,const entity_t *e, const shad
 					.bindingSlot = 0
 				};
 				cmd->state.numAttribs = 0;
+				cmd->state.pipelineLayout.topology = NriTopology_TRIANGLE_LIST;
 				R_FillNriVertexAttrib(skydome->sphereVbos[i], cmd->state.attribs, &cmd->state.numAttribs);
 			
 				FR_CmdSetVertexBuffer(cmd, 0, skydome->sphereVbos[i]->vertexBuffer, 0);
