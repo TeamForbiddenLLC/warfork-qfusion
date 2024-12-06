@@ -837,8 +837,15 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 		cmd->state.numStreams = 1;
 		cmd->state.streams[0] = ( NriVertexStreamDesc ){ .stride = draw->layout->vertexStride, .stepRate = 0, .bindingSlot = 0 };
 		cmd->state.numAttribs = 0;
+		switch( draw->primitive ) {
+			case GL_LINES:
+				cmd->state.pipelineLayout.topology = NriTopology_LINE_LIST;
+				break;
+			default:
+				cmd->state.pipelineLayout.topology = NriTopology_TRIANGLE_LIST;
+				break;
+		}
 		R_FillNriVertexAttribLayout(draw->layout, cmd->state.attribs, &cmd->state.numAttribs);	
-
 		RB_BindShader( cmd, draw->entity, draw->shader, draw->fog );
 		RB_SetPortalSurface( draw->portalSurface );
 		RB_SetShadowBits( draw->shadowBits );
@@ -859,6 +866,7 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 													        0, draw->numVerts, 0, draw->numElems );
 		FR_CmdResetCommandState( cmd, CMD_RESET_INDEX_BUFFER | CMD_RESET_VERTEX_BUFFER );
 	}
+	cmd->state.pipelineLayout.topology = NriTopology_TRIANGLE_LIST;
 	FR_CmdEndRendering( cmd );
 
 	rb.numDynamicDraws = 0;

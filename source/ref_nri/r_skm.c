@@ -1341,6 +1341,7 @@ void R_DrawSkeletalSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const
 		.bindingSlot = 0
 	};
 	cmd->state.numAttribs = 0;
+	cmd->state.pipelineLayout.topology = NriTopology_TRIANGLE_LIST;
 	R_FillNriVertexAttrib(skmesh->vbo, cmd->state.attribs, &cmd->state.numAttribs);
 
 	FR_CmdSetVertexBuffer(cmd, 0, skmesh->vbo->vertexBuffer, 0);

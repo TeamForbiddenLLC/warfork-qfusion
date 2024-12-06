@@ -607,6 +607,7 @@ void R_DrawAliasSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const sh
 			.bindingSlot = 0
 		};
 		cmd->state.numAttribs = 0;
+		cmd->state.pipelineLayout.topology = NriTopology_TRIANGLE_LIST;
 		R_FillNriVertexAttrib(aliasmesh->vbo, cmd->state.attribs, &cmd->state.numAttribs);
 
 		FR_CmdSetVertexBuffer(cmd, 0, aliasmesh->vbo->vertexBuffer, 0);

@@ -84,6 +84,7 @@ struct frame_cmd_state_s {
 		NriDepthBiasDesc depthBias;
 
 		bool blendEnabled;
+		NriTopology topology;
 		NriCullMode cullMode;
 		NriBlendFactor colorSrcFactor;
 		NriBlendFactor colorDstFactor;

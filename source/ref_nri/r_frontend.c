@@ -382,7 +382,9 @@ void RF_Shutdown( bool verbose )
 	RB_Shutdown();
 
 	R_ExitResourceUpload();
-	
+
+	R_DisposeScene(&rsc);
+
 	for(size_t i = 0; i < NUMBER_FRAMES_FLIGHT; i++) {
 		FrameCmdBufferFree(&rsh.frameCmds[i]);
 	}
@@ -397,6 +399,7 @@ void RF_Shutdown( bool verbose )
 	R_WIN_Shutdown();
 
 	R_FreeNriBackend(&rsh.nri);
+
 }
 
 static void RF_CheckCvars( void )
@@ -795,7 +798,6 @@ void RF_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2
 {
 	struct frame_cmd_buffer_s *cmd = R_ActiveFrameCmd();
 	R_DrawRotatedStretchPic(cmd, x, y, w, h, s1, t1, s2, t2, 0, color, shader );
-	//rrf.frame->DrawRotatedStretchPic( rrf.frame, x, y, w, h, s1, t1, s2, t2, 0, color, shader );
 }
 
 void RF_DrawRotatedStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, float angle, 
@@ -803,7 +805,6 @@ void RF_DrawRotatedStretchPic( int x, int y, int w, int h, float s1, float t1, f
 {
 	struct frame_cmd_buffer_s *cmd = R_ActiveFrameCmd();
 	R_DrawRotatedStretchPic(cmd, x, y, w, h, s1, t1, s2, t2, 0, color, shader );
-	//rrf.frame->DrawRotatedStretchPic( rrf.frame, x, y, w, h, s1, t1, s2, t2, angle, color, shader );
 }
 
 void RF_DrawStretchRaw( int x, int y, int w, int h, int cols, int rows, 

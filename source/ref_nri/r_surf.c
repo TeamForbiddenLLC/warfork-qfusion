@@ -236,6 +236,7 @@ void R_DrawBSPSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shad
 		.bindingSlot = 0
 	};
 	cmd->state.numAttribs = 0;
+	cmd->state.pipelineLayout.topology = NriTopology_TRIANGLE_LIST;
 	R_FillNriVertexAttrib(drawSurf->vbo, cmd->state.attribs, &cmd->state.numAttribs);
 
 	FR_CmdSetVertexBuffer(cmd, 0, drawSurf->vbo->vertexBuffer, 0);
