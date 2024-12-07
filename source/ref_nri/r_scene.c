@@ -22,8 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_program.h"
 #include "r_frame_cmd_buffer.h"
 
-static void R_ClearDebugBounds( void );
-static void R_RenderDebugBounds( void );
+#include "stb_ds.h"
+static void R_RenderDebugBounds(  struct frame_cmd_buffer_s* frame);
 
 /*
 * R_ClearScene
@@ -58,12 +58,17 @@ void R_ClearScene( void )
 
 	rsc.renderedShadowBits = 0;
 	rsc.frameCount++;
-
-	R_ClearDebugBounds();
+	
+	arrsetlen(rsc.debugBounds, 0);
 
 	R_ClearShadowGroups();
 
 	R_ClearSkeletalCache();
+}
+
+void R_DisposeScene( r_scene_t *scene )
+{
+	arrfree( scene->debugBounds );
 }
 
 /*
@@ -359,8 +364,7 @@ void R_RenderScene(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 
 	R_RenderDebugSurface( fd );
 
-	R_RenderDebugBounds();
-
+	R_RenderDebugBounds(frame);
 
 	if( !( fd->rdflags & RDF_NOWORLDMODEL ) ) {
 		ri.Mutex_Lock( rf.speedsMsgLock );
@@ -400,77 +404,26 @@ void R_RenderScene(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 	R_Set2DMode(frame, true );
 }
 
-/*
-=============================================================================
-
-BOUNDING BOXES
-
-=============================================================================
-*/
-
-typedef struct
-{
-	vec3_t mins;
-	vec3_t maxs;
-	byte_vec4_t color;
-} r_debug_bound_t;
-
-static unsigned r_num_debug_bounds;
-static size_t r_debug_bounds_current_size;
-static r_debug_bound_t *r_debug_bounds;
-
-/*
-* R_ClearDebugBounds
-*/
-static void R_ClearDebugBounds( void )
-{
-	r_num_debug_bounds = 0;
-}
-
-/*
-* R_AddDebugBounds
-*/
 void R_AddDebugBounds( const vec3_t mins, const vec3_t maxs, const byte_vec4_t color )
 {
-	unsigned i;
-
-	i = r_num_debug_bounds;
-	r_num_debug_bounds++;
-
-	if( r_num_debug_bounds > r_debug_bounds_current_size )
-	{
-		r_debug_bounds_current_size = ALIGN( r_num_debug_bounds, 256 );
-		if( r_debug_bounds )
-			r_debug_bounds = R_Realloc( r_debug_bounds, r_debug_bounds_current_size * sizeof( r_debug_bound_t ) );
-		else
-			r_debug_bounds = R_Malloc( r_debug_bounds_current_size * sizeof( r_debug_bound_t ) );
-	}
-
-	VectorCopy( mins, r_debug_bounds[i].mins );
-	VectorCopy( maxs, r_debug_bounds[i].maxs );
-	Vector4Copy( color, r_debug_bounds[i].color );
+	r_debug_bound_t bound;
+	VectorCopy( mins, bound.mins );
+	VectorCopy( maxs, bound.maxs );
+	Vector4Copy( color, bound.color );
+	arrput(rsc.debugBounds, bound);
 }
 
-/*
-* R_RenderDebugBounds
-*/
-static void R_RenderDebugBounds( void )
+static void R_RenderDebugBounds( struct frame_cmd_buffer_s* frame)
 {
-	unsigned i, j;
-	const vec_t *mins, *maxs;
-	const uint8_t *color;
+	if( arrlen( rsc.debugBounds ) == 0 )
+		return;
+
 	mesh_t mesh;
 	vec4_t verts[8];
 	byte_vec4_t colors[8];
-	elem_t elems[24] =
-	{
-		0, 1, 1, 3, 3, 2, 2, 0,
-		0, 4, 1, 5, 2, 6, 3, 7,
-		4, 5, 5, 7, 7, 6, 6, 4
-	};
-
-	if( !r_num_debug_bounds )
-		return;
+	elem_t elems[24] = { 0, 1, 1, 3, 3, 2, 2, 0, 
+		                   0, 4, 1, 5, 2, 6, 3, 7, 
+		                   4, 5, 5, 7, 7, 6, 6, 4 };
 
 	memset( &mesh, 0, sizeof( mesh ) );
 	mesh.numVerts = 8;
@@ -481,14 +434,12 @@ static void R_RenderDebugBounds( void )
 
 	RB_SetShaderStateMask( ~0, GLSTATE_NO_DEPTH_TEST );
 
-	for( i = 0; i < r_num_debug_bounds; i++ )
-	{
-		mins = r_debug_bounds[i].mins;
-		maxs = r_debug_bounds[i].maxs;
-		color = r_debug_bounds[i].color;
+	for( size_t i = 0; i < arrlen( rsc.debugBounds ); i++ ) {
+		const vec_t *mins = rsc.debugBounds[i].mins;
+		const vec_t *maxs = rsc.debugBounds[i].maxs;
+		const uint8_t *color = rsc.debugBounds[i].color;
 
-		for( j = 0; j < 8; j++ )
-		{
+		for( size_t j = 0; j < 8; j++ ) {
 			verts[j][0] = ( ( j & 1 ) ? mins[0] : maxs[0] );
 			verts[j][1] = ( ( j & 2 ) ? mins[1] : maxs[1] );
 			verts[j][2] = ( ( j & 4 ) ? mins[2] : maxs[2] );
@@ -496,12 +447,11 @@ static void R_RenderDebugBounds( void )
 			Vector4Copy( color, colors[j] );
 		}
 
-		RB_AddDynamicMesh(NULL, rsc.worldent, rsh.whiteShader, NULL, NULL, 0, &mesh, GL_LINES, 0.0f, 0.0f );
+		RB_AddDynamicMesh( frame, rsc.worldent, rsh.whiteShader, NULL, NULL, 0, &mesh, GL_LINES, 0.0f, 0.0f );
 	}
 
-	RB_FlushDynamicMeshes(NULL);
+	RB_FlushDynamicMeshes( frame );
 
 	RB_SetShaderStateMask( ~0, 0 );
 }
 
-//=======================================================================

@@ -1030,6 +1030,7 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	hash = hash_u32( hash, cullMode);
 	hash = hash_u32( hash, def->pipelineLayout.compareFunc);
 	hash = hash_u32( hash, def->pipelineLayout.depthWrite);
+	hash = hash_u32( hash, def->pipelineLayout.topology);
 
 	struct pipeline_hash_s* pipeline = __resolvePipeline(program, hash);
 	assert(pipeline);
@@ -1048,7 +1049,7 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	graphicsPipelineDesc.outputMerger.colorNum = def->numColorAttachments;
 	graphicsPipelineDesc.outputMerger.colors = colorAttachmentDesc;
 
-	graphicsPipelineDesc.inputAssembly.topology = NriTopology_TRIANGLE_LIST;
+	graphicsPipelineDesc.inputAssembly.topology = def->pipelineLayout.topology;
 
 	NriShaderDesc shaderDesc[4] = {0};
 	graphicsPipelineDesc.shaders = shaderDesc;

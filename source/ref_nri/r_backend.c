@@ -844,13 +844,13 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
   R_FillVBOVertexDataBuffer( stream->vbo, vattribs, mesh, stream->vertexData + destVertOffset * stream->vbo->vertexSize );
 
   if( trifan ) {
-	R_BuildTrifanElements( stream->drawElements.firstVert, numElems, destElems );
+	  R_BuildTrifanElements( stream->drawElements.firstVert, numElems, destElems );
   } else {
-	if( primitive == GL_TRIANGLES ) {
-		R_CopyOffsetTriangles( mesh->elems, numElems, stream->drawElements.firstVert, destElems );
-	} else {
-		R_CopyOffsetElements( mesh->elems, numElems, stream->drawElements.firstVert, destElems );
-	}
+	  if( primitive == GL_TRIANGLES ) {
+		  R_CopyOffsetTriangles( mesh->elems, numElems, stream->drawElements.firstVert, destElems );
+	  } else {
+		  R_CopyOffsetElements( mesh->elems, numElems, stream->drawElements.firstVert, destElems );
+	  }
   }
 
   stream->drawElements.numVerts += numVerts;
@@ -952,6 +952,14 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 		cmd->state.numStreams = 1;
 		cmd->state.streams[0] = ( NriVertexStreamDesc ){ .stride = info->vertexStride, .stepRate = 0, .bindingSlot = 0 };
 		cmd->state.numAttribs = info->numAttribs;
+		switch( draw->primitive ) {
+			case GL_LINES:
+				cmd->state.pipelineLayout.topology = NriTopology_LINE_LIST;
+				break;
+			default:
+				cmd->state.pipelineLayout.topology = NriTopology_TRIANGLE_LIST;
+				break;
+		}
 		memcpy( cmd->state.attribs, info->attribs, sizeof( NriVertexAttributeDesc ) * info->numAttribs );
 
 		RB_BindShader( cmd, draw->entity, draw->shader, draw->fog );

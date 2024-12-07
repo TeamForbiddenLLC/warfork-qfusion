@@ -1,6 +1,7 @@
 #ifndef R_FRAME_CMD_BUFFER_H
 #define R_FRAME_CMD_BUFFER_H
 
+#include "NRIDescs.h"
 #include "r_nri.h"
 #include "r_resource.h"
 #include "r_vattribs.h"
@@ -83,6 +84,7 @@ struct frame_cmd_state_s {
 		NriDepthBiasDesc depthBias;
 
 		bool blendEnabled;
+		NriTopology topology;
 		NriCullMode cullMode;
 		NriBlendFactor colorSrcFactor;
 		NriBlendFactor colorDstFactor;
