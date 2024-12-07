@@ -982,7 +982,6 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 								 draw->drawElements.numVerts, draw->drawElements.firstElem, draw->drawElements.numElems );
 		FR_CmdResetCommandState( cmd, CMD_RESET_INDEX_BUFFER | CMD_RESET_VERTEX_BUFFER );
 	}
-	cmd->state.pipelineLayout.topology = NriTopology_TRIANGLE_LIST;
 	FR_CmdEndRendering( cmd );
 
 	rb.numDynamicDraws = 0;
