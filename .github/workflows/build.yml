@@ -22,8 +22,7 @@ jobs:
           echo "ACTIONS_CACHE_URL=$ACTIONS_CACHE_URL" >> "$GITHUB_ENV"
           echo "ACTIONS_RUNTIME_TOKEN=$ACTIONS_ID_TOKEN_REQUEST_TOKEN" >> "$GITHUB_ENV"
           apt update
-          apt install -y git curl clang cmake build-essential libsdl2-dev libopenal-dev libvorbis-dev libfreetype6-dev libcurl4-gnutls-dev git zip unzip python3
-
+          apt install -y git curl clang cmake build-essential libsdl2-dev libopenal-dev libvorbis-dev libfreetype6-dev libcurl4-gnutls-dev git zip unzip python3 autoconf libtool meson automake libtool pkg-config python3-jinja2
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
@@ -37,17 +36,13 @@ jobs:
           curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
           unzip third-party/steamworks/sdk.zip -d third-party/steamworks
       
-      - name: Setup glslang
-        working-directory: ./source/glslang
-        run: |
-          python3 ./update_glslang_sources.py
 
       - name: Building Release
         if: matrix.config.type == 'release'
         working-directory: ./source
         run: |
           export CC=clang CXX=clang++
-          cmake ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Release .
+          cmake ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DVCPKG_INSTALL_OPTIONS="--binarysource=clear\;x-gha,readwrite" -DCMAKE_BUILD_TYPE=Release .
           make -j8
 
       - name: Building Debug
@@ -55,7 +50,7 @@ jobs:
         working-directory: ./source
         run: |
           export CC=clang CXX=clang++
-          cmake ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Debug .
+          cmake ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Debug -DVCPKG_INSTALL_OPTIONS="--binarysource=clear\;x-gha,readwrite" .
           make -j8
       
       - name: Unit Test 
@@ -82,8 +77,8 @@ jobs:
       max-parallel: 1
       matrix:
         config:
-          - { agent: "macos-12", name: "OSX-x86_64-Release", xcode-version: '13.4.1', type: "release", cmake_args: "-DBUILD_STEAMLIB=1" , build_folder: "Release" }
-          - { agent: "macos-12", name: "OSX-x86_64-Debug", xcode-version: '13.4.1', type: "debug", cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON", build_folder: "Debug"  }
+          - { agent: "macos-13", name: "OSX-x86_64-Release", xcode-version: '15.0.1', type: "release", cmake_args: "-DBUILD_STEAMLIB=1" , build_folder: "Release" }
+          - { agent: "macos-13", name: "OSX-x86_64-Debug", xcode-version: '15.0.1', type: "debug", cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON", build_folder: "Debug"  }
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.agent }}
     steps:
@@ -116,14 +111,14 @@ jobs:
         if: matrix.config.type == 'release'
         working-directory: ./source
         run: |
-          cmake ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RELEASE -G Xcode .
+          cmake ${{matrix.config.cmake_args}} -DVCPKG_INSTALL_OPTIONS="--binarysource=clear\;x-gha,readwrite" -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RELEASE -G Xcode .
           xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration Release -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
       - name: Building Debug
         if: matrix.config.type == 'debug'
         working-directory: ./source
         run: |
-          cmake ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=DEBUG -G Xcode .
+          cmake ${{matrix.config.cmake_args}} -DVCPKG_INSTALL_OPTIONS="--binarysource=clear\;x-gha,readwrite" -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=DEBUG -G Xcode .
           xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration Debug -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
       - name: Package warfork
@@ -170,11 +165,6 @@ jobs:
           curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
           7z x third-party/steamworks/sdk.zip -othird-party/steamworks
       
-      - name: Setup glslang
-        working-directory: ./source/glslang
-        run: |
-          python3 ./update_glslang_sources.py
-
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
 
@@ -182,14 +172,13 @@ jobs:
         if: matrix.config.type == 'debug' 
         working-directory: .\source
         run: |
-          cmake  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 .
+          cmake  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DVCPKG_INSTALL_OPTIONS="--binarysource=clear\;x-gha,readwrite" -DBUILD_UNIT_TEST=1 .
           msbuild qfusion.sln /p:configuration=Debug /maxcpucount:8
-
       - name: Building Release
         if: matrix.config.type == 'release'
         working-directory: .\source
         run: |
-          cmake  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RELEASE .
+          cmake  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DVCPKG_INSTALL_OPTIONS="--binarysource=clear\;x-gha,readwrite" -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RELEASE .
           msbuild qfusion.sln /p:configuration=Release /maxcpucount:8
       
       - name: Unit Test 

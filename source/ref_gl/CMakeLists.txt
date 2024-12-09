@@ -40,7 +40,7 @@ if (USE_SDL2)
 		"../sdl/sdl_qgl.c"
 		)
 
-	set(REF_GL_PLATFORM_LIBRARIES ${SDL2_LIBRARY})
+	set(REF_GL_PLATFORM_LIBRARIES SDL2::SDL2)
 else()
 	if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 		file(GLOB REF_GL_PLATFORM_SOURCES
@@ -64,4 +64,12 @@ endif()
 add_library(ref_gl SHARED ${REF_GL_HEADERS} ${REF_GL_COMMON_SOURCES} ${REF_GL_PLATFORM_SOURCES})
 target_include_directories(ref_gl PRIVATE ${STB_INCLUDE_DIR} "../ref_base")
 target_link_libraries(ref_gl PRIVATE ${REF_GL_PLATFORM_LIBRARIES})
+#if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+#	find_library(CORE_AUDIO CoreAudio REQUIRED)
+#	target_link_libraries(ref_gl PRIVATE ${CORE_AUDIO})
+#endif()
+
+
 qf_set_output_dir(ref_gl libs)
+
+
