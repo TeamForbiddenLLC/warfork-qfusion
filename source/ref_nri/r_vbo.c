@@ -92,8 +92,6 @@ void R_InitVBO( void )
 }
 
 
-
-
 /*
  * R_CreateMeshVBO
  *
@@ -397,6 +395,127 @@ R_FillVertexBuffer_f( int, int, );
 	} while( 0 )
 
 
+void R_FillNriVertexAttribLayout(const struct vbo_layout_s* layout, NriVertexAttributeDesc* desc, size_t* numDesc) {
+	assert(layout);
+	desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+		.offset = 0, 
+		.format = ( layout->halfFloatAttribs & VATTRIB_POSITION_BIT ) ? NriFormat_RGBA16_SFLOAT : NriFormat_RGBA32_SFLOAT, 
+		.vk = { VATTRIB_POSITION }, 
+		.d3d = {.semanticName = "POSITION", .semanticIndex = VATTRIB_POSITION  },
+		.streamIndex = 0 };
+
+	if(  ( layout->vertexAttribs & VATTRIB_NORMAL_BIT ) ) {
+		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+			.offset = layout->normalsOffset, 
+			.format = ( layout->halfFloatAttribs & VATTRIB_NORMAL_BIT ) ? NriFormat_RGBA16_SFLOAT : NriFormat_RGBA32_SFLOAT, 
+			.vk = { VATTRIB_NORMAL }, 
+			.d3d = {.semanticName = "NORMAL", .semanticIndex = VATTRIB_NORMAL   },
+			.streamIndex = 0 };
+	}
+	
+	if( layout->vertexAttribs & VATTRIB_SVECTOR_BIT ) {
+		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+			.offset = layout->sVectorsOffset, 
+			.format = ( layout->halfFloatAttribs & VATTRIB_SVECTOR_BIT ) ? NriFormat_RGBA16_SFLOAT : NriFormat_RGBA32_SFLOAT, 
+			.vk = { VATTRIB_SVECTOR }, 
+			.d3d = {.semanticName = "TANGENT", .semanticIndex = VATTRIB_SVECTOR   },
+			.streamIndex = 0 };
+	}
+	
+	if( layout->vertexAttribs & VATTRIB_COLOR0_BIT ) {
+		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+			.offset = layout->colorsOffset[0], 
+			.format = NriFormat_RGBA8_UNORM, 
+			.vk = { VATTRIB_COLOR0 }, 
+			.d3d = {.semanticName = "COLOR0", .semanticIndex = VATTRIB_COLOR0 },
+			.streamIndex = 0 
+		};
+	}
+
+	if( ( layout->vertexAttribs & VATTRIB_TEXCOORDS_BIT ) ) {
+		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+			.offset = layout->stOffset, 
+			.format = ( layout->halfFloatAttribs & VATTRIB_TEXCOORDS_BIT  ) ? NriFormat_RG16_SFLOAT : NriFormat_RG32_SFLOAT, 
+			.vk = { VATTRIB_TEXCOORDS }, 
+			.d3d = {.semanticName = "TEXCOORD0", .semanticIndex = VATTRIB_TEXCOORDS },
+			.streamIndex = 0 };
+	}
+
+	if( (layout->vertexAttribs & VATTRIB_AUTOSPRITE_BIT) == VATTRIB_AUTOSPRITE_BIT ) {
+		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+			.offset = layout->spritePointsOffset, 
+			.format = ( layout->halfFloatAttribs & VATTRIB_AUTOSPRITE_BIT  ) ? NriFormat_RGBA16_SFLOAT : NriFormat_RGBA32_SFLOAT, 
+			.vk = { VATTRIB_SPRITEPOINT }, 
+			.d3d = {.semanticName = "TEXCOORD1", .semanticIndex = VATTRIB_SPRITEPOINT },
+			.streamIndex = 0 };
+	}
+	
+	if( (layout->vertexAttribs & VATTRIB_BONES_BITS) == VATTRIB_BONES_BITS ) {
+		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+			.offset = layout->bonesIndicesOffset , 
+			.format = NriFormat_RGBA8_UINT, 
+			.vk = { VATTRIB_BONESINDICES }, 
+			.d3d = {.semanticName = "TEXCOORD2", .semanticIndex = VATTRIB_BONESINDICES  },
+			.streamIndex = 0 };
+		
+		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+			.offset = layout->bonesWeightsOffset , 
+			.format = NriFormat_RGBA8_UNORM, 
+			.vk = { VATTRIB_BONESWEIGHTS }, 
+			.d3d = {.semanticName = "TEXCOORD3", .semanticIndex = VATTRIB_BONESWEIGHTS  },
+			.streamIndex = 0 };
+
+	} else {
+
+		// lightmap texture coordinates - aliasing bones, so not disabling bones
+		vattrib_t lmattr = VATTRIB_LMCOORDS01;
+		vattribbit_t lmattrbit = VATTRIB_LMCOORDS0_BIT;
+
+		for(size_t i = 0; i < ( MAX_LIGHTMAPS + 1 ) / 2; i++ ) {
+			if( layout->vertexAttribs & lmattrbit ) {
+
+				NriFormat format =  ( layout->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? NriFormat_R16_SFLOAT: NriFormat_R32_SFLOAT;
+				switch (layout->lmstSize[i]) {
+					case 2:
+						format =  ( layout->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? NriFormat_RG16_SFLOAT: NriFormat_RG32_SFLOAT;
+						break;
+					case 4:
+						format =  ( layout->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? NriFormat_RGBA16_SFLOAT: NriFormat_RGBA32_SFLOAT;
+						break;
+					default:
+						assert(false);
+						break;
+				}
+				desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+					.offset = layout->lmstOffset[i], 
+					.format = format, 
+					.vk = { lmattr }, 
+					.d3d = {.semanticName = "TEXCOORD4", .semanticIndex = lmattr  },
+					.streamIndex = 0 
+				};
+			
+			}
+
+			lmattr++;
+			lmattrbit <<= 2;
+		}
+
+		for(size_t i = 0; i < ( MAX_LIGHTMAPS + 3 ) / 4; i++ ) {
+			if( layout->vertexAttribs & ( VATTRIB_LMLAYERS0123_BIT << i ) ) {
+				desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+					.offset = layout->lmlayersOffset[i], 
+					.format = NriFormat_RGBA8_UINT, 
+					.vk = { VATTRIB_LMLAYERS0123 }, 
+					.d3d = {.semanticName = "TEXCOORD5", .semanticIndex = lmattr  },
+					.streamIndex = 0 
+				};
+			}
+		}
+
+	}
+
+}
+
 void R_FillNriVertexAttrib(mesh_vbo_t* vbo, NriVertexAttributeDesc* desc, size_t* numDesc) {
 	desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
 		.offset = 0, 
@@ -515,6 +634,329 @@ void R_FillNriVertexAttrib(mesh_vbo_t* vbo, NriVertexAttributeDesc* desc, size_t
 
 	}
 
+}
+
+struct vbo_layout_s R_CreateVBOLayout( vattribmask_t vattribs, vattribmask_t halfFloatVattribs)
+{
+	struct vbo_layout_s layout = {};
+
+	if( !( halfFloatVattribs & VATTRIB_POSITION_BIT ) ) {
+		halfFloatVattribs &= ~( VATTRIB_AUTOSPRITE_BIT );
+	}
+
+	halfFloatVattribs &= ~VATTRIB_COLORS_BITS;
+	halfFloatVattribs &= ~VATTRIB_BONES_BITS;
+
+	// TODO: convert quaternion component of instance_t to half-float
+	// when uploading instances data
+	halfFloatVattribs &= ~VATTRIB_INSTANCES_BITS;
+	
+	size_t vertexByteStride = 0;
+	// vertex buffer
+
+	vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_POSITION_BIT, halfFloatVattribs ) * 4;
+	// normals data
+	if( vattribs & VATTRIB_NORMAL_BIT ) {
+		assert( !( vertexByteStride & 3 ) );
+		layout.normalsOffset = vertexByteStride;
+		vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_NORMAL_BIT, halfFloatVattribs ) * 4;
+	}
+
+	// s-vectors (tangent vectors)
+	if( vattribs & VATTRIB_SVECTOR_BIT ) {
+		assert( !( vertexByteStride & 3 ) );
+		layout.sVectorsOffset = vertexByteStride;
+		vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_SVECTOR_BIT, halfFloatVattribs ) * 4;
+	}
+
+	// texture coordinates
+	if( vattribs & VATTRIB_TEXCOORDS_BIT ) {
+		assert( !( vertexByteStride & 3 ) );
+		layout.stOffset = vertexByteStride;
+		vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_TEXCOORDS_BIT, halfFloatVattribs ) * 2;
+	}
+
+	// lightmap texture coordinates
+	vattribbit_t lmattrbit = VATTRIB_LMCOORDS0_BIT;
+	for( size_t i = 0; i < ( MAX_LIGHTMAPS + 1 ) / 2; i++ ) {
+		if( !( vattribs & lmattrbit ) ) {
+			break;
+		}
+		assert( !( vertexByteStride & 3 ) );
+		layout.lmstOffset[i] = vertexByteStride;
+		layout.lmstSize[i] = ( vattribs & ( lmattrbit << 1 ) ) ? 4 : 2;
+		vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_LMCOORDS0_BIT, halfFloatVattribs ) * layout.lmstSize[i];
+		lmattrbit = (vattribbit_t)( (vattribmask_t)lmattrbit << 2 );
+	}
+
+	// lightmap array texture layers
+	for( size_t i = 0; i < ( MAX_LIGHTMAPS + 3 ) / 4; i++ ) {
+		if( !( vattribs & ( VATTRIB_LMLAYERS0123_BIT << i ) ) ) {
+			break;
+		}
+		layout.lmlayersOffset[i] = vertexByteStride;
+		vertexByteStride += sizeof( int );
+	}
+
+	// vertex colors
+	if( vattribs & VATTRIB_COLOR0_BIT ) {
+		assert( !( vertexByteStride & 3 ) );
+		layout.colorsOffset[0] = vertexByteStride;
+		vertexByteStride += sizeof( int );
+	}
+
+	// bones data for skeletal animation
+	if( ( vattribs & VATTRIB_BONES_BITS ) == VATTRIB_BONES_BITS ) {
+		assert( SKM_MAX_WEIGHTS == 4 );
+
+		assert( !( vertexByteStride & 3 ) );
+		layout.bonesIndicesOffset = vertexByteStride;
+		vertexByteStride += sizeof( int );
+
+		assert( !( vertexByteStride & 3 ) );
+		layout.bonesWeightsOffset = vertexByteStride;
+		vertexByteStride += sizeof( uint32_t );
+	}
+
+	// autosprites
+	if( ( vattribs & VATTRIB_AUTOSPRITE_BIT ) == VATTRIB_AUTOSPRITE_BIT ) {
+		assert( !( vertexByteStride & 3 ) );
+		layout.spritePointsOffset = vertexByteStride;
+		vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_AUTOSPRITE_BIT, halfFloatVattribs ) * 4;
+	}
+	layout.vertexStride = vertexByteStride;
+	layout.vertexAttribs = vattribs;
+	layout.halfFloatAttribs = halfFloatVattribs;
+	return layout;
+}
+
+vattribmask_t R_WriteMeshToVertexBuffer( const struct vbo_layout_s *layout, vattribmask_t vattribs, const mesh_t *mesh, void *dst ) {
+	assert( mesh != NULL );
+	vattribmask_t errMask = 0;
+	// upload vertex xyz data
+	if( vattribs & VATTRIB_POSITION_BIT ) {
+		if( !mesh->xyzArray ) {
+			errMask |= VATTRIB_POSITION_BIT;
+		} else {
+			R_FillVertexBuffer_float_or_half( FLOAT_VATTRIB_GL_TYPE( VATTRIB_POSITION_BIT, layout->halfFloatAttribs ), mesh->xyzArray[0], 4, layout->vertexStride, mesh->numVerts, ((uint8_t*)dst) + 0 );
+		}
+	}
+
+	// upload normals data
+	if( layout->normalsOffset && ( vattribs & VATTRIB_NORMAL_BIT ) ) {
+		if( !mesh->normalsArray ) {
+			errMask |= VATTRIB_NORMAL_BIT;
+		} else {
+			R_FillVertexBuffer_float_or_half( FLOAT_VATTRIB_GL_TYPE( VATTRIB_NORMAL_BIT, layout->halfFloatAttribs ), mesh->normalsArray[0], 4, layout->vertexStride, mesh->numVerts, ((uint8_t*)dst) + layout->normalsOffset );
+		}
+	}
+
+	// upload tangent vectors
+	if( layout->sVectorsOffset && ( ( vattribs & ( VATTRIB_SVECTOR_BIT | VATTRIB_AUTOSPRITE2_BIT ) ) == VATTRIB_SVECTOR_BIT ) ) {
+		if( !mesh->sVectorsArray ) {
+			errMask |= VATTRIB_SVECTOR_BIT;
+		} else {
+			R_FillVertexBuffer_float_or_half( FLOAT_VATTRIB_GL_TYPE( VATTRIB_SVECTOR_BIT, layout->halfFloatAttribs ), mesh->sVectorsArray[0], 4,  layout->vertexStride, mesh->numVerts, ((uint8_t*)dst) + layout->sVectorsOffset );
+		}
+	}
+
+	// upload texture coordinates
+	if( layout->stOffset && ( vattribs & VATTRIB_TEXCOORDS_BIT ) ) {
+		if( !mesh->stArray ) {
+			errMask |= VATTRIB_TEXCOORDS_BIT;
+		} else {
+			R_FillVertexBuffer_float_or_half( FLOAT_VATTRIB_GL_TYPE( VATTRIB_TEXCOORDS_BIT, layout->halfFloatAttribs ), mesh->stArray[0], 2, layout->vertexStride, mesh->numVerts, ((uint8_t*)dst) + layout->stOffset );
+		}
+	}
+
+	// upload lightmap texture coordinates
+	if( layout->lmstOffset[0] && ( vattribs & VATTRIB_LMCOORDS0_BIT ) ) {
+		int i;
+		vattribbit_t lmattrbit;
+		int type = FLOAT_VATTRIB_GL_TYPE( VATTRIB_LMCOORDS0_BIT, layout->halfFloatAttribs );
+		int lmstSize = ( ( type == GL_HALF_FLOAT ) ? 2 * sizeof( GLhalfARB ) : 2 * sizeof( float ) );
+
+		lmattrbit = VATTRIB_LMCOORDS0_BIT;
+
+		for( i = 0; i < ( MAX_LIGHTMAPS + 1 ) / 2; i++ ) {
+			if( !( vattribs & lmattrbit ) ) {
+				break;
+			}
+			if( !mesh->lmstArray[i * 2 + 0] ) {
+				errMask |= lmattrbit;
+				break;
+			}
+
+			R_FillVertexBuffer_float_or_half( type, mesh->lmstArray[i * 2 + 0][0], 2, layout->vertexStride, mesh->numVerts, ((uint8_t*)dst) + layout->lmstOffset[i] );
+
+			if( vattribs & ( lmattrbit << 1 ) ) {
+				if( !mesh->lmstArray[i * 2 + 1] ) {
+					errMask |= lmattrbit << 1;
+					break;
+				}
+				R_FillVertexBuffer_float_or_half( type, mesh->lmstArray[i * 2 + 1][0], 2, layout->vertexStride, mesh->numVerts, ((uint8_t*)dst) + layout->lmstOffset[i] + lmstSize );
+			}
+
+			lmattrbit <<= 2;
+		}
+	}
+
+	// upload lightmap array texture layers
+	if( layout->lmlayersOffset[0] && ( vattribs & VATTRIB_LMLAYERS0123_BIT ) ) {
+		int i;
+		vattribbit_t lmattrbit;
+
+		lmattrbit = VATTRIB_LMLAYERS0123_BIT;
+		for( i = 0; i < ( MAX_LIGHTMAPS + 3 ) / 4; i++ ) {
+			if( !( vattribs & lmattrbit ) ) {
+				break;
+			}
+			if( !mesh->lmlayersArray[i] ) {
+				errMask |= lmattrbit;
+				break;
+			}
+
+			R_FillVertexBuffer( int, int, (int *)&mesh->lmlayersArray[i][0], 1, layout->vertexStride, mesh->numVerts, ((uint8_t*)dst) + layout->lmlayersOffset[i] );
+
+			lmattrbit <<= 1;
+		}
+	}
+
+	// upload vertex colors (although indices > 0 are never used)
+	if( layout->colorsOffset[0] && ( vattribs & VATTRIB_COLOR0_BIT ) ) {
+		if( !mesh->colorsArray[0] ) {
+			errMask |= VATTRIB_COLOR0_BIT;
+		} else {
+			R_FillVertexBuffer( int, int, (int *)&mesh->colorsArray[0][0], 1, layout->vertexStride, mesh->numVerts, ((uint8_t*)dst) + layout->colorsOffset[0] );
+		}
+	}
+
+	// upload centre and radius for autosprites
+	// this code assumes that the mesh has been properly pretransformed
+	if( layout->spritePointsOffset && ( ( vattribs & VATTRIB_AUTOSPRITE2_BIT ) == VATTRIB_AUTOSPRITE2_BIT ) ) {
+		// for autosprite2 also upload vertices that form the longest axis
+		// the remaining vertex can be trivially computed in vertex shader
+		vec3_t vd[3];
+		float d[3];
+		int longest_edge = -1, longer_edge = -1, short_edge;
+		float longest_dist = 0, longer_dist = 0;
+		const int edges[3][2] = { { 1, 0 }, { 2, 0 }, { 2, 1 } };
+		vec4_t centre[4];
+		vec4_t axes[4];
+		vec4_t *verts = mesh->xyzArray;
+		const elem_t *elems = mesh->elems, trifanElems[6] = { 0, 1, 2, 0, 2, 3 };
+		int numQuads;
+		size_t bufferOffset0 = layout->spritePointsOffset;
+		size_t bufferOffset1 = layout->sVectorsOffset;
+
+		assert( ( mesh->elems && mesh->numElems ) || ( mesh->numVerts  == 4 ) );
+		if( mesh->elems && mesh->numElems ) {
+			numQuads = mesh->numElems / 6;
+		} else if( mesh->numVerts == 4 ) {
+			// single quad as triangle fan
+			numQuads = 1;
+			elems = trifanElems;
+		} else {
+			numQuads = 0;
+		}
+
+		for(size_t i = 0; i < numQuads; i++, elems += 6 ) {
+			// find the longest edge, the long edge and the short edge
+			longest_edge = longer_edge = -1;
+			longest_dist = longer_dist = 0;
+			for(size_t  j = 0; j < 3; j++ ) {
+				float len;
+
+				VectorSubtract( verts[elems[edges[j][0]]], verts[elems[edges[j][1]]], vd[j] );
+				len = VectorLength( vd[j] );
+				if( !len ) {
+					len = 1;
+				}
+				d[j] = len;
+
+				if( longest_edge == -1 || longest_dist < len ) {
+					longer_dist = longest_dist;
+					longer_edge = longest_edge;
+					longest_dist = len;
+					longest_edge = j;
+				} else if( longer_dist < len ) {
+					longer_dist = len;
+					longer_edge = j;
+				}
+			}
+
+			short_edge = 3 - ( longest_edge + longer_edge );
+			if( short_edge > 2 ) {
+				continue;
+			}
+
+			// centre
+			VectorAdd( verts[elems[edges[longest_edge][0]]], verts[elems[edges[longest_edge][1]]], centre[0] );
+			VectorScale( centre[0], 0.5, centre[0] );
+			// radius
+			centre[0][3] = d[longest_edge] * 0.5; // unused
+			// right axis, normalized
+			VectorScale( vd[short_edge], 1.0 / d[short_edge], vd[short_edge] );
+			// up axis, normalized
+			VectorScale( vd[longer_edge], 1.0 / d[longer_edge], vd[longer_edge] );
+
+			NormToLatLong( vd[short_edge], &axes[0][0] );
+			NormToLatLong( vd[longer_edge], &axes[0][2] );
+
+			for(size_t j = 1; j < 4; j++ ) {
+				Vector4Copy( centre[0], centre[j] );
+				Vector4Copy( axes[0], axes[j] );
+			}
+
+			R_FillVertexBuffer_float_or_half( FLOAT_VATTRIB_GL_TYPE( VATTRIB_AUTOSPRITE_BIT, layout->halfFloatAttribs), centre[0], 4, layout->vertexStride, 4, ((uint8_t*)dst) + bufferOffset0 );
+			R_FillVertexBuffer_float_or_half( FLOAT_VATTRIB_GL_TYPE( VATTRIB_SVECTOR_BIT, layout->halfFloatAttribs ), axes[0], 4, layout->vertexStride, 4, ((uint8_t*)dst) + bufferOffset1 );
+
+			bufferOffset0 += 4 * layout->vertexStride;
+			bufferOffset1 += 4 * layout->vertexStride;
+		}
+	} else if( layout->spritePointsOffset && ( ( vattribs & VATTRIB_AUTOSPRITE_BIT ) == VATTRIB_AUTOSPRITE_BIT ) ) {
+		vec4_t *verts;
+		vec4_t centre[4];
+		int numQuads = mesh->numVerts / 4;
+		size_t bufferOffset = layout->spritePointsOffset;
+
+		size_t i;
+		for(i = 0, verts = mesh->xyzArray; i < numQuads; i++, verts += 4 ) {
+			// centre
+			for(size_t j = 0; j < 3; j++ ) {
+				centre[0][j] = ( verts[0][j] + verts[1][j] + verts[2][j] + verts[3][j] ) * 0.25;
+			}
+			// radius
+			centre[0][3] = Distance( verts[0], centre[0] ) * 0.707106f; // 1.0f / sqrt(2)
+
+			for(size_t j = 1; j < 4; j++ ) {
+				Vector4Copy( centre[0], centre[j] );
+			}
+
+			R_FillVertexBuffer_float_or_half( FLOAT_VATTRIB_GL_TYPE( VATTRIB_AUTOSPRITE_BIT, layout->halfFloatAttribs), centre[0], 4, layout->vertexStride, 4, ((uint8_t*)dst) + bufferOffset );
+
+			bufferOffset += 4 * layout->vertexStride;
+		}
+	}
+
+	if( vattribs & VATTRIB_BONES_BITS ) {
+		if( layout->bonesIndicesOffset ) {
+			if( !mesh->blendIndices ) {
+				errMask |= VATTRIB_BONESINDICES_BIT;
+			} else {
+				R_FillVertexBuffer( int, int, (int *)&mesh->blendIndices[0], 1, layout->vertexStride, mesh->numVerts, ((uint8_t*)dst) + layout->bonesIndicesOffset );
+			}
+		}
+		if( layout->bonesWeightsOffset ) {
+			if( !mesh->blendWeights ) {
+				errMask |= VATTRIB_BONESWEIGHTS_BIT;
+			} else {
+				R_FillVertexBuffer( int, int, (int *)&mesh->blendWeights[0], 1, layout->vertexStride, mesh->numVerts, ((uint8_t*)dst) + layout->bonesWeightsOffset );
+			}
+		}
+	}
+
+	return errMask;
 
 }
 

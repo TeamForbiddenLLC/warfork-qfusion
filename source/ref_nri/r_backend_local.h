@@ -81,7 +81,21 @@ typedef struct
 	int primitive;
 	vec2_t offset;
 	int scissor[4];
-	rbDrawElements_t drawElements;
+
+	size_t vertOffset;
+	NriBuffer* vertBuffer;
+	size_t eleOffset;
+	NriBuffer* eleBuffer;
+	
+
+	const struct vbo_layout_s* layout;
+	uint32_t bufferVertEleOffset;
+	NriBuffer* vertexBuffer;
+	uint32_t bufferIndexEleOffset;
+	NriBuffer* indexBuffer;
+
+	unsigned int numVerts;
+	unsigned int numElems;
 } rbDynamicDraw_t;
 
 typedef struct r_backend_s
@@ -139,6 +153,14 @@ typedef struct r_backend_s
 	int	currentRegProgram;
 	int currentRegProgramType;
 	r_glslfeat_t currentRegProgramFeatures;
+
+	struct gpu_frame_ele_allocator_s defaultVertexAlloc;
+	struct gpu_frame_ele_allocator_s defaultIndexAlloc;
+	struct vbo_layout_s defaultLayout;
+
+	struct gpu_frame_ele_allocator_s compactVertexAlloc;
+	struct gpu_frame_ele_allocator_s compactIndexAlloc;
+	struct vbo_layout_s compactLayout;
 
 	rbDynamicStream_t dynamicStreams[RB_DYN_STREAM_NUM];
 	rbDynamicDraw_t dynamicDraws[MAX_DYNAMIC_DRAWS];

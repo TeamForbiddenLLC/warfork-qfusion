@@ -1,6 +1,7 @@
 #ifndef R_FRAME_CMD_BUFFER_H
 #define R_FRAME_CMD_BUFFER_H
 
+#include "NRIDescs.h"
 #include "r_nri.h"
 #include "r_resource.h"
 #include "r_vattribs.h"
@@ -206,4 +207,76 @@ void TransitionPogoBufferToAttachment(struct frame_cmd_buffer_s* frame, struct p
 
 void FR_BindPogoBufferAttachment(struct frame_cmd_buffer_s* frame, struct pogo_buffers_s* pogo);
 
+// frame immediate buffer
+
+struct gpu_frame_ele_allocator_s {
+  int16_t tail;
+  int16_t head;
+ 	uint16_t elementStride; 
+  
+  size_t numElements;
+  size_t elementOffset;
+  struct {
+    uint64_t frameNum;
+    size_t numElements; // size of the generation
+  } segment[NUMBER_FRAMES_FLIGHT + 2]; // allocations are managed in segments
+  NriBuffer* buffer;
+  NriMemory* memory;
+	NriBufferUsageBits usageBits;
+};
+struct gpu_frame_ele_ring_desc_s {
+	uint32_t numElements;
+	uint16_t elementStride;
+	NriBufferUsageBits usageBits;
+};
+struct gpu_frame_ele_req_s{
+	NriBuffer *buffer;
+	uint16_t elementStride;
+	uint32_t elementOffset;
+	uint32_t numElements;
+};
+void initGPUFrameEleAlloc( struct gpu_frame_ele_allocator_s *ringAlloc, const struct gpu_frame_ele_ring_desc_s *desc );
+void freeGPUFrameEleAlloc( struct gpu_frame_ele_allocator_s *alloc );
+void GPUFrameEleAlloc( struct frame_cmd_buffer_s *cmd, struct gpu_frame_ele_allocator_s* alloc, size_t numElements, struct gpu_frame_ele_req_s *req );
+static inline bool IsElementBufferContinous(size_t currentOffset, size_t currentNumElements, size_t nextOffset)
+{
+	return currentOffset + currentNumElements  == nextOffset;
+}
+
+//struct gpu_frame_allocator_s {
+//  int16_t tail;
+//  int16_t head;
+//  size_t allocSize;
+//  size_t tailOffset;
+//  struct {
+//    uint64_t frameNum;
+//    size_t allocSize; // size of the generation
+//  } segment[NUMBER_FRAMES_FLIGHT + 1]; // allocations are managed in segments
+//  NriBuffer* buffer;
+//  NriMemory* memory;
+//
+//	size_t bufferAlignment;
+//	NriBufferUsageBits usageBits;
+//};
+//
+//struct gpu_frame_buffer_req_s {
+//	NriBuffer *buffer;
+//	size_t bufferOffset;
+//	size_t bufferSize;
+//};
+//
+//struct gpu_frame_buffer_ring_desc_s {
+//	size_t reservedSize;
+//	size_t alignmentReq;
+//	NriBufferUsageBits usageBits;
+//};
+//
+//void initGPUFrameAlloc(struct gpu_frame_allocator_s* ringAlloc, const struct gpu_frame_buffer_ring_desc_s* desc);
+//void freeGPUFrameAlloc(struct gpu_frame_allocator_s* alloc);
+//void GPUFrameAlloc( struct frame_cmd_buffer_s* cmd, struct gpu_frame_allocator_s *alloc, size_t reqSize, struct gpu_frame_buffer_req_s* req);
+
 #endif
+
+
+
+

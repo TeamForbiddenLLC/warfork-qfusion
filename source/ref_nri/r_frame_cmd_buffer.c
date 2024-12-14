@@ -362,3 +362,197 @@ void FR_BindPogoBufferAttachment(struct frame_cmd_buffer_s* frame, struct pogo_b
 	FR_CmdSetTextureAttachment( frame, colorFormats, colorAttachments, viewports, scissors, 1, depthDesc->format, frame->textureBuffers.depthAttachment);
 }
 
+void initGPUFrameEleAlloc( struct gpu_frame_ele_allocator_s *alloc, const struct gpu_frame_ele_ring_desc_s *desc ) {
+	assert(alloc);
+	memset(alloc, 0, sizeof(struct gpu_frame_ele_allocator_s ));
+	
+	assert(desc);
+	alloc->usageBits = desc->usageBits;
+	alloc->elementStride = desc->elementStride;
+	alloc->tail = 0;
+	alloc->head = 1;
+	assert(alloc->elementStride > 0);
+	NriBufferDesc bufferDesc = { 
+		.size = desc->elementStride * desc->numElements, 
+		.structureStride = alloc->elementStride, 
+		.usage = desc->usageBits
+	};
+	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateBuffer( rsh.nri.device, &bufferDesc, &alloc->buffer ) )
+	NriResourceGroupDesc resourceGroupDesc = { 
+		.buffers = &alloc->buffer , 
+		.bufferNum = 1, 
+		.memoryLocation = NriMemoryLocation_HOST_UPLOAD 
+	};
+	assert( rsh.nri.helperI.CalculateAllocationNumber(rsh.nri.device, &resourceGroupDesc ) == 1 );
+	NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, &alloc->memory ) );
+
+}
+void freeGPUFrameFixedWidthAlloc( struct gpu_frame_ele_allocator_s *alloc ) {
+	if( alloc->memory ) {
+		rsh.nri.coreI.FreeMemory( alloc->memory );
+	}
+	if( alloc->buffer ) {
+		rsh.nri.coreI.DestroyBuffer( alloc->buffer );
+	}
+
+}
+void GPUFrameEleAlloc( struct frame_cmd_buffer_s *cmd, struct gpu_frame_ele_allocator_s* alloc, size_t numElements, struct gpu_frame_ele_req_s *req ) {
+	assert(cmd);
+	const NriBufferDesc* bufferDesc = rsh.nri.coreI.GetBufferDesc(alloc->buffer);
+	size_t maxBufferElements = bufferDesc->size / alloc->elementStride; 
+	
+	while( alloc->tail != alloc->head && cmd->frameCount >= (alloc->segment[alloc->tail].frameNum + NUMBER_FRAMES_FLIGHT) ) {
+		assert(alloc->numElements >= alloc->segment[alloc->tail].numElements);
+		alloc->numElements -= alloc->segment[alloc->tail].numElements;
+		alloc->elementOffset = ( alloc->elementOffset + alloc->segment[alloc->tail].numElements ) % maxBufferElements;
+		alloc->segment[alloc->tail].numElements = 0;
+		alloc->segment[alloc->tail].frameNum = 0;
+		alloc->tail = (alloc->tail + 1) % Q_ARRAY_COUNT(alloc->segment); 
+	}
+
+	// the frame has change
+	if(cmd->frameCount != alloc->segment[alloc->head].frameNum) {
+		alloc->head = (alloc->head + 1) % Q_ARRAY_COUNT(alloc->segment);
+		alloc->segment[alloc->head].frameNum = cmd->frameCount;
+		alloc->segment[alloc->head].numElements = 0;
+		assert(alloc->head != alloc->tail); // this shouldn't happen
+	}
+
+	size_t endElementOffset = (alloc->elementOffset + alloc->numElements) % maxBufferElements; 
+
+	assert(alloc->elementOffset < maxBufferElements);
+	assert(endElementOffset < maxBufferElements);
+	// we don't have enough space to fit into the end of the buffer
+	if( alloc->elementOffset < endElementOffset && endElementOffset + numElements > maxBufferElements ) {
+		const uint32_t remaining = ( maxBufferElements - endElementOffset );
+		alloc->segment[alloc->head].numElements += remaining;
+		alloc->numElements += remaining;
+		endElementOffset = 0;
+		assert((alloc->elementOffset + alloc->numElements) % maxBufferElements == 0);
+	}
+	size_t remainingSpace = 0;
+	if(endElementOffset < alloc->elementOffset) { // the buffer has wrapped around
+		remainingSpace = alloc->elementOffset - endElementOffset;
+	} else {
+		remainingSpace = maxBufferElements - endElementOffset;
+	}
+	assert(remainingSpace <= maxBufferElements);
+
+	// there is not enough avalaible space we need to reallocate
+	//size_t updateElementOffset = endElementOffset + numElements;
+	if( numElements > remainingSpace ) {
+		// attach it to the cmd buffer to be cleaned up on the round trip
+		arrpush( cmd->freeBuffers, alloc->buffer );
+		arrpush( cmd->freeMemory, alloc->memory );
+		for( size_t i = 0; i < Q_ARRAY_COUNT( alloc->segment ); i++ ) {
+			alloc->segment[i].numElements = 0;
+			alloc->segment[i].frameNum = 0;
+		}
+		alloc->numElements = 0;
+		alloc->elementOffset = 0;
+
+		do {
+			maxBufferElements = ( maxBufferElements + ( maxBufferElements >> 1 ) );
+		} while( maxBufferElements < numElements );
+		endElementOffset = 0;
+		NriBufferDesc initBufferDesc = { 
+			.size =  maxBufferElements * alloc->elementStride, 
+			.structureStride = alloc->elementStride, 
+			.usage = alloc->usageBits 
+		};
+
+		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateBuffer( rsh.nri.device, &initBufferDesc, &alloc->buffer ) )
+		NriResourceGroupDesc resourceGroupDesc = { .buffers = &alloc->buffer, .bufferNum = 1, .memoryLocation = NriMemoryLocation_HOST_UPLOAD };
+		assert( rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc ) == 1 );
+		NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, &alloc->memory ) );
+	}
+	alloc->segment[alloc->head].numElements += numElements;
+	alloc->numElements += numElements;
+	
+	req->elementOffset = endElementOffset;
+	req->buffer = alloc->buffer;
+	req->elementStride = alloc->elementStride;
+	req->numElements = numElements; // includes the padding on the end of the buffer
+}
+
+//void initGPUFrameAlloc(struct gpu_frame_allocator_s* alloc, const struct gpu_frame_buffer_ring_desc_s* desc) {
+//	assert(alloc);
+//	assert(desc);
+//	memset(alloc, 0, sizeof(struct gpu_frame_allocator_s));
+//	alloc->usageBits = desc->usageBits;
+//	alloc->bufferAlignment = desc->alignmentReq;
+//	alloc->tail = 0;
+//	alloc->head = 1;
+//	NriBufferDesc bufferDesc = { .size = desc->reservedSize, .structureStride = desc->alignmentReq, .usage = desc->usageBits};
+//	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateBuffer( rsh.nri.device, &bufferDesc, &alloc->buffer ) )
+//	NriResourceGroupDesc resourceGroupDesc = { .buffers = &alloc->buffer , .bufferNum = 1, .memoryLocation = NriMemoryLocation_HOST_UPLOAD };
+//	assert( rsh.nri.helperI.CalculateAllocationNumber(rsh.nri.device, &resourceGroupDesc ) == 1 );
+//	NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, &alloc->memory ) );
+//}
+//
+//void freeGPUFrameEleAlloc( struct gpu_frame_ele_allocator_s *alloc )
+//{
+//	if( alloc->memory ) {
+//		rsh.nri.coreI.FreeMemory( alloc->memory );
+//	}
+//	if( alloc->buffer ) {
+//		rsh.nri.coreI.DestroyBuffer( alloc->buffer );
+//	}
+//}
+//
+//void GPUFrameAlloc(struct frame_cmd_buffer_s* cmd, struct gpu_frame_allocator_s *alloc, size_t reqSize, struct gpu_frame_buffer_req_s* req) {
+//	assert(cmd);
+//	const NriBufferDesc* bufferDesc = rsh.nri.coreI.GetBufferDesc(alloc->buffer);
+//	
+//	while( alloc->tail != alloc->head && (alloc->segment[alloc->tail].frameNum + NUMBER_FRAMES_FLIGHT) >= cmd->frameCount ) {
+//		alloc->allocSize -= alloc->segment[alloc->tail].allocSize;
+//		alloc->tailOffset = (alloc->tailOffset + alloc->segment[alloc->tail].allocSize) % bufferDesc->size;
+//		alloc->segment[alloc->tail].allocSize = 0;
+//		alloc->segment[alloc->tail].frameNum = 0;
+//		alloc->tail = (alloc->tail + 1) % Q_ARRAY_COUNT(alloc->segment); 
+//	}
+//
+//	// the frame has change
+//	if(cmd->frameCount != alloc->segment[alloc->head].frameNum) {
+//		alloc->head = (alloc->head + 1) % Q_ARRAY_COUNT(alloc->segment);
+//		alloc->segment[alloc->head].frameNum = cmd->frameCount;
+//		assert(alloc->head != alloc->tail); // this shouldn't happen
+//	}
+//
+//	size_t currentOffset = (alloc->tailOffset + alloc->allocSize) % bufferDesc->size; 
+//	// we don't have enough space to fit into the end of the buffer
+//	if( alloc->tailOffset < currentOffset && ALIGN( currentOffset + reqSize, alloc->bufferAlignment ) > bufferDesc->size ) {
+//		const size_t remaining = (bufferDesc->size - currentOffset);
+//		alloc->segment[alloc->head].allocSize += remaining;
+//		alloc->allocSize += remaining;
+//		currentOffset = 0;
+//	}
+//
+//	// there is not enough avalaible space we need to reallocate
+//	size_t updateOffset = ALIGN( currentOffset + reqSize, alloc->bufferAlignment );
+//	if( updateOffset > alloc->tailOffset ) {
+//		// attach it to the cmd buffer to be cleaned up on the round trip
+//		arrpush( cmd->freeBuffers, alloc->buffer );
+//		arrpush( cmd->freeMemory, alloc->memory );
+//		for( size_t i = 0; i < Q_ARRAY_COUNT( alloc->segment ); i++ ) {
+//			alloc->segment[i].allocSize = 0;
+//			alloc->segment[i].frameNum = 0;
+//		}
+//		alloc->allocSize = 0;
+//		alloc->tailOffset = 0;
+//		updateOffset = ALIGN(reqSize, alloc->bufferAlignment );
+//		NriBufferDesc bufferDesc = { .size = bufferDesc.size + ( bufferDesc.size >> 1 ), .structureStride = alloc->bufferAlignment, .usage = alloc->usageBits };
+//		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateBuffer( rsh.nri.device, &bufferDesc, &alloc->buffer ) )
+//		NriResourceGroupDesc resourceGroupDesc = { .buffers = &alloc->buffer, .bufferNum = 1, .memoryLocation = NriMemoryLocation_HOST_UPLOAD };
+//		assert( rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc ) == 1 );
+//		NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, &alloc->memory ) );
+//	}
+//
+//	req->buffer = alloc->buffer;
+//	req->bufferOffset = updateOffset;
+//	req->bufferSize = ( currentOffset - updateOffset ); // includes the padding on the end of the buffer
+//	alloc->segment[alloc->head].allocSize += req->bufferSize;
+//	alloc->allocSize += req->bufferSize;
+//}
+
+
