@@ -387,20 +387,21 @@ void initGPUFrameEleAlloc( struct gpu_frame_ele_allocator_s *alloc, const struct
 	NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, &alloc->memory ) );
 
 }
-void freeGPUFrameFixedWidthAlloc( struct gpu_frame_ele_allocator_s *alloc ) {
-	if( alloc->memory ) {
-		rsh.nri.coreI.FreeMemory( alloc->memory );
-	}
-	if( alloc->buffer ) {
-		rsh.nri.coreI.DestroyBuffer( alloc->buffer );
-	}
+void freeGPUFrameEleAlloc( struct gpu_frame_ele_allocator_s *alloc ) {
+	assert(alloc->memory != NULL);
+	assert(alloc->buffer != NULL);
+	rsh.nri.coreI.FreeMemory( alloc->memory );
+	rsh.nri.coreI.DestroyBuffer( alloc->buffer );
 
 }
+
+
 void GPUFrameEleAlloc( struct frame_cmd_buffer_s *cmd, struct gpu_frame_ele_allocator_s* alloc, size_t numElements, struct gpu_frame_ele_req_s *req ) {
 	assert(cmd);
 	const NriBufferDesc* bufferDesc = rsh.nri.coreI.GetBufferDesc(alloc->buffer);
 	size_t maxBufferElements = bufferDesc->size / alloc->elementStride; 
-	
+
+	// reclaim segments that are unused 
 	while( alloc->tail != alloc->head && cmd->frameCount >= (alloc->segment[alloc->tail].frameNum + NUMBER_FRAMES_FLIGHT) ) {
 		assert(alloc->numElements >= alloc->segment[alloc->tail].numElements);
 		alloc->numElements -= alloc->segment[alloc->tail].numElements;
@@ -418,28 +419,26 @@ void GPUFrameEleAlloc( struct frame_cmd_buffer_s *cmd, struct gpu_frame_ele_allo
 		assert(alloc->head != alloc->tail); // this shouldn't happen
 	}
 
-	size_t endElementOffset = (alloc->elementOffset + alloc->numElements) % maxBufferElements; 
-
+	size_t elmentEndOffset = (alloc->elementOffset + alloc->numElements) % maxBufferElements; 
 	assert(alloc->elementOffset < maxBufferElements);
-	assert(endElementOffset < maxBufferElements);
-	// we don't have enough space to fit into the end of the buffer
-	if( alloc->elementOffset < endElementOffset && endElementOffset + numElements > maxBufferElements ) {
-		const uint32_t remaining = ( maxBufferElements - endElementOffset );
+	assert(elmentEndOffset < maxBufferElements);
+	// we don't have enough space to fit into the end of the buffer give up the remaning and move the cursor to the start
+	if( alloc->elementOffset < elmentEndOffset && elmentEndOffset + numElements > maxBufferElements ) {
+		const uint32_t remaining = ( maxBufferElements - elmentEndOffset );
 		alloc->segment[alloc->head].numElements += remaining;
 		alloc->numElements += remaining;
-		endElementOffset = 0;
+		elmentEndOffset = 0;
 		assert((alloc->elementOffset + alloc->numElements) % maxBufferElements == 0);
 	}
 	size_t remainingSpace = 0;
-	if(endElementOffset < alloc->elementOffset) { // the buffer has wrapped around
-		remainingSpace = alloc->elementOffset - endElementOffset;
+	if(elmentEndOffset < alloc->elementOffset) { // the buffer has wrapped around
+		remainingSpace = alloc->elementOffset - elmentEndOffset;
 	} else {
-		remainingSpace = maxBufferElements - endElementOffset;
+		remainingSpace = maxBufferElements - elmentEndOffset;
 	}
 	assert(remainingSpace <= maxBufferElements);
 
 	// there is not enough avalaible space we need to reallocate
-	//size_t updateElementOffset = endElementOffset + numElements;
 	if( numElements > remainingSpace ) {
 		// attach it to the cmd buffer to be cleaned up on the round trip
 		arrpush( cmd->freeBuffers, alloc->buffer );
@@ -450,11 +449,11 @@ void GPUFrameEleAlloc( struct frame_cmd_buffer_s *cmd, struct gpu_frame_ele_allo
 		}
 		alloc->numElements = 0;
 		alloc->elementOffset = 0;
+		elmentEndOffset = 0; // move the cursor to the beginning
 
 		do {
 			maxBufferElements = ( maxBufferElements + ( maxBufferElements >> 1 ) );
 		} while( maxBufferElements < numElements );
-		endElementOffset = 0;
 		NriBufferDesc initBufferDesc = { 
 			.size =  maxBufferElements * alloc->elementStride, 
 			.structureStride = alloc->elementStride, 
@@ -469,7 +468,7 @@ void GPUFrameEleAlloc( struct frame_cmd_buffer_s *cmd, struct gpu_frame_ele_allo
 	alloc->segment[alloc->head].numElements += numElements;
 	alloc->numElements += numElements;
 	
-	req->elementOffset = endElementOffset;
+	req->elementOffset = elmentEndOffset;
 	req->buffer = alloc->buffer;
 	req->elementStride = alloc->elementStride;
 	req->numElements = numElements; // includes the padding on the end of the buffer

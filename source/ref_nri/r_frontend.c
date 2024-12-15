@@ -379,6 +379,8 @@ void RF_Shutdown( bool verbose )
 	
 	RP_Shutdown();
 
+	RB_Shutdown();
+
 	R_ExitResourceUpload();
 	
 	for(size_t i = 0; i < NUMBER_FRAMES_FLIGHT; i++) {

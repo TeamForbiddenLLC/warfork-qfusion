@@ -243,25 +243,6 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 	vbo->numAllocations = allocationNum;
 	R_VK_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, vbo->memory ) );
 
-	if(hasInstanceBuffer) {
-		vbo->ringOffsetInstAlloc = (struct r_ring_offset_alloc_s){
-			.currentOffset = 0,
-			.maxSize = instanceByteStride * desc->numInstances,
-			.bufferAlignment = 1
-		};
-	}
-
-	vbo->ringOffsetIndexAlloc = (struct r_ring_offset_alloc_s){
-		.currentOffset = 0,
-		.maxSize = desc->numElems * sizeof( elem_t ),
-		.bufferAlignment = 1
-	};
-	vbo->ringOffsetVertAlloc = (struct r_ring_offset_alloc_s){
-		.currentOffset = 0,
-		.maxSize =  vertexByteStride * desc->numVerts,
-		.bufferAlignment = 1
-	};
-
 	r_num_active_vbos++;
 
 	vbo->registrationSequence = rsh.registrationSequence;

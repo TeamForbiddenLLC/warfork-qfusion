@@ -86,8 +86,11 @@ void RB_Init( void )
 */
 void RB_Shutdown( void )
 {
+	freeGPUFrameEleAlloc(&rb.defaultIndexAlloc);
+	freeGPUFrameEleAlloc(&rb.defaultVertexAlloc);
+	freeGPUFrameEleAlloc(&rb.compactIndexAlloc);
+	freeGPUFrameEleAlloc(&rb.compactVertexAlloc);
 	RP_StorePrecacheList();
-
 	R_FreePool( &rb.mempool );
 }
 
@@ -701,41 +704,6 @@ void RB_RegisterStreamVBOs( void )
 {
 
 
-//	initGPUFrameRingAlloc(&rb.dynVertexStreamAlloc, &dynVertexBufferDesc);
-//	initGPUFrameRingAlloc(&rb.dynElementAlloc, &dyncEleDesc );
-
-	vattribmask_t vattribs[RB_VBO_NUM_STREAMS] = {
-		VATTRIBS_MASK & ~VATTRIB_INSTANCES_BITS,
-		COMPACT_STREAM_VATTRIBS
-	};
-
-	// allocate stream VBO's
-	for(size_t i = 0; i < RB_VBO_NUM_STREAMS; i++ ) {
-		rbDynamicStream_t *stream = &rb.dynamicStreams[i];
-		if( stream->vbo ) {
-			R_TouchMeshVBO( stream->vbo );
-			continue;
-		}
-		struct mesh_vbo_desc_s meshdesc = {
-			.tag = VBO_TAG_STREAM,
-			.owner = ( void * )&rb,
-
-			.numVerts = MAX_STREAM_VBO_VERTS,
-			.numElems = MAX_STREAM_VBO_ELEMENTS,
-			.numInstances = 0,
-			
-			.memoryLocation = NriMemoryLocation_DEVICE_UPLOAD,
-			.vattribs = vattribs[i],
-			.halfFloatVattribs = VATTRIB_TEXCOORDS_BIT|VATTRIB_NORMAL_BIT|VATTRIB_SVECTOR_BIT
-		};
-		stream->vbo = R_CreateMeshVBO( &meshdesc );
-		//stream->vbo = R_CreateMeshVBO( &rb,
-		//	MAX_STREAM_VBO_VERTS, MAX_STREAM_VBO_ELEMENTS, 0,
-		//	vattribs[i], VBO_TAG_STREAM, VATTRIB_TEXCOORDS_BIT|VATTRIB_NORMAL_BIT|VATTRIB_SVECTOR_BIT );
-
-		stream->vertexData = RB_Alloc( MAX_STREAM_VBO_VERTS * stream->vbo->vertexSize );
-		stream->elementData = RB_Alloc( MAX_STREAM_VBO_ELEMENTS * sizeof( elem_t ) );
-	}
 }
 
 
@@ -748,10 +716,8 @@ void RB_BindVBO( int id, int primitive )
 
 	rb.primitive = primitive;
 
-	if( id < RB_VBO_NONE ) {
-		vbo = rb.dynamicStreams[-id - 1].vbo;
-	}
-	else if( id == RB_VBO_NONE ) {
+	assert(id >= 0);
+	if( id == RB_VBO_NONE ) {
 		vbo = NULL;
 	}
 	else {

@@ -856,11 +856,6 @@ typedef struct mesh_vbo_s
 	NriBuffer *indexBuffer;
 	NriBuffer *instanceBuffer;
 
-	// vbo if we want to use a ring buffer and usee this like an immedate buffer
-	struct r_ring_offset_alloc_s ringOffsetVertAlloc;	
-	struct r_ring_offset_alloc_s ringOffsetIndexAlloc;	
-	struct r_ring_offset_alloc_s ringOffsetInstAlloc;	
-
 	unsigned int		index;
 	int					registrationSequence;
 	vbo_tag_t			tag;

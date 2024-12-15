@@ -82,12 +82,8 @@ typedef struct
 	vec2_t offset;
 	int scissor[4];
 
-	size_t vertOffset;
 	NriBuffer* vertBuffer;
-	size_t eleOffset;
 	NriBuffer* eleBuffer;
-	
-
 	const struct vbo_layout_s* layout;
 	uint32_t bufferVertEleOffset;
 	NriBuffer* vertexBuffer;
@@ -162,7 +158,6 @@ typedef struct r_backend_s
 	struct gpu_frame_ele_allocator_s compactIndexAlloc;
 	struct vbo_layout_s compactLayout;
 
-	rbDynamicStream_t dynamicStreams[RB_DYN_STREAM_NUM];
 	rbDynamicDraw_t dynamicDraws[MAX_DYNAMIC_DRAWS];
 	unsigned int numDynamicDraws;
 
