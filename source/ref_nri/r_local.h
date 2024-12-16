@@ -501,8 +501,6 @@ extern cvar_t *r_screenshot_format;
 extern cvar_t *r_swapinterval;
 extern cvar_t *r_swapinterval_min;
 
-extern cvar_t *r_temp1;
-
 extern cvar_t *r_drawflat;
 extern cvar_t *r_wallcolor;
 extern cvar_t *r_floorcolor;

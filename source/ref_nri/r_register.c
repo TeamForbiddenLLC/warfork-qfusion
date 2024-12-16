@@ -119,8 +119,6 @@ cvar_t *r_screenshot_format;
 cvar_t *r_swapinterval;
 cvar_t *r_swapinterval_min;
 
-cvar_t *r_temp1;
-
 cvar_t *r_drawflat;
 cvar_t *r_wallcolor;
 cvar_t *r_floorcolor;
@@ -130,7 +128,6 @@ cvar_t *r_usenotexture;
 cvar_t *r_maxglslbones;
 
 cvar_t *gl_cull;
-cvar_t *r_multithreading;
 
 static bool	r_verbose;
 static bool	r_postinit;
@@ -140,8 +137,6 @@ static void R_InitVolatileAssets( void );
 static void R_Register( const char *screenshotsPrefix )
 {
 	char tmp[128];
-	const qgl_driverinfo_t *driver;
-	
 	vid_width = Cvar_Get( "vid_width", "0", CVAR_ARCHIVE | CVAR_LATCH_VIDEO );
 	vid_height = Cvar_Get( "vid_height", "0", CVAR_ARCHIVE | CVAR_LATCH_VIDEO );
 	vid_xpos = Cvar_Get( "vid_xpos", "0", CVAR_ARCHIVE );
@@ -239,8 +234,6 @@ static void R_Register( const char *screenshotsPrefix )
 #endif
 	r_swapinterval_min = Cvar_Get( "r_swapinterval_min", "0", CVAR_READONLY ); // exposes vsync support to UI
 
-	r_temp1 = Cvar_Get( "r_temp1", "0", 0 );
-
 	r_drawflat = Cvar_Get( "r_drawflat", "0", CVAR_ARCHIVE );
 	r_wallcolor = Cvar_Get( "r_wallcolor", "255 255 255", CVAR_ARCHIVE );
 	r_floorcolor = Cvar_Get( "r_floorcolor", "255 153 0", CVAR_ARCHIVE );
@@ -255,7 +248,6 @@ static void R_Register( const char *screenshotsPrefix )
 
 	r_maxglslbones = Cvar_Get( "r_maxglslbones", STR_TOSTR( MAX_GLSL_UNIFORM_BONES ), CVAR_LATCH_VIDEO );
 
-	r_multithreading = Cvar_Get( "r_multithreading", "1", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 
 	gl_cull = Cvar_Get( "gl_cull", "1", 0 );
 	gl_drawbuffer = Cvar_Get( "gl_drawbuffer", "GL_BACK", 0 );
