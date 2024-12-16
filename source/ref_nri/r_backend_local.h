@@ -20,9 +20,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef R_BACKEND_LOCAL_H
 #define R_BACKEND_LOCAL_H
 
-#include "r_gpu_ring_buffer.h"
 #include "r_frame_cmd_buffer.h"
 #include "r_nri.h"
+#include "math/qmath.h"
+
 
 #include "r_local.h"
 
@@ -97,27 +98,14 @@ typedef struct r_backend_s
 
 	struct
 	{
-		int				state;
-
-		int 			currentArrayVBO;
-		int 			currentElemArrayVBO;
-
-		int				faceCull;
-		bool			frontFace;
-
-		int				viewport[4];
 		int				scissor[4];
 
 		float			depthmin, depthmax;
 
 		bool			depthoffset;
-
-		int				currentTMU;
 	} gl;
 
 	unsigned int time;
-
-	rbStats_t stats;
 
 	mat4_t cameraMatrix;
 	mat4_t objectMatrix;
@@ -137,22 +125,11 @@ typedef struct r_backend_s
 	rbBonesData_t bonesData;
 	const portalSurface_t *currentPortalSurface;
 	
-	// glUseProgram cache
-	int	currentProgram;
-	int currentProgramObject;
-
-	// RP_RegisterProgram cache
-	int	currentRegProgram;
-	int currentRegProgramType;
-	r_glslfeat_t currentRegProgramFeatures;
-
-
 	struct {
 		struct vbo_layout_s layout;
 		struct gpu_frame_ele_allocator_s vertexAlloc;
 		struct gpu_frame_ele_allocator_s indexAlloc;
 	} dynamicVertexAlloc[RB_DYN_STREAM_NUM];
-
 	rbDynamicDraw_t dynamicDraws[MAX_DYNAMIC_DRAWS];
 	unsigned int numDynamicDraws;
 
@@ -179,9 +156,7 @@ typedef struct r_backend_s
 	double currentShaderTime;
 	int currentShaderState;
 	int shaderStateORmask, shaderStateANDmask;
-	bool dirtyUniformState;
 	bool doneDepthPass;
-	int donePassesTotal;
 
 	bool triangleOutlines;
 
@@ -210,7 +185,7 @@ extern rbackend_t rb;
 #define RB_Alloc(size) R_MallocExt( rb.mempool, size, 16, 1 )
 #define RB_Free(data) R_Free(data)
 
-void RB_DrawElementsReal( rbDrawElements_t *de );
+//void RB_DrawElementsReal( rbDrawElements_t *de );
 #define RB_IsAlphaBlending(blendsrc,blenddst) \
 	( (blendsrc) == GLSTATE_SRCBLEND_SRC_ALPHA || (blenddst) == GLSTATE_DSTBLEND_SRC_ALPHA ) || \
 	( (blendsrc) == GLSTATE_SRCBLEND_ONE_MINUS_SRC_ALPHA || (blenddst) == GLSTATE_DSTBLEND_ONE_MINUS_SRC_ALPHA )
@@ -219,7 +194,7 @@ void RB_DrawElementsReal( rbDrawElements_t *de );
 void RB_InitShading( void );
 void RB_DrawShadedElements( void );
 void RB_BindArrayBuffer( int buffer );
-void RB_SetInstanceData( int numInstances, instancePoint_t *instances );
-bool RB_ScissorForBounds( vec3_t bbox[8], int *x, int *y, int *w, int *h );
+
+bool RB_ScissorForBounds(vec3_t bbox[8], const struct QRectf32_s viewport, int *x, int *y, int *w, int *h );
 
 #endif // R_BACKEND_LOCAL_H

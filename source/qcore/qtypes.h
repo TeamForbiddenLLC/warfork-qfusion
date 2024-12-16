@@ -81,7 +81,7 @@
 #define Q_ENUM_FLAG(TYPE, ENUM_TYPE)
 #endif
 
-#if defined(__clang__) && !defined(__cplusplus)
+#if !defined(__cplusplus)
 #define Q_COMPILE_ASSERT(exp) _Static_assert(exp, #exp)
 #else
 #define Q_COMPILE_ASSERT(exp) static_assert(exp, #exp)

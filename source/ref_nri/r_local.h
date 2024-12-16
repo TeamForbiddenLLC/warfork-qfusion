@@ -32,7 +32,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../ref_base/ref_mod.h"
 
 #include "../qcommon/mod_fs.h"
-#include "r_gpu_ring_buffer.h"
 #include "r_resource_upload.h"
 #include "r_frame_cmd_buffer.h"
 
@@ -698,7 +697,6 @@ void		R_ShutdownCustomColors( void );
 void		R_ClearRefInstStack( void );
 bool		R_PushRefInst( struct frame_cmd_buffer_s* frame);
 void		R_PopRefInst( struct frame_cmd_buffer_s* frame );
-void		R_BindFrameBufferObject( int object );
 
 void		R_Scissor( int x, int y, int w, int h );
 void		R_GetScissor( int *x, int *y, int *w, int *h );

@@ -170,9 +170,8 @@ void R_ShutdownPortals() {
 		}
 		for( size_t i = 0; i < portalFB->numAllocations; i++ )
 			rsh.nri.coreI.FreeMemory(portalFB->memory[i]);
-		portalFB->numAllocations = 0;
+		memset(portalFB, 0, sizeof(struct portal_fb_s));
 	}
-	memset(rsh.portalFBs, 0, sizeof(rsh.portalFBs));
 
 }
 

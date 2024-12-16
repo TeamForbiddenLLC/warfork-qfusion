@@ -18,7 +18,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
-#include "r_gpu_ring_buffer.h"
 #include "r_local.h"
 #include "qmesa.h"
 #include "r_resource_upload.h"

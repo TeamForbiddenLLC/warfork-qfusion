@@ -22,15 +22,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_frame_cmd_buffer.h"
 
-enum
-{
-	RB_VBO_STREAM_COMPACT		= -2, // bind RB_VBO_STREAM instead
-	RB_VBO_STREAM				= -1,
-	RB_VBO_NONE					= 0,
-	RB_VBO_NUM_STREAMS			= -RB_VBO_STREAM_COMPACT
-};
-
-
 //===================================================================
 
 struct shader_s;
@@ -62,8 +53,7 @@ void RB_FlipFrontFace( struct frame_cmd_buffer_s* cmd);
 void RB_Scissor( int x, int y, int w, int h );
 void RB_GetScissor( int *x, int *y, int *w, int *h );
 void RB_ApplyScissor( void );
-void RB_Viewport( int x, int y, int w, int h );
-void RB_Clear( int bits, float r, float g, float b, float a );
+//void RB_Clear( int bits, float r, float g, float b, float a );
 void RB_SetZClip( float zNear, float zFar );
 
 void RB_BindFrameBufferObject( int object );
@@ -71,16 +61,6 @@ int RB_BoundFrameBufferObject( void );
 //void RB_BlitFrameBufferObject( int dest, int bitMask, int mode );
 
 void RB_BindVBO( int id, int primitive);
-//void RB_BindVBO_2( NriCommandBuffer* cmd,
-//					vattribmask_t attrib,
-//				   unsigned int firstVert,
-//				   unsigned int numVerts,
-//				   unsigned int firstElem,
-//				   unsigned int numElems,
-//				   size_t vertexOffset,
-//				   NriMemory *vertexMem,
-//				   size_t elementOffset,
-//				   NriMemory *elementMem );
 
 void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, const shader_t *shader,
 	const struct mfog_s *fog, const struct portalSurface_s *portalSurface, unsigned int shadowBits,
@@ -121,6 +101,5 @@ bool RB_EnableTriangleOutlines( bool enable );
 
 vattribmask_t RB_GetVertexAttribs( void );
 
-void RB_StatsMessage( char *msg, size_t size );
 
 #endif // R_BACKEND_H

@@ -44,9 +44,9 @@ void R_ShutdownShadows() {
 			for( size_t i = 0; i < fb->numAllocations; i++ )
 				rsh.nri.coreI.FreeMemory(fb->memory[i]);
 			fb->numAllocations = 0;
+			memset(fb, 0, sizeof(struct shadow_fb_s));
 		}
 	}
-	memset(rsh.shadowFBs, 0, sizeof(rsh.shadowFBs));
 }
 
 /*
@@ -361,15 +361,16 @@ static struct shadow_fb_s* __ResolveShadowSurface( struct frame_cmd_buffer_s* cm
 		}
 	}
 
-	if( bestFB->depthTexture )
+	if( bestFB->depthTexture ) 
 		arrpush( cmd->freeTextures, bestFB->depthTexture );
-	if( bestFB->depthAttachment.descriptor )
+	if( bestFB->depthAttachment.descriptor ) 
 		arrpush( cmd->frameTemporaryDesc, bestFB->depthAttachment.descriptor );
 	if( bestFB->shaderDescriptor.descriptor )
 		arrpush( cmd->frameTemporaryDesc, bestFB->shaderDescriptor.descriptor );
 	for( size_t i = 0; i < bestFB->numAllocations; i++ )
 		arrpush( cmd->freeMemory, bestFB->memory[i] );
 	bestFB->numAllocations = 0;
+	bestFB->depthTexture = NULL;
 
 	const NriTextureDesc depthTextureDesc = { .width = width,
 											  .height = height,

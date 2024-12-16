@@ -136,7 +136,7 @@ static void R_UploadCinematicFrame( r_cinhandle_t *handle )
 
 			RB_Scissor( 0, 0, handle->image->width, handle->image->height );
 
-			RB_Viewport( 0, 0, handle->image->width, handle->image->height );
+			//RB_Viewport( 0, 0, handle->image->width, handle->image->height );
 
 			R_UploadRawYUVPic( handle->yuv_images, handle->cyuv->yuv );
 

@@ -482,7 +482,21 @@ void R_Set2DMode(struct frame_cmd_buffer_s* cmd, bool enable )
 
 		// set 2D virtual screen size
 		RB_Scissor( 0, 0, width, height );
-		RB_Viewport( 0, 0, width, height );
+
+		FR_CmdSetViewportAll( cmd, 
+											 (NriViewport){ 
+											 .x = 0, 
+											 .y = 0, 
+											 .width = width, 
+											 .height = height, 
+											 .depthMin = 0.0f, 
+											 .depthMax = 1.0f } );
+		FR_CmdSetScissorAll( cmd, 
+											 (NriRect){ 
+											 .x = 0, 
+											 .y = 0, 
+											 .width = width, 
+											 .height = height } );
 
 		RB_LoadProjectionMatrix( rn.projectionMatrix );
 		RB_LoadCameraMatrix( mat4x4_identity );
@@ -732,23 +746,6 @@ void R_DrawStretchQuick(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int
 	RB_FlushDynamicMeshes(cmd);
 }
 
-/*
-* R_BindFrameBufferObject
-*/
-void R_BindFrameBufferObject( int object )
-{
-	//int width, height;
-
-	//RFB_GetObjectSize( object, &width, &height );
-
-	//rf.frameBufferWidth = width;
-	//rf.frameBufferHeight = height;
-
-	//RB_BindFrameBufferObject( object );
-
-	RB_Viewport( rn.viewport[0], rn.viewport[1], rn.viewport[2], rn.viewport[3] );
-	RB_Scissor( rn.scissor[0], rn.scissor[1], rn.scissor[2], rn.scissor[3] );
-}
 
 /*
 * R_Scissor
@@ -1037,7 +1034,14 @@ static void R_Clear(struct frame_cmd_buffer_s* frame, int bitMask )
 static void R_SetupGL(struct frame_cmd_buffer_s* frame)
 {
 	RB_Scissor( rn.scissor[0], rn.scissor[1], rn.scissor[2], rn.scissor[3] );
-	RB_Viewport( rn.viewport[0], rn.viewport[1], rn.viewport[2], rn.viewport[3] );
+	FR_CmdSetViewportAll(frame, (NriViewport) {
+		.x = rn.viewport[0],
+		.y = rn.viewport[1],
+		.width = rn.viewport[2],
+		.height = rn.viewport[3],
+		.depthMin = 0.0f,
+		.depthMax = 1.0f
+	} );
 
 	if( rn.renderFlags & RF_CLIPPLANE )
 	{
@@ -1378,8 +1382,6 @@ const char *R_WriteSpeedsMessage(char *out, size_t size)
 		switch (r_speeds->integer)
 		{
 			case 1:
-				RB_StatsMessage(backend_msg, sizeof(backend_msg));
-
 				Q_snprintfz(out, size,
 					"%u fps\n"
 					"%4u wpoly %4u leafs\n"

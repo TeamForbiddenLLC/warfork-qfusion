@@ -18,7 +18,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
-#include "r_gpu_ring_buffer.h"
 #include "r_local.h"
 #include "r_backend_local.h"
 
@@ -28,20 +27,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 rbackend_t rb;
 
-static void RB_SetGLDefaults( void );
-static void RB_SelectTextureUnit( int tmu );
-
 
 void RB_Init( void )
 {
 	memset( &rb, 0, sizeof( rb ) );
 
 	rb.mempool = R_AllocPool( NULL, "Rendering Backend" );
-	const vattribmask_t vattribs[RB_VBO_NUM_STREAMS] = {
+	const vattribmask_t vattribs[RB_DYN_STREAM_NUM] = {
 		VATTRIBS_MASK & ~VATTRIB_INSTANCES_BITS, // RB_DYN_STREAM_DEFAULT
 		COMPACT_STREAM_VATTRIBS // RB_DYN_STREAM_COMPACT
 	};
-	for(size_t i = 0; i < RB_VBO_NUM_STREAMS; i++ ) {
+	for(size_t i = 0; i < RB_DYN_STREAM_NUM; i++ ) {
 		struct vbo_layout_s layout = R_CreateVBOLayout( vattribs[i], VATTRIB_TEXCOORDS_BIT | VATTRIB_NORMAL_BIT | VATTRIB_SVECTOR_BIT );
 		const struct gpu_frame_ele_ring_desc_s  indexElementDesc = {
 			.numElements = 1024,
@@ -73,7 +69,7 @@ void RB_Init( void )
 */
 void RB_Shutdown( void )
 {
-	for(size_t i = 0; i < RB_VBO_NUM_STREAMS; i++) {
+	for(size_t i = 0; i < RB_DYN_STREAM_NUM; i++) {
 		freeGPUFrameEleAlloc(&rb.dynamicVertexAlloc[i].vertexAlloc);
 		freeGPUFrameEleAlloc(&rb.dynamicVertexAlloc[i].indexAlloc);
 	}
@@ -116,87 +112,20 @@ void RB_BeginFrame( void )
 	VectorClear( rb.nullEnt.origin );
 	Matrix3_Identity( rb.nullEnt.axis );
 
-	memset( &rb.stats, 0, sizeof( rb.stats ) );
-
 	// start fresh each frame
 	RB_SetShaderStateMask( ~0, 0 );
 	RB_BindVBO( 0, 0 );
 	RB_FlushTextureCache();
 }
 
-/*
-* RB_EndFrame
-*/
 void RB_EndFrame( void )
 {
 }
 
-/*
-* RB_StatsMessage
-*/
-void RB_StatsMessage( char *msg, size_t size )
-{
-	Q_snprintfz( msg, size, 
-		"%4i verts %4i tris\n"
-		"%4i draws %4i binds %4i progs",		
-		rb.stats.c_totalVerts, rb.stats.c_totalTris,
-		rb.stats.c_totalDraws, rb.stats.c_totalBinds, rb.stats.c_totalPrograms
-	);
-}
-
-/*
-* RB_SetGLDefaults
-*/
-static void RB_SetGLDefaults( void )
-{
-	if( glConfig.stencilBits )
-	{
-		qglStencilMask( ( GLuint ) ~0 );
-		qglStencilFunc( GL_EQUAL, 128, 0xFF );
-		qglStencilOp( GL_KEEP, GL_KEEP, GL_INCR );
-	}
-
-	qglDisable( GL_CULL_FACE );
-	qglFrontFace( GL_CCW );
-	qglDisable( GL_BLEND );
-	qglDepthFunc( GL_LEQUAL );
-	qglDepthMask( GL_FALSE );
-	qglDisable( GL_POLYGON_OFFSET_FILL );
-	qglPolygonOffset( -1.0f, 0.0f ); // units will be handled by RB_DepthOffset
-	qglColorMask( GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE );
-	qglEnable( GL_DEPTH_TEST );
-#ifndef GL_ES_VERSION_2_0
-	qglPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-#endif
-	qglFrontFace( GL_CCW );
-	qglEnable( GL_SCISSOR_TEST );
-}
-
-/*
-* RB_SelectTextureUnit
-*/
-static void RB_SelectTextureUnit( int tmu )
-{
-	if( tmu == rb.gl.currentTMU )
-		return;
-
-	rb.gl.currentTMU = tmu;
-	qglActiveTextureARB( tmu + GL_TEXTURE0_ARB );
-#ifndef GL_ES_VERSION_2_0
-	qglClientActiveTextureARB( tmu + GL_TEXTURE0_ARB );
-#endif
-}
-
-/*
-* RB_FlushTextureCache
-*/
 void RB_FlushTextureCache( void )
 {
 }
 
-/*
-* RB_DepthRange
-*/
 void RB_DepthRange( float depthmin, float depthmax )
 {
 	clamp( depthmin, 0.0f, 1.0f );
@@ -269,27 +198,6 @@ void RB_LoadProjectionMatrix( const mat4_t m )
 	Matrix4_Multiply( m, rb.modelviewMatrix, rb.modelviewProjectionMatrix );
 }
 
-/*
-* RB_Cull
-*/
-void RB_Cull( int cull )
-{
-	if( rb.gl.faceCull == cull )
-		return;
-
-	if( !cull )
-	{
-		qglDisable( GL_CULL_FACE );
-		rb.gl.faceCull = 0;
-		return;
-	}
-
-	if( !rb.gl.faceCull )
-		qglEnable( GL_CULL_FACE );
-	qglCullFace( cull );
-	rb.gl.faceCull = cull;
-}
-
 // for these we assume will just do this to the first attachment
 void RB_SetState_2( struct frame_cmd_buffer_s *cmd, int state )
 {
@@ -351,10 +259,6 @@ void RB_SetState_2( struct frame_cmd_buffer_s *cmd, int state )
 				cmd->state.pipelineLayout.colorDstFactor = NriBlendFactor_ZERO;
 				break;
 		}
-
-		if( !( rb.gl.state & GLSTATE_BLEND_MASK ) ) {
-			// cmd->state.pipelineLayout.blendEnabled = true;
-		}
 	}
 
 	if( state & GLSTATE_NO_COLORWRITE ) {
@@ -392,7 +296,7 @@ void RB_SetState_2( struct frame_cmd_buffer_s *cmd, int state )
 		//  	qglDisable( GL_STENCIL_TEST );
 	}
 
-	rb.gl.state = state;
+	//rb.gl.state = state;
 }
 
 /*
@@ -400,147 +304,143 @@ void RB_SetState_2( struct frame_cmd_buffer_s *cmd, int state )
 */
 void RB_SetState( int state )
 {
-	int diff;
+	assert(false);
 
-	diff = rb.gl.state ^ state;
-	if( !diff )
-		return;
+	//if( diff & GLSTATE_BLEND_MASK )
+	//{
+	//	if( state & GLSTATE_BLEND_MASK )
+	//	{
+	//		int blendsrc, blenddst;
 
-	if( diff & GLSTATE_BLEND_MASK )
-	{
-		if( state & GLSTATE_BLEND_MASK )
-		{
-			int blendsrc, blenddst;
+	//		switch( state & GLSTATE_SRCBLEND_MASK )
+	//		{
+	//		case GLSTATE_SRCBLEND_ZERO:
+	//			blendsrc = GL_ZERO;
+	//			break;
+	//		case GLSTATE_SRCBLEND_DST_COLOR:
+	//			blendsrc = GL_DST_COLOR;
+	//			break;
+	//		case GLSTATE_SRCBLEND_ONE_MINUS_DST_COLOR:
+	//			blendsrc = GL_ONE_MINUS_DST_COLOR;
+	//			break;
+	//		case GLSTATE_SRCBLEND_SRC_ALPHA:
+	//			blendsrc = GL_SRC_ALPHA;
+	//			break;
+	//		case GLSTATE_SRCBLEND_ONE_MINUS_SRC_ALPHA:
+	//			blendsrc = GL_ONE_MINUS_SRC_ALPHA;
+	//			break;
+	//		case GLSTATE_SRCBLEND_DST_ALPHA:
+	//			blendsrc = GL_DST_ALPHA;
+	//			break;
+	//		case GLSTATE_SRCBLEND_ONE_MINUS_DST_ALPHA:
+	//			blendsrc = GL_ONE_MINUS_DST_ALPHA;
+	//			break;
+	//		default:
+	//		case GLSTATE_SRCBLEND_ONE:
+	//			blendsrc = GL_ONE;
+	//			break;
+	//		}
 
-			switch( state & GLSTATE_SRCBLEND_MASK )
-			{
-			case GLSTATE_SRCBLEND_ZERO:
-				blendsrc = GL_ZERO;
-				break;
-			case GLSTATE_SRCBLEND_DST_COLOR:
-				blendsrc = GL_DST_COLOR;
-				break;
-			case GLSTATE_SRCBLEND_ONE_MINUS_DST_COLOR:
-				blendsrc = GL_ONE_MINUS_DST_COLOR;
-				break;
-			case GLSTATE_SRCBLEND_SRC_ALPHA:
-				blendsrc = GL_SRC_ALPHA;
-				break;
-			case GLSTATE_SRCBLEND_ONE_MINUS_SRC_ALPHA:
-				blendsrc = GL_ONE_MINUS_SRC_ALPHA;
-				break;
-			case GLSTATE_SRCBLEND_DST_ALPHA:
-				blendsrc = GL_DST_ALPHA;
-				break;
-			case GLSTATE_SRCBLEND_ONE_MINUS_DST_ALPHA:
-				blendsrc = GL_ONE_MINUS_DST_ALPHA;
-				break;
-			default:
-			case GLSTATE_SRCBLEND_ONE:
-				blendsrc = GL_ONE;
-				break;
-			}
+	//		switch( state & GLSTATE_DSTBLEND_MASK )
+	//		{
+	//		case GLSTATE_DSTBLEND_ONE:
+	//			blenddst = GL_ONE;
+	//			break;
+	//		case GLSTATE_DSTBLEND_SRC_COLOR:
+	//			blenddst = GL_SRC_COLOR;
+	//			break;
+	//		case GLSTATE_DSTBLEND_ONE_MINUS_SRC_COLOR:
+	//			blenddst = GL_ONE_MINUS_SRC_COLOR;
+	//			break;
+	//		case GLSTATE_DSTBLEND_SRC_ALPHA:
+	//			blenddst = GL_SRC_ALPHA;
+	//			break;
+	//		case GLSTATE_DSTBLEND_ONE_MINUS_SRC_ALPHA:
+	//			blenddst = GL_ONE_MINUS_SRC_ALPHA;
+	//			break;
+	//		case GLSTATE_DSTBLEND_DST_ALPHA:
+	//			blenddst = GL_DST_ALPHA;
+	//			break;
+	//		case GLSTATE_DSTBLEND_ONE_MINUS_DST_ALPHA:
+	//			blenddst = GL_ONE_MINUS_DST_ALPHA;
+	//			break;
+	//		default:
+	//		case GLSTATE_DSTBLEND_ZERO:
+	//			blenddst = GL_ZERO;
+	//			break;
+	//		}
 
-			switch( state & GLSTATE_DSTBLEND_MASK )
-			{
-			case GLSTATE_DSTBLEND_ONE:
-				blenddst = GL_ONE;
-				break;
-			case GLSTATE_DSTBLEND_SRC_COLOR:
-				blenddst = GL_SRC_COLOR;
-				break;
-			case GLSTATE_DSTBLEND_ONE_MINUS_SRC_COLOR:
-				blenddst = GL_ONE_MINUS_SRC_COLOR;
-				break;
-			case GLSTATE_DSTBLEND_SRC_ALPHA:
-				blenddst = GL_SRC_ALPHA;
-				break;
-			case GLSTATE_DSTBLEND_ONE_MINUS_SRC_ALPHA:
-				blenddst = GL_ONE_MINUS_SRC_ALPHA;
-				break;
-			case GLSTATE_DSTBLEND_DST_ALPHA:
-				blenddst = GL_DST_ALPHA;
-				break;
-			case GLSTATE_DSTBLEND_ONE_MINUS_DST_ALPHA:
-				blenddst = GL_ONE_MINUS_DST_ALPHA;
-				break;
-			default:
-			case GLSTATE_DSTBLEND_ZERO:
-				blenddst = GL_ZERO;
-				break;
-			}
+	//		if( !( rb.gl.state & GLSTATE_BLEND_MASK ) )
+	//			qglEnable( GL_BLEND );
 
-			if( !( rb.gl.state & GLSTATE_BLEND_MASK ) )
-				qglEnable( GL_BLEND );
+	//		qglBlendFuncSeparateEXT( blendsrc, blenddst, GL_ONE, GL_ONE );
+	//	}
+	//	else
+	//	{
+	//		qglDisable( GL_BLEND );
+	//	}
+	//}
 
-			qglBlendFuncSeparateEXT( blendsrc, blenddst, GL_ONE, GL_ONE );
-		}
-		else
-		{
-			qglDisable( GL_BLEND );
-		}
-	}
+	//if( diff & (GLSTATE_NO_COLORWRITE|GLSTATE_ALPHAWRITE) )
+	//{
+	//	if( state & GLSTATE_NO_COLORWRITE )
+	//		qglColorMask( GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE );
+	//	else
+	//		qglColorMask( GL_TRUE, GL_TRUE, GL_TRUE, ( state & GLSTATE_ALPHAWRITE ) ? GL_TRUE : GL_FALSE );
+	//}
 
-	if( diff & (GLSTATE_NO_COLORWRITE|GLSTATE_ALPHAWRITE) )
-	{
-		if( state & GLSTATE_NO_COLORWRITE )
-			qglColorMask( GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE );
-		else
-			qglColorMask( GL_TRUE, GL_TRUE, GL_TRUE, ( state & GLSTATE_ALPHAWRITE ) ? GL_TRUE : GL_FALSE );
-	}
+	//if( diff & (GLSTATE_DEPTHFUNC_EQ|GLSTATE_DEPTHFUNC_GT) )
+	//{
+	//	if( state & GLSTATE_DEPTHFUNC_EQ )
+	//		qglDepthFunc( GL_EQUAL );
+	//	else if( state & GLSTATE_DEPTHFUNC_GT )
+	//		qglDepthFunc( GL_GREATER );
+	//	else
+	//		qglDepthFunc( GL_LEQUAL );
+	//}
 
-	if( diff & (GLSTATE_DEPTHFUNC_EQ|GLSTATE_DEPTHFUNC_GT) )
-	{
-		if( state & GLSTATE_DEPTHFUNC_EQ )
-			qglDepthFunc( GL_EQUAL );
-		else if( state & GLSTATE_DEPTHFUNC_GT )
-			qglDepthFunc( GL_GREATER );
-		else
-			qglDepthFunc( GL_LEQUAL );
-	}
+	//if( diff & GLSTATE_DEPTHWRITE )
+	//{
+	//	if( state & GLSTATE_DEPTHWRITE )
+	//		qglDepthMask( GL_TRUE );
+	//	else
+	//		qglDepthMask( GL_FALSE );
+	//}
 
-	if( diff & GLSTATE_DEPTHWRITE )
-	{
-		if( state & GLSTATE_DEPTHWRITE )
-			qglDepthMask( GL_TRUE );
-		else
-			qglDepthMask( GL_FALSE );
-	}
+	//if( diff & GLSTATE_NO_DEPTH_TEST )
+	//{
+	//	if( state & GLSTATE_NO_DEPTH_TEST )
+	//		qglDisable( GL_DEPTH_TEST );
+	//	else
+	//		qglEnable( GL_DEPTH_TEST );
+	//}
 
-	if( diff & GLSTATE_NO_DEPTH_TEST )
-	{
-		if( state & GLSTATE_NO_DEPTH_TEST )
-			qglDisable( GL_DEPTH_TEST );
-		else
-			qglEnable( GL_DEPTH_TEST );
-	}
+	//if( diff & GLSTATE_OFFSET_FILL )
+	//{
+	//	if( state & GLSTATE_OFFSET_FILL )
+	//	{
+	//		qglEnable( GL_POLYGON_OFFSET_FILL );
+	//		RB_DepthOffset( true );
+	//	}
+	//	else
+	//	{
+	//		qglDisable( GL_POLYGON_OFFSET_FILL );
+	//		RB_DepthOffset( false );
+	//	}
+	//}
 
-	if( diff & GLSTATE_OFFSET_FILL )
-	{
-		if( state & GLSTATE_OFFSET_FILL )
-		{
-			qglEnable( GL_POLYGON_OFFSET_FILL );
-			RB_DepthOffset( true );
-		}
-		else
-		{
-			qglDisable( GL_POLYGON_OFFSET_FILL );
-			RB_DepthOffset( false );
-		}
-	}
+	//if( diff & GLSTATE_STENCIL_TEST )
+	//{
+	//	if( glConfig.stencilBits )
+	//	{
+	//		if( state & GLSTATE_STENCIL_TEST )
+	//			qglEnable( GL_STENCIL_TEST );
+	//		else
+	//			qglDisable( GL_STENCIL_TEST );
+	//	}
+	//}
 
-	if( diff & GLSTATE_STENCIL_TEST )
-	{
-		if( glConfig.stencilBits )
-		{
-			if( state & GLSTATE_STENCIL_TEST )
-				qglEnable( GL_STENCIL_TEST );
-			else
-				qglDisable( GL_STENCIL_TEST );
-		}
-	}
-
-	rb.gl.state = state;
+	//rb.gl.state = state;
 }
 
 void RB_FlipFrontFace( struct frame_cmd_buffer_s *cmd )
@@ -588,47 +488,6 @@ void RB_GetScissor( int *x, int *y, int *w, int *h )
 */
 void RB_ApplyScissor( void )
 {
-	int h = rb.gl.scissor[3];
-}
-
-/*
-* RB_Viewport
-*/
-void RB_Viewport( int x, int y, int w, int h )
-{
-	rb.gl.viewport[0] = x;
-	rb.gl.viewport[1] = y;
-	rb.gl.viewport[2] = w;
-	rb.gl.viewport[3] = h;
-	//qglViewport( x, rb.gl.fbHeight - h - y, w, h );
-}
-
-/*
-* RB_Clear
-*/
-void RB_Clear( int bits, float r, float g, float b, float a )
-{
-	int state = rb.gl.state;
-
-	if( bits & GL_DEPTH_BUFFER_BIT )
-		state |= GLSTATE_DEPTHWRITE;
-
-	if( bits & GL_STENCIL_BUFFER_BIT )
-		qglClearStencil( 128 );
-
-	if( bits & GL_COLOR_BUFFER_BIT )
-	{
-		state = ( state & ~GLSTATE_NO_COLORWRITE ) | GLSTATE_ALPHAWRITE;
-		qglClearColor( r, g, b, a );
-	}
-
-	RB_SetState( state );
-
-	RB_ApplyScissor();
-
-	qglClear( bits );
-
-	RB_DepthRange( 0.0f, 1.0f );
 }
 
 /*
@@ -636,17 +495,6 @@ void RB_Clear( int bits, float r, float g, float b, float a )
 */
 void RB_BindFrameBufferObject( int object )
 {
-//	int width, height;
-//
-//	RFB_BindObject( object );
-//
-//	RFB_GetObjectSize( object, &width, &height );
-//
-//	if( rb.gl.fbHeight != height )
-//		rb.gl.scissorChanged = true;
-//
-//	rb.gl.fbWidth = width;
-//	rb.gl.fbHeight = height;
 }
 
 /*
@@ -667,10 +515,9 @@ void RB_BindVBO( int id, int primitive )
 	rb.primitive = primitive;
 
 	assert(id >= 0);
-	if( id == RB_VBO_NONE ) {
+	if( id == 0 ) {
 		vbo = NULL;
-	}
-	else {
+	} else {
 		vbo = R_GetVBOByIndex( id );
 	}
 
@@ -873,86 +720,6 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 	}
 }
 
-void RB_DrawElementsReal( rbDrawElements_t *de )
-{
-	int firstVert, numVerts, firstElem, numElems;
-	int numInstances;
-
-	if( ! ( r_drawelements->integer || rb.currentEntity == &rb.nullEnt ) || !de )
-		return;
-
-	RB_ApplyScissor();
-
-	numVerts = de->numVerts;
-	numElems = de->numElems;
-	firstVert = de->firstVert;
-	firstElem = de->firstElem;
-	numInstances = de->numInstances;
-
-	if( numInstances ) {
-		if( glConfig.ext.instanced_arrays ) {
-			// the instance data is contained in vertex attributes
-			qglDrawElementsInstancedARB( rb.primitive, numElems, GL_UNSIGNED_SHORT, 
-				(GLvoid *)(firstElem * sizeof( elem_t )), numInstances );
-
-			rb.stats.c_totalDraws++;
-		} else if( glConfig.ext.draw_instanced ) {
-			int i, numUInstances = 0;
-
-			// manually update uniform values for instances for currently bound program,
-			// respecting the MAX_GLSL_UNIFORM_INSTANCES limit
-			for( i = 0; i < numInstances; i += numUInstances ) {
-				numUInstances = min( numInstances - i, MAX_GLSL_UNIFORM_INSTANCES );
-
-				RB_SetInstanceData( numUInstances, rb.drawInstances + i );
-
-				qglDrawElementsInstancedARB( rb.primitive, numElems, GL_UNSIGNED_SHORT, 
-					(GLvoid *)(firstElem * sizeof( elem_t )), numUInstances );
-
-				rb.stats.c_totalDraws++;
-			}
-		} else {
-			int i;
-
-			// manually update uniform values for instances for currently bound program,
-			// one by one
-			for( i = 0; i < numInstances; i++ ) {
-				RB_SetInstanceData( 1, rb.drawInstances + i );
-
-				if( glConfig.ext.draw_range_elements ) {
-					qglDrawRangeElementsEXT( rb.primitive, 
-						firstVert, firstVert + numVerts - 1, numElems, 
-						GL_UNSIGNED_SHORT, (GLvoid *)(firstElem * sizeof( elem_t )) );
-				} else {
-					qglDrawElements( rb.primitive, numElems, GL_UNSIGNED_SHORT,
-						(GLvoid *)(firstElem * sizeof( elem_t )) );
-				}
-
-				rb.stats.c_totalDraws++;
-			}
-		}
-	}
-	else {
-		numInstances = 1;
-
-		if( glConfig.ext.draw_range_elements ) {
-			qglDrawRangeElementsEXT( rb.primitive, 
-				firstVert, firstVert + numVerts - 1, numElems, 
-				GL_UNSIGNED_SHORT, (GLvoid *)(firstElem * sizeof( elem_t )) );
-		} else {
-			qglDrawElements( rb.primitive, numElems, GL_UNSIGNED_SHORT,
-				(GLvoid *)(firstElem * sizeof( elem_t )) );
-		}
-
-		rb.stats.c_totalDraws++;
-	}
-
-	rb.stats.c_totalVerts += numVerts * numInstances;
-	if( rb.primitive == GL_TRIANGLES ) {
-		rb.stats.c_totalTris += numElems * numInstances / 3;
-	}
-}
-
 /*
 * RB_GetVertexAttribs
 */
@@ -961,25 +728,6 @@ vattribmask_t RB_GetVertexAttribs( void )
 	return rb.currentVAttribs;
 }
 
-/*
-* RB_DrawElements_
-*/
-static void RB_DrawElements_( void )
-{
-	if ( !rb.drawElements.numVerts || !rb.drawElements.numElems ) {
-		return;
-	}
-
-	assert( rb.currentShader != NULL );
-
-	//RB_EnableVertexAttribs();
-
-	if( rb.triangleOutlines ) {
-		//RB_DrawOutlinedElements();
-	} else {
-		//RB_DrawShadedElements();
-	}
-}
 
 
 
@@ -1018,8 +766,8 @@ void RB_DrawElementsInstanced( int firstVert, int numVerts, int firstElem, int n
 	// currently not supporting dynamic instances
 	// they will need a separate stream so they can be used with both static and dynamic geometry
 	// (dynamic geometry will need changes to rbDynamicDraw_t)
-	assert( rb.currentVBOId > RB_VBO_NONE );
-	if( rb.currentVBOId <= RB_VBO_NONE ) {
+	assert( rb.currentVBOId >= 0);
+	if( rb.currentVBOId <= 0) {
 		return;
 	}
 
@@ -1110,7 +858,7 @@ bool RB_EnableTriangleOutlines( bool enable )
 /*
 * RB_ScissorForBounds
 */
-bool RB_ScissorForBounds( vec3_t bbox[8], int *x, int *y, int *w, int *h )
+bool RB_ScissorForBounds( vec3_t bbox[8], const struct QRectf32_s viewport, int *x, int *y, int *w, int *h )
 {
 	int i;
 	int ix1, iy1, ix2, iy2;
@@ -1130,8 +878,8 @@ bool RB_ScissorForBounds( vec3_t bbox[8], int *x, int *y, int *w, int *h )
 		Matrix4_Multiply_Vector( cameraProjectionMatrix, corner, proj );
 
 		if( proj[3] ) {
-			v[0] = ( proj[0] / proj[3] + 1.0f ) * 0.5f * rb.gl.viewport[2];
-			v[1] = ( proj[1] / proj[3] + 1.0f ) * 0.5f * rb.gl.viewport[3];
+			v[0] = ( proj[0] / proj[3] + 1.0f ) * 0.5f * viewport.w;
+			v[1] = ( proj[1] / proj[3] + 1.0f ) * 0.5f * viewport.h;
 			v[2] = ( proj[2] / proj[3] + 1.0f ) * 0.5f; // [-1..1] -> [0..1]
 		} else {
 			v[0] = 999999.0f;
@@ -1143,16 +891,16 @@ bool RB_ScissorForBounds( vec3_t bbox[8], int *x, int *y, int *w, int *h )
 		x2 = max( x2, v[0] ); y2 = max( y2, v[1] );
 	}
 
-	ix1 = max( x1 - 1.0f, 0 ); ix2 = min( x2 + 1.0f, rb.gl.viewport[2] );
+	ix1 = max( x1 - 1.0f, 0 ); ix2 = min( x2 + 1.0f, viewport.w );
 	if( ix1 >= ix2 )
 		return false; // FIXME
 
-	iy1 = max( y1 - 1.0f, 0 ); iy2 = min( y2 + 1.0f, rb.gl.viewport[3] );
+	iy1 = max( y1 - 1.0f, 0 ); iy2 = min( y2 + 1.0f, viewport.h );
 	if( iy1 >= iy2 )
 		return false; // FIXME
 
 	*x = ix1;
-	*y = rb.gl.viewport[3] - iy2;
+	*y = viewport.h - iy2;
 	*w = ix2 - ix1;
 	*h = iy2 - iy1;
 

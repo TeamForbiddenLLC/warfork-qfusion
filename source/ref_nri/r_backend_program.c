@@ -597,8 +597,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 	struct FrameCB frameData = { 0 };
 	struct ObjectCB objectData = { 0 };
 	{
-
-		const bool isAlphaBlending = __IsAlphaBlendingGLState( rb.gl.state );
+		const bool isAlphaBlending = __IsAlphaBlendingGLState( pass->flags );
 		const shaderfunc_t *rgbgenfunc = &pass->rgbgen.func;
 		const shaderfunc_t *alphagenfunc = &pass->alphagen.func;
 	
@@ -1560,7 +1559,14 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 						corner[2] = ( ( j & 4 ) ? visMins[2] : visMaxs[2] );
 					}
 
-					if( !RB_ScissorForBounds( bbox, &groupScissor[0], &groupScissor[1], &groupScissor[2], &groupScissor[3] ) )
+					struct QRectf32_s viewport = {
+						.x = cmd->state.viewports[0].x,
+						.y = cmd->state.viewports[0].y,
+						.w = cmd->state.viewports[0].width,
+						.h = cmd->state.viewports[0].height
+					};
+				
+					if( !RB_ScissorForBounds( bbox, viewport, &groupScissor[0], &groupScissor[1], &groupScissor[2], &groupScissor[3] ) )
 						continue;
 
 					// compute scissor in absolute coordinates
@@ -1892,6 +1898,7 @@ void RB_RenderMeshGLSLProgrammed( struct frame_cmd_buffer_s *cmd, const shaderpa
 			break;
 		}
 		case GLSL_PROGRAM_TYPE_YUV: {
+			assert(false);
 			mat4_t texMatrix = { 0 };
 
 			// set shaderpass state (blending, depthwrite, etc)
@@ -1954,7 +1961,6 @@ void RB_BindShader( struct frame_cmd_buffer_s *frame, const entity_t *e, const s
 	rb.texFog = rb.colorFog = NULL;
 
 	rb.doneDepthPass = false;
-	rb.dirtyUniformState = true;
 
 	rb.currentEntity = e ? e : &rb.nullEnt;
 	rb.currentModelType = rb.currentEntity->rtype == RT_MODEL && rb.currentEntity->model ? rb.currentEntity->model->type : mod_bad;
@@ -2012,7 +2018,6 @@ void RB_SetLightstyle( const superLightStyle_t *lightStyle )
 {
 	assert( rb.currentShader != NULL );
 	rb.superLightStyle = lightStyle;
-	rb.dirtyUniformState = true;
 
 	RB_UpdateVertexAttribs();
 }
@@ -2024,7 +2029,6 @@ void RB_SetDlightBits( unsigned int dlightBits )
 {
 	assert( rb.currentShader != NULL );
 	rb.currentDlightBits = dlightBits;
-	rb.dirtyUniformState = true;
 }
 
 /*
@@ -2034,7 +2038,6 @@ void RB_SetShadowBits( unsigned int shadowBits )
 {
 	assert( rb.currentShader != NULL );
 	rb.currentShadowBits = shadowBits;
-	rb.dirtyUniformState = true;
 }
 
 /*
@@ -2055,7 +2058,6 @@ void RB_SetBonesData( int numBones, dualquat_t *dualQuats, int maxWeights )
 	memcpy( rb.bonesData.dualQuats, dualQuats, numBones * sizeof( *dualQuats ) );
 	rb.bonesData.maxWeights = maxWeights;
 
-	rb.dirtyUniformState = true;
 
 	RB_UpdateVertexAttribs();
 }
@@ -2067,7 +2069,6 @@ void RB_SetPortalSurface( const portalSurface_t *portalSurface )
 {
 	assert( rb.currentShader != NULL );
 	rb.currentPortalSurface = portalSurface;
-	rb.dirtyUniformState = true;
 }
 
 /*
@@ -2076,7 +2077,6 @@ void RB_SetPortalSurface( const portalSurface_t *portalSurface )
 void RB_SetSkyboxShader( const shader_t *shader )
 {
 	rb.skyboxShader = shader;
-	rb.dirtyUniformState = true;
 }
 
 /*
@@ -2089,21 +2089,6 @@ void RB_SetSkyboxSide( int side )
 	} else {
 		rb.skyboxSide = side;
 	}
-	rb.dirtyUniformState = true;
-}
-
-/*
- * RB_SetInstanceData
- *
- * Internal backend function, only used by RB_DrawElementsReal to upload
- * instance data
- */
-void RB_SetInstanceData( int numInstances, instancePoint_t *instances )
-{
-	if( !rb.currentProgram ) {
-		return;
-	}
-	//RP_UpdateInstancesUniforms( rb.currentProgram, numInstances, instances );
 }
 
 /*
@@ -2136,16 +2121,10 @@ static void RB_RenderPass( struct frame_cmd_buffer_s *cmd, const shaderpass_t *p
 		RB_RenderMeshGLSLProgrammed( cmd, pass, GLSL_PROGRAM_TYPE_Q3A_SHADER );
 	}
 
-	if( rb.dirtyUniformState ) {
-		rb.donePassesTotal = 0;
-		rb.dirtyUniformState = false;
-	}
-
-	if( rb.gl.state & GLSTATE_DEPTHWRITE ) {
+	if( cmd->state.pipelineLayout.depthWrite ) {
 		rb.doneDepthPass = true;
 	}
-
-	rb.donePassesTotal++;
+	
 }
 
 /*
@@ -2155,66 +2134,6 @@ void RB_SetShaderStateMask( int ANDmask, int ORmask )
 {
 	rb.shaderStateANDmask = ANDmask;
 	rb.shaderStateORmask = ORmask;
-}
-
-/*
- * RB_SetShaderState
- */
-static void RB_SetShaderState( void )
-{
-	int state;
-	int shaderFlags = rb.currentShader->flags;
-
-	// Face culling
-	if( !gl_cull->integer || rb.currentEntity->rtype == RT_SPRITE )
-		RB_Cull( 0 );
-	else if( shaderFlags & SHADER_CULL_FRONT )
-		RB_Cull( GL_FRONT );
-	else if( shaderFlags & SHADER_CULL_BACK )
-		RB_Cull( GL_BACK );
-	else
-		RB_Cull( 0 );
-
-	state = 0;
-
-	if( shaderFlags & SHADER_POLYGONOFFSET )
-		state |= GLSTATE_OFFSET_FILL;
-	if( shaderFlags & SHADER_STENCILTEST )
-		state |= GLSTATE_STENCIL_TEST;
-
-	if( rb.noDepthTest )
-		state |= GLSTATE_NO_DEPTH_TEST;
-
-	rb.currentShaderState = ( state & rb.shaderStateANDmask ) | rb.shaderStateORmask;
-}
-
-static void RB_SetShaderState_2( struct frame_cmd_buffer_s *cmd )
-{
-	int state;
-	int shaderFlags = rb.currentShader->flags;
-
-	// Face culling
-	if( !gl_cull->integer || rb.currentEntity->rtype == RT_SPRITE ) {
-		cmd->state.pipelineLayout.cullMode = NriCullMode_NONE;
-	} else if( shaderFlags & SHADER_CULL_FRONT ) {
-		cmd->state.pipelineLayout.cullMode = NriCullMode_FRONT;
-	} else if( shaderFlags & SHADER_CULL_BACK ) {
-		cmd->state.pipelineLayout.cullMode = NriCullMode_BACK;
-	} else {
-		cmd->state.pipelineLayout.cullMode = NriCullMode_NONE;
-	}
-
-	state = 0;
-
-	if( shaderFlags & SHADER_POLYGONOFFSET )
-		state |= GLSTATE_OFFSET_FILL;
-	if( shaderFlags & SHADER_STENCILTEST )
-		state |= GLSTATE_STENCIL_TEST;
-
-	if( rb.noDepthTest )
-		state |= GLSTATE_NO_DEPTH_TEST;
-
-	rb.currentShaderState = ( state & rb.shaderStateANDmask ) | rb.shaderStateORmask;
 }
 
 static void RB_SetShaderpassState_2( struct frame_cmd_buffer_s *cmd, int state )
@@ -2233,23 +2152,6 @@ static void RB_SetShaderpassState_2( struct frame_cmd_buffer_s *cmd, int state )
 		state |= GLSTATE_DEPTHFUNC_EQ;
 	}
 	RB_SetState_2( cmd, state );
-}
-
-/*
- * RB_CleanSinglePass
- *
- * Attempts to reuse current GLSL state: since the dirty flag
- * is not set and there have been no uniform updates, we can simply
- * call glDrawElements with fresh vertex data
- */
-static bool RB_CleanSinglePass( void )
-{
-	// reuse current GLSL state (same program bound, same uniform values)
-	if( !rb.dirtyUniformState && rb.donePassesTotal == 1 ) {
-		RB_DrawElementsReal( &rb.drawElements );
-		return true;
-	}
-	return false;
 }
 
 
@@ -2280,8 +2182,29 @@ void RB_DrawShadedElements_2( struct frame_cmd_buffer_s *cmd,
 		!( rb.renderFlags & RF_SHADOWMAPVIEW ) ) {
 		addGLSLOutline = true;
 	}
-	RB_SetShaderState_2( cmd );
 
+	// Face culling
+	if( !gl_cull->integer || rb.currentEntity->rtype == RT_SPRITE ) {
+		cmd->state.pipelineLayout.cullMode = NriCullMode_NONE;
+	} else if( rb.currentShader->flags & SHADER_CULL_FRONT ) {
+		cmd->state.pipelineLayout.cullMode = NriCullMode_FRONT;
+	} else if( rb.currentShader->flags & SHADER_CULL_BACK ) {
+		cmd->state.pipelineLayout.cullMode = NriCullMode_BACK;
+	} else {
+		cmd->state.pipelineLayout.cullMode = NriCullMode_NONE;
+	}
+	
+	int state = 0;
+
+	if( rb.currentShader->flags & SHADER_POLYGONOFFSET )
+		state |= GLSTATE_OFFSET_FILL;
+	if( rb.currentShader->flags & SHADER_STENCILTEST )
+		state |= GLSTATE_STENCIL_TEST;
+
+	if( rb.noDepthTest )
+		state |= GLSTATE_NO_DEPTH_TEST;
+	
+	rb.currentShaderState = ( state & rb.shaderStateANDmask ) | rb.shaderStateORmask;
 
 	shaderpass_t *pass;
 	unsigned i;
