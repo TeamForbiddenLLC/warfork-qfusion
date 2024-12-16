@@ -30,7 +30,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 rbackend_t rb;
 
 static void RB_SetGLDefaults( void );
-static void RB_RegisterStreamVBOs( void );
 static void RB_SelectTextureUnit( int tmu );
 
 
@@ -39,34 +38,26 @@ void RB_Init( void )
 	memset( &rb, 0, sizeof( rb ) );
 
 	rb.mempool = R_AllocPool( NULL, "Rendering Backend" );
-	
-	rb.defaultLayout = R_CreateVBOLayout( VATTRIBS_MASK & ~VATTRIB_INSTANCES_BITS, VATTRIB_TEXCOORDS_BIT | VATTRIB_NORMAL_BIT | VATTRIB_SVECTOR_BIT );
-	rb.compactLayout= R_CreateVBOLayout( COMPACT_STREAM_VATTRIBS, VATTRIB_TEXCOORDS_BIT | VATTRIB_NORMAL_BIT | VATTRIB_SVECTOR_BIT );
-
-	struct gpu_frame_ele_ring_desc_s  indexElementDesc = {
-		.numElements = 1024,
-		.elementStride = sizeof(uint16_t),
-	  .usageBits = NriBufferUsageBits_INDEX_BUFFER
+	const vattribmask_t vattribs[RB_VBO_NUM_STREAMS] = {
+		VATTRIBS_MASK & ~VATTRIB_INSTANCES_BITS, // RB_DYN_STREAM_DEFAULT
+		COMPACT_STREAM_VATTRIBS // RB_DYN_STREAM_COMPACT
 	};
-
-	struct gpu_frame_ele_ring_desc_s dynVertexBufferDesc = {
-		.numElements = 1024,
-		.elementStride = rb.defaultLayout.vertexStride,
-		.usageBits = NriBufferUsageBits_VERTEX_BUFFER 
-	};
-
-	struct gpu_frame_ele_ring_desc_s dynVertexCompactBufferDesc = {
-		.numElements = 1024,
-		.elementStride = rb.compactLayout.vertexStride,
-		.usageBits = NriBufferUsageBits_VERTEX_BUFFER 
-	};
-
-	initGPUFrameEleAlloc( &rb.defaultIndexAlloc, &indexElementDesc );
-	initGPUFrameEleAlloc( &rb.defaultVertexAlloc, &dynVertexBufferDesc );
-
-	initGPUFrameEleAlloc( &rb.compactIndexAlloc, &indexElementDesc );
-	initGPUFrameEleAlloc( &rb.compactVertexAlloc, &dynVertexCompactBufferDesc );
-
+	for(size_t i = 0; i < RB_VBO_NUM_STREAMS; i++ ) {
+		struct vbo_layout_s layout = R_CreateVBOLayout( vattribs[i], VATTRIB_TEXCOORDS_BIT | VATTRIB_NORMAL_BIT | VATTRIB_SVECTOR_BIT );
+		const struct gpu_frame_ele_ring_desc_s  indexElementDesc = {
+			.numElements = 1024,
+			.elementStride = sizeof(uint16_t),
+	  	.usageBits = NriBufferUsageBits_INDEX_BUFFER
+		};
+		const struct gpu_frame_ele_ring_desc_s vertexElementDesc = {
+			.numElements = 1024,
+			.elementStride = layout.vertexStride,
+			.usageBits = NriBufferUsageBits_VERTEX_BUFFER 
+		};
+		rb.dynamicVertexAlloc[i].layout = layout;
+		initGPUFrameEleAlloc( &rb.dynamicVertexAlloc[i].vertexAlloc, &vertexElementDesc );
+		initGPUFrameEleAlloc( &rb.dynamicVertexAlloc[i].indexAlloc, &indexElementDesc);
+	}
 	// set default OpenGL state
 	//RB_SetGLDefaults();
 	rb.gl.scissor[2] = glConfig.width;
@@ -74,9 +65,6 @@ void RB_Init( void )
 
 	// initialize shading
 	RB_InitShading();
-
-	// create VBO's we're going to use for streamed data
-	RB_RegisterStreamVBOs();
 	
 	RP_PrecachePrograms();
 }
@@ -86,10 +74,10 @@ void RB_Init( void )
 */
 void RB_Shutdown( void )
 {
-	freeGPUFrameEleAlloc(&rb.defaultIndexAlloc);
-	freeGPUFrameEleAlloc(&rb.defaultVertexAlloc);
-	freeGPUFrameEleAlloc(&rb.compactIndexAlloc);
-	freeGPUFrameEleAlloc(&rb.compactVertexAlloc);
+	for(size_t i = 0; i < RB_VBO_NUM_STREAMS; i++) {
+		freeGPUFrameEleAlloc(&rb.dynamicVertexAlloc[i].vertexAlloc);
+		freeGPUFrameEleAlloc(&rb.dynamicVertexAlloc[i].indexAlloc);
+	}
 	RP_StorePrecacheList();
 	R_FreePool( &rb.mempool );
 }
@@ -99,22 +87,7 @@ void RB_Shutdown( void )
 */
 void RB_BeginRegistration( void )
 {
-	RB_RegisterStreamVBOs();
 	RB_BindVBO( 0, 0 );
-
-	//// unbind all texture targets on all TMUs
-	//for( i = MAX_TEXTURE_UNITS - 1; i >= 0; i-- ) {
-	//	RB_SelectTextureUnit( i );
-
-	//	qglBindTexture( GL_TEXTURE_CUBE_MAP_ARB, 0 );
-	//	if( glConfig.ext.texture_array )
-	//		qglBindTexture( GL_TEXTURE_2D_ARRAY_EXT, 0 );
-	//	if( glConfig.ext.texture3D )
-	//		qglBindTexture( GL_TEXTURE_3D_EXT, 0 );
-	//	qglBindTexture( GL_TEXTURE_2D, 0 );
-	//}
-
-	//RB_FlushTextureCache();
 }
 
 /*
@@ -220,7 +193,6 @@ static void RB_SelectTextureUnit( int tmu )
 */
 void RB_FlushTextureCache( void )
 {
-	rb.gl.flushTextures = true;
 }
 
 /*
@@ -687,27 +659,6 @@ int RB_BoundFrameBufferObject( void )
 }
 
 /*
-* RB_BlitFrameBufferObject
-*/
-//void RB_BlitFrameBufferObject( int dest, int bitMask, int mode )
-//{
-//	RFB_BlitObject( dest, bitMask, mode );
-//}
-
-/*
-* RB_RegisterStreamVBOs
-*
-* Allocate/keep alive dynamic vertex buffers object 
-* we'll steam the dynamic geometry into
-*/
-void RB_RegisterStreamVBOs( void )
-{
-
-
-}
-
-
-/*
 * RB_BindVBO
 */
 void RB_BindVBO( int id, int primitive )
@@ -788,23 +739,11 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
   } else {
 	  vattribs = prev->vattribs;
   }
-
+  assert(streamId != MAX_DYNAMIC_DRAWS);
 	struct gpu_frame_ele_req_s vboReq = {};
 	struct gpu_frame_ele_req_s eleReq = {};
-	const struct vbo_layout_s* layout = NULL;
-	switch(streamId) {
-		case RB_DYN_STREAM_COMPACT:
-			GPUFrameEleAlloc(cmd, &rb.compactVertexAlloc, numVerts, &vboReq);
-			GPUFrameEleAlloc(cmd, &rb.compactIndexAlloc, numElems, &eleReq);
-			layout = &rb.compactLayout;
-			break;
-		default:
-		case RB_DYN_STREAM_DEFAULT:
-			GPUFrameEleAlloc(cmd, &rb.defaultVertexAlloc, numVerts, &vboReq);
-			GPUFrameEleAlloc(cmd, &rb.defaultIndexAlloc, numElems, &eleReq);
-			layout = &rb.defaultLayout;
-			break;
-	}
+	GPUFrameEleAlloc(cmd, &rb.dynamicVertexAlloc[streamId].vertexAlloc, numVerts, &vboReq);
+	GPUFrameEleAlloc(cmd, &rb.dynamicVertexAlloc[streamId].indexAlloc, numElems, &eleReq);
 
 	if( !merge && ( rb.numDynamicDraws + 1 ) > MAX_DYNAMIC_DRAWS) {
 		// wrap if overflows
@@ -844,7 +783,7 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
 	  draw->numVerts = numVerts;
 	  draw->bufferVertEleOffset = vboReq.elementOffset;
 	  draw->numElems = numElems;
-	  draw->layout = layout;
+	  draw->layout = &rb.dynamicVertexAlloc[streamId].layout;
 	  assert( draw->layout->vertexStride == vboReq.elementStride );
   }
 

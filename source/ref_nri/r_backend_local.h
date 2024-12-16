@@ -115,7 +115,6 @@ typedef struct r_backend_s
 
 		bool			depthoffset;
 
-		bool			flushTextures;
 		int				currentTMU;
 	} gl;
 
@@ -150,13 +149,12 @@ typedef struct r_backend_s
 	int currentRegProgramType;
 	r_glslfeat_t currentRegProgramFeatures;
 
-	struct gpu_frame_ele_allocator_s defaultVertexAlloc;
-	struct gpu_frame_ele_allocator_s defaultIndexAlloc;
-	struct vbo_layout_s defaultLayout;
 
-	struct gpu_frame_ele_allocator_s compactVertexAlloc;
-	struct gpu_frame_ele_allocator_s compactIndexAlloc;
-	struct vbo_layout_s compactLayout;
+	struct {
+		struct vbo_layout_s layout;
+		struct gpu_frame_ele_allocator_s vertexAlloc;
+		struct gpu_frame_ele_allocator_s indexAlloc;
+	} dynamicVertexAlloc[RB_DYN_STREAM_NUM];
 
 	rbDynamicDraw_t dynamicDraws[MAX_DYNAMIC_DRAWS];
 	unsigned int numDynamicDraws;
