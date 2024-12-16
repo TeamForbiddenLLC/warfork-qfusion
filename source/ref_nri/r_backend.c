@@ -21,7 +21,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_gpu_ring_buffer.h"
 #include "r_local.h"
 #include "r_backend_local.h"
-#include <stdbool.h>
 
 // Smaller buffer for 2D polygons. Also a workaround for some instances of a hardly explainable bug on Adreno
 // that caused dynamic draws to slow everything down in some cases when normals are used with dynamic VBOs.

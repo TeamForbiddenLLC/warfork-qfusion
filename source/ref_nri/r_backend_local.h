@@ -82,14 +82,11 @@ typedef struct
 	vec2_t offset;
 	int scissor[4];
 
-	NriBuffer* vertBuffer;
-	NriBuffer* eleBuffer;
 	const struct vbo_layout_s* layout;
-	uint32_t bufferVertEleOffset;
 	NriBuffer* vertexBuffer;
-	uint32_t bufferIndexEleOffset;
 	NriBuffer* indexBuffer;
-
+	uint32_t bufferVertEleOffset;
+	uint32_t bufferIndexEleOffset;
 	unsigned int numVerts;
 	unsigned int numElems;
 } rbDynamicDraw_t;
