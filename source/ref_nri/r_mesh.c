@@ -216,7 +216,7 @@ void *R_AddSurfToDrawList( drawList_t *list, const entity_t *e, const mfog_t *fo
 	sds = &list->drawSurfs[list->numDrawSurfs++];
 	sds->distKey = R_PackDistKey( shaderSort, (int)dist, order );
 	sds->sortKey = R_PackSortKey( shader->id, fog ? fog - rsh.worldBrushModel->fogs : -1,
-		portalSurf ? portalSurf - rn.portalSurfaces : -1, R_ENT2NUM(e) );
+		portalSurf ? portalSurf - rn.portalSurfaces : -1, (e - rsc.entities) );
 	sds->drawSurf = ( drawSurfaceType_t * )drawSurf;
 
 	return sds;
@@ -446,7 +446,7 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 		R_UnpackSortKey( sortKey, &shaderNum, &fogNum, &portalNum, &entNum );
 
 		shader = R_ShaderById( shaderNum );
-		entity = R_NUM2ENT(entNum);
+		entity = &rsc.entities[entNum];
 		fog = fogNum >= 0 ? rsh.worldBrushModel->fogs + fogNum : NULL;
 		portalSurface = portalNum >= 0 ? rn.portalSurfaces + portalNum : NULL;
 		entityFX = entity->renderfx;
