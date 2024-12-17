@@ -80,10 +80,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define GAMMARAMP_STRIDE				4096
 
-extern cvar_t *r_stencilbits;
-extern cvar_t *gl_driver;
-
-//====================================================================
 
 enum
 {
@@ -137,46 +133,14 @@ enum
 
 //====================================================================
 
-typedef struct
-{
-	int			_extMarker;
-
-	//
-	// only uint8_ts must follow the extensionsBoolMarker
-	//
-
-	char		draw_range_elements
-				,texture_filter_anisotropic
-				,depth_texture
-				,draw_instanced
-				,instanced_arrays
-				,meminfo
-				,framebuffer_blit
-				,depth24
-				,depth_nonlinear
-				,rgb8_rgba8
-				,ES3_compatibility
-				,blend_func_separate
-				,texture_array
-				,fragment_precision_high
-				,texture_lod
-				;
+typedef struct {
+	char instanced_arrays;
 } glextinfo_t;
 
 typedef struct
 {
-
 	const char		*applicationName;
 	const char		*screenshotPrefix;
-
-	int				version;
-	int				shadingLanguageVersion;
-
-	int				width, height;
-	bool			fullScreen;
-
-	bool			stereoEnabled;
-	int				stencilBits;
 
 	glextinfo_t		ext;
 } glconfig_t;

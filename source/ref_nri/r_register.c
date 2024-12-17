@@ -103,7 +103,6 @@ cvar_t *r_fxaa;
 cvar_t *r_lodbias;
 cvar_t *r_lodscale;
 
-cvar_t *r_stencilbits;
 cvar_t *r_gamma;
 cvar_t *r_texturebits;
 cvar_t *r_texturemode;
@@ -222,7 +221,6 @@ static void R_Register( const char *screenshotsPrefix )
 	r_texturemode = Cvar_Get( "r_texturemode", "GL_LINEAR_MIPMAP_LINEAR", CVAR_ARCHIVE );
 	r_texturefilter = Cvar_Get( "r_texturefilter", "4", CVAR_ARCHIVE );
 	r_texturecompression = Cvar_Get( "r_texturecompression", "0", CVAR_ARCHIVE | CVAR_LATCH_VIDEO );
-	r_stencilbits = Cvar_Get( "r_stencilbits", "0", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 
 	r_screenshot_fmtstr = Cvar_Get( "r_screenshot_fmtstr", va_r( tmp, sizeof( tmp ), "%s%y%%m%%d_%H%M%%S", screenshotsPrefix ), CVAR_ARCHIVE );
 	r_screenshot_format = Cvar_Get( "r_screenshot_format", "1", CVAR_ARCHIVE );

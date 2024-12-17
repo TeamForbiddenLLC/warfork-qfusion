@@ -53,10 +53,6 @@ void RB_Init( void )
 		initGPUFrameEleAlloc( &rb.dynamicVertexAlloc[i].vertexAlloc, &vertexElementDesc );
 		initGPUFrameEleAlloc( &rb.dynamicVertexAlloc[i].indexAlloc, &indexElementDesc);
 	}
-	// set default OpenGL state
-	//RB_SetGLDefaults();
-	rb.gl.scissor[2] = glConfig.width;
-	rb.gl.scissor[3] = glConfig.height;
 
 	// initialize shading
 	RB_InitShading();
@@ -287,157 +283,13 @@ void RB_SetState_2( struct frame_cmd_buffer_s *cmd, int state )
 	// 	cmd->state.pipelineLayout.depthRangeMax = rb.gl.depthmax;
 	// }
 
-	if( glConfig.stencilBits ) {
-		// TODO: workout stencil test logic
-		//  if( state & GLSTATE_STENCIL_TEST )
-		//  	qglEnable( GL_STENCIL_TEST );
-		//  else
-		//  	qglDisable( GL_STENCIL_TEST );
-	}
-
-	//rb.gl.state = state;
-}
-
-/*
-* RB_SetState
-*/
-void RB_SetState( int state )
-{
-	assert(false);
-
-	//if( diff & GLSTATE_BLEND_MASK )
-	//{
-	//	if( state & GLSTATE_BLEND_MASK )
-	//	{
-	//		int blendsrc, blenddst;
-
-	//		switch( state & GLSTATE_SRCBLEND_MASK )
-	//		{
-	//		case GLSTATE_SRCBLEND_ZERO:
-	//			blendsrc = GL_ZERO;
-	//			break;
-	//		case GLSTATE_SRCBLEND_DST_COLOR:
-	//			blendsrc = GL_DST_COLOR;
-	//			break;
-	//		case GLSTATE_SRCBLEND_ONE_MINUS_DST_COLOR:
-	//			blendsrc = GL_ONE_MINUS_DST_COLOR;
-	//			break;
-	//		case GLSTATE_SRCBLEND_SRC_ALPHA:
-	//			blendsrc = GL_SRC_ALPHA;
-	//			break;
-	//		case GLSTATE_SRCBLEND_ONE_MINUS_SRC_ALPHA:
-	//			blendsrc = GL_ONE_MINUS_SRC_ALPHA;
-	//			break;
-	//		case GLSTATE_SRCBLEND_DST_ALPHA:
-	//			blendsrc = GL_DST_ALPHA;
-	//			break;
-	//		case GLSTATE_SRCBLEND_ONE_MINUS_DST_ALPHA:
-	//			blendsrc = GL_ONE_MINUS_DST_ALPHA;
-	//			break;
-	//		default:
-	//		case GLSTATE_SRCBLEND_ONE:
-	//			blendsrc = GL_ONE;
-	//			break;
-	//		}
-
-	//		switch( state & GLSTATE_DSTBLEND_MASK )
-	//		{
-	//		case GLSTATE_DSTBLEND_ONE:
-	//			blenddst = GL_ONE;
-	//			break;
-	//		case GLSTATE_DSTBLEND_SRC_COLOR:
-	//			blenddst = GL_SRC_COLOR;
-	//			break;
-	//		case GLSTATE_DSTBLEND_ONE_MINUS_SRC_COLOR:
-	//			blenddst = GL_ONE_MINUS_SRC_COLOR;
-	//			break;
-	//		case GLSTATE_DSTBLEND_SRC_ALPHA:
-	//			blenddst = GL_SRC_ALPHA;
-	//			break;
-	//		case GLSTATE_DSTBLEND_ONE_MINUS_SRC_ALPHA:
-	//			blenddst = GL_ONE_MINUS_SRC_ALPHA;
-	//			break;
-	//		case GLSTATE_DSTBLEND_DST_ALPHA:
-	//			blenddst = GL_DST_ALPHA;
-	//			break;
-	//		case GLSTATE_DSTBLEND_ONE_MINUS_DST_ALPHA:
-	//			blenddst = GL_ONE_MINUS_DST_ALPHA;
-	//			break;
-	//		default:
-	//		case GLSTATE_DSTBLEND_ZERO:
-	//			blenddst = GL_ZERO;
-	//			break;
-	//		}
-
-	//		if( !( rb.gl.state & GLSTATE_BLEND_MASK ) )
-	//			qglEnable( GL_BLEND );
-
-	//		qglBlendFuncSeparateEXT( blendsrc, blenddst, GL_ONE, GL_ONE );
-	//	}
-	//	else
-	//	{
-	//		qglDisable( GL_BLEND );
-	//	}
-	//}
-
-	//if( diff & (GLSTATE_NO_COLORWRITE|GLSTATE_ALPHAWRITE) )
-	//{
-	//	if( state & GLSTATE_NO_COLORWRITE )
-	//		qglColorMask( GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE );
-	//	else
-	//		qglColorMask( GL_TRUE, GL_TRUE, GL_TRUE, ( state & GLSTATE_ALPHAWRITE ) ? GL_TRUE : GL_FALSE );
-	//}
-
-	//if( diff & (GLSTATE_DEPTHFUNC_EQ|GLSTATE_DEPTHFUNC_GT) )
-	//{
-	//	if( state & GLSTATE_DEPTHFUNC_EQ )
-	//		qglDepthFunc( GL_EQUAL );
-	//	else if( state & GLSTATE_DEPTHFUNC_GT )
-	//		qglDepthFunc( GL_GREATER );
-	//	else
-	//		qglDepthFunc( GL_LEQUAL );
-	//}
-
-	//if( diff & GLSTATE_DEPTHWRITE )
-	//{
-	//	if( state & GLSTATE_DEPTHWRITE )
-	//		qglDepthMask( GL_TRUE );
-	//	else
-	//		qglDepthMask( GL_FALSE );
-	//}
-
-	//if( diff & GLSTATE_NO_DEPTH_TEST )
-	//{
-	//	if( state & GLSTATE_NO_DEPTH_TEST )
-	//		qglDisable( GL_DEPTH_TEST );
-	//	else
-	//		qglEnable( GL_DEPTH_TEST );
-	//}
-
-	//if( diff & GLSTATE_OFFSET_FILL )
-	//{
-	//	if( state & GLSTATE_OFFSET_FILL )
-	//	{
-	//		qglEnable( GL_POLYGON_OFFSET_FILL );
-	//		RB_DepthOffset( true );
-	//	}
-	//	else
-	//	{
-	//		qglDisable( GL_POLYGON_OFFSET_FILL );
-	//		RB_DepthOffset( false );
-	//	}
-	//}
-
-	//if( diff & GLSTATE_STENCIL_TEST )
-	//{
-	//	if( glConfig.stencilBits )
-	//	{
-	//		if( state & GLSTATE_STENCIL_TEST )
-	//			qglEnable( GL_STENCIL_TEST );
-	//		else
-	//			qglDisable( GL_STENCIL_TEST );
-	//	}
-	//}
+//	if( glConfig.stencilBits ) {
+//		// TODO: workout stencil test logic
+//		//  if( state & GLSTATE_STENCIL_TEST )
+//		//  	qglEnable( GL_STENCIL_TEST );
+//		//  else
+//		//  	qglDisable( GL_STENCIL_TEST );
+//	}
 
 	//rb.gl.state = state;
 }

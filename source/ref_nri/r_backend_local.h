@@ -39,13 +39,6 @@ enum dynamic_stream_e {
 	RB_DYN_STREAM_NUM, // bind RB_VBO_STREAM instead
 };
 
-typedef struct r_backend_stats_s
-{
-	unsigned int numVerts, numElems;
-	unsigned int c_totalVerts, c_totalTris, c_totalStaticVerts, c_totalStaticTris, c_totalDraws, c_totalBinds;
-	unsigned int c_totalPrograms;
-} rbStats_t;
-
 typedef struct
 {
 	unsigned int numBones;

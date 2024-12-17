@@ -24,7 +24,4 @@
 #undef QGL_FUNC_OPT
 #undef QGL_FUNC
 
-static const char *_qglGetGLWExtensionsString( void );
-static const char *_qglGetGLWExtensionsStringInit( void );
-
 

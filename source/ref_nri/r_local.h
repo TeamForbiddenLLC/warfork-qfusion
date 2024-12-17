@@ -699,9 +699,6 @@ void		R_ClearRefInstStack( void );
 bool		R_PushRefInst( struct frame_cmd_buffer_s* frame);
 void		R_PopRefInst( struct frame_cmd_buffer_s* frame );
 
-void		R_Scissor( int x, int y, int w, int h );
-void		R_GetScissor( int *x, int *y, int *w, int *h );
-
 //
 // r_mesh.c
 //

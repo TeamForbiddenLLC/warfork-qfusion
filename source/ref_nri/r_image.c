@@ -299,6 +299,7 @@ void R_PrintImageList( const char *mask, bool (*filter)( const char *mask, const
 		if( !image->loaded || image->missing ) {
 			continue;
 		}
+		assert((image->flags & (IT_FRAMEBUFFER | IT_DEPTHRB | IT_DEPTH)) == 0);
 
 		add = image->width * image->height * image->layers;
 		if( !(image->flags & (IT_DEPTH|IT_NOFILTERING|IT_NOMIPMAP)) )
@@ -308,21 +309,6 @@ void R_PrintImageList( const char *mask, bool (*filter)( const char *mask, const
 		texels += add;
 
 		bpp = image->samples;
-		if( image->flags & IT_DEPTH )
-			bpp = 0; // added later
-		else if( ( image->flags & IT_FRAMEBUFFER ) && !glConfig.ext.rgb8_rgba8 )
-			bpp = 2;
-
-		if( image->flags & ( IT_DEPTH|IT_DEPTHRB ) )
-		{
-			if( image->flags & IT_STENCIL )
-				bpp += 4;
-			else if( glConfig.ext.depth24 )
-				bpp += 3;
-			else
-				bpp += 2;
-		}
-
 		bytes = add * bpp;
 		total_bytes += bytes;
 
@@ -476,87 +462,6 @@ static bool __R_ReadImageFromDisk_stbi(char *filename, struct texture_buf_s* buf
 	assert(res == TEXTURE_BUF_SUCCESS);
 	return true;
 }
-
-
-// /*
-// * R_ScaledImageSize
-// */
-// static int R_ScaledImageSize( int width, int height, int *scaledWidth, int *scaledHeight, int flags, int mips, int minmipsize, bool forceNPOT )
-// {
-// 	int maxSize;
-// 	int mip = 0;
-// 	int clampedWidth, clampedHeight;
-// 	bool makePOT;
-
-// 	if( flags & ( IT_FRAMEBUFFER|IT_DEPTH ) )
-// 		maxSize = glConfig.maxRenderbufferSize;
-// 	else if( flags & IT_CUBEMAP )
-// 		maxSize = glConfig.maxTextureCubemapSize;
-// 	else if( flags & IT_3D )
-// 		maxSize = glConfig.maxTexture3DSize;
-// 	else
-// 		maxSize = glConfig.maxTextureSize;
-
-// 	makePOT = !glConfig.ext.texture_non_power_of_two && !forceNPOT;
-// #ifdef GL_ES_VERSION_2_0
-// 	makePOT = makePOT && ( ( flags & ( IT_CLAMP|IT_NOMIPMAP ) ) != ( IT_CLAMP|IT_NOMIPMAP ) );
-// #endif
-// 	if( makePOT )
-// 	{
-// 		int potWidth, potHeight;
-
-// 		for( potWidth = 1; potWidth < width; potWidth <<= 1 );
-// 		for( potHeight = 1; potHeight < height; potHeight <<= 1 );
-
-// 		if( ( width != potWidth ) || ( height != potHeight ) )
-// 			mips = 1;
-
-// 		width = potWidth;
-// 		height = potHeight;
-// 	}
-
-// 	if( !( flags & IT_NOPICMIP ) )
-// 	{
-// 		// let people sample down the sky textures for speed
-// 		int picmip = ( flags & IT_SKY ) ? r_skymip->integer : r_picmip->integer;
-// 		while( ( mip < picmip ) && ( ( width > minmipsize ) || ( height > minmipsize ) ) )
-// 		{
-// 			++mip;
-// 			width >>= 1;
-// 			height >>= 1;
-// 			if( !width )
-// 				width = 1;
-// 			if( !height )
-// 				height = 1;
-// 		}
-// 	}
-
-// 	// try to find the smallest supported texture size from mipmaps
-// 	clampedWidth = width;
-// 	clampedHeight = height;
-// 	while( ( clampedWidth > maxSize ) || ( clampedHeight > maxSize ) )
-// 	{
-// 		++mip;
-// 		clampedWidth >>= 1;
-// 		clampedHeight >>= 1;
-// 		if( !clampedWidth )
-// 			clampedWidth = 1;
-// 		if( !clampedHeight )
-// 			clampedHeight = 1;
-// 	}
-
-// 	if( mip >= mips )
-// 	{
-// 		// the smallest size is not in mipmaps, so ignore mipmaps and aspect ratio and simply clamp
-// 		*scaledWidth = min( width, maxSize );
-// 		*scaledHeight = min( height, maxSize );
-// 		return -1;
-// 	}
-
-// 	*scaledWidth = clampedWidth;
-// 	*scaledHeight = clampedHeight;
-// 	return mip;
-// }
 
 /*
 * R_FlipTexture
@@ -1059,30 +964,14 @@ static struct image_s *__R_AllocImage( const struct QStrSpan name) {
 }
 
 static NriTextureUsageBits __R_NRITextureUsageBits(int flags) {
-	if( flags & IT_DEPTH ) {
-		return NriTextureUsageBits_DEPTH_STENCIL_ATTACHMENT;
-	} else if( flags & IT_FRAMEBUFFER ) {
-		return NriTextureUsageBits_COLOR_ATTACHMENT;
-	}
+	assert( ( flags & ( IT_FRAMEBUFFER | IT_DEPTHRB | IT_DEPTH ) ) == 0 );
 	return NriTextureUsageBits_SHADER_RESOURCE;
 }
 
 
 static enum texture_format_e __R_ResolveDataFormat( int flags, int samples )
 {
-	if( flags & IT_DEPTH ) {
-		if( flags & IT_STENCIL ) {
-			return R_FORMAT_D24_UNORM_S8_UINT;
-		} else {
-			return R_FORMAT_D32_SFLOAT;
-		}
-	} else if( flags & IT_FRAMEBUFFER ) {
-		if( samples == 4 ) {
-			return R_FORMAT_RGBA8_UNORM;
-		} else {
-			return R_FORMAT_RGB8_UNORM;
-		}
-	}
+	assert((flags & (IT_FRAMEBUFFER | IT_DEPTHRB | IT_DEPTH)) == 0);
 	if( samples == 4 ) {
 		return R_FORMAT_RGBA8_UNORM;
 	} else if( samples == 3 ) {
@@ -1097,30 +986,7 @@ static enum texture_format_e __R_ResolveDataFormat( int flags, int samples )
 
 static enum texture_format_e __R_GetImageFormat( struct image_s* image )
 {
-	if( image->flags & IT_DEPTH ) {
-		if( image->flags & IT_STENCIL ) {
-			return R_FORMAT_D24_UNORM_S8_UINT;
-		} else {
-			return R_FORMAT_D32_SFLOAT;
-		}
-	} 
-	// else if( flags & IT_FRAMEBUFFER ) {
-	// 	// if( samples == 4 ) {
-	// 	// 	return R_FORMAT_RGBA8_UNORM;
-	// 	// } else {
-	// 	// 	return R_FORMAT_RGB8_UNORM;
-	// 	// }
-	// 	return R_FORMAT_RGBA8_UNORM;
-	// }
-	// if( samples == 4 ) {
-	// 	return R_FORMAT_RGBA8_UNORM;
-	// } else if( samples == 3 ) {
-	// 	return R_FORMAT_RGBA8_UNORM;
-	// } else if( samples == 2 ) {
-	// 	return R_FORMAT_RG8_UNORM;
-	// } else if( flags & IT_ALPHAMASK ) {
-	// 	return R_FORMAT_R8_UNORM;
-	// }
+	assert( ( image->flags & ( IT_FRAMEBUFFER | IT_DEPTHRB | IT_DEPTH ) ) == 0 );
 	return R_FORMAT_RGBA8_UNORM;
 }
 

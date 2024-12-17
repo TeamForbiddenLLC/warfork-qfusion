@@ -746,26 +746,6 @@ void R_DrawStretchQuick(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int
 	RB_FlushDynamicMeshes(cmd);
 }
 
-
-/*
-* R_Scissor
-*
-* Set scissor region for 2D drawing.
-* x and y represent the top left corner of the region/rectangle.
-*/
-void R_Scissor( int x, int y, int w, int h )
-{
-	RB_Scissor( x, y, w, h );
-}
-
-/*
-* R_GetScissor
-*/
-void R_GetScissor( int *x, int *y, int *w, int *h )
-{
-	RB_GetScissor( x, y, w, h );
-}
-
 /*
 * R_InitPostProcessingVBO
 */
@@ -966,9 +946,8 @@ static void R_SetupViewMatrices( void )
 /*
 * R_Clear
 */
-static void R_Clear(struct frame_cmd_buffer_s* frame, int bitMask )
+static void R_Clear(struct frame_cmd_buffer_s* frame, int bitMask  /* unused variable */)
 {
-	int bits;
 	vec4_t envColor;
 	bool clearColor = false;
 	bool rgbShadow = ( rn.renderFlags & RF_SHADOWMAPVIEW ) ? true : false;
@@ -986,17 +965,7 @@ static void R_Clear(struct frame_cmd_buffer_s* frame, int bitMask )
 		}
 	}
 
-	bits = 0;
-	if( !depthPortal )
-		bits |= GL_DEPTH_BUFFER_BIT;
-	if( clearColor )
-		bits |= GL_COLOR_BUFFER_BIT;
-	if( glConfig.stencilBits )
-		bits |= GL_STENCIL_BUFFER_BIT;
-
-	bits &= bitMask;
-
-	const bool hasClearOperation = !depthPortal || clearColor || glConfig.stencilBits;
+	const bool hasClearOperation = !depthPortal || clearColor;
 	if(!hasClearOperation) 
 		return;
 	
