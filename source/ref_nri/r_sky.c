@@ -452,7 +452,7 @@ void R_DrawSkySurf( struct frame_cmd_buffer_s* cmd,const entity_t *e, const shad
 					rn.skyMins[1][i] >= rn.skyMaxs[1][i] )
 					continue;
 
-				RB_BindShader( NULL ,rsc.skyent, shader, NULL ); // must be called for every side to reset backend state
+				RB_BindShader( cmd, rsc.skyent, shader, NULL ); // must be called for every side to reset backend state
 
 				cmd->state.numStreams = 1;
 				cmd->state.streams[0] = (NriVertexStreamDesc) {

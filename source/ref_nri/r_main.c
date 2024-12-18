@@ -415,19 +415,31 @@ mesh_vbo_t *R_InitNullModelVBO( void )
 	return vbo;
 }
 
-/*
-* R_DrawNullSurf
-*/
-void R_DrawNullSurf( const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceType_t *drawSurf )
+void R_DrawNullSurf( struct frame_cmd_buffer_s *cmd,
+					 const entity_t *e,
+					 const shader_t *shader,
+					 const mfog_t *fog,
+					 const portalSurface_t *portalSurface,
+					 unsigned int shadowBits,
+					 drawSurfaceType_t *drawSurf )
 {
 	assert( rsh.nullVBO != NULL );
 	if( !rsh.nullVBO ) {
 		return;
 	}
+	cmd->state.numStreams = 1;
+	cmd->state.streams[0] = (NriVertexStreamDesc){ 
+		.stride = rsh.nullVBO->vertexSize, 
+		.stepRate = 0, 
+		.bindingSlot = 0 };
+	cmd->state.numAttribs = 0;
+	cmd->state.pipelineLayout.topology = NriTopology_LINE_LIST;
+	R_FillNriVertexAttrib(rsh.nullVBO, cmd->state.attribs, &cmd->state.numAttribs);
 
-	RB_BindVBO( rsh.nullVBO->index, GL_LINES );
+	FR_CmdSetVertexBuffer(cmd, 0, rsh.nullVBO->vertexBuffer, 0);
+	FR_CmdSetIndexBuffer(cmd, rsh.nullVBO->indexBuffer, 0, NriIndexType_UINT16);
 
-	RB_DrawElements(NULL, 0, 6, 0, 6, 0, 0, 0, 0 );
+	RB_DrawShadedElements_2(cmd, 0, 6, 0, 6, 0, 0, 0, 0 );
 }
 
 /*
