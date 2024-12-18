@@ -1,3 +1,6 @@
+
+set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
+
 project(qfusion)
 
 cmake_minimum_required(VERSION 2.8.12)
@@ -55,19 +58,16 @@ set(UTEST_INCLUDE_DIR ${CMAKE_HOME_DIRECTORY}/../third-party/utest)
 set(DISCORD_DIR ${CMAKE_HOME_DIRECTORY}/../third-party/discord)
 set(DISCORD_INCLUDE_DIR ${DISCORD_DIR})
 
-set(OPENAL_DIR ${CMAKE_HOME_DIRECTORY}/../libsrcs/src/openal-soft)
-set(OPENAL_INCLUDE_DIR ${OPENAL_DIR}/include/AL)
-
 set(NRI_DIR ${CMAKE_HOME_DIRECTORY}/NRI)
 set(NRI_INCLUDE_DIR ${CMAKE_HOME_DIRECTORY}/NRI/Include)
 
 if (NOT GAME_MODULES_ONLY AND USE_GRAPHICS_NRI)
+    find_package(glslang CONFIG REQUIRED)
     set(NRI_STATIC_LIBRARY ON)
     set(IS_SUBMODULE ON)
     set(NRI_ENABLE_D3D12_SUPPORT OFF)
     set(NRI_ENABLE_D3D11_SUPPORT OFF)
     add_subdirectory(NRI)
-    add_subdirectory(glslang)
 endif()
 
 # Windows specific settings
@@ -78,22 +78,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         set(QFUSION_WINDOWS_ARCH "x64")
     endif()
 
-    set(CMAKE_INCLUDE_PATH
-		"../libsrcs/src/libogg"
-		"../libsrcs/src/libvorbis"
-		"../libsrcs/src/libcurl/include"
-		"../libsrcs/src/libfreetype"
-		"../libsrcs/src/SDL2/include"
-		"../libsrcs/src/openal-soft/include/AL"
-    )
-
     add_definitions(-D_CRT_SECURE_NO_WARNINGS -DCURL_STATICLIB -DWIN32 -D_WINDOWS)
-
-    if (MSVC)
-        set(CMAKE_LIBRARY_PATH "../libsrcs/lib/win32/${QFUSION_WINDOWS_ARCH}/debug")
-    else()
-        set(CMAKE_LIBRARY_PATH "../libsrcs/lib/win32/${QFUSION_WINDOWS_ARCH}/mingw")
-    endif()
 
     if (MSVC)
         add_release_link_flags("/LTCG")
@@ -111,14 +96,20 @@ endif()
 
 # OS X specific settings
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    set(ARCHS_STANDARD_32_64_BIT "x86_64")                         # Compile only 64-bit version
-    set(CMAKE_XCODE_ATTRIBUTE_MACOSX_DEPLOYMENT_TARGET "10.11")     # Use 10.11 as deployment target
     set(CMAKE_XCODE_ATTRIBUTE_GCC_C_LANGUAGE_STANDARD "gnu99")     # Use GNU99 standart for compiling C files
-    set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD "c++11") # Use C++11 standart for compiling C++ files
+    set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD "c++17") # Use C++11 standart for compiling C++ files
     set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LIBRARY "libc++")          # Use modern libc++ instead of libstdc++
-    set(CMAKE_FRAMEWORK_PATH "../libsrcs/lib/mac/Frameworks")
     set(CMAKE_MACOSX_RPATH 1)
     set(USE_SDL2 1)
+
+    # The workaround for try_compile failing with code signing
+    # since cmake-3.18.2, not required
+    set(CMAKE_TRY_COMPILE_PLATFORM_VARIABLES
+        ${CMAKE_TRY_COMPILE_PLATFORM_VARIABLES}
+        "CMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED"
+        "CMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED")
+    set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED NO)
+    set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED NO)
 
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-unused-function -fvisibility=hidden -Winvalid-pch")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -D_DEBUG")
@@ -237,15 +228,15 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 endif()
 
 if (NOT GAME_MODULES_ONLY)
-    find_package(Ogg REQUIRED)
-    find_package(Vorbis REQUIRED)
+    find_package(Ogg CONFIG REQUIRED)
+    find_package(Vorbis CONFIG REQUIRED)
     find_package(CURL REQUIRED)
     find_package(Freetype REQUIRED)
-    find_package(OpenAL REQUIRED)
+    find_package(OpenAL CONFIG REQUIRED)
 
     if (USE_SDL2)
+        find_package(SDL2 CONFIG REQUIRED)
         set(USE_SDL2 1)
-        find_package(SDL2 REQUIRED)
         add_definitions(-DUSE_SDL2)
     endif()
 endif()

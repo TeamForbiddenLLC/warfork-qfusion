@@ -19,5 +19,5 @@ else ()
 endif()
 
 add_library(ftlib SHARED ${FTLIB_SOURCES} ${FTLIB_HEADERS})
-target_link_libraries(ftlib PRIVATE ${FREETYPE_LIBRARIES} ${FTLIB_PLATFORM_LIBRARIES})
+target_link_libraries(ftlib PRIVATE Freetype::Freetype ${FTLIB_PLATFORM_LIBRARIES})
 qf_set_output_dir(ftlib libs)
