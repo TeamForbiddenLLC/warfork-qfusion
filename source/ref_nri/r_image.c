@@ -61,12 +61,10 @@ static struct image_s images_hash_headnode[IMAGES_HASH_SIZE], *free_images;
 static qmutex_t *r_imagesLock;
 static mempool_t *r_imagesPool;
 
-static int gl_filter_min = GL_LINEAR_MIPMAP_NEAREST;
-static int gl_filter_max = GL_LINEAR;
-
-static int gl_filter_depth = GL_LINEAR;
-
-static int gl_anisotropic_filter = 0;
+static int defaultFilterMin = NriFilter_NEAREST;
+static int defaultFilterMag = NriFilter_NEAREST;
+static int defaultFilterMipMap = NriFilter_LINEAR;
+static int defaultAnisotropicFilter = 0;
 
 #define MAX_MIP_SAMPLES 16
 
@@ -121,19 +119,18 @@ NriDescriptor *R_ResolveSamplerDescriptor( int flags )
 		samplerDesc.filters.min = NriFilter_LINEAR;
 		samplerDesc.filters.mag = NriFilter_LINEAR;
 		samplerDesc.filters.mip = NriFilter_LINEAR;
-
-		samplerDesc.anisotropy = gl_anisotropic_filter;
+		samplerDesc.anisotropy = defaultAnisotropicFilter;
 	} else if( !( flags & IT_NOMIPMAP ) ) {
-		samplerDesc.filters.min = NriFilter_NEAREST;
-		samplerDesc.filters.mag = NriFilter_NEAREST;
-		samplerDesc.filters.mip = NriFilter_LINEAR;
+		samplerDesc.filters.min = defaultFilterMin;
+		samplerDesc.filters.mag = defaultFilterMag;
+		samplerDesc.filters.mip = defaultFilterMipMap;
 		samplerDesc.mipMax = 16;
-		samplerDesc.anisotropy = gl_anisotropic_filter;
+		samplerDesc.anisotropy = defaultAnisotropicFilter;
 	} else {
 		samplerDesc.filters.min = NriFilter_LINEAR;
 		samplerDesc.filters.mag = NriFilter_LINEAR;
 		samplerDesc.filters.mip = NriFilter_LINEAR;
-		samplerDesc.anisotropy = gl_anisotropic_filter;
+		samplerDesc.anisotropy = defaultAnisotropicFilter;
 	}
 
 	if( flags & IT_CLAMP ) {
@@ -166,97 +163,8 @@ NriDescriptor *R_ResolveSamplerDescriptor( int flags )
 
 #undef __SAMPLER_HASH_SIZE
 
-/*
-* R_BindImage
-*/
-static void R_BindImage( const image_t *tex )
-{
-}
 
-/*
-* R_UnbindImage
-*/
-static void R_UnbindImage( const image_t *tex )
-{
-}
-
-
-/*
-* R_TextureMode
-*/
-void R_TextureMode( char *string )
-{
-	//TODO: Vulkan doesn't have texture samplers they are bound seperatly
-	static struct {
-		char *name;
-		int minimize, maximize;
-	} modes[] = { { "GL_NEAREST", GL_NEAREST, GL_NEAREST },
-				  { "GL_LINEAR", GL_LINEAR, GL_LINEAR },
-				  { "GL_NEAREST_MIPMAP_NEAREST", GL_NEAREST_MIPMAP_NEAREST, GL_NEAREST },
-				  { "GL_LINEAR_MIPMAP_NEAREST", GL_LINEAR_MIPMAP_NEAREST, GL_LINEAR },
-				  { "GL_NEAREST_MIPMAP_LINEAR", GL_NEAREST_MIPMAP_LINEAR, GL_NEAREST },
-				  { "GL_LINEAR_MIPMAP_LINEAR", GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR } };
-
-	for(size_t i = 0; i < Q_ARRAY_COUNT(modes); i++) {
-	 // if(Q_stricmp(modes[i], string)) {
-
-	 // }
-	}
-
- // int i;
- // image_t	*glt;
- // int target;
-
- // for( i = 0; i < NUM_GL_MODES; i++ )
- // {
- // 	if( !Q_stricmp( modes[i].name, string ) )
- // 		break;
- // }
-
- // if( i == NUM_GL_MODES )
- // {
- // 	Com_Printf( "R_TextureMode: bad filter name\n" );
- // 	return;
- // }
-
- // gl_filter_min = modes[i].minimize;
- // gl_filter_max = modes[i].maximize;
-
- // // change all the existing mipmap texture objects
- // for( i = 1, glt = images; i < MAX_GLIMAGES; i++, glt++ )
- // {
- // 	if( !glt->texnum ) {
- // 		continue;
- // 	}
- // 	if( glt->flags & (IT_NOFILTERING|IT_DEPTH) ) {
- // 		continue;
- // 	}
-
- // 	target = R_TextureTarget( glt->flags, NULL );
-
- // 	R_BindImage( glt );
-
- // 	if( !( glt->flags & IT_NOMIPMAP ) )
- // 	{
- // 		qglTexParameteri( target, GL_TEXTURE_MIN_FILTER, gl_filter_min );
- // 		qglTexParameteri( target, GL_TEXTURE_MAG_FILTER, gl_filter_max );
- // 	}
- // 	else 
- // 	{
- // 		qglTexParameteri( target, GL_TEXTURE_MIN_FILTER, gl_filter_max );
- // 		qglTexParameteri( target, GL_TEXTURE_MAG_FILTER, gl_filter_max );
- // 	}
- // }
-}
-
-void R_AnisotropicFilter( int value )
-{
-	const NriDeviceDesc* desc = rsh.nri.coreI.GetDeviceDesc( rsh.nri.device );
-	const int old = gl_anisotropic_filter;
-	gl_anisotropic_filter = bound( 1, value, desc->samplerAnisotropyMax );
-	if( gl_anisotropic_filter == old )
-		return;
-
+static void __RefreshSamplerDescriptors() {
 	image_t	*glt;
 	size_t i;
 	for( i = 1, glt = images; i < MAX_GLIMAGES; i++, glt++ )
@@ -264,12 +172,49 @@ void R_AnisotropicFilter( int value )
 		if( !glt->texture ) {
 			continue;
 		}
-		if( (glt->flags & (IT_NOFILTERING|IT_DEPTH|IT_NOMIPMAP)) ) {
+		if( (glt->flags & (IT_NOFILTERING | IT_NOMIPMAP)) ) {
 			continue;
 		}
 		glt->samplerDescriptor = R_CreateDescriptorWrapper(&rsh.nri, R_ResolveSamplerDescriptor(glt->flags)); 
-
 	}
+
+}
+
+void R_TextureMode( char *string )
+{
+	static struct {
+		char *name;
+		NriFilter min, mag, mip;
+	} modes[] = { { "GL_NEAREST", NriFilter_NEAREST, NriFilter_NEAREST, NriFilter_LINEAR},
+				  { "GL_LINEAR",  NriFilter_LINEAR, NriFilter_LINEAR, NriFilter_LINEAR},
+				  { "GL_NEAREST_MIPMAP_NEAREST", NriFilter_NEAREST, NriFilter_NEAREST, NriFilter_NEAREST},
+				  { "GL_LINEAR_MIPMAP_NEAREST", NriFilter_LINEAR, NriFilter_LINEAR, NriFilter_NEAREST},
+				  { "GL_NEAREST_MIPMAP_LINEAR", NriFilter_NEAREST, NriFilter_NEAREST, NriFilter_LINEAR },
+				  { "GL_LINEAR_MIPMAP_LINEAR", NriFilter_LINEAR, NriFilter_LINEAR, NriFilter_LINEAR } };
+
+	size_t i = 0;
+	for(i = 0; i < Q_ARRAY_COUNT(modes); i++) {
+		if(!Q_stricmp( modes[i].name, string ) )
+			break;
+	}
+
+	if( i == Q_ARRAY_COUNT(modes))
+	{
+		Com_Printf( "R_TextureMode: bad filter name\n" );
+		return;
+	}
+
+	defaultFilterMin = modes[i].min;
+	defaultFilterMag = modes[i].mag;
+	defaultFilterMipMap = modes[i].mip;
+	__RefreshSamplerDescriptors();
+}
+
+void R_AnisotropicFilter( int value )
+{
+	const NriDeviceDesc *desc = rsh.nri.coreI.GetDeviceDesc( rsh.nri.device );
+	defaultAnisotropicFilter = bound( 1, value, desc->samplerAnisotropyMax );
+	__RefreshSamplerDescriptors();
 }
 
 /*
@@ -2035,141 +1980,3 @@ void R_ShutdownImages( void )
 
 }
 
-
-typedef struct
-{
-	int id;
-	int self;
-} loaderInitCmd_t;
-
-typedef struct
-{
-	int id;
-	int self;
-	int pic;
-} loaderPicCmd_t;
-
-//typedef unsigned (*queueCmdHandler_t)( const void * );
-//static void *R_ImageLoaderThreadProc( void *param );
-
-//static void R_IssueInitLoaderCmd( int id )
-//{
-//	loaderInitCmd_t cmd;
-//	cmd.id = CMD_LOADER_INIT;
-//	cmd.self = id;
-//	ri.BufPipe_WriteCmd( loader_queue[id], &cmd, sizeof( cmd ) );
-//}
-//static void R_IssueShutdownLoaderCmd( int id )
-//{
-//	int cmd;
-//	cmd = CMD_LOADER_SHUTDOWN;
-//	ri.BufPipe_WriteCmd( loader_queue[id], &cmd, sizeof( cmd ) );
-//}
-
-//static void R_IssueLoadPicLoaderCmd( int id, int pic )
-//{
-//	loaderPicCmd_t cmd;
-//	cmd.id = CMD_LOADER_LOAD_PIC;
-//	cmd.self = id;
-//	cmd.pic = pic;
-//	ri.BufPipe_WriteCmd( loader_queue[id], &cmd, sizeof( cmd ) );
-//}
-//static void R_IssueDataSyncLoaderCmd( int id )
-//{
-//	int cmd;
-//	cmd = CMD_LOADER_DATA_SYNC;
-//	ri.BufPipe_WriteCmd( loader_queue[id], &cmd, sizeof( cmd ) );
-//}
-
-/*
-* R_FinishLoadingImages
-*/
-//void R_FinishLoadingImages( void )
-//{
-//	int i;
-//
-//	for( i = 0; i < NUM_LOADER_THREADS; i++ ) {
-//		if( loader_gl_context[i] ) {
-//			R_IssueDataSyncLoaderCmd( i );
-//		}
-//	}
-//
-//	for( i = 0; i < NUM_LOADER_THREADS; i++ ) {
-//		if( loader_gl_context[i] ) {
-//			ri.BufPipe_Finish( loader_queue[i] );
-//		}
-//	}
-//}
-
-///*
-//* R_LoadAsyncImageFromDisk
-//*/
-//static bool R_LoadAsyncImageFromDisk( image_t *image )
-//{
-//	int id;
-//
-//	if( loader_gl_context[0] == NULL ) {
-//		return false;
-//	}
-//
-//	id = (image - images) % NUM_LOADER_THREADS;
-//	if ( loader_gl_context[id] == NULL ) {
-//		id = 0;
-//	}
-//
-//	image->loaded = false;
-//	image->missing = false;
-//	
-//	// Unbind and finish so that the image resource becomes available in the loader's context.
-//	// Not doing finish (or only doing flush instead) causes missing textures on Nvidia and possibly other GPUs,
-//	// since the loader thread is woken up pretty much instantly, and the GL calls that initialize the texture
-//	// may still be processed or only queued in the main thread while the loader is trying to load the image.
-//	R_UnbindImage( image );
-//	qglFinish();
-//
-//	R_IssueLoadPicLoaderCmd( id, image - images );
-//	return true;
-//}
-
-///*
-//* R_ShutdownImageLoader
-//*/
-//static void R_ShutdownImageLoader( int id )
-//{
-//	void *context = loader_gl_context[id];
-//	void *surface = loader_gl_surface[id];
-//
-//	loader_gl_context[id] = NULL;
-//	loader_gl_surface[id] = NULL;
-//	if( !context ) {
-//		return;
-//	}
-//
-//	R_IssueShutdownLoaderCmd( id );
-//
-//	ri.BufPipe_Finish( loader_queue[id] );
-//
-//	ri.Thread_Join( loader_thread[id] );
-//	loader_thread[id] = NULL;
-//
-//	ri.BufPipe_Destroy( &loader_queue[id] );
-//
-//	GLimp_SharedContext_Destroy( context, surface );
-//}
-
-
-//static void *R_ImageLoaderThreadProc( void *param )
-//{
-////	qbufPipe_t *cmdQueue = param;
-////	queueCmdHandler_t cmdHandlers[NUM_LOADER_CMDS] = 
-////	{
-////		(queueCmdHandler_t)R_HandleInitLoaderCmd,
-////		(queueCmdHandler_t)R_HandleShutdownLoaderCmd,
-////		(queueCmdHandler_t)R_HandleLoadPicLoaderCmd,
-////		(queueCmdHandler_t)R_HandleDataSyncLoaderCmd,
-////	};
-////
-////	ri.BufPipe_Wait( cmdQueue, R_ImageLoaderCmdsWaiter, cmdHandlers, Q_THREADS_WAIT_INFINITE );
-// 
-//	return NULL;	
-//}
