@@ -28,6 +28,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "stb_ds.h"
 #include "r_capture.h"
+#include "tracy/TracyC.h"
+
 
 static ref_frontend_t rrf;
 
@@ -200,6 +202,7 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 
 rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, bool fullScreen, bool stereo )
 {
+	TracyCZone(ctx, 1);
 	rsh.nri.helperI.WaitForIdle( rsh.cmdQueue );
 
 	if( fullScreen ) {
@@ -327,6 +330,7 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 
 	RB_Init();
 
+  TracyCZoneEnd(ctx);
 	return rserr_ok;	
 }
 
@@ -404,6 +408,7 @@ void RF_Shutdown( bool verbose )
 
 static void RF_CheckCvars( void )
 {
+	TracyCZone(ctx, 1);
 	// disallow bogus r_maxfps values, reset to default value instead
 	if( r_maxfps->modified ) {
 		if( r_maxfps->integer <= 0 ) {
@@ -459,10 +464,12 @@ static void RF_CheckCvars( void )
 		}
 		r_outlines_scale->modified = false;
 	}
+  TracyCZoneEnd(ctx);
 }
 
 void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 {
+	TracyCZone(ctx, 1);
 	RF_CheckCvars();
 
 	// run cinematic passes on shaders
@@ -539,12 +546,10 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 
 	rrf.cameraSeparation = cameraSeparation;
 
-
 	memset( &rf.stats, 0, sizeof( rf.stats ) );
 
 	// update fps meter
 	// copy in changes from R_BeginFrame
-	//	rrf.frame->BeginFrame( rrf.frame, cameraSeparation, forceClear, forceVsync );
 	const unsigned int time = ri.Sys_Milliseconds();
 	rf.fps.count++;
 	rf.fps.time = time;
@@ -557,7 +562,7 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 	rf.width2D = -1;
 	rf.height2D = -1;
 	R_Set2DMode(frame, true );
-
+  TracyCZoneEnd(ctx);
 }
 
 static inline void __R_PolyBlendPostPass(struct frame_cmd_buffer_s* frame) {
@@ -595,6 +600,7 @@ static inline void __R_ApplyBrightnessBlend(struct frame_cmd_buffer_s* frame) {
 
 void RF_EndFrame( void )
 {
+	TracyCZone(ctx, 1);
 	const uint32_t bufferedFrameIndex = rsh.swapchainCount % NUMBER_FRAMES_FLIGHT;
 	struct frame_cmd_buffer_s *frame = &rsh.frameCmds[bufferedFrameIndex];
 
@@ -727,6 +733,8 @@ void RF_EndFrame( void )
 
 	rsh.swapchainCount++;
 	rsh.frameCount++;
+
+  TracyCZoneEnd(ctx);
 }
 
 void RF_BeginRegistration( void )

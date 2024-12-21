@@ -24,6 +24,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_local.h"
 #include "iqm.h"
 
+#include "tracy/TracyC.h"
+
 void Mod_LoadAliasMD3Model( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *unused );
 void Mod_LoadSkeletalModel( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *unused );
 void Mod_LoadQ3BrushModel( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *format );
@@ -1288,6 +1290,7 @@ static void R_FinishMapConfig( const model_t *mod )
 */
 void R_RegisterWorldModel( const char *model, const dvis_t *pvsData )
 {
+	TracyCZone( ctx, 1 );
 	r_prevworldmodel = rsh.worldModel;
 	rsh.worldModel = NULL;
 	rsh.worldBrushModel = NULL;
@@ -1301,6 +1304,7 @@ void R_RegisterWorldModel( const char *model, const dvis_t *pvsData )
 	mod_isworldmodel = false;
 
 	if( !rsh.worldModel ) {
+		TracyCZoneEnd( ctx );
 		return;
 	}
 
@@ -1308,8 +1312,9 @@ void R_RegisterWorldModel( const char *model, const dvis_t *pvsData )
 	mapConfig = mod_mapConfigs[rsh.worldModel - mod_known];
 
 	R_TouchModel( rsh.worldModel );
-	rsh.worldBrushModel = ( mbrushmodel_t * )rsh.worldModel->extradata;
-	rsh.worldBrushModel->pvs = ( dvis_t * )pvsData;
+	rsh.worldBrushModel = (mbrushmodel_t *)rsh.worldModel->extradata;
+	rsh.worldBrushModel->pvs = (dvis_t *)pvsData;
+	TracyCZoneEnd( ctx );
 }
 
 /*

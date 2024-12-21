@@ -7,8 +7,8 @@ jobs:
       max-parallel: 1
       matrix:
         config:
-          - { name: "Linux-x86_64-Release", type: "release", cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1" }
-          - { name: "Linux-x86_64-Debug", type: "debug", cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1" }
+          - { name: "Linux-x86_64-Release", type: "release", cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 -DTRACY_ENABLE=0" }
+          - { name: "Linux-x86_64-Debug", type: "debug", cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 -DTRACY_ENABLE=0" }
     name: ${{ matrix.config.name }}
     runs-on: ubuntu-22.04
     container:
@@ -82,8 +82,8 @@ jobs:
       max-parallel: 1
       matrix:
         config:
-          - { agent: "macos-12", name: "OSX-x86_64-Release", xcode-version: '13.4.1', type: "release", cmake_args: "-DBUILD_STEAMLIB=1" , build_folder: "Release" }
-          - { agent: "macos-12", name: "OSX-x86_64-Debug", xcode-version: '13.4.1', type: "debug", cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON", build_folder: "Debug"  }
+          - { agent: "macos-12", name: "OSX-x86_64-Release", xcode-version: '13.4.1', type: "release", cmake_args: "-DBUILD_STEAMLIB=1 -DTRACY_ENABLE=0" , build_folder: "Release" }
+          - { agent: "macos-12", name: "OSX-x86_64-Debug", xcode-version: '13.4.1', type: "debug", cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON -DTRACY_ENABLE=0", build_folder: "Debug"  }
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.agent }}
     steps:
@@ -149,8 +149,8 @@ jobs:
       max-parallel: 1
       matrix:
         config:
-          - { agent: "windows-latest", name: "win-x86_64-Release", vs_version: 'Visual Studio 17 2022', type: "release", cmake_args: "-DBUILD_STEAMLIB=1", build_folder: "Release" }
-          - { agent: "windows-latest", name: "win-x86_64-Debug", vs_version: 'Visual Studio 17 2022', type: "debug", cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON", build_folder: "Debug" }
+          - { agent: "windows-latest", name: "win-x86_64-Release", vs_version: 'Visual Studio 17 2022', type: "release", cmake_args: "-DBUILD_STEAMLIB=1 -DTRACY_ENABLE=0", build_folder: "Release" }
+          - { agent: "windows-latest", name: "win-x86_64-Debug", vs_version: 'Visual Studio 17 2022', type: "debug", cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON -DTRACY_ENABLE=0", build_folder: "Debug" }
   
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.agent }}
