@@ -5,9 +5,9 @@ on: [push, pull_request]
 jobs:
 
   build-linux64:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     container:
-      image: ubuntu:22.04
+      image: ubuntu:20.04
       env:
         DEBIAN_FRONTEND: noninteractive
         DEBCONF_NONINTERACTIVE_SEEN: true
