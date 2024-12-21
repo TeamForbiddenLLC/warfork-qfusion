@@ -7,3 +7,6 @@
 [submodule "source/glslang"]
 	path = source/glslang
 	url = https://github.com/TeamForbiddenLLC/glslang.git
+[submodule "source/tracy"]
+	path = source/tracy
+	url = https://github.com/wolfpld/tracy.git

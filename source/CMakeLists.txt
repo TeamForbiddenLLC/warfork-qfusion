@@ -70,6 +70,11 @@ if (NOT GAME_MODULES_ONLY AND USE_GRAPHICS_NRI)
     add_subdirectory(glslang)
 endif()
 
+add_compile_definitions(TRACY_IMPORTS)
+set(TRACY_STATIC OFF )
+add_subdirectory(tracy)
+qf_set_output_dir(TracyClient  libs)
+
 # Windows specific settings
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set(QFUSION_WINDOWS_ARCH "x86")

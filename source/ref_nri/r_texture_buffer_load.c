@@ -6,14 +6,18 @@
 
 #include "../qcommon/qfiles.h"
 
+#include "tracy/TracyC.h"
+
 static uint32_t pallet[256];
 
 bool T_LoadImagePCX(char *filename, struct texture_buf_s* buffer, uint8_t** pallet) {
 
+	TracyCZone(ctx, 1);
 	void* const raw;
 	size_t len = R_LoadFile( filename, (void **)&raw );
 	if(raw == NULL) {
 		ri.Com_Printf(S_COLOR_YELLOW "can't resolve file: %s", filename);
+		TracyCZoneEnd(ctx);
 		return false;
 	}
 	
@@ -35,9 +39,9 @@ bool T_LoadImagePCX(char *filename, struct texture_buf_s* buffer, uint8_t** pall
 
 	if( sizeof(*pcx) > len ) {
 		ri.Com_DPrintf( S_COLOR_YELLOW "PCX file %s was malformed", filename );
+		TracyCZoneEnd(ctx);
 		return false;
 	}
-
 
 	pcx->xmin = LittleShort( pcx->xmin );
 	pcx->ymin = LittleShort( pcx->ymin );
@@ -50,6 +54,7 @@ bool T_LoadImagePCX(char *filename, struct texture_buf_s* buffer, uint8_t** pall
 	
 	if( (sizeof(*pcx) + (pcx->ymax * pcx->xmax) + sizeof(uint32_t) * 256) > len ) {
 		ri.Com_Printf( S_COLOR_YELLOW "PCX file %s was malformed", filename );
+		TracyCZoneEnd(ctx);
 		return false;
 	}
 
@@ -58,6 +63,7 @@ bool T_LoadImagePCX(char *filename, struct texture_buf_s* buffer, uint8_t** pall
 		len < 768 ) {
 		ri.Com_Printf( S_COLOR_YELLOW "Bad pcx file %s\n", filename );
 		R_FreeFile( pcx );
+		TracyCZoneEnd(ctx);
 		return false;
 	}
 
@@ -101,9 +107,8 @@ bool T_LoadImagePCX(char *filename, struct texture_buf_s* buffer, uint8_t** pall
 
 	R_FreeFile( pcx);
 
-	
+	TracyCZoneEnd(ctx);
 	return true;
-
 }
 
 static void __R_stbi_free_image(void* p) {
@@ -112,6 +117,7 @@ static void __R_stbi_free_image(void* p) {
 }
 
 bool T_LoadImageSTBI(char *filename, struct texture_buf_s* buffer ) {
+	TracyCZone(ctx, 1);
 	uint8_t* data;
 	size_t size = R_LoadFile( filename, ( void ** ) &data );
 	if(data == NULL) {
@@ -145,11 +151,13 @@ bool T_LoadImageSTBI(char *filename, struct texture_buf_s* buffer ) {
 		default:
 			stbi_image_free(stbiBuffer);
 			ri.Com_Printf(S_COLOR_YELLOW "unhandled channel count: %d", channelCount);
+  		TracyCZoneEnd(ctx);
 			return false;
 	}
 	R_FreeFile( data );
 	const int res = T_AliasTextureBuf_Free(buffer, &desc, stbiBuffer, 0, stbiBuffer, __R_stbi_free_image);
 	assert(res == TEXTURE_BUF_SUCCESS);
+	TracyCZoneEnd(ctx);
 	return true;
 }
 
@@ -157,14 +165,13 @@ void T_SetPallet(uint32_t p[256]) {
 	memcpy(pallet, p, sizeof(pallet));
 }
 
-
-
 uint32_t* T_Pallet() {
 	return pallet;
 }
 
 //https://developer.valvesoftware.com/wiki/WAL
 bool T_LoadImageWAL(char *filename, struct texture_buf_s* tex) {
+	TracyCZone(ctx, 1);
 	// load the file
 	uint8_t* const buf = NULL;
 	const size_t size = R_LoadFile( filename, (void **)&buf);
@@ -219,9 +226,10 @@ bool T_LoadImageWAL(char *filename, struct texture_buf_s* tex) {
 		  *( (uint32_t *)block ) = pallet[p];
 	  }
   }
-	  Mem_ValidationAllAllocations();
+	Mem_ValidationAllAllocations();
 
 	R_FreeFile( buf );
+	TracyCZoneEnd(ctx);
 	return true;
 }
 

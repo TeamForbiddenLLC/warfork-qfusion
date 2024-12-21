@@ -34,6 +34,8 @@ end of unit intermissions
 
 #include "client.h"
 #include "ftlib.h"
+#include "tracy/TracyC.h"
+
 
 float scr_con_current;    // aproaches scr_conlines at scr_conspeed
 float scr_con_previous;
@@ -674,6 +676,7 @@ static void SCR_RenderView( float stereo_separation )
 */
 void SCR_UpdateScreen( void )
 {
+	TracyCFrameMark
 	static dynvar_t *updatescreen = NULL;
 	int numframes;
 	int i;
@@ -731,6 +734,8 @@ void SCR_UpdateScreen( void )
 
 	for( i = 0; i < numframes; i++ )
 	{
+		static const char* const cl_frame = "Render Frame"; 	
+		TracyCFrameMarkStart(cl_frame);
 		RF_BeginFrame( separation[i], forceclear, forcevsync );
 
 		if( scr_draw_loading == 2 )
@@ -787,5 +792,6 @@ void SCR_UpdateScreen( void )
 		Dynvar_CallListeners( updatescreen, NULL );
 
 		RF_EndFrame();
+		TracyCFrameMarkEnd(cl_frame);
 	}
 }
