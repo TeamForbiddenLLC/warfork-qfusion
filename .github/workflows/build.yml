@@ -12,7 +12,7 @@ jobs:
     name: ${{ matrix.config.name }}
     runs-on: ubuntu-20.04
     container:
-      image: ubuntu-20.04
+      image: ubuntu:20.04
       env:
         DEBIAN_FRONTEND: noninteractive
         DEBCONF_NONINTERACTIVE_SEEN: true
