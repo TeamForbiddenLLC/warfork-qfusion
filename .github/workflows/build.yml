@@ -5,9 +5,9 @@ on: [push, pull_request]
 jobs:
 
   build-linux64:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     container:
-      image: ubuntu:22.04
+      image: ubuntu:20.04
       env:
         DEBIAN_FRONTEND: noninteractive
         DEBCONF_NONINTERACTIVE_SEEN: true
@@ -203,7 +203,7 @@ jobs:
           path: source/OSX-x86_64-Debug.tar.gz
 
   build-win64:
-    runs-on: windows-latest
+    runs-on:  windows-2019
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
