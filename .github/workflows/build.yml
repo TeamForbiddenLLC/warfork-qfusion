@@ -17,12 +17,22 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
         DEBCONF_NONINTERACTIVE_SEEN: true
     steps:
-      - name: Setup
+      - name: Setup GHA caching for vcpkg - https://learn.microsoft.com/en-us/vcpkg/consume/binary-caching-github-actions-cache
         run: |
           echo "ACTIONS_CACHE_URL=$ACTIONS_CACHE_URL" >> "$GITHUB_ENV"
           echo "ACTIONS_RUNTIME_TOKEN=$ACTIONS_ID_TOKEN_REQUEST_TOKEN" >> "$GITHUB_ENV"
-          apt update
-          apt install -y git curl clang cmake build-essential libsdl2-dev libopenal-dev libvorbis-dev libfreetype6-dev libcurl4-gnutls-dev git zip unzip python3 autoconf libtool meson automake libtool pkg-config python3-jinja2
+
+      - name: Add CMake APT repo - glslang requires newer Cmake than provided by 20.04
+        uses: gerlero/add-apt-repository@v1
+        with:
+          uri: https://apt.kitware.com/ubuntu/
+          key: https://apt.kitware.com/keys/kitware-archive-latest.asc
+
+      - name: Install deps
+        uses: gerlero/apt-install@v1
+        with:
+          packages: kitware-archive-keyring git curl clang cmake build-essential libsdl2-dev libopenal-dev libvorbis-dev libfreetype6-dev libcurl4-gnutls-dev git zip unzip python3 autoconf libtool meson automake libtool pkg-config python3-jinja2
+
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
@@ -82,16 +92,22 @@ jobs:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.agent }}
     steps:
-      - name: Setup
+      - name: Setup GHA caching for vcpkg - https://learn.microsoft.com/en-us/vcpkg/consume/binary-caching-github-actions-cache
         shell: bash
         run: |
           echo "ACTIONS_CACHE_URL=$ACTIONS_CACHE_URL" >> "$GITHUB_ENV"
           echo "ACTIONS_RUNTIME_TOKEN=$ACTIONS_ID_TOKEN_REQUEST_TOKEN" >> "$GITHUB_ENV"
-          brew uninstall --force azure-cli
-          brew uninstall --force aws-sam-cli
+
+      - name: Replace problem-causing python installation - https://github.com/TeamForbiddenLLC/warfork-qfusion/pull/325 - Fixed in macos-14
+        shell: bash
+        run: |
+          brew uninstall --force azure-cli aws-sam-cli
           brew install python@3 || brew link --overwrite python@3
-          brew update
-          brew install curl cmake sdl2 openal-soft libvorbis freetype git zip unzip
+
+      - name: Install deps
+        uses: gerlero/brew-install@v1
+        with:
+          packages: curl cmake sdl2 openal-soft libvorbis freetype git zip unzip
 
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -150,7 +166,7 @@ jobs:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.agent }}
     steps:
-      - name: Setup
+      - name: Setup GHA caching for vcpkg - https://learn.microsoft.com/en-us/vcpkg/consume/binary-caching-github-actions-cache
         run: |
           Add-Content -Path $env:GITHUB_ENV -Value "ACTIONS_CACHE_URL=$ACTIONS_CACHE_URL"
           Add-Content -Path $env:GITHUB_ENV -Value "ACTIONS_RUNTIME_TOKEN=$ACTIONS_ID_TOKEN_REQUEST_TOKEN"
