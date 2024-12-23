@@ -7,8 +7,16 @@ jobs:
       max-parallel: 1
       matrix:
         config:
-          - { name: "Linux-x86_64-Release", type: "release", cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1" }
-          - { name: "Linux-x86_64-Debug", type: "debug", cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1" }
+          - {
+              name: "Linux-x86_64-Release",
+              type: "release",
+              cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1",
+            }
+          - {
+              name: "Linux-x86_64-Debug",
+              type: "debug",
+              cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1",
+            }
     name: ${{ matrix.config.name }}
     runs-on: ubuntu-20.04
     container:
@@ -45,7 +53,6 @@ jobs:
         run: |
           curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
           unzip third-party/steamworks/sdk.zip -d third-party/steamworks
-      
 
       - name: Building Release
         if: matrix.config.type == 'release'
@@ -62,8 +69,8 @@ jobs:
           export CC=clang CXX=clang++
           cmake ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Debug -DVCPKG_INSTALL_OPTIONS="--binarysource=clear\;x-gha,readwrite" .
           make -j8
-      
-      - name: Unit Test 
+
+      - name: Unit Test
         working-directory: ./source/build
         shell: bash
         run: |
@@ -71,13 +78,13 @@ jobs:
           for exc in ./test/*; do
             $exc
           done
-      
+
       - name: Package warfork
         working-directory: ./source/build
-        run: tar --exclude='*.a' --exclude='base*/*.a' --exclude='libs/*.a' --exclude='test' -zcvf ../${{matrix.config.name}}.tar.gz * 
+        run: tar --exclude='*.a' --exclude='base*/*.a' --exclude='libs/*.a' --exclude='test' -zcvf ../${{matrix.config.name}}.tar.gz *
 
       - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3 
+        uses: actions/upload-artifact@v3
         with:
           name: ${{matrix.config.name}}
           path: source/${{matrix.config.name}}.tar.gz
@@ -87,8 +94,22 @@ jobs:
       max-parallel: 1
       matrix:
         config:
-          - { agent: "macos-13", name: "OSX-x86_64-Release", xcode-version: '15.0.1', type: "release", cmake_args: "-DBUILD_STEAMLIB=1" , build_folder: "Release" }
-          - { agent: "macos-13", name: "OSX-x86_64-Debug", xcode-version: '15.0.1', type: "debug", cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON", build_folder: "Debug"  }
+          - {
+              agent: "macos-13",
+              name: "OSX-x86_64-Release",
+              xcode-version: "15.0.1",
+              type: "release",
+              cmake_args: "-DBUILD_STEAMLIB=1",
+              build_folder: "Release",
+            }
+          - {
+              agent: "macos-13",
+              name: "OSX-x86_64-Debug",
+              xcode-version: "15.0.1",
+              type: "debug",
+              cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON",
+              build_folder: "Debug",
+            }
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.agent }}
     steps:
@@ -140,10 +161,10 @@ jobs:
       - name: Package warfork
         working-directory: ./source/build
         run: tar --exclude='test' -czvf ../${{matrix.config.name}}.tar.gz ${{matrix.config.build_folder}}/*.app
-      
+
       - name: Unit Test
         working-directory: ./source/build/${{matrix.config.build_folder}}
-        run: | 
+        run: |
           set -e
           for exc in ./test/*[^.dSYM]; do
             $exc
@@ -160,9 +181,23 @@ jobs:
       max-parallel: 1
       matrix:
         config:
-          - { agent: "windows-2019", name: "win-x86_64-Release", vs_version: 'Visual Studio 16 2019', type: "release", cmake_args: "-DBUILD_STEAMLIB=1", build_folder: "Release" }
-          - { agent: "windows-2019", name: "win-x86_64-Debug", vs_version: 'Visual Studio 16 2019', type: "debug", cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON", build_folder: "Debug" }
-  
+          - {
+              agent: "windows-2019",
+              name: "win-x86_64-Release",
+              vs_version: "Visual Studio 16 2019",
+              type: "release",
+              cmake_args: "-DBUILD_STEAMLIB=1",
+              build_folder: "Release",
+            }
+          - {
+              agent: "windows-2019",
+              name: "win-x86_64-Debug",
+              vs_version: "Visual Studio 16 2019",
+              type: "debug",
+              cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON",
+              build_folder: "Debug",
+            }
+
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.agent }}
     steps:
@@ -170,22 +205,22 @@ jobs:
         run: |
           Add-Content -Path $env:GITHUB_ENV -Value "ACTIONS_CACHE_URL=$ACTIONS_CACHE_URL"
           Add-Content -Path $env:GITHUB_ENV -Value "ACTIONS_RUNTIME_TOKEN=$ACTIONS_ID_TOKEN_REQUEST_TOKEN"
-      
+
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          
+
       - name: Download steamworks sdk
         run: |
           curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
           7z x third-party/steamworks/sdk.zip -othird-party/steamworks
-      
+
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
 
       - name: Building Debug
-        if: matrix.config.type == 'debug' 
+        if: matrix.config.type == 'debug'
         working-directory: .\source
         run: |
           cmake  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DVCPKG_INSTALL_OPTIONS="--binarysource=clear\;x-gha,readwrite" -DBUILD_UNIT_TEST=1 .
@@ -196,11 +231,11 @@ jobs:
         run: |
           cmake  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DVCPKG_INSTALL_OPTIONS="--binarysource=clear\;x-gha,readwrite" -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RELEASE .
           msbuild qfusion.sln /p:configuration=Release /maxcpucount:8
-      
-      - name: Unit Test 
+
+      - name: Unit Test
         shell: bash
         working-directory: .\source\build\${{matrix.config.build_folder}}
-        run: | 
+        run: |
           set -e
           for exc in ./test/*[^.pdb]; do
             $exc
@@ -209,7 +244,7 @@ jobs:
       - name: Package warfork
         working-directory: .\source\build\${{matrix.config.build_folder}}
         run: 7z a ..\..\${{matrix.config.name}}.zip * '-xr!*.exp' '-xr!*.lib' '-xr!test'
-      
+
       - name: Upload warfork artifact
         uses: actions/upload-artifact@v3
         with:
