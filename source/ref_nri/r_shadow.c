@@ -147,7 +147,8 @@ add:
 		return false;
 	}
 
-	rsc.entShadowGroups[R_ENT2NUM(ent)] = group->id;
+	
+	rsc.entShadowGroups[ent - rsc.entities] = group->id;
 	if( ent->flags & RF_WEAPONMODEL )
 		return true;
 
