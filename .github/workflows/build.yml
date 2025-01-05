@@ -8,21 +8,25 @@ jobs:
       matrix:
         config:
           - { name: "Linux-x86_64-Release", type: "release", cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1" }
-          - { name: "Linux-x86_64-Debug", type: "debug", cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1" }
+          - { name: "Linux-x86_64-Debug", type: "debug", cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1"}
     name: ${{ matrix.config.name }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     container:
-      image: ubuntu:22.04
+      image: ubuntu:20.04
       env:
         DEBIAN_FRONTEND: noninteractive
         DEBCONF_NONINTERACTIVE_SEEN: true
     steps:
-      - name: Setup
-        run: |
-          echo "ACTIONS_CACHE_URL=$ACTIONS_CACHE_URL" >> "$GITHUB_ENV"
-          echo "ACTIONS_RUNTIME_TOKEN=$ACTIONS_ID_TOKEN_REQUEST_TOKEN" >> "$GITHUB_ENV"
-          apt update
-          apt install -y git curl clang cmake build-essential libsdl2-dev libopenal-dev libvorbis-dev libfreetype6-dev libcurl4-gnutls-dev git zip unzip python3
+      - name: Add CMake APT repo - glslang requires newer Cmake than provided by 20.04
+        uses: gerlero/add-apt-repository@v1
+        with:
+          uri: https://apt.kitware.com/ubuntu/
+          key: https://apt.kitware.com/keys/kitware-archive-latest.asc
+
+      - name: Install deps
+        uses: gerlero/apt-install@v1
+        with:
+          packages: kitware-archive-keyring git curl clang-18 cmake build-essential git zip unzip python3 autoconf libtool meson automake libtool pkg-config python3-jinja2 python3-setuptools libx11-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libibus-1.0-dev libxft-dev libxext-dev
 
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -36,43 +40,40 @@ jobs:
         run: |
           curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
           unzip third-party/steamworks/sdk.zip -d third-party/steamworks
-      
-      - name: Setup glslang
-        working-directory: ./source/glslang
-        run: |
-          python3 ./update_glslang_sources.py
 
       - name: Building Release
         if: matrix.config.type == 'release'
         working-directory: ./source
         run: |
-          export CC=clang CXX=clang++
-          cmake ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Release .
+          export CC=clang-18 CXX=clang++-18
+          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Release
+          cd build
           make -j8
 
       - name: Building Debug
         if: matrix.config.type == 'debug'
         working-directory: ./source
         run: |
-          export CC=clang CXX=clang++
-          cmake ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Debug .
+          export CC=clang-18 CXX=clang++-18
+          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Debug 
+          cd build
           make -j8
-      
-      - name: Unit Test 
-        working-directory: ./source/build
+
+      - name: Unit Test
+        working-directory: ./source/build/warfork-qfusion
         shell: bash
         run: |
           set -e
           for exc in ./test/*; do
             $exc
           done
-      
+
       - name: Package warfork
-        working-directory: ./source/build
-        run: tar --exclude='*.a' --exclude='base*/*.a' --exclude='libs/*.a' --exclude='test' -zcvf ../${{matrix.config.name}}.tar.gz * 
+        working-directory: ./source/build/warfork-qfusion
+        run: tar --exclude='*.a' --exclude='base*/*.a' --exclude='libs/*.a' --exclude='test' -zcvf ../${{matrix.config.name}}.tar.gz *
 
       - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3 
+        uses: actions/upload-artifact@v3
         with:
           name: ${{matrix.config.name}}
           path: source/${{matrix.config.name}}.tar.gz
@@ -82,21 +83,22 @@ jobs:
       max-parallel: 1
       matrix:
         config:
-          - { agent: "macos-12", name: "OSX-x86_64-Release", xcode-version: '13.4.1', type: "release", cmake_args: "-DBUILD_STEAMLIB=1" , build_folder: "Release" }
-          - { agent: "macos-12", name: "OSX-x86_64-Debug", xcode-version: '13.4.1', type: "debug", cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON", build_folder: "Debug"  }
+          - { agent: "macos-13", name: "OSX-x86_64-Release", xcode-version: "15.0.1", type: "release", cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_SYSTEM_CURL=1", build_folder: "Release" }
+          - { agent: "macos-13", name: "OSX-x86_64-Debug", xcode-version: "15.0.1", type: "debug", cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON -DUSE_SYSTEM_CURL=1", build_folder: "Debug" }
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.agent }}
     steps:
-      - name: Setup
+
+      - name: Replace problem-causing python installation - https://github.com/TeamForbiddenLLC/warfork-qfusion/pull/325 - Fixed in macos-14
         shell: bash
         run: |
-          echo "ACTIONS_CACHE_URL=$ACTIONS_CACHE_URL" >> "$GITHUB_ENV"
-          echo "ACTIONS_RUNTIME_TOKEN=$ACTIONS_ID_TOKEN_REQUEST_TOKEN" >> "$GITHUB_ENV"
-          brew uninstall --force azure-cli
-          brew uninstall --force aws-sam-cli
+          brew uninstall --force azure-cli aws-sam-cli
           brew install python@3 || brew link --overwrite python@3
-          brew update
-          brew install curl cmake sdl2 openal-soft libvorbis freetype git zip unzip
+
+      - name: Install deps
+        uses: gerlero/brew-install@v1
+        with:
+          packages: cmake git zip unzip libidn2 curl
 
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -116,23 +118,25 @@ jobs:
         if: matrix.config.type == 'release'
         working-directory: ./source
         run: |
-          cmake ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RELEASE -G Xcode .
+          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RELEASE -G Xcode
+          cd build
           xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration Release -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
       - name: Building Debug
         if: matrix.config.type == 'debug'
         working-directory: ./source
         run: |
-          cmake ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=DEBUG -G Xcode .
+          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=DEBUG -G Xcode
+          cd build
           xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration Debug -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
       - name: Package warfork
-        working-directory: ./source/build
+        working-directory: ./source/build/warfork-qfusion
         run: tar --exclude='test' -czvf ../${{matrix.config.name}}.tar.gz ${{matrix.config.build_folder}}/*.app
-      
+
       - name: Unit Test
-        working-directory: ./source/build/${{matrix.config.build_folder}}
-        run: | 
+        working-directory: ./source/build/warfork-qfusion/${{matrix.config.build_folder}}
+        run: |
           set -e
           for exc in ./test/*[^.dSYM]; do
             $exc
@@ -149,62 +153,54 @@ jobs:
       max-parallel: 1
       matrix:
         config:
-          - { agent: "windows-latest", name: "win-x86_64-Release", vs_version: 'Visual Studio 17 2022', type: "release", cmake_args: "-DBUILD_STEAMLIB=1", build_folder: "Release" }
-          - { agent: "windows-latest", name: "win-x86_64-Debug", vs_version: 'Visual Studio 17 2022', type: "debug", cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON", build_folder: "Debug" }
-  
+          - {  agent: "windows-2019",  name: "win-x86_64-Release",  vs_version: "Visual Studio 16 2019",  type: "release",  cmake_args: "-DBUILD_STEAMLIB=1",  build_folder: "Release" }
+          - { agent: "windows-2019", name: "win-x86_64-Debug", vs_version: "Visual Studio 16 2019", type: "debug", cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON", build_folder: "Debug" }
+
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.agent }}
     steps:
-      - name: Setup
-        run: |
-          Add-Content -Path $env:GITHUB_ENV -Value "ACTIONS_CACHE_URL=$ACTIONS_CACHE_URL"
-          Add-Content -Path $env:GITHUB_ENV -Value "ACTIONS_RUNTIME_TOKEN=$ACTIONS_ID_TOKEN_REQUEST_TOKEN"
-      
+
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          
+
       - name: Download steamworks sdk
         run: |
           curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
           7z x third-party/steamworks/sdk.zip -othird-party/steamworks
-      
-      - name: Setup glslang
-        working-directory: ./source/glslang
-        run: |
-          python3 ./update_glslang_sources.py
 
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
 
       - name: Building Debug
-        if: matrix.config.type == 'debug' 
+        if: matrix.config.type == 'debug'
         working-directory: .\source
         run: |
-          cmake  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 .
+          cmake -B ./build ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1
+          cd build
           msbuild qfusion.sln /p:configuration=Debug /maxcpucount:8
-
       - name: Building Release
         if: matrix.config.type == 'release'
         working-directory: .\source
         run: |
-          cmake  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RELEASE .
+          cmake -B ./build  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RELEASE
+          cd build
           msbuild qfusion.sln /p:configuration=Release /maxcpucount:8
-      
-      - name: Unit Test 
+
+      - name: Unit Test
         shell: bash
-        working-directory: .\source\build\${{matrix.config.build_folder}}
-        run: | 
+        working-directory: .\source\build\warfork-qfusion\${{matrix.config.build_folder}}
+        run: |
           set -e
           for exc in ./test/*[^.pdb]; do
             $exc
           done
 
       - name: Package warfork
-        working-directory: .\source\build\${{matrix.config.build_folder}}
+        working-directory: .\source\build\warfork-qfusion\${{matrix.config.build_folder}}
         run: 7z a ..\..\${{matrix.config.name}}.zip * '-xr!*.exp' '-xr!*.lib' '-xr!test'
-      
+
       - name: Upload warfork artifact
         uses: actions/upload-artifact@v3
         with:

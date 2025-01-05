@@ -1,9 +1,30 @@
 [submodule "source/NRI"]
 	path = source/NRI
 	url = https://github.com/TeamForbiddenLLC/NRI.git
-[submodule "source/vcpkg"]
-	path = source/vcpkg
-	url = https://github.com/microsoft/vcpkg.git
-[submodule "source/glslang"]
-	path = source/glslang
-	url = https://github.com/TeamForbiddenLLC/glslang.git
+[submodule "source/extern/glslang"]
+	path = source/extern/glslang
+	url = https://github.com/KhronosGroup/glslang.git
+[submodule "source/extern/curl"]
+	path = source/extern/curl
+	url = https://github.com/curl/curl.git
+[submodule "source/extern/stb"]
+	path = source/extern/stb
+	url = https://github.com/nothings/stb.git
+[submodule "source/extern/zlib"]
+	path = source/extern/zlib
+	url = https://github.com/madler/zlib.git
+[submodule "source/extern/ogg"]
+	path = source/extern/ogg
+	url = https://github.com/xiph/ogg.git
+[submodule "source/extern/freetype"]
+	path = source/extern/freetype
+	url = https://github.com/freetype/freetype.git
+[submodule "source/extern/openal-soft"]
+	path = source/extern/openal-soft
+	url = https://github.com/kcat/openal-soft.git
+[submodule "source/extern/SDL"]
+	path = source/extern/SDL
+	url = https://github.com/libsdl-org/SDL.git
+[submodule "source/extern/vorbis"]
+	path = source/extern/vorbis
+	url = https://github.com/TeamForbiddenLLC/vorbis.git

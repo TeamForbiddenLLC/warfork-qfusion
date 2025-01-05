@@ -84,7 +84,7 @@ else()
         "../null/sys_vfs_null.c"
     )
 
-    set(SERVER_PLATFORM_LIBRARIES "pthread" "dl" "m")
+    set(SERVER_PLATFORM_LIBRARIES "-ldl")
     set(SERVER_BINARY_TYPE "")
 endif()
 
@@ -93,7 +93,7 @@ add_dependencies(${QFUSION_SERVER_NAME} angelwrap game)
 if (BUILD_STEAMLIB)
     add_dependencies(${QFUSION_SERVER_NAME} wf_steam)
 endif()
-target_link_libraries(${QFUSION_SERVER_NAME} PRIVATE ${CURL_LIBRARY} ${SERVER_PLATFORM_LIBRARIES} ${STEAMSHIMPARENT_LIBRARY})
+target_link_libraries(${QFUSION_SERVER_NAME} PRIVATE CURL::libcurl ${SERVER_PLATFORM_LIBRARIES} ${STEAMSHIMPARENT_LIBRARY})
 qf_set_output_dir(${QFUSION_SERVER_NAME} "")
 
 set_target_properties(${QFUSION_SERVER_NAME} PROPERTIES COMPILE_DEFINITIONS "DEDICATED_ONLY")
