@@ -258,7 +258,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR MINGW)
     else()
         set(TAR_GZ_DIST "${QFUSION_TAR_GZ_OUTPUT_DIRECTORY}/${QFUSION_CLIENT_NAME}_${TAR_GZ_NAME}")
     endif()
-    add_custom_target(tar_gz COMMAND ${CMAKE_COMMAND} -E tar "cfvz" ${TAR_GZ_DIST} "${CMAKE_HOME_DIRECTORY}/build/")
+    add_custom_target(tar_gz COMMAND ${CMAKE_COMMAND} -E tar "cfvz" ${TAR_GZ_DIST} "${CMAKE_BINARY_DIR}/warfork-qfusion/")
     add_dependencies(tar_gz ${QFUSION_CLIENT_NAME} game ${QFUSION_SERVER_NAME} ${QFUSION_TVSERVER_NAME})
 endif()
 
@@ -332,7 +332,7 @@ if(USE_PACKAGE_ASSETS)
     add_custom_target(deploy ALL
              WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} 
              COMMAND ${CMAKE_COMMAND} 
-             -DBIN_DIR=${CMAKE_BINARY_DIR}
+             -DBIN_DIR=${CMAKE_BINARY_DIR}/warfork-qfusion
              -DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../assets
              -P ${CMAKE_CURRENT_SOURCE_DIR}/package_assets.cmake 
              COMMENT "packaging assets ...")

@@ -217,9 +217,9 @@ add_dependencies(${QFUSION_CLIENT_NAME} angelwrap cgame cin ftlib game ref_gl sn
 set(STEAMSHIMPARENT_LIBRARY steamshim_parent)
 
 execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY ${CMAKE_HOME_DIRECTORY}/.. OUTPUT_VARIABLE GIT_COMMIT_HASH OUTPUT_STRIP_TRAILING_WHITESPACE)
-file(WRITE ${CMAKE_HOME_DIRECTORY}/build/commit.txt ${GIT_COMMIT_HASH})
+file(WRITE ${CMAKE_BINARY_DIR}/warfork-qfusion/commit.txt ${GIT_COMMIT_HASH})
 
-file(WRITE ${CMAKE_HOME_DIRECTORY}/build/steam_appid.txt ${QFUSION_GAME_STEAMAPPID})
+file(WRITE ${CMAKE_BINARY_DIR}/warfork-qfusion/steam_appid.txt ${QFUSION_GAME_STEAMAPPID})
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set_target_properties(${QFUSION_CLIENT_NAME} PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${QFUSION_MAC_INFO_PLIST})
@@ -231,22 +231,22 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 		set_source_files_properties(${QFUSION_DATA_DIR}/docs    PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 	endif()
 
-    set(BUNDLE_PATH ${CMAKE_HOME_DIRECTORY}/build/$(CONFIGURATION)/${QFUSION_CLIENT_NAME}.app/Contents)
+    set(BUNDLE_PATH ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/${QFUSION_CLIENT_NAME}.app/Contents)
     set(POST_BUILD_CMDS
-        cp -r ${CMAKE_HOME_DIRECTORY}/build/$(CONFIGURATION)/${QFUSION_GAME_DIR}/ ${BUNDLE_PATH}/Resources/${QFUSION_GAME_DIR}/ &&
-        cp -r ${CMAKE_HOME_DIRECTORY}/build/$(CONFIGURATION)/libs/ ${BUNDLE_PATH}/Resources/libs/ &&
-        cp ${CMAKE_HOME_DIRECTORY}/build/$(CONFIGURATION)/${QFUSION_SERVER_NAME} ${BUNDLE_PATH}/MacOS/ &&
-        cp ${CMAKE_HOME_DIRECTORY}/build/$(CONFIGURATION)/wf_steam${CMAKE_EXECUTABLE_SUFFIX} ${BUNDLE_PATH}/Resources/ &&
-        cp ${CMAKE_HOME_DIRECTORY}/build/$(CONFIGURATION)/${QFUSION_TVSERVER_NAME} ${BUNDLE_PATH}/MacOS/ &&
-        cp ${CMAKE_HOME_DIRECTORY}/build/libsteam_api.dylib ${BUNDLE_PATH}/Resources/ &&
-        cp ${CMAKE_HOME_DIRECTORY}/build/commit.txt ${BUNDLE_PATH}/MacOS/ &&
-        cp ${CMAKE_HOME_DIRECTORY}/build/steam_appid.txt ${BUNDLE_PATH}/Resources/
+        cp -r ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/${QFUSION_GAME_DIR}/ ${BUNDLE_PATH}/Resources/${QFUSION_GAME_DIR}/ &&
+        cp -r ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/libs/ ${BUNDLE_PATH}/Resources/libs/ &&
+        cp ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/${QFUSION_SERVER_NAME} ${BUNDLE_PATH}/MacOS/ &&
+        cp ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/wf_steam${CMAKE_EXECUTABLE_SUFFIX} ${BUNDLE_PATH}/Resources/ &&
+        cp ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/${QFUSION_TVSERVER_NAME} ${BUNDLE_PATH}/MacOS/ &&
+        cp ${CMAKE_BINARY_DIR}/warfork-qfusion/libsteam_api.dylib ${BUNDLE_PATH}/Resources/ &&
+        cp ${CMAKE_BINARY_DIR}/warfork-qfusion/commit.txt ${BUNDLE_PATH}/MacOS/ &&
+        cp ${CMAKE_BINARY_DIR}/warfork-qfusion/steam_appid.txt ${BUNDLE_PATH}/Resources/
     )
         
     add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${POST_BUILD_CMDS})
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-    add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_HOME_DIRECTORY}/build/commit.txt ${CMAKE_HOME_DIRECTORY}/build/$(CONFIGURATION)/)
-    add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_HOME_DIRECTORY}/build/steam_appid.txt ${CMAKE_HOME_DIRECTORY}/build/$(CONFIGURATION)/)
+    add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/warfork-qfusion/commit.txt ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/)
+    add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/warfork-qfusion/steam_appid.txt ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/)
 endif()
 
 target_link_libraries(${QFUSION_CLIENT_NAME} PRIVATE CURL::libcurl ${CLIENT_PLATFORM_LIBRARIES} ${DISCORD_LIBRARY} ${STEAMSHIMPARENT_LIBRARY})
