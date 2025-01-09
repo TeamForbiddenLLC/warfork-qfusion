@@ -11,9 +11,8 @@ if (NOT GAME_MODULES_ONLY)
   endif()
 
 if(USE_SYSTEM_ZLIB)
-  find_package(ZLIB REQUIRED)
-
-  add_library(ZLIB::ZLIB INTERFACE IMPORTED GLOBAL)
+  find_package(ZLIB REQUIRED GLOBAL)
+  add_library(zlib ALIAS ZLIB::ZLIB)
   target_link_libraries(ZLIB::ZLIB INTERFACE ZLIB::ZLIB)
 else()
   option(ZLIB_BUILD_EXAMPLES "" OFF)
@@ -22,10 +21,7 @@ endif()
 
 if (USE_SDL2)
   if (USE_SYSTEM_SDL2)
-    find_package(SDL2 REQUIRED)
-
-    add_library(SDL2 INTERFACE IMPORTED GLOBAL)
-    target_link_libraries(SDL2 INTERFACE SDL2::SDL2)
+    find_package(SDL2 REQUIRED GLOBAL)
   else()
     option(SDL_RPATH "" OFF)
     option(SDL_SHARED "" ON)
@@ -39,7 +35,6 @@ if (USE_SDL2)
   endif()
 endif()
 
-
 if(USE_SYSTEM_OGG)
   find_package(Ogg REQUIRED GLOBAL)
 else()
@@ -49,18 +44,15 @@ endif()
 
 if(USE_SYSTEM_FREETYPE)
   find_package(Freetype REQUIRED GLOBAL)
+  target_link_libraries(Freetype::Freetype INTERFACE freetype)
 else()
   add_subdirectory(freetype)
   add_library(Freetype::Freetype INTERFACE IMPORTED GLOBAL)
   target_link_libraries(Freetype::Freetype INTERFACE freetype)
 endif()
 
-
 if(USE_SYSTEM_VORBIS)
-    find_package(Vorbis REQUIRED GLOBAL)
-
-  # add_library(Vorbis::Vorbis INTERFACE IMPORTED GLOBAL)
-  # target_link_libraries(Vorbis::Vorbis INTERFACE Vorbis::Vorbis)
+  find_package(Vorbis REQUIRED GLOBAL)
 else()
   if(NOT USE_SYSTEM_OGG)
     set(OGG_LIBRARY ogg)
@@ -69,7 +61,6 @@ else()
   add_subdirectory(vorbis)
 endif()
 
-  
 if (USE_SYSTEM_OPENAL)
   find_package(OpenAL REQUIRED GLOBAL)
 else()
@@ -90,8 +81,6 @@ else()
   set_target_properties(ex-common PROPERTIES FOLDER extern/openal-soft)
   target_compile_definitions(OpenAL PUBLIC AL_LIBTYPE_STATIC)
 endif()
-
-
 
 if(USE_SYSTEM_CURL)
     find_package(CURL REQUIRED GLOBAL)
@@ -120,4 +109,3 @@ endif()
 endif()
 
 set(STB_INCLUDE_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/stb PARENT_SCOPE)
-
