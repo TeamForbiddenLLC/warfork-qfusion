@@ -667,7 +667,7 @@ float		R_DefaultFarClip( void );
 void		R_BatchSpriteSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceType_t *drawSurf );
 
 struct mesh_vbo_s *R_InitNullModelVBO( void );
-void	R_DrawNullSurf( const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceType_t *drawSurf );
+void	R_DrawNullSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceType_t *drawSurf );
 
 struct mesh_vbo_s *R_InitPostProcessingVBO( void );
 

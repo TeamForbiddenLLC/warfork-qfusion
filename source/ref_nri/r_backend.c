@@ -335,14 +335,6 @@ void RB_GetScissor( int *x, int *y, int *w, int *h )
 }
 
 /*
-* RB_BoundFrameBufferObject
-*/
-int RB_BoundFrameBufferObject( void )
-{
-	return 0; //RFB_BoundObject();
-}
-
-/*
 * RB_BindVBO
 */
 void RB_BindVBO( int id, int primitive )
@@ -573,32 +565,6 @@ vattribmask_t RB_GetVertexAttribs( void )
 }
 
 
-
-
-void RB_DrawElements( struct frame_cmd_buffer_s *cmd, int firstVert, int numVerts, int firstElem, int numElems, int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems ) {
-	rb.currentVAttribs &= ~VATTRIB_INSTANCES_BITS;
-
-	rb.drawElements.numVerts = numVerts;
-	rb.drawElements.numElems = numElems;
-	rb.drawElements.firstVert = firstVert;
-	rb.drawElements.firstElem = firstElem;
-	rb.drawElements.numInstances = 0;
-
-	rb.drawShadowElements.numVerts = numShadowVerts;
-	rb.drawShadowElements.numElems = numShadowElems;
-	rb.drawShadowElements.firstVert = firstShadowVert;
-	rb.drawShadowElements.firstElem = firstShadowElem;
-	rb.drawShadowElements.numInstances = 0;
-	
-	//RB_DrawElements_();
-	assert(false);
-}
-
-/*
-* RB_DrawElementsInstanced
-*
-* Draws <numInstances> instances of elements
-*/
 void RB_DrawElementsInstanced( int firstVert, int numVerts, int firstElem, int numElems,
 	int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems,
 	int numInstances, instancePoint_t *instances )
