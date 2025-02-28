@@ -229,17 +229,17 @@ void R_DrawBSPSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shad
 
 	assert(drawSurf->vbo);
 
-	cmd->state.numStreams = 1;
-	cmd->state.streams[0] = (struct frame_cmd_vertex_stream_s ) {
+	cmd->pipeline.numStreams = 1;
+	cmd->pipeline.streams[0] = (struct frame_cmd_vertex_stream_s ) {
 		.stride = drawSurf->vbo->vertexSize,
 		.bindingSlot = 0
 	};
-	cmd->state.numAttribs = 0;
-	cmd->state.pipelineLayout.topology = NriTopology_TRIANGLE_LIST;
-	R_FillNriVertexAttrib(drawSurf->vbo, cmd->state.attribs, &cmd->state.numAttribs);
+	cmd->pipeline.numAttribs = 0;
+	cmd->pipeline.topology = RI_TOPOLOGY_TRIANGLE_LIST;
+	R_FillNriVertexAttrib(drawSurf->vbo, cmd->pipeline.attribs, &cmd->pipeline.numAttribs);
 
-	FR_CmdSetVertexBuffer(cmd, 0, drawSurf->vbo->vertexBuffer, 0);
-	FR_CmdSetIndexBuffer(cmd, drawSurf->vbo->indexBuffer, 0, NriIndexType_UINT16);
+	FR_CmdSetVertexBuffer(cmd, 0, &drawSurf->vbo->vertexBuffer, 0);
+	FR_CmdSetIndexBuffer(cmd, &drawSurf->vbo->indexBuffer, 0, RI_INDEX_TYPE_16);
 
 	RB_SetDlightBits( dlightBits );
 

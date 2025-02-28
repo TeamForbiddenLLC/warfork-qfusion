@@ -104,7 +104,6 @@ skydome_t *R_CreateSkydome( model_t *model )
 			.numElems = mesh->numElems,
 			.numInstances = 0,
 			
-			.memoryLocation = NriMemoryLocation_DEVICE,
 			.vattribs = SKYDOME_VATTRIBS,
 			.halfFloatVattribs = 0 
 		};
@@ -288,18 +287,18 @@ static void R_DrawSkyBoxSide(struct frame_cmd_buffer_s* cmd, const skydome_t *sk
 
 	RB_BindShader( NULL, rsc.skyent, skyShader, fog );
 
-	cmd->state.numStreams = 1;
-	cmd->state.streams[0] = (struct frame_cmd_vertex_stream_s ) {
+	cmd->pipeline.numStreams = 1;
+	cmd->pipeline.streams[0] = (struct frame_cmd_vertex_stream_s ) {
 		.stride = skydome->linearVbos[side]->vertexSize,
 		.bindingSlot = 0
 	};
-	cmd->state.numAttribs = 0;
-	cmd->state.pipelineLayout.topology = NriTopology_TRIANGLE_LIST;
-	R_FillNriVertexAttrib(skydome->linearVbos[side], cmd->state.attribs, &cmd->state.numAttribs);
+	cmd->pipeline.numAttribs = 0;
+	cmd->pipeline.topology = RI_TOPOLOGY_TRIANGLE_LIST;
+	R_FillNriVertexAttrib(skydome->linearVbos[side], cmd->pipeline.attribs, &cmd->pipeline.numAttribs);
 
 
-	FR_CmdSetVertexBuffer(cmd, 0, skydome->linearVbos[side]->vertexBuffer, 0);
-	FR_CmdSetIndexBuffer(cmd, skydome->linearVbos[side]->indexBuffer, sizeof(elem_t) * visSide->firstElem, NriIndexType_UINT16);
+	FR_CmdSetVertexBuffer(cmd, 0, &skydome->linearVbos[side]->vertexBuffer, 0);
+	FR_CmdSetIndexBuffer(cmd, &skydome->linearVbos[side]->indexBuffer, sizeof(elem_t) * visSide->firstElem, RI_INDEX_TYPE_16);
 
 	//RB_BindVBO( skydome->linearVbos[side]->index, GL_TRIANGLES );
 
@@ -344,17 +343,17 @@ static void R_DrawBlackBottom( struct frame_cmd_buffer_s* cmd, const skydome_t *
 
 	RB_BindShader( NULL, rsc.skyent, rsh.envShader, fog );
 
-	cmd->state.numStreams = 1;
-	cmd->state.streams[0] = (struct frame_cmd_vertex_stream_s ) {
+	cmd->pipeline.numStreams = 1;
+	cmd->pipeline.streams[0] = (struct frame_cmd_vertex_stream_s ) {
 		.stride = skydome->linearVbos[side]->vertexSize,
 		.bindingSlot = 0
 	};
-	cmd->state.numAttribs = 0;
-	cmd->state.pipelineLayout.topology = NriTopology_TRIANGLE_LIST;
-	R_FillNriVertexAttrib(skydome->linearVbos[side], cmd->state.attribs, &cmd->state.numAttribs);
+	cmd->pipeline.numAttribs = 0;
+	cmd->pipeline.topology = RI_TOPOLOGY_TRIANGLE_LIST;
+	R_FillNriVertexAttrib(skydome->linearVbos[side], cmd->pipeline.attribs, &cmd->pipeline.numAttribs);
 
-	FR_CmdSetVertexBuffer(cmd, 0, skydome->linearVbos[side]->vertexBuffer, 0);
-	FR_CmdSetIndexBuffer(cmd, skydome->linearVbos[side]->indexBuffer, sizeof(elem_t) * visSide->firstElem, NriIndexType_UINT16);
+	FR_CmdSetVertexBuffer(cmd, 0, &skydome->linearVbos[side]->vertexBuffer, 0);
+	FR_CmdSetIndexBuffer(cmd, &skydome->linearVbos[side]->indexBuffer, sizeof(elem_t) * visSide->firstElem, RI_INDEX_TYPE_16);
 
 	RB_DrawShadedElements_2(cmd, 0, visSide->numVerts, 0, visSide->numElems, 
 		0, 0, 0, 0);
@@ -452,17 +451,17 @@ void R_DrawSkySurf( struct frame_cmd_buffer_s* cmd,const entity_t *e, const shad
 
 				RB_BindShader( NULL ,rsc.skyent, shader, NULL ); // must be called for every side to reset backend state
 
-				cmd->state.numStreams = 1;
-				cmd->state.streams[0] = (struct frame_cmd_vertex_stream_s ) {
+				cmd->pipeline.numStreams = 1;
+				cmd->pipeline.streams[0] = (struct frame_cmd_vertex_stream_s ) {
 					.stride = skydome->sphereVbos[i]->vertexSize,
 					.bindingSlot = 0
 				};
-				cmd->state.numAttribs = 0;
-				cmd->state.pipelineLayout.topology = NriTopology_TRIANGLE_LIST;
-				R_FillNriVertexAttrib(skydome->sphereVbos[i], cmd->state.attribs, &cmd->state.numAttribs);
+				cmd->pipeline.numAttribs = 0;
+				cmd->pipeline.topology = RI_TOPOLOGY_TRIANGLE_LIST;
+				R_FillNriVertexAttrib(skydome->sphereVbos[i], cmd->pipeline.attribs, &cmd->pipeline.numAttribs);
 			
-				FR_CmdSetVertexBuffer(cmd, 0, skydome->sphereVbos[i]->vertexBuffer, 0);
-				FR_CmdSetIndexBuffer(cmd, skydome->sphereVbos[i]->indexBuffer, sizeof(elem_t) * visSide->firstElem, NriIndexType_UINT16);
+				FR_CmdSetVertexBuffer(cmd, 0, &skydome->sphereVbos[i]->vertexBuffer, 0);
+				FR_CmdSetIndexBuffer(cmd, &skydome->sphereVbos[i]->indexBuffer, sizeof(elem_t) * visSide->firstElem, RI_INDEX_TYPE_16);
 
 
 				RB_DrawShadedElements_2(cmd, 0, visSide->numVerts, 0, visSide->numElems, 

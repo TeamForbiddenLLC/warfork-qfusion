@@ -366,22 +366,17 @@ mesh_vbo_t *R_InitNullModelVBO( void )
 	elem_t elems[6] = { 0, 1, 2, 3, 4, 5 };
 	mesh_t mesh;
 	vattribmask_t vattribs = VATTRIB_POSITION_BIT | VATTRIB_TEXCOORDS_BIT | VATTRIB_COLOR0_BIT;
-	mesh_vbo_t *vbo;
-	
-	struct mesh_vbo_desc_s meshdesc = {
-		.tag = VBO_TAG_NONE,
-		.owner = ( void * )&rf,
 
-		.numVerts = 6,
-		.numElems = 6,
-		.numInstances = 0,
-		
-		.memoryLocation = NriMemoryLocation_DEVICE,
-		.vattribs = vattribs,
-		.halfFloatVattribs = vattribs
-	};
-	vbo = R_CreateMeshVBO( &meshdesc); 
-	//vbo = R_CreateMeshVBO( &rf, 6, 6, 0, vattribs, VBO_TAG_NONE, vattribs );
+	struct mesh_vbo_desc_s meshdesc = { .tag = VBO_TAG_NONE,
+										.owner = (void *)&rf,
+
+										.numVerts = 6,
+										.numElems = 6,
+										.numInstances = 0,
+
+										.vattribs = vattribs,
+										.halfFloatVattribs = vattribs };
+	mesh_vbo_t *vbo = R_CreateMeshVBO( &meshdesc );
 	if( !vbo ) {
 		return NULL;
 	}
@@ -461,8 +456,8 @@ static mesh_t pic_mesh = { 4, pic_xyz, pic_normals, NULL, pic_st, { 0, 0, 0, 0 }
 void R_Set2DMode(struct frame_cmd_buffer_s* cmd, bool enable )
 {
 
-	const int width = cmd->textureBuffers.screen.width;
-	const int height = cmd->textureBuffers.screen.height;
+	const int width = cmd->viewport.width;
+	const int height = cmd->viewport.height;
 
 	if( rf.in2D == true && enable == true && width == rf.width2D && height == rf.height2D ) {
 		return;
@@ -484,7 +479,7 @@ void R_Set2DMode(struct frame_cmd_buffer_s* cmd, bool enable )
 		// set 2D virtual screen size
 		RB_Scissor( 0, 0, width, height );
 
-		FR_CmdSetViewportAll( cmd, 
+		FR_CmdSetViewport( cmd, 
 											 (struct RIViewport_s){ 
 											 .x = 0, 
 											 .y = 0, 
@@ -492,7 +487,7 @@ void R_Set2DMode(struct frame_cmd_buffer_s* cmd, bool enable )
 											 .height = height, 
 											 .depthMin = 0.0f, 
 											 .depthMax = 1.0f } );
-		FR_CmdSetScissorAll( cmd, 
+		FR_CmdSetScissor( cmd, 
 											 (struct RIRect_s){ 
 											 .x = 0, 
 											 .y = 0, 
@@ -766,11 +761,10 @@ mesh_vbo_t *R_InitPostProcessingVBO( void )
 		.numElems = 6,
 		.numInstances = 0,
 		
-		.memoryLocation = NriMemoryLocation_DEVICE,
 		.vattribs = vattribs,
 		.halfFloatVattribs = vattribs
 	};
-	mesh_vbo_t *vbo = R_CreateMeshVBO( &meshdesc); 
+	mesh_vbo_t *vbo = R_CreateMeshVBO( &meshdesc );
 	//vbo = R_CreateMeshVBO( &rf, 4, 6, 0, vattribs, VBO_TAG_NONE, vattribs );
 	if( !vbo ) {
 		return NULL;
@@ -970,29 +964,29 @@ static void R_Clear(struct frame_cmd_buffer_s* frame, int bitMask  /* unused var
 	if(!hasClearOperation) 
 		return;
 	
-	NriAttachmentsDesc attachmentsDesc = {0};
-	attachmentsDesc.depthStencil = frame->state.depthAttachment;
-	attachmentsDesc.colorNum = frame->state.numColorAttachments;
-	attachmentsDesc.colors = frame->state.colorAttachment;
-	rsh.nri.coreI.CmdBeginRendering( frame->cmd, &attachmentsDesc );
-	{
-		NriClearDesc clearDesc[MAX_COLOR_ATTACHMENTS + 1] = {0};
-		size_t numClearDesc = 0;
-		if( clearColor ) {
-			for(size_t i = 0; i < attachmentsDesc.colorNum; i++) {
-				clearDesc[numClearDesc].value.color = ( NriColor ){ .f = { envColor[0], envColor[1], envColor[2], envColor[3] } };
-				clearDesc[numClearDesc].planes = NriPlaneBits_COLOR;
-				numClearDesc++;
-			}
-		}
-		if( !depthPortal ) {
-			clearDesc[numClearDesc].value.depthStencil = ( NriDepthStencil ){ .depth = 1.0f, .stencil = 0.0f };
-			clearDesc[numClearDesc].planes = NriPlaneBits_DEPTH;
-			numClearDesc++;
-		}
-		rsh.nri.coreI.CmdClearAttachments( frame->cmd, clearDesc, numClearDesc, NULL, 0 );
-	}
-	rsh.nri.coreI.CmdEndRendering( frame->cmd );
+	//NriAttachmentsDesc attachmentsDesc = {0};
+	//attachmentsDesc.depthStencil = frame->state.depthAttachment;
+	//attachmentsDesc.colorNum = frame->state.numColorAttachments;
+	//attachmentsDesc.colors = frame->state.colorAttachment;
+	//rsh.nri.coreI.CmdBeginRendering( frame->cmd, &attachmentsDesc );
+	//{
+	//	NriClearDesc clearDesc[MAX_COLOR_ATTACHMENTS + 1] = {0};
+	//	size_t numClearDesc = 0;
+	//	if( clearColor ) {
+	//		for(size_t i = 0; i < attachmentsDesc.colorNum; i++) {
+	//			clearDesc[numClearDesc].value.color = ( NriColor ){ .f = { envColor[0], envColor[1], envColor[2], envColor[3] } };
+	//			clearDesc[numClearDesc].planes = NriPlaneBits_COLOR;
+	//			numClearDesc++;
+	//		}
+	//	}
+	//	if( !depthPortal ) {
+	//		clearDesc[numClearDesc].value.depthStencil = ( NriDepthStencil ){ .depth = 1.0f, .stencil = 0.0f };
+	//		clearDesc[numClearDesc].planes = NriPlaneBits_DEPTH;
+	//		numClearDesc++;
+	//	}
+	//	rsh.nri.coreI.CmdClearAttachments( frame->cmd, clearDesc, numClearDesc, NULL, 0 );
+	//}
+	//rsh.nri.coreI.CmdEndRendering( frame->cmd );
 
 
 	// RB_Clear( bits, envColor[0], envColor[1], envColor[2], 1 );
@@ -1004,7 +998,7 @@ static void R_Clear(struct frame_cmd_buffer_s* frame, int bitMask  /* unused var
 static void R_SetupGL(struct frame_cmd_buffer_s* frame)
 {
 	RB_Scissor( rn.scissor[0], rn.scissor[1], rn.scissor[2], rn.scissor[3] );
-	FR_CmdSetViewportAll(frame, (struct RIViewport_s) {
+	FR_CmdSetViewport(frame, (struct RIViewport_s) {
 		.x = rn.viewport[0],
 		.y = rn.viewport[1],
 		.width = rn.viewport[2],
@@ -1211,15 +1205,17 @@ void R_RenderView(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 	if( r_speeds->integer )
 		rf.stats.t_add_entities += ( ri.Sys_Milliseconds() - msec );
 
-	if( !shadowMap ) {
-		// now set  the real far clip value and reload view matrices
-		R_SetFarClip();
 
-		R_SetupViewMatrices();
+	//TODO: add back shadow map
+	//if( !shadowMap ) {
+	//	// now set  the real far clip value and reload view matrices
+	//	R_SetFarClip();
 
-		// render to depth textures, mark shadowed entities and surfaces
-		R_DrawShadowmaps(frame);
-	}
+	//	R_SetupViewMatrices();
+
+	//	// render to depth textures, mark shadowed entities and surfaces
+	//	R_DrawShadowmaps(frame);
+	//}
 
 	R_SortDrawList( rn.meshlist );
 

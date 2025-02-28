@@ -44,33 +44,10 @@ enum descriptor_set_e {
 		exit( 0 );                      \
 	}
 
-#define COMMAND_BUFFER_COUNT 2
-
-
 // a wrapper to hold onto the hash + cookie
 struct nri_descriptor_s {
-	NriDescriptor *descriptor;
+	//NriDescriptor *descriptor;
 	uint32_t cookie;
 };
-
-struct nri_backend_s {
-	NriGraphicsAPI api;
-	NriHelperInterface helperI;
-	NriCoreInterface coreI;
-	NriSwapChainInterface swapChainI;
-	NriWrapperVKInterface wrapperVKI;
-	NriDevice *device;
-
-	NriCommandQueue *graphicsCommandQueue;
-	uint32_t cookie;
-};
-
-static inline struct nri_descriptor_s R_CreateDescriptorWrapper( struct nri_backend_s *backend, NriDescriptor *descriptor )
-{
-	return ( struct nri_descriptor_s ){ 
-		.cookie = backend->cookie++, 
-		.descriptor = descriptor 
-	};
-}
 
 #endif

@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <glslang/Include/glslang_c_interface.h>
 #include <glslang/Public/resource_limits_c.h>
 #include <glslang/Include/glslang_c_shader_types.h>
+#include <vulkan/vulkan_core.h>
 #include "ri_resource.h"
 #include "spirv_reflect.h"
 
@@ -71,14 +72,14 @@ static glslang_stage_t __RP_GLStageToSlang( glsl_program_stage_t stage )
 	return GLSLANG_STAGE_COUNT;
 }
 
-static struct ProgramDescriptorInfo* __GetDescriptorInfo(struct glsl_program_s* program, uint32_t set) {
-	for( size_t i = 0; i < program->numSets; i++ ) {
-		if( program->programDescriptors[i].registerSpace == set ) {
-			return &program->programDescriptors[i];
-		}
-	}
-	return NULL;
-} 
+//static struct ProgramDescriptorInfo* __GetDescriptorInfo(struct glsl_program_s* program, uint32_t set) {
+//	for( size_t i = 0; i < program->numSets; i++ ) {
+//		if( program->programDescriptors[i].registerSpace == set ) {
+//			return &program->programDescriptors[i];
+//		}
+//	}
+//	return NULL;
+//} 
 
 /*
  * RP_Init
@@ -984,49 +985,51 @@ static inline struct pipeline_hash_s* __resolvePipeline(struct glsl_program_s *p
 }
 
 static int __compareVertAttribs(const void * a1, const void * a2) {
-	const NriVertexAttributeDesc* at1 = a1;  
-	const NriVertexAttributeDesc* at2 = a2;
+	const struct frame_cmd_vertex_attrib_s* at1 = a1;  
+	const struct frame_cmd_vertex_attrib_s * at2 = a2;
 	return at1->vk.location > at2->vk.location;
 }
 
-struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, struct frame_cmd_state_s *def )
+void RP_BindPipeline( struct frame_cmd_buffer_s *cmd, struct pipeline_hash_s *pipeline )
+{
+	GPU_VULKAN_BLOCK( ( rsh.device.renderer ), ( {
+		vkCmdBindPipeline( cmd->vk.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->vk.handle );
+					  } ) );
+}
+
+struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_desc_s* cmd)
 {
 	size_t numAttribs = 0;
 	struct frame_cmd_vertex_attrib_s vertexInputAttribs[MAX_ATTRIBUTES];
-	enum RICullMode_e cullMode = def->pipelineLayout.cullMode;
-	if(def->pipelineLayout.flippedViewport) {
+	enum RICullMode_e cullMode = cmd->cullMode;
+	if(cmd->flippedViewport) {
 		cullMode ^= 0;
 	}
 
 	hash_t hash = HASH_INITIAL_VALUE;
-	assert(def->numStreams < MAX_ATTRIBUTES);
-	assert(def->numStreams < MAX_STREAMS);
-	for( size_t i = 0; i < def->numAttribs; i++ ) {	
-		if(!((1 << def->attribs[i].vk.location ) & program->vertexInputMask)) {
+	assert(cmd->numStreams < MAX_ATTRIBUTES);
+	assert(cmd->numStreams < MAX_STREAMS);
+	for( size_t i = 0; i < cmd->numAttribs; i++ ) {	
+		if(!((1 << cmd->attribs[i].vk.location ) & program->vertexInputMask)) {
 			continue;
 		}
-		vertexInputAttribs[numAttribs++] = def->attribs[i];
+		vertexInputAttribs[numAttribs++] = cmd->attribs[i];
 	}
-	qsort(vertexInputAttribs, numAttribs, sizeof(NriVertexAttributeDesc), __compareVertAttribs);
+	qsort(vertexInputAttribs, numAttribs, sizeof(struct frame_cmd_vertex_attrib_s), __compareVertAttribs);
 	for( size_t i = 0; i < numAttribs; i++ ) {	
 		hash = hash_u32(hash, vertexInputAttribs[i].offset);
 		hash = hash_u32(hash, vertexInputAttribs[i].format);
 		hash = hash_u32(hash, vertexInputAttribs[i].streamIndex);
 	}
-	hash = hash_data( hash, &def->streams, sizeof( NriVertexStreamDesc ) * def->numStreams);
-	hash = hash_data( hash, &def->pipelineLayout.depthBias, sizeof( NriDepthBiasDesc ));
-	hash = hash_u32( hash, def->pipelineLayout.depthFormat );
-	for( size_t i = 0; i < def->numColorAttachments; i++ ) {
-		hash = hash_u32( hash, def->pipelineLayout.colorFormats[i] );
-	}
-	if(def->pipelineLayout.blendEnabled) {
-		hash = hash_u32( hash, def->pipelineLayout.colorSrcFactor );
-		hash = hash_u32( hash, def->pipelineLayout.colorDstFactor );
-	}
+	hash = hash_data( hash, &cmd->streams, sizeof( struct frame_cmd_vertex_stream_s ) * cmd->numStreams );
+	hash = hash_data( hash, &cmd->depthBias, sizeof( struct frame_pipeline_depth_bias_s  ));
+	if( cmd->hasDepthAttachment)
+		hash = hash_u32( hash, cmd->depthFormat);
+	hash = hash_data( hash, &cmd->colorAttachments, sizeof( cmd->colorAttachments[0] ) * cmd->numColorsAttachments );
 	hash = hash_u32( hash, cullMode);
-	hash = hash_u32( hash, def->pipelineLayout.compareFunc);
-	hash = hash_u32( hash, def->pipelineLayout.depthWrite);
-	hash = hash_u32( hash, def->pipelineLayout.topology);
+	hash = hash_u32( hash, cmd->compareFunc);
+	hash = hash_u32( hash, cmd->depthWrite);
+	hash = hash_u32( hash, cmd->topology);
 
 	struct pipeline_hash_s* pipeline = __resolvePipeline(program, hash);
 	assert(pipeline);
@@ -1073,7 +1076,7 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 						  pipelineCreateInfo.pVertexInputState = &vertexInputState;
 							VkVertexInputAttributeDescription vertextbindingDesc[MAX_ATTRIBUTES];
 						  VkVertexInputBindingDescription vertexInputStreamsDesc[MAX_STREAMS];
-						  if( def->numStreams > 0 ) {
+						  if( cmd->numStreams > 0 ) {
 							  for( size_t i = 0; i < numAttribs; i++ ) {
 								  vertextbindingDesc[i].offset = vertexInputAttribs[i].offset;
 								  vertextbindingDesc[i].binding = vertexInputAttribs[i].streamIndex;
@@ -1083,48 +1086,48 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 							  vertexInputState.pVertexAttributeDescriptions = vertextbindingDesc;
 							  vertexInputState.vertexAttributeDescriptionCount = numAttribs;
 
-							  for( size_t i = 0; i < def->numStreams; i++ ) {
-								  vertexInputStreamsDesc[i].binding = def->streams[i].bindingSlot;
-								  vertexInputStreamsDesc[i].stride = def->streams[i].stride;
+							  for( size_t i = 0; i < cmd->numStreams; i++ ) {
+								  vertexInputStreamsDesc[i].binding = cmd->streams[i].bindingSlot;
+								  vertexInputStreamsDesc[i].stride = cmd->streams[i].stride;
 								  vertexInputStreamsDesc[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 							  }
 							  vertexInputState.pVertexBindingDescriptions = vertexInputStreamsDesc;
-							  vertexInputState.vertexBindingDescriptionCount = def->numStreams;
+							  vertexInputState.vertexBindingDescriptionCount = cmd->numStreams;
 						  }
 
 						  VkPipelineColorBlendAttachmentState colorAttachmentDesc[MAX_COLOR_ATTACHMENTS] = {};
-						  for( size_t i = 0; i < def->numColorAttachments; i++ ) {
-							  colorAttachmentDesc[i].blendEnable = def->pipelineLayout.blendEnabled;
-							  colorAttachmentDesc[i].srcColorBlendFactor = ri_vk_RIBlendFactorToVK( def->pipelineLayout.colorSrcFactor );
-							  colorAttachmentDesc[i].dstColorBlendFactor = ri_vk_RIBlendFactorToVK( def->pipelineLayout.colorDstFactor );
+						  for( size_t i = 0; i < cmd->numColorsAttachments; i++ ) {
+							  colorAttachmentDesc[i].blendEnable = cmd->colorBlendEnabled;
+							  colorAttachmentDesc[i].srcColorBlendFactor = ri_vk_RIBlendFactorToVK( cmd->colorSrcFactor);
+							  colorAttachmentDesc[i].dstColorBlendFactor = ri_vk_RIBlendFactorToVK( cmd->colorDstFactor);
 							  colorAttachmentDesc[i].colorBlendOp = VK_BLEND_OP_ADD;
-							  colorAttachmentDesc[i].colorWriteMask = ri_vk_RIColorWriteMaskToVK( def->pipelineLayout.colorWriteMask );
+							  colorAttachmentDesc[i].colorWriteMask = ri_vk_RIColorWriteMaskToVK( cmd->colorWriteMask);
 						  }
 
 						  VkPipelineColorBlendStateCreateInfo colorBlendState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-						  colorBlendState.attachmentCount = def->numColorAttachments;
+						  colorBlendState.attachmentCount = cmd->numColorsAttachments;
 						  colorBlendState.pAttachments = colorAttachmentDesc;
 							pipelineCreateInfo.pColorBlendState = &colorBlendState;
 
 						  VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
-						  inputAssemblyState.topology = ri_vk_RITopologyToVK( def->pipelineLayout.topology );
+						  inputAssemblyState.topology = ri_vk_RITopologyToVK( cmd->topology );
 							pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
 
 						  VkPipelineRasterizationStateCreateInfo rasterizationState = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
 						  rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
 						  rasterizationState.cullMode = ri_vk_RICullModeToVK( cullMode );
 						  rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-						  rasterizationState.depthBiasEnable = ( def->pipelineLayout.depthBias.constant != 0 || def->pipelineLayout.depthBias.slope != 0 ) ? VK_TRUE : VK_FALSE;
-						  rasterizationState.depthBiasConstantFactor = def->pipelineLayout.depthBias.constant;
-						  rasterizationState.depthBiasClamp = def->pipelineLayout.depthBias.clamp;
-						  rasterizationState.depthBiasSlopeFactor = def->pipelineLayout.depthBias.slope;
+						  rasterizationState.depthBiasEnable = ( cmd->depthBias.constant != 0 || cmd->depthBias.slope != 0 ) ? VK_TRUE : VK_FALSE;
+						  rasterizationState.depthBiasConstantFactor = cmd->depthBias.constant;
+						  rasterizationState.depthBiasClamp = cmd->depthBias.clamp;
+						  rasterizationState.depthBiasSlopeFactor = cmd->depthBias.slope;
 						  rasterizationState.lineWidth = 1.0f;
 							pipelineCreateInfo.pRasterizationState = &rasterizationState;
 
 						  VkPipelineDepthStencilStateCreateInfo depthStencilState = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
-						  depthStencilState.depthTestEnable = def->pipelineLayout.compareFunc != RI_COMPARE_NONE;
-						  depthStencilState.depthWriteEnable = def->pipelineLayout.depthWrite;
-						  depthStencilState.depthCompareOp = ri_vk_RICompareOpToVK( def->pipelineLayout.compareFunc );
+						  depthStencilState.depthTestEnable = cmd->compareFunc != RI_COMPARE_NONE;
+						  depthStencilState.depthWriteEnable = cmd->depthWrite;
+						  depthStencilState.depthCompareOp = ri_vk_RICompareOpToVK( cmd->compareFunc );
 						  depthStencilState.minDepthBounds = 0.0f;
 						  depthStencilState.maxDepthBounds = 1.0f;
 							pipelineCreateInfo.pDepthStencilState = &depthStencilState;
@@ -1200,19 +1203,19 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	return pipeline;
 }
 
-static NriDescriptorRangeDesc *__FindAndInsertNriDescriptorRange( const SpvReflectDescriptorBinding *binding, NriDescriptorRangeDesc **ranges)
-{
-	assert(ranges);
-	for( size_t i = 0; i < arrlen( *ranges ); i++ ) {
-		if( ( *ranges )[i].baseRegisterIndex == binding->binding ) {
-			return &( *ranges )[i];
-		}
-	}
-
-	const size_t insertIndex = arraddnindex( (*ranges), 1 );
-	memset( &( *ranges )[insertIndex], 0, sizeof( NriDescriptorRangeDesc ) );
-	return &( *ranges )[insertIndex];
-}
+//static NriDescriptorRangeDesc *__FindAndInsertNriDescriptorRange( const SpvReflectDescriptorBinding *binding, NriDescriptorRangeDesc **ranges)
+//{
+//	assert(ranges);
+//	for( size_t i = 0; i < arrlen( *ranges ); i++ ) {
+//		if( ( *ranges )[i].baseRegisterIndex == binding->binding ) {
+//			return &( *ranges )[i];
+//		}
+//	}
+//
+//	const size_t insertIndex = arraddnindex( (*ranges), 1 );
+//	memset( &( *ranges )[insertIndex], 0, sizeof( NriDescriptorRangeDesc ) );
+//	return &( *ranges )[insertIndex];
+//}
 
 static const struct descriptor_reflection_s *__ReflectDescriptorSet( const struct glsl_program_s *program, const struct glsl_descriptor_handle_s *handle )
 {
@@ -1232,26 +1235,36 @@ bool RP_ProgramHasUniform( const struct glsl_program_s *program, const struct gl
 	return false;
 }
 
+void RP_BindPushConstant( struct RIDevice_s *device, struct frame_cmd_buffer_s *cmd, struct glsl_program_s *program, void *data, size_t len )
+{
+	GPU_VULKAN_BLOCK( ( device->renderer ), ( {
+						  assert( len <= program->vk.pushConstant.size );
+						  vkCmdPushConstants( cmd->vk.cmd, program->vk.pipelineLayout, program->vk.pushConstant.shaderStageFlags, 0, program->vk.pushConstant.size, data );
+					  } ) );
+}
+
 void RP_BindDescriptorSets( struct RIDevice_s *device, struct frame_cmd_buffer_s *cmd, struct glsl_program_s *program, struct glsl_descriptor_binding_s *bindings, size_t numDescriptorData )
 {
-	GPU_VULKAN_BLOCK( ( &device->renderer ), ( {
+	GPU_VULKAN_BLOCK( ( device->renderer ), ( {
 						  size_t numWrites = 0;
 						  VkWriteDescriptorSet descriptorWrite[32]; // write 32 descriptors at once
 						  for( uint32_t setIndex = 0; setIndex < DESCRIPTOR_SET_MAX; setIndex++ ) {
 							  hash_t hash = HASH_INITIAL_VALUE;
 							  for( size_t i = 0; i < numDescriptorData; i++ ) {
 								  const struct descriptor_reflection_s *refl = __ReflectDescriptorSet( program, &bindings[i].handle );
-								  if( !refl || setIndex != refl->baseRegisterIndex || IsEmptyDescriptor( device, &bindings[i].descriptor ) )
+								  if( !refl || setIndex != refl->set || RI_IsEmptyDescriptor( device, &bindings[i].descriptor ) )
 									  continue;
 								  hash = hash_u64( hash, refl->hash );
 								  hash = hash_u64( hash, bindings[i].descriptor.cookie );
 							  }
+							  if( hash == HASH_INITIAL_VALUE )
+								  continue;
 							  struct glsl_program_descriptor_s *info = &program->programDescriptors[setIndex];
 							  struct descriptor_set_result_s result = ResolveDescriptorSet( &rsh.device, &info->alloc, cmd->frameCount, hash );
 							  if( !result.found ) {
 								  for( size_t i = 0; i < numDescriptorData; i++ ) {
 									  const struct descriptor_reflection_s *refl = __ReflectDescriptorSet( program, &bindings[i].handle );
-									  if( !refl || setIndex != refl->baseRegisterIndex || IsEmptyDescriptor( device, &bindings[i].descriptor ) )
+									  if( !refl || setIndex != refl->set || RI_IsEmptyDescriptor( device, &bindings[i].descriptor ) )
 										  continue;
 									  VkWriteDescriptorSet *vkDesc = descriptorWrite + ( numWrites++ );
 									  memset( vkDesc, 0, sizeof( VkWriteDescriptorSet ) );
@@ -1272,7 +1285,7 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct frame_cmd_buffer_s
 										  case VK_DESCRIPTOR_TYPE_SAMPLER:
 										  case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 										  case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-											  vkDesc->pImageInfo = &bindings[i].descriptor.vk.image.imageInfo;
+											  vkDesc->pImageInfo = &bindings[i].descriptor.vk.image.info;
 											  break;
 										  default:
 											  assert( false ); // this is bad
@@ -1285,6 +1298,8 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct frame_cmd_buffer_s
 									  }
 								  }
 							  }
+							  VkDescriptorSet vkDescriptorSet = result.set->vk.handle;
+							  vkCmdBindDescriptorSets( cmd->vk.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, program->vk.pipelineLayout, setIndex, 1, &vkDescriptorSet, 0, NULL);
 						  }
 						  if( numWrites > 0 ) {
 							  vkUpdateDescriptorSets( device->vk.device, numWrites, descriptorWrite, 0, NULL );
@@ -1676,7 +1691,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 								  assert( result == SPV_REFLECT_RESULT_SUCCESS );
 								  for( size_t i_set = 0; i_set < reflectionDescriptorCount; i_set++ ) {
 									  const SpvReflectDescriptorSet *reflection = reflectionDescSets[i_set];
-										assert(reflection->set < Q_ARRAY_COUNT(program->descriptorSetInfo));
+										assert(reflection->set < Q_ARRAY_COUNT(program->programDescriptors));
 										struct glsl_program_descriptor_s *programDesc = &program->programDescriptors[reflection->set];
 										programDesc->alloc.descriptorAllocator = _vk__descriptorSetAlloc;
 										programDesc->alloc.framesInFlight = NUMBER_FRAMES_FLIGHT;
@@ -1686,6 +1701,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 											assert( reflectionBinding->array.dims_count <= 1 ); // not going to handle multi-dim arrays
 											struct descriptor_reflection_s reflc = { 0 };
 											reflc.hash = Create_DescriptorHandle( reflectionBinding->name ).hash;
+											reflc.set = reflectionBinding->set;
 											reflc.baseRegisterIndex = reflectionBinding->binding;
 											reflc.isArray = reflectionBinding->count > 0;
 											reflc.dimCount = max( 1, reflectionBinding->count );

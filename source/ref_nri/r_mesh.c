@@ -469,22 +469,25 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 					RB_FlushDynamicMeshes(frame);
 					batchFlushed = true;
 					depthHack = true;
-					assert(frame->state.numColorAttachments == 1);
-					depthmin = frame->state.viewports[0].depthMin;
-					depthmax = frame->state.viewports[0].depthMax;
-					frame->state.viewports[0].depthMax = frame->state.viewports[0].depthMin + 0.3f * (frame->state.viewports[0].depthMax - frame->state.viewports[0].depthMin );
-					frame->state.dirty |= CMD_DIRT_VIEWPORT;
+					//assert(frame->state.numColorAttachments == 1);
+					//depthmin = frame->state.viewports[0].depthMin;
+					//depthmax = frame->state.viewports[0].depthMax;
+					//frame->state.viewports[0].depthMax = frame->state.viewports[0].depthMin + 0.3f * (frame->state.viewports[0].depthMax - frame->state.viewports[0].depthMin );
+					
+					FR_CmdSetDepthRangeAll( frame, depthmin, depthmax + (0.3f * (depthmax - depthmin)));
+					
+					frame->dirty |= CMD_DIRT_VIEWPORT;
 				}
 			} else {
 				if( depthHack ) {
 					RB_FlushDynamicMeshes(frame);
 					batchFlushed = true;
 					depthHack = false;
-					assert(frame->state.numColorAttachments == 1);
-
-					frame->state.viewports[0].depthMax = depthmax;
-					frame->state.viewports[0].depthMin = depthmin;
-					frame->state.dirty |= CMD_DIRT_VIEWPORT;
+					//assert(frame->state.numColorAttachments == 1);
+					FR_CmdSetDepthRangeAll( frame, depthmin, depthmax );
+					//frame->state.viewports[0].depthMax = depthmax;
+					//frame->state.viewports[0].depthMin = depthmin;
+					frame->dirty |= CMD_DIRT_VIEWPORT;
 				}
 			}
 
@@ -520,7 +523,6 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 			}
 
 			if( !depthWrite && !depthCopied && Shader_ReadDepth( shader ) ) {
-				assert(frame->stackCmdBeingRendered == 1);
 				depthCopied = true;
 				if( ( rn.renderFlags & RF_SOFT_PARTICLES ) && rn.fbDepthAttachment && rsh.screenTextureCopy ) {
 					// TODO: implemented RF_SOFT_PARTICLES 
@@ -588,10 +590,12 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 	}
 	if( depthHack ) {
 		// RB_DepthRange( depthmin, depthmax );
-		assert(frame->state.numColorAttachments == 1);
-		frame->state.viewports[0].depthMax = depthmax;
-		frame->state.viewports[0].depthMin = depthmin;
-		frame->state.dirty |= CMD_DIRT_VIEWPORT;
+		//assert(frame->state.numColorAttachments == 1);
+		FR_CmdSetDepthRangeAll( frame, depthmin, depthmax );
+
+		//frame->state.viewports[0].depthMax = depthmax;
+		//frame->state.viewports[0].depthMin = depthmin;
+		frame->dirty |= CMD_DIRT_VIEWPORT;
 	}
 	if( cullHack ) {
 		RB_FlipFrontFace(frame);

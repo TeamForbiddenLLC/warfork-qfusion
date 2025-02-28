@@ -23,12 +23,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_image.h"
 #include "r_local.h"
 #include "r_nri.h"
-#include "r_resource_upload.h"
+#include "ri_resource_upload.h"
 #include "r_frontend.h"
 
 #include "ri_types.h"
 #include "stb_ds.h"
 #include "r_capture.h"
+#include "vulkan/vulkan_core.h"
 
 static ref_frontend_t rrf;
 
@@ -168,7 +169,7 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 		return rserr_unknown;
 	}
 
-	rsh.shadowSamplerDescriptor = R_CreateDescriptorWrapper( &rsh.nri, R_ResolveSamplerDescriptor( IT_DEPTHCOMPARE | IT_SPECIAL | IT_DEPTH ) );
+	rsh.shadowSamplerDescriptor = R_ResolveSamplerDescriptor( IT_DEPTHCOMPARE | IT_SPECIAL | IT_DEPTH );
 	GPU_VULKAN_BLOCK( ( &rsh.renderer ), ( {
 						  struct RIQueue_s *graphicsQueue = &rsh.device.queues[RI_QUEUE_GRAPHICS];
 						  {
@@ -191,15 +192,22 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 								  cmdAllocInfo.commandPool = rsh.frameSets[i].vk.pool;
 								  cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 								  cmdAllocInfo.commandBufferCount = 1;
-								  VK_WrapResult( vkAllocateCommandBuffers( rsh.device.vk.device, &cmdAllocInfo, &rsh.frameSets[i].vk.primaryBuffer ) );
+								  VK_WrapResult( vkAllocateCommandBuffers( rsh.device.vk.device, &cmdAllocInfo, &rsh.frameSets[i].vk.mainCmd ) );
 							  }
-							  for( size_t j = 0; j < NUMBER_SUBFRAMES_FLIGHT; j++ ) {
+							  {
 								  VkCommandBufferAllocateInfo cmdAllocInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
 								  cmdAllocInfo.commandPool = rsh.frameSets[i].vk.pool;
 								  cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 								  cmdAllocInfo.commandBufferCount = 1;
-								  VK_WrapResult( vkAllocateCommandBuffers( rsh.device.vk.device, &cmdAllocInfo, &rsh.frameSets[i].vk.secondary[j] ) );
+								  VK_WrapResult( vkAllocateCommandBuffers( rsh.device.vk.device, &cmdAllocInfo, &rsh.frameSets[i].vk.frontCmd) );
 							  }
+							  //for( size_t j = 0; j < NUMBER_SUBFRAMES_FLIGHT; j++ ) {
+								//  VkCommandBufferAllocateInfo cmdAllocInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+								//  cmdAllocInfo.commandPool = rsh.frameSets[i].vk.pool;
+								//  cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+								//  cmdAllocInfo.commandBufferCount = 1;
+								//  VK_WrapResult( vkAllocateCommandBuffers( rsh.device.vk.device, &cmdAllocInfo, &rsh.frameSets[i].vk.secondaryCmd[j] ) );
+							  //}
 						  }
 					  } ) );
 	struct RIScratchAllocDesc_s scratchDesc = { 
@@ -214,7 +222,8 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	if( err != rserr_ok ) {
 		return err;
 	}
-	R_InitResourceUpload();
+
+	RI_InitResourceUploader( &rsh.device, &rsh.uploader );
 
 	RP_Init();
 
@@ -245,7 +254,7 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 
 rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, bool fullScreen, bool stereo )
 {
-	rsh.nri.helperI.WaitForIdle( rsh.cmdQueue );
+	WaitRIQueueIdle(&rsh.device, &rsh.device.queues[RI_QUEUE_GRAPHICS]);
 
 	if( fullScreen ) {
 		if( !R_WIN_SetFullscreen( displayFrequency, width, height ) ) {
@@ -328,7 +337,7 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 
 					createInfo.image = rsh.vk.depthImages[i];
 					createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-					RI_VK_InitImageView(&rsh.device, &createInfo, rsh.depthAttachment + i );
+					RI_VK_InitImageView( &rsh.device, &createInfo, rsh.depthAttachment + i );
 					createInfo.image = rsh.riSwapchain.vk.images[i];
 					createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 					RI_VK_InitImageView(&rsh.device, &createInfo, rsh.colorAttachment + i );
@@ -466,7 +475,7 @@ void RF_Shutdown( bool verbose )
 {
 	//RF_AdapterShutdown( &rrf.adapter );
 	memset( &rrf, 0, sizeof( rrf ) );
-	rsh.nri.helperI.WaitForIdle( rsh.cmdQueue );
+	WaitRIQueueIdle(&rsh.device, &rsh.device.queues[RI_QUEUE_GRAPHICS]);
 
 	Cmd_RemoveCommand( "modellist" );
 	Cmd_RemoveCommand( "screenshot" );
@@ -503,7 +512,7 @@ void RF_Shutdown( bool verbose )
 
 	RB_Shutdown();
 
-	R_ExitResourceUpload();
+	//R_ExitResourceUpload();
 
 	R_DisposeScene(&rsc);
 
@@ -520,7 +529,7 @@ void RF_Shutdown( bool verbose )
 
 	R_WIN_Shutdown();
 
-	R_FreeNriBackend(&rsh.nri);
+	//R_FreeNriBackend(&rsh.nri);
 
 }
 
@@ -609,18 +618,17 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 						  }
 						  {
 							  rsh.vk.swapchainIndex = RISwapchainAcquireNextTexture( &rsh.device, &rsh.riSwapchain );
-							  //rsh.primaryCmd.pogoAttachment[0] = &rsh.pogoAttachment[2 * rsh.vk.swapchainIndex];
-							  //rsh.primaryCmd.pogoAttachment[1] = &rsh.pogoAttachment[( 2 * rsh.vk.swapchainIndex) + 1];
-							  //rsh.primaryCmd.colorAttachment = &rsh.colorAttachment[rsh.vk.swapchainIndex];
-							  //rsh.primaryCmd.depthAttachment = &rsh.depthAttachment[rsh.vk.swapchainIndex];
-								//rsh.primaryCmd.uboScratchAlloc = &rsh.uboFrameScratchAlloc[bufferedFrameIndex];
-								rsh.primaryCmd.vk.cmd = rsh.frameSets[bufferedFrameIndex].vk.primaryBuffer; 
+							  rsh.primaryCmd.vk.cmd = rsh.frameSets[bufferedFrameIndex].vk.frontCmd;
 
 							  VkCommandBufferBeginInfo info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 							  info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 							  vkBeginCommandBuffer( rsh.primaryCmd.vk.cmd, &info );
+							  
+								vkBeginCommandBuffer( rsh.frameSets[bufferedFrameIndex].vk.mainCmd, &info );
+						
 
-							  VkImageMemoryBarrier2 imageBarriers[1] = {};
+
+							  VkImageMemoryBarrier2 imageBarriers[3] = {};
 							  imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 							  imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
 							  imageBarriers[0].srcAccessMask = VK_ACCESS_2_NONE;
@@ -635,39 +643,39 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 								  VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
 							  };
 
-							 // imageBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-							 // imageBarriers[1].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
-							 // imageBarriers[1].srcAccessMask = VK_ACCESS_2_NONE;
-							 // imageBarriers[1].dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-							 // imageBarriers[1].dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-							 // imageBarriers[1].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-							 // imageBarriers[1].newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-							 // imageBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-							 // imageBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-							 // imageBarriers[1].image = rsh.pogoBuffer[(rsh.vk.swapchainIndex * 2)].vk.image.handle;
-							 // imageBarriers[1].subresourceRange = (VkImageSubresourceRange){
-							 //   VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
-							 // };
+							  imageBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+							  imageBarriers[1].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+							  imageBarriers[1].srcAccessMask = VK_ACCESS_2_NONE;
+							  imageBarriers[1].dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+							  imageBarriers[1].dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+							  imageBarriers[1].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+							  imageBarriers[1].newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+							  imageBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+							  imageBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+							  imageBarriers[1].image = rsh.pogoBuffer[rsh.vk.swapchainIndex].pogoAttachment[0].vk.image.handle;
+							  imageBarriers[1].subresourceRange = (VkImageSubresourceRange){
+								  VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
+							  };
 
-							 // imageBarriers[2].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-							 // imageBarriers[2].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
-							 // imageBarriers[2].srcAccessMask = VK_ACCESS_2_NONE;
-							 // imageBarriers[2].dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-							 // imageBarriers[2].dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-							 // imageBarriers[2].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-							 // imageBarriers[2].newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-							 // imageBarriers[2].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-							 // imageBarriers[2].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-							 // imageBarriers[2].image = rsh.pogoBuffer[(rsh.vk.swapchainIndex * 2) + 1].vk.image.handle;
-							 // imageBarriers[2].subresourceRange = (VkImageSubresourceRange){
-							 //   VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
-							 // };
+							  imageBarriers[2].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+							  imageBarriers[2].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+							  imageBarriers[2].srcAccessMask = VK_ACCESS_2_NONE;
+							  imageBarriers[2].dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+							  imageBarriers[2].dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+							  imageBarriers[2].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+							  imageBarriers[2].newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+							  imageBarriers[2].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+							  imageBarriers[2].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+							  imageBarriers[1].image = rsh.pogoBuffer[rsh.vk.swapchainIndex].pogoAttachment[1].vk.image.handle;
+							  imageBarriers[2].subresourceRange = (VkImageSubresourceRange){
+								  VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
+							  };
 							  VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
-							  dependencyInfo.imageMemoryBarrierCount = Q_ARRAY_COUNT(imageBarriers);
+							  dependencyInfo.imageMemoryBarrierCount = Q_ARRAY_COUNT( imageBarriers );
 							  dependencyInfo.pImageMemoryBarriers = imageBarriers;
 							  vkCmdPipelineBarrier2( rsh.primaryCmd.vk.cmd, &dependencyInfo );
 						  }
-							R_VK_CmdBeginRenderingBackBuffer(&rsh.device, rsh.primaryCmd.vk.cmd, forceClear);
+						  R_VK_CmdBeginRenderingBackBuffer( &rsh.device, &rsh.primaryCmd, forceClear );
 					  } ) );
 
 	rrf.cameraSeparation = cameraSeparation;
@@ -699,11 +707,10 @@ static inline void __R_PolyBlendPostPass(struct frame_cmd_buffer_s* frame) {
 	if( rsc.refdef.blend[3] < 0.01f )
 		return;
 
-	NriViewport* viewport = &frame->state.viewports[0];
 	R_Set2DMode( frame, true );
 	R_DrawStretchPic(frame, 0, 0, 
-									viewport->width, 
-									viewport->height, 0, 0, 1, 1, rsc.refdef.blend, rsh.whiteShader );
+									rsh.riSwapchain.width, 
+									rsh.riSwapchain.height, 0, 0, 1, 1, rsc.refdef.blend, rsh.whiteShader );
 	RB_FlushDynamicMeshes( frame );
 }
 
@@ -718,11 +725,10 @@ static inline void __R_ApplyBrightnessBlend(struct frame_cmd_buffer_s* frame) {
 	vec4_t color;
 	color[0] = color[1] = color[2] = c;
 	color[3] = 1;
-	
-	NriViewport* viewport = &frame->state.viewports[0];
+
 	
 	R_Set2DMode( frame, true );
-	R_DrawStretchQuick(frame, 0, 0, viewport->width, viewport->height, 0, 0, 1, 1,
+	R_DrawStretchQuick(frame, 0, 0, rsh.riSwapchain.width, rsh.riSwapchain.height, 0, 0, 1, 1,
 		color, GLSL_PROGRAM_TYPE_NONE, rsh.whiteTexture, GLSTATE_SRCBLEND_ONE|GLSTATE_DSTBLEND_ONE );
 }
 
@@ -738,7 +744,7 @@ void RF_EndFrame( void )
 
 	__R_ApplyBrightnessBlend(&rsh.primaryCmd);
 
-	R_ResourceSubmit();
+	//R_ResourceSubmit();
 
 	//switch( rsh.screenshot.state ) {
 	//	case CAPTURE_STATE_RECORD_SCREENSHOT: {
@@ -820,7 +826,10 @@ void RF_EndFrame( void )
 	//}
 
 	GPU_VULKAN_BLOCK( ( &rsh.renderer ), ( {
-						  VkImageMemoryBarrier2 imageBarriers[1] = {};
+
+							vkCmdEndRendering(rsh.primaryCmd.vk.cmd);
+
+							VkImageMemoryBarrier2 imageBarriers[1] = {};
 						  imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 						  imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 						  imageBarriers[0].srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
@@ -838,8 +847,10 @@ void RF_EndFrame( void )
 						  dependencyInfo.imageMemoryBarrierCount = 1;
 						  dependencyInfo.pImageMemoryBarriers = imageBarriers;
 						  vkCmdPipelineBarrier2( rsh.primaryCmd.vk.cmd, &dependencyInfo );
-
+							
 							vkEndCommandBuffer(rsh.primaryCmd.vk.cmd);
+							vkCmdExecuteCommands(rsh.frameSets[bufferedFrameIndex].vk.mainCmd, 1, &rsh.primaryCmd.vk.cmd);
+							vkEndCommandBuffer(rsh.frameSets[bufferedFrameIndex].vk.mainCmd);
 
 							struct RIQueue_s *graphicsQueue = &rsh.device.queues[RI_QUEUE_GRAPHICS];
 							VkCommandBufferSubmitInfo cmdSubmitInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO };
@@ -850,11 +861,18 @@ void RF_EndFrame( void )
 							signalSem.value = 1 + rsh.frameSetCount;
 							signalSem.semaphore = rsh.vk.frameSemaphore;
 
+							VkSemaphoreSubmitInfo waitSem = { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
+							waitSem.stageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+							waitSem.value = rsh.uploader.syncIndex;
+							waitSem.semaphore = rsh.uploader.vk.uploadSem;
+
 							VkSubmitInfo2 submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO_2 };
 							submitInfo.pSignalSemaphoreInfos = &signalSem;
 							submitInfo.signalSemaphoreInfoCount = 1;
 							submitInfo.pCommandBufferInfos = &cmdSubmitInfo;
 							submitInfo.commandBufferInfoCount = 1;
+							submitInfo.pWaitSemaphoreInfos = &waitSem;
+							submitInfo.waitSemaphoreInfoCount = 1;
 
 							vkQueueSubmit2( graphicsQueue->vk.queue, 1, &submitInfo, VK_NULL_HANDLE );
 							RISwapchainPresent( &rsh.device, &rsh.riSwapchain );
@@ -985,7 +1003,7 @@ void RF_SetScissor( int x, int y, int w, int h )
 	rect.y = max(0,y);
 	rect.width = w;
 	rect.height = h;
-	FR_CmdSetScissorAll(&rsh.primaryCmd, rect);
+	FR_CmdSetScissor(&rsh.primaryCmd, rect);
 	Vector4Set( rrf.scissor, x, y, w, h );
 }
 
@@ -1010,7 +1028,7 @@ void RF_ResetScissor( void )
 	rect.y = 0;
 	rect.width = rsh.riSwapchain.width;
 	rect.height = rsh.riSwapchain.height;
-	FR_CmdSetScissorAll(&rsh.primaryCmd, rect);
+	FR_CmdSetScissor(&rsh.primaryCmd, rect);
 	Vector4Set( rrf.scissor, 0, 0, rsh.riSwapchain.width, rsh.riSwapchain.height );
 }
 
@@ -1180,7 +1198,6 @@ void RF_BeginAviDemo( void )
 
 void RF_WriteAviFrame( int frame, bool scissor )
 {
-	struct frame_cmd_buffer_s *cmd = R_ActiveFrameCmd();
 	int x, y, w, h;
 	const char *writedir, *gamedir;
 	size_t path_size;
@@ -1193,7 +1210,8 @@ void RF_WriteAviFrame( int frame, bool scissor )
 	if( scissor )
 	{
 		x = rsc.refdef.x;
-		y = cmd->textureBuffers.screen.height - rsc.refdef.height - rsc.refdef.y;
+		
+		y = rsh.riSwapchain.height - rsc.refdef.height - rsc.refdef.y;
 		w = rsc.refdef.width;
 		h = rsc.refdef.height;
 	}
@@ -1201,8 +1219,8 @@ void RF_WriteAviFrame( int frame, bool scissor )
 	{
 		x = 0;
 		y = 0;
-		w = cmd->textureBuffers.screen.width;
-		h = cmd->textureBuffers.screen.height;
+		w = rsh.riSwapchain.width;
+		h = rsh.riSwapchain.height;
 	}
 	
 	writedir = FS_WriteDirectory();

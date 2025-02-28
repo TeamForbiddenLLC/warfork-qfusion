@@ -4,6 +4,7 @@
 
 #include "../gameshared/q_arch.h"
 #include "math/qmath.h"
+#include "qhash.h"
 #include "qtypes.h"
 
 #define RI_MAX_SWAPCHAIN_IMAGES 8
@@ -144,7 +145,6 @@ enum RITextureViewType_s {
 	RI_VIEWTYPE_SHADING_RATE_ATTACHMENT
 
 };
-
 
 enum RITextureUsageBits_e {
 	RI_USAGE_NONE = 0,
@@ -323,33 +323,32 @@ struct RIBufferHandle_s {
 	};
 };
 
-struct RIViewport_s {
-    float x;
-    float y;
-    float width;
-    float height;
-    float depthMin;
-    float depthMax;
-    bool originBottomLeft; // expects "isViewportOriginBottomLeftSupported"
+struct RITextureHandle_s {
+	union {
+    #if(DEVICE_IMPL_VULKAN)
+    struct {
+    	VkImage image;
+    } vk;
+    #endif
+	};
 };
+
 
 struct RIDescriptor_s {
 	// unique id to mark the descriptor
-	uint32_t cookie; 
+	hash_t cookie; 
 	union {
 #if( DEVICE_IMPL_VULKAN )
 		struct {
 			VkDescriptorType type;
 			union {
 				struct {
+					VkImage handle;
 					struct VkDescriptorImageInfo info;
 				} image;
 				struct {
 					struct VkDescriptorBufferInfo info;
 				} buffer;
-				struct {
-					VkSampler sampler;
-				} sampler;
 			};
 		} vk;
 #endif
@@ -363,6 +362,16 @@ struct RIRect_s {
     int16_t height;
 };
 
+struct RIViewport_s {
+    float x;
+    float y;
+    float width;
+    float height;
+    float depthMin;
+    float depthMax;
+    bool originBottomLeft; // expects "isViewportOriginBottomLeftSupported"
+};
+
 struct RICmdHandle_s {
 	union {
 #if ( DEVICE_IMPL_VULKAN )
@@ -373,15 +382,6 @@ struct RICmdHandle_s {
 	};
 };
 
-struct RITextureHandle_s {
-	union {
-    #if(DEVICE_IMPL_VULKAN)
-    struct {
-    	VkImage image;
-    } vk;
-    #endif
-	};
-};
 
 struct RICmd_s {
 	union {
@@ -426,9 +426,7 @@ struct RISwapchain_s {
 		} vk;
 #endif
 	};
-
 };
-
 
 struct RIRenderer_s {
   uint8_t api; // RIDeviceAPI_e  

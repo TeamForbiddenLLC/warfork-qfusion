@@ -20,9 +20,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 #include "qmesa.h"
-#include "r_resource_upload.h"
+#include "ri_resource_upload.h"
 
 #include "stb_ds.h"
+#include "vulkan/vulkan_core.h"
 /*
 =========================================================
 
@@ -209,38 +210,86 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 			vbo->spritePointsOffset = vertexByteStride;
 			vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_AUTOSPRITE_BIT, halfFloatVattribs ) * 4;
 		}
-		NriBufferDesc vertexBufferDesc = { 
-			.size = vertexByteStride * desc->numVerts, 
-			.usage = NriBufferUsageBits_VERTEX_BUFFER 
-		};
-		rsh.nri.coreI.CreateBuffer( rsh.nri.device, &vertexBufferDesc, &vbo->vertexBuffer );
+
+		VkBufferCreateInfo vertexBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+		vertexBufferCreateInfo.pNext = NULL;
+		vertexBufferCreateInfo.flags = 0;
+		vertexBufferCreateInfo.size = vertexByteStride * desc->numVerts;
+		vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		vertexBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		vertexBufferCreateInfo.queueFamilyIndexCount = 0;
+		vertexBufferCreateInfo.pQueueFamilyIndices = NULL;
+		VK_WrapResult( vkCreateBuffer( rsh.device.vk.device, &vertexBufferCreateInfo, NULL, &vbo->vertexBuffer.vk.buffer) );
+
+		VmaAllocationInfo allocationInfo = {};
+		VmaAllocationCreateInfo allocInfo = {};
+		vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, vbo->vertexBuffer.vk.buffer, &allocInfo, &vbo->vk.vertexBufferAlloc, &allocationInfo );
+		vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, vbo->vk.vertexBufferAlloc, 0, vbo->vertexBuffer.vk.buffer, NULL );
+		vbo->hasVertexBuffer = 1;
 	}
 
-	NriBufferDesc indexBufferDesc = { .size = desc->numElems * sizeof( elem_t ), .usage = NriBufferUsageBits_INDEX_BUFFER };
-	rsh.nri.coreI.CreateBuffer( rsh.nri.device, &indexBufferDesc, &vbo->indexBuffer );
+	{
+		VkBufferCreateInfo indexBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+		indexBufferCreateInfo.pNext = NULL;
+		indexBufferCreateInfo.flags = 0;
+		indexBufferCreateInfo.size = desc->numElems * sizeof( elem_t );
+		indexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		indexBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		indexBufferCreateInfo.queueFamilyIndexCount = 0;
+		indexBufferCreateInfo.pQueueFamilyIndices = NULL;
+
+		VK_WrapResult( vkCreateBuffer( rsh.device.vk.device, &indexBufferCreateInfo, NULL, &vbo->indexBuffer.vk.buffer ) );
+
+		VmaAllocationInfo allocationInfo = {};
+		VmaAllocationCreateInfo allocInfo = {};
+		vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, vbo->indexBuffer.vk.buffer, &allocInfo, &vbo->vk.indexBufferAlloc, &allocationInfo );
+		vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, vbo->vk.indexBufferAlloc, 0, vbo->indexBuffer.vk.buffer, NULL );
+		vbo->hasIndexBuffer = 1;
+	}
+	//NriBufferDesc indexBufferDesc = { .size = desc->numElems * sizeof( elem_t ), .usage = NriBufferUsageBits_INDEX_BUFFER };
+	//rsh.nri.coreI.CreateBuffer( rsh.nri.device, &indexBufferDesc, &vbo->vk.indexBuffer );
 
 	if( hasInstanceBuffer ) {
 		vbo->instancesOffset = instanceByteStride;
-		NriBufferDesc instanceBufferDesc = { 
-			.size = instanceByteStride * desc->numInstances, 
-			.usage = NriBufferUsageBits_CONSTANT_BUFFER };
-		rsh.nri.coreI.CreateBuffer( rsh.nri.device, &instanceBufferDesc, &vbo->instanceBuffer );
+
+		VkBufferCreateInfo instanceBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+		instanceBufferCreateInfo.pNext = NULL;
+		instanceBufferCreateInfo.flags = 0;
+		instanceBufferCreateInfo.size = desc->numElems * sizeof( elem_t );
+		instanceBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		instanceBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		instanceBufferCreateInfo.queueFamilyIndexCount = 0;
+		instanceBufferCreateInfo.pQueueFamilyIndices = NULL;
+
+		VK_WrapResult( vkCreateBuffer( rsh.device.vk.device, &instanceBufferCreateInfo, NULL, &vbo->instanceBuffer.vk.buffer) );
+
+		VmaAllocationInfo allocationInfo = {};
+		VmaAllocationCreateInfo allocInfo = {};
+		vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, vbo->instanceBuffer.vk.buffer, &allocInfo, &vbo->vk.instanceBufferAlloc, &allocationInfo );
+		vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, vbo->vk.instanceBufferAlloc, 0, vbo->instanceBuffer.vk.buffer, NULL );
+
+		vbo->hasInstanceBuffer = 1;
+
+		//NriBufferDesc instanceBufferDesc = { 
+		//	.size = instanceByteStride * desc->numInstances, 
+		//	.usage = NriBufferUsageBits_CONSTANT_BUFFER };
+		//rsh.nri.coreI.CreateBuffer( rsh.nri.device, &instanceBufferDesc, &vbo->instanceBuffer );
 	}
 
-	NriBuffer *nriBuffers[] = {
-		vbo->vertexBuffer,
-		vbo->indexBuffer,
-		vbo->instanceBuffer,
-	};
+	//NriBuffer *nriBuffers[] = {
+	//	vbo->vertexBuffer,
+	//	vbo->indexBuffer,
+	//	vbo->instanceBuffer,
+	//};
 
-	NriResourceGroupDesc resourceGroupDesc = {
-		.bufferNum = 2 + ( hasInstanceBuffer ? 1 : 0 ),
-		.buffers = nriBuffers,
-		.memoryLocation = desc->memoryLocation,
-	};
-	const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
-	vbo->numAllocations = allocationNum;
-	R_VK_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, vbo->memory ) );
+	//NriResourceGroupDesc resourceGroupDesc = {
+	//	.bufferNum = 2 + ( hasInstanceBuffer ? 1 : 0 ),
+	//	.buffers = nriBuffers,
+	//	.memoryLocation = desc->memoryLocation,
+	//};
+	//const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
+	//vbo->numAllocations = allocationNum;
+	//R_VK_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, vbo->memory ) );
 
 	r_num_active_vbos++;
 
@@ -258,7 +307,7 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 void R_UploadVBOVertexRawData( mesh_vbo_t *vbo, int vertsOffset, int numVerts, const void *data )
 {
 	assert( vbo != NULL );
-	if( !vbo || !vbo->vertexBuffer ) {
+	if( !vbo || !vbo->hasVertexBuffer) {
 		return;
 	}
 
@@ -266,19 +315,19 @@ void R_UploadVBOVertexRawData( mesh_vbo_t *vbo, int vertsOffset, int numVerts, c
 		R_DeferDataSync();
 	}
 
-	buffer_upload_desc_t uploadDesc = {
+	struct RIResourceBufferTransaction_s uploadDesc = {
 		.target = vbo->vertexBuffer,
-		.numBytes = numVerts * vbo->vertexSize,
-		.byteOffset = vertsOffset * vbo->vertexSize,
-		.after = ( NriAccessStage ){
-			.access = NriAccessBits_VERTEX_BUFFER,
-			.stages = NriStageBits_VERTEX_SHADER
-		},
+		.size = numVerts * vbo->vertexSize,
+		.offset = vertsOffset * vbo->vertexSize,
+	//	.after = ( NriAccessStage ){
+	//		.access = NriAccessBits_VERTEX_BUFFER,
+	//		.stages = NriStageBits_VERTEX_SHADER
+	//	},
 	};
 	// vbo->vertexStage = R_ResourceTransitionBuffer( vbo->vertexBuffer, ( NriAccessStage ){} );
-	R_ResourceBeginCopyBuffer( &uploadDesc );
-	memcpy( uploadDesc.data, data, uploadDesc.numBytes );
-	R_ResourceEndCopyBuffer( &uploadDesc );
+	RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
+	memcpy( uploadDesc.data, data, uploadDesc.size);
+	RI_ResourceEndCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
 }
 
 /*
@@ -302,26 +351,38 @@ mesh_vbo_t *R_GetVBOByIndex( int index )
 
 void R_ReleaseMeshVBO(struct frame_cmd_buffer_s *cmd, mesh_vbo_t *vbo )
 {
-	if( cmd ) {
-		if( vbo->vertexBuffer )
-			arrpush( cmd->freeBuffers, vbo->vertexBuffer );
-		if( vbo->indexBuffer )
-			arrpush( cmd->freeBuffers, vbo->indexBuffer );
-		if( vbo->instanceBuffer )
-			arrpush( cmd->freeBuffers, vbo->instanceBuffer );
-		for( size_t i = 0; i < vbo->numAllocations; i++ )
-			arrpush( cmd->freeMemory, vbo->memory[i] );
-	} else {
-		if( vbo->vertexBuffer )
-			rsh.nri.coreI.DestroyBuffer(vbo->vertexBuffer );
-		if( vbo->indexBuffer )
-			rsh.nri.coreI.DestroyBuffer( vbo->indexBuffer );
-		if( vbo->instanceBuffer )
-			rsh.nri.coreI.DestroyBuffer( vbo->instanceBuffer );
-		for( size_t i = 0; i < vbo->numAllocations; i++ )
-			rsh.nri.coreI.FreeMemory( vbo->memory[i] );
+	struct FrameFreeEntry_s freeEntry = {};
+	GPU_VULKAN_BLOCK( rsh.device.renderer, ( {
+						  freeEntry.type = R_FRAME_FREE_VK_BUFFER;
+						  freeEntry.vkBuffer = vbo->vertexBuffer.vk.buffer;
+						  arrpush( rsh.frameSets[rsh.frameSetCount % NUMBER_FRAMES_FLIGHT].freeList, freeEntry );
 
-	}
+						  freeEntry.vkBuffer = vbo->indexBuffer.vk.buffer;
+						  arrpush( rsh.frameSets[rsh.frameSetCount % NUMBER_FRAMES_FLIGHT].freeList, freeEntry );
+
+						  freeEntry.vkBuffer = vbo->instanceBuffer.vk.buffer;
+						  arrpush( rsh.frameSets[rsh.frameSetCount % NUMBER_FRAMES_FLIGHT].freeList, freeEntry );
+
+						  freeEntry.type = R_FRAME_FREE_VK_VMA_AllOC;
+						  freeEntry.vmaAlloc = vbo->vk.instanceBufferAlloc;
+						  arrpush( rsh.frameSets[rsh.frameSetCount % NUMBER_FRAMES_FLIGHT].freeList, freeEntry );
+
+						  freeEntry.vmaAlloc = vbo->vk.vertexBufferAlloc;
+						  arrpush( rsh.frameSets[rsh.frameSetCount % NUMBER_FRAMES_FLIGHT].freeList, freeEntry );
+
+						  freeEntry.vmaAlloc = vbo->vk.indexBufferAlloc;
+						  arrpush( rsh.frameSets[rsh.frameSetCount % NUMBER_FRAMES_FLIGHT].freeList, freeEntry );
+
+					  } ) );
+	// 	freeEntry.vkBuffer = vbo->vk.vertexBuffer;
+	// 	if( vbo->vertexBuffer )
+	// 		arrpush( cmd->freeBuffers, vbo->vertexBuffer );
+	// 	if( vbo->indexBuffer )
+	// 		arrpush( cmd->freeBuffers, vbo->indexBuffer );
+	// 	if( vbo->instanceBuffer )
+	// 		arrpush( cmd->freeBuffers, vbo->instanceBuffer );
+	// 	for( size_t i = 0; i < vbo->numAllocations; i++ )
+	// 		arrpush( cmd->freeMemory, vbo->memory[i] );
 	if( vbo->index >= 1 && vbo->index <= MAX_MESH_VERTEX_BUFFER_OBJECTS ) {
 		vbohandle_t *vboh = &r_vbohandles[vbo->index - 1];
 
@@ -454,7 +515,7 @@ void R_FillNriVertexAttribLayout(const struct vbo_layout_s* layout, struct frame
 		for(size_t i = 0; i < ( MAX_LIGHTMAPS + 1 ) / 2; i++ ) {
 			if( layout->vertexAttribs & lmattrbit ) {
 
-				NriFormat format =  ( layout->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? R_FORMAT_R16_SFLOAT: R_FORMAT_R32_SFLOAT;
+				RI_Format format =  ( layout->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? R_FORMAT_R16_SFLOAT: R_FORMAT_R32_SFLOAT;
 				switch (layout->lmstSize[i]) {
 					case 2:
 						format =  ( layout->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? R_FORMAT_RG16_SFLOAT: R_FORMAT_RG32_SFLOAT;
@@ -552,7 +613,7 @@ void R_FillNriVertexAttrib(mesh_vbo_t* vbo, struct frame_cmd_vertex_attrib_s * d
 														 .streamIndex = 0 };
 
 		desc[( *numDesc )++] = (struct frame_cmd_vertex_attrib_s){ .offset = vbo->bonesWeightsOffset,
-														 .format = NriFormat_RGBA8_UNORM,
+														 .format = RI_FORMAT_RGBA8_UNORM,
 														 .vk = { VATTRIB_BONESWEIGHTS },
 														 //.d3d = { .semanticName = "TEXCOORD3", .semanticIndex = VATTRIB_BONESWEIGHTS },
 														 .streamIndex = 0 };
@@ -565,13 +626,13 @@ void R_FillNriVertexAttrib(mesh_vbo_t* vbo, struct frame_cmd_vertex_attrib_s * d
 		for(size_t i = 0; i < ( MAX_LIGHTMAPS + 1 ) / 2; i++ ) {
 			if( vbo->vertexAttribs & lmattrbit ) {
 
-				NriFormat format =  ( vbo->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? NriFormat_R16_SFLOAT: NriFormat_R32_SFLOAT;
+				enum RI_Format_e format =  ( vbo->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? RI_FORMAT_R16_SFLOAT: RI_FORMAT_R32_SFLOAT;
 				switch (vbo->lmstSize[i]) {
 					case 2:
-						format =  ( vbo->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? NriFormat_RG16_SFLOAT: NriFormat_RG32_SFLOAT;
+						format =  ( vbo->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? RI_FORMAT_RG16_SFLOAT: RI_FORMAT_RG32_SFLOAT;
 						break;
 					case 4:
-						format =  ( vbo->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? NriFormat_RGBA16_SFLOAT: NriFormat_RGBA32_SFLOAT;
+						format =  ( vbo->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? RI_FORMAT_RGBA16_SFLOAT: RI_FORMAT_RGBA32_SFLOAT;
 						break;
 					default:
 						assert(false);
@@ -595,7 +656,7 @@ void R_FillNriVertexAttrib(mesh_vbo_t* vbo, struct frame_cmd_vertex_attrib_s * d
 			if( vbo->vertexAttribs & ( VATTRIB_LMLAYERS0123_BIT << i ) ) {
 				desc[( *numDesc )++] = ( struct frame_cmd_vertex_attrib_s ){
 					.offset = vbo->lmlayersOffset[i], 
-					.format = NriFormat_RGBA8_UINT, 
+					.format = RI_FORMAT_RGBA8_UINT, 
 					.vk = { VATTRIB_LMLAYERS0123 }, 
 				//	.d3d = {.semanticName = "TEXCOORD5", .semanticIndex = lmattr  },
 					.streamIndex = 0 
@@ -1265,22 +1326,20 @@ void R_UploadVBOElemData( mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, con
 {
 	assert( vbo != NULL );
 
-	buffer_upload_desc_t uploadDesc = {
+	struct RIResourceBufferTransaction_s uploadDesc = {
 		.target = vbo->indexBuffer,
-		.numBytes = mesh->numElems * sizeof( elem_t ),
-		.byteOffset = elemsOffset * sizeof( elem_t ),
-		.after = ( NriAccessStage ){
-			.access = NriAccessBits_INDEX_BUFFER,
-			.stages = NriStageBits_INDEX_INPUT
-		},
+		.size = mesh->numElems * sizeof( elem_t ),
+		.offset = elemsOffset * sizeof( elem_t ),
+		//.after = (NriAccessStage){ .access = NriAccessBits_INDEX_BUFFER, .stages = NriStageBits_INDEX_INPUT },
 	};
-	//vbo->indexStage = R_ResourceTransitionBuffer( vbo->indexBuffer, (NriAccessStage){});
-	R_ResourceBeginCopyBuffer( &uploadDesc );
+
+//vbo->indexStage = R_ResourceTransitionBuffer( vbo->indexBuffer, (NriAccessStage){});
+	RI_ResourceBeginCopyBuffer(&rsh.device, &rsh.uploader, &uploadDesc );
 	elem_t *dest = (elem_t *)uploadDesc.data;
 	for( size_t i = 0; i < mesh->numElems; i++ ) {
 		dest[i] = vertsOffset + mesh->elems[i];
 	}
-	R_ResourceEndCopyBuffer( &uploadDesc );
+	RI_ResourceEndCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
 }
 
 vattribmask_t R_UploadVBOInstancesData( mesh_vbo_t *vbo, int instOffset, int numInstances, instancePoint_t *instances )
@@ -1289,7 +1348,7 @@ vattribmask_t R_UploadVBOInstancesData( mesh_vbo_t *vbo, int instOffset, int num
 
 	assert( vbo != NULL );
 
-	if( !vbo->instanceBuffer) {
+	if( !vbo->hasInstanceBuffer) {
 		return 0;
 	}
 
@@ -1306,22 +1365,22 @@ vattribmask_t R_UploadVBOInstancesData( mesh_vbo_t *vbo, int instOffset, int num
 	}
 
 	if( vbo->instancesOffset ) {
-		buffer_upload_desc_t uploadDesc = {
+		struct RIResourceBufferTransaction_s uploadDesc = {
 			.target = vbo->instanceBuffer,
-			.numBytes = numInstances * sizeof( instancePoint_t ),
-			.byteOffset = instOffset * sizeof( instancePoint_t ),
-			.after = ( NriAccessStage ){
-				.access = NriAccessBits_CONSTANT_BUFFER,
-				.stages = NriStageBits_VERTEX_SHADER
-			},
+			.size = numInstances * sizeof( instancePoint_t ),
+			.offset = instOffset * sizeof( instancePoint_t ),
+
+			//.after = ( NriAccessStage ){
+			//	.access = NriAccessBits_CONSTANT_BUFFER,
+			//	.stages = NriStageBits_VERTEX_SHADER
+			//},
 		};
-		// vbo->instanceStage = R_ResourceTransitionBuffer( vbo->instanceBuffer, ( NriAccessStage ){} );
-		R_ResourceBeginCopyBuffer( &uploadDesc );
+		RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
 		instancePoint_t *dest = (instancePoint_t *)uploadDesc.data;
 		for( size_t i = 0; i < numInstances; i++ ) {
 			memcpy( dest[i], instances[i], sizeof( instancePoint_t ) );
 		}
-		R_ResourceEndCopyBuffer( &uploadDesc );
+		RI_ResourceEndCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
 	}
 	return 0;
 }
@@ -1341,7 +1400,7 @@ void R_FreeVBOsByTag( vbo_tag_t tag )
 		vbo = &r_mesh_vbo[vboh->index];
 
 		if( vbo->tag == tag ) {
-			R_ReleaseMeshVBO( R_ActiveFrameCmd(),vbo );
+			R_ReleaseMeshVBO( &rsh.primaryCmd,vbo );
 		}
 	}
 
@@ -1363,7 +1422,7 @@ void R_FreeUnusedVBOs( void )
 		vbo = &r_mesh_vbo[vboh->index];
 
 		if( vbo->registrationSequence != rsh.registrationSequence ) {
-			R_ReleaseMeshVBO( R_ActiveFrameCmd(),vbo );
+			R_ReleaseMeshVBO( &rsh.primaryCmd,vbo );
 		}
 	}
 

@@ -154,17 +154,17 @@ static bool __ResolveStageBuffer( struct RIDevice_s *dev, struct RIResourceUploa
 
 
 void RI_ResourceBeginCopyBuffer( struct RIDevice_s *device, struct RIResourceUploader_s *res, struct RIResourceBufferTransaction_s *trans ) {
-	__ResolveStageBuffer(device, res, trans->numBytes, &trans->req);
+	__ResolveStageBuffer(device, res, trans->size, &trans->req);
 	trans->data = (uint8_t *)trans->req.cpuMapping + trans->req.byteOffset;
 }
 
 void RI_ResourceEndCopyBuffer( struct RIDevice_s *device, struct RIResourceUploader_s *res, struct RIResourceBufferTransaction_s *trans ) {
 	GPU_VULKAN_BLOCK( device->renderer, ( {
 						  VkBufferCopy copyBuffer = {};
-						  copyBuffer.size = trans->numBytes;
+						  copyBuffer.size = trans->size;
 						  copyBuffer.dstOffset = trans->offset;
 						  copyBuffer.srcOffset = trans->req.byteOffset;
-						  vkCmdCopyBuffer( res->vk.cmdSets[res->activeSet].cmdBuffer, trans->req.vk.buffer, trans->vk.buffer, 1, &copyBuffer );
+						  vkCmdCopyBuffer( res->vk.cmdSets[res->activeSet].cmdBuffer, trans->req.vk.buffer, trans->target.vk.buffer, 1, &copyBuffer );
 					  } ) );
 }
 
@@ -219,6 +219,6 @@ void RI_ResourceEndCopyTexture( struct RIDevice_s *device, struct RIResourceUplo
 						  copyReq.imageSubresource.layerCount = 1;
 						  copyReq.imageSubresource.baseArrayLayer = trans->arrayOffset;
 						  copyReq.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-						  vkCmdCopyBufferToImage( res->vk.cmdSets[res->activeSet].cmdBuffer, trans->req.vk.buffer, trans->vk.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyReq );
+						  vkCmdCopyBufferToImage( res->vk.cmdSets[res->activeSet].cmdBuffer, trans->req.vk.buffer, trans->target.vk.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyReq );
 					  } ) );
 }

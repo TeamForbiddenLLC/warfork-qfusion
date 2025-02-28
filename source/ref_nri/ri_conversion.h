@@ -17,6 +17,31 @@ static inline enum RIVendor_e VendorFromID(uint32_t vendorID) {
 
 #if DEVICE_IMPL_VULKAN
 
+static inline VkRect2D RIToVKRect2D(struct RIRect_s* in) {
+	VkRect2D out;
+	out.extent.width = in->width;
+	out.extent.height = in->height;
+	out.offset.x = in->x;
+	out.offset.y = in->y;
+	return out;
+}
+
+static inline VkViewport RIToVKViewport(struct RIViewport_s* in) {
+	VkViewport out;
+	out.x = in->x;
+	out.y = in->y;
+	out.width = in->width;
+	out.height = in->height;
+	out.minDepth = in->depthMin;
+	out.maxDepth = in->depthMax;
+
+	// Origin top-left requires flipping
+	if( !in->originBottomLeft ) {
+		out.y += in->height;
+		out.height = -in->height;
+	}
+	return out;
+}
 
 static inline VkCompareOp ri_vk_RICompareOpToVK(enum RICompareFunc_e func) {
 	switch (func) {
@@ -43,6 +68,17 @@ static inline VkCompareOp ri_vk_RICompareOpToVK(enum RICompareFunc_e func) {
 	}
 	assert(false);
 	return VK_COMPARE_OP_NEVER;
+}
+
+static inline VkIndexType ri_vk_RIIndexTypeToVK(enum RIIndexType_e type) {
+	switch(type) {
+		case RI_INDEX_TYPE_16:
+			return VK_INDEX_TYPE_UINT16;
+		case RI_INDEX_TYPE_32:
+			return VK_INDEX_TYPE_UINT32;
+	}
+	assert( false );
+	return VK_INDEX_TYPE_UINT32;
 }
 
 static inline VkCullModeFlagBits ri_vk_RICullModeToVK( enum RICullMode_e mask )

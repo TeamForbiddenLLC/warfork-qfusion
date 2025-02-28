@@ -1,50 +1,75 @@
 #include "ri_resource.h"
+#include "qhash.h"
 #include "ri_conversion.h"
 
 #include "ri_format.h"
 #include "ri_types.h"
 
-static uint32_t cookie = 0;
-
 #if DEVICE_IMPL_VULKAN
-VkResult RI_VK_InitImageView(struct RIDevice_s* dev,VkImageViewCreateInfo* info, struct RIDescriptor_s* desc) {
-	assert(dev->renderer->api == RI_DEVICE_API_VK);
-	desc->cookie = cookie++;
+VkResult RI_VK_InitImageView( struct RIDevice_s *dev, VkImageViewCreateInfo *info, struct RIDescriptor_s *desc )
+{
+	assert( dev->renderer->api == RI_DEVICE_API_VK );
 	desc->vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	return vkCreateImageView( dev->vk.device, info, NULL, &desc->vk.image.info.imageView);
+	desc->vk.image.handle = info->image;
+	VkResult result = vkCreateImageView( dev->vk.device, info, NULL, &desc->vk.image.info.imageView );
+	RI_UpdateDescriptorCookie(dev, desc);
+	return result;
 }
 
-VkResult RI_VK_InitSampler(struct RIDevice_s* dev, VkSamplerCreateInfo* info, struct RIDescriptor_s* desc) {
-	assert(dev->renderer->api == RI_DEVICE_API_VK);
-	desc->cookie = cookie++;
+VkResult RI_VK_InitSampler( struct RIDevice_s *dev, VkSamplerCreateInfo *info, struct RIDescriptor_s *desc )
+{
+	assert( dev->renderer->api == RI_DEVICE_API_VK );
 	desc->vk.type = VK_DESCRIPTOR_TYPE_SAMPLER;
-	return vkCreateSampler( dev->vk.device, info, NULL, &desc->vk.sampler.sampler);
+	VkResult result = vkCreateSampler( dev->vk.device, info, NULL, &desc->vk.image.info.sampler );
+	RI_UpdateDescriptorCookie(dev, desc);
+	return result;
 }
 #endif
 
-bool IsEmptyDescriptor( struct RIDevice_s *dev, struct RIDescriptor_s *desc )
-{
-	//GPU_VULKAN_BLOCK( dev->renderer, ( { return desc->vk.type == RI_DESCRIPTOR_NONE; } ) );
-	return true;
+void RI_UpdateDescriptorCookie(struct RIDevice_s* dev,struct RIDescriptor_s* desc) {
+	GPU_VULKAN_BLOCK( dev->renderer, ( {
+						  switch( desc->vk.type ) {
+							  case VK_DESCRIPTOR_TYPE_SAMPLER:
+							  case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+							  case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+								  desc->cookie = hash_data( hash_u64( HASH_INITIAL_VALUE, desc->vk.type ), &desc->vk.image, sizeof( desc->vk.image ) );
+								  break;
+							  case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+							  case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+								  desc->cookie = hash_data( hash_u64( HASH_INITIAL_VALUE, desc->vk.type ), &desc->vk.buffer, sizeof( desc->vk.buffer ) );
+								  break;
+								default:
+									assert(false);
+									break;
+						  }
+					  } ) );
 }
 
-void FreeRIDescriptor( struct RIDevice_s *dev, struct RIDescriptor_s *desc )
+bool RI_IsEmptyDescriptor( struct RIDevice_s *dev, struct RIDescriptor_s *desc )
+{
+	//	GPU_VULKAN_BLOCK( dev->renderer, ( { return desc->cookie != 0; } ) );
+	return desc->cookie != 0;
+	//	return true;
+}
+
+void RI_FreeRIDescriptor( struct RIDevice_s *dev, struct RIDescriptor_s *desc )
 {
 	GPU_VULKAN_BLOCK( dev->renderer, ( {
-					    //switch( desc->vk.type ) {
-					  	//  case RI_DESCRIPTOR_BUFFER_VIEW:
-					  	//	  break;
-					  	//  case RI_DESCRIPTOR_IMAGE_VIEW:
-					  	//	  vkDestroyImageView( dev->vk.device, desc->vk.image.view, NULL );
-					  	//	  break;
-					  	//  case RI_DESCRIPTOR_SAMPLER:
-					  	//	  vkDestroySampler( dev->vk.device, desc->vk.sampler.sampler, NULL );
-					  	//	  break;
-					  	//	  // case RI_DESCRIPTOR_ACCELERATION_STRUCTURE:
-					  	//	  //   break;
-					  	//  default:
-					  	//	  break;
-					    //}
+					    switch( desc->vk.type ) {
+							  case VK_DESCRIPTOR_TYPE_SAMPLER:
+							  	if(desc->vk.image.info.sampler)
+					  		  	vkDestroySampler( dev->vk.device, desc->vk.image.info.sampler, NULL );
+									break;
+								case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+							  case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+							  	if(desc->vk.image.info.sampler)
+					  		  	vkDestroySampler( dev->vk.device, desc->vk.image.info.sampler, NULL );
+							  	if(desc->vk.image.info.imageView)
+					  		  	vkDestroyImageView( dev->vk.device, desc->vk.image.info.imageView, NULL );
+									break;
+					  	  default:
+					  		  break;
+					    }
 					  } ) );
 	memset( desc, 0, sizeof( struct RIDescriptor_s ) );
 }

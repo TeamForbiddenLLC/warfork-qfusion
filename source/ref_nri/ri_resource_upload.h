@@ -52,14 +52,16 @@ struct RIResourceUploader_s {
 void RI_InitResourceUploader( struct RIDevice_s *device, struct RIResourceUploader_s *resource );
 
 struct RIResourceBufferTransaction_s {
-	union {
-#if ( DEVICE_IMPL_VULKAN )
-		struct {
-			VkBuffer buffer;
-		} vk;
-#endif
-	};
-	size_t numBytes;
+	// allow the data to be garbage in multiple renderer instance
+	//	union {
+	// #if ( DEVICE_IMPL_VULKAN )
+	//		struct RIResourceBufferTransaction_VK_s{
+	//			VkBuffer buffer;
+	//		} vk;
+	// #endif
+	//	};
+	struct RIBufferHandle_s target;
+	size_t size;
 	size_t offset;
 	
 	// begin mapping
@@ -72,13 +74,7 @@ void RI_ResourceEndCopyBuffer( struct RIDevice_s *device, struct RIResourceUploa
 
 struct RIResourceTextureTransaction_s{
 
-	union {
-#if ( DEVICE_IMPL_VULKAN )
-		struct {
-			VkImage image;
-		} vk;
-#endif
-	};
+	struct RITextureHandle_s target;
 
 	// https://github.com/microsoft/DirectXTex/wiki/Image
 	uint32_t format; // RI_Format_e 
@@ -106,6 +102,5 @@ void RI_ResourceBeginCopyTexture(struct RIDevice_s* device, struct RIResourceUpl
 void RI_ResourceEndCopyTexture(struct RIDevice_s* device, struct RIResourceUploader_s *res, struct RIResourceTextureTransaction_s *trans );
 
 void RI_ResourceSubmit(struct RIDevice_s* device, struct RIResourceUploader_s *res);
-
 
 #endif

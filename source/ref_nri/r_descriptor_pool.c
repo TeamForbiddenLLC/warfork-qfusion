@@ -184,7 +184,7 @@ struct descriptor_set_result_s ResolveDescriptorSet( struct RIDevice_s *device, 
 
 void FreeDescriptorSetAlloc( struct RIDevice_s *device, struct descriptor_set_allloc_s *alloc )
 {
-	GPU_VULKAN_BLOCK( ( &device->renderer ), ( {
+	GPU_VULKAN_BLOCK( ( device->renderer ), ( {
 						  for( size_t i = 0; i < arrlen( alloc->blocks ); i++ ) {
 							  // TODO: do i need to free indivudal descriptor sets or can i just free the entire pool
 							  // for(size_t blockIdx = 0; blockIdx < RESERVE_BLOCK_SIZE; blockIdx++) {

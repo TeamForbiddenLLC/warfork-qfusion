@@ -32,7 +32,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../ref_base/ref_mod.h"
 
 #include "../qcommon/mod_fs.h"
-#include "r_resource_upload.h"
+#include "ri_resource_upload.h"
 #include "r_frame_cmd_buffer.h"
 
 
@@ -43,6 +43,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ri_resource_upload.h"
 #include "ri_scratch_alloc.h"
 #include "ri_pogoBuffer.h"
+#include "vulkan/vulkan_core.h"
 
 typedef struct { char *name; void **funcPointer; } dllfunc_t;
 
@@ -147,9 +148,9 @@ typedef struct superLightStyle_s
 struct shadow_fb_s {
 	struct nri_descriptor_s depthAttachment;
 	struct nri_descriptor_s shaderDescriptor;
-	NriTexture* depthTexture;
-	size_t numAllocations;
-	NriMemory* memory[4];
+	//NriTexture* depthTexture;
+	//size_t numAllocations;
+	//NriMemory* memory[4];
 };
 
 struct portal_fb_s {
@@ -159,11 +160,11 @@ struct portal_fb_s {
 	struct nri_descriptor_s depthAttachment;
 	struct nri_descriptor_s samplerDescriptor;
 	
-	NriTexture* colorTexture;
-	NriTexture* depthTexture;
-	size_t numAllocations;
-	NriMemory* memory[4];
-	size_t frameNum;
+	//NriTexture* colorTexture;
+	//NriTexture* depthTexture;
+	//size_t numAllocations;
+	//NriMemory* memory[4];
+	//size_t frameNum;
 };
 
 typedef struct portalSurface_s
@@ -181,8 +182,8 @@ typedef struct
 {
 	unsigned int	renderFlags;
 
-	NriDescriptor* colorAttachment;
-	NriDescriptor* depthAttachment;
+	//NriDescriptor* colorAttachment;
+	//NriDescriptor* depthAttachment;
 
 	image_t			*fbColorAttachment;
 	image_t			*fbDepthAttachment;
@@ -255,32 +256,38 @@ enum capture_state_e {
 };
 
 enum r_frame_free_list_e {
+	R_FRAME_FREE_VK_BEGIN = 0,
 	R_FRAME_FREE_VK_CMD,
 	R_FRAME_FREE_VK_IMAGE,
 	R_FRAME_FREE_VK_VMA_AllOC,
+	R_FRAME_FREE_VK_BUFFER,
+	R_FRAME_FREE_VK_BUFFER_VIEW,
+	R_FRAME_FREE_VK_END,
 };
 
-struct r_frame_free_list_s {
-	uint16_t type; // enum r_frame_free_list_e
+struct FrameFreeEntry_s {
+	uint8_t type; // enum r_frame_free_list_e
 	union {
 #if ( DEVICE_IMPL_VULKAN )
 		VkCommandBuffer vkCmdBuffer;
 		VkImage vkImage;
-		struct VmaAllocator_t *vmaAlloc;
+		VkBuffer vkBuffer;
+		VkBufferView vkView;
+		struct VmaAllocation_T*  vmaAlloc;
 #endif
 	};
 };
 
 struct r_frame_set_s {
 	struct RIScratchAlloc_s uboScratchAlloc;
+	struct FrameFreeEntry_s *freeList;
 	union {
 #if ( DEVICE_IMPL_VULKAN )
 		struct {
 				VkCommandPool pool;
-				VkCommandBuffer primaryBuffer;
-				uint32_t numSecondary;
-				VkCommandBuffer secondary[NUMBER_SUBFRAMES_FLIGHT]; // secondary views
-				struct r_frame_free_list_s *freeList;
+				VkCommandBuffer mainCmd;
+				VkCommandBuffer frontCmd; // primary command buffer 
+				VkCommandBuffer* secondaryCmd; // secondary views
 		} vk;
 #endif
 	};
@@ -294,14 +301,16 @@ typedef struct
 {
 	// any asset (model, shader, texture, etc) with has not been registered
 	// or "touched" during the last registration sequence will be freed
-	volatile int 	registrationSequence;
-	volatile bool 	registrationOpen;
+	volatile int registrationSequence;
+	volatile bool registrationOpen;
 
 	// bumped each time R_RegisterWorldModel is called
 	volatile int 	worldModelSequence;
 
 	model_t			*worldModel;
 	mbrushmodel_t	*worldBrushModel;
+
+	struct RIDescriptor_s* postProcessingSampler;
 
 	struct mesh_vbo_s *nullVBO;
 	struct mesh_vbo_s *postProcessingVBO;
@@ -342,20 +351,15 @@ typedef struct
 	} screenshot;
 
 	struct RISwapchain_s riSwapchain;
-	struct RIResourceUploader_s riUploader;
+	struct RIResourceUploader_s uploader;
 
 	struct shadow_fb_s shadowFBs[NUMBER_FRAMES_FLIGHT][MAX_SHADOWGROUPS];	
 	struct portal_fb_s portalFBs[MAX_PORTAL_TEXTURES];
-	struct nri_descriptor_s shadowSamplerDescriptor;
+	struct RIDescriptor_s*  shadowSamplerDescriptor;
 
- 	struct nri_backend_s nri;
  	struct RIRenderer_s renderer;
  	struct RIDevice_s device;
 
- 	//NriCommandQueue* cmdQueue;
- 	//NriSwapChain* swapchain;
-	//NriFence* frameFence;
-	struct frame_tex_buffers_s* backBuffers;
 	struct frame_cmd_buffer_s primaryCmd;
 	
 	union {
@@ -365,12 +369,6 @@ typedef struct
 			VkSemaphore frameSemaphore;	
 			VkImage depthImages[RI_MAX_SWAPCHAIN_IMAGES];	
 			VkImage pogo[RI_MAX_SWAPCHAIN_IMAGES * 2];
-		 // struct {
-		 // 	VkCommandPool pool;
-		 // 	VkCommandBuffer primaryBuffer;
-		 // 	uint32_t numSecondary;
-		 // 	VkCommandBuffer secondary[NUMBER_SUBFRAMES_FLIGHT]; // secondary views
-		 // } frameSets[NUMBER_FRAMES_FLIGHT];
 		} vk;
 #endif
 	};
@@ -588,7 +586,7 @@ extern cvar_t *vid_displayfrequency;
 extern cvar_t *vid_multiscreen_head;
 
 #if(DEVICE_IMPL_VULKAN)
-void R_VK_CmdBeginRenderingBackBuffer( struct RIDevice_s *device, VkCommandBuffer cmd, bool attachAndClear);
+void R_VK_CmdBeginRenderingBackBuffer( struct RIDevice_s *device, struct frame_cmd_buffer_s* cmd, bool attachAndClear);
 void R_VK_CmdBeginRenderingPogo( struct RIDevice_s *device, VkCommandBuffer cmd);
 #endif
 
@@ -783,12 +781,17 @@ void R_ShutdownPortals();
 //
 // r_poly.c
 //
-void		R_BatchPolySurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfacePoly_t *poly );
-void		R_DrawPolys( void );
-void		R_DrawStretchPoly(struct frame_cmd_buffer_s* cmd, const poly_t *poly, float x_offset, float y_offset );
-bool	R_SurfPotentiallyFragmented( const msurface_t *surf );
-int			R_GetClippedFragments( const vec3_t origin, float radius, vec3_t axis[3], int maxfverts,
-								  vec4_t *fverts, int maxfragments, fragment_t *fragments );
+void R_BatchPolySurf( struct frame_cmd_buffer_s *cmd,
+					  const entity_t *e,
+					  const shader_t *shader,
+					  const mfog_t *fog,
+					  const portalSurface_t *portalSurface,
+					  unsigned int shadowBits,
+					  drawSurfacePoly_t *poly );
+void R_DrawPolys( void );
+void R_DrawStretchPoly( struct frame_cmd_buffer_s *cmd, const poly_t *poly, float x_offset, float y_offset );
+bool R_SurfPotentiallyFragmented( const msurface_t *surf );
+int R_GetClippedFragments( const vec3_t origin, float radius, vec3_t axis[3], int maxfverts, vec4_t *fverts, int maxfragments, fragment_t *fragments );
 
 //
 // r_register.c
@@ -885,16 +888,24 @@ struct vbo_layout_s {
 	uint16_t instancesOffset;
 };
 
-typedef struct mesh_vbo_s
-{
-	uint8_t numAllocations;
-	NriMemory *memory[16];
-	NriAccessStage vertexStage;
-	NriAccessStage indexStage;
-	NriAccessStage instanceStage;
-	NriBuffer *vertexBuffer;
-	NriBuffer *indexBuffer;
-	NriBuffer *instanceBuffer;
+typedef struct mesh_vbo_s {
+	uint32_t hasInstanceBuffer: 1;
+	uint32_t hasVertexBuffer: 1;
+	uint32_t hasIndexBuffer: 1;
+
+	struct RIBufferHandle_s vertexBuffer; 
+	struct RIBufferHandle_s indexBuffer; 
+	struct RIBufferHandle_s instanceBuffer; 
+	union {
+#if ( DEVICE_IMPL_VULKAN )
+		struct {
+
+			struct VmaAllocation_T *vertexBufferAlloc;
+			struct VmaAllocation_T *indexBufferAlloc;
+			struct VmaAllocation_T *instanceBufferAlloc;
+		} vk;
+#endif
+	};
 
 	unsigned int		index;
 	int					registrationSequence;
@@ -935,7 +946,6 @@ struct mesh_vbo_desc_s {
 	int numElems;
 	int numInstances;
 
-	NriMemoryLocation memoryLocation;
 	vattribmask_t vattribs;
 	vattribmask_t halfFloatVattribs;
 };

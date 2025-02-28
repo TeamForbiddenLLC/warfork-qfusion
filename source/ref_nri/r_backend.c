@@ -20,6 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 #include "r_backend_local.h"
+#include "ri_types.h"
+#include "vulkan/vulkan_core.h"
 
 // Smaller buffer for 2D polygons. Also a workaround for some instances of a hardly explainable bug on Adreno
 // that caused dynamic draws to slow everything down in some cases when normals are used with dynamic VBOs.
@@ -27,6 +29,63 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 rbackend_t rb;
 
+
+//static size_t __VK_SegmentIndexRealloc( struct RIDevice_s *device, struct RISegmentAlloc_s *segment, size_t numElements) {
+//	VkBufferCreateInfo stageBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+//	stageBufferCreateInfo.pNext = NULL;
+//	stageBufferCreateInfo.flags = 0;
+//	stageBufferCreateInfo.size = numElements * segment->elementStride;
+//	stageBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+//	stageBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+//	stageBufferCreateInfo.queueFamilyIndexCount = 0;
+//	stageBufferCreateInfo.pQueueFamilyIndices = NULL;
+//	VK_WrapResult( vkCreateBuffer( device->vk.device, &stageBufferCreateInfo, NULL, &segment->vk.buffer ) );
+//
+//	VmaAllocationInfo allocationInfo = {};
+//	VmaAllocationCreateInfo allocInfo = {};
+//	allocInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
+//	vmaAllocateMemoryForBuffer( device->vk.vmaAllocator, segment->vk.buffer, &allocInfo, &segment->vk.allocator, &allocationInfo );
+//	vmaBindBufferMemory2( device->vk.vmaAllocator, segment->vk.allocator, 0, segment->vk.buffer, NULL );
+//	segment->pMappedAddress = allocationInfo.pMappedData;
+//
+//	VkBufferViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO };
+//	createInfo.flags = (VkBufferViewCreateFlags)0;
+//	createInfo.buffer = segment->vk.buffer;
+//	createInfo.format = VK_FORMAT_UNDEFINED;
+//	createInfo.offset = 0;
+//	createInfo.range = numElements * segment->elementStride;
+//	VK_WrapResult( vkCreateBufferView( device->vk.device, &createInfo, NULL, &segment->vk.blockView ) );
+//	return createInfo.range;
+//}
+//
+//static size_t __VK_SegmentVertexRealloc( struct RIDevice_s *device, struct RISegmentAlloc_s *segment, size_t numElements )
+//{
+//	VkBufferCreateInfo stageBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+//	stageBufferCreateInfo.pNext = NULL;
+//	stageBufferCreateInfo.flags = 0;
+//	stageBufferCreateInfo.size = numElements * segment->elementStride;
+//	stageBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+//	stageBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+//	stageBufferCreateInfo.queueFamilyIndexCount = 0;
+//	stageBufferCreateInfo.pQueueFamilyIndices = NULL;
+//	VK_WrapResult( vkCreateBuffer( device->vk.device, &stageBufferCreateInfo, NULL, &segment->vk.buffer ) );
+//
+//	VmaAllocationInfo allocationInfo = {};
+//	VmaAllocationCreateInfo allocInfo = {};
+//	allocInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
+//	vmaAllocateMemoryForBuffer( device->vk.vmaAllocator, segment->vk.buffer, &allocInfo, &segment->vk.allocator, &allocationInfo );
+//	vmaBindBufferMemory2( device->vk.vmaAllocator, segment->vk.allocator, 0, segment->vk.buffer, NULL );
+//	segment->pMappedAddress = allocationInfo.pMappedData;
+//
+//	VkBufferViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO };
+//	createInfo.flags = (VkBufferViewCreateFlags)0;
+//	createInfo.buffer = segment->vk.buffer;
+//	createInfo.format = VK_FORMAT_UNDEFINED;
+//	createInfo.offset = 0;
+//	createInfo.range = numElements * segment->elementStride;
+//	VK_WrapResult( vkCreateBufferView( device->vk.device, &createInfo, NULL, &segment->vk.blockView ) );
+//	return createInfo.range;
+//}
 
 void RB_Init( void )
 {
@@ -39,19 +98,27 @@ void RB_Init( void )
 	};
 	for(size_t i = 0; i < RB_DYN_STREAM_NUM; i++ ) {
 		struct vbo_layout_s layout = R_CreateVBOLayout( vattribs[i], VATTRIB_TEXCOORDS_BIT | VATTRIB_NORMAL_BIT | VATTRIB_SVECTOR_BIT );
-		const struct gpu_frame_ele_ring_desc_s  indexElementDesc = {
-			.numElements = 1024,
-			.elementStride = sizeof(uint16_t),
-	  	.usageBits = NriBufferUsageBits_INDEX_BUFFER
-		};
-		const struct gpu_frame_ele_ring_desc_s vertexElementDesc = {
-			.numElements = 1024,
-			.elementStride = layout.vertexStride,
-			.usageBits = NriBufferUsageBits_VERTEX_BUFFER 
-		};
-		rb.dynamicVertexAlloc[i].layout = layout;
-		initGPUFrameEleAlloc( &rb.dynamicVertexAlloc[i].vertexAlloc, &vertexElementDesc );
-		initGPUFrameEleAlloc( &rb.dynamicVertexAlloc[i].indexAlloc, &indexElementDesc);
+		rb.dynamicStreams[i].layout = layout;
+		//struct RISegmentAllocDesc_s segmentAllocDesc = {};
+		//segmentAllocDesc.numSegments = NUMBER_FRAMES_FLIGHT;
+		//segmentAllocDesc.elementStride = sizeof(uint16_t);
+		//segmentAllocDesc.maxElements = 1024;
+		//InitRISegmentAlloc(&rsh.device, &rb.dynamicVertexAlloc[i].indexAllocator, &segmentAllocDesc);
+		//
+		//segmentAllocDesc.maxElements = layout.vertexStride;
+		//InitRISegmentAlloc(&rsh.device, &rb.dynamicVertexAlloc[i].vertexAllocator, &segmentAllocDesc);
+	 // const struct gpu_frame_ele_ring_desc_s  indexElementDesc = {
+	 // 	.numElements = 1024,
+	 // 	.elementStride = sizeof(uint16_t),
+	 // 	.usageBits = NriBufferUsageBits_INDEX_BUFFER
+	 // };
+	 // const struct gpu_frame_ele_ring_desc_s vertexElementDesc = {
+	 // 	.numElements = 1024,
+	 // 	.elementStride = layout.vertexStride,
+	 // 	.usageBits = NriBufferUsageBits_VERTEX_BUFFER 
+	 // };
+	 // initGPUFrameEleAlloc( &rb.dynamicVertexAlloc[i].vertexAlloc, &vertexElementDesc );
+	 // initGPUFrameEleAlloc( &rb.dynamicVertexAlloc[i].indexAlloc, &indexElementDesc);
 	}
 
 	// initialize shading
@@ -65,10 +132,10 @@ void RB_Init( void )
 */
 void RB_Shutdown( void )
 {
-	for(size_t i = 0; i < RB_DYN_STREAM_NUM; i++) {
-		freeGPUFrameEleAlloc(&rb.dynamicVertexAlloc[i].vertexAlloc);
-		freeGPUFrameEleAlloc(&rb.dynamicVertexAlloc[i].indexAlloc);
-	}
+	//for(size_t i = 0; i < RB_DYN_STREAM_NUM; i++) {
+	//	freeGPUFrameEleAlloc(&rb.dynamicVertexAlloc[i].vertexAlloc);
+	//	freeGPUFrameEleAlloc(&rb.dynamicVertexAlloc[i].indexAlloc);
+	//}
 	RP_StorePrecacheList();
 	R_FreePool( &rb.mempool );
 }
@@ -197,82 +264,82 @@ void RB_LoadProjectionMatrix( const mat4_t m )
 void RB_SetState_2( struct frame_cmd_buffer_s *cmd, int state )
 {
 	
-	cmd->state.pipelineLayout.blendEnabled = ( state & GLSTATE_BLEND_MASK );
+	cmd->pipeline.colorBlendEnabled = ( state & GLSTATE_BLEND_MASK );
 	if( state & GLSTATE_BLEND_MASK ) {
 		switch( state & GLSTATE_SRCBLEND_MASK ) {
 			case GLSTATE_SRCBLEND_ZERO:
-				cmd->state.pipelineLayout.colorSrcFactor = NriBlendFactor_ZERO;
+				cmd->pipeline.colorSrcFactor = RI_BLEND_ZERO;
 				break;
 			case GLSTATE_SRCBLEND_DST_COLOR:
-				cmd->state.pipelineLayout.colorSrcFactor = NriBlendFactor_DST_COLOR;
+				cmd->pipeline.colorSrcFactor = RI_BLEND_DST_COLOR;
 				break;
 			case GLSTATE_SRCBLEND_ONE_MINUS_DST_COLOR:
-				cmd->state.pipelineLayout.colorSrcFactor = NriBlendFactor_ONE_MINUS_DST_COLOR;
+				cmd->pipeline.colorSrcFactor = RI_BLEND_ONE_MINUS_DST_COLOR;
 				break;
 			case GLSTATE_SRCBLEND_SRC_ALPHA:
-				cmd->state.pipelineLayout.colorSrcFactor = NriBlendFactor_SRC_ALPHA;
+				cmd->pipeline.colorSrcFactor = RI_BLEND_SRC_ALPHA;
 				break;
 			case GLSTATE_SRCBLEND_ONE_MINUS_SRC_ALPHA:
-				cmd->state.pipelineLayout.colorSrcFactor = NriBlendFactor_ONE_MINUS_SRC_ALPHA;
+				cmd->pipeline.colorSrcFactor = RI_BLEND_ONE_MINUS_SRC_ALPHA;
 				break;
 			case GLSTATE_SRCBLEND_DST_ALPHA:
-				cmd->state.pipelineLayout.colorSrcFactor = NriBlendFactor_DST_ALPHA;
+				cmd->pipeline.colorSrcFactor = RI_BLEND_DST_ALPHA;
 				break;
 			case GLSTATE_SRCBLEND_ONE_MINUS_DST_ALPHA:
-				cmd->state.pipelineLayout.colorSrcFactor = NriBlendFactor_ONE_MINUS_DST_ALPHA;
+				cmd->pipeline.colorSrcFactor = RI_BLEND_ONE_MINUS_DST_ALPHA;
 				break;
 			default:
 			case GLSTATE_SRCBLEND_ONE:
-				cmd->state.pipelineLayout.colorSrcFactor = NriBlendFactor_ONE;
+				cmd->pipeline.colorSrcFactor = RI_BLEND_ONE;
 				break;
 		}
 
 		switch( state & GLSTATE_DSTBLEND_MASK ) {
 			case GLSTATE_DSTBLEND_ONE:
-				cmd->state.pipelineLayout.colorDstFactor = NriBlendFactor_ONE;
+				cmd->pipeline.colorDstFactor = RI_BLEND_ONE;
 				break;
 			case GLSTATE_DSTBLEND_SRC_COLOR:
-				cmd->state.pipelineLayout.colorDstFactor = NriBlendFactor_SRC_COLOR;
+				cmd->pipeline.colorDstFactor = RI_BLEND_SRC_COLOR;
 				break;
 			case GLSTATE_DSTBLEND_ONE_MINUS_SRC_COLOR:
-				cmd->state.pipelineLayout.colorDstFactor = NriBlendFactor_ONE_MINUS_SRC_COLOR;
+				cmd->pipeline.colorDstFactor = RI_BLEND_ONE_MINUS_SRC_COLOR;
 				break;
 			case GLSTATE_DSTBLEND_SRC_ALPHA:
-				cmd->state.pipelineLayout.colorDstFactor = NriBlendFactor_SRC_ALPHA;
+				cmd->pipeline.colorDstFactor = RI_BLEND_SRC_ALPHA;
 				break;
 			case GLSTATE_DSTBLEND_ONE_MINUS_SRC_ALPHA:
-				cmd->state.pipelineLayout.colorDstFactor = NriBlendFactor_ONE_MINUS_SRC_ALPHA;
+				cmd->pipeline.colorDstFactor = RI_BLEND_ONE_MINUS_SRC_ALPHA;
 				break;
 			case GLSTATE_DSTBLEND_DST_ALPHA:
-				cmd->state.pipelineLayout.colorDstFactor = NriBlendFactor_DST_ALPHA;
+				cmd->pipeline.colorDstFactor = RI_BLEND_DST_ALPHA;
 				break;
 			case GLSTATE_DSTBLEND_ONE_MINUS_DST_ALPHA:
-				cmd->state.pipelineLayout.colorDstFactor = NriBlendFactor_ONE_MINUS_DST_ALPHA;
+				cmd->pipeline.colorDstFactor = RI_BLEND_ONE_MINUS_DST_ALPHA;
 				break;
 			default:
 			case GLSTATE_DSTBLEND_ZERO:
-				cmd->state.pipelineLayout.colorDstFactor = NriBlendFactor_ZERO;
+				cmd->pipeline.colorDstFactor = RI_BLEND_ZERO;
 				break;
 		}
 	}
 
 	if( state & GLSTATE_NO_COLORWRITE ) {
-		cmd->state.pipelineLayout.colorWriteMask = 0;
+		cmd->pipeline.colorWriteMask = 0;
 	} else {
-		cmd->state.pipelineLayout.colorWriteMask = NriColorWriteBits_RGB | ( ( state & GLSTATE_ALPHAWRITE ) ? NriColorWriteBits_A : 0 );
+		cmd->pipeline.colorWriteMask = RI_COLOR_WRITE_RGB | ( ( state & GLSTATE_ALPHAWRITE ) ? RI_COLOR_WRITE_A : 0 );
 	}
 
 	if( state & GLSTATE_NO_DEPTH_TEST ) {
-		cmd->state.pipelineLayout.compareFunc = NriCompareFunc_ALWAYS;
+		cmd->pipeline.compareFunc = RI_COMPARE_ALWAYS;
 	} else if( state & GLSTATE_DEPTHFUNC_EQ ) {
-		cmd->state.pipelineLayout.compareFunc = NriCompareFunc_EQUAL;
+		cmd->pipeline.compareFunc = RI_COMPARE_EQUAL;
 	} else if( state & GLSTATE_DEPTHFUNC_GT ) {
-		cmd->state.pipelineLayout.compareFunc = NriCompareFunc_GREATER;
+		cmd->pipeline.compareFunc = RI_COMPARE_GREATER;
 	} else {
-		cmd->state.pipelineLayout.compareFunc = NriCompareFunc_LESS_EQUAL;
+		cmd->pipeline.compareFunc = RI_COMPARE_LESS_EQUAL;
 	}
 
-	cmd->state.pipelineLayout.depthWrite = ( state & GLSTATE_DEPTHWRITE );
+	cmd->pipeline.depthWrite = ( state & GLSTATE_DEPTHWRITE );
 
 	rb.gl.depthoffset = ( state & GLSTATE_OFFSET_FILL );
 	// if( state & GLSTATE_OFFSET_FILL ) {
@@ -296,11 +363,9 @@ void RB_SetState_2( struct frame_cmd_buffer_s *cmd, int state )
 
 void RB_FlipFrontFace( struct frame_cmd_buffer_s *cmd )
 {
-	if( cmd->state.pipelineLayout.cullMode == NriCullMode_FRONT ) {
-		cmd->state.pipelineLayout.cullMode = NriCullMode_FRONT;
-	} else {
-		cmd->state.pipelineLayout.cullMode = NriCullMode_BACK;
-	}
+	if( cmd->pipeline.cullMode == RI_CULL_MODE_BOTH )
+		return;
+	cmd->pipeline.cullMode = ~cmd->pipeline.cullMode;
 }
 
 /*
@@ -369,10 +434,10 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
   int numVerts = mesh->numVerts, numElems = mesh->numElems;
   bool trifan = false;
   const int scissor[4] = {
-  	cmd->state.scissors[0].x,
-  	cmd->state.scissors[0].y,
-  	cmd->state.scissors[0].width,
-  	cmd->state.scissors[0].height
+  	cmd->scissor.x,
+  	cmd->scissor.y,
+  	cmd->scissor.width,
+  	cmd->scissor.height
   };
   rbDynamicDraw_t *prev = NULL, *draw;
   bool merge = false;
@@ -423,29 +488,87 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
 	  vattribs = prev->vattribs;
   }
   assert(streamId != MAX_DYNAMIC_DRAWS);
-	struct gpu_frame_ele_req_s vboReq = {};
-	struct gpu_frame_ele_req_s eleReq = {};
-	GPUFrameEleAlloc(cmd, &rb.dynamicVertexAlloc[streamId].vertexAlloc, numVerts, &vboReq);
-	GPUFrameEleAlloc(cmd, &rb.dynamicVertexAlloc[streamId].indexAlloc, numElems, &eleReq);
+  struct RISegmentReq_s vertexReq = {};
+  struct RISegmentReq_s eleReq = {};
+  struct dynamic_vertex_stream_s *const selectedStream = &( rb.dynamicStreams[streamId] );
+  GPU_VULKAN_BLOCK(
+	  rsh.device.renderer, ( {
+		  if( selectedStream->vk.vertexAlloc == NULL || !RISegmentAlloc(cmd->frameCount, &selectedStream->vertexAllocator, numVerts, &vertexReq ) ) {
+			  struct RISegmentAllocDesc_s segmentAllocDesc = {};
+			  segmentAllocDesc.numSegments = NUMBER_FRAMES_FLIGHT;
+			  segmentAllocDesc.elementStride = selectedStream->layout.vertexStride;
+			  segmentAllocDesc.maxElements = Q_MAX( 1024, selectedStream->indexAllocator.maxElements );
+			  do {
+				  segmentAllocDesc.maxElements = ( segmentAllocDesc.maxElements + ( segmentAllocDesc.maxElements >> 1 ) );
+			  } while( segmentAllocDesc.maxElements < numElems);
+			  InitRISegmentAlloc( &selectedStream->vertexAllocator, &segmentAllocDesc );
 
-	if( !merge && ( rb.numDynamicDraws + 1 ) > MAX_DYNAMIC_DRAWS) {
-		// wrap if overflows
-		RB_FlushDynamicMeshes( cmd );
-		merge = false;
+			  VkBufferCreateInfo vertexBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+			  vertexBufferCreateInfo.pNext = NULL;
+			  vertexBufferCreateInfo.flags = 0;
+			  vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+			  vertexBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			  vertexBufferCreateInfo.queueFamilyIndexCount = 0;
+			  vertexBufferCreateInfo.pQueueFamilyIndices = NULL;
+			  VK_WrapResult( vkCreateBuffer( rsh.device.vk.device, &vertexBufferCreateInfo, NULL, &selectedStream->vk.vertexBuffer ) );
+
+			  VmaAllocationInfo allocationInfo = {};
+			  VmaAllocationCreateInfo allocInfo = {};
+			  allocInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
+			  vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, selectedStream->vk.vertexBuffer, &allocInfo, &selectedStream->vk.vertexAlloc, &allocationInfo );
+			  vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, selectedStream->vk.vertexAlloc, 0, selectedStream->vk.vertexBuffer, NULL );
+			  rb.dynamicStreams[streamId].pVtxMappedAddress = allocationInfo.pMappedData;
+		  }
+		  if( rb.dynamicStreams[streamId].vk.indexAlloc == NULL || !RISegmentAlloc(cmd->frameCount,  &selectedStream->indexAllocator, numElems, &eleReq ) ) {
+			  struct RISegmentAllocDesc_s segmentAllocDesc = {};
+			  segmentAllocDesc.numSegments = NUMBER_FRAMES_FLIGHT;
+			  segmentAllocDesc.elementStride = sizeof( uint16_t );
+			  segmentAllocDesc.maxElements = Q_MAX( 1024, selectedStream->indexAllocator.maxElements );
+			  do {
+				  segmentAllocDesc.maxElements = ( segmentAllocDesc.maxElements + ( segmentAllocDesc.maxElements >> 1 ) );
+			  } while( segmentAllocDesc.maxElements < numElems);
+
+			  InitRISegmentAlloc( &selectedStream->indexAllocator, &segmentAllocDesc );
+
+			  VkBufferCreateInfo indexBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+			  indexBufferCreateInfo.pNext = NULL;
+			  indexBufferCreateInfo.flags = 0;
+			  indexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+			  indexBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			  indexBufferCreateInfo.queueFamilyIndexCount = 0;
+			  indexBufferCreateInfo.pQueueFamilyIndices = NULL;
+			  VK_WrapResult( vkCreateBuffer( rsh.device.vk.device, &indexBufferCreateInfo, NULL, &selectedStream->vk.indexBuffer ) );
+
+			  VmaAllocationInfo allocationInfo = {};
+			  VmaAllocationCreateInfo allocInfo = {};
+			  allocInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
+			  vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, selectedStream->vk.indexBuffer, &allocInfo, &selectedStream->vk.indexAlloc, &allocationInfo );
+			  vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, selectedStream->vk.indexAlloc, 0, selectedStream->vk.indexBuffer, NULL );
+			  rb.dynamicStreams[streamId].pIdxMappedAddress = allocationInfo.pMappedData;
+			}
+	  } ) );
+
+  //GPUFrameEleAlloc( cmd, &rb.dynamicVertexAlloc[streamId].vertexAlloc, numVerts, &vboReq );
+  //GPUFrameEleAlloc( cmd, &rb.dynamicVertexAlloc[streamId].indexAlloc, numElems, &eleReq );
+
+  if( !merge && ( rb.numDynamicDraws + 1 ) > MAX_DYNAMIC_DRAWS ) {
+	  // wrap if overflows
+	  RB_FlushDynamicMeshes( cmd );
+	  merge = false;
 	}
 
 	uint32_t vertexStartIdx = 0; 
   // we can only merge if the request from the buffer is continuous 
   if( merge && 
-  	vboReq.buffer == prev->vertexBuffer && 
-		eleReq.buffer == prev->indexBuffer &&
-		IsElementBufferContinous( prev->bufferIndexEleOffset, prev->numElems, vboReq.elementOffset ) && 
-		IsElementBufferContinous( prev->bufferVertEleOffset, prev->numVerts, eleReq.elementOffset)) {
+  	selectedStream->vk.vertexBuffer == prev->vertexBuffer.vk.buffer && 
+		selectedStream->vk.indexBuffer == prev->indexBuffer.vk.buffer &&
+		IsRISegmentBufferContinous( prev->bufferIndexEleOffset, prev->numElems, vertexReq.elementOffset ) && 
+		IsRISegmentBufferContinous( prev->bufferVertEleOffset, prev->numVerts, eleReq.elementOffset)) {
 	  // merge continuous draw calls
 	  draw = prev;
 	  draw->numVerts += numVerts; // if we can merge we just extend the previous buffer into this one
 	  draw->numElems += numElems;
-	  vertexStartIdx = vboReq.elementOffset - draw->bufferVertEleOffset;
+	  vertexStartIdx = vertexReq.elementOffset - draw->bufferVertEleOffset;
 	  assert(vertexStartIdx < draw->numElems);
   } else {
 	  draw = &rb.dynamicDraws[rb.numDynamicDraws++];
@@ -460,21 +583,24 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
 	  draw->offset[0] = x_offset;
 	  draw->offset[1] = y_offset;
 	  memcpy( draw->scissor, scissor, sizeof( scissor ) );
-	  draw->vertexBuffer = vboReq.buffer;
-	  draw->indexBuffer = eleReq.buffer;
+	  draw->vertexBuffer.vk.buffer = selectedStream->vk.vertexBuffer;
+	  draw->indexBuffer.vk.buffer = selectedStream->vk.indexBuffer;
+
 	  draw->bufferIndexEleOffset = eleReq.elementOffset;
 	  draw->numVerts = numVerts;
-	  draw->bufferVertEleOffset = vboReq.elementOffset;
+	  draw->bufferVertEleOffset = vertexReq.elementOffset;
 	  draw->numElems = numElems;
-	  draw->layout = &rb.dynamicVertexAlloc[streamId].layout;
-	  assert( draw->layout->vertexStride == vboReq.elementStride );
+	  draw->layout = &rb.dynamicStreams[streamId].layout;
+	  assert( draw->layout->vertexStride == vertexReq.elementStride );
   }
+  void *vboMemory = ( (uint8_t *)selectedStream->pVtxMappedAddress ) + vertexReq.elementOffset * vertexReq.elementStride;
+  void *eleMemory = ( (uint8_t *)selectedStream->pVtxMappedAddress ) + vertexReq.elementOffset * vertexReq.elementStride;
 
-	void *eleMemory = rsh.nri.coreI.MapBuffer( eleReq.buffer, eleReq.elementOffset * eleReq.elementStride, eleReq.numElements * eleReq.elementStride );
-	void *vboMemory = rsh.nri.coreI.MapBuffer( vboReq.buffer, vboReq.elementOffset * vboReq.elementStride, vboReq.numElements * vboReq.elementStride );
-	R_WriteMeshToVertexBuffer( draw->layout, vattribs, mesh, ( (uint8_t *)vboMemory )  );
-	if( trifan ) {
-		R_BuildTrifanElements( vertexStartIdx, numElems, (elem_t *)( eleMemory ) );
+  // void *eleMemory = rsh.nri.coreI.MapBuffer( eleReq.buffer, eleReq.elementOffset * eleReq.elementStride, eleReq.numElements * eleReq.elementStride );
+  // void *vboMemory = rsh.nri.coreI.MapBuffer( vboReq.buffer, vboReq.elementOffset * vboReq.elementStride, vboReq.numElements * vboReq.elementStride );
+  R_WriteMeshToVertexBuffer( draw->layout, vattribs, mesh, ( (uint8_t *)vboMemory ) );
+  if( trifan ) {
+	  R_BuildTrifanElements( vertexStartIdx, numElems, (elem_t *)( eleMemory ) );
 	} else {
 		if( primitive == GL_TRIANGLES ) {
 			R_CopyOffsetTriangles( mesh->elems, numElems, vertexStartIdx, (elem_t *)( (uint8_t *)eleMemory ) );
@@ -482,8 +608,8 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
 			R_CopyOffsetElements( mesh->elems, numElems, vertexStartIdx, (elem_t *)( (uint8_t *)eleMemory ) );
 		}
 	}
-	rsh.nri.coreI.UnmapBuffer( vboReq.buffer );
-	rsh.nri.coreI.UnmapBuffer( eleReq.buffer );
+ // rsh.nri.coreI.UnmapBuffer( vboReq.buffer );
+ // rsh.nri.coreI.UnmapBuffer( eleReq.buffer );
 
 }
 
@@ -501,13 +627,13 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 	if( rb.numDynamicDraws == 0 ) {
 		return;
 	}
-	if(cmd->stackCmdBeingRendered == 0) {
-		R_FlushTransitionBarrier(cmd->cmd);
-	}
+	//if(cmd->stackCmdBeingRendered == 0) {
+	//	R_FlushTransitionBarrier(&rsh.device,cmd->cmd);
+	//}
 
-	struct RIRect_s prevScissors[MAX_COLOR_ATTACHMENTS];
-	size_t numColorAttachments = cmd->state.numColorAttachments;
-	memcpy(prevScissors, cmd->state.scissors, sizeof(NriRect) * cmd->state.numColorAttachments); // keep a backup of the scissors
+	//struct RIRect_s prevScissors[MAX_COLOR_ATTACHMENTS];
+	//size_t numColorAttachments = cmd->state.numColorAttachments;
+	//memcpy(prevScissors, cmd->state.scissors, sizeof(NriRect) * cmd->state.numColorAttachments); // keep a backup of the scissors
 
 	// begin rendering pass
 	Matrix4_Copy( rb.objectMatrix, m );
@@ -515,29 +641,30 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 	transy = m[13];
 	FR_CmdBeginRendering( cmd );
 	for( size_t i = 0; i < rb.numDynamicDraws; i++ ) {
-		rbDynamicDraw_t const *draw = &rb.dynamicDraws[i];
+		rbDynamicDraw_t *draw = &rb.dynamicDraws[i];
 		// rbDynamicStream_t *stream = &rb.dynamicStreams[draw->dynamicStreamIdx];
-		//struct dynamic_stream_info_s *info = &dynamicStreamInfo[draw->dynamicStreamIdx];
-		cmd->state.numStreams = 1;
-		cmd->state.streams[0] = ( struct frame_cmd_vertex_stream_s ){ 
+		// struct dynamic_stream_info_s *info = &dynamicStreamInfo[draw->dynamicStreamIdx];
+		cmd->pipeline.numStreams = 1;
+		cmd->pipeline.streams[0] = (struct frame_cmd_vertex_stream_s){ 
 			.stride = draw->layout->vertexStride, 
-			.bindingSlot = 0 };
-		cmd->state.numAttribs = 0;
+			.bindingSlot = 0 
+		};
+		cmd->pipeline.numAttribs = 0;
 		switch( draw->primitive ) {
 			case GL_LINES:
-				cmd->state.pipelineLayout.topology = RI_TOPOLOGY_LINE_LIST;
+				cmd->pipeline.topology = RI_TOPOLOGY_LINE_LIST;
 				break;
 			default:
-				cmd->state.pipelineLayout.topology = RI_TOPOLOGY_TRIANGLE_LIST;
+				cmd->pipeline.topology = RI_TOPOLOGY_TRIANGLE_LIST;
 				break;
 		}
-		R_FillNriVertexAttribLayout(draw->layout, cmd->state.attribs, &cmd->state.numAttribs);	
+		R_FillNriVertexAttribLayout( draw->layout, cmd->pipeline.attribs, &cmd->pipeline.numAttribs );
 		RB_BindShader( cmd, draw->entity, draw->shader, draw->fog );
 		RB_SetPortalSurface( draw->portalSurface );
 		RB_SetShadowBits( draw->shadowBits );
-		FR_CmdSetScissorAll( cmd, ( struct RIRect_s){ draw->scissor[0], draw->scissor[1], draw->scissor[2], draw->scissor[3] } );
-		FR_CmdSetVertexBuffer( cmd, 0, draw->vertexBuffer, draw->bufferVertEleOffset * draw->layout->vertexStride);
-		FR_CmdSetIndexBuffer( cmd, draw->indexBuffer, draw->bufferIndexEleOffset * sizeof(uint16_t), NriIndexType_UINT16 );
+		FR_CmdSetScissor( cmd, (struct RIRect_s){ draw->scissor[0], draw->scissor[1], draw->scissor[2], draw->scissor[3] } );
+		FR_CmdSetVertexBuffer( cmd, 0, &( draw->vertexBuffer ), draw->bufferVertEleOffset * draw->layout->vertexStride );
+		FR_CmdSetIndexBuffer( cmd, &( draw->indexBuffer ), draw->bufferIndexEleOffset * sizeof( uint16_t ), RI_INDEX_TYPE_16 );
 
 		// translate the mesh in 2D
 		if( ( offsetx != draw->offset[0] ) || ( offsety != draw->offset[1] ) ) {
@@ -556,7 +683,7 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 
 	rb.numDynamicDraws = 0;
 
-	FR_CmdSetScissor(cmd, prevScissors, numColorAttachments);
+	//FR_CmdSetScissor(cmd, prevScissors, numColorAttachments);
 
 	// restore the original translation in the object matrix if it has been changed
 	if( offsetx || offsety ) {
