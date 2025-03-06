@@ -216,7 +216,7 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 		vertexBufferCreateInfo.pNext = NULL;
 		vertexBufferCreateInfo.flags = 0;
 		vertexBufferCreateInfo.size = vertexByteStride * desc->numVerts;
-		vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 		VmaAllocationInfo allocationInfo = {};
 		VmaAllocationCreateInfo allocInfo = {};
@@ -235,9 +235,7 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 		indexBufferCreateInfo.pNext = NULL;
 		indexBufferCreateInfo.flags = 0;
 		indexBufferCreateInfo.size = desc->numElems * sizeof( elem_t );
-		indexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-
-		//VK_WrapResult( vkCreateBuffer( rsh.device.vk.device, &indexBufferCreateInfo, NULL, &vbo->indexBuffer.vk.buffer ) );
+		indexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 		VmaAllocationInfo allocationInfo = {};
 		VmaAllocationCreateInfo allocInfo = {};
@@ -261,9 +259,7 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 		instanceBufferCreateInfo.pNext = NULL;
 		instanceBufferCreateInfo.flags = 0;
 		instanceBufferCreateInfo.size = desc->numElems * sizeof( elem_t );
-		instanceBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-
-		//VK_WrapResult( vkCreateBuffer( rsh.device.vk.device, &instanceBufferCreateInfo, NULL, &vbo->instanceBuffer.vk.buffer) );
+		instanceBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 		VmaAllocationInfo allocationInfo = {};
 		VmaAllocationCreateInfo allocInfo = {};

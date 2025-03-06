@@ -507,7 +507,7 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
 			  VK_ConfigureBufferQueueFamilies( &vertexBufferCreateInfo, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
 			  vertexBufferCreateInfo.pNext = NULL;
 			  vertexBufferCreateInfo.flags = 0;
-			  vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+			  vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 			  //VK_WrapResult( vkCreateBuffer( rsh.device.vk.device, &vertexBufferCreateInfo, NULL, &selectedStream->vk.vertexBuffer ) );
 
 			  VmaAllocationInfo allocationInfo = {};
@@ -537,7 +537,7 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
 			  VK_ConfigureBufferQueueFamilies( &indexBufferCreateInfo, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
 			  indexBufferCreateInfo.pNext = NULL;
 			  indexBufferCreateInfo.flags = 0;
-			  indexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+			  indexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 			  VmaAllocationInfo allocationInfo = {};
 			  VmaAllocationCreateInfo allocInfo = {};

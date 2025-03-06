@@ -802,7 +802,7 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		info.arrayLayers = ( image->flags & IT_CUBEMAP ) ? 6 : 1;
 		info.samples = 1;
 		info.tiling = VK_IMAGE_TILING_OPTIMAL;
-		info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+		info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 		info.pQueueFamilyIndices = queueFamilies;
 		VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
@@ -1109,7 +1109,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	info.arrayLayers = ( image->flags & IT_CUBEMAP ) ? 6 : 1;
 	info.samples = 1;
 	info.tiling = VK_IMAGE_TILING_OPTIMAL;
-	info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 	info.pQueueFamilyIndices = queueFamilies;
 	VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
