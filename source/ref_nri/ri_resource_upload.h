@@ -21,13 +21,26 @@ struct RIResourceReq {
 	};
 };
 
+struct RIResourcePostImageBarrier_s {
+	VkImage image;
+	struct RIBarrierImageHandle_s postBarrier; 
+};
+
+struct RIResourcePostBufferBarrier_s {
+	VkBuffer buffer;
+	struct RIBarrierBufferHandle_s postBarrier;
+};
+
 struct RIResourceUploader_s {
 	struct RIQueue_s *copyQueue;
+	struct RIResourcePostImageBarrier_s* postImageBarriers;
+	struct RIResourcePostBufferBarrier_s* postBufferBarriers;
 	size_t tailOffset;
 	size_t remaningSpace;
 	size_t reservedSpacePerSet[RI_RESOURCE_NUM_COMMAND_SETS];
 	uint32_t activeSet;
 	uint32_t syncIndex;
+
 	union {
 #if ( DEVICE_IMPL_VULKAN )
 		struct {
@@ -52,18 +65,14 @@ struct RIResourceUploader_s {
 void RI_InitResourceUploader( struct RIDevice_s *device, struct RIResourceUploader_s *resource );
 
 struct RIResourceBufferTransaction_s {
-	// allow the data to be garbage in multiple renderer instance
-	//	union {
-	// #if ( DEVICE_IMPL_VULKAN )
-	//		struct RIResourceBufferTransaction_VK_s{
-	//			VkBuffer buffer;
-	//		} vk;
-	// #endif
-	//	};
 	struct RIBufferHandle_s target;
+
+	struct RIBarrierBufferHandle_s srcBarrier;
+	struct RIBarrierBufferHandle_s postBarrier;
+
 	size_t size;
 	size_t offset;
-	
+
 	// begin mapping
 	void *data;
 	struct RIResourceReq req;
@@ -72,9 +81,11 @@ struct RIResourceBufferTransaction_s {
 void RI_ResourceBeginCopyBuffer( struct RIDevice_s *device, struct RIResourceUploader_s *res, struct RIResourceBufferTransaction_s *trans );
 void RI_ResourceEndCopyBuffer( struct RIDevice_s *device, struct RIResourceUploader_s *res, struct RIResourceBufferTransaction_s *trans );
 
-struct RIResourceTextureTransaction_s{
-
+struct RIResourceTextureTransaction_s {
 	struct RITextureHandle_s target;
+
+	struct RIBarrierImageHandle_s srcBarrier;
+	struct RIBarrierImageHandle_s postBarrier;
 
 	// https://github.com/microsoft/DirectXTex/wiki/Image
 	uint32_t format; // RI_Format_e 
@@ -101,6 +112,11 @@ struct RIResourceTextureTransaction_s{
 void RI_ResourceBeginCopyTexture(struct RIDevice_s* device, struct RIResourceUploader_s *res, struct RIResourceTextureTransaction_s *trans );
 void RI_ResourceEndCopyTexture(struct RIDevice_s* device, struct RIResourceUploader_s *res, struct RIResourceTextureTransaction_s *trans );
 
+void RI_InsertTransitionBarriers(struct RIDevice_s* device, struct RIResourceUploader_s *res, struct RICmd_s* cmd);
 void RI_ResourceSubmit(struct RIDevice_s* device, struct RIResourceUploader_s *res);
+
+//struct RIBarrierBufferHandle_s  RI_VertexBufferBarrier( struct RIDevice_s *device );
+//struct RIBarrierBufferHandle_s  RI_IndexBufferBarrier( struct RIDevice_s *device );
+//struct RIBarrierImageHandle_s RI_SampledImageImageBarrier( struct RIDevice_s *device );
 
 #endif

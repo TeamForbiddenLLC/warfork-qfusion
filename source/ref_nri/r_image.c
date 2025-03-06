@@ -39,10 +39,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_ktx_loader.h"
 #include <assert.h>
 #include <qstr.h>
+#include <vulkan/vulkan_core.h>
 
 #include "ri_types.h"
 #include "ri_format.h"
-#include "vulkan/vulkan_core.h"
 
 #define	MAX_GLIMAGES	    8192
 #define IMAGES_HASH_SIZE    64
@@ -107,79 +107,79 @@ static void __FreeGPUImageData( struct image_s *image )
 	//	}
 	//}
 
-	//if( image->descriptor.descriptor ) {
+	// if( image->descriptor.descriptor ) {
 	//	if( cmd ) {
 	//		arrpush( cmd->frameTemporaryDesc, image->descriptor.descriptor );
 	//	} else {
 	//		rsh.nri.coreI.DestroyDescriptor( image->descriptor.descriptor );
 	//	}
-	//}
-	//image->texture = NULL;
-	//image->numAllocations = 0;
-	//image->descriptor = ( struct nri_descriptor_s ){ 0 };
-	//image->samplerDescriptor = ( struct nri_descriptor_s ){ 0 };
+	// }
+	// image->texture = NULL;
+	// image->numAllocations = 0;
+	// image->descriptor = ( struct nri_descriptor_s ){ 0 };
+	// image->samplerDescriptor = ( struct nri_descriptor_s ){ 0 };
 }
 
 struct RIDescriptor_s *R_ResolveSamplerDescriptor( int flags )
 {
-	GPU_VULKAN_BLOCK( ( &rsh.renderer ), ( {
-						  VkSamplerCreateInfo info = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
-						  if( flags & IT_NOFILTERING ) {
-							  info.minFilter = VK_FILTER_LINEAR;
-							  info.magFilter = VK_FILTER_LINEAR;
-							  info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-						  } else if( flags & IT_DEPTH ) {
-							  info.minFilter = VK_FILTER_LINEAR;
-							  info.magFilter = VK_FILTER_LINEAR;
-							  info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-							  info.maxAnisotropy = defaultAnisotropicFilter;
-							  info.anisotropyEnable = defaultAnisotropicFilter > 1.0f;
-						  } else if( !( flags & IT_NOMIPMAP ) ) {
-							  VkFilter filterMapping[] = { [IMAGE_FILTER_LINEAR] = VK_FILTER_LINEAR, [IMAGE_FILTER_NEAREST] = VK_FILTER_NEAREST };
-							  VkSamplerMipmapMode mapMapFilterMapping[] = { [IMAGE_FILTER_LINEAR] = VK_SAMPLER_MIPMAP_MODE_LINEAR, [IMAGE_FILTER_NEAREST] = VK_SAMPLER_MIPMAP_MODE_NEAREST };
-							  info.minFilter = filterMapping[defaultFilterMin];
-							  info.magFilter = filterMapping[defaultFilterMag];
-							  info.mipmapMode = mapMapFilterMapping[defaultFilterMipMap];
-							  info.maxLod = 16;
-							  info.maxAnisotropy = defaultAnisotropicFilter;
-							  info.anisotropyEnable = defaultAnisotropicFilter > 1.0f;
-						  } else {
-							  info.minFilter = VK_FILTER_LINEAR;
-							  info.magFilter = VK_FILTER_LINEAR;
-							  info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-							  info.maxAnisotropy = defaultAnisotropicFilter;
-							  info.anisotropyEnable = defaultAnisotropicFilter > 1.0f;
-						  }
+#if ( DEVICE_IMPL_VULKAN )
+	if( GPU_VULKAN_SELECTED( rsh.device.renderer ) ) {
+		VkSamplerCreateInfo info = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+		if( flags & IT_NOFILTERING ) {
+			info.minFilter = VK_FILTER_LINEAR;
+			info.magFilter = VK_FILTER_LINEAR;
+			info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		} else if( flags & IT_DEPTH ) {
+			info.minFilter = VK_FILTER_LINEAR;
+			info.magFilter = VK_FILTER_LINEAR;
+			info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+			info.maxAnisotropy = defaultAnisotropicFilter;
+			info.anisotropyEnable = defaultAnisotropicFilter > 1.0f;
+		} else if( !( flags & IT_NOMIPMAP ) ) {
+			VkFilter filterMapping[] = { [IMAGE_FILTER_LINEAR] = VK_FILTER_LINEAR, [IMAGE_FILTER_NEAREST] = VK_FILTER_NEAREST };
+			VkSamplerMipmapMode mapMapFilterMapping[] = { [IMAGE_FILTER_LINEAR] = VK_SAMPLER_MIPMAP_MODE_LINEAR, [IMAGE_FILTER_NEAREST] = VK_SAMPLER_MIPMAP_MODE_NEAREST };
+			info.minFilter = filterMapping[defaultFilterMin];
+			info.magFilter = filterMapping[defaultFilterMag];
+			info.mipmapMode = mapMapFilterMapping[defaultFilterMipMap];
+			info.maxLod = 16;
+			info.maxAnisotropy = defaultAnisotropicFilter;
+			info.anisotropyEnable = defaultAnisotropicFilter > 1.0f;
+		} else {
+			info.minFilter = VK_FILTER_LINEAR;
+			info.magFilter = VK_FILTER_LINEAR;
+			info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+			info.maxAnisotropy = defaultAnisotropicFilter;
+			info.anisotropyEnable = defaultAnisotropicFilter > 1.0f;
+		}
 
-						  if( flags & IT_CLAMP ) {
-							  info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-							  info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-							  info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-						  }
-						  if( ( flags & IT_DEPTH ) && ( flags & IT_DEPTHCOMPARE ) ) {
-							  info.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-							  info.compareEnable = 1;
-						  }
-						  const hash_t hash = hash_data( HASH_INITIAL_VALUE, &info, sizeof( VkSamplerCreateInfo ) );
-						  const size_t startIndex = ( hash % IMAGE_SAMPLER_HASH_SIZE );
-						  size_t index = startIndex;
-
-						  do {
-							  if( samplerDescriptors[index].cookie == hash ) {
-								  return &samplerDescriptors[index];
-							  } else if( RI_IsEmptyDescriptor( &rsh.device, &samplerDescriptors[index] ) ) {
-								  samplerDescriptors[index].cookie = hash;
-
-								  samplerDescriptors[index].vk.type = VK_DESCRIPTOR_TYPE_SAMPLER;
-								  samplerDescriptors[index].vk.image.info.imageView = VK_NULL_HANDLE;
-								  samplerDescriptors[index].vk.image.info.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-								  VK_WrapResult( vkCreateSampler( rsh.device.vk.device, &info, NULL, &samplerDescriptors[index].vk.image.info.sampler ) );
-								  RI_UpdateDescriptorCookie( &rsh.device, &samplerDescriptors[index] );
-								  return &samplerDescriptors[index];
-							  }
-							  index = ( index + 1 ) % IMAGE_SAMPLER_HASH_SIZE;
-						  } while( index != startIndex );
-					  } ) );
+		if( flags & IT_CLAMP ) {
+			info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		}
+		if( ( flags & IT_DEPTH ) && ( flags & IT_DEPTHCOMPARE ) ) {
+			info.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+			info.compareEnable = 1;
+		}
+		const hash_t hash = hash_data( HASH_INITIAL_VALUE, &info, sizeof( VkSamplerCreateInfo ) );
+		const size_t startIndex = ( hash % IMAGE_SAMPLER_HASH_SIZE );
+		size_t index = startIndex;
+		do {
+			if( samplerDescriptors[index].cookie == hash ) {
+				return &samplerDescriptors[index];
+			} else if( RI_IsEmptyDescriptor( &rsh.device, &samplerDescriptors[index] ) ) {
+				samplerDescriptors[index].cookie = hash;
+				samplerDescriptors[index].vk.type = VK_DESCRIPTOR_TYPE_SAMPLER;
+				samplerDescriptors[index].vk.image.info.imageView = VK_NULL_HANDLE;
+				samplerDescriptors[index].vk.image.info.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+				VK_WrapResult( vkCreateSampler( rsh.device.vk.device, &info, NULL, &samplerDescriptors[index].vk.image.info.sampler ) );
+				RI_UpdateDescriptorCookie( &rsh.device, &samplerDescriptors[index] );
+				return &samplerDescriptors[index];
+			}
+			index = ( index + 1 ) % IMAGE_SAMPLER_HASH_SIZE;
+		} while( index != startIndex );
+	}
+#endif
 	return NULL;
 }
 
@@ -772,53 +772,66 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		goto error;
 	}
 	const struct base_format_def_s *definition = ktxContext.desc;
-	const enum texture_format_e dstFormat = __R_GetImageFormat(image);
+	const enum RI_Format_e dstFormat = __R_GetImageFormat(image);
 	const uint32_t numberOfFaces = R_KTXGetNumberFaces( &ktxContext );
 	const uint16_t minMipSize = __R_calculateMipMapLevel(image->flags, R_KTXWidth(&ktxContext), R_KTXHeight(&ktxContext), image->minmipsize);
 	const uint16_t numberOfMipLevels = R_KTXIsCompressed( &ktxContext )  ? 1 : min(minMipSize, R_KTXGetNumberMips( &ktxContext ));
 	
 	image->extension = extensionKTX;
 	image->width = R_KTXWidth(&ktxContext);
-	image->height = R_KTXHeight(&ktxContext);
-	GPU_VULKAN_BLOCK( rsh.device.renderer, ( {
-						  uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
-						  VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-						  VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
-						  const struct RIFormatProps_s *formatProps = GetRIFormatProps( dstFormat );
-						  if( formatProps->blockWidth > 1 )
-							  flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
-						  if( image->flags & IT_CUBEMAP )
-							  flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
-						  // if( desc->type == RI_TEXTURE_3D )
-						  // 	flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT; // allow 3D demotion to a set of layers // TODO: hook up "VK_EXT_image_2d_view_of_3d"?
-						  info.flags = flags;
-						  info.imageType = VK_IMAGE_TYPE_2D;
-						  info.format = RIFormatToVK( dstFormat );
-						  info.extent.width = image->width;
-						  info.extent.height = image->height;
-						  info.extent.depth = 1;
-						  info.mipLevels = numberOfMipLevels;
-						  info.arrayLayers = ( image->flags & IT_CUBEMAP ) ? 6 : 1;
-						  info.samples = 1;
-						  info.tiling = VK_IMAGE_TILING_OPTIMAL;
+	image->height = R_KTXHeight( &ktxContext );
+#if ( DEVICE_IMPL_VULKAN )
+	if( GPU_VULKAN_SELECTED( rsh.device.renderer ) ) {
+		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+		VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+		VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
+		const struct RIFormatProps_s *formatProps = GetRIFormatProps( dstFormat );
+		if( formatProps->blockWidth > 1 )
+			flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
+		if( image->flags & IT_CUBEMAP )
+			flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
+		// if( desc->type == RI_TEXTURE_3D )
+		// 	flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT; // allow 3D demotion to a set of layers // TODO: hook up "VK_EXT_image_2d_view_of_3d"?
+		info.flags = flags;
+		info.imageType = VK_IMAGE_TYPE_2D;
+		info.format = RIFormatToVK( dstFormat );
+		info.extent.width = image->width;
+		info.extent.height = image->height;
+		info.extent.depth = 1;
+		info.mipLevels = numberOfMipLevels;
+		info.arrayLayers = ( image->flags & IT_CUBEMAP ) ? 6 : 1;
+		info.samples = 1;
+		info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-						  info.pQueueFamilyIndices = queueFamilies;
-						  vk_fillQueueFamilies( &rsh.device, queueFamilies, &info.queueFamilyIndexCount, RI_QUEUE_LEN );
-						  info.sharingMode = ( info.queueFamilyIndexCount > 0 ) ? VK_SHARING_MODE_CONCURRENT : VK_SHARING_MODE_EXCLUSIVE; // TODO: still no DCC on AMD with concurrent?
-						  info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-						  VkResult result = vkCreateImage( rsh.device.vk.device, &info, NULL, &image->handle.vk.image );
-						  if( VK_WrapResult( result ) ) {
-							  goto error;
-						  }
+		info.pQueueFamilyIndices = queueFamilies;
+		VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		VmaAllocationCreateInfo mem_reqs = {};
+		mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 
-						  // allocate vma and bind dedicated VMA
-						  VmaAllocationCreateInfo mem_reqs = { 0 };
-						  //mem_reqs.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
-						  mem_reqs.usage = (VmaMemoryUsage)VMA_MEMORY_USAGE_GPU_ONLY;
-						  vmaAllocateMemoryForImage( rsh.device.vk.vmaAllocator, image->handle.vk.image, &mem_reqs, &image->vk.vmaAlloc, NULL );
-						  vmaBindImageMemory2( rsh.device.vk.vmaAllocator, image->vk.vmaAlloc, 0, image->handle.vk.image, NULL );
-					  } ) );
+		if(!VK_WrapResult(vmaCreateImage(rsh.device.vk.vmaAllocator, &info, &mem_reqs, &image->handle.vk.image, &image->vk.vmaAlloc, NULL))) {
+			goto error;
+		}
 
+		VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
+		usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+
+		VkImageSubresourceRange subresource = {
+			VK_IMAGE_ASPECT_COLOR_BIT, 0, image->mipNum, 0, 1,
+		};
+
+		VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+		createInfo.pNext = &usageInfo;
+		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		createInfo.format = RIFormatToVK( dstFormat );
+		createInfo.subresourceRange = subresource;
+		createInfo.image = image->handle.vk.image;
+		RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding );
+		image->samplerBinding = R_ResolveSamplerDescriptor( image->flags );
+		assert(image->samplerBinding);
+	}
+#endif
 	//NriTextureDesc textureDesc = { 
 	//	.width = R_KTXWidth( &ktxContext ),
 	//	.height = R_KTXHeight( &ktxContext ),
@@ -978,12 +991,13 @@ static enum RI_Format_e __R_GetImageFormat( struct image_s* image )
 
 static void __R_CopyTextureDataTexture(struct image_s* image, int layer, int mipOffset, int x, int y, int w, int h, enum RI_Format_e srcFormat, uint8_t *data )
 {
-	const struct RIFormatProps_s*srcDef = GetRIFormatProps( srcFormat );
-	const struct RIFormatProps_s*destDef = GetRIFormatProps(__R_GetImageFormat(image));
+	const struct RIFormatProps_s *srcDef = GetRIFormatProps( srcFormat );
+	const struct RIFormatProps_s *destDef = GetRIFormatProps( __R_GetImageFormat( image ) );
 
 	struct RIResourceTextureTransaction_s uploadDesc = {};
-	uploadDesc.sliceNum = h; 
-	uploadDesc.rowPitch = w * destDef->blockWidth; 
+	uploadDesc.target = image->handle;
+	uploadDesc.sliceNum = h;
+	uploadDesc.rowPitch = w * destDef->stride;
 	uploadDesc.arrayOffset = layer;
 	uploadDesc.mipOffset = mipOffset; 
 	uploadDesc.x = x;
@@ -991,6 +1005,13 @@ static void __R_CopyTextureDataTexture(struct image_s* image, int layer, int mip
 	uploadDesc.width = w; 
 	uploadDesc.height = h;
 	uploadDesc.format = __R_GetImageFormat(image);
+#if ( DEVICE_IMPL_VULKAN )
+	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
+		uploadDesc.postBarrier.vk.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		uploadDesc.postBarrier.vk.stage = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		uploadDesc.postBarrier.vk.access = VK_ACCESS_2_SHADER_READ_BIT;
+	}
+#endif
 
 	RI_ResourceBeginCopyTexture( &rsh.device, &rsh.uploader, &uploadDesc );
 	for( size_t slice = 0; slice < uploadDesc.height; slice++ ) {
@@ -1073,7 +1094,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	
 	uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
 	VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-	info.flags  = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
+	info.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
 	const struct RIFormatProps_s *formatProps = GetRIFormatProps( destFormat );
 	if( formatProps->blockWidth > 1 )
 		info.flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
@@ -1088,25 +1109,25 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	info.arrayLayers = ( image->flags & IT_CUBEMAP ) ? 6 : 1;
 	info.samples = 1;
 	info.tiling = VK_IMAGE_TILING_OPTIMAL;
+	info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 	info.pQueueFamilyIndices = queueFamilies;
-	vk_fillQueueFamilies( &rsh.device, queueFamilies, &info.queueFamilyIndexCount, RI_QUEUE_LEN );
-	info.sharingMode = ( info.queueFamilyIndexCount > 0 ) ? VK_SHARING_MODE_CONCURRENT : VK_SHARING_MODE_EXCLUSIVE; // TODO: still no DCC on AMD with concurrent?
+	VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
 	info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	VkResult result = vkCreateImage( rsh.device.vk.device, &info, NULL, &image->handle.vk.image );
-	if( VK_WrapResult( result ) ) {
+	
+	VmaAllocationCreateInfo memCreateInfo = { 0 };
+	memCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+	if(!VK_WrapResult(vmaCreateImage(rsh.device.vk.vmaAllocator, &info, &memCreateInfo, &image->handle.vk.image, &image->vk.vmaAlloc, NULL))) {
 		ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name.buf );
 		__FreeImage( image );
 		image = NULL;
 		return NULL;
 	}
 
-	// allocate vma and bind dedicated VMA
-	VmaAllocationCreateInfo mem_reqs = { 0 };
-	// mem_reqs.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
-	mem_reqs.usage = (VmaMemoryUsage)VMA_MEMORY_USAGE_GPU_ONLY;
-	vmaAllocateMemoryForImage( rsh.device.vk.vmaAllocator, image->handle.vk.image, &mem_reqs, &image->vk.vmaAlloc, NULL );
-	vmaBindImageMemory2( rsh.device.vk.vmaAllocator, image->vk.vmaAlloc, 0, image->handle.vk.image, NULL );
+
+	//// allocate vma and bind dedicated VMA
+	//vmaAllocateMemoryForImage( rsh.device.vk.vmaAllocator, image->handle.vk.image, &mem_reqs, &image->vk.vmaAlloc, NULL );
+	//vmaBindImageMemory2( rsh.device.vk.vmaAllocator, image->vk.vmaAlloc, 0, image->handle.vk.image, NULL );
 
 	// create desctipror
 	VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
@@ -1278,13 +1299,12 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 									  info.arrayLayers = ( flags & IT_CUBEMAP ) ? 6 : 1;
 									  info.samples = 1;
 									  info.tiling = VK_IMAGE_TILING_OPTIMAL;
+									  info.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
 
 									  info.pQueueFamilyIndices = queueFamilies;
-									  vk_fillQueueFamilies( &rsh.device, queueFamilies, &info.queueFamilyIndexCount, RI_QUEUE_LEN );
-									  info.sharingMode = ( info.queueFamilyIndexCount > 0 ) ? VK_SHARING_MODE_CONCURRENT : VK_SHARING_MODE_EXCLUSIVE; // TODO: still no DCC on AMD with concurrent?
+									  VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
 									  info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-									  VkResult result = vkCreateImage( rsh.device.vk.device, &info, NULL, &image->handle.vk.image);
-									  if( VK_WrapResult( result ) ) {
+									  if( !VK_WrapResult( vkCreateImage( rsh.device.vk.device, &info, NULL, &image->handle.vk.image) ) ) {
 										  ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name.buf );
 										  __FreeImage( image );
 										  image = NULL;
@@ -1610,25 +1630,23 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 			info.arrayLayers = ( image->flags & IT_CUBEMAP ) ? 6 : 1;
 			info.samples = 1;
 			info.tiling = VK_IMAGE_TILING_OPTIMAL;
+			info.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
 
 			info.pQueueFamilyIndices = queueFamilies;
-			vk_fillQueueFamilies( &rsh.device, queueFamilies, &info.queueFamilyIndexCount, RI_QUEUE_LEN );
-			info.sharingMode = ( info.queueFamilyIndexCount > 0 ) ? VK_SHARING_MODE_CONCURRENT : VK_SHARING_MODE_EXCLUSIVE; // TODO: still no DCC on AMD with concurrent?
+			VK_ConfigureImageQueueFamilies(&info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
 			info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			VkResult result = vkCreateImage( rsh.device.vk.device, &info, NULL, &image->handle.vk.image );
-			if( VK_WrapResult( result ) ) {
+			// allocate vma and bind dedicated VMA
+			VmaAllocationCreateInfo mem_reqs = { 0 };
+			mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+			if(!VK_WrapResult(vmaCreateImage(rsh.device.vk.vmaAllocator, &info, &mem_reqs, &image->handle.vk.image, &image->vk.vmaAlloc, NULL))) {
 				ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name.buf );
 				__FreeImage( image );
 				image = NULL;
 				goto done;
 			}
 
-			// allocate vma and bind dedicated VMA
-			VmaAllocationCreateInfo mem_reqs = { 0 };
-			// mem_reqs.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
-			mem_reqs.usage = (VmaMemoryUsage)VMA_MEMORY_USAGE_GPU_ONLY;
-			vmaAllocateMemoryForImage( rsh.device.vk.vmaAllocator, image->handle.vk.image, &mem_reqs, &image->vk.vmaAlloc, NULL );
-			vmaBindImageMemory2( rsh.device.vk.vmaAllocator, image->vk.vmaAlloc, 0, image->handle.vk.image, NULL );
+			//vmaAllocateMemoryForImage( rsh.device.vk.vmaAllocator, image->handle.vk.image, &mem_reqs, &image->vk.vmaAlloc, NULL );
+			//vmaBindImageMemory2( rsh.device.vk.vmaAllocator, image->vk.vmaAlloc, 0, image->handle.vk.image, NULL );
 
 			// create desctipror		
     	VkImageViewUsageCreateInfo usageInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO};

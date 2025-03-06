@@ -281,13 +281,16 @@ struct FrameFreeEntry_s {
 struct r_frame_set_s {
 	struct RIScratchAlloc_s uboScratchAlloc;
 	struct FrameFreeEntry_s *freeList;
+	struct RICmd_s primaryCmd;
+	struct RICmd_s backBufferCmd; // command buffer  
+	struct RICmd_s secondaryCmd; // secondary views
 	union {
 #if ( DEVICE_IMPL_VULKAN )
 		struct {
 				VkCommandPool pool;
-				VkCommandBuffer mainCmd;
-				VkCommandBuffer frontCmd; // primary command buffer 
-				VkCommandBuffer* secondaryCmd; // secondary views
+	 // 		VkCommandBuffer mainCmd;
+	 // 		VkCommandBuffer frontCmd; 
+	 // 		VkCommandBuffer* secondaryCmd; 
 		} vk;
 #endif
 	};
@@ -369,6 +372,10 @@ typedef struct
 			VkSemaphore frameSemaphore;	
 			VkImage depthImages[RI_MAX_SWAPCHAIN_IMAGES];	
 			VkImage pogo[RI_MAX_SWAPCHAIN_IMAGES * 2];
+
+    	struct VmaAllocation_T* pogoAlloc[RI_MAX_SWAPCHAIN_IMAGES * 2];
+    	struct VmaAllocation_T* depthAlloc[RI_MAX_SWAPCHAIN_IMAGES];
+			
 		} vk;
 #endif
 	};
@@ -587,7 +594,6 @@ extern cvar_t *vid_multiscreen_head;
 
 #if(DEVICE_IMPL_VULKAN)
 void R_VK_CmdBeginRenderingBackBuffer( struct RIDevice_s *device, struct frame_cmd_buffer_s* cmd, bool attachAndClear);
-void R_VK_CmdBeginRenderingPogo( struct RIDevice_s *device, VkCommandBuffer cmd);
 #endif
 
 //

@@ -32,7 +32,9 @@ int FreeRIDevice(struct RIDevice_s*  dev);
 void WaitRIQueueIdle( struct RIDevice_s *device, struct RIQueue_s *queue );
 
 #if DEVICE_IMPL_VULKAN
-  void vk_fillQueueFamilies(struct RIDevice_s* dev, uint32_t* queueFamilies, uint32_t* queueFamiliesIdx, size_t reservedLen);
+void VK_ConfigureBufferQueueFamilies( VkBufferCreateInfo *info, struct RIQueue_s *queues, size_t numQueues, uint32_t *queueFamiliesIdx, size_t reservedLen );
+void VK_ConfigureImageQueueFamilies( VkImageCreateInfo *info, struct RIQueue_s *queues, size_t numQueues, uint32_t *queueFamiliesIdx, size_t reservedLen );
+void vk_fillQueueFamilies( struct RIDevice_s *dev, uint32_t *queueFamilies, uint32_t *queueFamiliesIdx, size_t reservedLen );
 #endif
 
 

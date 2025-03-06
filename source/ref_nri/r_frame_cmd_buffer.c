@@ -12,11 +12,6 @@
 #include "qhash.h"
 
 
-#if(DEVICE_IMPL_VULKAN)
-	void FR_VK_CmdBeginRenderingBackBuffer(struct RIDevice_s *device, struct frame_cmd_buffer_s* frame);
-	void FR_VK_CmdBeginRenderingPogo(struct RIDevice_s *device, struct frame_cmd_buffer_s* frame,int pogoIndex);
-#endif
-
 //void FR_CmdResetAttachmentToBackbuffer( struct frame_cmd_buffer_s *cmd )
 //{
 //	//const NriTextureDesc *colorDesc = rsh.nri.coreI.GetTextureDesc( cmd->textureBuffers.colorTexture );
@@ -237,7 +232,7 @@ void FR_CmdDraw( struct frame_cmd_buffer_s *cmd, uint32_t vertexNum, uint32_t in
 							  for( size_t i = 0; i < FR_CmdNumViewports( cmd ); i++ ) {
 								  viewports[i] = RIToVKViewport( &cmd->viewport );
 							  }
-							  vkCmdSetViewport( cmd->vk.cmd, 0, FR_CmdNumViewports( cmd ), viewports );
+							  vkCmdSetViewport(cmd->handle.vk.cmd, 0, FR_CmdNumViewports( cmd ), viewports );
 							  cmd->dirty &= ~CMD_DIRT_VIEWPORT;
 						  }
 
@@ -246,7 +241,7 @@ void FR_CmdDraw( struct frame_cmd_buffer_s *cmd, uint32_t vertexNum, uint32_t in
 							  for( size_t i = 0; i < FR_CmdNumViewports( cmd ); i++ ) {
 								  scissors[i] = RIToVKRect2D( &cmd->scissor );
 							  }
-							  vkCmdSetScissor( cmd->vk.cmd, 0, FR_CmdNumViewports( cmd ), scissors );
+							  vkCmdSetScissor(cmd->handle.vk.cmd, 0, FR_CmdNumViewports( cmd ), scissors );
 							  cmd->dirty &= ~CMD_DIRT_SCISSOR;
 						  }
 						  //NriDrawDesc drawDesc = { 0 };
@@ -255,7 +250,7 @@ void FR_CmdDraw( struct frame_cmd_buffer_s *cmd, uint32_t vertexNum, uint32_t in
 						  //drawDesc.baseVertex = baseVertex;
 						  //drawDesc.baseInstance = baseInstance;
 						  //rsh.nri.coreI.CmdDraw( cmd->cmd, &drawDesc );
-							vkCmdDraw(cmd->vk.cmd, vertexNum, Q_MAX(1, instanceNum), baseVertex, baseInstance );
+							vkCmdDraw(cmd->handle.vk.cmd, vertexNum, Q_MAX(1, instanceNum), baseVertex, baseInstance );
 					  } ) );
 }
 
@@ -268,12 +263,12 @@ void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint
 							  if( cmd->dirtyVertexBuffers & ( 1 << vertexSlot ) ) {
 								  VkBuffer buffer[1] = { cmd->vertexBuffers[vertexSlot].vk.buffer };
 								  const uint64_t offset[1] = { cmd->offsets[vertexSlot] };
-								  vkCmdBindVertexBuffers( cmd->vk.cmd, vertexSlot, 1, buffer, offset );
+								  vkCmdBindVertexBuffers(cmd->handle.vk.cmd, vertexSlot, 1, buffer, offset );
 							  }
 						  }
 
 						  if( cmd->dirty & CMD_DIRT_INDEX_BUFFER ) {
-								vkCmdBindIndexBuffer(cmd->vk.cmd, cmd->indexBuffer.vk.buffer, cmd->indexBufferOffset, ri_vk_RIIndexTypeToVK(cmd->indexType));
+								vkCmdBindIndexBuffer(cmd->handle.vk.cmd, cmd->indexBuffer.vk.buffer, cmd->indexBufferOffset, ri_vk_RIIndexTypeToVK(cmd->indexType));
 							  //rsh.nri.coreI.CmdSetIndexBuffer( cmd->cmd, cmd->state.indexBuffer, cmd->state.indexBufferOffset, cmd->state.indexType );
 							  cmd->dirty &= ~CMD_DIRT_INDEX_BUFFER;
 						  }
@@ -283,7 +278,7 @@ void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint
 							  for( size_t i = 0; i < FR_CmdNumViewports( cmd ); i++ ) {
 								  viewports[i] = RIToVKViewport( &cmd->viewport );
 							  }
-							  vkCmdSetViewport( cmd->vk.cmd, 0, FR_CmdNumViewports( cmd ), viewports );
+							  vkCmdSetViewport(cmd->handle.vk.cmd, 0, FR_CmdNumViewports( cmd ), viewports );
 							  cmd->dirty &= ~CMD_DIRT_VIEWPORT;
 						  }
 
@@ -292,7 +287,7 @@ void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint
 							  for( size_t i = 0; i < FR_CmdNumViewports( cmd ); i++ ) {
 								  scissors[i] = RIToVKRect2D( &cmd->scissor );
 							  }
-							  vkCmdSetScissor( cmd->vk.cmd, 0, FR_CmdNumViewports( cmd ), scissors );
+							  vkCmdSetScissor(cmd->handle.vk.cmd, 0, FR_CmdNumViewports( cmd ), scissors );
 							  cmd->dirty &= ~CMD_DIRT_SCISSOR;
 						  }
 
@@ -303,7 +298,7 @@ void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint
 						  //drawDesc.baseVertex = baseVertex;
 						  //drawDesc.baseInstance = baseInstance;
 						  //rsh.nri.coreI.CmdDrawIndexed( cmd->cmd, &drawDesc );
-							vkCmdDrawIndexed(cmd->vk.cmd, indexNum,  Q_MAX( 1, instanceNum ), baseIndex, baseVertex, baseInstance );
+							vkCmdDrawIndexed(cmd->handle.vk.cmd, indexNum,  Q_MAX( 1, instanceNum ), baseIndex, baseVertex, baseInstance );
 					  } ) );
 }
 

@@ -1,5 +1,4 @@
 #include "ri_segment_alloc.h"
-#include "vulkan/vulkan_core.h"
 
 void InitRISegmentAlloc( struct RISegmentAlloc_s *pool, const struct RISegmentAllocDesc_s *desc )
 {

@@ -18,14 +18,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
-#include "NRIDescs.h"
 #include "r_image.h"
 #include "r_local.h"
 #include "stb_ds.h"
 
 static void R_DrawSkyportal(struct frame_cmd_buffer_s* frame, const entity_t *e, skyportal_t *skyportal );
-static const NriFormat PortalTextureFormat = RI_FORMAT_RGBA8_UNORM; 
-static const NriFormat PortalTextureDepthFormat = RI_FORMAT_D32_SFLOAT; 
+static const enum RI_Format_e PortalTextureFormat = RI_FORMAT_RGBA8_UNORM;
+static const enum RI_Format_e PortalTextureDepthFormat = RI_FORMAT_D32_SFLOAT;
 /*
 * R_AddPortalSurface
 */

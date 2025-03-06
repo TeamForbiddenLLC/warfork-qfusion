@@ -108,13 +108,15 @@ struct pipeline_desc_s {
 
 struct frame_cmd_buffer_s {
 	struct RIDevice_s* device;
- 	union {
-    #if(DEVICE_IMPL_VULKAN)
-    struct {
-    	VkCommandBuffer cmd;
-    } vk;
-		#endif
-  };
+	struct RICmdHandle_s handle;
+
+ 	//union {
+  //  #if(DEVICE_IMPL_VULKAN)
+  //  struct {
+  //  	VkCommandBuffer cmd;
+  //  } vk;
+	//	#endif
+  //};
 	uint64_t frameCount; // the current frame index 
 	
 	// default global ubo for the scene

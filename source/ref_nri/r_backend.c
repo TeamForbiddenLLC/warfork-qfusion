@@ -21,7 +21,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_local.h"
 #include "r_backend_local.h"
 #include "ri_types.h"
-#include "vulkan/vulkan_core.h"
 
 // Smaller buffer for 2D polygons. Also a workaround for some instances of a hardly explainable bug on Adreno
 // that caused dynamic draws to slow everything down in some cases when normals are used with dynamic VBOs.
@@ -503,20 +502,23 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
 			  } while( segmentAllocDesc.maxElements < numElems);
 			  InitRISegmentAlloc( &selectedStream->vertexAllocator, &segmentAllocDesc );
 
+				uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
 			  VkBufferCreateInfo vertexBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+			  VK_ConfigureBufferQueueFamilies( &vertexBufferCreateInfo, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
 			  vertexBufferCreateInfo.pNext = NULL;
 			  vertexBufferCreateInfo.flags = 0;
 			  vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-			  vertexBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-			  vertexBufferCreateInfo.queueFamilyIndexCount = 0;
-			  vertexBufferCreateInfo.pQueueFamilyIndices = NULL;
-			  VK_WrapResult( vkCreateBuffer( rsh.device.vk.device, &vertexBufferCreateInfo, NULL, &selectedStream->vk.vertexBuffer ) );
+			  //VK_WrapResult( vkCreateBuffer( rsh.device.vk.device, &vertexBufferCreateInfo, NULL, &selectedStream->vk.vertexBuffer ) );
 
 			  VmaAllocationInfo allocationInfo = {};
 			  VmaAllocationCreateInfo allocInfo = {};
-			  allocInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
-			  vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, selectedStream->vk.vertexBuffer, &allocInfo, &selectedStream->vk.vertexAlloc, &allocationInfo );
-			  vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, selectedStream->vk.vertexAlloc, 0, selectedStream->vk.vertexBuffer, NULL );
+			  allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+			  allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+			  
+				VK_WrapResult(vmaCreateBuffer(rsh.device.vk.vmaAllocator, &vertexBufferCreateInfo, &allocInfo, &selectedStream->vk.vertexBuffer, &selectedStream->vk.vertexAlloc, &allocationInfo));
+
+			 // vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, selectedStream->vk.vertexBuffer, &allocInfo, &selectedStream->vk.vertexAlloc, &allocationInfo );
+			 // vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, selectedStream->vk.vertexAlloc, 0, selectedStream->vk.vertexBuffer, NULL );
 			  rb.dynamicStreams[streamId].pVtxMappedAddress = allocationInfo.pMappedData;
 		  }
 		  if( rb.dynamicStreams[streamId].vk.indexAlloc == NULL || !RISegmentAlloc(cmd->frameCount,  &selectedStream->indexAllocator, numElems, &eleReq ) ) {
@@ -530,20 +532,21 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
 
 			  InitRISegmentAlloc( &selectedStream->indexAllocator, &segmentAllocDesc );
 
+			  uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
 			  VkBufferCreateInfo indexBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+			  VK_ConfigureBufferQueueFamilies( &indexBufferCreateInfo, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
 			  indexBufferCreateInfo.pNext = NULL;
 			  indexBufferCreateInfo.flags = 0;
 			  indexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-			  indexBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-			  indexBufferCreateInfo.queueFamilyIndexCount = 0;
-			  indexBufferCreateInfo.pQueueFamilyIndices = NULL;
-			  VK_WrapResult( vkCreateBuffer( rsh.device.vk.device, &indexBufferCreateInfo, NULL, &selectedStream->vk.indexBuffer ) );
 
 			  VmaAllocationInfo allocationInfo = {};
 			  VmaAllocationCreateInfo allocInfo = {};
-			  allocInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
-			  vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, selectedStream->vk.indexBuffer, &allocInfo, &selectedStream->vk.indexAlloc, &allocationInfo );
-			  vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, selectedStream->vk.indexAlloc, 0, selectedStream->vk.indexBuffer, NULL );
+			  allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+			  allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+			  VK_WrapResult( vmaCreateBuffer( rsh.device.vk.vmaAllocator, &indexBufferCreateInfo, &allocInfo, &selectedStream->vk.indexBuffer, &selectedStream->vk.indexAlloc, &allocationInfo ) );
+
+			  //vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, selectedStream->vk.indexBuffer, &allocInfo, &selectedStream->vk.indexAlloc, &allocationInfo );
+			  //vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, selectedStream->vk.indexAlloc, 0, selectedStream->vk.indexBuffer, NULL );
 			  rb.dynamicStreams[streamId].pIdxMappedAddress = allocationInfo.pMappedData;
 			}
 	  } ) );

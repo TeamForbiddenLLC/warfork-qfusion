@@ -31,10 +31,11 @@ int InitRISwapchain(struct RIDevice_s* dev, struct RISwapchainDesc_s* init, stru
 	assert(init->windowHandle);
 	assert(init);
 	assert(swapchain);
-	assert( init->imageCount <= Q_ARRAY_COUNT( swapchain->vk.images ) );
+	assert( init->imageCount <= Q_ARRAY_COUNT( swapchain->vk.images ) && init->imageCount > 0 );
 	swapchain->width = init->width;
 	swapchain->height = init->height;
 	swapchain->presentQueue = init->queue;
+	swapchain->imageCount = init->imageCount;
 	VkResult result = VK_SUCCESS;
 	GPU_VULKAN_BLOCK(dev->renderer, ({ 
 		
@@ -181,7 +182,7 @@ int InitRISwapchain(struct RIDevice_s* dev, struct RISwapchainDesc_s* init, stru
 	{
 		uint32_t imageNum = 0;
 		vkGetSwapchainImagesKHR(dev->vk.device, swapchain->vk.swapchain, &imageNum, NULL);
-		assert(imageNum >= RI_MAX_SWAPCHAIN_IMAGES);
+		assert(imageNum <= RI_MAX_SWAPCHAIN_IMAGES);
 		vkGetSwapchainImagesKHR(dev->vk.device, swapchain->vk.swapchain, &imageNum, swapchain->vk.images);
 		swapchain->imageCount = imageNum;
 		swapchain->format = VKToRIFormat(selectedSurf->format);

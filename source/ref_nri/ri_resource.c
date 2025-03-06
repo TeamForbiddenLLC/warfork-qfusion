@@ -4,15 +4,18 @@
 
 #include "ri_format.h"
 #include "ri_types.h"
+#include <vulkan/vulkan_core.h>
 
 #if DEVICE_IMPL_VULKAN
 VkResult RI_VK_InitImageView( struct RIDevice_s *dev, VkImageViewCreateInfo *info, struct RIDescriptor_s *desc )
 {
+	assert( info->image != VK_NULL_HANDLE );
 	assert( dev->renderer->api == RI_DEVICE_API_VK );
 	desc->vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	desc->vk.image.handle = info->image;
 	VkResult result = vkCreateImageView( dev->vk.device, info, NULL, &desc->vk.image.info.imageView );
-	RI_UpdateDescriptorCookie(dev, desc);
+	VK_WrapResult( result );
+	RI_UpdateDescriptorCookie( dev, desc );
 	return result;
 }
 
@@ -21,7 +24,7 @@ VkResult RI_VK_InitSampler( struct RIDevice_s *dev, VkSamplerCreateInfo *info, s
 	assert( dev->renderer->api == RI_DEVICE_API_VK );
 	desc->vk.type = VK_DESCRIPTOR_TYPE_SAMPLER;
 	VkResult result = vkCreateSampler( dev->vk.device, info, NULL, &desc->vk.image.info.sampler );
-	RI_UpdateDescriptorCookie(dev, desc);
+	RI_UpdateDescriptorCookie( dev, desc );
 	return result;
 }
 #endif
@@ -48,9 +51,38 @@ void RI_UpdateDescriptorCookie(struct RIDevice_s* dev,struct RIDescriptor_s* des
 bool RI_IsEmptyDescriptor( struct RIDevice_s *dev, struct RIDescriptor_s *desc )
 {
 	//	GPU_VULKAN_BLOCK( dev->renderer, ( { return desc->cookie != 0; } ) );
-	return desc->cookie != 0;
+	return desc->cookie == 0;
 	//	return true;
 }
+
+//struct RIBarrierBufferHandle_s   RI_VertexBufferBarrier( struct RIDevice_s *device ) {
+//
+//}
+//struct RIBarrierBufferHandle_s  RI_IndexBufferBarrier( struct RIDevice_s *device ) {
+//	struct RIBarrierBufferHandle_s barrier = {};
+//#if ( DEVICE_IMPL_VULKAN )
+//	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
+//		barrier.vk.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+//		barrier.vk.stage = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+//		barrier.vk.access = VK_ACCESS_2_SHADER_READ_BIT;
+//	}
+//#endif
+//	return barrier;
+//
+//}
+//
+//struct RIBarrierImageHandle_s RI_SampledImageImageBarrier( struct RIDevice_s *device )
+//{
+//	struct RIBarrierImageHandle_s barrier = {};
+//#if ( DEVICE_IMPL_VULKAN )
+//	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
+//		barrier.vk.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+//		barrier.vk.stage = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+//		barrier.vk.access = VK_ACCESS_2_SHADER_READ_BIT;
+//	}
+//#endif
+//	return barrier;
+//}
 
 void RI_FreeRIDescriptor( struct RIDevice_s *dev, struct RIDescriptor_s *desc )
 {

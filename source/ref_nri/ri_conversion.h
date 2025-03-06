@@ -26,6 +26,16 @@ static inline VkRect2D RIToVKRect2D(struct RIRect_s* in) {
 	return out;
 }
 
+static inline VkRect2D RIViewportToRect2D( struct RIViewport_s *in )
+{
+	VkRect2D out;
+	out.extent.width = in->width;
+	out.extent.height = in->height;
+	out.offset.x = in->x;
+	out.offset.y = in->y;
+	return out;
+}
+
 static inline VkViewport RIToVKViewport(struct RIViewport_s* in) {
 	VkViewport out;
 	out.x = in->x;

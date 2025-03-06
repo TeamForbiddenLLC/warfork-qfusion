@@ -23,7 +23,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ri_resource_upload.h"
 
 #include "stb_ds.h"
-#include "vulkan/vulkan_core.h"
 /*
 =========================================================
 
@@ -211,39 +210,43 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 			vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_AUTOSPRITE_BIT, halfFloatVattribs ) * 4;
 		}
 
+		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
 		VkBufferCreateInfo vertexBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+		VK_ConfigureBufferQueueFamilies( &vertexBufferCreateInfo, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
 		vertexBufferCreateInfo.pNext = NULL;
 		vertexBufferCreateInfo.flags = 0;
 		vertexBufferCreateInfo.size = vertexByteStride * desc->numVerts;
-		vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-		vertexBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		vertexBufferCreateInfo.queueFamilyIndexCount = 0;
-		vertexBufferCreateInfo.pQueueFamilyIndices = NULL;
-		VK_WrapResult( vkCreateBuffer( rsh.device.vk.device, &vertexBufferCreateInfo, NULL, &vbo->vertexBuffer.vk.buffer) );
+		vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
 		VmaAllocationInfo allocationInfo = {};
 		VmaAllocationCreateInfo allocInfo = {};
-		vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, vbo->vertexBuffer.vk.buffer, &allocInfo, &vbo->vk.vertexBufferAlloc, &allocationInfo );
-		vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, vbo->vk.vertexBufferAlloc, 0, vbo->vertexBuffer.vk.buffer, NULL );
+		allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+			
+		VK_WrapResult(vmaCreateBuffer(rsh.device.vk.vmaAllocator, &vertexBufferCreateInfo, &allocInfo, &vbo->vertexBuffer.vk.buffer, &vbo->vk.vertexBufferAlloc, &allocationInfo));
+		//vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, vbo->vertexBuffer.vk.buffer, &allocInfo, &vbo->vk.vertexBufferAlloc, &allocationInfo );
+		//vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, vbo->vk.vertexBufferAlloc, 0, vbo->vertexBuffer.vk.buffer, NULL );
 		vbo->hasVertexBuffer = 1;
 	}
 
 	{
+		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
 		VkBufferCreateInfo indexBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+		VK_ConfigureBufferQueueFamilies( &indexBufferCreateInfo, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
 		indexBufferCreateInfo.pNext = NULL;
 		indexBufferCreateInfo.flags = 0;
 		indexBufferCreateInfo.size = desc->numElems * sizeof( elem_t );
-		indexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-		indexBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		indexBufferCreateInfo.queueFamilyIndexCount = 0;
-		indexBufferCreateInfo.pQueueFamilyIndices = NULL;
+		indexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
-		VK_WrapResult( vkCreateBuffer( rsh.device.vk.device, &indexBufferCreateInfo, NULL, &vbo->indexBuffer.vk.buffer ) );
+		//VK_WrapResult( vkCreateBuffer( rsh.device.vk.device, &indexBufferCreateInfo, NULL, &vbo->indexBuffer.vk.buffer ) );
 
 		VmaAllocationInfo allocationInfo = {};
 		VmaAllocationCreateInfo allocInfo = {};
-		vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, vbo->indexBuffer.vk.buffer, &allocInfo, &vbo->vk.indexBufferAlloc, &allocationInfo );
-		vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, vbo->vk.indexBufferAlloc, 0, vbo->indexBuffer.vk.buffer, NULL );
+		allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+		
+		VK_WrapResult(vmaCreateBuffer(rsh.device.vk.vmaAllocator, &indexBufferCreateInfo, &allocInfo, &vbo->indexBuffer.vk.buffer, &vbo->vk.indexBufferAlloc, &allocationInfo));
+
+		//vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, vbo->indexBuffer.vk.buffer, &allocInfo, &vbo->vk.indexBufferAlloc, &allocationInfo );
+		//vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, vbo->vk.indexBufferAlloc, 0, vbo->indexBuffer.vk.buffer, NULL );
 		vbo->hasIndexBuffer = 1;
 	}
 	//NriBufferDesc indexBufferDesc = { .size = desc->numElems * sizeof( elem_t ), .usage = NriBufferUsageBits_INDEX_BUFFER };
@@ -251,22 +254,25 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 
 	if( hasInstanceBuffer ) {
 		vbo->instancesOffset = instanceByteStride;
-
+		
+		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
 		VkBufferCreateInfo instanceBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+		VK_ConfigureBufferQueueFamilies( &instanceBufferCreateInfo, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
 		instanceBufferCreateInfo.pNext = NULL;
 		instanceBufferCreateInfo.flags = 0;
 		instanceBufferCreateInfo.size = desc->numElems * sizeof( elem_t );
-		instanceBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-		instanceBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		instanceBufferCreateInfo.queueFamilyIndexCount = 0;
-		instanceBufferCreateInfo.pQueueFamilyIndices = NULL;
+		instanceBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
-		VK_WrapResult( vkCreateBuffer( rsh.device.vk.device, &instanceBufferCreateInfo, NULL, &vbo->instanceBuffer.vk.buffer) );
+		//VK_WrapResult( vkCreateBuffer( rsh.device.vk.device, &instanceBufferCreateInfo, NULL, &vbo->instanceBuffer.vk.buffer) );
 
 		VmaAllocationInfo allocationInfo = {};
 		VmaAllocationCreateInfo allocInfo = {};
-		vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, vbo->instanceBuffer.vk.buffer, &allocInfo, &vbo->vk.instanceBufferAlloc, &allocationInfo );
-		vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, vbo->vk.instanceBufferAlloc, 0, vbo->instanceBuffer.vk.buffer, NULL );
+		allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+		
+	 // vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, vbo->instanceBuffer.vk.buffer, &allocInfo, &vbo->vk.instanceBufferAlloc, &allocationInfo );
+	 // vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, vbo->vk.instanceBufferAlloc, 0, vbo->instanceBuffer.vk.buffer, NULL );
+		
+		VK_WrapResult(vmaCreateBuffer(rsh.device.vk.vmaAllocator, &instanceBufferCreateInfo, &allocInfo, &vbo->instanceBuffer.vk.buffer, &vbo->vk.instanceBufferAlloc, &allocationInfo));
 
 		vbo->hasInstanceBuffer = 1;
 
@@ -319,11 +325,14 @@ void R_UploadVBOVertexRawData( mesh_vbo_t *vbo, int vertsOffset, int numVerts, c
 		.target = vbo->vertexBuffer,
 		.size = numVerts * vbo->vertexSize,
 		.offset = vertsOffset * vbo->vertexSize,
-	//	.after = ( NriAccessStage ){
-	//		.access = NriAccessBits_VERTEX_BUFFER,
-	//		.stages = NriStageBits_VERTEX_SHADER
-	//	},
 	};
+#if ( DEVICE_IMPL_VULKAN )
+	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
+		uploadDesc.postBarrier.vk.stage = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT;
+		uploadDesc.postBarrier.vk.access = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+	}
+#endif
+
 	// vbo->vertexStage = R_ResourceTransitionBuffer( vbo->vertexBuffer, ( NriAccessStage ){} );
 	RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
 	memcpy( uploadDesc.data, data, uploadDesc.size);
@@ -1330,8 +1339,13 @@ void R_UploadVBOElemData( mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, con
 		.target = vbo->indexBuffer,
 		.size = mesh->numElems * sizeof( elem_t ),
 		.offset = elemsOffset * sizeof( elem_t ),
-		//.after = (NriAccessStage){ .access = NriAccessBits_INDEX_BUFFER, .stages = NriStageBits_INDEX_INPUT },
 	};
+#if ( DEVICE_IMPL_VULKAN )
+	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
+		uploadDesc.postBarrier.vk.stage = VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
+		uploadDesc.postBarrier.vk.access = VK_ACCESS_2_INDEX_READ_BIT;
+	}
+#endif
 
 //vbo->indexStage = R_ResourceTransitionBuffer( vbo->indexBuffer, (NriAccessStage){});
 	RI_ResourceBeginCopyBuffer(&rsh.device, &rsh.uploader, &uploadDesc );

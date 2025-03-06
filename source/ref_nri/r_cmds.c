@@ -58,45 +58,12 @@ void R_VK_CmdBeginRenderingBackBuffer( struct RIDevice_s *device, struct frame_c
 	renderingInfo.pColorAttachments = &colorAttachment;
 	renderingInfo.pDepthAttachment = &depthStencil;
 	renderingInfo.pStencilAttachment = NULL;
-	vkCmdBeginRendering( cmd->vk.cmd, &renderingInfo );
+	vkCmdBeginRendering(cmd->handle.vk.cmd, &renderingInfo );
 
 	cmd->pipeline.numColorsAttachments = 1;
 	cmd->pipeline.colorAttachments[0] = rsh.riSwapchain.format;
 	cmd->pipeline.depthFormat = RI_FORMAT_D32_SFLOAT;
 	cmd->pipeline.hasDepthAttachment = 1;
-}
-
-void R_VK_CmdBeginRenderingPogo( struct RIDevice_s *device, VkCommandBuffer cmd) {
-	VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-	colorAttachment.imageView = RI_PogoBufferAttachment(rsh.pogoBuffer + rsh.vk.swapchainIndex)->vk.image.info.imageView;
-	colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	colorAttachment.resolveMode = VK_RESOLVE_MODE_NONE;
-	colorAttachment.resolveImageView = VK_NULL_HANDLE;
-	colorAttachment.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
-	VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-	depthStencil.imageView = rsh.depthAttachment[rsh.vk.swapchainIndex].vk.image.info.imageView;
-	depthStencil.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-	depthStencil.resolveMode = VK_RESOLVE_MODE_NONE;
-	depthStencil.resolveImageView = VK_NULL_HANDLE;
-	depthStencil.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	depthStencil.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depthStencil.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	depthStencil.clearValue.depthStencil.depth = 1.0f;
-
-	VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
-	renderingInfo.flags = 0;
-	renderingInfo.renderArea = (VkRect2D){ { 0, 0 }, { rsh.riSwapchain.width, rsh.riSwapchain.height } };
-	renderingInfo.layerCount = 1;
-	renderingInfo.viewMask = 0;
-	renderingInfo.colorAttachmentCount = 1;
-	renderingInfo.pColorAttachments = &colorAttachment;
-	renderingInfo.pDepthAttachment = &depthStencil;
-	renderingInfo.pStencilAttachment = NULL;
-	vkCmdBeginRendering( rsh.primaryCmd.vk.cmd, &renderingInfo );
-
 }
 #endif
 

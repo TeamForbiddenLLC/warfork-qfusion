@@ -10,94 +10,11 @@
 #define RI_MAX_SWAPCHAIN_IMAGES 8
 #define RI_NUMBER_FRAMES_FLIGHT 3
 
-
-#define DEVICE_SUPPORT_VULKAN
+#include "ri_defines.h"
 
 #ifdef DEVICE_SUPPORT_VULKAN
 #include "volk.h"
 #include "vk_mem_alloc.h"
-#define DEVICE_IMPL_VULKAN 1
-#else
-#define DEVICE_IMPL_VULKAN 0
-#endif
-
-#ifdef DEVICE_SUPPORT_MTL
-#define DEVICE_IMPL_MTL 1
-#else
-#define DEVICE_IMPL_MTL 0
-#endif
-
-#ifdef DEVICE_SUPPORT_D3D11
-#define DEVICE_IMPL_D3D11 1
-#else
-#define DEVICE_IMPL_D3D11 0
-#endif
-
-#ifdef DEVICE_SUPPORT_D3D12
-#define DEVICE_IMPL_D3D12 1
-#else
-#define DEVICE_IMPL_D3D12 0
-#endif
-
-#if ( ( DEVICE_IMPL_D3D12 + DEVICE_IMPL_D3D11 + DEVICE_IMPL_MTL + DEVICE_IMPL_VULKAN ) > 1 )
-#define DEVICE_IMPL_MUTLI 1
-#else
-#define DEVICE_IMPL_MUTLI 0
-#endif
-
-
-#if(DEVICE_IMPL_MUTLI)
-
-#if(DEVICE_IMPL_VULKAN)
-  #define GPU_VULKAN_BLOCK(backend, block) if(backend->api == DEVICE_API_VK) { Q_UNPAREN(block) }
-#else
-  #define GPU_VULKAN_BLOCK(backend, block) 
-#endif
-
-#if(DEVICE_IMPL_D3D11 )
-  #define GPU_D3D11_BLOCK(backend,  block) if(backend->api == DEVICE_API_D3D11) { Q_UNPAREN(block) }
-#else
-  #define GPU_D3D11_BLOCK(backend,  block) 
-#endif
-
-#if(DEVICE_IMPL_D3D12 )
-  #define GPU_D3D12_BLOCK(backend,  block) if(backend->api == DEVICE_API_D3D12) { Q_UNPAREN(block) }
-#else
-  #define GPU_D3D12_BLOCK(backend,  block) 
-#endif
-
-#if(DEVICE_IMPL_MTL )
-  #define GPU_MTL_BLOCK(backend, block) if(backend->api == DEVICE_API_MTL) { Q_UNPAREN(block) }
-#else
-  #define GPU_MTL_BLOCK(backend, block) 
-#endif
-
-#else
-
-#if(DEVICE_IMPL_VULKAN)
-  #define GPU_VULKAN_BLOCK(backend, block)  { assert(backend->api == RI_DEVICE_API_VK);  Q_UNPAREN(block) }
-#else
-  #define GPU_VULKAN_BLOCK(backend, block) 
-#endif
-
-#if(DEVICE_IMPL_D3D11 )
-  #define GPU_D3D11_BLOCK(backend, block)  { Q_UNPAREN(block) }
-#else
-  #define GPU_D3D11_BLOCK(backend, device, block) 
-#endif
-
-#if(DEVICE_IMPL_D3D12 )
-  #define GPU_D3D12_BLOCK(backend, block) { Q_UNPAREN(block)}
-#else
-  #define GPU_D3D12_BLOCK(backend, device, block) 
-#endif
-
-#if(DEVICE_IMPL_MTL )
-  #define GPU_MTL_BLOCK(backend, block) { Q_UNPAREN(block) }
-#else
-  #define GPU_MTL_BLOCK(backend, device, block) 
-#endif
-
 #endif
 
 #define R_VK_ADD_STRUCT(current, next) { \
@@ -124,6 +41,17 @@ static inline bool __vk_WrapResult(VkResult result, const char *sourceFilename, 
 #define RI_QUEUE_PROTECTED_BIT 0x40
 #define RI_QUEUE_OPTICAL_FLOW_BIT_NV 0x80
 #define RI_QUEUE_INVALID 0x0
+
+enum RIPresetLevel {
+    RI_GPU_PRESET_NONE = 0,
+    RI_GPU_PRESET_OFFICE,  // This means unsupported
+    RI_GPU_PRESET_VERYLOW, // Mostly for mobile GPU
+    RI_GPU_PRESET_LOW,
+    RI_GPU_PRESET_MEDIUM,
+    RI_GPU_PRESET_HIGH,
+    RI_GPU_PRESET_ULTRA,
+    RI_GPU_PRESET_COUNT
+};
 
 enum RITextureViewType_s {
 	RI_VIEWTYPE_SHADER_RESOURCE_1D,
@@ -323,6 +251,31 @@ struct RIBufferHandle_s {
 	};
 };
 
+struct RIBarrierImageHandle_s {
+	union {
+#if ( DEVICE_IMPL_VULKAN )
+		struct {
+			VkPipelineStageFlags2 stage;
+			VkAccessFlags2 access;
+			VkImageLayout layout;
+		} vk;
+#endif
+	};
+};
+
+struct RIBarrierBufferHandle_s {
+	union {
+#if ( DEVICE_IMPL_VULKAN )
+		struct {
+			union {
+				VkPipelineStageFlags2 stage;
+				VkAccessFlags2 access;
+			};
+		} vk;
+#endif
+	};
+};
+
 struct RITextureHandle_s {
 	union {
     #if(DEVICE_IMPL_VULKAN)
@@ -433,6 +386,7 @@ struct RIRenderer_s {
   union {
     #if(DEVICE_IMPL_VULKAN)
       struct {
+      	uint32_t apiVersion;
         VkInstance instance;
         VkDebugUtilsMessengerEXT debugMessageUtils;
       } vk;
@@ -467,7 +421,8 @@ struct RIPhysicalAdapter_s {
 	uint64_t systemMemorySize;
 	uint32_t deviceId;
 	uint8_t vendor; // RIVendor_e
-	
+	uint8_t presetLevel; // RIPresetLevel   
+
 	// Viewports
 	uint32_t viewportMaxNum;
 	int32_t viewportBoundsRange[2];

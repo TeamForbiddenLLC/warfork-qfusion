@@ -1,6 +1,3 @@
-[submodule "source/NRI"]
-	path = source/NRI
-	url = https://github.com/TeamForbiddenLLC/NRI.git
 [submodule "source/extern/glslang"]
 	path = source/extern/glslang
 	url = https://github.com/TeamForbiddenLLC/glslang.git

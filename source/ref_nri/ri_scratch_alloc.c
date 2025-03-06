@@ -1,34 +1,41 @@
 #include "ri_scratch_alloc.h"
 #include "stb_ds.h"
 
-struct RIBlockMem_s RIUniformScratchAllocHandler(struct RIDevice_s* device, struct RIScratchAlloc_s* scratch) {
+struct RIBlockMem_s RIUniformScratchAllocHandler( struct RIDevice_s *device, struct RIScratchAlloc_s *scratch )
+{
 	struct RIBlockMem_s mem = {};
-	GPU_VULKAN_BLOCK( device->renderer, ( {
-						  VkBufferCreateInfo stageBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-						  stageBufferCreateInfo.pNext = NULL;
-						  stageBufferCreateInfo.flags = 0;
-						  stageBufferCreateInfo.size = scratch->blockSize;
-						  stageBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-						  stageBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-						  stageBufferCreateInfo.queueFamilyIndexCount = 0;
-						  stageBufferCreateInfo.pQueueFamilyIndices = NULL;
-						  VK_WrapResult( vkCreateBuffer( device->vk.device, &stageBufferCreateInfo, NULL, &mem.vk.buffer ) );
+#if ( DEVICE_IMPL_VULKAN )
+	if( GPU_VULKAN_SELECTED( renderer ) ) {
+		VkBufferCreateInfo stageBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+		stageBufferCreateInfo.pNext = NULL;
+		stageBufferCreateInfo.flags = 0;
+		stageBufferCreateInfo.size = scratch->blockSize;
+		stageBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		stageBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		stageBufferCreateInfo.queueFamilyIndexCount = 0;
+		stageBufferCreateInfo.pQueueFamilyIndices = NULL;
+		//VK_WrapResult( vkCreateBuffer( device->vk.device, &stageBufferCreateInfo, NULL, &mem.vk.buffer ) );
 
-						  VmaAllocationInfo allocationInfo = {};
-						  VmaAllocationCreateInfo allocInfo = {};
-						  allocInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
-						  vmaAllocateMemoryForBuffer( device->vk.vmaAllocator, mem.vk.buffer, &allocInfo, &mem.vk.allocator, &allocationInfo );
-						  vmaBindBufferMemory2( device->vk.vmaAllocator, mem.vk.allocator, 0, mem.vk.buffer, NULL );
-						  mem.pMappedAddress = allocationInfo.pMappedData;
+		VmaAllocationInfo allocationInfo = {};
+		VmaAllocationCreateInfo allocInfo = {};
+		allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+		allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+		
+		VK_WrapResult(vmaCreateBuffer(device->vk.vmaAllocator, &stageBufferCreateInfo, &allocInfo, &mem.vk.buffer, &mem.vk.allocator, &allocationInfo));
 
-						  VkBufferViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO };
-						  createInfo.flags = (VkBufferViewCreateFlags)0;
-						  createInfo.buffer = mem.vk.buffer;
-						  createInfo.format = VK_FORMAT_UNDEFINED;
-						  createInfo.offset = 0;
-						  createInfo.range = scratch->blockSize;
-						  VK_WrapResult( vkCreateBufferView( device->vk.device, &createInfo, NULL, &mem.vk.blockView ) );
-					  } ) )
+//		vmaAllocateMemoryForBuffer( device->vk.vmaAllocator, mem.vk.buffer, &allocInfo, &mem.vk.allocator, &allocationInfo );
+//		vmaBindBufferMemory2( device->vk.vmaAllocator, mem.vk.allocator, 0, mem.vk.buffer, NULL );
+		mem.pMappedAddress = allocationInfo.pMappedData;
+
+		VkBufferViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO };
+		createInfo.flags = (VkBufferViewCreateFlags)0;
+		createInfo.buffer = mem.vk.buffer;
+		createInfo.format = VK_FORMAT_UNDEFINED;
+		createInfo.offset = 0;
+		createInfo.range = scratch->blockSize;
+		VK_WrapResult( vkCreateBufferView( device->vk.device, &createInfo, NULL, &mem.vk.blockView ) );
+	}
+#endif
 	return mem;
 }
 
