@@ -6,9 +6,6 @@
 #define MAX_NUMBER_SEGMENTS 8
 #include "qtypes.h"
 
-//struct RISegmentAlloc_s;
-//typedef size_t ( *RISegmentRealloc_Func )( struct RIDevice_s *device, struct RISegmentAlloc_s *segment, size_t numElements);
-
 struct RISegmentAlloc_s {
   // configuration
 //  RISegmentRealloc_Func reallocFunc; 
@@ -25,18 +22,6 @@ struct RISegmentAlloc_s {
     uint64_t frameNum;
     size_t numElements; // size of the generation
   } segment[MAX_NUMBER_SEGMENTS]; // allocations are managed in segments
-
-//  size_t bufferSize;
-//	union {
-//#if ( DEVICE_IMPL_VULKAN )
-//		struct {
-//			VkBufferView blockView;
-//			VkBuffer buffer;
-//			struct VmaAllocation_T *allocator;
-//		} vk;
-//#endif
-//	};
-//	uint8_t* pMappedAddress;
 };
 
 struct RISegmentReq_s {

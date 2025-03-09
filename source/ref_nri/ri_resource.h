@@ -2,6 +2,7 @@
 #define RI_RESOURCE_H
 
 #include "ri_types.h"
+#include <vulkan/vulkan_core.h>
 
 
 #if DEVICE_IMPL_VULKAN

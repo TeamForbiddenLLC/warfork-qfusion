@@ -1,5 +1,7 @@
 #include "ri_swapchain.h"
 #include "ri_types.h"
+#include "ri_format.h"
+
 
 #if ( DEVICE_IMPL_VULKAN )
 
@@ -20,68 +22,69 @@ static uint32_t __priority_BT709_G22_10BIT(const VkSurfaceFormatKHR* surface){
            ((surface->colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) << 1);
 }
 
-static uint32_t __priority_BT2020_G2084_10BIT(const VkSurfaceFormatKHR* surface){
-    return ((surface->format == VK_FORMAT_A2B10G10R10_UNORM_PACK32) << 0) | 
-  				 ((surface->colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT) << 1);
+static uint32_t __priority_BT2020_G2084_10BIT( const VkSurfaceFormatKHR *surface )
+{
+	return ( ( surface->format == VK_FORMAT_A2B10G10R10_UNORM_PACK32 ) << 0 ) | ( ( surface->colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT ) << 1 );
 }
 
 #endif
 
-int InitRISwapchain(struct RIDevice_s* dev, struct RISwapchainDesc_s* init, struct RISwapchain_s* swapchain) {
-	assert(init->windowHandle);
-	assert(init);
-	assert(swapchain);
+int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, struct RISwapchain_s *swapchain )
+{
+	assert( init->windowHandle );
+	assert( init );
+	assert( swapchain );
 	assert( init->imageCount <= Q_ARRAY_COUNT( swapchain->vk.images ) && init->imageCount > 0 );
 	swapchain->width = init->width;
 	swapchain->height = init->height;
 	swapchain->presentQueue = init->queue;
 	swapchain->imageCount = init->imageCount;
 	VkResult result = VK_SUCCESS;
-	GPU_VULKAN_BLOCK(dev->renderer, ({ 
-		
-		switch(init->windowHandle->type) {
+#if ( DEVICE_IMPL_VULKAN )
+	if( GPU_VULKAN_SELECTED( &dev->renderer ) ) {
+		switch( init->windowHandle->type ) {
 #ifdef VK_USE_PLATFORM_XLIB_KHR
 			case RI_WINDOW_X11:
-        VkXlibSurfaceCreateInfoKHR xlibSurfaceInfo = {VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR};
-        xlibSurfaceInfo.dpy = init->windowHandle->x11.dpy;
-        xlibSurfaceInfo.window = init->windowHandle->x11.window;
-        result = vkCreateXlibSurfaceKHR(dev->renderer->vk.instance, &xlibSurfaceInfo, NULL, &swapchain->vk.surface);
-				VK_WrapResult(result);
-        //RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkCreateXlibSurfaceKHR returned %d", (int32_t)result);
+				VkXlibSurfaceCreateInfoKHR xlibSurfaceInfo = { VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR };
+				xlibSurfaceInfo.dpy = init->windowHandle->x11.dpy;
+				xlibSurfaceInfo.window = init->windowHandle->x11.window;
+				result = vkCreateXlibSurfaceKHR( dev->renderer->vk.instance, &xlibSurfaceInfo, NULL, &swapchain->vk.surface );
+				VK_WrapResult( result );
+				// RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkCreateXlibSurfaceKHR returned %d", (int32_t)result);
 				break;
 #endif
 #ifdef VK_USE_PLATFORM_WIN32_KHR
 			case RI_WINDOW_WIN32:
-        VkWin32SurfaceCreateInfoKHR win32SurfaceInfo = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
-        win32SurfaceInfo.hwnd = (HWND)swapChainDesc.window.windows.hwnd;
+				VkWin32SurfaceCreateInfoKHR win32SurfaceInfo = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
+				win32SurfaceInfo.hwnd = (HWND)swapChainDesc.window.windows.hwnd;
 
-        VkResult result = vk.CreateWin32SurfaceKHR(m_Device, &win32SurfaceInfo, m_Device.GetAllocationCallbacks(), &m_Surface);
-        RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkCreateWin32SurfaceKHR returned %d", (int32_t)result);
+				VkResult result = vk.CreateWin32SurfaceKHR( m_Device, &win32SurfaceInfo, m_Device.GetAllocationCallbacks(), &m_Surface );
+				RETURN_ON_FAILURE( &m_Device, result == VK_SUCCESS, GetReturnCode( result ), "vkCreateWin32SurfaceKHR returned %d", (int32_t)result );
 				break;
 #endif
 #ifdef VK_USE_PLATFORM_METAL_EXT
 			case RI_WINDOW_METAL:
-        VkMetalSurfaceCreateInfoEXT metalSurfaceCreateInfo = {VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT};
-        metalSurfaceCreateInfo.pLayer = (CAMetalLayer*)swapChainDesc.window.metal.caMetalLayer;
+				VkMetalSurfaceCreateInfoEXT metalSurfaceCreateInfo = { VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT };
+				metalSurfaceCreateInfo.pLayer = (CAMetalLayer *)swapChainDesc.window.metal.caMetalLayer;
 
-        VkResult result = vk.CreateMetalSurfaceEXT(m_Device, &metalSurfaceCreateInfo, m_Device.GetAllocationCallbacks(), &m_Surface);
-        RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkCreateMetalSurfaceEXT returned %d", (int32_t)result);
+				VkResult result = vk.CreateMetalSurfaceEXT( m_Device, &metalSurfaceCreateInfo, m_Device.GetAllocationCallbacks(), &m_Surface );
+				RETURN_ON_FAILURE( &m_Device, result == VK_SUCCESS, GetReturnCode( result ), "vkCreateMetalSurfaceEXT returned %d", (int32_t)result );
 				break;
 #endif
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
 			case RI_WINDOW_WAYLAND:
-        VkWaylandSurfaceCreateInfoKHR waylandSurfaceInfo = {VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR};
-        waylandSurfaceInfo.display = init->windowHandle->wayland.display;
-        waylandSurfaceInfo.surface = init->windowHandle->wayland.surface;
-        result = vkCreateWaylandSurfaceKHR(dev->renderer->vk.instance, &waylandSurfaceInfo, NULL, &swapchain->vk.surface);
-				VK_WrapResult(result);
+				VkWaylandSurfaceCreateInfoKHR waylandSurfaceInfo = { VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR };
+				waylandSurfaceInfo.display = init->windowHandle->wayland.display;
+				waylandSurfaceInfo.surface = init->windowHandle->wayland.surface;
+				result = vkCreateWaylandSurfaceKHR( dev->renderer->vk.instance, &waylandSurfaceInfo, NULL, &swapchain->vk.surface );
+				VK_WrapResult( result );
 				break;
 #endif
 			default:
 				break;
 		}
-	}));
-
+	}
+#endif
 	{
 		VkBool32 supported = VK_FALSE;
 		result = vkGetPhysicalDeviceSurfaceSupportKHR(dev->physicalAdapter.vk.physicalDevice, init->queue->vk.queueFamilyIdx, swapchain->vk.surface, &supported);
@@ -205,54 +208,57 @@ int InitRISwapchain(struct RIDevice_s* dev, struct RISwapchainDesc_s* init, stru
   return RI_SUCCESS;
 }
 
-uint32_t RISwapchainAcquireNextTexture(struct RIDevice_s* dev, struct RISwapchain_s* swapchain) {
-	GPU_VULKAN_BLOCK( dev->renderer, ( {
-						  VkSemaphore imageAcquiredSemaphore = swapchain->vk.imageAcquireSem[swapchain->vk.frameIndex];
-						  VK_WrapResult( vkAcquireNextImageKHR( dev->vk.device, swapchain->vk.swapchain, 1000 * 1000, imageAcquiredSemaphore, VK_NULL_HANDLE, &swapchain->vk.textureIndex ) );
-						  return swapchain->vk.textureIndex;
-					  } ) );
+uint32_t RISwapchainAcquireNextTexture( struct RIDevice_s *dev, struct RISwapchain_s *swapchain )
+{
+#if ( DEVICE_IMPL_VULKAN )
+	if( GPU_VULKAN_SELECTED( dev->renderer ) ) {
+		VkSemaphore imageAcquiredSemaphore = swapchain->vk.imageAcquireSem[swapchain->vk.frameIndex];
+		VK_WrapResult( vkAcquireNextImageKHR( dev->vk.device, swapchain->vk.swapchain, 5000 * 1000000ull, imageAcquiredSemaphore, VK_NULL_HANDLE, &swapchain->vk.textureIndex ) );
+		return swapchain->vk.textureIndex;
+	}
+#endif
 	return 0;
 }
 
 void RISwapchainPresent(struct RIDevice_s* dev, struct RISwapchain_s* swapchain) {
-	GPU_VULKAN_BLOCK( dev->renderer, ( {
+#if ( DEVICE_IMPL_VULKAN )
+	if( GPU_VULKAN_SELECTED( dev->renderer ) ) {
 		VkSemaphore imageAcquiredSemaphore = swapchain->vk.imageAcquireSem[swapchain->vk.frameIndex];
 		VkSemaphore renderingFinishedSemaphore = swapchain->vk.finishSem[swapchain->vk.frameIndex];
-    { // Wait & Signal
-        VkSemaphoreSubmitInfo waitSemaphore = {VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
-        waitSemaphore.semaphore = imageAcquiredSemaphore;
-        waitSemaphore.stageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		{ // Wait & Signal
+			VkSemaphoreSubmitInfo waitSemaphore = { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
+			waitSemaphore.semaphore = imageAcquiredSemaphore;
+			waitSemaphore.stageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 
-        VkSemaphoreSubmitInfo signalSemaphore = {VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
-        signalSemaphore.semaphore = renderingFinishedSemaphore;
-        signalSemaphore.stageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			VkSemaphoreSubmitInfo signalSemaphore = { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
+			signalSemaphore.semaphore = renderingFinishedSemaphore;
+			signalSemaphore.stageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 
-        VkSubmitInfo2 submitInfo = {VK_STRUCTURE_TYPE_SUBMIT_INFO_2};
-        submitInfo.waitSemaphoreInfoCount = 1;
-        submitInfo.pWaitSemaphoreInfos = &waitSemaphore;
-        submitInfo.signalSemaphoreInfoCount = 1;
-        submitInfo.pSignalSemaphoreInfos = &signalSemaphore;
-        VK_WrapResult(vkQueueSubmit2(swapchain->presentQueue->vk.queue, 1, &submitInfo, VK_NULL_HANDLE));
-    }
-    {
-        VkPresentInfoKHR presentInfo = {VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
-        presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &renderingFinishedSemaphore;
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = &swapchain->vk.swapchain;
-        presentInfo.pImageIndices = &swapchain->vk.textureIndex;
+			VkSubmitInfo2 submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO_2 };
+			submitInfo.waitSemaphoreInfoCount = 1;
+			submitInfo.pWaitSemaphoreInfos = &waitSemaphore;
+			submitInfo.signalSemaphoreInfoCount = 1;
+			submitInfo.pSignalSemaphoreInfos = &signalSemaphore;
+			VK_WrapResult( vkQueueSubmit2( swapchain->presentQueue->vk.queue, 1, &submitInfo, VK_NULL_HANDLE ) );
+		}
+		{
+			VkPresentInfoKHR presentInfo = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
+			presentInfo.waitSemaphoreCount = 1;
+			presentInfo.pWaitSemaphores = &renderingFinishedSemaphore;
+			presentInfo.swapchainCount = 1;
+			presentInfo.pSwapchains = &swapchain->vk.swapchain;
+			presentInfo.pImageIndices = &swapchain->vk.textureIndex;
 
-        VkPresentIdKHR presentId = {VK_STRUCTURE_TYPE_PRESENT_ID_KHR};
-        presentId.swapchainCount = 1;
-        presentId.pPresentIds = &swapchain->vk.presentID;
+			VkPresentIdKHR presentId = { VK_STRUCTURE_TYPE_PRESENT_ID_KHR };
+			presentId.swapchainCount = 1;
+			presentId.pPresentIds = &swapchain->vk.presentID;
 
-        if (dev->physicalAdapter.vk.isPresentIDSupported)
-            presentInfo.pNext = &presentId;
-        VK_WrapResult(vkQueuePresentKHR(swapchain->presentQueue->vk.queue, &presentInfo));
-    }
-    swapchain->vk.presentID++;
-    swapchain->vk.frameIndex = (swapchain->vk.frameIndex + 1) % RI_MAX_SWAPCHAIN_IMAGES; 
-
-	} ) );
-
+			if( dev->physicalAdapter.vk.isPresentIDSupported )
+				presentInfo.pNext = &presentId;
+			VK_WrapResult( vkQueuePresentKHR( swapchain->presentQueue->vk.queue, &presentInfo ) );
+		}
+		swapchain->vk.presentID++;
+		swapchain->vk.frameIndex = ( swapchain->vk.frameIndex + 1 ) % RI_MAX_SWAPCHAIN_IMAGES;
+	}
+#endif
 }

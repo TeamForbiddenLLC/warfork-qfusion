@@ -1,5 +1,6 @@
 #include "ri_renderer.h"
 
+#include "ri_types.h"
 #include "stb_ds.h"
 #include <qstr.h>
 #include <vulkan/vulkan_core.h>
@@ -140,7 +141,10 @@ VkBool32 VKAPI_PTR __VK_DebugUtilsMessenger( VkDebugUtilsMessageSeverityFlagBits
 {
 	switch( messageSeverity ) {
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+			//assert(callbackData->messageIdNumber ==0xc1c74a9c );
 			Com_Printf( "VK ERROR: %s", callbackData->pMessage );
+			if( callbackData->messageIdNumber != 0xcc9c32be )
+				assert( false );
 			break;
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
 			Com_Printf( "VK WARNING: %s", callbackData->pMessage );
@@ -182,7 +186,6 @@ static bool __VK_SupportExtension( VkExtensionProperties *properties, size_t len
 	return false;
 }
 
-
 #endif
 
 int EnumerateRIAdapters( struct RIRenderer_s *renderer, struct RIPhysicalAdapter_s *adapters, uint32_t *numAdapters )
@@ -195,7 +198,10 @@ int EnumerateRIAdapters( struct RIRenderer_s *renderer, struct RIPhysicalAdapter
 		}
 
 		if( adapters ) {
-			VkPhysicalDeviceGroupProperties *physicalDeviceGroupProperties = malloc( sizeof( VkPhysicalDeviceGroupProperties ) * deviceGroupNum );
+			VkPhysicalDeviceGroupProperties *physicalDeviceGroupProperties = calloc( deviceGroupNum, sizeof( VkPhysicalDeviceGroupProperties ) );
+			for(size_t i = 0; i < deviceGroupNum; i++) {
+				physicalDeviceGroupProperties[i].sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES;
+			}
 			if( !VK_WrapResult(vkEnumeratePhysicalDeviceGroups( renderer->vk.instance, &deviceGroupNum, physicalDeviceGroupProperties ))) {
 				free(physicalDeviceGroupProperties);
 				return RI_FAIL;
@@ -254,7 +260,26 @@ int EnumerateRIAdapters( struct RIRenderer_s *renderer, struct RIPhysicalAdapter
 						break;
 					}
 				}
-				
+
+				switch( properties.properties.deviceType ) {
+					case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+						physicalAdapter->type = RI_ADAPTER_TYPE_INTEGRATED_GPU;
+						break;
+					case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+						physicalAdapter->type = RI_ADAPTER_TYPE_DISCRETE_GPU;
+						break;
+					case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+						physicalAdapter->type = RI_ADAPTER_TYPE_VIRTUAL_GPU;
+						break;
+					case VK_PHYSICAL_DEVICE_TYPE_CPU:
+						physicalAdapter->type = RI_ADAPTER_TYPE_CPU;
+						break;
+					case VK_PHYSICAL_DEVICE_TYPE_OTHER:
+					default:
+						physicalAdapter->type = RI_ADAPTER_TYPE_OTHER;
+						break;
+				}
+
 				physicalAdapter->vk.isSwapChainSupported = __VK_SupportExtension( extensionProperties, extensionNum, qCToStrRef( VK_KHR_SWAPCHAIN_EXTENSION_NAME ) );
 
 				physicalAdapter->vk.isPresentIDSupported = presentIdFeatures.presentId;
@@ -290,7 +315,7 @@ int EnumerateRIAdapters( struct RIRenderer_s *renderer, struct RIPhysicalAdapter
 
 				for( uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++ ) {
 					// const VkMemoryType& memoryType = m_MemoryProps.memoryTypes[i];
-					if( memoryProperties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT )
+					if( ( memoryProperties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT ) != 0 && physicalAdapter->type != RI_ADAPTER_TYPE_INTEGRATED_GPU )
 						physicalAdapter->videoMemorySize += memoryProperties.memoryHeaps[i].size;
 					else
 						physicalAdapter->systemMemorySize += memoryProperties.memoryHeaps[i].size;

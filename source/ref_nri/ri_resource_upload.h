@@ -2,7 +2,7 @@
 #ifndef RI_RESOURCE_UPLOAD_H
 #define RI_RESOURCE_UPLOAD_H
 
-#define RI_RESOURCE_NUM_COMMAND_SETS 4
+#define RI_RESOURCE_NUM_COMMAND_SETS 4 
 #define RI_RESOURCE_STAGE_SIZE (8 * MB_TO_BYTE)
 
 #include "ri_types.h"
@@ -38,8 +38,7 @@ struct RIResourceUploader_s {
 	size_t tailOffset;
 	size_t remaningSpace;
 	size_t reservedSpacePerSet[RI_RESOURCE_NUM_COMMAND_SETS];
-	uint32_t activeSet;
-	uint32_t syncIndex;
+	uint64_t syncIndex;
 
 	union {
 #if ( DEVICE_IMPL_VULKAN )
@@ -51,7 +50,7 @@ struct RIResourceUploader_s {
 			VkSemaphore uploadSem;	
 			struct {
 				VkCommandPool cmdPool;
-				VkCommandBuffer cmdBuffer;
+				VkCommandBuffer cmd;
 				struct RI_VK_TempBuffers {
 					VkBuffer buffer;
 					struct VmaAllocation_T *alloc;

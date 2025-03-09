@@ -4,7 +4,6 @@
 
 #include "ri_format.h"
 #include "ri_types.h"
-#include <vulkan/vulkan_core.h>
 
 #if DEVICE_IMPL_VULKAN
 VkResult RI_VK_InitImageView( struct RIDevice_s *dev, VkImageViewCreateInfo *info, struct RIDescriptor_s *desc )
@@ -14,6 +13,7 @@ VkResult RI_VK_InitImageView( struct RIDevice_s *dev, VkImageViewCreateInfo *inf
 	desc->vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	desc->vk.image.handle = info->image;
 	VkResult result = vkCreateImageView( dev->vk.device, info, NULL, &desc->vk.image.info.imageView );
+	desc->vk.image.info.imageLayout =VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; 
 	VK_WrapResult( result );
 	RI_UpdateDescriptorCookie( dev, desc );
 	return result;
@@ -30,22 +30,24 @@ VkResult RI_VK_InitSampler( struct RIDevice_s *dev, VkSamplerCreateInfo *info, s
 #endif
 
 void RI_UpdateDescriptorCookie(struct RIDevice_s* dev,struct RIDescriptor_s* desc) {
-	GPU_VULKAN_BLOCK( dev->renderer, ( {
-						  switch( desc->vk.type ) {
-							  case VK_DESCRIPTOR_TYPE_SAMPLER:
-							  case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-							  case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-								  desc->cookie = hash_data( hash_u64( HASH_INITIAL_VALUE, desc->vk.type ), &desc->vk.image, sizeof( desc->vk.image ) );
-								  break;
-							  case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-							  case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-								  desc->cookie = hash_data( hash_u64( HASH_INITIAL_VALUE, desc->vk.type ), &desc->vk.buffer, sizeof( desc->vk.buffer ) );
-								  break;
-								default:
-									assert(false);
-									break;
-						  }
-					  } ) );
+#if ( DEVICE_IMPL_VULKAN )
+	if( GPU_VULKAN_SELECTED( dev->renderer ) ) {
+		switch( desc->vk.type ) {
+			case VK_DESCRIPTOR_TYPE_SAMPLER:
+			case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+			case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+				desc->cookie = hash_data( hash_u64( HASH_INITIAL_VALUE, desc->vk.type ), &desc->vk.image, sizeof( desc->vk.image ) );
+				break;
+			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+				desc->cookie = hash_data( hash_u64( HASH_INITIAL_VALUE, desc->vk.type ), &desc->vk.buffer, sizeof( desc->vk.buffer ) );
+				break;
+			default:
+				assert( false );
+				break;
+		}
+	}
+#endif
 }
 
 bool RI_IsEmptyDescriptor( struct RIDevice_s *dev, struct RIDescriptor_s *desc )

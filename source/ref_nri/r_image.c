@@ -813,12 +813,16 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		if(!VK_WrapResult(vmaCreateImage(rsh.device.vk.vmaAllocator, &info, &mem_reqs, &image->handle.vk.image, &image->vk.vmaAlloc, NULL))) {
 			goto error;
 		}
+		if(vkSetDebugUtilsObjectNameEXT){
+			VkDebugUtilsObjectNameInfoEXT debugName = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, NULL, VK_OBJECT_TYPE_IMAGE, (uint64_t)image->handle.vk.image, image->name.buf };
+			VK_WrapResult( vkSetDebugUtilsObjectNameEXT( rsh.device.vk.device, &debugName ) );
+		}
 
 		VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
 		usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
 		VkImageSubresourceRange subresource = {
-			VK_IMAGE_ASPECT_COLOR_BIT, 0, image->mipNum, 0, 1,
+			VK_IMAGE_ASPECT_COLOR_BIT, 0, Q_MAX(image->mipNum, 1), 0, 1,
 		};
 
 		VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
@@ -989,6 +993,7 @@ static enum RI_Format_e __R_GetImageFormat( struct image_s* image )
 	return RI_FORMAT_RGBA8_UNORM;
 }
 
+
 static void __R_CopyTextureDataTexture(struct image_s* image, int layer, int mipOffset, int x, int y, int w, int h, enum RI_Format_e srcFormat, uint8_t *data )
 {
 	const struct RIFormatProps_s *srcDef = GetRIFormatProps( srcFormat );
@@ -1002,6 +1007,7 @@ static void __R_CopyTextureDataTexture(struct image_s* image, int layer, int mip
 	uploadDesc.mipOffset = mipOffset; 
 	uploadDesc.x = x;
 	uploadDesc.y = y;
+	uploadDesc.depth = 1;
 	uploadDesc.width = w; 
 	uploadDesc.height = h;
 	uploadDesc.format = __R_GetImageFormat(image);
@@ -1020,15 +1026,15 @@ static void __R_CopyTextureDataTexture(struct image_s* image, int layer, int mip
 		for( size_t column = 0; column < uploadDesc.width; column++ ) {
 			switch( srcFormat ) {
 				case RI_FORMAT_L8_A8_UNORM: {
-					const uint8_t luminance = data[( uploadDesc.width * srcDef->blockWidth * slice ) + ( column * srcDef->blockHeight )];
-					const uint8_t alpha = data[( uploadDesc.width * srcDef->blockWidth * slice ) + ( column * srcDef->blockHeight ) + 1];
+					const uint8_t luminance = data[( uploadDesc.width * srcDef->stride * slice ) + ( column * srcDef->stride )];
+					const uint8_t alpha = data[( uploadDesc.width * srcDef->stride * slice ) + ( column * srcDef->stride ) + 1];
 					uint8_t color[4] = { luminance, luminance, luminance, alpha };
-					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( srcDef->blockHeight * column )], color, min( sizeof( color ), srcDef->blockWidth ) );
+					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destDef->stride * column )], color, Q_MIN( sizeof( color ), destDef->stride ) );
 					break;
 				}
 				case RI_FORMAT_A8_UNORM:
 				case RI_FORMAT_R8_UNORM: {
-					const uint8_t c1 = data[( uploadDesc.width * srcDef->blockHeight * slice ) + ( column * srcDef->blockWidth )];
+					const uint8_t c1 = data[( uploadDesc.width * srcDef->stride * slice ) + ( column * srcDef->stride )];
 					uint8_t color[4]; //= { c1, c1, c1, c1 };
 					if( image->flags & IT_ALPHAMASK ) {
 						color[0] = color[1] = color[2] = 0.0f;
@@ -1037,12 +1043,12 @@ static void __R_CopyTextureDataTexture(struct image_s* image, int layer, int mip
 						color[0] = color[1] = color[2] = c1;
 						color[3] = 255;
 					}
-					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( srcDef->blockWidth * column )], color, min( 4, srcDef->blockWidth ) );
+					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destDef->stride * column )], color, min( 4, destDef->stride ) );
 					break;
 				}
 				default:
-					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( srcDef->blockWidth * column )], &data[( uploadDesc.width * srcDef->blockWidth * slice ) + ( column * srcDef->blockWidth )],
-							min( srcDef->blockWidth, destDef->blockWidth ) );
+					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destDef->stride * column )], &data[( uploadDesc.width * srcDef->stride * slice ) + ( column * srcDef->stride )],
+							min( srcDef->stride, destDef->stride ) );
 					break;
 			}
 		}
@@ -1123,18 +1129,17 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 		image = NULL;
 		return NULL;
 	}
-
-
-	//// allocate vma and bind dedicated VMA
-	//vmaAllocateMemoryForImage( rsh.device.vk.vmaAllocator, image->handle.vk.image, &mem_reqs, &image->vk.vmaAlloc, NULL );
-	//vmaBindImageMemory2( rsh.device.vk.vmaAllocator, image->vk.vmaAlloc, 0, image->handle.vk.image, NULL );
+	if( vkSetDebugUtilsObjectNameEXT ) {
+		VkDebugUtilsObjectNameInfoEXT debugName = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, NULL, VK_OBJECT_TYPE_IMAGE, (uint64_t)image->handle.vk.image, name };
+		VK_WrapResult( vkSetDebugUtilsObjectNameEXT( rsh.device.vk.device, &debugName ) );
+	}
 
 	// create desctipror
 	VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
 	usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
 	VkImageSubresourceRange subresource = {
-		VK_IMAGE_ASPECT_COLOR_BIT, 0, image->mipNum, 0, 1,
+		VK_IMAGE_ASPECT_COLOR_BIT, 0, Q_MAX(image->mipNum, 1), 0, 1,
 	};
 
 	VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
@@ -1145,40 +1150,6 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	createInfo.image = image->handle.vk.image;
 	RI_VK_InitImageView(&rsh.device, &createInfo, &image->binding);
 	image->samplerBinding = R_ResolveSamplerDescriptor(image->flags); 
-
-	// NriTextureDesc textureDesc = { .width = width,
-	// 							   .height = height,
-	// 							   .depth = 1,
-	// 							   .usage = __R_NRITextureUsageBits( flags ),
-	// 							   .layerNum = ( flags & IT_CUBEMAP ) ? 6 : 1,
-	// 							   .format = R_ToNRIFormat( destFormat ),
-	// 							   .sampleNum = 1,
-	// 							   .type = NriTextureType_TEXTURE_2D,
-	// 							   .mipNum = mipSize };
-	// rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture );
-	// rsh.nri.coreI.SetTextureDebugName( image->texture, name );
-	// NriResourceGroupDesc resourceGroupDesc = {
-	// 	.textureNum = 1,
-	// 	.textures = &image->texture,
-	// 	.memoryLocation = NriMemoryLocation_DEVICE,
-	// };
-
-	// const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
-	// assert( allocationNum <= Q_ARRAY_COUNT( image->memory ) );
-	// image->numAllocations = allocationNum;
-	// NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, image->memory ) );
-	//
-	// NriTexture2DViewDesc textureViewDesc = {
-	// 	.texture = image->texture,
-	// 	.viewType = (flags & IT_CUBEMAP) ? NriTexture2DViewType_SHADER_RESOURCE_CUBE: NriTexture2DViewType_SHADER_RESOURCE_2D,
-	// 	.format = textureDesc.format
-	// };
-	//
-	// NriDescriptor* descriptor = NULL;
-	// NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &descriptor) );
-	// image->descriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
-	// image->samplerDescriptor = R_CreateDescriptorWrapper(&rsh.nri, R_ResolveSamplerDescriptor(image->flags));
-	// assert(image->samplerDescriptor.descriptor);
 
 	const size_t reservedSize = width * height * samples;
 	uint8_t *tmpBuffer = NULL;
@@ -1299,7 +1270,7 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 									  info.arrayLayers = ( flags & IT_CUBEMAP ) ? 6 : 1;
 									  info.samples = 1;
 									  info.tiling = VK_IMAGE_TILING_OPTIMAL;
-									  info.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+									  info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 									  info.pQueueFamilyIndices = queueFamilies;
 									  VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
@@ -1351,7 +1322,7 @@ void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, 
 	memcpy( buf, pic[0], reservedSize );
 
 	// uint8_t *buf = tmpBuffer;
-	enum texture_format_e srcFormat = __R_ResolveDataFormat( image->flags, image->samples );
+	enum RI_Format_e  srcFormat = __R_ResolveDataFormat( image->flags, image->samples );
 
 	uint8_t *tmpBuffer = NULL;
 	if( !( image->flags & IT_CUBEMAP ) && ( image->flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) ) ) {
@@ -1397,7 +1368,7 @@ void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic )
 	memcpy( buf, pic[0], reservedSize );
 
 	// uint8_t *buf = tmpBuffer;
-	enum texture_format_e srcFormat = __R_ResolveDataFormat( image->flags, image->samples );
+	enum RI_Format_e srcFormat = __R_ResolveDataFormat( image->flags, image->samples );
 
 	uint8_t *tmpBuffer = NULL;
 	if( !( image->flags & IT_CUBEMAP ) && ( image->flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) ) ) {
@@ -1604,79 +1575,69 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 			image = NULL;
 			goto done;
 		}
-	} 
-	assert(uploadCount <= 6);
+	}
+	assert( uploadCount <= 6 );
 	assert( ( flags & IT_CUBEMAP && uploadCount == 6 ) || ( !( flags & IT_CUBEMAP ) && uploadCount == 1 ) );
 
 	const uint32_t mipSize = __R_calculateMipMapLevel( flags, uploads[0].buffer.width, uploads[0].buffer.height, minmipsize );
 	const uint32_t destFormat = __R_GetImageFormat( image );
 
-	GPU_VULKAN_BLOCK( rsh.device.renderer, ( {
-			uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
-			VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-			VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
-			const struct RIFormatProps_s *formatProps = GetRIFormatProps( destFormat );
-			if( formatProps->blockWidth > 1 )
-				flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
-			if( image->flags & IT_CUBEMAP )
-				flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
-			info.flags = flags;
-			info.imageType = VK_IMAGE_TYPE_2D;
-			info.format = RIFormatToVK( destFormat );
-			info.extent.width = image->width;
-			info.extent.height = image->height;
-			info.extent.depth = 1;
-			info.mipLevels = mipSize;
-			info.arrayLayers = ( image->flags & IT_CUBEMAP ) ? 6 : 1;
-			info.samples = 1;
-			info.tiling = VK_IMAGE_TILING_OPTIMAL;
-			info.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+#if ( DEVICE_IMPL_VULKAN )
+	if( GPU_VULKAN_SELECTED( rsh.device.renderer ) ) {
+		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+		VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+		VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
+		const struct RIFormatProps_s *formatProps = GetRIFormatProps( destFormat );
+		if( formatProps->blockWidth > 1 )
+			flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
+		if( image->flags & IT_CUBEMAP )
+			flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
+		info.flags = flags;
+		info.imageType = VK_IMAGE_TYPE_2D;
+		info.format = RIFormatToVK( destFormat );
+		info.extent.width = image->width;
+		info.extent.height = image->height;
+		info.extent.depth = 1;
+		info.mipLevels = mipSize;
+		info.arrayLayers = ( image->flags & IT_CUBEMAP ) ? 6 : 1;
+		info.samples = 1;
+		info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-			info.pQueueFamilyIndices = queueFamilies;
-			VK_ConfigureImageQueueFamilies(&info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
-			info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			// allocate vma and bind dedicated VMA
-			VmaAllocationCreateInfo mem_reqs = { 0 };
-			mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-			if(!VK_WrapResult(vmaCreateImage(rsh.device.vk.vmaAllocator, &info, &mem_reqs, &image->handle.vk.image, &image->vk.vmaAlloc, NULL))) {
-				ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name.buf );
-				__FreeImage( image );
-				image = NULL;
-				goto done;
-			}
+		info.pQueueFamilyIndices = queueFamilies;
+		VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		// allocate vma and bind dedicated VMA
+		VmaAllocationCreateInfo mem_reqs = { 0 };
+		mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+		if( !VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &image->handle.vk.image, &image->vk.vmaAlloc, NULL ) ) ) {
+			ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name.buf );
+			__FreeImage( image );
+			image = NULL;
+			goto done;
+		}
+		if(vkSetDebugUtilsObjectNameEXT){
+			VkDebugUtilsObjectNameInfoEXT debugName = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, NULL, VK_OBJECT_TYPE_IMAGE, (uint64_t)image->handle.vk.image, name };
+			VK_WrapResult( vkSetDebugUtilsObjectNameEXT( rsh.device.vk.device, &debugName ) );
+		}
 
-			//vmaAllocateMemoryForImage( rsh.device.vk.vmaAllocator, image->handle.vk.image, &mem_reqs, &image->vk.vmaAlloc, NULL );
-			//vmaBindImageMemory2( rsh.device.vk.vmaAllocator, image->vk.vmaAlloc, 0, image->handle.vk.image, NULL );
+		// create desctipror
+		VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
+		usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
-			// create desctipror		
-    	VkImageViewUsageCreateInfo usageInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO};
-    	usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
-	
-			VkImageSubresourceRange subresource = {
-				VK_IMAGE_ASPECT_COLOR_BIT,
-				0,
-				info.mipLevels,
-				0,
-				info.arrayLayers,
-			};
+		VkImageSubresourceRange subresource = {
+			VK_IMAGE_ASPECT_COLOR_BIT, 0, info.mipLevels, 0, info.arrayLayers,
+		};
 
-			VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-			createInfo.pNext = &usageInfo;
-			createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-			createInfo.format = info.format; 
-			createInfo.subresourceRange = subresource;
-			createInfo.image = image->handle.vk.image;
-			RI_VK_InitImageView(&rsh.device, &createInfo, &image->binding);
-			//image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-			//image->binding.vk.image.info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-			//if( VK_WrapResult(vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.info.imageView )) {
-			//	ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name.buf );
-			//	__FreeImage( R_ActiveFrameCmd(), image );
-			//	image = NULL;
-			//	goto done;
-			//}
-
-	} ) );
+		VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+		createInfo.pNext = &usageInfo;
+		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		createInfo.format = info.format;
+		createInfo.subresourceRange = subresource;
+		createInfo.image = image->handle.vk.image;
+		RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding );
+	}
+#endif
 	image->samplerBinding = R_ResolveSamplerDescriptor(image->flags); 
 
 	struct texture_buf_s transformBuffer = { 0 };

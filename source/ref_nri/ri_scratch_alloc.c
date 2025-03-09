@@ -27,13 +27,13 @@ struct RIBlockMem_s RIUniformScratchAllocHandler( struct RIDevice_s *device, str
 //		vmaBindBufferMemory2( device->vk.vmaAllocator, mem.vk.allocator, 0, mem.vk.buffer, NULL );
 		mem.pMappedAddress = allocationInfo.pMappedData;
 
-		VkBufferViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO };
-		createInfo.flags = (VkBufferViewCreateFlags)0;
-		createInfo.buffer = mem.vk.buffer;
-		createInfo.format = VK_FORMAT_UNDEFINED;
-		createInfo.offset = 0;
-		createInfo.range = scratch->blockSize;
-		VK_WrapResult( vkCreateBufferView( device->vk.device, &createInfo, NULL, &mem.vk.blockView ) );
+		//VkBufferViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO };
+		//createInfo.flags = (VkBufferViewCreateFlags)0;
+		//createInfo.buffer = mem.vk.buffer;
+		//createInfo.format = VK_FORMAT_UNDEFINED;
+		//createInfo.offset = 0;
+		//createInfo.range = scratch->blockSize;
+		//VK_WrapResult( vkCreateBufferView( device->vk.device, &createInfo, NULL, &mem.vk.blockView ) );
 	}
 #endif
 	return mem;
@@ -46,10 +46,13 @@ void InitRIScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s *poo
   pool->alloc = desc->alloc;
 }
 
-static inline bool __isPoolSlotEmpty( struct RIDevice_s *device, struct RIBlockMem_s *block ) {
-	GPU_VULKAN_BLOCK( device->renderer, ( {
-	  return block->vk.buffer;
-	}));
+static inline bool __isPoolSlotEmpty( struct RIDevice_s *device, struct RIBlockMem_s *block )
+{
+#if ( DEVICE_IMPL_VULKAN )
+	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
+		return block->vk.buffer == NULL;
+	}
+#endif
 	return false;
 }
 
@@ -95,6 +98,7 @@ void RIResetScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s *po
 struct RIBufferScratchAllocReq_s  RIAllocBufferFromScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s *pool, size_t reqSize )
 {
 	const size_t alignReqSize = Q_ALIGN_TO( reqSize, pool->alignmentReq );
+	assert(pool->alloc);
 	if( __isPoolSlotEmpty( device, &pool->current ) ) {
 		pool->current = pool->alloc( device, pool );
 		pool->blockOffset = 0;

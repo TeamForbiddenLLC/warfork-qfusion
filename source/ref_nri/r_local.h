@@ -363,7 +363,7 @@ typedef struct
  	struct RIRenderer_s renderer;
  	struct RIDevice_s device;
 
-	struct frame_cmd_buffer_s primaryCmd;
+	struct frame_cmd_buffer_s frame;
 	
 	union {
 #if ( DEVICE_IMPL_VULKAN )

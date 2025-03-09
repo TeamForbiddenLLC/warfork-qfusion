@@ -6,42 +6,32 @@
 #include "ri_format.h"
 #include "ri_renderer.h"
 
-static void __EndActiveCommandSet( struct RIDevice_s *device, struct RIResourceUploader_s *res ) {
-	GPU_VULKAN_BLOCK( device->renderer, ( {
-						  vkEndCommandBuffer( res->vk.cmdSets[res->activeSet].cmdBuffer );
-
-						  VkSemaphoreSubmitInfo signalSem = { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
-						  signalSem.stageMask = VK_PIPELINE_STAGE_2_NONE;
-						  signalSem.value = 1 + res->syncIndex;
-						  signalSem.semaphore = res->vk.uploadSem;
-
-						  VkCommandBufferSubmitInfo cmdSubmitInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO };
-						  cmdSubmitInfo.commandBuffer = res->vk.cmdSets[res->activeSet].cmdBuffer;
-
-						  VkSubmitInfo2 submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO_2 };
-						  submitInfo.pSignalSemaphoreInfos = &signalSem;
-						  submitInfo.signalSemaphoreInfoCount = 1;
-						  submitInfo.pCommandBufferInfos = &cmdSubmitInfo;
-						  submitInfo.commandBufferInfoCount = 1;
-
-						  vkQueueSubmit2( res->copyQueue->vk.queue, 1, &submitInfo, VK_NULL_HANDLE );
-						  res->syncIndex++;
-					  } ) );
-}
-
 static void __BeginNewCommandSet( struct RIDevice_s *device, struct RIResourceUploader_s *res )
 {
-	res->remaningSpace += res->reservedSpacePerSet[res->activeSet];
-	res->reservedSpacePerSet[res->activeSet] = 0;
-	GPU_VULKAN_BLOCK( device->renderer, ( {
-						  VkCommandBufferBeginInfo info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-						  info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-						  vkBeginCommandBuffer( res->vk.cmdSets[res->activeSet].cmdBuffer, &info );
-					  } ) );
+	res->remaningSpace += res->reservedSpacePerSet[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS];
+	res->reservedSpacePerSet[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS] = 0;
+#if ( DEVICE_IMPL_VULKAN )
+	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
+		if( res->syncIndex >= RI_RESOURCE_NUM_COMMAND_SETS ) {
+			for( size_t i = 0; i < arrlen( res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].temporary ); i++ ) {
+				vkDestroyBuffer( device->vk.device, res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].temporary[i].buffer, NULL );
+				vmaFreeMemory( device->vk.vmaAllocator, res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].temporary[i].alloc );
+			}
+			arrsetlen( res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].temporary, 0 );
+		}
+
+		{
+			VkCommandBufferBeginInfo info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+			info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+			VK_WrapResult( vkBeginCommandBuffer( res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].cmd, &info ));
+		}
+	}
+#endif
 }
 
 void RI_InitResourceUploader( struct RIDevice_s *device, struct RIResourceUploader_s *resource )
 {
+	assert(resource->copyQueue == NULL);
 #if ( DEVICE_IMPL_VULKAN )
 	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
 		resource->copyQueue = &device->queues[RI_QUEUE_COPY];
@@ -62,7 +52,7 @@ void RI_InitResourceUploader( struct RIDevice_s *device, struct RIResourceUpload
 			cmdAllocInfo.commandPool = resource->vk.cmdSets[i].cmdPool;
 			cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 			cmdAllocInfo.commandBufferCount = 1;
-			VK_WrapResult( vkAllocateCommandBuffers( device->vk.device, &cmdAllocInfo, &resource->vk.cmdSets[i].cmdBuffer ) );
+			VK_WrapResult( vkAllocateCommandBuffers( device->vk.device, &cmdAllocInfo, &resource->vk.cmdSets[i].cmd ) );
 		}
 		{
 			VmaAllocationInfo allocationInfo = {};
@@ -78,6 +68,7 @@ void RI_InitResourceUploader( struct RIDevice_s *device, struct RIResourceUpload
 			stageBufferCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 			VK_WrapResult(vmaCreateBuffer(device->vk.vmaAllocator, &stageBufferCreateInfo, &allocInfo, &resource->vk.stageBuffer, &resource->vk.stageAlloc, &allocationInfo));
 			resource->vk.pMappedData = allocationInfo.pMappedData;
+
 		}
 	}
 #endif
@@ -100,7 +91,7 @@ static bool __R_AllocFromStageBuffer( struct RIDevice_s *dev, struct RIResourceU
 		}
 
 		res->remaningSpace -= remainingSpace;
-		res->reservedSpacePerSet[res->activeSet] += remainingSpace; // give the remaning space to the requesting set
+		res->reservedSpacePerSet[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS] += remainingSpace; // give the remaning space to the requesting set
 		res->tailOffset = 0;
 	}
 
@@ -113,7 +104,7 @@ static bool __R_AllocFromStageBuffer( struct RIDevice_s *dev, struct RIResourceU
 	}
 #endif
 
-	res->reservedSpacePerSet[res->activeSet] += allocSize;
+	res->reservedSpacePerSet[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS] += allocSize;
 
 	res->tailOffset += allocSize;
 	res->remaningSpace -= allocSize;
@@ -127,15 +118,12 @@ static bool __ResolveStageBuffer( struct RIDevice_s *dev, struct RIResourceUploa
 	}
 #if ( DEVICE_IMPL_VULKAN )
 	if( GPU_VULKAN_SELECTED( dev->renderer ) ) {
+		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
 		struct RI_VK_TempBuffers tempBuffer;
 		VkBufferCreateInfo stageBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-		stageBufferCreateInfo.pNext = NULL;
-		stageBufferCreateInfo.flags = 0;
+		VK_ConfigureBufferQueueFamilies( &stageBufferCreateInfo, dev->queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
 		stageBufferCreateInfo.size = reqSize;
 		stageBufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-		stageBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		stageBufferCreateInfo.queueFamilyIndexCount = 0;
-		stageBufferCreateInfo.pQueueFamilyIndices = NULL;
 
 		VmaAllocationInfo allocationInfo = {};
 		VmaAllocationCreateInfo allocInfo = {};
@@ -143,16 +131,13 @@ static bool __ResolveStageBuffer( struct RIDevice_s *dev, struct RIResourceUploa
 		allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT ;
 	
 		VK_WrapResult(vmaCreateBuffer(dev->vk.vmaAllocator, &stageBufferCreateInfo, &allocInfo, &tempBuffer.buffer, &tempBuffer.alloc, &allocationInfo));
-		//VK_WrapResult( vkCreateBuffer( dev->vk.device, &stageBufferCreateInfo, NULL, &tempBuffer.buffer ) );
-		//VK_WrapResult( vmaAllocateMemoryForBuffer( dev->vk.vmaAllocator, tempBuffer.buffer, &allocInfo, &tempBuffer.alloc, &allocationInfo ) );
-		//vmaBindBufferMemory2( dev->vk.vmaAllocator, tempBuffer.alloc, 0, tempBuffer.buffer, NULL );
 
 		req->vk.alloc = tempBuffer.alloc;
+		req->vk.buffer = tempBuffer.buffer;
 		req->cpuMapping = allocationInfo.pMappedData;
 		req->byteOffset = 0;
-		req->vk.buffer = tempBuffer.buffer;
 
-		arrpush( res->vk.cmdSets[res->activeSet].temporary, tempBuffer );
+		arrpush( res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].temporary, tempBuffer );
 	}
 #endif
 	return true;
@@ -164,17 +149,20 @@ void RI_ResourceBeginCopyBuffer( struct RIDevice_s *device, struct RIResourceUpl
 	trans->data = (uint8_t *)trans->req.cpuMapping + trans->req.byteOffset;
 }
 
+static inline bool __ResourceInTransitionBuffer( struct RIDevice_s *device, struct RIResourceUploader_s *res, struct RIBufferHandle_s target )
+{
+	for( size_t i = 0; i < arrlen( res->postBufferBarriers ); i++ ) {
+		if( res->postBufferBarriers[i].buffer == target.vk.buffer ) {
+			return true;
+		}
+	}
+	return false;
+}
+
 void RI_ResourceEndCopyBuffer( struct RIDevice_s *device, struct RIResourceUploader_s *res, struct RIResourceBufferTransaction_s *trans ) {
 #if ( DEVICE_IMPL_VULKAN )
 	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
-		bool foundInTransition = false;
-		for( size_t i = 0; i < arrlen( res->postBufferBarriers ); i++ ) {
-			if( res->postBufferBarriers[i].buffer == trans->target.vk.buffer ) {
-				foundInTransition = true;
-				break;
-			}
-		}
-		if( !foundInTransition ) {
+		if( !__ResourceInTransitionBuffer(device, res, trans->target)) {
 			VkBufferMemoryBarrier2 bufferBarriers[1] = {};
 			bufferBarriers[0].sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
 			bufferBarriers[0].srcStageMask = trans->srcBarrier.vk.stage;
@@ -190,7 +178,7 @@ void RI_ResourceEndCopyBuffer( struct RIDevice_s *device, struct RIResourceUploa
 			VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
 			dependencyInfo.bufferMemoryBarrierCount = Q_ARRAY_COUNT( bufferBarriers );
 			dependencyInfo.pBufferMemoryBarriers = bufferBarriers;
-			vkCmdPipelineBarrier2( res->vk.cmdSets[res->activeSet].cmdBuffer, &dependencyInfo );
+			vkCmdPipelineBarrier2( res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].cmd, &dependencyInfo );
 
 			struct RIResourcePostBufferBarrier_s postTransition = {};
 			postTransition.buffer = trans->target.vk.buffer;
@@ -202,8 +190,9 @@ void RI_ResourceEndCopyBuffer( struct RIDevice_s *device, struct RIResourceUploa
 		copyBuffer.size = trans->size;
 		copyBuffer.dstOffset = trans->offset;
 		copyBuffer.srcOffset = trans->req.byteOffset;
-		assert(res->activeSet < Q_ARRAY_COUNT(res->vk.cmdSets));
-		vkCmdCopyBuffer( res->vk.cmdSets[res->activeSet].cmdBuffer, trans->req.vk.buffer, trans->target.vk.buffer, 1, &copyBuffer );
+		vkCmdCopyBuffer( res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].cmd, trans->req.vk.buffer, trans->target.vk.buffer, 1, &copyBuffer );
+	
+
 	}
 #endif
 }
@@ -227,10 +216,10 @@ void RI_InsertTransitionBarriers( struct RIDevice_s *device, struct RIResourceUp
 				memset( barrier, 0, sizeof( VkBufferMemoryBarrier2 ) );
 				barrier->sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
 				barrier->srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-				barrier->srcAccessMask = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+				barrier->srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
 				barrier->dstStageMask = post->postBarrier.vk.stage;
 				barrier->dstAccessMask = post->postBarrier.vk.access;
-				barrier->srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; // TODO: VK_SHARING_MODE_EXCLUSIVE could be used instead of VK_SHARING_MODE_CONCURRENT with queue ownership transfers
+				barrier->srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 				barrier->dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 				barrier->buffer = post->buffer;
 				barrier->offset = 0;
@@ -242,20 +231,20 @@ void RI_InsertTransitionBarriers( struct RIDevice_s *device, struct RIResourceUp
 				struct RIResourcePostImageBarrier_s *post = &res->postImageBarriers[postImageIdx++];
 				memset( barrier, 0, sizeof( VkImageMemoryBarrier2 ) );
 				barrier->sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-				barrier->srcStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-				barrier->oldLayout  = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-				barrier->srcAccessMask  = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+				barrier->srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+				barrier->srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+				barrier->oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 				barrier->dstStageMask = post->postBarrier.vk.stage;
 				barrier->dstAccessMask = post->postBarrier.vk.access;
 				barrier->newLayout = post->postBarrier.vk.layout;
-				barrier->srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				barrier->dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				barrier->image = post->image;
 				barrier->subresourceRange = (VkImageSubresourceRange){
 					VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
 				};
+				barrier->srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				barrier->dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				barrier->image = post->image;
 			}
-			if(numBufferBarriers == 0 && numImageBarriers == 0) {
+			if( numBufferBarriers == 0 && numImageBarriers == 0 ) {
 				break;
 			}
 			VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
@@ -263,35 +252,51 @@ void RI_InsertTransitionBarriers( struct RIDevice_s *device, struct RIResourceUp
 			dependencyInfo.pBufferMemoryBarriers = bufferBarriers;
 			dependencyInfo.imageMemoryBarrierCount = numImageBarriers;
 			dependencyInfo.pImageMemoryBarriers = imageBarriers;
-			vkCmdPipelineBarrier2( cmd->vk.cmd, &dependencyInfo );
+			vkCmdPipelineBarrier2(  cmd->vk.cmd, &dependencyInfo );
+			numBufferBarriers = 0;
+			numImageBarriers = 0; 
 		}
 	}
-	arrsetlen(res->postImageBarriers, 0);
-	arrsetlen(res->postBufferBarriers, 0);
+	arrsetlen( res->postImageBarriers, 0 );
+	arrsetlen( res->postBufferBarriers, 0 );
 #endif
 }
 
 void RI_ResourceSubmit( struct RIDevice_s *device, struct RIResourceUploader_s *res )
 {
-	__EndActiveCommandSet( device, res );
-	res->activeSet = ( res->activeSet + 1 ) % RI_RESOURCE_NUM_COMMAND_SETS;
-	if( res->syncIndex >= RI_RESOURCE_NUM_COMMAND_SETS ) {
+
+
 #if ( DEVICE_IMPL_VULKAN )
-		if( GPU_VULKAN_SELECTED( device->renderer ) ) {
-			uint64_t waitValue = 1 + res->syncIndex - RI_RESOURCE_NUM_COMMAND_SETS;
-			VkSemaphoreWaitInfo semaphoreWaitInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO };
-			semaphoreWaitInfo.semaphoreCount = 1;
-			semaphoreWaitInfo.pSemaphores = &res->vk.uploadSem;
-			semaphoreWaitInfo.pValues = &waitValue;
-			VK_WrapResult( vkWaitSemaphores( device->vk.device, &semaphoreWaitInfo, 5000 * 1000 ) );
-			VK_WrapResult( vkResetCommandPool( device->vk.device, res->vk.cmdSets[res->activeSet].cmdPool, 0 ) );
-			for( size_t i = 0; i < arrlen( res->vk.cmdSets[res->activeSet].temporary ); i++ ) {
-				vkDestroyBuffer( device->vk.device, res->vk.cmdSets[res->activeSet].temporary[i].buffer, NULL );
-				vmaFreeMemory( device->vk.vmaAllocator, res->vk.cmdSets[res->activeSet].temporary[i].alloc );
-			}
-			arrsetlen( res->vk.cmdSets[res->activeSet].temporary, 0 );
-		}
+	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
+		
+		vkEndCommandBuffer( res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].cmd );
+
+		VkSemaphoreSubmitInfo signalSem = { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
+		signalSem.stageMask = VK_PIPELINE_STAGE_2_NONE;
+		signalSem.value = 1 + res->syncIndex;
+		signalSem.semaphore = res->vk.uploadSem;
+
+		VkCommandBufferSubmitInfo cmdSubmitInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO };
+		cmdSubmitInfo.commandBuffer = res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].cmd;
+
+		VkSubmitInfo2 submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO_2 };
+		submitInfo.pSignalSemaphoreInfos = &signalSem;
+		submitInfo.signalSemaphoreInfoCount = 1;
+		submitInfo.pCommandBufferInfos = &cmdSubmitInfo;
+		submitInfo.commandBufferInfoCount = 1;
+
+		VK_WrapResult( vkQueueSubmit2( res->copyQueue->vk.queue, 1, &submitInfo, VK_NULL_HANDLE ) );
+	}
 #endif
+	res->syncIndex++;
+	if( res->syncIndex >= RI_RESOURCE_NUM_COMMAND_SETS ) {
+		uint64_t waitValue = 1 + res->syncIndex - RI_RESOURCE_NUM_COMMAND_SETS;
+		VkSemaphoreWaitInfo semaphoreWaitInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO };
+		semaphoreWaitInfo.semaphoreCount = 1;
+		semaphoreWaitInfo.pSemaphores = &res->vk.uploadSem;
+		semaphoreWaitInfo.pValues = &waitValue;
+		VK_WrapResult( vkWaitSemaphores( device->vk.device, &semaphoreWaitInfo, 5000 * 1000000ull) );
+		VK_WrapResult( vkResetCommandPool( device->vk.device, res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].cmdPool, 0 ) );
 	}
 	__BeginNewCommandSet( device, res );
 }
@@ -306,6 +311,17 @@ void RI_ResourceBeginCopyTexture( struct RIDevice_s *device, struct RIResourceUp
 	trans->data = (uint8_t *)trans->req.cpuMapping + trans->req.byteOffset;
 }
 
+//static VkImageSubresourceRange _VK_UnionSubresourceRange(VkImageSubresourceRange a1, VkImageSubresourceRange  a2) {
+//	VkImageSubresourceRange range = {};
+//	range.aspectMask = (a1.aspectMask | a2.aspectMask); 
+//	range.baseMipLevel = Q_MIN(a1.baseMipLevel, a2.baseMipLevel);
+//	range.baseArrayLayer = Q_MIN(a1.baseArrayLayer, a2.baseArrayLayer);
+//	range.layerCount = Q_MAX(a1.baseArrayLayer + a1.layerCount, a2.baseArrayLayer + a2.layerCount) - range.baseArrayLayer;
+//	range.layerCount = Q_MAX(a1.baseMipLevel + a1.levelCount , a2.baseMipLevel + a2.levelCount) - range.baseMipLevel;
+//	return range;
+//} 
+
+
 void RI_ResourceEndCopyTexture( struct RIDevice_s *device, struct RIResourceUploader_s *res, struct RIResourceTextureTransaction_s *trans )
 {
 
@@ -319,8 +335,8 @@ void RI_ResourceEndCopyTexture( struct RIDevice_s *device, struct RIResourceUplo
 				break;
 			}
 		}
-
 		if( !foundInTransition ) {
+			printf("inserting barrier index: %lu\n",arrlen(res->postImageBarriers));
 			VkImageMemoryBarrier2 imageBarriers[1] = {};
 			imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 			imageBarriers[0].srcAccessMask = trans->srcBarrier.vk.access; // VK_ACCESS_2_NONE;
@@ -338,7 +354,7 @@ void RI_ResourceEndCopyTexture( struct RIDevice_s *device, struct RIResourceUplo
 			VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
 			dependencyInfo.imageMemoryBarrierCount = Q_ARRAY_COUNT( imageBarriers );
 			dependencyInfo.pImageMemoryBarriers = imageBarriers;
-			vkCmdPipelineBarrier2( res->vk.cmdSets[res->activeSet].cmdBuffer, &dependencyInfo );
+			vkCmdPipelineBarrier2( res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].cmd, &dependencyInfo );
 
 			struct RIResourcePostImageBarrier_s postTransition = {};
 			postTransition.image = trans->target.vk.image;
@@ -363,13 +379,13 @@ void RI_ResourceEndCopyTexture( struct RIDevice_s *device, struct RIResourceUplo
 			copyReq.imageOffset.z = trans->z;
 			copyReq.imageExtent.width = trans->width;
 			copyReq.imageExtent.height = trans->height;
-			copyReq.imageExtent.depth = Q_MAX(trans->depth, 1);
+			copyReq.imageExtent.depth = trans->depth;
 			copyReq.imageSubresource.mipLevel = trans->mipOffset;
-			copyReq.imageSubresource.layerCount = 1;
 			copyReq.imageSubresource.baseArrayLayer = trans->arrayOffset;
+			copyReq.imageSubresource.layerCount = 1;
 			copyReq.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			assert( res->activeSet < Q_ARRAY_COUNT( res->vk.cmdSets ) );
-			vkCmdCopyBufferToImage( res->vk.cmdSets[res->activeSet].cmdBuffer, trans->req.vk.buffer, trans->target.vk.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyReq );
+			//assert( res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS < Q_ARRAY_COUNT( res->vk.cmdSets ) );
+			vkCmdCopyBufferToImage( res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].cmd, trans->req.vk.buffer, trans->target.vk.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyReq );
 		}
 	}
 #endif

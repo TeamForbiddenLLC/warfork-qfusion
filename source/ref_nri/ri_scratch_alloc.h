@@ -10,7 +10,7 @@ struct RIBlockMem_s {
 	union {
 #if ( DEVICE_IMPL_VULKAN )
 		struct {
-			VkBufferView blockView;	
+			//VkBufferView blockView;	
 		  VkBuffer buffer;
 		  struct VmaAllocation_T * allocator;
 		} vk;

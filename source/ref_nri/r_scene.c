@@ -287,7 +287,7 @@ void R_RenderScene(const refdef_t *fd )
 	if( r_norefresh->integer )
 		return;
 
-	R_Set2DMode(&rsh.primaryCmd,  false );
+	R_Set2DMode(&rsh.frame,  false );
 
 	RB_SetTime( fd->time );
 
@@ -344,7 +344,7 @@ void R_RenderScene(const refdef_t *fd )
 
 	GPU_VULKAN_BLOCK( ( &rsh.renderer ), ( {
 						  if( numPostProcessing > 0 ) {
-							  vkCmdEndRendering( rsh.primaryCmd.handle.vk.cmd ); // end back buffer and swap to pogo attachment
+							  vkCmdEndRendering( rsh.frame.handle.vk.cmd ); // end back buffer and swap to pogo attachment
 							  VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 							  RI_VK_FillColorAttachment( &colorAttachment, RI_PogoBufferAttachment( rsh.pogoBuffer + rsh.vk.swapchainIndex ), true );
 
@@ -353,18 +353,18 @@ void R_RenderScene(const refdef_t *fd )
 
 							  VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
 							  renderingInfo.flags = 0;
-							  renderingInfo.renderArea = RIViewportToRect2D( &rsh.primaryCmd.viewport );
+							  renderingInfo.renderArea = RIViewportToRect2D( &rsh.frame.viewport );
 							  renderingInfo.layerCount = 1;
 							  renderingInfo.viewMask = 0;
 							  renderingInfo.colorAttachmentCount = 1;
 							  renderingInfo.pColorAttachments = &colorAttachment;
 							  renderingInfo.pDepthAttachment = &depthStencil;
 							  renderingInfo.pStencilAttachment = NULL;
-							  vkCmdBeginRendering( rsh.primaryCmd.handle.vk.cmd, &renderingInfo );
+							  vkCmdBeginRendering( rsh.frame.handle.vk.cmd, &renderingInfo );
 						  }
 					  } ) );
 
-	FR_CmdSetViewport(&rsh.primaryCmd, (struct RIViewport_s) {
+	FR_CmdSetViewport(&rsh.frame, (struct RIViewport_s) {
 		.x = fd->x,
 		.y = fd->y,
 		.width = fd->width,
@@ -372,7 +372,7 @@ void R_RenderScene(const refdef_t *fd )
 		.depthMin = 0.0f,
 		.depthMax = 1.0f
 	} );
-	FR_CmdSetScissor(&rsh.primaryCmd, (struct RIRect_s) {
+	FR_CmdSetScissor(&rsh.frame, (struct RIRect_s) {
 		.x = fd->scissor_x,
 		.y =  fd->scissor_y,
 		.width = fd->scissor_width,
@@ -381,11 +381,11 @@ void R_RenderScene(const refdef_t *fd )
 
 	R_BuildShadowGroups();
 
-	R_RenderView(&rsh.primaryCmd, fd );
+	R_RenderView(&rsh.frame, fd );
 
 	R_RenderDebugSurface( fd );
 
-	R_RenderDebugBounds(&rsh.primaryCmd);
+	R_RenderDebugBounds(&rsh.frame);
 
 	if( !( fd->rdflags & RDF_NOWORLDMODEL ) ) {
 		ri.Mutex_Lock( rf.speedsMsgLock );
@@ -395,10 +395,10 @@ void R_RenderScene(const refdef_t *fd )
 
 	if( numPostProcessing > 0 ) {
 		GPU_VULKAN_BLOCK( ( &rsh.renderer ), ( {
-							  vkCmdEndRendering( rsh.primaryCmd.handle.vk.cmd ); // end back buffer and swap to pogo attachment
+							  vkCmdEndRendering( rsh.frame.handle.vk.cmd ); // end back buffer and swap to pogo attachment
 							
 								for( size_t i = 0; i < numPostProcessing - 1; i++ ) {
-								  RI_PogoBufferToggle( &rsh.device, rsh.pogoBuffer + rsh.vk.swapchainIndex, &rsh.primaryCmd.handle);
+								  RI_PogoBufferToggle( &rsh.device, rsh.pogoBuffer + rsh.vk.swapchainIndex, &rsh.frame.handle);
 								  {
 									  VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 									  RI_VK_FillColorAttachment( &colorAttachment, RI_PogoBufferAttachment( rsh.pogoBuffer + rsh.vk.swapchainIndex ), true );
@@ -415,15 +415,15 @@ void R_RenderScene(const refdef_t *fd )
 									  renderingInfo.pColorAttachments = &colorAttachment;
 									  renderingInfo.pDepthAttachment = &depthStencil;
 									  renderingInfo.pStencilAttachment = NULL;
-									  vkCmdBeginRendering( rsh.primaryCmd.handle.vk.cmd, &renderingInfo );
+									  vkCmdBeginRendering( rsh.frame.handle.vk.cmd, &renderingInfo );
 								  }
-								  FR_CmdResetCommandState( &rsh.primaryCmd, CMD_RESET_DEFAULT_PIPELINE_LAYOUT );
-								  postProcessingHandlers[i]( fd, &rsh.primaryCmd, RI_PogoBufferShaderResource(rsh.pogoBuffer + rsh.vk.swapchainIndex)  );
-								  vkCmdEndRendering( rsh.primaryCmd.handle.vk.cmd ); // end back buffer and swap to pogo attachment
+								  FR_CmdResetCommandState( &rsh.frame, CMD_RESET_DEFAULT_PIPELINE_LAYOUT );
+								  postProcessingHandlers[i]( fd, &rsh.frame, RI_PogoBufferShaderResource(rsh.pogoBuffer + rsh.vk.swapchainIndex)  );
+								  vkCmdEndRendering( rsh.frame.handle.vk.cmd ); // end back buffer and swap to pogo attachment
 							  }
 
-							  RI_PogoBufferToggle( &rsh.device, rsh.pogoBuffer + rsh.vk.swapchainIndex, &rsh.primaryCmd.handle );
-							  FR_CmdResetCommandState( &rsh.primaryCmd, CMD_RESET_DEFAULT_PIPELINE_LAYOUT | CMD_RESET_VERTEX_BUFFER );
+							  RI_PogoBufferToggle( &rsh.device, rsh.pogoBuffer + rsh.vk.swapchainIndex, &rsh.frame.handle );
+							  FR_CmdResetCommandState( &rsh.frame, CMD_RESET_DEFAULT_PIPELINE_LAYOUT | CMD_RESET_VERTEX_BUFFER );
 								// reset back to back buffer
 							  {
 								  VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
@@ -434,22 +434,22 @@ void R_RenderScene(const refdef_t *fd )
 
 								  VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
 								  renderingInfo.flags = 0;
-								  renderingInfo.renderArea = RIViewportToRect2D( &rsh.primaryCmd.viewport );
+								  renderingInfo.renderArea = RIViewportToRect2D( &rsh.frame.viewport );
 								  renderingInfo.layerCount = 1;
 								  renderingInfo.viewMask = 0;
 								  renderingInfo.colorAttachmentCount = 1;
 								  renderingInfo.pColorAttachments = &colorAttachment;
 								  renderingInfo.pDepthAttachment = &depthStencil;
 								  renderingInfo.pStencilAttachment = NULL;
-								  vkCmdBeginRendering( rsh.primaryCmd.handle.vk.cmd, &renderingInfo );
+								  vkCmdBeginRendering( rsh.frame.handle.vk.cmd, &renderingInfo );
 							  }
-								postProcessingHandlers[numPostProcessing - 1]( fd, &rsh.primaryCmd, RI_PogoBufferShaderResource( rsh.pogoBuffer + rsh.vk.swapchainIndex ) );
+								postProcessingHandlers[numPostProcessing - 1]( fd, &rsh.frame, RI_PogoBufferShaderResource( rsh.pogoBuffer + rsh.vk.swapchainIndex ) );
 
 						  } ) );
 	}
 	//FR_CmdResetAttachmentToBackbuffer( frame );
 
-	R_Set2DMode(&rsh.primaryCmd, true );
+	R_Set2DMode(&rsh.frame, true );
 }
 
 void R_AddDebugBounds( const vec3_t mins, const vec3_t maxs, const byte_vec4_t color )

@@ -226,82 +226,85 @@ void ResetFrameCmdBuffer(  struct frame_cmd_buffer_s *cmd )
 
 void FR_CmdDraw( struct frame_cmd_buffer_s *cmd, uint32_t vertexNum, uint32_t instanceNum, uint32_t baseVertex, uint32_t baseInstance )
 {
-	GPU_VULKAN_BLOCK( ( &rsh.renderer ), ( {
-						  if( cmd->dirty & CMD_DIRT_VIEWPORT ) {
-							  VkViewport viewports[MAX_COLOR_ATTACHMENTS];
-							  for( size_t i = 0; i < FR_CmdNumViewports( cmd ); i++ ) {
-								  viewports[i] = RIToVKViewport( &cmd->viewport );
-							  }
-							  vkCmdSetViewport(cmd->handle.vk.cmd, 0, FR_CmdNumViewports( cmd ), viewports );
-							  cmd->dirty &= ~CMD_DIRT_VIEWPORT;
-						  }
+#if ( DEVICE_IMPL_VULKAN )
+	if( GPU_VULKAN_SELECTED( &rsh.renderer ) ) {
+		if( cmd->dirty & CMD_DIRT_VIEWPORT ) {
+			VkViewport viewports[MAX_COLOR_ATTACHMENTS];
+			for( size_t i = 0; i < FR_CmdNumViewports( cmd ); i++ ) {
+				viewports[i] = RIToVKViewport( &cmd->viewport );
+			}
+			vkCmdSetViewport( cmd->handle.vk.cmd, 0, FR_CmdNumViewports( cmd ), viewports );
+			cmd->dirty &= ~CMD_DIRT_VIEWPORT;
+		}
 
-						  if( cmd->dirty & CMD_DIRT_SCISSOR ) {
-							  VkRect2D scissors[MAX_COLOR_ATTACHMENTS];
-							  for( size_t i = 0; i < FR_CmdNumViewports( cmd ); i++ ) {
-								  scissors[i] = RIToVKRect2D( &cmd->scissor );
-							  }
-							  vkCmdSetScissor(cmd->handle.vk.cmd, 0, FR_CmdNumViewports( cmd ), scissors );
-							  cmd->dirty &= ~CMD_DIRT_SCISSOR;
-						  }
-						  //NriDrawDesc drawDesc = { 0 };
-						  //drawDesc.vertexNum = vertexNum;
-						  //drawDesc.instanceNum = max( 1, instanceNum );
-						  //drawDesc.baseVertex = baseVertex;
-						  //drawDesc.baseInstance = baseInstance;
-						  //rsh.nri.coreI.CmdDraw( cmd->cmd, &drawDesc );
-							vkCmdDraw(cmd->handle.vk.cmd, vertexNum, Q_MAX(1, instanceNum), baseVertex, baseInstance );
-					  } ) );
+		if( cmd->dirty & CMD_DIRT_SCISSOR ) {
+			VkRect2D scissors[MAX_COLOR_ATTACHMENTS];
+			for( size_t i = 0; i < FR_CmdNumViewports( cmd ); i++ ) {
+				scissors[i] = RIToVKRect2D( &cmd->scissor );
+			}
+			vkCmdSetScissor( cmd->handle.vk.cmd, 0, FR_CmdNumViewports( cmd ), scissors );
+			cmd->dirty &= ~CMD_DIRT_SCISSOR;
+		}
+		// NriDrawDesc drawDesc = { 0 };
+		// drawDesc.vertexNum = vertexNum;
+		// drawDesc.instanceNum = max( 1, instanceNum );
+		// drawDesc.baseVertex = baseVertex;
+		// drawDesc.baseInstance = baseInstance;
+		// rsh.nri.coreI.CmdDraw( cmd->cmd, &drawDesc );
+		vkCmdDraw( cmd->handle.vk.cmd, vertexNum, Q_MAX( 1, instanceNum ), baseVertex, baseInstance );
+	}
+#endif
 }
-
 
 void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint32_t instanceNum, uint32_t baseIndex, uint32_t baseVertex, uint32_t baseInstance )
 {
-	GPU_VULKAN_BLOCK( ( &rsh.renderer ), ( {
-						  uint32_t vertexSlot = 0;
-						  for( uint32_t attr = cmd->dirtyVertexBuffers; attr > 0; attr = ( attr >> 1 ), vertexSlot++ ) {
-							  if( cmd->dirtyVertexBuffers & ( 1 << vertexSlot ) ) {
-								  VkBuffer buffer[1] = { cmd->vertexBuffers[vertexSlot].vk.buffer };
-								  const uint64_t offset[1] = { cmd->offsets[vertexSlot] };
-								  vkCmdBindVertexBuffers(cmd->handle.vk.cmd, vertexSlot, 1, buffer, offset );
-							  }
-						  }
+#if ( DEVICE_IMPL_VULKAN )
+	if( GPU_VULKAN_SELECTED( &rsh.renderer ) ) {
+		uint32_t vertexSlot = 0;
+		for( uint32_t attr = cmd->dirtyVertexBuffers; attr > 0; attr = ( attr >> 1 ), vertexSlot++ ) {
+			if( cmd->dirtyVertexBuffers & ( 1 << vertexSlot ) ) {
+				VkBuffer buffer[1] = { cmd->vertexBuffers[vertexSlot].vk.buffer };
+				const uint64_t offset[1] = { cmd->offsets[vertexSlot] };
+				vkCmdBindVertexBuffers( cmd->handle.vk.cmd, vertexSlot, 1, buffer, offset );
+			}
+		}
+		cmd->dirtyVertexBuffers = 0;
 
-						  if( cmd->dirty & CMD_DIRT_INDEX_BUFFER ) {
-								vkCmdBindIndexBuffer(cmd->handle.vk.cmd, cmd->indexBuffer.vk.buffer, cmd->indexBufferOffset, ri_vk_RIIndexTypeToVK(cmd->indexType));
-							  //rsh.nri.coreI.CmdSetIndexBuffer( cmd->cmd, cmd->state.indexBuffer, cmd->state.indexBufferOffset, cmd->state.indexType );
-							  cmd->dirty &= ~CMD_DIRT_INDEX_BUFFER;
-						  }
+		if( cmd->dirty & CMD_DIRT_INDEX_BUFFER ) {
+			vkCmdBindIndexBuffer( cmd->handle.vk.cmd, cmd->indexBuffer.vk.buffer, cmd->indexBufferOffset, ri_vk_RIIndexTypeToVK( cmd->indexType ) );
+			// rsh.nri.coreI.CmdSetIndexBuffer( cmd->cmd, cmd->state.indexBuffer, cmd->state.indexBufferOffset, cmd->state.indexType );
+			cmd->dirty &= ~CMD_DIRT_INDEX_BUFFER;
+		}
 
-						  if( cmd->dirty & CMD_DIRT_VIEWPORT ) {
-							  VkViewport viewports[MAX_COLOR_ATTACHMENTS];
-							  for( size_t i = 0; i < FR_CmdNumViewports( cmd ); i++ ) {
-								  viewports[i] = RIToVKViewport( &cmd->viewport );
-							  }
-							  vkCmdSetViewport(cmd->handle.vk.cmd, 0, FR_CmdNumViewports( cmd ), viewports );
-							  cmd->dirty &= ~CMD_DIRT_VIEWPORT;
-						  }
+		if( cmd->dirty & CMD_DIRT_VIEWPORT ) {
+			VkViewport viewports[MAX_COLOR_ATTACHMENTS];
+			for( size_t i = 0; i < FR_CmdNumViewports( cmd ); i++ ) {
+				viewports[i] = RIToVKViewport( &cmd->viewport );
+			}
+			vkCmdSetViewport( cmd->handle.vk.cmd, 0, FR_CmdNumViewports( cmd ), viewports );
+			cmd->dirty &= ~CMD_DIRT_VIEWPORT;
+		}
 
-						  if( cmd->dirty & CMD_DIRT_SCISSOR ) {
-							  VkRect2D scissors[MAX_COLOR_ATTACHMENTS];
-							  for( size_t i = 0; i < FR_CmdNumViewports( cmd ); i++ ) {
-								  scissors[i] = RIToVKRect2D( &cmd->scissor );
-							  }
-							  vkCmdSetScissor(cmd->handle.vk.cmd, 0, FR_CmdNumViewports( cmd ), scissors );
-							  cmd->dirty &= ~CMD_DIRT_SCISSOR;
-						  }
+		if( cmd->dirty & CMD_DIRT_SCISSOR ) {
+			VkRect2D scissors[MAX_COLOR_ATTACHMENTS];
+			for( size_t i = 0; i < FR_CmdNumViewports( cmd ); i++ ) {
+				scissors[i] = RIToVKRect2D( &cmd->scissor );
+			}
+			vkCmdSetScissor( cmd->handle.vk.cmd, 0, FR_CmdNumViewports( cmd ), scissors );
+			cmd->dirty &= ~CMD_DIRT_SCISSOR;
+		}
 
-						  //NriDrawIndexedDesc drawDesc = { 0 };
-						  //drawDesc.indexNum = indexNum;
-						  //drawDesc.instanceNum = max( 1, instanceNum );
-						  //drawDesc.baseIndex = baseIndex;
-						  //drawDesc.baseVertex = baseVertex;
-						  //drawDesc.baseInstance = baseInstance;
-						  //rsh.nri.coreI.CmdDrawIndexed( cmd->cmd, &drawDesc );
-							vkCmdDrawIndexed(cmd->handle.vk.cmd, indexNum,  Q_MAX( 1, instanceNum ), baseIndex, baseVertex, baseInstance );
-					  } ) );
+		// NriDrawIndexedDesc drawDesc = { 0 };
+		// drawDesc.indexNum = indexNum;
+		// drawDesc.instanceNum = max( 1, instanceNum );
+		// drawDesc.baseIndex = baseIndex;
+		// drawDesc.baseVertex = baseVertex;
+		// drawDesc.baseInstance = baseInstance;
+		// rsh.nri.coreI.CmdDrawIndexed( cmd->cmd, &drawDesc );
+		vkCmdDrawIndexed( cmd->handle.vk.cmd, indexNum, Q_MAX( 1, instanceNum ), baseIndex, baseVertex, baseInstance );
+	}
+#endif
 }
-
 
 void FR_CmdBeginRendering( struct frame_cmd_buffer_s *cmd )
 {

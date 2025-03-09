@@ -490,67 +490,63 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
   struct RISegmentReq_s vertexReq = {};
   struct RISegmentReq_s eleReq = {};
   struct dynamic_vertex_stream_s *const selectedStream = &( rb.dynamicStreams[streamId] );
-  GPU_VULKAN_BLOCK(
-	  rsh.device.renderer, ( {
-		  if( selectedStream->vk.vertexAlloc == NULL || !RISegmentAlloc(cmd->frameCount, &selectedStream->vertexAllocator, numVerts, &vertexReq ) ) {
-			  struct RISegmentAllocDesc_s segmentAllocDesc = {};
-			  segmentAllocDesc.numSegments = NUMBER_FRAMES_FLIGHT;
-			  segmentAllocDesc.elementStride = selectedStream->layout.vertexStride;
-			  segmentAllocDesc.maxElements = Q_MAX( 1024, selectedStream->indexAllocator.maxElements );
-			  do {
-				  segmentAllocDesc.maxElements = ( segmentAllocDesc.maxElements + ( segmentAllocDesc.maxElements >> 1 ) );
-			  } while( segmentAllocDesc.maxElements < numElems);
-			  InitRISegmentAlloc( &selectedStream->vertexAllocator, &segmentAllocDesc );
 
-				uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
-			  VkBufferCreateInfo vertexBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-			  VK_ConfigureBufferQueueFamilies( &vertexBufferCreateInfo, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
-			  vertexBufferCreateInfo.pNext = NULL;
-			  vertexBufferCreateInfo.flags = 0;
-			  vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-			  //VK_WrapResult( vkCreateBuffer( rsh.device.vk.device, &vertexBufferCreateInfo, NULL, &selectedStream->vk.vertexBuffer ) );
+#if ( DEVICE_IMPL_VULKAN )
+  if( GPU_VULKAN_SELECTED( rsh.device.renderer ) ) {
+	  if( selectedStream->vk.vertexAlloc == NULL || !RISegmentAlloc( cmd->frameCount, &selectedStream->vertexAllocator, numVerts, &vertexReq ) ) {
+		  struct RISegmentAllocDesc_s segmentAllocDesc = {};
+		  segmentAllocDesc.numSegments = NUMBER_FRAMES_FLIGHT;
+		  segmentAllocDesc.elementStride = selectedStream->layout.vertexStride;
+		  segmentAllocDesc.maxElements = Q_MAX( 1024, selectedStream->vertexAllocator.maxElements );
+		  do {
+			  segmentAllocDesc.maxElements = ( segmentAllocDesc.maxElements + ( segmentAllocDesc.maxElements >> 1 ) );
+		  } while( segmentAllocDesc.maxElements < numElems );
+		  InitRISegmentAlloc( &selectedStream->vertexAllocator, &segmentAllocDesc );
+			RISegmentAlloc( cmd->frameCount, &selectedStream->vertexAllocator, numVerts, &vertexReq );
+		  
+		  uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+		  VkBufferCreateInfo vertexBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+		  VK_ConfigureBufferQueueFamilies( &vertexBufferCreateInfo, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+		  vertexBufferCreateInfo.pNext = NULL;
+		  vertexBufferCreateInfo.flags = 0;
+		  vertexBufferCreateInfo.size = segmentAllocDesc.maxElements * segmentAllocDesc.elementStride; 
+		  vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-			  VmaAllocationInfo allocationInfo = {};
-			  VmaAllocationCreateInfo allocInfo = {};
-			  allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-			  allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-			  
-				VK_WrapResult(vmaCreateBuffer(rsh.device.vk.vmaAllocator, &vertexBufferCreateInfo, &allocInfo, &selectedStream->vk.vertexBuffer, &selectedStream->vk.vertexAlloc, &allocationInfo));
+		  VmaAllocationInfo allocationInfo = {};
+		  VmaAllocationCreateInfo allocInfo = {};
+		  allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+		  allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+		  VK_WrapResult( vmaCreateBuffer( rsh.device.vk.vmaAllocator, &vertexBufferCreateInfo, &allocInfo, &selectedStream->vk.vertexBuffer, &selectedStream->vk.vertexAlloc, &allocationInfo ) );
+		  rb.dynamicStreams[streamId].pVtxMappedAddress = allocationInfo.pMappedData;
+	  }
+	  if( rb.dynamicStreams[streamId].vk.indexAlloc == NULL || !RISegmentAlloc( cmd->frameCount, &selectedStream->indexAllocator, numElems, &eleReq ) ) {
+		  struct RISegmentAllocDesc_s segmentAllocDesc = {};
+		  segmentAllocDesc.numSegments = NUMBER_FRAMES_FLIGHT;
+		  segmentAllocDesc.elementStride = sizeof( uint16_t );
+		  segmentAllocDesc.maxElements = Q_MAX( 1024, selectedStream->indexAllocator.maxElements );
+		  do {
+			  segmentAllocDesc.maxElements = ( segmentAllocDesc.maxElements + ( segmentAllocDesc.maxElements >> 1 ) );
+		  } while( segmentAllocDesc.maxElements < numElems );
+		  InitRISegmentAlloc( &selectedStream->indexAllocator, &segmentAllocDesc );
+		  RISegmentAlloc( cmd->frameCount, &selectedStream->indexAllocator, numElems, &eleReq );
 
-			 // vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, selectedStream->vk.vertexBuffer, &allocInfo, &selectedStream->vk.vertexAlloc, &allocationInfo );
-			 // vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, selectedStream->vk.vertexAlloc, 0, selectedStream->vk.vertexBuffer, NULL );
-			  rb.dynamicStreams[streamId].pVtxMappedAddress = allocationInfo.pMappedData;
-		  }
-		  if( rb.dynamicStreams[streamId].vk.indexAlloc == NULL || !RISegmentAlloc(cmd->frameCount,  &selectedStream->indexAllocator, numElems, &eleReq ) ) {
-			  struct RISegmentAllocDesc_s segmentAllocDesc = {};
-			  segmentAllocDesc.numSegments = NUMBER_FRAMES_FLIGHT;
-			  segmentAllocDesc.elementStride = sizeof( uint16_t );
-			  segmentAllocDesc.maxElements = Q_MAX( 1024, selectedStream->indexAllocator.maxElements );
-			  do {
-				  segmentAllocDesc.maxElements = ( segmentAllocDesc.maxElements + ( segmentAllocDesc.maxElements >> 1 ) );
-			  } while( segmentAllocDesc.maxElements < numElems);
+		  uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+		  VkBufferCreateInfo indexBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+		  VK_ConfigureBufferQueueFamilies( &indexBufferCreateInfo, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+		  indexBufferCreateInfo.pNext = NULL;
+		  indexBufferCreateInfo.flags = 0;
+		  indexBufferCreateInfo.size = segmentAllocDesc.maxElements * segmentAllocDesc.elementStride; 
+		  indexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-			  InitRISegmentAlloc( &selectedStream->indexAllocator, &segmentAllocDesc );
-
-			  uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
-			  VkBufferCreateInfo indexBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-			  VK_ConfigureBufferQueueFamilies( &indexBufferCreateInfo, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
-			  indexBufferCreateInfo.pNext = NULL;
-			  indexBufferCreateInfo.flags = 0;
-			  indexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-
-			  VmaAllocationInfo allocationInfo = {};
-			  VmaAllocationCreateInfo allocInfo = {};
-			  allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-			  allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-			  VK_WrapResult( vmaCreateBuffer( rsh.device.vk.vmaAllocator, &indexBufferCreateInfo, &allocInfo, &selectedStream->vk.indexBuffer, &selectedStream->vk.indexAlloc, &allocationInfo ) );
-
-			  //vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, selectedStream->vk.indexBuffer, &allocInfo, &selectedStream->vk.indexAlloc, &allocationInfo );
-			  //vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, selectedStream->vk.indexAlloc, 0, selectedStream->vk.indexBuffer, NULL );
-			  rb.dynamicStreams[streamId].pIdxMappedAddress = allocationInfo.pMappedData;
-			}
-	  } ) );
-
+		  VmaAllocationInfo allocationInfo = {};
+		  VmaAllocationCreateInfo allocInfo = {};
+		  allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+		  allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+		  VK_WrapResult( vmaCreateBuffer( rsh.device.vk.vmaAllocator, &indexBufferCreateInfo, &allocInfo, &selectedStream->vk.indexBuffer, &selectedStream->vk.indexAlloc, &allocationInfo ) );
+		  rb.dynamicStreams[streamId].pIdxMappedAddress = allocationInfo.pMappedData;
+	  }
+  }
+#endif
   //GPUFrameEleAlloc( cmd, &rb.dynamicVertexAlloc[streamId].vertexAlloc, numVerts, &vboReq );
   //GPUFrameEleAlloc( cmd, &rb.dynamicVertexAlloc[streamId].indexAlloc, numElems, &eleReq );
 
@@ -596,8 +592,8 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
 	  draw->layout = &rb.dynamicStreams[streamId].layout;
 	  assert( draw->layout->vertexStride == vertexReq.elementStride );
   }
-  void *vboMemory = ( (uint8_t *)selectedStream->pVtxMappedAddress ) + vertexReq.elementOffset * vertexReq.elementStride;
-  void *eleMemory = ( (uint8_t *)selectedStream->pVtxMappedAddress ) + vertexReq.elementOffset * vertexReq.elementStride;
+  void *vboMemory = ( (uint8_t *)selectedStream->pVtxMappedAddress ) + ( vertexReq.elementOffset * vertexReq.elementStride );
+  void *eleMemory = ( (uint8_t *)selectedStream->pIdxMappedAddress) + ( eleReq.elementOffset * eleReq.elementStride );
 
   // void *eleMemory = rsh.nri.coreI.MapBuffer( eleReq.buffer, eleReq.elementOffset * eleReq.elementStride, eleReq.numElements * eleReq.elementStride );
   // void *vboMemory = rsh.nri.coreI.MapBuffer( vboReq.buffer, vboReq.elementOffset * vboReq.elementStride, vboReq.numElements * vboReq.elementStride );

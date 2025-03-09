@@ -278,7 +278,7 @@ struct glsl_program_s {
 		uint16_t dimCount : 8;
 		uint16_t set : 3;
 		uint16_t baseRegisterIndex;
-		uint16_t rangeOffset;
+		//uint16_t rangeOffset;
 	} descriptorReflection[PIPELINE_REFLECTION_HASH_SIZE];
 };
 

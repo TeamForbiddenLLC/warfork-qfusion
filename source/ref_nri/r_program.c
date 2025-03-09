@@ -1007,10 +1007,12 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 		cullMode ^= 0;
 	}
 
+	uint32_t attribFlags = 0;
 	hash_t hash = HASH_INITIAL_VALUE;
 	assert(cmd->numStreams < MAX_ATTRIBUTES);
 	assert(cmd->numStreams < MAX_STREAMS);
-	for( size_t i = 0; i < cmd->numAttribs; i++ ) {	
+	for( size_t i = 0; i < cmd->numAttribs; i++ ) {
+		attribFlags |= ( 1 << cmd->attribs[i].vk.location );
 		if(!((1 << cmd->attribs[i].vk.location ) & program->vertexInputMask)) {
 			continue;
 		}
@@ -1079,8 +1081,8 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 				VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
 				NULL,
 				(VkShaderModuleCreateFlags)0,
-				(size_t)program->shaderBin[GLSL_STAGE_VERTEX].size,
-				(const uint32_t *)program->shaderBin[GLSL_STAGE_VERTEX].bin,
+				(size_t)program->shaderBin[GLSL_STAGE_FRAGMENT].size,
+				(const uint32_t *)program->shaderBin[GLSL_STAGE_FRAGMENT].bin,
 			};
 			vkCreateShaderModule( rsh.device.vk.device, &fragModuleCreateInfo, NULL, &modules[numModules] );
 			stageCreateInfo[1] =
@@ -1174,6 +1176,7 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 		pipelineCreateInfo.pDepthStencilState = &depthStencilState;
 
 		VK_WrapResult( vkCreateGraphicsPipelines( rsh.device.vk.device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &pipeline->vk.handle ) );
+		//assert( ( attribFlags & program->vertexInputMask ) == program->vertexInputMask );
 
 		for( size_t i = 0; i < numModules; i++ ) {
 			vkDestroyShaderModule( rsh.device.vk.device, modules[i], NULL );
@@ -1309,16 +1312,20 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct frame_cmd_buffer_s
 					const struct descriptor_reflection_s *refl = __ReflectDescriptorSet( program, &bindings[i].handle );
 					if( !refl || setIndex != refl->set || RI_IsEmptyDescriptor( device, &bindings[i].descriptor ) )
 						continue;
+
+					printf("BINDING: %s - binding %u %u\n", bindings[i].handle.name, refl->baseRegisterIndex, refl->dimCount);
 					VkWriteDescriptorSet *vkDesc = descriptorWrite + ( numWrites++ );
 					memset( vkDesc, 0, sizeof( VkWriteDescriptorSet ) );
+					vkDesc->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 					vkDesc->dstSet = result.set->vk.handle;
 					if( refl->isArray ) {
 						vkDesc->dstBinding = refl->baseRegisterIndex;
-						vkDesc->dstArrayElement = refl->rangeOffset;
+						vkDesc->dstArrayElement =  bindings[i].registerOffset;
 					} else {
-						vkDesc->dstBinding = refl->baseRegisterIndex + refl->rangeOffset;
+						vkDesc->dstBinding = refl->baseRegisterIndex + bindings[i].registerOffset;
 						vkDesc->dstArrayElement = 0;
 					}
+					vkDesc->descriptorCount = 1;
 					vkDesc->descriptorType = bindings[i].descriptor.vk.type;
 					switch( bindings[i].descriptor.vk.type ) {
 						case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
@@ -1465,19 +1472,33 @@ void _vk__descriptorSetAlloc( struct RIDevice_s *device, struct descriptor_set_a
 	struct glsl_program_descriptor_s *programDescriptor = Q_CONTAINER_OF( alloc, struct glsl_program_descriptor_s, alloc );
 	VkDescriptorPoolSize descriptorPoolSize[16] = {};
 	size_t descriptorPoolLen = 0;
-	descriptorPoolSize[descriptorPoolLen++] = ( VkDescriptorPoolSize ){ VK_DESCRIPTOR_TYPE_SAMPLER, programDescriptor->samplerMaxNum * DESCRIPTOR_MAX_SIZE };
-	descriptorPoolSize[descriptorPoolLen++] = ( VkDescriptorPoolSize ){ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, programDescriptor->constantBufferMaxNum * DESCRIPTOR_MAX_SIZE };
-	descriptorPoolSize[descriptorPoolLen++] = ( VkDescriptorPoolSize ){ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, programDescriptor->dynamicConstantBufferMaxNum * DESCRIPTOR_MAX_SIZE };
-	descriptorPoolSize[descriptorPoolLen++] = ( VkDescriptorPoolSize ){ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, programDescriptor->textureMaxNum * DESCRIPTOR_MAX_SIZE };
-	descriptorPoolSize[descriptorPoolLen++] = ( VkDescriptorPoolSize ){ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, programDescriptor->storageTextureMaxNum * DESCRIPTOR_MAX_SIZE };
-	descriptorPoolSize[descriptorPoolLen++] = ( VkDescriptorPoolSize ){ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, programDescriptor->bufferMaxNum * DESCRIPTOR_MAX_SIZE };
-	descriptorPoolSize[descriptorPoolLen++] = ( VkDescriptorPoolSize ){ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, programDescriptor->storageBufferMaxNum * DESCRIPTOR_MAX_SIZE };
-	descriptorPoolSize[descriptorPoolLen++] =
-		( VkDescriptorPoolSize ){ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, programDescriptor->structuredBufferMaxNum * DESCRIPTOR_MAX_SIZE + programDescriptor->storageStructuredBufferMaxNum * DESCRIPTOR_MAX_SIZE };
-	descriptorPoolSize[descriptorPoolLen++] = ( VkDescriptorPoolSize ){ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, programDescriptor->accelerationStructureMaxNum * DESCRIPTOR_MAX_SIZE };
+	if( programDescriptor->samplerMaxNum > 0 )
+		descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){ VK_DESCRIPTOR_TYPE_SAMPLER, programDescriptor->samplerMaxNum * DESCRIPTOR_MAX_SIZE };
+	if( programDescriptor->constantBufferMaxNum > 0 )
+		descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, programDescriptor->constantBufferMaxNum * DESCRIPTOR_MAX_SIZE };
+	if( programDescriptor->dynamicConstantBufferMaxNum > 0 )
+		descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, programDescriptor->dynamicConstantBufferMaxNum * DESCRIPTOR_MAX_SIZE };
+	if( programDescriptor->textureMaxNum > 0 )
+		descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, programDescriptor->textureMaxNum * DESCRIPTOR_MAX_SIZE };
+	if( programDescriptor->storageTextureMaxNum > 0 )
+		descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, programDescriptor->storageTextureMaxNum * DESCRIPTOR_MAX_SIZE };
+	if( programDescriptor->bufferMaxNum > 0 )
+		descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, programDescriptor->bufferMaxNum * DESCRIPTOR_MAX_SIZE };
+	if( programDescriptor->storageBufferMaxNum > 0 )
+		descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, programDescriptor->storageBufferMaxNum * DESCRIPTOR_MAX_SIZE };
+	if( programDescriptor->structuredBufferMaxNum > 0 || programDescriptor->storageStructuredBufferMaxNum > 0 )
+		descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){
+			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, programDescriptor->structuredBufferMaxNum * DESCRIPTOR_MAX_SIZE + programDescriptor->storageStructuredBufferMaxNum * DESCRIPTOR_MAX_SIZE };
+	if( programDescriptor->accelerationStructureMaxNum > 0 )
+		descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, programDescriptor->accelerationStructureMaxNum * DESCRIPTOR_MAX_SIZE };
 	assert( descriptorPoolLen < Q_ARRAY_COUNT( descriptorPoolSize ) );
 	const VkDescriptorPoolCreateInfo info = {
-		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, NULL, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT, DESCRIPTOR_MAX_SIZE, descriptorPoolLen, descriptorPoolSize };
+		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, 
+		NULL, 
+		VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT, 
+		DESCRIPTOR_MAX_SIZE, 
+		descriptorPoolLen, 
+		descriptorPoolSize };
 	struct descriptor_pool_alloc_slot_s poolSlot = { 0 };
 	VK_WrapResult( vkCreateDescriptorPool( device->vk.device, &info, NULL, &poolSlot.vk.handle ) );
 	arrpush( alloc->pools, poolSlot );
@@ -1488,6 +1509,7 @@ void _vk__descriptorSetAlloc( struct RIDevice_s *device, struct descriptor_set_a
 		info.pNext = NULL;
 		info.descriptorPool = poolSlot.vk.handle;
 		info.descriptorSetCount = 1;
+		assert(programDescriptor->vk.setLayout != VK_NULL_HANDLE);
 		info.pSetLayouts = &programDescriptor->vk.setLayout;
 		VK_WrapResult( vkAllocateDescriptorSets( device->vk.device, &info, &slot->vk.handle ) );
 		arrpush( alloc->reservedSlots, slot );
@@ -1502,8 +1524,8 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 	struct glsl_program_s *program = r_glslprograms + r_numglslprograms++;
 	struct QStr featuresStr = {0};
 	struct QStr fullName = {0};
-	qStrAppendSlice(&fullName, qCToStrRef(name));
-	for( feature_iter_t iter = __R_NextFeature( ( feature_iter_t ){ .it = glsl_programtypes_features[type], .bits = features } ); __R_IsValidFeatureIter( &iter ); iter = __R_NextFeature( iter ) ) {
+	qStrAppendSlice( &fullName, qCToStrRef( name ) );
+	for( feature_iter_t iter = __R_NextFeature( (feature_iter_t){ .it = glsl_programtypes_features[type], .bits = features } ); __R_IsValidFeatureIter( &iter ); iter = __R_NextFeature( iter ) ) {
 		qstrcatfmt(&featuresStr,"%s\n", iter.it->define);	
 		if( !qStrEmpty(fullName) ) {
 			qStrAppendSlice(&fullName, qCToStrRef(iter.it->suffix));	
@@ -1552,20 +1574,20 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 		qStrFree(&filePath);
 	}
 	qStrFree(&featuresStr);
-	
-	
-	program->hasPushConstant = false;
 
-	for( size_t stageIdx = 0; stageIdx < Q_ARRAY_COUNT( stages ); stageIdx++ ) {
-		qStrSetNullTerm(&stages[stageIdx].source);
+	program->hasPushConstant = false;
+	program->vertexInputMask = 0;
+
+	for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
+		qStrSetNullTerm(&stages[i].source);
 		const glslang_input_t input = { 
 										.language = GLSLANG_SOURCE_GLSL,
-										.stage = __RP_GLStageToSlang( stages[stageIdx].stage ),
+										.stage = __RP_GLStageToSlang( stages[i].stage ),
 										.client = GLSLANG_CLIENT_VULKAN,
 										.client_version = GLSLANG_TARGET_VULKAN_1_2,
 										.target_language = GLSLANG_TARGET_SPV,
 										.target_language_version = GLSLANG_TARGET_SPV_1_5,
-										.code = stages[stageIdx].source.buf,
+										.code = stages[i].source.buf,
 										.default_version = 450,
 										.default_profile = GLSLANG_CORE_PROFILE,
 										.force_default_version_and_profile = false,
@@ -1576,7 +1598,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 		glslang_program_t *glslang_program = NULL;
 		if( !glslang_shader_preprocess( shader, &input ) ) {
 			struct QStr errFilePath = {0};
-			qstrcatfmt( &errFilePath, "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ) );
+			qstrcatfmt( &errFilePath, "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
 			const char *infoLog = glslang_shader_get_info_log( shader );
 			const char *debugLogs = glslang_shader_get_info_debug_log( shader );
 			Com_Printf( S_COLOR_YELLOW "GLSL preprocess failed %.*s\n", fullName.len, fullName.buf );
@@ -1600,33 +1622,32 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 		}
 
 		if( !glslang_shader_parse( shader, &input ) ) {
-			struct QStr errFilePath = {0};
-			qstrcatfmt( &errFilePath, "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ) );
+			struct QStr errFilePath = { 0 };
+			qstrcatfmt( &errFilePath, "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
 			const char *infoLog = glslang_shader_get_info_log( shader );
 			const char *debugLogs = glslang_shader_get_info_debug_log( shader );
 
-			Com_Printf( S_COLOR_YELLOW "GLSL parsing failed %.*s\n", fullName.len, fullName.buf);
+			Com_Printf( S_COLOR_YELLOW "GLSL parsing failed %.*s\n", fullName.len, fullName.buf );
 			Com_Printf( S_COLOR_YELLOW "%s\n", infoLog );
 			Com_Printf( S_COLOR_YELLOW "%s\n", debugLogs );
-			Com_Printf( S_COLOR_YELLOW "dump shader: %.*s\n", errFilePath.len, errFilePath.buf);
+			Com_Printf( S_COLOR_YELLOW "dump shader: %.*s\n", errFilePath.len, errFilePath.buf );
 
-			struct QStr shaderErr  = {0};
+			struct QStr shaderErr = { 0 };
 			qstrcatfmt( &shaderErr, "%s\n", input.code );
 			qstrcatfmt( &shaderErr, "----------- Parsing Failed -----------\n" );
 			qstrcatfmt( &shaderErr, "%s\n", infoLog );
 			qstrcatfmt( &shaderErr, "%s\n", debugLogs );
 			__RP_writeTextToFile( errFilePath.buf, shaderErr.buf );
-			assert(false && "failed to parse shader");
+			assert( false && "failed to parse shader" );
 			qStrFree( &shaderErr );
 			qStrFree( &errFilePath );
 
 			error = true;
 			goto shader_done;
-		} 
-		else {
-			struct QStr shaderDebugPath = {0};
-			qstrcatfmt(&shaderDebugPath,"logs/shader_debug/%S_%u.%s.glsl", qToStrRef(fullName), features, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ) );
-			__RP_writeTextToFile( shaderDebugPath.buf, glslang_shader_get_preprocessed_code(shader) );
+		} else {
+			struct QStr shaderDebugPath = { 0 };
+			qstrcatfmt( &shaderDebugPath, "logs/shader_debug/%S_%u.%s.glsl", qToStrRef( fullName ), features, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
+			__RP_writeTextToFile( shaderDebugPath.buf, glslang_shader_get_preprocessed_code( shader ) );
 			qStrFree( &shaderDebugPath );
 		}
 
@@ -1635,7 +1656,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 
 		if( !glslang_program_link( glslang_program, GLSLANG_MSG_SPV_RULES_BIT | GLSLANG_MSG_VULKAN_RULES_BIT ) ) {
 			struct QStr errFilePath = {0};
-			qstrcatfmt( &errFilePath, "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[stageIdx].stage ));
+			qstrcatfmt( &errFilePath, "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ));
 
 			const char *infoLogs = glslang_program_get_info_log( glslang_program );
 			const char *debugLogs = glslang_program_get_info_debug_log( glslang_program );
@@ -1669,13 +1690,13 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 		spvOptions.disable_optimizer = false;
 		spvOptions.optimize_size = true;
 		spvOptions.validate = true;
-		glslang_program_SPIRV_generate_with_options( glslang_program, __RP_GLStageToSlang( stages[stageIdx].stage ), &spvOptions );
+		glslang_program_SPIRV_generate_with_options( glslang_program, __RP_GLStageToSlang( stages[i].stage ), &spvOptions );
 		size_t binSize = glslang_program_SPIRV_get_size( glslang_program ) * sizeof( uint32_t );
-		struct shader_bin_data_s *binData = &program->shaderBin[stages[stageIdx].stage];
+		struct shader_bin_data_s *binData = &program->shaderBin[stages[i].stage];
 		binData->bin = R_Malloc( binSize );
 		binData->size = binSize;
 		glslang_program_SPIRV_get( glslang_program, (uint32_t *)binData->bin );
-		binData->stage = stages[stageIdx].stage;
+		binData->stage = stages[i].stage;
 
 	shader_done:
 		glslang_shader_delete( shader );
@@ -1693,9 +1714,9 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 
 		VkDescriptorSetLayout setLayouts[DESCRIPTOR_SET_MAX] = { 0 };
 		VkPushConstantRange pushConstantRange = { 0 };
-		for( size_t stageIdx = 0; stageIdx < Q_ARRAY_COUNT( stages ); stageIdx++ ) {
+		for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
 			SpvReflectShaderModule module = { 0 };
-			SpvReflectResult result = spvReflectCreateShaderModule( program->shaderBin[stageIdx].size, program->shaderBin[stageIdx].bin, &module );
+			SpvReflectResult result = spvReflectCreateShaderModule( program->shaderBin[stages[i].stage].size, program->shaderBin[stages[i].stage].bin, &module );
 			assert( result == SPV_REFLECT_RESULT_SUCCESS );
 			{
 				uint32_t pushConstantCount = 0;
@@ -1714,7 +1735,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 					assert( result == SPV_REFLECT_RESULT_SUCCESS );
 					pushConstantRange.size = reflectionBlockVariables[0]->size;
 					program->vk.pushConstant.size = reflectionBlockVariables[0]->size;
-					switch( stages[stageIdx].stage ) {
+					switch( stages[i].stage ) {
 						case GLSL_STAGE_VERTEX:
 							pushConstantRange.stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
 							program->vk.pushConstant.shaderStageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
@@ -1729,8 +1750,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 					}
 				}
 
-				if( stages[stageIdx].stage == GLSL_STAGE_VERTEX ) {
-					program->vertexInputMask = 0;
+				if( stages[i].stage == GLSL_STAGE_VERTEX ) {
 					for( size_t i = 0; i < module.input_variable_count; i++ ) {
 						program->vertexInputMask |= ( 1 << module.input_variables[i]->location );
 					}
@@ -1757,7 +1777,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 						reflc.hash = Create_DescriptorHandle( reflectionBinding->name ).hash;
 						reflc.set = reflectionBinding->set;
 						reflc.baseRegisterIndex = reflectionBinding->binding;
-						reflc.isArray = reflectionBinding->count > 0;
+						reflc.isArray = reflectionBinding->count > 1;
 						reflc.dimCount = max( 1, reflectionBinding->count );
 
 						VkDescriptorSetLayoutBinding *layoutBinding = NULL;
@@ -1770,14 +1790,14 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 						if( !layoutBinding ) {
 							VkDescriptorSetLayoutBinding bindings = {};
 							arrpush( descriptorSetLayoutBindings[reflection->set], bindings );
-							reflc.rangeOffset = arrlen( descriptorSetLayoutBindings[reflection->set] ) - 1;
-							layoutBinding = descriptorSetLayoutBindings[reflection->set] + reflc.rangeOffset;
+							//reflc.rangeOffset = arrlen( descriptorSetLayoutBindings[reflection->set] ) - 1;
+							layoutBinding = descriptorSetLayoutBindings[reflection->set] + arrlen( descriptorSetLayoutBindings[reflection->set] ) - 1;
 						}
 
 						const uint32_t bindingCount = max( reflectionBinding->count, 1 );
 						layoutBinding->binding = reflectionBinding->binding;
 						layoutBinding->descriptorCount = bindingCount;
-						switch( stages[stageIdx].stage ) {
+						switch( stages[i].stage ) {
 							case GLSL_STAGE_VERTEX:
 								layoutBinding->stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
 								break;
@@ -1826,6 +1846,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 								break;
 						}
 						assert( program->numDescriptorReflections < PIPELINE_REFLECTION_HASH_SIZE );
+						program->descriptorReflection[program->numDescriptorReflections++] = reflc;
 					}
 				}
 			}

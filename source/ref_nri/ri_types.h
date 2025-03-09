@@ -42,7 +42,7 @@ static inline bool __vk_WrapResult(VkResult result, const char *sourceFilename, 
 #define RI_QUEUE_OPTICAL_FLOW_BIT_NV 0x80
 #define RI_QUEUE_INVALID 0x0
 
-enum RIPresetLevel {
+enum RIPresetLevel_e {
     RI_GPU_PRESET_NONE = 0,
     RI_GPU_PRESET_OFFICE,  // This means unsupported
     RI_GPU_PRESET_VERYLOW, // Mostly for mobile GPU
@@ -71,7 +71,6 @@ enum RITextureViewType_s {
 	RI_VIEWTYPE_DEPTH_ATTACHMENT_STENCIL_READONLY,
 	RI_VIEWTYPE_DEPTH_STENCIL_READONLY,
 	RI_VIEWTYPE_SHADING_RATE_ATTACHMENT
-
 };
 
 enum RITextureUsageBits_e {
@@ -113,6 +112,14 @@ enum RIQueueType_e {
 	RI_QUEUE_COMPUTE, 
 	RI_QUEUE_COPY, 
 	RI_QUEUE_LEN 
+};
+
+enum RIAdapterType_e {
+	RI_ADAPTER_TYPE_OTHER,
+	RI_ADAPTER_TYPE_CPU,
+	RI_ADAPTER_TYPE_VIRTUAL_GPU,
+	RI_ADAPTER_TYPE_INTEGRATED_GPU,
+	RI_ADAPTER_TYPE_DISCRETE_GPU,
 };
 
 enum RIResult_e { 
@@ -267,10 +274,8 @@ struct RIBarrierBufferHandle_s {
 	union {
 #if ( DEVICE_IMPL_VULKAN )
 		struct {
-			union {
-				VkPipelineStageFlags2 stage;
-				VkAccessFlags2 access;
-			};
+			VkPipelineStageFlags2 stage;
+			VkAccessFlags2 access;
 		} vk;
 #endif
 	};
@@ -421,7 +426,8 @@ struct RIPhysicalAdapter_s {
 	uint64_t systemMemorySize;
 	uint32_t deviceId;
 	uint8_t vendor; // RIVendor_e
-	uint8_t presetLevel; // RIPresetLevel   
+	uint8_t presetLevel; // RIPresetLevel_e  
+	uint8_t type; // RIAdapterType_e 
 
 	// Viewports
 	uint32_t viewportMaxNum;
