@@ -582,35 +582,6 @@ static const glsl_feature_t *const glsl_programtypes_features[] = {
 #define QF_GLSL_ENABLE_EXT_TEXTURE_ARRAY "#extension GL_EXT_texture_array : enable\n"
 #define QF_GLSL_ENABLE_OES_TEXTURE_3D "#extension GL_OES_texture_3D : enable\n"
 
-
-#define QF_BUILTIN_GLSL_MACROS_GLSL300ES "" \
-"#ifdef VERTEX_SHADER\n" \
-"# define qf_varying out\n" \
-"# define qf_flat_varying flat out\n" \
-"# define qf_attribute in\n" \
-"#endif\n" \
-"#ifdef FRAGMENT_SHADER\n" \
-"# ifdef QF_FRAGMENT_PRECISION_HIGH\n" \
-"   precision highp float;\n" \
-"# else\n" \
-"   precision mediump float;\n" \
-"# endif\n" \
-"  precision lowp sampler2DArray;\n" \
-"  precision lowp sampler3D;\n" \
-"  precision lowp sampler2DShadow;\n" \
-"  layout(location = 0) out vec4 qf_FragColor;\n" \
-"# define qf_varying in\n" \
-"# define qf_flat_varying flat in\n" \
-"#endif\n" \
-" qf_varying vec4 qf_FrontColor;\n" \
-"#define qf_texture texture\n" \
-"#define qf_textureLod textureLod\n" \
-"#define qf_textureCube texture\n" \
-"#define qf_textureArray texture\n" \
-"#define qf_texture3D texture\n" \
-"#define qf_shadow texture\n" \
-"\n"
-
 #define QF_GLSL_PI "" \
 "#ifndef M_PI\n" \
 "#define M_PI 3.14159265358979323846\n" \
@@ -1007,12 +978,12 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 		cullMode ^= 0;
 	}
 
-	uint32_t attribFlags = 0;
+//	uint32_t attribFlags = 0;
 	hash_t hash = HASH_INITIAL_VALUE;
 	assert(cmd->numStreams < MAX_ATTRIBUTES);
 	assert(cmd->numStreams < MAX_STREAMS);
 	for( size_t i = 0; i < cmd->numAttribs; i++ ) {
-		attribFlags |= ( 1 << cmd->attribs[i].vk.location );
+	//	attribFlags |= ( 1 << cmd->attribs[i].vk.location );
 		if(!((1 << cmd->attribs[i].vk.location ) & program->vertexInputMask)) {
 			continue;
 		}
@@ -1026,7 +997,7 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	}
 	hash = hash_data( hash, &cmd->streams, sizeof( struct frame_cmd_vertex_stream_s ) * cmd->numStreams );
 	hash = hash_data( hash, &cmd->depthBias, sizeof( struct frame_pipeline_depth_bias_s  ));
-	if( cmd->hasDepthAttachment)
+	if( cmd->depthFormat != RI_FORMAT_UNKNOWN)
 		hash = hash_u32( hash, cmd->depthFormat);
 	hash = hash_data( hash, &cmd->colorAttachments, sizeof( cmd->colorAttachments[0] ) * cmd->numColorsAttachments );
 	hash = hash_u32( hash, cullMode);
@@ -1177,73 +1148,20 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 
 		VK_WrapResult( vkCreateGraphicsPipelines( rsh.device.vk.device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &pipeline->vk.handle ) );
 		//assert( ( attribFlags & program->vertexInputMask ) == program->vertexInputMask );
+		if( vkSetDebugUtilsObjectNameEXT ) {
+			VkDebugUtilsObjectNameInfoEXT debugName = { 
+				VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, 
+				NULL, 
+				VK_OBJECT_TYPE_PIPELINE, 
+				(uint64_t)pipeline->vk.handle, program->name};
+			VK_WrapResult( vkSetDebugUtilsObjectNameEXT( rsh.device.vk.device, &debugName ) );
+		}
 
 		for( size_t i = 0; i < numModules; i++ ) {
 			vkDestroyShaderModule( rsh.device.vk.device, modules[i], NULL );
 		}
 	}
 #endif
-
-	// NriGraphicsPipelineDesc graphicsPipelineDesc = {0};
-	// NriColorAttachmentDesc colorAttachmentDesc[MAX_COLOR_ATTACHMENTS] = {0};
-	// for( size_t i = 0; i < def->numColorAttachments; i++ ) {
-	// 	colorAttachmentDesc[i].format = def->pipelineLayout.colorFormats[i];
-	// 	colorAttachmentDesc[i].colorBlend.srcFactor = def->pipelineLayout.colorSrcFactor; 
-	// 	colorAttachmentDesc[i].colorBlend.dstFactor = def->pipelineLayout.colorDstFactor;
-	// 	colorAttachmentDesc[i].colorWriteMask = def->pipelineLayout.colorWriteMask;
-	// 	colorAttachmentDesc[i].blendEnabled = def->pipelineLayout.blendEnabled;
-	// }
-	// graphicsPipelineDesc.outputMerger.colorNum = def->numColorAttachments;
-	// graphicsPipelineDesc.outputMerger.colors = colorAttachmentDesc;
-
-	// graphicsPipelineDesc.inputAssembly.topology = def->pipelineLayout.topology;
-
-	// NriShaderDesc shaderDesc[4] = {0};
-	// graphicsPipelineDesc.shaders = shaderDesc;
-	// graphicsPipelineDesc.rasterization.cullMode = cullMode;
-	// graphicsPipelineDesc.rasterization.fillMode = NriFillMode_SOLID;
-	// graphicsPipelineDesc.rasterization.frontCounterClockwise = true;
-	// graphicsPipelineDesc.rasterization.viewportNum = def->numColorAttachments;
-	// graphicsPipelineDesc.rasterization.depthBias = def->pipelineLayout.depthBias;
-
-	// graphicsPipelineDesc.outputMerger.depth.write = def->pipelineLayout.depthWrite;
-	// graphicsPipelineDesc.outputMerger.depth.compareFunc = def->pipelineLayout.compareFunc;
-	// graphicsPipelineDesc.outputMerger.depthStencilFormat = def->pipelineLayout.depthFormat;
-
-	// assert( rsh.nri.api == NriGraphicsAPI_VK );
-
-	// NriVertexInputDesc vertexInputDesc = {
-	// 	.attributes = vertexInputAttribs, 
-	// 	.attributeNum = numAttribs,
-	// 	.streams = def->streams,
-	// 	.streamNum = def->numStreams 
-	// };
-
-	// graphicsPipelineDesc.vertexInput = &vertexInputDesc;
-	// graphicsPipelineDesc.pipelineLayout = program->layout; 
-	// if( program->shaderBin[GLSL_STAGE_VERTEX].bin && 
-	// 	program->shaderBin[GLSL_STAGE_FRAGMENT].bin ) {
-	// 	shaderDesc[0] = (NriShaderDesc) {
-	// 		.size = program->shaderBin[GLSL_STAGE_VERTEX].size,
-	// 		.stage = NriStageBits_VERTEX_SHADER,
-	// 		.bytecode = program->shaderBin[GLSL_STAGE_VERTEX].bin,
-	// 		.entryPointName = "main"
-	// 	};
-
-	// 	shaderDesc[1] = (NriShaderDesc) {
-	// 		.size = program->shaderBin[GLSL_STAGE_FRAGMENT].size,
-	// 		.stage = NriStageBits_FRAGMENT_SHADER,
-	// 		.bytecode = program->shaderBin[GLSL_STAGE_FRAGMENT].bin,
-	// 		.entryPointName = "main"
-	// 	};
-	// 	graphicsPipelineDesc.shaderNum = 2;
-	// } else {
-	// 	assert(false && "failed to resolve bin");
-	// }
-
-
-	// NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateGraphicsPipeline( rsh.nri.device, &graphicsPipelineDesc, &pipeline->pipeline ) );
-	// rsh.nri.coreI.SetPipelineDebugName( pipeline->pipeline, program->name );
 	
 	return pipeline;
 }
@@ -1282,10 +1200,12 @@ bool RP_ProgramHasUniform( const struct glsl_program_s *program, const struct gl
 
 void RP_BindPushConstant( struct RIDevice_s *device, struct frame_cmd_buffer_s *cmd, struct glsl_program_s *program, void *data, size_t len )
 {
-	GPU_VULKAN_BLOCK( ( device->renderer ), ( {
-						  assert( len <= program->vk.pushConstant.size );
-						  vkCmdPushConstants( cmd->handle.vk.cmd, program->vk.pipelineLayout, program->vk.pushConstant.shaderStageFlags, 0, program->vk.pushConstant.size, data );
-					  } ) );
+#if ( DEVICE_IMPL_VULKAN )
+	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
+		assert( len <= program->vk.pushConstant.size );
+		vkCmdPushConstants( cmd->handle.vk.cmd, program->vk.pipelineLayout, program->vk.pushConstant.shaderStageFlags, 0, program->vk.pushConstant.size, data );
+	}
+#endif
 }
 
 void RP_BindDescriptorSets( struct RIDevice_s *device, struct frame_cmd_buffer_s *cmd, struct glsl_program_s *program, struct glsl_descriptor_binding_s *bindings, size_t numDescriptorData )
@@ -1313,7 +1233,6 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct frame_cmd_buffer_s
 					if( !refl || setIndex != refl->set || RI_IsEmptyDescriptor( device, &bindings[i].descriptor ) )
 						continue;
 
-					printf("BINDING: %s - binding %u %u\n", bindings[i].handle.name, refl->baseRegisterIndex, refl->dimCount);
 					VkWriteDescriptorSet *vkDesc = descriptorWrite + ( numWrites++ );
 					memset( vkDesc, 0, sizeof( VkWriteDescriptorSet ) );
 					vkDesc->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1356,70 +1275,8 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct frame_cmd_buffer_s
 		}
 	}
 #endif
-	//for( uint32_t setIndex = 0; setIndex < DESCRIPTOR_SET_MAX; setIndex++ ) {
-	//	struct glsl_descriptor_commit_s *c = &commit[setIndex];
-	//	if( c->numBindings == 0 )
-	//		continue;
-	//	hash_t hash = HASH_INITIAL_VALUE;
-	//	for( size_t descIndex = 0; descIndex < commit[setIndex].numBindings; descIndex++ ) {
-	//		struct glsl_descriptor_binding_s *binding = commit[setIndex].slots[descIndex].binding;
-	//		hash = hash_u64( hash, commit[setIndex].slots[descIndex].reflection->hash );
-	//		hash = hash_u64( hash, binding->descriptor.cookie );
-	//	}
-	//	struct glsl_program_descriptor_s *info = &program->programDescriptors[setIndex];
-	//	struct descriptor_set_result_s result = ResolveDescriptorSet( &rsh.device, &info->alloc, cmd->frameCount, hash );
-	//	if( !result.found ) {
-	//		for( uint32_t bindingIndex = 0; bindingIndex < commit[setIndex].numBindings; bindingIndex++ ) {
-	//			struct glsl_commit_slots_s *c = &commit[setIndex].slots[bindingIndex];
-	//			if( numWrites == Q_ARRAY_COUNT( descriptorWrite ) ) {
-	//				vkUpdateDescriptorSets( device->vk.device, Q_ARRAY_COUNT( descriptorWrite ), descriptorWrite, 0, NULL );
-	//			}
-	//			VkWriteDescriptorSet* vkDesc = descriptorWrite + (numWrites++);
-	//			memset(vkDesc, 0, sizeof(VkWriteDescriptorSet));
-	//			vkDesc->dstSet = result.set->vk.handle;
-	//			if(c->reflection->isArray) {
-	//				vkDesc->dstBinding = c->reflection->baseRegisterIndex ;
-	//				vkDesc->dstArrayElement = c->reflection->rangeOffset;
-	//			} else  {
-	//				vkDesc->dstBinding = c->reflection->baseRegisterIndex + c->reflection->rangeOffset;
-	//				vkDesc->dstArrayElement = 0;
-	//			}
-	//			vkDesc->descriptorType = c->binding->descriptor.vk.type;
-	//			switch( c->binding->descriptor.vk.type ) {
-	//				case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-	//				case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-	//					vkDesc->pBufferInfo = &c->binding->descriptor.vk.buffer.info;
-	//					break;
-	//				case VK_DESCRIPTOR_TYPE_SAMPLER:
-	//				case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-	//				case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-	//					vkDesc->pImageInfo = &c->binding->descriptor.vk.image.imageInfo;
-	//					break;
-	//				default:
-	//					assert(false); // this is bad
-	//					break;
-	//			}
-
-	//			//NriDescriptorRangeUpdateDesc updateDesc = { 0 };
-	//			//const NriDescriptor *descriptors[] = { c->binding->descriptor.descriptor };
-	//			//updateDesc.descriptorNum = 1;
-	//			//updateDesc.baseDescriptor = c->binding->registerOffset;
-	//			//updateDesc.descriptors = descriptors;
-	//			//rsh.nri.coreI.UpdateDescriptorRanges( result.set, c->reflection->rangeOffset, 1, &updateDesc );
-	//		}
-	//	}
-	//	if( numWrites > 0 ) {
-	//		vkUpdateDescriptorSets( device->vk.device, numWrites, descriptorWrite, 0, NULL );
-	//	}
-	//	vkCmdBindDescriptorSets(cmd->handle.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, program->vk.pipelineLayout, 0, 1, &result.set->vk.handle, 0, NULL );
-	//	// rsh.nri.coreI.CmdSetDescriptorSet( cmd->cmd, setIndex, result.set, NULL );
-	//}
 }
 
-//static void ri_vk_ConfigureVKLayout(struct glsl_program_s* program) { 
-//	 for( size_t stageIdx = 0; stageIdx < Q_ARRAY_COUNT( program->shaderBin); stageIdx++ ) {
-//	 }
-//} 
 
 struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
 {
@@ -1710,7 +1567,8 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 	if( GPU_VULKAN_SELECTED( rsh.device.renderer ) ) {
 		SpvReflectBlockVariable *reflectionBlockVariables[1] = { 0 };
 		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-		VkDescriptorSetLayoutBinding *descriptorSetLayoutBindings[DESCRIPTOR_SET_MAX] = { 0 };
+		VkDescriptorSetLayoutBinding *descriptorSetLayoutBindings[DESCRIPTOR_SET_MAX] = {};
+		VkDescriptorBindingFlags* descriptorBindingFlags[DESCRIPTOR_SET_MAX] = {};
 
 		VkDescriptorSetLayout setLayouts[DESCRIPTOR_SET_MAX] = { 0 };
 		VkPushConstantRange pushConstantRange = { 0 };
@@ -1781,17 +1639,25 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 						reflc.dimCount = max( 1, reflectionBinding->count );
 
 						VkDescriptorSetLayoutBinding *layoutBinding = NULL;
+						VkDescriptorBindingFlags* bindingFlags = NULL;
 						for( size_t i = 0; i < arrlen( descriptorSetLayoutBindings[reflection->set] ); i++ ) {
 							if( descriptorSetLayoutBindings[reflection->set][i].binding == reflectionBinding->binding ) {
 								layoutBinding = descriptorSetLayoutBindings[reflection->set] + i;
+								bindingFlags = descriptorBindingFlags[reflection->set] + i;
 							}
 						}
 
 						if( !layoutBinding ) {
 							VkDescriptorSetLayoutBinding bindings = {};
+							VkDescriptorBindingFlags flags = 0;
 							arrpush( descriptorSetLayoutBindings[reflection->set], bindings );
-							//reflc.rangeOffset = arrlen( descriptorSetLayoutBindings[reflection->set] ) - 1;
+							arrpush( descriptorBindingFlags[reflection->set], flags);
 							layoutBinding = descriptorSetLayoutBindings[reflection->set] + arrlen( descriptorSetLayoutBindings[reflection->set] ) - 1;
+							bindingFlags = descriptorBindingFlags[reflection->set] + arrlen( descriptorBindingFlags[reflection->set] ) - 1;
+						}
+						
+						if(reflc.isArray) {
+							(*bindingFlags) = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT; 
 						}
 
 						const uint32_t bindingCount = max( reflectionBinding->count, 1 );
@@ -1861,11 +1727,18 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 
 		for( size_t bindingIdx = 0; bindingIdx < numLayoutCount; bindingIdx++ ) {
 			if( descriptorSetLayoutBindings[bindingIdx] ) {
+				VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO };
+				bindingFlagsInfo.bindingCount = arrlen(descriptorBindingFlags[bindingIdx]);
+				bindingFlagsInfo.pBindingFlags = descriptorBindingFlags[bindingIdx];
+
 				VkDescriptorSetLayoutCreateInfo createSetLayoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
 				createSetLayoutInfo.bindingCount = arrlen( descriptorSetLayoutBindings[bindingIdx] );
 				createSetLayoutInfo.pBindings = descriptorSetLayoutBindings[bindingIdx];
+				R_VK_ADD_STRUCT( &createSetLayoutInfo, &bindingFlagsInfo );
+
 				VK_WrapResult( vkCreateDescriptorSetLayout( rsh.device.vk.device, &createSetLayoutInfo, NULL, setLayouts + bindingIdx ) );
 				arrfree( descriptorSetLayoutBindings[bindingIdx] );
+				arrfree( descriptorBindingFlags[bindingIdx] );
 			} else {
 				VkDescriptorSetLayoutCreateInfo createSetLayoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
 				VK_WrapResult( vkCreateDescriptorSetLayout( rsh.device.vk.device, &createSetLayoutInfo, NULL, setLayouts + bindingIdx ) );

@@ -91,7 +91,6 @@ struct pipeline_desc_s {
 	uint16_t colorBlendEnabled : 1;
 	uint16_t depthWrite : 1;
 	uint16_t flippedViewport : 1; // bodge for portals ...
-	uint16_t hasDepthAttachment : 1;
 	uint16_t colorWriteMask : 4; // RIColorWriteMask_e
 	uint16_t colorSrcFactor : 5; // RIBlendFactor_e
 	uint16_t colorDstFactor : 5; // RIBlendFactor_e
@@ -107,18 +106,10 @@ struct pipeline_desc_s {
 };
 
 struct frame_cmd_buffer_s {
-	struct RIDevice_s* device;
+	struct RIDevice_s *device;
 	struct RICmdHandle_s handle;
+	uint64_t frameCount; // the current frame index
 
- 	//union {
-  //  #if(DEVICE_IMPL_VULKAN)
-  //  struct {
-  //  	VkCommandBuffer cmd;
-  //  } vk;
-	//	#endif
-  //};
-	uint64_t frameCount; // the current frame index 
-	
 	// default global ubo for the scene
 	struct RIDescriptor_s uboSceneFrame;
 	struct RIDescriptor_s uboSceneObject;
@@ -130,7 +121,7 @@ struct frame_cmd_buffer_s {
 	struct draw_element_s drawElements;
 	struct draw_element_s drawShadowElements;
 
-	// cmd buffer state 
+	// cmd buffer state
 	uint32_t dirty;
 
 	struct RIRect_s scissor;
@@ -139,12 +130,12 @@ struct frame_cmd_buffer_s {
 	struct RIBufferHandle_s vertexBuffers[MAX_VERTEX_BINDINGS];
 	uint64_t offsets[MAX_VERTEX_BINDINGS];
 	uint32_t dirtyVertexBuffers;
-	
+
 	struct RIBufferHandle_s indexBuffer;
 
 	uint64_t indexBufferOffset;
 	uint16_t indexType; // RIIndexType_e
-	
+
 	struct pipeline_desc_s pipeline;
 };
 
@@ -162,22 +153,14 @@ void TryCommitFrameUBOInstance( struct RIDevice_s *device, struct frame_cmd_buff
 static inline int FR_CmdNumViewports(struct frame_cmd_buffer_s* cmd) {
 	return Q_MAX(cmd->pipeline.numColorsAttachments, 1);
 }
-//void FR_CmdResetAttachmentToBackbuffer(struct frame_cmd_buffer_s *cmd);
-//void FR_CmdSetTextureAttachment( struct frame_cmd_buffer_s *cmd, 
-//																const NriFormat *colorformats, 
-//																const NriDescriptor **colorAttachments, 
-//																const NriViewport* viewports, 
-//																const NriRect* scissors, 
-//																size_t numAttachments, 
-//																const NriFormat depthFormat, 
-//																NriDescriptor *depthAttachment );
 
-void FR_CmdResetCmdState(struct frame_cmd_buffer_s *cmd,enum CmdStateResetBits bits);
+void FR_ConfigurePipelineAttachment( struct pipeline_desc_s *pipelineDesc, enum RI_Format_e *formats, size_t numAttachment, enum RI_Format_e depthFormat );
+
+void FR_CmdResetCmdState( struct frame_cmd_buffer_s *cmd, enum CmdStateResetBits bits );
 void FR_CmdSetVertexBuffer( struct frame_cmd_buffer_s *cmd, uint32_t slot, struct RIBufferHandle_s* buffer, uint64_t offset );
 void FR_CmdSetIndexBuffer( struct frame_cmd_buffer_s *cmd, struct RIBufferHandle_s* buffer, uint64_t offset, enum RIIndexType_e indexType );
 void FR_CmdResetCommandState(struct frame_cmd_buffer_s *cmd, enum CmdResetBits bits);
 
-//void FR_CmdSetScissor( struct frame_cmd_buffer_s *cmd, const struct RIRect_s *scissors, size_t numAttachments );
 void FR_CmdSetScissor( struct frame_cmd_buffer_s *cmd, const struct RIRect_s scissors );
 void FR_CmdSetDepthRangeAll(struct frame_cmd_buffer_s *cmd, float depthMin, float depthMax);
 
@@ -189,6 +172,9 @@ void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint
 void FR_CmdBeginRendering(struct frame_cmd_buffer_s* cmd);
 void FR_CmdEndRendering(struct frame_cmd_buffer_s* cmd);
 
+//#if ( DEVICE_IMPL_VULKAN )
+//void FR_VK_FillPipelineAttachmentFromPipeline( struct pipeline_desc_s *pipeline, const VkRenderingInfo  *renderInfo);
+//#endif
 //// frame immediate buffer
 //
 //struct gpu_frame_ele_allocator_s {

@@ -342,27 +342,32 @@ void R_RenderScene(const refdef_t *fd )
 	VectorCopy( fd->vieworg, rn.pvsOrigin );
 	VectorCopy( fd->vieworg, rn.lodOrigin );
 
-	GPU_VULKAN_BLOCK( ( &rsh.renderer ), ( {
-						  if( numPostProcessing > 0 ) {
-							  vkCmdEndRendering( rsh.frame.handle.vk.cmd ); // end back buffer and swap to pogo attachment
-							  VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-							  RI_VK_FillColorAttachment( &colorAttachment, RI_PogoBufferAttachment( rsh.pogoBuffer + rsh.vk.swapchainIndex ), true );
+#if ( DEVICE_IMPL_VULKAN )
+	if( GPU_VULKAN_SELECTED( &rsh.renderer ) ) {
+		if( numPostProcessing > 0 ) {
+			vkCmdEndRendering( rsh.frame.handle.vk.cmd ); // end back buffer and swap to pogo attachment
+			VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+			RI_VK_FillColorAttachment( &colorAttachment, RI_PogoBufferAttachment( rsh.pogoBuffer + rsh.vk.swapchainIndex ), false);
 
-							  VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-							  RI_VK_FillDepthAttachment( &depthStencil, &rsh.depthAttachment[rsh.vk.swapchainIndex], true );
+			VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+			RI_VK_FillDepthAttachment( &depthStencil, &rsh.depthAttachment[rsh.vk.swapchainIndex], false);
 
-							  VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
-							  renderingInfo.flags = 0;
-							  renderingInfo.renderArea = RIViewportToRect2D( &rsh.frame.viewport );
-							  renderingInfo.layerCount = 1;
-							  renderingInfo.viewMask = 0;
-							  renderingInfo.colorAttachmentCount = 1;
-							  renderingInfo.pColorAttachments = &colorAttachment;
-							  renderingInfo.pDepthAttachment = &depthStencil;
-							  renderingInfo.pStencilAttachment = NULL;
-							  vkCmdBeginRendering( rsh.frame.handle.vk.cmd, &renderingInfo );
-						  }
-					  } ) );
+			VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
+			renderingInfo.flags = 0;
+			renderingInfo.renderArea = RIViewportToRect2D( &rsh.frame.viewport );
+			renderingInfo.layerCount = 1;
+			renderingInfo.viewMask = 0;
+			renderingInfo.colorAttachmentCount = 1;
+			renderingInfo.pColorAttachments = &colorAttachment;
+			renderingInfo.pDepthAttachment = &depthStencil;
+			renderingInfo.pStencilAttachment = NULL;
+			vkCmdBeginRendering( rsh.frame.handle.vk.cmd, &renderingInfo );
+			
+			enum RI_Format_e attachments[] = {POGO_BUFFER_TEXTURE_FORMAT };
+			FR_ConfigurePipelineAttachment(&rsh.frame.pipeline, attachments, Q_ARRAY_COUNT(attachments), RI_FORMAT_D32_SFLOAT);
+		}
+	}
+#endif
 
 	FR_CmdSetViewport(&rsh.frame, (struct RIViewport_s) {
 		.x = fd->x,
@@ -394,62 +399,69 @@ void R_RenderScene(const refdef_t *fd )
 	}
 
 	if( numPostProcessing > 0 ) {
-		GPU_VULKAN_BLOCK( ( &rsh.renderer ), ( {
-							  vkCmdEndRendering( rsh.frame.handle.vk.cmd ); // end back buffer and swap to pogo attachment
-							
-								for( size_t i = 0; i < numPostProcessing - 1; i++ ) {
-								  RI_PogoBufferToggle( &rsh.device, rsh.pogoBuffer + rsh.vk.swapchainIndex, &rsh.frame.handle);
-								  {
-									  VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-									  RI_VK_FillColorAttachment( &colorAttachment, RI_PogoBufferAttachment( rsh.pogoBuffer + rsh.vk.swapchainIndex ), true );
+#if ( DEVICE_IMPL_VULKAN )
+		if( GPU_VULKAN_SELECTED( &rsh.renderer ) ) {
+			vkCmdEndRendering( rsh.frame.handle.vk.cmd ); // end back buffer and swap to pogo attachment
 
-									  VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-									  RI_VK_FillDepthAttachment( &depthStencil, &rsh.depthAttachment[rsh.vk.swapchainIndex], true );
+			for( size_t i = 0; i < numPostProcessing - 1; i++ ) {
+				RI_PogoBufferToggle( &rsh.device, rsh.pogoBuffer + rsh.vk.swapchainIndex, &rsh.frame.handle );
+				{
+					VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+					RI_VK_FillColorAttachment( &colorAttachment, RI_PogoBufferAttachment( rsh.pogoBuffer + rsh.vk.swapchainIndex ), true );
 
-									  VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
-									  renderingInfo.flags = 0;
-									  renderingInfo.renderArea = (VkRect2D){ { 0, 0 }, { rsh.riSwapchain.width, rsh.riSwapchain.height } };
-									  renderingInfo.layerCount = 1;
-									  renderingInfo.viewMask = 0;
-									  renderingInfo.colorAttachmentCount = 1;
-									  renderingInfo.pColorAttachments = &colorAttachment;
-									  renderingInfo.pDepthAttachment = &depthStencil;
-									  renderingInfo.pStencilAttachment = NULL;
-									  vkCmdBeginRendering( rsh.frame.handle.vk.cmd, &renderingInfo );
-								  }
-								  FR_CmdResetCommandState( &rsh.frame, CMD_RESET_DEFAULT_PIPELINE_LAYOUT );
-								  postProcessingHandlers[i]( fd, &rsh.frame, RI_PogoBufferShaderResource(rsh.pogoBuffer + rsh.vk.swapchainIndex)  );
-								  vkCmdEndRendering( rsh.frame.handle.vk.cmd ); // end back buffer and swap to pogo attachment
-							  }
+					VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+					RI_VK_FillDepthAttachment( &depthStencil, &rsh.depthAttachment[rsh.vk.swapchainIndex], true );
 
-							  RI_PogoBufferToggle( &rsh.device, rsh.pogoBuffer + rsh.vk.swapchainIndex, &rsh.frame.handle );
-							  FR_CmdResetCommandState( &rsh.frame, CMD_RESET_DEFAULT_PIPELINE_LAYOUT | CMD_RESET_VERTEX_BUFFER );
-								// reset back to back buffer
-							  {
-								  VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-								  RI_VK_FillColorAttachment( &colorAttachment, &rsh.colorAttachment[rsh.vk.swapchainIndex], true );
+					VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
+					renderingInfo.flags = 0;
+					renderingInfo.renderArea = (VkRect2D){ { 0, 0 }, { rsh.riSwapchain.width, rsh.riSwapchain.height } };
+					renderingInfo.layerCount = 1;
+					renderingInfo.viewMask = 0;
+					renderingInfo.colorAttachmentCount = 1;
+					renderingInfo.pColorAttachments = &colorAttachment;
+					renderingInfo.pDepthAttachment = &depthStencil;
+					renderingInfo.pStencilAttachment = NULL;
+					vkCmdBeginRendering( rsh.frame.handle.vk.cmd, &renderingInfo );
 
-								  VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-								  RI_VK_FillDepthAttachment( &depthStencil, &rsh.depthAttachment[rsh.vk.swapchainIndex], true );
+					enum RI_Format_e attachments[] = { POGO_BUFFER_TEXTURE_FORMAT };
+					FR_ConfigurePipelineAttachment( &rsh.frame.pipeline, attachments, Q_ARRAY_COUNT( attachments ), RI_FORMAT_D32_SFLOAT );
+				}
+				FR_CmdResetCommandState( &rsh.frame, CMD_RESET_DEFAULT_PIPELINE_LAYOUT );
+				postProcessingHandlers[i]( fd, &rsh.frame, RI_PogoBufferShaderResource( rsh.pogoBuffer + rsh.vk.swapchainIndex ) );
+				vkCmdEndRendering( rsh.frame.handle.vk.cmd ); // end back buffer and swap to pogo attachment
+			}
 
-								  VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
-								  renderingInfo.flags = 0;
-								  renderingInfo.renderArea = RIViewportToRect2D( &rsh.frame.viewport );
-								  renderingInfo.layerCount = 1;
-								  renderingInfo.viewMask = 0;
-								  renderingInfo.colorAttachmentCount = 1;
-								  renderingInfo.pColorAttachments = &colorAttachment;
-								  renderingInfo.pDepthAttachment = &depthStencil;
-								  renderingInfo.pStencilAttachment = NULL;
-								  vkCmdBeginRendering( rsh.frame.handle.vk.cmd, &renderingInfo );
-							  }
-								postProcessingHandlers[numPostProcessing - 1]( fd, &rsh.frame, RI_PogoBufferShaderResource( rsh.pogoBuffer + rsh.vk.swapchainIndex ) );
+			RI_PogoBufferToggle( &rsh.device, rsh.pogoBuffer + rsh.vk.swapchainIndex, &rsh.frame.handle );
+			FR_CmdResetCommandState( &rsh.frame, CMD_RESET_DEFAULT_PIPELINE_LAYOUT | CMD_RESET_VERTEX_BUFFER );
+			// reset back to back buffer
+			{
+				VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+				RI_VK_FillColorAttachment( &colorAttachment, &rsh.colorAttachment[rsh.vk.swapchainIndex], true );
 
-						  } ) );
+				VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+				RI_VK_FillDepthAttachment( &depthStencil, &rsh.depthAttachment[rsh.vk.swapchainIndex], true );
+
+				VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
+				renderingInfo.flags = 0;
+				renderingInfo.renderArea = RIViewportToRect2D( &rsh.frame.viewport );
+				renderingInfo.layerCount = 1;
+				renderingInfo.viewMask = 0;
+				renderingInfo.colorAttachmentCount = 1;
+				renderingInfo.pColorAttachments = &colorAttachment;
+				renderingInfo.pDepthAttachment = &depthStencil;
+				renderingInfo.pStencilAttachment = NULL;
+				vkCmdBeginRendering( rsh.frame.handle.vk.cmd, &renderingInfo );
+
+				enum RI_Format_e attachments[] = { rsh.riSwapchain.format };
+				FR_ConfigurePipelineAttachment( &rsh.frame.pipeline, attachments, Q_ARRAY_COUNT( attachments ), RI_FORMAT_D32_SFLOAT );
+			}
+			postProcessingHandlers[numPostProcessing - 1]( fd, &rsh.frame, RI_PogoBufferShaderResource( rsh.pogoBuffer + rsh.vk.swapchainIndex ) );
+		}
+#endif
 	}
-	//FR_CmdResetAttachmentToBackbuffer( frame );
+	// FR_CmdResetAttachmentToBackbuffer( frame );
 
-	R_Set2DMode(&rsh.frame, true );
+	R_Set2DMode( &rsh.frame, true );
 }
 
 void R_AddDebugBounds( const vec3_t mins, const vec3_t maxs, const byte_vec4_t color )
@@ -458,10 +470,10 @@ void R_AddDebugBounds( const vec3_t mins, const vec3_t maxs, const byte_vec4_t c
 	VectorCopy( mins, bound.mins );
 	VectorCopy( maxs, bound.maxs );
 	Vector4Copy( color, bound.color );
-	arrput(rsc.debugBounds, bound);
+	arrput( rsc.debugBounds, bound );
 }
 
-static void R_RenderDebugBounds( struct frame_cmd_buffer_s* frame)
+static void R_RenderDebugBounds( struct frame_cmd_buffer_s *frame )
 {
 	if( arrlen( rsc.debugBounds ) == 0 )
 		return;
@@ -502,4 +514,3 @@ static void R_RenderDebugBounds( struct frame_cmd_buffer_s* frame)
 
 	RB_SetShaderStateMask( ~0, 0 );
 }
-

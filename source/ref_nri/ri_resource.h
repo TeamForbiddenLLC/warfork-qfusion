@@ -6,7 +6,7 @@
 
 
 #if DEVICE_IMPL_VULKAN
-VkResult RI_VK_InitImageView( struct RIDevice_s *dev, VkImageViewCreateInfo *info, struct RIDescriptor_s *desc );
+VkResult RI_VK_InitImageView( struct RIDevice_s *dev, VkImageViewCreateInfo *info, struct RIDescriptor_s *desc, VkDescriptorType type );
 VkResult RI_VK_InitSampler( struct RIDevice_s *dev, VkSamplerCreateInfo *info, struct RIDescriptor_s *desc );
 
 static inline void RI_VK_FillColorAttachment(VkRenderingAttachmentInfo* info, struct RIDescriptor_s* desc, bool attachAndClear) {

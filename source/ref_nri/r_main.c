@@ -1219,7 +1219,6 @@ void R_RenderView(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 
 	R_SortDrawList( rn.meshlist );
 
-
 	R_SetupGL(frame);
 
 	R_DrawPortals(frame);

@@ -336,7 +336,6 @@ void RI_ResourceEndCopyTexture( struct RIDevice_s *device, struct RIResourceUplo
 			}
 		}
 		if( !foundInTransition ) {
-			printf("inserting barrier index: %lu\n",arrlen(res->postImageBarriers));
 			VkImageMemoryBarrier2 imageBarriers[1] = {};
 			imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 			imageBarriers[0].srcAccessMask = trans->srcBarrier.vk.access; // VK_ACCESS_2_NONE;

@@ -831,7 +831,7 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		createInfo.format = RIFormatToVK( dstFormat );
 		createInfo.subresourceRange = subresource;
 		createInfo.image = image->handle.vk.image;
-		RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding );
+		RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 		image->samplerBinding = R_ResolveSamplerDescriptor( image->flags );
 		assert(image->samplerBinding);
 	}
@@ -1148,7 +1148,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	createInfo.format = RIFormatToVK( destFormat );
 	createInfo.subresourceRange = subresource;
 	createInfo.image = image->handle.vk.image;
-	RI_VK_InitImageView(&rsh.device, &createInfo, &image->binding);
+	RI_VK_InitImageView(&rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	image->samplerBinding = R_ResolveSamplerDescriptor(image->flags); 
 
 	const size_t reservedSize = width * height * samples;
@@ -1297,7 +1297,7 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 									  createInfo.format = RIFormatToVK( destFormat );
 									  createInfo.subresourceRange = subresource;
 									  createInfo.image = image->handle.vk.image;
-									  RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding );
+									  RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
 								  } ) );
 
 							  assert( image->samplerBinding && !RI_IsEmptyDescriptor( &rsh.device, image->samplerBinding ) );
@@ -1635,7 +1635,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 		createInfo.format = info.format;
 		createInfo.subresourceRange = subresource;
 		createInfo.image = image->handle.vk.image;
-		RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding );
+		RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
 	}
 #endif
 	image->samplerBinding = R_ResolveSamplerDescriptor(image->flags); 

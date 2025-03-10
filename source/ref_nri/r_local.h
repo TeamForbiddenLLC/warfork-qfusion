@@ -592,9 +592,6 @@ extern cvar_t *gl_cull;
 extern cvar_t *vid_displayfrequency;
 extern cvar_t *vid_multiscreen_head;
 
-#if(DEVICE_IMPL_VULKAN)
-void R_VK_CmdBeginRenderingBackBuffer( struct RIDevice_s *device, struct frame_cmd_buffer_s* cmd, bool attachAndClear);
-#endif
 
 //
 // r_alias.c

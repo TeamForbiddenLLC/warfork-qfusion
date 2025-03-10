@@ -50,22 +50,20 @@ void FR_CmdSetDepthRangeAll(struct frame_cmd_buffer_s *cmd, float depthMin, floa
 void FR_CmdSetScissor( struct frame_cmd_buffer_s *cmd, const struct RIRect_s scissors )
 {
 	assert(cmd);
-	//for( size_t i = 0; i < FR_CmdNumViewports( cmd ); i++ ) {
-	//	assert( scissors.x >= 0 && scissors.y >= 0 );
-	//	cmd->state.scissors[i] = scissors;
-	//}
 	cmd->scissor = scissors;
 	cmd->dirty |= CMD_DIRT_SCISSOR;
 }
 
 void FR_CmdSetViewport( struct frame_cmd_buffer_s *cmd, const struct RIViewport_s viewport )
 {
+	assert(cmd);
 	cmd->viewport = viewport;
 	cmd->dirty |= CMD_DIRT_VIEWPORT;
 }
 
 void FR_CmdSetIndexBuffer( struct frame_cmd_buffer_s *cmd, struct RIBufferHandle_s* buffer, uint64_t offset, enum RIIndexType_e indexType )
 {
+	assert(cmd);
 	cmd->dirty |= CMD_DIRT_INDEX_BUFFER;
 	cmd->indexType = indexType;
 	cmd->indexBufferOffset = offset;
@@ -74,6 +72,7 @@ void FR_CmdSetIndexBuffer( struct frame_cmd_buffer_s *cmd, struct RIBufferHandle
 
 void FR_CmdSetVertexBuffer( struct frame_cmd_buffer_s *cmd, uint32_t slot, struct RIBufferHandle_s *buffer, uint64_t offset )
 {
+	assert(cmd);
 	assert( slot < MAX_VERTEX_BINDINGS );
 	cmd->dirtyVertexBuffers |= ( 0x1 << slot );
 	cmd->offsets[slot] = offset;
@@ -201,6 +200,27 @@ void FrameCmdBufferFree(struct frame_cmd_buffer_s* cmd) {
 	//rsh.nri.coreI.DestroyCommandAllocator(cmd->allocator);
 
 }
+
+void FR_ConfigurePipelineAttachment( struct pipeline_desc_s *desc, enum RI_Format_e *formats, size_t numAttachment, enum RI_Format_e depthFormat ) {
+	assert(desc);
+	desc->numColorsAttachments = numAttachment;
+	for(size_t i = 0; i < numAttachment; i++) {
+		desc->colorAttachments[i] = formats[i];
+	}
+	desc->depthFormat = depthFormat;
+}
+
+
+//#if ( DEVICE_IMPL_VULKAN )
+//void FR_VK_FillPipelineAttachmentFromPipeline( struct pipeline_desc_s *pipeline, const VkRenderingInfo *renderInfo )
+//{
+//	pipeline->numColorsAttachments = renderInfo->colorAttachmentCount;
+//	for( size_t i = 0; i < renderInfo->colorAttachmentCount; i++ ) {
+//		pipeline->colorAttachments[i] = renderInfo->pColorAttachments[i].imageLayout 
+//	}
+//}
+//#endif
+
 void ResetFrameCmdBuffer(  struct frame_cmd_buffer_s *cmd )
 {
 	//const uint32_t swapchainIndex = RISwapchainAcquireNextTexture( &rsh.device, &rsh.riSwapchain );
@@ -245,12 +265,6 @@ void FR_CmdDraw( struct frame_cmd_buffer_s *cmd, uint32_t vertexNum, uint32_t in
 			vkCmdSetScissor( cmd->handle.vk.cmd, 0, FR_CmdNumViewports( cmd ), scissors );
 			cmd->dirty &= ~CMD_DIRT_SCISSOR;
 		}
-		// NriDrawDesc drawDesc = { 0 };
-		// drawDesc.vertexNum = vertexNum;
-		// drawDesc.instanceNum = max( 1, instanceNum );
-		// drawDesc.baseVertex = baseVertex;
-		// drawDesc.baseInstance = baseInstance;
-		// rsh.nri.coreI.CmdDraw( cmd->cmd, &drawDesc );
 		vkCmdDraw( cmd->handle.vk.cmd, vertexNum, Q_MAX( 1, instanceNum ), baseVertex, baseInstance );
 	}
 #endif
@@ -272,7 +286,6 @@ void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint
 
 		if( cmd->dirty & CMD_DIRT_INDEX_BUFFER ) {
 			vkCmdBindIndexBuffer( cmd->handle.vk.cmd, cmd->indexBuffer.vk.buffer, cmd->indexBufferOffset, ri_vk_RIIndexTypeToVK( cmd->indexType ) );
-			// rsh.nri.coreI.CmdSetIndexBuffer( cmd->cmd, cmd->state.indexBuffer, cmd->state.indexBufferOffset, cmd->state.indexType );
 			cmd->dirty &= ~CMD_DIRT_INDEX_BUFFER;
 		}
 
@@ -293,14 +306,6 @@ void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint
 			vkCmdSetScissor( cmd->handle.vk.cmd, 0, FR_CmdNumViewports( cmd ), scissors );
 			cmd->dirty &= ~CMD_DIRT_SCISSOR;
 		}
-
-		// NriDrawIndexedDesc drawDesc = { 0 };
-		// drawDesc.indexNum = indexNum;
-		// drawDesc.instanceNum = max( 1, instanceNum );
-		// drawDesc.baseIndex = baseIndex;
-		// drawDesc.baseVertex = baseVertex;
-		// drawDesc.baseInstance = baseInstance;
-		// rsh.nri.coreI.CmdDrawIndexed( cmd->cmd, &drawDesc );
 		vkCmdDrawIndexed( cmd->handle.vk.cmd, indexNum, Q_MAX( 1, instanceNum ), baseIndex, baseVertex, baseInstance );
 	}
 #endif
@@ -331,242 +336,4 @@ void FR_CmdEndRendering( struct frame_cmd_buffer_s *cmd )
 //	}
 //	rsh.nri.coreI.CmdEndRendering( cmd->cmd );
 }
-
-//void TransitionPogoBufferToShaderResource(struct frame_cmd_buffer_s* frame, struct pogo_buffers_s* pogo) {
-//		NriTextureBarrierDesc transitionBarriers = { 0 };
-//		if( pogo->isAttachment ) {
-//			transitionBarriers.before = (NriAccessLayoutStage){	
-//			.layout = NriLayout_COLOR_ATTACHMENT, 
-//			.access = NriAccessBits_COLOR_ATTACHMENT, 
-//			};
-//		} else {
-//			return;
-//		}
-//		transitionBarriers.after = ( NriAccessLayoutStage ){ 
-//			.layout = NriLayout_SHADER_RESOURCE, 
-//			.access = NriAccessBits_SHADER_RESOURCE, 
-//			.stages = NriStageBits_FRAGMENT_SHADER 
-//		};
-//		transitionBarriers.texture = pogo->colorTexture;
-//		NriBarrierGroupDesc barrierGroupDesc = { 0 };
-//		barrierGroupDesc.textureNum = 1;
-//		barrierGroupDesc.textures = &transitionBarriers;
-//		rsh.nri.coreI.CmdBarrier( frame->cmd, &barrierGroupDesc );
-//		pogo->isAttachment = false;
-//}
-
-//void TransitionPogoBufferToAttachment(struct frame_cmd_buffer_s* frame, struct pogo_buffers_s* pogo) {
-//		NriTextureBarrierDesc transitionBarriers = { 0 };
-//		if( pogo->isAttachment ) {
-//			return;
-//		} else {
-//			transitionBarriers.before = (NriAccessLayoutStage){	
-//				.layout = NriLayout_SHADER_RESOURCE, 
-//				.access = NriAccessBits_SHADER_RESOURCE, 
-//			};
-//		}
-//		transitionBarriers.after = ( NriAccessLayoutStage ){ 
-//			.layout = NriLayout_COLOR_ATTACHMENT, 
-//			.access = NriAccessBits_COLOR_ATTACHMENT, 
-//			.stages = NriStageBits_COLOR_ATTACHMENT 
-//		};
-//		transitionBarriers.texture = pogo->colorTexture;
-//		NriBarrierGroupDesc barrierGroupDesc = { 0 };
-//		barrierGroupDesc.textureNum = 1;
-//		barrierGroupDesc.textures = &transitionBarriers;
-//		rsh.nri.coreI.CmdBarrier( frame->cmd, &barrierGroupDesc );
-//		pogo->isAttachment = true;
-//}
-
-//void initGPUFrameEleAlloc( struct gpu_frame_ele_allocator_s *alloc, const struct gpu_frame_ele_ring_desc_s *desc ) {
-//	assert(alloc);
-//	memset(alloc, 0, sizeof(struct gpu_frame_ele_allocator_s ));
-//	
-//	assert(desc);
-//	alloc->usageBits = desc->usageBits;
-//	alloc->elementStride = desc->elementStride;
-//	alloc->tail = 0;
-//	alloc->head = 1;
-//	assert(alloc->elementStride > 0);
-//	NriBufferDesc bufferDesc = { 
-//		.size = desc->elementStride * desc->numElements, 
-//		.structureStride = alloc->elementStride, 
-//		.usage = desc->usageBits
-//	};
-//	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateBuffer( rsh.nri.device, &bufferDesc, &alloc->buffer ) )
-//	NriResourceGroupDesc resourceGroupDesc = { 
-//		.buffers = &alloc->buffer , 
-//		.bufferNum = 1, 
-//		.memoryLocation = NriMemoryLocation_HOST_UPLOAD 
-//	};
-//	assert( rsh.nri.helperI.CalculateAllocationNumber(rsh.nri.device, &resourceGroupDesc ) == 1 );
-//	NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, &alloc->memory ) );
-//
-//}
-//void freeGPUFrameEleAlloc( struct gpu_frame_ele_allocator_s *alloc ) {
-//	assert(alloc->memory != NULL);
-//	assert(alloc->buffer != NULL);
-//	rsh.nri.coreI.FreeMemory( alloc->memory );
-//	rsh.nri.coreI.DestroyBuffer( alloc->buffer );
-//
-//}
-//
-//void GPUFrameEleAlloc( struct frame_cmd_buffer_s *cmd, struct gpu_frame_ele_allocator_s* alloc, size_t numElements, struct gpu_frame_ele_req_s *req ) {
-//	assert(cmd);
-//	const NriBufferDesc* bufferDesc = rsh.nri.coreI.GetBufferDesc(alloc->buffer);
-//	size_t maxBufferElements = bufferDesc->size / alloc->elementStride; 
-//
-//	// reclaim segments that are unused 
-//	while( alloc->tail != alloc->head && cmd->frameCount >= (alloc->segment[alloc->tail].frameNum + NUMBER_FRAMES_FLIGHT) ) {
-//		assert(alloc->numElements >= alloc->segment[alloc->tail].numElements);
-//		alloc->numElements -= alloc->segment[alloc->tail].numElements;
-//		alloc->elementOffset = ( alloc->elementOffset + alloc->segment[alloc->tail].numElements ) % maxBufferElements;
-//		alloc->segment[alloc->tail].numElements = 0;
-//		alloc->segment[alloc->tail].frameNum = 0;
-//		alloc->tail = (alloc->tail + 1) % Q_ARRAY_COUNT(alloc->segment); 
-//	}
-//
-//	// the frame has change
-//	if(cmd->frameCount != alloc->segment[alloc->head].frameNum) {
-//		alloc->head = (alloc->head + 1) % Q_ARRAY_COUNT(alloc->segment);
-//		alloc->segment[alloc->head].frameNum = cmd->frameCount;
-//		alloc->segment[alloc->head].numElements = 0;
-//		assert(alloc->head != alloc->tail); // this shouldn't happen
-//	}
-//
-//	size_t elmentEndOffset = (alloc->elementOffset + alloc->numElements) % maxBufferElements; 
-//	assert(alloc->elementOffset < maxBufferElements);
-//	assert(elmentEndOffset < maxBufferElements);
-//	// we don't have enough space to fit into the end of the buffer give up the remaning and move the cursor to the start
-//	if( alloc->elementOffset < elmentEndOffset && elmentEndOffset + numElements > maxBufferElements ) {
-//		const uint32_t remaining = ( maxBufferElements - elmentEndOffset );
-//		alloc->segment[alloc->head].numElements += remaining;
-//		alloc->numElements += remaining;
-//		elmentEndOffset = 0;
-//		assert((alloc->elementOffset + alloc->numElements) % maxBufferElements == 0);
-//	}
-//	size_t remainingSpace = 0;
-//	if(elmentEndOffset < alloc->elementOffset) { // the buffer has wrapped around
-//		remainingSpace = alloc->elementOffset - elmentEndOffset;
-//	} else {
-//		remainingSpace = maxBufferElements - elmentEndOffset;
-//	}
-//	assert(remainingSpace <= maxBufferElements);
-//
-//	// there is not enough avalaible space we need to reallocate
-//	if( numElements > remainingSpace ) {
-//		// attach it to the cmd buffer to be cleaned up on the round trip
-//		arrpush( cmd->freeBuffers, alloc->buffer );
-//		arrpush( cmd->freeMemory, alloc->memory );
-//		for( size_t i = 0; i < Q_ARRAY_COUNT( alloc->segment ); i++ ) {
-//			alloc->segment[i].numElements = 0;
-//			alloc->segment[i].frameNum = 0;
-//		}
-//		alloc->numElements = 0;
-//		alloc->elementOffset = 0;
-//		elmentEndOffset = 0; // move the cursor to the beginning
-//
-//		do {
-//			maxBufferElements = ( maxBufferElements + ( maxBufferElements >> 1 ) );
-//		} while( maxBufferElements < numElements );
-//		NriBufferDesc initBufferDesc = { 
-//			.size =  maxBufferElements * alloc->elementStride, 
-//			.structureStride = alloc->elementStride, 
-//			.usage = alloc->usageBits 
-//		};
-//
-//		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateBuffer( rsh.nri.device, &initBufferDesc, &alloc->buffer ) )
-//		NriResourceGroupDesc resourceGroupDesc = { .buffers = &alloc->buffer, .bufferNum = 1, .memoryLocation = NriMemoryLocation_HOST_UPLOAD };
-//		assert( rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc ) == 1 );
-//		NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, &alloc->memory ) );
-//	}
-//	alloc->segment[alloc->head].numElements += numElements;
-//	alloc->numElements += numElements;
-//	
-//	req->elementOffset = elmentEndOffset;
-//	req->buffer = alloc->buffer;
-//	req->elementStride = alloc->elementStride;
-//	req->numElements = numElements; // includes the padding on the end of the buffer
-//}
-
-//void initGPUFrameAlloc(struct gpu_frame_allocator_s* alloc, const struct gpu_frame_buffer_ring_desc_s* desc) {
-//	assert(alloc);
-//	assert(desc);
-//	memset(alloc, 0, sizeof(struct gpu_frame_allocator_s));
-//	alloc->usageBits = desc->usageBits;
-//	alloc->bufferAlignment = desc->alignmentReq;
-//	alloc->tail = 0;
-//	alloc->head = 1;
-//	NriBufferDesc bufferDesc = { .size = desc->reservedSize, .structureStride = desc->alignmentReq, .usage = desc->usageBits};
-//	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateBuffer( rsh.nri.device, &bufferDesc, &alloc->buffer ) )
-//	NriResourceGroupDesc resourceGroupDesc = { .buffers = &alloc->buffer , .bufferNum = 1, .memoryLocation = NriMemoryLocation_HOST_UPLOAD };
-//	assert( rsh.nri.helperI.CalculateAllocationNumber(rsh.nri.device, &resourceGroupDesc ) == 1 );
-//	NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, &alloc->memory ) );
-//}
-//
-//void freeGPUFrameEleAlloc( struct gpu_frame_ele_allocator_s *alloc )
-//{
-//	if( alloc->memory ) {
-//		rsh.nri.coreI.FreeMemory( alloc->memory );
-//	}
-//	if( alloc->buffer ) {
-//		rsh.nri.coreI.DestroyBuffer( alloc->buffer );
-//	}
-//}
-//
-//void GPUFrameAlloc(struct frame_cmd_buffer_s* cmd, struct gpu_frame_allocator_s *alloc, size_t reqSize, struct gpu_frame_buffer_req_s* req) {
-//	assert(cmd);
-//	const NriBufferDesc* bufferDesc = rsh.nri.coreI.GetBufferDesc(alloc->buffer);
-//	
-//	while( alloc->tail != alloc->head && (alloc->segment[alloc->tail].frameNum + NUMBER_FRAMES_FLIGHT) >= cmd->frameCount ) {
-//		alloc->allocSize -= alloc->segment[alloc->tail].allocSize;
-//		alloc->tailOffset = (alloc->tailOffset + alloc->segment[alloc->tail].allocSize) % bufferDesc->size;
-//		alloc->segment[alloc->tail].allocSize = 0;
-//		alloc->segment[alloc->tail].frameNum = 0;
-//		alloc->tail = (alloc->tail + 1) % Q_ARRAY_COUNT(alloc->segment); 
-//	}
-//
-//	// the frame has change
-//	if(cmd->frameCount != alloc->segment[alloc->head].frameNum) {
-//		alloc->head = (alloc->head + 1) % Q_ARRAY_COUNT(alloc->segment);
-//		alloc->segment[alloc->head].frameNum = cmd->frameCount;
-//		assert(alloc->head != alloc->tail); // this shouldn't happen
-//	}
-//
-//	size_t currentOffset = (alloc->tailOffset + alloc->allocSize) % bufferDesc->size; 
-//	// we don't have enough space to fit into the end of the buffer
-//	if( alloc->tailOffset < currentOffset && ALIGN( currentOffset + reqSize, alloc->bufferAlignment ) > bufferDesc->size ) {
-//		const size_t remaining = (bufferDesc->size - currentOffset);
-//		alloc->segment[alloc->head].allocSize += remaining;
-//		alloc->allocSize += remaining;
-//		currentOffset = 0;
-//	}
-//
-//	// there is not enough avalaible space we need to reallocate
-//	size_t updateOffset = ALIGN( currentOffset + reqSize, alloc->bufferAlignment );
-//	if( updateOffset > alloc->tailOffset ) {
-//		// attach it to the cmd buffer to be cleaned up on the round trip
-//		arrpush( cmd->freeBuffers, alloc->buffer );
-//		arrpush( cmd->freeMemory, alloc->memory );
-//		for( size_t i = 0; i < Q_ARRAY_COUNT( alloc->segment ); i++ ) {
-//			alloc->segment[i].allocSize = 0;
-//			alloc->segment[i].frameNum = 0;
-//		}
-//		alloc->allocSize = 0;
-//		alloc->tailOffset = 0;
-//		updateOffset = ALIGN(reqSize, alloc->bufferAlignment );
-//		NriBufferDesc bufferDesc = { .size = bufferDesc.size + ( bufferDesc.size >> 1 ), .structureStride = alloc->bufferAlignment, .usage = alloc->usageBits };
-//		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateBuffer( rsh.nri.device, &bufferDesc, &alloc->buffer ) )
-//		NriResourceGroupDesc resourceGroupDesc = { .buffers = &alloc->buffer, .bufferNum = 1, .memoryLocation = NriMemoryLocation_HOST_UPLOAD };
-//		assert( rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc ) == 1 );
-//		NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, &alloc->memory ) );
-//	}
-//
-//	req->buffer = alloc->buffer;
-//	req->bufferOffset = updateOffset;
-//	req->bufferSize = ( currentOffset - updateOffset ); // includes the padding on the end of the buffer
-//	alloc->segment[alloc->head].allocSize += req->bufferSize;
-//	alloc->allocSize += req->bufferSize;
-//}
-
 

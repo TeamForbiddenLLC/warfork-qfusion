@@ -263,7 +263,7 @@ void RB_LoadProjectionMatrix( const mat4_t m )
 void RB_SetState_2( struct frame_cmd_buffer_s *cmd, int state )
 {
 	
-	cmd->pipeline.colorBlendEnabled = ( state & GLSTATE_BLEND_MASK );
+	cmd->pipeline.colorBlendEnabled = ( state & GLSTATE_BLEND_MASK ) > 0;
 	if( state & GLSTATE_BLEND_MASK ) {
 		switch( state & GLSTATE_SRCBLEND_MASK ) {
 			case GLSTATE_SRCBLEND_ZERO:
@@ -338,7 +338,7 @@ void RB_SetState_2( struct frame_cmd_buffer_s *cmd, int state )
 		cmd->pipeline.compareFunc = RI_COMPARE_LESS_EQUAL;
 	}
 
-	cmd->pipeline.depthWrite = ( state & GLSTATE_DEPTHWRITE );
+	cmd->pipeline.depthWrite = ( state & GLSTATE_DEPTHWRITE ) > 0;
 
 	rb.gl.depthoffset = ( state & GLSTATE_OFFSET_FILL );
 	// if( state & GLSTATE_OFFSET_FILL ) {
