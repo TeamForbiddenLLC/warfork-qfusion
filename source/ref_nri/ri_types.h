@@ -248,7 +248,7 @@ enum RIWindowType_e {
 	RI_WINDOW_WAYLAND
 };
 
-struct RIBufferHandle_s {
+struct RIBuffer_s {
 	union {
     #if(DEVICE_IMPL_VULKAN)
     struct {
@@ -281,7 +281,7 @@ struct RIBarrierBufferHandle_s {
 	};
 };
 
-struct RITextureHandle_s {
+struct RITexture_s {
 	union {
     #if(DEVICE_IMPL_VULKAN)
     struct {
@@ -291,22 +291,51 @@ struct RITextureHandle_s {
 	};
 };
 
+enum RIFreeType_e {
+	RI_FREE_UNKNOWN = 0,
+	RI_FREE_VK_START = 0,
+	RI_FREE_VK_IMAGE,
+	RI_FREE_VK_IMAGEVIEW,
+	RI_FREE_VK_SAMPLER,
+	RI_FREE_VK_VMA_AllOC,
+	RI_FREE_VK_BUFFER,
+	RI_FREE_VK_BUFFER_VIEW,
+	RI_FREE_VK_END,
+};
+
+struct RIFree_s {
+	uint8_t type; // enum r_frame_free_list_e
+	union {
+#if ( DEVICE_IMPL_VULKAN )
+		VkCommandBuffer vkCmdBuffer;
+		VkImage vkImage;
+		VkImageView vkImageView;
+		VkBuffer vkBuffer;
+		VkSampler vkSampler;
+		VkBufferView vkBufferView;
+		struct VmaAllocation_T*  vmaAlloc;
+#endif
+	};
+};
+
+enum RIDescriptorFlags_e {
+	RI_VK_DESC_OWN_SAMPLER = 0x1,		 // owns the backing assets VKImage, VkBuffer
+	RI_VK_DESC_OWN_IMAGE_VIEW = 0x2 // owns the backing sampler
+};
 
 struct RIDescriptor_s {
 	// unique id to mark the descriptor
-	hash_t cookie; 
+	hash_t cookie;
+	uint8_t flags;
+	struct RIBuffer_s* buffer;
+	struct RITexture_s* texture; 
 	union {
 #if( DEVICE_IMPL_VULKAN )
 		struct {
 			VkDescriptorType type;
 			union {
-				struct {
-					VkImage handle;
-					struct VkDescriptorImageInfo info;
-				} image;
-				struct {
-					struct VkDescriptorBufferInfo info;
-				} buffer;
+				struct VkDescriptorImageInfo image;
+				struct VkDescriptorBufferInfo buffer;
 			};
 		} vk;
 #endif
@@ -329,17 +358,6 @@ struct RIViewport_s {
     float depthMax;
     bool originBottomLeft; // expects "isViewportOriginBottomLeftSupported"
 };
-
-struct RICmdHandle_s {
-	union {
-#if ( DEVICE_IMPL_VULKAN )
-		struct {
-			VkCommandBuffer cmd;
-		} vk;
-#endif
-	};
-};
-
 
 struct RICmd_s {
 	union {
@@ -370,6 +388,7 @@ struct RISwapchain_s {
 	uint16_t width;
 	uint16_t height;
 	uint32_t format; // RI_Format_e 
+	struct RITexture_s textures[RI_MAX_SWAPCHAIN_IMAGES];
 	union {
 #if ( DEVICE_IMPL_VULKAN )
 		struct {
@@ -695,4 +714,16 @@ struct RIDevice_s {
     #endif
   };
 };
+
+static inline bool RITextureHandleValid( struct RIRenderer_s *renderer, const struct RITexture_s *handle )
+{
+
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		return handle && handle->vk.image != NULL;
+	}
+#endif
+	return false;
+}
+
 #endif

@@ -276,7 +276,7 @@ static void Gen_BoxSide( skydome_t *skydome, int side, vec3_t orig, vec3_t drow,
 /*
 * R_DrawSkyBoxSide
 */
-static void R_DrawSkyBoxSide(struct frame_cmd_buffer_s* cmd, const skydome_t *skydome, const visSkySide_t *visSide, const shader_t *skyShader, 
+static void R_DrawSkyBoxSide(struct FrameState_s* cmd, const skydome_t *skydome, const visSkySide_t *visSide, const shader_t *skyShader, 
 	const shader_t *skyboxShader, const mfog_t *fog, int imageIndex )
 {
 	int side = visSide->index;
@@ -316,7 +316,7 @@ static void R_DrawSkyBoxSide(struct frame_cmd_buffer_s* cmd, const skydome_t *sk
 /*
 * R_DrawSkyBox
 */
-static void R_DrawSkyBox(struct frame_cmd_buffer_s* cmd, const skydome_t *skydome, const visSkySide_t *visSides, const shader_t *skyShader, 
+static void R_DrawSkyBox(struct FrameState_s* cmd, const skydome_t *skydome, const visSkySide_t *visSides, const shader_t *skyShader, 
 	const shader_t *skyboxShader, const mfog_t *fog )
 {
 	int i;
@@ -332,7 +332,7 @@ static void R_DrawSkyBox(struct frame_cmd_buffer_s* cmd, const skydome_t *skydom
 * 
 * Draw dummy skybox side to prevent the HOM effect
 */
-static void R_DrawBlackBottom( struct frame_cmd_buffer_s* cmd, const skydome_t *skydome, const visSkySide_t *visSides, const mfog_t *fog )
+static void R_DrawBlackBottom( struct FrameState_s* cmd, const skydome_t *skydome, const visSkySide_t *visSides, const mfog_t *fog )
 {
 	int side = 5;
 	const visSkySide_t *visSide = visSides + side;
@@ -364,7 +364,7 @@ static void R_DrawBlackBottom( struct frame_cmd_buffer_s* cmd, const skydome_t *
 /*
 * R_DrawSkySurf
 */
-void R_DrawSkySurf( struct frame_cmd_buffer_s* cmd,const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceBSP_t *drawSurf )
+void R_DrawSkySurf( struct FrameState_s* cmd,const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceBSP_t *drawSurf )
 {
 	int i;
 	int numVisSides;

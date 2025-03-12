@@ -62,6 +62,6 @@ void		R_ShutdownShadows( );
 void		R_ClearShadowGroups( void );
 bool	R_AddLightOccluder( const entity_t *ent );
 void		R_BuildShadowGroups( void );
-void		R_DrawShadowmaps( struct frame_cmd_buffer_s* frame );
+void		R_DrawShadowmaps(struct FrameState_s* cmd);
 
 #endif // R_SHADOW_H

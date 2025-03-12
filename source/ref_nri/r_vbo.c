@@ -325,10 +325,8 @@ void R_UploadVBOVertexRawData( mesh_vbo_t *vbo, int vertsOffset, int numVerts, c
 	};
 
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
 		uploadDesc.postBarrier.vk.stage = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT;
 		uploadDesc.postBarrier.vk.access = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
-	}
 #endif
 
 	RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
@@ -355,40 +353,33 @@ mesh_vbo_t *R_GetVBOByIndex( int index )
 	return NULL;
 }
 
-void R_ReleaseMeshVBO(struct frame_cmd_buffer_s *cmd, mesh_vbo_t *vbo )
+void R_ReleaseMeshVBO(struct FrameState_s *cmd, mesh_vbo_t *vbo )
 {
-	struct FrameFreeEntry_s freeEntry = {};
-	GPU_VULKAN_BLOCK( rsh.device.renderer, ( {
-						  freeEntry.type = R_FRAME_FREE_VK_BUFFER;
-						  freeEntry.vkBuffer = vbo->vertexBuffer.vk.buffer;
-						  arrpush( rsh.frameSets[rsh.frameSetCount % NUMBER_FRAMES_FLIGHT].freeList, freeEntry );
+	struct RIFree_s freeEntry = {};
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		struct r_frame_set_s *active = R_GetActiveFrameSet();
+		freeEntry.type = RI_FREE_VK_BUFFER;
+		freeEntry.vkBuffer = vbo->vertexBuffer.vk.buffer;
+		arrpush( active->freeList, freeEntry );
 
-						  freeEntry.vkBuffer = vbo->indexBuffer.vk.buffer;
-						  arrpush( rsh.frameSets[rsh.frameSetCount % NUMBER_FRAMES_FLIGHT].freeList, freeEntry );
+		freeEntry.vkBuffer = vbo->indexBuffer.vk.buffer;
+		arrpush( active->freeList, freeEntry );
 
-						  freeEntry.vkBuffer = vbo->instanceBuffer.vk.buffer;
-						  arrpush( rsh.frameSets[rsh.frameSetCount % NUMBER_FRAMES_FLIGHT].freeList, freeEntry );
+		freeEntry.vkBuffer = vbo->instanceBuffer.vk.buffer;
+		arrpush( active->freeList, freeEntry );
 
-						  freeEntry.type = R_FRAME_FREE_VK_VMA_AllOC;
-						  freeEntry.vmaAlloc = vbo->vk.instanceBufferAlloc;
-						  arrpush( rsh.frameSets[rsh.frameSetCount % NUMBER_FRAMES_FLIGHT].freeList, freeEntry );
+		freeEntry.type = RI_FREE_VK_VMA_AllOC;
+		freeEntry.vmaAlloc = vbo->vk.instanceBufferAlloc;
+		arrpush( active->freeList, freeEntry );
 
-						  freeEntry.vmaAlloc = vbo->vk.vertexBufferAlloc;
-						  arrpush( rsh.frameSets[rsh.frameSetCount % NUMBER_FRAMES_FLIGHT].freeList, freeEntry );
+		freeEntry.vmaAlloc = vbo->vk.vertexBufferAlloc;
+		arrpush( active->freeList, freeEntry );
 
-						  freeEntry.vmaAlloc = vbo->vk.indexBufferAlloc;
-						  arrpush( rsh.frameSets[rsh.frameSetCount % NUMBER_FRAMES_FLIGHT].freeList, freeEntry );
-
-					  } ) );
-	// 	freeEntry.vkBuffer = vbo->vk.vertexBuffer;
-	// 	if( vbo->vertexBuffer )
-	// 		arrpush( cmd->freeBuffers, vbo->vertexBuffer );
-	// 	if( vbo->indexBuffer )
-	// 		arrpush( cmd->freeBuffers, vbo->indexBuffer );
-	// 	if( vbo->instanceBuffer )
-	// 		arrpush( cmd->freeBuffers, vbo->instanceBuffer );
-	// 	for( size_t i = 0; i < vbo->numAllocations; i++ )
-	// 		arrpush( cmd->freeMemory, vbo->memory[i] );
+		freeEntry.vmaAlloc = vbo->vk.indexBufferAlloc;
+		arrpush( active->freeList, freeEntry );
+	}
+#endif
 	if( vbo->index >= 1 && vbo->index <= MAX_MESH_VERTEX_BUFFER_OBJECTS ) {
 		vbohandle_t *vboh = &r_vbohandles[vbo->index - 1];
 
@@ -405,12 +396,12 @@ void R_ReleaseMeshVBO(struct frame_cmd_buffer_s *cmd, mesh_vbo_t *vbo )
 
 	memset( vbo, 0, sizeof( *vbo ) );
 	vbo->tag = VBO_TAG_NONE;
-}
+	}
 
-int R_GetNumberOfActiveVBOs( void )
-{
-	return r_num_active_vbos;
-}
+	int R_GetNumberOfActiveVBOs( void )
+	{
+		return r_num_active_vbos;
+	}
 
 /*
  * R_FillVertexBuffer
@@ -648,7 +639,6 @@ void R_FillNriVertexAttrib(mesh_vbo_t* vbo, struct frame_cmd_vertex_attrib_s * d
 					.offset = vbo->lmstOffset[i], 
 					.format = format, 
 					.vk = { lmattr }, 
-					//.d3d = {.semanticName = "TEXCOORD4", .semanticIndex = lmattr  },
 					.streamIndex = 0 
 				};
 			
@@ -664,7 +654,6 @@ void R_FillNriVertexAttrib(mesh_vbo_t* vbo, struct frame_cmd_vertex_attrib_s * d
 					.offset = vbo->lmlayersOffset[i], 
 					.format = RI_FORMAT_RGBA8_UINT, 
 					.vk = { VATTRIB_LMLAYERS0123 }, 
-				//	.d3d = {.semanticName = "TEXCOORD5", .semanticIndex = lmattr  },
 					.streamIndex = 0 
 				};
 			}
@@ -1339,7 +1328,7 @@ void R_UploadVBOElemData( mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, con
 	};
 	const uint64_t test= VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
+	{
 		uploadDesc.postBarrier.vk.stage = VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
 		uploadDesc.postBarrier.vk.access = VK_ACCESS_2_INDEX_READ_BIT;
 	}
@@ -1385,7 +1374,7 @@ vattribmask_t R_UploadVBOInstancesData( mesh_vbo_t *vbo, int instOffset, int num
 		};
 
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
+	{
 		uploadDesc.postBarrier.vk.stage = VK_SHADER_STAGE_VERTEX_BIT;
 		uploadDesc.postBarrier.vk.access = VK_ACCESS_2_UNIFORM_READ_BIT;
 	}

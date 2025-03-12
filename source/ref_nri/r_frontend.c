@@ -30,6 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "stb_ds.h"
 #include "r_capture.h"
 #include "ri_conversion.h"
+#include <vulkan/vulkan_core.h>
 
 static ref_frontend_t rrf;
 
@@ -141,16 +142,16 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	if( !screenshotPrefix ) screenshotPrefix = "";
 	
 	R_WIN_Init(applicationName, hinstance, wndproc, parenthWnd, iconResource, iconXPM);
-	//nri_init_desc_t desc = {
-	//	.enableApiValidation = true,
-	//	.enableNriValidation = true,
-	//	.api = NriGraphicsAPI_VK
-	//};		
 
 	struct RIBackendInit_s backendInit = {};
 	backendInit.api = RI_DEVICE_API_VK;
 	backendInit.applicationName = applicationName;
+#ifndef NDEBUG
 	backendInit.vk.enableValidationLayer = true;
+#else
+	backendInit.vk.enableValidationLayer = false;
+#endif
+
 	if(InitRIRenderer(&backendInit, &rsh.renderer) != RI_SUCCESS) {
 		return rserr_unknown;
 	}
@@ -202,51 +203,40 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	}
 
 	rsh.shadowSamplerDescriptor = R_ResolveSamplerDescriptor( IT_DEPTHCOMPARE | IT_SPECIAL | IT_DEPTH );
-	GPU_VULKAN_BLOCK( ( &rsh.renderer ), ( {
-						  struct RIQueue_s *graphicsQueue = &rsh.device.queues[RI_QUEUE_GRAPHICS];
-						  {
-							  VkSemaphoreTypeCreateInfo semaphoreTypeCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO };
-							  semaphoreTypeCreateInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
-							  VkSemaphoreCreateInfo semaphoreCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
-							  semaphoreCreateInfo.pNext = &semaphoreTypeCreateInfo;
-							  VK_WrapResult( vkCreateSemaphore( rsh.device.vk.device, &semaphoreCreateInfo, NULL, &rsh.vk.frameSemaphore ) );
-						  }
+#if ( DEVICE_IMPL_VULKAN )
+	struct RIQueue_s *graphicsQueue = &rsh.device.queues[RI_QUEUE_GRAPHICS];
+	{
+		VkSemaphoreTypeCreateInfo semaphoreTypeCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO };
+		semaphoreTypeCreateInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+		VkSemaphoreCreateInfo semaphoreCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+		semaphoreCreateInfo.pNext = &semaphoreTypeCreateInfo;
+		VK_WrapResult( vkCreateSemaphore( rsh.device.vk.device, &semaphoreCreateInfo, NULL, &rsh.vk.frameSemaphore ) );
+	}
 
-						  for( size_t i = 0; i < NUMBER_FRAMES_FLIGHT; i++ ) {
-							  {
-								  VkCommandPoolCreateInfo cmdPoolCreateInfo = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
-								  cmdPoolCreateInfo.queueFamilyIndex = graphicsQueue->vk.queueFamilyIdx;
-								  cmdPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-								  VK_WrapResult( vkCreateCommandPool( rsh.device.vk.device, &cmdPoolCreateInfo, NULL, &rsh.frameSets[i].vk.pool ) );
-							  }
-							  {
-								  VkCommandBufferAllocateInfo cmdAllocInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
-								  cmdAllocInfo.commandPool = rsh.frameSets[i].vk.pool;
-								  cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-								  cmdAllocInfo.commandBufferCount = 1;
-								  VK_WrapResult( vkAllocateCommandBuffers( rsh.device.vk.device, &cmdAllocInfo, &rsh.frameSets[i].primaryCmd.vk.cmd ) );
-							  }
-							  {
-								  VkCommandBufferAllocateInfo cmdAllocInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
-								  cmdAllocInfo.commandPool = rsh.frameSets[i].vk.pool;
-								  cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
-								  cmdAllocInfo.commandBufferCount = 1;
-								  VK_WrapResult( vkAllocateCommandBuffers( rsh.device.vk.device, &cmdAllocInfo, &rsh.frameSets[i].backBufferCmd.vk.cmd) );
-							  }
-							  //for( size_t j = 0; j < NUMBER_SUBFRAMES_FLIGHT; j++ ) {
-								//  VkCommandBufferAllocateInfo cmdAllocInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
-								//  cmdAllocInfo.commandPool = rsh.frameSets[i].vk.pool;
-								//  cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
-								//  cmdAllocInfo.commandBufferCount = 1;
-								//  VK_WrapResult( vkAllocateCommandBuffers( rsh.device.vk.device, &cmdAllocInfo, &rsh.frameSets[i].vk.secondaryCmd[j] ) );
-							  //}
-						  }
-					  } ) );
-	struct RIScratchAllocDesc_s scratchDesc = { 
-		.blockSize = UBOBlockerBufferSize, 
-		.alignmentReq = UBOBlockerBufferAlignmentReq, 
-		.alloc = RIUniformScratchAllocHandler 
-	};
+	for( size_t i = 0; i < NUMBER_FRAMES_FLIGHT; i++ ) {
+		{
+			VkCommandPoolCreateInfo cmdPoolCreateInfo = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
+			cmdPoolCreateInfo.queueFamilyIndex = graphicsQueue->vk.queueFamilyIdx;
+			cmdPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+			VK_WrapResult( vkCreateCommandPool( rsh.device.vk.device, &cmdPoolCreateInfo, NULL, &rsh.frameSets[i].vk.pool ) );
+		}
+		{
+			VkCommandBufferAllocateInfo cmdAllocInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+			cmdAllocInfo.commandPool = rsh.frameSets[i].vk.pool;
+			cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+			cmdAllocInfo.commandBufferCount = 1;
+			VK_WrapResult( vkAllocateCommandBuffers( rsh.device.vk.device, &cmdAllocInfo, &rsh.frameSets[i].primaryCmd.vk.cmd ) );
+		}
+		{
+			VkCommandBufferAllocateInfo cmdAllocInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+			cmdAllocInfo.commandPool = rsh.frameSets[i].vk.pool;
+			cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+			cmdAllocInfo.commandBufferCount = 1;
+			VK_WrapResult( vkAllocateCommandBuffers( rsh.device.vk.device, &cmdAllocInfo, &rsh.frameSets[i].backBufferCmd.vk.cmd ) );
+		}
+	}
+#endif
+	struct RIScratchAllocDesc_s scratchDesc = { .blockSize = UBOBlockerBufferSize, .alignmentReq = UBOBlockerBufferAlignmentReq, .alloc = RIUniformScratchAllocHandler };
 	for( size_t i = 0; i < NUMBER_FRAMES_FLIGHT; i++ ) {
 		InitRIScratchAlloc( &rsh.device, &rsh.frameSets[i].uboScratchAlloc, &scratchDesc );
 	}
@@ -334,189 +324,108 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 		rsh.postProcessingSampler = R_ResolveSamplerDescriptor( IT_NOFILTERING );
 
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( &rsh.renderer) ) {
+		{
+			uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
 
-				uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+			assert( rsh.riSwapchain.imageCount > 0 );
+			for( uint32_t i = 0; i < rsh.riSwapchain.imageCount; i++ ) {
+				VmaAllocationCreateInfo mem_reqs = {};
+				mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+				{
+					VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+					info.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+					info.imageType = VK_IMAGE_TYPE_2D;
+					info.extent.width = rsh.riSwapchain.width;
+					info.extent.height = rsh.riSwapchain.height;
+					info.extent.depth = 1;
+					info.mipLevels = 1;
+					info.arrayLayers = 1;
+					info.samples = 1;
+					info.tiling = VK_IMAGE_TILING_OPTIMAL;
+					info.pQueueFamilyIndices = queueFamilies;
+					VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+					info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+					info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+					info.format = RIFormatToVK( POGO_BUFFER_TEXTURE_FORMAT );
+					VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &rsh.pogoTextures[( i * 2 )].vk.image, &rsh.vk.pogoAlloc[( i * 2 )], NULL ) );
+					VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &rsh.pogoTextures[( i * 2 ) + 1].vk.image, &rsh.vk.pogoAlloc[( i * 2 ) + 1], NULL ) );
+				}
+				{
+					VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
+					VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+					createInfo.pNext = &usageInfo;
+					createInfo.subresourceRange = (VkImageSubresourceRange){
+						VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1,
+					};
+					usageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+					createInfo.image = rsh.riSwapchain.vk.images[i];
+					createInfo.format = RIFormatToVK( rsh.riSwapchain.format );
+					createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; // | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+					rsh.colorAttachment[i].flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
+					rsh.colorAttachment[i].texture = &rsh.riSwapchain.textures[i];
+					rsh.colorAttachment[i].vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+					rsh.colorAttachment[i].vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+					VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &rsh.colorAttachment[i].vk.image.imageView ) );
+					RI_UpdateDescriptor( &rsh.device, &rsh.colorAttachment[i] );
+					//RI_VK_InitImageView( &rsh.device, &createInfo, rsh.colorAttachment + i, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
 
-				assert( rsh.riSwapchain.imageCount > 0 );
-				for( uint32_t i = 0; i < rsh.riSwapchain.imageCount; i++ ) {
-					VmaAllocationCreateInfo mem_reqs = {};
-					mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-					{
-						VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-						info.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
-						info.imageType = VK_IMAGE_TYPE_2D;
-						info.extent.width = rsh.riSwapchain.width;
-						info.extent.height = rsh.riSwapchain.height;
-						info.extent.depth = 1;
-						info.mipLevels = 1;
-						info.arrayLayers = 1;
-						info.samples = 1;
-						info.tiling = VK_IMAGE_TILING_OPTIMAL;
-						info.pQueueFamilyIndices = queueFamilies;
-						VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
-						info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-						info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-						info.format = RIFormatToVK( POGO_BUFFER_TEXTURE_FORMAT );
-						VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &rsh.vk.pogo[( i * 2 )], &rsh.vk.pogoAlloc[( i * 2 )], NULL ) );
-						VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &rsh.vk.pogo[( i * 2 ) + 1], &rsh.vk.pogoAlloc[( i * 2 )], NULL ) );
-					}
-					{
-						VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
-						VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-						createInfo.pNext = &usageInfo;
-						createInfo.subresourceRange = (VkImageSubresourceRange){
-							VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1,
-						};
-						usageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-						createInfo.image = rsh.riSwapchain.vk.images[i];
-						createInfo.format = RIFormatToVK( rsh.riSwapchain.format );
-						createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; // | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-						RI_VK_InitImageView( &rsh.device, &createInfo, rsh.colorAttachment + i, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-					  
+					for( size_t p = 0; p < 2; p++ ) {
+					
 						usageInfo.usage = (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-					  createInfo.image = rsh.vk.pogo[i * 2];
-					  createInfo.format = RIFormatToVK( POGO_BUFFER_TEXTURE_FORMAT );
-					  createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; // | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-					  RI_VK_InitImageView( &rsh.device, &createInfo, ( rsh.pogoBuffer + i )->pogoAttachment , VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-					  createInfo.image = rsh.vk.pogo[( i * 2 ) + 1];
-					  createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; // | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-					  RI_VK_InitImageView( &rsh.device, &createInfo, ( rsh.pogoBuffer + i )->pogoAttachment + 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
-				  }
+						createInfo.image = rsh.pogoTextures[(i * 2) + p].vk.image;
+						createInfo.format = RIFormatToVK( POGO_BUFFER_TEXTURE_FORMAT );
+						createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; // | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+						( rsh.pogoBuffer + i )->pogoAttachment[p].flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
+						( rsh.pogoBuffer + i )->pogoAttachment[p].texture = &rsh.pogoTextures[(i * 2) + p];
+						( rsh.pogoBuffer + i )->pogoAttachment[p].vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+						( rsh.pogoBuffer + i )->pogoAttachment[p].vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+						VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &( rsh.pogoBuffer + i )->pogoAttachment[p].vk.image.imageView ) );
+						RI_UpdateDescriptor( &rsh.device, &( rsh.pogoBuffer + i )->pogoAttachment[p] );
+					}
 
-				  {
-					  VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-					  info.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
-					  info.imageType = VK_IMAGE_TYPE_2D;
-					  info.extent.width = rsh.riSwapchain.width;
-					  info.extent.height = rsh.riSwapchain.height;
-					  info.extent.depth = 1;
-					  info.mipLevels = 1;
-					  info.arrayLayers = 1;
-					  info.samples = 1;
-					  info.tiling = VK_IMAGE_TILING_OPTIMAL;
-					  info.pQueueFamilyIndices = queueFamilies;
-					  VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
-					  info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-					  info.format = RIFormatToVK( RI_FORMAT_D32_SFLOAT );
-					  info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-					  VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &rsh.vk.depthImages[i], &rsh.vk.depthAlloc[i], NULL ) );
-				  }
-				  {
-					  VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-					  createInfo.format = RIFormatToVK( RI_FORMAT_D32_SFLOAT );
-					  createInfo.subresourceRange = (VkImageSubresourceRange){
-						  VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1,
-					  };
-					  createInfo.image = rsh.vk.depthImages[i];
-					  createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; //| VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-					  RI_VK_InitImageView( &rsh.device, &createInfo, rsh.depthAttachment + i, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
-				  }
-			  }
-	}
+				 // createInfo.image = rsh.vk.pogo[( i * 2 ) + 1];
+				 // createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; // | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+				 // RI_VK_InitImageView( &rsh.device, &createInfo, ( rsh.pogoBuffer + i )->pogoAttachment + 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
+				}
+
+				{
+					VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+					info.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+					info.imageType = VK_IMAGE_TYPE_2D;
+					info.extent.width = rsh.riSwapchain.width;
+					info.extent.height = rsh.riSwapchain.height;
+					info.extent.depth = 1;
+					info.mipLevels = 1;
+					info.arrayLayers = 1;
+					info.samples = 1;
+					info.tiling = VK_IMAGE_TILING_OPTIMAL;
+					info.pQueueFamilyIndices = queueFamilies;
+					VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+					info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+					info.format = RIFormatToVK( RI_FORMAT_D32_SFLOAT );
+					info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+					VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &rsh.depthTextures[i].vk.image, &rsh.vk.depthAlloc[i], NULL ) );
+				}
+				{
+					VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+					createInfo.format = RIFormatToVK( RI_FORMAT_D32_SFLOAT );
+					createInfo.subresourceRange = (VkImageSubresourceRange){
+						VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1,
+					};
+					createInfo.image = rsh.depthTextures[i].vk.image;
+					createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; //| VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+					
+					rsh.depthAttachment[i].flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
+					rsh.depthAttachment[i].texture = &rsh.depthTextures[i];
+					rsh.depthAttachment[i].vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+					rsh.depthAttachment[i].vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+					VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &rsh.depthAttachment[i].vk.image.imageView ) );
+					RI_UpdateDescriptor( &rsh.device, &rsh.colorAttachment[i] );
+					//RI_VK_InitImageView( &rsh.device, &createInfo, rsh.depthAttachment + i, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
+				}
+			}
+		}
 #endif
-		//arrsetlen( rsh.backBuffers, rsh.riSwapchain.imageCount);
-		//for( uint32_t i = 0; i < rsh.riSwapchain.imageCount; i++ ) {
-		//	rsh.backBuffers[i].riColorTexture = rsh.riSwapchain.images + i;
-		//}
-
-		//NriSwapChainDesc swapChainDesc = { 
-		//	.commandQueue = rsh.nri.graphicsCommandQueue, 
-		//	.width = width, 
-		//	.height = height, 
-		//	.format = DefaultSwapchainFormat, 
-		//	.textureNum = 3 };
-		//__ShutdownSwapchainTexture();
-
-		//assert(rsh.frameFence == NULL);
-		//NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateFence( rsh.nri.device, 0, &rsh.frameFence ) );
-		//NRI_ABORT_ON_FAILURE( rsh.nri.swapChainI.CreateSwapChain( rsh.nri.device, &swapChainDesc, &rsh.swapchain ) );
-
-		//uint32_t swapChainTextureNum = 0;
-		//NriTexture *const *swapChainTextures = rsh.nri.swapChainI.GetSwapChainTextures( rsh.swapchain, &swapChainTextureNum );
-		//arrsetlen( rsh.backBuffers, swapChainTextureNum );
-		//char debugName[1024];
-		//for( uint32_t i = 0; i < swapChainTextureNum; i++ ) {
-		//	rsh.backBuffers[i].memoryLen = 0;
-		//	rsh.backBuffers[i].screen = ( NriRect ){ .x = 0, .y = 0, .width = swapChainDesc.width, .height = swapChainDesc.height };
-
-		//	const NriTextureDesc *swapChainDesc = rsh.nri.coreI.GetTextureDesc( swapChainTextures[i] );
-		//	rsh.backBuffers[i].colorTexture = swapChainTextures[i];
-		//	rsh.backBuffers[i].postProcessingSampler = R_ResolveSamplerDescriptor( IT_NOFILTERING );
-		//	{
-		//		NriTexture2DViewDesc textureViewDesc = { 
-		//			swapChainTextures[i],
-		//			NriTexture2DViewType_COLOR_ATTACHMENT, 
-		//			swapChainDesc->format };
-		//		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &rsh.backBuffers[i].colorAttachment ) );
-		//	}
-
-		//	for( size_t pogoIdx = 0; pogoIdx < Q_ARRAY_COUNT( rsh.backBuffers->pogoBuffers ); pogoIdx++ ) {
-		//		NriTextureDesc textureDesc = { .width = swapChainDesc->width,
-		//									   .height = swapChainDesc->height,
-		//									   .depth = 1,
-		//									   .usage = NriTextureUsageBits_COLOR_ATTACHMENT | NriTextureUsageBits_SHADER_RESOURCE,
-		//									   .layerNum = 1,
-		//									   .format = POGO_BUFFER_TEXTURE_FORMAT,
-		//									   .sampleNum = 1,
-		//									   .type = NriTextureType_TEXTURE_2D,
-		//									   .mipNum = 1 };
-		//		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &rsh.backBuffers[i].pogoBuffers[pogoIdx].colorTexture ) );
-		//		Q_snprintfz( debugName, sizeof( debugName ), "pogo[%d][%d]", i, pogoIdx );
-		//		rsh.nri.coreI.SetTextureDebugName( rsh.backBuffers[i].pogoBuffers[pogoIdx].colorTexture, debugName );
-		//		NriResourceGroupDesc resourceGroupDesc = {
-		//			.textureNum = 1,
-		//			.textures = &rsh.backBuffers[i].pogoBuffers[pogoIdx].colorTexture,
-		//			.memoryLocation = NriMemoryLocation_DEVICE,
-		//		};
-		//		const size_t numAllocations = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
-		//		assert( numAllocations + rsh.backBuffers[i].memoryLen <= Q_ARRAY_COUNT( rsh.backBuffers[i].memory ) );
-		//		NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, rsh.backBuffers[i].memoryLen + rsh.backBuffers[i].memory ) )
-		//		rsh.backBuffers[i].memoryLen += numAllocations;
-
-		//		NriTexture2DViewDesc attachmentViewDesc = {
-		//			.texture = rsh.backBuffers[i].pogoBuffers[pogoIdx].colorTexture, 
-		//			.viewType = NriTexture2DViewType_COLOR_ATTACHMENT, 
-		//			.format = textureDesc.format };
-		//		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &attachmentViewDesc, &rsh.backBuffers[i].pogoBuffers[pogoIdx].colorAttachment ) );
-
-		//		NriTexture2DViewDesc shaderViewDesc = {
-		//			.texture = rsh.backBuffers[i].pogoBuffers[pogoIdx].colorTexture, .viewType = NriTexture2DViewType_SHADER_RESOURCE_2D, .format = textureDesc.format };
-		//		NriDescriptor *descriptor;
-		//		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &shaderViewDesc, &descriptor ) );
-
-		//		rsh.backBuffers[i].pogoBuffers[pogoIdx].shaderDescriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
-		//	}
-
-		//	{
-		//		NriTextureDesc textureDesc = { .width = swapChainDesc->width,
-		//									   .height = swapChainDesc->height,
-		//									   .depth = 1,
-		//									   .usage = NriTextureUsageBits_DEPTH_STENCIL_ATTACHMENT,
-		//									   .layerNum = 1,
-		//									   .format = NriFormat_D32_SFLOAT,
-		//									   .sampleNum = 1,
-		//									   .type = NriTextureType_TEXTURE_2D,
-		//									   .mipNum = 1 };
-		//		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &rsh.backBuffers[i].depthTexture ) );
-		//		Q_snprintfz( debugName, sizeof( debugName ), "backbuffer depth[%d]", i );
-		//		rsh.nri.coreI.SetTextureDebugName( rsh.backBuffers[i].depthTexture, debugName );
-		//		NriResourceGroupDesc resourceGroupDesc = {
-		//			.textureNum = 1,
-		//			.textures = &rsh.backBuffers[i].depthTexture,
-		//			.memoryLocation = NriMemoryLocation_DEVICE,
-		//		};
-
-		//		const size_t numAllocations = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
-		//		assert( numAllocations + rsh.backBuffers[i].memoryLen <= Q_ARRAY_COUNT( rsh.backBuffers[i].memory ) );
-		//		NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, rsh.backBuffers[i].memoryLen + rsh.backBuffers[i].memory ) )
-		//		rsh.backBuffers[i].memoryLen += numAllocations;
-
-		//		NriTexture2DViewDesc textureViewDesc = { .texture = rsh.backBuffers[i].depthTexture, .viewType = NriTexture2DViewType_DEPTH_STENCIL_ATTACHMENT, .format = textureDesc.format };
-
-		//		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &rsh.backBuffers[i].depthAttachment ) );
-		//	}
-		//}
 	}
 
 	memset( rrf.customColors, 0, sizeof( rrf.customColors ) );
@@ -662,11 +571,11 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 
 	// run cinematic passes on shaders
 	R_RunAllCinematics();
-	const uint32_t bufferedFrameIndex = rsh.frameSetCount % NUMBER_FRAMES_FLIGHT;
+	struct r_frame_set_s* activeSet = R_GetActiveFrameSet();
+
 	memset( &rsh.frame, 0, sizeof( rsh.frame ) ); // reset the primary cmd buffer
-	rsh.frame.frameCount = rsh.frameSetCount;
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( &rsh.renderer ) ) {
+	{
 		if( rsh.frameSetCount >= NUMBER_FRAMES_FLIGHT ) {
 			const uint64_t waitValue = 1 + rsh.frameSetCount - NUMBER_FRAMES_FLIGHT;
 			VkSemaphoreWaitInfo semaphoreWaitInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO };
@@ -674,15 +583,23 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 			semaphoreWaitInfo.pSemaphores = &rsh.vk.frameSemaphore;
 			semaphoreWaitInfo.pValues = &waitValue;
 			VK_WrapResult( vkWaitSemaphores( rsh.device.vk.device, &semaphoreWaitInfo, 5000 * 1000000ull ) );
-			VK_WrapResult( vkResetCommandPool( rsh.device.vk.device, rsh.frameSets[bufferedFrameIndex].vk.pool, 0 ) );
+			VK_WrapResult( vkResetCommandPool( rsh.device.vk.device, activeSet->vk.pool, 0 ) );
+			for(size_t  i = 0; i < arrlen(activeSet->secondaryCmd); i++) {
+				vkFreeCommandBuffers( rsh.device.vk.device, activeSet->vk.pool, 1, &activeSet->secondaryCmd[i].vk.cmd );
+			}
+			for(size_t i = 0; i < arrlen(activeSet->freeList); i++) {
+				FreeRIFree(&rsh.device, &activeSet->freeList[i]);
+			}
+			arrsetlen(activeSet->freeList, 0);
+			arrsetlen(activeSet->secondaryCmd, 0);
 		}
 		{
 			rsh.vk.swapchainIndex = RISwapchainAcquireNextTexture( &rsh.device, &rsh.riSwapchain );
-			rsh.frame.handle.vk.cmd = rsh.frameSets[bufferedFrameIndex].backBufferCmd.vk.cmd;
+			rsh.frame.handle.vk.cmd = activeSet->backBufferCmd.vk.cmd;
 			{
 				VkCommandBufferBeginInfo info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 				info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-				vkBeginCommandBuffer( rsh.frameSets[bufferedFrameIndex].primaryCmd.vk.cmd, &info );
+				vkBeginCommandBuffer( activeSet->primaryCmd.vk.cmd, &info );
 			}
 			{
 				VkCommandBufferInheritanceInfo inheritanceInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO };
@@ -701,7 +618,7 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 			imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			imageBarriers[0].image = rsh.colorAttachment[rsh.vk.swapchainIndex].vk.image.handle;
+			imageBarriers[0].image = rsh.colorAttachment[rsh.vk.swapchainIndex].texture->vk.image;
 			imageBarriers[0].subresourceRange = (VkImageSubresourceRange){
 				VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
 			};
@@ -715,14 +632,14 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 			imageBarriers[1].newLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
 			imageBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			imageBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			imageBarriers[1].image = rsh.depthAttachment[rsh.vk.swapchainIndex].vk.image.handle;
+			imageBarriers[1].image = rsh.depthAttachment[rsh.vk.swapchainIndex].texture->vk.image;
 			imageBarriers[1].subresourceRange = (VkImageSubresourceRange){
 				VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
 			};
 
 			struct RI_PogoBuffer *pogoBuffer = rsh.pogoBuffer + rsh.vk.swapchainIndex;
-			imageBarriers[2] = VK_RI_PogoAttachmentMemoryBarrier2( pogoBuffer->pogoAttachment[pogoBuffer->attachmentIndex].vk.image.handle, true );
-			imageBarriers[3] = VK_RI_PogoShaderMemoryBarrier2( pogoBuffer->pogoAttachment[( pogoBuffer->attachmentIndex + 1 ) % 2].vk.image.handle, true );
+			imageBarriers[2] = VK_RI_PogoAttachmentMemoryBarrier2( pogoBuffer->pogoAttachment[pogoBuffer->attachmentIndex].texture->vk.image, true );
+			imageBarriers[3] = VK_RI_PogoShaderMemoryBarrier2( pogoBuffer->pogoAttachment[( pogoBuffer->attachmentIndex + 1 ) % 2].texture->vk.image, true );
 			
 			VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
 			dependencyInfo.imageMemoryBarrierCount = Q_ARRAY_COUNT( imageBarriers );
@@ -787,7 +704,7 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 	R_Set2DMode(&rsh.frame, true );
 }
 
-static inline void __R_PolyBlendPostPass(struct frame_cmd_buffer_s* frame) {
+static inline void __R_PolyBlendPostPass(struct FrameState_s* frame) {
 	if( !r_polyblend->integer )
 		return;
 	if( rsc.refdef.blend[3] < 0.01f )
@@ -800,7 +717,7 @@ static inline void __R_PolyBlendPostPass(struct frame_cmd_buffer_s* frame) {
 	RB_FlushDynamicMeshes( frame );
 }
 
-static inline void __R_ApplyBrightnessBlend(struct frame_cmd_buffer_s* frame) {
+static inline void __R_ApplyBrightnessBlend(struct FrameState_s* frame) {
 
 	float c = r_brightness->value;
 	if( c < 0.005 )
@@ -820,99 +737,17 @@ static inline void __R_ApplyBrightnessBlend(struct frame_cmd_buffer_s* frame) {
 
 void RF_EndFrame( void )
 {
-	const uint32_t bufferedFrameIndex = rsh.frameSetCount % NUMBER_FRAMES_FLIGHT;
-
-	//1assert(frame->stackCmdBeingRendered == 0);
+	// assert(frame->stackCmdBeingRendered == 0);
 	// render previously batched 2D geometry, if any
 	RB_FlushDynamicMeshes(&rsh.frame);
 
 	__R_PolyBlendPostPass(&rsh.frame);
 
 	__R_ApplyBrightnessBlend(&rsh.frame);
-
-	//R_ResourceSubmit();
-
-	//switch( rsh.screenshot.state ) {
-	//	case CAPTURE_STATE_RECORD_SCREENSHOT: {
-	//		NriMemoryDesc memoryDesc = { 0 };
-	//		const NriTextureDesc *textureDesc = rsh.nri.coreI.GetTextureDesc( frame->textureBuffers.colorTexture );
-	//		rsh.nri.coreI.GetTextureMemoryDesc( rsh.nri.device, textureDesc, NriMemoryLocation_HOST_READBACK, &memoryDesc );
-
-	//		const struct base_format_def_s *formatDef = R_BaseFormatDef( R_FromNRIFormat( textureDesc->format ) );
-	//		NriBufferDesc bufferDesc = { .size = memoryDesc.size };
-	//		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateBuffer( rsh.nri.device, &bufferDesc, &rsh.screenshot.single.buffer ) );
-
-	//		NriAllocateMemoryDesc allocateMemoryDesc = { 0 };
-	//		allocateMemoryDesc.size = memoryDesc.size;
-	//		allocateMemoryDesc.type = memoryDesc.type;
-	//		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.AllocateMemory( rsh.nri.device, &allocateMemoryDesc, &rsh.screenshot.single.memory ) );
-	//		NriBufferMemoryBindingDesc bindBufferDesc = {
-	//			.memory = rsh.screenshot.single.memory,
-	//			.buffer = rsh.screenshot.single.buffer,
-	//		};
-
-	//		rsh.screenshot.single.textureBuferDesc = (struct texture_buf_desc_s) {
-	//			.alignment = 1,
-	//			.width = textureDesc->width, 
-	//			.height = textureDesc->height, 
-	//			.def = R_BaseFormatDef(R_FromNRIFormat(textureDesc->format))
-	//		};
-
-	//		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.BindBufferMemory( rsh.nri.device, &bindBufferDesc, 1 ) );
-	//		const uint64_t rowPitch = textureDesc->width * RT_BlockSize( formatDef );
-	//		const NriTextureDataLayoutDesc dstLayoutDesc = { 
-	//			.offset = 0, 
-	//			.rowPitch = rowPitch, 
-	//			.slicePitch = rowPitch * textureDesc->height 
-	//		};
-	//		const NriTextureRegionDesc textureRegionDesc = {
-	//			.x = 0, 
-	//			.y = 0, 
-	//			.z = 0, 
-	//			.width = textureDesc->width, 
-	//			.height = textureDesc->height, 
-	//			.depth = textureDesc->depth, 
-	//			.mipOffset = 0, 
-	//			.layerOffset = 0 
-	//		};
-	//		NriTextureBarrierDesc transitionBarriers = { 0 };
-	//		transitionBarriers.texture = frame->textureBuffers.colorTexture;
-	//		NriBarrierGroupDesc barrierGroupDesc = { 0 };
-	//		barrierGroupDesc.textureNum = 1;
-	//		barrierGroupDesc.textures = &transitionBarriers;
-
-	//		transitionBarriers.before = ( NriAccessLayoutStage ){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT };
-	//		transitionBarriers.after = ( NriAccessLayoutStage ){ .layout = NriLayout_COPY_SOURCE, .access = NriAccessBits_COPY_SOURCE, .stages = NriStageBits_COPY };
-	//		rsh.nri.coreI.CmdBarrier( frame->cmd, &barrierGroupDesc );
-	//		rsh.nri.coreI.CmdReadbackTextureToBuffer( frame->cmd, rsh.screenshot.single.buffer, &dstLayoutDesc, frame->textureBuffers.colorTexture, &textureRegionDesc );
-	//		transitionBarriers.before = ( NriAccessLayoutStage ){ .layout = NriLayout_COPY_SOURCE, .access = NriAccessBits_COPY_SOURCE, .stages = NriStageBits_COPY };
-	//		transitionBarriers.after = ( NriAccessLayoutStage ){ NriAccessBits_COLOR_ATTACHMENT, NriLayout_COLOR_ATTACHMENT };
-	//		rsh.nri.coreI.CmdBarrier( frame->cmd, &barrierGroupDesc );
-
-	//		rsh.screenshot.single.frameCnt = frame->frameCount;
-	//		rsh.screenshot.state = CAPTURE_STATE_FINISH_SCREENSHOT;
-	//		break;
-	//	}
-	//	case CAPTURE_STATE_FINISH_SCREENSHOT: {
-	//		if(rsh.screenshot.single.frameCnt + NUMBER_FRAMES_FLIGHT <  frame->frameCount ) {
-	//			void* buffer = rsh.nri.coreI.MapBuffer(rsh.screenshot.single.buffer, 0, NRI_WHOLE_SIZE);
-	//			struct texture_buf_s pic = {0};
-	//			T_AliasTextureBuf(&pic, &rsh.screenshot.single.textureBuferDesc, buffer, 0);
-	//			R_SaveScreenshotBuffer(&pic, rsh.screenshot.single.path, r_screenshot_format->integer);
-
-	//			rsh.nri.coreI.DestroyBuffer( rsh.screenshot.single.buffer );
-	//			rsh.nri.coreI.FreeMemory( rsh.screenshot.single.memory );
-	//			sdsfree( rsh.screenshot.single.path );
-	//			rsh.screenshot.state = CAPTURE_STATE_NONE;
-	//		}
-	//		break;
-	//	}
-	//	default:
-	//		break;
-	//}
+	struct r_frame_set_s *activeSet = R_GetActiveFrameSet();
 
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( &rsh.renderer ) ) {
+	{
 		vkCmdEndRendering( rsh.frame.handle.vk.cmd );
 		VkImageMemoryBarrier2 imageBarriers[1] = {};
 		imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -924,7 +759,7 @@ void RF_EndFrame( void )
 		imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 		imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		imageBarriers[0].image = rsh.colorAttachment[rsh.vk.swapchainIndex].vk.image.handle;
+		imageBarriers[0].image = rsh.colorAttachment[rsh.vk.swapchainIndex].texture->vk.image;
 		imageBarriers[0].subresourceRange = (VkImageSubresourceRange){
 			VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
 		};
@@ -935,35 +770,43 @@ void RF_EndFrame( void )
 
 		vkEndCommandBuffer( rsh.frame.handle.vk.cmd );
 
-		RI_InsertTransitionBarriers( &rsh.device, &rsh.uploader, &rsh.frameSets[bufferedFrameIndex].primaryCmd );
-		vkCmdExecuteCommands( rsh.frameSets[bufferedFrameIndex].primaryCmd.vk.cmd, 1, &rsh.frame.handle.vk.cmd );
-		vkEndCommandBuffer( rsh.frameSets[bufferedFrameIndex].primaryCmd.vk.cmd );
+		RI_InsertTransitionBarriers( &rsh.device, &rsh.uploader, &activeSet->primaryCmd );
+		for(size_t i = 0; i < arrlen(activeSet->secondaryCmd); i++) {
+			vkCmdExecuteCommands( activeSet->primaryCmd.vk.cmd, 1, &activeSet->secondaryCmd[i].vk.cmd);
+		}
+
+		vkCmdExecuteCommands( activeSet->primaryCmd.vk.cmd, 1, &rsh.frame.handle.vk.cmd );
+		vkEndCommandBuffer( activeSet->primaryCmd.vk.cmd );
 
 		struct RIQueue_s *graphicsQueue = &rsh.device.queues[RI_QUEUE_GRAPHICS];
 		VkCommandBufferSubmitInfo cmdSubmitInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO };
-		cmdSubmitInfo.commandBuffer = rsh.frameSets[bufferedFrameIndex].primaryCmd.vk.cmd;
+		cmdSubmitInfo.commandBuffer = activeSet->primaryCmd.vk.cmd;
 
-		VkSemaphoreSubmitInfo signalSem = { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
-		signalSem.stageMask = VK_PIPELINE_STAGE_2_NONE;
-		signalSem.value = 1 + rsh.frameSetCount;
-		signalSem.semaphore = rsh.vk.frameSemaphore;
-		
 		VkSemaphoreSubmitInfo waitSem = { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
-		waitSem.stageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-		waitSem.value = 1 + rsh.uploader.syncIndex;
+		waitSem.stageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+		waitSem.value = rsh.uploader.syncIndex;
 		waitSem.semaphore = rsh.uploader.vk.uploadSem;
 
 		VkSubmitInfo2 submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO_2 };
-		submitInfo.pSignalSemaphoreInfos = &signalSem;
-		submitInfo.signalSemaphoreInfoCount = 1;
 		submitInfo.pCommandBufferInfos = &cmdSubmitInfo;
 		submitInfo.commandBufferInfoCount = 1;
-		submitInfo.pWaitSemaphoreInfos = &waitSem;
-		submitInfo.waitSemaphoreInfoCount = 1;
-		
+
+
 		RI_ResourceSubmit(&rsh.device, &rsh.uploader);
 		VK_WrapResult(vkQueueSubmit2( graphicsQueue->vk.queue, 1, &submitInfo, VK_NULL_HANDLE ));
 		RISwapchainPresent( &rsh.device, &rsh.riSwapchain );
+
+		{
+			VkSemaphoreSubmitInfo signalSem = { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
+			signalSem.stageMask = VK_PIPELINE_STAGE_2_NONE;
+			signalSem.value = 1 + rsh.frameSetCount;
+			signalSem.semaphore = rsh.vk.frameSemaphore;
+			VkSubmitInfo2 submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO_2 };
+			submitInfo.pSignalSemaphoreInfos = &signalSem;
+			submitInfo.signalSemaphoreInfoCount = 1;
+			
+			VK_WrapResult( vkQueueSubmit2( graphicsQueue->vk.queue, 1, &submitInfo, VK_NULL_HANDLE ) );
+		}
 	}
 #endif
 
@@ -1037,6 +880,7 @@ void RF_DrawRotatedStretchPic( int x, int y, int w, int h, float s1, float t1, f
 
 void RF_DrawStretchRaw( int x, int y, int w, int h, int cols, int rows, float s1, float t1, float s2, float t2, uint8_t *data )
 {
+	assert(false); // eeh doesn't need to implement this yet
 	//if( !cols || !rows )
 	//	return;
 
@@ -1069,6 +913,31 @@ void RF_SetScissor( int x, int y, int w, int h )
 	rect.height = h;
 	FR_CmdSetScissor(&rsh.frame, rect);
 	Vector4Set( rrf.scissor, x, y, w, h );
+}
+
+void R_InitSubpass( struct FrameState_s *parent, struct FrameState_s *child)
+{
+	struct r_frame_set_s *active = R_GetActiveFrameSet();
+	if( parent ) {
+		( *child) = *parent;
+	} else {
+		memset( child, 0, sizeof( struct FrameState_s ) );
+	}
+	child->parent = parent;
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		VkCommandBufferAllocateInfo cmdAllocInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+		cmdAllocInfo.commandPool = active->vk.pool;
+		cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+		cmdAllocInfo.commandBufferCount = 1;
+		struct RICmd_s cmd = {};
+		VK_WrapResult( vkAllocateCommandBuffers( rsh.device.vk.device, &cmdAllocInfo, &cmd.vk.cmd ) );
+		arrpush( active->secondaryCmd, cmd );
+		child->handle = cmd;
+	}
+#else
+#error unhandled
+#endif
 }
 
 void RF_GetScissor( int *x, int *y, int *w, int *h )

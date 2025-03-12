@@ -200,7 +200,7 @@ void R_ScreenShot_f( void )
 /*
  * R_TakeEnvShot
  */
-void R_TakeEnvShot(struct frame_cmd_buffer_s* cmd, const char *path, const char *name, unsigned maxPixels )
+void R_TakeEnvShot(struct FrameState_s* cmd, const char *path, const char *name, unsigned maxPixels )
 {
 	int i;
 	unsigned size, maxSize;

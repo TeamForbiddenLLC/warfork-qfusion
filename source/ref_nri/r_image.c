@@ -81,49 +81,31 @@ static uint16_t __R_calculateMipMapLevel(int flags, int width, int height, uint3
 // image data is attached to the buffer
 static void __FreeGPUImageData( struct image_s *image )
 {
-	struct FrameFreeEntry_s freeEntry = {};
-	GPU_VULKAN_BLOCK( rsh.device.renderer, ( {
-						  freeEntry.type = R_FRAME_FREE_VK_VMA_AllOC;
-						  freeEntry.vmaAlloc = image->vk.vmaAlloc;
-						  arrpush( rsh.frameSets[rsh.frameSetCount % NUMBER_FRAMES_FLIGHT].freeList, freeEntry );
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		assert( RI_VK_DESCRIPTOR_IS_IMAGE( image->binding ) );
+		struct RIFree_s freeSlot = {};
+		struct r_frame_set_s *activeset = RI_ACTIVE_FRAMESET();
+		freeSlot.type = RI_FREE_VK_VMA_AllOC;
+		freeSlot.vmaAlloc = image->vk.vmaAlloc;
+		arrpush( activeset->freeList, freeSlot);
 
-						  freeEntry.type = R_FRAME_FREE_VK_IMAGE;
-						  freeEntry.vkImage = image->handle.vk.image;
-						  arrpush( rsh.frameSets[rsh.frameSetCount % NUMBER_FRAMES_FLIGHT].freeList, freeEntry );
-					  } ) );
-	//if( image->texture ) {
-	//	if( cmd ) {
-	//		arrpush( cmd->freeTextures, image->texture );
-	//	} else {
-	//		rsh.nri.coreI.DestroyTexture( image->texture );
-	//	}
-	//}
+		freeSlot.type = RI_FREE_VK_IMAGE;
+		freeSlot.vkImage = image->handle.vk.image;
+		arrpush( activeset->freeList, freeSlot );
 
-	//for( size_t i = 0; i < image->numAllocations; i++ ) {
-	//	if( cmd ) {
-	//		arrpush( cmd->freeMemory, image->memory[i] );
-	//	} else {
-	//		rsh.nri.coreI.FreeMemory( image->memory[i] );
-	//	}
-	//}
-
-	// if( image->descriptor.descriptor ) {
-	//	if( cmd ) {
-	//		arrpush( cmd->frameTemporaryDesc, image->descriptor.descriptor );
-	//	} else {
-	//		rsh.nri.coreI.DestroyDescriptor( image->descriptor.descriptor );
-	//	}
-	// }
-	// image->texture = NULL;
-	// image->numAllocations = 0;
-	// image->descriptor = ( struct nri_descriptor_s ){ 0 };
-	// image->samplerDescriptor = ( struct nri_descriptor_s ){ 0 };
+		freeSlot.type = RI_FREE_VK_IMAGEVIEW;
+		freeSlot.vkImageView = image->binding.vk.image.imageView;
+		arrpush( activeset->freeList, freeSlot );
+		memset(&image->binding, 0, sizeof(struct RIDescriptor_s));
+	}
+#endif
 }
 
 struct RIDescriptor_s *R_ResolveSamplerDescriptor( int flags )
 {
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( rsh.device.renderer ) ) {
+	{
 		VkSamplerCreateInfo info = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
 		if( flags & IT_NOFILTERING ) {
 			info.minFilter = VK_FILTER_LINEAR;
@@ -167,13 +149,14 @@ struct RIDescriptor_s *R_ResolveSamplerDescriptor( int flags )
 		do {
 			if( samplerDescriptors[index].cookie == hash ) {
 				return &samplerDescriptors[index];
-			} else if( RI_IsEmptyDescriptor( &rsh.device, &samplerDescriptors[index] ) ) {
+			} else if( RI_IsEmptyDescriptor(&samplerDescriptors[index] ) ) {
 				samplerDescriptors[index].cookie = hash;
 				samplerDescriptors[index].vk.type = VK_DESCRIPTOR_TYPE_SAMPLER;
-				samplerDescriptors[index].vk.image.info.imageView = VK_NULL_HANDLE;
-				samplerDescriptors[index].vk.image.info.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-				VK_WrapResult( vkCreateSampler( rsh.device.vk.device, &info, NULL, &samplerDescriptors[index].vk.image.info.sampler ) );
-				RI_UpdateDescriptorCookie( &rsh.device, &samplerDescriptors[index] );
+				samplerDescriptors[index].vk.image.imageView = VK_NULL_HANDLE;
+				samplerDescriptors[index].vk.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+				samplerDescriptors[index].flags = RI_VK_DESC_OWN_SAMPLER;
+				VK_WrapResult( vkCreateSampler( rsh.device.vk.device, &info, NULL, &samplerDescriptors[index].vk.image.sampler ) );
+				RI_UpdateDescriptor( &rsh.device, &samplerDescriptors[index] );
 				return &samplerDescriptors[index];
 			}
 			index = ( index + 1 ) % IMAGE_SAMPLER_HASH_SIZE;
@@ -191,7 +174,7 @@ static void __RefreshSamplerDescriptors() {
 	size_t i;
 	for( i = 1, glt = images; i < MAX_GLIMAGES; i++, glt++ )
 	{
-		if( RI_IsEmptyDescriptor( &rsh.device, &glt->binding ) ) {
+		if( RI_IsEmptyDescriptor( &glt->binding ) ) {
 			continue;
 		}
 		if( (glt->flags & (IT_NOFILTERING | IT_NOMIPMAP)) ) {
@@ -254,7 +237,7 @@ void R_PrintImageList( const char *mask, bool (*filter)( const char *mask, const
 	for( i = 0, image = images; i < MAX_GLIMAGES; i++, image++ )
 	{
 			
-		if( !RI_IsEmptyDescriptor(&rsh.device, &image->binding)) {
+		if( !RI_IsEmptyDescriptor(&image->binding)) {
 			continue;
 		}
 		if( !image->width || !image->height || !image->layers ) {
@@ -781,7 +764,7 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 	image->width = R_KTXWidth(&ktxContext);
 	image->height = R_KTXHeight( &ktxContext );
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( rsh.device.renderer ) ) {
+	{
 		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
 		VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 		VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
@@ -790,8 +773,6 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 			flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
 		if( image->flags & IT_CUBEMAP )
 			flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
-		// if( desc->type == RI_TEXTURE_3D )
-		// 	flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT; // allow 3D demotion to a set of layers // TODO: hook up "VK_EXT_image_2d_view_of_3d"?
 		info.flags = flags;
 		info.imageType = VK_IMAGE_TYPE_2D;
 		info.format = RIFormatToVK( dstFormat );
@@ -831,9 +812,17 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		createInfo.format = RIFormatToVK( dstFormat );
 		createInfo.subresourceRange = subresource;
 		createInfo.image = image->handle.vk.image;
-		RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+
+		image->binding.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
+		image->binding.texture = &image->handle;
+		image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
+		RI_UpdateDescriptor( &rsh.device, &image->binding );
 		image->samplerBinding = R_ResolveSamplerDescriptor( image->flags );
 		assert(image->samplerBinding);
+
+		//RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	}
 #endif
 	//NriTextureDesc textureDesc = { 
@@ -1012,7 +1001,7 @@ static void __R_CopyTextureDataTexture(struct image_s* image, int layer, int mip
 	uploadDesc.height = h;
 	uploadDesc.format = __R_GetImageFormat(image);
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
+	{
 		uploadDesc.postBarrier.vk.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		uploadDesc.postBarrier.vk.stage = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
 		uploadDesc.postBarrier.vk.access = VK_ACCESS_2_SHADER_READ_BIT;
@@ -1139,17 +1128,25 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
 	VkImageSubresourceRange subresource = {
-		VK_IMAGE_ASPECT_COLOR_BIT, 0, Q_MAX(image->mipNum, 1), 0, 1,
+		VK_IMAGE_ASPECT_COLOR_BIT, 0, info.mipLevels, 0, info.arrayLayers,
 	};
 
 	VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 	createInfo.pNext = &usageInfo;
-	createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	createInfo.viewType = ( image->flags & IT_CUBEMAP ) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
 	createInfo.format = RIFormatToVK( destFormat );
 	createInfo.subresourceRange = subresource;
 	createInfo.image = image->handle.vk.image;
-	RI_VK_InitImageView(&rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+
+	image->binding.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
+	image->binding.texture = &image->handle;
+	image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
+	RI_UpdateDescriptor( &rsh.device, &image->binding );
 	image->samplerBinding = R_ResolveSamplerDescriptor(image->flags); 
+
+	//RI_VK_InitImageView(&rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
 	const size_t reservedSize = width * height * samples;
 	uint8_t *tmpBuffer = NULL;
@@ -1238,75 +1235,82 @@ static void __FreeImage( struct image_s *image )
 		image->prev = NULL;
 		ri.Mutex_Unlock( r_imagesLock );
 	}
-	
 }
 
 void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int flags, int minmipsize, int samples )
 {
-						  assert( image );
-						  //const NriTextureDesc *textureDesc = rsh.nri.coreI.GetTextureDesc( image->texture );
-						  uint32_t mipNum = __R_calculateMipMapLevel( flags, width, height, minmipsize );
-						  if( image->width != width || image->height != height || image->samples != samples || image->mipNum != mipNum ) {
-							  //struct frame_cmd_buffer_s *cmd = R_ActiveFrameCmd();
-							  __FreeGPUImageData( image );
-							 	enum RI_Format_e destFormat = __R_GetImageFormat( image );
-								GPU_VULKAN_BLOCK(
-								  rsh.device.renderer, ( {
-									  uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
-									  VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-									  VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
-									  const struct RIFormatProps_s *formatProps = GetRIFormatProps( destFormat );
-									  if( formatProps->blockWidth > 1 )
-										  flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
-									  if( flags & IT_CUBEMAP )
-										  flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
-									  info.flags = flags;
-									  info.imageType = VK_IMAGE_TYPE_2D;
-									  info.format = RIFormatToVK( destFormat );
-									  info.extent.width = width;
-									  info.extent.height = height;
-									  info.extent.depth = 1;
-									  info.mipLevels = mipNum;
-									  info.arrayLayers = ( flags & IT_CUBEMAP ) ? 6 : 1;
-									  info.samples = 1;
-									  info.tiling = VK_IMAGE_TILING_OPTIMAL;
-									  info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	assert( image );
+	// const NriTextureDesc *textureDesc = rsh.nri.coreI.GetTextureDesc( image->texture );
+	uint32_t mipNum = __R_calculateMipMapLevel( flags, width, height, minmipsize );
+	if( image->width != width || image->height != height || image->samples != samples || image->mipNum != mipNum ) {
+		// struct frame_cmd_buffer_s *cmd = R_ActiveFrameCmd();
+		__FreeGPUImageData( image );
+		enum RI_Format_e destFormat = __R_GetImageFormat( image );
+#if ( DEVICE_IMPL_VULKAN )
+		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+		VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+		VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
+		const struct RIFormatProps_s *formatProps = GetRIFormatProps( destFormat );
+		if( formatProps->blockWidth > 1 )
+			flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
+		if( flags & IT_CUBEMAP )
+			flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
+		info.flags = flags;
+		info.imageType = VK_IMAGE_TYPE_2D;
+		info.format = RIFormatToVK( destFormat );
+		info.extent.width = width;
+		info.extent.height = height;
+		info.extent.depth = 1;
+		info.mipLevels = mipNum;
+		info.arrayLayers = ( flags & IT_CUBEMAP ) ? 6 : 1;
+		info.samples = 1;
+		info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-									  info.pQueueFamilyIndices = queueFamilies;
-									  VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
-									  info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-									  if( !VK_WrapResult( vkCreateImage( rsh.device.vk.device, &info, NULL, &image->handle.vk.image) ) ) {
-										  ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name.buf );
-										  __FreeImage( image );
-										  image = NULL;
-										  return;
-									  }
-									  image->samplerBinding = R_ResolveSamplerDescriptor( flags );
+		info.pQueueFamilyIndices = queueFamilies;
+		VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		if( !VK_WrapResult( vkCreateImage( rsh.device.vk.device, &info, NULL, &image->handle.vk.image ) ) ) {
+			ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name.buf );
+			__FreeImage( image );
+			image = NULL;
+			return;
+		}
 
-									  // create desctipror
-									  VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
-									  usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+		// create desctipror
+		VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
+		usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
-									  VkImageSubresourceRange subresource = {
-										  VK_IMAGE_ASPECT_COLOR_BIT, 0, mipNum, 0, 1,
-									  };
+		VkImageSubresourceRange subresource = {
+			VK_IMAGE_ASPECT_COLOR_BIT, 0, mipNum, 0, 1,
+		};
 
-									  VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-									  createInfo.pNext = &usageInfo;
-									  createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-									  createInfo.format = RIFormatToVK( destFormat );
-									  createInfo.subresourceRange = subresource;
-									  createInfo.image = image->handle.vk.image;
-									  RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
-								  } ) );
+		VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+		createInfo.pNext = &usageInfo;
+		createInfo.viewType = ( image->flags & IT_CUBEMAP ) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
+		createInfo.format = RIFormatToVK( destFormat );
+		createInfo.subresourceRange = subresource;
+		createInfo.image = image->handle.vk.image;
+	
+		image->binding.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
+		image->binding.texture = &image->handle;
+		image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
+		RI_UpdateDescriptor( &rsh.device, &image->binding );
+		image->samplerBinding = R_ResolveSamplerDescriptor( image->flags);
+		assert( image->samplerBinding && !RI_IsEmptyDescriptor( image->samplerBinding ) );
 
-							  assert( image->samplerBinding && !RI_IsEmptyDescriptor( &rsh.device, image->samplerBinding ) );
-						  }
-						  image->flags = flags;
-						  image->samples = samples;
-						  image->minmipsize = minmipsize;
+		//RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
+#else
+#error unhandled
+#endif
+	}
+	image->flags = flags;
+	image->samples = samples;
+	image->minmipsize = minmipsize;
 
-	R_ReplaceSubImage(image, 0, 0, 0, pic, width, height);
+	R_ReplaceSubImage( image, 0, 0, 0, pic, width, height );
 }
 
 /*
@@ -1583,7 +1587,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	const uint32_t destFormat = __R_GetImageFormat( image );
 
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( rsh.device.renderer ) ) {
+	{
 		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
 		VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 		VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
@@ -1617,7 +1621,13 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 			goto done;
 		}
 		if(vkSetDebugUtilsObjectNameEXT){
-			VkDebugUtilsObjectNameInfoEXT debugName = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, NULL, VK_OBJECT_TYPE_IMAGE, (uint64_t)image->handle.vk.image, name };
+			VkDebugUtilsObjectNameInfoEXT debugName = { 
+				VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, 
+				NULL, 
+				VK_OBJECT_TYPE_IMAGE, 
+				(uint64_t)image->handle.vk.image, 
+				name 
+			};
 			VK_WrapResult( vkSetDebugUtilsObjectNameEXT( rsh.device.vk.device, &debugName ) );
 		}
 
@@ -1631,14 +1641,23 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 
 		VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 		createInfo.pNext = &usageInfo;
-		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		createInfo.viewType = ( image->flags & IT_CUBEMAP ) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
 		createInfo.format = info.format;
 		createInfo.subresourceRange = subresource;
 		createInfo.image = image->handle.vk.image;
-		RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
+		
+		image->binding.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
+		image->binding.texture = &image->handle;
+		image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
+		RI_UpdateDescriptor( &rsh.device, &image->binding );
+		image->samplerBinding = R_ResolveSamplerDescriptor( image->flags);
+		assert( image->samplerBinding && !RI_IsEmptyDescriptor( image->samplerBinding ) );
+		
+		//RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
 	}
 #endif
-	image->samplerBinding = R_ResolveSamplerDescriptor(image->flags); 
 
 	struct texture_buf_s transformBuffer = { 0 };
 	for( size_t index = 0; index < uploadCount; index++ ) {
@@ -2062,7 +2081,7 @@ void R_ShutdownImages( void )
 		return;
 
 	for(size_t i = 0; i < IMAGE_SAMPLER_HASH_SIZE; i++) {
-		RI_FreeRIDescriptor( &rsh.device, &samplerDescriptors[i]);
+		FreeRIDescriptor( &rsh.device, &samplerDescriptors[i]);
 	}
 	memset(samplerDescriptors, 0, sizeof(samplerDescriptors));
 

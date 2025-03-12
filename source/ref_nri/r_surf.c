@@ -174,7 +174,7 @@ static unsigned int R_SurfaceShadowBits( const msurface_t *surf, unsigned int ch
 /*
 * R_DrawBSPSurf
 */
-void R_DrawBSPSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int entShadowBits, drawSurfaceBSP_t *drawSurf )
+void R_DrawBSPSurf(struct FrameState_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int entShadowBits, drawSurfaceBSP_t *drawSurf )
 {
 	const vboSlice_t *slice;
 	const vboSlice_t *shadowSlice;

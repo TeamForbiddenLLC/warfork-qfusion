@@ -191,7 +191,7 @@ static bool __VK_SupportExtension( VkExtensionProperties *properties, size_t len
 int EnumerateRIAdapters( struct RIRenderer_s *renderer, struct RIPhysicalAdapter_s *adapters, uint32_t *numAdapters )
 {
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( renderer ) ) {
+	{
 		uint32_t deviceGroupNum = 0;
 		if( !VK_WrapResult( vkEnumeratePhysicalDeviceGroups( renderer->vk.instance, &deviceGroupNum, NULL ) ) ) {
 			return RI_FAIL;
@@ -520,7 +520,7 @@ int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, st
 	device->physicalAdapter = *init->physicalAdapter;
 
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( renderer ) ) {
+	{
 		const char **enabledExtensionNames = NULL;
 
 		uint32_t extensionNum = 0;
@@ -920,7 +920,7 @@ int InitRIRenderer( const struct RIBackendInit_s *init, struct RIRenderer_s *ren
 {
 	renderer->api = init->api;
 #if(DEVICE_IMPL_VULKAN)
-	if( GPU_VULKAN_SELECTED( renderer ) ) {
+	{
 		volkInitialize();
 
 		VkApplicationInfo appInfo = {};
@@ -1030,21 +1030,101 @@ int InitRIRenderer( const struct RIBackendInit_s *init, struct RIRenderer_s *ren
 	return RI_SUCCESS;
 }
 
+void RI_UpdateDescriptor(struct RIDevice_s* dev,struct RIDescriptor_s* desc) {
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		switch( desc->vk.type ) {
+			case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+			case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+			case VK_DESCRIPTOR_TYPE_SAMPLER:
+				assert( desc->vk.type == VK_DESCRIPTOR_TYPE_SAMPLER
+					 || ( desc->texture && ( desc->vk.type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE || desc->vk.type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ) ) );
+				desc->cookie = hash_data( 
+					hash_u64( HASH_INITIAL_VALUE, desc->vk.type ), 
+					&desc->vk.image, sizeof( desc->vk.image ) );
+				break;
+			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+				assert( desc->buffer );
+				desc->vk.buffer.buffer = desc->buffer->vk.buffer;
+				desc->cookie = hash_data( 
+						hash_u64( HASH_INITIAL_VALUE, desc->vk.type ), &desc->vk.buffer, sizeof( desc->vk.buffer ) );
+				break;
+			default:
+				assert( false );
+				break;
+		}
+	}
+#endif
+}
+
+void FreeRIDescriptor( struct RIDevice_s *dev, struct RIDescriptor_s *desc )
+{
+#if ( DEVICE_IMPL_VULKAN )
+	switch( desc->vk.type ) {
+		case VK_DESCRIPTOR_TYPE_SAMPLER:
+		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+			if( desc->vk.image.sampler && ( desc->flags & RI_VK_DESC_OWN_SAMPLER ) )
+				vkDestroySampler( dev->vk.device, desc->vk.image.sampler, NULL );
+			if( desc->vk.image.imageView && ( desc->flags & RI_VK_DESC_OWN_IMAGE_VIEW ) )
+				vkDestroyImageView( dev->vk.device, desc->vk.image.imageView, NULL );
+			break;
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+			break;
+		default:
+			break;
+	}
+#endif
+
+	memset( desc, 0, sizeof( struct RIDescriptor_s ) );
+}
+
+void FreeRIFree(struct RIDevice_s* dev,struct RIFree_s* mem) {
+assert(free);
+	switch(mem->type) {
+#if ( DEVICE_IMPL_VULKAN )
+		case RI_FREE_VK_IMAGE:
+			vkDestroyImage( dev->vk.device, mem->vkImage, NULL);
+			break;
+		case RI_FREE_VK_IMAGEVIEW:
+			vkDestroyImageView(dev->vk.device, mem->vkImageView, NULL);
+			break;
+		case RI_FREE_VK_SAMPLER:
+			vkDestroySampler(dev->vk.device, mem->vkSampler, NULL);
+			break;
+		case RI_FREE_VK_VMA_AllOC:
+			vmaFreeMemory(dev->vk.vmaAllocator, mem->vmaAlloc);
+			break;
+		case RI_FREE_VK_BUFFER:
+			vkDestroyBuffer(dev->vk.device, mem->vkBuffer, NULL);
+			break;
+		case RI_FREE_VK_BUFFER_VIEW:
+			vkDestroyBufferView(dev->vk.device, mem->vkBufferView, NULL);
+			break;
+#endif
+		default:
+			assert( false ); // invalid type to free
+			break;
+	}
+}
+
+
 void ShutdownRIRenderer( struct RIRenderer_s *renderer )
 {
-	GPU_VULKAN_BLOCK( renderer, ( {
-						  vkDestroyDebugUtilsMessengerEXT( renderer->vk.instance, renderer->vk.debugMessageUtils, NULL );
+#if ( DEVICE_IMPL_VULKAN )
+	vkDestroyDebugUtilsMessengerEXT( renderer->vk.instance, renderer->vk.debugMessageUtils, NULL );
 
-						  vkDestroyInstance( renderer->vk.instance, NULL );
-						  volkFinalize();
-					  } ) )
+	vkDestroyInstance( renderer->vk.instance, NULL );
+	volkFinalize();
+#endif
 }
 
 void WaitRIQueueIdle( struct RIDevice_s *device, struct RIQueue_s *queue ) {
-	GPU_VULKAN_BLOCK(device->renderer, ({
-		VK_WrapResult(vkQueueWaitIdle(queue->vk.queue));
-	}))
-
+#if ( DEVICE_IMPL_VULKAN )
+	VK_WrapResult( vkQueueWaitIdle( queue->vk.queue ) );
+#endif
 }
 
 int FreeRIDevice( struct RIDevice_s *dev ) {}

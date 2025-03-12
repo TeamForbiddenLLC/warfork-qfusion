@@ -59,15 +59,10 @@
   #error unsupported platform
 #endif
 
-#define __Q_UNPAREN_UNWRAP(...) __VA_ARGS__
-#define Q_UNPAREN(args) __Q_UNPAREN_UNWRAP args
-
 #define Q_ALIGN_TO(size, alignment) (((size) + (alignment)-1) & ~((alignment)-1))
 #define Q_ARRAY_COUNT(array) (sizeof(array) / (sizeof(array[0]) * (sizeof(array) != Q_PTR_SIZE || sizeof(array[0]) <= Q_PTR_SIZE)))
 #define Q_MIN(a, b) ((a) < (b) ? (a) : (b))
 #define Q_MAX(a, b) ((a) > (b) ? (a) : (b))
-
-
 
 #ifdef __cplusplus
 #define Q_CONSTEXPR constexpr

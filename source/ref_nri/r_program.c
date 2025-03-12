@@ -20,28 +20,28 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 // r_program.c - OpenGL Shading Language support
 
+#include "../qalgo/q_trie.h"
 #include "qtypes.h"
 #include "r_descriptor_pool.h"
 #include "r_local.h"
-#include "../qalgo/q_trie.h"
 
-#include <glslang/Include/glslang_c_interface.h>
-#include <glslang/Public/resource_limits_c.h>
-#include <glslang/Include/glslang_c_shader_types.h>
 #include "ri_resource.h"
 #include "spirv_reflect.h"
+#include <glslang/Include/glslang_c_interface.h>
+#include <glslang/Include/glslang_c_shader_types.h>
+#include <glslang/Public/resource_limits_c.h>
 
-#include "r_vattribs.h"
-#include "r_nri.h"
-#include "stb_ds.h"
 #include "qstr.h"
+#include "r_nri.h"
+#include "r_vattribs.h"
+#include "stb_ds.h"
 
 #include "../../gameshared/q_arch.h"
 #include "qhash.h"
 #include "ri_conversion.h"
 
-#define MAX_GLSL_PROGRAMS			1024
-#define GLSL_PROGRAMS_HASH_SIZE		256
+#define MAX_GLSL_PROGRAMS 1024
+#define GLSL_PROGRAMS_HASH_SIZE 256
 
 typedef struct {
 	r_glslfeat_t bit;
@@ -49,9 +49,8 @@ typedef struct {
 	const char *suffix;
 } glsl_feature_t;
 
-
 trie_t *glsl_cache_trie = NULL;
- 
+
 static unsigned int r_numglslprograms;
 static struct glsl_program_s r_glslprograms[MAX_GLSL_PROGRAMS];
 static struct glsl_program_s *r_glslprograms_hash[GLSL_PROGRAM_TYPE_MAXTYPE][GLSL_PROGRAMS_HASH_SIZE];
@@ -71,14 +70,14 @@ static glslang_stage_t __RP_GLStageToSlang( glsl_program_stage_t stage )
 	return GLSLANG_STAGE_COUNT;
 }
 
-//static struct ProgramDescriptorInfo* __GetDescriptorInfo(struct glsl_program_s* program, uint32_t set) {
+// static struct ProgramDescriptorInfo* __GetDescriptorInfo(struct glsl_program_s* program, uint32_t set) {
 //	for( size_t i = 0; i < program->numSets; i++ ) {
 //		if( program->programDescriptors[i].registerSpace == set ) {
 //			return &program->programDescriptors[i];
 //		}
 //	}
 //	return NULL;
-//} 
+// }
 
 /*
  * RP_Init
@@ -129,15 +128,9 @@ static feature_iter_t __R_NextFeature( feature_iter_t iter )
 	return iter;
 }
 
-static void __appendGLSLDeformv( struct QStr* str, const deformv_t *deformv, int numDeforms ) {
-	static const char *const funcs[] = { 
-		NULL, 
-		"WAVE_SIN", 
-		"WAVE_TRIANGLE", 
-		"WAVE_SQUARE", 
-		"WAVE_SAWTOOTH", 
-		"WAVE_INVERSESAWTOOTH", 
-		NULL };
+static void __appendGLSLDeformv( struct QStr *str, const deformv_t *deformv, int numDeforms )
+{
+	static const char *const funcs[] = { NULL, "WAVE_SIN", "WAVE_TRIANGLE", "WAVE_SQUARE", "WAVE_SAWTOOTH", "WAVE_INVERSESAWTOOTH", NULL };
 	static const int numSupportedFuncs = sizeof( funcs ) / sizeof( funcs[0] ) - 1;
 	if( !numDeforms ) {
 		return;
@@ -147,50 +140,35 @@ static void __appendGLSLDeformv( struct QStr* str, const deformv_t *deformv, int
 	for( size_t i = 0; i < numDeforms; i++, deformv++ ) {
 		switch( deformv->type ) {
 			case DEFORMV_WAVE: {
-				if( funcType <= SHADER_FUNC_NONE || funcType > numSupportedFuncs || !funcs[funcType] ) 
+				if( funcType <= SHADER_FUNC_NONE || funcType > numSupportedFuncs || !funcs[funcType] )
 					break;
-				qStrAppendSlice(str, qCToStrRef("#define DEFORMV_WAVE 1 \n"));
-				qstrcatfmt(str, "#define DEFORMV_WAVE_FUNC %s \n", funcs[funcType]);
-				qstrcatprintf(str, "#define DEFORMV_WAVE_CONSTANT vec4(%f,%f,%f,%f) \n", 
-										deformv->func.args[0],
-										deformv->func.args[1],
-										deformv->func.args[2],
-										deformv->func.args[3]
-				);
+				qStrAppendSlice( str, qCToStrRef( "#define DEFORMV_WAVE 1 \n" ) );
+				qstrcatfmt( str, "#define DEFORMV_WAVE_FUNC %s \n", funcs[funcType] );
+				qstrcatprintf( str, "#define DEFORMV_WAVE_CONSTANT vec4(%f,%f,%f,%f) \n", deformv->func.args[0], deformv->func.args[1], deformv->func.args[2], deformv->func.args[3] );
 				break;
 			}
 			case DEFORMV_MOVE: {
-				if( funcType <= SHADER_FUNC_NONE || funcType > numSupportedFuncs || !funcs[funcType] ) 
+				if( funcType <= SHADER_FUNC_NONE || funcType > numSupportedFuncs || !funcs[funcType] )
 					break;
-				
-				qStrAppendSlice(str, qCToStrRef("#define DEFORMV_MOVE 1 \n"));
-				qstrcatfmt(str, "#define DEFORMV_MOVE_FUNC %s \n", funcs[funcType]);
-				qstrcatprintf(str, "#define DEFORMV_MOVE_CONSTANT vec4(%f,%f,%f,%f) \n", 
-										deformv->func.args[0],
-										deformv->func.args[1],
-										deformv->func.args[2],
-										deformv->func.args[3]
-				);
-				
+
+				qStrAppendSlice( str, qCToStrRef( "#define DEFORMV_MOVE 1 \n" ) );
+				qstrcatfmt( str, "#define DEFORMV_MOVE_FUNC %s \n", funcs[funcType] );
+				qstrcatprintf( str, "#define DEFORMV_MOVE_CONSTANT vec4(%f,%f,%f,%f) \n", deformv->func.args[0], deformv->func.args[1], deformv->func.args[2], deformv->func.args[3] );
+
 				break;
 			}
 			case DEFORMV_BULGE:
-				qStrAppendSlice(str,  qCToStrRef("#define DEFORMV_BULGE 1 \n"));
-				qstrcatprintf(str, "#define DEFORMV_BULGE_CONSTANT vec4(%f,%f,%f,%f) \n", 
-										deformv->func.args[0],
-										deformv->func.args[1],
-										deformv->func.args[2],
-										deformv->func.args[3]
-				);
+				qStrAppendSlice( str, qCToStrRef( "#define DEFORMV_BULGE 1 \n" ) );
+				qstrcatprintf( str, "#define DEFORMV_BULGE_CONSTANT vec4(%f,%f,%f,%f) \n", deformv->func.args[0], deformv->func.args[1], deformv->func.args[2], deformv->func.args[3] );
 				break;
 			case DEFORMV_AUTOSPRITE:
-				qStrAppendSlice(str,  qCToStrRef("#define DEFORMV_AUTOSPRITE 1 \n"));
+				qStrAppendSlice( str, qCToStrRef( "#define DEFORMV_AUTOSPRITE 1 \n" ) );
 				break;
 			case DEFORMV_AUTOPARTICLE:
-				qStrAppendSlice(str,  qCToStrRef("#define DEFORMV_AUTOPARTICLE 1 \n"));
+				qStrAppendSlice( str, qCToStrRef( "#define DEFORMV_AUTOPARTICLE 1 \n" ) );
 				break;
 			case DEFORMV_AUTOSPRITE2:
-				qStrAppendSlice(str,  qCToStrRef("#define DEFORMV_AUTOSPRITE2 1 \n"));
+				qStrAppendSlice( str, qCToStrRef( "#define DEFORMV_AUTOSPRITE2 1 \n" ) );
 				break;
 			default:
 				break;
@@ -199,20 +177,18 @@ static void __appendGLSLDeformv( struct QStr* str, const deformv_t *deformv, int
 }
 
 /*
-* RP_PrecachePrograms
-*
-* Loads the list of known program permutations from disk file.
-*
-* Expected file format:
-* application_name\n
-* version_number\n*
-* program_type1 features_lower_bits1 features_higher_bits1 program_name1 binary_offset
-* ..
-* program_typeN features_lower_bitsN features_higher_bitsN program_nameN binary_offset
-*/
-void RP_PrecachePrograms( void )
-{
-}
+ * RP_PrecachePrograms
+ *
+ * Loads the list of known program permutations from disk file.
+ *
+ * Expected file format:
+ * application_name\n
+ * version_number\n*
+ * program_type1 features_lower_bits1 features_higher_bits1 program_name1 binary_offset
+ * ..
+ * program_typeN features_lower_bitsN features_higher_bitsN program_nameN binary_offset
+ */
+void RP_PrecachePrograms( void ) {}
 
 /*
  * RP_StorePrecacheList
@@ -220,9 +196,7 @@ void RP_PrecachePrograms( void )
  * Stores the list of known GLSL program permutations to file on the disk.
  * File format matches that expected by RP_PrecachePrograms.
  */
-void RP_StorePrecacheList( void )
-{
-}
+void RP_StorePrecacheList( void ) {}
 
 /*
  * RF_DeleteProgram
@@ -236,25 +210,23 @@ static void RF_DeleteProgram( struct glsl_program_s *program )
 	if( program->deformsKey )
 		R_Free( program->deformsKey );
 
-	//if(program->layout)
+	// if(program->layout)
 	//	rsh.nri.coreI.DestroyPipelineLayout(program->layout);
 
-	GPU_VULKAN_BLOCK( ( &rsh.renderer ), ( {
-						  for( size_t i = 0; i < PIPELINE_LAYOUT_HASH_SIZE; i++ ) {
-							  if( program->pipelines[i].vk.handle)
-								 vkDestroyPipeline(rsh.device.vk.device, program->pipelines[i].vk.handle, NULL);
-						  }
-						  for( size_t i = 0; i < DESCRIPTOR_SET_MAX; i++ ) {
-							  if( program->programDescriptors[i].vk.setLayout)
-									vkDestroyDescriptorSetLayout(rsh.device.vk.device, program->programDescriptors[i].vk.setLayout, NULL);
-						  }
-					  } ) );
-
-	for( size_t i = 0; i < GLSL_STAGE_MAX; i++ ) {
-		if( program->shaderBin[i].bin)
-			R_Free(program->shaderBin[i].bin);
+#if ( DEVICE_IMPL_VULKAN )
+	for( size_t i = 0; i < PIPELINE_LAYOUT_HASH_SIZE; i++ ) {
+		if( program->pipelines[i].vk.handle )
+			vkDestroyPipeline( rsh.device.vk.device, program->pipelines[i].vk.handle, NULL );
 	}
-
+	for( size_t i = 0; i < R_DESCRIPTOR_SET_MAX; i++ ) {
+		if( program->programDescriptors[i].vk.setLayout )
+			vkDestroyDescriptorSetLayout( rsh.device.vk.device, program->programDescriptors[i].vk.setLayout, NULL );
+	}
+#endif
+	for( size_t i = 0; i < GLSL_STAGE_MAX; i++ ) {
+		if( program->shaderBin[i].bin )
+			R_Free( program->shaderBin[i].bin );
+	}
 
 	hash_next = program->hash_next;
 	memset( program, 0, sizeof( struct glsl_program_s ) );
@@ -566,8 +538,7 @@ static const glsl_feature_t *const glsl_programtypes_features[] = {
 	[GLSL_PROGRAM_TYPE_FOG] = glsl_features_fog,
 	[GLSL_PROGRAM_TYPE_FXAA] = glsl_features_fxaa,
 	[GLSL_PROGRAM_TYPE_YUV] = glsl_features_empty,
-	[GLSL_PROGRAM_TYPE_COLORCORRECTION] = glsl_features_empty 
-};
+	[GLSL_PROGRAM_TYPE_COLORCORRECTION] = glsl_features_empty };
 
 #define QF_GLSL_VERSION120 "#version 120\n"
 #define QF_GLSL_VERSION130 "#version 130\n"
@@ -582,165 +553,160 @@ static const glsl_feature_t *const glsl_programtypes_features[] = {
 #define QF_GLSL_ENABLE_EXT_TEXTURE_ARRAY "#extension GL_EXT_texture_array : enable\n"
 #define QF_GLSL_ENABLE_OES_TEXTURE_3D "#extension GL_OES_texture_3D : enable\n"
 
-#define QF_GLSL_PI "" \
-"#ifndef M_PI\n" \
-"#define M_PI 3.14159265358979323846\n" \
-"#endif\n" \
-"#ifndef M_TWOPI\n" \
-"#define M_TWOPI 6.28318530717958647692\n" \
-"#endif\n"
+#define QF_GLSL_PI                             \
+	""                                         \
+	"#ifndef M_PI\n"                           \
+	"#define M_PI 3.14159265358979323846\n"    \
+	"#endif\n"                                 \
+	"#ifndef M_TWOPI\n"                        \
+	"#define M_TWOPI 6.28318530717958647692\n" \
+	"#endif\n"
 
 #define QF_BUILTIN_GLSL_CONSTANTS \
-QF_GLSL_PI \
-"\n" \
+	QF_GLSL_PI                    \
+	"\n" \
 "#define MAX_UNIFORM_INSTANCES " STR_TOSTR( MAX_GLSL_UNIFORM_INSTANCES ) "\n" \
-"#define MAX_UNIFORM_BONES " STR_TOSTR( MAX_GLSL_UNIFORM_INSTANCES ) "\n" 
+"#define MAX_UNIFORM_BONES " STR_TOSTR( MAX_GLSL_UNIFORM_INSTANCES ) "\n"
 
-#define QF_BUILTIN_GLSL_QUAT_TRANSFORM_OVERLOAD \
-"#ifdef QF_DUAL_QUAT_TRANSFORM_TANGENT\n" \
-"void QF_VertexDualQuatsTransform_Tangent(inout vec4 Position, inout vec3 Normal, inout vec3 Tangent)\n" \
-"#else\n" \
-"void QF_VertexDualQuatsTransform(inout vec4 Position, inout vec3 Normal)\n" \
-"#endif\n" \
-"{\n" \
-"	ivec4 Indices = ivec4(a_BonesIndices * 2.0);\n" \
-"	vec4 DQReal = u_DualQuats[Indices.x];\n" \
-"	vec4 DQDual = u_DualQuats[Indices.x + 1];\n" \
-"#if QF_NUM_BONE_INFLUENCES >= 2\n" \
-"	DQReal *= a_BonesWeights.x;\n" \
-"	DQDual *= a_BonesWeights.x;\n" \
-"	vec4 DQReal1 = u_DualQuats[Indices.y];\n" \
-"	vec4 DQDual1 = u_DualQuats[Indices.y + 1];\n" \
-"	float Scale = mix(-1.0, 1.0, step(0.0, dot(DQReal1, DQReal))) * a_BonesWeights.y;\n" \
-"	DQReal += DQReal1 * Scale;\n" \
-"	DQDual += DQDual1 * Scale;\n" \
-"#if QF_NUM_BONE_INFLUENCES >= 3\n" \
-"	DQReal1 = u_DualQuats[Indices.z];\n" \
-"	DQDual1 = u_DualQuats[Indices.z + 1];\n" \
-"	Scale = mix(-1.0, 1.0, step(0.0, dot(DQReal1, DQReal))) * a_BonesWeights.z;\n" \
-"	DQReal += DQReal1 * Scale;\n" \
-"	DQDual += DQDual1 * Scale;\n" \
-"#if QF_NUM_BONE_INFLUENCES >= 4\n" \
-"	DQReal1 = u_DualQuats[Indices.w];\n" \
-"	DQDual1 = u_DualQuats[Indices.w + 1];\n" \
-"	Scale = mix(-1.0, 1.0, step(0.0, dot(DQReal1, DQReal))) * a_BonesWeights.w;\n" \
-"	DQReal += DQReal1 * Scale;\n" \
-"	DQDual += DQDual1 * Scale;\n" \
-"#endif // QF_NUM_BONE_INFLUENCES >= 4\n" \
-"#endif // QF_NUM_BONE_INFLUENCES >= 3\n" \
-"	float Len = 1.0 / length(DQReal);\n" \
-"	DQReal *= Len;\n" \
-"	DQDual *= Len;\n" \
-"#endif // QF_NUM_BONE_INFLUENCES >= 2\n" \
-"	Position.xyz += (cross(DQReal.xyz, cross(DQReal.xyz, Position.xyz) + Position.xyz * DQReal.w + DQDual.xyz) +\n" \
-"		DQDual.xyz*DQReal.w - DQReal.xyz*DQDual.w) * 2.0;\n" \
-"	Normal += cross(DQReal.xyz, cross(DQReal.xyz, Normal) + Normal * DQReal.w) * 2.0;\n" \
-"#ifdef QF_DUAL_QUAT_TRANSFORM_TANGENT\n" \
-"	Tangent += cross(DQReal.xyz, cross(DQReal.xyz, Tangent) + Tangent * DQReal.w) * 2.0;\n" \
-"#endif\n" \
-"}\n" \
-"\n"
+#define QF_BUILTIN_GLSL_QUAT_TRANSFORM_OVERLOAD                                                                       \
+	"#ifdef QF_DUAL_QUAT_TRANSFORM_TANGENT\n"                                                                         \
+	"void QF_VertexDualQuatsTransform_Tangent(inout vec4 Position, inout vec3 Normal, inout vec3 Tangent)\n"          \
+	"#else\n"                                                                                                         \
+	"void QF_VertexDualQuatsTransform(inout vec4 Position, inout vec3 Normal)\n"                                      \
+	"#endif\n"                                                                                                        \
+	"{\n"                                                                                                             \
+	"	ivec4 Indices = ivec4(a_BonesIndices * 2.0);\n"                                                                 \
+	"	vec4 DQReal = u_DualQuats[Indices.x];\n"                                                                        \
+	"	vec4 DQDual = u_DualQuats[Indices.x + 1];\n"                                                                    \
+	"#if QF_NUM_BONE_INFLUENCES >= 2\n"                                                                               \
+	"	DQReal *= a_BonesWeights.x;\n"                                                                                  \
+	"	DQDual *= a_BonesWeights.x;\n"                                                                                  \
+	"	vec4 DQReal1 = u_DualQuats[Indices.y];\n"                                                                       \
+	"	vec4 DQDual1 = u_DualQuats[Indices.y + 1];\n"                                                                   \
+	"	float Scale = mix(-1.0, 1.0, step(0.0, dot(DQReal1, DQReal))) * a_BonesWeights.y;\n"                            \
+	"	DQReal += DQReal1 * Scale;\n"                                                                                   \
+	"	DQDual += DQDual1 * Scale;\n"                                                                                   \
+	"#if QF_NUM_BONE_INFLUENCES >= 3\n"                                                                               \
+	"	DQReal1 = u_DualQuats[Indices.z];\n"                                                                            \
+	"	DQDual1 = u_DualQuats[Indices.z + 1];\n"                                                                        \
+	"	Scale = mix(-1.0, 1.0, step(0.0, dot(DQReal1, DQReal))) * a_BonesWeights.z;\n"                                  \
+	"	DQReal += DQReal1 * Scale;\n"                                                                                   \
+	"	DQDual += DQDual1 * Scale;\n"                                                                                   \
+	"#if QF_NUM_BONE_INFLUENCES >= 4\n"                                                                               \
+	"	DQReal1 = u_DualQuats[Indices.w];\n"                                                                            \
+	"	DQDual1 = u_DualQuats[Indices.w + 1];\n"                                                                        \
+	"	Scale = mix(-1.0, 1.0, step(0.0, dot(DQReal1, DQReal))) * a_BonesWeights.w;\n"                                  \
+	"	DQReal += DQReal1 * Scale;\n"                                                                                   \
+	"	DQDual += DQDual1 * Scale;\n"                                                                                   \
+	"#endif // QF_NUM_BONE_INFLUENCES >= 4\n"                                                                         \
+	"#endif // QF_NUM_BONE_INFLUENCES >= 3\n"                                                                         \
+	"	float Len = 1.0 / length(DQReal);\n"                                                                            \
+	"	DQReal *= Len;\n"                                                                                               \
+	"	DQDual *= Len;\n"                                                                                               \
+	"#endif // QF_NUM_BONE_INFLUENCES >= 2\n"                                                                         \
+	"	Position.xyz += (cross(DQReal.xyz, cross(DQReal.xyz, Position.xyz) + Position.xyz * DQReal.w + DQDual.xyz) +\n" \
+	"		DQDual.xyz*DQReal.w - DQReal.xyz*DQDual.w) * 2.0;\n"                                                           \
+	"	Normal += cross(DQReal.xyz, cross(DQReal.xyz, Normal) + Normal * DQReal.w) * 2.0;\n"                            \
+	"#ifdef QF_DUAL_QUAT_TRANSFORM_TANGENT\n"                                                                         \
+	"	Tangent += cross(DQReal.xyz, cross(DQReal.xyz, Tangent) + Tangent * DQReal.w) * 2.0;\n"                         \
+	"#endif\n"                                                                                                        \
+	"}\n"                                                                                                             \
+	"\n"
 
-#define QF_BUILTIN_GLSL_QUAT_TRANSFORM \
-"qf_attribute vec4 a_BonesIndices, a_BonesWeights;\n" \
-"uniform vec4 u_DualQuats[MAX_UNIFORM_BONES*2];\n" \
-"\n" \
-QF_BUILTIN_GLSL_QUAT_TRANSFORM_OVERLOAD \
-"#define QF_DUAL_QUAT_TRANSFORM_TANGENT\n" \
-QF_BUILTIN_GLSL_QUAT_TRANSFORM_OVERLOAD \
-"#undef QF_DUAL_QUAT_TRANSFORM_TANGENT\n"
+#define QF_BUILTIN_GLSL_QUAT_TRANSFORM                    \
+	"qf_attribute vec4 a_BonesIndices, a_BonesWeights;\n" \
+	"uniform vec4 u_DualQuats[MAX_UNIFORM_BONES*2];\n"    \
+	"\n" QF_BUILTIN_GLSL_QUAT_TRANSFORM_OVERLOAD "#define QF_DUAL_QUAT_TRANSFORM_TANGENT\n" QF_BUILTIN_GLSL_QUAT_TRANSFORM_OVERLOAD "#undef QF_DUAL_QUAT_TRANSFORM_TANGENT\n"
 
-#define QF_BUILTIN_GLSL_INSTANCED_TRANSFORMS \
-"#if defined(APPLY_INSTANCED_ATTRIB_TRANSFORMS)\n" \
-"qf_attribute vec4 a_InstanceQuat, a_InstancePosAndScale;\n" \
-"#elif defined(GL_ARB_draw_instanced) || (defined(GL_ES) && (__VERSION__ >= 300))\n" \
-"uniform vec4 u_InstancePoints[MAX_UNIFORM_INSTANCES*2];\n" \
-"#define a_InstanceQuat u_InstancePoints[gl_InstanceID*2]\n" \
-"#define a_InstancePosAndScale u_InstancePoints[gl_InstanceID*2+1]\n" \
-"#else\n" \
-"uniform vec4 u_InstancePoints[2];\n" \
-"#define a_InstanceQuat u_InstancePoints[0]\n" \
-"#define a_InstancePosAndScale u_InstancePoints[1]\n" \
-"#endif // APPLY_INSTANCED_ATTRIB_TRANSFORMS\n" \
-"\n" \
-"void QF_InstancedTransform(inout vec4 Position, inout vec3 Normal)\n" \
-"{\n" \
-"	Position.xyz = (cross(a_InstanceQuat.xyz,\n" \
-"		cross(a_InstanceQuat.xyz, Position.xyz) + Position.xyz*a_InstanceQuat.w)*2.0 +\n" \
-"		Position.xyz) * a_InstancePosAndScale.w + a_InstancePosAndScale.xyz;\n" \
-"	Normal = cross(a_InstanceQuat.xyz, cross(a_InstanceQuat.xyz, Normal) + Normal*a_InstanceQuat.w)*2.0 + Normal;\n" \
-"}\n" \
-"\n"
+#define QF_BUILTIN_GLSL_INSTANCED_TRANSFORMS                                                                           \
+	"#if defined(APPLY_INSTANCED_ATTRIB_TRANSFORMS)\n"                                                                 \
+	"qf_attribute vec4 a_InstanceQuat, a_InstancePosAndScale;\n"                                                       \
+	"#elif defined(GL_ARB_draw_instanced) || (defined(GL_ES) && (__VERSION__ >= 300))\n"                               \
+	"uniform vec4 u_InstancePoints[MAX_UNIFORM_INSTANCES*2];\n"                                                        \
+	"#define a_InstanceQuat u_InstancePoints[gl_InstanceID*2]\n"                                                       \
+	"#define a_InstancePosAndScale u_InstancePoints[gl_InstanceID*2+1]\n"                                              \
+	"#else\n"                                                                                                          \
+	"uniform vec4 u_InstancePoints[2];\n"                                                                              \
+	"#define a_InstanceQuat u_InstancePoints[0]\n"                                                                     \
+	"#define a_InstancePosAndScale u_InstancePoints[1]\n"                                                              \
+	"#endif // APPLY_INSTANCED_ATTRIB_TRANSFORMS\n"                                                                    \
+	"\n"                                                                                                               \
+	"void QF_InstancedTransform(inout vec4 Position, inout vec3 Normal)\n"                                             \
+	"{\n"                                                                                                              \
+	"	Position.xyz = (cross(a_InstanceQuat.xyz,\n"                                                                     \
+	"		cross(a_InstanceQuat.xyz, Position.xyz) + Position.xyz*a_InstanceQuat.w)*2.0 +\n"                               \
+	"		Position.xyz) * a_InstancePosAndScale.w + a_InstancePosAndScale.xyz;\n"                                         \
+	"	Normal = cross(a_InstanceQuat.xyz, cross(a_InstanceQuat.xyz, Normal) + Normal*a_InstanceQuat.w)*2.0 + Normal;\n" \
+	"}\n"                                                                                                              \
+	"\n"
 
 // We have to use these #ifdefs here because #defining prototypes
 // of these functions to nothing results in a crash on Intel GPUs.
-#define QF_BUILTIN_GLSL_TRANSFORM_VERTS \
-"void QF_TransformVerts(inout vec4 Position, inout vec3 Normal, inout vec2 TexCoord)\n" \
-"{\n" \
-"#	ifdef QF_NUM_BONE_INFLUENCES\n" \
-"		QF_VertexDualQuatsTransform(Position, Normal);\n" \
-"#	endif\n" \
-"#	ifdef QF_APPLY_DEFORMVERTS\n" \
-"		QF_DeformVerts(Position, Normal, TexCoord);\n" \
-"#	endif\n" \
-"#	ifdef APPLY_INSTANCED_TRANSFORMS\n" \
-"		QF_InstancedTransform(Position, Normal);\n" \
-"#	endif\n" \
-"}\n" \
-"\n" \
-"void QF_TransformVerts_Tangent(inout vec4 Position, inout vec3 Normal, inout vec3 Tangent, inout vec2 TexCoord)\n" \
-"{\n" \
-"#	ifdef QF_NUM_BONE_INFLUENCES\n" \
-"		QF_VertexDualQuatsTransform_Tangent(Position, Normal, Tangent);\n" \
-"#	endif\n" \
-"#	ifdef QF_APPLY_DEFORMVERTS\n" \
-"		QF_DeformVerts(Position, Normal, TexCoord);\n" \
-"#	endif\n" \
-"#	ifdef APPLY_INSTANCED_TRANSFORMS\n" \
-"		QF_InstancedTransform(Position, Normal);\n" \
-"#	endif\n" \
-"}\n" \
-"\n"
+#define QF_BUILTIN_GLSL_TRANSFORM_VERTS                                                                                 \
+	"void QF_TransformVerts(inout vec4 Position, inout vec3 Normal, inout vec2 TexCoord)\n"                             \
+	"{\n"                                                                                                               \
+	"#	ifdef QF_NUM_BONE_INFLUENCES\n"                                                                                  \
+	"		QF_VertexDualQuatsTransform(Position, Normal);\n"                                                                \
+	"#	endif\n"                                                                                                         \
+	"#	ifdef QF_APPLY_DEFORMVERTS\n"                                                                                    \
+	"		QF_DeformVerts(Position, Normal, TexCoord);\n"                                                                   \
+	"#	endif\n"                                                                                                         \
+	"#	ifdef APPLY_INSTANCED_TRANSFORMS\n"                                                                              \
+	"		QF_InstancedTransform(Position, Normal);\n"                                                                      \
+	"#	endif\n"                                                                                                         \
+	"}\n"                                                                                                               \
+	"\n"                                                                                                                \
+	"void QF_TransformVerts_Tangent(inout vec4 Position, inout vec3 Normal, inout vec3 Tangent, inout vec2 TexCoord)\n" \
+	"{\n"                                                                                                               \
+	"#	ifdef QF_NUM_BONE_INFLUENCES\n"                                                                                  \
+	"		QF_VertexDualQuatsTransform_Tangent(Position, Normal, Tangent);\n"                                               \
+	"#	endif\n"                                                                                                         \
+	"#	ifdef QF_APPLY_DEFORMVERTS\n"                                                                                    \
+	"		QF_DeformVerts(Position, Normal, TexCoord);\n"                                                                   \
+	"#	endif\n"                                                                                                         \
+	"#	ifdef APPLY_INSTANCED_TRANSFORMS\n"                                                                              \
+	"		QF_InstancedTransform(Position, Normal);\n"                                                                      \
+	"#	endif\n"                                                                                                         \
+	"}\n"                                                                                                               \
+	"\n"
 
-#define QF_GLSL_WAVEFUNCS \
-"\n" \
-QF_GLSL_PI \
-"\n" \
-"#ifndef WAVE_SIN\n" \
-"float QF_WaveFunc_Sin(float x)\n" \
-"{\n" \
-"return sin(fract(x) * M_TWOPI);\n" \
-"}\n" \
-"float QF_WaveFunc_Triangle(float x)\n" \
-"{\n" \
-"x = fract(x);\n" \
-"return step(x, 0.25) * x * 4.0 + (2.0 - 4.0 * step(0.25, x) * step(x, 0.75) * x) + ((step(0.75, x) * x - 0.75) * 4.0 - 1.0);\n" \
-"}\n" \
-"float QF_WaveFunc_Square(float x)\n" \
-"{\n" \
-"return step(fract(x), 0.5) * 2.0 - 1.0;\n" \
-"}\n" \
-"float QF_WaveFunc_Sawtooth(float x)\n" \
-"{\n" \
-"return fract(x);\n" \
-"}\n" \
-"float QF_WaveFunc_InverseSawtooth(float x)\n" \
-"{\n" \
-"return 1.0 - fract(x);\n" \
-"}\n" \
-"\n" \
-"#define WAVE_SIN(time,base,amplitude,phase,freq) (((base)+(amplitude)*QF_WaveFunc_Sin((phase)+(time)*(freq))))\n" \
-"#define WAVE_TRIANGLE(time,base,amplitude,phase,freq) (((base)+(amplitude)*QF_WaveFunc_Triangle((phase)+(time)*(freq))))\n" \
-"#define WAVE_SQUARE(time,base,amplitude,phase,freq) (((base)+(amplitude)*QF_WaveFunc_Square((phase)+(time)*(freq))))\n" \
-"#define WAVE_SAWTOOTH(time,base,amplitude,phase,freq) (((base)+(amplitude)*QF_WaveFunc_Sawtooth((phase)+(time)*(freq))))\n" \
-"#define WAVE_INVERSESAWTOOTH(time,base,amplitude,phase,freq) (((base)+(amplitude)*QF_WaveFunc_InverseSawtooth((phase)+(time)*(freq))))\n" \
-"#endif\n" \
-"\n"
+#define QF_GLSL_WAVEFUNCS                                                                                                                      \
+	"\n" QF_GLSL_PI                                                                                                                            \
+	"\n"                                                                                                                                       \
+	"#ifndef WAVE_SIN\n"                                                                                                                       \
+	"float QF_WaveFunc_Sin(float x)\n"                                                                                                         \
+	"{\n"                                                                                                                                      \
+	"return sin(fract(x) * M_TWOPI);\n"                                                                                                        \
+	"}\n"                                                                                                                                      \
+	"float QF_WaveFunc_Triangle(float x)\n"                                                                                                    \
+	"{\n"                                                                                                                                      \
+	"x = fract(x);\n"                                                                                                                          \
+	"return step(x, 0.25) * x * 4.0 + (2.0 - 4.0 * step(0.25, x) * step(x, 0.75) * x) + ((step(0.75, x) * x - 0.75) * 4.0 - 1.0);\n"           \
+	"}\n"                                                                                                                                      \
+	"float QF_WaveFunc_Square(float x)\n"                                                                                                      \
+	"{\n"                                                                                                                                      \
+	"return step(fract(x), 0.5) * 2.0 - 1.0;\n"                                                                                                \
+	"}\n"                                                                                                                                      \
+	"float QF_WaveFunc_Sawtooth(float x)\n"                                                                                                    \
+	"{\n"                                                                                                                                      \
+	"return fract(x);\n"                                                                                                                       \
+	"}\n"                                                                                                                                      \
+	"float QF_WaveFunc_InverseSawtooth(float x)\n"                                                                                             \
+	"{\n"                                                                                                                                      \
+	"return 1.0 - fract(x);\n"                                                                                                                 \
+	"}\n"                                                                                                                                      \
+	"\n"                                                                                                                                       \
+	"#define WAVE_SIN(time,base,amplitude,phase,freq) (((base)+(amplitude)*QF_WaveFunc_Sin((phase)+(time)*(freq))))\n"                         \
+	"#define WAVE_TRIANGLE(time,base,amplitude,phase,freq) (((base)+(amplitude)*QF_WaveFunc_Triangle((phase)+(time)*(freq))))\n"               \
+	"#define WAVE_SQUARE(time,base,amplitude,phase,freq) (((base)+(amplitude)*QF_WaveFunc_Square((phase)+(time)*(freq))))\n"                   \
+	"#define WAVE_SAWTOOTH(time,base,amplitude,phase,freq) (((base)+(amplitude)*QF_WaveFunc_Sawtooth((phase)+(time)*(freq))))\n"               \
+	"#define WAVE_INVERSESAWTOOTH(time,base,amplitude,phase,freq) (((base)+(amplitude)*QF_WaveFunc_InverseSawtooth((phase)+(time)*(freq))))\n" \
+	"#endif\n"                                                                                                                                 \
+	"\n"
 
-#define QF_GLSL_MATH \
-"#define QF_LatLong2Norm(ll) vec3(cos((ll).y) * sin((ll).x), sin((ll).y) * sin((ll).x), cos((ll).x))\n" \
-"\n"
-
+#define QF_GLSL_MATH                                                                                        \
+	"#define QF_LatLong2Norm(ll) vec3(cos((ll).y) * sin((ll).x), sin((ll).y) * sin((ll).x), cos((ll).x))\n" \
+	"\n"
 
 #define PARSER_MAX_STACKDEPTH 16
 
@@ -771,7 +737,7 @@ static bool __RF_AppendShaderFromFile( struct QStr *str, const char *rootFile, c
 	char *prevIt = NULL;
 	char *startBuf = NULL;
 	bool error = false;
-	struct QStr includeFilePath = {0};
+	struct QStr includeFilePath = { 0 };
 	while( 1 ) {
 		prevIt = it;
 		char *token = COM_ParseExt_r( tempbuf, sizeof( tempbuf ), &it, true );
@@ -853,29 +819,29 @@ static bool __RF_AppendShaderFromFile( struct QStr *str, const char *rootFile, c
 		COM_SanitizeFilePath( token );
 
 		qStrClear( &includeFilePath );
-		qStrMakeRoomFor(&includeFilePath, strlen( fileName ) + 1 + strlen( token ) + 1 );
+		qStrMakeRoomFor( &includeFilePath, strlen( fileName ) + 1 + strlen( token ) + 1 );
 
 		// tempFilename = R_Malloc( tempFilenameSize );
 
 		if( *token != '/' ) {
-			qStrAppendSlice( &includeFilePath, qCToStrRef(fileName) );
-			COM_StripFilename( includeFilePath.buf);
+			qStrAppendSlice( &includeFilePath, qCToStrRef( fileName ) );
+			COM_StripFilename( includeFilePath.buf );
 		} else {
 			token++;
-			qStrAppendSlice( &includeFilePath, qCToStrRef(rootFile) );
+			qStrAppendSlice( &includeFilePath, qCToStrRef( rootFile ) );
 			COM_StripFilename( includeFilePath.buf );
 		}
-		qStrUpdateLen(&includeFilePath);
-		qStrSetNullTerm(&includeFilePath);
-		qStrAppendSlice( &includeFilePath, ( includeFilePath.buf[0] ? qCToStrRef("/") : qCToStrRef("") ) );
-		qStrAppendSlice( &includeFilePath, qCToStrRef(token) );
+		qStrUpdateLen( &includeFilePath );
+		qStrSetNullTerm( &includeFilePath );
+		qStrAppendSlice( &includeFilePath, ( includeFilePath.buf[0] ? qCToStrRef( "/" ) : qCToStrRef( "" ) ) );
+		qStrAppendSlice( &includeFilePath, qCToStrRef( token ) );
 		if( __RF_AppendShaderFromFile( str, rootFile, includeFilePath.buf, stackDepth + 1, programType, features ) ) {
 			error = true;
 			goto done;
 		}
 	}
 	if( startBuf ) {
-			qstrcatfmt( str, "%s", startBuf );
+		qstrcatfmt( str, "%s", startBuf );
 	}
 done:
 	R_Free( fileContents );
@@ -893,15 +859,16 @@ void RP_ProgramList_f( void )
 	Com_Printf( "------------------\n" );
 	size_t i;
 	struct glsl_program_s *program;
-	struct QStr fullName = {0};
+	struct QStr fullName = { 0 };
 	for( i = 0, program = r_glslprograms; i < MAX_GLSL_PROGRAMS; i++, program++ ) {
 		if( !program->name )
 			break;
 
-		qStrClear(&fullName);
-		qStrAppendSlice(&fullName, qCToStrRef(program->name));
-		for( feature_iter_t iter = __R_NextFeature((feature_iter_t){ .it = glsl_programtypes_features[program->type], .bits = program->features }); __R_IsValidFeatureIter( &iter ); iter = __R_NextFeature( iter ) ) {
-			qStrAppendSlice(&fullName, qCToStrRef(iter.it->suffix));	
+		qStrClear( &fullName );
+		qStrAppendSlice( &fullName, qCToStrRef( program->name ) );
+		for( feature_iter_t iter = __R_NextFeature( (feature_iter_t){ .it = glsl_programtypes_features[program->type], .bits = program->features } ); __R_IsValidFeatureIter( &iter );
+			 iter = __R_NextFeature( iter ) ) {
+			qStrAppendSlice( &fullName, qCToStrRef( iter.it->suffix ) );
 		}
 		Com_Printf( " %3i %.*s", i + 1, fullName.len, fullName.buf );
 
@@ -910,7 +877,7 @@ void RP_ProgramList_f( void )
 		}
 		Com_Printf( "\n" );
 	}
-	qStrFree(&fullName);
+	qStrFree( &fullName );
 	Com_Printf( "%i programs total\n", i );
 }
 
@@ -938,97 +905,134 @@ static void __RP_writeTextToFile( const char *filePath, const char *str )
 		FS_FCloseFile( shaderErrHandle );
 	}
 }
-	
 
-static inline struct pipeline_hash_s* __resolvePipeline(struct glsl_program_s *program, hash_t hash) {
+static inline struct pipeline_hash_s *__resolvePipeline( struct glsl_program_s *program, hash_t hash )
+{
 	const size_t startIndex = hash % PIPELINE_LAYOUT_HASH_SIZE;
 	size_t index = startIndex;
 	do {
-		if(program->pipelines[index].hash == hash || program->pipelines[index].hash == 0) {
+		if( program->pipelines[index].hash == hash || program->pipelines[index].hash == 0 ) {
 			program->pipelines[index].hash = hash;
 			return &program->pipelines[index];
 		}
-		index = (index + 1) % PIPELINE_LAYOUT_HASH_SIZE;
-	  	
-	} while(index != startIndex);
+		index = ( index + 1 ) % PIPELINE_LAYOUT_HASH_SIZE;
+
+	} while( index != startIndex );
 	return NULL;
 }
 
-static int __compareVertAttribs(const void * a1, const void * a2) {
-	const struct frame_cmd_vertex_attrib_s* at1 = a1;  
-	const struct frame_cmd_vertex_attrib_s * at2 = a2;
-	return at1->vk.location > at2->vk.location;
+static int __VK_SortVkVertexInputAttributeDescription( const void *a1, const void *a2 )
+{
+	const struct VkVertexInputAttributeDescription *at1 = a1;
+	const struct VkVertexInputAttributeDescription *at2 = a2;
+	return at1->location > at2->location;
 }
 
-void RP_BindPipeline( struct frame_cmd_buffer_s *cmd, struct pipeline_hash_s *pipeline )
+void RP_BindPipeline( struct FrameState_s *cmd, struct pipeline_hash_s *pipeline )
 {
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( rsh.device->renderer ) ) {
-		vkCmdBindPipeline( cmd->handle.vk.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->vk.handle );
-	}
+	vkCmdBindPipeline( cmd->handle.vk.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->vk.handle );
 #endif
 }
 
-struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_desc_s* cmd)
+struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_desc_s *cmd )
 {
-	size_t numAttribs = 0;
-	struct frame_cmd_vertex_attrib_s vertexInputAttribs[MAX_ATTRIBUTES];
 	enum RICullMode_e cullMode = cmd->cullMode;
-	if(cmd->flippedViewport) {
-		cullMode ^= 0;
+	if( cmd->flippedViewport ) {
+		cullMode = ~cullMode;
 	}
+	VkVertexInputAttributeDescription vertextbindingDesc[MAX_ATTRIBUTES];
+	VkVertexInputBindingDescription vertexInputStreamsDesc[MAX_STREAMS];
+	VkPipelineVertexInputStateCreateInfo vertexInputState = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+	VkFormat colorAttachmentsVK[MAX_COLOR_ATTACHMENTS];
 
-//	uint32_t attribFlags = 0;
-	hash_t hash = HASH_INITIAL_VALUE;
-	assert(cmd->numStreams < MAX_ATTRIBUTES);
-	assert(cmd->numStreams < MAX_STREAMS);
-	for( size_t i = 0; i < cmd->numAttribs; i++ ) {
-	//	attribFlags |= ( 1 << cmd->attribs[i].vk.location );
-		if(!((1 << cmd->attribs[i].vk.location ) & program->vertexInputMask)) {
-			continue;
+	const bool useDepthBias = ( cmd->depthBiasConstant != 0 || cmd->depthBiasSlope != 0 );
+
+	//	uint32_t attribFlags = 0;
+	assert( cmd->numStreams < MAX_ATTRIBUTES );
+	assert( cmd->numStreams < MAX_STREAMS );
+	if( cmd->numStreams > 0 ) {
+		uint32_t numVertexAttribs = 0;
+		for( size_t i = 0; i < cmd->numAttribs; i++ ) {
+			if( !( ( 1 << cmd->attribs[i].vk.location ) & program->vertexInputMask ) ) {
+				continue;
+			}
+			vertextbindingDesc[numVertexAttribs].offset = cmd->attribs[i].offset;
+			vertextbindingDesc[numVertexAttribs].binding = cmd->attribs[i].streamIndex;
+			vertextbindingDesc[numVertexAttribs].format = RIFormatToVK( cmd->attribs[i].format );
+			vertextbindingDesc[numVertexAttribs].location = cmd->attribs[i].vk.location;
+			numVertexAttribs++;
 		}
-		vertexInputAttribs[numAttribs++] = cmd->attribs[i];
-	}
-	qsort(vertexInputAttribs, numAttribs, sizeof(struct frame_cmd_vertex_attrib_s), __compareVertAttribs);
-	for( size_t i = 0; i < numAttribs; i++ ) {	
-		hash = hash_u32(hash, vertexInputAttribs[i].offset);
-		hash = hash_u32(hash, vertexInputAttribs[i].format);
-		hash = hash_u32(hash, vertexInputAttribs[i].streamIndex);
-	}
-	hash = hash_data( hash, &cmd->streams, sizeof( struct frame_cmd_vertex_stream_s ) * cmd->numStreams );
-	hash = hash_data( hash, &cmd->depthBias, sizeof( struct frame_pipeline_depth_bias_s  ));
-	if( cmd->depthFormat != RI_FORMAT_UNKNOWN)
-		hash = hash_u32( hash, cmd->depthFormat);
-	hash = hash_data( hash, &cmd->colorAttachments, sizeof( cmd->colorAttachments[0] ) * cmd->numColorsAttachments );
-	hash = hash_u32( hash, cullMode);
-	hash = hash_u32( hash, cmd->compareFunc);
-	hash = hash_u32( hash, cmd->depthWrite);
-	hash = hash_u32( hash, cmd->topology);
 
-	struct pipeline_hash_s* pipeline = __resolvePipeline(program, hash);
-	assert(pipeline);
-	if(pipeline->vk.handle) {
+		for( size_t i = 0; i < cmd->numStreams; i++ ) {
+			vertexInputStreamsDesc[i].binding = cmd->streams[i].bindingSlot;
+			vertexInputStreamsDesc[i].stride = cmd->streams[i].stride;
+			vertexInputStreamsDesc[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+		}
+		vertexInputState.pVertexAttributeDescriptions = vertextbindingDesc;
+		vertexInputState.vertexAttributeDescriptionCount = numVertexAttribs;
+		vertexInputState.pVertexBindingDescriptions = vertexInputStreamsDesc;
+		vertexInputState.vertexBindingDescriptionCount = cmd->numStreams;
+	}
+	qsort( vertextbindingDesc, vertexInputState.vertexAttributeDescriptionCount, sizeof( VkVertexInputAttributeDescription ), __VK_SortVkVertexInputAttributeDescription );
+
+	struct {
+		float depthBiasConstant;
+		float depthBiasClamp;
+		float depthBiasSlope;
+		uint16_t cullMode : 3;		  // RICullMode_e
+		uint16_t colorBlendEnabled : 1;
+		uint16_t depthWrite : 1;
+		uint16_t colorWriteMask : 4; // RIColorWriteMask_e
+		uint16_t colorSrcFactor : 5; // RIBlendFactor_e
+		uint16_t colorDstFactor : 5; // RIBlendFactor_e
+		uint16_t topology : 4;		 // RITopology_e
+		uint16_t compareFunc : 4;	 // RICompareFunc_e
+	} encode = {
+		.depthBiasConstant = useDepthBias ? cmd->depthBiasConstant : 0,
+		.depthBiasClamp = useDepthBias ? cmd->depthBiasClamp : 0,
+		.depthBiasSlope = useDepthBias ? cmd->depthBiasSlope : 0,
+		.cullMode = cullMode,
+		.colorBlendEnabled = cmd->colorBlendEnabled,
+		.depthWrite = cmd->depthWrite,
+		.colorWriteMask = cmd->colorBlendEnabled ? cmd->colorWriteMask : 0,
+		.colorSrcFactor = cmd->colorBlendEnabled ? cmd->colorSrcFactor : 0,
+		.colorDstFactor = cmd->colorBlendEnabled ? cmd->colorDstFactor : 0,
+		.topology = cmd->topology,
+		.compareFunc = cmd->compareFunc,
+	};
+	for( size_t i = 0; i < cmd->numColorsAttachments; i++ ) {
+		colorAttachmentsVK[i] = RIFormatToVK( cmd->colorAttachments[i] );
+	}
+
+	hash_t hash = HASH_INITIAL_VALUE;
+	hash = hash_data_hsieh( hash, vertextbindingDesc, sizeof( VkVertexInputAttributeDescription ) * vertexInputState.vertexAttributeDescriptionCount );
+	hash = hash_data_hsieh( hash, vertexInputStreamsDesc, sizeof( VkVertexInputBindingDescription ) * vertexInputState.vertexBindingDescriptionCount );
+	hash = hash_data_hsieh( hash, &encode, sizeof(encode));
+	hash = hash_data_hsieh( hash, colorAttachmentsVK, sizeof(VkFormat) * cmd->numColorsAttachments);
+	if( cmd->depthFormat != RI_FORMAT_UNKNOWN )
+		hash = hash_u32( hash, cmd->depthFormat );
+
+	struct pipeline_hash_s *pipeline = __resolvePipeline( program, hash );
+	assert( pipeline );
+	if( pipeline->vk.handle ) {
 		return pipeline; // pipeline is present in slot
 	}
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( &rsh.renderer ) ) {
-		VkFormat colorAttachmentsVK[MAX_COLOR_ATTACHMENTS];
-		for(size_t i = 0; i < cmd->numColorsAttachments; i++) {
-			colorAttachmentsVK[i] = RIFormatToVK(cmd->colorAttachments[i]);
-		}
+	{
 		uint32_t numModules = 0;
 		VkShaderModule modules[4] = {};
 		VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
-    pipelineRenderingCreateInfo.colorAttachmentCount = cmd->numColorsAttachments;
-    pipelineRenderingCreateInfo.pColorAttachmentFormats = colorAttachmentsVK;
-    pipelineRenderingCreateInfo.depthAttachmentFormat = RIFormatToVK(cmd->depthFormat);
-    pipelineRenderingCreateInfo.stencilAttachmentFormat = GetRIFormatProps(cmd->depthFormat)->isStencil ? RIFormatToVK(cmd->depthFormat) : VK_FORMAT_UNDEFINED;
+		pipelineRenderingCreateInfo.colorAttachmentCount = cmd->numColorsAttachments;
+		pipelineRenderingCreateInfo.pColorAttachmentFormats = colorAttachmentsVK;
+		pipelineRenderingCreateInfo.depthAttachmentFormat = RIFormatToVK( cmd->depthFormat );
+		pipelineRenderingCreateInfo.stencilAttachmentFormat = GetRIFormatProps( cmd->depthFormat )->isStencil ? RIFormatToVK( cmd->depthFormat ) : VK_FORMAT_UNDEFINED;
 		VkPipelineShaderStageCreateInfo stageCreateInfo[4] = {};
 		VkGraphicsPipelineCreateInfo pipelineCreateInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
-		pipelineCreateInfo.pNext = &pipelineRenderingCreateInfo;  
+		pipelineCreateInfo.pNext = &pipelineRenderingCreateInfo;
 		pipelineCreateInfo.pStages = stageCreateInfo;
 		pipelineCreateInfo.basePipelineIndex = -1;
-		pipelineCreateInfo.layout = program->vk.pipelineLayout; 
+		pipelineCreateInfo.layout = program->vk.pipelineLayout;
 
 		if( program->shaderBin[GLSL_STAGE_VERTEX].bin && program->shaderBin[GLSL_STAGE_FRAGMENT].bin ) {
 			pipelineCreateInfo.stageCount = 2;
@@ -1040,12 +1044,8 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 				(const uint32_t *)program->shaderBin[GLSL_STAGE_VERTEX].bin,
 			};
 			vkCreateShaderModule( rsh.device.vk.device, &vertModuleCreateInfo, NULL, &modules[numModules] );
-			stageCreateInfo[0] = (VkPipelineShaderStageCreateInfo){ 
-				.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, 
-				.stage = VK_SHADER_STAGE_VERTEX_BIT, 
-				.module = modules[numModules],
-				.pName = "main"
-			};
+			stageCreateInfo[0] =
+				(VkPipelineShaderStageCreateInfo){ .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .stage = VK_SHADER_STAGE_VERTEX_BIT, .module = modules[numModules], .pName = "main" };
 			numModules++;
 
 			const VkShaderModuleCreateInfo fragModuleCreateInfo = {
@@ -1056,39 +1056,13 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 				(const uint32_t *)program->shaderBin[GLSL_STAGE_FRAGMENT].bin,
 			};
 			vkCreateShaderModule( rsh.device.vk.device, &fragModuleCreateInfo, NULL, &modules[numModules] );
-			stageCreateInfo[1] =
-				(VkPipelineShaderStageCreateInfo){ 
-					.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, 
-					.stage = VK_SHADER_STAGE_FRAGMENT_BIT, 
-					.module = modules[numModules], 
-					.pName = "main"
-				};
+			stageCreateInfo[1] = (VkPipelineShaderStageCreateInfo){
+				.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .stage = VK_SHADER_STAGE_FRAGMENT_BIT, .module = modules[numModules], .pName = "main" };
 			numModules++;
 		} else {
 			assert( false && "failed to resolve bin" );
 		}
-		VkPipelineVertexInputStateCreateInfo vertexInputState = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
 		pipelineCreateInfo.pVertexInputState = &vertexInputState;
-		VkVertexInputAttributeDescription vertextbindingDesc[MAX_ATTRIBUTES];
-		VkVertexInputBindingDescription vertexInputStreamsDesc[MAX_STREAMS];
-		if( cmd->numStreams > 0 ) {
-			for( size_t i = 0; i < numAttribs; i++ ) {
-				vertextbindingDesc[i].offset = vertexInputAttribs[i].offset;
-				vertextbindingDesc[i].binding = vertexInputAttribs[i].streamIndex;
-				vertextbindingDesc[i].format = RIFormatToVK( vertexInputAttribs[i].format );
-				vertextbindingDesc[i].location = vertexInputAttribs[i].vk.location;
-			}
-			vertexInputState.pVertexAttributeDescriptions = vertextbindingDesc;
-			vertexInputState.vertexAttributeDescriptionCount = numAttribs;
-
-			for( size_t i = 0; i < cmd->numStreams; i++ ) {
-				vertexInputStreamsDesc[i].binding = cmd->streams[i].bindingSlot;
-				vertexInputStreamsDesc[i].stride = cmd->streams[i].stride;
-				vertexInputStreamsDesc[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-			}
-			vertexInputState.pVertexBindingDescriptions = vertexInputStreamsDesc;
-			vertexInputState.vertexBindingDescriptionCount = cmd->numStreams;
-		}
 
 		VkPipelineColorBlendAttachmentState colorAttachmentDesc[MAX_COLOR_ATTACHMENTS] = {};
 		for( size_t i = 0; i < cmd->numColorsAttachments; i++ ) {
@@ -1103,11 +1077,11 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 		colorBlendState.attachmentCount = cmd->numColorsAttachments;
 		colorBlendState.pAttachments = colorAttachmentDesc;
 		pipelineCreateInfo.pColorBlendState = &colorBlendState;
-		assert(cmd->numColorsAttachments > 0);
+		assert( cmd->numColorsAttachments > 0 );
 
-    VkPipelineViewportStateCreateInfo viewportState = {VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
-    viewportState.viewportCount = cmd->numColorsAttachments;
-    viewportState.scissorCount = cmd->numColorsAttachments;
+		VkPipelineViewportStateCreateInfo viewportState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
+		viewportState.viewportCount = cmd->numColorsAttachments;
+		viewportState.scissorCount = cmd->numColorsAttachments;
 		pipelineCreateInfo.pViewportState = &viewportState;
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
@@ -1123,18 +1097,18 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 		dynamicState.pDynamicStates = dynamicStates;
 		pipelineCreateInfo.pDynamicState = &dynamicState;
 
-    VkPipelineMultisampleStateCreateInfo multisampleState = {VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
-    multisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+		VkPipelineMultisampleStateCreateInfo multisampleState = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+		multisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 		pipelineCreateInfo.pMultisampleState = &multisampleState;
 
 		VkPipelineRasterizationStateCreateInfo rasterizationState = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
 		rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
 		rasterizationState.cullMode = ri_vk_RICullModeToVK( cullMode );
 		rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-		rasterizationState.depthBiasEnable = ( cmd->depthBias.constant != 0 || cmd->depthBias.slope != 0 ) ? VK_TRUE : VK_FALSE;
-		rasterizationState.depthBiasConstantFactor = cmd->depthBias.constant;
-		rasterizationState.depthBiasClamp = cmd->depthBias.clamp;
-		rasterizationState.depthBiasSlopeFactor = cmd->depthBias.slope;
+		rasterizationState.depthBiasEnable = useDepthBias ? VK_TRUE : VK_FALSE;
+		rasterizationState.depthBiasConstantFactor = cmd->depthBiasConstant;
+		rasterizationState.depthBiasClamp = cmd->depthBiasClamp;
+		rasterizationState.depthBiasSlopeFactor = cmd->depthBiasSlope;
 		rasterizationState.lineWidth = 1.0f;
 		pipelineCreateInfo.pRasterizationState = &rasterizationState;
 
@@ -1147,13 +1121,9 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 		pipelineCreateInfo.pDepthStencilState = &depthStencilState;
 
 		VK_WrapResult( vkCreateGraphicsPipelines( rsh.device.vk.device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &pipeline->vk.handle ) );
-		//assert( ( attribFlags & program->vertexInputMask ) == program->vertexInputMask );
+		// assert( ( attribFlags & program->vertexInputMask ) == program->vertexInputMask );
 		if( vkSetDebugUtilsObjectNameEXT ) {
-			VkDebugUtilsObjectNameInfoEXT debugName = { 
-				VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, 
-				NULL, 
-				VK_OBJECT_TYPE_PIPELINE, 
-				(uint64_t)pipeline->vk.handle, program->name};
+			VkDebugUtilsObjectNameInfoEXT debugName = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, NULL, VK_OBJECT_TYPE_PIPELINE, (uint64_t)pipeline->vk.handle, program->name };
 			VK_WrapResult( vkSetDebugUtilsObjectNameEXT( rsh.device.vk.device, &debugName ) );
 		}
 
@@ -1162,11 +1132,11 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 		}
 	}
 #endif
-	
+
 	return pipeline;
 }
 
-//static NriDescriptorRangeDesc *__FindAndInsertNriDescriptorRange( const SpvReflectDescriptorBinding *binding, NriDescriptorRangeDesc **ranges)
+// static NriDescriptorRangeDesc *__FindAndInsertNriDescriptorRange( const SpvReflectDescriptorBinding *binding, NriDescriptorRangeDesc **ranges)
 //{
 //	assert(ranges);
 //	for( size_t i = 0; i < arrlen( *ranges ); i++ ) {
@@ -1178,7 +1148,7 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 //	const size_t insertIndex = arraddnindex( (*ranges), 1 );
 //	memset( &( *ranges )[insertIndex], 0, sizeof( NriDescriptorRangeDesc ) );
 //	return &( *ranges )[insertIndex];
-//}
+// }
 
 static const struct descriptor_reflection_s *__ReflectDescriptorSet( const struct glsl_program_s *program, const struct glsl_descriptor_handle_s *handle )
 {
@@ -1198,27 +1168,27 @@ bool RP_ProgramHasUniform( const struct glsl_program_s *program, const struct gl
 	return false;
 }
 
-void RP_BindPushConstant( struct RIDevice_s *device, struct frame_cmd_buffer_s *cmd, struct glsl_program_s *program, void *data, size_t len )
+void RP_BindPushConstant( struct RIDevice_s *device, struct FrameState_s *cmd, struct glsl_program_s *program, void *data, size_t len )
 {
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
+	{
 		assert( len <= program->vk.pushConstant.size );
 		vkCmdPushConstants( cmd->handle.vk.cmd, program->vk.pipelineLayout, program->vk.pushConstant.shaderStageFlags, 0, program->vk.pushConstant.size, data );
 	}
 #endif
 }
 
-void RP_BindDescriptorSets( struct RIDevice_s *device, struct frame_cmd_buffer_s *cmd, struct glsl_program_s *program, struct glsl_descriptor_binding_s *bindings, size_t numDescriptorData )
+void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd, struct glsl_program_s *program, struct glsl_descriptor_binding_s *bindings, size_t numDescriptorData )
 {
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
+	{
 		size_t numWrites = 0;
 		VkWriteDescriptorSet descriptorWrite[32]; // write 32 descriptors at once
-		for( uint32_t setIndex = 0; setIndex < DESCRIPTOR_SET_MAX; setIndex++ ) {
+		for( uint32_t setIndex = 0; setIndex < R_DESCRIPTOR_SET_MAX; setIndex++ ) {
 			hash_t hash = HASH_INITIAL_VALUE;
 			for( size_t i = 0; i < numDescriptorData; i++ ) {
 				const struct descriptor_reflection_s *refl = __ReflectDescriptorSet( program, &bindings[i].handle );
-				if( !refl || setIndex != refl->set || RI_IsEmptyDescriptor( device, &bindings[i].descriptor ) )
+				if( !refl || setIndex != refl->set || RI_IsEmptyDescriptor( &bindings[i].descriptor ) )
 					continue;
 				hash = hash_u64( hash, refl->hash );
 				hash = hash_u64( hash, bindings[i].descriptor.cookie );
@@ -1226,11 +1196,11 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct frame_cmd_buffer_s
 			if( hash == HASH_INITIAL_VALUE )
 				continue;
 			struct glsl_program_descriptor_s *info = &program->programDescriptors[setIndex];
-			struct descriptor_set_result_s result = ResolveDescriptorSet( &rsh.device, &info->alloc, cmd->frameCount, hash );
+			struct descriptor_set_result_s result = ResolveDescriptorSet( &rsh.device, &info->alloc, rsh.frameSetCount, hash );
 			if( !result.found ) {
 				for( size_t i = 0; i < numDescriptorData; i++ ) {
 					const struct descriptor_reflection_s *refl = __ReflectDescriptorSet( program, &bindings[i].handle );
-					if( !refl || setIndex != refl->set || RI_IsEmptyDescriptor( device, &bindings[i].descriptor ) )
+					if( !refl || setIndex != refl->set || RI_IsEmptyDescriptor( &bindings[i].descriptor ) )
 						continue;
 
 					VkWriteDescriptorSet *vkDesc = descriptorWrite + ( numWrites++ );
@@ -1239,7 +1209,7 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct frame_cmd_buffer_s
 					vkDesc->dstSet = result.set->vk.handle;
 					if( refl->isArray ) {
 						vkDesc->dstBinding = refl->baseRegisterIndex;
-						vkDesc->dstArrayElement =  bindings[i].registerOffset;
+						vkDesc->dstArrayElement = bindings[i].registerOffset;
 					} else {
 						vkDesc->dstBinding = refl->baseRegisterIndex + bindings[i].registerOffset;
 						vkDesc->dstArrayElement = 0;
@@ -1249,12 +1219,12 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct frame_cmd_buffer_s
 					switch( bindings[i].descriptor.vk.type ) {
 						case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 						case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-							vkDesc->pBufferInfo = &bindings[i].descriptor.vk.buffer.info;
+							vkDesc->pBufferInfo = &bindings[i].descriptor.vk.buffer;
 							break;
 						case VK_DESCRIPTOR_TYPE_SAMPLER:
 						case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 						case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-							vkDesc->pImageInfo = &bindings[i].descriptor.vk.image.info;
+							vkDesc->pImageInfo = &bindings[i].descriptor.vk.image;
 							break;
 						default:
 							assert( false ); // this is bad
@@ -1276,7 +1246,6 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct frame_cmd_buffer_s
 	}
 #endif
 }
-
 
 struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
 {
@@ -1319,11 +1288,11 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 		}
 	}
 
-	return RP_RegisterProgram(type, name, deformsKey, deforms,numDeforms, features );
+	return RP_RegisterProgram( type, name, deformsKey, deforms, numDeforms, features );
 }
 
-#if(DEVICE_IMPL_VULKAN)
-void _vk__descriptorSetAlloc( struct RIDevice_s *device, struct descriptor_set_allloc_s *alloc)
+#if ( DEVICE_IMPL_VULKAN )
+void _vk__descriptorSetAlloc( struct RIDevice_s *device, struct descriptor_set_allloc_s *alloc )
 {
 	assert( device->renderer->api == RI_DEVICE_API_VK );
 	struct glsl_program_descriptor_s *programDescriptor = Q_CONTAINER_OF( alloc, struct glsl_program_descriptor_s, alloc );
@@ -1350,12 +1319,7 @@ void _vk__descriptorSetAlloc( struct RIDevice_s *device, struct descriptor_set_a
 		descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, programDescriptor->accelerationStructureMaxNum * DESCRIPTOR_MAX_SIZE };
 	assert( descriptorPoolLen < Q_ARRAY_COUNT( descriptorPoolSize ) );
 	const VkDescriptorPoolCreateInfo info = {
-		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, 
-		NULL, 
-		VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT, 
-		DESCRIPTOR_MAX_SIZE, 
-		descriptorPoolLen, 
-		descriptorPoolSize };
+		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, NULL, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT, DESCRIPTOR_MAX_SIZE, descriptorPoolLen, descriptorPoolSize };
 	struct descriptor_pool_alloc_slot_s poolSlot = { 0 };
 	VK_WrapResult( vkCreateDescriptorPool( device->vk.device, &info, NULL, &poolSlot.vk.handle ) );
 	arrpush( alloc->pools, poolSlot );
@@ -1366,7 +1330,7 @@ void _vk__descriptorSetAlloc( struct RIDevice_s *device, struct descriptor_set_a
 		info.pNext = NULL;
 		info.descriptorPool = poolSlot.vk.handle;
 		info.descriptorSetCount = 1;
-		assert(programDescriptor->vk.setLayout != VK_NULL_HANDLE);
+		assert( programDescriptor->vk.setLayout != VK_NULL_HANDLE );
 		info.pSetLayouts = &programDescriptor->vk.setLayout;
 		VK_WrapResult( vkAllocateDescriptorSets( device->vk.device, &info, &slot->vk.handle ) );
 		arrpush( alloc->reservedSlots, slot );
@@ -1379,66 +1343,65 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 {
 	const uint64_t hashIndex = hash_u64( HASH_INITIAL_VALUE, features ) % GLSL_PROGRAMS_HASH_SIZE;
 	struct glsl_program_s *program = r_glslprograms + r_numglslprograms++;
-	struct QStr featuresStr = {0};
-	struct QStr fullName = {0};
+	struct QStr featuresStr = { 0 };
+	struct QStr fullName = { 0 };
 	qStrAppendSlice( &fullName, qCToStrRef( name ) );
 	for( feature_iter_t iter = __R_NextFeature( (feature_iter_t){ .it = glsl_programtypes_features[type], .bits = features } ); __R_IsValidFeatureIter( &iter ); iter = __R_NextFeature( iter ) ) {
-		qstrcatfmt(&featuresStr,"%s\n", iter.it->define);	
-		if( !qStrEmpty(fullName) ) {
-			qStrAppendSlice(&fullName, qCToStrRef(iter.it->suffix));	
+		qstrcatfmt( &featuresStr, "%s\n", iter.it->define );
+		if( !qStrEmpty( fullName ) ) {
+			qStrAppendSlice( &fullName, qCToStrRef( iter.it->suffix ) );
 		}
 	}
-	ri.Com_Printf( "Loading Shader: %.*s", fullName.len, fullName.buf);
+	ri.Com_Printf( "Loading Shader: %.*s", fullName.len, fullName.buf );
 
 	bool error = false;
 	struct {
 		glsl_program_stage_t stage;
 		struct QStr source;
 	} stages[] = {
-		{ .stage = GLSL_STAGE_VERTEX, .source = {0} },
-		{ .stage = GLSL_STAGE_FRAGMENT, .source = {0} },
+		{ .stage = GLSL_STAGE_VERTEX, .source = { 0 } },
+		{ .stage = GLSL_STAGE_FRAGMENT, .source = { 0 } },
 	};
 	{
-		struct QStr filePath = {0};
+		struct QStr filePath = { 0 };
 		for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
-			qStrAppendSlice(&stages[i].source, qCToStrRef("#version 440 \n"));
+			qStrAppendSlice( &stages[i].source, qCToStrRef( "#version 440 \n" ) );
 			switch( stages[i].stage ) {
 				case GLSL_STAGE_VERTEX:
-					qStrAppendSlice(&stages[i].source, qCToStrRef("#define VERTEX_SHADER\n"));
+					qStrAppendSlice( &stages[i].source, qCToStrRef( "#define VERTEX_SHADER\n" ) );
 					break;
 				case GLSL_STAGE_FRAGMENT:
-					qStrAppendSlice(&stages[i].source, qCToStrRef("#define FRAGMENT_SHADER\n"));
+					qStrAppendSlice( &stages[i].source, qCToStrRef( "#define FRAGMENT_SHADER\n" ) );
 					break;
 				default:
 					assert( 0 );
 					break;
 			}
-			qStrAppendSlice(&stages[i].source, qToStrRef(featuresStr));
-			qStrAppendSlice(&stages[i].source, qCToStrRef(QF_BUILTIN_GLSL_CONSTANTS ));
-			qStrAppendSlice(&stages[i].source, qCToStrRef(QF_GLSL_MATH ));
-			if(stages[i].stage == GLSL_STAGE_VERTEX) {
-				__appendGLSLDeformv(&stages[i].source, deforms, numDeforms );
+			qStrAppendSlice( &stages[i].source, qToStrRef( featuresStr ) );
+			qStrAppendSlice( &stages[i].source, qCToStrRef( QF_BUILTIN_GLSL_CONSTANTS ) );
+			qStrAppendSlice( &stages[i].source, qCToStrRef( QF_GLSL_MATH ) );
+			if( stages[i].stage == GLSL_STAGE_VERTEX ) {
+				__appendGLSLDeformv( &stages[i].source, deforms, numDeforms );
 			}
 
 			qStrClear( &filePath );
 			qstrcatfmt( &filePath, "glsl_nri/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
-			qStrSetNullTerm(&filePath);
+			qStrSetNullTerm( &filePath );
 			error = RF_AppendShaderFromFile( &stages[i].source, filePath.buf, type, features );
 			if( error ) {
 				break;
 			}
 		}
-		qStrFree(&filePath);
+		qStrFree( &filePath );
 	}
-	qStrFree(&featuresStr);
+	qStrFree( &featuresStr );
 
 	program->hasPushConstant = false;
 	program->vertexInputMask = 0;
 
 	for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
-		qStrSetNullTerm(&stages[i].source);
-		const glslang_input_t input = { 
-										.language = GLSLANG_SOURCE_GLSL,
+		qStrSetNullTerm( &stages[i].source );
+		const glslang_input_t input = { .language = GLSLANG_SOURCE_GLSL,
 										.stage = __RP_GLStageToSlang( stages[i].stage ),
 										.client = GLSLANG_CLIENT_VULKAN,
 										.client_version = GLSLANG_TARGET_VULKAN_1_2,
@@ -1454,23 +1417,23 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 		glslang_shader_t *shader = glslang_shader_create( &input );
 		glslang_program_t *glslang_program = NULL;
 		if( !glslang_shader_preprocess( shader, &input ) ) {
-			struct QStr errFilePath = {0};
+			struct QStr errFilePath = { 0 };
 			qstrcatfmt( &errFilePath, "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
 			const char *infoLog = glslang_shader_get_info_log( shader );
 			const char *debugLogs = glslang_shader_get_info_debug_log( shader );
 			Com_Printf( S_COLOR_YELLOW "GLSL preprocess failed %.*s\n", fullName.len, fullName.buf );
 			Com_Printf( S_COLOR_YELLOW "%s\n", infoLog );
 			Com_Printf( S_COLOR_YELLOW "%s\n", debugLogs );
-			Com_Printf( S_COLOR_YELLOW "dump shader: %.*s\n", errFilePath.len, errFilePath.buf);
+			Com_Printf( S_COLOR_YELLOW "dump shader: %.*s\n", errFilePath.len, errFilePath.buf );
 
-			struct QStr shaderErr  = {0};
+			struct QStr shaderErr = { 0 };
 			qstrcatfmt( &shaderErr, "%s\n", input.code );
 			qstrcatfmt( &shaderErr, "----------- Preprocessing Failed -----------\n" );
 			qstrcatfmt( &shaderErr, "%s\n", infoLog );
 			qstrcatfmt( &shaderErr, "%s\n", debugLogs );
-			__RP_writeTextToFile( errFilePath.buf, shaderErr.buf);
-			assert(false && "failed to preprocess shader");
-			
+			__RP_writeTextToFile( errFilePath.buf, shaderErr.buf );
+			assert( false && "failed to preprocess shader" );
+
 			qStrFree( &shaderErr );
 			qStrFree( &errFilePath );
 
@@ -1512,27 +1475,27 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 		glslang_program_add_shader( glslang_program, shader );
 
 		if( !glslang_program_link( glslang_program, GLSLANG_MSG_SPV_RULES_BIT | GLSLANG_MSG_VULKAN_RULES_BIT ) ) {
-			struct QStr errFilePath = {0};
-			qstrcatfmt( &errFilePath, "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ));
+			struct QStr errFilePath = { 0 };
+			qstrcatfmt( &errFilePath, "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
 
 			const char *infoLogs = glslang_program_get_info_log( glslang_program );
 			const char *debugLogs = glslang_program_get_info_debug_log( glslang_program );
 
-			Com_Printf( S_COLOR_YELLOW "GLSL linking failed %.*s\n", fullName.len, fullName.buf);
+			Com_Printf( S_COLOR_YELLOW "GLSL linking failed %.*s\n", fullName.len, fullName.buf );
 			Com_Printf( S_COLOR_YELLOW "%s\n", infoLogs );
 			Com_Printf( S_COLOR_YELLOW "%s\n", debugLogs );
-			Com_Printf( S_COLOR_YELLOW "dump shader: %.*s\n", errFilePath.len, errFilePath.buf);
+			Com_Printf( S_COLOR_YELLOW "dump shader: %.*s\n", errFilePath.len, errFilePath.buf );
 
-			struct QStr shaderErr  = {0};
+			struct QStr shaderErr = { 0 };
 			qstrcatfmt( &shaderErr, "%s\n", input.code );
 			qstrcatfmt( &shaderErr, "----------- Linking Failed -----------\n" );
 			qstrcatfmt( &shaderErr, "%s\n", infoLogs );
 			qstrcatfmt( &shaderErr, "%s\n", debugLogs );
-			__RP_writeTextToFile( errFilePath.buf, shaderErr.buf);
+			__RP_writeTextToFile( errFilePath.buf, shaderErr.buf );
 			qStrFree( &shaderErr );
 			qStrFree( &errFilePath );
 
-			assert(false && "failed to link shader");
+			assert( false && "failed to link shader" );
 			error = true;
 			goto shader_done;
 		}
@@ -1542,8 +1505,8 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 			Com_Printf( S_COLOR_BLUE "(%s) %s\b", name, spirv_messages );
 		}
 
-		//TODO: spv needs to be optimized for release
-		glslang_spv_options_t spvOptions = {0};
+		// TODO: spv needs to be optimized for release
+		glslang_spv_options_t spvOptions = { 0 };
 		spvOptions.disable_optimizer = false;
 		spvOptions.optimize_size = true;
 		spvOptions.validate = true;
@@ -1561,16 +1524,16 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 			glslang_program_delete( glslang_program );
 		}
 	}
-	SpvReflectDescriptorSet** reflectionDescSets = NULL;
+	SpvReflectDescriptorSet **reflectionDescSets = NULL;
 
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( rsh.device.renderer ) ) {
+	{
 		SpvReflectBlockVariable *reflectionBlockVariables[1] = { 0 };
 		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-		VkDescriptorSetLayoutBinding *descriptorSetLayoutBindings[DESCRIPTOR_SET_MAX] = {};
-		VkDescriptorBindingFlags* descriptorBindingFlags[DESCRIPTOR_SET_MAX] = {};
+		VkDescriptorSetLayoutBinding *descriptorSetLayoutBindings[R_DESCRIPTOR_SET_MAX] = {};
+		VkDescriptorBindingFlags *descriptorBindingFlags[R_DESCRIPTOR_SET_MAX] = {};
 
-		VkDescriptorSetLayout setLayouts[DESCRIPTOR_SET_MAX] = { 0 };
+		VkDescriptorSetLayout setLayouts[R_DESCRIPTOR_SET_MAX] = { 0 };
 		VkPushConstantRange pushConstantRange = { 0 };
 		for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
 			SpvReflectShaderModule module = { 0 };
@@ -1629,7 +1592,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 					programDesc->alloc.framesInFlight = NUMBER_FRAMES_FLIGHT;
 					for( size_t i_binding = 0; i_binding < reflection->binding_count; i_binding++ ) {
 						const SpvReflectDescriptorBinding *reflectionBinding = reflection->bindings[i_binding];
-						assert( reflection->set < DESCRIPTOR_SET_MAX );
+						assert( reflection->set < R_DESCRIPTOR_SET_MAX );
 						assert( reflectionBinding->array.dims_count <= 1 ); // not going to handle multi-dim arrays
 						struct descriptor_reflection_s reflc = { 0 };
 						reflc.hash = Create_DescriptorHandle( reflectionBinding->name ).hash;
@@ -1639,7 +1602,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 						reflc.dimCount = max( 1, reflectionBinding->count );
 
 						VkDescriptorSetLayoutBinding *layoutBinding = NULL;
-						VkDescriptorBindingFlags* bindingFlags = NULL;
+						VkDescriptorBindingFlags *bindingFlags = NULL;
 						for( size_t i = 0; i < arrlen( descriptorSetLayoutBindings[reflection->set] ); i++ ) {
 							if( descriptorSetLayoutBindings[reflection->set][i].binding == reflectionBinding->binding ) {
 								layoutBinding = descriptorSetLayoutBindings[reflection->set] + i;
@@ -1651,13 +1614,13 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 							VkDescriptorSetLayoutBinding bindings = {};
 							VkDescriptorBindingFlags flags = 0;
 							arrpush( descriptorSetLayoutBindings[reflection->set], bindings );
-							arrpush( descriptorBindingFlags[reflection->set], flags);
+							arrpush( descriptorBindingFlags[reflection->set], flags );
 							layoutBinding = descriptorSetLayoutBindings[reflection->set] + arrlen( descriptorSetLayoutBindings[reflection->set] ) - 1;
 							bindingFlags = descriptorBindingFlags[reflection->set] + arrlen( descriptorBindingFlags[reflection->set] ) - 1;
 						}
-						
-						if(reflc.isArray) {
-							(*bindingFlags) = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT; 
+
+						if( reflc.isArray ) {
+							( *bindingFlags ) = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
 						}
 
 						const uint32_t bindingCount = max( reflectionBinding->count, 1 );
@@ -1719,7 +1682,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 		}
 
 		uint32_t numLayoutCount = 0;
-		for( size_t bindingIdx = 0; bindingIdx < DESCRIPTOR_SET_MAX; bindingIdx++ ) {
+		for( size_t bindingIdx = 0; bindingIdx < R_DESCRIPTOR_SET_MAX; bindingIdx++ ) {
 			if( descriptorSetLayoutBindings[bindingIdx] ) {
 				numLayoutCount = bindingIdx + 1;
 			}
@@ -1728,7 +1691,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 		for( size_t bindingIdx = 0; bindingIdx < numLayoutCount; bindingIdx++ ) {
 			if( descriptorSetLayoutBindings[bindingIdx] ) {
 				VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO };
-				bindingFlagsInfo.bindingCount = arrlen(descriptorBindingFlags[bindingIdx]);
+				bindingFlagsInfo.bindingCount = arrlen( descriptorBindingFlags[bindingIdx] );
 				bindingFlagsInfo.pBindingFlags = descriptorBindingFlags[bindingIdx];
 
 				VkDescriptorSetLayoutCreateInfo createSetLayoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
@@ -1756,46 +1719,45 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 
 	program->type = type;
 	program->features = features;
-	qStrSetNullTerm(&fullName);
+	qStrSetNullTerm( &fullName );
 	program->name = R_CopyString( fullName.buf );
 	program->deformsKey = R_CopyString( deformsKey ? deformsKey : "" );
 
-//	if(rootConstantDesc.size > 0) {
-//		pipelineLayoutDesc.rootConstantNum = 1;
-//		pipelineLayoutDesc.rootConstants = &rootConstantDesc;
-//	}
-//
- // pipelineLayoutDesc.shaderStages = NriStageBits_GRAPHICS_SHADERS;
- // pipelineLayoutDesc.descriptorSetNum = program->numSets;
- // for( size_t i = 0; i < program->numSets; i++ ) {
- // 	//			struct ProgramDescriptorInfo* info = &program->descriptorInfo[i];
- // 	//			info->setIndex = pipelineLayoutDesc.descriptorSetNum;
- // 	descriptorSetDesc[i].registerSpace = program->descriptorSetInfo[i].registerSpace;
- // 	const uint32_t setIndex = program->descriptorSetInfo[i].setIndex;
- // 	descriptorSetDesc[i].rangeNum = arrlen( descRangeDescs[setIndex] );
- // 	descriptorSetDesc[i].ranges = descRangeDescs[setIndex];
- // 	//	ri.Com_Printf( "Using Descriptor Set[%d]", i );
- // 	// for( size_t l = 0; l < arrlen( descRangeDescs[i] ); l++ ) {
- // 	// 	ri.Com_Printf( "[%lu]    Register - %lu ", l, descRangeDescs[i][l].baseRegisterIndex);
- // 	// 	ri.Com_Printf( "[%lu]      descriptorNum: %lu ", l, descRangeDescs[i][l].descriptorNum);
- // 	// 	ri.Com_Printf( "[%lu]      DescriptorType: %s ", l, NriDescriptorTypeToString[descRangeDescs[i][l].descriptorType]);
- // 	// 	ri.Com_Printf( "[%lu]      Vertex: %s", l, (descRangeDescs[i][l].shaderStages & NriStageBits_VERTEX_SHADER) ? "true" : "false");
- // 	// 	ri.Com_Printf( "[%lu]      Fragment: %s ", l, (descRangeDescs[i][l].shaderStages & NriStageBits_FRAGMENT_SHADER) ? "true": "false");
- // 	// }
- // }
- // pipelineLayoutDesc.ignoreGlobalSPIRVOffsets = true;
- // pipelineLayoutDesc.descriptorSets = descriptorSetDesc;
- // NRI_ABORT_ON_FAILURE(rsh.nri.coreI.CreatePipelineLayout(rsh.nri.device, &pipelineLayoutDesc, &program->layout));
+	//	if(rootConstantDesc.size > 0) {
+	//		pipelineLayoutDesc.rootConstantNum = 1;
+	//		pipelineLayoutDesc.rootConstants = &rootConstantDesc;
+	//	}
+	//
+	// pipelineLayoutDesc.shaderStages = NriStageBits_GRAPHICS_SHADERS;
+	// pipelineLayoutDesc.descriptorSetNum = program->numSets;
+	// for( size_t i = 0; i < program->numSets; i++ ) {
+	// 	//			struct ProgramDescriptorInfo* info = &program->descriptorInfo[i];
+	// 	//			info->setIndex = pipelineLayoutDesc.descriptorSetNum;
+	// 	descriptorSetDesc[i].registerSpace = program->descriptorSetInfo[i].registerSpace;
+	// 	const uint32_t setIndex = program->descriptorSetInfo[i].setIndex;
+	// 	descriptorSetDesc[i].rangeNum = arrlen( descRangeDescs[setIndex] );
+	// 	descriptorSetDesc[i].ranges = descRangeDescs[setIndex];
+	// 	//	ri.Com_Printf( "Using Descriptor Set[%d]", i );
+	// 	// for( size_t l = 0; l < arrlen( descRangeDescs[i] ); l++ ) {
+	// 	// 	ri.Com_Printf( "[%lu]    Register - %lu ", l, descRangeDescs[i][l].baseRegisterIndex);
+	// 	// 	ri.Com_Printf( "[%lu]      descriptorNum: %lu ", l, descRangeDescs[i][l].descriptorNum);
+	// 	// 	ri.Com_Printf( "[%lu]      DescriptorType: %s ", l, NriDescriptorTypeToString[descRangeDescs[i][l].descriptorType]);
+	// 	// 	ri.Com_Printf( "[%lu]      Vertex: %s", l, (descRangeDescs[i][l].shaderStages & NriStageBits_VERTEX_SHADER) ? "true" : "false");
+	// 	// 	ri.Com_Printf( "[%lu]      Fragment: %s ", l, (descRangeDescs[i][l].shaderStages & NriStageBits_FRAGMENT_SHADER) ? "true": "false");
+	// 	// }
+	// }
+	// pipelineLayoutDesc.ignoreGlobalSPIRVOffsets = true;
+	// pipelineLayoutDesc.descriptorSets = descriptorSetDesc;
+	// NRI_ABORT_ON_FAILURE(rsh.nri.coreI.CreatePipelineLayout(rsh.nri.device, &pipelineLayoutDesc, &program->layout));
 
-	//for( size_t i = 0; i < DESCRIPTOR_SET_MAX; i++ ) {
+	// for( size_t i = 0; i < DESCRIPTOR_SET_MAX; i++ ) {
 	//	arrfree( descRangeDescs[i] );
-	//}
+	// }
 
 	qStrFree( &fullName );
 	for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
 		qStrFree( &stages[i].source );
 	}
-
 
 	if( !program->hash_next ) {
 		program->hash_next = r_glslprograms_hash[type][hashIndex];
@@ -1821,4 +1783,3 @@ void RP_Shutdown( void )
 
 	r_numglslprograms = 0;
 }
-

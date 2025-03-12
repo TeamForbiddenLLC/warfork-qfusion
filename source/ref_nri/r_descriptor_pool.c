@@ -132,40 +132,6 @@ struct descriptor_set_result_s ResolveDescriptorSet( struct RIDevice_s *device, 
 
 	if( arrlen( alloc->reservedSlots ) == 0 ) {
 		alloc->descriptorAllocator(device, alloc);
-		//GPU_VULKAN_BLOCK( device->renderer, ( {
-		//	VkDescriptorPoolSize descriptorPoolSize[16] = {};
-		//	size_t descriptorPoolLen = 0;
-		//	descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){ VK_DESCRIPTOR_TYPE_SAMPLER, alloc->config.samplerMaxNum * DESCRIPTOR_MAX_SIZE };
-		//	descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, alloc->config.constantBufferMaxNum * DESCRIPTOR_MAX_SIZE };
-		//	descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, alloc->config.dynamicConstantBufferMaxNum * DESCRIPTOR_MAX_SIZE };
-		//	descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, alloc->config.textureMaxNum * DESCRIPTOR_MAX_SIZE };
-		//	descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, alloc->config.storageTextureMaxNum * DESCRIPTOR_MAX_SIZE };
-		//	descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, alloc->config.bufferMaxNum * DESCRIPTOR_MAX_SIZE };
-		//	descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, alloc->config.storageBufferMaxNum * DESCRIPTOR_MAX_SIZE };
-		//	descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){
-		//		VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, alloc->config.structuredBufferMaxNum * DESCRIPTOR_MAX_SIZE + alloc->config.storageStructuredBufferMaxNum * DESCRIPTOR_MAX_SIZE };
-		//	descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, alloc->config.accelerationStructureMaxNum * DESCRIPTOR_MAX_SIZE };
-		//	assert( descriptorPoolLen < Q_ARRAY_COUNT( descriptorPoolSize ) );
-		//	const VkDescriptorPoolCreateInfo info = {
-		//		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, NULL, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT, DESCRIPTOR_MAX_SIZE, descriptorPoolLen, descriptorPoolSize };
-		//	struct descriptor_pool_alloc_slot_s poolSlot = { 0 };
-		//	VK_WrapResult( vkCreateDescriptorPool( device->vk.device, &info, NULL, &poolSlot.vk.handle ) );
-
-		//	 NriDescriptorSet *sets[DESCRIPTOR_MAX_SIZE];
-		//	// backend->coreI.AllocateDescriptorSets( descriptorPool, layout, setIndex, sets, DESCRIPTOR_MAX_SIZE, 0 );
-		//	arrpush( alloc->pools, poolSlot);
-
-		//	for( size_t i = 0; i < DESCRIPTOR_MAX_SIZE; i++ ) {
-		//		struct descriptor_set_slot_s *slot = ReserveDescriptorSetSlot( alloc );
-    //		VkDescriptorSetAllocateInfo info = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-    //		info.pNext =  NULL;
-    //		info.descriptorPool = poolSlot.vk.handle;
-    //		info.descriptorSetCount = 1;
-    //		info.pSetLayouts = &alloc->config.vk.setLayout;
-    //		VK_WrapResult(vkAllocateDescriptorSets(device->vk.device, &info, &slot->vk.handle));
-		//		arrpush( alloc->reservedSlots, slot );
-		//	}
-		//}));
 		assert(arrlen(alloc->reservedSlots) > 0); // we didn't reserve any slots ...
 	}
 	struct descriptor_set_slot_s *slot = arrpop( alloc->reservedSlots );
@@ -183,18 +149,18 @@ struct descriptor_set_result_s ResolveDescriptorSet( struct RIDevice_s *device, 
 
 void FreeDescriptorSetAlloc( struct RIDevice_s *device, struct descriptor_set_allloc_s *alloc )
 {
-	GPU_VULKAN_BLOCK( ( device->renderer ), ( {
-						  for( size_t i = 0; i < arrlen( alloc->blocks ); i++ ) {
-							  // TODO: do i need to free indivudal descriptor sets or can i just free the entire pool
-							  // for(size_t blockIdx = 0; blockIdx < RESERVE_BLOCK_SIZE; blockIdx++) {
-							  //	vkFreeDescriptorSets(device->vk.device, alloc->blocks[i]->vk.pool, )
-							  //}
-							  free( alloc->blocks[i] );
-						  }
-						  arrfree( alloc->blocks );
-						  for( size_t i = 0; i < arrlen( alloc->pools ); i++ ) {
-							  vkDestroyDescriptorPool( device->vk.device, alloc->pools[i].vk.handle, NULL );
-						  }
-						  arrfree( alloc->pools );
-					  } ) );
+#if ( DEVICE_IMPL_VULKAN )
+	for( size_t i = 0; i < arrlen( alloc->blocks ); i++ ) {
+		// TODO: do i need to free indivudal descriptor sets or can i just free the entire pool
+		// for(size_t blockIdx = 0; blockIdx < RESERVE_BLOCK_SIZE; blockIdx++) {
+		//	vkFreeDescriptorSets(device->vk.device, alloc->blocks[i]->vk.pool, )
+		//}
+		free( alloc->blocks[i] );
+	}
+	arrfree( alloc->blocks );
+	for( size_t i = 0; i < arrlen( alloc->pools ); i++ ) {
+		vkDestroyDescriptorPool( device->vk.device, alloc->pools[i].vk.handle, NULL );
+	}
+	arrfree( alloc->pools );
+#endif
 }

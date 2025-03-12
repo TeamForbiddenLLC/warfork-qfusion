@@ -3,18 +3,17 @@
 
 #include "ri_types.h"
 
-struct frame_cmd_buffer_s;
+struct FrameState_s;
 
 struct RI_PogoBuffer {
 	struct RIDescriptor_s pogoAttachment[2];
 	uint16_t attachmentIndex;
 };
 
+VkImageMemoryBarrier2 VK_RI_PogoShaderMemoryBarrier2( VkImage image, bool initial );
+VkImageMemoryBarrier2 VK_RI_PogoAttachmentMemoryBarrier2( VkImage image, bool initial );
 
-VkImageMemoryBarrier2 VK_RI_PogoShaderMemoryBarrier2(VkImage image,bool initial);
-VkImageMemoryBarrier2 VK_RI_PogoAttachmentMemoryBarrier2(VkImage image,bool initial);
-
-void RI_PogoBufferToggle( struct RIDevice_s *device, struct RI_PogoBuffer *pogo, struct RICmdHandle_s *handle );
+void RI_PogoBufferToggle( struct RIDevice_s *device, struct RI_PogoBuffer *pogo, struct RICmd_s *handle );
 
 static inline struct RIDescriptor_s *RI_PogoBufferAttachment( struct RI_PogoBuffer *pogo )
 {

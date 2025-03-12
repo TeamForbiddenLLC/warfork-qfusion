@@ -78,8 +78,8 @@ typedef struct
 	int scissor[4];
 
 	const struct vbo_layout_s* layout;
-	struct RIBufferHandle_s vertexBuffer;
-	struct RIBufferHandle_s indexBuffer;
+	struct RIBuffer_s vertexBuffer;
+	struct RIBuffer_s indexBuffer;
 	uint32_t bufferVertEleOffset;
 	uint32_t bufferIndexEleOffset;
 	unsigned int numVerts;

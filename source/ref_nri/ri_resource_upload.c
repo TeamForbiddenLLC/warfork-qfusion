@@ -11,7 +11,7 @@ static void __BeginNewCommandSet( struct RIDevice_s *device, struct RIResourceUp
 	res->remaningSpace += res->reservedSpacePerSet[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS];
 	res->reservedSpacePerSet[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS] = 0;
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
+	{
 		if( res->syncIndex >= RI_RESOURCE_NUM_COMMAND_SETS ) {
 			for( size_t i = 0; i < arrlen( res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].temporary ); i++ ) {
 				vkDestroyBuffer( device->vk.device, res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].temporary[i].buffer, NULL );
@@ -33,7 +33,7 @@ void RI_InitResourceUploader( struct RIDevice_s *device, struct RIResourceUpload
 {
 	assert(resource->copyQueue == NULL);
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
+	{
 		resource->copyQueue = &device->queues[RI_QUEUE_COPY];
 		{
 			VkSemaphoreTypeCreateInfo semaphoreTypeCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO };
@@ -96,7 +96,7 @@ static bool __R_AllocFromStageBuffer( struct RIDevice_s *dev, struct RIResourceU
 	}
 
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( dev->renderer ) ) {
+	{
 		req->vk.alloc = res->vk.stageAlloc;
 		req->cpuMapping = res->vk.pMappedData;
 		req->byteOffset = res->tailOffset;
@@ -117,7 +117,7 @@ static bool __ResolveStageBuffer( struct RIDevice_s *dev, struct RIResourceUploa
 		return true;
 	}
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( dev->renderer ) ) {
+	{
 		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
 		struct RI_VK_TempBuffers tempBuffer;
 		VkBufferCreateInfo stageBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
@@ -149,7 +149,7 @@ void RI_ResourceBeginCopyBuffer( struct RIDevice_s *device, struct RIResourceUpl
 	trans->data = (uint8_t *)trans->req.cpuMapping + trans->req.byteOffset;
 }
 
-static inline bool __ResourceInTransitionBuffer( struct RIDevice_s *device, struct RIResourceUploader_s *res, struct RIBufferHandle_s target )
+static inline bool __ResourceInTransitionBuffer( struct RIDevice_s *device, struct RIResourceUploader_s *res, struct RIBuffer_s target )
 {
 	for( size_t i = 0; i < arrlen( res->postBufferBarriers ); i++ ) {
 		if( res->postBufferBarriers[i].buffer == target.vk.buffer ) {
@@ -161,7 +161,7 @@ static inline bool __ResourceInTransitionBuffer( struct RIDevice_s *device, stru
 
 void RI_ResourceEndCopyBuffer( struct RIDevice_s *device, struct RIResourceUploader_s *res, struct RIResourceBufferTransaction_s *trans ) {
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
+	{
 		if( !__ResourceInTransitionBuffer(device, res, trans->target)) {
 			VkBufferMemoryBarrier2 bufferBarriers[1] = {};
 			bufferBarriers[0].sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
@@ -200,7 +200,7 @@ void RI_ResourceEndCopyBuffer( struct RIDevice_s *device, struct RIResourceUploa
 void RI_InsertTransitionBarriers( struct RIDevice_s *device, struct RIResourceUploader_s *res, struct RICmd_s *cmd )
 {
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
+	{
 		size_t postBufferIdx = 0;
 		size_t numBufferBarriers = 0;
 		VkBufferMemoryBarrier2 bufferBarriers[32] = {};
@@ -264,11 +264,8 @@ void RI_InsertTransitionBarriers( struct RIDevice_s *device, struct RIResourceUp
 
 void RI_ResourceSubmit( struct RIDevice_s *device, struct RIResourceUploader_s *res )
 {
-
-
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
-		
+	{
 		vkEndCommandBuffer( res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].cmd );
 
 		VkSemaphoreSubmitInfo signalSem = { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
@@ -326,8 +323,7 @@ void RI_ResourceEndCopyTexture( struct RIDevice_s *device, struct RIResourceUplo
 {
 
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
-	
+	{
 		bool foundInTransition = false;
 		for(size_t i = 0; i < arrlen(res->postImageBarriers); i++) {
 			if(res->postImageBarriers[i].image == trans->target.vk.image) {

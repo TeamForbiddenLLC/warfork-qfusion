@@ -25,7 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ri_types.h"
 #include "stb_ds.h"
 #include "ri_conversion.h"
-static void R_RenderDebugBounds(  struct frame_cmd_buffer_s* frame);
+static void R_RenderDebugBounds(  struct FrameState_s* frame);
 
 /*
 * R_ClearScene
@@ -210,9 +210,9 @@ void R_AddLightStyleToScene( int style, float r, float g, float b )
 	ls->rgb[2] = max( 0, b );
 }
 
-typedef void (*post_processing_t)(const refdef_t* ref, struct frame_cmd_buffer_s* cmd, struct RIDescriptor_s* src); 
+typedef void (*post_processing_t)(const refdef_t* ref, struct FrameState_s* cmd, struct RIDescriptor_s* src); 
 
-void __FXAA_PostProcessing(const refdef_t* ref,struct frame_cmd_buffer_s* cmd, struct RIDescriptor_s* src) {
+void __FXAA_PostProcessing(const refdef_t* ref,struct FrameState_s* cmd, struct RIDescriptor_s* src) {
 	r_glslfeat_t programFeatures = 0;
 	size_t descriptorIndex = 0;
 	struct glsl_descriptor_binding_s descriptors[8] = { 0 };
@@ -245,7 +245,7 @@ void __FXAA_PostProcessing(const refdef_t* ref,struct frame_cmd_buffer_s* cmd, s
 
 }
 
-void __ColorCorrection_PostProcessing(const refdef_t* ref,struct frame_cmd_buffer_s* cmd, struct RIDescriptor_s* src) {
+void __ColorCorrection_PostProcessing(const refdef_t* ref,struct FrameState_s* cmd, struct RIDescriptor_s* src) {
 	r_glslfeat_t programFeatures = 0;
 	size_t descriptorIndex = 0;
 	struct glsl_descriptor_binding_s descriptors[8] = { 0 };
@@ -343,7 +343,7 @@ void R_RenderScene(const refdef_t *fd )
 	VectorCopy( fd->vieworg, rn.lodOrigin );
 
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( &rsh.renderer ) ) {
+	{
 		if( numPostProcessing > 0 ) {
 			vkCmdEndRendering( rsh.frame.handle.vk.cmd ); // end back buffer and swap to pogo attachment
 			VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
@@ -369,6 +369,8 @@ void R_RenderScene(const refdef_t *fd )
 	}
 #endif
 
+	const struct RIViewport_s previousViewport = rsh.frame.viewport;
+	const struct RIRect_s prevScissor = rsh.frame.scissor;
 	FR_CmdSetViewport(&rsh.frame, (struct RIViewport_s) {
 		.x = fd->x,
 		.y = fd->y,
@@ -400,7 +402,7 @@ void R_RenderScene(const refdef_t *fd )
 
 	if( numPostProcessing > 0 ) {
 #if ( DEVICE_IMPL_VULKAN )
-		if( GPU_VULKAN_SELECTED( &rsh.renderer ) ) {
+		{
 			vkCmdEndRendering( rsh.frame.handle.vk.cmd ); // end back buffer and swap to pogo attachment
 
 			for( size_t i = 0; i < numPostProcessing - 1; i++ ) {
@@ -459,7 +461,8 @@ void R_RenderScene(const refdef_t *fd )
 		}
 #endif
 	}
-	// FR_CmdResetAttachmentToBackbuffer( frame );
+	FR_CmdSetViewport(&rsh.frame, previousViewport);
+	FR_CmdSetScissor(&rsh.frame, prevScissor);
 
 	R_Set2DMode( &rsh.frame, true );
 }
@@ -473,7 +476,7 @@ void R_AddDebugBounds( const vec3_t mins, const vec3_t maxs, const byte_vec4_t c
 	arrput( rsc.debugBounds, bound );
 }
 
-static void R_RenderDebugBounds( struct frame_cmd_buffer_s *frame )
+static void R_RenderDebugBounds( struct FrameState_s *frame )
 {
 	if( arrlen( rsc.debugBounds ) == 0 )
 		return;

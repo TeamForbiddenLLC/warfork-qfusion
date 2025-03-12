@@ -53,7 +53,7 @@ void R_InitCoronas( void )
 /*
 * R_BatchCoronaSurf
 */
-void R_BatchCoronaSurf(struct frame_cmd_buffer_s* cmd,  const entity_t *e, const shader_t *shader, 
+void R_BatchCoronaSurf(struct FrameState_s* cmd,  const entity_t *e, const shader_t *shader, 
 	const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceType_t *drawSurf )
 {
 	int i;

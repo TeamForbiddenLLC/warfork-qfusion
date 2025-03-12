@@ -2,7 +2,7 @@
 #ifndef RI_RESOURCE_UPLOAD_H
 #define RI_RESOURCE_UPLOAD_H
 
-#define RI_RESOURCE_NUM_COMMAND_SETS 4 
+#define RI_RESOURCE_NUM_COMMAND_SETS 5 
 #define RI_RESOURCE_STAGE_SIZE (8 * MB_TO_BYTE)
 
 #include "ri_types.h"
@@ -64,7 +64,7 @@ struct RIResourceUploader_s {
 void RI_InitResourceUploader( struct RIDevice_s *device, struct RIResourceUploader_s *resource );
 
 struct RIResourceBufferTransaction_s {
-	struct RIBufferHandle_s target;
+	struct RIBuffer_s target;
 
 	struct RIBarrierBufferHandle_s srcBarrier;
 	struct RIBarrierBufferHandle_s postBarrier;
@@ -81,7 +81,7 @@ void RI_ResourceBeginCopyBuffer( struct RIDevice_s *device, struct RIResourceUpl
 void RI_ResourceEndCopyBuffer( struct RIDevice_s *device, struct RIResourceUploader_s *res, struct RIResourceBufferTransaction_s *trans );
 
 struct RIResourceTextureTransaction_s {
-	struct RITextureHandle_s target;
+	struct RITexture_s target;
 
 	struct RIBarrierImageHandle_s srcBarrier;
 	struct RIBarrierImageHandle_s postBarrier;

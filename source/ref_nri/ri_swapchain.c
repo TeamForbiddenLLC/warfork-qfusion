@@ -41,7 +41,7 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 	swapchain->imageCount = init->imageCount;
 	VkResult result = VK_SUCCESS;
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( &dev->renderer ) ) {
+	{
 		switch( init->windowHandle->type ) {
 #ifdef VK_USE_PLATFORM_XLIB_KHR
 			case RI_WINDOW_X11:
@@ -187,6 +187,9 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 		vkGetSwapchainImagesKHR(dev->vk.device, swapchain->vk.swapchain, &imageNum, NULL);
 		assert(imageNum <= RI_MAX_SWAPCHAIN_IMAGES);
 		vkGetSwapchainImagesKHR(dev->vk.device, swapchain->vk.swapchain, &imageNum, swapchain->vk.images);
+		for(size_t i = 0; i < imageNum; i++) {
+			swapchain->textures[i].vk.image = swapchain->vk.images[i];
+		}
 		swapchain->imageCount = imageNum;
 		swapchain->format = VKToRIFormat(selectedSurf->format);
 
@@ -211,7 +214,7 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 uint32_t RISwapchainAcquireNextTexture( struct RIDevice_s *dev, struct RISwapchain_s *swapchain )
 {
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( dev->renderer ) ) {
+	{
 		VkSemaphore imageAcquiredSemaphore = swapchain->vk.imageAcquireSem[swapchain->vk.frameIndex];
 		VK_WrapResult( vkAcquireNextImageKHR( dev->vk.device, swapchain->vk.swapchain, 5000 * 1000000ull, imageAcquiredSemaphore, VK_NULL_HANDLE, &swapchain->vk.textureIndex ) );
 		return swapchain->vk.textureIndex;
@@ -222,7 +225,7 @@ uint32_t RISwapchainAcquireNextTexture( struct RIDevice_s *dev, struct RISwapcha
 
 void RISwapchainPresent(struct RIDevice_s* dev, struct RISwapchain_s* swapchain) {
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( dev->renderer ) ) {
+	{
 		VkSemaphore imageAcquiredSemaphore = swapchain->vk.imageAcquireSem[swapchain->vk.frameIndex];
 		VkSemaphore renderingFinishedSemaphore = swapchain->vk.finishSem[swapchain->vk.frameIndex];
 		{ // Wait & Signal

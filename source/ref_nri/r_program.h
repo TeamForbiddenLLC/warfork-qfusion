@@ -31,7 +31,6 @@ typedef uint64_t r_glslfeat_t;
 
 #include "r_descriptor_pool.h"
 #include "ri_types.h"
-
 #include "qhash.h"
 
 #define GLSL_BIT(x)							(1ULL << (x))
@@ -269,7 +268,7 @@ struct glsl_program_s {
 		};
 	} pipelines[PIPELINE_LAYOUT_HASH_SIZE];
 
-	struct glsl_program_descriptor_s programDescriptors[DESCRIPTOR_SET_MAX];
+	struct glsl_program_descriptor_s programDescriptors[R_DESCRIPTOR_SET_MAX];
 
 	size_t numDescriptorReflections;
 	struct descriptor_reflection_s {
@@ -278,7 +277,6 @@ struct glsl_program_s {
 		uint16_t dimCount : 8;
 		uint16_t set : 3;
 		uint16_t baseRegisterIndex;
-		//uint16_t rangeOffset;
 	} descriptorReflection[PIPELINE_REFLECTION_HASH_SIZE];
 };
 
@@ -301,8 +299,8 @@ struct glsl_descriptor_binding_s {
 };
 
 // we only support on push constant set
-void RP_BindPushConstant(struct RIDevice_s *device, struct frame_cmd_buffer_s *cmd, struct glsl_program_s *program, void* data, size_t len);
-void RP_BindDescriptorSets( struct RIDevice_s *device, struct frame_cmd_buffer_s *cmd, struct glsl_program_s *program, struct glsl_descriptor_binding_s *data, size_t numDescriptorData );
+void RP_BindPushConstant(struct RIDevice_s *device, struct FrameState_s *cmd, struct glsl_program_s *program, void* data, size_t len);
+void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd, struct glsl_program_s *program, struct glsl_descriptor_binding_s *data, size_t numDescriptorData );
 
 void RP_Init( void );
 void RP_Shutdown( void );
@@ -312,7 +310,7 @@ void RP_StorePrecacheList( void );
 void RP_ProgramList_f( void );
 
 struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_desc_s* cmd);
-void RP_BindPipeline( struct frame_cmd_buffer_s *cmd, struct pipeline_hash_s *pipeline );
+void RP_BindPipeline( struct FrameState_s *cmd, struct pipeline_hash_s *pipeline );
 
 struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features );
 struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features );

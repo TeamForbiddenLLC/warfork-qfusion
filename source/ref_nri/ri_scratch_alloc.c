@@ -5,7 +5,7 @@ struct RIBlockMem_s RIUniformScratchAllocHandler( struct RIDevice_s *device, str
 {
 	struct RIBlockMem_s mem = {};
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( renderer ) ) {
+	{
 		VkBufferCreateInfo stageBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 		stageBufferCreateInfo.pNext = NULL;
 		stageBufferCreateInfo.flags = 0;
@@ -49,7 +49,7 @@ void InitRIScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s *poo
 static inline bool __isPoolSlotEmpty( struct RIDevice_s *device, struct RIBlockMem_s *block )
 {
 #if ( DEVICE_IMPL_VULKAN )
-	if( GPU_VULKAN_SELECTED( device->renderer ) ) {
+	{
 		return block->vk.buffer == NULL;
 	}
 #endif
@@ -57,30 +57,30 @@ static inline bool __isPoolSlotEmpty( struct RIDevice_s *device, struct RIBlockM
 }
 
 static inline void __FreeRIBlockMem(struct RIDevice_s *device,struct RIBlockMem_s *block ) {
-	GPU_VULKAN_BLOCK( device->renderer, ( {
-	  if(block->vk.buffer) {
-		  vkDestroyBuffer( device->vk.device, block->vk.buffer, NULL);
-	  }
-	  if(block->vk.allocator) {
-	    vmaFreeMemory(device->vk.vmaAllocator, block->vk.allocator);
-	  }
-	} ) );
+#if ( DEVICE_IMPL_VULKAN )
+	if( block->vk.buffer ) {
+		vkDestroyBuffer( device->vk.device, block->vk.buffer, NULL );
+	}
+	if( block->vk.allocator ) {
+		vmaFreeMemory( device->vk.vmaAllocator, block->vk.allocator );
+	}
+#endif
 }
 
 void FreeRIScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s *pool ) {
-	GPU_VULKAN_BLOCK( device->renderer, ( {
-						  if( pool->current.vk.buffer ) {
-							  __FreeRIBlockMem( device, &pool->current );
-						  }
+#if ( DEVICE_IMPL_VULKAN )
+	if( pool->current.vk.buffer ) {
+		__FreeRIBlockMem( device, &pool->current );
+	}
 
-						  for( size_t i = 0; i < arrlen( pool->recycle ); i++ ) {
-							  __FreeRIBlockMem( device, &pool->recycle[i] );
-						  }
+	for( size_t i = 0; i < arrlen( pool->recycle ); i++ ) {
+		__FreeRIBlockMem( device, &pool->recycle[i] );
+	}
 
-						  for( size_t i = 0; i < arrlen( pool->pool ); i++ ) {
-							  __FreeRIBlockMem( device, &pool->pool[i] );
-						  }
-					  } ) );
+	for( size_t i = 0; i < arrlen( pool->pool ); i++ ) {
+		__FreeRIBlockMem( device, &pool->pool[i] );
+	}
+#endif
 	arrfree( pool->recycle );
 	arrfree( pool->pool );
 }

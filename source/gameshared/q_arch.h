@@ -58,8 +58,6 @@ extern "C" {
 #endif
 
 #define Q_ARRAY_COUNT( array ) (sizeof( array ) / (sizeof( array[0])))
-#define __Q_UNPAREN_UNWRAP(...) __VA_ARGS__
-#define Q_UNPAREN(args) __Q_UNPAREN_UNWRAP args
 
 //==============================================
 

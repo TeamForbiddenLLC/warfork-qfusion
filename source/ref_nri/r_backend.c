@@ -260,7 +260,7 @@ void RB_LoadProjectionMatrix( const mat4_t m )
 }
 
 // for these we assume will just do this to the first attachment
-void RB_SetState_2( struct frame_cmd_buffer_s *cmd, int state )
+void RB_SetState_2( struct FrameState_s *cmd, int state )
 {
 	
 	cmd->pipeline.colorBlendEnabled = ( state & GLSTATE_BLEND_MASK ) > 0;
@@ -360,7 +360,7 @@ void RB_SetState_2( struct frame_cmd_buffer_s *cmd, int state )
 	//rb.gl.state = state;
 }
 
-void RB_FlipFrontFace( struct frame_cmd_buffer_s *cmd )
+void RB_FlipFrontFace( struct FrameState_s *cmd )
 {
 	if( cmd->pipeline.cullMode == RI_CULL_MODE_BOTH )
 		return;
@@ -426,7 +426,7 @@ void RB_BindVBO( int id, int primitive )
 	rb.currentVBO = vbo;
 }
 
-void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, const shader_t *shader,
+void RB_AddDynamicMesh(struct FrameState_s* cmd, const entity_t *entity, const shader_t *shader,
 	const struct mfog_s *fog, const struct portalSurface_s *portalSurface, unsigned int shadowBits,
 	const struct mesh_s *mesh, int primitive, float x_offset, float y_offset )
 {
@@ -492,8 +492,8 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
   struct dynamic_vertex_stream_s *const selectedStream = &( rb.dynamicStreams[streamId] );
 
 #if ( DEVICE_IMPL_VULKAN )
-  if( GPU_VULKAN_SELECTED( rsh.device.renderer ) ) {
-	  if( selectedStream->vk.vertexAlloc == NULL || !RISegmentAlloc( cmd->frameCount, &selectedStream->vertexAllocator, numVerts, &vertexReq ) ) {
+  {
+	  if( selectedStream->vk.vertexAlloc == NULL || !RISegmentAlloc( rsh.frameSetCount, &selectedStream->vertexAllocator, numVerts, &vertexReq ) ) {
 		  struct RISegmentAllocDesc_s segmentAllocDesc = {};
 		  segmentAllocDesc.numSegments = NUMBER_FRAMES_FLIGHT;
 		  segmentAllocDesc.elementStride = selectedStream->layout.vertexStride;
@@ -502,7 +502,7 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
 			  segmentAllocDesc.maxElements = ( segmentAllocDesc.maxElements + ( segmentAllocDesc.maxElements >> 1 ) );
 		  } while( segmentAllocDesc.maxElements < numElems );
 		  InitRISegmentAlloc( &selectedStream->vertexAllocator, &segmentAllocDesc );
-			RISegmentAlloc( cmd->frameCount, &selectedStream->vertexAllocator, numVerts, &vertexReq );
+			RISegmentAlloc( rsh.frameSetCount, &selectedStream->vertexAllocator, numVerts, &vertexReq );
 		  
 		  uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
 		  VkBufferCreateInfo vertexBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
@@ -519,7 +519,7 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
 		  VK_WrapResult( vmaCreateBuffer( rsh.device.vk.vmaAllocator, &vertexBufferCreateInfo, &allocInfo, &selectedStream->vk.vertexBuffer, &selectedStream->vk.vertexAlloc, &allocationInfo ) );
 		  rb.dynamicStreams[streamId].pVtxMappedAddress = allocationInfo.pMappedData;
 	  }
-	  if( rb.dynamicStreams[streamId].vk.indexAlloc == NULL || !RISegmentAlloc( cmd->frameCount, &selectedStream->indexAllocator, numElems, &eleReq ) ) {
+	  if( rb.dynamicStreams[streamId].vk.indexAlloc == NULL || !RISegmentAlloc( rsh.frameSetCount, &selectedStream->indexAllocator, numElems, &eleReq ) ) {
 		  struct RISegmentAllocDesc_s segmentAllocDesc = {};
 		  segmentAllocDesc.numSegments = NUMBER_FRAMES_FLIGHT;
 		  segmentAllocDesc.elementStride = sizeof( uint16_t );
@@ -528,7 +528,7 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
 			  segmentAllocDesc.maxElements = ( segmentAllocDesc.maxElements + ( segmentAllocDesc.maxElements >> 1 ) );
 		  } while( segmentAllocDesc.maxElements < numElems );
 		  InitRISegmentAlloc( &selectedStream->indexAllocator, &segmentAllocDesc );
-		  RISegmentAlloc( cmd->frameCount, &selectedStream->indexAllocator, numElems, &eleReq );
+		  RISegmentAlloc( rsh.frameSetCount, &selectedStream->indexAllocator, numElems, &eleReq );
 
 		  uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
 		  VkBufferCreateInfo indexBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
@@ -615,7 +615,7 @@ void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, c
 /*
 * RB_FlushDynamicMeshes
 */
-void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
+void RB_FlushDynamicMeshes(struct FrameState_s* cmd)
 {
 	float offsetx = 0.0f;
 	float offsety = 0.0f;
@@ -638,7 +638,6 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 	Matrix4_Copy( rb.objectMatrix, m );
 	transx = m[12];
 	transy = m[13];
-	FR_CmdBeginRendering( cmd );
 	for( size_t i = 0; i < rb.numDynamicDraws; i++ ) {
 		rbDynamicDraw_t *draw = &rb.dynamicDraws[i];
 		// rbDynamicStream_t *stream = &rb.dynamicStreams[draw->dynamicStreamIdx];
@@ -678,7 +677,6 @@ void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd)
 													        0, draw->numVerts, 0, draw->numElems );
 		FR_CmdResetCommandState( cmd, CMD_RESET_INDEX_BUFFER | CMD_RESET_VERTEX_BUFFER );
 	}
-	FR_CmdEndRendering( cmd );
 
 	rb.numDynamicDraws = 0;
 
@@ -703,7 +701,7 @@ vattribmask_t RB_GetVertexAttribs( void )
 
 
 
-void RB_DrawElements( struct frame_cmd_buffer_s *cmd, int firstVert, int numVerts, int firstElem, int numElems, int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems ) {
+void RB_DrawElements( struct FrameState_s *cmd, int firstVert, int numVerts, int firstElem, int numElems, int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems ) {
 	rb.currentVAttribs &= ~VATTRIB_INSTANCES_BITS;
 
 	rb.drawElements.numVerts = numVerts;

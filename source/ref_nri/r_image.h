@@ -74,7 +74,7 @@ enum
 
 typedef struct image_s
 {
-	struct RITextureHandle_s handle;
+	struct RITexture_s handle;
 	union {
     #if(DEVICE_IMPL_VULKAN)
     struct {
