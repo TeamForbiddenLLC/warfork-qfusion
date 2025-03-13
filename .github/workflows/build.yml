@@ -67,7 +67,7 @@ jobs:
         run: tar --exclude='*.a' --exclude='base*/*.a' --exclude='libs/*.a' --exclude='test' -zcvf ../${{matrix.config.name}}.tar.gz *
 
       - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{matrix.config.name}}
           path: source/build/${{matrix.config.name}}.tar.gz
@@ -150,7 +150,7 @@ jobs:
           done
 
       - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{matrix.config.name}}
           path: source/build/${{matrix.config.name}}.tar.gz
@@ -222,7 +222,7 @@ jobs:
         run: 7z a ..\..\${{matrix.config.name}}.zip * '-xr!*.exp' '-xr!*.lib' '-xr!test'
 
       - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{matrix.config.name}}
           path: source\build\${{matrix.config.name}}.zip

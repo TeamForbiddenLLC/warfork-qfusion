@@ -383,9 +383,6 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 						RI_UpdateDescriptor( &rsh.device, &( rsh.pogoBuffer + i )->pogoAttachment[p] );
 					}
 
-				 // createInfo.image = rsh.vk.pogo[( i * 2 ) + 1];
-				 // createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; // | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-				 // RI_VK_InitImageView( &rsh.device, &createInfo, ( rsh.pogoBuffer + i )->pogoAttachment + 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
 				}
 
 				{

@@ -1030,25 +1030,24 @@ int InitRIRenderer( const struct RIBackendInit_s *init, struct RIRenderer_s *ren
 	return RI_SUCCESS;
 }
 
-void RI_UpdateDescriptor(struct RIDevice_s* dev,struct RIDescriptor_s* desc) {
+void RI_UpdateDescriptor( struct RIDevice_s *dev, struct RIDescriptor_s *desc )
+{
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		switch( desc->vk.type ) {
 			case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 			case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 			case VK_DESCRIPTOR_TYPE_SAMPLER:
-				assert( desc->vk.type == VK_DESCRIPTOR_TYPE_SAMPLER
-					 || ( desc->texture && ( desc->vk.type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE || desc->vk.type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ) ) );
-				desc->cookie = hash_data( 
-					hash_u64( HASH_INITIAL_VALUE, desc->vk.type ), 
-					&desc->vk.image, sizeof( desc->vk.image ) );
+				// test some assumptions
+				assert( desc->vk.type == VK_DESCRIPTOR_TYPE_SAMPLER ||
+						( desc->texture && ( desc->vk.type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE || desc->vk.type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ) ) );
+				desc->cookie = hash_data( hash_u64( HASH_INITIAL_VALUE, desc->vk.type ), &desc->vk.image, sizeof( desc->vk.image ) );
 				break;
 			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
 				assert( desc->buffer );
 				desc->vk.buffer.buffer = desc->buffer->vk.buffer;
-				desc->cookie = hash_data( 
-						hash_u64( HASH_INITIAL_VALUE, desc->vk.type ), &desc->vk.buffer, sizeof( desc->vk.buffer ) );
+				desc->cookie = hash_data( hash_u64( HASH_INITIAL_VALUE, desc->vk.type ), &desc->vk.buffer, sizeof( desc->vk.buffer ) );
 				break;
 			default:
 				assert( false );
