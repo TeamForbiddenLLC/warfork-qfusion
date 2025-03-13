@@ -23,8 +23,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "../gameshared/q_arch.h"
 #include "../gameshared/q_math.h"
-#include "../gameshared/q_shared.h"
 #include "../gameshared/q_cvar.h"
+#include "../gameshared/q_shared.h"
+#include "../gameshared/q_sds.h"
 #include "../qcommon/qfiles.h"
 #include "../qcommon/bsp.h"
 #include "../qcommon/patch.h"
@@ -40,6 +41,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ri_resource_upload.h"
 #include "ri_scratch_alloc.h"
 #include "ri_pogoBuffer.h"
+
 
 typedef struct { char *name; void **funcPointer; } dllfunc_t;
 

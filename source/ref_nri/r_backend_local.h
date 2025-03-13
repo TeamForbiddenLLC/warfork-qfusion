@@ -20,11 +20,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef R_BACKEND_LOCAL_H
 #define R_BACKEND_LOCAL_H
 
-#include "r_frame_cmd_buffer.h"
-#include "math/qmath.h"
 
 #include "r_local.h"
+
+#include "math/qmath.h"
+
 #include "ri_segment_alloc.h"
+#include "r_frame_cmd_buffer.h"
 
 #define MAX_STREAM_VBO_VERTS	    1000000	
 #define MAX_STREAM_VBO_ELEMENTS		MAX_STREAM_VBO_VERTS*6

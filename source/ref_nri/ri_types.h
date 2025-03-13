@@ -26,7 +26,7 @@
 
 static inline bool __vk_WrapResult(VkResult result, const char *sourceFilename, const char *functionName, int sourceLine) {
 	if(result != VK_SUCCESS) {
-		Com_Printf( "RI: VK %i, file %s:%i (%s)\n", result, sourceFilename, sourceLine, functionName);
+		printf( "RI: VK %i, file %s:%i (%s)\n", result, sourceFilename, sourceLine, functionName);
 		return false;
 	}
 	return true;

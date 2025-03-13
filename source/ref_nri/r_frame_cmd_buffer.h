@@ -1,16 +1,6 @@
 #ifndef R_FRAME_CMD_BUFFER_H
 #define R_FRAME_CMD_BUFFER_H
 
-#include "r_resource.h"
-#include "r_vattribs.h"
-#include "ri_scratch_alloc.h"
-
-#include "../gameshared/q_arch.h"
-#include "../gameshared/q_math.h"
-
-#include "../gameshared/q_sds.h"
-
-#include "qhash.h"
 #include "ri_format.h"
 
 #include "r_defines.h" 
