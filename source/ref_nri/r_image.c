@@ -20,10 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_image.h"
 #include "r_local.h"
 #include "r_imagelib.h"
-#include "r_nri.h"
 
 #include "r_texture_format.h"
-#include "ri_resource_upload.h"
 #include "r_texture_buf.h"
 #include "r_texture_format.h"
 
@@ -31,18 +29,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../gameshared/q_arch.h"
 #include "r_texture_buffer_load.h"
 
-#include "../qalgo/hash.h"
-
-#include "stb_ds.h"
-#include "stb_image.h"
-
 #include "r_ktx_loader.h"
-#include <assert.h>
-#include <qstr.h>
-#include <vulkan/vulkan_core.h>
+#include "ri_resource_upload.h"
 
+#include "ri_renderer.h"
 #include "ri_types.h"
 #include "ri_format.h"
+
+#include <qstr.h>
+#include "stb_ds.h"
+#include "stb_image.h"
+#include "../qalgo/hash.h"
 
 #define	MAX_GLIMAGES	    8192
 #define IMAGES_HASH_SIZE    64

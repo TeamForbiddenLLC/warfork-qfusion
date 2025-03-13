@@ -35,10 +35,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ri_resource_upload.h"
 #include "r_frame_cmd_buffer.h"
 
-#include "r_nri.h"
 #include "r_texture_buf.h"
 #include "../qcommon/mod_win.h"
-#include "r_graphics.h"
 #include "ri_resource_upload.h"
 #include "ri_scratch_alloc.h"
 #include "ri_pogoBuffer.h"

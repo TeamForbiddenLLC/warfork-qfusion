@@ -25,7 +25,6 @@ typedef uint64_t r_glslfeat_t;
 
 #include "../gameshared/q_arch.h"
 #include "r_math.h"
-#include "r_nri.h"
 #include "r_vattribs.h"
 #include "r_resource.h"
 

@@ -18,7 +18,7 @@ static inline uint32_t RIGetQueueFlags(struct RIRenderer_s* renderer,const struc
 }
 
 struct RIDeviceDesc_s {
-          struct RIPhysicalAdapter_s *physicalAdapter;
+ struct RIPhysicalAdapter_s *physicalAdapter;
 };
 int InitRIRenderer( const struct RIBackendInit_s *init, struct RIRenderer_s *renderer );
 void ShutdownRIRenderer( struct RIRenderer_s *renderer );

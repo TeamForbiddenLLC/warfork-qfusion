@@ -1,7 +1,6 @@
 #ifndef R_FRAME_CMD_BUFFER_H
 #define R_FRAME_CMD_BUFFER_H
 
-#include "r_nri.h"
 #include "r_resource.h"
 #include "r_vattribs.h"
 #include "ri_scratch_alloc.h"
@@ -10,10 +9,11 @@
 #include "../gameshared/q_math.h"
 
 #include "../gameshared/q_sds.h"
-#include "r_graphics.h"
 
 #include "qhash.h"
 #include "ri_format.h"
+
+#include "r_defines.h" 
 
 #define POGO_BUFFER_TEXTURE_FORMAT RI_FORMAT_RGBA8_UNORM
 

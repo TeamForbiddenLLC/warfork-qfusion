@@ -5,11 +5,9 @@
 #include "../../gameshared/q_arch.h"
 #include "r_frame_cmd_buffer.h"
 #include "r_image.h"
-#include "r_nri.h"
 
 #include "qhash.h"
 #include "ri_types.h"
-
 
 #define RESERVE_BLOCK_SIZE 1024
 #define ALLOC_HASH_RESERVE 256

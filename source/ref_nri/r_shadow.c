@@ -20,7 +20,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 #include "r_math_util.h"
-#include "r_nri.h"
 #include "stb_ds.h"
 
 #include "ri_conversion.h"

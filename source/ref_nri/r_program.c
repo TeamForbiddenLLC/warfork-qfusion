@@ -25,20 +25,20 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_descriptor_pool.h"
 #include "r_local.h"
 
-#include "ri_resource.h"
 #include "spirv_reflect.h"
 #include <glslang/Include/glslang_c_interface.h>
 #include <glslang/Include/glslang_c_shader_types.h>
 #include <glslang/Public/resource_limits_c.h>
 
-#include "qstr.h"
-#include "r_nri.h"
 #include "r_vattribs.h"
-#include "stb_ds.h"
 
-#include "../../gameshared/q_arch.h"
-#include "qhash.h"
 #include "ri_conversion.h"
+#include "ri_resource.h"
+
+#include "qhash.h"
+#include "qstr.h"
+#include "stb_ds.h"
+#include "../../gameshared/q_arch.h"
 
 #define MAX_GLSL_PROGRAMS 1024
 #define GLSL_PROGRAMS_HASH_SIZE 256

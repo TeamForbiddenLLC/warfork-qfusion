@@ -1,5 +1,4 @@
 #include "r_descriptor_pool.h"
-#include "r_nri.h"
 #include "stb_ds.h"
 
 struct descriptor_set_slot_s *AllocDescriptorsetSlot( struct descriptor_set_allloc_s *alloc )

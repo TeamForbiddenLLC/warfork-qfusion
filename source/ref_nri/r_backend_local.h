@@ -21,9 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define R_BACKEND_LOCAL_H
 
 #include "r_frame_cmd_buffer.h"
-#include "r_nri.h"
 #include "math/qmath.h"
-
 
 #include "r_local.h"
 #include "ri_segment_alloc.h"

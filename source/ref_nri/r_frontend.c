@@ -19,18 +19,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "r_frame_cmd_buffer.h"
-#include "r_graphics.h"
 #include "r_image.h"
 #include "r_local.h"
-#include "r_nri.h"
-#include "ri_resource_upload.h"
 #include "r_frontend.h"
-
-#include "ri_types.h"
-#include "stb_ds.h"
 #include "r_capture.h"
+
+#include "ri_resource_upload.h"
+#include "ri_types.h"
 #include "ri_conversion.h"
-#include <vulkan/vulkan_core.h>
+#include "ri_swapchain.h"
+#include "ri_renderer.h"
+
+#include "stb_ds.h"
 
 static ref_frontend_t rrf;
 
@@ -367,10 +367,8 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 					rsh.colorAttachment[i].vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 					VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &rsh.colorAttachment[i].vk.image.imageView ) );
 					RI_UpdateDescriptor( &rsh.device, &rsh.colorAttachment[i] );
-					//RI_VK_InitImageView( &rsh.device, &createInfo, rsh.colorAttachment + i, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
 
 					for( size_t p = 0; p < 2; p++ ) {
-					
 						usageInfo.usage = (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 						createInfo.image = rsh.pogoTextures[(i * 2) + p].vk.image;
 						createInfo.format = RIFormatToVK( POGO_BUFFER_TEXTURE_FORMAT );

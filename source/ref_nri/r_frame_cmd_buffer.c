@@ -1,7 +1,6 @@
 #include "r_frame_cmd_buffer.h"
 
 #include "r_local.h"
-#include "r_nri.h"
 #include "r_resource.h"
 
 #include "r_model.h"
@@ -10,29 +9,6 @@
 #include "ri_types.h"
 #include "stb_ds.h"
 #include "qhash.h"
-
-
-//void FR_CmdResetAttachmentToBackbuffer( struct frame_cmd_buffer_s *cmd )
-//{
-//	//const NriTextureDesc *colorDesc = rsh.nri.coreI.GetTextureDesc( cmd->textureBuffers.colorTexture );
-//	//const NriTextureDesc *depthDesc = rsh.nri.coreI.GetTextureDesc( cmd->textureBuffers.depthTexture );
-//
-//	//const NriDescriptor *colorAttachments[] = { cmd->textureBuffers.colorAttachment };
-//	//const struct NriViewport viewports[] = {
-//	//	( NriViewport ){ 
-//	//		.x = 0, 
-//	//		.y = 0, 
-//	//		.width = cmd->textureBuffers.screen.width, 
-//	//		.height = cmd->textureBuffers.screen.height, 
-//	//		.depthMin = 0.0f, 
-//	//		.depthMax = 1.0f 
-//	//	} 
-//	//};
-//	//const struct NriRect scissors[] = { cmd->textureBuffers.screen };
-//	//const NriFormat colorFormats[] = { colorDesc->format };
-//
-//	//FR_CmdSetTextureAttachment( cmd, colorFormats, colorAttachments, viewports, scissors, 1, depthDesc->format, cmd->textureBuffers.depthAttachment );
-//}
 
 void FR_CmdResetCmdState( struct FrameState_s *cmd, enum CmdStateResetBits bits )
 {
