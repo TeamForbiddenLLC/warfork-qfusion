@@ -1030,7 +1030,7 @@ int InitRIRenderer( const struct RIBackendInit_s *init, struct RIRenderer_s *ren
 	return RI_SUCCESS;
 }
 
-void RI_UpdateDescriptor( struct RIDevice_s *dev, struct RIDescriptor_s *desc )
+void UpdateRIDescriptor( struct RIDevice_s *dev, struct RIDescriptor_s *desc )
 {
 #if ( DEVICE_IMPL_VULKAN )
 	{
@@ -1109,6 +1109,17 @@ assert(free);
 	}
 }
 
+void FreeRITexture( struct RIDevice_s *dev, struct RITexture_s *tex )
+{
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		if( tex->vk.image ) {
+			vkDestroyImage( dev->vk.device, tex->vk.image, NULL );
+			tex->vk.image = NULL;
+		}
+	}
+#endif
+}
 
 void ShutdownRIRenderer( struct RIRenderer_s *renderer )
 {

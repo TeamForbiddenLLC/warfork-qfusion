@@ -353,7 +353,6 @@ typedef struct
 			VkSemaphore frameSemaphore;	
     	struct VmaAllocation_T* pogoAlloc[RI_MAX_SWAPCHAIN_IMAGES * 2];
     	struct VmaAllocation_T* depthAlloc[RI_MAX_SWAPCHAIN_IMAGES];
-			
 		} vk;
 #endif
 	};

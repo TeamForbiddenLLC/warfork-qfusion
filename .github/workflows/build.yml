@@ -10,12 +10,12 @@ jobs:
           - {
               name: "Linux-x86_64-Release",
               type: "release",
-              cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 -DUSE_SYSTEM_ZLIB=1 -DUSE_SYSTEM_OPENAL=1 -DUSE_SYSTEM_CURL=1 -DUSE_SYSTEM_FREETYPE=1",
+              cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 -DUSE_SYSTEM_ZLIB=1 -DUSE_SYSTEM_OPENAL=1 -DUSE_SYSTEM_CURL=1 -DUSE_SYSTEM_FREETYPE=1 -DUSE_PACKAGE_ASSETS=1",
             }
           - {
               name: "Linux-x86_64-Debug",
               type: "debug",
-              cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 -DUSE_SYSTEM_ZLIB=1 -DUSE_SYSTEM_OPENAL=1 -DUSE_SYSTEM_CURL=1 -DUSE_SYSTEM_FREETYPE=1",
+              cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 -DUSE_SYSTEM_ZLIB=1 -DUSE_SYSTEM_OPENAL=1 -DUSE_SYSTEM_CURL=1 -DUSE_SYSTEM_FREETYPE=1 -DUSE_PACKAGE_ASSETS=1",
             }
     name: ${{ matrix.config.name }}
     runs-on: ubuntu-20.04
@@ -165,7 +165,7 @@ jobs:
               name: "win-x86_64-Release",
               vs_version: "Visual Studio 16 2019",
               type: "release",
-              cmake_args: "-DBUILD_STEAMLIB=1",
+              cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_PACKAGE_ASSETS=1",
               build_folder: "Release",
             }
           - {
@@ -173,7 +173,7 @@ jobs:
               name: "win-x86_64-Debug",
               vs_version: "Visual Studio 16 2019",
               type: "debug",
-              cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON",
+              cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON -DUSE_PACKAGE_ASSETS=1",
               build_folder: "Debug",
             }
 

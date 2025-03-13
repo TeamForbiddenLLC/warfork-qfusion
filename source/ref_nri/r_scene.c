@@ -25,6 +25,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ri_types.h"
 #include "stb_ds.h"
 #include "ri_conversion.h"
+#include "ri_vk.h"
+
 static void R_RenderDebugBounds(  struct FrameState_s* frame);
 
 /*

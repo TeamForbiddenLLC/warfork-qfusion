@@ -33,7 +33,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_vattribs.h"
 
 #include "ri_conversion.h"
-#include "ri_resource.h"
+#include "ri_renderer.h"
 
 #include "qhash.h"
 #include "qstr.h"

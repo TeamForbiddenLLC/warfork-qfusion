@@ -35,11 +35,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ri_renderer.h"
 #include "ri_types.h"
 #include "ri_format.h"
+#include "ri_vk.h"
 
 #include <qstr.h>
 #include "stb_ds.h"
 #include "stb_image.h"
 #include "../qalgo/hash.h"
+
 
 #define	MAX_GLIMAGES	    8192
 #define IMAGES_HASH_SIZE    64
@@ -153,7 +155,7 @@ struct RIDescriptor_s *R_ResolveSamplerDescriptor( int flags )
 				samplerDescriptors[index].vk.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 				samplerDescriptors[index].flags = RI_VK_DESC_OWN_SAMPLER;
 				VK_WrapResult( vkCreateSampler( rsh.device.vk.device, &info, NULL, &samplerDescriptors[index].vk.image.sampler ) );
-				RI_UpdateDescriptor( &rsh.device, &samplerDescriptors[index] );
+				UpdateRIDescriptor( &rsh.device, &samplerDescriptors[index] );
 				return &samplerDescriptors[index];
 			}
 			index = ( index + 1 ) % IMAGE_SAMPLER_HASH_SIZE;
@@ -815,7 +817,7 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 		image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
-		RI_UpdateDescriptor( &rsh.device, &image->binding );
+		UpdateRIDescriptor( &rsh.device, &image->binding );
 		image->samplerBinding = R_ResolveSamplerDescriptor( image->flags );
 		assert(image->samplerBinding);
 
@@ -1140,7 +1142,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
-	RI_UpdateDescriptor( &rsh.device, &image->binding );
+	UpdateRIDescriptor( &rsh.device, &image->binding );
 	image->samplerBinding = R_ResolveSamplerDescriptor(image->flags); 
 
 	//RI_VK_InitImageView(&rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
@@ -1294,7 +1296,7 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 		image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 		image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
-		RI_UpdateDescriptor( &rsh.device, &image->binding );
+		UpdateRIDescriptor( &rsh.device, &image->binding );
 		image->samplerBinding = R_ResolveSamplerDescriptor( image->flags);
 		assert( image->samplerBinding && !RI_IsEmptyDescriptor( image->samplerBinding ) );
 
@@ -1648,7 +1650,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 		image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 		image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
-		RI_UpdateDescriptor( &rsh.device, &image->binding );
+		UpdateRIDescriptor( &rsh.device, &image->binding );
 		image->samplerBinding = R_ResolveSamplerDescriptor( image->flags);
 		assert( image->samplerBinding && !RI_IsEmptyDescriptor( image->samplerBinding ) );
 		

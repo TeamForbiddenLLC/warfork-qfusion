@@ -172,40 +172,6 @@ void FR_ConfigurePipelineAttachment( struct pipeline_desc_s *desc, enum RI_Forma
 	desc->depthFormat = depthFormat;
 }
 
-
-//#if ( DEVICE_IMPL_VULKAN )
-//void FR_VK_FillPipelineAttachmentFromPipeline( struct pipeline_desc_s *pipeline, const VkRenderingInfo *renderInfo )
-//{
-//	pipeline->numColorsAttachments = renderInfo->colorAttachmentCount;
-//	for( size_t i = 0; i < renderInfo->colorAttachmentCount; i++ ) {
-//		pipeline->colorAttachments[i] = renderInfo->pColorAttachments[i].imageLayout 
-//	}
-//}
-//#endif
-
-void ResetFrameCmdBuffer(  struct FrameState_s *cmd )
-{
-	//const uint32_t swapchainIndex = RISwapchainAcquireNextTexture( &rsh.device, &rsh.riSwapchain );
-	////cmd->pogoAttachment[0] = &rsh.pogoAttachment[2 * swapchainIndex];
-	////cmd->pogoAttachment[1] = &rsh.pogoAttachment[( 2 * swapchainIndex ) + 1];
-	////cmd->colorAttachment = &rsh.colorAttachment[swapchainIndex];
-	////cmd->depthAttachment = &rsh.depthAttachment[swapchainIndex];
-	//cmd->textureBuffers = rsh.backBuffers[rsh.nri.swapChainI.AcquireNextSwapChainTexture( rsh.swapchain )];
-
-	//// TODO: need to re-work this logic
-	//arrsetlen( cmd->freeMemory, 0 );
-	//arrsetlen( cmd->freeTextures, 0 );
-	//arrsetlen( cmd->freeBuffers, 0 );
-	//arrsetlen( cmd->frameTemporaryDesc, 0);
-	////RIResetScratchAlloc( &cmd->uboBlockBuffer );
-
-	//memset( &cmd->uboSceneFrame, 0, sizeof( struct ubo_frame_instance_s ) );
-	//memset( &cmd->uboSceneObject, 0, sizeof( struct ubo_frame_instance_s ) );
-	//memset( &cmd->uboPassObject, 0, sizeof( struct ubo_frame_instance_s ) );
-	//memset( &cmd->uboBoneObject, 0, sizeof( struct ubo_frame_instance_s ) );
-	//memset( &cmd->uboLight, 0, sizeof( struct ubo_frame_instance_s ) );
-}
-
 void FR_CmdDraw( struct FrameState_s *cmd, uint32_t vertexNum, uint32_t instanceNum, uint32_t baseVertex, uint32_t baseInstance )
 {
 #if ( DEVICE_IMPL_VULKAN )

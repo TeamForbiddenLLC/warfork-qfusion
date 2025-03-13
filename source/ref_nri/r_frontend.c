@@ -29,6 +29,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ri_conversion.h"
 #include "ri_swapchain.h"
 #include "ri_renderer.h"
+#include "ri_vk.h"
 
 #include "stb_ds.h"
 
@@ -64,37 +65,23 @@ static void __R_InitVolatileAssets( void )
 }
 
 static void __ShutdownSwapchainTexture() {
-	//if(rsh.swapchain) {
-	//	for( size_t i = 0; i < arrlen( rsh.backBuffers ); i++ ) {
-	//		struct frame_tex_buffers_s *backBuffer = &rsh.backBuffers[i];
-	//		assert( backBuffer->colorAttachment );
-	//		assert( backBuffer->colorTexture );
-	//		assert( backBuffer->depthAttachment );
-	//		assert( backBuffer->depthTexture );
-
-	//	 // for( size_t pogoIdx = 0; pogoIdx < Q_ARRAY_COUNT( rsh.backBuffers->pogoBuffers ); pogoIdx++ ) {
-	//	 // 	rsh.nri.coreI.DestroyDescriptor( backBuffer->pogoBuffers[pogoIdx].colorAttachment );
-	//	 // 	rsh.nri.coreI.DestroyDescriptor( backBuffer->pogoBuffers[pogoIdx].shaderDescriptor.descriptor );
-	//	 // 	rsh.nri.coreI.DestroyTexture( backBuffer->pogoBuffers[pogoIdx].colorTexture );
-	//	 // }
-	//	 // rsh.nri.coreI.DestroyDescriptor( backBuffer->colorAttachment );
-	//	 // rsh.nri.coreI.DestroyDescriptor( backBuffer->depthAttachment );
-	//	 // rsh.nri.coreI.DestroyTexture( backBuffer->depthTexture );
-
-	//		for( size_t mIdx = 0; mIdx < backBuffer->memoryLen; mIdx++ ) {
-	//			assert( backBuffer->memory[mIdx] );
-	//			rsh.nri.coreI.FreeMemory( backBuffer->memory[mIdx] );
-	//		}
-	//	}
-	//	rsh.nri.swapChainI.DestroySwapChain( rsh.swapchain );
-	//	arrfree(rsh.backBuffers);
-	//}
-	//if(rsh.frameFence) {
-	//	rsh.nri.coreI.DestroyFence(rsh.frameFence);
-	//}
-	//rsh.frameFence = NULL;
-	//rsh.frameSetCount = 0;
-	//rsh.swapchain = NULL;
+	if( IsRISwapchainValid( &rsh.riSwapchain ) ) {
+		for( uint32_t i = 0; i < rsh.riSwapchain.imageCount; i++ ) {
+			for( uint32_t p = 0; p < 2; p++ ) {
+				FreeRITexture(&rsh.device, &rsh.pogoTextures[(i * 2) + p]);
+				FreeRIDescriptor( &rsh.device, &rsh.pogoBuffer[i].pogoAttachment[p] );
+#if ( DEVICE_IMPL_VULKAN )
+				vmaFreeMemory( rsh.device.vk.vmaAllocator, rsh.vk.pogoAlloc[( i * 2 ) + p] );
+#endif
+			}
+			FreeRIDescriptor(&rsh.device, &rsh.colorAttachment[i]);
+			FreeRIDescriptor(&rsh.device, &rsh.depthAttachment[i]);
+#if ( DEVICE_IMPL_VULKAN )
+			vmaFreeMemory( rsh.device.vk.vmaAllocator, rsh.vk.depthAlloc[i] );
+#endif
+		}
+		FreeRISwapchain( &rsh.device, &rsh.riSwapchain );
+	}
 }
 
 #if ( DEVICE_IMPL_VULKAN )
@@ -313,6 +300,7 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 				assert( false );
 				break;
 		}
+		__ShutdownSwapchainTexture();
 		struct RISwapchainDesc_s swapchainInit = {};
 		swapchainInit.windowHandle = &windowHandle;
 		swapchainInit.imageCount = 3;
@@ -366,7 +354,7 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 					rsh.colorAttachment[i].vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 					rsh.colorAttachment[i].vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 					VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &rsh.colorAttachment[i].vk.image.imageView ) );
-					RI_UpdateDescriptor( &rsh.device, &rsh.colorAttachment[i] );
+					UpdateRIDescriptor( &rsh.device, &rsh.colorAttachment[i] );
 
 					for( size_t p = 0; p < 2; p++ ) {
 						usageInfo.usage = (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
@@ -378,7 +366,7 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 						( rsh.pogoBuffer + i )->pogoAttachment[p].vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 						( rsh.pogoBuffer + i )->pogoAttachment[p].vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 						VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &( rsh.pogoBuffer + i )->pogoAttachment[p].vk.image.imageView ) );
-						RI_UpdateDescriptor( &rsh.device, &( rsh.pogoBuffer + i )->pogoAttachment[p] );
+						UpdateRIDescriptor( &rsh.device, &( rsh.pogoBuffer + i )->pogoAttachment[p] );
 					}
 
 				}
@@ -415,7 +403,7 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 					rsh.depthAttachment[i].vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 					rsh.depthAttachment[i].vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 					VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &rsh.depthAttachment[i].vk.image.imageView ) );
-					RI_UpdateDescriptor( &rsh.device, &rsh.colorAttachment[i] );
+					UpdateRIDescriptor( &rsh.device, &rsh.colorAttachment[i] );
 					//RI_VK_InitImageView( &rsh.device, &createInfo, rsh.depthAttachment + i, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
 				}
 			}

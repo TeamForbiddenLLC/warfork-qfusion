@@ -128,7 +128,6 @@ struct FrameState_s {
 };
 
 void FrameCmdBufferFree( struct FrameState_s *cmd );
-void ResetFrameCmdBuffer(struct FrameState_s* cmd);
 void UpdateFrameUBO( struct FrameState_s *cmd, struct RIDescriptor_s *frame, void *data, size_t size );
 
 // cmd buffer

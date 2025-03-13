@@ -21,7 +21,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_image.h"
 #include "r_local.h"
 #include "stb_ds.h"
+
 #include "ri_conversion.h"
+#include"ri_renderer.h"
+#include "ri_vk.h"
+
 static void R_DrawSkyportal(struct FrameState_s* frame, const entity_t *e, skyportal_t *skyportal );
 static const enum RI_Format_e PortalTextureFormat = RI_FORMAT_RGBA8_UNORM;
 static const enum RI_Format_e PortalTextureDepthFormat = RI_FORMAT_D32_SFLOAT;
@@ -257,7 +261,7 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 			bestFB->colorDescriptor.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 			bestFB->colorDescriptor.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->colorDescriptor.vk.image.imageView ) );
-			RI_UpdateDescriptor( &rsh.device, &bestFB->colorDescriptor);
+			UpdateRIDescriptor( &rsh.device, &bestFB->colorDescriptor);
 	  }
 	  {
 		  uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
@@ -302,7 +306,7 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 		  bestFB->depthDescriptor.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 		  bestFB->depthDescriptor.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		  VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->depthDescriptor.vk.image.imageView ) );
-		  RI_UpdateDescriptor( &rsh.device, &bestFB->depthDescriptor);
+		  UpdateRIDescriptor( &rsh.device, &bestFB->depthDescriptor);
 
 		  //RI_VK_InitImageView( &rsh.device, &createInfo, &bestFB->depthDescriptor, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
 	  }

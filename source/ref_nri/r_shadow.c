@@ -23,6 +23,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "stb_ds.h"
 
 #include "ri_conversion.h"
+#include "ri_renderer.h"
+#include "ri_vk.h"
 
 #define SHADOWMAP_ORTHO_NUDGE			8
 #define SHADOWMAP_MIN_VIEWPORT_SIZE		16
@@ -425,7 +427,7 @@ static struct shadow_fb_s *__ResolveShadowSurface(size_t i, int width, int heigh
 		bestFB->descriptor.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 		bestFB->descriptor.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->descriptor.vk.image.imageView ) );
-		RI_UpdateDescriptor( &rsh.device, &bestFB->descriptor );
+		UpdateRIDescriptor( &rsh.device, &bestFB->descriptor );
 
 		//RI_VK_InitImageView( &rsh.device, &createInfo, &bestFB->descriptor, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
 		return bestFB;
