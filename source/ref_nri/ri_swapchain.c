@@ -44,7 +44,7 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 	{
 		switch( init->windowHandle->type ) {
 #ifdef VK_USE_PLATFORM_XLIB_KHR
-			case RI_WINDOW_X11:
+			case RI_WINDOW_X11: {
 				VkXlibSurfaceCreateInfoKHR xlibSurfaceInfo = { VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR };
 				xlibSurfaceInfo.dpy = init->windowHandle->x11.dpy;
 				xlibSurfaceInfo.window = init->windowHandle->x11.window;
@@ -52,33 +52,37 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 				VK_WrapResult( result );
 				// RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkCreateXlibSurfaceKHR returned %d", (int32_t)result);
 				break;
+			}
 #endif
 #ifdef VK_USE_PLATFORM_WIN32_KHR
-			case RI_WINDOW_WIN32:
+			case RI_WINDOW_WIN32: {
 				VkWin32SurfaceCreateInfoKHR win32SurfaceInfo = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
 				win32SurfaceInfo.hwnd = (HWND)swapChainDesc.window.windows.hwnd;
 
 				VkResult result = vk.CreateWin32SurfaceKHR( m_Device, &win32SurfaceInfo, m_Device.GetAllocationCallbacks(), &m_Surface );
 				RETURN_ON_FAILURE( &m_Device, result == VK_SUCCESS, GetReturnCode( result ), "vkCreateWin32SurfaceKHR returned %d", (int32_t)result );
 				break;
+			}
 #endif
 #ifdef VK_USE_PLATFORM_METAL_EXT
-			case RI_WINDOW_METAL:
+			case RI_WINDOW_METAL: {
 				VkMetalSurfaceCreateInfoEXT metalSurfaceCreateInfo = { VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT };
 				metalSurfaceCreateInfo.pLayer = (CAMetalLayer *)swapChainDesc.window.metal.caMetalLayer;
 
 				VkResult result = vk.CreateMetalSurfaceEXT( m_Device, &metalSurfaceCreateInfo, m_Device.GetAllocationCallbacks(), &m_Surface );
 				RETURN_ON_FAILURE( &m_Device, result == VK_SUCCESS, GetReturnCode( result ), "vkCreateMetalSurfaceEXT returned %d", (int32_t)result );
 				break;
+			}
 #endif
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
-			case RI_WINDOW_WAYLAND:
+			case RI_WINDOW_WAYLAND: {
 				VkWaylandSurfaceCreateInfoKHR waylandSurfaceInfo = { VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR };
 				waylandSurfaceInfo.display = init->windowHandle->wayland.display;
 				waylandSurfaceInfo.surface = init->windowHandle->wayland.surface;
 				result = vkCreateWaylandSurfaceKHR( dev->renderer->vk.instance, &waylandSurfaceInfo, NULL, &swapchain->vk.surface );
 				VK_WrapResult( result );
 				break;
+			}
 #endif
 			default:
 				break;
