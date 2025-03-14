@@ -150,12 +150,10 @@ addsurface:
 void R_ShutdownPortals() {
 	for( size_t i = 0; i < MAX_PORTAL_TEXTURES; i++ ) {
 		struct portal_fb_s *portalFB = &rsh.portalFBs[i];
-
-		if( RITextureHandleValid( &rsh.renderer, &portalFB->colorTexture )) {
-				
+		if( IsRITextureValid( &rsh.renderer, &portalFB->colorTexture )) {
 			vmaFreeMemory(rsh.device.vk.vmaAllocator, portalFB->vk.vmaColorAlloc);
 		}
-		if( RITextureHandleValid( &rsh.renderer, &portalFB->depthTexture)) {
+		if( IsRITextureValid( &rsh.renderer, &portalFB->depthTexture)) {
 			vmaFreeMemory(rsh.device.vk.vmaAllocator, portalFB->vk.vmaDepthAlloc);
 		}
 		memset( portalFB, 0, sizeof( struct portal_fb_s ) );
@@ -170,7 +168,7 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 		if( ( portalFB->frameNum + NUMBER_FRAMES_FLIGHT ) >= rsh.frameSetCount ) {
 			continue;
 		}
-		if( RITextureHandleValid( &rsh.renderer, &portalFB->colorTexture ) ) {
+		if( IsRITextureValid( &rsh.renderer, &portalFB->colorTexture ) ) {
 			if( portalFB->width == width && portalFB->height == height ) {
 				portalFB->samplerDescriptor = R_ResolveSamplerDescriptor( filtered ? 0 : IT_NOFILTERING );
 				portalFB->frameNum = rsh.frameSetCount;

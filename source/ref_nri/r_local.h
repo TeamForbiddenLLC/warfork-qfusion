@@ -334,17 +334,14 @@ typedef struct
 	struct RISwapchain_s riSwapchain;
 	struct RIResourceUploader_s uploader;
 
-	struct shadow_fb_s shadowFBs[NUMBER_FRAMES_FLIGHT][MAX_SHADOWGROUPS];	
+	struct shadow_fb_s shadowFBs[NUMBER_FRAMES_FLIGHT][MAX_SHADOWGROUPS];
 	struct portal_fb_s portalFBs[MAX_PORTAL_TEXTURES];
-	struct RIDescriptor_s*  shadowSamplerDescriptor;
+	struct RIDescriptor_s *shadowSamplerDescriptor;
 
- 	struct RIRenderer_s renderer;
+	struct RIRenderer_s renderer;
  	struct RIDevice_s device;
 
 	struct FrameState_s frame;
-
-	struct RITexture_s pogoTextures[RI_MAX_SWAPCHAIN_IMAGES * 2];
-	struct RITexture_s depthTextures[RI_MAX_SWAPCHAIN_IMAGES];
 
 	union {
 #if ( DEVICE_IMPL_VULKAN )
@@ -356,6 +353,8 @@ typedef struct
 		} vk;
 #endif
 	};
+	struct RITexture_s pogoTextures[RI_MAX_SWAPCHAIN_IMAGES * 2];
+	struct RITexture_s depthTextures[RI_MAX_SWAPCHAIN_IMAGES];
 	struct RIDescriptor_s colorAttachment[RI_MAX_SWAPCHAIN_IMAGES];
 	struct RIDescriptor_s depthAttachment[RI_MAX_SWAPCHAIN_IMAGES];
 	struct RI_PogoBuffer pogoBuffer[RI_MAX_SWAPCHAIN_IMAGES];

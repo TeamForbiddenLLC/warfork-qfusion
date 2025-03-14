@@ -512,11 +512,14 @@ static inline VkDeviceQueueCreateInfo* __VK_findQueueCreateInfo(VkDeviceQueueCre
 
 int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, struct RIDevice_s *device )
 {
+	assert(device);
 	assert( init->physicalAdapter );
-	device->renderer = renderer;
+	memset(device, 0, sizeof(struct RIDevice_s));
 
 	enum RIResult_e riResult = RI_SUCCESS;
 	struct RIPhysicalAdapter_s *physicalAdapter = init->physicalAdapter;
+	
+	device->renderer = renderer;
 	device->physicalAdapter = *init->physicalAdapter;
 
 #if ( DEVICE_IMPL_VULKAN )
@@ -918,6 +921,7 @@ int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, st
 
 int InitRIRenderer( const struct RIBackendInit_s *init, struct RIRenderer_s *renderer )
 {
+	memset(renderer, 0, sizeof(struct RIRenderer_s));
 	renderer->api = init->api;
 #if(DEVICE_IMPL_VULKAN)
 	{
@@ -1121,11 +1125,31 @@ void FreeRITexture( struct RIDevice_s *dev, struct RITexture_s *tex )
 #endif
 }
 
+void FreeRICmd(struct RIDevice_s* dev, struct RICmd_s* cmd) {
+	assert(cmd->vk.pool);
+	assert(cmd->vk.cmd);
+	switch( dev->renderer->api ) {
+		case RI_DEVICE_API_VK:
+			break;
+	}
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		if( cmd->vk.cmd) {
+			vkFreeCommandBuffers( dev->vk.device, cmd->vk.pool, 1, &cmd->vk.cmd );
+		}
+		cmd->vk.cmd = VK_NULL_HANDLE;
+		cmd->vk.pool = VK_NULL_HANDLE;
+	}
+#endif
+
+}
+
+
 void ShutdownRIRenderer( struct RIRenderer_s *renderer )
 {
 #if ( DEVICE_IMPL_VULKAN )
-	vkDestroyDebugUtilsMessengerEXT( renderer->vk.instance, renderer->vk.debugMessageUtils, NULL );
-
+	if( renderer->vk.debugMessageUtils )
+		vkDestroyDebugUtilsMessengerEXT( renderer->vk.instance, renderer->vk.debugMessageUtils, NULL );
 	vkDestroyInstance( renderer->vk.instance, NULL );
 	volkFinalize();
 #endif
@@ -1137,4 +1161,10 @@ void WaitRIQueueIdle( struct RIDevice_s *device, struct RIQueue_s *queue ) {
 #endif
 }
 
-int FreeRIDevice( struct RIDevice_s *dev ) {}
+int FreeRIDevice( struct RIDevice_s *dev ) {
+#if ( DEVICE_IMPL_VULKAN )
+	vkDestroyDevice( dev->vk.device, NULL );
+	if( dev->vk.vmaAllocator )
+		vmaDestroyAllocator( dev->vk.vmaAllocator );
+#endif
+}

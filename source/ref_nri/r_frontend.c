@@ -81,6 +81,9 @@ static void __ShutdownSwapchainTexture() {
 #endif
 		}
 		FreeRISwapchain( &rsh.device, &rsh.riSwapchain );
+
+		rsh.vk.swapchainIndex = 0;
+		rsh.vk.frameSemaphore= 0;
 	}
 }
 
@@ -212,6 +215,7 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 			cmdAllocInfo.commandPool = rsh.frameSets[i].vk.pool;
 			cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 			cmdAllocInfo.commandBufferCount = 1;
+			rsh.frameSets[i].primaryCmd.vk.pool = rsh.frameSets[i].vk.pool;
 			VK_WrapResult( vkAllocateCommandBuffers( rsh.device.vk.device, &cmdAllocInfo, &rsh.frameSets[i].primaryCmd.vk.cmd ) );
 		}
 		{
@@ -219,6 +223,7 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 			cmdAllocInfo.commandPool = rsh.frameSets[i].vk.pool;
 			cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 			cmdAllocInfo.commandBufferCount = 1;
+			rsh.frameSets[i].backBufferCmd.vk.pool = rsh.frameSets[i].vk.pool;
 			VK_WrapResult( vkAllocateCommandBuffers( rsh.device.vk.device, &cmdAllocInfo, &rsh.frameSets[i].backBufferCmd.vk.cmd ) );
 		}
 	}
@@ -473,8 +478,24 @@ void RF_Shutdown( bool verbose )
 
 	R_DisposeScene(&rsc);
 
-	for(size_t i = 0; i < NUMBER_FRAMES_FLIGHT; i++) {
-		//FrameCmdBufferFree(&rsh.frameCmds[i]);
+	for( size_t i = 0; i < NUMBER_FRAMES_FLIGHT; i++ ) {
+		struct r_frame_set_s *frameSet = &rsh.frameSets[i];
+		FreeRIScratchAlloc( &rsh.device, &frameSet->uboScratchAlloc );
+		for( size_t i = 0; i < arrlen( frameSet->freeList ); i++ ) {
+			FreeRIFree( &rsh.device, &frameSet->freeList[i] );
+		}
+		for( size_t i = 0; i < arrlen( frameSet->secondaryCmd ); i++ ) {
+			FreeRICmd( &rsh.device, &frameSet->secondaryCmd[i] );
+		}
+		FreeRICmd( &rsh.device, &frameSet->primaryCmd );
+		FreeRICmd( &rsh.device, &frameSet->backBufferCmd );
+
+#if ( DEVICE_IMPL_VULKAN )
+		vkDestroyCommandPool( rsh.device.vk.device, frameSet->vk.pool, NULL );
+#endif
+		arrfree( frameSet->freeList );
+		arrfree( frameSet->secondaryCmd );
+		memset(frameSet, 0, sizeof(struct r_frame_set_s));
 	}
 
 	__ShutdownSwapchainTexture();
@@ -485,7 +506,8 @@ void RF_Shutdown( bool verbose )
 	R_FreePool( &r_mempool );
 
 	R_WIN_Shutdown();
-
+	FreeRIDevice(&rsh.device);
+	ShutdownRIRenderer(&rsh.renderer);
 	//R_FreeNriBackend(&rsh.nri);
 
 }
@@ -774,7 +796,6 @@ void RF_EndFrame( void )
 		submitInfo.pCommandBufferInfos = &cmdSubmitInfo;
 		submitInfo.commandBufferInfoCount = 1;
 
-
 		RI_ResourceSubmit(&rsh.device, &rsh.uploader);
 		VK_WrapResult(vkQueueSubmit2( graphicsQueue->vk.queue, 1, &submitInfo, VK_NULL_HANDLE ));
 		RISwapchainPresent( &rsh.device, &rsh.riSwapchain );
@@ -914,7 +935,9 @@ void R_InitSubpass( struct FrameState_s *parent, struct FrameState_s *child)
 		cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 		cmdAllocInfo.commandBufferCount = 1;
 		struct RICmd_s cmd = {};
+		cmd.vk.pool = active->vk.pool;
 		VK_WrapResult( vkAllocateCommandBuffers( rsh.device.vk.device, &cmdAllocInfo, &cmd.vk.cmd ) );
+		assert(IsRICmdValid(&rsh.renderer, &cmd));
 		arrpush( active->secondaryCmd, cmd );
 		child->handle = cmd;
 	}

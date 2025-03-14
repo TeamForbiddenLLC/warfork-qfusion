@@ -269,7 +269,6 @@ void RISwapchainPresent(struct RIDevice_s* dev, struct RISwapchain_s* swapchain)
 		swapchain->vk.presentID++;
 		swapchain->vk.frameIndex = ( swapchain->vk.frameIndex + 1 ) % RI_MAX_SWAPCHAIN_IMAGES;
 	}
-
 #endif
 }
 

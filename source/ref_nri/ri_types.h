@@ -318,6 +318,8 @@ struct RIFree_s {
 	};
 };
 
+
+
 enum RIDescriptorFlags_e {
 	RI_VK_DESC_BEGIN = 0,
 	RI_VK_DESC_OWN_SAMPLER = 0x1,		 // owns the backing assets VKImage, VkBuffer
@@ -364,11 +366,13 @@ struct RICmd_s {
 	union {
     #if(DEVICE_IMPL_VULKAN)
     struct {
+    	VkCommandPool pool;
     	VkCommandBuffer cmd;  
     } vk;
     #endif
 	};
 };
+
 
 struct RIQueue_s {
   union {
@@ -716,13 +720,18 @@ struct RIDevice_s {
   };
 };
 
-static inline bool RITextureHandleValid( struct RIRenderer_s *renderer, const struct RITexture_s *handle )
+static inline bool IsRICmdValid( struct RIRenderer_s *renderer, struct RICmd_s *cmd )
 {
-
 #if ( DEVICE_IMPL_VULKAN )
-	{
+	return cmd->vk.pool && cmd->vk.cmd;
+#endif
+	return false;
+}
+
+static inline bool IsRITextureValid( struct RIRenderer_s *renderer, const struct RITexture_s *handle )
+{
+#if ( DEVICE_IMPL_VULKAN )
 		return handle && handle->vk.image != NULL;
-	}
 #endif
 	return false;
 }

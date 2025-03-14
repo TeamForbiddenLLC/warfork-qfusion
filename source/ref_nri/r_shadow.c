@@ -39,14 +39,13 @@ void R_ShutdownShadows() {
 	for(size_t frameIdx = 0; frameIdx < NUMBER_FRAMES_FLIGHT; frameIdx++) {
 		for(size_t portalIdx = 0; portalIdx < MAX_PORTAL_TEXTURES; portalIdx++) {
 			struct shadow_fb_s *fb = &rsh.shadowFBs[frameIdx][portalIdx];
-		 // if(fb->depthTexture) {
-		 // 	rsh.nri.coreI.DestroyTexture(fb->depthTexture);
-		 // 	rsh.nri.coreI.DestroyDescriptor(fb->shaderDescriptor.descriptor);
-		 // 	rsh.nri.coreI.DestroyDescriptor(fb->depthAttachment.descriptor);
-		 // }
-		 // for( size_t i = 0; i < fb->numAllocations; i++ )
-		 // 	rsh.nri.coreI.FreeMemory(fb->memory[i]);
-		 // fb->numAllocations = 0;
+			if(IsRITextureValid(&rsh.renderer, &fb->texture )) {
+				FreeRITexture(&rsh.device, &fb->texture);
+				FreeRIDescriptor(&rsh.device, &fb->descriptor);
+#if ( DEVICE_IMPL_VULKAN )
+				vmaFreeMemory( rsh.device.vk.vmaAllocator, fb->vk.vmaAlloc);
+#endif
+			}
 			memset(fb, 0, sizeof(struct shadow_fb_s));
 		}
 	}
@@ -357,7 +356,7 @@ static struct shadow_fb_s *__ResolveShadowSurface(size_t i, int width, int heigh
 {
 	struct shadow_fb_s *bestFB = &rsh.shadowFBs[rsh.frameSetCount % NUMBER_FRAMES_FLIGHT][i];
 
-	if( RITextureHandleValid( &rsh.renderer, &bestFB->texture ) && bestFB->width == width && bestFB->height == height ) {
+	if( IsRITextureValid( &rsh.renderer, &bestFB->texture ) && bestFB->width == width && bestFB->height == height ) {
 		return bestFB;
 	}
 	bestFB->width = width;
@@ -429,7 +428,6 @@ static struct shadow_fb_s *__ResolveShadowSurface(size_t i, int width, int heigh
 		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->descriptor.vk.image.imageView ) );
 		UpdateRIDescriptor( &rsh.device, &bestFB->descriptor );
 
-		//RI_VK_InitImageView( &rsh.device, &createInfo, &bestFB->descriptor, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
 		return bestFB;
 	}
 #endif

@@ -10,12 +10,12 @@ jobs:
           - {
               name: "Linux-x86_64-Release",
               type: "release",
-              cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 -DUSE_SYSTEM_ZLIB=1 -DUSE_SYSTEM_OPENAL=1 -DUSE_SYSTEM_CURL=1 -DUSE_SYSTEM_FREETYPE=1 -DUSE_PACKAGE_ASSETS=1",
+              cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 -DUSE_SYSTEM_ZLIB=1 -DUSE_SYSTEM_OPENAL=1 -DUSE_SYSTEM_CURL=1 -DUSE_SYSTEM_FREETYPE=1",
             }
           - {
               name: "Linux-x86_64-Debug",
               type: "debug",
-              cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 -DUSE_SYSTEM_ZLIB=1 -DUSE_SYSTEM_OPENAL=1 -DUSE_SYSTEM_CURL=1 -DUSE_SYSTEM_FREETYPE=1 -DUSE_PACKAGE_ASSETS=1",
+              cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 -DUSE_SYSTEM_ZLIB=1 -DUSE_SYSTEM_OPENAL=1 -DUSE_SYSTEM_CURL=1 -DUSE_SYSTEM_FREETYPE=1",
             }
     name: ${{ matrix.config.name }}
     runs-on: ubuntu-20.04
@@ -40,18 +40,20 @@ jobs:
         working-directory: ./source
         run: |
           export CC=clang-11 CXX=clang++-11
-          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Release
+          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Release -DUSE_PACKAGE_ASSETS=1
           cd build
           make -j8
+          make deploy -j8 
 
       - name: Building Debug
         if: matrix.config.type == 'debug'
         working-directory: ./source
         run: |
           export CC=clang-11 CXX=clang++-11
-          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Debug 
+          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Debug -DUSE_PACKAGE_ASSETS=1
           cd build
           make -j8
+          make deploy -j8
 
       - name: Unit Test
         working-directory: ./source/build/warfork-qfusion
@@ -165,7 +167,7 @@ jobs:
               name: "win-x86_64-Release",
               vs_version: "Visual Studio 16 2019",
               type: "release",
-              cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_PACKAGE_ASSETS=1",
+              cmake_args: "-DBUILD_STEAMLIB=1",
               build_folder: "Release",
             }
           - {
@@ -173,7 +175,7 @@ jobs:
               name: "win-x86_64-Debug",
               vs_version: "Visual Studio 16 2019",
               type: "debug",
-              cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON -DUSE_PACKAGE_ASSETS=1",
+              cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON",
               build_folder: "Debug",
             }
 
@@ -197,17 +199,15 @@ jobs:
         if: matrix.config.type == 'debug'
         working-directory: .\source
         run: |
-          cmake -B ./build ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1
-          cd build
-          msbuild qfusion.sln /p:configuration=Debug /maxcpucount:8
+          cmake -B ./build --target ALL_BUILD --config Debug ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1
+          cmake -B ./build --target deploy --config Debug ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DUSE_PACKAGE_ASSETS=1
       - name: Building Release
         if: matrix.config.type == 'release'
         working-directory: .\source
         run: |
-          cmake -B ./build  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RELEASE
-          cd build
-          msbuild qfusion.sln /p:configuration=Release /maxcpucount:8
-
+          cmake -B ./build --target ALL_BUILD --config Release ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1
+          cmake -B ./build --target deploy --config Release ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DUSE_PACKAGE_ASSETS=1
+          
       - name: Unit Test
         shell: bash
         working-directory: .\source\build\warfork-qfusion\${{matrix.config.build_folder}}
