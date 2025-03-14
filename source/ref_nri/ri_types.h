@@ -728,6 +728,14 @@ static inline bool IsRICmdValid( struct RIRenderer_s *renderer, struct RICmd_s *
 	return false;
 }
 
+static inline bool IsRIBufferValid( struct RIRenderer_s *renderer, const struct RIBuffer_s *handle )
+{
+#if ( DEVICE_IMPL_VULKAN )
+		return handle && handle->vk.buffer!= NULL;
+#endif
+	return false;
+}
+
 static inline bool IsRITextureValid( struct RIRenderer_s *renderer, const struct RITexture_s *handle )
 {
 #if ( DEVICE_IMPL_VULKAN )

@@ -21,7 +21,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_local.h"
 #include "r_backend_local.h"
 #include "ri_types.h"
+#include "ri_renderer.h"
 
+#include "stb_ds.h"
 // Smaller buffer for 2D polygons. Also a workaround for some instances of a hardly explainable bug on Adreno
 // that caused dynamic draws to slow everything down in some cases when normals are used with dynamic VBOs.
 #define COMPACT_STREAM_VATTRIBS ( VATTRIB_POSITION_BIT | VATTRIB_COLOR0_BIT | VATTRIB_TEXCOORDS_BIT )
@@ -131,10 +133,20 @@ void RB_Init( void )
 */
 void RB_Shutdown( void )
 {
-	//for(size_t i = 0; i < RB_DYN_STREAM_NUM; i++) {
-	//	freeGPUFrameEleAlloc(&rb.dynamicVertexAlloc[i].vertexAlloc);
-	//	freeGPUFrameEleAlloc(&rb.dynamicVertexAlloc[i].indexAlloc);
-	//}
+	for(size_t i = 0; i < RB_DYN_STREAM_NUM; i++) {
+#if ( DEVICE_IMPL_VULKAN )
+		if(rb.dynamicStreams[i].vk.vertexBuffer) {
+			vkDestroyBuffer(rsh.device.vk.device, rb.dynamicStreams[i].vk.vertexBuffer, NULL);
+			vmaFreeMemory(rsh.device.vk.vmaAllocator, rb.dynamicStreams[i].vk.vertexAlloc);
+		}
+		if(rb.dynamicStreams[i].vk.indexBuffer) {
+			vkDestroyBuffer(rsh.device.vk.device, rb.dynamicStreams[i].vk.indexBuffer, NULL);
+			vmaFreeMemory(rsh.device.vk.vmaAllocator, rb.dynamicStreams[i].vk.indexAlloc);
+		}
+
+#endif
+	}
+	memset( rb.dynamicStreams, 0, sizeof( struct dynamic_vertex_stream_s ) * RB_DYN_STREAM_NUM );
 	RP_StorePrecacheList();
 	R_FreePool( &rb.mempool );
 }
@@ -490,6 +502,7 @@ void RB_AddDynamicMesh(struct FrameState_s* cmd, const entity_t *entity, const s
   struct RISegmentReq_s vertexReq = {};
   struct RISegmentReq_s eleReq = {};
   struct dynamic_vertex_stream_s *const selectedStream = &( rb.dynamicStreams[streamId] );
+  struct r_frame_set_s *active = R_GetActiveFrameSet();
 
 #if ( DEVICE_IMPL_VULKAN )
   {
@@ -516,8 +529,20 @@ void RB_AddDynamicMesh(struct FrameState_s* cmd, const entity_t *entity, const s
 		  VmaAllocationCreateInfo allocInfo = {};
 		  allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
 		  allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-		  VK_WrapResult( vmaCreateBuffer( rsh.device.vk.vmaAllocator, &vertexBufferCreateInfo, &allocInfo, &selectedStream->vk.vertexBuffer, &selectedStream->vk.vertexAlloc, &allocationInfo ) );
+		  if( selectedStream->vk.vertexBuffer ) {
+			  struct RIFree_s freeEntry;
+			  freeEntry.type = RI_FREE_VK_BUFFER;
+			  freeEntry.vkBuffer = selectedStream->vk.vertexBuffer;
+			  arrpush( active->freeList, freeEntry );
+			  freeEntry.type = RI_FREE_VK_VMA_AllOC;
+			  freeEntry.vmaAlloc = selectedStream->vk.vertexAlloc;
+			  arrpush( active->freeList, freeEntry );
+		  }
+
+			VK_WrapResult( vmaCreateBuffer( rsh.device.vk.vmaAllocator, &vertexBufferCreateInfo, &allocInfo, &selectedStream->vk.vertexBuffer, &selectedStream->vk.vertexAlloc, &allocationInfo ) );
 		  rb.dynamicStreams[streamId].pVtxMappedAddress = allocationInfo.pMappedData;
+	  	
+
 	  }
 	  if( rb.dynamicStreams[streamId].vk.indexAlloc == NULL || !RISegmentAlloc( rsh.frameSetCount, &selectedStream->indexAllocator, numElems, &eleReq ) ) {
 		  struct RISegmentAllocDesc_s segmentAllocDesc = {};
@@ -542,6 +567,15 @@ void RB_AddDynamicMesh(struct FrameState_s* cmd, const entity_t *entity, const s
 		  VmaAllocationCreateInfo allocInfo = {};
 		  allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
 		  allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+		  if( selectedStream->vk.vertexBuffer ) {
+			  struct RIFree_s freeEntry;
+			  freeEntry.type = RI_FREE_VK_BUFFER;
+			  freeEntry.vkBuffer = selectedStream->vk.indexBuffer;
+			  arrpush( active->freeList, freeEntry );
+			  freeEntry.type = RI_FREE_VK_VMA_AllOC;
+			  freeEntry.vmaAlloc = selectedStream->vk.indexAlloc;
+			  arrpush( active->freeList, freeEntry );
+		  }
 		  VK_WrapResult( vmaCreateBuffer( rsh.device.vk.vmaAllocator, &indexBufferCreateInfo, &allocInfo, &selectedStream->vk.indexBuffer, &selectedStream->vk.indexAlloc, &allocationInfo ) );
 		  rb.dynamicStreams[streamId].pIdxMappedAddress = allocationInfo.pMappedData;
 	  }
@@ -754,7 +788,8 @@ void RB_DrawElementsInstanced( int firstVert, int numVerts, int firstElem, int n
 	rb.drawShadowElements.numInstances = 0;
 
 	// check for vertex-attrib-divisor style instancing
-	if( glConfig.ext.instanced_arrays ) {
+	//TODO: instanced data???
+	if( false ) {
 		if( rb.currentVBO->instancesOffset ) {
 			// static VBO's must come with their own set of instance data
 			rb.currentVAttribs |= VATTRIB_INSTANCES_BITS;

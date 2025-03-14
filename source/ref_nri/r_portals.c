@@ -147,14 +147,23 @@ addsurface:
 	return portalSurface;
 }
 
-void R_ShutdownPortals() {
+void R_ShutdownPortals()
+{
 	for( size_t i = 0; i < MAX_PORTAL_TEXTURES; i++ ) {
 		struct portal_fb_s *portalFB = &rsh.portalFBs[i];
-		if( IsRITextureValid( &rsh.renderer, &portalFB->colorTexture )) {
-			vmaFreeMemory(rsh.device.vk.vmaAllocator, portalFB->vk.vmaColorAlloc);
+		if( IsRITextureValid( &rsh.renderer, &portalFB->colorTexture ) ) {
+			FreeRITexture( &rsh.device, &portalFB->colorTexture );
+			FreeRIDescriptor( &rsh.device, &portalFB->colorDescriptor );
+#if ( DEVICE_IMPL_VULKAN )
+			vmaFreeMemory( rsh.device.vk.vmaAllocator, portalFB->vk.vmaColorAlloc );
+#endif
 		}
-		if( IsRITextureValid( &rsh.renderer, &portalFB->depthTexture)) {
-			vmaFreeMemory(rsh.device.vk.vmaAllocator, portalFB->vk.vmaDepthAlloc);
+		if( IsRITextureValid( &rsh.renderer, &portalFB->depthTexture ) ) {
+			FreeRITexture( &rsh.device, &portalFB->depthTexture );
+			FreeRIDescriptor( &rsh.device, &portalFB->depthDescriptor );
+#if ( DEVICE_IMPL_VULKAN )
+			vmaFreeMemory( rsh.device.vk.vmaAllocator, portalFB->vk.vmaDepthAlloc );
+#endif
 		}
 		memset( portalFB, 0, sizeof( struct portal_fb_s ) );
 	}

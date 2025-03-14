@@ -23,7 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ri_resource_upload.h"
 
 #include "stb_ds.h"
-#include <vulkan/vulkan_core.h>
+#include "ri_renderer.h"
 /*
 =========================================================
 
@@ -222,10 +222,13 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 		VmaAllocationInfo allocationInfo = {};
 		VmaAllocationCreateInfo allocInfo = {};
 		allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-			
-		VK_WrapResult(vmaCreateBuffer(rsh.device.vk.vmaAllocator, &vertexBufferCreateInfo, &allocInfo, &vbo->vertexBuffer.vk.buffer, &vbo->vk.vertexBufferAlloc, &allocationInfo));
-		//vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, vbo->vertexBuffer.vk.buffer, &allocInfo, &vbo->vk.vertexBufferAlloc, &allocationInfo );
-		//vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, vbo->vk.vertexBufferAlloc, 0, vbo->vertexBuffer.vk.buffer, NULL );
+
+		VK_WrapResult( vmaCreateBuffer( rsh.device.vk.vmaAllocator, &vertexBufferCreateInfo, &allocInfo, &vbo->vertexBuffer.vk.buffer, &vbo->vk.vertexBufferAlloc, &allocationInfo ) );
+		if( vkSetDebugUtilsObjectNameEXT ) {
+			VkDebugUtilsObjectNameInfoEXT debugName = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, NULL, VK_OBJECT_TYPE_BUFFER, (uint64_t)vbo->vertexBuffer.vk.buffer, "VBO_VERTEX_BUFFER" };
+			VK_WrapResult( vkSetDebugUtilsObjectNameEXT( rsh.device.vk.device, &debugName ) );
+		}
+
 		vbo->hasVertexBuffer = 1;
 	}
 
@@ -243,9 +246,11 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 		allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 		
 		VK_WrapResult(vmaCreateBuffer(rsh.device.vk.vmaAllocator, &indexBufferCreateInfo, &allocInfo, &vbo->indexBuffer.vk.buffer, &vbo->vk.indexBufferAlloc, &allocationInfo));
+		if( vkSetDebugUtilsObjectNameEXT ) {
+			VkDebugUtilsObjectNameInfoEXT debugName = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, NULL, VK_OBJECT_TYPE_BUFFER, (uint64_t)vbo->vertexBuffer.vk.buffer, "VBO_INDEX_BUFFER" };
+			VK_WrapResult( vkSetDebugUtilsObjectNameEXT( rsh.device.vk.device, &debugName ) );
+		}
 
-		//vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, vbo->indexBuffer.vk.buffer, &allocInfo, &vbo->vk.indexBufferAlloc, &allocationInfo );
-		//vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, vbo->vk.indexBufferAlloc, 0, vbo->indexBuffer.vk.buffer, NULL );
 		vbo->hasIndexBuffer = 1;
 	}
 	//NriBufferDesc indexBufferDesc = { .size = desc->numElems * sizeof( elem_t ), .usage = NriBufferUsageBits_INDEX_BUFFER };
@@ -266,33 +271,14 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 		VmaAllocationCreateInfo allocInfo = {};
 		allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 		
-	 // vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, vbo->instanceBuffer.vk.buffer, &allocInfo, &vbo->vk.instanceBufferAlloc, &allocationInfo );
-	 // vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, vbo->vk.instanceBufferAlloc, 0, vbo->instanceBuffer.vk.buffer, NULL );
-		
 		VK_WrapResult(vmaCreateBuffer(rsh.device.vk.vmaAllocator, &instanceBufferCreateInfo, &allocInfo, &vbo->instanceBuffer.vk.buffer, &vbo->vk.instanceBufferAlloc, &allocationInfo));
+		if( vkSetDebugUtilsObjectNameEXT ) {
+			VkDebugUtilsObjectNameInfoEXT debugName = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, NULL, VK_OBJECT_TYPE_BUFFER, (uint64_t)vbo->vertexBuffer.vk.buffer, "VBO_INSTACE_BUFFER" };
+			VK_WrapResult( vkSetDebugUtilsObjectNameEXT( rsh.device.vk.device, &debugName ) );
+		}
 
 		vbo->hasInstanceBuffer = 1;
-
-		//NriBufferDesc instanceBufferDesc = { 
-		//	.size = instanceByteStride * desc->numInstances, 
-		//	.usage = NriBufferUsageBits_CONSTANT_BUFFER };
-		//rsh.nri.coreI.CreateBuffer( rsh.nri.device, &instanceBufferDesc, &vbo->instanceBuffer );
 	}
-
-	//NriBuffer *nriBuffers[] = {
-	//	vbo->vertexBuffer,
-	//	vbo->indexBuffer,
-	//	vbo->instanceBuffer,
-	//};
-
-	//NriResourceGroupDesc resourceGroupDesc = {
-	//	.bufferNum = 2 + ( hasInstanceBuffer ? 1 : 0 ),
-	//	.buffers = nriBuffers,
-	//	.memoryLocation = desc->memoryLocation,
-	//};
-	//const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
-	//vbo->numAllocations = allocationNum;
-	//R_VK_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, vbo->memory ) );
 
 	r_num_active_vbos++;
 
@@ -359,25 +345,32 @@ void R_ReleaseMeshVBO(struct FrameState_s *cmd, mesh_vbo_t *vbo )
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		struct r_frame_set_s *active = R_GetActiveFrameSet();
-		freeEntry.type = RI_FREE_VK_BUFFER;
-		freeEntry.vkBuffer = vbo->vertexBuffer.vk.buffer;
-		arrpush( active->freeList, freeEntry );
+		if( IsRIBufferValid( &rsh.renderer, &vbo->vertexBuffer ) ) {
+			freeEntry.type = RI_FREE_VK_BUFFER;
+			freeEntry.vkBuffer = vbo->vertexBuffer.vk.buffer;
+			arrpush( active->freeList, freeEntry );
+			freeEntry.type = RI_FREE_VK_VMA_AllOC;
+			freeEntry.vmaAlloc = vbo->vk.vertexBufferAlloc;
+			arrpush( active->freeList, freeEntry );
+		}
 
-		freeEntry.vkBuffer = vbo->indexBuffer.vk.buffer;
-		arrpush( active->freeList, freeEntry );
+		if( IsRIBufferValid( &rsh.renderer, &vbo->indexBuffer ) ) {
+			freeEntry.type = RI_FREE_VK_BUFFER;
+			freeEntry.vkBuffer = vbo->indexBuffer.vk.buffer;
+			arrpush( active->freeList, freeEntry );
+			freeEntry.type = RI_FREE_VK_VMA_AllOC;
+			freeEntry.vmaAlloc = vbo->vk.indexBufferAlloc;
+			arrpush( active->freeList, freeEntry );
+		}
 
-		freeEntry.vkBuffer = vbo->instanceBuffer.vk.buffer;
-		arrpush( active->freeList, freeEntry );
-
-		freeEntry.type = RI_FREE_VK_VMA_AllOC;
-		freeEntry.vmaAlloc = vbo->vk.instanceBufferAlloc;
-		arrpush( active->freeList, freeEntry );
-
-		freeEntry.vmaAlloc = vbo->vk.vertexBufferAlloc;
-		arrpush( active->freeList, freeEntry );
-
-		freeEntry.vmaAlloc = vbo->vk.indexBufferAlloc;
-		arrpush( active->freeList, freeEntry );
+		if( IsRIBufferValid( &rsh.renderer, &vbo->instanceBuffer ) ) {
+			freeEntry.type = RI_FREE_VK_BUFFER;
+			freeEntry.vkBuffer = vbo->instanceBuffer.vk.buffer;
+			arrpush( active->freeList, freeEntry );
+			freeEntry.type = RI_FREE_VK_VMA_AllOC;
+			freeEntry.vmaAlloc = vbo->vk.instanceBufferAlloc;
+			arrpush( active->freeList, freeEntry );
+		}
 	}
 #endif
 	if( vbo->index >= 1 && vbo->index <= MAX_MESH_VERTEX_BUFFER_OBJECTS ) {

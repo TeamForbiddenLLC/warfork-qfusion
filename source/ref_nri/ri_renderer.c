@@ -1128,10 +1128,6 @@ void FreeRITexture( struct RIDevice_s *dev, struct RITexture_s *tex )
 void FreeRICmd(struct RIDevice_s* dev, struct RICmd_s* cmd) {
 	assert(cmd->vk.pool);
 	assert(cmd->vk.cmd);
-	switch( dev->renderer->api ) {
-		case RI_DEVICE_API_VK:
-			break;
-	}
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		if( cmd->vk.cmd) {

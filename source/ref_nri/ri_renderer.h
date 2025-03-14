@@ -23,7 +23,6 @@ struct RIDeviceDesc_s {
 int InitRIRenderer( const struct RIBackendInit_s *init, struct RIRenderer_s *renderer );
 void ShutdownRIRenderer( struct RIRenderer_s *renderer );
 
-
 int EnumerateRIAdapters( struct RIRenderer_s *renderer, struct RIPhysicalAdapter_s *adapters, uint32_t *numAdapters );
 int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, struct RIDevice_s *device );
 

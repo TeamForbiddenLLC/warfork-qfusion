@@ -94,8 +94,7 @@ void RIResetScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s *po
 	arrsetlen( pool->recycle, 0 );
 }
 
-
-struct RIBufferScratchAllocReq_s  RIAllocBufferFromScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s *pool, size_t reqSize )
+struct RIBufferScratchAllocReq_s RIAllocBufferFromScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s *pool, size_t reqSize )
 {
 	const size_t alignReqSize = Q_ALIGN_TO( reqSize, pool->alignmentReq );
 	assert(pool->alloc);
@@ -122,4 +121,3 @@ struct RIBufferScratchAllocReq_s  RIAllocBufferFromScratchAlloc( struct RIDevice
 	pool->blockOffset += alignReqSize;
 	return req;
 }
-

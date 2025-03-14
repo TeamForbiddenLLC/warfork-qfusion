@@ -34,7 +34,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define SHADOWGROUPS_HASH_SIZE	8
 static shadowGroup_t *r_shadowGroups_hash[SHADOWGROUPS_HASH_SIZE];
 
-
 void R_ShutdownShadows() {
 	for(size_t frameIdx = 0; frameIdx < NUMBER_FRAMES_FLIGHT; frameIdx++) {
 		for(size_t portalIdx = 0; portalIdx < MAX_PORTAL_TEXTURES; portalIdx++) {

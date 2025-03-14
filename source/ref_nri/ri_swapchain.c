@@ -276,18 +276,16 @@ void FreeRISwapchain( struct RIDevice_s *dev, struct RISwapchain_s *swapchain )
 {
 #if ( DEVICE_IMPL_VULKAN )
 	{
-		for( size_t i = 0; i < swapchain->imageCount; i++ ) {
-			if( swapchain->vk.swapchain )
-				vkDestroySwapchainKHR( dev->vk.device, swapchain->vk.swapchain, NULL );
-			for( size_t i = 0; i < RI_MAX_SWAPCHAIN_IMAGES; i++ ) {
-				if( swapchain->vk.imageAcquireSem[i] )
-					vkDestroySemaphore( dev->vk.device, swapchain->vk.imageAcquireSem[i], NULL );
-				if( swapchain->vk.finishSem[i] )
-					vkDestroySemaphore( dev->vk.device, swapchain->vk.finishSem[i], NULL );
-			}
-			if( swapchain->vk.surface )
-				vkDestroySurfaceKHR( dev->renderer->vk.instance, swapchain->vk.surface, NULL );
+		for( size_t p = 0; p < RI_MAX_SWAPCHAIN_IMAGES; p++ ) {
+			if( swapchain->vk.imageAcquireSem[p] )
+				vkDestroySemaphore( dev->vk.device, swapchain->vk.imageAcquireSem[p], NULL );
+			if( swapchain->vk.finishSem[p] )
+				vkDestroySemaphore( dev->vk.device, swapchain->vk.finishSem[p], NULL );
 		}
+		if( swapchain->vk.swapchain )
+			vkDestroySwapchainKHR( dev->vk.device, swapchain->vk.swapchain, NULL );
+		if( swapchain->vk.surface )
+			vkDestroySurfaceKHR( dev->renderer->vk.instance, swapchain->vk.surface, NULL );
 	}
 	memset( swapchain, 0, sizeof( struct RISwapchain_s ) );
 #endif

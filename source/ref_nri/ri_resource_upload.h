@@ -62,7 +62,7 @@ struct RIResourceUploader_s {
 };
 
 void RI_InitResourceUploader( struct RIDevice_s *device, struct RIResourceUploader_s *resource );
-
+void RI_FreeResourceUploader( struct RIDevice_s *device, struct RIResourceUploader_s *resource );
 struct RIResourceBufferTransaction_s {
 	struct RIBuffer_s target;
 

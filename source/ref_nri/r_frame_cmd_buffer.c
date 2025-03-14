@@ -81,7 +81,6 @@ void FR_CmdResetCommandState( struct FrameState_s *cmd, enum CmdResetBits bits)
 
 void UpdateFrameUBO( struct FrameState_s *cmd, struct RIDescriptor_s *req, void *data, size_t size )
 {
-
 	const hash_t hash = hash_data( HASH_INITIAL_VALUE, data, size );
 	if( req->cookie != hash ) {
 		req->cookie = hash;
@@ -91,76 +90,7 @@ void UpdateFrameUBO( struct FrameState_s *cmd, struct RIDescriptor_s *req, void 
 		req->vk.buffer.offset = scratchReq.bufferOffset;
 		req->vk.buffer.range = size; 
 		memcpy(scratchReq.block.pMappedAddress + scratchReq.bufferOffset, data, size);
-
-
-		//struct block_buffer_pool_req_s poolReq = BlockBufferPoolReq( &rsh.nri, &cmd->uboBlockBuffer, size );
-		//void *mem = rsh.nri.coreI.MapBuffer( poolReq.buffer, poolReq.bufferOffset, poolReq.bufferSize );
-		//memcpy( mem, data, size );
-		//rsh.nri.coreI.UnmapBuffer( poolReq.buffer );
-
-		//NriBufferViewDesc bufferDesc = { .buffer = poolReq.buffer, .size = poolReq.bufferSize, .offset = poolReq.bufferOffset, .viewType = NriBufferViewType_CONSTANT };
-
-		//NriDescriptor *descriptor = NULL;
-		//NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateBufferView( &bufferDesc, &descriptor ) );
-		//arrpush( cmd->frameTemporaryDesc, descriptor );
-		//req->descriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
-		//req->hash = hash;
-		//req->req = poolReq;
 	}
-}
-
-//void R_CmdState_RestoreAttachment(struct frame_cmd_buffer_s* cmd, const struct frame_cmd_save_attachment_s* save) {
-//	assert(cmd->stackCmdBeingRendered == 0);
-//	cmd->state.numColorAttachments = save->numColorAttachments;
-//	memcpy(cmd->state.pipelineLayout.colorFormats, save->colorFormats, sizeof(NriFormat) * cmd->state.numColorAttachments);
-//	memcpy(cmd->state.colorAttachment, save->colorAttachment, sizeof(NriDescriptor*) * cmd->state.numColorAttachments);
-//	memcpy(cmd->state.scissors, save->scissors, sizeof(NriRect) * FR_CmdNumViewports(cmd));
-//	memcpy(cmd->state.viewports, save->viewports, sizeof(NriViewport) * FR_CmdNumViewports(cmd));
-//	cmd->state.depthAttachment = save->depthAttachment;
-//	cmd->state.dirty |= (CMD_DIRT_SCISSOR | CMD_DIRT_VIEWPORT);
-//}
-//
-//
-//struct frame_cmd_save_attachment_s R_CmdState_StashAttachment(struct frame_cmd_buffer_s* cmd) {
-//	struct frame_cmd_save_attachment_s save;
-//	save.numColorAttachments = cmd->state.numColorAttachments;
-//	memcpy(save.colorFormats, cmd->state.pipelineLayout.colorFormats, sizeof(NriFormat) * cmd->state.numColorAttachments);
-//	memcpy(save.colorAttachment, cmd->state.colorAttachment, sizeof(NriDescriptor*) * cmd->state.numColorAttachments);
-//	memcpy(save.scissors, cmd->state.scissors, sizeof(NriRect) * FR_CmdNumViewports(cmd));
-//	memcpy(save.viewports, cmd->state.viewports, sizeof(NriViewport) * FR_CmdNumViewports(cmd));
-//	save.depthAttachment = cmd->state.depthAttachment;
-//	return save;
-//}
-
-
-void FrameCmdBufferFree(struct FrameState_s* cmd) {
-	//for( size_t i = 0; i < arrlen( cmd->freeTextures ); i++ ) {
-	//	rsh.nri.coreI.DestroyTexture( cmd->freeTextures[i] );
-	//}
-	//for( size_t i = 0; i < arrlen( cmd->freeBuffers ); i++ ) {
-	//	rsh.nri.coreI.DestroyBuffer( cmd->freeBuffers[i] );
-	//}
-	//for( size_t i = 0; i < arrlen( cmd->freeMemory ); i++ ) {
-	//	rsh.nri.coreI.FreeMemory( cmd->freeMemory[i] );
-	//}
-	//for( size_t i = 0; i < arrlen( cmd->frameTemporaryDesc ); i++ ) {
-	//	rsh.nri.coreI.DestroyDescriptor( cmd->frameTemporaryDesc[i] );
-	//}
-	//arrfree(cmd->freeMemory);
-	//arrfree(cmd->freeTextures);
-	//arrfree(cmd->freeBuffers);
-	//arrfree(cmd->frameTemporaryDesc);
-	//FreeRIScratchAlloc( &rsh.nri, &cmd->uboBlockBuffer );
-	//
-	//memset( &cmd->uboSceneFrame, 0, sizeof( struct ubo_frame_instance_s ) );
-	//memset( &cmd->uboSceneObject, 0, sizeof( struct ubo_frame_instance_s ) );
-	//memset( &cmd->uboPassObject, 0, sizeof( struct ubo_frame_instance_s ) );
-	//memset( &cmd->uboBoneObject, 0, sizeof( struct ubo_frame_instance_s ) );
-	//memset( &cmd->uboLight, 0, sizeof( struct ubo_frame_instance_s ) );
-
-	//rsh.nri.coreI.DestroyCommandBuffer(cmd->cmd);
-	//rsh.nri.coreI.DestroyCommandAllocator(cmd->allocator);
-
 }
 
 void FR_ConfigurePipelineAttachment( struct pipeline_desc_s *desc, enum RI_Format_e *formats, size_t numAttachment, enum RI_Format_e depthFormat ) {

@@ -76,6 +76,8 @@ static void __ShutdownSwapchainTexture() {
 			}
 			FreeRIDescriptor(&rsh.device, &rsh.colorAttachment[i]);
 			FreeRIDescriptor(&rsh.device, &rsh.depthAttachment[i]);
+			
+			FreeRITexture(&rsh.device, &rsh.depthTextures[i]);
 #if ( DEVICE_IMPL_VULKAN )
 			vmaFreeMemory( rsh.device.vk.vmaAllocator, rsh.vk.depthAlloc[i] );
 #endif
@@ -83,7 +85,6 @@ static void __ShutdownSwapchainTexture() {
 		FreeRISwapchain( &rsh.device, &rsh.riSwapchain );
 
 		rsh.vk.swapchainIndex = 0;
-		rsh.vk.frameSemaphore= 0;
 	}
 }
 
@@ -305,6 +306,7 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 				assert( false );
 				break;
 		}
+		
 		__ShutdownSwapchainTexture();
 		struct RISwapchainDesc_s swapchainInit = {};
 		swapchainInit.windowHandle = &windowHandle;
@@ -438,6 +440,7 @@ void RF_Shutdown( bool verbose )
 	//RF_AdapterShutdown( &rrf.adapter );
 	memset( &rrf, 0, sizeof( rrf ) );
 	WaitRIQueueIdle(&rsh.device, &rsh.device.queues[RI_QUEUE_GRAPHICS]);
+	WaitRIQueueIdle(&rsh.device, &rsh.device.queues[RI_QUEUE_COPY]);
 
 	Cmd_RemoveCommand( "modellist" );
 	Cmd_RemoveCommand( "screenshot" );
@@ -452,6 +455,8 @@ void RF_Shutdown( bool verbose )
 	// free shaders, models, etc.
 
 	// kill volatile data
+	RI_FreeResourceUploader(&rsh.device, &rsh.uploader);
+	
 	R_DestroyVolatileAssets();
 
 	R_ShutdownModels();
@@ -478,6 +483,7 @@ void RF_Shutdown( bool verbose )
 
 	R_DisposeScene(&rsc);
 
+
 	for( size_t i = 0; i < NUMBER_FRAMES_FLIGHT; i++ ) {
 		struct r_frame_set_s *frameSet = &rsh.frameSets[i];
 		FreeRIScratchAlloc( &rsh.device, &frameSet->uboScratchAlloc );
@@ -497,6 +503,10 @@ void RF_Shutdown( bool verbose )
 		arrfree( frameSet->secondaryCmd );
 		memset(frameSet, 0, sizeof(struct r_frame_set_s));
 	}
+#if ( DEVICE_IMPL_VULKAN )
+		vkDestroySemaphore( rsh.device.vk.device, rsh.vk.frameSemaphore, NULL );
+#endif
+
 
 	__ShutdownSwapchainTexture();
 

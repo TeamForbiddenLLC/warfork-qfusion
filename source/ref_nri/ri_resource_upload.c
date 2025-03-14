@@ -3,6 +3,7 @@
 #include "qtypes.h"
 
 #include <stb_ds.h>
+#include <vulkan/vulkan_core.h>
 #include "ri_format.h"
 #include "ri_renderer.h"
 
@@ -73,6 +74,28 @@ void RI_InitResourceUploader( struct RIDevice_s *device, struct RIResourceUpload
 	}
 #endif
 	__BeginNewCommandSet( device, resource );
+}
+
+void RI_FreeResourceUploader( struct RIDevice_s *device, struct RIResourceUploader_s *resource )
+{
+	arrfree( resource->postImageBarriers );
+	arrfree( resource->postBufferBarriers );
+#if ( DEVICE_IMPL_VULKAN )
+	vkDestroyBuffer( device->vk.device, resource->vk.stageBuffer, NULL );
+	vmaFreeMemory( device->vk.vmaAllocator, resource->vk.stageAlloc );
+
+	vkDestroySemaphore( device->vk.device, resource->vk.uploadSem, NULL );
+	for( size_t i = 0; i < RI_RESOURCE_NUM_COMMAND_SETS; i++ ) {
+		for( size_t ti = 0; ti < arrlen( resource->vk.cmdSets[i].temporary ); ti++ ) {
+			vkDestroyBuffer( device->vk.device, resource->vk.cmdSets[i].temporary[ti].buffer, NULL );
+			vmaFreeMemory( device->vk.vmaAllocator, resource->vk.cmdSets[i].temporary[ti].alloc );
+		}
+		arrfree( resource->vk.cmdSets[i].temporary );
+		vkFreeCommandBuffers( device->vk.device, resource->vk.cmdSets[i].cmdPool, 1, &resource->vk.cmdSets[i].cmd );
+		vkDestroyCommandPool( device->vk.device, resource->vk.cmdSets[i].cmdPool, NULL );
+	}
+#endif
+	memset( resource, 0, sizeof( struct RIResourceUploader_s ) );
 }
 
 static bool __R_AllocFromStageBuffer( struct RIDevice_s *dev, struct RIResourceUploader_s *res, size_t reqSize, struct RIResourceReq *req )
