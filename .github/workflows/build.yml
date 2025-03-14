@@ -205,8 +205,8 @@ jobs:
         if: matrix.config.type == 'release'
         working-directory: .\source
         run: | 
-          cmake -B ./build --target ALL_BUILD --config Release ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Release
-          cmake -B ./build --target deploy --config Release ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DUSE_PACKAGE_ASSETS=1 -DCMAKE_BUILD_TYPE=Release
+          cmake -B ./build --target ALL_BUILD ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Release
+          cmake -B ./build --target deploy ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DUSE_PACKAGE_ASSETS=1 -DCMAKE_BUILD_TYPE=Release
           
       - name: Unit Test
         shell: bash
