@@ -49,7 +49,6 @@ static void Mod_AliasBuildStaticVBOForMesh( maliasmesh_t *mesh )
 		.numElems = mesh->numtris * 3,
 		.numInstances = 0,
 		
-		.memoryLocation = NriMemoryLocation_DEVICE,
 		.vattribs = vattribs,
 		.halfFloatVattribs = vattribs
 	};
@@ -564,7 +563,7 @@ bool R_AliasModelLerpTag( orientation_t *orient, const maliasmodel_t *aliasmodel
 * 
 * Interpolates between two frames and origins
 */
-void R_DrawAliasSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceAlias_t *drawSurf )
+void R_DrawAliasSurf(struct FrameState_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceAlias_t *drawSurf )
 {
 	int i;
 	int framenum = e->frame, oldframenum = e->oldframe;
@@ -600,18 +599,17 @@ void R_DrawAliasSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const sh
 	if( aliasmesh->vbo != NULL && !framenum && !oldframenum )
 	{
 		// RB_BindVBO( aliasmesh->vbo->index, GL_TRIANGLES );
-		cmd->state.numStreams = 1;
-		cmd->state.streams[0] = (NriVertexStreamDesc) {
+		cmd->pipeline.numStreams = 1;
+		cmd->pipeline.streams[0] = (struct frame_cmd_vertex_stream_s ) {
 			.stride = aliasmesh->vbo->vertexSize,
-			.stepRate = 0,
 			.bindingSlot = 0
 		};
-		cmd->state.numAttribs = 0;
-		cmd->state.pipelineLayout.topology = NriTopology_TRIANGLE_LIST;
-		R_FillNriVertexAttrib(aliasmesh->vbo, cmd->state.attribs, &cmd->state.numAttribs);
+		cmd->pipeline.numAttribs = 0;
+		cmd->pipeline.topology = RI_TOPOLOGY_TRIANGLE_LIST;
+		R_FillNriVertexAttrib(aliasmesh->vbo, cmd->pipeline.attribs, &cmd->pipeline.numAttribs);
 
-		FR_CmdSetVertexBuffer(cmd, 0, aliasmesh->vbo->vertexBuffer, 0);
-		FR_CmdSetIndexBuffer(cmd, aliasmesh->vbo->indexBuffer, 0, NriIndexType_UINT16);
+		FR_CmdSetVertexBuffer(cmd, 0, &aliasmesh->vbo->vertexBuffer, 0);
+		FR_CmdSetIndexBuffer(cmd, &aliasmesh->vbo->indexBuffer, 0, RI_INDEX_TYPE_16);
 
 		RB_DrawShadedElements_2(cmd, 0, aliasmesh->numverts, 0, aliasmesh->numtris * 3, 
 			0, aliasmesh->numverts, 0, aliasmesh->numtris * 3 );

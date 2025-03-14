@@ -47,6 +47,10 @@
 
 #include <stdint.h>
 
+#define KB_TO_BYTE (1024)
+#define MB_TO_BYTE (1024 * KB_TO_BYTE)
+#define GB_TO_BYTE (1024 * MB_TO_BYTE)
+
 #if INTPTR_MAX == 0x7FFFFFFFFFFFFFFFLL
   #define Q_PTR_SIZE 8
 #elif INTPTR_MAX == 0x7FFFFFFF
@@ -86,6 +90,20 @@
 #else
 #define Q_COMPILE_ASSERT(exp) static_assert(exp, #exp)
 #endif
+
+#if !defined(__cplusplus)
+#define Q_COMPILE_ASSERT_MSG(exp, msg) _Static_assert(exp, msg)
+#else
+#define Q_COMPILE_ASSERT(exp, msg) static_assert(exp, msg)
+#endif
+
+#define Q_SAME_TYPE(a, b) __builtin_types_compatible_p(typeof(a), typeof(b))
+#define Q_CONTAINER_OF(ptr, type, member) ({				\
+	void *__mptr = (void *)(ptr);					\
+	Q_COMPILE_ASSERT_MSG(Q_SAME_TYPE(*(ptr), ((type *)0)->member) ||	\
+		      Q_SAME_TYPE(*(ptr), void),			\
+		      "pointer type mismatch in container_of()");	\
+	((type *)(__mptr - offsetof(type, member))); })
 
 #if defined(_MSC_VER)
 #define Q_EXPORT __declspec(dllexport)

@@ -689,7 +689,6 @@ merge:
 			.numElems = vbo->numElems,
 			.numInstances = drawSurf->numInstances,
 			
-			.memoryLocation = NriMemoryLocation_DEVICE,
 			.vattribs = vbo->vertexAttribs,
 			.halfFloatVattribs = vbo->vertexAttribs & ~floatVattribs
 		};

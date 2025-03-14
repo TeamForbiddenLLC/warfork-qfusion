@@ -20,10 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_image.h"
 #include "r_local.h"
 #include "r_imagelib.h"
-#include "r_nri.h"
 
 #include "r_texture_format.h"
-#include "r_resource_upload.h"
 #include "r_texture_buf.h"
 #include "r_texture_format.h"
 
@@ -31,24 +29,25 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../gameshared/q_arch.h"
 #include "r_texture_buffer_load.h"
 
-#include "../qalgo/hash.h"
-
-#include "stb_ds.h"
-#include "stb_image.h"
-
 #include "r_ktx_loader.h"
-#include <assert.h>
+#include "ri_resource_upload.h"
+
+#include "ri_renderer.h"
+#include "ri_types.h"
+#include "ri_format.h"
+#include "ri_vk.h"
 
 #include <qstr.h>
+#include "stb_ds.h"
+#include "stb_image.h"
+#include "../qalgo/hash.h"
+
 
 #define	MAX_GLIMAGES	    8192
 #define IMAGES_HASH_SIZE    64
 #define IMAGE_SAMPLER_HASH_SIZE 1024
 
-static struct {
-	hash_t hash;
-	NriDescriptor *descriptor;
-} samplerDescriptors[IMAGE_SAMPLER_HASH_SIZE] = {0};
+static struct RIDescriptor_s samplerDescriptors[IMAGE_SAMPLER_HASH_SIZE] = {0};
 
 typedef struct
 {
@@ -61,105 +60,110 @@ static struct image_s images_hash_headnode[IMAGES_HASH_SIZE], *free_images;
 static qmutex_t *r_imagesLock;
 static mempool_t *r_imagesPool;
 
-static int defaultFilterMin = NriFilter_NEAREST;
-static int defaultFilterMag = NriFilter_NEAREST;
-static int defaultFilterMipMap = NriFilter_LINEAR;
+enum ImageFilter{
+ IMAGE_FILTER_NEAREST,
+ IMAGE_FILTER_LINEAR,
+};
+
+static int defaultFilterMin = IMAGE_FILTER_NEAREST;
+static int defaultFilterMag = IMAGE_FILTER_NEAREST;
+static int defaultFilterMipMap = IMAGE_FILTER_LINEAR;
 static int defaultAnisotropicFilter = 0;
 
 #define MAX_MIP_SAMPLES 16
 
-static void __FreeImage(struct frame_cmd_buffer_s* cmd, struct image_s *image );
-static NriTextureUsageBits __R_NRITextureUsageBits(int flags);
-static void __R_CopyTextureDataTexture(struct image_s* image, int layer, int mipOffset, int x, int y, int w, int h, enum texture_format_e srcFormat, uint8_t *data );
-static enum texture_format_e __R_GetImageFormat( struct image_s* image );
+static void __FreeImage( struct image_s *image );
+static void __R_CopyTextureDataTexture(struct image_s* image, int layer, int mipOffset, int x, int y, int w, int h, enum RI_Format_e srcFormat, uint8_t *data );
+static enum RI_Format_e __R_GetImageFormat( struct image_s *image );
 static uint16_t __R_calculateMipMapLevel(int flags, int width, int height, uint32_t minMipSize);
 
 // image data is attached to the buffer
-static void __FreeGPUImageData( struct frame_cmd_buffer_s *cmd, struct image_s *image )
+static void __FreeGPUImageData( struct image_s *image )
 {
-	if( image->texture ) {
-		if( cmd ) {
-			arrpush( cmd->freeTextures, image->texture );
-		} else {
-			rsh.nri.coreI.DestroyTexture( image->texture );
-		}
-	}
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		assert( RI_VK_DESCRIPTOR_IS_IMAGE( image->binding ) );
+		struct RIFree_s freeSlot = {};
+		struct r_frame_set_s *activeset = RI_ACTIVE_FRAMESET();
+		freeSlot.type = RI_FREE_VK_VMA_AllOC;
+		freeSlot.vmaAlloc = image->vk.vmaAlloc;
+		arrpush( activeset->freeList, freeSlot);
 
-	for( size_t i = 0; i < image->numAllocations; i++ ) {
-		if( cmd ) {
-			arrpush( cmd->freeMemory, image->memory[i] );
-		} else {
-			rsh.nri.coreI.FreeMemory( image->memory[i] );
-		}
-	}
+		freeSlot.type = RI_FREE_VK_IMAGE;
+		freeSlot.vkImage = image->handle.vk.image;
+		arrpush( activeset->freeList, freeSlot );
 
-	if( image->descriptor.descriptor ) {
-		if( cmd ) {
-			arrpush( cmd->frameTemporaryDesc, image->descriptor.descriptor );
-		} else {
-			rsh.nri.coreI.DestroyDescriptor( image->descriptor.descriptor );
-		}
+		freeSlot.type = RI_FREE_VK_IMAGEVIEW;
+		freeSlot.vkImageView = image->binding.vk.image.imageView;
+		arrpush( activeset->freeList, freeSlot );
+		memset(&image->binding, 0, sizeof(struct RIDescriptor_s));
 	}
-	image->texture = NULL;
-	image->numAllocations = 0;
-	image->descriptor = ( struct nri_descriptor_s ){ 0 };
-	image->samplerDescriptor = ( struct nri_descriptor_s ){ 0 };
+#endif
 }
 
-NriDescriptor *R_ResolveSamplerDescriptor( int flags )
+struct RIDescriptor_s *R_ResolveSamplerDescriptor( int flags )
 {
-
-	NriSamplerDesc samplerDesc = {0};
-
-	if( flags & IT_NOFILTERING ) {
-		samplerDesc.filters.min = NriFilter_LINEAR;
-		samplerDesc.filters.mag = NriFilter_LINEAR;
-		samplerDesc.filters.mip = NriFilter_LINEAR;
-	} else if( flags & IT_DEPTH ) {
-		samplerDesc.filters.min = NriFilter_LINEAR;
-		samplerDesc.filters.mag = NriFilter_LINEAR;
-		samplerDesc.filters.mip = NriFilter_LINEAR;
-		samplerDesc.anisotropy = defaultAnisotropicFilter;
-	} else if( !( flags & IT_NOMIPMAP ) ) {
-		samplerDesc.filters.min = defaultFilterMin;
-		samplerDesc.filters.mag = defaultFilterMag;
-		samplerDesc.filters.mip = defaultFilterMipMap;
-		samplerDesc.mipMax = 16;
-		samplerDesc.anisotropy = defaultAnisotropicFilter;
-	} else {
-		samplerDesc.filters.min = NriFilter_LINEAR;
-		samplerDesc.filters.mag = NriFilter_LINEAR;
-		samplerDesc.filters.mip = NriFilter_LINEAR;
-		samplerDesc.anisotropy = defaultAnisotropicFilter;
-	}
-
-	if( flags & IT_CLAMP ) {
-		samplerDesc.addressModes.u = NriAddressMode_CLAMP_TO_EDGE;
-		samplerDesc.addressModes.v = NriAddressMode_CLAMP_TO_EDGE;
-		samplerDesc.addressModes.w = NriAddressMode_CLAMP_TO_EDGE;
-	}
-
-	if( ( flags & IT_DEPTH ) && ( flags & IT_DEPTHCOMPARE ) ) {
-		samplerDesc.compareFunc = NriCompareFunc_LESS_EQUAL;
-	}
-
-	const hash_t hash = hash_data( HASH_INITIAL_VALUE, &samplerDesc, sizeof( NriSamplerDesc ) );
-	const size_t startIndex = ( hash % IMAGE_SAMPLER_HASH_SIZE );
-	size_t index = startIndex;
-
-	do {
-		if( samplerDescriptors[index].hash == hash ) {
-			return samplerDescriptors[index].descriptor;
-		} else if( samplerDescriptors[index].descriptor == NULL ) {
-			samplerDescriptors[index].hash = hash;
-			rsh.nri.coreI.CreateSampler( rsh.nri.device, &samplerDesc, &samplerDescriptors[index].descriptor );
-			return samplerDescriptors[index].descriptor;
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		VkSamplerCreateInfo info = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+		if( flags & IT_NOFILTERING ) {
+			info.minFilter = VK_FILTER_LINEAR;
+			info.magFilter = VK_FILTER_LINEAR;
+			info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		} else if( flags & IT_DEPTH ) {
+			info.minFilter = VK_FILTER_LINEAR;
+			info.magFilter = VK_FILTER_LINEAR;
+			info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+			info.maxAnisotropy = defaultAnisotropicFilter;
+			info.anisotropyEnable = defaultAnisotropicFilter > 1.0f;
+		} else if( !( flags & IT_NOMIPMAP ) ) {
+			VkFilter filterMapping[] = { [IMAGE_FILTER_LINEAR] = VK_FILTER_LINEAR, [IMAGE_FILTER_NEAREST] = VK_FILTER_NEAREST };
+			VkSamplerMipmapMode mapMapFilterMapping[] = { [IMAGE_FILTER_LINEAR] = VK_SAMPLER_MIPMAP_MODE_LINEAR, [IMAGE_FILTER_NEAREST] = VK_SAMPLER_MIPMAP_MODE_NEAREST };
+			info.minFilter = filterMapping[defaultFilterMin];
+			info.magFilter = filterMapping[defaultFilterMag];
+			info.mipmapMode = mapMapFilterMapping[defaultFilterMipMap];
+			info.maxLod = 16;
+			info.maxAnisotropy = defaultAnisotropicFilter;
+			info.anisotropyEnable = defaultAnisotropicFilter > 1.0f;
+		} else {
+			info.minFilter = VK_FILTER_LINEAR;
+			info.magFilter = VK_FILTER_LINEAR;
+			info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+			info.maxAnisotropy = defaultAnisotropicFilter;
+			info.anisotropyEnable = defaultAnisotropicFilter > 1.0f;
 		}
-		index = ( index + 1 ) % IMAGE_SAMPLER_HASH_SIZE ;
-	} while( index != startIndex );
+
+		if( flags & IT_CLAMP ) {
+			info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		}
+		if( ( flags & IT_DEPTH ) && ( flags & IT_DEPTHCOMPARE ) ) {
+			info.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+			info.compareEnable = 1;
+		}
+		const hash_t hash = hash_data( HASH_INITIAL_VALUE, &info, sizeof( VkSamplerCreateInfo ) );
+		const size_t startIndex = ( hash % IMAGE_SAMPLER_HASH_SIZE );
+		size_t index = startIndex;
+		do {
+			if( samplerDescriptors[index].cookie == hash ) {
+				return &samplerDescriptors[index];
+			} else if( RI_IsEmptyDescriptor(&samplerDescriptors[index] ) ) {
+				samplerDescriptors[index].cookie = hash;
+				samplerDescriptors[index].vk.type = VK_DESCRIPTOR_TYPE_SAMPLER;
+				samplerDescriptors[index].vk.image.imageView = VK_NULL_HANDLE;
+				samplerDescriptors[index].vk.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+				samplerDescriptors[index].flags = RI_VK_DESC_OWN_SAMPLER;
+				VK_WrapResult( vkCreateSampler( rsh.device.vk.device, &info, NULL, &samplerDescriptors[index].vk.image.sampler ) );
+				UpdateRIDescriptor( &rsh.device, &samplerDescriptors[index] );
+				return &samplerDescriptors[index];
+			}
+			index = ( index + 1 ) % IMAGE_SAMPLER_HASH_SIZE;
+		} while( index != startIndex );
+	}
+#endif
 	return NULL;
 }
-
 
 #undef __SAMPLER_HASH_SIZE
 
@@ -169,13 +173,13 @@ static void __RefreshSamplerDescriptors() {
 	size_t i;
 	for( i = 1, glt = images; i < MAX_GLIMAGES; i++, glt++ )
 	{
-		if( !glt->texture ) {
+		if( RI_IsEmptyDescriptor( &glt->binding ) ) {
 			continue;
 		}
 		if( (glt->flags & (IT_NOFILTERING | IT_NOMIPMAP)) ) {
 			continue;
 		}
-		glt->samplerDescriptor = R_CreateDescriptorWrapper(&rsh.nri, R_ResolveSamplerDescriptor(glt->flags)); 
+		glt->samplerBinding = R_ResolveSamplerDescriptor( glt->flags );
 	}
 
 }
@@ -184,13 +188,13 @@ void R_TextureMode( char *string )
 {
 	static struct {
 		char *name;
-		NriFilter min, mag, mip;
-	} modes[] = { { "GL_NEAREST", NriFilter_NEAREST, NriFilter_NEAREST, NriFilter_LINEAR},
-				  { "GL_LINEAR",  NriFilter_LINEAR, NriFilter_LINEAR, NriFilter_LINEAR},
-				  { "GL_NEAREST_MIPMAP_NEAREST", NriFilter_NEAREST, NriFilter_NEAREST, NriFilter_NEAREST},
-				  { "GL_LINEAR_MIPMAP_NEAREST", NriFilter_LINEAR, NriFilter_LINEAR, NriFilter_NEAREST},
-				  { "GL_NEAREST_MIPMAP_LINEAR", NriFilter_NEAREST, NriFilter_NEAREST, NriFilter_LINEAR },
-				  { "GL_LINEAR_MIPMAP_LINEAR", NriFilter_LINEAR, NriFilter_LINEAR, NriFilter_LINEAR } };
+		int min, mag, mip;
+	} modes[] = { { "GL_NEAREST", IMAGE_FILTER_NEAREST, IMAGE_FILTER_NEAREST, IMAGE_FILTER_LINEAR},
+				  { "GL_LINEAR",  IMAGE_FILTER_LINEAR, IMAGE_FILTER_LINEAR, IMAGE_FILTER_LINEAR},
+				  { "GL_NEAREST_MIPMAP_NEAREST", IMAGE_FILTER_NEAREST, IMAGE_FILTER_NEAREST, IMAGE_FILTER_NEAREST},
+				  { "GL_LINEAR_MIPMAP_NEAREST", IMAGE_FILTER_LINEAR, IMAGE_FILTER_LINEAR, IMAGE_FILTER_NEAREST},
+				  { "GL_NEAREST_MIPMAP_LINEAR", IMAGE_FILTER_NEAREST, IMAGE_FILTER_NEAREST, IMAGE_FILTER_LINEAR },
+				  { "GL_LINEAR_MIPMAP_LINEAR", IMAGE_FILTER_LINEAR, IMAGE_FILTER_LINEAR, IMAGE_FILTER_LINEAR } };
 
 	size_t i = 0;
 	for(i = 0; i < Q_ARRAY_COUNT(modes); i++) {
@@ -212,8 +216,7 @@ void R_TextureMode( char *string )
 
 void R_AnisotropicFilter( int value )
 {
-	const NriDeviceDesc *desc = rsh.nri.coreI.GetDeviceDesc( rsh.nri.device );
-	defaultAnisotropicFilter = bound( 1, value, desc->samplerAnisotropyMax );
+	defaultAnisotropicFilter = bound( 1, value, rsh.device.physicalAdapter.samplerAnisotropyMax );
 	__RefreshSamplerDescriptors();
 }
 
@@ -232,7 +235,8 @@ void R_PrintImageList( const char *mask, bool (*filter)( const char *mask, const
 	numImages = 0;
 	for( i = 0, image = images; i < MAX_GLIMAGES; i++, image++ )
 	{
-		if( !image->texture) {
+			
+		if( !RI_IsEmptyDescriptor(&image->binding)) {
 			continue;
 		}
 		if( !image->width || !image->height || !image->layers ) {
@@ -337,20 +341,6 @@ void R_FreeImageBuffers( void )
 }
 
 /*
-* R_EndianSwap16BitImage
-*/
-static void R_EndianSwap16BitImage( unsigned short *data, int width, int height )
-{
-	int i;
-	while( height-- > 0 )
-	{
-		for( i = 0; i < width; i++, data++ )
-			*data = ( ( *data & 255 ) << 8 ) | ( *data >> 8 );
-		data += width & 1; // 4 unpack alignment
-	}
-}
-
-/*
 * R_AllocImageBufferCb
 */
 static uint8_t *_R_AllocImageBufferCb( void *ptr, size_t size, const char *filename, int linenum )
@@ -358,7 +348,6 @@ static uint8_t *_R_AllocImageBufferCb( void *ptr, size_t size, const char *filen
 	loaderCbInfo_t *cbinfo = ptr;
 	return _R_PrepareImageBuffer( cbinfo->ctx, cbinfo->side, size, filename, linenum );
 }
-\
 
 static void __R_stbi_free_image(void* p) {
 	stbi_uc* img = (stbi_uc*) p;
@@ -765,52 +754,118 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		goto error;
 	}
 	const struct base_format_def_s *definition = ktxContext.desc;
-	const enum texture_format_e dstFormat = __R_GetImageFormat(image);
+	const enum RI_Format_e dstFormat = __R_GetImageFormat(image);
 	const uint32_t numberOfFaces = R_KTXGetNumberFaces( &ktxContext );
 	const uint16_t minMipSize = __R_calculateMipMapLevel(image->flags, R_KTXWidth(&ktxContext), R_KTXHeight(&ktxContext), image->minmipsize);
 	const uint16_t numberOfMipLevels = R_KTXIsCompressed( &ktxContext )  ? 1 : min(minMipSize, R_KTXGetNumberMips( &ktxContext ));
-	NriTextureDesc textureDesc = { 
-		.width = R_KTXWidth( &ktxContext ),
-		.height = R_KTXHeight( &ktxContext ),
-		.usage = __R_NRITextureUsageBits( image->flags ),
-		.layerNum = ( image->flags & IT_CUBEMAP ) ? 6 : 1,
-		.depth = 1,
-		.format = R_ToNRIFormat( dstFormat ),
-		.sampleNum = 1,
-		.type = NriTextureType_TEXTURE_2D,
-		.mipNum = numberOfMipLevels 
-	};
-
-	NriResourceGroupDesc resourceGroupDesc = {
-		.textureNum = 1,
-		.textures = &image->texture,
-		.memoryLocation = NriMemoryLocation_DEVICE,
-	};
-
-	if( rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture ) != NriResult_SUCCESS ) {
-		ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name );
-		return false;
-	}
 	
-	const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
-	assert( allocationNum <= Q_ARRAY_COUNT( image->memory ) );
-	image->numAllocations = allocationNum;
-	if( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, image->memory ) ) {
-		ri.Com_Printf( S_COLOR_YELLOW "Failed Allocation: %s\n", image->name );
-		return false;
-	}
+	image->extension = extensionKTX;
+	image->width = R_KTXWidth(&ktxContext);
+	image->height = R_KTXHeight( &ktxContext );
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+		VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+		VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
+		const struct RIFormatProps_s *formatProps = GetRIFormatProps( dstFormat );
+		if( formatProps->blockWidth > 1 )
+			flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
+		if( image->flags & IT_CUBEMAP )
+			flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
+		info.flags = flags;
+		info.imageType = VK_IMAGE_TYPE_2D;
+		info.format = RIFormatToVK( dstFormat );
+		info.extent.width = image->width;
+		info.extent.height = image->height;
+		info.extent.depth = 1;
+		info.mipLevels = numberOfMipLevels;
+		info.arrayLayers = ( image->flags & IT_CUBEMAP ) ? 6 : 1;
+		info.samples = 1;
+		info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-	NriTexture2DViewDesc textureViewDesc = {
-		.texture = image->texture,
-		.viewType = (image->flags & IT_CUBEMAP) ? NriTexture2DViewType_SHADER_RESOURCE_CUBE: NriTexture2DViewType_SHADER_RESOURCE_2D,
-		.format = textureDesc.format
-	};
-	NriDescriptor* descriptor = NULL;
-	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &descriptor) );
-	image->descriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
-	image->samplerDescriptor = R_CreateDescriptorWrapper(&rsh.nri, R_ResolveSamplerDescriptor(image->flags)); 
-	assert(image->samplerDescriptor.descriptor);
-	rsh.nri.coreI.SetTextureDebugName( image->texture, image->name.buf );
+		info.pQueueFamilyIndices = queueFamilies;
+		VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		VmaAllocationCreateInfo mem_reqs = {};
+		mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+
+		if(!VK_WrapResult(vmaCreateImage(rsh.device.vk.vmaAllocator, &info, &mem_reqs, &image->handle.vk.image, &image->vk.vmaAlloc, NULL))) {
+			goto error;
+		}
+		if(vkSetDebugUtilsObjectNameEXT){
+			VkDebugUtilsObjectNameInfoEXT debugName = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, NULL, VK_OBJECT_TYPE_IMAGE, (uint64_t)image->handle.vk.image, image->name.buf };
+			VK_WrapResult( vkSetDebugUtilsObjectNameEXT( rsh.device.vk.device, &debugName ) );
+		}
+
+		VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
+		usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+
+		VkImageSubresourceRange subresource = {
+			VK_IMAGE_ASPECT_COLOR_BIT, 0, Q_MAX(image->mipNum, 1), 0, 1,
+		};
+
+		VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+		createInfo.pNext = &usageInfo;
+		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		createInfo.format = RIFormatToVK( dstFormat );
+		createInfo.subresourceRange = subresource;
+		createInfo.image = image->handle.vk.image;
+
+		image->binding.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
+		image->binding.texture = &image->handle;
+		image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
+		UpdateRIDescriptor( &rsh.device, &image->binding );
+		image->samplerBinding = R_ResolveSamplerDescriptor( image->flags );
+		assert(image->samplerBinding);
+
+		//RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	}
+#endif
+	//NriTextureDesc textureDesc = { 
+	//	.width = R_KTXWidth( &ktxContext ),
+	//	.height = R_KTXHeight( &ktxContext ),
+	//	.usage = __R_NRITextureUsageBits( image->flags ),
+	//	.layerNum = ( image->flags & IT_CUBEMAP ) ? 6 : 1,
+	//	.depth = 1,
+	//	.format = R_ToNRIFormat( dstFormat ),
+	//	.sampleNum = 1,
+	//	.type = NriTextureType_TEXTURE_2D,
+	//	.mipNum = numberOfMipLevels 
+	//};
+
+	//NriResourceGroupDesc resourceGroupDesc = {
+	//	.textureNum = 1,
+	//	.textures = &image->texture,
+	//	.memoryLocation = NriMemoryLocation_DEVICE,
+	//};
+
+	//if( rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture ) != NriResult_SUCCESS ) {
+	//	ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name );
+	//	return false;
+	//}
+	//
+	//const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
+	//assert( allocationNum <= Q_ARRAY_COUNT( image->memory ) );
+	//image->numAllocations = allocationNum;
+	//if( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, image->memory ) ) {
+	//	ri.Com_Printf( S_COLOR_YELLOW "Failed Allocation: %s\n", image->name );
+	//	return false;
+	//}
+
+	//NriTexture2DViewDesc textureViewDesc = {
+	//	.texture = image->texture,
+	//	.viewType = (image->flags & IT_CUBEMAP) ? NriTexture2DViewType_SHADER_RESOURCE_CUBE: NriTexture2DViewType_SHADER_RESOURCE_2D,
+	//	.format = textureDesc.format
+	//};
+	//NriDescriptor* descriptor = NULL;
+	//NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &descriptor) );
+	//image->descriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
+	//image->samplerDescriptor = R_CreateDescriptorWrapper(&rsh.nri, R_ResolveSamplerDescriptor(image->flags)); 
+	//assert(image->samplerDescriptor.descriptor);
+	//rsh.nri.coreI.SetTextureDebugName( image->texture, image->name.buf );
 
 	if( R_KTXIsCompressed( &ktxContext ) ) {
 		struct texture_buf_s uncomp = { 0 };
@@ -860,9 +915,6 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		}
 	}
 
-	image->extension = extensionKTX;
-	image->width = R_KTXWidth(&ktxContext);
-	image->height = R_KTXHeight(&ktxContext);
 
 	R_KTXFreeContext(&ktxContext);
 	R_FreeFile( buffer );
@@ -908,94 +960,88 @@ static struct image_s *__R_AllocImage( const struct QStrSpan name) {
 	return image;
 }
 
-static NriTextureUsageBits __R_NRITextureUsageBits(int flags) {
-	assert( ( flags & ( IT_FRAMEBUFFER | IT_DEPTHRB | IT_DEPTH ) ) == 0 );
-	return NriTextureUsageBits_SHADER_RESOURCE;
-}
-
-
-static enum texture_format_e __R_ResolveDataFormat( int flags, int samples )
+static enum RI_Format_e __R_ResolveDataFormat( int flags, int samples )
 {
 	assert((flags & (IT_FRAMEBUFFER | IT_DEPTHRB | IT_DEPTH)) == 0);
 	if( samples == 4 ) {
-		return R_FORMAT_RGBA8_UNORM;
+		return RI_FORMAT_RGBA8_UNORM;
 	} else if( samples == 3 ) {
-		return R_FORMAT_RGB8_UNORM;
+		return RI_FORMAT_RGB8_UNORM;
 	} else if( samples == 2 ) {
-		return R_FORMAT_RG8_UNORM;
+		return RI_FORMAT_RG8_UNORM;
 	} else if( flags & IT_ALPHAMASK ) {
-		return R_FORMAT_A8_UNORM;
+		return RI_FORMAT_A8_UNORM;
 	}
-	return R_FORMAT_R8_UNORM;
+	return RI_FORMAT_R8_UNORM;
 }
 
-static enum texture_format_e __R_GetImageFormat( struct image_s* image )
+static enum RI_Format_e __R_GetImageFormat( struct image_s* image )
 {
 	assert( ( image->flags & ( IT_FRAMEBUFFER | IT_DEPTHRB | IT_DEPTH ) ) == 0 );
-	return R_FORMAT_RGBA8_UNORM;
+	return RI_FORMAT_RGBA8_UNORM;
 }
 
-static void __R_CopyTextureDataTexture(struct image_s* image, int layer, int mipOffset, int x, int y, int w, int h, enum texture_format_e srcFormat, uint8_t *data )
+
+static void __R_CopyTextureDataTexture(struct image_s* image, int layer, int mipOffset, int x, int y, int w, int h, enum RI_Format_e srcFormat, uint8_t *data )
 {
-	const struct base_format_def_s *srcDef = R_BaseFormatDef( srcFormat );
-	const struct base_format_def_s *destDef = R_BaseFormatDef(__R_GetImageFormat(image));
-	
-	const size_t srcBlockSize = RT_BlockSize( srcDef);
-	const size_t destBlockSize = RT_BlockSize( destDef);
+	const struct RIFormatProps_s *srcDef = GetRIFormatProps( srcFormat );
+	const struct RIFormatProps_s *destDef = GetRIFormatProps( __R_GetImageFormat( image ) );
 
+	struct RIResourceTextureTransaction_s uploadDesc = {};
+	uploadDesc.target = image->handle;
+	uploadDesc.sliceNum = h;
+	uploadDesc.rowPitch = w * destDef->stride;
+	uploadDesc.arrayOffset = layer;
+	uploadDesc.mipOffset = mipOffset; 
+	uploadDesc.x = x;
+	uploadDesc.y = y;
+	uploadDesc.depth = 1;
+	uploadDesc.width = w; 
+	uploadDesc.height = h;
+	uploadDesc.format = __R_GetImageFormat(image);
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		uploadDesc.postBarrier.vk.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		uploadDesc.postBarrier.vk.stage = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		uploadDesc.postBarrier.vk.access = VK_ACCESS_2_SHADER_READ_BIT;
+	}
+#endif
 
-	texture_upload_desc_t uploadDesc = { 
-		.sliceNum = h, 
-		.rowPitch = w * destBlockSize, 
-		.arrayOffset = layer, 
-		.mipOffset = mipOffset, 
-		.x = x,
-		.y = y,
-		.width = w, 
-		.height = h, 
-		.target = image->texture,
-		.after = (NriAccessLayoutStage){
-			.layout = NriLayout_SHADER_RESOURCE,
-			.access = NriAccessBits_SHADER_RESOURCE,
-			.stages = NriStageBits_FRAGMENT_SHADER 
-		} 
-	};
-
-	R_ResourceBeginCopyTexture( &uploadDesc );
+	RI_ResourceBeginCopyTexture( &rsh.device, &rsh.uploader, &uploadDesc );
 	for( size_t slice = 0; slice < uploadDesc.height; slice++ ) {
 		const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
 		memset( &( (uint8_t *)uploadDesc.data )[dstRowStart], 255, uploadDesc.rowPitch );
 		for( size_t column = 0; column < uploadDesc.width; column++ ) {
 			switch( srcFormat ) {
-				case R_FORMAT_L8_A8_UNORM: {
-					const uint8_t luminance = data[( uploadDesc.width * srcBlockSize * slice ) + ( column * srcBlockSize )];
-					const uint8_t alpha = data[( uploadDesc.width * srcBlockSize * slice ) + ( column * srcBlockSize ) + 1];
+				case RI_FORMAT_L8_A8_UNORM: {
+					const uint8_t luminance = data[( uploadDesc.width * srcDef->stride * slice ) + ( column * srcDef->stride )];
+					const uint8_t alpha = data[( uploadDesc.width * srcDef->stride * slice ) + ( column * srcDef->stride ) + 1];
 					uint8_t color[4] = { luminance, luminance, luminance, alpha };
-					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], color, min( sizeof( color ), destBlockSize ) );
+					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destDef->stride * column )], color, Q_MIN( sizeof( color ), destDef->stride ) );
 					break;
 				}
-				case R_FORMAT_A8_UNORM: 
-				case R_FORMAT_R8_UNORM: {
-					const uint8_t c1 = data[( uploadDesc.width * srcBlockSize * slice ) + ( column * srcBlockSize )];
+				case RI_FORMAT_A8_UNORM:
+				case RI_FORMAT_R8_UNORM: {
+					const uint8_t c1 = data[( uploadDesc.width * srcDef->stride * slice ) + ( column * srcDef->stride )];
 					uint8_t color[4]; //= { c1, c1, c1, c1 };
-					if(image->flags & IT_ALPHAMASK) {
+					if( image->flags & IT_ALPHAMASK ) {
 						color[0] = color[1] = color[2] = 0.0f;
 						color[3] = c1;
 					} else {
 						color[0] = color[1] = color[2] = c1;
 						color[3] = 255;
 					}
-					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], color, min( 4, destBlockSize ) );
+					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destDef->stride * column )], color, min( 4, destDef->stride ) );
 					break;
 				}
 				default:
-					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destBlockSize * column )], &data[( uploadDesc.width * srcBlockSize * slice ) + ( column * srcBlockSize )],
-							min( srcBlockSize, destBlockSize ) );
+					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destDef->stride * column )], &data[( uploadDesc.width * srcDef->stride * slice ) + ( column * srcDef->stride )],
+							min( srcDef->stride, destDef->stride ) );
 					break;
 			}
 		}
 	}
-	R_ResourceEndCopyTexture( &uploadDesc );
+	RI_ResourceEndCopyTexture( &rsh.device, &rsh.uploader, &uploadDesc );
 }
 
 static uint16_t __R_calculateMipMapLevel(int flags, int width, int height, uint32_t minMipSize) {
@@ -1020,6 +1066,7 @@ static uint16_t __R_calculateMipMapLevel(int flags, int width, int height, uint3
 	return  max(1,( flags & IT_NOMIPMAP ) ? 1 :ceil(log2(max(width, height))));
 }
 
+
 struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int height, int flags, int minmipsize, int tags, int samples )
 {
 	
@@ -1034,50 +1081,76 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	image->samples = samples;
 	image->width = width;
 	image->height = height;
+	image->mipNum = __R_calculateMipMapLevel( flags, width, height, minmipsize );
 
-	const uint32_t mipSize = __R_calculateMipMapLevel( flags, width, height, minmipsize );
+	enum RI_Format_e srcFormat = __R_ResolveDataFormat( flags, samples );
+	enum RI_Format_e destFormat = __R_GetImageFormat( image );
+	
+	uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+	VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+	info.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
+	const struct RIFormatProps_s *formatProps = GetRIFormatProps( destFormat );
+	if( formatProps->blockWidth > 1 )
+		info.flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
+	if( image->flags & IT_CUBEMAP )
+		info.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
+	info.imageType = VK_IMAGE_TYPE_2D;
+	info.format = RIFormatToVK( destFormat );
+	info.extent.width = image->width;
+	info.extent.height = image->height;
+	info.extent.depth = 1;
+	info.mipLevels = image->mipNum;
+	info.arrayLayers = ( image->flags & IT_CUBEMAP ) ? 6 : 1;
+	info.samples = 1;
+	info.tiling = VK_IMAGE_TILING_OPTIMAL;
+	info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-	enum texture_format_e srcFormat = __R_ResolveDataFormat( flags, samples );
-	enum texture_format_e destFormat = __R_GetImageFormat( image );
+	info.pQueueFamilyIndices = queueFamilies;
+	VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+	info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	
+	VmaAllocationCreateInfo memCreateInfo = { 0 };
+	memCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+	if(!VK_WrapResult(vmaCreateImage(rsh.device.vk.vmaAllocator, &info, &memCreateInfo, &image->handle.vk.image, &image->vk.vmaAlloc, NULL))) {
+		ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name.buf );
+		__FreeImage( image );
+		image = NULL;
+		return NULL;
+	}
+	if( vkSetDebugUtilsObjectNameEXT ) {
+		VkDebugUtilsObjectNameInfoEXT debugName = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, NULL, VK_OBJECT_TYPE_IMAGE, (uint64_t)image->handle.vk.image, name };
+		VK_WrapResult( vkSetDebugUtilsObjectNameEXT( rsh.device.vk.device, &debugName ) );
+	}
 
-	NriTextureDesc textureDesc = { .width = width,
-								   .height = height,
-								   .depth = 1,
-								   .usage = __R_NRITextureUsageBits( flags ),
-								   .layerNum = ( flags & IT_CUBEMAP ) ? 6 : 1,
-								   .format = R_ToNRIFormat( destFormat ),
-								   .sampleNum = 1,
-								   .type = NriTextureType_TEXTURE_2D,
-								   .mipNum = mipSize };
-	rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture );
-	rsh.nri.coreI.SetTextureDebugName( image->texture, name );
-	NriResourceGroupDesc resourceGroupDesc = {
-		.textureNum = 1,
-		.textures = &image->texture,
-		.memoryLocation = NriMemoryLocation_DEVICE,
+	// create desctipror
+	VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
+	usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+
+	VkImageSubresourceRange subresource = {
+		VK_IMAGE_ASPECT_COLOR_BIT, 0, info.mipLevels, 0, info.arrayLayers,
 	};
 
-	const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
-	assert( allocationNum <= Q_ARRAY_COUNT( image->memory ) );
-	image->numAllocations = allocationNum;
-	NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, image->memory ) );
-	uint8_t *tmpBuffer = NULL;
+	VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+	createInfo.pNext = &usageInfo;
+	createInfo.viewType = ( image->flags & IT_CUBEMAP ) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
+	createInfo.format = RIFormatToVK( destFormat );
+	createInfo.subresourceRange = subresource;
+	createInfo.image = image->handle.vk.image;
+
+	image->binding.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
+	image->binding.texture = &image->handle;
+	image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
+	UpdateRIDescriptor( &rsh.device, &image->binding );
+	image->samplerBinding = R_ResolveSamplerDescriptor(image->flags); 
+
+	//RI_VK_InitImageView(&rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+
 	const size_t reservedSize = width * height * samples;
-	
-	NriTexture2DViewDesc textureViewDesc = {
-		.texture = image->texture,
-		.viewType = (flags & IT_CUBEMAP) ? NriTexture2DViewType_SHADER_RESOURCE_CUBE: NriTexture2DViewType_SHADER_RESOURCE_2D,
-		.format = textureDesc.format
-	};
-	
-	NriDescriptor* descriptor = NULL;
-	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &descriptor) );
-	image->descriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
-	image->samplerDescriptor = R_CreateDescriptorWrapper(&rsh.nri, R_ResolveSamplerDescriptor(image->flags)); 
-	assert(image->samplerDescriptor.descriptor);
-
+	uint8_t *tmpBuffer = NULL;
 	if( pic ) {
-		for( size_t index = 0; index < textureDesc.layerNum; index++ ) {
+		for( size_t index = 0; index < info.arrayLayers; index++ ) {
 			if( !pic[index] ) {
 				continue;
 			}
@@ -1090,7 +1163,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 
 			uint32_t w = width;
 			uint32_t h = height;
-			for( size_t i = 0; i < mipSize; i++ ) {
+			for( size_t i = 0; i < info.mipLevels; i++ ) {
 				__R_CopyTextureDataTexture(image, index, i, 0, 0, w, h, srcFormat, buf);
 				w >>= 1;
 				h >>= 1;
@@ -1130,23 +1203,24 @@ image_t *R_CreateImage( const char *name, int width, int height, int layers, int
 	return image;
 }
 
-static void __FreeImage( struct frame_cmd_buffer_s *cmd, struct image_s *image )
+static void __FreeImage( struct image_s *image )
 {
 	{
-		__FreeGPUImageData(cmd, image);
+		__FreeGPUImageData( image );
 		// R_ReleaseNriTexture(image);
-		memset(&image->descriptor, 0, sizeof(struct nri_descriptor_s));
-		memset(&image->samplerDescriptor, 0, sizeof(struct  nri_descriptor_s));
+		memset(&image->binding, 0, sizeof(struct RIDescriptor_s));
+		//memset(&image->samplerDescriptor, 0, sizeof(struct  nri_descriptor_s));
 	
 		qStrFree(&image->name);
 		image->flags = 0;
 		image->loaded = false;
 		image->tags = 0;
 		image->registrationSequence = 0;
-		image->texture = NULL;
-		image->descriptor = (struct nri_descriptor_s){0};
-		image->samplerDescriptor= (struct nri_descriptor_s){0};
-		image->numAllocations = 0;
+		image->samplerBinding = NULL;
+		//image->texture = NULL;
+		//image->descriptor = (struct nri_descriptor_s){0};
+		//image->samplerDescriptor= (struct nri_descriptor_s){0};
+		//image->numAllocations = 0;
 	}
 	{
 		ri.Mutex_Lock( r_imagesLock );
@@ -1160,53 +1234,82 @@ static void __FreeImage( struct frame_cmd_buffer_s *cmd, struct image_s *image )
 		image->prev = NULL;
 		ri.Mutex_Unlock( r_imagesLock );
 	}
-	
 }
 
 void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int flags, int minmipsize, int samples )
 {
 	assert( image );
-	assert( image->texture );
-	const NriTextureDesc* textureDesc = rsh.nri.coreI.GetTextureDesc(image->texture);
-	const uint32_t mipSize = __R_calculateMipMapLevel( flags, width, height, minmipsize );
-	if(image->width != width || image->height != height || image->samples != samples || textureDesc->mipNum != mipSize) {
-		struct frame_cmd_buffer_s *cmd = R_ActiveFrameCmd();
-			__FreeGPUImageData( cmd, image );
-		enum texture_format_e destFormat = __R_GetImageFormat( image );
-		NriTextureDesc textureDesc = { .width = width,
-									   .height = height,
-									   .depth = 1,
-									   .usage = __R_NRITextureUsageBits( flags ),
-									   .layerNum = ( flags & IT_CUBEMAP ) ? 6 : 1,
-									   .format = R_ToNRIFormat( destFormat ),
-									   .sampleNum = 1,
-									   .type = NriTextureType_TEXTURE_2D,
-									   .mipNum = mipSize };
-		rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture );
-		rsh.nri.coreI.SetTextureDebugName( image->texture, image->name.buf );
-		NriResourceGroupDesc resourceGroupDesc = {
-			.textureNum = 1,
-			.textures = &image->texture,
-			.memoryLocation = NriMemoryLocation_DEVICE,
-		};
-		const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
-		assert( allocationNum <= Q_ARRAY_COUNT( image->memory ) );
-		image->numAllocations = allocationNum;
-		NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, image->memory ) );
+	// const NriTextureDesc *textureDesc = rsh.nri.coreI.GetTextureDesc( image->texture );
+	uint32_t mipNum = __R_calculateMipMapLevel( flags, width, height, minmipsize );
+	if( image->width != width || image->height != height || image->samples != samples || image->mipNum != mipNum ) {
+		// struct frame_cmd_buffer_s *cmd = R_ActiveFrameCmd();
+		__FreeGPUImageData( image );
+		enum RI_Format_e destFormat = __R_GetImageFormat( image );
+#if ( DEVICE_IMPL_VULKAN )
+		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+		VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+		VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
+		const struct RIFormatProps_s *formatProps = GetRIFormatProps( destFormat );
+		if( formatProps->blockWidth > 1 )
+			flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
+		if( flags & IT_CUBEMAP )
+			flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
+		info.flags = flags;
+		info.imageType = VK_IMAGE_TYPE_2D;
+		info.format = RIFormatToVK( destFormat );
+		info.extent.width = width;
+		info.extent.height = height;
+		info.extent.depth = 1;
+		info.mipLevels = mipNum;
+		info.arrayLayers = ( flags & IT_CUBEMAP ) ? 6 : 1;
+		info.samples = 1;
+		info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-		NriTexture2DViewDesc textureViewDesc = {
-			.texture = image->texture, .viewType = ( flags & IT_CUBEMAP ) ? NriTexture2DViewType_SHADER_RESOURCE_CUBE : NriTexture2DViewType_SHADER_RESOURCE_2D, .format = textureDesc.format };
-		NriDescriptor *descriptor = NULL;
-		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &descriptor ) );
-		image->descriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
-		image->samplerDescriptor = R_CreateDescriptorWrapper( &rsh.nri, R_ResolveSamplerDescriptor( image->flags ) );
-		assert( image->samplerDescriptor.descriptor );
+		info.pQueueFamilyIndices = queueFamilies;
+		VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		if( !VK_WrapResult( vkCreateImage( rsh.device.vk.device, &info, NULL, &image->handle.vk.image ) ) ) {
+			ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name.buf );
+			__FreeImage( image );
+			image = NULL;
+			return;
+		}
+
+		// create desctipror
+		VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
+		usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+
+		VkImageSubresourceRange subresource = {
+			VK_IMAGE_ASPECT_COLOR_BIT, 0, mipNum, 0, 1,
+		};
+
+		VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+		createInfo.pNext = &usageInfo;
+		createInfo.viewType = ( image->flags & IT_CUBEMAP ) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
+		createInfo.format = RIFormatToVK( destFormat );
+		createInfo.subresourceRange = subresource;
+		createInfo.image = image->handle.vk.image;
+	
+		image->binding.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
+		image->binding.texture = &image->handle;
+		image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
+		UpdateRIDescriptor( &rsh.device, &image->binding );
+		image->samplerBinding = R_ResolveSamplerDescriptor( image->flags);
+		assert( image->samplerBinding && !RI_IsEmptyDescriptor( image->samplerBinding ) );
+
+		//RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
+#else
+#error unhandled
+#endif
 	}
 	image->flags = flags;
 	image->samples = samples;
 	image->minmipsize = minmipsize;
 
-	R_ReplaceSubImage(image, 0, 0, 0, pic, width, height);
+	R_ReplaceSubImage( image, 0, 0, 0, pic, width, height );
 }
 
 /*
@@ -1215,7 +1318,6 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, int width, int height )
 {
 	assert( image );
-	assert( image->texture );
 
 	const size_t reservedSize = width * height * image->samples;
 	uint8_t *buf = NULL;
@@ -1223,8 +1325,7 @@ void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, 
 	memcpy( buf, pic[0], reservedSize );
 
 	// uint8_t *buf = tmpBuffer;
-	enum texture_format_e srcFormat = __R_ResolveDataFormat( image->flags, image->samples );
-	const NriTextureDesc* textureDesc = rsh.nri.coreI.GetTextureDesc(image->texture);
+	enum RI_Format_e  srcFormat = __R_ResolveDataFormat( image->flags, image->samples );
 
 	uint8_t *tmpBuffer = NULL;
 	if( !( image->flags & IT_CUBEMAP ) && ( image->flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) ) ) {
@@ -1236,7 +1337,7 @@ void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, 
 	uint32_t w = width;
 	uint32_t h = height;
 	// R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
-	for( size_t i = 0; i < textureDesc->mipNum; i++ ) {
+	for( size_t i = 0; i < image->mipNum; i++ ) {
 		__R_CopyTextureDataTexture(image, layer, i, x, y, w, h, srcFormat, buf);
 		w >>= 1;
 		h >>= 1;
@@ -1262,7 +1363,7 @@ void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, 
 void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic )
 {
 	assert( image );
-	assert( image->texture );
+	//assert( image->texture );
 
 	const size_t reservedSize = image->width * image->height * image->samples;
 	uint8_t *buf = NULL;
@@ -1270,8 +1371,7 @@ void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic )
 	memcpy( buf, pic[0], reservedSize );
 
 	// uint8_t *buf = tmpBuffer;
-	enum texture_format_e srcFormat = __R_ResolveDataFormat( image->flags, image->samples );
-	const NriTextureDesc* textureDesc = rsh.nri.coreI.GetTextureDesc(image->texture);
+	enum RI_Format_e srcFormat = __R_ResolveDataFormat( image->flags, image->samples );
 
 	uint8_t *tmpBuffer = NULL;
 	if( !( image->flags & IT_CUBEMAP ) && ( image->flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) ) ) {
@@ -1283,8 +1383,8 @@ void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic )
 	uint32_t w = image->width;
 	uint32_t h = image->height;
 	// R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
-	for( size_t i = 0; i < textureDesc->mipNum; i++ ) {
-		__R_CopyTextureDataTexture(image, layer, i, 0, 0, image->width, image->height, srcFormat, buf);
+	for( size_t i = 0; i < image->mipNum; i++ ) {
+		__R_CopyTextureDataTexture( image, layer, i, 0, 0, image->width, image->height, srcFormat, buf );
 		w >>= 1;
 		h >>= 1;
 		if( w == 0 ) {
@@ -1455,7 +1555,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 		qStrSetNullTerm(&resolvedPath);
 		if( uploadCount != 6 ) {
 			ri.Com_DPrintf( S_COLOR_YELLOW "Missing image: %s\n", image->name.buf );
-			__FreeImage( R_ActiveFrameCmd(),image );
+			__FreeImage( image );
 			image = NULL;
 			goto done;
 		}
@@ -1474,62 +1574,89 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 			image->samples = RT_NumberChannels( upload->buffer.def );
 		} else {
 			ri.Com_Printf( S_COLOR_YELLOW "Missing image: %s\n", image->name.buf );
-			__FreeImage( R_ActiveFrameCmd(),image );
+			__FreeImage( image );
 			image = NULL;
 			goto done;
 		}
-	} 
-	assert(uploadCount <= 6);
-	assert(
-		(flags & IT_CUBEMAP && uploadCount == 6) ||
-		(!(flags & IT_CUBEMAP) && uploadCount == 1)
-	);
+	}
+	assert( uploadCount <= 6 );
+	assert( ( flags & IT_CUBEMAP && uploadCount == 6 ) || ( !( flags & IT_CUBEMAP ) && uploadCount == 1 ) );
 
 	const uint32_t mipSize = __R_calculateMipMapLevel( flags, uploads[0].buffer.width, uploads[0].buffer.height, minmipsize );
-	enum texture_format_e destFormat = __R_GetImageFormat(image);
-	NriTextureDesc textureDesc = { 
-		.width = uploads[0].buffer.width,
-		.height = uploads[0].buffer.height,
-		.usage = __R_NRITextureUsageBits( flags ),
-		.layerNum = uploadCount,
-		.depth = 1,
-		.format = R_ToNRIFormat(destFormat),
-		.sampleNum = 1,
-		.type =  NriTextureType_TEXTURE_2D,
-		.mipNum = mipSize 
-	};
-	if( rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture ) != NriResult_SUCCESS ) {
-		ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name.buf );
-		__FreeImage( R_ActiveFrameCmd(),image );
-		image = NULL;
-		goto done;
-	}
-	rsh.nri.coreI.SetTextureDebugName( image->texture, image->name.buf );
+	const uint32_t destFormat = __R_GetImageFormat( image );
 
-	NriResourceGroupDesc resourceGroupDesc = {
-		.textureNum = 1,
-		.textures = &image->texture,
-		.memoryLocation = NriMemoryLocation_DEVICE,
-	};
-	const size_t numAllocations = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
-	assert( numAllocations <= Q_ARRAY_COUNT( image->memory ) );
-	image->numAllocations = numAllocations;
-	if( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, image->memory ) ) {
-		ri.Com_Printf( S_COLOR_YELLOW "Failed Allocation: %s\n", image->name.buf );
-		__FreeImage(R_ActiveFrameCmd(), image );
-		image = NULL;
-		goto done;
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+		VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+		VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
+		const struct RIFormatProps_s *formatProps = GetRIFormatProps( destFormat );
+		if( formatProps->blockWidth > 1 )
+			flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
+		if( image->flags & IT_CUBEMAP )
+			flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
+		info.flags = flags;
+		info.imageType = VK_IMAGE_TYPE_2D;
+		info.format = RIFormatToVK( destFormat );
+		info.extent.width = image->width;
+		info.extent.height = image->height;
+		info.extent.depth = 1;
+		info.mipLevels = mipSize;
+		info.arrayLayers = ( image->flags & IT_CUBEMAP ) ? 6 : 1;
+		info.samples = 1;
+		info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+
+		info.pQueueFamilyIndices = queueFamilies;
+		VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		// allocate vma and bind dedicated VMA
+		VmaAllocationCreateInfo mem_reqs = { 0 };
+		mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+		if( !VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &image->handle.vk.image, &image->vk.vmaAlloc, NULL ) ) ) {
+			ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name.buf );
+			__FreeImage( image );
+			image = NULL;
+			goto done;
+		}
+		if(vkSetDebugUtilsObjectNameEXT){
+			VkDebugUtilsObjectNameInfoEXT debugName = { 
+				VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, 
+				NULL, 
+				VK_OBJECT_TYPE_IMAGE, 
+				(uint64_t)image->handle.vk.image, 
+				name 
+			};
+			VK_WrapResult( vkSetDebugUtilsObjectNameEXT( rsh.device.vk.device, &debugName ) );
+		}
+
+		// create desctipror
+		VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
+		usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+
+		VkImageSubresourceRange subresource = {
+			VK_IMAGE_ASPECT_COLOR_BIT, 0, info.mipLevels, 0, info.arrayLayers,
+		};
+
+		VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+		createInfo.pNext = &usageInfo;
+		createInfo.viewType = ( image->flags & IT_CUBEMAP ) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
+		createInfo.format = info.format;
+		createInfo.subresourceRange = subresource;
+		createInfo.image = image->handle.vk.image;
+		
+		image->binding.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
+		image->binding.texture = &image->handle;
+		image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
+		UpdateRIDescriptor( &rsh.device, &image->binding );
+		image->samplerBinding = R_ResolveSamplerDescriptor( image->flags);
+		assert( image->samplerBinding && !RI_IsEmptyDescriptor( image->samplerBinding ) );
+		
+		//RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
 	}
-	NriTexture2DViewDesc textureViewDesc = {
-		.texture = image->texture,
-		.viewType = (flags & IT_CUBEMAP) ?  NriTexture2DViewType_SHADER_RESOURCE_CUBE : NriTexture2DViewType_SHADER_RESOURCE_2D,
-		.format = textureDesc.format
-	};
-	NriDescriptor* descriptor = NULL;
-	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &descriptor) );
-	image->descriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
-	image->samplerDescriptor = R_CreateDescriptorWrapper(&rsh.nri, R_ResolveSamplerDescriptor(image->flags)); 
-	assert(image->samplerDescriptor.descriptor);
+#endif
 
 	struct texture_buf_s transformBuffer = { 0 };
 	for( size_t index = 0; index < uploadCount; index++ ) {
@@ -1929,7 +2056,7 @@ void R_FreeUnusedImagesByTags( int tags )
 			continue;
 		}
 
-		__FreeImage( R_ActiveFrameCmd(),image );
+		__FreeImage( image );
 	}
 }
 
@@ -1953,9 +2080,7 @@ void R_ShutdownImages( void )
 		return;
 
 	for(size_t i = 0; i < IMAGE_SAMPLER_HASH_SIZE; i++) {
-		if(samplerDescriptors[i].descriptor) {
-			rsh.nri.coreI.DestroyDescriptor(samplerDescriptors[i].descriptor);
-		}
+		FreeRIDescriptor( &rsh.device, &samplerDescriptors[i]);
 	}
 	memset(samplerDescriptors, 0, sizeof(samplerDescriptors));
 
@@ -1966,7 +2091,7 @@ void R_ShutdownImages( void )
 			// free texture
 			continue;
 		}
-		__FreeImage(NULL, image );
+		__FreeImage(image );
 	}
 
 	R_FreeImageBuffers();

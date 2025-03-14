@@ -25,6 +25,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "../qcommon/mod_cmd.h"
 #include "../qcommon/mod_cvar.h"
+#include "ri_pogoBuffer.h"
+
 
 /*
  * R_Localtime
@@ -198,7 +200,7 @@ void R_ScreenShot_f( void )
 /*
  * R_TakeEnvShot
  */
-void R_TakeEnvShot(struct frame_cmd_buffer_s* cmd, const char *path, const char *name, unsigned maxPixels )
+void R_TakeEnvShot(struct FrameState_s* cmd, const char *path, const char *name, unsigned maxPixels )
 {
 	int i;
 	unsigned size, maxSize;
@@ -220,7 +222,7 @@ void R_TakeEnvShot(struct frame_cmd_buffer_s* cmd, const char *path, const char 
 	if( !R_IsRenderingToScreen() || !rsh.worldModel )
 		return;
 	
-	maxSize = min( cmd->textureBuffers.screen.width, cmd->textureBuffers.screen.height );
+	maxSize = min( cmd->viewport.width, cmd->viewport.height );
 	if( maxSize > maxPixels )
 		maxSize = maxPixels;
 	
@@ -245,8 +247,8 @@ void R_TakeEnvShot(struct frame_cmd_buffer_s* cmd, const char *path, const char 
 	rn.shadowGroup = NULL;
 	rn.fbColorAttachment = rn.fbDepthAttachment = NULL;
 	
-	Vector4Set( rn.viewport, fd.x, cmd->textureBuffers.screen.height - size - fd.y, size, size );
-	Vector4Set( rn.scissor, fd.x, cmd->textureBuffers.screen.height - size - fd.y, size, size );
+	Vector4Set( rn.viewport, fd.x, cmd->viewport.height - size - fd.y, size, size );
+	Vector4Set( rn.scissor, fd.x, cmd->viewport.height - size - fd.y, size, size );
 	
 	for( i = 0; i < 6; i++ )
 	{

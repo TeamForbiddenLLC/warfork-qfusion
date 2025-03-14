@@ -18,26 +18,28 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
-#include "NRIDescs.h"
 #include "r_image.h"
 #include "r_local.h"
 #include "stb_ds.h"
 
-static void R_DrawSkyportal(struct frame_cmd_buffer_s* frame, const entity_t *e, skyportal_t *skyportal );
-static const NriFormat PortalTextureFormat = NriFormat_RGBA8_UNORM; 
-static const NriFormat PortalTextureDepthFormat = NriFormat_D32_SFLOAT; 
+#include "ri_conversion.h"
+#include"ri_renderer.h"
+#include "ri_vk.h"
+
+static void R_DrawSkyportal(struct FrameState_s* frame, const entity_t *e, skyportal_t *skyportal );
+static const enum RI_Format_e PortalTextureFormat = RI_FORMAT_RGBA8_UNORM;
+static const enum RI_Format_e PortalTextureDepthFormat = RI_FORMAT_D32_SFLOAT;
 /*
-* R_AddPortalSurface
-*/
-portalSurface_t *R_AddPortalSurface( const entity_t *ent, const mesh_t *mesh, 
-	const vec3_t mins, const vec3_t maxs, const shader_t *shader, void *drawSurf )
+ * R_AddPortalSurface
+ */
+portalSurface_t *R_AddPortalSurface( const entity_t *ent, const mesh_t *mesh, const vec3_t mins, const vec3_t maxs, const shader_t *shader, void *drawSurf )
 {
 	unsigned int i;
 	float dist;
 	cplane_t plane, untransformed_plane;
 	vec3_t v[3];
 	portalSurface_t *portalSurface;
-	bool depthPortal = !( shader->flags & (SHADER_PORTAL_CAPTURE|SHADER_PORTAL_CAPTURE2) );
+	bool depthPortal = !( shader->flags & ( SHADER_PORTAL_CAPTURE | SHADER_PORTAL_CAPTURE2 ) );
 
 	if( !mesh || !shader ) {
 		return NULL;
@@ -56,8 +58,7 @@ portalSurface_t *R_AddPortalSurface( const entity_t *ent, const mesh_t *mesh,
 	untransformed_plane.dist += 1; // nudge along the normal a bit
 	CategorizePlane( &untransformed_plane );
 
-	if( shader->flags & SHADER_AUTOSPRITE )
-	{
+	if( shader->flags & SHADER_AUTOSPRITE ) {
 		vec3_t centre;
 
 		// autosprites are quads, facing the viewer
@@ -74,34 +75,28 @@ portalSurface_t *R_AddPortalSurface( const entity_t *ent, const mesh_t *mesh,
 		VectorNegate( &rn.viewAxis[AXIS_FORWARD], plane.normal );
 		plane.dist = DotProduct( plane.normal, centre );
 		CategorizePlane( &plane );
-	}
-	else
-	{
+	} else {
 		vec3_t temp;
 		mat3_t entity_rotation;
 
 		// regular surfaces
-		if( !Matrix3_Compare( ent->axis, axis_identity ) )
-		{
+		if( !Matrix3_Compare( ent->axis, axis_identity ) ) {
 			Matrix3_Transpose( ent->axis, entity_rotation );
 
 			for( i = 0; i < 3; i++ ) {
 				VectorCopy( v[i], temp );
-				Matrix3_TransformVector( entity_rotation, temp, v[i] ); 
+				Matrix3_TransformVector( entity_rotation, temp, v[i] );
 				VectorMA( ent->origin, ent->scale, v[i], v[i] );
 			}
 
 			PlaneFromPoints( v, &plane );
 			CategorizePlane( &plane );
-		}
-		else
-		{
+		} else {
 			plane = untransformed_plane;
 		}
 	}
 
-	if( ( dist = PlaneDiff( rn.viewOrigin, &plane ) ) <= BACKFACE_EPSILON )
-	{
+	if( ( dist = PlaneDiff( rn.viewOrigin, &plane ) ) <= BACKFACE_EPSILON ) {
 		// behind the portal plane
 		if( !( shader->flags & SHADER_PORTAL_CAPTURE2 ) ) {
 			return NULL;
@@ -119,11 +114,9 @@ portalSurface_t *R_AddPortalSurface( const entity_t *ent, const mesh_t *mesh,
 	for( i = 0; i < rn.numPortalSurfaces; i++ ) {
 		portalSurface = &rn.portalSurfaces[i];
 
-		if( portalSurface->entity == ent &&
-			portalSurface->shader == shader &&
-			DotProduct( portalSurface->plane.normal, plane.normal ) > 0.99f &&
+		if( portalSurface->entity == ent && portalSurface->shader == shader && DotProduct( portalSurface->plane.normal, plane.normal ) > 0.99f &&
 			fabs( portalSurface->plane.dist - plane.dist ) < 0.1f ) {
-				goto addsurface;
+			goto addsurface;
 		}
 	}
 
@@ -155,121 +148,169 @@ addsurface:
 }
 
 void R_ShutdownPortals() {
-	for(size_t i = 0; i < MAX_PORTAL_TEXTURES; i++ )
-	{
-		struct portal_fb_s* portalFB = &rsh.portalFBs[i];
-		
-		if(portalFB->colorTexture) {
-			rsh.nri.coreI.DestroyTexture(portalFB->colorTexture);
-			rsh.nri.coreI.DestroyDescriptor(portalFB->shaderDescriptor.descriptor);
-			rsh.nri.coreI.DestroyDescriptor(portalFB->colorAttachment.descriptor);
+	for( size_t i = 0; i < MAX_PORTAL_TEXTURES; i++ ) {
+		struct portal_fb_s *portalFB = &rsh.portalFBs[i];
+		if( IsRITextureValid( &rsh.renderer, &portalFB->colorTexture )) {
+			vmaFreeMemory(rsh.device.vk.vmaAllocator, portalFB->vk.vmaColorAlloc);
 		}
-		if(portalFB->depthTexture) {
-			rsh.nri.coreI.DestroyTexture(portalFB->depthTexture);
-			rsh.nri.coreI.DestroyDescriptor(portalFB->depthAttachment.descriptor);
+		if( IsRITextureValid( &rsh.renderer, &portalFB->depthTexture)) {
+			vmaFreeMemory(rsh.device.vk.vmaAllocator, portalFB->vk.vmaDepthAlloc);
 		}
-		for( size_t i = 0; i < portalFB->numAllocations; i++ )
-			rsh.nri.coreI.FreeMemory(portalFB->memory[i]);
-		memset(portalFB, 0, sizeof(struct portal_fb_s));
+		memset( portalFB, 0, sizeof( struct portal_fb_s ) );
 	}
-
 }
 
-static struct portal_fb_s* __ResolvePortalSurface(struct frame_cmd_buffer_s *cmd, int width, int height, bool filtered) {
-	assert(Q_ARRAY_COUNT(rsh.portalFBs) >= MAX_PORTAL_TEXTURES);
-	struct portal_fb_s* bestFB = NULL; 
-	for(size_t i = 0; i < MAX_PORTAL_TEXTURES; i++ )
-	{
-		struct portal_fb_s* portalFB = &rsh.portalFBs[i];
-		if((portalFB->frameNum + NUMBER_FRAMES_FLIGHT) >= cmd->frameCount) {
+static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int width, int height, bool filtered) {
+	assert( Q_ARRAY_COUNT( rsh.portalFBs ) >= MAX_PORTAL_TEXTURES );
+	struct portal_fb_s *bestFB = NULL;
+	for( size_t i = 0; i < MAX_PORTAL_TEXTURES; i++ ) {
+		struct portal_fb_s *portalFB = &rsh.portalFBs[i];
+		if( ( portalFB->frameNum + NUMBER_FRAMES_FLIGHT ) >= rsh.frameSetCount ) {
 			continue;
 		}
-		if( portalFB->colorTexture ) {
-			const NriTextureDesc *textureDesc = rsh.nri.coreI.GetTextureDesc( portalFB->colorTexture );
-			if( textureDesc->width == width && textureDesc->height == height ) {
-				portalFB->samplerDescriptor = R_CreateDescriptorWrapper( &rsh.nri, R_ResolveSamplerDescriptor( filtered ? 0 : IT_NOFILTERING ) );
-				portalFB->frameNum = cmd->frameCount;
+		if( IsRITextureValid( &rsh.renderer, &portalFB->colorTexture ) ) {
+			if( portalFB->width == width && portalFB->height == height ) {
+				portalFB->samplerDescriptor = R_ResolveSamplerDescriptor( filtered ? 0 : IT_NOFILTERING );
+				portalFB->frameNum = rsh.frameSetCount;
 				return portalFB;
 			}
 		}
 		bestFB = portalFB;
-	}
-	if(bestFB) {
-		bestFB->samplerDescriptor = R_CreateDescriptorWrapper( &rsh.nri, R_ResolveSamplerDescriptor( filtered ? 0 : IT_NOFILTERING ) );
-		bestFB->frameNum = cmd->frameCount;
-		if( bestFB->depthTexture )
-			arrpush( cmd->freeTextures, bestFB->depthTexture );
-		if( bestFB->colorTexture )
-			arrpush( cmd->freeTextures, bestFB->colorTexture );
-		if(bestFB->colorAttachment.descriptor)
-			arrpush( cmd->frameTemporaryDesc, bestFB->colorAttachment.descriptor);
-		if(bestFB->shaderDescriptor.descriptor)
-			arrpush( cmd->frameTemporaryDesc, bestFB->shaderDescriptor.descriptor);
-		if(bestFB->depthAttachment.descriptor)
-			arrpush( cmd->frameTemporaryDesc, bestFB->depthAttachment.descriptor);
-		for( size_t i = 0; i < bestFB->numAllocations; i++ )
-			arrpush( cmd->freeMemory, bestFB->memory[i] );
-		bestFB->numAllocations = 0;
+  }
+  if( bestFB ) {
+	  bestFB->samplerDescriptor = R_ResolveSamplerDescriptor( filtered ? 0 : IT_NOFILTERING );
+	  bestFB->frameNum = rsh.frameSetCount;
+	  bestFB->width = width;
+	  bestFB->height = height;
+#if ( DEVICE_IMPL_VULKAN )
+	  struct RIFree_s freeSlot = {};
+	  struct r_frame_set_s *activeset = R_GetActiveFrameSet();
+	  if( bestFB->colorDescriptor.vk.image.imageView ) {
+		  freeSlot.type = RI_FREE_VK_IMAGEVIEW;
+		  freeSlot.vkImageView = bestFB->colorDescriptor.vk.image.imageView;
+		  arrpush( activeset->freeList, freeSlot );
+	  }
+	  if( bestFB->depthDescriptor.vk.image.imageView ) {
+		  freeSlot.type = RI_FREE_VK_IMAGEVIEW;
+		  freeSlot.vkImageView = bestFB->depthDescriptor.vk.image.imageView;
+		  arrpush( activeset->freeList, freeSlot );
+	  }
+	  if( bestFB->colorTexture.vk.image ) {
+		  freeSlot.type = RI_FREE_VK_IMAGE;
+		  freeSlot.vkImage = bestFB->colorTexture.vk.image;
+		  arrpush( activeset->freeList, freeSlot );
+	  }
+	  if( bestFB->depthTexture.vk.image ) {
+		  freeSlot.type = RI_FREE_VK_IMAGE;
+		  freeSlot.vkImage = bestFB->depthTexture.vk.image;
+		  arrpush( activeset->freeList, freeSlot );
+	  }
+	  if( bestFB->vk.vmaColorAlloc ) {
+		  freeSlot.type = RI_FREE_VK_VMA_AllOC;
+		  freeSlot.vmaAlloc = bestFB->vk.vmaColorAlloc;
+		  arrpush( activeset->freeList, freeSlot );
+	  }
+	  if( bestFB->vk.vmaDepthAlloc ) {
+		  freeSlot.type = RI_FREE_VK_VMA_AllOC;
+		  freeSlot.vmaAlloc = bestFB->vk.vmaDepthAlloc;
+		  arrpush( activeset->freeList, freeSlot );
+	  }
 
-		const NriTextureDesc textureDesc = { 
-										 .width = width,
-									   .height = height,
-									   .depth = 1,
-									   .usage = NriTextureUsageBits_COLOR_ATTACHMENT | NriTextureUsageBits_SHADER_RESOURCE,
-									   .layerNum = 1,
-									   .format = PortalTextureFormat,
-									   .sampleNum = 1,
-									   .type = NriTextureType_TEXTURE_2D,
-									   .mipNum = 1 };
-		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &bestFB->colorTexture) );
-		const NriTextureDesc depthTextureDesc = { 
-										  .width = width,
-											.height = height,
-											.depth = 1,
-											.usage = NriTextureUsageBits_DEPTH_STENCIL_ATTACHMENT,
-											.layerNum = 1,
-											.format = PortalTextureDepthFormat ,
-											.sampleNum = 1,
-											.type = NriTextureType_TEXTURE_2D,
-											.mipNum = 1 };
-		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture( rsh.nri.device, &depthTextureDesc, &bestFB->depthTexture ) );
-		NriTexture* textures[] = {bestFB->colorTexture, bestFB->depthTexture};
+	  {
+		  uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+		  VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+		  VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
+		  info.flags = flags;
+		  info.imageType = VK_IMAGE_TYPE_2D;
+		  info.format = RIFormatToVK( PortalTextureFormat );
+		  info.extent.width = width;
+		  info.extent.height = height;
+		  info.extent.depth = 1;
+		  info.mipLevels = 1;
+		  info.arrayLayers = 1;
+		  info.samples = 1;
+		  info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		  info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		  info.pQueueFamilyIndices = queueFamilies;
+		  VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+		  info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		  VmaAllocationCreateInfo mem_reqs = {};
+		  mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+		  if( !VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &bestFB->colorTexture.vk.image, &bestFB->vk.vmaColorAlloc, NULL ) ) ) {
+			  return NULL;
+		  }
 
-		const NriResourceGroupDesc resourceGroupDesc = {
-			.textureNum = Q_ARRAY_COUNT(textures),
-			.textures = textures,
-			.memoryLocation = NriMemoryLocation_DEVICE,
-		};
-		const size_t numAllocations = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
-		assert(numAllocations <= Q_ARRAY_COUNT(bestFB->memory));
-		bestFB->numAllocations = numAllocations;
-		NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, bestFB->memory) )
-		NriDescriptor* descriptor = NULL;
-		const NriTexture2DViewDesc textureAttachmentViewDesc = {
-				.texture = bestFB->colorTexture,
-				.viewType = NriTexture2DViewType_COLOR_ATTACHMENT,
-				.format = textureDesc.format
-		};
-		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureAttachmentViewDesc, &descriptor) );
-		bestFB->colorAttachment = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
-		const NriTexture2DViewDesc depthAttachmentViewDesc = {
-				.texture = bestFB->depthTexture,
-				.viewType = NriTexture2DViewType_DEPTH_STENCIL_ATTACHMENT,
-				.format = depthTextureDesc.format
-		};
-		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &depthAttachmentViewDesc , &descriptor) );
-		bestFB->depthAttachment = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
+		  VkImageSubresourceRange subresource = {
+			  VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1,
+		  };
 
-		const NriTexture2DViewDesc textureShaderViewDesc = {
-				.texture = bestFB->colorTexture,
-				.viewType = NriTexture2DViewType_SHADER_RESOURCE_2D,
-				.format = textureDesc.format
-		};
-		NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureShaderViewDesc, &descriptor) );
-		bestFB->shaderDescriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
+		  VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
+		  usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
-	}
-	return bestFB;
+		  VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+		  createInfo.pNext = &usageInfo;
+		  createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		  createInfo.format = info.format;
+		  createInfo.subresourceRange = subresource;
+		  createInfo.image = bestFB->colorTexture.vk.image;
+			
+			bestFB->colorDescriptor.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
+			bestFB->colorDescriptor.texture = &bestFB->colorTexture;
+			bestFB->colorDescriptor.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+			bestFB->colorDescriptor.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->colorDescriptor.vk.image.imageView ) );
+			UpdateRIDescriptor( &rsh.device, &bestFB->colorDescriptor);
+	  }
+	  {
+		  uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+		  VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+		  VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
+		  info.flags = flags;
+		  info.imageType = VK_IMAGE_TYPE_2D;
+		  info.format = RIFormatToVK( PortalTextureDepthFormat );
+		  info.extent.width = width;
+		  info.extent.height = height;
+		  info.extent.depth = 1;
+		  info.mipLevels = 1;
+		  info.arrayLayers = 1;
+		  info.samples = 1;
+		  info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		  info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		  info.pQueueFamilyIndices = queueFamilies;
+		  VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+		  info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		  VmaAllocationCreateInfo mem_reqs = {};
+		  mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+		  if( !VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &bestFB->depthTexture.vk.image, &bestFB->vk.vmaDepthAlloc, NULL ) ) ) {
+			  return NULL;
+		  }
+
+		  VkImageSubresourceRange subresource = {
+			  VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1,
+		  };
+
+		  VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
+		  usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+
+		  VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+		  createInfo.pNext = &usageInfo;
+		  createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		  createInfo.format = info.format;
+		  createInfo.subresourceRange = subresource;
+		  createInfo.image = bestFB->depthTexture.vk.image;
+
+		  bestFB->depthDescriptor.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
+		  bestFB->depthDescriptor.texture = &bestFB->depthTexture;
+		  bestFB->depthDescriptor.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		  bestFB->depthDescriptor.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		  VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->depthDescriptor.vk.image.imageView ) );
+		  UpdateRIDescriptor( &rsh.device, &bestFB->depthDescriptor);
+
+		  //RI_VK_InitImageView( &rsh.device, &createInfo, &bestFB->depthDescriptor, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
+	  }
+#endif
+  }
+  return bestFB;
 }
 
 
@@ -280,9 +321,8 @@ static struct portal_fb_s* __ResolvePortalSurface(struct frame_cmd_buffer_s *cmd
 * we need to do a $portalmap stage. Note that for $portalmaps we must
 * use a different viewport.
 */
-static void R_DrawPortalSurface( struct frame_cmd_buffer_s *cmd, portalSurface_t *portalSurface )
+static void R_DrawPortalSurface( struct FrameState_s *cmd, portalSurface_t *portalSurface )
 {
-
 	unsigned int i;
 	float dist, d, best_d;
 	vec3_t viewerOrigin;
@@ -381,10 +421,24 @@ static void R_DrawPortalSurface( struct frame_cmd_buffer_s *cmd, portalSurface_t
 		best->rtype = NUM_RTYPES;
 	}
 
+	struct FrameState_s sub = {};
+	const bool useCaptureTexture = (captureTextureId >= 0);
+
 	prevRenderFlags = rn.renderFlags;
 	prevFlipped = ( rn.refdef.rdflags & RDF_FLIPPED ) != 0;
-	if( !R_PushRefInst(cmd) ) {
+	if( !R_PushRefInst(&sub) ) {
 		return;
+	}
+
+	if( useCaptureTexture ) {
+		R_InitSubpass( cmd, &sub );
+#if ( DEVICE_IMPL_VULKAN )
+		VkCommandBufferInheritanceInfo inheritanceInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO };
+		VkCommandBufferBeginInfo info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+		info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		info.pInheritanceInfo = &inheritanceInfo;
+		vkBeginCommandBuffer( sub.handle.vk.cmd, &info );
+#endif
 	}
 
 	VectorCopy( rn.viewOrigin, viewerOrigin );
@@ -487,15 +541,11 @@ setup_and_render:
 
 	// if we want to render to a texture, initialize texture
 	// but do not try to render to it more than once
-	const NriAccessLayoutStage layoutTransition = (NriAccessLayoutStage){	
-		.layout = NriLayout_COLOR_ATTACHMENT, 
-		.access = NriAccessBits_COLOR_ATTACHMENT, 
-		.stages = NriStageBits_COLOR_ATTACHMENT 
-	};
-	if( captureTextureId >= 0 )
+	if( useCaptureTexture )
 	{
 		struct portal_fb_s *const fb = __ResolvePortalSurface( cmd, rsc.refdef.width, rsc.refdef.height, ( shader->flags & SHADER_NO_TEX_FILTERING ) );
 		portalTexures[captureTextureId] = fb;
+
 		if(fb == NULL) {
 			// couldn't register a slot for this plane
 			goto done;
@@ -507,36 +557,82 @@ setup_and_render:
 		
 		Vector4Set( rn.viewport, rn.refdef.x, rn.refdef.y, rsc.refdef.width, rsc.refdef.height );
 		Vector4Set( rn.scissor, rn.refdef.x, rn.refdef.y, rsc.refdef.width, rsc.refdef.height );
-		const NriDescriptor *colorAttachments[] = { fb->colorAttachment.descriptor};
-		const struct NriViewport viewports[] = {
-			( NriViewport ){ 
-				.x = rn.viewport[0], 
-				.y = rn.viewport[1], 
-				.width = rn.viewport[2], 
-				.height = rn.viewport[3], 
-				.depthMin = 0.0f, 
-				.depthMax = 1.0f,
-				.originBottomLeft = true
-			} 
-		};
-		const struct NriRect scissors[] = { (NriRect){
-			.x = rn.scissor[0],
-			.y = rn.scissor[1],
-			.width = rn.scissor[2],
-			.height = rn.scissor[3]
-		} };
-		const NriFormat colorFormats[] = { PortalTextureFormat };
-		FR_CmdSetTextureAttachment( cmd, colorFormats, colorAttachments, viewports, scissors, 1, PortalTextureDepthFormat, fb->depthAttachment.descriptor );
+
+		struct RIViewport_s viewport = {};
+		viewport.x = rn.viewport[0];
+		viewport.y = rn.viewport[1];
+		viewport.width = rn.viewport[2];
+		viewport.height = rn.viewport[3];
+		viewport.depthMax = 1.0f;
+		viewport.originBottomLeft = true;
+		FR_CmdSetViewport( &sub, viewport );
+
+		struct RIRect_s scissor = {};
+		scissor.x = rn.scissor[0];
+		scissor.y = rn.scissor[1];
+		scissor.width = rn.scissor[2];
+		scissor.height = rn.scissor[3];
+		FR_CmdSetScissor( &sub, scissor );
+
+		enum RI_Format_e attachments[] = { PortalTextureFormat };
+		FR_ConfigurePipelineAttachment( &sub.pipeline, attachments, Q_ARRAY_COUNT( attachments ), PortalTextureDepthFormat );
 
 		{
-			NriTextureBarrierDesc transitionBarriers = { 0 };
-			transitionBarriers.texture = fb->colorTexture;
-			transitionBarriers.after = layoutTransition; 
-	
-			NriBarrierGroupDesc barrierGroupDesc = { 0 };
-			barrierGroupDesc.textureNum = 1;
-			barrierGroupDesc.textures = &transitionBarriers;
-			rsh.nri.coreI.CmdBarrier( cmd->cmd, &barrierGroupDesc );
+			VkImageMemoryBarrier2 imageBarriers[2] = {};
+			imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+			imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+			imageBarriers[0].srcAccessMask = VK_ACCESS_2_NONE;
+			imageBarriers[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+			imageBarriers[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+			imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			imageBarriers[0].image = fb->depthTexture.vk.image;
+			imageBarriers[0].subresourceRange = (VkImageSubresourceRange){
+				VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
+			};
+
+			imageBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+			imageBarriers[1].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			imageBarriers[1].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+			imageBarriers[1].srcAccessMask = VK_ACCESS_2_NONE;
+			imageBarriers[1].dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+			imageBarriers[1].dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+			imageBarriers[1].newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			imageBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			imageBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			imageBarriers[1].image = fb->colorTexture.vk.image;
+			imageBarriers[1].subresourceRange = (VkImageSubresourceRange){
+				VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
+			};
+
+			VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+			dependencyInfo.imageMemoryBarrierCount = Q_ARRAY_COUNT(imageBarriers);
+			dependencyInfo.pImageMemoryBarriers = imageBarriers;
+			vkCmdPipelineBarrier2( sub.handle.vk.cmd, &dependencyInfo );
+		}
+		{
+			VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+			RI_VK_FillColorAttachment( &colorAttachment, &fb->colorDescriptor, true );
+
+			VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+			RI_VK_FillDepthAttachment( &depthStencil, &fb->depthDescriptor, true );
+			enum RI_Format_e attachments[] = {PortalTextureFormat };
+			FR_ConfigurePipelineAttachment(& sub.pipeline, attachments, Q_ARRAY_COUNT(attachments), PortalTextureDepthFormat );
+			
+			VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
+			renderingInfo.flags = 0;
+			renderingInfo.renderArea.extent.width = fb->width;
+			renderingInfo.renderArea.extent.height = fb->height;
+			renderingInfo.layerCount = 1;
+			renderingInfo.viewMask = 0;
+			renderingInfo.colorAttachmentCount = 1;
+			renderingInfo.pColorAttachments = &colorAttachment;
+			renderingInfo.pDepthAttachment = &depthStencil;
+			renderingInfo.pStencilAttachment = NULL;
+			vkCmdBeginRendering( rsh.frame.handle.vk.cmd, &renderingInfo );
+
 		}
 
 		rn.renderFlags |= RF_PORTAL_CAPTURE;
@@ -546,26 +642,30 @@ setup_and_render:
 
 	VectorCopy( origin, rn.refdef.vieworg );
 	Matrix3_Copy( axis, rn.refdef.viewaxis );
-	assert(cmd->stackCmdBeingRendered == 0);
 
-	cmd->state.pipelineLayout.flippedViewport = true;
-	R_RenderView(cmd, &rn.refdef );
-	cmd->state.pipelineLayout.flippedViewport = false;
+	sub.pipeline.flippedViewport = true;
+	R_RenderView( captureTextureId >= 0 ? &sub : cmd, &rn.refdef );
 
-	if(captureTextureId != -1 && portalTexures[captureTextureId]) {
-			NriTextureBarrierDesc transitionBarriers = { 0 };
-			transitionBarriers.texture = portalTexures[captureTextureId]->colorTexture;
-			transitionBarriers.before = layoutTransition; 
-			transitionBarriers.after = (NriAccessLayoutStage) {
-				.layout = NriLayout_SHADER_RESOURCE,
-				.access = NriAccessBits_SHADER_RESOURCE,
-				.stages = NriStageBits_FRAGMENT_SHADER 
-			};
-	
-			NriBarrierGroupDesc barrierGroupDesc = { 0 };
-			barrierGroupDesc.textureNum = 1;
-			barrierGroupDesc.textures = &transitionBarriers;
-			rsh.nri.coreI.CmdBarrier( cmd->cmd, &barrierGroupDesc );
+	if( useCaptureTexture && portalTexures[captureTextureId] ) {
+		VkImageMemoryBarrier2 imageBarriers[1] = {};
+		imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+		imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		imageBarriers[0].srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+		imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		imageBarriers[0].dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		imageBarriers[0].dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+		imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		imageBarriers[0].image = portalTexures[captureTextureId]->colorTexture.vk.image;
+		imageBarriers[0].subresourceRange = (VkImageSubresourceRange){
+			VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
+		};
+
+		VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+		dependencyInfo.imageMemoryBarrierCount = Q_ARRAY_COUNT( imageBarriers );
+		dependencyInfo.pImageMemoryBarriers = imageBarriers;
+		vkCmdPipelineBarrier2( sub.handle.vk.cmd, &dependencyInfo );
 	}
 
 	if( doRefraction && !refraction && ( shader->flags & SHADER_PORTAL_CAPTURE2 ) )
@@ -577,53 +677,54 @@ setup_and_render:
 	}
 
 done:
+	if(useCaptureTexture) {
+		vkEndCommandBuffer(sub.handle.vk.cmd);
+	}
 	portalSurface->portalfbs[0] = portalTexures[0];
 	portalSurface->portalfbs[1] = portalTexures[1];
-	R_PopRefInst(cmd);
+	R_PopRefInst( useCaptureTexture ? &sub : cmd );
 }
 
-void R_DrawPortals(struct frame_cmd_buffer_s* frame)
+void R_DrawPortals(struct FrameState_s *cmd)
 {
-	unsigned int i;
+  unsigned int i;
 
-	if( rf.viewcluster == -1 ) {
-		return;
-	}
-	const struct frame_cmd_save_attachment_s stash = R_CmdState_StashAttachment(frame); 
+  if( rf.viewcluster == -1 ) {
+	  return;
+  }
 
-	if( !( rn.renderFlags & ( RF_MIRRORVIEW|RF_PORTALVIEW|RF_SHADOWMAPVIEW ) ) ) {
+  if( !( rn.renderFlags & ( RF_MIRRORVIEW | RF_PORTALVIEW | RF_SHADOWMAPVIEW ) ) ) {
+	  // render skyportal
+	  if( rn.skyportalSurface ) {
+#if ( DEVICE_IMPL_VULKAN )
+		  {
+			  VkClearRect clearRect[1] = {};
+			  VkClearAttachment clearAttach[1] = {};
+			  clearRect[0].baseArrayLayer = 0;
+			  clearRect[0].rect = RIViewportToRect2D( &rsh.frame.viewport );
+			  clearRect[0].layerCount = 1;
 
-		// render skyportal
-		if( rn.skyportalSurface ) {
-			NriAttachmentsDesc attachmentsDesc = {0};
-			attachmentsDesc.depthStencil = frame->state.depthAttachment;
-			attachmentsDesc.colorNum = frame->state.numColorAttachments;
-			attachmentsDesc.colors = frame->state.colorAttachment;
-			rsh.nri.coreI.CmdBeginRendering( frame->cmd, &attachmentsDesc );
-			{
-				NriClearDesc clearDesc[MAX_COLOR_ATTACHMENTS + 1] = {0};
-				size_t numClearDesc = 0;
-				clearDesc[numClearDesc].value.depthStencil = ( NriDepthStencil ){ .depth = 1.0f, .stencil = 0.0f };
-				clearDesc[numClearDesc].planes = NriPlaneBits_DEPTH;
-				numClearDesc++;
-				rsh.nri.coreI.CmdClearAttachments( frame->cmd, clearDesc, numClearDesc, NULL, 0 );
-			}
-			rsh.nri.coreI.CmdEndRendering( frame->cmd );
-			
-			portalSurface_t *ps = rn.skyportalSurface;
-			R_DrawSkyportal( frame, ps->entity, ps->skyPortal );
-		}
+			  clearAttach[0].colorAttachment = 0;
+			  clearAttach[0].clearValue.depthStencil.depth = 1.0f;
+			  clearAttach[0].aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+			  vkCmdClearAttachments( cmd->handle.vk.cmd, 1, clearAttach, 1, clearRect );
+		  }
+#else
+			#error Unsupported 
+#endif
+		  portalSurface_t *ps = rn.skyportalSurface;
+		  R_DrawSkyportal( cmd, ps->entity, ps->skyPortal );
+	  }
 
-		// render regular portals
-		for( i = 0; i < rn.numPortalSurfaces; i++ ) {
-			portalSurface_t ps = rn.portalSurfaces[i];
-			if( !ps.skyPortal ) {
-				R_DrawPortalSurface( frame, &ps );
-				rn.portalSurfaces[i] = ps;
-			}
-		}
-	}
-	R_CmdState_RestoreAttachment(frame, &stash);
+	  // render regular portals
+	  for( i = 0; i < rn.numPortalSurfaces; i++ ) {
+		  portalSurface_t ps = rn.portalSurfaces[i];
+		  if( !ps.skyPortal ) {
+			  R_DrawPortalSurface( cmd, &ps );
+			  rn.portalSurfaces[i] = ps;
+		  }
+	  }
+  }
 }
 
 /*
@@ -658,7 +759,7 @@ portalSurface_t *R_AddSkyportalSurface( const entity_t *ent, const shader_t *sha
 /*
 * R_DrawSkyportal
 */
-static void R_DrawSkyportal(struct frame_cmd_buffer_s* frame, const entity_t *e, skyportal_t *skyportal )
+static void R_DrawSkyportal(struct FrameState_s* frame, const entity_t *e, skyportal_t *skyportal )
 {
 	if( !R_PushRefInst(frame) ) {
 		return;
@@ -714,7 +815,7 @@ static void R_DrawSkyportal(struct frame_cmd_buffer_s* frame, const entity_t *e,
 	{
 		rn.refdef.fov_x = skyportal->fov;
 		rn.refdef.fov_y = CalcFov( rn.refdef.fov_x, rn.refdef.width, rn.refdef.height );
-		AdjustFov( &rn.refdef.fov_x, &rn.refdef.fov_y, frame->textureBuffers.screen.width, frame->textureBuffers.screen.height, false );
+		AdjustFov( &rn.refdef.fov_x, &rn.refdef.fov_y, frame->viewport.width, frame->viewport.height, false );
 	}
 
 	R_RenderView( frame, &rn.refdef );

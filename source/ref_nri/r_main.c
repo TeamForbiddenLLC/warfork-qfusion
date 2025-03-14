@@ -22,7 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // r_main.c
 
 #include "r_local.h"
-
+#include "ri_types.h"
+#include "ri_conversion.h"
 
 r_globals_t rf;
 
@@ -259,7 +260,7 @@ static drawSurfaceType_t spriteDrawSurf = ST_SPRITE;
 /*
 * R_BatchSpriteSurf
 */
-void R_BatchSpriteSurf( struct frame_cmd_buffer_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceType_t *drawSurf )
+void R_BatchSpriteSurf( struct FrameState_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceType_t *drawSurf )
 {
 	int i;
 	vec3_t point;
@@ -365,22 +366,17 @@ mesh_vbo_t *R_InitNullModelVBO( void )
 	elem_t elems[6] = { 0, 1, 2, 3, 4, 5 };
 	mesh_t mesh;
 	vattribmask_t vattribs = VATTRIB_POSITION_BIT | VATTRIB_TEXCOORDS_BIT | VATTRIB_COLOR0_BIT;
-	mesh_vbo_t *vbo;
-	
-	struct mesh_vbo_desc_s meshdesc = {
-		.tag = VBO_TAG_NONE,
-		.owner = ( void * )&rf,
 
-		.numVerts = 6,
-		.numElems = 6,
-		.numInstances = 0,
-		
-		.memoryLocation = NriMemoryLocation_DEVICE,
-		.vattribs = vattribs,
-		.halfFloatVattribs = vattribs
-	};
-	vbo = R_CreateMeshVBO( &meshdesc); 
-	//vbo = R_CreateMeshVBO( &rf, 6, 6, 0, vattribs, VBO_TAG_NONE, vattribs );
+	struct mesh_vbo_desc_s meshdesc = { .tag = VBO_TAG_NONE,
+										.owner = (void *)&rf,
+
+										.numVerts = 6,
+										.numElems = 6,
+										.numInstances = 0,
+
+										.vattribs = vattribs,
+										.halfFloatVattribs = vattribs };
+	mesh_vbo_t *vbo = R_CreateMeshVBO( &meshdesc );
 	if( !vbo ) {
 		return NULL;
 	}
@@ -457,11 +453,11 @@ static mesh_t pic_mesh = { 4, pic_xyz, pic_normals, NULL, pic_st, { 0, 0, 0, 0 }
 *
 * Note that this sets the viewport to size of the active framebuffer.
 */
-void R_Set2DMode(struct frame_cmd_buffer_s* cmd, bool enable )
+void R_Set2DMode(struct FrameState_s* cmd, bool enable )
 {
 
-	const int width = cmd->textureBuffers.screen.width;
-	const int height = cmd->textureBuffers.screen.height;
+	const int width = cmd->viewport.width;
+	const int height = cmd->viewport.height;
 
 	if( rf.in2D == true && enable == true && width == rf.width2D && height == rf.height2D ) {
 		return;
@@ -483,16 +479,16 @@ void R_Set2DMode(struct frame_cmd_buffer_s* cmd, bool enable )
 		// set 2D virtual screen size
 		RB_Scissor( 0, 0, width, height );
 
-		FR_CmdSetViewportAll( cmd, 
-											 (NriViewport){ 
+		FR_CmdSetViewport( cmd, 
+											 (struct RIViewport_s){ 
 											 .x = 0, 
 											 .y = 0, 
 											 .width = width, 
 											 .height = height, 
 											 .depthMin = 0.0f, 
 											 .depthMax = 1.0f } );
-		FR_CmdSetScissorAll( cmd, 
-											 (NriRect){ 
+		FR_CmdSetScissor( cmd, 
+											 (struct RIRect_s){ 
 											 .x = 0, 
 											 .y = 0, 
 											 .width = width, 
@@ -518,7 +514,7 @@ void R_Set2DMode(struct frame_cmd_buffer_s* cmd, bool enable )
 /*
 * R_DrawRotatedStretchPic
 */
-void R_DrawRotatedStretchPic(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, float angle, 
+void R_DrawRotatedStretchPic(struct FrameState_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, float angle, 
 	const vec4_t color, const shader_t *shader )
 {
 	int bcolor;
@@ -581,7 +577,7 @@ void R_DrawRotatedStretchPic(struct frame_cmd_buffer_s* cmd, int x, int y, int w
 /*
 * R_DrawStretchPic
 */
-void R_DrawStretchPic(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
+void R_DrawStretchPic(struct FrameState_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	const vec4_t color, const shader_t *shader )
 {
 	R_DrawRotatedStretchPic(cmd, x, y, w, h, s1, t1, s2, t2, 0, color, shader );
@@ -626,7 +622,7 @@ void R_UploadRawYUVPic( image_t **yuvTextures, ref_img_plane_t *yuv )
 /*
 * R_DrawStretchRaw
 */
-void R_DrawStretchRaw(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2 )
+void R_DrawStretchRaw(struct FrameState_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2 )
 {
 	float h_scale, v_scale;
 
@@ -718,7 +714,7 @@ void R_DrawStretchRawYUV( int x, int y, int w, int h, float s1, float t1, float 
 /*
 * R_DrawStretchQuick
 */
-void R_DrawStretchQuick(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
+void R_DrawStretchQuick(struct FrameState_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	const vec4_t color, int program_type, image_t *image, int blendMask )
 {
 	static char *s_name = "$builtinimage";
@@ -765,11 +761,10 @@ mesh_vbo_t *R_InitPostProcessingVBO( void )
 		.numElems = 6,
 		.numInstances = 0,
 		
-		.memoryLocation = NriMemoryLocation_DEVICE,
 		.vattribs = vattribs,
 		.halfFloatVattribs = vattribs
 	};
-	mesh_vbo_t *vbo = R_CreateMeshVBO( &meshdesc); 
+	mesh_vbo_t *vbo = R_CreateMeshVBO( &meshdesc );
 	//vbo = R_CreateMeshVBO( &rf, 4, 6, 0, vattribs, VBO_TAG_NONE, vattribs );
 	if( !vbo ) {
 		return NULL;
@@ -946,7 +941,7 @@ static void R_SetupViewMatrices( void )
 /*
 * R_Clear
 */
-static void R_Clear(struct frame_cmd_buffer_s* frame, int bitMask  /* unused variable */)
+static void R_Clear(struct FrameState_s* frame, int bitMask  /* unused variable */)
 {
 	vec4_t envColor;
 	bool clearColor = false;
@@ -968,42 +963,45 @@ static void R_Clear(struct frame_cmd_buffer_s* frame, int bitMask  /* unused var
 	const bool hasClearOperation = !depthPortal || clearColor;
 	if(!hasClearOperation) 
 		return;
-	
-	NriAttachmentsDesc attachmentsDesc = {0};
-	attachmentsDesc.depthStencil = frame->state.depthAttachment;
-	attachmentsDesc.colorNum = frame->state.numColorAttachments;
-	attachmentsDesc.colors = frame->state.colorAttachment;
-	rsh.nri.coreI.CmdBeginRendering( frame->cmd, &attachmentsDesc );
-	{
-		NriClearDesc clearDesc[MAX_COLOR_ATTACHMENTS + 1] = {0};
-		size_t numClearDesc = 0;
-		if( clearColor ) {
-			for(size_t i = 0; i < attachmentsDesc.colorNum; i++) {
-				clearDesc[numClearDesc].value.color = ( NriColor ){ .f = { envColor[0], envColor[1], envColor[2], envColor[3] } };
-				clearDesc[numClearDesc].planes = NriPlaneBits_COLOR;
-				numClearDesc++;
-			}
-		}
-		if( !depthPortal ) {
-			clearDesc[numClearDesc].value.depthStencil = ( NriDepthStencil ){ .depth = 1.0f, .stencil = 0.0f };
-			clearDesc[numClearDesc].planes = NriPlaneBits_DEPTH;
-			numClearDesc++;
-		}
-		rsh.nri.coreI.CmdClearAttachments( frame->cmd, clearDesc, numClearDesc, NULL, 0 );
-	}
-	rsh.nri.coreI.CmdEndRendering( frame->cmd );
 
-
-	// RB_Clear( bits, envColor[0], envColor[1], envColor[2], 1 );
+#if ( DEVICE_IMPL_VULKAN )
+		  {
+				size_t numClear = 0;
+			  VkClearRect clearRect[2] = {};
+			  VkClearAttachment clearAttach[2] = {};
+			  if( clearColor ) {
+				  clearRect[numClear].baseArrayLayer = 0;
+				  clearRect[numClear].rect = RIViewportToRect2D( &frame->viewport );
+				  clearRect[numClear].layerCount = frame->pipeline.numColorsAttachments;
+				  clearAttach[numClear].clearValue.color.float32[0] = envColor[0];
+				  clearAttach[numClear].clearValue.color.float32[1] = envColor[1];
+				  clearAttach[numClear].clearValue.color.float32[2] = envColor[2];
+				  clearAttach[numClear].clearValue.color.float32[3] = envColor[3];
+				  clearAttach[numClear].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				  numClear++;
+			  }
+			  if( !depthPortal ) {
+				  clearRect[numClear].baseArrayLayer = 0;
+				  clearRect[numClear].rect = RIViewportToRect2D( &frame->viewport );
+				  clearRect[numClear].layerCount = 1;
+				  clearAttach[numClear].clearValue.depthStencil.depth = 1.0f;
+				  clearAttach[numClear].aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+				  numClear++;
+			  }
+			  vkCmdClearAttachments( frame->handle.vk.cmd, numClear, clearAttach, numClear, clearRect );
+		  }
+#else
+			#error Unsupported 
+#endif
 }
 
 /*
 * R_SetupGL
 */
-static void R_SetupGL(struct frame_cmd_buffer_s* frame)
+static void R_SetupGL(struct FrameState_s* frame)
 {
 	RB_Scissor( rn.scissor[0], rn.scissor[1], rn.scissor[2], rn.scissor[3] );
-	FR_CmdSetViewportAll(frame, (NriViewport) {
+	FR_CmdSetViewport(frame, (struct RIViewport_s) {
 		.x = rn.viewport[0],
 		.y = rn.viewport[1],
 		.width = rn.viewport[2],
@@ -1042,7 +1040,7 @@ static void R_SetupGL(struct frame_cmd_buffer_s* frame)
 /*
 * R_EndGL
 */
-static void R_EndGL( struct frame_cmd_buffer_s* frame )
+static void R_EndGL( struct FrameState_s* frame )
 {
 	if( ( rn.renderFlags & RF_SHADOWMAPVIEW ) )
 		RB_SetShaderStateMask( ~0, 0 );
@@ -1127,7 +1125,7 @@ static void R_DrawEntities( void )
 /*
 * R_RenderView
 */
-void R_RenderView(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
+void R_RenderView(struct FrameState_s* frame, const refdef_t *fd )
 {
 	int msec = 0;
 	bool shadowMap = rn.renderFlags & RF_SHADOWMAPVIEW ? true : false;
@@ -1210,6 +1208,7 @@ void R_RenderView(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 	if( r_speeds->integer )
 		rf.stats.t_add_entities += ( ri.Sys_Milliseconds() - msec );
 
+
 	if( !shadowMap ) {
 		// now set  the real far clip value and reload view matrices
 		R_SetFarClip();
@@ -1221,7 +1220,6 @@ void R_RenderView(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 	}
 
 	R_SortDrawList( rn.meshlist );
-
 
 	R_SetupGL(frame);
 
@@ -1235,9 +1233,7 @@ void R_RenderView(struct frame_cmd_buffer_s* frame, const refdef_t *fd )
 	if( r_speeds->integer )
 		msec = ri.Sys_Milliseconds();
 	
-	FR_CmdBeginRendering( frame );
 	R_DrawSurfaces(frame, rn.meshlist );
-	FR_CmdEndRendering(frame);
 
 	if( r_speeds->integer )
 		rf.stats.t_draw_meshes += ( ri.Sys_Milliseconds() - msec );
@@ -1271,7 +1267,7 @@ void R_ClearRefInstStack( void )
 /*
 * R_PushRefInst
 */
-bool R_PushRefInst( struct frame_cmd_buffer_s* frame )
+bool R_PushRefInst( struct FrameState_s* frame )
 {
 	if( riStackSize == REFINST_STACK_SIZE ) {
 		return false;
@@ -1284,7 +1280,7 @@ bool R_PushRefInst( struct frame_cmd_buffer_s* frame )
 /*
 * R_PopRefInst
 */
-void R_PopRefInst( struct frame_cmd_buffer_s* frame )
+void R_PopRefInst( struct FrameState_s* frame )
 {
 	if( !riStackSize ) {
 		return;
@@ -1292,7 +1288,7 @@ void R_PopRefInst( struct frame_cmd_buffer_s* frame )
 
 	rn = riStack[--riStackSize];
 
-	R_SetupGL(frame);
+	R_SetupGL( frame->parent ? frame->parent : frame );
 }
 
 void R_DeferDataSync( void )

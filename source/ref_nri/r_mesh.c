@@ -404,7 +404,7 @@ static const batchDrawSurf_cb r_batchDrawSurfCb[ST_MAX_TYPES] =
 /*
 * R_DrawSurfaces
 */
-static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
+static void _R_DrawSurfaces(struct FrameState_s* frame, drawList_t *list )
 {
 	unsigned int i;
 	unsigned int sortKey;
@@ -469,22 +469,20 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 					RB_FlushDynamicMeshes(frame);
 					batchFlushed = true;
 					depthHack = true;
-					assert(frame->state.numColorAttachments == 1);
-					depthmin = frame->state.viewports[0].depthMin;
-					depthmax = frame->state.viewports[0].depthMax;
-					frame->state.viewports[0].depthMax = frame->state.viewports[0].depthMin + 0.3f * (frame->state.viewports[0].depthMax - frame->state.viewports[0].depthMin );
-					frame->state.dirty |= CMD_DIRT_VIEWPORT;
+					depthmin = frame->viewport.depthMin;
+					depthmax = frame->viewport.depthMax;
+					frame->viewport.depthMax = frame->viewport.depthMin + 0.3f * ( frame->viewport.depthMax - frame->viewport.depthMin );
+					frame->dirty |= CMD_DIRT_VIEWPORT;
 				}
 			} else {
 				if( depthHack ) {
 					RB_FlushDynamicMeshes(frame);
 					batchFlushed = true;
 					depthHack = false;
-					assert(frame->state.numColorAttachments == 1);
-
-					frame->state.viewports[0].depthMax = depthmax;
-					frame->state.viewports[0].depthMin = depthmin;
-					frame->state.dirty |= CMD_DIRT_VIEWPORT;
+					
+					frame->viewport.depthMax = depthmax;
+					frame->viewport.depthMin = depthmin;
+					frame->dirty |= CMD_DIRT_VIEWPORT;
 				}
 			}
 
@@ -520,13 +518,10 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 			}
 
 			if( !depthWrite && !depthCopied && Shader_ReadDepth( shader ) ) {
-				assert(frame->stackCmdBeingRendered == 1);
 				depthCopied = true;
 				if( ( rn.renderFlags & RF_SOFT_PARTICLES ) && rn.fbDepthAttachment && rsh.screenTextureCopy ) {
 					// TODO: implemented RF_SOFT_PARTICLES 
-					FR_CmdEndRendering(frame);
 
-					FR_CmdBeginRendering(frame);
 					// draw all dynamic surfaces that write depth before copying
 					assert(false);
 					if( batchOpaque ) {
@@ -587,22 +582,19 @@ static void _R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 		RB_FlushDynamicMeshes(frame);
 	}
 	if( depthHack ) {
-		// RB_DepthRange( depthmin, depthmax );
-		assert(frame->state.numColorAttachments == 1);
-		frame->state.viewports[0].depthMax = depthmax;
-		frame->state.viewports[0].depthMin = depthmin;
-		frame->state.dirty |= CMD_DIRT_VIEWPORT;
+		frame->viewport.depthMax = depthmax;
+		frame->viewport.depthMin = depthmin;
+		frame->dirty |= CMD_DIRT_VIEWPORT;
 	}
 	if( cullHack ) {
 		RB_FlipFrontFace(frame);
 	}
-
 }
 
 /*
 * R_DrawSurfaces
 */
-void R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
+void R_DrawSurfaces(struct FrameState_s* frame, drawList_t *list )
 {
 	bool triOutlines;
 	
@@ -617,7 +609,7 @@ void R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
 /*
 * R_DrawOutlinedSurfaces
 */
-void R_DrawOutlinedSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list )
+void R_DrawOutlinedSurfaces(struct FrameState_s* frame, drawList_t *list )
 {
 	bool triOutlines;
 	

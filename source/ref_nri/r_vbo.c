@@ -20,9 +20,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 #include "qmesa.h"
-#include "r_resource_upload.h"
+#include "ri_resource_upload.h"
 
 #include "stb_ds.h"
+#include <vulkan/vulkan_core.h>
 /*
 =========================================================
 
@@ -209,38 +210,89 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 			vbo->spritePointsOffset = vertexByteStride;
 			vertexByteStride += FLOAT_VATTRIB_SIZE( VATTRIB_AUTOSPRITE_BIT, halfFloatVattribs ) * 4;
 		}
-		NriBufferDesc vertexBufferDesc = { 
-			.size = vertexByteStride * desc->numVerts, 
-			.usage = NriBufferUsageBits_VERTEX_BUFFER 
-		};
-		rsh.nri.coreI.CreateBuffer( rsh.nri.device, &vertexBufferDesc, &vbo->vertexBuffer );
+
+		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+		VkBufferCreateInfo vertexBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+		VK_ConfigureBufferQueueFamilies( &vertexBufferCreateInfo, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+		vertexBufferCreateInfo.pNext = NULL;
+		vertexBufferCreateInfo.flags = 0;
+		vertexBufferCreateInfo.size = vertexByteStride * desc->numVerts;
+		vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+
+		VmaAllocationInfo allocationInfo = {};
+		VmaAllocationCreateInfo allocInfo = {};
+		allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+			
+		VK_WrapResult(vmaCreateBuffer(rsh.device.vk.vmaAllocator, &vertexBufferCreateInfo, &allocInfo, &vbo->vertexBuffer.vk.buffer, &vbo->vk.vertexBufferAlloc, &allocationInfo));
+		//vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, vbo->vertexBuffer.vk.buffer, &allocInfo, &vbo->vk.vertexBufferAlloc, &allocationInfo );
+		//vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, vbo->vk.vertexBufferAlloc, 0, vbo->vertexBuffer.vk.buffer, NULL );
+		vbo->hasVertexBuffer = 1;
 	}
 
-	NriBufferDesc indexBufferDesc = { .size = desc->numElems * sizeof( elem_t ), .usage = NriBufferUsageBits_INDEX_BUFFER };
-	rsh.nri.coreI.CreateBuffer( rsh.nri.device, &indexBufferDesc, &vbo->indexBuffer );
+	{
+		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+		VkBufferCreateInfo indexBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+		VK_ConfigureBufferQueueFamilies( &indexBufferCreateInfo, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+		indexBufferCreateInfo.pNext = NULL;
+		indexBufferCreateInfo.flags = 0;
+		indexBufferCreateInfo.size = desc->numElems * sizeof( elem_t );
+		indexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+
+		VmaAllocationInfo allocationInfo = {};
+		VmaAllocationCreateInfo allocInfo = {};
+		allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+		
+		VK_WrapResult(vmaCreateBuffer(rsh.device.vk.vmaAllocator, &indexBufferCreateInfo, &allocInfo, &vbo->indexBuffer.vk.buffer, &vbo->vk.indexBufferAlloc, &allocationInfo));
+
+		//vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, vbo->indexBuffer.vk.buffer, &allocInfo, &vbo->vk.indexBufferAlloc, &allocationInfo );
+		//vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, vbo->vk.indexBufferAlloc, 0, vbo->indexBuffer.vk.buffer, NULL );
+		vbo->hasIndexBuffer = 1;
+	}
+	//NriBufferDesc indexBufferDesc = { .size = desc->numElems * sizeof( elem_t ), .usage = NriBufferUsageBits_INDEX_BUFFER };
+	//rsh.nri.coreI.CreateBuffer( rsh.nri.device, &indexBufferDesc, &vbo->vk.indexBuffer );
 
 	if( hasInstanceBuffer ) {
 		vbo->instancesOffset = instanceByteStride;
-		NriBufferDesc instanceBufferDesc = { 
-			.size = instanceByteStride * desc->numInstances, 
-			.usage = NriBufferUsageBits_CONSTANT_BUFFER };
-		rsh.nri.coreI.CreateBuffer( rsh.nri.device, &instanceBufferDesc, &vbo->instanceBuffer );
+		
+		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+		VkBufferCreateInfo instanceBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+		VK_ConfigureBufferQueueFamilies( &instanceBufferCreateInfo, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+		instanceBufferCreateInfo.pNext = NULL;
+		instanceBufferCreateInfo.flags = 0;
+		instanceBufferCreateInfo.size = desc->numElems * sizeof( elem_t );
+		instanceBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+
+		VmaAllocationInfo allocationInfo = {};
+		VmaAllocationCreateInfo allocInfo = {};
+		allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+		
+	 // vmaAllocateMemoryForBuffer( rsh.device.vk.vmaAllocator, vbo->instanceBuffer.vk.buffer, &allocInfo, &vbo->vk.instanceBufferAlloc, &allocationInfo );
+	 // vmaBindBufferMemory2( rsh.device.vk.vmaAllocator, vbo->vk.instanceBufferAlloc, 0, vbo->instanceBuffer.vk.buffer, NULL );
+		
+		VK_WrapResult(vmaCreateBuffer(rsh.device.vk.vmaAllocator, &instanceBufferCreateInfo, &allocInfo, &vbo->instanceBuffer.vk.buffer, &vbo->vk.instanceBufferAlloc, &allocationInfo));
+
+		vbo->hasInstanceBuffer = 1;
+
+		//NriBufferDesc instanceBufferDesc = { 
+		//	.size = instanceByteStride * desc->numInstances, 
+		//	.usage = NriBufferUsageBits_CONSTANT_BUFFER };
+		//rsh.nri.coreI.CreateBuffer( rsh.nri.device, &instanceBufferDesc, &vbo->instanceBuffer );
 	}
 
-	NriBuffer *nriBuffers[] = {
-		vbo->vertexBuffer,
-		vbo->indexBuffer,
-		vbo->instanceBuffer,
-	};
+	//NriBuffer *nriBuffers[] = {
+	//	vbo->vertexBuffer,
+	//	vbo->indexBuffer,
+	//	vbo->instanceBuffer,
+	//};
 
-	NriResourceGroupDesc resourceGroupDesc = {
-		.bufferNum = 2 + ( hasInstanceBuffer ? 1 : 0 ),
-		.buffers = nriBuffers,
-		.memoryLocation = desc->memoryLocation,
-	};
-	const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
-	vbo->numAllocations = allocationNum;
-	R_VK_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, vbo->memory ) );
+	//NriResourceGroupDesc resourceGroupDesc = {
+	//	.bufferNum = 2 + ( hasInstanceBuffer ? 1 : 0 ),
+	//	.buffers = nriBuffers,
+	//	.memoryLocation = desc->memoryLocation,
+	//};
+	//const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
+	//vbo->numAllocations = allocationNum;
+	//R_VK_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, vbo->memory ) );
 
 	r_num_active_vbos++;
 
@@ -258,7 +310,7 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 void R_UploadVBOVertexRawData( mesh_vbo_t *vbo, int vertsOffset, int numVerts, const void *data )
 {
 	assert( vbo != NULL );
-	if( !vbo || !vbo->vertexBuffer ) {
+	if( !vbo || !vbo->hasVertexBuffer) {
 		return;
 	}
 
@@ -266,19 +318,20 @@ void R_UploadVBOVertexRawData( mesh_vbo_t *vbo, int vertsOffset, int numVerts, c
 		R_DeferDataSync();
 	}
 
-	buffer_upload_desc_t uploadDesc = {
+	struct RIResourceBufferTransaction_s uploadDesc = {
 		.target = vbo->vertexBuffer,
-		.numBytes = numVerts * vbo->vertexSize,
-		.byteOffset = vertsOffset * vbo->vertexSize,
-		.after = ( NriAccessStage ){
-			.access = NriAccessBits_VERTEX_BUFFER,
-			.stages = NriStageBits_VERTEX_SHADER
-		},
+		.size = numVerts * vbo->vertexSize,
+		.offset = vertsOffset * vbo->vertexSize,
 	};
-	// vbo->vertexStage = R_ResourceTransitionBuffer( vbo->vertexBuffer, ( NriAccessStage ){} );
-	R_ResourceBeginCopyBuffer( &uploadDesc );
-	memcpy( uploadDesc.data, data, uploadDesc.numBytes );
-	R_ResourceEndCopyBuffer( &uploadDesc );
+
+#if ( DEVICE_IMPL_VULKAN )
+		uploadDesc.postBarrier.vk.stage = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT;
+		uploadDesc.postBarrier.vk.access = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+#endif
+
+	RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
+	memcpy( uploadDesc.data, data, uploadDesc.size);
+	RI_ResourceEndCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
 }
 
 /*
@@ -300,28 +353,33 @@ mesh_vbo_t *R_GetVBOByIndex( int index )
 	return NULL;
 }
 
-void R_ReleaseMeshVBO(struct frame_cmd_buffer_s *cmd, mesh_vbo_t *vbo )
+void R_ReleaseMeshVBO(struct FrameState_s *cmd, mesh_vbo_t *vbo )
 {
-	if( cmd ) {
-		if( vbo->vertexBuffer )
-			arrpush( cmd->freeBuffers, vbo->vertexBuffer );
-		if( vbo->indexBuffer )
-			arrpush( cmd->freeBuffers, vbo->indexBuffer );
-		if( vbo->instanceBuffer )
-			arrpush( cmd->freeBuffers, vbo->instanceBuffer );
-		for( size_t i = 0; i < vbo->numAllocations; i++ )
-			arrpush( cmd->freeMemory, vbo->memory[i] );
-	} else {
-		if( vbo->vertexBuffer )
-			rsh.nri.coreI.DestroyBuffer(vbo->vertexBuffer );
-		if( vbo->indexBuffer )
-			rsh.nri.coreI.DestroyBuffer( vbo->indexBuffer );
-		if( vbo->instanceBuffer )
-			rsh.nri.coreI.DestroyBuffer( vbo->instanceBuffer );
-		for( size_t i = 0; i < vbo->numAllocations; i++ )
-			rsh.nri.coreI.FreeMemory( vbo->memory[i] );
+	struct RIFree_s freeEntry = {};
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		struct r_frame_set_s *active = R_GetActiveFrameSet();
+		freeEntry.type = RI_FREE_VK_BUFFER;
+		freeEntry.vkBuffer = vbo->vertexBuffer.vk.buffer;
+		arrpush( active->freeList, freeEntry );
 
+		freeEntry.vkBuffer = vbo->indexBuffer.vk.buffer;
+		arrpush( active->freeList, freeEntry );
+
+		freeEntry.vkBuffer = vbo->instanceBuffer.vk.buffer;
+		arrpush( active->freeList, freeEntry );
+
+		freeEntry.type = RI_FREE_VK_VMA_AllOC;
+		freeEntry.vmaAlloc = vbo->vk.instanceBufferAlloc;
+		arrpush( active->freeList, freeEntry );
+
+		freeEntry.vmaAlloc = vbo->vk.vertexBufferAlloc;
+		arrpush( active->freeList, freeEntry );
+
+		freeEntry.vmaAlloc = vbo->vk.indexBufferAlloc;
+		arrpush( active->freeList, freeEntry );
 	}
+#endif
 	if( vbo->index >= 1 && vbo->index <= MAX_MESH_VERTEX_BUFFER_OBJECTS ) {
 		vbohandle_t *vboh = &r_vbohandles[vbo->index - 1];
 
@@ -338,12 +396,12 @@ void R_ReleaseMeshVBO(struct frame_cmd_buffer_s *cmd, mesh_vbo_t *vbo )
 
 	memset( vbo, 0, sizeof( *vbo ) );
 	vbo->tag = VBO_TAG_NONE;
-}
+	}
 
-int R_GetNumberOfActiveVBOs( void )
-{
-	return r_num_active_vbos;
-}
+	int R_GetNumberOfActiveVBOs( void )
+	{
+		return r_num_active_vbos;
+	}
 
 /*
  * R_FillVertexBuffer
@@ -375,74 +433,74 @@ R_FillVertexBuffer_f( int, int, );
 	} while( 0 )
 
 
-void R_FillNriVertexAttribLayout(const struct vbo_layout_s* layout, NriVertexAttributeDesc* desc, size_t* numDesc) {
+void R_FillNriVertexAttribLayout(const struct vbo_layout_s* layout, struct frame_cmd_vertex_attrib_s * desc, size_t* numDesc) {
 	assert(layout);
-	desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+	desc[( *numDesc )++] = ( struct frame_cmd_vertex_attrib_s ){
 		.offset = 0, 
-		.format = ( layout->halfFloatAttribs & VATTRIB_POSITION_BIT ) ? NriFormat_RGBA16_SFLOAT : NriFormat_RGBA32_SFLOAT, 
+		.format = ( layout->halfFloatAttribs & VATTRIB_POSITION_BIT ) ? R_FORMAT_RGBA16_SFLOAT : R_FORMAT_RGBA32_SFLOAT, 
 		.vk = { VATTRIB_POSITION }, 
-		.d3d = {.semanticName = "POSITION", .semanticIndex = VATTRIB_POSITION  },
+		//.d3d = {.semanticName = "POSITION", .semanticIndex = VATTRIB_POSITION  },
 		.streamIndex = 0 };
 
 	if(  ( layout->vertexAttribs & VATTRIB_NORMAL_BIT ) ) {
-		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+		desc[( *numDesc )++] = (  struct frame_cmd_vertex_attrib_s  ){
 			.offset = layout->normalsOffset, 
-			.format = ( layout->halfFloatAttribs & VATTRIB_NORMAL_BIT ) ? NriFormat_RGBA16_SFLOAT : NriFormat_RGBA32_SFLOAT, 
+			.format = ( layout->halfFloatAttribs & VATTRIB_NORMAL_BIT ) ? R_FORMAT_RGBA16_SFLOAT : R_FORMAT_RGBA32_SFLOAT, 
 			.vk = { VATTRIB_NORMAL }, 
-			.d3d = {.semanticName = "NORMAL", .semanticIndex = VATTRIB_NORMAL   },
+		//	.d3d = {.semanticName = "NORMAL", .semanticIndex = VATTRIB_NORMAL   },
 			.streamIndex = 0 };
 	}
 	
 	if( layout->vertexAttribs & VATTRIB_SVECTOR_BIT ) {
-		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+		desc[( *numDesc )++] = (  struct frame_cmd_vertex_attrib_s ){
 			.offset = layout->sVectorsOffset, 
-			.format = ( layout->halfFloatAttribs & VATTRIB_SVECTOR_BIT ) ? NriFormat_RGBA16_SFLOAT : NriFormat_RGBA32_SFLOAT, 
+			.format = ( layout->halfFloatAttribs & VATTRIB_SVECTOR_BIT ) ? R_FORMAT_RGBA16_SFLOAT : R_FORMAT_RGBA32_SFLOAT, 
 			.vk = { VATTRIB_SVECTOR }, 
-			.d3d = {.semanticName = "TANGENT", .semanticIndex = VATTRIB_SVECTOR   },
+		//	.d3d = {.semanticName = "TANGENT", .semanticIndex = VATTRIB_SVECTOR   },
 			.streamIndex = 0 };
 	}
 	
 	if( layout->vertexAttribs & VATTRIB_COLOR0_BIT ) {
-		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+		desc[( *numDesc )++] = (  struct frame_cmd_vertex_attrib_s ){
 			.offset = layout->colorsOffset[0], 
-			.format = NriFormat_RGBA8_UNORM, 
+			.format = R_FORMAT_RGBA8_UNORM, 
 			.vk = { VATTRIB_COLOR0 }, 
-			.d3d = {.semanticName = "COLOR0", .semanticIndex = VATTRIB_COLOR0 },
+			//.d3d = {.semanticName = "COLOR0", .semanticIndex = VATTRIB_COLOR0 },
 			.streamIndex = 0 
 		};
 	}
 
 	if( ( layout->vertexAttribs & VATTRIB_TEXCOORDS_BIT ) ) {
-		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+		desc[( *numDesc )++] = ( struct frame_cmd_vertex_attrib_s ){
 			.offset = layout->stOffset, 
-			.format = ( layout->halfFloatAttribs & VATTRIB_TEXCOORDS_BIT  ) ? NriFormat_RG16_SFLOAT : NriFormat_RG32_SFLOAT, 
+			.format = ( layout->halfFloatAttribs & VATTRIB_TEXCOORDS_BIT  ) ? R_FORMAT_RG16_SFLOAT : R_FORMAT_RG32_SFLOAT, 
 			.vk = { VATTRIB_TEXCOORDS }, 
-			.d3d = {.semanticName = "TEXCOORD0", .semanticIndex = VATTRIB_TEXCOORDS },
+		//	.d3d = {.semanticName = "TEXCOORD0", .semanticIndex = VATTRIB_TEXCOORDS },
 			.streamIndex = 0 };
 	}
 
 	if( (layout->vertexAttribs & VATTRIB_AUTOSPRITE_BIT) == VATTRIB_AUTOSPRITE_BIT ) {
-		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+		desc[( *numDesc )++] = ( struct frame_cmd_vertex_attrib_s ){
 			.offset = layout->spritePointsOffset, 
-			.format = ( layout->halfFloatAttribs & VATTRIB_AUTOSPRITE_BIT  ) ? NriFormat_RGBA16_SFLOAT : NriFormat_RGBA32_SFLOAT, 
+			.format = ( layout->halfFloatAttribs & VATTRIB_AUTOSPRITE_BIT  ) ? R_FORMAT_RGBA16_SFLOAT : R_FORMAT_RGBA32_SFLOAT, 
 			.vk = { VATTRIB_SPRITEPOINT }, 
-			.d3d = {.semanticName = "TEXCOORD1", .semanticIndex = VATTRIB_SPRITEPOINT },
+		//	.d3d = {.semanticName = "TEXCOORD1", .semanticIndex = VATTRIB_SPRITEPOINT },
 			.streamIndex = 0 };
 	}
 	
 	if( (layout->vertexAttribs & VATTRIB_BONES_BITS) == VATTRIB_BONES_BITS ) {
-		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+		desc[( *numDesc )++] = ( struct frame_cmd_vertex_attrib_s ){
 			.offset = layout->bonesIndicesOffset , 
-			.format = NriFormat_RGBA8_UINT, 
+			.format = R_FORMAT_RGBA8_UINT, 
 			.vk = { VATTRIB_BONESINDICES }, 
-			.d3d = {.semanticName = "TEXCOORD2", .semanticIndex = VATTRIB_BONESINDICES  },
+		//	.d3d = {.semanticName = "TEXCOORD2", .semanticIndex = VATTRIB_BONESINDICES  },
 			.streamIndex = 0 };
 		
-		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+		desc[( *numDesc )++] = ( struct frame_cmd_vertex_attrib_s ){
 			.offset = layout->bonesWeightsOffset , 
-			.format = NriFormat_RGBA8_UNORM, 
+			.format = R_FORMAT_RGBA8_UNORM, 
 			.vk = { VATTRIB_BONESWEIGHTS }, 
-			.d3d = {.semanticName = "TEXCOORD3", .semanticIndex = VATTRIB_BONESWEIGHTS  },
+		//	.d3d = {.semanticName = "TEXCOORD3", .semanticIndex = VATTRIB_BONESWEIGHTS  },
 			.streamIndex = 0 };
 
 	} else {
@@ -454,23 +512,23 @@ void R_FillNriVertexAttribLayout(const struct vbo_layout_s* layout, NriVertexAtt
 		for(size_t i = 0; i < ( MAX_LIGHTMAPS + 1 ) / 2; i++ ) {
 			if( layout->vertexAttribs & lmattrbit ) {
 
-				NriFormat format =  ( layout->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? NriFormat_R16_SFLOAT: NriFormat_R32_SFLOAT;
+				RI_Format format =  ( layout->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? R_FORMAT_R16_SFLOAT: R_FORMAT_R32_SFLOAT;
 				switch (layout->lmstSize[i]) {
 					case 2:
-						format =  ( layout->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? NriFormat_RG16_SFLOAT: NriFormat_RG32_SFLOAT;
+						format =  ( layout->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? R_FORMAT_RG16_SFLOAT: R_FORMAT_RG32_SFLOAT;
 						break;
 					case 4:
-						format =  ( layout->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? NriFormat_RGBA16_SFLOAT: NriFormat_RGBA32_SFLOAT;
+						format =  ( layout->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? R_FORMAT_RGBA16_SFLOAT: R_FORMAT_RGBA32_SFLOAT;
 						break;
 					default:
 						assert(false);
 						break;
 				}
-				desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+				desc[( *numDesc )++] = ( struct frame_cmd_vertex_attrib_s ){
 					.offset = layout->lmstOffset[i], 
 					.format = format, 
 					.vk = { lmattr }, 
-					.d3d = {.semanticName = "TEXCOORD4", .semanticIndex = lmattr  },
+		//			.d3d = {.semanticName = "TEXCOORD4", .semanticIndex = lmattr  },
 					.streamIndex = 0 
 				};
 			
@@ -482,11 +540,11 @@ void R_FillNriVertexAttribLayout(const struct vbo_layout_s* layout, NriVertexAtt
 
 		for(size_t i = 0; i < ( MAX_LIGHTMAPS + 3 ) / 4; i++ ) {
 			if( layout->vertexAttribs & ( VATTRIB_LMLAYERS0123_BIT << i ) ) {
-				desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+				desc[( *numDesc )++] = ( struct frame_cmd_vertex_attrib_s ){
 					.offset = layout->lmlayersOffset[i], 
-					.format = NriFormat_RGBA8_UINT, 
+					.format = R_FORMAT_RGBA8_UINT, 
 					.vk = { VATTRIB_LMLAYERS0123 }, 
-					.d3d = {.semanticName = "TEXCOORD5", .semanticIndex = lmattr  },
+		//			.d3d = {.semanticName = "TEXCOORD5", .semanticIndex = lmattr  },
 					.streamIndex = 0 
 				};
 			}
@@ -496,77 +554,68 @@ void R_FillNriVertexAttribLayout(const struct vbo_layout_s* layout, NriVertexAtt
 
 }
 
-void R_FillNriVertexAttrib(mesh_vbo_t* vbo, NriVertexAttributeDesc* desc, size_t* numDesc) {
-	desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
-		.offset = 0, 
-		.format = ( vbo->halfFloatAttribs & VATTRIB_POSITION_BIT ) ? NriFormat_RGBA16_SFLOAT : NriFormat_RGBA32_SFLOAT, 
-		.vk = { VATTRIB_POSITION }, 
-		.d3d = {.semanticName = "POSITION", .semanticIndex = VATTRIB_POSITION  },
-		.streamIndex = 0 };
+void R_FillNriVertexAttrib(mesh_vbo_t* vbo, struct frame_cmd_vertex_attrib_s * desc, size_t* numDesc) {
+	desc[( *numDesc )++] = (struct frame_cmd_vertex_attrib_s){ .offset = 0,
+															   .format = ( vbo->halfFloatAttribs & VATTRIB_POSITION_BIT ) ? RI_FORMAT_RGBA16_SFLOAT : RI_FORMAT_RGBA32_SFLOAT,
+															   .vk = { VATTRIB_POSITION },
+															   //.d3d = {.semanticName = "POSITION", .semanticIndex = VATTRIB_POSITION  },
+															   .streamIndex = 0 };
 
-	if(  ( vbo->vertexAttribs & VATTRIB_NORMAL_BIT ) ) {
-		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
-			.offset = vbo->normalsOffset, 
-			.format = ( vbo->halfFloatAttribs & VATTRIB_NORMAL_BIT ) ? NriFormat_RGBA16_SFLOAT : NriFormat_RGBA32_SFLOAT, 
-			.vk = { VATTRIB_NORMAL }, 
-			.d3d = {.semanticName = "NORMAL", .semanticIndex = VATTRIB_NORMAL   },
-			.streamIndex = 0 };
+	if( ( vbo->vertexAttribs & VATTRIB_NORMAL_BIT ) ) {
+		desc[( *numDesc )++] = (struct frame_cmd_vertex_attrib_s){ .offset = vbo->normalsOffset,
+																   .format = ( vbo->halfFloatAttribs & VATTRIB_NORMAL_BIT ) ? RI_FORMAT_RGBA16_SFLOAT : RI_FORMAT_RGBA32_SFLOAT,
+																   .vk = { VATTRIB_NORMAL },
+																   //.d3d = {.semanticName = "NORMAL", .semanticIndex = VATTRIB_NORMAL   },
+																   .streamIndex = 0 };
 	}
-	
+
 	if( vbo->vertexAttribs & VATTRIB_SVECTOR_BIT ) {
-		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
-			.offset = vbo->sVectorsOffset, 
-			.format = ( vbo->halfFloatAttribs & VATTRIB_SVECTOR_BIT ) ? NriFormat_RGBA16_SFLOAT : NriFormat_RGBA32_SFLOAT, 
-			.vk = { VATTRIB_SVECTOR }, 
-			.d3d = {.semanticName = "TANGENT", .semanticIndex = VATTRIB_SVECTOR   },
-			.streamIndex = 0 };
+		desc[( *numDesc )++] = (struct frame_cmd_vertex_attrib_s){ .offset = vbo->sVectorsOffset,
+																   .format = ( vbo->halfFloatAttribs & VATTRIB_SVECTOR_BIT ) ? RI_FORMAT_RGBA16_SFLOAT : RI_FORMAT_RGBA32_SFLOAT,
+																   .vk = { VATTRIB_SVECTOR },
+																   //.d3d = {.semanticName = "TANGENT", .semanticIndex = VATTRIB_SVECTOR   },
+																   .streamIndex = 0 };
 	}
-	
+
 	if( vbo->vertexAttribs & VATTRIB_COLOR0_BIT ) {
-		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+		desc[( *numDesc )++] = (struct frame_cmd_vertex_attrib_s){
 			.offset = vbo->colorsOffset[0], 
-			.format = NriFormat_RGBA8_UNORM, 
+			.format = RI_FORMAT_RGBA8_UNORM, 
 			.vk = { VATTRIB_COLOR0 }, 
-			.d3d = {.semanticName = "COLOR0", .semanticIndex = VATTRIB_COLOR0 },
-			.streamIndex = 0 
-		};
+			//.d3d = { .semanticName = "COLOR0", .semanticIndex = VATTRIB_COLOR0 }, 
+			.streamIndex = 0 };
 	}
 
 	if( ( vbo->vertexAttribs & VATTRIB_TEXCOORDS_BIT ) ) {
-		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
-			.offset = vbo->stOffset, 
-			.format = ( vbo->halfFloatAttribs & VATTRIB_TEXCOORDS_BIT  ) ? NriFormat_RG16_SFLOAT : NriFormat_RG32_SFLOAT, 
-			.vk = { VATTRIB_TEXCOORDS }, 
-			.d3d = {.semanticName = "TEXCOORD0", .semanticIndex = VATTRIB_TEXCOORDS },
-			.streamIndex = 0 };
+		desc[( *numDesc )++] = (struct frame_cmd_vertex_attrib_s){ .offset = vbo->stOffset,
+														 .format = ( vbo->halfFloatAttribs & VATTRIB_TEXCOORDS_BIT ) ? RI_FORMAT_RG16_SFLOAT : RI_FORMAT_RG32_SFLOAT,
+														 .vk = { VATTRIB_TEXCOORDS },
+														 //.d3d = { .semanticName = "TEXCOORD0", .semanticIndex = VATTRIB_TEXCOORDS },
+														 .streamIndex = 0 };
 	}
 
-	if( (vbo->vertexAttribs & VATTRIB_AUTOSPRITE_BIT) == VATTRIB_AUTOSPRITE_BIT ) {
-		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
-			.offset = vbo->spritePointsOffset, 
-			.format = ( vbo->halfFloatAttribs & VATTRIB_AUTOSPRITE_BIT  ) ? NriFormat_RGBA16_SFLOAT : NriFormat_RGBA32_SFLOAT, 
-			.vk = { VATTRIB_SPRITEPOINT }, 
-			.d3d = {.semanticName = "TEXCOORD1", .semanticIndex = VATTRIB_SPRITEPOINT },
-			.streamIndex = 0 };
+	if( ( vbo->vertexAttribs & VATTRIB_AUTOSPRITE_BIT ) == VATTRIB_AUTOSPRITE_BIT ) {
+		desc[( *numDesc )++] = (struct frame_cmd_vertex_attrib_s){ .offset = vbo->spritePointsOffset,
+														 .format = ( vbo->halfFloatAttribs & VATTRIB_AUTOSPRITE_BIT ) ? RI_FORMAT_RGBA16_SFLOAT : RI_FORMAT_RGBA32_SFLOAT,
+														 .vk = { VATTRIB_SPRITEPOINT },
+														 //.d3d = { .semanticName = "TEXCOORD1", .semanticIndex = VATTRIB_SPRITEPOINT },
+														 .streamIndex = 0 };
 	}
-	
-	if( (vbo->vertexAttribs & VATTRIB_BONES_BITS) == VATTRIB_BONES_BITS ) {
-		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
-			.offset = vbo->bonesIndicesOffset , 
-			.format = NriFormat_RGBA8_UINT, 
-			.vk = { VATTRIB_BONESINDICES }, 
-			.d3d = {.semanticName = "TEXCOORD2", .semanticIndex = VATTRIB_BONESINDICES  },
-			.streamIndex = 0 };
-		
-		desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
-			.offset = vbo->bonesWeightsOffset , 
-			.format = NriFormat_RGBA8_UNORM, 
-			.vk = { VATTRIB_BONESWEIGHTS }, 
-			.d3d = {.semanticName = "TEXCOORD3", .semanticIndex = VATTRIB_BONESWEIGHTS  },
-			.streamIndex = 0 };
+
+	if( ( vbo->vertexAttribs & VATTRIB_BONES_BITS ) == VATTRIB_BONES_BITS ) {
+		desc[( *numDesc )++] = (struct frame_cmd_vertex_attrib_s){ .offset = vbo->bonesIndicesOffset,
+														 .format = RI_FORMAT_RGBA8_UINT,
+														 .vk = { VATTRIB_BONESINDICES },
+														 //.d3d = { .semanticName = "TEXCOORD2", .semanticIndex = VATTRIB_BONESINDICES },
+														 .streamIndex = 0 };
+
+		desc[( *numDesc )++] = (struct frame_cmd_vertex_attrib_s){ .offset = vbo->bonesWeightsOffset,
+														 .format = RI_FORMAT_RGBA8_UNORM,
+														 .vk = { VATTRIB_BONESWEIGHTS },
+														 //.d3d = { .semanticName = "TEXCOORD3", .semanticIndex = VATTRIB_BONESWEIGHTS },
+														 .streamIndex = 0 };
 
 	} else {
-
 		// lightmap texture coordinates - aliasing bones, so not disabling bones
 		vattrib_t lmattr = VATTRIB_LMCOORDS01;
 		vattribbit_t lmattrbit = VATTRIB_LMCOORDS0_BIT;
@@ -574,23 +623,22 @@ void R_FillNriVertexAttrib(mesh_vbo_t* vbo, NriVertexAttributeDesc* desc, size_t
 		for(size_t i = 0; i < ( MAX_LIGHTMAPS + 1 ) / 2; i++ ) {
 			if( vbo->vertexAttribs & lmattrbit ) {
 
-				NriFormat format =  ( vbo->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? NriFormat_R16_SFLOAT: NriFormat_R32_SFLOAT;
+				enum RI_Format_e format =  ( vbo->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? RI_FORMAT_R16_SFLOAT: RI_FORMAT_R32_SFLOAT;
 				switch (vbo->lmstSize[i]) {
 					case 2:
-						format =  ( vbo->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? NriFormat_RG16_SFLOAT: NriFormat_RG32_SFLOAT;
+						format =  ( vbo->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? RI_FORMAT_RG16_SFLOAT: RI_FORMAT_RG32_SFLOAT;
 						break;
 					case 4:
-						format =  ( vbo->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? NriFormat_RGBA16_SFLOAT: NriFormat_RGBA32_SFLOAT;
+						format =  ( vbo->halfFloatAttribs & VATTRIB_LMCOORDS0_BIT  ) ? RI_FORMAT_RGBA16_SFLOAT: RI_FORMAT_RGBA32_SFLOAT;
 						break;
 					default:
 						assert(false);
 						break;
 				}
-				desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+				desc[( *numDesc )++] = ( struct frame_cmd_vertex_attrib_s ){
 					.offset = vbo->lmstOffset[i], 
 					.format = format, 
 					.vk = { lmattr }, 
-					.d3d = {.semanticName = "TEXCOORD4", .semanticIndex = lmattr  },
 					.streamIndex = 0 
 				};
 			
@@ -602,18 +650,15 @@ void R_FillNriVertexAttrib(mesh_vbo_t* vbo, NriVertexAttributeDesc* desc, size_t
 
 		for(size_t i = 0; i < ( MAX_LIGHTMAPS + 3 ) / 4; i++ ) {
 			if( vbo->vertexAttribs & ( VATTRIB_LMLAYERS0123_BIT << i ) ) {
-				desc[( *numDesc )++] = ( NriVertexAttributeDesc ){
+				desc[( *numDesc )++] = ( struct frame_cmd_vertex_attrib_s ){
 					.offset = vbo->lmlayersOffset[i], 
-					.format = NriFormat_RGBA8_UINT, 
+					.format = RI_FORMAT_RGBA8_UINT, 
 					.vk = { VATTRIB_LMLAYERS0123 }, 
-					.d3d = {.semanticName = "TEXCOORD5", .semanticIndex = lmattr  },
 					.streamIndex = 0 
 				};
 			}
 		}
-
 	}
-
 }
 
 struct vbo_layout_s R_CreateVBOLayout( vattribmask_t vattribs, vattribmask_t halfFloatVattribs)
@@ -1276,22 +1321,26 @@ void R_UploadVBOElemData( mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, con
 {
 	assert( vbo != NULL );
 
-	buffer_upload_desc_t uploadDesc = {
+	struct RIResourceBufferTransaction_s uploadDesc = {
 		.target = vbo->indexBuffer,
-		.numBytes = mesh->numElems * sizeof( elem_t ),
-		.byteOffset = elemsOffset * sizeof( elem_t ),
-		.after = ( NriAccessStage ){
-			.access = NriAccessBits_INDEX_BUFFER,
-			.stages = NriStageBits_INDEX_INPUT
-		},
+		.size = mesh->numElems * sizeof( elem_t ),
+		.offset = elemsOffset * sizeof( elem_t ),
 	};
-	//vbo->indexStage = R_ResourceTransitionBuffer( vbo->indexBuffer, (NriAccessStage){});
-	R_ResourceBeginCopyBuffer( &uploadDesc );
+	const uint64_t test= VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		uploadDesc.postBarrier.vk.stage = VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
+		uploadDesc.postBarrier.vk.access = VK_ACCESS_2_INDEX_READ_BIT;
+	}
+#endif
+assert(test == uploadDesc.postBarrier.vk.stage);
+
+	RI_ResourceBeginCopyBuffer(&rsh.device, &rsh.uploader, &uploadDesc );
 	elem_t *dest = (elem_t *)uploadDesc.data;
 	for( size_t i = 0; i < mesh->numElems; i++ ) {
 		dest[i] = vertsOffset + mesh->elems[i];
 	}
-	R_ResourceEndCopyBuffer( &uploadDesc );
+	RI_ResourceEndCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
 }
 
 vattribmask_t R_UploadVBOInstancesData( mesh_vbo_t *vbo, int instOffset, int numInstances, instancePoint_t *instances )
@@ -1300,7 +1349,7 @@ vattribmask_t R_UploadVBOInstancesData( mesh_vbo_t *vbo, int instOffset, int num
 
 	assert( vbo != NULL );
 
-	if( !vbo->instanceBuffer) {
+	if( !vbo->hasInstanceBuffer) {
 		return 0;
 	}
 
@@ -1317,22 +1366,25 @@ vattribmask_t R_UploadVBOInstancesData( mesh_vbo_t *vbo, int instOffset, int num
 	}
 
 	if( vbo->instancesOffset ) {
-		buffer_upload_desc_t uploadDesc = {
+		struct RIResourceBufferTransaction_s uploadDesc = {
 			.target = vbo->instanceBuffer,
-			.numBytes = numInstances * sizeof( instancePoint_t ),
-			.byteOffset = instOffset * sizeof( instancePoint_t ),
-			.after = ( NriAccessStage ){
-				.access = NriAccessBits_CONSTANT_BUFFER,
-				.stages = NriStageBits_VERTEX_SHADER
-			},
+			.size = numInstances * sizeof( instancePoint_t ),
+			.offset = instOffset * sizeof( instancePoint_t ),
+
 		};
-		// vbo->instanceStage = R_ResourceTransitionBuffer( vbo->instanceBuffer, ( NriAccessStage ){} );
-		R_ResourceBeginCopyBuffer( &uploadDesc );
+
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		uploadDesc.postBarrier.vk.stage = VK_SHADER_STAGE_VERTEX_BIT;
+		uploadDesc.postBarrier.vk.access = VK_ACCESS_2_UNIFORM_READ_BIT;
+	}
+#endif
+		RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
 		instancePoint_t *dest = (instancePoint_t *)uploadDesc.data;
 		for( size_t i = 0; i < numInstances; i++ ) {
 			memcpy( dest[i], instances[i], sizeof( instancePoint_t ) );
 		}
-		R_ResourceEndCopyBuffer( &uploadDesc );
+		RI_ResourceEndCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
 	}
 	return 0;
 }
@@ -1352,7 +1404,7 @@ void R_FreeVBOsByTag( vbo_tag_t tag )
 		vbo = &r_mesh_vbo[vboh->index];
 
 		if( vbo->tag == tag ) {
-			R_ReleaseMeshVBO( R_ActiveFrameCmd(),vbo );
+			R_ReleaseMeshVBO( &rsh.frame,vbo );
 		}
 	}
 
@@ -1374,7 +1426,7 @@ void R_FreeUnusedVBOs( void )
 		vbo = &r_mesh_vbo[vboh->index];
 
 		if( vbo->registrationSequence != rsh.registrationSequence ) {
-			R_ReleaseMeshVBO( R_ActiveFrameCmd(),vbo );
+			R_ReleaseMeshVBO( &rsh.frame,vbo );
 		}
 	}
 

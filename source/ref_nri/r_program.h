@@ -25,11 +25,11 @@ typedef uint64_t r_glslfeat_t;
 
 #include "../gameshared/q_arch.h"
 #include "r_math.h"
-#include "r_nri.h"
 #include "r_vattribs.h"
 #include "r_resource.h"
 
-
+#include "r_descriptor_pool.h"
+#include "ri_types.h"
 #include "qhash.h"
 
 #define GLSL_BIT(x)							(1ULL << (x))
@@ -207,7 +207,40 @@ typedef enum {
 	GLSL_STAGE_MAX
 } glsl_program_stage_t;
 
+struct glsl_program_descriptor_s {
+		union {
+#if ( DEVICE_IMPL_VULKAN )
+			struct {
+				VkDescriptorSetLayout setLayout;
+			} vk;
+#endif
+		};
+		struct descriptor_set_allloc_s alloc; // the set allocator 
+		uint16_t samplerMaxNum;
+		uint16_t constantBufferMaxNum;
+		uint16_t dynamicConstantBufferMaxNum;
+		uint16_t textureMaxNum;
+		uint16_t storageTextureMaxNum;
+		uint16_t bufferMaxNum;
+		uint16_t storageBufferMaxNum;
+		uint16_t structuredBufferMaxNum;
+		uint16_t storageStructuredBufferMaxNum;
+		uint16_t accelerationStructureMaxNum;
+};
+
 struct glsl_program_s {
+	union {
+		struct {
+#if ( DEVICE_IMPL_VULKAN )
+			struct {
+				VkShaderStageFlags shaderStageFlags;
+				uint32_t size;
+			} pushConstant;
+			VkPipelineLayout pipelineLayout;	
+#endif
+		} vk;
+	};
+
 	char *name;
 	int type;
 	bool hasPushConstant;
@@ -222,27 +255,27 @@ struct glsl_program_s {
 		glsl_program_stage_t stage;
 	} shaderBin[GLSL_STAGE_MAX];
 	
-	NriPipelineLayout *layout;
+	//NriPipelineLayout *layout;
 	struct pipeline_hash_s {
 		uint64_t hash;
-		NriPipeline *pipeline;
+		union {
+#if ( DEVICE_IMPL_VULKAN )
+			struct {
+				VkPipeline handle;	
+			} vk;
+#endif
+		};
 	} pipelines[PIPELINE_LAYOUT_HASH_SIZE];
 
-	size_t numSets;
-	struct ProgramDescriptorInfo {
-		uint32_t registerSpace;
-		uint32_t setIndex;
-		struct descriptor_set_allloc_s *alloc;
-	} descriptorSetInfo[DESCRIPTOR_SET_MAX];
+	struct glsl_program_descriptor_s programDescriptors[R_DESCRIPTOR_SET_MAX];
 
 	size_t numDescriptorReflections;
 	struct descriptor_reflection_s {
 		hash_t hash;
-		uint32_t isArray: 1;
-		uint32_t dimCount: 8;
-		uint32_t setIndex: 6;
-		uint32_t baseRegisterIndex : 16;
-		uint32_t rangeOffset : 16;
+		uint16_t isArray : 1;
+		uint16_t dimCount : 8;
+		uint16_t set : 3;
+		uint16_t baseRegisterIndex;
 	} descriptorReflection[PIPELINE_REFLECTION_HASH_SIZE];
 };
 
@@ -261,10 +294,13 @@ static inline struct glsl_descriptor_handle_s Create_DescriptorHandle(const char
 struct glsl_descriptor_binding_s {
 	struct glsl_descriptor_handle_s handle;
 	uint32_t registerOffset; 
-	struct nri_descriptor_s descriptor;
+	struct RIDescriptor_s descriptor;
 };
 
-void RP_BindDescriptorSets(struct frame_cmd_buffer_s* cmd, struct glsl_program_s* program, struct glsl_descriptor_binding_s* data, size_t numDescriptorData);
+// we only support on push constant set
+void RP_BindPushConstant(struct RIDevice_s *device, struct FrameState_s *cmd, struct glsl_program_s *program, void* data, size_t len);
+void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd, struct glsl_program_s *program, struct glsl_descriptor_binding_s *data, size_t numDescriptorData );
+
 void RP_Init( void );
 void RP_Shutdown( void );
 void RP_PrecachePrograms( void );
@@ -272,7 +308,9 @@ void RP_StorePrecacheList( void );
 
 void RP_ProgramList_f( void );
 
-struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, struct frame_cmd_state_s  *def );
+struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_desc_s* cmd);
+void RP_BindPipeline( struct FrameState_s *cmd, struct pipeline_hash_s *pipeline );
+
 struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features );
 struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features );
 
