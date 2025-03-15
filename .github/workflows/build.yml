@@ -54,7 +54,7 @@ jobs:
           make -j8
 
       - name: Package Assets
-        working-directory: .\source
+        working-directory: ./source/build
         run: make deploy -j8
           
       - name: Unit Test
@@ -214,7 +214,7 @@ jobs:
           msbuild qfusion.sln /p:configuration=Release /maxcpucount:8
 
       - name: Package Assets
-        working-directory: .\source
+        working-directory: .\source\build
         run: cmake --build . --target deploy
           
       - name: Unit Test

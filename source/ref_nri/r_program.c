@@ -1021,13 +1021,13 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		uint32_t numModules = 0;
-		VkShaderModule modules[4] = {};
+		VkShaderModule modules[4] = { 0 };
 		VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
 		pipelineRenderingCreateInfo.colorAttachmentCount = cmd->numColorsAttachments;
 		pipelineRenderingCreateInfo.pColorAttachmentFormats = colorAttachmentsVK;
 		pipelineRenderingCreateInfo.depthAttachmentFormat = RIFormatToVK( cmd->depthFormat );
 		pipelineRenderingCreateInfo.stencilAttachmentFormat = GetRIFormatProps( cmd->depthFormat )->isStencil ? RIFormatToVK( cmd->depthFormat ) : VK_FORMAT_UNDEFINED;
-		VkPipelineShaderStageCreateInfo stageCreateInfo[4] = {};
+		VkPipelineShaderStageCreateInfo stageCreateInfo[4] = { 0 };
 		VkGraphicsPipelineCreateInfo pipelineCreateInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
 		pipelineCreateInfo.pNext = &pipelineRenderingCreateInfo;
 		pipelineCreateInfo.pStages = stageCreateInfo;
@@ -1064,7 +1064,7 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 		}
 		pipelineCreateInfo.pVertexInputState = &vertexInputState;
 
-		VkPipelineColorBlendAttachmentState colorAttachmentDesc[MAX_COLOR_ATTACHMENTS] = {};
+		VkPipelineColorBlendAttachmentState colorAttachmentDesc[MAX_COLOR_ATTACHMENTS] = { 0 };
 		for( size_t i = 0; i < cmd->numColorsAttachments; i++ ) {
 			colorAttachmentDesc[i].blendEnable = cmd->colorBlendEnabled;
 			colorAttachmentDesc[i].srcColorBlendFactor = ri_vk_RIBlendFactorToVK( cmd->colorSrcFactor );
@@ -1296,7 +1296,7 @@ void _vk__descriptorSetAlloc( struct RIDevice_s *device, struct descriptor_set_a
 {
 	assert( device->renderer->api == RI_DEVICE_API_VK );
 	struct glsl_program_descriptor_s *programDescriptor = Q_CONTAINER_OF( alloc, struct glsl_program_descriptor_s, alloc );
-	VkDescriptorPoolSize descriptorPoolSize[16] = {};
+	VkDescriptorPoolSize descriptorPoolSize[16] = { 0 };
 	size_t descriptorPoolLen = 0;
 	if( programDescriptor->samplerMaxNum > 0 )
 		descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){ VK_DESCRIPTOR_TYPE_SAMPLER, programDescriptor->samplerMaxNum * DESCRIPTOR_MAX_SIZE };
@@ -1530,8 +1530,8 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 	{
 		SpvReflectBlockVariable *reflectionBlockVariables[1] = { 0 };
 		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-		VkDescriptorSetLayoutBinding *descriptorSetLayoutBindings[R_DESCRIPTOR_SET_MAX] = {};
-		VkDescriptorBindingFlags *descriptorBindingFlags[R_DESCRIPTOR_SET_MAX] = {};
+		VkDescriptorSetLayoutBinding *descriptorSetLayoutBindings[R_DESCRIPTOR_SET_MAX] = { 0 };
+		VkDescriptorBindingFlags *descriptorBindingFlags[R_DESCRIPTOR_SET_MAX] = { 0 };
 
 		VkDescriptorSetLayout setLayouts[R_DESCRIPTOR_SET_MAX] = { 0 };
 		VkPushConstantRange pushConstantRange = { 0 };
@@ -1611,7 +1611,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 						}
 
 						if( !layoutBinding ) {
-							VkDescriptorSetLayoutBinding bindings = {};
+							VkDescriptorSetLayoutBinding bindings = { 0 };
 							VkDescriptorBindingFlags flags = 0;
 							arrpush( descriptorSetLayoutBindings[reflection->set], bindings );
 							arrpush( descriptorBindingFlags[reflection->set], flags );

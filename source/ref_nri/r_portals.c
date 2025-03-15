@@ -192,7 +192,7 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 	  bestFB->width = width;
 	  bestFB->height = height;
 #if ( DEVICE_IMPL_VULKAN )
-	  struct RIFree_s freeSlot = {};
+	  struct RIFree_s freeSlot = { 0 };
 	  struct r_frame_set_s *activeset = R_GetActiveFrameSet();
 	  if( bestFB->colorDescriptor.vk.image.imageView ) {
 		  freeSlot.type = RI_FREE_VK_IMAGEVIEW;
@@ -243,7 +243,7 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 		  info.pQueueFamilyIndices = queueFamilies;
 		  VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
 		  info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		  VmaAllocationCreateInfo mem_reqs = {};
+		  VmaAllocationCreateInfo mem_reqs = { 0 };
 		  mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 		  if( !VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &bestFB->colorTexture.vk.image, &bestFB->vk.vmaColorAlloc, NULL ) ) ) {
 			  return NULL;
@@ -288,7 +288,7 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 		  info.pQueueFamilyIndices = queueFamilies;
 		  VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
 		  info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		  VmaAllocationCreateInfo mem_reqs = {};
+		  VmaAllocationCreateInfo mem_reqs = { 0 };
 		  mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 		  if( !VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &bestFB->depthTexture.vk.image, &bestFB->vk.vmaDepthAlloc, NULL ) ) ) {
 			  return NULL;
@@ -430,7 +430,7 @@ static void R_DrawPortalSurface( struct FrameState_s *cmd, portalSurface_t *port
 		best->rtype = NUM_RTYPES;
 	}
 
-	struct FrameState_s sub = {};
+	struct FrameState_s sub = { 0 };
 	const bool useCaptureTexture = (captureTextureId >= 0);
 
 	prevRenderFlags = rn.renderFlags;
@@ -567,7 +567,7 @@ setup_and_render:
 		Vector4Set( rn.viewport, rn.refdef.x, rn.refdef.y, rsc.refdef.width, rsc.refdef.height );
 		Vector4Set( rn.scissor, rn.refdef.x, rn.refdef.y, rsc.refdef.width, rsc.refdef.height );
 
-		struct RIViewport_s viewport = {};
+		struct RIViewport_s viewport = { 0 };
 		viewport.x = rn.viewport[0];
 		viewport.y = rn.viewport[1];
 		viewport.width = rn.viewport[2];
@@ -576,7 +576,7 @@ setup_and_render:
 		viewport.originBottomLeft = true;
 		FR_CmdSetViewport( &sub, viewport );
 
-		struct RIRect_s scissor = {};
+		struct RIRect_s scissor = { 0 };
 		scissor.x = rn.scissor[0];
 		scissor.y = rn.scissor[1];
 		scissor.width = rn.scissor[2];
@@ -587,7 +587,7 @@ setup_and_render:
 		FR_ConfigurePipelineAttachment( &sub.pipeline, attachments, Q_ARRAY_COUNT( attachments ), PortalTextureDepthFormat );
 
 		{
-			VkImageMemoryBarrier2 imageBarriers[2] = {};
+			VkImageMemoryBarrier2 imageBarriers[2] = { 0 };
 			imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 			imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 			imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
@@ -656,7 +656,7 @@ setup_and_render:
 	R_RenderView( captureTextureId >= 0 ? &sub : cmd, &rn.refdef );
 
 	if( useCaptureTexture && portalTexures[captureTextureId] ) {
-		VkImageMemoryBarrier2 imageBarriers[1] = {};
+		VkImageMemoryBarrier2 imageBarriers[1] = { 0 };
 		imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 		imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 		imageBarriers[0].srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
@@ -707,8 +707,8 @@ void R_DrawPortals(struct FrameState_s *cmd)
 	  if( rn.skyportalSurface ) {
 #if ( DEVICE_IMPL_VULKAN )
 		  {
-			  VkClearRect clearRect[1] = {};
-			  VkClearAttachment clearAttach[1] = {};
+			  VkClearRect clearRect[1] = { 0 };
+			  VkClearAttachment clearAttach[1] = { 0 };
 			  clearRect[0].baseArrayLayer = 0;
 			  clearRect[0].rect = RIViewportToRect2D( &rsh.frame.viewport );
 			  clearRect[0].layerCount = 1;

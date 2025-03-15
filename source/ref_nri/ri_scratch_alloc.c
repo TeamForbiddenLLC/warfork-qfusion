@@ -3,7 +3,7 @@
 
 struct RIBlockMem_s RIUniformScratchAllocHandler( struct RIDevice_s *device, struct RIScratchAlloc_s *scratch )
 {
-	struct RIBlockMem_s mem = {};
+	struct RIBlockMem_s mem = { 0 };
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		VkBufferCreateInfo stageBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
@@ -16,8 +16,8 @@ struct RIBlockMem_s RIUniformScratchAllocHandler( struct RIDevice_s *device, str
 		stageBufferCreateInfo.pQueueFamilyIndices = NULL;
 		//VK_WrapResult( vkCreateBuffer( device->vk.device, &stageBufferCreateInfo, NULL, &mem.vk.buffer ) );
 
-		VmaAllocationInfo allocationInfo = {};
-		VmaAllocationCreateInfo allocInfo = {};
+		VmaAllocationInfo allocationInfo = { 0 };
+		VmaAllocationCreateInfo allocInfo = { 0 };
 		allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
 		allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 		

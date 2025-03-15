@@ -2,7 +2,7 @@
 #include "r_local.h"
 
 VkImageMemoryBarrier2 VK_RI_PogoShaderMemoryBarrier2(VkImage image,bool initial) {
-	VkImageMemoryBarrier2 imageBarriers = {};
+	VkImageMemoryBarrier2 imageBarriers = { 0 };
 	imageBarriers.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 	imageBarriers.srcStageMask = initial ? VK_PIPELINE_STAGE_2_NONE : VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 	imageBarriers.srcAccessMask = initial ? VK_ACCESS_2_NONE : VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
@@ -20,7 +20,7 @@ VkImageMemoryBarrier2 VK_RI_PogoShaderMemoryBarrier2(VkImage image,bool initial)
 }
 
 VkImageMemoryBarrier2 VK_RI_PogoAttachmentMemoryBarrier2(VkImage image,bool initial) {
-	VkImageMemoryBarrier2 imageBarriers = {};
+	VkImageMemoryBarrier2 imageBarriers = { 0 };
 	imageBarriers.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 	imageBarriers.srcStageMask = initial ? VK_PIPELINE_STAGE_2_NONE : VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
 	imageBarriers.srcAccessMask = initial ? VK_ACCESS_2_NONE : VK_ACCESS_2_SHADER_READ_BIT;
@@ -39,7 +39,7 @@ VkImageMemoryBarrier2 VK_RI_PogoAttachmentMemoryBarrier2(VkImage image,bool init
 
 void RI_PogoBufferToggle( struct RIDevice_s *device, struct RI_PogoBuffer *pogo, struct RICmd_s *handle )
 {
-	VkImageMemoryBarrier2 imageBarriers[2] = {};
+	VkImageMemoryBarrier2 imageBarriers[2] = { 0 };
 	imageBarriers[0] = VK_RI_PogoShaderMemoryBarrier2(pogo->pogoAttachment[pogo->attachmentIndex].texture->vk.image, false );
 	pogo->attachmentIndex = ((pogo->attachmentIndex + 1) % 2);
 	imageBarriers[1] = VK_RI_PogoAttachmentMemoryBarrier2( pogo->pogoAttachment[pogo->attachmentIndex].texture->vk.image, false );
