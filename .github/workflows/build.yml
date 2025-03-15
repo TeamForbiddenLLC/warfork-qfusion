@@ -43,7 +43,6 @@ jobs:
           cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Release -DUSE_PACKAGE_ASSETS=1
           cd build
           make -j8
-          make deploy -j8 
 
       - name: Building Debug
         if: matrix.config.type == 'debug'
@@ -53,8 +52,11 @@ jobs:
           cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Debug -DUSE_PACKAGE_ASSETS=1
           cd build
           make -j8
-          make deploy -j8
 
+      - name: Package Assets
+        working-directory: ./source/build
+        run: make deploy -j8
+          
       - name: Unit Test
         working-directory: ./source/build/warfork-qfusion
         shell: bash
@@ -167,7 +169,7 @@ jobs:
               name: "win-x86_64-Release",
               vs_version: "Visual Studio 16 2019",
               type: "release",
-              cmake_args: "-DBUILD_STEAMLIB=1",
+              cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1",
               build_folder: "Release",
             }
           - {
@@ -175,7 +177,7 @@ jobs:
               name: "win-x86_64-Debug",
               vs_version: "Visual Studio 16 2019",
               type: "debug",
-              cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON",
+              cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON -DUSE_GRAPHICS_NRI=1",
               build_folder: "Debug",
             }
 
@@ -202,7 +204,7 @@ jobs:
           cmake -B ./build ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DUSE_PACKAGE_ASSETS=1
           cd build
           msbuild qfusion.sln /p:configuration=Debug /maxcpucount:8
-          cmake --build . --target deploy
+
       - name: Building Release
         if: matrix.config.type == 'release'
         working-directory: .\source
@@ -210,8 +212,11 @@ jobs:
           cmake -B ./build  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RELEASE -DUSE_PACKAGE_ASSETS=1
           cd build
           msbuild qfusion.sln /p:configuration=Release /maxcpucount:8
-          cmake --build . --target deploy
 
+      - name: Package Assets
+        working-directory: .\source\build
+        run: cmake --build . --target deploy
+          
       - name: Unit Test
         shell: bash
         working-directory: .\source\build\warfork-qfusion\${{matrix.config.build_folder}}

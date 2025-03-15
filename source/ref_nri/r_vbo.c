@@ -219,8 +219,8 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 		vertexBufferCreateInfo.size = vertexByteStride * desc->numVerts;
 		vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-		VmaAllocationInfo allocationInfo = {};
-		VmaAllocationCreateInfo allocInfo = {};
+		VmaAllocationInfo allocationInfo = { 0 };
+		VmaAllocationCreateInfo allocInfo = { 0 };
 		allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 
 		VK_WrapResult( vmaCreateBuffer( rsh.device.vk.vmaAllocator, &vertexBufferCreateInfo, &allocInfo, &vbo->vertexBuffer.vk.buffer, &vbo->vk.vertexBufferAlloc, &allocationInfo ) );
@@ -241,8 +241,8 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 		indexBufferCreateInfo.size = desc->numElems * sizeof( elem_t );
 		indexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-		VmaAllocationInfo allocationInfo = {};
-		VmaAllocationCreateInfo allocInfo = {};
+		VmaAllocationInfo allocationInfo = { 0 };
+		VmaAllocationCreateInfo allocInfo = { 0 };
 		allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 		
 		VK_WrapResult(vmaCreateBuffer(rsh.device.vk.vmaAllocator, &indexBufferCreateInfo, &allocInfo, &vbo->indexBuffer.vk.buffer, &vbo->vk.indexBufferAlloc, &allocationInfo));
@@ -267,8 +267,8 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 		instanceBufferCreateInfo.size = desc->numElems * sizeof( elem_t );
 		instanceBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-		VmaAllocationInfo allocationInfo = {};
-		VmaAllocationCreateInfo allocInfo = {};
+		VmaAllocationInfo allocationInfo = { 0 };
+		VmaAllocationCreateInfo allocInfo = { 0 };
 		allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 		
 		VK_WrapResult(vmaCreateBuffer(rsh.device.vk.vmaAllocator, &instanceBufferCreateInfo, &allocInfo, &vbo->instanceBuffer.vk.buffer, &vbo->vk.instanceBufferAlloc, &allocationInfo));
@@ -341,7 +341,7 @@ mesh_vbo_t *R_GetVBOByIndex( int index )
 
 void R_ReleaseMeshVBO(struct FrameState_s *cmd, mesh_vbo_t *vbo )
 {
-	struct RIFree_s freeEntry = {};
+	struct RIFree_s freeEntry = { 0 };
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		struct r_frame_set_s *active = R_GetActiveFrameSet();
@@ -656,7 +656,7 @@ void R_FillNriVertexAttrib(mesh_vbo_t* vbo, struct frame_cmd_vertex_attrib_s * d
 
 struct vbo_layout_s R_CreateVBOLayout( vattribmask_t vattribs, vattribmask_t halfFloatVattribs)
 {
-	struct vbo_layout_s layout = {};
+	struct vbo_layout_s layout = { 0 };
 
 	if( !( halfFloatVattribs & VATTRIB_POSITION_BIT ) ) {
 		halfFloatVattribs &= ~( VATTRIB_AUTOSPRITE_BIT );

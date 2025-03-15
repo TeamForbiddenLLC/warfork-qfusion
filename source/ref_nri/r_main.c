@@ -967,8 +967,8 @@ static void R_Clear(struct FrameState_s* frame, int bitMask  /* unused variable 
 #if ( DEVICE_IMPL_VULKAN )
 		  {
 				size_t numClear = 0;
-			  VkClearRect clearRect[2] = {};
-			  VkClearAttachment clearAttach[2] = {};
+			  VkClearRect clearRect[2] = { 0 };
+			  VkClearAttachment clearAttach[2] = { 0 };
 			  if( clearColor ) {
 				  clearRect[numClear].baseArrayLayer = 0;
 				  clearRect[numClear].rect = RIViewportToRect2D( &frame->viewport );

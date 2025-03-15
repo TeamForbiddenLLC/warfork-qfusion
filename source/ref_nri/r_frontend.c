@@ -134,7 +134,7 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	
 	R_WIN_Init(applicationName, hinstance, wndproc, parenthWnd, iconResource, iconXPM);
 
-	struct RIBackendInit_s backendInit = {};
+	struct RIBackendInit_s backendInit = { 0 };
 	backendInit.api = RI_DEVICE_API_VK;
 	backendInit.applicationName = applicationName;
 #ifndef NDEBUG
@@ -172,7 +172,7 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 		if(physicalAdapters[i].videoMemorySize > physicalAdapters[selectedAdapterIdx].videoMemorySize) 
 			selectedAdapterIdx = i;
 	}
-	struct RIDeviceDesc_s deviceInit = {};
+	struct RIDeviceDesc_s deviceInit = { 0 };
 	deviceInit.physicalAdapter = &physicalAdapters[selectedAdapterIdx];
 	InitRIDevice(&rsh.renderer, &deviceInit, &rsh.device );
 
@@ -285,7 +285,7 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 		return rserr_unknown;
 	}
 	{
-		struct RIWindowHandle_s windowHandle = {};
+		struct RIWindowHandle_s windowHandle = { 0 };
 		
 		switch( handle.winType ) {
 			case VID_WINDOW_WAYLAND:
@@ -308,7 +308,7 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 		}
 		
 		__ShutdownSwapchainTexture();
-		struct RISwapchainDesc_s swapchainInit = {};
+		struct RISwapchainDesc_s swapchainInit = { 0 };
 		swapchainInit.windowHandle = &windowHandle;
 		swapchainInit.imageCount = 3;
 		swapchainInit.queue = &rsh.device.queues[RI_QUEUE_GRAPHICS];
@@ -324,7 +324,7 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 
 			assert( rsh.riSwapchain.imageCount > 0 );
 			for( uint32_t i = 0; i < rsh.riSwapchain.imageCount; i++ ) {
-				VmaAllocationCreateInfo mem_reqs = {};
+				VmaAllocationCreateInfo mem_reqs = { 0 };
 				mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 				{
 					VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
@@ -623,7 +623,7 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 				info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 				vkBeginCommandBuffer( rsh.frame.handle.vk.cmd, &info );
 			}
-			VkImageMemoryBarrier2 imageBarriers[4] = {};
+			VkImageMemoryBarrier2 imageBarriers[4] = { 0 };
 			imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 			imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 			imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
@@ -670,7 +670,7 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 			enum RI_Format_e attachments[] = {rsh.riSwapchain.format};
 			FR_ConfigurePipelineAttachment(&rsh.frame.pipeline, attachments, Q_ARRAY_COUNT(attachments), RI_FORMAT_D32_SFLOAT);
 
-			struct RIViewport_s viewport = {};
+			struct RIViewport_s viewport = { 0 };
 			viewport.x = 0;
 			viewport.y = 0;
 			viewport.width = rsh.riSwapchain.width;
@@ -679,7 +679,7 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 			viewport.originBottomLeft = true;
 			FR_CmdSetViewport( &rsh.frame, viewport );
 			
-			struct RIRect_s rect = {};
+			struct RIRect_s rect = { 0 };
 			rect.width = viewport.width;
 			rect.height = viewport.height;
 			FR_CmdSetScissor( &rsh.frame, rect );
@@ -764,7 +764,7 @@ void RF_EndFrame( void )
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		vkCmdEndRendering( rsh.frame.handle.vk.cmd );
-		VkImageMemoryBarrier2 imageBarriers[1] = {};
+		VkImageMemoryBarrier2 imageBarriers[1] = { 0 };
 		imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 		imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 		imageBarriers[0].srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
@@ -944,7 +944,7 @@ void R_InitSubpass( struct FrameState_s *parent, struct FrameState_s *child)
 		cmdAllocInfo.commandPool = active->vk.pool;
 		cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 		cmdAllocInfo.commandBufferCount = 1;
-		struct RICmd_s cmd = {};
+		struct RICmd_s cmd = { 0 };
 		cmd.vk.pool = active->vk.pool;
 		VK_WrapResult( vkAllocateCommandBuffers( rsh.device.vk.device, &cmdAllocInfo, &cmd.vk.cmd ) );
 		assert(IsRICmdValid(&rsh.renderer, &cmd));

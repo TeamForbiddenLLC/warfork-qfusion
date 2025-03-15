@@ -83,7 +83,7 @@ static void __FreeGPUImageData( struct image_s *image )
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		assert( RI_VK_DESCRIPTOR_IS_IMAGE( image->binding ) );
-		struct RIFree_s freeSlot = {};
+		struct RIFree_s freeSlot = { 0 };
 		struct r_frame_set_s *activeset = RI_ACTIVE_FRAMESET();
 		freeSlot.type = RI_FREE_VK_VMA_AllOC;
 		freeSlot.vmaAlloc = image->vk.vmaAlloc;
@@ -787,7 +787,7 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		info.pQueueFamilyIndices = queueFamilies;
 		VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
 		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		VmaAllocationCreateInfo mem_reqs = {};
+		VmaAllocationCreateInfo mem_reqs = { 0 };
 		mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 
 		if(!VK_WrapResult(vmaCreateImage(rsh.device.vk.vmaAllocator, &info, &mem_reqs, &image->handle.vk.image, &image->vk.vmaAlloc, NULL))) {
@@ -987,7 +987,7 @@ static void __R_CopyTextureDataTexture(struct image_s* image, int layer, int mip
 	const struct RIFormatProps_s *srcDef = GetRIFormatProps( srcFormat );
 	const struct RIFormatProps_s *destDef = GetRIFormatProps( __R_GetImageFormat( image ) );
 
-	struct RIResourceTextureTransaction_s uploadDesc = {};
+	struct RIResourceTextureTransaction_s uploadDesc = { 0 };
 	uploadDesc.target = image->handle;
 	uploadDesc.sliceNum = h;
 	uploadDesc.rowPitch = w * destDef->stride;

@@ -3,7 +3,6 @@
 #include "qtypes.h"
 
 #include <stb_ds.h>
-#include <vulkan/vulkan_core.h>
 #include "ri_format.h"
 #include "ri_renderer.h"
 
@@ -56,8 +55,8 @@ void RI_InitResourceUploader( struct RIDevice_s *device, struct RIResourceUpload
 			VK_WrapResult( vkAllocateCommandBuffers( device->vk.device, &cmdAllocInfo, &resource->vk.cmdSets[i].cmd ) );
 		}
 		{
-			VmaAllocationInfo allocationInfo = {};
-			VmaAllocationCreateInfo allocInfo = {};
+			VmaAllocationInfo allocationInfo = { 0 };
+			VmaAllocationCreateInfo allocInfo = { 0 };
 			allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
 			allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 			uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
@@ -148,8 +147,8 @@ static bool __ResolveStageBuffer( struct RIDevice_s *dev, struct RIResourceUploa
 		stageBufferCreateInfo.size = reqSize;
 		stageBufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 
-		VmaAllocationInfo allocationInfo = {};
-		VmaAllocationCreateInfo allocInfo = {};
+		VmaAllocationInfo allocationInfo = { 0 };
+		VmaAllocationCreateInfo allocInfo = { 0 };
 		allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
 		allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT ;
 	
@@ -186,7 +185,7 @@ void RI_ResourceEndCopyBuffer( struct RIDevice_s *device, struct RIResourceUploa
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		if( !__ResourceInTransitionBuffer(device, res, trans->target)) {
-			VkBufferMemoryBarrier2 bufferBarriers[1] = {};
+			VkBufferMemoryBarrier2 bufferBarriers[1] = { 0 };
 			bufferBarriers[0].sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
 			bufferBarriers[0].srcStageMask = trans->srcBarrier.vk.stage;
 			bufferBarriers[0].srcAccessMask = trans->srcBarrier.vk.access; // VK_ACCESS_2_NONE;
@@ -203,13 +202,13 @@ void RI_ResourceEndCopyBuffer( struct RIDevice_s *device, struct RIResourceUploa
 			dependencyInfo.pBufferMemoryBarriers = bufferBarriers;
 			vkCmdPipelineBarrier2( res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].cmd, &dependencyInfo );
 
-			struct RIResourcePostBufferBarrier_s postTransition = {};
+			struct RIResourcePostBufferBarrier_s postTransition = { 0 };
 			postTransition.buffer = trans->target.vk.buffer;
 			postTransition.postBarrier = trans->postBarrier;
 			arrpush( res->postBufferBarriers, postTransition );
 		}
 
-		VkBufferCopy copyBuffer = {};
+		VkBufferCopy copyBuffer = { 0 };
 		copyBuffer.size = trans->size;
 		copyBuffer.dstOffset = trans->offset;
 		copyBuffer.srcOffset = trans->req.byteOffset;
@@ -226,11 +225,11 @@ void RI_InsertTransitionBarriers( struct RIDevice_s *device, struct RIResourceUp
 	{
 		size_t postBufferIdx = 0;
 		size_t numBufferBarriers = 0;
-		VkBufferMemoryBarrier2 bufferBarriers[32] = {};
+		VkBufferMemoryBarrier2 bufferBarriers[32] = { 0 };
 		
 		size_t postImageIdx = 0;
 		size_t numImageBarriers = 0;
-		VkImageMemoryBarrier2 imageBarriers[32] = {};
+		VkImageMemoryBarrier2 imageBarriers[32] = { 0 };
 
 		while( true ) {
 			while( postBufferIdx < arrlen( res->postBufferBarriers ) && numBufferBarriers < Q_ARRAY_COUNT( bufferBarriers ) ) {
@@ -332,7 +331,7 @@ void RI_ResourceBeginCopyTexture( struct RIDevice_s *device, struct RIResourceUp
 }
 
 //static VkImageSubresourceRange _VK_UnionSubresourceRange(VkImageSubresourceRange a1, VkImageSubresourceRange  a2) {
-//	VkImageSubresourceRange range = {};
+//	VkImageSubresourceRange range = { 0 };
 //	range.aspectMask = (a1.aspectMask | a2.aspectMask); 
 //	range.baseMipLevel = Q_MIN(a1.baseMipLevel, a2.baseMipLevel);
 //	range.baseArrayLayer = Q_MIN(a1.baseArrayLayer, a2.baseArrayLayer);
@@ -355,7 +354,7 @@ void RI_ResourceEndCopyTexture( struct RIDevice_s *device, struct RIResourceUplo
 			}
 		}
 		if( !foundInTransition ) {
-			VkImageMemoryBarrier2 imageBarriers[1] = {};
+			VkImageMemoryBarrier2 imageBarriers[1] = { 0 };
 			imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 			imageBarriers[0].srcAccessMask = trans->srcBarrier.vk.access; // VK_ACCESS_2_NONE;
 			imageBarriers[0].srcStageMask = trans->srcBarrier.vk.stage;
@@ -374,7 +373,7 @@ void RI_ResourceEndCopyTexture( struct RIDevice_s *device, struct RIResourceUplo
 			dependencyInfo.pImageMemoryBarriers = imageBarriers;
 			vkCmdPipelineBarrier2( res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].cmd, &dependencyInfo );
 
-			struct RIResourcePostImageBarrier_s postTransition = {};
+			struct RIResourcePostImageBarrier_s postTransition = { 0 };
 			postTransition.image = trans->target.vk.image;
 			postTransition.postBarrier = trans->postBarrier;
 			arrpush(res->postImageBarriers, postTransition);
@@ -388,7 +387,7 @@ void RI_ResourceEndCopyTexture( struct RIDevice_s *device, struct RIResourceUplo
 			const uint32_t sliceRowNum = trans->alignSlicePitch / trans->rowPitch;
 			const uint32_t bufferImageHeight = sliceRowNum * formatProps->blockWidth;
 
-			VkBufferImageCopy copyReq = {};
+			VkBufferImageCopy copyReq = { 0 };
 			copyReq.bufferOffset = trans->req.byteOffset;
 			copyReq.bufferRowLength = bufferRowLength;
 			copyReq.bufferImageHeight = bufferImageHeight;

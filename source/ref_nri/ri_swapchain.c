@@ -2,7 +2,6 @@
 #include "ri_renderer.h"
 #include "ri_types.h"
 #include "ri_format.h"
-#include <vulkan/vulkan_core.h>
 
 
 #if ( DEVICE_IMPL_VULKAN )
@@ -52,17 +51,16 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 				xlibSurfaceInfo.window = init->windowHandle->x11.window;
 				result = vkCreateXlibSurfaceKHR( dev->renderer->vk.instance, &xlibSurfaceInfo, NULL, &swapchain->vk.surface );
 				VK_WrapResult( result );
-				// RETURN_ON_FAILURE(&m_Device, result == VK_SUCCESS, GetReturnCode(result), "vkCreateXlibSurfaceKHR returned %d", (int32_t)result);
 				break;
 			}
 #endif
 #ifdef VK_USE_PLATFORM_WIN32_KHR
 			case RI_WINDOW_WIN32: {
 				VkWin32SurfaceCreateInfoKHR win32SurfaceInfo = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
-				win32SurfaceInfo.hwnd = (HWND)swapChainDesc.window.windows.hwnd;
+				win32SurfaceInfo.hwnd = (HWND)init->windowHandle->windows.hwnd;
 
-				VkResult result = vk.CreateWin32SurfaceKHR( m_Device, &win32SurfaceInfo, m_Device.GetAllocationCallbacks(), &m_Surface );
-				RETURN_ON_FAILURE( &m_Device, result == VK_SUCCESS, GetReturnCode( result ), "vkCreateWin32SurfaceKHR returned %d", (int32_t)result );
+				result = vkCreateWin32SurfaceKHR( dev->renderer->vk.instance, &win32SurfaceInfo, NULL, &swapchain->vk.surface );
+				VK_WrapResult( result );
 				break;
 			}
 #endif
@@ -96,7 +94,7 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 		result = vkGetPhysicalDeviceSurfaceSupportKHR(dev->physicalAdapter.vk.physicalDevice, init->queue->vk.queueFamilyIdx, swapchain->vk.surface, &supported);
 		VK_WrapResult(result);
 
-		VkSurfaceCapabilitiesKHR surfaceCaps = {};
+		VkSurfaceCapabilitiesKHR surfaceCaps = {0};
 		result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(dev->physicalAdapter.vk.physicalDevice, swapchain->vk.surface, &surfaceCaps);
 		VK_WrapResult(result);
     VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR};

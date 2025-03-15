@@ -1,12 +1,12 @@
 #include "ri_renderer.h"
 
-#include "ri_types.h"
 #include "stb_ds.h"
 #include <qstr.h>
-#include <vulkan/vulkan_core.h>
 
 #include "ri_conversion.h"
 #include "ri_gpu_preset.h"
+
+#include "ri_types.h"
 
 #if ( DEVICE_IMPL_VULKAN )
 
@@ -240,7 +240,7 @@ int EnumerateRIAdapters( struct RIRenderer_s *renderer, struct RIPhysicalAdapter
 					R_VK_ADD_STRUCT( &features, &features13 );
 				}
 
-				VkPhysicalDeviceMemoryProperties memoryProperties = {};
+				VkPhysicalDeviceMemoryProperties memoryProperties = { 0 };
 				vkGetPhysicalDeviceMemoryProperties( physicalAdapter->vk.physicalDevice, &memoryProperties );
 				vkGetPhysicalDeviceProperties2( physicalAdapter->vk.physicalDevice, &properties );
 				vkGetPhysicalDeviceFeatures2( physicalAdapter->vk.physicalDevice, &features );
@@ -541,13 +541,13 @@ int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, st
 		VkQueueFamilyProperties *queueFamilyProps = malloc( ( familyNum * sizeof( VkQueueFamilyProperties ) ) );
 		vkGetPhysicalDeviceQueueFamilyProperties( init->physicalAdapter->vk.physicalDevice, &familyNum, queueFamilyProps );
 		
-		VkDeviceQueueCreateInfo deviceQueueCreateInfo[8] = {};
+		VkDeviceQueueCreateInfo deviceQueueCreateInfo[8] = { 0 };
 		VkDeviceCreateInfo deviceCreateInfo = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
 		deviceCreateInfo.pQueueCreateInfos = deviceQueueCreateInfo;
 		const float priorities[] = {1.0f, 0.9f, 0.8f, 0.7f, 0.6f, 0.5f};
 
 		{
-			struct QStr str = {};
+			struct QStr str = { 0 };
 			uint8_t numFeatures = 0;
 			struct QStrSpan queueFeatures[9];
 			for( size_t i = 0; i < familyNum; i++ ) {
@@ -851,7 +851,7 @@ int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, st
 		}
 
 		{
-			VmaVulkanFunctions vulkanFunctions = {};
+			VmaVulkanFunctions vulkanFunctions = { 0 };
 			vulkanFunctions.vkGetPhysicalDeviceProperties = vkGetPhysicalDeviceProperties;
 			vulkanFunctions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
 			vulkanFunctions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
@@ -888,7 +888,7 @@ int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, st
 			/// Fetch from "vkGetDeviceImageMemoryRequirements" on Vulkan >= 1.3, but you can also fetch it from "vkGetDeviceImageMemoryRequirementsKHR" if you enabled extension VK_KHR_maintenance4.
 			vulkanFunctions.vkGetDeviceImageMemoryRequirements = vkGetDeviceImageMemoryRequirements;
 
-			VmaAllocatorCreateInfo createInfo = {};
+			VmaAllocatorCreateInfo createInfo = { 0 };
 			createInfo.physicalDevice = device->physicalAdapter.vk.physicalDevice;
 			createInfo.device = device->vk.device;
 			createInfo.instance = device->renderer->vk.instance;
@@ -927,7 +927,7 @@ int InitRIRenderer( const struct RIBackendInit_s *init, struct RIRenderer_s *ren
 	{
 		volkInitialize();
 
-		VkApplicationInfo appInfo = {};
+		VkApplicationInfo appInfo = { 0 };
 		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 		appInfo.pNext = NULL;
 		appInfo.pApplicationName = init->applicationName;
@@ -946,8 +946,8 @@ int InitRIRenderer( const struct RIBackendInit_s *init, struct RIRenderer_s *ren
 
 		VkInstanceCreateInfo instanceCreateInfo = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
 		instanceCreateInfo.pApplicationInfo = &appInfo;
-		const char *enabledLayerNames[8] = {};
-		const char *enabledExtensionNames[8] = {};
+		const char *enabledLayerNames[8] = { 0 };
+		const char *enabledExtensionNames[8] = { 0 };
 		instanceCreateInfo.ppEnabledLayerNames = enabledLayerNames;
 		instanceCreateInfo.enabledLayerCount = 0;
 		instanceCreateInfo.ppEnabledExtensionNames = enabledExtensionNames;

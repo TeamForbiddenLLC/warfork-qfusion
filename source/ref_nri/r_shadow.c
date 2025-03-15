@@ -365,7 +365,7 @@ static struct shadow_fb_s *__ResolveShadowSurface(size_t i, int width, int heigh
 		assert( RI_VK_DESCRIPTOR_IS_IMAGE( bestFB->descriptor ) );
 		struct r_frame_set_s *activeset = R_GetActiveFrameSet();
 
-		struct RIFree_s freeSlot = {};
+		struct RIFree_s freeSlot = { 0 };
 		if(bestFB->descriptor.vk.image.imageView) {
 			freeSlot.type = RI_FREE_VK_IMAGEVIEW;
 			freeSlot.vkImageView = bestFB->descriptor.vk.image.imageView;
@@ -400,7 +400,7 @@ static struct shadow_fb_s *__ResolveShadowSurface(size_t i, int width, int heigh
 		info.pQueueFamilyIndices = queueFamilies;
 		VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
 		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		VmaAllocationCreateInfo mem_reqs = {};
+		VmaAllocationCreateInfo mem_reqs = { 0 };
 		mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 
 		if( !VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &bestFB->texture.vk.image, &bestFB->vk.vmaAlloc, NULL ) ) ) {
@@ -457,7 +457,7 @@ void R_DrawShadowmaps(struct FrameState_s* cmd)
 	if( !shadowBits )
 		return;
 
-	struct FrameState_s sub = {};
+	struct FrameState_s sub = { 0 };
 	if( !R_PushRefInst( &sub ) ) {
 		return;
 	}
@@ -527,7 +527,7 @@ void R_DrawShadowmaps(struct FrameState_s* cmd)
 		Vector4Set( rn.viewport, refdef.x + 3, refdef.y + fb->height - refdef.height + 3, refdef.width - 6, refdef.height - 6 );
 		Vector4Set( rn.scissor, refdef.x, refdef.y, fb->width, fb->height );
 
-		struct RIViewport_s viewport = {};
+		struct RIViewport_s viewport = { 0 };
 		viewport.x = rn.viewport[0]; 
 		viewport.y = rn.viewport[1];
 		viewport.width = rn.viewport[2]; 
@@ -536,7 +536,7 @@ void R_DrawShadowmaps(struct FrameState_s* cmd)
 		viewport.originBottomLeft = true;
 		FR_CmdSetViewport( &sub, viewport );
 
-		struct RIRect_s scissor = {};
+		struct RIRect_s scissor = { 0 };
 		scissor.x = rn.scissor[0];
 		scissor.y = rn.scissor[1];
 		scissor.width = rn.scissor[2];
@@ -544,7 +544,7 @@ void R_DrawShadowmaps(struct FrameState_s* cmd)
 		FR_CmdSetScissor( &sub, scissor );
 
 		{
-			VkImageMemoryBarrier2 imageBarriers[1] = {};
+			VkImageMemoryBarrier2 imageBarriers[1] = { 0 };
 			imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 			imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 			imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
@@ -576,7 +576,7 @@ void R_DrawShadowmaps(struct FrameState_s* cmd)
 		renderingInfo.pDepthAttachment = &depthStencil;
 		renderingInfo.pStencilAttachment = NULL;
 		vkCmdBeginRendering( sub.handle.vk.cmd, &renderingInfo );
-		enum RI_Format_e attachments[] = { };
+		enum RI_Format_e attachments[] = { 0 };
 		FR_ConfigurePipelineAttachment( &sub.pipeline, attachments, Q_ARRAY_COUNT( attachments ), ShadowDepthFormat );
 
 		sub.pipeline.flippedViewport = true;
@@ -584,7 +584,7 @@ void R_DrawShadowmaps(struct FrameState_s* cmd)
 		vkCmdEndRendering( sub.handle.vk.cmd );
 
 		{
-			VkImageMemoryBarrier2 imageBarriers[1] = {};
+			VkImageMemoryBarrier2 imageBarriers[1] = { 0 };
 			imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 			imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 			imageBarriers[0].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;

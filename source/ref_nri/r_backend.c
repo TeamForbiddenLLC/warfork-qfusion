@@ -42,8 +42,8 @@ rbackend_t rb;
 //	stageBufferCreateInfo.pQueueFamilyIndices = NULL;
 //	VK_WrapResult( vkCreateBuffer( device->vk.device, &stageBufferCreateInfo, NULL, &segment->vk.buffer ) );
 //
-//	VmaAllocationInfo allocationInfo = {};
-//	VmaAllocationCreateInfo allocInfo = {};
+//	VmaAllocationInfo allocationInfo = { 0 };
+//	VmaAllocationCreateInfo allocInfo = { 0 };
 //	allocInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
 //	vmaAllocateMemoryForBuffer( device->vk.vmaAllocator, segment->vk.buffer, &allocInfo, &segment->vk.allocator, &allocationInfo );
 //	vmaBindBufferMemory2( device->vk.vmaAllocator, segment->vk.allocator, 0, segment->vk.buffer, NULL );
@@ -71,8 +71,8 @@ rbackend_t rb;
 //	stageBufferCreateInfo.pQueueFamilyIndices = NULL;
 //	VK_WrapResult( vkCreateBuffer( device->vk.device, &stageBufferCreateInfo, NULL, &segment->vk.buffer ) );
 //
-//	VmaAllocationInfo allocationInfo = {};
-//	VmaAllocationCreateInfo allocInfo = {};
+//	VmaAllocationInfo allocationInfo = { 0 };
+//	VmaAllocationCreateInfo allocInfo = { 0 };
 //	allocInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
 //	vmaAllocateMemoryForBuffer( device->vk.vmaAllocator, segment->vk.buffer, &allocInfo, &segment->vk.allocator, &allocationInfo );
 //	vmaBindBufferMemory2( device->vk.vmaAllocator, segment->vk.allocator, 0, segment->vk.buffer, NULL );
@@ -100,7 +100,7 @@ void RB_Init( void )
 	for(size_t i = 0; i < RB_DYN_STREAM_NUM; i++ ) {
 		struct vbo_layout_s layout = R_CreateVBOLayout( vattribs[i], VATTRIB_TEXCOORDS_BIT | VATTRIB_NORMAL_BIT | VATTRIB_SVECTOR_BIT );
 		rb.dynamicStreams[i].layout = layout;
-		//struct RISegmentAllocDesc_s segmentAllocDesc = {};
+		//struct RISegmentAllocDesc_s segmentAllocDesc = { 0 };
 		//segmentAllocDesc.numSegments = NUMBER_FRAMES_FLIGHT;
 		//segmentAllocDesc.elementStride = sizeof(uint16_t);
 		//segmentAllocDesc.maxElements = 1024;
@@ -499,15 +499,15 @@ void RB_AddDynamicMesh(struct FrameState_s* cmd, const entity_t *entity, const s
 	  vattribs = prev->vattribs;
   }
   assert(streamId != MAX_DYNAMIC_DRAWS);
-  struct RISegmentReq_s vertexReq = {};
-  struct RISegmentReq_s eleReq = {};
+  struct RISegmentReq_s vertexReq = { 0 };
+  struct RISegmentReq_s eleReq = { 0 };
   struct dynamic_vertex_stream_s *const selectedStream = &( rb.dynamicStreams[streamId] );
   struct r_frame_set_s *active = R_GetActiveFrameSet();
 
 #if ( DEVICE_IMPL_VULKAN )
   {
 	  if( selectedStream->vk.vertexAlloc == NULL || !RISegmentAlloc( rsh.frameSetCount, &selectedStream->vertexAllocator, numVerts, &vertexReq ) ) {
-		  struct RISegmentAllocDesc_s segmentAllocDesc = {};
+		  struct RISegmentAllocDesc_s segmentAllocDesc = { 0 };
 		  segmentAllocDesc.numSegments = NUMBER_FRAMES_FLIGHT;
 		  segmentAllocDesc.elementStride = selectedStream->layout.vertexStride;
 		  segmentAllocDesc.maxElements = Q_MAX( 1024, selectedStream->vertexAllocator.maxElements );
@@ -525,8 +525,8 @@ void RB_AddDynamicMesh(struct FrameState_s* cmd, const entity_t *entity, const s
 		  vertexBufferCreateInfo.size = segmentAllocDesc.maxElements * segmentAllocDesc.elementStride; 
 		  vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-		  VmaAllocationInfo allocationInfo = {};
-		  VmaAllocationCreateInfo allocInfo = {};
+		  VmaAllocationInfo allocationInfo = { 0 };
+		  VmaAllocationCreateInfo allocInfo = { 0 };
 		  allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
 		  allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 		  if( selectedStream->vk.vertexBuffer ) {
@@ -545,7 +545,7 @@ void RB_AddDynamicMesh(struct FrameState_s* cmd, const entity_t *entity, const s
 
 	  }
 	  if( rb.dynamicStreams[streamId].vk.indexAlloc == NULL || !RISegmentAlloc( rsh.frameSetCount, &selectedStream->indexAllocator, numElems, &eleReq ) ) {
-		  struct RISegmentAllocDesc_s segmentAllocDesc = {};
+		  struct RISegmentAllocDesc_s segmentAllocDesc = { 0 };
 		  segmentAllocDesc.numSegments = NUMBER_FRAMES_FLIGHT;
 		  segmentAllocDesc.elementStride = sizeof( uint16_t );
 		  segmentAllocDesc.maxElements = Q_MAX( 1024, selectedStream->indexAllocator.maxElements );
@@ -563,8 +563,8 @@ void RB_AddDynamicMesh(struct FrameState_s* cmd, const entity_t *entity, const s
 		  indexBufferCreateInfo.size = segmentAllocDesc.maxElements * segmentAllocDesc.elementStride; 
 		  indexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-		  VmaAllocationInfo allocationInfo = {};
-		  VmaAllocationCreateInfo allocInfo = {};
+		  VmaAllocationInfo allocationInfo = { 0 };
+		  VmaAllocationCreateInfo allocInfo = { 0 };
 		  allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
 		  allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 		  if( selectedStream->vk.vertexBuffer ) {

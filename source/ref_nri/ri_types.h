@@ -440,9 +440,6 @@ struct RIBackendInit_s {
   };
 };
 
-struct RIDeviceFeatures_s {
-};
-
 struct RIPhysicalAdapter_s {
 	char name[256];
 	uint64_t luid;

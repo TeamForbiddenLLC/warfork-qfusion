@@ -60,9 +60,6 @@ OPTION(USE_SYSTEM_OGG "Prefer system OGG instead of the bundled one" OFF)
 OPTION(USE_SYSTEM_FREETYPE "Prefer system freetype instead of the bundled one" OFF)
 OPTION(USE_SYSTEM_VORBIS "Prefer system vorbis instead of the bundled one" OFF)
 
-option(USE_PACKAGE_ASSETS "package assets" OFF)
-# We compile third-party libs from source
-
 set(ANGELSCRIPT_DIR ${CMAKE_HOME_DIRECTORY}/../third-party/angelscript/sdk/angelscript)
 set(ANGELSCRIPT_INCLUDE_DIR ${ANGELSCRIPT_DIR}/include/)
 add_subdirectory(${ANGELSCRIPT_DIR}/projects/cmake ${ANGELSCRIPT_DIR}/lib/)
@@ -334,12 +331,24 @@ if (NOT GAME_MODULES_ONLY)
 endif()
 
 
-if(USE_PACKAGE_ASSETS)
+
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     add_custom_target(deploy
-             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} 
-             COMMAND ${CMAKE_COMMAND} 
-             -DBIN_DIR=${CMAKE_BINARY_DIR}/warfork-qfusion
-             -DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../assets
-             -P ${CMAKE_CURRENT_SOURCE_DIR}/package_assets.cmake 
-             COMMENT "packaging assets ...")
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} 
+        COMMAND ${CMAKE_COMMAND} 
+        -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}
+        -DBIN_DIR=${CMAKE_BINARY_DIR}/warfork-qfusion/$(Configuration)
+        -DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../assets
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/package_assets.cmake 
+        COMMENT "packaging assets ...")
+else()
+    add_custom_target(deploy
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} 
+        COMMAND ${CMAKE_COMMAND} 
+        -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}
+        -DBIN_DIR=${CMAKE_BINARY_DIR}/warfork-qfusion
+        -DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../assets
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/package_assets.cmake 
+        COMMENT "packaging assets ...")
 endif()

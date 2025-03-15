@@ -821,7 +821,7 @@ static const struct RIFormatProps_s riFormats[] = {
 	  .isNorm = 1,
 	  .isSigned = 1,
 	},
-	[RI_TEXTURE_FORMAT_COUNT] = {},
+	[RI_TEXTURE_FORMAT_COUNT] = {0},
 
 };
 
