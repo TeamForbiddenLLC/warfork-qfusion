@@ -86,6 +86,13 @@
 #define Q_ENUM_FLAG(TYPE, ENUM_TYPE)
 #endif
 
+#if defined(_MSC_VER)
+
+#define Q_COMPILE_ASSERT(exp)
+#define Q_COMPILE_ASSERT_MSG(exp, msg)
+
+#else
+
 #if !defined(__cplusplus)
 #define Q_COMPILE_ASSERT(exp) _Static_assert(exp, #exp)
 #else
@@ -95,7 +102,9 @@
 #if !defined(__cplusplus)
 #define Q_COMPILE_ASSERT_MSG(exp, msg) _Static_assert(exp, msg)
 #else
-#define Q_COMPILE_ASSERT(exp, msg) static_assert(exp, msg)
+#define Q_COMPILE_ASSERT_MSG(exp, msg) static_assert(exp, msg)
+#endif
+
 #endif
 
 #define Q_SAME_TYPE(a, b) __builtin_types_compatible_p(typeof(a), typeof(b))
