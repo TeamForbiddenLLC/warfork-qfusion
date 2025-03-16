@@ -1,12 +1,12 @@
 #include "ri_renderer.h"
 
-#include "ri_types.h"
 #include "stb_ds.h"
 #include <qstr.h>
-#include <vulkan/vulkan_core.h>
 
 #include "ri_conversion.h"
 #include "ri_gpu_preset.h"
+
+#include "ri_types.h"
 
 #if ( DEVICE_IMPL_VULKAN )
 

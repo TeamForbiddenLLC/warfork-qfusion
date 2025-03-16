@@ -3,7 +3,6 @@
 #include "qtypes.h"
 
 #include <stb_ds.h>
-#include <vulkan/vulkan_core.h>
 #include "ri_format.h"
 #include "ri_renderer.h"
 

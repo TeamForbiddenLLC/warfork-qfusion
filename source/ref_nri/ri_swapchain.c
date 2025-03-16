@@ -2,7 +2,6 @@
 #include "ri_renderer.h"
 #include "ri_types.h"
 #include "ri_format.h"
-#include <vulkan/vulkan_core.h>
 
 
 #if ( DEVICE_IMPL_VULKAN )
@@ -95,7 +94,7 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 		result = vkGetPhysicalDeviceSurfaceSupportKHR(dev->physicalAdapter.vk.physicalDevice, init->queue->vk.queueFamilyIdx, swapchain->vk.surface, &supported);
 		VK_WrapResult(result);
 
-		VkSurfaceCapabilitiesKHR surfaceCaps = {};
+		VkSurfaceCapabilitiesKHR surfaceCaps = {0};
 		result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(dev->physicalAdapter.vk.physicalDevice, swapchain->vk.surface, &surfaceCaps);
 		VK_WrapResult(result);
     VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR};

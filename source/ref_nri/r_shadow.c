@@ -576,7 +576,7 @@ void R_DrawShadowmaps(struct FrameState_s* cmd)
 		renderingInfo.pDepthAttachment = &depthStencil;
 		renderingInfo.pStencilAttachment = NULL;
 		vkCmdBeginRendering( sub.handle.vk.cmd, &renderingInfo );
-		enum RI_Format_e attachments[] = { };
+		enum RI_Format_e attachments[] = { 0 };
 		FR_ConfigurePipelineAttachment( &sub.pipeline, attachments, Q_ARRAY_COUNT( attachments ), ShadowDepthFormat );
 
 		sub.pipeline.flippedViewport = true;
