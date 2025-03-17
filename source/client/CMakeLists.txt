@@ -245,8 +245,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         
     add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${POST_BUILD_CMDS})
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-    add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/warfork-qfusion/$(Configuration)/commit.txt ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/)
-    add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/warfork-qfusion/$(Configuration)/steam_appid.txt ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/)
+    add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/warfork-qfusion/commit.txt ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/)
+    add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/warfork-qfusion/steam_appid.txt ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/)
 endif()
 
 target_link_libraries(${QFUSION_CLIENT_NAME} PRIVATE CURL::libcurl ${CLIENT_PLATFORM_LIBRARIES} ${DISCORD_LIBRARY} ${STEAMSHIMPARENT_LIBRARY})
