@@ -330,9 +330,6 @@ if (NOT GAME_MODULES_ONLY)
     add_subdirectory(client)
 endif()
 
-
-
-
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     add_custom_target(deploy
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} 
