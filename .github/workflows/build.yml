@@ -215,7 +215,7 @@ jobs:
 
       - name: Package Assets
         working-directory: .\source\build
-        run: cmake --build . --target deploy --config ${matrix.config.build_folder}
+        run: cmake --build . --target deploy --config ${{matrix.config.build_folder}}
           
       - name: Unit Test
         shell: bash

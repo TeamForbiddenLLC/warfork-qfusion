@@ -1159,8 +1159,15 @@ void WaitRIQueueIdle( struct RIDevice_s *device, struct RIQueue_s *queue ) {
 
 int FreeRIDevice( struct RIDevice_s *dev ) {
 #if ( DEVICE_IMPL_VULKAN )
-	vkDestroyDevice( dev->vk.device, NULL );
+	assert( dev );
+	assert(dev->vk.vmaAllocator );
+	assert(dev->vk.device );
+
 	if( dev->vk.vmaAllocator )
 		vmaDestroyAllocator( dev->vk.vmaAllocator );
+	vkDestroyDevice( dev->vk.device, NULL );
+
+	dev->vk.device = NULL;
+	dev->vk.vmaAllocator = NULL;
 #endif
 }
