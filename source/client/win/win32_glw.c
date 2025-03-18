@@ -93,6 +93,10 @@ bool R_WIN_SetWindowed(int x, int y, uint16_t width, uint16_t height) {
 	}
 
 	RECT r;
+	r.left = x;
+	r.right = x + width;
+	r.top = y;
+	r.bottom = y + height;
 	AdjustWindowRect( &r, stylebits, FALSE );
 
 	width = r.right - r.left;

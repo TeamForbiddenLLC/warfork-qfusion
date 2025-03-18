@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define R_IMAGE_H
 
 #include "qstr.h"
-#include "r_nri.h"
+#include "ri_types.h"
 
 enum
 {
@@ -74,11 +74,17 @@ enum
 
 typedef struct image_s
 {
-	struct nri_descriptor_s descriptor;
-	struct nri_descriptor_s samplerDescriptor;
-	NriTexture* texture;
-	size_t numAllocations;
-	NriMemory* memory[4];
+	struct RITexture_s handle;
+	union {
+    #if(DEVICE_IMPL_VULKAN)
+    struct {
+    	struct VmaAllocation_T* vmaAlloc;
+    } vk;
+    #endif
+	};
+	uint8_t mipNum;
+	struct RIDescriptor_s binding;
+	struct RIDescriptor_s* samplerBinding;
 
 	struct QStr name;// game path, not including extension 
 	int				registrationSequence;
@@ -95,8 +101,6 @@ typedef struct image_s
 	int tags;			   // usage tags of the image
 	struct image_s *next, *prev;
 } image_t;
-
-
 
 void R_InitImages( void );
 void R_TouchImage( image_t *image, int tags );
@@ -120,7 +124,6 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, int width, int height );
 void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic );
 
-
-NriDescriptor *R_ResolveSamplerDescriptor( int flags );
+struct RIDescriptor_s* R_ResolveSamplerDescriptor( int flags );
 
 #endif // R_IMAGE_H

@@ -1,6 +1,3 @@
-[submodule "source/NRI"]
-	path = source/NRI
-	url = https://github.com/TeamForbiddenLLC/NRI.git
 [submodule "source/extern/glslang"]
 	path = source/extern/glslang
 	url = https://github.com/TeamForbiddenLLC/glslang.git
@@ -28,3 +25,12 @@
 [submodule "source/extern/curl"]
 	path = source/extern/curl
 	url = https://github.com/TeamForbiddenLLC/curl.git
+[submodule "source/extern/volk"]
+	path = source/extern/volk
+	url = https://github.com/TeamForbiddenLLC/volk.git
+[submodule "source/extern/Vulkan-Headers"]
+	path = source/extern/Vulkan-Headers
+	url = https://github.com/KhronosGroup/Vulkan-Headers.git
+[submodule "source/extern/VulkanMemoryAllocator"]
+	path = source/extern/VulkanMemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
