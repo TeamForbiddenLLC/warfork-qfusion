@@ -9,6 +9,7 @@ message(STATUS "CMAKE_SYSTEM_PROCESSOR: " ${CMAKE_SYSTEM_PROCESSOR})
 set(CMAKE_MODULE_PATH ${CMAKE_HOME_DIRECTORY}/cmake)
 include(QfusionUtils)
 include(OutputDirectory)
+set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_SKIP_BUILD_RPATH FALSE)
  
@@ -48,6 +49,9 @@ option(GAME_MODULES_ONLY "Only build game modules" OFF)
 option(BUILD_STEAMLIB "Include the steamlib module (requires Steamworks SDK)" OFF)
 option(USE_GRAPHICS_NRI "Build using Nvidia NRI" OFF)
 
+option(USE_GRAPHICS_X11 "Build using X11" ON)
+option(USE_GRAPHICS_WAYLAND "Build using wayland" ON)
+
 OPTION(USE_SYSTEM_ZLIB "Prefer system ZLIB instead of the bundled one" OFF)
 OPTION(USE_SYSTEM_OPENAL "Prefer system OpenAL Soft instead of the bundled one" OFF)
 OPTION(USE_SYSTEM_CURL "Prefer system cURL instead of the bundled one" OFF)
@@ -55,9 +59,6 @@ OPTION(USE_SYSTEM_SDL2 "Prefer system SDL2 instead of the bundled one" OFF)
 OPTION(USE_SYSTEM_OGG "Prefer system OGG instead of the bundled one" OFF)
 OPTION(USE_SYSTEM_FREETYPE "Prefer system freetype instead of the bundled one" OFF)
 OPTION(USE_SYSTEM_VORBIS "Prefer system vorbis instead of the bundled one" OFF)
-
-option(USE_PACKAGE_ASSETS "package assets" OFF)
-# We compile third-party libs from source
 
 set(ANGELSCRIPT_DIR ${CMAKE_HOME_DIRECTORY}/../third-party/angelscript/sdk/angelscript)
 set(ANGELSCRIPT_INCLUDE_DIR ${ANGELSCRIPT_DIR}/include/)
@@ -79,13 +80,12 @@ set(DISCORD_INCLUDE_DIR ${DISCORD_DIR})
 set(NRI_DIR ${CMAKE_HOME_DIRECTORY}/NRI)
 set(NRI_INCLUDE_DIR ${CMAKE_HOME_DIRECTORY}/NRI/Include)
 
-if (NOT GAME_MODULES_ONLY AND USE_GRAPHICS_NRI)
-    
-    set(NRI_STATIC_LIBRARY ON)
-    set(NRI_ENABLE_D3D12_SUPPORT OFF)
-    set(NRI_ENABLE_D3D11_SUPPORT OFF)
-    add_subdirectory(NRI)
-endif()
+#if (NOT GAME_MODULES_ONLY AND USE_GRAPHICS_NRI)
+#    set(NRI_STATIC_LIBRARY ON)
+#    set(NRI_ENABLE_D3D12_SUPPORT OFF)
+#    set(NRI_ENABLE_D3D11_SUPPORT OFF)
+#    add_subdirectory(NRI)
+#endif()
 
 # Windows specific settings
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
@@ -330,13 +330,22 @@ if (NOT GAME_MODULES_ONLY)
     add_subdirectory(client)
 endif()
 
-
-if(USE_PACKAGE_ASSETS)
-    add_custom_target(deploy ALL
-             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} 
-             COMMAND ${CMAKE_COMMAND} 
-             -DBIN_DIR=${CMAKE_BINARY_DIR}/warfork-qfusion
-             -DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../assets
-             -P ${CMAKE_CURRENT_SOURCE_DIR}/package_assets.cmake 
-             COMMENT "packaging assets ...")
+if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    add_custom_target(deploy
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} 
+        COMMAND ${CMAKE_COMMAND} 
+        -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}
+        -DBIN_DIR=${CMAKE_BINARY_DIR}/warfork-qfusion/$(Configuration)
+        -DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../assets
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/package_assets.cmake 
+        COMMENT "packaging assets ...")
+else()
+    add_custom_target(deploy
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} 
+        COMMAND ${CMAKE_COMMAND} 
+        -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}
+        -DBIN_DIR=${CMAKE_BINARY_DIR}/warfork-qfusion
+        -DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../assets
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/package_assets.cmake 
+        COMMENT "packaging assets ...")
 endif()

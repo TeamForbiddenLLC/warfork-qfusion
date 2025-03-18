@@ -22,9 +22,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define MAX_SHADOWGROUPS    32
 
-#include "r_nri.h"
+#include "ri_format.h"
 
-static const NriFormat ShadowDepthFormat = NriFormat_D32_SFLOAT; 
+static const enum RI_Format_e ShadowDepthFormat = RI_FORMAT_D32_SFLOAT; 
 
 typedef struct shadowGroup_s
 {
@@ -61,6 +61,6 @@ void		R_ShutdownShadows( );
 void		R_ClearShadowGroups( void );
 bool	R_AddLightOccluder( const entity_t *ent );
 void		R_BuildShadowGroups( void );
-void		R_DrawShadowmaps( struct frame_cmd_buffer_s* frame );
+void		R_DrawShadowmaps(struct FrameState_s* cmd);
 
 #endif // R_SHADOW_H

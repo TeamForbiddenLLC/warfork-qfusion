@@ -1,8 +1,7 @@
 #include "r_descriptor_pool.h"
-#include "r_nri.h"
 #include "stb_ds.h"
 
-static struct descriptor_set_slot_s *ReserveDescriptorSetSlot( struct descriptor_set_allloc_s *alloc )
+struct descriptor_set_slot_s *AllocDescriptorsetSlot( struct descriptor_set_allloc_s *alloc )
 {
 	if( alloc->blocks == NULL || alloc->blockIndex == RESERVE_BLOCK_SIZE ) {
 		struct descriptor_set_slot_s *block = calloc( RESERVE_BLOCK_SIZE, sizeof( struct descriptor_set_slot_s ) );
@@ -13,7 +12,7 @@ static struct descriptor_set_slot_s *ReserveDescriptorSetSlot( struct descriptor
 	return alloc->blocks[arrlen( alloc->blocks ) - 1] + ( alloc->blockIndex++ );
 }
 
-static void AttachDescriptorSlot( struct descriptor_set_allloc_s *alloc, struct descriptor_set_slot_s *slot )
+void AttachDescriptorSlot( struct descriptor_set_allloc_s *alloc, struct descriptor_set_slot_s *slot )
 {
 	assert( slot );
 	{
@@ -23,7 +22,7 @@ static void AttachDescriptorSlot( struct descriptor_set_allloc_s *alloc, struct 
 			alloc->queueEnd->quNext = slot;
 		}
 		alloc->queueEnd = slot;
-		if(!alloc->queueBegin) {
+		if( !alloc->queueBegin ) {
 			alloc->queueBegin = slot;
 		}
 	}
@@ -39,8 +38,7 @@ static void AttachDescriptorSlot( struct descriptor_set_allloc_s *alloc, struct 
 	}
 }
 
-
-static void DetachDescriptorSlot( struct descriptor_set_allloc_s *alloc, struct descriptor_set_slot_s *slot )
+void DetachDescriptorSlot( struct descriptor_set_allloc_s *alloc, struct descriptor_set_slot_s *slot )
 {
 	assert( slot );
 	// remove from queue
@@ -83,9 +81,8 @@ static void DetachDescriptorSlot( struct descriptor_set_allloc_s *alloc, struct 
 	}
 }
 
-struct descriptor_set_result_s ResolveDescriptorSet( struct nri_backend_s *backend, struct frame_cmd_buffer_s *cmd, NriPipelineLayout* layout, uint32_t setIndex, struct descriptor_set_allloc_s *alloc, uint32_t hash )
+struct descriptor_set_result_s ResolveDescriptorSet( struct RIDevice_s *device, struct descriptor_set_allloc_s *alloc, uint32_t frameCount, uint32_t hash )
 {
-	NriDescriptorPool *descriptorPool = NULL;
 	struct descriptor_set_result_s result = { 0 };
 	const size_t hashIndex = hash % ALLOC_HASH_RESERVE;
 	for( struct descriptor_set_slot_s *c = alloc->hashSlots[hashIndex]; c; c = c->hNext ) {
@@ -112,69 +109,57 @@ struct descriptor_set_result_s ResolveDescriptorSet( struct nri_backend_s *backe
 			}
 			alloc->queueEnd = c;
 
-			c->frameCount = cmd->frameCount;
-			result.set = c->descriptorSet;
+			c->frameCount = frameCount;
+			result.set = c;
 			result.found = true;
 			assert(result.set);
 			return result;
 		}
 	}
 
-	if( alloc->queueBegin && cmd->frameCount > alloc->queueBegin->frameCount + NUMBER_FRAMES_FLIGHT ) {
+	if( alloc->queueBegin && frameCount > alloc->queueBegin->frameCount + alloc->framesInFlight) {
 		struct descriptor_set_slot_s *slot = alloc->queueBegin;
 		DetachDescriptorSlot( alloc, slot );
-		slot->frameCount = cmd->frameCount;
+		slot->frameCount = frameCount;
 		slot->hash = hash;
 		AttachDescriptorSlot( alloc, slot );
-		result.set = slot->descriptorSet;
+		result.set = slot;
 		result.found = false;
 		assert(result.set);
 		return result;
 	}
 
 	if( arrlen( alloc->reservedSlots ) == 0 ) {
-		const NriDescriptorPoolDesc poolDesc = { .descriptorSetMaxNum = DESCRIPTOR_MAX_SIZE,
-												 .samplerMaxNum = alloc->config.samplerMaxNum * DESCRIPTOR_MAX_SIZE,
-												 .constantBufferMaxNum = alloc->config.constantBufferMaxNum * DESCRIPTOR_MAX_SIZE,
-												 .dynamicConstantBufferMaxNum = alloc->config.dynamicConstantBufferMaxNum * DESCRIPTOR_MAX_SIZE,
-												 .textureMaxNum = alloc->config.textureMaxNum * DESCRIPTOR_MAX_SIZE,
-												 .storageTextureMaxNum = alloc->config.storageTextureMaxNum * DESCRIPTOR_MAX_SIZE,
-												 .bufferMaxNum = alloc->config.bufferMaxNum * DESCRIPTOR_MAX_SIZE,
-												 .storageBufferMaxNum = alloc->config.storageBufferMaxNum * DESCRIPTOR_MAX_SIZE,
-												 .structuredBufferMaxNum = alloc->config.structuredBufferMaxNum * DESCRIPTOR_MAX_SIZE,
-												 .storageStructuredBufferMaxNum = alloc->config.storageStructuredBufferMaxNum * DESCRIPTOR_MAX_SIZE,
-												 .accelerationStructureMaxNum = alloc->config.accelerationStructureMaxNum * DESCRIPTOR_MAX_SIZE };
-		NRI_ABORT_ON_FAILURE( backend->coreI.CreateDescriptorPool( backend->device, &poolDesc, &descriptorPool ) );
-		NriDescriptorSet* sets[DESCRIPTOR_MAX_SIZE];
-		backend->coreI.AllocateDescriptorSets( descriptorPool, layout, setIndex, sets, DESCRIPTOR_MAX_SIZE, 0 );
-		arrpush(alloc->pools, descriptorPool);
-		for( size_t i = 0; i < DESCRIPTOR_MAX_SIZE; i++ ) {
-			struct descriptor_set_slot_s *slot = ReserveDescriptorSetSlot( alloc );
-			assert(sets[i]);
-			slot->descriptorSet = sets[i];
-			arrpush( alloc->reservedSlots, slot );
-		}
+		alloc->descriptorAllocator(device, alloc);
+		assert(arrlen(alloc->reservedSlots) > 0); // we didn't reserve any slots ...
 	}
 	struct descriptor_set_slot_s *slot = arrpop( alloc->reservedSlots );
 	slot->hash = hash;
-	slot->frameCount = cmd->frameCount;
+	slot->frameCount = frameCount;
+	
+	//device->coreI.SetDescriptorSetDebugName(slot->descriptorSet, alloc->debugName);
 
 	AttachDescriptorSlot( alloc, slot );
-	result.set = slot->descriptorSet;
-	backend->coreI.SetDescriptorSetDebugName(slot->descriptorSet, alloc->debugName);
+	result.set = slot;
 	result.found = false;
 	assert(result.set);
 	return result;
 }
 
-void FreeDescriptorSetAlloc( struct nri_backend_s *backend, struct descriptor_set_allloc_s *alloc )
+void FreeDescriptorSetAlloc( struct RIDevice_s *device, struct descriptor_set_allloc_s *alloc )
 {
+#if ( DEVICE_IMPL_VULKAN )
 	for( size_t i = 0; i < arrlen( alloc->blocks ); i++ ) {
+		// TODO: do i need to free indivudal descriptor sets or can i just free the entire pool
+		// for(size_t blockIdx = 0; blockIdx < RESERVE_BLOCK_SIZE; blockIdx++) {
+		//	vkFreeDescriptorSets(device->vk.device, alloc->blocks[i]->vk.pool, )
+		//}
 		free( alloc->blocks[i] );
 	}
 	arrfree( alloc->blocks );
 	for( size_t i = 0; i < arrlen( alloc->pools ); i++ ) {
-		backend->coreI.DestroyDescriptorPool( alloc->pools[i] );
+		vkDestroyDescriptorPool( device->vk.device, alloc->pools[i].vk.handle, NULL );
 	}
 	arrfree( alloc->pools );
+#endif
 }

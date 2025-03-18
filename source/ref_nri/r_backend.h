@@ -47,24 +47,24 @@ void RB_GetDepthRange( float* depthmin, float *depthmax );
 void RB_DepthOffset( bool enable );
 void RB_ClearDepth( float depth );
 void RB_Cull( int cull );
-void RB_SetState_2(struct frame_cmd_buffer_s *cmd, int state );
-void RB_FlipFrontFace( struct frame_cmd_buffer_s* cmd);
+void RB_SetState_2(struct FrameState_s *cmd, int state );
+void RB_FlipFrontFace( struct FrameState_s* cmd);
 void RB_Scissor( int x, int y, int w, int h );
 void RB_GetScissor( int *x, int *y, int *w, int *h );
 void RB_SetZClip( float zNear, float zFar );
 
 void RB_BindVBO( int id, int primitive);
 
-void RB_AddDynamicMesh(struct frame_cmd_buffer_s* cmd, const entity_t *entity, const shader_t *shader,
+void RB_AddDynamicMesh(struct FrameState_s* cmd, const entity_t *entity, const shader_t *shader,
 	const struct mfog_s *fog, const struct portalSurface_s *portalSurface, unsigned int shadowBits,
 	const struct mesh_s *mesh, int primitive, float x_offset, float y_offset );
-void RB_FlushDynamicMeshes(struct frame_cmd_buffer_s* cmd);
+void RB_FlushDynamicMeshes(struct FrameState_s* cmd);
 
-void RB_DrawElements(struct frame_cmd_buffer_s *cmd, int firstVert, int numVerts, int firstElem, int numElems, int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems );
+void RB_DrawElements(struct FrameState_s *cmd, int firstVert, int numVerts, int firstElem, int numElems, int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems );
 void RB_DrawElementsInstanced( int firstVert, int numVerts, int firstElem, int numElems,
 	int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems,
 	int numInstances, instancePoint_t *instances );
-void RB_DrawShadedElements_2( struct frame_cmd_buffer_s *cmd,
+void RB_DrawShadedElements_2( struct FrameState_s *cmd,
 							  int firstVert,
 							  int numVerts,
 							  int firstElem,
@@ -75,7 +75,7 @@ void RB_DrawShadedElements_2( struct frame_cmd_buffer_s *cmd,
 							  int numShadowElems );
 
 // shader
-void RB_BindShader(struct frame_cmd_buffer_s* frame,  const entity_t *e, const struct shader_s *shader, const struct mfog_s *fog );
+void RB_BindShader(struct FrameState_s* frame,  const entity_t *e, const struct shader_s *shader, const struct mfog_s *fog );
 void RB_SetLightstyle( const struct superLightStyle_s *lightStyle );
 void RB_SetDlightBits( unsigned int dlightBits );
 void RB_SetShadowBits( unsigned int shadowBits );

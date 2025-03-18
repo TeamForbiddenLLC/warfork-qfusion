@@ -40,7 +40,7 @@ jobs:
         working-directory: ./source
         run: |
           export CC=clang-11 CXX=clang++-11
-          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Release
+          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Release -DUSE_PACKAGE_ASSETS=1
           cd build
           make -j8
 
@@ -49,10 +49,14 @@ jobs:
         working-directory: ./source
         run: |
           export CC=clang-11 CXX=clang++-11
-          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Debug 
+          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Debug -DUSE_PACKAGE_ASSETS=1
           cd build
           make -j8
 
+      - name: Package Assets
+        working-directory: ./source/build
+        run: make deploy -j8
+          
       - name: Unit Test
         working-directory: ./source/build/warfork-qfusion
         shell: bash
@@ -67,7 +71,7 @@ jobs:
         run: tar --exclude='*.a' --exclude='base*/*.a' --exclude='libs/*.a' --exclude='test' -zcvf ../${{matrix.config.name}}.tar.gz *
 
       - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{matrix.config.name}}
           path: source/build/${{matrix.config.name}}.tar.gz
@@ -150,7 +154,7 @@ jobs:
           done
 
       - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{matrix.config.name}}
           path: source/build/${{matrix.config.name}}.tar.gz
@@ -165,7 +169,7 @@ jobs:
               name: "win-x86_64-Release",
               vs_version: "Visual Studio 16 2019",
               type: "release",
-              cmake_args: "-DBUILD_STEAMLIB=1",
+              cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1",
               build_folder: "Release",
             }
           - {
@@ -173,7 +177,7 @@ jobs:
               name: "win-x86_64-Debug",
               vs_version: "Visual Studio 16 2019",
               type: "debug",
-              cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON",
+              cmake_args: "-DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON -DUSE_GRAPHICS_NRI=1",
               build_folder: "Debug",
             }
 
@@ -197,17 +201,22 @@ jobs:
         if: matrix.config.type == 'debug'
         working-directory: .\source
         run: |
-          cmake -B ./build ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1
+          cmake -B ./build ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DUSE_PACKAGE_ASSETS=1
           cd build
           msbuild qfusion.sln /p:configuration=Debug /maxcpucount:8
+
       - name: Building Release
         if: matrix.config.type == 'release'
         working-directory: .\source
         run: |
-          cmake -B ./build  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RELEASE
+          cmake -B ./build  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RELEASE -DUSE_PACKAGE_ASSETS=1
           cd build
           msbuild qfusion.sln /p:configuration=Release /maxcpucount:8
 
+      - name: Package Assets
+        working-directory: .\source\build
+        run: cmake --build . --target deploy --config ${{matrix.config.build_folder}}
+          
       - name: Unit Test
         shell: bash
         working-directory: .\source\build\warfork-qfusion\${{matrix.config.build_folder}}
@@ -222,7 +231,7 @@ jobs:
         run: 7z a ..\..\${{matrix.config.name}}.zip * '-xr!*.exp' '-xr!*.lib' '-xr!test'
 
       - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{matrix.config.name}}
           path: source\build\${{matrix.config.name}}.zip

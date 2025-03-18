@@ -24,6 +24,7 @@ DECLARE_TYPEDEF_METHOD( bool, FS_IsExplicitPurePak, const char *pakname, bool *w
 DECLARE_TYPEDEF_METHOD( int, FS_Read, void *buffer, size_t len, int file );
 DECLARE_TYPEDEF_METHOD( int, FS_Print, int file, const char *msg );
 DECLARE_TYPEDEF_METHOD( int, FS_Printf, int file, const char *format, ... );
+DECLARE_TYPEDEF_METHOD( int, FS_vPrintf, int file, const char *format, va_list );
 DECLARE_TYPEDEF_METHOD( int, FS_Write, const void *buffer, size_t len, int file );
 DECLARE_TYPEDEF_METHOD( int, FS_Tell, int file );
 DECLARE_TYPEDEF_METHOD( int, FS_Seek, int file, int offset, int whence );
@@ -109,7 +110,7 @@ struct fs_import_s {
 	FS_IsExplicitPurePakFn FS_IsExplicitPurePak;
 	FS_ReadFn FS_Read;
 	FS_PrintFn FS_Print;
-	FS_PrintfFn FS_Printf;
+	FS_vPrintfFn FS_vPrintf;
 	FS_WriteFn FS_Write;
 	FS_TellFn FS_Tell;
 	FS_SeekFn FS_Seek;
@@ -181,10 +182,11 @@ int FS_Printf( int file, const char *format, ...){
 	int ret;
 	va_list args;
 	va_start(args, format);
-	ret = fs_import.FS_Printf(file, format, args);
+	ret = fs_import.FS_vPrintf( file, format, args );
 	va_end(args);
 	return ret;
 }
+int FS_vPrintf( int file, const char *format, va_list args ) { return fs_import.FS_vPrintf( file, format, args ); }
 int FS_Write( const void *buffer, size_t len, int file ){ return fs_import.FS_Write(buffer, len, file);}
 int FS_Tell( int file ){ return fs_import.FS_Tell(file);}
 int FS_Seek( int file, int offset, int whence ){ return fs_import.FS_Seek(file, offset, whence);}

@@ -9,8 +9,12 @@
 	layout(location = 6) in uvec4 a_BonesIndices;
     layout(location = 7) in vec4 a_BonesWeights;
   #else
-	layout(location = 6) in vec4 a_LightmapCoord01;
-	layout(location = 7) in vec4 a_LightmapCoord23;
+    #ifdef NUM_LIGHTMAPS
+		layout(location = 6) in vec4 a_LightmapCoord01;
+		#if NUM_LIGHTMAPS > 2
+			layout(location = 7) in vec4 a_LightmapCoord23;
+		#endif
+	#endif
   #endif
   
   	#ifdef LIGHTMAP_ARRAYS
@@ -30,9 +34,6 @@
 	#else
 		#define a_SpriteRightUpAxis vec4(0.0)
 	#endif
-  
-  #ifdef QF_NUM_BONE_INFLUENCES
-
-  #endif
+	
 #endif // VERTEX_SHADER
 

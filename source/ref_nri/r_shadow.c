@@ -20,8 +20,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 #include "r_math_util.h"
-#include "r_nri.h"
 #include "stb_ds.h"
+
+#include "ri_conversion.h"
+#include "ri_renderer.h"
+#include "ri_vk.h"
 
 #define SHADOWMAP_ORTHO_NUDGE			8
 #define SHADOWMAP_MIN_VIEWPORT_SIZE		16
@@ -31,19 +34,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define SHADOWGROUPS_HASH_SIZE	8
 static shadowGroup_t *r_shadowGroups_hash[SHADOWGROUPS_HASH_SIZE];
 
-
 void R_ShutdownShadows() {
 	for(size_t frameIdx = 0; frameIdx < NUMBER_FRAMES_FLIGHT; frameIdx++) {
 		for(size_t portalIdx = 0; portalIdx < MAX_PORTAL_TEXTURES; portalIdx++) {
 			struct shadow_fb_s *fb = &rsh.shadowFBs[frameIdx][portalIdx];
-			if(fb->depthTexture) {
-				rsh.nri.coreI.DestroyTexture(fb->depthTexture);
-				rsh.nri.coreI.DestroyDescriptor(fb->shaderDescriptor.descriptor);
-				rsh.nri.coreI.DestroyDescriptor(fb->depthAttachment.descriptor);
+			if(IsRITextureValid(&rsh.renderer, &fb->texture )) {
+				FreeRITexture(&rsh.device, &fb->texture);
+				FreeRIDescriptor(&rsh.device, &fb->descriptor);
+#if ( DEVICE_IMPL_VULKAN )
+				vmaFreeMemory( rsh.device.vk.vmaAllocator, fb->vk.vmaAlloc);
+#endif
 			}
-			for( size_t i = 0; i < fb->numAllocations; i++ )
-				rsh.nri.coreI.FreeMemory(fb->memory[i]);
-			fb->numAllocations = 0;
 			memset(fb, 0, sizeof(struct shadow_fb_s));
 		}
 	}
@@ -314,9 +315,8 @@ static float R_SetupShadowmapView( shadowGroup_t *group, refdef_t *refdef, int l
 	if(!shadowmap)
 		return 0.0f;
 
-	const NriTextureDesc *textureDesc = rsh.nri.coreI.GetTextureDesc( shadowmap->depthTexture );
-	width = textureDesc->width >> lod;
-	height = textureDesc->height >> lod;
+	width = shadowmap->width >> lod;
+	height = shadowmap->height >> lod;
 	if( !width || !height )
 		return 0.0f;
 
@@ -345,70 +345,99 @@ static float R_SetupShadowmapView( shadowGroup_t *group, refdef_t *refdef, int l
 	// store viewport and texture parameters for group, we'll need them later as GLSL uniforms
 	group->viewportSize[0] = refdef->width;
 	group->viewportSize[1] = refdef->height;
-	group->textureSize[0] = textureDesc->width;
-	group->textureSize[1] = textureDesc->height;
+	group->textureSize[0] = shadowmap->width;
+	group->textureSize[1] = shadowmap->height;
 
 	return farClip;
 }
 
-static struct shadow_fb_s* __ResolveShadowSurface( struct frame_cmd_buffer_s* cmd,size_t i, int width, int height) {
-	struct shadow_fb_s *bestFB = &rsh.shadowFBs[cmd->frameCount % NUMBER_FRAMES_FLIGHT][i];
+static struct shadow_fb_s *__ResolveShadowSurface(size_t i, int width, int height )
+{
+	struct shadow_fb_s *bestFB = &rsh.shadowFBs[rsh.frameSetCount % NUMBER_FRAMES_FLIGHT][i];
 
-	if( bestFB->depthTexture ) {
-		const NriTextureDesc *textureDesc = rsh.nri.coreI.GetTextureDesc( bestFB->depthTexture );
-		if(textureDesc->width == width  && textureDesc->height == height) {
-			return bestFB;	
-		}
+	if( IsRITextureValid( &rsh.renderer, &bestFB->texture ) && bestFB->width == width && bestFB->height == height ) {
+		return bestFB;
 	}
+	bestFB->width = width;
+	bestFB->height = height;
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		assert( RI_VK_DESCRIPTOR_IS_IMAGE( bestFB->descriptor ) );
+		struct r_frame_set_s *activeset = R_GetActiveFrameSet();
 
-	if( bestFB->depthTexture ) 
-		arrpush( cmd->freeTextures, bestFB->depthTexture );
-	if( bestFB->depthAttachment.descriptor ) 
-		arrpush( cmd->frameTemporaryDesc, bestFB->depthAttachment.descriptor );
-	if( bestFB->shaderDescriptor.descriptor )
-		arrpush( cmd->frameTemporaryDesc, bestFB->shaderDescriptor.descriptor );
-	for( size_t i = 0; i < bestFB->numAllocations; i++ )
-		arrpush( cmd->freeMemory, bestFB->memory[i] );
-	bestFB->numAllocations = 0;
-	bestFB->depthTexture = NULL;
+		struct RIFree_s freeSlot = { 0 };
+		if(bestFB->descriptor.vk.image.imageView) {
+			freeSlot.type = RI_FREE_VK_IMAGEVIEW;
+			freeSlot.vkImageView = bestFB->descriptor.vk.image.imageView;
+			arrpush( activeset->freeList, freeSlot );
+		}
+		if( bestFB->vk.vmaAlloc ) {
+			freeSlot.type = RI_FREE_VK_VMA_AllOC;
+			freeSlot.vmaAlloc = bestFB->vk.vmaAlloc;
+			arrpush( activeset->freeList, freeSlot );
+		}
+		if( bestFB->texture.vk.image ) {
+			freeSlot.type = RI_FREE_VK_IMAGE;
+			freeSlot.vkImage = bestFB->texture.vk.image;
+			arrpush( activeset->freeList, freeSlot );
+		}
+		memset(bestFB, 0, sizeof(struct shadow_fb_s));
+		
+		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+		VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+		VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
+		info.flags = flags;
+		info.imageType = VK_IMAGE_TYPE_2D;
+		info.format = RIFormatToVK( ShadowDepthFormat );
+		info.extent.width = width;
+		info.extent.height = height;
+		info.extent.depth = 1;
+		info.mipLevels = 1;
+		info.arrayLayers =  1;
+		info.samples = 1;
+		info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		info.pQueueFamilyIndices = queueFamilies;
+		VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		VmaAllocationCreateInfo mem_reqs = { 0 };
+		mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 
-	const NriTextureDesc depthTextureDesc = { .width = width,
-											  .height = height,
-											  .depth = 1,
-											  .usage = NriTextureUsageBits_DEPTH_STENCIL_ATTACHMENT | NriTextureUsageBits_SHADER_RESOURCE,
-											  .layerNum = 1,
-											  .format = ShadowDepthFormat,
-											  .sampleNum = 1,
-											  .type = NriTextureType_TEXTURE_2D,
-											  .mipNum = 1 };
-	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture( rsh.nri.device, &depthTextureDesc, &bestFB->depthTexture ) );
-	NriTexture *textures[] = { bestFB->depthTexture };
-	const NriResourceGroupDesc resourceGroupDesc = {
-		.textureNum = Q_ARRAY_COUNT( textures ),
-		.textures = textures,
-		.memoryLocation = NriMemoryLocation_DEVICE,
-	};
-	const size_t numAllocations = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
-	assert( numAllocations <= Q_ARRAY_COUNT( bestFB->memory ) );
-	bestFB->numAllocations = numAllocations;
-	NRI_ABORT_ON_FAILURE( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, bestFB->memory ) )
-	NriDescriptor *descriptor = NULL;
-	const NriTexture2DViewDesc textureAttachmentViewDesc = { .texture = bestFB->depthTexture, .viewType = NriTexture2DViewType_SHADER_RESOURCE_2D, .format = depthTextureDesc.format };
-	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureAttachmentViewDesc, &descriptor ) );
-	bestFB->shaderDescriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
-	const NriTexture2DViewDesc depthAttachmentViewDesc = { .texture = bestFB->depthTexture, .viewType = NriTexture2DViewType_DEPTH_STENCIL_ATTACHMENT, .format = depthTextureDesc.format };
-	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &depthAttachmentViewDesc, &descriptor ) );
-	bestFB->depthAttachment = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
-	return bestFB;
+		if( !VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &bestFB->texture.vk.image, &bestFB->vk.vmaAlloc, NULL ) ) ) {
+			return NULL;
+		}
+		VkImageSubresourceRange subresource = {
+			VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1,
+		};
+
+		VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
+		usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+
+		VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+		createInfo.pNext = &usageInfo;
+		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		createInfo.format = RIFormatToVK( ShadowDepthFormat );
+		createInfo.subresourceRange = subresource;
+		createInfo.image = bestFB->texture.vk.image;
+		
+		bestFB->descriptor.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
+		bestFB->descriptor.texture = &bestFB->texture;
+		bestFB->descriptor.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		bestFB->descriptor.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->descriptor.vk.image.imageView ) );
+		UpdateRIDescriptor( &rsh.device, &bestFB->descriptor );
+
+		return bestFB;
+	}
+#endif
+	return NULL;
 }
 
-
 /*
-* R_DrawShadowmaps
-*/
-void R_DrawShadowmaps( struct frame_cmd_buffer_s* frame )
+ * R_DrawShadowmaps
+ */
+void R_DrawShadowmaps(struct FrameState_s* cmd)
 {
-	const struct frame_cmd_save_attachment_s stash = R_CmdState_StashAttachment(frame); 
 	float lodScale;
 	vec3_t lodOrigin;
 	vec3_t viewerOrigin;
@@ -428,9 +457,18 @@ void R_DrawShadowmaps( struct frame_cmd_buffer_s* frame )
 	if( !shadowBits )
 		return;
 
-	if( !R_PushRefInst(frame) ) {
+	struct FrameState_s sub = { 0 };
+	if( !R_PushRefInst( &sub ) ) {
 		return;
 	}
+	R_InitSubpass( cmd, &sub );
+#if ( DEVICE_IMPL_VULKAN )
+	VkCommandBufferInheritanceInfo inheritanceInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO };
+	VkCommandBufferBeginInfo info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+	info.pInheritanceInfo = &inheritanceInfo;
+	info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	vkBeginCommandBuffer( sub.handle.vk.cmd, &info );
+#endif
 
 	lodScale = rn.lod_dist_scale_for_fov;
 	VectorCopy( rn.lodOrigin, lodOrigin );
@@ -439,8 +477,7 @@ void R_DrawShadowmaps( struct frame_cmd_buffer_s* frame )
 	refdef = rn.refdef;
 
 	// find lighting group containing entities with same lightingOrigin as ours
-	for(size_t i = 0; i < rsc.numShadowGroups; i++ )
-	{
+	for( size_t i = 0; i < rsc.numShadowGroups; i++ ) {
 		if( !shadowBits ) {
 			break;
 		}
@@ -458,12 +495,12 @@ void R_DrawShadowmaps( struct frame_cmd_buffer_s* frame )
 
 		// calculate LOD for shadowmap
 		dist = DistanceFast( group->origin, lodOrigin );
-		lod = (int)(dist * lodScale) / group->projDist - SHADOWMAP_LODBIAS;
+		lod = (int)( dist * lodScale ) / group->projDist - SHADOWMAP_LODBIAS;
 		if( lod < 0 ) {
 			lod = 0;
 		}
 		// allocate/resize the texture if needed
-		struct shadow_fb_s* fb = __ResolveShadowSurface(frame, i, rsc.refdef.width, rsc.refdef.height);	
+		struct shadow_fb_s *fb = __ResolveShadowSurface( i, rsc.refdef.width, rsc.refdef.height );
 		group->shadowmap = fb;
 
 		farClip = R_SetupShadowmapView( group, &refdef, lod );
@@ -475,9 +512,8 @@ void R_DrawShadowmaps( struct frame_cmd_buffer_s* frame )
 		if( refdef.width < SHADOWMAP_MIN_VIEWPORT_SIZE || refdef.height < SHADOWMAP_MIN_VIEWPORT_SIZE ) {
 			continue;
 		}
-		const NriTextureDesc *textureDesc = rsh.nri.coreI.GetTextureDesc( fb->depthTexture );
 		rn.farClip = farClip;
-		rn.renderFlags = RF_SHADOWMAPVIEW|RF_FLIPFRONTFACE;
+		rn.renderFlags = RF_SHADOWMAPVIEW | RF_FLIPFRONTFACE;
 		rn.clipFlags |= 16; // clip by far plane too
 		rn.meshlist = &r_shadowlist;
 		rn.portalmasklist = NULL;
@@ -488,71 +524,91 @@ void R_DrawShadowmaps( struct frame_cmd_buffer_s* frame )
 
 		// 3 pixels border on each side to prevent nasty stretching/bleeding of shadows,
 		// also accounting for smoothing done in the fragment shader
-		Vector4Set( rn.viewport, refdef.x + 3,refdef.y + textureDesc->height - refdef.height + 3, refdef.width - 6, refdef.height - 6 );
-		Vector4Set( rn.scissor, refdef.x, refdef.y, textureDesc->width, textureDesc->height );
+		Vector4Set( rn.viewport, refdef.x + 3, refdef.y + fb->height - refdef.height + 3, refdef.width - 6, refdef.height - 6 );
+		Vector4Set( rn.scissor, refdef.x, refdef.y, fb->width, fb->height );
 
-		const struct NriViewport viewports[] = {
-			( NriViewport ){ 
-				.x = rn.viewport[0], 
-				.y = rn.viewport[1], 
-				.width = rn.viewport[2], 
-				.height = rn.viewport[3], 
-				.depthMin = 0.0f, 
-				.depthMax = 1.0f,
-				.originBottomLeft = true
-			} 
-		};
-		const struct NriRect scissors[] = { (NriRect){
-			.x = rn.scissor[0],
-			.y = rn.scissor[1],
-			.width = rn.scissor[2],
-			.height = rn.scissor[3],
-			
-		} };
-		FR_CmdSetTextureAttachment( frame, NULL, NULL, viewports, scissors, 0, ShadowDepthFormat, fb->depthAttachment.descriptor );
-	
-		const NriAccessLayoutStage layoutTransition = (NriAccessLayoutStage){	
-			.layout = NriLayout_DEPTH_STENCIL_ATTACHMENT, 
-			.access = NriAccessBits_DEPTH_STENCIL_ATTACHMENT_WRITE, 
-			.stages = NriStageBits_DEPTH_STENCIL_ATTACHMENT        
-		};
+		struct RIViewport_s viewport = { 0 };
+		viewport.x = rn.viewport[0]; 
+		viewport.y = rn.viewport[1];
+		viewport.width = rn.viewport[2]; 
+		viewport.height = rn.viewport[3];
+		viewport.depthMax = 1.0f;
+		viewport.originBottomLeft = true;
+		FR_CmdSetViewport( &sub, viewport );
+
+		struct RIRect_s scissor = { 0 };
+		scissor.x = rn.scissor[0];
+		scissor.y = rn.scissor[1];
+		scissor.width = rn.scissor[2];
+		scissor.height = rn.scissor[3];
+		FR_CmdSetScissor( &sub, scissor );
 
 		{
-			NriTextureBarrierDesc transitionBarriers = { 0 };
-			transitionBarriers.texture = fb->depthTexture;
-			transitionBarriers.after = layoutTransition;
-
-			NriBarrierGroupDesc barrierGroupDesc = { 0 };
-			barrierGroupDesc.textureNum = 1;
-			barrierGroupDesc.textures = &transitionBarriers;
-			rsh.nri.coreI.CmdBarrier( frame->cmd, &barrierGroupDesc );
+			VkImageMemoryBarrier2 imageBarriers[1] = { 0 };
+			imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+			imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+			imageBarriers[0].srcAccessMask = VK_ACCESS_2_NONE;
+			imageBarriers[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+			imageBarriers[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+			imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			imageBarriers[0].image = rsh.depthAttachment[rsh.vk.swapchainIndex].texture->vk.image;
+			imageBarriers[0].subresourceRange = (VkImageSubresourceRange){
+				VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
+			};
+			VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+			dependencyInfo.imageMemoryBarrierCount = 1;
+			dependencyInfo.pImageMemoryBarriers = imageBarriers;
+			vkCmdPipelineBarrier2( rsh.frame.handle.vk.cmd, &dependencyInfo );
 		}
 
-		frame->state.pipelineLayout.flippedViewport = true;
-		R_RenderView( frame, &refdef );
-		frame->state.pipelineLayout.flippedViewport = false;
+		VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+		RI_VK_FillDepthAttachment( &depthStencil, &fb->descriptor, true );
+		VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
+		renderingInfo.flags = 0;
+		renderingInfo.renderArea.extent.width = fb->width;
+		renderingInfo.renderArea.extent.height = fb->height;
+		renderingInfo.layerCount = 1;
+		renderingInfo.viewMask = 0;
+		renderingInfo.colorAttachmentCount = 0;
+		renderingInfo.pDepthAttachment = &depthStencil;
+		renderingInfo.pStencilAttachment = NULL;
+		vkCmdBeginRendering( sub.handle.vk.cmd, &renderingInfo );
+		enum RI_Format_e attachments[] = { 0 };
+		FR_ConfigurePipelineAttachment( &sub.pipeline, attachments, Q_ARRAY_COUNT( attachments ), ShadowDepthFormat );
+
+		sub.pipeline.flippedViewport = true;
+		R_RenderView( &sub, &refdef );
+		vkCmdEndRendering( sub.handle.vk.cmd );
 
 		{
-			NriTextureBarrierDesc transitionBarriers = { 0 };
-			transitionBarriers.texture = fb->depthTexture;
-			transitionBarriers.before = layoutTransition;
-			transitionBarriers.after = ( NriAccessLayoutStage ){ 
-				.layout = NriLayout_SHADER_RESOURCE, 
-				.access = NriAccessBits_SHADER_RESOURCE, 
-				.stages = NriStageBits_FRAGMENT_SHADER 
+			VkImageMemoryBarrier2 imageBarriers[1] = { 0 };
+			imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+			imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+			imageBarriers[0].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+			imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageBarriers[0].dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+			imageBarriers[0].dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+			imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			imageBarriers[0].image = rsh.depthAttachment[rsh.vk.swapchainIndex].texture->vk.image;
+			imageBarriers[0].subresourceRange = (VkImageSubresourceRange){
+				VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
 			};
-
-			NriBarrierGroupDesc barrierGroupDesc = { 0 };
-			barrierGroupDesc.textureNum = 1;
-			barrierGroupDesc.textures = &transitionBarriers;
-			rsh.nri.coreI.CmdBarrier( frame->cmd, &barrierGroupDesc );
+			VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+			dependencyInfo.imageMemoryBarrierCount = 1;
+			dependencyInfo.pImageMemoryBarriers = imageBarriers;
+			vkCmdPipelineBarrier2( sub.handle.vk.cmd, &dependencyInfo );
 		}
 
 		Matrix4_Copy( rn.cameraProjectionMatrix, group->cameraProjectionMatrix );
 
 		rsc.renderedShadowBits |= group->bit;
 	}
+	vkEndCommandBuffer( sub.handle.vk.cmd );
 
-	R_PopRefInst(frame);
-	R_CmdState_RestoreAttachment(frame, &stash);
+	R_PopRefInst( &sub);
 }
