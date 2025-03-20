@@ -14,26 +14,16 @@ struct RIBlockMem_s RIUniformScratchAllocHandler( struct RIDevice_s *device, str
 		stageBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		stageBufferCreateInfo.queueFamilyIndexCount = 0;
 		stageBufferCreateInfo.pQueueFamilyIndices = NULL;
-		//VK_WrapResult( vkCreateBuffer( device->vk.device, &stageBufferCreateInfo, NULL, &mem.vk.buffer ) );
 
 		VmaAllocationInfo allocationInfo = { 0 };
 		VmaAllocationCreateInfo allocInfo = { 0 };
 		allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-		allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-		
+		//allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+		allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+    	VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT |
+    	VMA_ALLOCATION_CREATE_MAPPED_BIT;	
 		VK_WrapResult(vmaCreateBuffer(device->vk.vmaAllocator, &stageBufferCreateInfo, &allocInfo, &mem.vk.buffer, &mem.vk.allocator, &allocationInfo));
-
-//		vmaAllocateMemoryForBuffer( device->vk.vmaAllocator, mem.vk.buffer, &allocInfo, &mem.vk.allocator, &allocationInfo );
-//		vmaBindBufferMemory2( device->vk.vmaAllocator, mem.vk.allocator, 0, mem.vk.buffer, NULL );
 		mem.pMappedAddress = allocationInfo.pMappedData;
-
-		//VkBufferViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO };
-		//createInfo.flags = (VkBufferViewCreateFlags)0;
-		//createInfo.buffer = mem.vk.buffer;
-		//createInfo.format = VK_FORMAT_UNDEFINED;
-		//createInfo.offset = 0;
-		//createInfo.range = scratch->blockSize;
-		//VK_WrapResult( vkCreateBufferView( device->vk.device, &createInfo, NULL, &mem.vk.blockView ) );
 	}
 #endif
 	return mem;
@@ -121,3 +111,11 @@ struct RIBufferScratchAllocReq_s RIAllocBufferFromScratchAlloc( struct RIDevice_
 	pool->blockOffset += alignReqSize;
 	return req;
 }
+
+void RIFinishScrachReq( struct RIDevice_s *device, struct RIBufferScratchAllocReq_s *req )
+{
+#if ( DEVICE_IMPL_VULKAN )
+	VK_WrapResult( vmaFlushAllocation( device->vk.vmaAllocator, req->block.vk.allocator, req->bufferOffset, req->bufferSize ) );
+#endif
+}
+

@@ -821,52 +821,8 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		image->samplerBinding = R_ResolveSamplerDescriptor( image->flags );
 		assert(image->samplerBinding);
 
-		//RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	}
 #endif
-	//NriTextureDesc textureDesc = { 
-	//	.width = R_KTXWidth( &ktxContext ),
-	//	.height = R_KTXHeight( &ktxContext ),
-	//	.usage = __R_NRITextureUsageBits( image->flags ),
-	//	.layerNum = ( image->flags & IT_CUBEMAP ) ? 6 : 1,
-	//	.depth = 1,
-	//	.format = R_ToNRIFormat( dstFormat ),
-	//	.sampleNum = 1,
-	//	.type = NriTextureType_TEXTURE_2D,
-	//	.mipNum = numberOfMipLevels 
-	//};
-
-	//NriResourceGroupDesc resourceGroupDesc = {
-	//	.textureNum = 1,
-	//	.textures = &image->texture,
-	//	.memoryLocation = NriMemoryLocation_DEVICE,
-	//};
-
-	//if( rsh.nri.coreI.CreateTexture( rsh.nri.device, &textureDesc, &image->texture ) != NriResult_SUCCESS ) {
-	//	ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name );
-	//	return false;
-	//}
-	//
-	//const uint32_t allocationNum = rsh.nri.helperI.CalculateAllocationNumber( rsh.nri.device, &resourceGroupDesc );
-	//assert( allocationNum <= Q_ARRAY_COUNT( image->memory ) );
-	//image->numAllocations = allocationNum;
-	//if( rsh.nri.helperI.AllocateAndBindMemory( rsh.nri.device, &resourceGroupDesc, image->memory ) ) {
-	//	ri.Com_Printf( S_COLOR_YELLOW "Failed Allocation: %s\n", image->name );
-	//	return false;
-	//}
-
-	//NriTexture2DViewDesc textureViewDesc = {
-	//	.texture = image->texture,
-	//	.viewType = (image->flags & IT_CUBEMAP) ? NriTexture2DViewType_SHADER_RESOURCE_CUBE: NriTexture2DViewType_SHADER_RESOURCE_2D,
-	//	.format = textureDesc.format
-	//};
-	//NriDescriptor* descriptor = NULL;
-	//NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateTexture2DView( &textureViewDesc, &descriptor) );
-	//image->descriptor = R_CreateDescriptorWrapper( &rsh.nri, descriptor );
-	//image->samplerDescriptor = R_CreateDescriptorWrapper(&rsh.nri, R_ResolveSamplerDescriptor(image->flags)); 
-	//assert(image->samplerDescriptor.descriptor);
-	//rsh.nri.coreI.SetTextureDebugName( image->texture, image->name.buf );
-
 	if( R_KTXIsCompressed( &ktxContext ) ) {
 		struct texture_buf_s uncomp = { 0 };
 		for( size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx ) {
@@ -879,8 +835,7 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 			};
 			T_ReallocTextureBuf( &uncomp, &desc );
 			DecompressETC1( tex->buffer, tex->width, tex->height, uncomp.buffer, false );
-			__R_CopyTextureDataTexture(image, faceIdx, 0, 0, 0, uncomp.width, uncomp.height, R_FORMAT_RGB8_UNORM, uncomp.buffer);
-			
+			__R_CopyTextureDataTexture(image, faceIdx, 0, 0, 0, uncomp.width, uncomp.height, RI_FORMAT_RGB8_UNORM, uncomp.buffer);
 		}
 		T_FreeTextureBuf(&uncomp);
 		image->samples = 3;
@@ -894,7 +849,6 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		image->samples = RT_NumberChannels( definition );
 
 		enum texture_logical_channel_e swizzleChannel[R_LOGICAL_C_MAX] = { 0 };
-		// R_ResourceTransitionTexture(image->texture, (NriAccessLayoutStage){} );
 
 		for( uint16_t mipIndex = 0; mipIndex < numberOfMipLevels; mipIndex++ ) {
 			for( uint32_t faceIndex = 0; faceIndex < numberOfFaces; faceIndex++ ) {
@@ -914,7 +868,6 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 			}
 		}
 	}
-
 
 	R_KTXFreeContext(&ktxContext);
 	R_FreeFile( buffer );

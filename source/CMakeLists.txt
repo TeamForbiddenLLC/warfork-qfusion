@@ -59,6 +59,9 @@ OPTION(USE_SYSTEM_SDL2 "Prefer system SDL2 instead of the bundled one" OFF)
 OPTION(USE_SYSTEM_OGG "Prefer system OGG instead of the bundled one" OFF)
 OPTION(USE_SYSTEM_FREETYPE "Prefer system freetype instead of the bundled one" OFF)
 OPTION(USE_SYSTEM_VORBIS "Prefer system vorbis instead of the bundled one" OFF)
+option(USE_RENDERDOC "Build App With RenderDoc" OFF)
+
+set(RENDERDOC_API_DIR "" CACHE STRING "RenderDoc Library")
 
 set(ANGELSCRIPT_DIR ${CMAKE_HOME_DIRECTORY}/../third-party/angelscript/sdk/angelscript)
 set(ANGELSCRIPT_INCLUDE_DIR ${ANGELSCRIPT_DIR}/include/)

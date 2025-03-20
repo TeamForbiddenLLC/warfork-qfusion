@@ -15,7 +15,7 @@
 #define DESCRIPTOR_RESERVED_SIZE 64
 
 struct descriptor_set_slot_s {
-	uint32_t hash;
+	hash_t hash;
 	uint32_t frameCount;
 	// queue
 	struct descriptor_set_slot_s *quNext;
@@ -70,7 +70,7 @@ struct descriptor_set_result_s {
 struct descriptor_set_result_s ResolveDescriptorSet( struct RIDevice_s *device,
 													 struct descriptor_set_allloc_s *alloc,
 													 uint32_t frameCount,
-													 uint32_t hash );
+													 hash_t hash );
 void FreeDescriptorSetAlloc( struct RIDevice_s *device, struct descriptor_set_allloc_s *alloc );
 
 // utility
