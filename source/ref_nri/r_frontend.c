@@ -33,6 +33,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "stb_ds.h"
 
+#ifdef USE_RENDERDOC
+#include <dlfcn.h>
+#endif
+
 static ref_frontend_t rrf;
 
 static void __ShutdownSwapchainTexture();
@@ -115,7 +119,27 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	memset( &rsh, 0, sizeof( rsh ) );
 	memset( &rf, 0, sizeof( rf ) );
 	memset( &rrf, 0, sizeof( rrf ) );
-	
+
+#ifdef USE_RENDERDOC
+	{
+#if defined( _WIN32 )
+		HMODULE mod = GetModuleHandleA( "libs/renderdoc.dll" );
+		if( mod  != NULL ) {
+			pRENDERDOC_GetAPI RENDERDOC_GetAPI = (pRENDERDOC_GetAPI)GetProcAddress( mod, "RENDERDOC_GetAPI" );
+			int ret = RENDERDOC_GetAPI( eRENDERDOC_API_Version_1_1_2, (void **)&rdoc_api );
+			assert( ret == 1 );
+		}
+#else
+		void *mod = dlopen( "./libs/librenderdoc.so", RTLD_NOW | RTLD_NOLOAD );
+		if( mod) {
+			pRENDERDOC_GetAPI RENDERDOC_GetAPI = (pRENDERDOC_GetAPI)dlsym( mod, "RENDERDOC_GetAPI" );
+			int ret = RENDERDOC_GetAPI( eRENDERDOC_API_Version_1_1_2, (void **)&rsh.rdoc );
+			assert( ret == 1 );
+		}
+
+#endif
+	}
+#endif
 	rsh.registrationSequence = 1;
 	rsh.registrationOpen = false;
 
@@ -411,7 +435,6 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 					rsh.depthAttachment[i].vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 					VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &rsh.depthAttachment[i].vk.image.imageView ) );
 					UpdateRIDescriptor( &rsh.device, &rsh.colorAttachment[i] );
-					//RI_VK_InitImageView( &rsh.device, &createInfo, rsh.depthAttachment + i, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
 				}
 			}
 		}
@@ -479,10 +502,7 @@ void RF_Shutdown( bool verbose )
 
 	RB_Shutdown();
 
-	//R_ExitResourceUpload();
-
 	R_DisposeScene(&rsc);
-
 
 	for( size_t i = 0; i < NUMBER_FRAMES_FLIGHT; i++ ) {
 		struct r_frame_set_s *frameSet = &rsh.frameSets[i];
@@ -506,7 +526,6 @@ void RF_Shutdown( bool verbose )
 #if ( DEVICE_IMPL_VULKAN )
 		vkDestroySemaphore( rsh.device.vk.device, rsh.vk.frameSemaphore, NULL );
 #endif
-
 
 	__ShutdownSwapchainTexture();
 
@@ -587,8 +606,7 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 	// run cinematic passes on shaders
 	R_RunAllCinematics();
 	struct r_frame_set_s* activeSet = R_GetActiveFrameSet();
-
-	memset( &rsh.frame, 0, sizeof( rsh.frame ) ); // reset the primary cmd buffer
+	memset( &rsh.frame, 0, sizeof( struct FrameState_s ) ); // reset the frame state 
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		if( rsh.frameSetCount >= NUMBER_FRAMES_FLIGHT ) {
@@ -599,15 +617,16 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 			semaphoreWaitInfo.pValues = &waitValue;
 			VK_WrapResult( vkWaitSemaphores( rsh.device.vk.device, &semaphoreWaitInfo, 5000 * 1000000ull ) );
 			VK_WrapResult( vkResetCommandPool( rsh.device.vk.device, activeSet->vk.pool, 0 ) );
-			for(size_t  i = 0; i < arrlen(activeSet->secondaryCmd); i++) {
+			for( size_t i = 0; i < arrlen( activeSet->secondaryCmd ); i++ ) {
 				vkFreeCommandBuffers( rsh.device.vk.device, activeSet->vk.pool, 1, &activeSet->secondaryCmd[i].vk.cmd );
 			}
-			for(size_t i = 0; i < arrlen(activeSet->freeList); i++) {
-				FreeRIFree(&rsh.device, &activeSet->freeList[i]);
-			}
-			arrsetlen(activeSet->freeList, 0);
-			arrsetlen(activeSet->secondaryCmd, 0);
 		}
+		for( size_t i = 0; i < arrlen( activeSet->freeList ); i++ ) {
+			FreeRIFree( &rsh.device, &activeSet->freeList[i] );
+		}
+		RIResetScratchAlloc( &rsh.device, &activeSet->uboScratchAlloc );
+		arrsetlen( activeSet->freeList, 0 );
+		arrsetlen( activeSet->secondaryCmd, 0 );
 		{
 			rsh.vk.swapchainIndex = RISwapchainAcquireNextTexture( &rsh.device, &rsh.riSwapchain );
 			rsh.frame.handle.vk.cmd = activeSet->backBufferCmd.vk.cmd;
@@ -764,61 +783,66 @@ void RF_EndFrame( void )
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		vkCmdEndRendering( rsh.frame.handle.vk.cmd );
-		VkImageMemoryBarrier2 imageBarriers[1] = { 0 };
-		imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-		imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-		imageBarriers[0].srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-		imageBarriers[0].dstStageMask = VK_PIPELINE_STAGE_2_NONE;
-		imageBarriers[0].dstAccessMask = VK_ACCESS_2_NONE;
-		imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		imageBarriers[0].image = rsh.colorAttachment[rsh.vk.swapchainIndex].texture->vk.image;
-		imageBarriers[0].subresourceRange = (VkImageSubresourceRange){
-			VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
-		};
-		VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
-		dependencyInfo.imageMemoryBarrierCount = 1;
-		dependencyInfo.pImageMemoryBarriers = imageBarriers;
-		vkCmdPipelineBarrier2( rsh.frame.handle.vk.cmd, &dependencyInfo );
-
 		vkEndCommandBuffer( rsh.frame.handle.vk.cmd );
 
 		RI_InsertTransitionBarriers( &rsh.device, &rsh.uploader, &activeSet->primaryCmd );
 		for(size_t i = 0; i < arrlen(activeSet->secondaryCmd); i++) {
 			vkCmdExecuteCommands( activeSet->primaryCmd.vk.cmd, 1, &activeSet->secondaryCmd[i].vk.cmd);
 		}
-
 		vkCmdExecuteCommands( activeSet->primaryCmd.vk.cmd, 1, &rsh.frame.handle.vk.cmd );
+		{
+			VkImageMemoryBarrier2 imageBarriers[1] = { 0 };
+			imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+			imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+			imageBarriers[0].srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+			imageBarriers[0].dstStageMask = VK_PIPELINE_STAGE_2_NONE;
+			imageBarriers[0].dstAccessMask = VK_ACCESS_2_NONE;
+			imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			imageBarriers[0].image = rsh.colorAttachment[rsh.vk.swapchainIndex].texture->vk.image;
+			imageBarriers[0].subresourceRange = (VkImageSubresourceRange){
+				VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
+			};
+			VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+			dependencyInfo.imageMemoryBarrierCount = 1;
+			dependencyInfo.pImageMemoryBarriers = imageBarriers;
+			vkCmdPipelineBarrier2( activeSet->primaryCmd.vk.cmd, &dependencyInfo );
+		}
+
 		vkEndCommandBuffer( activeSet->primaryCmd.vk.cmd );
 
 		struct RIQueue_s *graphicsQueue = &rsh.device.queues[RI_QUEUE_GRAPHICS];
 		VkCommandBufferSubmitInfo cmdSubmitInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO };
 		cmdSubmitInfo.commandBuffer = activeSet->primaryCmd.vk.cmd;
 
-		VkSemaphoreSubmitInfo waitSem = { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
-		waitSem.stageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-		waitSem.value = rsh.uploader.syncIndex;
-		waitSem.semaphore = rsh.uploader.vk.uploadSem;
+    VkLatencySubmissionPresentIdNV presentId = {VK_STRUCTURE_TYPE_LATENCY_SUBMISSION_PRESENT_ID_NV};
+		presentId.presentID = rsh.riSwapchain.vk.presentID;
 
 		VkSubmitInfo2 submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO_2 };
 		submitInfo.pCommandBufferInfos = &cmdSubmitInfo;
 		submitInfo.commandBufferInfoCount = 1;
+		R_VK_ADD_STRUCT(&submitInfo, &presentId);	
+		//VkSemaphoreSubmitInfo waitSem = { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
+		//waitSem.stageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+		//waitSem.value = rsh.uploader.syncIndex;
+		//waitSem.semaphore = rsh.uploader.vk.uploadSem;
 
 		RI_ResourceSubmit(&rsh.device, &rsh.uploader);
 		VK_WrapResult(vkQueueSubmit2( graphicsQueue->vk.queue, 1, &submitInfo, VK_NULL_HANDLE ));
-		RISwapchainPresent( &rsh.device, &rsh.riSwapchain );
 
+		RISwapchainPresent( &rsh.device, &rsh.riSwapchain );
 		{
 			VkSemaphoreSubmitInfo signalSem = { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
 			signalSem.stageMask = VK_PIPELINE_STAGE_2_NONE;
 			signalSem.value = 1 + rsh.frameSetCount;
 			signalSem.semaphore = rsh.vk.frameSemaphore;
+
 			VkSubmitInfo2 submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO_2 };
 			submitInfo.pSignalSemaphoreInfos = &signalSem;
 			submitInfo.signalSemaphoreInfoCount = 1;
-			
+			R_VK_ADD_STRUCT(&submitInfo, &presentId);	
 			VK_WrapResult( vkQueueSubmit2( graphicsQueue->vk.queue, 1, &submitInfo, VK_NULL_HANDLE ) );
 		}
 	}

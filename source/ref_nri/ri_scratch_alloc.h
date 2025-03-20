@@ -10,9 +10,8 @@ struct RIBlockMem_s {
 	union {
 #if ( DEVICE_IMPL_VULKAN )
 		struct {
-			//VkBufferView blockView;	
 		  VkBuffer buffer;
-		  struct VmaAllocation_T * allocator;
+		  struct VmaAllocation_T *allocator;
 		} vk;
 #endif
 	};
@@ -48,13 +47,13 @@ struct RIBufferScratchAllocReq_s {
 	size_t bufferSize;
 };
 
-struct RIBlockMem_s RIUniformScratchAllocHandler(struct RIDevice_s* device, struct RIScratchAlloc_s* scratch);
+struct RIBlockMem_s RIUniformScratchAllocHandler( struct RIDevice_s *device, struct RIScratchAlloc_s *scratch );
 
 void InitRIScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s *pool, const struct RIScratchAllocDesc_s *desc );
-void FreeRIScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s *pool ); 
-void RIResetScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s  *pool );
+void FreeRIScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s *pool );
+void RIResetScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s *pool );
 
-struct RIBufferScratchAllocReq_s RIAllocBufferFromScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s  *pool, size_t reqSize );
-
+struct RIBufferScratchAllocReq_s RIAllocBufferFromScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s *pool, size_t reqSize );
+void RIFinishScrachReq( struct RIDevice_s *device, struct RIBufferScratchAllocReq_s *req );
 #endif
 

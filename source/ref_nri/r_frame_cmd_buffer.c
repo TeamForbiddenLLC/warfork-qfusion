@@ -81,15 +81,18 @@ void FR_CmdResetCommandState( struct FrameState_s *cmd, enum CmdResetBits bits)
 
 void UpdateFrameUBO( struct FrameState_s *cmd, struct RIDescriptor_s *req, void *data, size_t size )
 {
-	const hash_t hash = hash_data( HASH_INITIAL_VALUE, data, size );
-	if( req->cookie != hash ) {
+	struct r_frame_set_s* activeSet = R_GetActiveFrameSet();
+	const hash_t hash = hash_data_hsieh( HASH_INITIAL_VALUE + rsh.frameSetCount, data, size );
+	if( req->cookie != hash ) 
+	{
 		req->cookie = hash;
-		struct RIBufferScratchAllocReq_s scratchReq = RIAllocBufferFromScratchAlloc(&rsh.device, &rsh.frameSets[rsh.frameSetCount % NUMBER_FRAMES_FLIGHT].uboScratchAlloc, size);
+		struct RIBufferScratchAllocReq_s scratchReq = RIAllocBufferFromScratchAlloc(&rsh.device, &activeSet->uboScratchAlloc, size);
 		req->vk.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		req->vk.buffer.buffer = scratchReq.block.vk.buffer;
 		req->vk.buffer.offset = scratchReq.bufferOffset;
 		req->vk.buffer.range = size; 
 		memcpy(scratchReq.block.pMappedAddress + scratchReq.bufferOffset, data, size);
+		RIFinishScrachReq( &rsh.device, &scratchReq );
 	}
 }
 

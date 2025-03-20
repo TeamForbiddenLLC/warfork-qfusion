@@ -241,7 +241,11 @@ void RISwapchainPresent(struct RIDevice_s* dev, struct RISwapchain_s* swapchain)
 			signalSemaphore.semaphore = renderingFinishedSemaphore;
 			signalSemaphore.stageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 
+			VkLatencySubmissionPresentIdNV presentId = { VK_STRUCTURE_TYPE_LATENCY_SUBMISSION_PRESENT_ID_NV };
+			presentId.presentID = swapchain->vk.presentID;
+
 			VkSubmitInfo2 submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO_2 };
+			R_VK_ADD_STRUCT( &submitInfo, &presentId );
 			submitInfo.waitSemaphoreInfoCount = 1;
 			submitInfo.pWaitSemaphoreInfos = &waitSemaphore;
 			submitInfo.signalSemaphoreInfoCount = 1;

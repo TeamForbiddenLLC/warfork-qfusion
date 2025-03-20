@@ -143,7 +143,6 @@ void RB_Shutdown( void )
 			vkDestroyBuffer(rsh.device.vk.device, rb.dynamicStreams[i].vk.indexBuffer, NULL);
 			vmaFreeMemory(rsh.device.vk.vmaAllocator, rb.dynamicStreams[i].vk.indexAlloc);
 		}
-
 #endif
 	}
 	memset( rb.dynamicStreams, 0, sizeof( struct dynamic_vertex_stream_s ) * RB_DYN_STREAM_NUM );
@@ -541,8 +540,6 @@ void RB_AddDynamicMesh(struct FrameState_s* cmd, const entity_t *entity, const s
 
 			VK_WrapResult( vmaCreateBuffer( rsh.device.vk.vmaAllocator, &vertexBufferCreateInfo, &allocInfo, &selectedStream->vk.vertexBuffer, &selectedStream->vk.vertexAlloc, &allocationInfo ) );
 		  rb.dynamicStreams[streamId].pVtxMappedAddress = allocationInfo.pMappedData;
-	  	
-
 	  }
 	  if( rb.dynamicStreams[streamId].vk.indexAlloc == NULL || !RISegmentAlloc( rsh.frameSetCount, &selectedStream->indexAllocator, numElems, &eleReq ) ) {
 		  struct RISegmentAllocDesc_s segmentAllocDesc = { 0 };
@@ -567,7 +564,7 @@ void RB_AddDynamicMesh(struct FrameState_s* cmd, const entity_t *entity, const s
 		  VmaAllocationCreateInfo allocInfo = { 0 };
 		  allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
 		  allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-		  if( selectedStream->vk.vertexBuffer ) {
+		  if( selectedStream->vk.indexBuffer ) {
 			  struct RIFree_s freeEntry;
 			  freeEntry.type = RI_FREE_VK_BUFFER;
 			  freeEntry.vkBuffer = selectedStream->vk.indexBuffer;

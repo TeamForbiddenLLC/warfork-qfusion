@@ -1029,6 +1029,7 @@ int InitRIRenderer( const struct RIBackendInit_s *init, struct RIRenderer_s *ren
 			createInfo.messageType |= VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 			vkCreateDebugUtilsMessengerEXT( renderer->vk.instance, &createInfo, NULL, &renderer->vk.debugMessageUtils );
 		}
+
 	}
 #endif
 	return RI_SUCCESS;

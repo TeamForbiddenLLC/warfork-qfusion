@@ -14,8 +14,8 @@ static void __BeginNewCommandSet( struct RIDevice_s *device, struct RIResourceUp
 	{
 		if( res->syncIndex >= RI_RESOURCE_NUM_COMMAND_SETS ) {
 			for( size_t i = 0; i < arrlen( res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].temporary ); i++ ) {
-				vkDestroyBuffer( device->vk.device, res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].temporary[i].buffer, NULL );
 				vmaFreeMemory( device->vk.vmaAllocator, res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].temporary[i].alloc );
+				vkDestroyBuffer( device->vk.device, res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].temporary[i].buffer, NULL );
 			}
 			arrsetlen( res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].temporary, 0 );
 		}
@@ -68,7 +68,6 @@ void RI_InitResourceUploader( struct RIDevice_s *device, struct RIResourceUpload
 			stageBufferCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 			VK_WrapResult(vmaCreateBuffer(device->vk.vmaAllocator, &stageBufferCreateInfo, &allocInfo, &resource->vk.stageBuffer, &resource->vk.stageAlloc, &allocationInfo));
 			resource->vk.pMappedData = allocationInfo.pMappedData;
-
 		}
 	}
 #endif

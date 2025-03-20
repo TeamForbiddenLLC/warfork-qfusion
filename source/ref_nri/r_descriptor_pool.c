@@ -81,7 +81,7 @@ void DetachDescriptorSlot( struct descriptor_set_allloc_s *alloc, struct descrip
 	}
 }
 
-struct descriptor_set_result_s ResolveDescriptorSet( struct RIDevice_s *device, struct descriptor_set_allloc_s *alloc, uint32_t frameCount, uint32_t hash )
+struct descriptor_set_result_s ResolveDescriptorSet( struct RIDevice_s *device, struct descriptor_set_allloc_s *alloc, uint32_t frameCount, hash_t hash )
 {
 	struct descriptor_set_result_s result = { 0 };
 	const size_t hashIndex = hash % ALLOC_HASH_RESERVE;
@@ -137,8 +137,6 @@ struct descriptor_set_result_s ResolveDescriptorSet( struct RIDevice_s *device, 
 	slot->hash = hash;
 	slot->frameCount = frameCount;
 	
-	//device->coreI.SetDescriptorSetDebugName(slot->descriptorSet, alloc->debugName);
-
 	AttachDescriptorSlot( alloc, slot );
 	result.set = slot;
 	result.found = false;

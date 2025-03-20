@@ -42,7 +42,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ri_scratch_alloc.h"
 #include "ri_pogoBuffer.h"
 
-
+#ifdef USE_RENDERDOC
+#include "renderdoc_app.h"
+#endif
 typedef struct { char *name; void **funcPointer; } dllfunc_t;
 
 typedef struct mempool_s mempool_t;
@@ -363,6 +365,10 @@ typedef struct
 	struct r_frame_set_s frameSets[NUMBER_FRAMES_FLIGHT];
 
 	byte_vec4_t		customColors[NUM_CUSTOMCOLORS];
+
+#ifdef USE_RENDERDOC
+	RENDERDOC_API_1_5_0 rdoc;
+#endif
 } r_shared_t;
 
 typedef struct {
@@ -461,7 +467,6 @@ typedef struct
 } r_globals_t;
 
 extern ref_import_t ri;
-
 extern r_shared_t rsh;
 extern r_scene_t rsc;
 extern r_globals_t rf;
@@ -886,7 +891,6 @@ typedef struct mesh_vbo_s {
 	union {
 #if ( DEVICE_IMPL_VULKAN )
 		struct {
-
 			struct VmaAllocation_T *vertexBufferAlloc;
 			struct VmaAllocation_T *indexBufferAlloc;
 			struct VmaAllocation_T *instanceBufferAlloc;
