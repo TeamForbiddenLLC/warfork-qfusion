@@ -599,15 +599,16 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 			semaphoreWaitInfo.pValues = &waitValue;
 			VK_WrapResult( vkWaitSemaphores( rsh.device.vk.device, &semaphoreWaitInfo, 5000 * 1000000ull ) );
 			VK_WrapResult( vkResetCommandPool( rsh.device.vk.device, activeSet->vk.pool, 0 ) );
-			for(size_t  i = 0; i < arrlen(activeSet->secondaryCmd); i++) {
+			for( size_t i = 0; i < arrlen( activeSet->secondaryCmd ); i++ ) {
 				vkFreeCommandBuffers( rsh.device.vk.device, activeSet->vk.pool, 1, &activeSet->secondaryCmd[i].vk.cmd );
 			}
-			for(size_t i = 0; i < arrlen(activeSet->freeList); i++) {
-				FreeRIFree(&rsh.device, &activeSet->freeList[i]);
-			}
-			arrsetlen(activeSet->freeList, 0);
-			arrsetlen(activeSet->secondaryCmd, 0);
+			arrsetlen( activeSet->secondaryCmd, 0 );
 		}
+		for( size_t i = 0; i < arrlen( activeSet->freeList ); i++ ) {
+			FreeRIFree( &rsh.device, &activeSet->freeList[i] );
+		}
+		RIResetScratchAlloc( &rsh.device, &activeSet->uboScratchAlloc );
+		arrsetlen( activeSet->freeList, 0 );
 		{
 			rsh.vk.swapchainIndex = RISwapchainAcquireNextTexture( &rsh.device, &rsh.riSwapchain );
 			rsh.frame.handle.vk.cmd = activeSet->backBufferCmd.vk.cmd;

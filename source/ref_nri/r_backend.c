@@ -567,7 +567,7 @@ void RB_AddDynamicMesh(struct FrameState_s* cmd, const entity_t *entity, const s
 		  VmaAllocationCreateInfo allocInfo = { 0 };
 		  allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
 		  allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-		  if( selectedStream->vk.vertexBuffer ) {
+		  if( selectedStream->vk.indexBuffer ) {
 			  struct RIFree_s freeEntry;
 			  freeEntry.type = RI_FREE_VK_BUFFER;
 			  freeEntry.vkBuffer = selectedStream->vk.indexBuffer;

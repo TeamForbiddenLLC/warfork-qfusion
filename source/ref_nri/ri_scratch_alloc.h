@@ -55,6 +55,7 @@ void FreeRIScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s *poo
 void RIResetScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s  *pool );
 
 struct RIBufferScratchAllocReq_s RIAllocBufferFromScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s  *pool, size_t reqSize );
+void RIFinishScrachReq( struct RIDevice_s *device, struct RIBufferScratchAllocReq_s *req );
 
 #endif
 
