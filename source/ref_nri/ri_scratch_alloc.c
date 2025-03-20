@@ -19,8 +19,8 @@ struct RIBlockMem_s RIUniformScratchAllocHandler( struct RIDevice_s *device, str
 		VmaAllocationInfo allocationInfo = { 0 };
 		VmaAllocationCreateInfo allocInfo = { 0 };
 		allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-		allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-		
+		allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
 		VK_WrapResult(vmaCreateBuffer(device->vk.vmaAllocator, &stageBufferCreateInfo, &allocInfo, &mem.vk.buffer, &mem.vk.allocator, &allocationInfo));
 
 //		vmaAllocateMemoryForBuffer( device->vk.vmaAllocator, mem.vk.buffer, &allocInfo, &mem.vk.allocator, &allocationInfo );
@@ -120,4 +120,11 @@ struct RIBufferScratchAllocReq_s RIAllocBufferFromScratchAlloc( struct RIDevice_
 	req.bufferSize = reqSize;
 	pool->blockOffset += alignReqSize;
 	return req;
+}
+
+void RIFinishScrachReq( struct RIDevice_s *device, struct RIBufferScratchAllocReq_s *req )
+{
+#if ( DEVICE_IMPL_VULKAN )
+	VK_WrapResult( vmaFlushAllocation( device->vk.vmaAllocator, req->block.vk.allocator, req->bufferOffset, req->bufferSize ) );
+#endif
 }
