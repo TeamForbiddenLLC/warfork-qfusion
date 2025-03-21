@@ -83,8 +83,7 @@ else()
         "../unix/unix_threads.c"
         "../null/sys_vfs_null.c"
     )
-
-    set(SERVER_PLATFORM_LIBRARIES "-ldl" "pthread")
+    set(SERVER_PLATFORM_LIBRARIES "-ldl" "pthread" libunwind)
     set(SERVER_BINARY_TYPE "")
 endif()
 

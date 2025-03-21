@@ -43,6 +43,9 @@ FIXME:  This will be remidied once a native Mac port is complete
 #include <errno.h>
 #include <locale.h>
 
+#define UNW_LOCAL_ONLY
+#include <libunwind.h>
+
 #if defined ( __FreeBSD__ )
 #include <machine/param.h>
 #endif
@@ -78,8 +81,31 @@ static void sigusr_handler( int sig )
 
 static void signal_handler( int sig )
 {
-	static int try = 0;
+	if( sig == SIGSEGV || sig == SIGBUS || sig == SIGILL ) {
+		unw_cursor_t cursor;
+		unw_context_t context;
 
+		// Initialize cursor to current frame for local unwinding.
+		unw_getcontext( &context );
+		unw_init_local( &cursor, &context );
+		int count = 0;
+		while( ( unw_step( &cursor ) > 0 ) && ( count < 25 ) ) {
+			unw_word_t pc;
+			unw_get_reg( &cursor, UNW_REG_IP, &pc );
+			if( pc == 0 ) {
+				break;
+			}
+			unw_word_t offset;
+			char sym[1024] = { '\0' };
+			if( unw_get_proc_name( &cursor, sym, sizeof( sym ), &offset ) == 0 ) {
+				Com_Printf( "%s (+0x%" PRIxPTR ") [0x%" PRIxPTR "]", sym, (uintptr_t)offset, pc );
+			} else {
+				Com_Printf( "-- error: unable to obtain symbol name for this frame" );
+			}
+		}
+	}
+
+	static int try = 0;
 	switch( try++ )
 	{
 	case 0:

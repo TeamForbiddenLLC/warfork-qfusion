@@ -785,15 +785,15 @@ void Qcommon_Init( int argc, char **argv )
 	Cvar_PreInit();
 	Dynvar_PreInit();
 
-    // create basic commands and cvars
-    Cmd_Init();
-    Cvar_Init();
-    Dynvar_Init();
-    dynvars_initialized = true;
+	// create basic commands and cvars
+	Cmd_Init();
+	Cvar_Init();
+	Dynvar_Init();
+	dynvars_initialized = true;
 
-    wswcurl_init();
+	wswcurl_init();
 
-    Key_Init();
+	Key_Init();
 
 	// we need to add the early commands twice, because
 	// a basepath or cdpath needs to be set before execing
