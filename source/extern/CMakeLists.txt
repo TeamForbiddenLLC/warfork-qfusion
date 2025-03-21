@@ -133,4 +133,10 @@ endif()
 
 endif()
 
+option(TRACY_STATIC "" OFF )
+SET(TRACY_ENABLE OFF CACHE BOOL "Enable profiling")
+add_compile_definitions(TRACY_IMPORTS)
+add_subdirectory(tracy)
+qf_set_output_dir(TracyClient  libs)
+
 set(STB_INCLUDE_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/stb PARENT_SCOPE)

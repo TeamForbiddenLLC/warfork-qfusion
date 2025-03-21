@@ -249,8 +249,7 @@ elseif (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/warfork-qfusion/steam_appid.txt ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/)
 endif()
 
-target_link_libraries(${QFUSION_CLIENT_NAME} PRIVATE CURL::libcurl ${CLIENT_PLATFORM_LIBRARIES} ${DISCORD_LIBRARY} ${STEAMSHIMPARENT_LIBRARY})
-
+target_link_libraries(${QFUSION_CLIENT_NAME} PRIVATE CURL::libcurl ${CLIENT_PLATFORM_LIBRARIES} ${DISCORD_LIBRARY} ${STEAMSHIMPARENT_LIBRARY} Tracy::TracyClient)
 qf_set_output_dir(${QFUSION_CLIENT_NAME} "")
 
 if (BUILD_STEAMLIB)

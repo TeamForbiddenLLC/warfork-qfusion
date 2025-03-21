@@ -43,6 +43,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../qalgo/hash.h"
 
 
+#include "tracy/TracyC.h"
+
 #define	MAX_GLIMAGES	    8192
 #define IMAGES_HASH_SIZE    64
 #define IMAGE_SAMPLER_HASH_SIZE 1024
@@ -689,6 +691,7 @@ static bool R_IsKTXFormatValid( int format, int type )
 //TODO: move ktx loader to a seperate file
 static bool __R_LoadKTX( image_t *image, const char *pathname )
 {
+	TracyCZone(ctx, 1);
 	const uint_fast16_t numFaces = ( ( image->flags & IT_CUBEMAP ) ? 6 : 1 );
 	if( image->flags & ( IT_FLIPX|IT_FLIPY|IT_FLIPDIAGONAL ) )
 		return false;
@@ -919,10 +922,12 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 	R_KTXFreeContext(&ktxContext);
 	R_FreeFile( buffer );
 	R_DeferDataSync();
+  TracyCZoneEnd(ctx);
 	return true;
 error: // must not be reached after actually starting uploading the texture
 	R_KTXFreeContext(&ktxContext);
 	R_FreeFile( buffer );
+  TracyCZoneEnd(ctx);
 	return false;
 }
 
@@ -1069,7 +1074,7 @@ static uint16_t __R_calculateMipMapLevel(int flags, int width, int height, uint3
 
 struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int height, int flags, int minmipsize, int tags, int samples )
 {
-	
+	TracyCZone(ctx, 1);
 	struct image_s *image = __R_AllocImage( qCToStrRef(name) );
 	
 	image->width = width;
@@ -1178,6 +1183,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 		}
 	}
 	arrfree( tmpBuffer );
+  TracyCZoneEnd(ctx);
 	return image;
 }
 
@@ -1205,6 +1211,7 @@ image_t *R_CreateImage( const char *name, int width, int height, int layers, int
 
 static void __FreeImage( struct image_s *image )
 {
+	TracyCZone(ctx, 1);
 	{
 		__FreeGPUImageData( image );
 		// R_ReleaseNriTexture(image);
@@ -1234,10 +1241,13 @@ static void __FreeImage( struct image_s *image )
 		image->prev = NULL;
 		ri.Mutex_Unlock( r_imagesLock );
 	}
+  TracyCZoneEnd(ctx);
+	
 }
 
 void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int flags, int minmipsize, int samples )
 {
+	TracyCZone(ctx, 1);
 	assert( image );
 	// const NriTextureDesc *textureDesc = rsh.nri.coreI.GetTextureDesc( image->texture );
 	uint32_t mipNum = __R_calculateMipMapLevel( flags, width, height, minmipsize );
@@ -1310,6 +1320,7 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 	image->minmipsize = minmipsize;
 
 	R_ReplaceSubImage( image, 0, 0, 0, pic, width, height );
+  	TracyCZoneEnd(ctx);
 }
 
 /*
@@ -1317,6 +1328,7 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 */
 void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, int width, int height )
 {
+	TracyCZone(ctx, 1);
 	assert( image );
 
 	const size_t reservedSize = width * height * image->samples;
@@ -1355,6 +1367,7 @@ void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, 
 		R_DeferDataSync();
 
 	image->registrationSequence = rsh.registrationSequence;
+  TracyCZoneEnd(ctx);
 }
 
 /*
@@ -1362,6 +1375,7 @@ void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, 
 */
 void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic )
 {
+	TracyCZone(ctx, 1);
 	assert( image );
 	//assert( image->texture );
 
@@ -1401,6 +1415,7 @@ void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic )
 		R_DeferDataSync();
 
 	image->registrationSequence = rsh.registrationSequence;
+  TracyCZoneEnd(ctx);
 }
 
 /*
@@ -1411,6 +1426,7 @@ void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic )
 */
 image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmipsize, int tags )
 {
+	TracyCZone(ctx, 1);
 	assert( name );
 	assert( name[0] );
 	struct UploadImgBuffer {
@@ -1704,6 +1720,7 @@ done:
 		T_FreeTextureBuf(&uploads[i].buffer);
 	}
 	qStrFree(&resolvedPath);
+  TracyCZoneEnd(ctx);
 	return image;
 }
 
@@ -2036,6 +2053,7 @@ void R_TouchImage( image_t *image, int tags )
 */
 void R_FreeUnusedImagesByTags( int tags )
 {
+	TracyCZone(ctx, 1);
 	int i;
 	image_t *image;
 	int keeptags = ~tags;
@@ -2058,6 +2076,7 @@ void R_FreeUnusedImagesByTags( int tags )
 
 		__FreeImage( image );
 	}
+  TracyCZoneEnd(ctx);
 }
 
 /*
@@ -2073,6 +2092,7 @@ void R_FreeUnusedImages( void )
 */
 void R_ShutdownImages( void )
 {
+	TracyCZone(ctx, 1);
 	int i;
 	image_t *image;
 
@@ -2102,6 +2122,7 @@ void R_ShutdownImages( void )
 	r_imagesPool = NULL;
 	r_screenShotBuffer = NULL;
 	r_screenShotBufferSize = 0;
+  TracyCZoneEnd(ctx);
 
 }
 
