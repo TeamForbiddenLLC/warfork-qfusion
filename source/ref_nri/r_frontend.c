@@ -32,6 +32,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ri_vk.h"
 
 #include "stb_ds.h"
+#include "tracy/TracyC.h"
 
 static ref_frontend_t rrf;
 
@@ -270,6 +271,7 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, bool fullScreen, bool stereo )
 {
 	WaitRIQueueIdle(&rsh.device, &rsh.device.queues[RI_QUEUE_GRAPHICS]);
+	TracyCZone(ctx, 1);
 
 	if( fullScreen ) {
 		if( !R_WIN_SetFullscreen( displayFrequency, width, height ) ) {
@@ -422,6 +424,7 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 
 	RB_Init();
 
+  TracyCZoneEnd(ctx);
 	return rserr_ok;	
 }
 
@@ -524,6 +527,7 @@ void RF_Shutdown( bool verbose )
 
 static void RF_CheckCvars( void )
 {
+	TracyCZone(ctx, 1);
 	// disallow bogus r_maxfps values, reset to default value instead
 	if( r_maxfps->modified ) {
 		if( r_maxfps->integer <= 0 ) {
@@ -578,10 +582,12 @@ static void RF_CheckCvars( void )
 		}
 		r_outlines_scale->modified = false;
 	}
+  TracyCZoneEnd(ctx);
 }
 
 void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 {
+	TracyCZone(ctx, 1);
 	RF_CheckCvars();
 
 	// run cinematic passes on shaders
@@ -700,12 +706,10 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 #endif
 	rrf.cameraSeparation = cameraSeparation;
 
-
 	memset( &rf.stats, 0, sizeof( rf.stats ) );
 
 	// update fps meter
 	// copy in changes from R_BeginFrame
-	//	rrf.frame->BeginFrame( rrf.frame, cameraSeparation, forceClear, forceVsync );
 	const unsigned int time = ri.Sys_Milliseconds();
 	rf.fps.count++;
 	rf.fps.time = time;
@@ -717,7 +721,8 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 	}
 	rf.width2D = -1;
 	rf.height2D = -1;
-	R_Set2DMode(&rsh.frame, true );
+	R_Set2DMode( &rsh.frame, true );
+	TracyCZoneEnd( ctx );
 }
 
 static inline void __R_PolyBlendPostPass(struct FrameState_s* frame) {
@@ -753,7 +758,7 @@ static inline void __R_ApplyBrightnessBlend(struct FrameState_s* frame) {
 
 void RF_EndFrame( void )
 {
-	// assert(frame->stackCmdBeingRendered == 0);
+	TracyCZone(ctx, 1);
 	// render previously batched 2D geometry, if any
 	RB_FlushDynamicMeshes(&rsh.frame);
 
@@ -826,6 +831,7 @@ void RF_EndFrame( void )
 #endif
 
 	rsh.frameSetCount++;
+  	TracyCZoneEnd(ctx);
 }
 
 void RF_BeginRegistration( void )
