@@ -43,10 +43,13 @@ struct RIScratchAllocDesc_s{
 
 struct RIBufferScratchAllocReq_s {
 	struct RIBlockMem_s block;
-	uint8_t *pMappedAddress;
+	void* pMappedAddress;
 	size_t bufferOffset;
 	size_t bufferSize;
 };
+
+size_t RINumberOfUsedBlock(struct RIDevice_s *device,struct RIScratchAlloc_s* pool);
+struct RIBlockMem_s* RIGetUsedBlock(struct RIDevice_s *device,struct RIScratchAlloc_s* pool,size_t index);
 
 struct RIBlockMem_s RIUniformScratchAllocHandler(struct RIDevice_s* device, struct RIScratchAlloc_s* scratch);
 

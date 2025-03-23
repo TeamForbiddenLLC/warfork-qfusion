@@ -90,7 +90,7 @@ void VK_ConfigureBufferQueueFamilies( VkBufferCreateInfo *info, struct RIQueue_s
 	for( size_t i = 0; i < numQueues; i++ ) {
 		if( queues[i].vk.queue ) {
 			const uint32_t queueBit = ( 1 << queues[i].vk.queueFamilyIdx );
-			if( ( uniqueQueue & queueBit ) > 0 ) {
+			if( ( uniqueQueue & queueBit ) == 0 ) {
 				queueFamilies[queueFamilyIndexCount++] = queues[i].vk.queueFamilyIdx; // dev->queues[i].vk.queueFamilyIdx;
 			}
 			uniqueQueue |= queueBit;
@@ -108,7 +108,7 @@ void VK_ConfigureImageQueueFamilies( VkImageCreateInfo *info, struct RIQueue_s *
 	for( size_t i = 0; i < numQueues; i++ ) {
 		if( queues[i].vk.queue ) {
 			const uint32_t queueBit = ( 1 << queues[i].vk.queueFamilyIdx );
-			if( ( uniqueQueue & queueBit ) > 0 ) {
+			if( ( uniqueQueue & queueBit ) == 0 ) {
 				queueFamilies[queueFamilyIndexCount++] = queues[i].vk.queueFamilyIdx; // dev->queues[i].vk.queueFamilyIdx;
 			}
 			uniqueQueue |= queueBit;
@@ -248,6 +248,8 @@ int EnumerateRIAdapters( struct RIRenderer_s *renderer, struct RIPhysicalAdapter
 				// Fill desc
 				physicalAdapter->luid = *(uint64_t *)&deviceIDProperties.deviceLUID[0];
 				physicalAdapter->deviceId = properties.properties.deviceID;
+				memcpy(physicalAdapter->name, properties.properties.deviceName, sizeof(properties.properties.deviceName));
+				assert(sizeof(physicalAdapter->name) >= sizeof(properties.properties.deviceName));
 				physicalAdapter->vendor = VendorFromID( properties.properties.vendorID );
 				physicalAdapter->vk.physicalDevice = physicalAdapter->vk.physicalDevice;
 				physicalAdapter->vk.apiVersion = properties.properties.apiVersion;
