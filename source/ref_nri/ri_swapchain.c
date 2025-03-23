@@ -39,7 +39,6 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 	swapchain->width = init->width;
 	swapchain->height = init->height;
 	swapchain->presentQueue = init->queue;
-	swapchain->imageCount = init->imageCount;
 	VkResult result = VK_SUCCESS;
 #if ( DEVICE_IMPL_VULKAN )
 	{
@@ -168,7 +167,7 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 		VkSwapchainCreateInfoKHR swapChainCreateInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
 		swapChainCreateInfo.flags = 0;
 		swapChainCreateInfo.surface = swapchain->vk.surface;
-		swapChainCreateInfo.minImageCount = swapchain->imageCount;
+		swapChainCreateInfo.minImageCount = init->imageCount;
 		swapChainCreateInfo.imageFormat = selectedSurf->format;
 		swapChainCreateInfo.imageColorSpace = selectedSurf->colorSpace;
 		swapChainCreateInfo.imageExtent.width = init->width ;
