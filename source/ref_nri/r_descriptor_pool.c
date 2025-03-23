@@ -136,9 +136,6 @@ struct descriptor_set_result_s ResolveDescriptorSet( struct RIDevice_s *device, 
 	struct descriptor_set_slot_s *slot = arrpop( alloc->reservedSlots );
 	slot->hash = hash;
 	slot->frameCount = frameCount;
-	
-	//device->coreI.SetDescriptorSetDebugName(slot->descriptorSet, alloc->debugName);
-
 	AttachDescriptorSlot( alloc, slot );
 	result.set = slot;
 	result.found = false;

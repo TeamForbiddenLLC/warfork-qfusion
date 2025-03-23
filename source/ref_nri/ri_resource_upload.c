@@ -279,13 +279,17 @@ void RI_InsertTransitionBarriers( struct RIDevice_s *device, struct RIResourceUp
 			numImageBarriers = 0; 
 		}
 	}
-	arrsetlen( res->postImageBarriers, 0 );
-	arrsetlen( res->postBufferBarriers, 0 );
 #endif
 }
 
 void RI_ResourceSubmit( struct RIDevice_s *device, struct RIResourceUploader_s *res )
 {
+	if(arrlen(res->postImageBarriers) == 0 && arrlen(res->postBufferBarriers)) {
+		return;	
+	}
+	arrsetlen( res->postImageBarriers, 0 );
+	arrsetlen( res->postBufferBarriers, 0 );
+
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		vkEndCommandBuffer( res->vk.cmdSets[res->syncIndex % RI_RESOURCE_NUM_COMMAND_SETS].cmd );

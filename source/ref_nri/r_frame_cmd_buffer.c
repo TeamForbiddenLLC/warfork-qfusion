@@ -86,12 +86,11 @@ void UpdateFrameUBO( struct FrameState_s *cmd, struct RIDescriptor_s *req, void 
 	if( req->cookie != hash ) {
 		req->cookie = hash;
 		struct RIBufferScratchAllocReq_s scratchReq = RIAllocBufferFromScratchAlloc( &rsh.device, &activeSet->uboScratchAlloc, size );
-
 		req->vk.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		req->vk.buffer.buffer = scratchReq.block.vk.buffer;
 		req->vk.buffer.offset = scratchReq.bufferOffset;
 		req->vk.buffer.range = size;
-		memcpy( scratchReq.block.pMappedAddress + scratchReq.bufferOffset, data, size );
+		memcpy( (uint8_t*)scratchReq.pMappedAddress + scratchReq.bufferOffset, data, size );
 		RIFinishScrachReq( &rsh.device, &scratchReq );
 	}
 }
