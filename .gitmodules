@@ -37,3 +37,6 @@
 [submodule "source/extern/tracy"]
 	path = source/extern/tracy
 	url = https://github.com/wolfpld/tracy.git
+[submodule "source/extern/crashpad"]
+	path = source/extern/crashpad
+	url = https://github.com/TeamForbiddenLLC/crashpad.git
