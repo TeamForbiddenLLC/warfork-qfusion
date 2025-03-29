@@ -29,6 +29,7 @@ file(GLOB SERVER_SOURCES
     "../qcommon/bsp.c"
     "../qcommon/patch.c"
     "../qcommon/common.c"
+    "../qcommon/crashpad.cpp"
     "../qcommon/files.c"
     "../qcommon/cmd.c"
     "../qcommon/l10n.c"
@@ -93,7 +94,7 @@ add_dependencies(${QFUSION_SERVER_NAME} angelwrap game)
 if (BUILD_STEAMLIB)
     add_dependencies(${QFUSION_SERVER_NAME} wf_steam)
 endif()
-target_link_libraries(${QFUSION_SERVER_NAME} PRIVATE CURL::libcurl ${SERVER_PLATFORM_LIBRARIES} ${STEAMSHIMPARENT_LIBRARY})
+target_link_libraries(${QFUSION_SERVER_NAME} PRIVATE CURL::libcurl ${SERVER_PLATFORM_LIBRARIES} ${STEAMSHIMPARENT_LIBRARY} crashpad_client)
 qf_set_output_dir(${QFUSION_SERVER_NAME} "")
 
 set_target_properties(${QFUSION_SERVER_NAME} PROPERTIES COMPILE_DEFINITIONS "DEDICATED_ONLY")
