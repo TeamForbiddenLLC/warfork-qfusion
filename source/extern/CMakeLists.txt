@@ -140,3 +140,8 @@ add_subdirectory(tracy)
 qf_set_output_dir(TracyClient  libs)
 
 set(STB_INCLUDE_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/stb PARENT_SCOPE)
+
+if(USE_CRASHPAD)
+  add_subdirectory(crashpad)
+  qf_set_output_dir(crashpad_handler "")
+endif()
