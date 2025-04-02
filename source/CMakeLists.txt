@@ -22,7 +22,6 @@ set(CMAKE_BUILD_RPATH $ORIGIN/libs:$ORIGIN)
 # add the automatically determined parts of the RPATH
 # which point to directories outside the build tree to the install RPATH
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 set(QFUSION_GAME Warfork)						 
@@ -49,6 +48,7 @@ option(GAME_MODULES_ONLY "Only build game modules" OFF)
 option(BUILD_STEAMLIB "Include the steamlib module (requires Steamworks SDK)" OFF)
 option(USE_GRAPHICS_NRI "Build using Nvidia NRI" OFF)
 
+OPTION(USE_CRASHPAD "Prefer system vorbis instead of the bundled one" OFF)
 option(USE_GRAPHICS_X11 "Build using X11" ON)
 option(USE_GRAPHICS_WAYLAND "Build using wayland" ON)
 
@@ -59,6 +59,10 @@ OPTION(USE_SYSTEM_SDL2 "Prefer system SDL2 instead of the bundled one" OFF)
 OPTION(USE_SYSTEM_OGG "Prefer system OGG instead of the bundled one" OFF)
 OPTION(USE_SYSTEM_FREETYPE "Prefer system freetype instead of the bundled one" OFF)
 OPTION(USE_SYSTEM_VORBIS "Prefer system vorbis instead of the bundled one" OFF)
+
+if (USE_CRASHPAD)
+    add_definitions(-DUSE_CRASHPAD=1)
+endif()
 
 set(ANGELSCRIPT_DIR ${CMAKE_HOME_DIRECTORY}/../third-party/angelscript/sdk/angelscript)
 set(ANGELSCRIPT_INCLUDE_DIR ${ANGELSCRIPT_DIR}/include/)
