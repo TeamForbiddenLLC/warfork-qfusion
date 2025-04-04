@@ -181,7 +181,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
             "${DISCORD_INCLUDE_DIR}/discord_register_linux.cpp"	
         )
 
-        set(CLIENT_PLATFORM_LIBRARIES SDL2::SDL2 "pthread" "m" "dl" "rt")
+        set(CLIENT_PLATFORM_LIBRARIES SDL2::SDL2 "pthread" "m" "dl" "rt" "mvec")
     else()
         file(GLOB CLIENT_PLATFORM_SOURCES
             "../unix/unix_fs.c"
@@ -205,7 +205,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	        "${DISCORD_INCLUDE_DIR}/discord_register_linux.cpp"	
         )
     
-        set(CLIENT_PLATFORM_LIBRARIES SDL2::SDL2 "pthread" "dl" "m" "X11" "Xi" "Xext" "Xrandr" "rt")
+        set(CLIENT_PLATFORM_LIBRARIES SDL2::SDL2 "pthread" "dl" "m" "X11" "Xi" "Xext" "Xrandr" "rt" "mvec")
     endif()
     set(CLIENT_BINARY_TYPE "")
 

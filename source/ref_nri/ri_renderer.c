@@ -2,6 +2,7 @@
 
 #include "stb_ds.h"
 #include <qstr.h>
+#include "../qcommon/qcommon.h"
 
 #include "ri_conversion.h"
 #include "ri_gpu_preset.h"
