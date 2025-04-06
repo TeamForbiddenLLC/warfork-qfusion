@@ -1634,6 +1634,17 @@ int FS_Printf( int file, const char *format, ... )
 	return FS_Write( msg, len, file );
 }
 
+int FS_vPrintf( int file, const char *format, va_list argptr )
+{
+	char msg[8192];
+	size_t len;
+	if( ( len = Q_vsnprintfz( msg, sizeof( msg ), format, argptr ) ) >= sizeof( msg ) - 1 ) {
+		msg[sizeof( msg ) - 1] = '\0';
+		Com_Printf( "FS_Printf: Buffer overflow" );
+	}
+	return FS_Write( msg, len, file );
+}
+
 /*
 * FS_Write
 * 

@@ -22,6 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define MAX_GLSL_BONE_UNIFORMS 128
 
+#include <qarch.h>
+
 struct mat4 {
   union {
     float v[16];

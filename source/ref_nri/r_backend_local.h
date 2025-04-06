@@ -20,12 +20,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef R_BACKEND_LOCAL_H
 #define R_BACKEND_LOCAL_H
 
-#include "r_frame_cmd_buffer.h"
-#include "r_nri.h"
-#include "math/qmath.h"
-
 
 #include "r_local.h"
+
+#include "math/qmath.h"
+
+#include "ri_segment_alloc.h"
+#include "r_frame_cmd_buffer.h"
 
 #define MAX_STREAM_VBO_VERTS	    1000000	
 #define MAX_STREAM_VBO_ELEMENTS		MAX_STREAM_VBO_VERTS*6
@@ -77,8 +78,8 @@ typedef struct
 	int scissor[4];
 
 	const struct vbo_layout_s* layout;
-	NriBuffer* vertexBuffer;
-	NriBuffer* indexBuffer;
+	struct RIBuffer_s vertexBuffer;
+	struct RIBuffer_s indexBuffer;
 	uint32_t bufferVertEleOffset;
 	uint32_t bufferIndexEleOffset;
 	unsigned int numVerts;
@@ -118,11 +119,25 @@ typedef struct r_backend_s
 	rbBonesData_t bonesData;
 	const portalSurface_t *currentPortalSurface;
 	
-	struct {
+	struct dynamic_vertex_stream_s {
 		struct vbo_layout_s layout;
-		struct gpu_frame_ele_allocator_s vertexAlloc;
-		struct gpu_frame_ele_allocator_s indexAlloc;
-	} dynamicVertexAlloc[RB_DYN_STREAM_NUM];
+		struct RISegmentAlloc_s vertexAllocator; 
+		struct RISegmentAlloc_s indexAllocator;
+
+		void* pVtxMappedAddress;
+		void* pIdxMappedAddress;
+		union {
+#if ( DEVICE_IMPL_VULKAN )
+			struct {
+				struct VmaAllocation_T *vertexAlloc;
+				VkBuffer vertexBuffer;
+				
+				struct VmaAllocation_T *indexAlloc;
+				VkBuffer indexBuffer;
+			} vk;
+#endif
+		};
+	} dynamicStreams[RB_DYN_STREAM_NUM];
 	rbDynamicDraw_t dynamicDraws[MAX_DYNAMIC_DRAWS];
 	unsigned int numDynamicDraws;
 
