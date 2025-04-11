@@ -1,31 +1,16 @@
 #ifndef R_FRAME_CMD_BUFFER_H
 #define R_FRAME_CMD_BUFFER_H
 
-#include "NRIDescs.h"
-#include "r_nri.h"
-#include "r_resource.h"
-#include "r_vattribs.h"
-#include "r_block_buffer_pool.h"
+#include "ri_format.h"
 
-#include "../gameshared/q_arch.h"
-#include "../gameshared/q_math.h"
+#include "r_defines.h" 
 
-#include "../gameshared/q_sds.h"
-
-
-#include "qhash.h"
-
-#define POGO_BUFFER_TEXTURE_FORMAT NriFormat_RGBA8_UNORM
+#define POGO_BUFFER_TEXTURE_FORMAT RI_FORMAT_RGBA8_UNORM
 
 typedef struct mesh_vbo_s mesh_vbo_t;
 typedef struct mfog_s mfog_t;
 typedef struct entity_s entity_t;
 typedef struct shader_s shader_t;
-
-struct frame_cmd_vertex_input_s {
-	NriBuffer *buffer;
-	uint64_t offset;
-};
 
 enum CmdStateResetBits {
   STATE_RESET_VERTEX_ATTACHMENT
@@ -42,83 +27,27 @@ enum CmdStateDirtyBits {
 	CMD_DIRT_SCISSOR = 0x4,
 };
 
-struct frame_cmd_save_attachment_s {
-	uint32_t numColorAttachments;
-	NriFormat colorFormats[MAX_COLOR_ATTACHMENTS];
-	NriDescriptor const *colorAttachment[MAX_COLOR_ATTACHMENTS];
-	NriRect scissors[MAX_COLOR_ATTACHMENTS];
-	NriViewport viewports[MAX_COLOR_ATTACHMENTS];
-	NriDescriptor const *depthAttachment;
+//struct frame_cmd_save_attachment_s {
+//	uint32_t numColorAttachments;
+//	NriFormat colorFormats[MAX_COLOR_ATTACHMENTS];
+//	NriDescriptor const *colorAttachment[MAX_COLOR_ATTACHMENTS];
+//	NriRect scissors[MAX_COLOR_ATTACHMENTS];
+//	NriViewport viewports[MAX_COLOR_ATTACHMENTS];
+//	NriDescriptor const *depthAttachment;
+//};
+
+struct frame_cmd_vertex_attrib_s {
+	uint32_t offset;
+	uint32_t format; // RI_Format_e
+	uint16_t streamIndex;
+	struct {
+		uint16_t location;
+	} vk;
 };
 
-// the serialized state of the pipeline
-struct frame_cmd_state_s {
-	uint32_t dirty;
-
-	size_t numStreams;
-	NriVertexStreamDesc streams[MAX_STREAMS];
-	size_t numAttribs;
-	NriVertexAttributeDesc attribs[MAX_ATTRIBUTES];
-
-	uint32_t numColorAttachments;
-	NriDescriptor const *colorAttachment[MAX_COLOR_ATTACHMENTS];
-	NriRect scissors[MAX_COLOR_ATTACHMENTS];
-	NriViewport viewports[MAX_COLOR_ATTACHMENTS];
-	NriDescriptor const *depthAttachment;
-
-	NriBuffer *vertexBuffers[MAX_VERTEX_BINDINGS];
-	uint64_t offsets[MAX_VERTEX_BINDINGS];
-	uint32_t dirtyVertexBuffers;
-
-	NriBuffer *indexBuffer;
-	uint64_t indexBufferOffset;
-	NriIndexType indexType;
-
-	// binding
-	struct NriDescriptor *bindings[DESCRIPTOR_SET_MAX][DESCRIPTOR_MAX_BINDINGS];
-
-	struct pipeline_state_s {
-		NriFormat colorFormats[MAX_COLOR_ATTACHMENTS];
-		NriFormat depthFormat;
-	
-		NriDepthBiasDesc depthBias;
-
-		bool blendEnabled;
-		NriTopology topology;
-		NriCullMode cullMode;
-		NriBlendFactor colorSrcFactor;
-		NriBlendFactor colorDstFactor;
-
-		NriColorWriteBits colorWriteMask;
-		NriCompareFunc compareFunc;
-		bool depthWrite;
-		
-		bool flippedViewport; // bodge for portals ... 
-	} pipelineLayout;
-};
-
-
-struct frame_tex_buffers_s {
-	NriDescriptor* postProcessingSampler;
-
-	NriRect screen; 	
-	NriDescriptor *colorAttachment;
-	NriTexture *colorTexture;
-	
-	NriDescriptor *depthAttachment;
-	NriTexture* depthTexture;
-
-	// used for post processing
-	struct pogo_buffers_s {
-		uint8_t isAttachment:1;
-		NriDescriptor *colorAttachment;
-		struct nri_descriptor_s shaderDescriptor;
-		NriTexture *colorTexture;
-	} pogoBuffers[2];
-
-	NriAccessLayoutStage currentLayout;
-	size_t memoryLen;
-	NriMemory* memory[10];
+struct frame_cmd_vertex_stream_s {
+	uint16_t stride;
+	uint16_t bindingSlot;
 };
 
 struct draw_element_s {
@@ -129,152 +58,97 @@ struct draw_element_s {
 	uint32_t numInstances;
 };
 
-struct ubo_frame_instance_s {
-	hash_t hash;
-	struct nri_descriptor_s descriptor;
-	struct block_buffer_pool_req_s req; 
+struct pipeline_desc_s {
+	// struct pipeline_state_s {
+	uint8_t numColorsAttachments;
+	RI_Format colorAttachments[MAX_COLOR_ATTACHMENTS]; // RI_Format_e
+	RI_Format depthFormat; // RI_Format_e
+
+	// R - minimum resolvable difference
+	// S - maximum slope
+	// bias = constant * R + slopeFactor * S
+	// if (clamp > 0)
+	// 		bias = min(bias, clamp)
+	// else if (clamp < 0)
+	// 		bias = max(bias, clamp)
+	// enabled if constant != 0 or slope != 0
+	float depthBiasConstant;
+	float depthBiasClamp;
+	float depthBiasSlope;
+	uint16_t flippedViewport : 1; // bodge for portals ...
+	uint16_t cullMode : 3;		  // RICullMode_e
+	uint16_t colorBlendEnabled : 1;
+	uint16_t depthWrite : 1;
+	uint16_t colorWriteMask : 4; // RIColorWriteMask_e
+	uint16_t colorSrcFactor : 5; // RIBlendFactor_e
+	uint16_t colorDstFactor : 5; // RIBlendFactor_e
+	uint16_t topology : 4;		 // RITopology_e
+	uint16_t compareFunc : 4;	 // RICompareFunc_e
+
+	size_t numStreams;
+	struct frame_cmd_vertex_stream_s streams[MAX_STREAMS];
+	
+	size_t numAttribs;
+	struct frame_cmd_vertex_attrib_s attribs[MAX_ATTRIBUTES];
 };
 
-struct frame_cmd_buffer_s {
-
-	uint64_t frameCount; // this value is bound by NUMBER_FRAMES_FLIGHT
-	struct block_buffer_pool_s uboBlockBuffer; 
-	struct frame_cmd_state_s state;
-	struct frame_tex_buffers_s textureBuffers;
-	
-	NriCommandAllocator *allocator;
-	NriCommandBuffer *cmd;
-
-	// list of objects to free
-	NriDescriptor** frameTemporaryDesc; // temporary frame descriptors that are recycled at the end of the frame	
-	NriTexture**  freeTextures;
-	NriBuffer** freeBuffers;
-	NriMemory** freeMemory;
+struct FrameState_s {
+	struct FrameState_s* parent; 
+	struct RIDevice_s *device;
+	struct RICmd_s handle;
 
 	// default global ubo for the scene
-	struct ubo_frame_instance_s uboSceneFrame;
-	struct ubo_frame_instance_s uboSceneObject;
-	struct ubo_frame_instance_s uboPassObject;
-	struct ubo_frame_instance_s uboBoneObject;
-	struct ubo_frame_instance_s uboLight;
+	struct RIDescriptor_s uboSceneFrame;
+	struct RIDescriptor_s uboSceneObject;
+	struct RIDescriptor_s uboPassObject;
+	struct RIDescriptor_s uboBoneObject;
+	struct RIDescriptor_s uboLight;
 
 	// additional frame state
 	struct draw_element_s drawElements;
 	struct draw_element_s drawShadowElements;
 
-	int stackCmdBeingRendered;
+	// cmd buffer state
+	uint32_t dirty;
+	uint64_t pipelineBound;
+
+	struct RIRect_s scissor;
+	struct RIViewport_s viewport;
+
+	struct RIBuffer_s vertexBuffers[MAX_VERTEX_BINDINGS];
+	uint64_t offsets[MAX_VERTEX_BINDINGS];
+	uint32_t dirtyVertexBuffers;
+
+	struct RIBuffer_s indexBuffer;
+
+	uint64_t indexBufferOffset;
+	uint16_t indexType; // RIIndexType_e
+
+	struct pipeline_desc_s pipeline;
 };
 
-
-struct frame_cmd_save_attachment_s R_CmdState_StashAttachment(struct frame_cmd_buffer_s* cmd);
-void R_CmdState_RestoreAttachment(struct frame_cmd_buffer_s* cmd, const struct frame_cmd_save_attachment_s* stashed);
-
-void FrameCmdBufferFree(struct frame_cmd_buffer_s* cmd);
-void ResetFrameCmdBuffer(struct nri_backend_s* backend,struct frame_cmd_buffer_s* cmd);
-void UpdateFrameUBO( struct frame_cmd_buffer_s *cmd, struct ubo_frame_instance_s *frame, void *data, size_t size );
+void UpdateFrameUBO( struct FrameState_s *cmd, struct RIDescriptor_s *frame, void *data, size_t size );
 
 // cmd buffer
-static inline int FR_CmdNumViewports(struct frame_cmd_buffer_s* cmd) {
-	return max(cmd->state.numColorAttachments, 1);
-}
-void FR_CmdResetAttachmentToBackbuffer(struct frame_cmd_buffer_s *cmd);
-void FR_CmdSetTextureAttachment( struct frame_cmd_buffer_s *cmd, 
-																const NriFormat *colorformats, 
-																const NriDescriptor **colorAttachments, 
-																const NriViewport* viewports, 
-																const NriRect* scissors, 
-																size_t numAttachments, 
-																const NriFormat depthFormat, 
-																NriDescriptor *depthAttachment );
-
-void FR_CmdResetCmdState(struct frame_cmd_buffer_s *cmd,enum CmdStateResetBits bits);
-void FR_CmdSetVertexBuffer( struct frame_cmd_buffer_s *cmd, uint32_t slot, NriBuffer *buffer, uint64_t offset );
-void FR_CmdSetIndexBuffer( struct frame_cmd_buffer_s *cmd, NriBuffer *buffer, uint64_t offset, NriIndexType indexType );
-void FR_CmdResetCommandState(struct frame_cmd_buffer_s *cmd, enum CmdResetBits bits);
-
-void FR_CmdSetScissor( struct frame_cmd_buffer_s *cmd, const NriRect *scissors, size_t numAttachments ); 
-void FR_CmdSetScissorAll( struct frame_cmd_buffer_s *cmd, const NriRect scissors); 
-
-void FR_CmdSetViewportAll( struct frame_cmd_buffer_s *cmd, const NriViewport scissors );
-
-void FR_CmdDraw( struct frame_cmd_buffer_s *cmd, uint32_t vertexNum, uint32_t instanceNum, uint32_t baseVertex, uint32_t baseInstance); 
-void FR_CmdDrawElements( struct frame_cmd_buffer_s *cmd, uint32_t indexNum, uint32_t instanceNum, uint32_t baseIndex, uint32_t baseVertex, uint32_t baseInstance );
-
-void FR_CmdBeginRendering(struct frame_cmd_buffer_s* cmd);
-void FR_CmdEndRendering(struct frame_cmd_buffer_s* cmd);
-
-void TransitionPogoBufferToShaderResource(struct frame_cmd_buffer_s* frame, struct pogo_buffers_s* pogo);
-void TransitionPogoBufferToAttachment(struct frame_cmd_buffer_s* frame, struct pogo_buffers_s* pogo);
-
-void FR_BindPogoBufferAttachment(struct frame_cmd_buffer_s* frame, struct pogo_buffers_s* pogo);
-
-// frame immediate buffer
-
-struct gpu_frame_ele_allocator_s {
-  int16_t tail;
-  int16_t head;
- 	uint16_t elementStride; 
-  
-  size_t numElements;
-  size_t elementOffset;
-  struct {
-    uint64_t frameNum;
-    size_t numElements; // size of the generation
-  } segment[NUMBER_FRAMES_FLIGHT + 2]; // allocations are managed in segments
-  NriBuffer* buffer;
-  NriMemory* memory;
-	NriBufferUsageBits usageBits;
-};
-struct gpu_frame_ele_ring_desc_s {
-	uint32_t numElements;
-	uint16_t elementStride;
-	NriBufferUsageBits usageBits;
-};
-struct gpu_frame_ele_req_s{
-	NriBuffer *buffer;
-	uint16_t elementStride;
-	uint32_t elementOffset;
-	uint32_t numElements;
-};
-void initGPUFrameEleAlloc( struct gpu_frame_ele_allocator_s *ringAlloc, const struct gpu_frame_ele_ring_desc_s *desc );
-void freeGPUFrameEleAlloc( struct gpu_frame_ele_allocator_s *alloc );
-void GPUFrameEleAlloc( struct frame_cmd_buffer_s *cmd, struct gpu_frame_ele_allocator_s* alloc, size_t numElements, struct gpu_frame_ele_req_s *req );
-static inline bool IsElementBufferContinous(size_t currentOffset, size_t currentNumElements, size_t nextOffset)
-{
-	return currentOffset + currentNumElements  == nextOffset;
+static inline int FR_CmdNumViewports(struct FrameState_s* cmd) {
+	return Q_MAX(cmd->pipeline.numColorsAttachments, 1);
 }
 
-//struct gpu_frame_allocator_s {
-//  int16_t tail;
-//  int16_t head;
-//  size_t allocSize;
-//  size_t tailOffset;
-//  struct {
-//    uint64_t frameNum;
-//    size_t allocSize; // size of the generation
-//  } segment[NUMBER_FRAMES_FLIGHT + 1]; // allocations are managed in segments
-//  NriBuffer* buffer;
-//  NriMemory* memory;
-//
-//	size_t bufferAlignment;
-//	NriBufferUsageBits usageBits;
-//};
-//
-//struct gpu_frame_buffer_req_s {
-//	NriBuffer *buffer;
-//	size_t bufferOffset;
-//	size_t bufferSize;
-//};
-//
-//struct gpu_frame_buffer_ring_desc_s {
-//	size_t reservedSize;
-//	size_t alignmentReq;
-//	NriBufferUsageBits usageBits;
-//};
-//
-//void initGPUFrameAlloc(struct gpu_frame_allocator_s* ringAlloc, const struct gpu_frame_buffer_ring_desc_s* desc);
-//void freeGPUFrameAlloc(struct gpu_frame_allocator_s* alloc);
-//void GPUFrameAlloc( struct frame_cmd_buffer_s* cmd, struct gpu_frame_allocator_s *alloc, size_t reqSize, struct gpu_frame_buffer_req_s* req);
+void FR_ConfigureAttachment( struct pipeline_desc_s *pipelineDesc, enum RI_Format_e *formats, size_t numAttachment, enum RI_Format_e depthFormat );
+
+void FR_CmdResetCmdState( struct FrameState_s *cmd, enum CmdStateResetBits bits );
+void FR_CmdSetVertexBuffer( struct FrameState_s *cmd, uint32_t slot, struct RIBuffer_s* buffer, uint64_t offset );
+void FR_CmdSetIndexBuffer( struct FrameState_s *cmd, struct RIBuffer_s* buffer, uint64_t offset, enum RIIndexType_e indexType );
+void FR_CmdResetCommandState(struct FrameState_s *cmd, enum CmdResetBits bits);
+
+void FR_CmdSetScissor( struct FrameState_s *cmd, const struct RIRect_s scissors );
+void FR_CmdSetDepthRangeAll(struct FrameState_s *cmd, float depthMin, float depthMax);
+
+void FR_CmdSetViewport( struct FrameState_s *cmd, const struct RIViewport_s scissors );
+void FR_ConfigurePipelineAttachment( struct pipeline_desc_s *desc, enum RI_Format_e *formats, size_t numAttachment, enum RI_Format_e depthFormat ); 
+
+void FR_CmdDraw( struct FrameState_s *cmd, uint32_t vertexNum, uint32_t instanceNum, uint32_t baseVertex, uint32_t baseInstance); 
+void FR_CmdDrawElements( struct FrameState_s *cmd, uint32_t indexNum, uint32_t instanceNum, uint32_t baseIndex, uint32_t baseVertex, uint32_t baseInstance );
 
 #endif
 

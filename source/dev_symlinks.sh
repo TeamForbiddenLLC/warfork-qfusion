@@ -4,7 +4,7 @@ if [ ! -d "assets" ]; then
   cd ..
 fi
 
-TGT=$(realpath source/build/basewf)
+TGT=$(realpath source/build/warfork-qfusion/basewf)
 SRC=$(realpath assets)
 
 PKS="data0_000_21 data0_000_21pure data0_21 data0_21pure data1_21pure"

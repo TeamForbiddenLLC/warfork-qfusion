@@ -21,7 +21,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // r_register.c
 #include "r_local.h"
 #include "../qalgo/hash.h"
-#include "r_nri.h"
 
 #define STB_DS_IMPLEMENTATION 1
 #include "stb_ds.h"

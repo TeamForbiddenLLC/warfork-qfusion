@@ -23,8 +23,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "../gameshared/q_arch.h"
 #include "../gameshared/q_math.h"
-#include "../gameshared/q_shared.h"
 #include "../gameshared/q_cvar.h"
+#include "../gameshared/q_shared.h"
+#include "../gameshared/q_sds.h"
 #include "../qcommon/qfiles.h"
 #include "../qcommon/bsp.h"
 #include "../qcommon/patch.h"
@@ -32,13 +33,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../ref_base/ref_mod.h"
 
 #include "../qcommon/mod_fs.h"
-#include "r_resource_upload.h"
+#include "ri_resource_upload.h"
 #include "r_frame_cmd_buffer.h"
 
-
-#include "r_nri.h"
 #include "r_texture_buf.h"
 #include "../qcommon/mod_win.h"
+#include "ri_resource_upload.h"
+#include "ri_scratch_alloc.h"
+#include "ri_pogoBuffer.h"
+
 
 typedef struct { char *name; void **funcPointer; } dllfunc_t;
 
@@ -141,25 +144,37 @@ typedef struct superLightStyle_s
 #define DEPTH_EPSILON (1.0 / ( 1 << 14 ))
 
 struct shadow_fb_s {
-	struct nri_descriptor_s depthAttachment;
-	struct nri_descriptor_s shaderDescriptor;
-	NriTexture* depthTexture;
-	size_t numAllocations;
-	NriMemory* memory[4];
+	struct RIDescriptor_s descriptor;
+	struct RITexture_s texture; 
+	uint16_t width, height;
+	union {
+    #if(DEVICE_IMPL_VULKAN)
+    struct {
+    	struct VmaAllocation_T* vmaAlloc;
+    } vk;
+    #endif
+	};
 };
 
 struct portal_fb_s {
-	struct nri_descriptor_s shaderDescriptor;
-	
-	struct nri_descriptor_s colorAttachment;
-	struct nri_descriptor_s depthAttachment;
-	struct nri_descriptor_s samplerDescriptor;
-	
-	NriTexture* colorTexture;
-	NriTexture* depthTexture;
-	size_t numAllocations;
-	NriMemory* memory[4];
+	uint16_t width, height;
 	size_t frameNum;
+
+	struct RIDescriptor_s colorDescriptor;
+	struct RIDescriptor_s depthDescriptor;
+	struct RIDescriptor_s* samplerDescriptor;
+
+	struct RITexture_s colorTexture; 
+	struct RITexture_s depthTexture; 
+
+	union {
+    #if(DEVICE_IMPL_VULKAN)
+    struct {
+    	struct VmaAllocation_T* vmaColorAlloc;
+    	struct VmaAllocation_T* vmaDepthAlloc;
+    } vk;
+    #endif
+	};
 };
 
 typedef struct portalSurface_s
@@ -170,15 +185,11 @@ typedef struct portalSurface_s
 	vec3_t			mins, maxs, centre;
 	skyportal_t		*skyPortal;
 	struct portal_fb_s* portalfbs[2];
-
 } portalSurface_t;
 
 typedef struct
 {
 	unsigned int	renderFlags;
-
-	NriDescriptor* colorAttachment;
-	NriDescriptor* depthAttachment;
 
 	image_t			*fbColorAttachment;
 	image_t			*fbDepthAttachment;
@@ -250,6 +261,20 @@ enum capture_state_e {
 	CAPTURE_STATE_FINISH_ENV
 };
 
+struct r_frame_set_s {
+	struct RIScratchAlloc_s uboScratchAlloc;
+	struct RIFree_s* freeList;
+	struct RICmd_s primaryCmd;
+	struct RICmd_s backBufferCmd; // command buffer  
+	struct RICmd_s* secondaryCmd; // secondary views
+	union {
+#if ( DEVICE_IMPL_VULKAN )
+		struct {
+				VkCommandPool pool;
+		} vk;
+#endif
+	};
+};
 
 // globals shared by the frontend and the backend
 // the backend should never attempt modifying any of these
@@ -257,14 +282,16 @@ typedef struct
 {
 	// any asset (model, shader, texture, etc) with has not been registered
 	// or "touched" during the last registration sequence will be freed
-	volatile int 	registrationSequence;
-	volatile bool 	registrationOpen;
+	volatile int registrationSequence;
+	volatile bool registrationOpen;
 
 	// bumped each time R_RegisterWorldModel is called
 	volatile int 	worldModelSequence;
 
 	model_t			*worldModel;
 	mbrushmodel_t	*worldBrushModel;
+
+	struct RIDescriptor_s* postProcessingSampler;
 
 	struct mesh_vbo_s *nullVBO;
 	struct mesh_vbo_s *postProcessingVBO;
@@ -297,26 +324,43 @@ typedef struct
 			struct {
 				uint64_t frameCnt;
 				sds path;
-				NriMemory *memory;
-				NriBuffer *buffer;
+				void *memory; //TODO: fix
+				void *buffer; //TODO: fix
 				struct texture_buf_desc_s textureBuferDesc;
 			} single;
 		};
 	} screenshot;
 
-	struct shadow_fb_s shadowFBs[NUMBER_FRAMES_FLIGHT][MAX_SHADOWGROUPS];	
+	struct RISwapchain_s riSwapchain;
+	struct RIResourceUploader_s uploader;
+
+	struct shadow_fb_s shadowFBs[NUMBER_FRAMES_FLIGHT][MAX_SHADOWGROUPS];
 	struct portal_fb_s portalFBs[MAX_PORTAL_TEXTURES];
-	struct nri_descriptor_s shadowSamplerDescriptor;
+	struct RIDescriptor_s *shadowSamplerDescriptor;
 
- 	struct nri_backend_s nri;
+	struct RIRenderer_s renderer;
+ 	struct RIDevice_s device;
 
-	uint64_t frameCount;
-	uint64_t swapchainCount;
- 	NriCommandQueue* cmdQueue;
- 	NriSwapChain* swapchain;
-	NriFence* frameFence;
-	struct frame_tex_buffers_s* backBuffers;
-	struct frame_cmd_buffer_s frameCmds[NUMBER_FRAMES_FLIGHT];
+	struct FrameState_s frame;
+
+	union {
+#if ( DEVICE_IMPL_VULKAN )
+		struct {
+			uint32_t swapchainIndex;
+			VkSemaphore frameSemaphore;	
+    	struct VmaAllocation_T* pogoAlloc[RI_MAX_SWAPCHAIN_IMAGES * 2];
+    	struct VmaAllocation_T* depthAlloc[RI_MAX_SWAPCHAIN_IMAGES];
+		} vk;
+#endif
+	};
+	struct RITexture_s pogoTextures[RI_MAX_SWAPCHAIN_IMAGES * 2];
+	struct RITexture_s depthTextures[RI_MAX_SWAPCHAIN_IMAGES];
+	struct RIDescriptor_s colorAttachment[RI_MAX_SWAPCHAIN_IMAGES];
+	struct RIDescriptor_s depthAttachment[RI_MAX_SWAPCHAIN_IMAGES];
+	struct RI_PogoBuffer pogoBuffer[RI_MAX_SWAPCHAIN_IMAGES];
+	
+	uint64_t frameSetCount;
+	struct r_frame_set_s frameSets[NUMBER_FRAMES_FLIGHT];
 
 	byte_vec4_t		customColors[NUM_CUSTOMCOLORS];
 } r_shared_t;
@@ -422,6 +466,13 @@ extern r_shared_t rsh;
 extern r_scene_t rsc;
 extern r_globals_t rf;
 
+static inline struct r_frame_set_s *R_GetActiveFrameSet()
+{
+	return rsh.frameSets + ( rsh.frameSetCount % NUMBER_FRAMES_FLIGHT );
+}
+void R_InitSubpass( struct FrameState_s *parent, struct FrameState_s *child);
+
+#define RI_ACTIVE_FRAMESET() (rsh.frameSets + (rsh.frameSetCount % NUMBER_FRAMES_FLIGHT)) 
 #define R_ENT2NUM(ent) ((ent)-rsc.entities)
 #define R_NUM2ENT(num) (rsc.entities+(num))
 
@@ -529,7 +580,7 @@ extern cvar_t *vid_multiscreen_head;
 // r_alias.c
 //
 bool	R_AddAliasModelToDrawList( const entity_t *e );
-void	R_DrawAliasSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceAlias_t *drawSurf );
+void	R_DrawAliasSurf(struct FrameState_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceAlias_t *drawSurf );
 bool	R_AliasModelLerpTag( orientation_t *orient, const maliasmodel_t *aliasmodel, int framenum, int oldframenum,
 				float lerpfrac, const char *name );
 float		R_AliasModelBBox( const entity_t *e, vec3_t mins, vec3_t maxs );
@@ -557,7 +608,7 @@ void		R_CinList_f( void );
 //
 void 		R_TakeScreenShot( const char *path, const char *name, const char *fmtString, int x, int y, int w, int h, bool silent, bool media );
 void		R_ScreenShot_f( void );
-void 		R_TakeEnvShot(struct frame_cmd_buffer_s* cmd, const char *path, const char *name, unsigned maxPixels );
+void 		R_TakeEnvShot(struct FrameState_s* cmd, const char *path, const char *name, unsigned maxPixels );
 void		R_EnvShot_f( void );
 void		R_ImageList_f( void );
 void		R_ShaderList_f( void );
@@ -573,30 +624,6 @@ bool	R_VisCullBox( const vec3_t mins, const vec3_t maxs );
 bool	R_VisCullSphere( const vec3_t origin, float radius );
 int			R_CullModelEntity( const entity_t *e, vec3_t mins, vec3_t maxs, float radius, bool sphereCull, bool pvsCull );
 bool	R_CullSpriteEntity( const entity_t *e );
-
-////
-//// r_framebuffer.c
-////
-//enum
-//{
-//	FBO_COPY_NORMAL = 0,
-//	FBO_COPY_CENTREPOS = 1,
-//	FBO_COPY_INVERT_Y = 2
-//};
-//
-//void		RFB_Init( void );
-//int			RFB_RegisterObject( int width, int height, bool builtin, bool depthRB, bool stencilRB );
-//void		RFB_UnregisterObject( int object );
-//void		RFB_TouchObject( int object );
-//void		RFB_BindObject( int object );
-//int			RFB_BoundObject( void );
-//void		RFB_AttachTextureToObject( int object, image_t *texture );
-//image_t		*RFB_GetObjectTextureAttachment( int object, bool depth );
-//void		RFB_BlitObject( int dest, int bitMask, int mode );
-//bool	RFB_CheckObjectStatus( void );
-//void		RFB_GetObjectSize( int object, int *width, int *height );
-//void		RFB_FreeUnusedObjects( void );
-//void		RFB_Shutdown( void );
 
 //
 // r_light.c
@@ -615,7 +642,7 @@ void		R_SortSuperLightStyles( model_t *mod );
 void		R_TouchLightmapImages( model_t *mod );
 
 void		R_InitCoronas( void );
-void		R_BatchCoronaSurf(struct frame_cmd_buffer_s* cmd,  const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceType_t *drawSurf );
+void		R_BatchCoronaSurf(struct FrameState_s* cmd,  const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceType_t *drawSurf );
 void		R_DrawCoronas( void );
 void		R_ShutdownCoronas( void );
 
@@ -647,11 +674,12 @@ void		R_FreeFile_( void *buffer, const char *filename, int fileline );
 
 bool		R_IsRenderingToScreen( void );
 void		R_SetWallFloorColors( const vec3_t wallColor, const vec3_t floorColor );
-void		R_Set2DMode(struct frame_cmd_buffer_s* cmd, bool enable );
-void		R_RenderView(struct frame_cmd_buffer_s* frame, const refdef_t *fd );
+void		R_Set2DMode(struct FrameState_s* cmd, bool enable );
+void		R_RenderView(struct FrameState_s* frame, const refdef_t *fd );
 const msurface_t *R_GetDebugSurface( void );
 const char *R_WriteSpeedsMessage( char *out, size_t size );
 void		R_RenderDebugSurface( const refdef_t *fd );
+
 
 /**
  * Defer R_DataSync call at the start/end of the next frame.
@@ -664,7 +692,7 @@ bool	R_CompletelyFogged( const mfog_t *fog, vec3_t origin, float radius );
 int			R_LODForSphere( const vec3_t origin, float radius );
 float		R_DefaultFarClip( void );
 
-void		R_BatchSpriteSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceType_t *drawSurf );
+void		R_BatchSpriteSurf(struct FrameState_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceType_t *drawSurf );
 
 struct mesh_vbo_s *R_InitNullModelVBO( void );
 void	R_DrawNullSurf( const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceType_t *drawSurf );
@@ -675,17 +703,17 @@ void		R_TransformForWorld( void );
 void		R_TransformForEntity( const entity_t *e );
 void		R_TranslateForEntity( const entity_t *e );
 
-void		R_DrawStretchPic(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
+void		R_DrawStretchPic(struct FrameState_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	const vec4_t color, const shader_t *shader );
-void		R_DrawRotatedStretchPic(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
+void		R_DrawRotatedStretchPic(struct FrameState_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	float angle, const vec4_t color, const shader_t *shader );
 void		R_UploadRawPic( image_t *texture, int cols, int rows, uint8_t *data );
 void		R_UploadRawYUVPic( image_t **yuvTextures, ref_img_plane_t *yuv );
 void		R_DrawStretchRawYUVBuiltin( int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	image_t **yuvTextures, int flip );
-void		R_DrawStretchRaw(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2 );
+void		R_DrawStretchRaw(struct FrameState_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2 );
 void		R_DrawStretchRawYUV( int x, int y, int w, int h, float s1, float t1, float s2, float t2 );
-void		R_DrawStretchQuick(struct frame_cmd_buffer_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
+void		R_DrawStretchQuick(struct FrameState_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	const vec4_t color, int program_type, image_t *image, int blendMask );
 
 void		R_InitCustomColors( void );
@@ -696,8 +724,8 @@ void		R_ShutdownCustomColors( void );
 #define ENTITY_OUTLINE(ent) (( !(rn.renderFlags & RF_MIRRORVIEW) && ((ent)->renderfx & RF_VIEWERMODEL) ) ? 0 : (ent)->outlineHeight)
 
 void		R_ClearRefInstStack( void );
-bool		R_PushRefInst( struct frame_cmd_buffer_s* frame);
-void		R_PopRefInst( struct frame_cmd_buffer_s* frame );
+bool		R_PushRefInst( struct FrameState_s* frame);
+void		R_PopRefInst( struct FrameState_s* frame );
 
 //
 // r_mesh.c
@@ -715,8 +743,8 @@ vboSlice_t *R_GetVBOSlice( unsigned int index );
 void R_InitDrawLists( void );
 
 void R_SortDrawList( drawList_t *list );
-void R_DrawSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list );
-void R_DrawOutlinedSurfaces(struct frame_cmd_buffer_s* frame, drawList_t *list );
+void R_DrawSurfaces(struct FrameState_s* frame, drawList_t *list );
+void R_DrawOutlinedSurfaces(struct FrameState_s* frame, drawList_t *list );
 
 void R_CopyOffsetElements( const elem_t *inelems, int numElems, int vertsOffset, elem_t *outelems );
 void R_CopyOffsetTriangles( const elem_t *inelems, int numElems, int vertsOffset, elem_t *outelems );
@@ -733,19 +761,24 @@ portalSurface_t *R_AddPortalSurface( const entity_t *ent, const mesh_t *mesh,
 	const vec3_t mins, const vec3_t maxs, const shader_t *shader, void *drawSurf );
 portalSurface_t *R_AddSkyportalSurface( const entity_t *ent, const shader_t *shader, 
 	void *drawSurf );
-void R_DrawPortals(struct frame_cmd_buffer_s* cmd);
+void R_DrawPortals(struct FrameState_s *cmd);
 
 void R_ShutdownPortals();
 
 //
 // r_poly.c
 //
-void		R_BatchPolySurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfacePoly_t *poly );
-void		R_DrawPolys( void );
-void		R_DrawStretchPoly(struct frame_cmd_buffer_s* cmd, const poly_t *poly, float x_offset, float y_offset );
-bool	R_SurfPotentiallyFragmented( const msurface_t *surf );
-int			R_GetClippedFragments( const vec3_t origin, float radius, vec3_t axis[3], int maxfverts,
-								  vec4_t *fverts, int maxfragments, fragment_t *fragments );
+void R_BatchPolySurf( struct FrameState_s *cmd,
+					  const entity_t *e,
+					  const shader_t *shader,
+					  const mfog_t *fog,
+					  const portalSurface_t *portalSurface,
+					  unsigned int shadowBits,
+					  drawSurfacePoly_t *poly );
+void R_DrawPolys( void );
+void R_DrawStretchPoly( struct FrameState_s *cmd, const poly_t *poly, float x_offset, float y_offset );
+bool R_SurfPotentiallyFragmented( const msurface_t *surf );
+int R_GetClippedFragments( const vec3_t origin, float radius, vec3_t axis[3], int maxfverts, vec4_t *fverts, int maxfragments, fragment_t *fragments );
 
 //
 // r_register.c
@@ -770,7 +803,7 @@ void R_AddEntityToScene( const entity_t *ent );
 void R_AddLightToScene( const vec3_t org, float intensity, float r, float g, float b );
 void R_AddPolyToScene( const poly_t *poly );
 void R_AddLightStyleToScene( int style, float r, float g, float b );
-void R_RenderScene(struct frame_cmd_buffer_s* cmd, const refdef_t *fd );
+void R_RenderScene(const refdef_t *fd );
 
 //
 // r_surf.c
@@ -784,7 +817,7 @@ bool	R_SurfPotentiallyShadowed( const msurface_t *surf );
 bool	R_SurfPotentiallyLit( const msurface_t *surf );
 bool	R_AddBrushModelToDrawList( const entity_t *e );
 float		R_BrushModelBBox( const entity_t *e, vec3_t mins, vec3_t maxs, bool *rotated );
-void	R_DrawBSPSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceBSP_t *drawSurf );
+void	R_DrawBSPSurf(struct FrameState_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceBSP_t *drawSurf );
 
 //
 // r_skin.c
@@ -800,7 +833,7 @@ shader_t	*R_FindShaderForSkinFile( const struct skinfile_s *skinfile, const char
 // r_skm.c
 //
 bool	R_AddSkeletalModelToDrawList( const entity_t *e );
-void	R_DrawSkeletalSurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceSkeletal_t *drawSurf );
+void	R_DrawSkeletalSurf(struct FrameState_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceSkeletal_t *drawSurf );
 float		R_SkeletalModelBBox( const entity_t *e, vec3_t mins, vec3_t maxs );
 void		R_SkeletalModelFrameBounds( const model_t *mod, int frame, vec3_t mins, vec3_t maxs );
 int			R_SkeletalGetBoneInfo( const model_t *mod, int bonenum, char *name, size_t name_size, int *flags );
@@ -842,16 +875,24 @@ struct vbo_layout_s {
 	uint16_t instancesOffset;
 };
 
-typedef struct mesh_vbo_s
-{
-	uint8_t numAllocations;
-	NriMemory *memory[16];
-	NriAccessStage vertexStage;
-	NriAccessStage indexStage;
-	NriAccessStage instanceStage;
-	NriBuffer *vertexBuffer;
-	NriBuffer *indexBuffer;
-	NriBuffer *instanceBuffer;
+typedef struct mesh_vbo_s {
+	uint32_t hasInstanceBuffer: 1;
+	uint32_t hasVertexBuffer: 1;
+	uint32_t hasIndexBuffer: 1;
+
+	struct RIBuffer_s vertexBuffer; 
+	struct RIBuffer_s indexBuffer; 
+	struct RIBuffer_s instanceBuffer; 
+	union {
+#if ( DEVICE_IMPL_VULKAN )
+		struct {
+
+			struct VmaAllocation_T *vertexBufferAlloc;
+			struct VmaAllocation_T *indexBufferAlloc;
+			struct VmaAllocation_T *instanceBufferAlloc;
+		} vk;
+#endif
+	};
 
 	unsigned int		index;
 	int					registrationSequence;
@@ -892,14 +933,13 @@ struct mesh_vbo_desc_s {
 	int numElems;
 	int numInstances;
 
-	NriMemoryLocation memoryLocation;
 	vattribmask_t vattribs;
 	vattribmask_t halfFloatVattribs;
 };
 
 mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc); 
 	//void *owner, int numVerts, int numElems, int numInstances, vattribmask_t vattribs, vbo_tag_t tag, vattribmask_t halfFloatVattribs );
-void		R_ReleaseMeshVBO(struct frame_cmd_buffer_s *cmd, mesh_vbo_t *vbo );
+void		R_ReleaseMeshVBO(struct FrameState_s *cmd, mesh_vbo_t *vbo );
 void		R_TouchMeshVBO( mesh_vbo_t *vbo );
 mesh_vbo_t *R_GetVBOByIndex( int index );
 int			R_GetNumberOfActiveVBOs( void );
@@ -912,11 +952,11 @@ void		R_FreeVBOsByTag( vbo_tag_t tag );
 void		R_FreeUnusedVBOs( void );
 void 		R_ShutdownVBO( void );
 
-void R_FillNriVertexAttrib(mesh_vbo_t* vbo, NriVertexAttributeDesc* desc, size_t* numDesc);
+void R_FillNriVertexAttrib( mesh_vbo_t *vbo, struct frame_cmd_vertex_attrib_s *desc, size_t *numDesc );
 
 struct vbo_layout_s R_CreateVBOLayout( vattribmask_t vattribs, vattribmask_t halfFloatVattribs);
 vattribmask_t R_WriteMeshToVertexBuffer( const struct vbo_layout_s *layout, vattribmask_t vattribs, const mesh_t *mesh, void *dst );
-void R_FillNriVertexAttribLayout(const struct vbo_layout_s* layout, NriVertexAttributeDesc* desc, size_t* numDesc);
+void R_FillNriVertexAttribLayout( const struct vbo_layout_s *layout, struct frame_cmd_vertex_attrib_s *desc, size_t *numDesc );
 
 enum
 {
@@ -930,7 +970,7 @@ enum
 
 struct skydome_s *R_CreateSkydome( model_t *model );
 void		R_TouchSkydome( struct skydome_s *skydome );
-void		R_DrawSkySurf(struct frame_cmd_buffer_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceBSP_t *drawSurf );
+void		R_DrawSkySurf(struct FrameState_s* cmd, const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceBSP_t *drawSurf );
 void		R_ClearSky( void );
 bool		R_ClipSkySurface( const msurface_t *fa );
 bool		R_AddSkySurfToDrawList( const msurface_t *fa, const portalSurface_t *portalSurface );
@@ -965,11 +1005,5 @@ typedef struct
 
 extern mapconfig_t	mapConfig;
 extern refinst_t	rn;
-
-static inline struct frame_cmd_buffer_s *R_ActiveFrameCmd()
-{
-	const uint32_t bufferedFrameIndex = rsh.swapchainCount % NUMBER_FRAMES_FLIGHT;
-	return &rsh.frameCmds[bufferedFrameIndex];
-}
 
 #endif // R_LOCAL_H

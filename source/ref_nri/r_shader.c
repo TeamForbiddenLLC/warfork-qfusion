@@ -291,13 +291,12 @@ static bool Shader_ParseConditions( const char **ptr, shader_t *shader )
 
 		if( !conditions[numConditions].operand )
 		{
-			const NriDeviceDesc* desc = rsh.nri.coreI.GetDeviceDesc( rsh.nri.device );
 			if( !Q_stricmp( tok, "maxTextureSize" ) )
-				conditions[numConditions].operand = ( int  )desc->texture2DMaxDim;
+				conditions[numConditions].operand = ( int  )rsh.device.physicalAdapter.texture2DMaxDim;
 			else if( !Q_stricmp( tok, "maxTextureCubemapSize" ) )
-				conditions[numConditions].operand = ( int )desc->texture3DMaxDim;
+				conditions[numConditions].operand = ( int )rsh.device.physicalAdapter.texture3DMaxDim;
 			else if( !Q_stricmp( tok, "maxTextureUnits" ) )
-				conditions[numConditions].operand = ( int )desc->textureArrayLayerMaxNum;
+				conditions[numConditions].operand = ( int )rsh.device.physicalAdapter.textureArrayLayerMaxNum;
 			else if( !Q_stricmp( tok, "textureCubeMap" ) )
 				conditions[numConditions].operand = ( int )1;
 			else if( !Q_stricmp( tok, "GLSL" ) )
