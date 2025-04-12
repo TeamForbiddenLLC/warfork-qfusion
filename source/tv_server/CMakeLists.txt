@@ -26,6 +26,7 @@ file(GLOB TV_SERVER_SOURCES
     "../qcommon/bsp.c"
     "../qcommon/patch.c"
     "../qcommon/common.c"
+    "../qcommon/crashpad.cpp"
     "../qcommon/files.c"
     "../qcommon/cmd.c"
     "../qcommon/mem.c"
@@ -85,7 +86,7 @@ else()
 endif()
 
 add_executable(${QFUSION_TVSERVER_NAME} ${TV_SERVER_BINARY_TYPE} ${TV_SERVER_HEADERS} ${TV_SERVER_SOURCES} ${TV_SERVER_PLATFORM_SOURCES})
-target_link_libraries(${QFUSION_TVSERVER_NAME} PRIVATE CURL::libcurl ${TV_SERVER_PLATFORM_LIBRARIES} ${STEAMSHIMPARENT_LIBRARY})
+target_link_libraries(${QFUSION_TVSERVER_NAME} PRIVATE CURL::libcurl ${TV_SERVER_PLATFORM_LIBRARIES} ${STEAMSHIMPARENT_LIBRARY}  crashpad_client)
 
 qf_set_output_dir(${QFUSION_TVSERVER_NAME} "")
 
