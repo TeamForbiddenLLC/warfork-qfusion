@@ -28,6 +28,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "client/crash_report_database.h"
 #include "client/settings.h"
 #include "version.h"
+#include "base/strings/utf_string_conversions.h"
+
 
 std::unique_ptr<crashpad::CrashReportDatabase> db;
 crashpad::CrashpadClient* client;
@@ -39,12 +41,14 @@ void Exit_Crashpad() {
 
 bool Init_Crashpad( const char *dir )
 {
+
 	// Cache directory that will store crashpad information and minidumps
 #if BUILDFLAG(IS_POSIX)
 	base::FilePath database = base::FilePath( dir).Append( FILE_PATH_LITERAL("crashpad") );
 #elif BUILDFLAG(IS_WIN)
-	base::FilePath database = base::FilePath(base::FilePath::StringType(dir, dir + std::char_traits<wchar_t>::length(dir))).Append( FILE_PATH_LITERAL("crashpad") );
+	base::FilePath database = base::FilePath(base::UTF8ToWide(dir)).Append( FILE_PATH_LITERAL("crashpad") );
 #endif
+	;
 	// Path to the out-of-process handler executable
 	base::FilePath handler = base::FilePath(FILE_PATH_LITERAL("crashpad_handler.x86_64"));
   std::string minidump_url(APP_CRASHPAD_DUMP_URI);
