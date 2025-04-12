@@ -33,6 +33,7 @@ file(GLOB CLIENT_HEADERS
 
 file(GLOB CLIENT_COMMON_SOURCES
     "../qcommon/*.c"
+    "../qcommon/*.cpp"
     "../server/*.c"
     "*.c"
     "../gameshared/q_*.c"
@@ -250,6 +251,10 @@ elseif (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 endif()
 
 target_link_libraries(${QFUSION_CLIENT_NAME} PRIVATE CURL::libcurl ${CLIENT_PLATFORM_LIBRARIES} ${DISCORD_LIBRARY} ${STEAMSHIMPARENT_LIBRARY} Tracy::TracyClient)
+if (USE_CRASHPAD)
+    target_link_libraries(${QFUSION_CLIENT_NAME} PRIVATE crashpad_client)
+endif()
+
 qf_set_output_dir(${QFUSION_CLIENT_NAME} "")
 
 if (BUILD_STEAMLIB)

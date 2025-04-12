@@ -87,6 +87,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define APP_HOME_UNIX_DIR_FS  "warfork-2.1"
 #define APP_HOME_OSX_DIR_FS   "warfork-2.1"
 #define APP_HOME_WIN_DIR_FS   "Warfork 2.1"
+#define APP_CRASHPAD_DUMP_URI "https://o4509067405885440.ingest.us.sentry.io/api/4509067411980288/minidump/?sentry_key=241cc2069654711b30f9969ac7daf814" 
 
 
 
