@@ -1,6 +1,8 @@
 
 #include "../qstr_utf.h"
 #include "utest.h"
+#define MEM_DEFINE_INTERFACE_IMPL_SYSTEM 1
+#include "../../qcommon/mod_mem.h"
 
 
 UTEST(qstr_utf, qstrSliceToUtf16CodePoint) {
