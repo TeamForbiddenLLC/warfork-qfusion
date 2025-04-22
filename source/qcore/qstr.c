@@ -36,6 +36,8 @@
 
 #include "qstr.h"
 #include "qarch.h"
+#include "../qcommon/mod_mem.h"
+
 
 #define   upcase(c) (toupper ((unsigned char) c))
 #define downcase(c) (tolower ((unsigned char) c))
@@ -122,7 +124,7 @@ bool qStrAssign(struct QStr* str, struct QStrSpan slice)
 
 bool qStrResize(struct QStr* str, size_t len)
 {
-    str->buf = (char*)realloc(str->buf, len + 1);
+    str->buf = (char*)Q_Realloc(str->buf, len + 1);
     if (str->buf == NULL)
         return false;
 
@@ -146,7 +148,7 @@ bool qStrSetLen(struct QStr* str, size_t len)
         {
             reqSize += QSTR_MAX_PREALLOC;
         }
-        str->buf = (char*)realloc(str->buf, reqSize);
+        str->buf = (char*)Q_Realloc(str->buf, reqSize);
         if (str->buf == NULL)
             return false;
         str->alloc = reqSize;
@@ -178,7 +180,7 @@ bool qStrClear(struct QStr* str)
 void qStrFree( struct QStr *str )
 {
 	if( str->buf) {
-		free( str->buf );
+		Q_Free( str->buf );
 	}
 	str->len = 0;
 	str->alloc = 0;
@@ -199,7 +201,7 @@ bool qStrSetResv(struct QStr* str, size_t reserveLen)
     if (reserveLen > str->alloc)
     {
         str->alloc = reserveLen;
-        str->buf = (char*)realloc(str->buf, str->alloc);
+        str->buf = (char*)Q_Realloc(str->buf, str->alloc);
         if (str->buf == NULL)
             return false;
     }
@@ -212,7 +214,7 @@ struct QStr qStrDup(const struct QStr* str)
     struct QStr result = { 0 };
     if (str->buf == NULL)
         return result;
-    result.buf = (char*)malloc(str->len + 1);
+    result.buf = (char*)Q_Malloc(str->len + 1);
     if (result.buf == NULL)
         return result;
     memcpy(result.buf, str->buf, str->len);
@@ -628,7 +630,7 @@ int qstrvsscanf(struct QStrSpan slice, const char* fmt, va_list ap)
     char    staticbuf[1024], *buf = staticbuf;
     if ((slice.len + 1) >= 1024)
     {
-        buf = (char*)malloc(slice.len + 1);
+        buf = (char*)Q_Malloc(slice.len + 1);
     }
     memcpy(buf, slice.buf, slice.len);
     buf[slice.len] = 0;
@@ -637,7 +639,7 @@ int qstrvsscanf(struct QStrSpan slice, const char* fmt, va_list ap)
     const int res = vsscanf(buf, fmt, ap);
     va_end(cpy);
     if (buf != staticbuf)
-        free(buf);
+        Q_Free(buf);
     return res;
 }
 
@@ -652,7 +654,7 @@ bool qstrcatvprintf(struct QStr* str, const char* fmt, va_list ap)
      * If not possible we revert to heap allocation. */
     if (buflen > sizeof(staticbuf))
     {
-        buf = (char*)malloc(buflen);
+        buf = (char*)Q_Malloc(buflen);
         if (buf == NULL)
             return false;
     }
@@ -671,15 +673,15 @@ bool qstrcatvprintf(struct QStr* str, const char* fmt, va_list ap)
         if (bufstrlen < 0)
         {
             if (buf != staticbuf)
-                free(buf);
+                Q_Free(buf);
             return false;
         }
         if (((size_t)bufstrlen) >= buflen)
         {
             if (buf != staticbuf)
-                free(buf);
+                Q_Free(buf);
             buflen = ((size_t)bufstrlen) + 1;
-            buf = (char*)malloc(buflen);
+            buf = (char*)Q_Malloc(buflen);
             if (buf == NULL)
                 return false;
             continue;
@@ -742,7 +744,7 @@ bool qStrMakeRoomFor(struct QStr* str, size_t addlen)
     {
         reqSize += QSTR_MAX_PREALLOC;
     }
-    str->buf = (char*)realloc(str->buf, reqSize);
+    str->buf = (char*)Q_Realloc(str->buf, reqSize);
     if (!str->buf)
         return false;
     str->alloc = reqSize;

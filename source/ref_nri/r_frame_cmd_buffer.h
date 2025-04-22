@@ -1,8 +1,8 @@
 #ifndef R_FRAME_CMD_BUFFER_H
 #define R_FRAME_CMD_BUFFER_H
 
+#include "ri_types.h"
 #include "ri_format.h"
-
 #include "r_defines.h" 
 
 #define POGO_BUFFER_TEXTURE_FORMAT RI_FORMAT_RGBA8_UNORM

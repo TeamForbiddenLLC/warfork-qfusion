@@ -430,7 +430,7 @@ static void R_DrawPortalSurface( struct FrameState_s *cmd, portalSurface_t *port
 		best->rtype = NUM_RTYPES;
 	}
 
-	struct FrameState_s sub = { 0 };
+	struct FrameState_s sub = *cmd;
 	const bool useCaptureTexture = (captureTextureId >= 0);
 
 	prevRenderFlags = rn.renderFlags;
@@ -552,7 +552,7 @@ setup_and_render:
 	// but do not try to render to it more than once
 	if( useCaptureTexture )
 	{
-		struct portal_fb_s *const fb = __ResolvePortalSurface( cmd, rsc.refdef.width, rsc.refdef.height, ( shader->flags & SHADER_NO_TEX_FILTERING ) );
+		struct portal_fb_s *const fb = __ResolvePortalSurface( &sub, rsc.refdef.width, rsc.refdef.height, ( shader->flags & SHADER_NO_TEX_FILTERING ) );
 		portalTexures[captureTextureId] = fb;
 
 		if(fb == NULL) {
@@ -640,7 +640,7 @@ setup_and_render:
 			renderingInfo.pColorAttachments = &colorAttachment;
 			renderingInfo.pDepthAttachment = &depthStencil;
 			renderingInfo.pStencilAttachment = NULL;
-			vkCmdBeginRendering( rsh.frame.handle.vk.cmd, &renderingInfo );
+			vkCmdBeginRendering( sub.handle.vk.cmd, &renderingInfo );
 
 		}
 

@@ -210,10 +210,10 @@ static void RF_DeleteProgram( struct glsl_program_s *program )
 	if( program->deformsKey )
 		R_Free( program->deformsKey );
 
-	// if(program->layout)
-	//	rsh.nri.coreI.DestroyPipelineLayout(program->layout);
-
 #if ( DEVICE_IMPL_VULKAN )
+	if(program->vk.pipelineLayout) {
+		vkDestroyPipelineLayout(rsh.device.vk.device, program->vk.pipelineLayout, NULL);
+	}
 	for( size_t i = 0; i < PIPELINE_LAYOUT_HASH_SIZE; i++ ) {
 		if( program->pipelines[i].vk.handle )
 			vkDestroyPipeline( rsh.device.vk.device, program->pipelines[i].vk.handle, NULL );
@@ -1074,14 +1074,15 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 		}
 
 		VkPipelineColorBlendStateCreateInfo colorBlendState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-		colorBlendState.attachmentCount = cmd->numColorsAttachments;
-		colorBlendState.pAttachments = colorAttachmentDesc;
-		pipelineCreateInfo.pColorBlendState = &colorBlendState;
-		assert( cmd->numColorsAttachments > 0 );
+		if(cmd->numColorsAttachments > 0) {
+			colorBlendState.attachmentCount = cmd->numColorsAttachments;
+			colorBlendState.pAttachments = colorAttachmentDesc;
+			pipelineCreateInfo.pColorBlendState = &colorBlendState;
+		}
 
 		VkPipelineViewportStateCreateInfo viewportState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-		viewportState.viewportCount = cmd->numColorsAttachments;
-		viewportState.scissorCount = cmd->numColorsAttachments;
+		viewportState.viewportCount = Q_MAX(1, cmd->numColorsAttachments);
+		viewportState.scissorCount = Q_MAX(1, cmd->numColorsAttachments);
 		pipelineCreateInfo.pViewportState = &viewportState;
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
