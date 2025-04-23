@@ -1,6 +1,8 @@
 
 #include "../qscratch_alloc.h"
 #include "utest.h"
+#define MEM_DEFINE_INTERFACE_IMPL_SYSTEM 1
+#include "../../qcommon/mod_mem.h"
 
 UTEST(alloc, scratchAlloc_1)
 {

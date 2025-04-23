@@ -138,11 +138,11 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	struct RIBackendInit_s backendInit = { 0 };
 	backendInit.api = RI_DEVICE_API_VK;
 	backendInit.applicationName = applicationName;
-#ifndef NDEBUG
+//#ifndef NDEBUG
 	backendInit.vk.enableValidationLayer = true;
-#else
-	backendInit.vk.enableValidationLayer = false;
-#endif
+//#else
+//	backendInit.vk.enableValidationLayer = false;
+//#endif
 
 	if(InitRIRenderer(&backendInit, &rsh.renderer) != RI_SUCCESS) {
 		return rserr_unknown;
@@ -775,7 +775,7 @@ void RF_EndFrame( void )
 	{
 		RI_InsertTransitionBarriers( &rsh.device, &rsh.uploader, &activeSet->primaryCmd );
 		for( size_t i = 0; i < arrlen( activeSet->secondaryCmd ); i++ ) {
-			vkEndCommandBuffer(activeSet->secondaryCmd[i].vk.cmd );
+			//vkEndCommandBuffer(activeSet->secondaryCmd[i].vk.cmd );
 			vkCmdExecuteCommands( activeSet->primaryCmd.vk.cmd, 1, &activeSet->secondaryCmd[i].vk.cmd );
 		}
 		
@@ -956,9 +956,11 @@ void R_InitSubpass( struct FrameState_s *parent, struct FrameState_s *child)
 		cmdAllocInfo.commandPool = active->vk.pool;
 		cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 		cmdAllocInfo.commandBufferCount = 1;
+		
 		struct RICmd_s cmd = { 0 };
 		cmd.vk.pool = active->vk.pool;
 		VK_WrapResult( vkAllocateCommandBuffers( rsh.device.vk.device, &cmdAllocInfo, &cmd.vk.cmd ) );
+	
 		assert(IsRICmdValid(&rsh.renderer, &cmd));
 		arrpush( active->secondaryCmd, cmd );
 		child->handle = cmd;

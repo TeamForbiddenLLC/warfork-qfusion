@@ -320,8 +320,6 @@ struct RIFree_s {
 	};
 };
 
-
-
 enum RIDescriptorFlags_e {
 	RI_VK_DESC_BEGIN = 0,
 	RI_VK_DESC_OWN_SAMPLER = 0x1,		 // owns the backing assets VKImage, VkBuffer

@@ -358,8 +358,6 @@ static struct shadow_fb_s *__ResolveShadowSurface(size_t i, int width, int heigh
 	if( IsRITextureValid( &rsh.renderer, &bestFB->texture ) && bestFB->width == width && bestFB->height == height ) {
 		return bestFB;
 	}
-	bestFB->width = width;
-	bestFB->height = height;
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		assert( RI_VK_DESCRIPTOR_IS_IMAGE( bestFB->descriptor ) );
@@ -419,7 +417,9 @@ static struct shadow_fb_s *__ResolveShadowSurface(size_t i, int width, int heigh
 		createInfo.format = RIFormatToVK( ShadowDepthFormat );
 		createInfo.subresourceRange = subresource;
 		createInfo.image = bestFB->texture.vk.image;
-		
+	
+		bestFB->width = width;
+		bestFB->height = height;
 		bestFB->descriptor.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
 		bestFB->descriptor.texture = &bestFB->texture;
 		bestFB->descriptor.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
@@ -554,14 +554,14 @@ void R_DrawShadowmaps(struct FrameState_s* cmd)
 			imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
 			imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			imageBarriers[0].image = rsh.depthAttachment[rsh.vk.swapchainIndex].texture->vk.image;
+			imageBarriers[0].image = fb->texture.vk.image;
 			imageBarriers[0].subresourceRange = (VkImageSubresourceRange){
 				VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
 			};
 			VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
 			dependencyInfo.imageMemoryBarrierCount = 1;
 			dependencyInfo.pImageMemoryBarriers = imageBarriers;
-			vkCmdPipelineBarrier2( rsh.frame.handle.vk.cmd, &dependencyInfo );
+			vkCmdPipelineBarrier2( sub.handle.vk.cmd, &dependencyInfo );
 		}
 
 		VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
@@ -576,8 +576,7 @@ void R_DrawShadowmaps(struct FrameState_s* cmd)
 		renderingInfo.pDepthAttachment = &depthStencil;
 		renderingInfo.pStencilAttachment = NULL;
 		vkCmdBeginRendering( sub.handle.vk.cmd, &renderingInfo );
-		enum RI_Format_e attachments[] = { 0 };
-		FR_ConfigurePipelineAttachment( &sub.pipeline, attachments, Q_ARRAY_COUNT( attachments ), ShadowDepthFormat );
+		FR_ConfigurePipelineAttachment( &sub.pipeline, NULL, 0, ShadowDepthFormat );
 
 		sub.pipeline.flippedViewport = true;
 		R_RenderView( &sub, &refdef );
@@ -594,7 +593,7 @@ void R_DrawShadowmaps(struct FrameState_s* cmd)
 			imageBarriers[0].dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
 			imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			imageBarriers[0].image = rsh.depthAttachment[rsh.vk.swapchainIndex].texture->vk.image;
+			imageBarriers[0].image = fb->texture.vk.image;
 			imageBarriers[0].subresourceRange = (VkImageSubresourceRange){
 				VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
 			};

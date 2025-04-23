@@ -90,4 +90,24 @@ static inline void Q_ImportMemModule(const struct mem_import_s* mem) {
 }
 #endif
 
+
+#if MEM_DEFINE_INTERFACE_IMPL_SYSTEM
+mempool_t* Q_ParentPool() { return NULL; }
+void *__Q_Malloc( size_t size, const char *sourceFilename, const char *functionName, int sourceLine ) { return malloc(size); }
+void* __Q_Calloc(size_t count, size_t size, const char *sourceFilename, const char *functionName, int sourceLine ) { return calloc(count, size); }
+void *__Q_Realloc( void *ptr, size_t size, const char *sourceFilename, const char *functionName, int sourceLine ) { return realloc(ptr, size); }
+void *__Q_MallocAligned( size_t alignment, size_t size, const char *sourceFilename, const char *functionName, int sourceLine ) { return malloc(size); }
+void * __Q_CallocAligned(size_t count, size_t alignment,  size_t size, const char *sourceFilename, const char *functionName, int sourceLine) { return calloc(count, size); }
+struct mempool_stats_s Q_PoolStats(mempool_t* pool) { 
+	struct mempool_stats_s stats = {0};
+	return stats; 
+}
+void Mem_ValidationAllAllocations( ) {  }
+void Q_Free( void *ptr ) { return free(ptr); }
+mempool_t *Q_CreatePool( mempool_t *parent, const char *name ) { return NULL;}
+void Q_LinkToPool( void *ptr, mempool_t *pool ) { }
+void Q_FreePool( mempool_t *pool ) {}
+void Q_EmptyPool( mempool_t *pool ) {}
+#endif
+
 #endif

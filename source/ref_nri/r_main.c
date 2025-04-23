@@ -965,7 +965,8 @@ static void R_Clear(struct FrameState_s* frame, int bitMask  /* unused variable 
 		return;
 
 #if ( DEVICE_IMPL_VULKAN )
-		  {
+		  if(frame->pipeline.numColorsAttachments > 0)
+			{
 				size_t numClear = 0;
 			  VkClearRect clearRect[2] = { 0 };
 			  VkClearAttachment clearAttach[2] = { 0 };

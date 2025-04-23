@@ -2,7 +2,6 @@
 #define RI_FORMAT_H
 
 #include <qtypes.h>
-#include "ri_types.h"
 
 enum RI_Format_e {
 	RI_FORMAT_UNKNOWN,
@@ -148,10 +147,5 @@ struct RIFormatProps_s {
 };
 
 const struct RIFormatProps_s* GetRIFormatProps(uint32_t format);
-
-#if DEVICE_IMPL_VULKAN 
-const VkFormat RIFormatToVK(uint32_t format);
-const enum RI_Format_e VKToRIFormat(VkFormat);  
-#endif
 
 #endif
