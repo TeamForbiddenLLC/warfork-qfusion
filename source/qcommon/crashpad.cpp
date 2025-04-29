@@ -48,7 +48,7 @@ bool Init_Crashpad( const char *dir )
 #elif BUILDFLAG(IS_WIN)
 	base::FilePath database = base::FilePath(base::UTF8ToWide(dir)).Append( FILE_PATH_LITERAL("crashpad") );
 #endif
-	;
+
 	// Path to the out-of-process handler executable
 	base::FilePath handler = base::FilePath(FILE_PATH_LITERAL("crashpad_handler.x86_64"));
   std::string minidump_url(APP_CRASHPAD_DUMP_URI);
