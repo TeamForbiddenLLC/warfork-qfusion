@@ -1,0 +1,26 @@
+// no ammo warning
+setAlign 2 2
+setFontFamily con_fontSystem
+setFontSize %VIDHEIGHT / 50
+
+// no ammo warning
+if %drowning < 120
+if %drowning > 0
+	//shadow
+	setSize 24 * 1.333 * %VIDHEIGHT / %VIDWIDTH, 24
+	setCursor -7 + #WIDTH / 2, 70 + #HEIGHT / 2
+	moveCursor 1, 1
+	setColor 0 0 0 0.8
+	drawString "Drowning in..."
+    moveCursor 35, 0
+    drawStringNum %drowning / 10
+    movecursor -35,0
+
+	setColor 1 1 1 0.8
+	moveCursor -1, -1
+	drawString "Drowning in..."
+    moveCursor 35, 0
+    drawStringNum %drowning / 10
+
+endif
+endif
