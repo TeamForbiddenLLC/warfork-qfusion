@@ -1,0 +1,68 @@
+<rml>
+<head>
+	<title>modal</title>
+	<link type="text/template" href="template_modal.rml" />
+	<script>
+		Element @link;
+
+		bool onClickCallback( Element @body, Event @ev )
+		{
+			if( @link != null ) {
+				// the anchor element is contained within the text node, hence the firstChild() call
+				link.firstChild().click();
+			}
+			return true;
+		}
+
+		void onModalUpdateLoad( Element @body, Event @evt )
+		{
+			URL url( body.ownerDocument.URL );		
+			const Dictionary @dict = url.getParameters();
+
+			String version = '';
+			dict.get( 'version', version );
+
+			String app = '';
+			dict.get( 'app', app );
+			
+			String update_url = '';
+			dict.get( 'url', update_url );
+			
+			bool add_link = !update_url.empty() && window.browserAvailable;
+			
+			String text = StringUtils::Format( _T( 'Version %s of %s is available.' ), version, app );
+			if( add_link ) {
+				text += ' ' + _T( 'Click OK for more information.' );
+			}
+
+			Element @content = body.getElementById( 'basic_content' );
+			content.setInnerRML( text );
+
+			if( add_link ) {
+				@link = Element( content, '<a href="' + update_url + '" target="_browser">Update</a>' );
+				content.addChild( link, false );
+			}
+			
+			onModalLoadExt( body, evt, add_link );
+		}
+
+		void onModalUpdateShow( Element @body, Event @evt )
+		{
+			URL url( body.ownerDocument.URL );		
+			const Dictionary @dict = url.getParameters();
+
+			onModalShow( body, evt, onClickCallback );
+
+			String y = '';
+			dict.get( 'ypos', y );
+			if( y.empty() )
+				y = '0.5';
+			setModalY( y.toFloat() );
+		}
+	</script>
+</head>
+<body template="porkui_modal" onload="$onModalUpdateLoad" onshow="$onModalUpdateShow">
+	<div id="basic_content">
+	</div>
+</body>
+</rml>
