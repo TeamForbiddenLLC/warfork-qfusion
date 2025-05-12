@@ -43,9 +43,13 @@ jobs:
         working-directory: ./source
         run: |
           export CC=gcc-12 CXX=g++-12
-          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Release -DUSE_PACKAGE_ASSETS=1
+          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSE_PACKAGE_ASSETS=1
           cd build
           make -j8
+          cd warfork-qfusion
+          objcopy --only-keep-debug warfork.x86_64 warfork.x86_64.debug
+          objcopy --strip-debug --strip-unneeded warfork.x86_64
+          objcopy --add-gnu-debuglink=warfork.x86_64.debug warfork.x86_64
 
       - name: Building Debug
         if: matrix.config.type == 'debug'
@@ -208,7 +212,7 @@ jobs:
         if: matrix.config.type == 'release'
         working-directory: .\source
         run: |
-          cmake -B ./build  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RELEASE -DUSE_PACKAGE_ASSETS=1
+          cmake -B ./build  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSE_PACKAGE_ASSETS=1
           cd build
           msbuild qfusion.sln /p:configuration=Release /maxcpucount:8
 
