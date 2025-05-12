@@ -115,6 +115,19 @@ void MSG_WriteLong( msg_t *msg, int c )
 	buf[3] = ( uint8_t )( c>>24 );
 }
 
+void MSG_WriteLongLong( msg_t *msg, long long c )
+{
+	uint8_t *buf = ( uint8_t* )MSG_GetSpace( msg, 8 );
+	buf[0] = ( uint8_t )( c&0xff );
+	buf[1] = ( uint8_t )( ( c>>8 )&0xff );
+	buf[2] = ( uint8_t )( ( c>>16 )&0xff );
+	buf[3] = ( uint8_t )( ( c>>24 )&0xff );
+	buf[4] = ( uint8_t )( ( c>>32 )&0xff );
+	buf[5] = ( uint8_t )( ( c>>40 )&0xff );
+	buf[6] = ( uint8_t )( ( c>>48 )&0xff );
+	buf[7] = ( uint8_t )( c>>56 );
+}
+
 void MSG_WriteFloat( msg_t *msg, float f )
 {
 	union {

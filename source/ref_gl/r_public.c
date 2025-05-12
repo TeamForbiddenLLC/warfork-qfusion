@@ -18,11 +18,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+#define CVAR_DEFINE_INTERFACE_IMPL 1
+#include "../qcommon/mod_cvar.h"
+
 #define FS_DEFINE_INTERFACE_IMPL 1
 #include "../qcommon/mod_fs.h"
 
+#define CMD_DEFINE_INTERFACE_IMPL 1
+#include "../qcommon/mod_cmd.h"
+
 #define MEM_DEFINE_INTERFACE_IMPL 1
 #include "../qcommon/mod_mem.h"
+
 
 #include "../ref_base/ref_mod.h"
 
@@ -55,8 +62,10 @@ extern "C"
 QF_DLL_EXPORT ref_export_t *GetRefAPI( ref_import_t *import )
 {
 	static ref_export_t globals;
-	fs_import = *import->fsImport;
+	Q_ImportFsModule(import->fsImport);
 	Q_ImportMemModule(import->memImport);	
+	Q_ImportCmdModule(import->cmdImport);
+	Q_ImportCvarModule(import->cvarImport);
 
 	ri = *import;
 

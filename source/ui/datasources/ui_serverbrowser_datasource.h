@@ -41,6 +41,8 @@ namespace WSWUI {
 		// Attributes
 		std::string		address;
 		uint64_t			iaddress;
+		bool p2p;
+		uint64_t			steamid;
 
 		std::string		hostname;
 		std::string		cleanname;
@@ -363,6 +365,7 @@ namespace WSWUI {
 
 		// callback from client after initiating serverquery
 		void addToServerList( const char *adr, const char *info );
+		void addToServerListWarfork( const char *info );
 
 		// refreshes (pings) current list -> export to AS
 		void startRefresh( void );

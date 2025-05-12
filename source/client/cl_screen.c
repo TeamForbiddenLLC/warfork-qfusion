@@ -34,6 +34,8 @@ end of unit intermissions
 
 #include "client.h"
 #include "ftlib.h"
+#include "tracy/TracyC.h"
+
 
 float scr_con_current;    // aproaches scr_conlines at scr_conspeed
 float scr_con_previous;
@@ -270,7 +272,7 @@ void SCR_DrawRawChar( int x, int y, wchar_t num, qfontface_t *font, vec4_t color
 
 void SCR_DrawClampChar( int x, int y, wchar_t num, int xmin, int ymin, int xmax, int ymax, qfontface_t *font, vec4_t color )
 {
-	FTLIB_DrawClampChar( x, y, num, xmin, ymin, xmax, ymax, font, color );
+	FTLIB_DrawClampChar( x, y, num, xmin, ymin, xmax, ymax, font, color, NULL );
 }
 
 void SCR_DrawClampString( int x, int y, const char *str, int xmin, int ymin, int xmax, int ymax, qfontface_t *font, vec4_t color, int flags )
@@ -674,6 +676,7 @@ static void SCR_RenderView( float stereo_separation )
 */
 void SCR_UpdateScreen( void )
 {
+	TracyCFrameMark
 	static dynvar_t *updatescreen = NULL;
 	int numframes;
 	int i;
@@ -731,6 +734,8 @@ void SCR_UpdateScreen( void )
 
 	for( i = 0; i < numframes; i++ )
 	{
+		static const char* const cl_frame = "Render Frame"; 	
+		TracyCFrameMarkStart(cl_frame);
 		RF_BeginFrame( separation[i], forceclear, forcevsync );
 
 		if( scr_draw_loading == 2 )
@@ -787,5 +792,6 @@ void SCR_UpdateScreen( void )
 		Dynvar_CallListeners( updatescreen, NULL );
 
 		RF_EndFrame();
+		TracyCFrameMarkEnd(cl_frame);
 	}
 }

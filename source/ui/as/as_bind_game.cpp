@@ -25,6 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "kernel/ui_downloadinfo.h"
 #include "as/asui.h"
 #include "as/asui_local.h"
+#include "../../steamshim/src/mod_steam.h"
 
 namespace ASUI {
 
@@ -104,7 +105,10 @@ static asstring_t *Game_Cvar( Game *game, asstring_t* name )
 
 static void Game_SteamOpenProfile( Game *game, asstring_t* steamid )
 {
-	trap::Steam_OpenProfile(atoll(steamid->buffer));
+	struct steam_id_rpc_s request;
+	request.cmd = RPC_ACTIVATE_OVERLAY;
+	request.id = atoll( steamid->buffer );
+	STEAMSHIM_sendRPC( &request, sizeof( struct steam_id_rpc_s ), NULL, NULL, NULL);
 }
 
 static int Game_ClientState( Game *game )

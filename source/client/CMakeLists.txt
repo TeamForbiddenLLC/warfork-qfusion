@@ -2,9 +2,6 @@ project(${QFUSION_CLIENT_NAME})
 
 include_directories(${MINIZ_INCLUDE_DIR} ${CURL_INCLUDE_DIR} ${DISCORD_INCLUDE_DIR})
 
-if (USE_SDL2 OR (${CMAKE_SYSTEM_NAME} MATCHES "Linux"))
-    include_directories(${SDL2_INCLUDE_DIR})
-endif()
 
 if (NOT QFUSION_MAC_ICON)
 	set(QFUSION_MAC_ICON ../../icons/warfork.icns)
@@ -36,6 +33,7 @@ file(GLOB CLIENT_HEADERS
 
 file(GLOB CLIENT_COMMON_SOURCES
     "../qcommon/*.c"
+    "../qcommon/*.cpp"
     "../server/*.c"
     "*.c"
     "../gameshared/q_*.c"
@@ -79,7 +77,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
             "${DISCORD_INCLUDE_DIR}/discord_register_win.cpp"
         )
 
-        set(CLIENT_PLATFORM_LIBRARIES ${SDL2_LIBRARY} ${SDL2MAIN_LIBRARY} "ws2_32.lib" "winmm.lib")
+        set(CLIENT_PLATFORM_LIBRARIES SDL2::SDL2 $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>  "ws2_32.lib" "winmm.lib")
     else()
         file(GLOB CLIENT_PLATFORM_SOURCES
             "../win32/win_fs.c"
@@ -96,6 +94,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
             "../win32/win_input.c"
             "../win32/win_vid.c"
             "../win32/conproc.c"
+
+            "win/win32_glw.c"
 
             "../win32/qfusion.rc"
             
@@ -130,6 +130,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         "../sdl/sdl_time.c"
         "../sdl/sdl_lib.c"
         "../sdl/sdl_client.c"
+        
+        "./win/sdl_win.c"
 
         "../mac/mac_sys.m"
         
@@ -139,11 +141,10 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         "${QFUSION_MAC_INFO_PLIST}"
     )
 
-    set(CLIENT_PLATFORM_LIBRARIES ${SDL2_LIBRARY} "-framework IOKit" "-framework Cocoa")
+    set(CLIENT_PLATFORM_LIBRARIES SDL2::SDL2 "-framework IOKit" "-framework Cocoa")
     set(CLIENT_BINARY_TYPE MACOSX_BUNDLE)
 
     set(BUNDLE_RESOURCES
-        ../../libsrcs/lib/mac/Frameworks
         ${QFUSION_MAC_ICON}
     )
 	if (QFUSION_DATA_DIR)
@@ -175,11 +176,13 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
             "../sdl/sdl_lib.c"
             "../sdl/sdl_client.c"
 
+            "./win/sdl_win.c"
+
         	"${DISCORD_INCLUDE_DIR}/connection_unix.cpp"	    
             "${DISCORD_INCLUDE_DIR}/discord_register_linux.cpp"	
         )
 
-        set(CLIENT_PLATFORM_LIBRARIES ${SDL2_LIBRARY} "pthread" "m" "dl" "rt")
+        set(CLIENT_PLATFORM_LIBRARIES SDL2::SDL2 "pthread" "m" "dl" "rt" "mvec")
     else()
         file(GLOB CLIENT_PLATFORM_SOURCES
             "../unix/unix_fs.c"
@@ -203,7 +206,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	        "${DISCORD_INCLUDE_DIR}/discord_register_linux.cpp"	
         )
     
-        set(CLIENT_PLATFORM_LIBRARIES ${SDL2_LIBRARY} "pthread" "dl" "m" "X11" "Xi" "Xext" "Xrandr" "rt")
+        set(CLIENT_PLATFORM_LIBRARIES SDL2::SDL2 "pthread" "dl" "m" "X11" "Xi" "Xext" "Xrandr" "rt" "mvec")
     endif()
     set(CLIENT_BINARY_TYPE "")
 
@@ -214,47 +217,44 @@ add_executable(${QFUSION_CLIENT_NAME} ${CLIENT_BINARY_TYPE} ${CLIENT_HEADERS} ${
 add_dependencies(${QFUSION_CLIENT_NAME} angelwrap cgame cin ftlib game ref_gl snd_openal ui)
 set(STEAMSHIMPARENT_LIBRARY steamshim_parent)
 
-
 execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY ${CMAKE_HOME_DIRECTORY}/.. OUTPUT_VARIABLE GIT_COMMIT_HASH OUTPUT_STRIP_TRAILING_WHITESPACE)
-file(WRITE ${CMAKE_HOME_DIRECTORY}/build/commit.txt ${GIT_COMMIT_HASH})
+file(WRITE ${CMAKE_BINARY_DIR}/warfork-qfusion/commit.txt ${GIT_COMMIT_HASH})
 
-file(WRITE ${CMAKE_HOME_DIRECTORY}/build/steam_appid.txt ${QFUSION_GAME_STEAMAPPID})
+file(WRITE ${CMAKE_BINARY_DIR}/warfork-qfusion/steam_appid.txt ${QFUSION_GAME_STEAMAPPID})
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set_target_properties(${QFUSION_CLIENT_NAME} PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${QFUSION_MAC_INFO_PLIST})
     set_target_properties(${QFUSION_CLIENT_NAME} PROPERTIES XCODE_ATTRIBUTE_LD_RUNPATH_SEARCH_PATHS "@executable_path/../Frameworks @executable_path/../Resources/base @executable_path/../Resources/libs")
     set_source_files_properties(${QFUSION_MAC_ICON} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 
-    set_source_files_properties(../../libsrcs/lib/mac/Frameworks                 PROPERTIES MACOSX_PACKAGE_LOCATION .)
-	if (QFUSION_DATA_DIR)
+    if (QFUSION_DATA_DIR)
 	    set_source_files_properties(${QFUSION_DATA_DIR}/${QFUSION_GAME_DIR}    PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 		set_source_files_properties(${QFUSION_DATA_DIR}/docs    PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 	endif()
 
-    set(BUNDLE_PATH ${CMAKE_HOME_DIRECTORY}/build/$(CONFIGURATION)/${QFUSION_CLIENT_NAME}.app/Contents)
+    set(BUNDLE_PATH ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/${QFUSION_CLIENT_NAME}.app/Contents)
     set(POST_BUILD_CMDS
-        cp -r ${CMAKE_HOME_DIRECTORY}/build/$(CONFIGURATION)/${QFUSION_GAME_DIR}/ ${BUNDLE_PATH}/Resources/${QFUSION_GAME_DIR}/ &&
-        cp -r ${CMAKE_HOME_DIRECTORY}/build/$(CONFIGURATION)/libs/ ${BUNDLE_PATH}/Resources/libs/ &&
-        cp ${CMAKE_HOME_DIRECTORY}/build/$(CONFIGURATION)/${QFUSION_SERVER_NAME} ${BUNDLE_PATH}/MacOS/ &&
-        cp ${CMAKE_HOME_DIRECTORY}/build/$(CONFIGURATION)/wf_steam${CMAKE_EXECUTABLE_SUFFIX} ${BUNDLE_PATH}/Resources/ &&
-        cp ${CMAKE_HOME_DIRECTORY}/build/$(CONFIGURATION)/${QFUSION_TVSERVER_NAME} ${BUNDLE_PATH}/MacOS/ &&
-        cp ${CMAKE_HOME_DIRECTORY}/build/libsteam_api.dylib ${BUNDLE_PATH}/Resources/ &&
-        cp ${CMAKE_HOME_DIRECTORY}/build/commit.txt ${BUNDLE_PATH}/MacOS/ &&
-        cp ${CMAKE_HOME_DIRECTORY}/build/steam_appid.txt ${BUNDLE_PATH}/Resources/
+        cp -r ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/${QFUSION_GAME_DIR}/ ${BUNDLE_PATH}/Resources/${QFUSION_GAME_DIR}/ &&
+        cp -r ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/libs/ ${BUNDLE_PATH}/Resources/libs/ &&
+        cp ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/${QFUSION_SERVER_NAME} ${BUNDLE_PATH}/MacOS/ &&
+        cp ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/wf_steam${CMAKE_EXECUTABLE_SUFFIX} ${BUNDLE_PATH}/Resources/ &&
+        cp ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/${QFUSION_TVSERVER_NAME} ${BUNDLE_PATH}/MacOS/ &&
+        cp ${CMAKE_BINARY_DIR}/warfork-qfusion/libsteam_api.dylib ${BUNDLE_PATH}/Resources/ &&
+        cp ${CMAKE_BINARY_DIR}/warfork-qfusion/commit.txt ${BUNDLE_PATH}/MacOS/ &&
+        cp ${CMAKE_BINARY_DIR}/warfork-qfusion/steam_appid.txt ${BUNDLE_PATH}/Resources/
     )
         
     add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${POST_BUILD_CMDS})
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-        add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_HOME_DIRECTORY}/../libsrcs/src/openal-soft/bin/Win64/soft_oal.dll ${CMAKE_HOME_DIRECTORY}/build/$(CONFIGURATION)/soft_oal64.dll)
-    else()
-        add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_HOME_DIRECTORY}/../libsrcs/src/openal-soft/bin/Win64/soft_oal.dll ${CMAKE_HOME_DIRECTORY}/build/$(CONFIGURATION)/soft_oal64.dll)
-    endif()
-    add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_HOME_DIRECTORY}/build/commit.txt ${CMAKE_HOME_DIRECTORY}/build/$(CONFIGURATION)/)
-    add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_HOME_DIRECTORY}/build/steam_appid.txt ${CMAKE_HOME_DIRECTORY}/build/$(CONFIGURATION)/)
+    add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/warfork-qfusion/commit.txt ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/)
+    add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/warfork-qfusion/steam_appid.txt ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/)
 endif()
 
-target_link_libraries(${QFUSION_CLIENT_NAME} PRIVATE ${CURL_LIBRARY} ${CLIENT_PLATFORM_LIBRARIES} ${DISCORD_LIBRARY} ${STEAMSHIMPARENT_LIBRARY})
+target_link_libraries(${QFUSION_CLIENT_NAME} PRIVATE CURL::libcurl ${CLIENT_PLATFORM_LIBRARIES} ${DISCORD_LIBRARY} ${STEAMSHIMPARENT_LIBRARY} Tracy::TracyClient)
+if (USE_CRASHPAD)
+    target_link_libraries(${QFUSION_CLIENT_NAME} PRIVATE crashpad_client)
+endif()
+
 qf_set_output_dir(${QFUSION_CLIENT_NAME} "")
 
 if (BUILD_STEAMLIB)

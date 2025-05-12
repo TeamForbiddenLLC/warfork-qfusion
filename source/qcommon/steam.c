@@ -23,36 +23,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "steam.h"
 #include <string.h>
 
-#define UNIMPLEMENTED_DBGBREAK()                                         \
-	do {                                                                 \
-		Com_Printf( S_COLOR_RED "%s is UNIMPLEMENTED\n", __FUNCTION__ ); \
-		assert( 0 );                                                     \
-	} while( 0 )
-
-static void printEvent( const STEAMSHIM_Event *e )
-{
-	if( !steam_debug->integer || !e )
-		return;
-
-	Com_Printf( "%sokay, ival=%d, fval=%f, lval=%llu, name='%s').\n", e->okay ? "" : "!", e->ivalue, e->fvalue, e->lvalue, e->name );
-} 
-
-static const STEAMSHIM_Event* blockOnEvent(STEAMSHIM_EventType type){
-
-	while( 1 ) {
-		const STEAMSHIM_Event *evt = STEAMSHIM_pump();
-		if (!evt) continue;
-
-		if (evt->type == type){
-			printEvent( evt );
-			return evt;
-		} else {
-			printf("warning: ignoring event %i\n",evt->type);
-			// event gets ignored!
-			printEvent( evt );
-		}
-	}
-}
 cvar_t *steam_debug;
 /*
 * Steam_Init
@@ -63,7 +33,7 @@ void Steam_Init( void )
 
 	 SteamshimOptions opts;
 	 opts.debug = steam_debug->integer;
-	 opts.runserver = true;
+	 opts.runserver = 1;
 	 opts.runclient = !dedicated->integer;
 	int r = STEAMSHIM_init( &opts );
 	if( !r ) {
@@ -81,15 +51,3 @@ void Steam_Shutdown( void )
 	STEAMSHIM_deinit();
 }
 
-/*
-* Steam_Active
-*/
-int Steam_Active(){
-	return STEAMSHIM_alive();
-}
-
-const char *Steam_CommandLine() {
-	STEAMSHIM_requestCommandLine();
-	const STEAMSHIM_Event *e = blockOnEvent(SHIMEVENT_COMMANDLINERECIEVED);
-	return e->name;
-}

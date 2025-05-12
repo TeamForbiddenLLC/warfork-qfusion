@@ -23,7 +23,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../cgame/ref.h"
 
 #include "../qcommon/mod_mem.h"
+#include "../qcommon/mod_cmd.h"
+#include "../qcommon/mod_cvar.h"
+#include "../qcommon/mod_win.h"
 #include "ref_mod.h"
+
 
 #define REF_API_VERSION 21
 
@@ -104,9 +108,12 @@ typedef struct
 	int ( *BufPipe_ReadCmds )( qbufPipe_t *queue, unsigned (**cmdHandlers)( const void * ) );
 	void ( *BufPipe_Wait )( qbufPipe_t *queue, int (*read)( qbufPipe_t *, unsigned( ** )(const void *), bool ), 
 	unsigned (**cmdHandlers)( const void * ), unsigned timeout_msec );
-	
+
+	const struct cmd_import_s* cmdImport; 
 	const struct fs_import_s* fsImport;
 	const struct mem_import_s* memImport;
+	const struct cvar_import_s* cvarImport;
+	const struct win_import_s* winImport;
 } ref_import_t;
 
 

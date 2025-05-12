@@ -22,6 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define __CG_PUBLIC_H__
 
 #include "../ref_base/ref_mod.h"
+#include "../steamshim/src/mod_steam.h"
+#include "../qcommon/mod_fs.h"
 
 struct orientation_s;
 struct bonepose_s;
@@ -83,6 +85,8 @@ typedef struct snapshot_s
 //
 typedef struct
 {
+	const struct fs_import_s* fsImport;
+
 	// drops to console a client game error
 	void ( *Error )( const char *msg );
 
@@ -120,29 +124,6 @@ typedef struct
 	void ( *Cmd_ExecuteText )( int exec_when, const char *text );
 	void ( *Cmd_Execute )( void );
 	void ( *Cmd_SetCompletionFunc )( const char *cmd_name, char **( *completion_func )( const char *partial ) );
-
-	// files will be memory mapped read only
-	// the returned buffer may be part of a larger pak file,
-	// or a discrete file from anywhere in the quake search path
-	// a -1 return means the file does not exist
-	// NULL can be passed for buf to just determine existance
-	int ( *FS_FOpenFile )( const char *filename, int *filenum, int mode );
-	int ( *FS_Read )( void *buffer, size_t len, int file );
-	int ( *FS_Write )( const void *buffer, size_t len, int file );
-	int ( *FS_Print )( int file, const char *msg );
-	int ( *FS_Tell )( int file );
-	int ( *FS_Seek )( int file, int offset, int whence );
-	int ( *FS_Eof )( int file );
-	int ( *FS_Flush )( int file );
-	void ( *FS_FCloseFile )( int file );
-	bool ( *FS_RemoveFile )( const char *filename );
-	int ( *FS_GetFileList )( const char *dir, const char *extension, char *buf, size_t bufsize, int start, int end );
-	const char *( *FS_FirstExtension )( const char *filename, const char *extensions[], int num_extensions );
-	bool ( *FS_IsPureFile )( const char *filename );
-	bool ( *FS_MoveFile )( const char *src, const char *dst );
-	bool ( *FS_IsUrl )( const char *url );
-	time_t ( *FS_FileMTime )( const char *filename );
-	bool ( *FS_RemoveDirectory )( const char *dirname );
 
 	// key bindings
 	const char *( *Key_GetBindingBuf )( int binding );
@@ -241,8 +222,7 @@ typedef struct
 		int *selected, int *firstKey );
 	unsigned int ( *IN_SupportedDevices )( void );
 
-	// steam.h
-	void ( *Steam_RequestAvatar )(uint64_t steamid, int size);
+	struct steam_import_s steam_import;
 } cgame_import_t;
 
 //
@@ -336,9 +316,6 @@ typedef struct
 	bool ( *IsTouchDown )( int id );
 
 
-	void ( *CallbackRequestAvatar )( uint64_t steamid, char *avatar );
-
-
 	/**
 	 * Retrieves the blocklist item at the given index.
 	 *
@@ -349,6 +326,9 @@ typedef struct
 	 * @return whether the index is valid
 	 */
 	bool ( *GetBlocklistItem )( size_t index, uint64_t* steamid_out, char* name, size_t* name_len_in_out );
+
+
+	void ( *PlayVoice )( void *buffer, size_t size, int clientnum );
 } cgame_export_t;
 
 #endif

@@ -284,9 +284,8 @@ void CL_UIModule_Init( void )
 	import.L10n_ClearDomain = &CL_UIModule_L10n_ClearDomain;
 	import.L10n_GetUserLanguage = &L10n_GetUserLanguage;
 
-	import.Steam_OpenProfile = &Steam_OpenProfile;
 	import.GetBlocklistItem = CL_GameModule_GetBlocklistItem;
-
+	import.steam_import = (struct steam_import_s)DECLARE_STEAM_STRUCT();
 
 #ifndef UI_HARD_LINKED
 	funcs[0].name = "GetUIAPI";
@@ -583,6 +582,12 @@ void CL_UIModule_AddToServerList( const char *adr, const char *info )
 {
 	if( uie )
 		uie->AddToServerList( adr, info );
+}
+
+void CL_UIModule_AjaxResponse( const char *resource, const char *data )
+{
+	if( uie )
+		uie->AjaxResponse( resource, data );
 }
 
 /*

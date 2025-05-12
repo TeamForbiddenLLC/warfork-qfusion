@@ -11,7 +11,7 @@ include_directories("${STEAMWORKS_SDK_DIR}/public")
 
 set(STEAMWORKS_LIBRARY steam_api)
 # Please note, this is not in the 'libs' directory!
-set(STEAMWORKS_OUTPUT_PATH ${CMAKE_HOME_DIRECTORY}/build)
+set(STEAMWORKS_OUTPUT_PATH ${CMAKE_BINARY_DIR}/warfork-qfusion)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -22,7 +22,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     endif()
     set(STEAMWORKS_LIBRARY_EXTENSION .dll)
     # This is not a typo, but using Visual Studio's 'Configuration' property!
-    set(STEAMWORKS_OUTPUT_PATH "${CMAKE_HOME_DIRECTORY}/build/$(Configuration)")
+    set(STEAMWORKS_OUTPUT_PATH "${CMAKE_BINARY_DIR}/warfork-qfusion/$(Configuration)")
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(STEAMWORKS_SO_PREFIX lib)
     set(STEAMWORKS_LIBRARY_DIR ${STEAMWORKS_SDK_DIR}/redistributable_bin/osx)
@@ -62,6 +62,7 @@ file(GLOB child_SRC
     "src/*.cpp"
     "src/child/*.h"
     "src/child/*.cpp"
+    "src/child/ServerBrowser.cpp"
 )
 
 if (BUILD_STEAMLIB)

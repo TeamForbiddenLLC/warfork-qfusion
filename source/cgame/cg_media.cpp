@@ -20,6 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "cg_local.h"
 
+#include "../qcommon/mod_fs.h"
+
 cgs_media_handle_t *sfx_headnode;
 
 /*
@@ -408,7 +410,7 @@ void CG_RegisterLevelMinimap( void )
 	for( i = 0; i < NUM_IMAGE_EXTENSIONS; i++ )
 	{
 		Q_snprintfz( minimap, sizeof( minimap ), "minimaps/%s%s", name, IMAGE_EXTENSIONS[i] );
-		file = trap_FS_FOpenFile( minimap, NULL, FS_READ );
+		file = FS_FOpenFile( minimap, NULL, FS_READ );
 		if( file != -1 )
 		{
 			cgs.shaderMiniMap = R_RegisterPic( minimap );

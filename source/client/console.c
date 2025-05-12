@@ -643,10 +643,10 @@ int Q_ColorCharCount( const char *s, int byteofs )
 
 	while( s < end )
 	{
-		int gc = Q_GrabWCharFromColorString( &s, &c, NULL );
+		int gc = Q_GrabWCharFromColorString( &s, &c, NULL, NULL, NULL, NULL );
 		if( gc == GRABCHAR_CHAR )
 			charcount++;
-		else if( gc == GRABCHAR_COLOR )
+		else if( gc == GRABCHAR_COLOR || gc == GRABCHAR_ANSI || gc == GRABCHAR_RGB )
 			;
 		else if( gc == GRABCHAR_END )
 			break;
@@ -667,10 +667,10 @@ int Q_ColorCharOffset( const char *s, int charcount )
 
 	while( *s && charcount )
 	{
-		int gc = Q_GrabWCharFromColorString( &s, &c, NULL );
+		int gc = Q_GrabWCharFromColorString( &s, &c, NULL, NULL, NULL, NULL );
 		if( gc == GRABCHAR_CHAR )
 			charcount--;
-		else if( gc == GRABCHAR_COLOR )
+		else if( gc == GRABCHAR_COLOR || gc == GRABCHAR_ANSI || gc == GRABCHAR_RGB )
 			;
 		else if( gc == GRABCHAR_END )
 			break;
@@ -927,7 +927,11 @@ void Con_DrawChat( int x, int y, int width, struct qfontface_s *font )
 		SCR_DrawClampString( x - chat_prestep, y, s, x, y,
 			x + width, y + fontHeight, font, colorWhite, 0 );
 	}
-	cursorcolor = Q_ColorStrLastColor( ColorIndex( COLOR_WHITE ), s, -1 );
+
+	int ansicolorindex;
+	int bgcolorindex;
+	int rgbcolor;
+	cursorcolor = Q_ColorStrLastColor( ColorIndex( COLOR_WHITE ), s, -1, &ansicolorindex, &bgcolorindex, &rgbcolor );
 	s[chat_linepos] = oldchar;
 	if( complen && chat_linepos < chat_bufferlen )
 	{
@@ -1073,8 +1077,7 @@ void Con_DrawConsole( void )
 	newtime = localtime( &long_time );
 
 #ifdef PUBLIC_BUILD
-	Q_snprintfz( version, sizeof( version ), "%02d:%02d %s v%4.2f", newtime->tm_hour, newtime->tm_min,
-		APPLICATION, APP_VERSION );
+	Q_snprintfz( version, sizeof( version ), "%02d:%02d %s v"APP_VERSION_STR, newtime->tm_hour, newtime->tm_min, APPLICATION);
 #else
 	Q_snprintfz( version, sizeof( version ), "%02d:%02d %s v%4.2f rev:%s", newtime->tm_hour, newtime->tm_min,
 		APPLICATION, APP_VERSION, revisioncvar->string );
@@ -1798,7 +1801,7 @@ void Con_KeyDown( int key )
 			{
 				char *tmp = key_lines[edit_line] + key_linepos;
 				wchar_t c;
-				if( Q_GrabWCharFromColorString( ( const char ** )&tmp, &c, NULL ) == GRABCHAR_COLOR )
+				if( Q_GrabWCharFromColorString( ( const char ** )&tmp, &c, NULL, NULL, NULL, NULL ) == GRABCHAR_COLOR )
 					key_linepos = tmp - key_lines[edit_line]; // advance, try again
 				else	// GRABCHAR_CHAR or GRABCHAR_END
 					break;
@@ -2288,7 +2291,7 @@ void Con_MessageKeyDown( int key )
 			{
 				char *tmp = chat_buffer + chat_linepos;
 				wchar_t c;
-				if( Q_GrabWCharFromColorString( ( const char ** )&tmp, &c, NULL ) == GRABCHAR_COLOR )
+				if( Q_GrabWCharFromColorString( ( const char ** )&tmp, &c, NULL, NULL, NULL, NULL ) == GRABCHAR_COLOR )
 					chat_linepos = tmp - chat_buffer; // advance, try again
 				else	// GRABCHAR_CHAR or GRABCHAR_END
 					break;

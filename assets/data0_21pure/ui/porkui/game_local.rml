@@ -34,6 +34,14 @@
 				mapinfo.css( 'display', 'none' );
 			}
 
+
+
+			Cvar sv_hostname( 'sv_hostname', '', 0 );
+			if ( sv_hostname.string == "Warfork server" ) {
+				String name = game.cvar("name");
+				sv_hostname.set(name + "'s Listen Server");
+			}
+
 			animationsOnShow();
 		}
 
@@ -117,7 +125,7 @@
 		<div id="game-local">
 			<optionsform id="options-form">
 				<div class="title">Server name</div>
-				<input cvar="sv_hostname" type="text" />
+				<input cvar="sv_hostname" type="text" realtime="1"/>
 				<br />
 
 				<div class="title">Gametype</div>

@@ -631,7 +631,7 @@ typedef void (APIENTRY *DEBUGPROC)(GLenum source,
             const char*message,
             const void *userParam);
 
-QGL_FUNC(void, glDebugMessageCallback, (DEBUGPROC cb, const void* userParam));
+QGL_FUNC_OPT(void, glDebugMessageCallback, (DEBUGPROC cb, const void* userParam));
 
 // GL Functions
 QGL_FUNC(void, glBindTexture, (GLenum target, GLuint texture));

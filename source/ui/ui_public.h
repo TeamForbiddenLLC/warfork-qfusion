@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef __UI_PUBLIC_H__
 #define __UI_PUBLIC_H__
 
+#include "./../steamshim/src/mod_steam.h"
 #include "../ref_base/ref_mod.h"
 
 #define	UI_API_VERSION	    62
@@ -163,7 +164,7 @@ typedef struct
 	const char *( *L10n_GetUserLanguage )( void );
 
 	// steam
-	void ( *Steam_OpenProfile )( uint64_t steamid );
+	struct steam_import_s steam_import;
 	bool ( *GetBlocklistItem )( size_t index, uint64_t* steamid_out, char* name, size_t* name_len_in_out );
 } ui_import_t;
 
@@ -200,6 +201,7 @@ typedef struct
 	bool ( *HaveQuickMenu )( void );
 	void ( *ShowQuickMenu )( bool show );
 	void ( *AddToServerList )( const char *adr, const char *info );
+	void ( *AjaxResponse )( const char *resource, const char *data );
 } ui_export_t;
 
 #ifdef UI_HARD_LINKED

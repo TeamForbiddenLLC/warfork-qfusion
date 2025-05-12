@@ -1,13 +1,6 @@
 # (c) Team Forbidden LLC. All Rights Reserved.
 
 #. Console/sv
-msgid "sv_autoUpdate"
-msgstr "<0/1> Downloads updates automatically from our website.\n"
-"^6Disable: sv_autoUpdate \"0\"\n"
-"^6Enable: sv_autoUpdate \"1\"\n"
-"^6Note: Warfork utilizes Steam and this is not used."
-
-#. Console/sv
 msgid "sv_botpersonality"
 msgstr "<0-13> Changes the bot personality.\n"
 "^3yaw, reac, comb, yacc, off, camp, fire, armor, health, weapon, affinities, ^2{ no, gb, mg, rg, gl, rl, pg, lg, eb, ig }\n"
@@ -111,10 +104,6 @@ msgstr "<ip> If set, binds the Warfork server to a specific IPv6 address."
 #. Console/sv
 msgid "sv_iplimit"
 msgstr "<value>	Maximum amount of connections from a single IP address."
-
-#. Console/sv
-msgid "sv_lastAutoUpdate"
-msgstr "<value> Days since last automatic update."
 
 #. Console/sv
 msgid "sv_log_heartbeats"

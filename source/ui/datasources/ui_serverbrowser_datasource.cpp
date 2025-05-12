@@ -21,6 +21,13 @@ namespace WSWUI {
 
 //=====================================
 
+static uint16_t be16toh(uint16_t x) {
+	volatile uint16_t num = 1;
+	if (*(char *)&num == 0)
+		return x;
+	return (x & 0xFF) << 8 | (x >> 8);
+}
+
 namespace {
 
 	void DEBUG_PRINT_SERVERINFO( const ServerInfo &info )
@@ -81,6 +88,7 @@ void ServerInfo::fromOther( const ServerInfo &other )
 	skilllevel = other.skilllevel;
 	password = other.password;
 	steam = other.steam;
+	steamid = other.steamid;
 	tv = other.tv;
 	ping = other.ping;
 	ping_retries = other.ping_retries;
@@ -220,6 +228,14 @@ void ServerInfo::fromInfo( const char *info )
 			if( !toint.fail() && (tmpstm != 0) != steam) {
 				has_changed = true;
 				steam = tmpstm != 0;
+			}
+		} else if ( cmd == "sid") {
+			long long tmpsid;
+			std::stringstream toint( value );
+			toint >> tmpsid;
+			if( !toint.fail() && tmpsid != steamid) {
+				has_changed = true;
+				steamid = tmpsid;
 			}
 		}
 		else if( cmd == "mo" ) { // MOD NAME
@@ -497,6 +513,8 @@ void ServerBrowserDataSource::GetRow( StringList &row, const String &table, int 
 			row.push_back( info.password ? "yes" : "no" );
 		else if( *it == "steam" )
 			row.push_back( info.steam ? "yes" : "no" );
+		else if ( *it == "steamid" )
+			row.push_back( va( "%llu", info.steamid ) );
 		else if( *it == "ping" )
 			row.push_back( va( "%d", info.ping ) );
 		else if( *it == "address" )
@@ -549,8 +567,16 @@ void ServerBrowserDataSource::addServerToTable( ServerInfo &info, const String &
 	ReferenceList &referenceList = referenceListMap[tableName];
 
 	// Show/sort with referenceList
-	ReferenceList::iterator it = find_if( referenceList,
-							ServerInfo::EqualUnary<uint64_t, &ServerInfo::iaddress>( info.iaddress ) );
+	ReferenceList::iterator it;
+
+	if (info.steamid != 0) {
+		// TODO: this is really abusable
+		it = find_if( referenceList,
+								ServerInfo::EqualUnary<uint64_t, &ServerInfo::steamid>( info.steamid) );
+	} else {
+		it = find_if( referenceList,
+								ServerInfo::EqualUnary<uint64_t, &ServerInfo::iaddress>( info.iaddress ) );
+	}
 
 	if( it == referenceList.end() ) {
 		// server isnt in the list, use insertion sort to put it in
@@ -563,7 +589,7 @@ void ServerBrowserDataSource::addServerToTable( ServerInfo &info, const String &
 
 		// notify rocket on the addition of row
 		NotifyRowAdd( tableName, std::distance( referenceList.begin(), it ) /*referenceList.size()-1 */, 1 );
-	}
+	;}
 	else {
 		// notify rocket on the change of a row
 		NotifyRowChange( tableName, std::distance( referenceList.begin(), it ), 1 );
@@ -575,8 +601,14 @@ void ServerBrowserDataSource::removeServerFromTable( ServerInfo &info, const Str
 	ReferenceList &referenceList = referenceListMap[tableName];
 
 	// notify rocket + remove from referenceList
-	ReferenceList::iterator it = find_if( referenceList,
-							ServerInfo::EqualUnary<uint64_t, &ServerInfo::iaddress>( info.iaddress ) );
+	ReferenceList::iterator it;
+	if (info.p2p) {
+		it = find_if( referenceList,
+								ServerInfo::EqualUnary<uint64_t, &ServerInfo::steamid>( info.steamid) );
+	} else {
+		it = find_if( referenceList,
+								ServerInfo::EqualUnary<uint64_t, &ServerInfo::iaddress>( info.iaddress ) );
+	}
 
 	if( it != referenceList.end() ) {
 		int index = std::distance( referenceList.begin(), it );
@@ -632,6 +664,58 @@ void ServerBrowserDataSource::updateFrame()
 	}
 }
 
+
+class WFMasterFetcher {
+	private:
+	ServerBrowserDataSource *source;
+	std::vector<char> buf;
+
+	public:
+	WFMasterFetcher(ServerBrowserDataSource *source) : source(source) { }
+	static size_t StreamRead( const void *buf, size_t numb, float percentage, 
+		int status, const char *contentType, void *privatep )
+	{
+		WFMasterFetcher *t = static_cast<WFMasterFetcher*>(privatep);
+		if( status < 0 || status >= 300 ) {
+			return 0;
+		}
+
+		t->buf.insert(t->buf.end(), (char*)buf, (char*)buf+numb);
+		return numb;
+	}
+
+	static void StreamDone( int status, const char *contentType, void *privatep )
+	{
+		WFMasterFetcher *t = static_cast<WFMasterFetcher*>(privatep);
+		if (status < 0 || status >= 300) {
+			return delete t;
+		}
+		size_t cur = 0;
+
+		if (t->buf.size() < 2) {
+			return delete t;
+		}
+
+		short numServers = be16toh(*(short *)&t->buf[cur]);
+		cur += sizeof(short);
+
+		for (int i = 0; i < numServers; i++) {
+			if (t->buf.size() - cur < 8) {
+				return delete t;
+			}
+
+			long long steamid = *(long long *)&t->buf[cur];
+			cur += sizeof(long long);
+
+			char *info = &t->buf[cur];
+			t->source->addToServerListWarfork(info);
+			cur += strlen(info) + 1;
+		}
+
+		delete t;
+	}
+};
+
 // initiates master server query
 void ServerBrowserDataSource::startFullUpdate( void )
 {
@@ -671,7 +755,23 @@ void ServerBrowserDataSource::startFullUpdate( void )
 
 	// query for LAN servers too
 	trap::Cmd_ExecuteText( EXEC_APPEND, "requestservers local full empty\n" );
+
+
+	std::vector<std::string> masterServersWF;
+	tokenize( trap::Cvar_String("masterservers_warfork"), ' ', masterServersWF );
+
+	for( std::vector<std::string>::iterator it = masterServersWF.begin(); it != masterServersWF.end(); ++it ) {
+		char url[256];
+		snprintf(url, sizeof(url), "http://%s:%i/", it->c_str(), 27951);
+
+
+		auto fetcher = new WFMasterFetcher(this);
+		printf("Fetching %s\n", url);
+		trap::AsyncStream_PerformRequest(url, "GET", "", 5000, &WFMasterFetcher::StreamRead, &WFMasterFetcher::StreamDone, fetcher);
+	}
+
 }
+
 
 // callback from client propagates to here
 void ServerBrowserDataSource::addToServerList( const char *adr, const char *info )
@@ -746,6 +846,15 @@ void ServerBrowserDataSource::addToServerList( const char *adr, const char *info
 
 	// finally mark serverinfo unchanged
 	serverInfo.setChanged( false );
+}
+
+
+void ServerBrowserDataSource::addToServerListWarfork( const char *info ) {
+	ServerInfo *newInfo = new ServerInfo( "", info );
+	newInfo->p2p = true;
+	newInfo->fixStrings();
+
+	this->addServerToTable(*newInfo, TABLE_NAME_ALL);
 }
 
 // refreshes (pings) current list

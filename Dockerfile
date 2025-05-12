@@ -1,13 +1,6 @@
 # Run the following command and a build archive will be produced in the build/ directory:
 # docker build --output build .
-FROM ubuntu:20.04 AS build
-ARG DEBIAN_FRONTEND=noninteractive
-ARG DEBCONF_NONINTERACTIVE_SEEN=true
-RUN apt update
-RUN apt install -y curl clang cmake build-essential \
-    libsdl2-dev libopenal-dev libvorbis-dev libtheora-dev \
-    libfreetype6-dev libcurl4-gnutls-dev git zip unzip \
-    && rm -rf /var/lib/apt/lists/*
+FROM registry.gitlab.steamos.cloud/steamrt/sniper/sdk:latest AS build
 RUN mkdir -p /root/warfork
 WORKDIR /root/warfork
 COPY .clang-format .
@@ -18,9 +11,13 @@ COPY .git .
 COPY source source
 RUN curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
 RUN unzip third-party/steamworks/sdk.zip -d third-party/steamworks
-RUN export CC=clang CXX=clang++
-RUN cmake -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_STEAMLIB=1 ./source
+RUN export CC=clang-11 CXX=clang++-11
+WORKDIR /root/warfork/source
+RUN cmake -B ./build -DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 -DUSE_SYSTEM_ZLIB=1 -DUSE_SYSTEM_OPENAL=1 -DUSE_SYSTEM_CURL=1 -DUSE_SYSTEM_FREETYPE=1 -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Debug
+WORKDIR /root/warfork/source/build
 RUN make -j8
-RUN tar -czvf ./source/Linux-x86_64-Debug.tar.gz ./source/build/*
+WORKDIR /root/warfork/source/build/warfork-qfusion
+RUN set -e; for exc in ./test/*; do $exc; done
+RUN tar --exclude='*.a' --exclude='base*/*.a' --exclude='libs/*.a' --exclude='test' -zcvf ../Linux-x86_64-Debug.tar.gz *
 FROM scratch AS export
-COPY --from=build /root/warfork/source/Linux-x86_64-Debug.tar.gz .
+COPY --from=build /root/warfork/source/build/Linux-x86_64-Debug.tar.gz .

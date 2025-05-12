@@ -237,6 +237,9 @@ typedef UINT_PTR socket_handle_t;
 #elif defined ( __alpha__ )
 #define ARCH "axp"
 #define CPUSTRING "axp"
+#elif defined ( __aarch64__ )
+#define ARCH "aarch64"
+#define CPUSTRING "aarch64"
 #elif defined ( __arm__ )
 #if defined ( __ANDROID__ )
 #define ARCH "android_armeabi-v7a"

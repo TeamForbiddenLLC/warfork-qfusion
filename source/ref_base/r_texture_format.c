@@ -22,6 +22,16 @@ static const struct base_format_def_s baseFormats[] = {
     },
   },
 
+  [R_FORMAT_RG8_UNORM] = {
+    .format = R_FORMAT_RG8_UNORM, 
+    .base = R_BASE_FORMAT_FIXED_8,
+    .fixed_8 = {
+      .numChannels = 2,
+      .channels = {R_LOGICAL_C_RED, R_LOGICAL_C_GREEN},
+      .normalized = 1,
+      .sign = 0
+    },
+  },
   [R_FORMAT_RGB8_UNORM] = {
     .format = R_FORMAT_RGB8_UNORM, 
     .base = R_BASE_FORMAT_FIXED_8,
@@ -103,6 +113,16 @@ static const struct base_format_def_s baseFormats[] = {
       .normalized = 1,
       .sign = 0
     },
+  },
+  [R_FORMAT_RGBA8_SRGB] = {
+    .format = R_FORMAT_RGBA8_SRGB, 
+    .base = R_BASE_FORMAT_FIXED_8,
+    .fixed_8 = {
+      .numChannels = 4,
+      .channels = {R_LOGICAL_C_RED, R_LOGICAL_C_GREEN, R_LOGICAL_C_BLUE, R_LOGICAL_C_ALPHA},
+      .normalized = 1,
+      .srgb = 1
+    }
   },
   [R_FORMAT_RGBA8_UNORM] = {
     .format = R_FORMAT_RGBA8_UNORM, 
@@ -189,6 +209,7 @@ uint32_t R_FormatChannelCount(enum texture_format_e format) {
     case R_FORMAT_RGBA32_SINT: return 4;
     case R_FORMAT_RGBA32_SFLOAT: return 4;
     case R_FORMAT_BGR8_UNORM: return 3;
+    case R_FORMAT_RGBA8_UNORM: return 4;
     default:
       assert(false);
   }
@@ -424,12 +445,14 @@ uint32_t R_FormatBlockHeight( enum texture_format_e format )
 uint32_t R_FormatBitSizePerBlock(enum texture_format_e format) {
   switch(format) {
     case R_FORMAT_R8_UNORM: return 8;
+    case R_FORMAT_A8_UNORM: return 8;
     case R_FORMAT_R8_SNORM: return 8;
     case R_FORMAT_R8_UINT: return 8;
     case R_FORMAT_R8_SINT: return 8;
     case R_FORMAT_RGBA8_UNORM: return 32;
     case R_FORMAT_BGRA8_UNORM: return 32;
     case R_FORMAT_BGRA8_SRGB: return 32;
+    case R_FORMAT_RGBA8_SRGB: return 32;
     case R_FORMAT_RG8_UNORM: return 16;
     case R_FORMAT_RG8_SNORM: return 16;
     case R_FORMAT_RG8_UINT: return 16;
@@ -444,6 +467,7 @@ uint32_t R_FormatBitSizePerBlock(enum texture_format_e format) {
     case R_FORMAT_RGBA16_UINT: return 64;
     case R_FORMAT_RGBA16_SINT: return 64;
     case R_FORMAT_RGBA16_SFLOAT: return 64;
+    
 
     case R_FORMAT_R32_UINT: return 32;
     case R_FORMAT_R32_SINT: return 32;
@@ -492,6 +516,7 @@ const size_t RT_BlockSize(const struct base_format_def_s* def) {
 	}
 	return 0;
 }
+
 
 const uint_fast16_t RT_NumberChannels(const struct base_format_def_s* def) {
 	switch( def->base ) {

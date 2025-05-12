@@ -220,6 +220,15 @@
 				<input cvar="r_drawflat" type="checkbox" class="checkbox"/>
 				<br/>
 
+				<div id="module-frame">
+					<div class="title">Graphics Driver</div>
+					<select cvar="vid_ref" id="vid-module" onchange="video.Changed();">
+						<option value="ref_gl" selected>OpenGL</option>
+						<option value="ref_nri" selected>Vulkan/Metal</option>
+					</select>
+					<br/>
+				</div>
+
 				<br/>
 
 				<button onclick="form.restoreOptions(); video.Reset(self);" class="button-cancel">Cancel</button>				

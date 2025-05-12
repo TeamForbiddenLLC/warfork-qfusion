@@ -383,10 +383,10 @@ void FTLIB_DrawRawChar( int x, int y, wchar_t num, struct qfontface_s *font, vec
 /*
 * FTLIB_DrawClampChar
 */
-void FTLIB_DrawClampChar( int x, int y, wchar_t num, int xmin, int ymin, int xmax, int ymax, struct qfontface_s *font, vec4_t color )
+void FTLIB_DrawClampChar( int x, int y, wchar_t num, int xmin, int ymin, int xmax, int ymax, struct qfontface_s *font, vec4_t color, vec4_t bgcolor )
 {
 	if( ftlib_export ) {
-		ftlib_export->DrawClampChar( x, y, num, xmin, ymin, xmax, ymax, font, color );
+		ftlib_export->DrawClampChar( x, y, num, xmin, ymin, xmax, ymax, font, color, bgcolor );
 	}
 }
 

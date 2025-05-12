@@ -642,8 +642,8 @@ bool FS_IsExplicitPurePak( const char *pakname, bool *wrongver )
 
 	// check version match
 	if( wrongver ) {
-		begin = pakbasename + pakbasename_len - strlen( APP_VERSION_STR_MAJORMINOR "pure" ) - extension_len;
-		*wrongver = begin < pakbasename || Q_strnicmp( begin,  APP_VERSION_STR_MAJORMINOR, strlen( APP_VERSION_STR_MAJORMINOR ) ) != 0;
+		begin = pakbasename + pakbasename_len - strlen( APP_PK3_VERSION "pure" ) - extension_len;
+		*wrongver = begin < pakbasename || Q_strnicmp( begin, APP_PK3_VERSION, strlen( APP_PK3_VERSION ) ) != 0;
 	}
 
 	return pure;
@@ -1631,6 +1631,17 @@ int FS_Printf( int file, const char *format, ... )
 	}
 	va_end( argptr );
 
+	return FS_Write( msg, len, file );
+}
+
+int FS_vPrintf( int file, const char *format, va_list argptr )
+{
+	char msg[8192];
+	size_t len;
+	if( ( len = Q_vsnprintfz( msg, sizeof( msg ), format, argptr ) ) >= sizeof( msg ) - 1 ) {
+		msg[sizeof( msg ) - 1] = '\0';
+		Com_Printf( "FS_Printf: Buffer overflow" );
+	}
 	return FS_Write( msg, len, file );
 }
 
@@ -2756,8 +2767,6 @@ static pack_t *FS_LoadPK3File( const char *packfilename, bool silent )
 	// read manifest file if it's a module pk3
 	if( modulepack && manifestFilesize > 0 )
 		FS_ReadPackManifest( pack );
-
-	if( !silent ) Com_Printf( "Added pk3 file %s (%i files)\n", pack->filename, pack->numFiles );
 
 	return pack;
 

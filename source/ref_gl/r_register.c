@@ -569,7 +569,7 @@ static bool R_RegisterGLExtensions( void )
 		R_RegisterFatalExt( "gl_ext_blend_func_separate_EXT_funcs" );
 	}
 
-	if( R_TryLoadGLProcAddress( gl_ext_debug_message_callback ) ) {
+	if(qglDebugMessageCallback && R_TryLoadGLProcAddress( gl_ext_debug_message_callback ) ) {
 		qglDebugMessageCallback( __R_GlCallback, NULL );
 	}
 

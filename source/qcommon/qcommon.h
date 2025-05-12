@@ -79,6 +79,7 @@ void MSG_WriteByte( msg_t *sb, int c );
 void MSG_WriteShort( msg_t *sb, int c );
 void MSG_WriteInt3( msg_t *sb, int c );
 void MSG_WriteLong( msg_t *sb, int c );
+void MSG_WriteLongLong( msg_t *sb, long long c );
 void MSG_WriteFloat( msg_t *sb, float f );
 void MSG_WriteString( msg_t *sb, const char *s );
 #define MSG_WriteCoord( sb, f ) ( MSG_WriteInt3( ( sb ), Q_rint( ( f*PM_VECTOR_SNAP ) ) ) )
@@ -207,6 +208,7 @@ PROTOCOL
 
 #define	PORT_MASTER			27950
 #define	PORT_MASTER_STEAM	27011
+#define	PORT_MASTER_WARFORK			27951
 #define	PORT_SERVER			44400
 #define	PORT_HTTP_SERVER	44444
 #define PORT_TV_SERVER		44440
@@ -247,6 +249,7 @@ enum svc_ops_e
 	svc_servercs,			//tmp jalfixme : send reliable commands as unreliable
 	svc_frame,
 	svc_demoinfo,
+	svc_voice,
 	svc_extension			// for future expansion
 };
 
@@ -263,6 +266,7 @@ enum clc_ops_e
 	clc_svcack,
 	clc_clientcommand,      // [string] message
 	clc_extension,
+	clc_voice,
 	clc_steamauth,
 };
 
@@ -441,30 +445,33 @@ then searches for a command or variable that matches the first token.
 
 */
 
-typedef void ( *xcommand_t )( void );
-typedef char ** ( *xcompletionf_t )( const char *partial );
 
+//typedef void ( *xcommand_t )( void );
+//typedef char ** ( *xcompletionf_t )( const char *partial );
+//
+//void	    Cmd_AddCommand( const char *cmd_name, xcommand_t function );
+//void	    Cmd_RemoveCommand( const char *cmd_name );
+//bool    Cmd_Exists( const char *cmd_name );
+//bool	Cmd_CheckForCommand( char *text );
+//void	    Cmd_WriteAliases( int file );
+//int			Cmd_CompleteAliasCountPossible( const char *partial );
+//char		**Cmd_CompleteAliasBuildList( const char *partial );
+//int			Cmd_CompleteCountPossible( const char *partial );
+//char		**Cmd_CompleteBuildList( const char *partial );
+//char		**Cmd_CompleteBuildArgList( const char *partial );
+//char		**Cmd_CompleteBuildArgListExt( const char *command, const char *arguments );
+//char		**Cmd_CompleteFileList( const char *partial, const char *basedir, const char *extension, bool subdirectories );
+//int			Cmd_Argc( void );
+//char		*Cmd_Argv( int arg );
+//char		*Cmd_Args( void );
+//void	    Cmd_TokenizeString( const char *text );
+//void	    Cmd_ExecuteString( const char *text );
+//void		Cmd_SetCompletionFunc( const char *cmd_name, xcompletionf_t completion_func );
+
+#include "mod_cmd.h"
 void	    Cmd_PreInit( void );
 void	    Cmd_Init( void );
 void	    Cmd_Shutdown( void );
-void	    Cmd_AddCommand( const char *cmd_name, xcommand_t function );
-void	    Cmd_RemoveCommand( const char *cmd_name );
-bool    Cmd_Exists( const char *cmd_name );
-bool	Cmd_CheckForCommand( char *text );
-void	    Cmd_WriteAliases( int file );
-int			Cmd_CompleteAliasCountPossible( const char *partial );
-char		**Cmd_CompleteAliasBuildList( const char *partial );
-int			Cmd_CompleteCountPossible( const char *partial );
-char		**Cmd_CompleteBuildList( const char *partial );
-char		**Cmd_CompleteBuildArgList( const char *partial );
-char		**Cmd_CompleteBuildArgListExt( const char *command, const char *arguments );
-char		**Cmd_CompleteFileList( const char *partial, const char *basedir, const char *extension, bool subdirectories );
-int			Cmd_Argc( void );
-char		*Cmd_Argv( int arg );
-char		*Cmd_Args( void );
-void	    Cmd_TokenizeString( const char *text );
-void	    Cmd_ExecuteString( const char *text );
-void		Cmd_SetCompletionFunc( const char *cmd_name, xcompletionf_t completion_func );
 
 /*
 ==============================================================
@@ -498,7 +505,7 @@ NET
 
 #define	PACKET_HEADER			10          // two ints, and a short
 
-#define	MAX_RELIABLE_COMMANDS	64          // max string commands buffered for restransmit
+#define	MAX_RELIABLE_COMMANDS	256 // max string commands buffered for restransmit
 #define	MAX_PACKETLEN			1400        // max size of a network packet
 #define	MAX_MSGLEN				32768       // max length of a message, which may be fragmented into multiple packets
 
@@ -513,6 +520,7 @@ typedef enum
 	NA_LOOPBACK,
 	NA_IP,
 	NA_IP6,
+	NA_SDR,
 } netadrtype_t;
 
 typedef struct netadr_ipv4_s
@@ -535,13 +543,15 @@ typedef struct netadr_s
 	{
 		netadr_ipv4_t ipv4;
 		netadr_ipv6_t ipv6;
+		uint64_t steamid;
 	} address;
 } netadr_t;
 
 typedef enum
 {
 	SOCKET_LOOPBACK,
-	SOCKET_UDP
+	SOCKET_UDP,
+	SOCKET_SDR
 #ifdef TCP_SUPPORT
 	, SOCKET_TCP
 #endif
@@ -711,7 +721,7 @@ static const struct fs_import_s default_fs_imports_s = {
 	.FS_IsExplicitPurePak = FS_IsExplicitPurePak,
 	.FS_Read = FS_Read,
 	.FS_Print = FS_Print,
-	.FS_Printf = FS_Printf,
+	.FS_vPrintf = FS_vPrintf,
 	.FS_Write = FS_Write,
 	.FS_Tell = FS_Tell,
 	.FS_Seek = FS_Seek,
@@ -1029,17 +1039,5 @@ MULTITHREADING
 ==============================================================
 */
 #include "qthreads.h"
-
-/*
-==============================================================
-
-AUTOMATIC UPDATES
-
-==============================================================
-*/
-void Com_Autoupdate_Init( void );
-void Com_Autoupdate_Run( bool checkOnly, void (*newfiles_cb)(void) );
-void Com_Autoupdate_Cancel( void );
-void Com_Autoupdate_Shutdown( void );
 
 #endif // __QCOMMON_H

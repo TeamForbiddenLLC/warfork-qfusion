@@ -571,8 +571,9 @@ static int SCR_DrawTeamTab( const char **ptrptr, int *curteam, int x, int y, int
 			continue;
 
 		if (strcmp(token,"AVATAR") == 0){
-			// special case, don't draw any text, just skip ahead 32px
-			xoffset += 32;
+			// special case, don't draw any text, just skip ahead by avatarsize
+			int avatarsize = trap_SCR_FontHeight( font ) * 1.25;
+			xoffset += avatarsize;
 			continue;
 		}
 
@@ -682,9 +683,12 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 	xoffset = 0;
 	yoffset = 0;
 
-	height = 32;
 
-	int textoffset = (32-trap_SCR_FontHeight( font ))/2;
+	int avatarsize = trap_SCR_FontHeight( font )*1.25;
+
+	height = avatarsize;
+
+	int textoffset = (avatarsize-trap_SCR_FontHeight( font ))/2;
 
 	// start from the center again
 	xoffset = CG_HorizontalAlignForWidth( 0, align, panelWidth );
@@ -804,7 +808,7 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 				}
 				if (i >= 0 && i < gs.maxclients && cgs.clientInfo[i].steamid)
 					avatar = cgs.clientInfo[i].avatar;
-				width = 32;
+				width = avatarsize;
 			break;
 		}
 
@@ -834,14 +838,15 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 				if (trans)
 					avColor[3] = 0.3;
 
-				RF_DrawStretchPic(x+xoffset,y+yoffset,32,32,0,0,1,1,avColor,avatar);
+				RF_DrawStretchPic(x+xoffset,y+yoffset,avatarsize,avatarsize,0,0,1,1,avColor,avatar);
 			}
 		}
 
 		// draw the column value
 		if( pass && string[0] )
 		{
-			trap_SCR_DrawClampString( x + xoffset, y + yoffset + textoffset, string,
+			// offset text by 2px so it isn't up against the cell wall
+			trap_SCR_DrawClampString( x + 2 + xoffset, y + yoffset + textoffset, string,
 				x + xoffset, y + yoffset + textoffset,
 				x + xoffset + width, y + yoffset + height + textoffset, font, color );
 		}
@@ -851,12 +856,14 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 		xoffset += width;
 	}
 
-	int gap = 6;
+	int gap = trap_SCR_FontHeight(font) / 4;
 	if (pass && !last){
 		// draw scoreboard separator
-		CG_TeamColor( team, teamcolor );
+		
+		if( ( team == TEAM_ALPHA ) || ( team == TEAM_BETA ) )
+			CG_TeamColor( team, teamcolor );
 		teamcolor[3] = SCB_BACKGROUND_ALPHA - 0.17;
-		RF_DrawStretchPic( xstart, y + yoffset +32,panelWidth+gap, gap, 0, 0, 1, 1,teamcolor, cgs.shaderWhite );
+		RF_DrawStretchPic( xstart, y + yoffset + avatarsize,panelWidth+gap, gap, 0, 0, 1, 1,teamcolor, cgs.shaderWhite );
 	}
 
 	height += gap;

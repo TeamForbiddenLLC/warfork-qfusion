@@ -28,7 +28,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "cin.h"
 #include "ftlib.h"
 #include "xpm.h"
+
 #include "../qcommon/mod_mem.h"
+#include "../qcommon/mod_win.h"
+#include "../qcommon/mod_cvar.h"
 
 cvar_t *vid_ref;
 cvar_t *vid_width, *vid_height;
@@ -318,9 +321,11 @@ static bool VID_LoadRefresh( const char *name )
 	}
 	vid_ref_mempool = Q_CreatePool( NULL, "Refresh" );
 	
-	static ref_import_t import;
-	static struct mem_import_s memImport;
-	memImport = (struct mem_import_s)DECLARE_MEM_STRUCT( vid_ref_mempool );
+	ref_import_t import;
+	struct mem_import_s memImport = DECLARE_MEM_STRUCT( vid_ref_mempool );
+	struct cmd_import_s cmdImport = DECLARE_CMD_STRUCT();
+	struct cvar_import_s cvarImport = DECLARE_CVAR_STRUCT();	
+	struct win_import_s winImport = DECLARE_WIN_STRUCT();
 
 	size_t file_size;
 	char *file;
@@ -328,9 +333,12 @@ static bool VID_LoadRefresh( const char *name )
 	GetRefAPI_t GetRefAPI_f;
 
 	VID_UnloadRefresh();
-	
 
+
+	import.winImport = &winImport;
 	import.memImport = &memImport;
+	import.cmdImport = &cmdImport;
+	import.cvarImport = &cvarImport;
 	import.fsImport = &default_fs_imports_s;
 	import.Com_Error = &Com_Error;
 	import.Com_Printf = &Com_Printf;

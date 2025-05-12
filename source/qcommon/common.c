@@ -32,6 +32,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "compression.h"
 #include "mem.h"
 
+#include "crashpad.h"
 
 #define MAX_NUM_ARGVS	50
 
@@ -230,6 +231,7 @@ void Com_Printf( const char *format, ... )
 	Q_vsnprintfz( msg, sizeof( msg ), format, argptr );
 	va_end( argptr );
 
+	printf("%s\n", msg);
 
 	QMutex_Lock( com_print_mutex );
 
@@ -827,10 +829,13 @@ void Qcommon_Init( int argc, char **argv )
 
 	FS_Init();
 
-    // init localization subsystem
-    L10n_Init();
-        Qcommon_InitCvarDescriptions();
-        
+#ifdef USE_CRASHPAD
+	Init_Crashpad( FS_WriteDirectory() );
+#endif
+	// init localization subsystem
+	L10n_Init();
+	Qcommon_InitCvarDescriptions();
+
 	Cbuf_AddText( "exec default.cfg\n" );
 	if( !dedicated->integer )
 	{
@@ -879,8 +884,6 @@ void Qcommon_Init( int argc, char **argv )
 
 	NET_Init();
 	Netchan_Init();
-
-	Com_Autoupdate_Init();
 
 	CM_Init();
 
@@ -1042,8 +1045,6 @@ void Qcommon_Shutdown( void )
 	NET_Shutdown();
 	Key_Shutdown();
 
-	Com_Autoupdate_Shutdown();
-
 
 	Qcommon_ShutdownCommands();
 	Memory_ShutdownCommands();
@@ -1068,4 +1069,8 @@ void Qcommon_Shutdown( void )
 	QMutex_Destroy( &com_print_mutex );
 
 	QThreads_Shutdown();
+
+#ifdef USE_CRASHPAD
+	Exit_Crashpad();
+#endif
 }

@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "client.h"
 #include "cin.h"
 #include "../qcommon/asyncstream.h"
+#include <stdint.h>
 
 static cgame_export_t *cge;
 
@@ -392,6 +393,7 @@ void CL_GameModule_Init( void )
 
 	cl_gamemodulepool = _Mem_AllocPool( NULL, "Client Game Progs", MEMPOOL_CLIENTGAME, __FILE__, __LINE__ );
 
+	import.fsImport = &default_fs_imports_s;
 	import.Error = CL_GameModule_Error;
 	import.Print = CL_GameModule_Print;
 	import.PrintToLog = CL_GameModule_PrintToLog;
@@ -422,25 +424,6 @@ void CL_GameModule_Init( void )
 	import.Cmd_ExecuteText = Cbuf_ExecuteText;
 	import.Cmd_Execute = Cbuf_Execute;
 	import.Cmd_SetCompletionFunc = Cmd_SetCompletionFunc;
-
-	import.FS_FOpenFile = FS_FOpenFile;
-	import.FS_Read = FS_Read;
-	import.FS_Write = FS_Write;
-
-	import.FS_Print = FS_Print;
-	import.FS_Tell = FS_Tell;
-	import.FS_Seek = FS_Seek;
-	import.FS_Eof = FS_Eof;
-	import.FS_Flush = FS_Flush;
-	import.FS_FCloseFile = FS_FCloseFile;
-	import.FS_RemoveFile = FS_RemoveFile;
-	import.FS_GetFileList = FS_GetFileList;
-	import.FS_FirstExtension = FS_FirstExtension;
-	import.FS_IsPureFile = FS_IsPureFile;
-	import.FS_MoveFile = FS_MoveFile;
-	import.FS_IsUrl = FS_IsUrl;
-	import.FS_FileMTime = FS_BaseFileMTime;
-	import.FS_RemoveDirectory = FS_RemoveDirectory;
 
 	import.Key_GetBindingBuf = Key_GetBindingBuf;
 	import.Key_KeynumToString = Key_KeynumToString;
@@ -523,8 +506,7 @@ void CL_GameModule_Init( void )
 	import.IN_IME_GetCandidates = IN_IME_GetCandidates;
 	import.IN_SupportedDevices = IN_SupportedDevices;
 
-
-	import.Steam_RequestAvatar = Steam_RequestAvatar;
+	import.steam_import = (struct steam_import_s)DECLARE_STEAM_STRUCT();
 
 	if( builtinAPIfunc ) {
 		cge = builtinAPIfunc( &import );
@@ -722,21 +704,15 @@ bool CL_GameModule_IsTouchDown( int id )
 	return false;
 }
 
-/*
-* CL_GameModule_CallbackRequestAvatar
-*/
-void CL_GameModule_CallbackRequestAvatar( uint64_t steamid, char* avatar )
-{
-	if( cge )
-		cge->CallbackRequestAvatar( steamid, avatar );
-}
-
-/*
-* CL_GameModule_CallbackRequestAvatar
-*/
 bool CL_GameModule_GetBlocklistItem( size_t index, uint64_t* steamid_out, char* name, size_t* name_len_in_out )
 {
 	if ( cge )
 		return cge->GetBlocklistItem(index, steamid_out, name, name_len_in_out);
 	return false;
+}
+
+void CL_GameModule_PlayVoice( void *buffer, size_t size, int clientnum )
+{
+	if ( cge )
+		cge->PlayVoice(buffer, size, clientnum);
 }

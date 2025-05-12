@@ -608,6 +608,18 @@ msgstr "<value> A colon separated list of 64-bit SteamID's (SteamID64) to grant 
 "^6Example: 76561197974895275:76561197960287930:76561198799681010"
 
 #. Console/g
+msgid "g_pmove_dashjump_timedelay"
+msgstr "<value> The amount of time (in milliseconds) dashjump is available to be used again"
+
+#. Console/g
+msgid "g_pmove_walljump_timedelay"
+msgstr "<value> The amount of time (in milliseconds) a walljump is available again"
+
+#. Console/g
+msgid "g_pmove_walljump_failed_timedelay"
+msgstr "<value> The amount of time (in milliseconds) a walljump is available again while being stunned"
+
+#. Console/g
 msgid "g_postmatch_timelimit"
 msgstr "<value> The post match timelimit (in seconds)."
 

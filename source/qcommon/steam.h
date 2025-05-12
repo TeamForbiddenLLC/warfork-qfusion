@@ -21,13 +21,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef _STEAM_LIB_H_
 #define _STEAM_LIB_H_
 #include "../steamshim/src/steamshim_types.h"
+
 #include <stdint.h>
 #define STEAMID_CHARS 18
 void Steam_Init( void );
 void Steam_Shutdown( void );
-int Steam_Active();
-
-const char *Steam_CommandLine();
 
 extern cvar_t *steam_debug;
 
