@@ -34,6 +34,7 @@ cvar_t *rcon_address;
 
 cvar_t *cl_timeout;
 cvar_t *cl_maxfps;
+cvar_t *cl_unfocusedFpsLimit;
 cvar_t *cl_sleep;
 cvar_t *cl_pps;
 cvar_t *cl_compresspackets;
@@ -2222,6 +2223,7 @@ static void CL_InitLocal( void )
 	cl_stereo =		Cvar_Get( "cl_stereo", "0", CVAR_ARCHIVE );
 
 	cl_maxfps =		Cvar_Get( "cl_maxfps", "250", CVAR_ARCHIVE );
+	cl_unfocusedFpsLimit =		Cvar_Get( "cl_unfocusedFpsLimit", "24", CVAR_ARCHIVE );
 	cl_sleep =		Cvar_Get( "cl_sleep", "0", CVAR_ARCHIVE );
 	cl_pps =		Cvar_Get( "cl_pps", "40", CVAR_ARCHIVE );
 	cl_compresspackets =	Cvar_Get( "cl_compresspackets", "1", CVAR_ARCHIVE );
@@ -2829,7 +2831,7 @@ void CL_Frame( int realmsec, int gamemsec )
 		// do not allow setting cl_maxfps to very low values to prevent cheating
 		if( cl_maxfps->integer < absMinFps )
 			Cvar_ForceSet( "cl_maxfps", STR_TOSTR( absMinFps ) );
-		maxFps = VID_AppIsActive() ? cl_maxfps->value : absMinFps;
+		maxFps = VID_AppIsActive() ? cl_maxfps->value : ( cl_unfocusedFpsLimit->integer >= absMinFps ? cl_unfocusedFpsLimit->integer : absMinFps);
 		minMsec = max( ( 1000.0f / maxFps ), 1 );
 		roundingMsec += max( ( 1000.0f / maxFps ), 1.0f ) - minMsec;
 	}
