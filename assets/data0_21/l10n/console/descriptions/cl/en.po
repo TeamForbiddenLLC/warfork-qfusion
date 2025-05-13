@@ -173,7 +173,7 @@ msgstr "The maximum amount of times a user command will be resent to the server.
 "^6Note: This occurs when it isn't acknowledged by the server."
 
 #. Console/cl
-msgid "cl_unfocusedFPSLimit"
+msgid "cl_unfocusedFpsLimit"
 msgstr "<24-1000> Sets the FPS limit when the game window is not in focus."
 
 #. Console/cl
