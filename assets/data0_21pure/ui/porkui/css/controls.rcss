@@ -86,6 +86,12 @@ tabset panel {
 	min-width: 175dp;
 }
 
+.button-reset {
+	width: 150dp;
+	float: left;
+	margin-left: 50%;
+}
+
 .button-cancel  { 
 	margin-left: 50%;
 	sound-click: /sounds/menu/back.wav;
