@@ -210,6 +210,13 @@ jobs:
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
 
+      - name: Install Sentry CLI
+        env:
+          INSTALL_DIR: ${{ github.workspace }}
+        run: |
+          curl -sL https://sentry.io/get-cli/ | bash
+          ${{ github.workspace }}\sentry-cli --version
+
       - name: Building Debug
         if: matrix.config.type == 'debug'
         working-directory: .\source
@@ -248,3 +255,12 @@ jobs:
         with:
           name: ${{matrix.config.name}}
           path: source\build\${{matrix.config.name}}.zip
+
+      - name: Sentry Upload
+        if: matrix.config.type == 'release'
+        working-directory: .\source\build\warfork-qfusion
+        run: ${{ github.workspace }}\sentry-cli debug-files upload ./
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
