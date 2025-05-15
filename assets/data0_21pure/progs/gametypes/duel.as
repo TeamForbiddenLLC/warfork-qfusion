@@ -17,6 +17,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
+bool rematchCalled = false;
+Client @rematchCaller = null;
 
 ///*****************************************************************
 /// NEW MAP ENTITY DEFINITIONS
@@ -101,6 +103,47 @@ void DUEL_SetUpMatch()
     G_CenterPrintMsg( null, "FIGHT!" );
 }
 
+void DUEL_SetUpEndMatch()
+{
+    Client @client;
+    gametype.shootingDisabled = true;
+    gametype.readyAnnouncementEnabled = false;
+    gametype.scoreAnnouncementEnabled = false;
+    gametype.countdownEnabled = false;
+
+    for ( int i = 0; i < maxClients; i++ )
+    {
+        @client = @G_GetClient( i );
+
+        if ( client.state() >= CS_SPAWNED ) {
+            client.respawn( true );                         // ghost them all
+            GENERIC_SetPostmatchQuickMenu( @client );
+        }
+        if ( client.team != TEAM_SPECTATOR ) {
+            if ( G_GetTeam(TEAM_ALPHA).numPlayers > 0 && G_GetTeam(TEAM_BETA).numPlayers > 0 )
+                GENERIC_SetQuickMenu( @client, '"Good game" "vsay goodgame" "Thanks" "vsay thanks" "Yeehaa" "vsay yeehaa" "Oops" "vsay oops" "Sorry" "vsay sorry" "Rematch" "rematch"' );
+        }
+    }
+
+    GENERIC_UpdateMatchScore();
+
+    // print scores to console
+    if ( gametype.isTeamBased )
+    {
+        Team @team1 = @G_GetTeam( TEAM_ALPHA );
+        Team @team2 = @G_GetTeam( TEAM_BETA );
+
+        String sC1 = (team1.stats.score < team2.stats.score ? S_COLOR_RED : S_COLOR_GREEN);
+        String sC2 = (team2.stats.score < team1.stats.score ? S_COLOR_RED : S_COLOR_GREEN);
+
+        G_PrintMsg( null, S_COLOR_YELLOW + "Final score: " + S_COLOR_WHITE + team1.name + S_COLOR_WHITE + " vs " +
+            team2.name + S_COLOR_WHITE + " - " + match.getScore() + "\n" );
+    }
+
+    int soundIndex = G_SoundIndex( "sounds/announcer/postmatch/game_over0" + (1 + (rand() & 1)) );
+    G_AnnouncerSound( null, soundIndex, GS_MAX_TEAMS, true, null );
+}
+
 ///*****************************************************************
 /// MODULE SCRIPT CALLS
 ///*****************************************************************
@@ -154,6 +197,51 @@ bool GT_Command( Client @client, const String &cmdString, const String &argsStri
         response += "----------------\n";
 
         G_PrintMsg( client.getEnt(), response );
+        return true;
+    }
+    else if ( cmdString == "rematch" )
+    {
+        Entity @ent = @client.getEnt();
+
+        if (match.getState() < MATCH_STATE_POSTMATCH ) {
+            G_PrintMsg( ent, "You can only rematch if the match is over.\n" );
+            return false;
+        }
+        if ( client.team == TEAM_SPECTATOR ) {
+            G_PrintMsg( ent, "You can only rematch if you are playing the match.\n" );
+            return false;
+        }
+
+
+        if ( G_GetTeam(TEAM_ALPHA).numPlayers <= 0 && G_GetTeam(TEAM_BETA).numPlayers <= 0 ) {
+            G_PrintMsg( client.getEnt(), "The other player quit the match.\n" );
+        }
+
+        if ( rematchCalled ) {
+
+            if ( @client == @rematchCaller) {
+                G_PrintMsg( ent, "You already called for a rematch.\n" );
+                return false;
+            }
+            if ( @rematchCaller == null || rematchCaller.team == TEAM_SPECTATOR ) {
+                rematchCalled = false;
+                G_PrintMsg( ent, "The rematch caller left the game.\n" );
+                return false;
+            }
+
+            G_PrintMsg( null, client.name + "^7 accepted the rematch!\n" );
+            match.launchState(MATCH_STATE_COUNTDOWN);
+            rematchCalled = false;
+            @rematchCaller = null;
+            return true;
+        }
+
+        @rematchCaller = @client;
+        rematchCalled = true;
+
+        String msg = client.name + "^7 wants a rematch!\n";
+
+        G_PrintMsg( null, msg );
         return true;
     }
 
@@ -409,7 +497,7 @@ void GT_MatchStateStarted()
     case MATCH_STATE_POSTMATCH:
         gametype.pickableItemsMask = 0; // disallow item pickup
         gametype.dropableItemsMask = 0; // disallow item drop
-        GENERIC_SetUpEndMatch();
+        DUEL_SetUpEndMatch();
         break;
 
     default:
@@ -519,6 +607,7 @@ void GT_InitGametype()
     // add commands
     G_RegisterCommand( "drop" );
     G_RegisterCommand( "gametype" );
+    G_RegisterCommand( "rematch" );
 
     G_Print( "Gametype '" + gametype.title + "' initialized\n" );
 }
