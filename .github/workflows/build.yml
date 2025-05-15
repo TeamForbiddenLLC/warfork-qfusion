@@ -33,11 +33,6 @@ jobs:
       - name: Add safe directory - https://github.com/actions/checkout/issues/1169
         run: git config --system --add safe.directory /__w/warfork-qfusion/warfork-qfusion
 
-      - name: Install Sentry CLI
-        run: |
-          curl -sL https://sentry.io/get-cli/ | bash
-          sentry-cli --version
-
       - name: Download steamworks sdk
         run: |
           curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
@@ -87,11 +82,14 @@ jobs:
       - name: Sentry Upload
         if: matrix.config.type == 'release'
         working-directory: ./source/build/warfork-qfusion
-        run: sentry-cli debug-files upload ./
+        run: |
+          curl -sL https://sentry.io/get-cli/ | bash
+          sentry-cli --version
+          sentry-cli debug-files upload ./
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+          SENTRY_ORG: team-forbidden-llc
+          SENTRY_PROJECT: warfork
 
   osx:
     strategy:
@@ -183,7 +181,7 @@ jobs:
               vs_version: "Visual Studio 16 2019",
               type: "release",
               cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 -DUSE_CRASHPAD=1",
-              build_folder: "Release",
+              build_folder: "RelWithDebInfo",
             }
           - {
               agent: "windows-2019",
@@ -210,13 +208,6 @@ jobs:
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
 
-      - name: Install Sentry CLI
-        env:
-          INSTALL_DIR: ${{ github.workspace }}
-        run: |
-          curl -sL https://sentry.io/get-cli/ | bash
-          ${{ github.workspace }}\sentry-cli --version
-
       - name: Building Debug
         if: matrix.config.type == 'debug'
         working-directory: .\source
@@ -231,7 +222,7 @@ jobs:
         run: |
           cmake -B ./build  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSE_PACKAGE_ASSETS=1
           cd build
-          msbuild qfusion.sln /p:configuration=Release /maxcpucount:8
+          msbuild qfusion.sln /p:configuration=RelWithDebInfo /maxcpucount:8
 
       - name: Package Assets
         working-directory: .\source\build
@@ -258,9 +249,13 @@ jobs:
 
       - name: Sentry Upload
         if: matrix.config.type == 'release'
-        working-directory: .\source\build\warfork-qfusion
-        run: ${{ github.workspace }}\sentry-cli debug-files upload ./
+        working-directory: .\source\build\warfork-qfusion\${{matrix.config.build_folder}}
+        run: |
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+          Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+          scoop install sentry-cli 
+          sentry-cli debug-files upload .
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+          SENTRY_ORG: team-forbidden-llc
+          SENTRY_PROJECT: warfork
