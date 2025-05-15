@@ -33,6 +33,11 @@ jobs:
       - name: Add safe directory - https://github.com/actions/checkout/issues/1169
         run: git config --system --add safe.directory /__w/warfork-qfusion/warfork-qfusion
 
+      - name: Install Sentry CLI
+        run: |
+          curl -sL https://sentry.io/get-cli/ | bash
+          sentry-cli --version
+
       - name: Download steamworks sdk
         run: |
           curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
@@ -46,10 +51,6 @@ jobs:
           cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSE_PACKAGE_ASSETS=1
           cd build
           make -j8
-          cd warfork-qfusion
-          objcopy --only-keep-debug warfork.x86_64 warfork.x86_64.debug
-          objcopy --strip-debug --strip-unneeded warfork.x86_64
-          objcopy --add-gnu-debuglink=warfork.x86_64.debug warfork.x86_64
 
       - name: Building Debug
         if: matrix.config.type == 'debug'
@@ -82,6 +83,15 @@ jobs:
         with:
           name: ${{matrix.config.name}}
           path: source/build/${{matrix.config.name}}.tar.gz
+            
+      - name: Sentry Upload
+        if: matrix.config.type == 'release'
+        working-directory: ./source/build/warfork-qfusion
+        run: sentry-cli debug-files upload ./
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
 
   osx:
     strategy:
