@@ -24,6 +24,9 @@ Cvar g_ca_timelimit1v1( "g_ca_timelimit1v1", "60", 0 );
 Cvar g_noclass_inventory( "g_noclass_inventory", "gb mg rg gl rl pg lg eb cells shells grens rockets plasma lasers bullets", 0 );
 Cvar g_class_strong_ammo( "g_class_strong_ammo", "1 75 20 20 40 125 180 15", 0 ); // GB MG RG GL RL PG LG EB
 
+Cvar g_scorelimit( "g_scorelimit", "11", 0 );
+Cvar g_ca_tiebreaker_margin( "g_ca_tiebreaker_margin", "0", 0 );
+
 const int CA_ROUNDSTATE_NONE = 0;
 const int CA_ROUNDSTATE_PREROUND = 1;
 const int CA_ROUNDSTATE_ROUND = 2;
@@ -627,6 +630,41 @@ cCARound caRound;
 ///*****************************************************************
 /// LOCAL FUNCTIONS
 ///*****************************************************************
+bool CA_ScoreLimitHit() {
+
+    if (match.getState() != MATCH_STATE_PLAYTIME )
+        return false;
+
+    if ( g_ca_tiebreaker_margin.value <= 1 ) {
+        for ( int team = TEAM_ALPHA; team < GS_MAX_TEAMS; team++ )
+        {
+            if ( G_GetTeam(team).stats.score >= g_scorelimit.value )
+                return true;
+        }
+    }
+    else
+    {
+        for ( int team = TEAM_ALPHA; team < GS_MAX_TEAMS; team++ ) {
+
+            int currentTeamScore = G_GetTeam( team ).stats.score;
+            int enemyTeamScore = G_GetTeam( ( team == TEAM_ALPHA ) ? TEAM_BETA : TEAM_ALPHA ).stats.score;
+
+            // G_Print( currentTeamScore + " : " + enemyTeamScore + '\n');
+
+            if ( currentTeamScore >= (g_scorelimit.value - 1) && enemyTeamScore >= (g_scorelimit.value - 1) ) {
+                if ( currentTeamScore - enemyTeamScore >= g_ca_tiebreaker_margin.value ) {
+                    return true;
+                }
+            }
+
+            if ( currentTeamScore >= (g_scorelimit.value) && enemyTeamScore < (g_scorelimit.value - 1) )
+                return true;
+        }
+
+    }
+    return false;
+}
+
 
 void CA_SetUpWarmup()
 {
@@ -696,6 +734,51 @@ bool GT_Command( Client @client, const String &cmdString, const String &argsStri
     else if ( cmdString == "cvarinfo" )
     {
         GENERIC_CheatVarResponse( client, cmdString, argsString, argc );
+        return true;
+    }
+    else if ( cmdString == "callvotevalidate" )
+    {
+        String votename = argsString.getToken( 0 );
+
+        if ( votename == "tiebreaker_margin" )
+        {
+            String voteArg = argsString.getToken( 1 );
+            if ( voteArg.len() < 1 )
+            {
+                client.printMessage( "Callvote " + votename + " requires at least one argument\n" );
+                return false;
+            }
+
+            int value = voteArg.toInt();
+            if ( value < 0 )
+            {
+                client.printMessage( "Callvote " + votename + " has to be 0 or greater\n" );
+                return false;
+            }
+
+            if ( g_ca_tiebreaker_margin.value == value )
+            {
+                client.printMessage( "Tiebreaker margin already set to " + value + "\n" );
+                return false;
+            }
+
+            return true;
+        }
+
+        client.printMessage( "Unknown callvote " + votename + "\n" );
+        return false;
+    }
+    else if ( cmdString == "callvotepassed" )
+    {
+        String votename = argsString.getToken( 0 );
+
+        if ( votename == "tiebreaker_margin" )
+        {
+            int value = argsString.getToken( 1 ).toInt();
+
+            g_ca_tiebreaker_margin.set(value);
+        }
+
         return true;
     }
 
@@ -928,7 +1011,7 @@ void GT_PlayerRespawn( Entity @ent, int old_team, int new_team )
 // Thinking function. Called each frame
 void GT_ThinkRules()
 {
-    if ( match.scoreLimitHit() || match.timeLimitHit() || match.suddenDeathFinished() )
+    if ( CA_ScoreLimitHit() || match.timeLimitHit() || match.suddenDeathFinished() )
         match.launchState( match.getState() + 1 );
 
 	GENERIC_Think();
@@ -1078,6 +1161,7 @@ void GT_InitGametype()
                  + "set g_maxtimeouts \"1\" // -1 = unlimited\n"
                  + "\n// gametype settings\n"
 				 + "set g_ca_timelimit1v1 \"60\"\n"
+				 + "set g_ca_tiebreaker_margin \"0\"\n"
                  + "\n// classes settings\n"
                  + "set g_noclass_inventory \"gb mg rg gl rl pg lg eb cells shells grens rockets plasma lasers bolts bullets\"\n"
                  + "set g_class_strong_ammo \"1 75 20 20 40 125 180 15\" // GB MG RG GL RL PG LG EB\n"
@@ -1144,6 +1228,8 @@ void GT_InitGametype()
 
     // add commands
     G_RegisterCommand( "gametype" );
+
+    G_RegisterCallvote( "tiebreaker_margin", "<number>", "integer", "Sets the number of score a team must get to finish a tiebreaker" );
 
     G_Print( "Gametype '" + gametype.title + "' initialized\n" );
 }
