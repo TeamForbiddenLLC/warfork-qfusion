@@ -80,7 +80,7 @@ jobs:
           path: source/build/${{matrix.config.name}}.tar.gz
             
       - name: Sentry Upload
-        if: matrix.config.type == 'release'
+        if: matrix.config.type == 'release' && (github.ref_protected == true || startsWith(github.ref, 'refs/tags/'))
         working-directory: ./source/build/warfork-qfusion
         run: |
           curl -sL https://sentry.io/get-cli/ | bash
@@ -248,7 +248,7 @@ jobs:
           path: source\build\${{matrix.config.name}}.zip
 
       - name: Sentry Upload
-        if: matrix.config.type == 'release'
+        if: matrix.config.type == 'release' && (github.ref_protected == true || startsWith(github.ref, 'refs/tags/'))
         working-directory: .\source\build\warfork-qfusion\${{matrix.config.build_folder}}
         run: |
           Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
