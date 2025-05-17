@@ -219,7 +219,15 @@
           }
         }
            
-           
+		void openDefaultConfigConfirmModal()
+		{
+			window.modal("modal_basic.rml?text=Are%20you%20sure%20you%20want%20to%20reset%20your%20config%20to%20default%3F%3Cbr%2F%3EMake%20sure%20to%20backup%20your%20config%20before%20saving%21&ypos=0.25");
+			if (window.getModalValue() == 0) {
+				Cvar name( "name", "", ::CVAR_ARCHIVE );
+				Cvar clan( "clan", "", ::CVAR_ARCHIVE );
+				game.execAppend("exec default\n" + "name " + name.string + "\nclan " + clan.string + "\nvid_restart\n");
+			}
+		}
 	</script>
 </head>
 <body template="porkui" onload="$onPlayerLoad" onshow="$onPlayerShow">
