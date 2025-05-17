@@ -43,7 +43,7 @@ jobs:
         working-directory: ./source
         run: |
           export CC=gcc-12 CXX=g++-12
-          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Release -DUSE_PACKAGE_ASSETS=1
+          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSE_PACKAGE_ASSETS=1
           cd build
           make -j8
 
@@ -78,6 +78,18 @@ jobs:
         with:
           name: ${{matrix.config.name}}
           path: source/build/${{matrix.config.name}}.tar.gz
+            
+      - name: Sentry Upload
+        if: matrix.config.type == 'release' && (github.ref_protected == true || startsWith(github.ref, 'refs/tags/'))
+        working-directory: ./source/build/warfork-qfusion
+        run: |
+          curl -sL https://sentry.io/get-cli/ | bash
+          sentry-cli --version
+          sentry-cli debug-files upload ./
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: team-forbidden-llc
+          SENTRY_PROJECT: warfork
 
   osx:
     strategy:
@@ -169,7 +181,7 @@ jobs:
               vs_version: "Visual Studio 16 2019",
               type: "release",
               cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 -DUSE_CRASHPAD=1",
-              build_folder: "Release",
+              build_folder: "RelWithDebInfo",
             }
           - {
               agent: "windows-2019",
@@ -208,9 +220,9 @@ jobs:
         if: matrix.config.type == 'release'
         working-directory: .\source
         run: |
-          cmake -B ./build  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RELEASE -DUSE_PACKAGE_ASSETS=1
+          cmake -B ./build  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSE_PACKAGE_ASSETS=1
           cd build
-          msbuild qfusion.sln /p:configuration=Release /maxcpucount:8
+          msbuild qfusion.sln /p:configuration=RelWithDebInfo /maxcpucount:8
 
       - name: Package Assets
         working-directory: .\source\build
@@ -234,3 +246,16 @@ jobs:
         with:
           name: ${{matrix.config.name}}
           path: source\build\${{matrix.config.name}}.zip
+
+      - name: Sentry Upload
+        if: matrix.config.type == 'release' && (github.ref_protected == true || startsWith(github.ref, 'refs/tags/'))
+        working-directory: .\source\build\warfork-qfusion\${{matrix.config.build_folder}}
+        run: |
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+          Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+          scoop install sentry-cli 
+          sentry-cli debug-files upload .
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: team-forbidden-llc
+          SENTRY_PROJECT: warfork
