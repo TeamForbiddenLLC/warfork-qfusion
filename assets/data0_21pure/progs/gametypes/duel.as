@@ -17,6 +17,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
+Cvar duel_allowRematch( "duel_allowRematch", "1", 0);
+
 bool rematchCalled = false;
 Client @rematchCaller = null;
 
@@ -119,7 +121,7 @@ void DUEL_SetUpEndMatch()
             client.respawn( true );                         // ghost them all
             GENERIC_SetPostmatchQuickMenu( @client );
         }
-        if ( client.team != TEAM_SPECTATOR ) {
+        if ( duel_allowRematch.boolean && client.team != TEAM_SPECTATOR ) {
             if ( G_GetTeam(TEAM_ALPHA).numPlayers > 0 && G_GetTeam(TEAM_BETA).numPlayers > 0 )
                 GENERIC_SetQuickMenu( @client, '"Good game" "vsay goodgame" "Thanks" "vsay thanks" "Yeehaa" "vsay yeehaa" "Oops" "vsay oops" "Sorry" "vsay sorry" "Rematch" "rematch"' );
         }
@@ -202,7 +204,10 @@ bool GT_Command( Client @client, const String &cmdString, const String &argsStri
     else if ( cmdString == "rematch" )
     {
         Entity @ent = @client.getEnt();
-
+	if (!duel_allowRematch.boolean) {
+            G_PrintMsg( ent, "Rematch is disabled on this server.\n" );
+            return false;
+        }
         if (match.getState() < MATCH_STATE_POSTMATCH ) {
             G_PrintMsg( ent, "You can only rematch if the match is over.\n" );
             return false;
@@ -551,6 +556,8 @@ void GT_InitGametype()
                  + "set g_teams_allow_uneven \"0\"\n"
                  + "set g_countdown_time \"5\"\n"
                  + "set g_maxtimeouts \"-1\" // -1 = unlimited\n"
+                 + "\n// gametype settings\n"
+				 + "set duel_allowRematch \"1\"\n"
                  + "\necho \"" + gametype.name + ".cfg executed\"\n";
 
         G_WriteFile( "configs/server/gametypes/" + gametype.name + ".cfg", config );
