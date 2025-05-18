@@ -630,12 +630,14 @@ cCARound caRound;
 ///*****************************************************************
 /// LOCAL FUNCTIONS
 ///*****************************************************************
-bool CA_ScoreLimitHit() {
+bool CA_ScoreLimitHit()
+{
 
     if (match.getState() != MATCH_STATE_PLAYTIME )
         return false;
 
-    if ( g_ca_tiebreaker_margin.value <= 1 ) {
+    if ( g_ca_tiebreaker_margin.value <= 1 )
+    {
         for ( int team = TEAM_ALPHA; team < GS_MAX_TEAMS; team++ )
         {
             if ( G_GetTeam(team).stats.score >= g_scorelimit.value )
@@ -644,15 +646,18 @@ bool CA_ScoreLimitHit() {
     }
     else
     {
-        for ( int team = TEAM_ALPHA; team < GS_MAX_TEAMS; team++ ) {
+        for ( int team = TEAM_ALPHA; team < GS_MAX_TEAMS; team++ )
+        {
 
             int currentTeamScore = G_GetTeam( team ).stats.score;
             int enemyTeamScore = G_GetTeam( ( team == TEAM_ALPHA ) ? TEAM_BETA : TEAM_ALPHA ).stats.score;
 
             // G_Print( currentTeamScore + " : " + enemyTeamScore + '\n');
 
-            if ( currentTeamScore >= (g_scorelimit.value - 1) && enemyTeamScore >= (g_scorelimit.value - 1) ) {
-                if ( currentTeamScore - enemyTeamScore >= g_ca_tiebreaker_margin.value ) {
+            if ( currentTeamScore >= (g_scorelimit.value - 1) && enemyTeamScore >= (g_scorelimit.value - 1) )
+            {
+                if ( currentTeamScore - enemyTeamScore >= g_ca_tiebreaker_margin.value )
+                {
                     return true;
                 }
             }
@@ -660,7 +665,6 @@ bool CA_ScoreLimitHit() {
             if ( currentTeamScore >= (g_scorelimit.value) && enemyTeamScore < (g_scorelimit.value - 1) )
                 return true;
         }
-
     }
     return false;
 }
