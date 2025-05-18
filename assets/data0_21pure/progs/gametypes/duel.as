@@ -60,7 +60,7 @@ void DUEL_playerKilled( Entity @target, Entity @attacker, Entity @inflictor )
             GENERIC_DropCurrentWeapon( target.client, true );
         }
     }
-    
+
     award_playerKilled( @target, @attacker,@inflictor );
 }
 
@@ -121,7 +121,8 @@ void DUEL_SetUpEndMatch()
             client.respawn( true );                         // ghost them all
             GENERIC_SetPostmatchQuickMenu( @client );
         }
-        if ( duel_allowRematch.boolean && client.team != TEAM_SPECTATOR ) {
+        if ( duel_allowRematch.boolean && client.team != TEAM_SPECTATOR )
+        {
             if ( G_GetTeam(TEAM_ALPHA).numPlayers > 0 && G_GetTeam(TEAM_BETA).numPlayers > 0 )
                 GENERIC_SetQuickMenu( @client, '"Good game" "vsay goodgame" "Thanks" "vsay thanks" "Yeehaa" "vsay yeehaa" "Oops" "vsay oops" "Sorry" "vsay sorry" "Rematch" "rematch"' );
         }
@@ -204,31 +205,39 @@ bool GT_Command( Client @client, const String &cmdString, const String &argsStri
     else if ( cmdString == "rematch" )
     {
         Entity @ent = @client.getEnt();
-	if (!duel_allowRematch.boolean) {
+
+        if (!duel_allowRematch.boolean)
+        {
             G_PrintMsg( ent, "Rematch is disabled on this server.\n" );
             return false;
         }
-        if (match.getState() < MATCH_STATE_POSTMATCH ) {
+        if (match.getState() < MATCH_STATE_POSTMATCH )
+        {
             G_PrintMsg( ent, "You can only rematch if the match is over.\n" );
             return false;
         }
-        if ( client.team == TEAM_SPECTATOR ) {
+        if ( client.team == TEAM_SPECTATOR )
+        {
             G_PrintMsg( ent, "You can only rematch if you are playing the match.\n" );
             return false;
         }
 
 
-        if ( G_GetTeam(TEAM_ALPHA).numPlayers <= 0 && G_GetTeam(TEAM_BETA).numPlayers <= 0 ) {
+        if ( G_GetTeam(TEAM_ALPHA).numPlayers <= 0 && G_GetTeam(TEAM_BETA).numPlayers <= 0 )
+        {
             G_PrintMsg( client.getEnt(), "The other player quit the match.\n" );
         }
 
-        if ( rematchCalled ) {
+        if ( rematchCalled )
+        {
 
-            if ( @client == @rematchCaller) {
+            if ( @client == @rematchCaller)
+            {
                 G_PrintMsg( ent, "You already called for a rematch.\n" );
                 return false;
             }
-            if ( @rematchCaller == null || rematchCaller.team == TEAM_SPECTATOR ) {
+            if ( @rematchCaller == null || rematchCaller.team == TEAM_SPECTATOR )
+            {
                 rematchCalled = false;
                 G_PrintMsg( ent, "The rematch caller left the game.\n" );
                 return false;
@@ -557,7 +566,7 @@ void GT_InitGametype()
                  + "set g_countdown_time \"5\"\n"
                  + "set g_maxtimeouts \"-1\" // -1 = unlimited\n"
                  + "\n// gametype settings\n"
-				 + "set duel_allowRematch \"1\"\n"
+                    + "set duel_allowRematch \"1\"\n"
                  + "\necho \"" + gametype.name + ".cfg executed\"\n";
 
         G_WriteFile( "configs/server/gametypes/" + gametype.name + ".cfg", config );
