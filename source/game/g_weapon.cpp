@@ -572,6 +572,11 @@ static void G_Fire_SunflowerPattern( edict_t *self, vec3_t start, vec3_t dir, in
 		if( hits[i] == 0 )
 			continue;
 		edict_t * target = &game.edicts[i];
+
+		if( !( dflags & DAMAGE_NO_PROTECTION ) )
+			if( target->flags & FL_GODMODE || target->movetype == MOVETYPE_PUSH || target->s.type == ET_CORPSE || GS_MatchPaused() || GS_RaceGametype() || GS_Instagib() )
+				continue;
+
 		edict_t * ev = G_SpawnEvent( EV_DAMAGE, 0, target->s.origin );
 		ev->r.svflags |= SVF_OWNERANDCHASERS;
 		ev->s.ownerNum = ENTNUM( self );
