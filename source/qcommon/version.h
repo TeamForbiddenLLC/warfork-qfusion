@@ -32,7 +32,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define DEFAULT_BASEGAME      "basewf"
 
 #define APP_VERSION_MAJOR     2
-#define APP_VERSION_MINOR     15
+#define APP_VERSION_MINOR     16
 #define APP_VERSION_UPDATE    0 
 
 // ...data21.pk3. we should never need to bump this
