@@ -523,7 +523,7 @@ void RB_AddDynamicMesh(struct FrameState_s* cmd, const entity_t *entity, const s
 		  vertexBufferCreateInfo.pNext = NULL;
 		  vertexBufferCreateInfo.flags = 0;
 		  vertexBufferCreateInfo.size = segmentAllocDesc.maxElements * segmentAllocDesc.elementStride; 
-		  vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+		  vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
 		  VmaAllocationInfo allocationInfo = { 0 };
 		  VmaAllocationCreateInfo allocInfo = { 0 };
@@ -561,7 +561,7 @@ void RB_AddDynamicMesh(struct FrameState_s* cmd, const entity_t *entity, const s
 		  indexBufferCreateInfo.pNext = NULL;
 		  indexBufferCreateInfo.flags = 0;
 		  indexBufferCreateInfo.size = segmentAllocDesc.maxElements * segmentAllocDesc.elementStride; 
-		  indexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+		  indexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT; 
 
 		  VmaAllocationInfo allocationInfo = { 0 };
 		  VmaAllocationCreateInfo allocInfo = { 0 };
