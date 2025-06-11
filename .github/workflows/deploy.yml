@@ -1,0 +1,65 @@
+name: Build & Deploy Warfork
+on:
+  workflow_dispatch:
+env:
+  STEAM_APP_ID: 671610  # Warfork
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build & Collect Artifacts
+        # TODO vvv
+        # Build WF for all platforms and store the arifacts somewhere to be pulled here.
+        # primitive example:
+        run:
+          mkdir -p build/ build/windows build/linux build/macos
+        
+          echo "Building for Windows..."
+          ./build-windows.sh
+          mv output/windows/* build/windows/
+          
+          
+          echo "Building for Linux..."
+          ./build-linux.sh
+          mv output/linux/* build/linux/
+          
+          echo "Building for macOS..."
+          ./build-macos.sh
+          mv output/macos/* build/macos/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: warfork-builds
+          path: build
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Download builds
+        uses: actions/download-artifact@v4
+        with:
+          name: warfork-builds
+          path: build
+      - name: Restore Steam config.vdf
+        run: |
+          mkdir -p ~/.steam/config
+          echo "${{ secrets.STEAM_CONFIG_VDF }}" | base64 --decode \
+            > ~/.steam/config/config.vdf
+      - name: Deploy to Steam (multi-depot)
+        uses: game-ci/steam-deploy@v4
+        with:
+          username: ${{ secrets.STEAM_USERNAME }}
+          configVdf: ${{ secrets.STEAM_CONFIG_VDF }}
+          appId: ${{ env.STEAM_APP_ID }}
+          buildDescription: "CI build ${{ github.sha }}" #some unique id could be verion too, I like sha
+          rootPath: build
+          depot1Path: build/windows
+          depot2Path: build/linux
+          depot3Path: build/macos
+          #TODO vvv
+          releaseBranch: whatever-the-release-branc-is
