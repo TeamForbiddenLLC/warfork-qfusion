@@ -6,11 +6,11 @@ on:
       release_branch:
         description: 'Steam release branch'
         required: true
-        default: 'main'
+        default: 'beta'
         type: string
 
 env:
-  STEAM_APP_ID: 671610  
+  STEAM_APP_ID: 671610 
 
 jobs:
   linux:
@@ -206,6 +206,9 @@ jobs:
         with:
           path: artifacts
 
+      - name: List Steam build directory
+        run: find steam-build -type f
+
       - name: Prepare Steam depot structure
         run: |
           mkdir -p steam-build/windows steam-build/linux steam-build/macos
@@ -255,8 +258,10 @@ jobs:
           configVdf: ${{ secrets.STEAM_CONFIG_VDF }}
           appId: ${{ env.STEAM_APP_ID }}
           buildDescription: "Warfork build ${{ github.sha }}"
-          rootPath: steam-build
+          rootPath: .
+          firstDepotIdOverride: 671615
           depot1Path: steam-build/windows
-          depot2Path: steam-build/linux  
-          depot3Path: steam-build/macos
-          releaseBranch: beta
+          depot2Path: /dev/null    # → 671616 (skipped depot)
+          depot3Path: steam-build/linux  
+          depot4Path: steam-build/macos
+          releaseBranch: inputs.release_branch
