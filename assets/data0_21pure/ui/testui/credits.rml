@@ -1,0 +1,226 @@
+<rml>
+
+    <head>
+        <title>credits</title>
+        <link type="text/template" href="template.rml" />
+        <link rel="stylesheet" type="text/css" href="css/options/input.rcss" />
+    </head>
+
+    <body template="porkui">
+        <div id="leftside">
+            <!-- warfork credits -->
+            <div id="credits">
+                <tabset id="credits-tabset">
+                    <tab>Warfork</tab>
+                    <panel class="dropshadow">
+                        <h3 class="intro">Story and Character Concepts</h3>
+                        Caine<br/> Monky
+                        <br/><br/>
+                        <h3 class="intro">Sound Engineer</h3>
+                        MaxCarnage
+                        <br/><br/>
+                        <h3 class="intro">Sound Director</h3>
+                        Dimitri "Oizo" D
+                        <br/><br/>
+                        <h3 class="intro">Soundtrack Composer</h3>
+                        Ava1anche
+                        <br/><br/>
+                        <h3 class="intro">Voice Actors\Actresses</h3>
+                        Cat Protano - "Amber"<br/> James Holyoake - "Rufus"<br/> Kevin Liberty - "Hamilton"<br/> Matthew Archer - "Leon"<br/> Su Ling - "Serena"<br/> Toni Jean Erasmus - "AI (Announcer)"<br/> Ty Anderson - "Buck"
+                        <br/><br/>
+                        <h3 class="intro">Voice Lines - Author</h3>
+                        Caine
+                        <br/><br/>
+                        <h3 class="intro">Voice Lines - Proofreading</h3>
+                        Jean "Muleke_Trairao" Trindade Pereira
+                        <br/><br/>
+                        <h3 class="intro">Code Contributors</h3>
+                        <br/> Andrei "adem4ik" Stepanov    
+                        <br/> Dexter "dexter" Haslem
+                        <br/> EXtremeExploit
+                        <br/> fathom
+                        <br/> Jannik "drahti" Kolodziej
+                        <br/> Mark "learn_more" Jansen
+                        <br/> Michael "mikejs" Savage
+                        <br/> msc
+                        <br/> nightowl
+                        <br/> northowl
+                        <br/> obani
+                        <br/> Pandaptable
+                        <br/> paril
+                        <br/> Victor "Vic" Luchits
+                        <br/><br/>
+                        <h3 class="intro">Logo & Cover Art</h3>
+                        Jstock12
+                        <br/><br/>
+                        <h3 class="intro">Character Concept Art</h3>
+                        Monky - "Amber", "Buck", "Rufus", "Hamilton"<br/> NotSoProish - "Leon", "Serena"
+                        <br/><br/>       
+                        <h3 class="intro">Technical Writing</h3>
+                        <br/> Caine
+                        <br/> GelmoSan
+                        <br/> Izofeu
+                        <br/> northowl
+                        <br/> Tontoepfer
+                        <br/><br/>
+                        <h3 class="intro">Wiki Administrator</h3>
+                        Izofeu
+                        <br/><br/>
+                        <h3 class="intro">Steam Trailer</h3>
+                        Tontoepfer
+                        <br/><br/>
+                        <h3 class="intro">Website Design</h3>
+                        AJ (Vertex9)<br/> Caine
+                        <br/><br/>
+                        <h3 class="intro">Special Thanks</h3>
+                        3D Realms - Game Promotion at Realms Deep<br/> Alexander "Axee" Elder - Code Audit<br/> chribit - Forbidden\Icy Video Animation<br/> Clement "Mokshu" Siegrist - Code Audit<br/> Dexter Haslem - Qfusion Assistance<br/> Dunk "Ultra-n00b aka d1223m" Fordyce - Code Audit <br/> E1M1 Magazine - Game Promotion <br/> GelmoSan - Gametype Scripting <br/> Inumeg - Code Audit <br/> In The Keep - Event Hosting & Game Promotion <br/> Jannik "drahti" Kolodziej - Qfusion Assistance <br/> joyh97 - Former "Steam Trailer Announcer"<br/> Michael Savage - Qfusion Assistance<br/> msh - Qfusion Assistance<br/> Pat AfterMoon - Code Audit<br/>Richard Asher - Former "Announcer"<br/>Thilo Schulz - Code Audit <br/> Victor Luchitz - Qfusion Assistance
+                        <br/><br/>
+                    </panel>
+                    <tab>Warsow</tab>
+                    <panel class="dropshadow">
+                        <h3 class="intro">Statement</h3>
+                        Thank you to the following people for helping create a game we've played for well over a decade. As we replace Warsow content with our own the credits will remain intact as is out of respect. If your name is missing or you're incorrectly credited please
+                        contact us on Discord!
+                        <br/><br/>
+                        <h3 class="intro">Founder</h3>
+                        Fabrice "Solomonk" Demurger
+                        <br/><br/>
+					    <h3 class="intro">Lead Game Designer</h3>
+						Baptiste "Blemish" Martin
+                        <br/><br/>
+                        <h3 class="intro">Lead Software Engineers</h3>
+                        <br/> Ben "kurim" Litz
+                        <br/> Damien "pb" Deville  
+                        <br/> German "jal" Garcia
+                        <br/> Pekka "Medar" Lampila
+                        <br/> Victor "Vic" Luchits
+                        <br/><br/>
+                        <h3 class="intro">Software Engineers</h3>
+                        <br/> Alex "Toukkapoukka" (Christian Holmberg) Seilder
+                        <br/> Tarmo Alexander "Crizis" Sundström
+                        <br/> Vitaliy "Triang3l" Kuzmin
+                        <br/><br/>
+                        <h3 class="intro">Code Contributors</h3>
+                        <br/> Andrea "koochi" Cervesato
+                        <br/> Andreas "gladiac" Schneider
+                        <br/> Andrei "adem4ik" Stepanov
+                        <br/> Andrey "Vkni" Bergman
+                        <br/> Calvin "Chobbes" Beck
+                        <br/> Christoph Scheid
+                        <br/> Daniel "danlin" Lindenfelser
+                        <br/> Dexter "dexter" Haslem
+						<br/> Gabriel Schnoering
+                        <br/> Gerco "hettoo" van Heerdt
+                        <br/> gir                        
+                        <br/> impulz
+                        <br/> jite aka dimman  
+						 <br/> Joseph Alex "kalhartt" Hartsell
+                        <br/> Johannes "hangy" Athmer
+						<br/> Jorgen "impii" "impakt" Indal
+                        <br/> Jyaan "jyaan" Bresy
+                        <br/> koffie
+                        <br/> Lawrence "thelawenforcer" McCurrach
+                        <br/> Mallory "BoB le pointu" Mollo
+                        <br/> Marcelo "nkr" Paez Sequeira
+                        <br/> Mark "Mark90" Moes
+                        <br/> Mark "learn_more" Jansen
+                        <br/> Michael P. "virus" Jung
+                        <br/> Philipp Thomas "aiwa" Unterbrunner
+						<br/> Richard "R1CH" Stanway
+						<br/> Steve "meat" Yeager
+                        <br/> stopiccot
+                        <br/> stylemistake
+                        <br/> Susumu "guwashi" Ota
+                        <br/> Timothee "TTimo" Besset
+						<br/> Tim Finney
+                        <br/> Ultra-n00b                        				
+                        <br/> Uz-Valentin "uz" Friedrich
+                        <br/> Will "Will" Franklin
+                        <br/> William "Willis" Weilep                     
+                        <br/><br/>
+                        <h3 class="intro">Soundtrack Composer</h3>
+                        Sean "jihnsius" Hollar (Rest in Peace)
+                        <br/><br/>
+                        <h3 class="intro">Mapping</h3>
+                        50u15pec7a70r<br/> Anthy
+                        <br/> Ben "36" Thompson<br/> Blemish
+                        <br/> Blx
+                        <br/> Crizis
+                        <br/> Grumx
+                        <br/> German "Jal" Garcia<br/> Kim "Kimza" Kastås RiMoL
+                        <br/> SolidFake
+                        <br/><br/>
+                        <h3 class="intro">Visual Design</h3>
+                        36<br/> Adsn
+                        <br/> Andrei "Adem" Stepanov<br/> Anthy
+                        <br/> BLx
+                        <br/> Boqu
+                        <br/> Cervix
+                        <br/> Cha0s
+                        <br/> Clownfart
+                        <br/> Crizis
+                        <br/> Daze
+                        <br/> Froop
+                        <br/> Guwashi
+                        <br/> HazelH
+                        <br/> German "Jal" Garcia<br/> M0t0
+                        <br/> Matteo "Pigna" Pignatelli<br/> Nanabaky
+                        <br/> ReFly
+                        <br/> RiMoL
+                        <br/> SolidFake
+                        <br/> Stylemistake
+                        <br/><br/>
+                        <h3 class="intro">Sound Design</h3>
+                        Dol-B<br/> Jazz
+                        <br/> Pigfreezer
+                        <br/> nip
+                        <br/><br/>
+                        <h3 class="intro">Voice Actors\Actresses</h3>
+                        Alex "Jehar" Popa - Announcer
+                        <br/><br/>
+                        <h3 class="intro">Website</h3>
+                        Tarmo Alexander "Crizis" Sundström<br/> Victor Luchitz
+                        <br/><br/>
+                        <h3 class="intro">Production</h3>
+                        Tarmo Alexander "Crizis" Sundström<br/> Victor Luchitz<br/> Vitaliy "Triang3l" Kuzmin
+                        <br/><br/>
+                        <h3 class="intro">Acknowledgements</h3>
+                        The exwsw texture set is based on the original work by EvilLair.<br/> The cha0swsw texture set is based on the original work by ydnar.<br/> "Vox feminae" sound pack by HellChick.<br/> "Stormy days" skybox by hipshot.
+                        <br/><br/>
+                    </panel>
+                    <tab>Qfusion</tab>
+                    <panel class="dropshadow">
+                        <h3 class="intro">About Qfusion</h3>
+                        Qfusion is the 3D game engine that powers Warfork. The project was started by Victor Luchitz along with several others. It is written in C for use on Windows and Unix-based systems. Qfusion is a fork of id Tech 2, popularly known as the Quake II engine.
+                        Qfusion is free and open-source software subject to the terms of the GNU General Public License.
+                        <br/><br/>
+						<a class="button open-in-browser" href="https://github.com/qfusion/qfusion/" target="_browser">Official Repository</a> 						
+						<br/><br/>
+                        <h3 class="intro">Lead Software Engineers</h3>
+                        Victor "Vic" Luchitz
+                        <br/><br/>
+                        <h3 class="intro">Former Lead Software Engineers</h3>
+                        German "jal" Garcia
+                        <br/><br/>
+                        <h3 class="intro">Code Contributors</h3>
+                        Andrei "Adem" Stepanov <br/> Anton "tonik" Gavrilov <br/> Ashley "LadyHavoc" Hale <br/> DarkOne <br/> Dr. Tim Ferguson <br/> Martin Kraus <br/> Mathieu "molivier" Oliver <br/> Nolan "Radix" Pflug <br/> Shawn "EvilTypeGuy" Walker-Salas <br/> Rudolf "divVerent" Polzer <br/> Stephen C. Taylor <br/> Tarmo Alexander "Crizis" Sundström<br/> Vitaliy "Triang3l" Kuzmin
+                        <br/><br/>
+                    </panel>
+                    <tab>License</tab>
+                    <panel class="dropshadow">
+                        <h3 class="intro">Warfork</h3>
+                        All Warfork assets are proprietary.<br/><br/>
+                        <a class="button open-in-browser" href="https://warfork.com/assets/warfork/license.txt" target="_browser">View License Online</a><br/><br/>
+                        <h3 class="intro">Warsow</h3>
+                        Warsow assets are Creative Commons — Attribution-ShareAlike 4.0 and Attribution-NoDerivatives 4.0 International (CC BY-ND 4.0).<br/><br/>
+                        <a class="button open-in-browser" href="https://warfork.com/assets/warfork/license.txt" target="_browser">View License Online</a><br/><br/>
+                        <h3 class="intro">Qfusion</h3>
+                        GNU General Public License, version 2.<br/><br/>
+                        <a class="button open-in-browser" href="https://warfork.com/assets/warfork/license.txt" target="_browser">View License Online</a><br/><br/>
+                        <br/><br/>
+                    </panel>
+                </tabset>
+            </div>
+        </div>
+    </body>
+</rml>
