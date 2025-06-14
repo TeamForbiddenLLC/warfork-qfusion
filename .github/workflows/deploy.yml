@@ -83,7 +83,7 @@ jobs:
           - {
               agent: "windows-2019",
               name: "win-x86_64-Release",
-              vs_version: "Visual Studio 16 2019",
+              vs_version: "Visual Studio 17 2022",
               type: "release",
               cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_GRAPHICS_NRI=1 -DUSE_CRASHPAD=1",
               build_folder: "RelWithDebInfo",
@@ -228,8 +228,9 @@ jobs:
           # List structure for debugging
           find steam-build -type f | head -20
 
-      - name: List Steam build directory
-        run: find steam-build -type f
+      - name: Remove steam_appid.txt from all depots
+        run: | # find then remove steam_appid.txt files from all depots 
+          find steam-build -type f -name steam_appid.txt -exec rm -v {} \;
 
       - name: Upload prepared Steam build
         uses: actions/upload-artifact@v4
