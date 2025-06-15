@@ -284,7 +284,7 @@ void RI_InsertTransitionBarriers( struct RIDevice_s *device, struct RIResourceUp
 
 void RI_ResourceSubmit( struct RIDevice_s *device, struct RIResourceUploader_s *res )
 {
-	if(arrlen(res->postImageBarriers) == 0 && arrlen(res->postBufferBarriers)) {
+	if(arrlen(res->postImageBarriers) == 0 && arrlen(res->postBufferBarriers) == 0) {
 		return;	
 	}
 	arrsetlen( res->postImageBarriers, 0 );
@@ -333,17 +333,6 @@ void RI_ResourceBeginCopyTexture( struct RIDevice_s *device, struct RIResourceUp
 	__ResolveStageBuffer(device, res, alignedSlicePitch, &trans->req);
 	trans->data = (uint8_t *)trans->req.cpuMapping + trans->req.byteOffset;
 }
-
-//static VkImageSubresourceRange _VK_UnionSubresourceRange(VkImageSubresourceRange a1, VkImageSubresourceRange  a2) {
-//	VkImageSubresourceRange range = { 0 };
-//	range.aspectMask = (a1.aspectMask | a2.aspectMask); 
-//	range.baseMipLevel = Q_MIN(a1.baseMipLevel, a2.baseMipLevel);
-//	range.baseArrayLayer = Q_MIN(a1.baseArrayLayer, a2.baseArrayLayer);
-//	range.layerCount = Q_MAX(a1.baseArrayLayer + a1.layerCount, a2.baseArrayLayer + a2.layerCount) - range.baseArrayLayer;
-//	range.layerCount = Q_MAX(a1.baseMipLevel + a1.levelCount , a2.baseMipLevel + a2.levelCount) - range.baseMipLevel;
-//	return range;
-//} 
-
 
 void RI_ResourceEndCopyTexture( struct RIDevice_s *device, struct RIResourceUploader_s *res, struct RIResourceTextureTransaction_s *trans )
 {
