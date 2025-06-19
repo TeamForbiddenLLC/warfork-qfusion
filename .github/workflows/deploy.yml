@@ -259,10 +259,10 @@ jobs:
           configVdf: ${{ secrets.STEAM_CONFIG_VDF }}
           appId: ${{ env.STEAM_APP_ID }}
           buildDescription: "Warfork build ${{ github.sha }}"
-          rootPath: .
+          rootPath: steam-build
           firstDepotIdOverride: 671615
-          depot1Path: steam-build/windows
+          depot1Path: windows
           depot2Path: /dev/null    # → 671616 (skipped depot)
-          depot3Path: steam-build/linux  
-          depot4Path: steam-build/macos
+          depot3Path: linux  
+          depot4Path: macos
           releaseBranch: inputs.release_branch
