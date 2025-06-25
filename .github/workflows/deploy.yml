@@ -262,7 +262,7 @@ jobs:
           rootPath: steam-build
           firstDepotIdOverride: 671615
           depot1Path: windows
-          depot2Path: /dev/null    # → 671616 (skipped depot)
           depot3Path: linux  
           depot4Path: macos
           releaseBranch: inputs.release_branch
+          debugBranch: true
