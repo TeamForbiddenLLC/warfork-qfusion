@@ -1,0 +1,44 @@
+#modal-frame {
+	width: 360dp;
+}
+
+#modal-block-rel {
+	left: -212dp;  /* - ( 0.5 * modal-frame width + padding-left ) */
+	top: -250dp;
+}
+
+#menu-ingame {
+	text-align: center;
+	width: 100%;
+	max-height: 80%;
+	overflow-y: auto;
+}
+
+#menu-commands {
+	text-align: center;
+	padding-top: 16dp;
+	background-decorator: image;
+	background-image: /ui/porkui/gfx/dropshadow.tga	0 0 1 1;
+}
+
+#menu-ingame button, #menu-ingame a, #menu-ingame input.submit {
+	width: 60%;
+	display: block;
+	margin: 0 auto;
+	margin-bottom: 8dp;
+}
+
+#menu-header1, #menu-header2, #menu-header {
+	display: block;
+	overflow-x: hidden;
+	font-size: 1.3em;
+	margin-bottom: 16dp;
+}
+
+#menu-header1 {
+	font-size: 1.5em;
+}
+
+#menu-header {
+	margin-top: 16dp;
+}
