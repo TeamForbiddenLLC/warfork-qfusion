@@ -323,6 +323,8 @@ add_subdirectory(angelwrap)
 add_subdirectory(cgame)
 add_subdirectory(game)
 add_subdirectory(steamshim)
+add_subdirectory(gameshared/q_math)
+
 
 if (NOT GAME_MODULES_ONLY)
     add_subdirectory(cin)
