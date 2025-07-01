@@ -176,7 +176,7 @@ jobs:
       matrix:
         config:
           - {
-              agent: "windows-2019",
+              agent: "windows-2022",
               name: "win-x86_64-Release",
               vs_version: "Visual Studio 16 2019",
               type: "release",
@@ -184,7 +184,7 @@ jobs:
               build_folder: "RelWithDebInfo",
             }
           - {
-              agent: "windows-2019",
+              agent: "windows-2022",
               name: "win-x86_64-Debug",
               vs_version: "Visual Studio 16 2019",
               type: "debug",
