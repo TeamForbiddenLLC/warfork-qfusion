@@ -260,9 +260,9 @@ jobs:
           appId: ${{ env.STEAM_APP_ID }}
           buildDescription: "Warfork build ${{ github.sha }}"
           rootPath: steam-build
-          firstDepotIdOverride: 671615
-          depot1Path: windows
-          depot3Path: linux  
-          depot4Path: macos
+          depot5Path: windows  
+          depot6Path: linux # placeholder Warfork 32 Mac Linux Windows
+          depot7Path: linux
+          depot8Path: macos
           releaseBranch: inputs.release_branch
           debugBranch: true
