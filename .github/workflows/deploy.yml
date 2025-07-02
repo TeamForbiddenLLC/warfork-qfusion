@@ -264,5 +264,5 @@ jobs:
           depot6Path: linux # placeholder Warfork 32 Mac Linux Windows
           depot7Path: linux
           depot8Path: macos
-          releaseBranch: inputs.release_branch
+          releaseBranch: ${{ inputs.release_branch }}
           debugBranch: true
