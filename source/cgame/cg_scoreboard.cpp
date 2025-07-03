@@ -190,7 +190,7 @@ static int SCB_DrawPlayerStats( int x, int y, struct qfontface_s *font )
 		yoffset = trap_SCR_FontHeight( font );
 
 		// header
-		trap_SCR_DrawStringWidth( x + xoffset, y + yoffset, ALIGN_LEFT_TOP, 
+		trap_SCR_DrawStringWidth( x + xoffset, y + yoffset, ALIGN_LEFT_TOP,
 			CG_TranslateString( "Weapon stats" ), width, font, colorMdGrey );
 		yoffset += trap_SCR_FontHeight( font );
 
@@ -859,7 +859,7 @@ static int SCR_DrawPlayerTab( const char **ptrptr, int team, int x, int y, int p
 	int gap = trap_SCR_FontHeight(font) / 4;
 	if (pass && !last){
 		// draw scoreboard separator
-		
+
 		if( ( team == TEAM_ALPHA ) || ( team == TEAM_BETA ) )
 			CG_TeamColor( team, teamcolor );
 		teamcolor[3] = SCB_BACKGROUND_ALPHA - 0.17;
@@ -974,7 +974,7 @@ void CG_DrawScoreboard( void )
 		while ( ptr )
 		{
 			token = COM_ParseExt( &ptr, true );
-			
+
 			if ( token[0] != '&' )
 				break;
 
@@ -992,7 +992,7 @@ void CG_DrawScoreboard( void )
 
 				if (pass)
 					entry[team]++;
-				else 
+				else
 					numentries[team]++;
 			}
 			else if ( !Q_stricmp( token, "&w" ) ) // list of challengers
@@ -1066,9 +1066,8 @@ void CG_ToggleScores_f( void )
 */
 void CG_ScoresOn_f( void )
 {
-	if( cgs.demoPlaying || cg.frame.multipov || cgs.tv )
-		cg.showScoreboard = true;
-	else
+    cg.showScoreboard = true;
+	if( !cgs.demoPlaying && !cg.frame.multipov && !cgs.tv )
 		trap_Cmd_ExecuteText( EXEC_NOW, "svscore 1" );
 }
 
@@ -1077,9 +1076,8 @@ void CG_ScoresOn_f( void )
 */
 void CG_ScoresOff_f( void )
 {
-	if( cgs.demoPlaying || cg.frame.multipov || cgs.tv )
-		cg.showScoreboard = false;
-	else
+    cg.showScoreboard = false;
+	if( !cgs.demoPlaying && !cg.frame.multipov && !cgs.tv )
 		trap_Cmd_ExecuteText( EXEC_NOW, "svscore 0" );
 }
 
@@ -1094,8 +1092,5 @@ bool CG_IsScoreboardShown( void )
 	if( scoreboardString[0] != '&' ) // nothing to draw
 		return false;
 
-	if( cgs.demoPlaying || cg.frame.multipov || cgs.tv )
-		return cg.showScoreboard || ( GS_MatchState() > MATCH_STATE_PLAYTIME );
-
-	return ( cg.predictedPlayerState.stats[STAT_LAYOUTS] & STAT_LAYOUT_SCOREBOARD ) ? true : false;
+	return cg.showScoreboard || ( GS_MatchState() > MATCH_STATE_PLAYTIME );
 }
