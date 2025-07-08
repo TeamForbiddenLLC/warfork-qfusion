@@ -141,8 +141,8 @@ jobs:
           xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration Debug -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
       - name: Package Assets
-        working-directory: .\source\build
-        run: cmake --build . --target deploy --config ${{matrix.config.build_folder}}
+        working-directory: ./source
+        run: cmake --build ./build --target deploy --config ${{matrix.config.build_folder}}
           
       - name: Package warfork
         working-directory: ./source/build/warfork-qfusion
@@ -162,6 +162,16 @@ jobs:
           name: ${{matrix.config.name}}
           path: source/build/${{matrix.config.name}}.tar.gz
 
+      - name: Sentry Upload
+        working-directory: ./source/build/warfork-qfusion
+        run: |
+          curl -sL https://sentry.io/get-cli/ | bash
+          sentry-cli --version
+          sentry-cli debug-files upload ./
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: team-forbidden-llc
+          SENTRY_PROJECT: warfork
   windows:
     strategy:
       max-parallel: 1

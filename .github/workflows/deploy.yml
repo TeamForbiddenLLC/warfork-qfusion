@@ -202,8 +202,8 @@ jobs:
           xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration RelWithDebInfo -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
       - name: Package Assets
-        working-directory: .\source\build
-        run: cmake --build . --target deploy --config ${{matrix.config.build_folder}}
+        working-directory: ./source
+        run: cmake --build ./build --target deploy --config ${{matrix.config.build_folder}}
           
       - name: Package warfork
         working-directory: ./source/build/warfork-qfusion
