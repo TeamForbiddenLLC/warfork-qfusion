@@ -48,7 +48,7 @@ jobs:
         working-directory: ./source
         run: |
           export CC=gcc-12 CXX=g++-12
-          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSE_PACKAGE_ASSETS=1
+          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
           cd build
           make -j8
 
@@ -74,6 +74,17 @@ jobs:
         with:
           name: ${{matrix.config.name}}
           path: source/build/${{matrix.config.name}}.tar.gz
+      
+      - name: Sentry Upload
+        working-directory: ./source/build/warfork-qfusion
+        run: |
+          curl -sL https://sentry.io/get-cli/ | bash
+          sentry-cli --version
+          sentry-cli debug-files upload ./
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: team-forbidden-llc
+          SENTRY_PROJECT: warfork
 
   windows:
     strategy:
@@ -107,7 +118,7 @@ jobs:
       - name: Building Release
         working-directory: .\source
         run: |
-          cmake -B ./build  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSE_PACKAGE_ASSETS=1
+          cmake -B ./build  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
           cd build
           msbuild qfusion.sln /p:configuration=RelWithDebInfo /maxcpucount:8
 
@@ -134,6 +145,18 @@ jobs:
           name: ${{matrix.config.name}}
           path: source\build\${{matrix.config.name}}.zip
 
+      - name: Sentry Upload
+        working-directory: .\source\build\warfork-qfusion\${{matrix.config.build_folder}}
+        run: |
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+          Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+          scoop install sentry-cli 
+          sentry-cli debug-files upload .
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: team-forbidden-llc
+          SENTRY_PROJECT: warfork
+
   osx:
     strategy:
       max-parallel: 1
@@ -145,7 +168,7 @@ jobs:
               xcode-version: "15.0.1",
               type: "release",
               cmake_args: "-DBUILD_STEAMLIB=1 -DUSE_SYSTEM_CURL=1 -DCMAKE_POLICY_VERSION_MINIMUM=3.5",
-              build_folder: "Release",
+              build_folder: "RelWithDebInfo",
             }
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.agent }}
@@ -174,10 +197,14 @@ jobs:
       - name: Building Release
         working-directory: ./source
         run: |
-          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RELEASE -G Xcode
+          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -G Xcode
           cd build
-          xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration Release -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
+          xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration RelWithDebInfo -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
+      - name: Package Assets
+        working-directory: ./source
+        run: cmake --build ./build --target deploy --config ${{matrix.config.build_folder}}
+          
       - name: Package warfork
         working-directory: ./source/build/warfork-qfusion
         run: tar --exclude='test' -czvf ../${{matrix.config.name}}.tar.gz ${{matrix.config.build_folder}}/*.app
@@ -195,6 +222,17 @@ jobs:
         with:
           name: ${{matrix.config.name}}
           path: source/build/${{matrix.config.name}}.tar.gz
+
+      - name: Sentry Upload
+        working-directory: ./source/build/warfork-qfusion
+        run: |
+          curl -sL https://sentry.io/get-cli/ | bash
+          sentry-cli --version
+          sentry-cli debug-files upload ./
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: team-forbidden-llc
+          SENTRY_PROJECT: warfork
 
   # Prepare builds for Steam deployment
   prepare-steam-build:
