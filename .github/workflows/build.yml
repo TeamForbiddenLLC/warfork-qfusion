@@ -43,7 +43,7 @@ jobs:
         working-directory: ./source
         run: |
           export CC=gcc-12 CXX=g++-12
-          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSE_PACKAGE_ASSETS=1
+          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
           cd build
           make -j8
 
@@ -52,7 +52,7 @@ jobs:
         working-directory: ./source
         run: |
           export CC=gcc-12 CXX=g++-12
-          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Debug -DUSE_PACKAGE_ASSETS=1
+          cmake -B ./build ${{matrix.config.cmake_args}} -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=Debug
           cd build
           make -j8
 
@@ -79,18 +79,6 @@ jobs:
           name: ${{matrix.config.name}}
           path: source/build/${{matrix.config.name}}.tar.gz
             
-      - name: Sentry Upload
-        if: matrix.config.type == 'release' && (github.ref_protected == true || startsWith(github.ref, 'refs/tags/'))
-        working-directory: ./source/build/warfork-qfusion
-        run: |
-          curl -sL https://sentry.io/get-cli/ | bash
-          sentry-cli --version
-          sentry-cli debug-files upload ./
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: team-forbidden-llc
-          SENTRY_PROJECT: warfork
-
   osx:
     strategy:
       max-parallel: 1
@@ -152,6 +140,10 @@ jobs:
           cd build
           xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration Debug -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
+      - name: Package Assets
+        working-directory: .\source\build
+        run: cmake --build . --target deploy --config ${{matrix.config.build_folder}}
+          
       - name: Package warfork
         working-directory: ./source/build/warfork-qfusion
         run: tar --exclude='test' -czvf ../${{matrix.config.name}}.tar.gz ${{matrix.config.build_folder}}/*.app
@@ -212,7 +204,7 @@ jobs:
         if: matrix.config.type == 'debug'
         working-directory: .\source
         run: |
-          cmake -B ./build ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DUSE_PACKAGE_ASSETS=1
+          cmake -B ./build ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1
           cd build
           msbuild qfusion.sln /p:configuration=Debug /maxcpucount:8
 
@@ -220,7 +212,7 @@ jobs:
         if: matrix.config.type == 'release'
         working-directory: .\source
         run: |
-          cmake -B ./build  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSE_PACKAGE_ASSETS=1
+          cmake -B ./build  ${{matrix.config.cmake_args}} -G "${{matrix.config.vs_version}}" -A x64 -DBUILD_UNIT_TEST=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
           cd build
           msbuild qfusion.sln /p:configuration=RelWithDebInfo /maxcpucount:8
 
@@ -246,16 +238,3 @@ jobs:
         with:
           name: ${{matrix.config.name}}
           path: source\build\${{matrix.config.name}}.zip
-
-      - name: Sentry Upload
-        if: matrix.config.type == 'release' && (github.ref_protected == true || startsWith(github.ref, 'refs/tags/'))
-        working-directory: .\source\build\warfork-qfusion\${{matrix.config.build_folder}}
-        run: |
-          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-          Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
-          scoop install sentry-cli 
-          sentry-cli debug-files upload .
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: team-forbidden-llc
-          SENTRY_PROJECT: warfork
