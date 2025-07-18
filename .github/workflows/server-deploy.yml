@@ -74,6 +74,16 @@ jobs:
         with:
           name: ${{matrix.config.name}}
           path: source/build/${{matrix.config.name}}.tar.gz
+      - name: Sentry Upload
+        working-directory: ./source/build/warfork-qfusion
+        run: |
+          curl -sL https://sentry.io/get-cli/ | bash
+          sentry-cli --version
+          sentry-cli debug-files upload ./
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: team-forbidden-llc
+          SENTRY_PROJECT: warfork
 
   windows:
     strategy:
@@ -133,6 +143,14 @@ jobs:
         with:
           name: ${{matrix.config.name}}
           path: source\build\${{matrix.config.name}}.zip
+
+      - name: Sentry Upload
+        working-directory: .\source\build\warfork-qfusion\${{matrix.config.build_folder}}
+        run: |
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+          Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+          scoop install sentry-cli 
+          sentry-cli debug-files upload .
 
   osx:
     strategy:
@@ -199,6 +217,17 @@ jobs:
         with:
           name: ${{matrix.config.name}}
           path: source/build/${{matrix.config.name}}.tar.gz
+
+      - name: Sentry Upload
+        working-directory: ./source/build/warfork-qfusion
+        run: |
+          curl -sL https://sentry.io/get-cli/ | bash
+          sentry-cli --version
+          sentry-cli debug-files upload ./
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: team-forbidden-llc
+          SENTRY_PROJECT: warfork
 
   # Prepare builds for Steam deployment
   prepare-steam-build:
