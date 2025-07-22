@@ -1,0 +1,276 @@
+<rml>
+<head>
+	<title>game</title>
+	<link type="text/template" href="template.rml" />
+	<link type="text/css" rel="stylesheet" href="css/demos.rcss" />
+	<script>
+		Element @demogrid;
+		Element @demoblock;
+		Element @demopath;
+		Element @playbutton;
+
+		int lastSelectedRow = -1;
+
+		const String demogridSource = "demos";
+		String currentPath = "";
+
+		void onBreadcrumbClick( Element @self, Event @ev )
+		{
+			setDemogridPath( self.getAttr( 'demopath', '/' ) );
+		}
+
+		void updateDemopathBreadcrumbs( void )
+		{
+			if( @demopath == null ) {
+				return;
+			}
+
+			// remove all breadcrumbs by default
+			String rml = '';
+
+			String crumbedPath = currentPath;
+			if( crumbedPath.substr( 0, 1 ) != "/" ) {
+				crumbedPath = "/" + crumbedPath;
+			}
+
+			// now add crumbs for all directories
+			uint slashPos = 0;
+			for( uint i = 0; ; i++ ) {
+				uint nextSlashPos = crumbedPath.locate( "/", i );
+				if( nextSlashPos >= crumbedPath.length() ) {
+					break;
+				}
+
+				String demoPath = nextSlashPos == 0 ? "/" : crumbedPath.substr( 1, nextSlashPos );
+				String buttonName = nextSlashPos == 0 ? "/" : crumbedPath.substr( slashPos, nextSlashPos );
+				
+				rml += '<button onclick="$onBreadcrumbClick" demopath="'+demoPath+'">'+buttonName+'</button>';
+
+				slashPos = nextSlashPos + 1;
+			}
+
+			demopath.setInnerRML( rml );
+		}
+
+		void setDemogridPath( const String &path )
+		{
+			if( @demogrid == null ) {
+				return;
+			}
+			if( currentPath == path ) {
+				return;
+			}
+
+			// this updates the source for our grid to something like:
+			// "demos./" or "demos.tutorials/", etc
+			currentPath = path;
+			if( currentPath.empty() ) {
+				currentPath = "/";
+			}
+
+			cast<ElementDataGrid>(demogrid).setDataSource( demogridSource + "." + currentPath );
+
+			// clear selected demo
+			clearDemoSelection();
+			
+			// current path indicator
+			updateDemopathBreadcrumbs();
+		}
+
+		// hides the demoinfo block, resets the selected row tracker
+		void clearDemoSelection( )
+		{
+			// hide the demoblock block
+			if( @demoblock != null ) {
+				demoblock.css( 'display', 'none' );
+			}
+			lastSelectedRow = -1;
+
+			if( @playbutton != null ) {
+				playbutton.css( 'display', 'none' );
+			}
+		}
+
+		void onDemosLoad( Element @elem, Event @ev )
+		{
+			onTemplateLoad( elem, ev );
+
+			@demogrid = @elem.getElementById( 'demolist_datagrid' );
+			@demoblock = @elem.getElementById( 'demoblock' );
+			@demopath = @elem.getElementById( 'demopath' );
+			@playbutton = @elem.getElementById( 'play-btn' );
+
+			setDemogridPath( "/" );
+		}
+
+		void onDemosShow( Element @elem, Event @ev )
+		{
+			onTemplateShow( elem, ev );
+			animationsOnShow();
+		}
+
+		// displays selected demo information in the sidebar
+		void onDemolistRowSelect( Element @elem, Event @ev )
+		{
+			if( @demogrid == null ) {
+				return;
+			}
+			if( @demoblock == null ) {
+				return;
+			}
+
+			int selectedRow = ev.getParameter( 'index', -1 );
+			if( selectedRow < 0 ) {
+				return;
+			}
+
+			// avoid redundant demoblock updates
+			if( selectedRow == lastSelectedRow ) {
+				return;
+			}
+			lastSelectedRow = selectedRow;
+
+			DataSource @data = getDataSource( demogridSource );
+			if( @data == null ) {
+				return;
+			}
+
+			// grab information for the picked row from the table
+			String metaRml = '';
+			
+			bool isDir = data.getField( currentPath, selectedRow, 'is_dir' ).toInt() > 0;
+			if( !isDir ) {
+				// read demo meta data
+				String meta;
+				DemoInfo demo( data.getField( currentPath, selectedRow, 'path' ) );
+
+				// datetime
+				meta = demo.getMeta( 'localtime' );
+				if( !meta.empty() ) {
+					metaRml += StringUtils::Format( _T( 'Date: %s' ), '<field formatter="datetime" value="' + meta + '" />' ) + '<br/>';
+				}
+
+				// matchname
+				meta = demo.getMeta( 'matchname' );
+				if( !meta.empty() ) {
+					metaRml += StringUtils::Format( _T( 'Match: %s' ), meta ) + '<br/><br/>'; //for some reason it needs 2 <br/> here to the line break
+				}
+
+				// matchscore
+				meta = demo.getMeta( 'matchscore' );
+				if( !meta.empty() ) {
+					metaRml += StringUtils::Format( _T( 'Score: %s' ), meta ) + '<br/>';
+				}
+
+				// map
+				meta = demo.getMeta( 'mapname' );
+				if( !meta.empty() ) {
+					metaRml = '<levelshot src="' + meta + '" />' + '<br/>' + metaRml;
+					metaRml += StringUtils::Format( _T( 'Map: %s' ), meta ) + '<br/>';
+				}
+
+				// gametype
+				meta = demo.getMeta( 'gametype' );
+				if( !meta.empty() ) {
+					metaRml += StringUtils::Format( _T( 'Gametype: %s' ), meta ) + '<br/>';
+				}
+
+				// duration
+				meta = demo.getMeta( 'duration' );
+				if( !meta.empty() ) {
+					metaRml += StringUtils::Format( _T( 'Duration: %s' ), '<field formatter="duration" value="' + meta + '" />' ) + '<br/>';
+				}
+
+				// match uuid
+				if( window.browserAvailable ) {
+					meta = demo.getMeta( 'matchuuid' );
+					if( !meta.empty() ) {
+						metaRml += '<a href="' + matchmaker.baseWebURL() + 'matchinfo/' + meta + '" target="_browser">View match info</a><br/>';
+					}
+				}
+
+				if( !metaRml.empty() ) {
+					metaRml = '<div>' + metaRml + '</div>';
+				}
+			}
+
+			if( @playbutton != null ) {
+				playbutton.css( 'display', isDir ? 'none' : 'inline-block' );
+			}
+
+			demoblock.css( 'display', !metaRml.empty() ? 'block' : 'none' );
+			demoblock.setInnerRML( metaRml );
+		}
+
+		void playSelectedDemo()
+		{
+			if( @demogrid == null ) {
+				return;
+			}
+
+			String prop = demogrid.getProp( 'selected-row' );
+			if( prop != '' )
+			{
+				int selectedRow = prop.toInt();
+				if( selectedRow >= 0 )
+				{
+					DataSource @data = getDataSource( demogridSource );
+
+					bool isDir = data.getField( currentPath, selectedRow, 'is_dir' ).toInt() > 0;
+					if( isDir ) {
+						// update source table which correponds to the new path
+						setDemogridPath( data.getField( currentPath, selectedRow, 'path' ) );
+						return;
+					}
+
+					// start demo playback
+					DemoInfo demo( data.getField( currentPath, selectedRow, 'path' ) );
+					demo.play();
+				}
+			}		
+		}
+
+		void onDemolistDblClick( Element @elem, Event @ev )
+		{
+			if( ( window.supportedInputDevices & IN_DEVICE_TOUCHSCREEN ) != 0 ) {
+				return;
+			}
+
+			playSelectedDemo();
+		}
+
+		void onPlayButtonClick( Element @elem, Event @ev )
+		{
+			playSelectedDemo();
+		}
+	</script>
+</head>
+<body template="porkui" onload="$onDemosLoad" onshow="$onDemosShow">
+	<!-- divide the screen to two vertical contexts -->	
+	<div id="leftside">
+		<div id="demopath" />
+
+		<div id="demolist">
+			<datagrid id="demolist_datagrid" source="demos./" onrowselect="$onDemolistRowSelect" ondblclick="$onDemolistDblClick">
+				<col fields="name" width="650dp" formatter="filetype">Demo filename</col>
+			</datagrid>
+		</div>
+	</div>
+
+	<div id="sidebar">
+		<div id="sidebar2">
+			<a href="#" onclick="animOpenMenu('game_join.rml');">Server browser</a>
+			<a href="#" onclick="animOpenMenu('game_local.rml');">Host game</a>
+			<a href="#" onclick="animOpenMenu('game_demos.rml');">Demo browser</a>
+			<a href="#" onclick="Tutorial::OpenModal2();">Gameplay tutorial</a>
+
+			<hr class="nicehr" />
+
+			<button id="play-btn" onClick="$onPlayButtonClick">Watch</button>
+
+			<div id="demoblock" class="infoblock" />			
+		</div>
+	</div>
+
+</body>
+</rml>
