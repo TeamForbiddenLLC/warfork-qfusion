@@ -151,7 +151,10 @@ jobs:
           Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
           scoop install sentry-cli 
           sentry-cli debug-files upload .
-
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: team-forbidden-llc
+          SENTRY_PROJECT: warfork
   osx:
     strategy:
       max-parallel: 1
