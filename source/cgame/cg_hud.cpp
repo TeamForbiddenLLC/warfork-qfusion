@@ -873,9 +873,9 @@ void CG_SC_Obituary( void )
 	char message[128];
 	char message2[128];
 	cg_clientInfo_t *victim, *attacker;
-	int victimNum = atoi( trap_Cmd_Argv( 1 ) );
-	int attackerNum = atoi( trap_Cmd_Argv( 2 ) );
-	int mod = atoi( trap_Cmd_Argv( 3 ) );
+	int victimNum = atoi( Cmd_Argv( 1 ) );
+	int attackerNum = atoi( Cmd_Argv( 2 ) );
+	int mod = atoi( Cmd_Argv( 3 ) );
 	int victim_gender = GENDER_MALE;
 	obituary_t *current;
 
