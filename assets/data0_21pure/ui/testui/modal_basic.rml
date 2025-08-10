@@ -1,0 +1,29 @@
+<rml>
+<head>
+	<title>modal</title>
+	<link type="text/template" href="template_modal.rml" />
+	<script>
+		void onModalBasicShow( Element @body, Event @evt )
+		{
+			URL url( body.ownerDocument.URL );		
+			const Dictionary @dict = url.getParameters();
+
+			String text = '';
+			dict.get( 'text', text );
+			body.getElementById( 'basic_content' ).setInnerRML( text );
+
+			onModalShow( body, evt );
+
+			String y = '';
+			dict.get( 'ypos', y );
+			if( y.empty() )
+				y = '0.5';
+			setModalY( y.toFloat() );
+		}
+	</script>
+</head>
+<body template="porkui_modal" onload="$onModalLoad" onshow="$onModalBasicShow">
+	<div id="basic_content">
+	</div>
+</body>
+</rml>
