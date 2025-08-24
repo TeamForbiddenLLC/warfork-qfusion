@@ -22,6 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "qcommon.h"
 #include "../qalgo/q_trie.h"
+#include "mod_mem.h"
+
 
 #define MLIST_CACHE "cache/mapcache.txt"
 #define MLIST_NULL  ""
@@ -29,8 +31,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define MLIST_TRIE_CASING TRIE_CASE_INSENSITIVE
 
 #define MLIST_UNKNOWN_MAPNAME	"@#$"
-
-#define MLIST_CACHE_EXISTS ( FS_FOpenFile( MLIST_CACHE, NULL, FS_READ|FS_CACHE ) > 0 )
 
 typedef struct mapinfo_s
 {
@@ -161,7 +161,7 @@ static void ML_InitFromCache( void )
 		return;
 
 	// load maps from directory reading into a list
-	maps = temp = ( char* )Mem_TempMalloc( size + sizeof( mapdir_t ) * total );
+	maps = temp = Q_Malloc( size + sizeof( mapdir_t ) * total );
 	temp += size;
 	FS_GetFileList( "maps", ".bsp", maps, size, 0, 0 );
 	len = 0;
@@ -192,7 +192,7 @@ static void ML_InitFromCache( void )
 	FS_LoadCacheFile( MLIST_CACHE, (void **)&buffer, NULL, 0 );
 	if( !buffer )
 	{
-		Mem_TempFree( maps );
+		Q_Free( maps );
 		return;
 	}
 
@@ -251,7 +251,7 @@ static void ML_InitFromCache( void )
 	for( curmap = dir; curmap; curmap = curmap->next )
 		ML_AddMap( curmap->filename, NULL );
 
-	Mem_TempFree( maps );
+	Q_Free( maps );
 	FS_FreeFile( buffer );
 }
 
@@ -398,7 +398,7 @@ void ML_Init( void )
 
 	Cmd_AddCommand( "maplist", ML_MapListCmd );
 
-	if( MLIST_CACHE_EXISTS )
+	if(FS_FOpenFile( MLIST_CACHE, NULL, FS_READ|FS_CACHE ) > 0 )
 		ML_InitFromCache();
 	else
 		ML_InitFromMaps();
