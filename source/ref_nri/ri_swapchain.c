@@ -88,21 +88,6 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 		}
 	}
 #endif
-	{
-		VkBool32 supported = VK_FALSE;
-		result = vkGetPhysicalDeviceSurfaceSupportKHR(dev->physicalAdapter.vk.physicalDevice, init->queue->vk.queueFamilyIdx, swapchain->vk.surface, &supported);
-		VK_WrapResult(result);
-
-		VkSurfaceCapabilitiesKHR surfaceCaps = {0};
-		result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(dev->physicalAdapter.vk.physicalDevice, swapchain->vk.surface, &surfaceCaps);
-		VK_WrapResult(result);
-    VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR};
-    surfaceInfo.surface = swapchain->vk.surface;
-		
-		result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(dev->physicalAdapter.vk.physicalDevice, swapchain->vk.surface, &surfaceCaps);
-		VK_WrapResult(result);
-	}
-	
 	uint32_t numSurfaceFormats = 0;
 	result = vkGetPhysicalDeviceSurfaceFormatsKHR( dev->physicalAdapter.vk.physicalDevice, swapchain->vk.surface, &numSurfaceFormats, NULL );
 	VK_WrapResult(result);

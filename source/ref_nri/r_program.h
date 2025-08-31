@@ -255,7 +255,6 @@ struct glsl_program_s {
 		glsl_program_stage_t stage;
 	} shaderBin[GLSL_STAGE_MAX];
 	
-	//NriPipelineLayout *layout;
 	struct pipeline_hash_s {
 		uint64_t hash;
 		union {

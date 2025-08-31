@@ -217,7 +217,7 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 		vertexBufferCreateInfo.pNext = NULL;
 		vertexBufferCreateInfo.flags = 0;
 		vertexBufferCreateInfo.size = vertexByteStride * desc->numVerts;
-		vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+		vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
 		VmaAllocationInfo allocationInfo = { 0 };
 		VmaAllocationCreateInfo allocInfo = { 0 };
@@ -239,7 +239,7 @@ mesh_vbo_t *R_CreateMeshVBO(const struct mesh_vbo_desc_s* desc)
 		indexBufferCreateInfo.pNext = NULL;
 		indexBufferCreateInfo.flags = 0;
 		indexBufferCreateInfo.size = desc->numElems * sizeof( elem_t );
-		indexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+		indexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
 		VmaAllocationInfo allocationInfo = { 0 };
 		VmaAllocationCreateInfo allocInfo = { 0 };

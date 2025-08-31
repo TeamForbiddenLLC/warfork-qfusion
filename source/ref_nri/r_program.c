@@ -1137,20 +1137,6 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	return pipeline;
 }
 
-// static NriDescriptorRangeDesc *__FindAndInsertNriDescriptorRange( const SpvReflectDescriptorBinding *binding, NriDescriptorRangeDesc **ranges)
-//{
-//	assert(ranges);
-//	for( size_t i = 0; i < arrlen( *ranges ); i++ ) {
-//		if( ( *ranges )[i].baseRegisterIndex == binding->binding ) {
-//			return &( *ranges )[i];
-//		}
-//	}
-//
-//	const size_t insertIndex = arraddnindex( (*ranges), 1 );
-//	memset( &( *ranges )[insertIndex], 0, sizeof( NriDescriptorRangeDesc ) );
-//	return &( *ranges )[insertIndex];
-// }
-
 static const struct descriptor_reflection_s *__ReflectDescriptorSet( const struct glsl_program_s *program, const struct glsl_descriptor_handle_s *handle )
 {
 	for( size_t i = 0; i < program->numDescriptorReflections; i++ ) {
