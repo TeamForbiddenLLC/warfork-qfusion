@@ -468,7 +468,7 @@
 						<br/>
                         
                         <div class="title">Damage numbers size</div>
-                        <select realtime="1" cvar="cg_damageNumbersSize" onchange="$damageNumbersSize">
+                        <select realtime="1" onchange="$damageNumbersSize">
                         <option value="1">Tiny</option>
                         <option value="2">Small</option>
                         <option value="3">Medium</option>
