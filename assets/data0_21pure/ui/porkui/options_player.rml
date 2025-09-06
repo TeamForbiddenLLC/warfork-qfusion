@@ -443,10 +443,6 @@
 						<input cvar="cg_showZoomEffect" type="checkbox" realtime="1"/>
 						<br/>
 
-						<div class="title">Show strafe helper (in race and warmup)</div>
-						<input cvar="cg_strafeHUD" type="checkbox" realtime="1"/>
-						<br/>
-
 						<div id="hud-touchmovedir">
 							<div class="title">Show touch movement direction</div>
 							<input cvar="cg_touch_showMoveDir" type="checkbox" realtime="1"/>
