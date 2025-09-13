@@ -316,14 +316,16 @@ int EnumerateRIAdapters( struct RIRenderer_s *renderer, struct RIPhysicalAdapter
 				physicalAdapter->textureArrayLayerMaxNum = limits->maxImageArrayLayers;
 				physicalAdapter->typedBufferMaxDim = limits->maxTexelBufferElements;
 
-				for( uint32_t i = 0; i < memoryProperties.memoryHeapCount; i++ ) {
-					// const VkMemoryType& memoryType = m_MemoryProps.memoryTypes[i];
+				for(uint32_t i = 0; i < memoryProperties.memoryHeapCount; i++) {
 					if( ( memoryProperties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT ) != 0 && physicalAdapter->type != RI_ADAPTER_TYPE_INTEGRATED_GPU )
 						physicalAdapter->videoMemorySize += memoryProperties.memoryHeaps[i].size;
 					else
 						physicalAdapter->systemMemorySize += memoryProperties.memoryHeaps[i].size;
+				}
+
+				for( uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++ ) {
 					const uint32_t uploadHeapFlags = ( VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT );
-					if( ( memoryProperties.memoryHeaps[i].flags & uploadHeapFlags ) == uploadHeapFlags )
+					if( ( memoryProperties.memoryTypes[i].propertyFlags & uploadHeapFlags ) == uploadHeapFlags )
 						physicalAdapter->deviceUploadHeapSize += memoryProperties.memoryHeaps[i].size;
 				}
 
