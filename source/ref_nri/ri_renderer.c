@@ -235,10 +235,11 @@ int EnumerateRIAdapters( struct RIRenderer_s *renderer, struct RIPhysicalAdapter
 
 				R_VK_ADD_STRUCT( &features, &features11 );
 				R_VK_ADD_STRUCT( &features, &features12 );
+				R_VK_ADD_STRUCT( &features, &features13 );
 
 				VkPhysicalDevicePresentIdFeaturesKHR presentIdFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR };
 				if( __VK_SupportExtension( extensionProperties, extensionNum, qCToStrRef( VK_KHR_PRESENT_ID_EXTENSION_NAME ) ) ) {
-					R_VK_ADD_STRUCT( &features, &features13 );
+					R_VK_ADD_STRUCT( &features, &presentIdFeatures );
 				}
 
 				VkPhysicalDeviceMemoryProperties memoryProperties = { 0 };
@@ -252,7 +253,6 @@ int EnumerateRIAdapters( struct RIRenderer_s *renderer, struct RIPhysicalAdapter
 				memcpy(physicalAdapter->name, properties.properties.deviceName, sizeof(properties.properties.deviceName));
 				assert(sizeof(physicalAdapter->name) >= sizeof(properties.properties.deviceName));
 				physicalAdapter->vendor = VendorFromID( properties.properties.vendorID );
-				physicalAdapter->vk.physicalDevice = physicalAdapter->vk.physicalDevice;
 				physicalAdapter->vk.apiVersion = properties.properties.apiVersion;
 				physicalAdapter->presetLevel = RI_GPU_PRESET_NONE;
 				// selected preset
@@ -288,7 +288,7 @@ int EnumerateRIAdapters( struct RIRenderer_s *renderer, struct RIPhysicalAdapter
 				physicalAdapter->vk.isPresentIDSupported = presentIdFeatures.presentId;
 				physicalAdapter->vk.isBufferDeviceAddressSupported =
 					physicalAdapter->vk.apiVersion >= VK_API_VERSION_1_2 || __VK_SupportExtension( extensionProperties, extensionNum, qCToStrRef( VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME ) );
-				physicalAdapter->vk.isBufferDeviceAddressSupported = __VK_SupportExtension( extensionProperties, extensionNum, qCToStrRef( VK_AMD_DEVICE_COHERENT_MEMORY_EXTENSION_NAME ) );
+				physicalAdapter->vk.isAMDDeviceCoherentMemorySupported = __VK_SupportExtension( extensionProperties, extensionNum, qCToStrRef( VK_AMD_DEVICE_COHERENT_MEMORY_EXTENSION_NAME ) );
 
 				const VkPhysicalDeviceLimits *limits = &properties.properties.limits;
 
@@ -316,14 +316,16 @@ int EnumerateRIAdapters( struct RIRenderer_s *renderer, struct RIPhysicalAdapter
 				physicalAdapter->textureArrayLayerMaxNum = limits->maxImageArrayLayers;
 				physicalAdapter->typedBufferMaxDim = limits->maxTexelBufferElements;
 
-				for( uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++ ) {
-					// const VkMemoryType& memoryType = m_MemoryProps.memoryTypes[i];
+				for(uint32_t i = 0; i < memoryProperties.memoryHeapCount; i++) {
 					if( ( memoryProperties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT ) != 0 && physicalAdapter->type != RI_ADAPTER_TYPE_INTEGRATED_GPU )
 						physicalAdapter->videoMemorySize += memoryProperties.memoryHeaps[i].size;
 					else
 						physicalAdapter->systemMemorySize += memoryProperties.memoryHeaps[i].size;
+				}
+
+				for( uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++ ) {
 					const uint32_t uploadHeapFlags = ( VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT );
-					if( ( memoryProperties.memoryHeaps[i].flags & uploadHeapFlags ) == uploadHeapFlags )
+					if( ( memoryProperties.memoryTypes[i].propertyFlags & uploadHeapFlags ) == uploadHeapFlags )
 						physicalAdapter->deviceUploadHeapSize += memoryProperties.memoryHeaps[i].size;
 				}
 
@@ -533,6 +535,13 @@ int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, st
 		vkEnumerateDeviceExtensionProperties( physicalAdapter->vk.physicalDevice, NULL, &extensionNum, NULL );
 		VkExtensionProperties *extensionProperties = malloc( extensionNum * sizeof( VkExtensionProperties ) );
 		vkEnumerateDeviceExtensionProperties( physicalAdapter->vk.physicalDevice, NULL, &extensionNum, extensionProperties );
+		
+		for( size_t idx = 0; idx < Q_ARRAY_COUNT( DefaultDeviceExtension ); idx++ ) {
+			if( __VK_SupportExtension( extensionProperties, extensionNum, qCToStrRef( DefaultDeviceExtension[idx] ) ) ) {
+				Com_Printf("Enabled Extension: %s", extensionProperties[idx].extensionName);
+				arrpush( enabledExtensionNames, DefaultDeviceExtension[idx] );
+			}
+		}
 		
 		for(size_t i = 0; i < extensionNum; i++) {
 			Com_Printf( "VK Extension %s - %lu", extensionProperties[i].extensionName, extensionProperties[i].specVersion);
@@ -827,12 +836,6 @@ int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, st
    // }
 
 		vkGetPhysicalDeviceFeatures2( physicalAdapter->vk.physicalDevice, &features );
-		for( size_t idx = 0; idx < Q_ARRAY_COUNT( DefaultDeviceExtension ); idx++ ) {
-			if( __VK_SupportExtension( extensionProperties, extensionNum, qCToStrRef( DefaultDeviceExtension[idx] ) ) ) {
-				Com_Printf("Enabled Extension: %s", extensionProperties[idx].extensionName);
-				arrpush( enabledExtensionNames, DefaultDeviceExtension[idx] );
-			}
-		}
 
 		deviceCreateInfo.pNext = &features;
 		deviceCreateInfo.pQueueCreateInfos = deviceQueueCreateInfo;
