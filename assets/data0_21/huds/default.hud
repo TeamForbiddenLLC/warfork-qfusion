@@ -26,6 +26,7 @@ endif
 
 if %RACE == 0
 include default/health_armor
+include default/drowning
 include default/weaponlist
 include default/ammo
 
