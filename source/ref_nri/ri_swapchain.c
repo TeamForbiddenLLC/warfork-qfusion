@@ -240,12 +240,12 @@ void RISwapchainPresent(struct RIDevice_s* dev, struct RISwapchain_s* swapchain)
 			presentInfo.pSwapchains = &swapchain->vk.swapchain;
 			presentInfo.pImageIndices = &swapchain->vk.textureIndex;
 
-			VkPresentIdKHR presentId = { VK_STRUCTURE_TYPE_PRESENT_ID_KHR };
-			presentId.swapchainCount = 1;
-			presentId.pPresentIds = &swapchain->vk.presentID;
-
-			if( dev->physicalAdapter.vk.isPresentIDSupported )
-				presentInfo.pNext = &presentId;
+			//TODO: need to add support for presentID
+			// VkPresentIdKHR presentId = { VK_STRUCTURE_TYPE_PRESENT_ID_KHR };
+			// presentId.swapchainCount = 1;
+			// presentId.pPresentIds = &swapchain->vk.presentID;
+			// if( dev->physicalAdapter.vk.isPresentIDSupported )
+			// 	presentInfo.pNext = &presentId;
 			VK_WrapResult( vkQueuePresentKHR( swapchain->presentQueue->vk.queue, &presentInfo ) );
 		}
 		swapchain->vk.presentID++;

@@ -35,10 +35,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ri_conversion.h"
 #include "ri_renderer.h"
 
+#include "../../gameshared/q_arch.h"
 #include "qhash.h"
 #include "qstr.h"
 #include "stb_ds.h"
-#include "../../gameshared/q_arch.h"
 
 #define MAX_GLSL_PROGRAMS 1024
 #define GLSL_PROGRAMS_HASH_SIZE 256
@@ -211,16 +211,18 @@ static void RF_DeleteProgram( struct glsl_program_s *program )
 		R_Free( program->deformsKey );
 
 #if ( DEVICE_IMPL_VULKAN )
-	if(program->vk.pipelineLayout) {
-		vkDestroyPipelineLayout(rsh.device.vk.device, program->vk.pipelineLayout, NULL);
+	if( program->vk.pipelineLayout ) {
+		vkDestroyPipelineLayout( rsh.device.vk.device, program->vk.pipelineLayout, NULL );
 	}
 	for( size_t i = 0; i < PIPELINE_LAYOUT_HASH_SIZE; i++ ) {
 		if( program->pipelines[i].vk.handle )
 			vkDestroyPipeline( rsh.device.vk.device, program->pipelines[i].vk.handle, NULL );
 	}
 	for( size_t i = 0; i < R_DESCRIPTOR_SET_MAX; i++ ) {
-		if( program->programDescriptors[i].vk.setLayout )
+		if( program->programDescriptors[i].vk.setLayout ) {
 			vkDestroyDescriptorSetLayout( rsh.device.vk.device, program->programDescriptors[i].vk.setLayout, NULL );
+			FreeDescriptorSetAlloc( &rsh.device, &program->programDescriptors[i].alloc );
+		}
 	}
 #endif
 	for( size_t i = 0; i < GLSL_STAGE_MAX; i++ ) {
@@ -980,7 +982,7 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 		float depthBiasConstant;
 		float depthBiasClamp;
 		float depthBiasSlope;
-		uint16_t cullMode : 3;		  // RICullMode_e
+		uint16_t cullMode : 3; // RICullMode_e
 		uint16_t colorBlendEnabled : 1;
 		uint16_t depthWrite : 1;
 		uint16_t colorWriteMask : 4; // RIColorWriteMask_e
@@ -1008,8 +1010,8 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	hash_t hash = HASH_INITIAL_VALUE;
 	hash = hash_data_hsieh( hash, vertextbindingDesc, sizeof( VkVertexInputAttributeDescription ) * vertexInputState.vertexAttributeDescriptionCount );
 	hash = hash_data_hsieh( hash, vertexInputStreamsDesc, sizeof( VkVertexInputBindingDescription ) * vertexInputState.vertexBindingDescriptionCount );
-	hash = hash_data_hsieh( hash, &encode, sizeof(encode));
-	hash = hash_data_hsieh( hash, colorAttachmentsVK, sizeof(VkFormat) * cmd->numColorsAttachments);
+	hash = hash_data_hsieh( hash, &encode, sizeof( encode ) );
+	hash = hash_data_hsieh( hash, colorAttachmentsVK, sizeof( VkFormat ) * cmd->numColorsAttachments );
 	if( cmd->depthFormat != RI_FORMAT_UNKNOWN )
 		hash = hash_u32( hash, cmd->depthFormat );
 
@@ -1074,15 +1076,15 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 		}
 
 		VkPipelineColorBlendStateCreateInfo colorBlendState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-		if(cmd->numColorsAttachments > 0) {
+		if( cmd->numColorsAttachments > 0 ) {
 			colorBlendState.attachmentCount = cmd->numColorsAttachments;
 			colorBlendState.pAttachments = colorAttachmentDesc;
 			pipelineCreateInfo.pColorBlendState = &colorBlendState;
 		}
 
 		VkPipelineViewportStateCreateInfo viewportState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-		viewportState.viewportCount = Q_MAX(1, cmd->numColorsAttachments);
-		viewportState.scissorCount = Q_MAX(1, cmd->numColorsAttachments);
+		viewportState.viewportCount = Q_MAX( 1, cmd->numColorsAttachments );
+		viewportState.scissorCount = Q_MAX( 1, cmd->numColorsAttachments );
 		pipelineCreateInfo.pViewportState = &viewportState;
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
@@ -1122,7 +1124,7 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 		pipelineCreateInfo.pDepthStencilState = &depthStencilState;
 
 		VK_WrapResult( vkCreateGraphicsPipelines( rsh.device.vk.device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &pipeline->vk.handle ) );
-		// assert( ( attribFlags & program->vertexInputMask ) == program->vertexInputMask );
+		//assert( ( attribFlags & program->vertexInputMask ) == program->vertexInputMask );
 		if( vkSetDebugUtilsObjectNameEXT ) {
 			VkDebugUtilsObjectNameInfoEXT debugName = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, NULL, VK_OBJECT_TYPE_PIPELINE, (uint64_t)pipeline->vk.handle, program->name };
 			VK_WrapResult( vkSetDebugUtilsObjectNameEXT( rsh.device.vk.device, &debugName ) );
@@ -1279,7 +1281,7 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 }
 
 #if ( DEVICE_IMPL_VULKAN )
-void _vk__descriptorSetAlloc( struct RIDevice_s *device, struct descriptor_set_allloc_s *alloc )
+void _vk__descriptorSetAlloc( struct RIDevice_s *device, struct DescriptorSetAllocator *alloc )
 {
 	assert( device->renderer->api == RI_DEVICE_API_VK );
 	struct glsl_program_descriptor_s *programDescriptor = Q_CONTAINER_OF( alloc, struct glsl_program_descriptor_s, alloc );
