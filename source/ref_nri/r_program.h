@@ -215,7 +215,7 @@ struct glsl_program_descriptor_s {
 			} vk;
 #endif
 		};
-		struct descriptor_set_allloc_s alloc; // the set allocator 
+		struct DescriptorSetAllocator alloc; 
 		uint16_t samplerMaxNum;
 		uint16_t constantBufferMaxNum;
 		uint16_t dynamicConstantBufferMaxNum;

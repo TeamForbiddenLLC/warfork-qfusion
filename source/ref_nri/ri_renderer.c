@@ -285,7 +285,7 @@ int EnumerateRIAdapters( struct RIRenderer_s *renderer, struct RIPhysicalAdapter
 
 				physicalAdapter->vk.isSwapChainSupported = __VK_SupportExtension( extensionProperties, extensionNum, qCToStrRef( VK_KHR_SWAPCHAIN_EXTENSION_NAME ) );
 
-				physicalAdapter->vk.isPresentIDSupported = presentIdFeatures.presentId;
+				physicalAdapter->vk.isPresentIDSupported = presentIdFeatures.presentId > 0;
 				physicalAdapter->vk.isBufferDeviceAddressSupported =
 					physicalAdapter->vk.apiVersion >= VK_API_VERSION_1_2 || __VK_SupportExtension( extensionProperties, extensionNum, qCToStrRef( VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME ) );
 				physicalAdapter->vk.isAMDDeviceCoherentMemorySupported = __VK_SupportExtension( extensionProperties, extensionNum, qCToStrRef( VK_AMD_DEVICE_COHERENT_MEMORY_EXTENSION_NAME ) );
@@ -663,84 +663,6 @@ int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, st
 			}
 		}
 
-		//for( uint32_t initIdx = 0; initIdx < Q_ARRAY_COUNT( configureQueue ); initIdx++ ) {
-		//	VkDeviceQueueCreateInfo *selectedQueue = NULL;
-		//	bool found = false;
-		//	uint32_t minQueueFlag = UINT32_MAX;
-		//	const uint32_t requiredFlags = configureQueue[initIdx].requiredBits;
-		//	for( size_t familyIdx = 0; familyIdx < familyNum; familyIdx++ ) {
-		//		uint32_t avaliableQueues = 0;
-		//		size_t createQueueIdx = 0;
-		//		for( ; createQueueIdx < Q_ARRAY_COUNT( deviceQueueCreateInfo ); createQueueIdx++ ) {
-		//			const bool foundQueueFamily = deviceQueueCreateInfo[createQueueIdx].queueFamilyIndex == familyIdx;
-		//			const bool isQueueEmpty =(deviceQueueCreateInfo[createQueueIdx].queueCount == 0); 
-		//			if( foundQueueFamily || isQueueEmpty) {
-		//				selectedQueue = &deviceQueueCreateInfo[createQueueIdx];
-		//				if(isQueueEmpty) {
-		//					deviceCreateInfo.queueCreateInfoCount = Q_MAX( deviceCreateInfo.queueCreateInfoCount, createQueueIdx + 1);
-		//					selectedQueue->pQueuePriorities = priorities;
-		//					selectedQueue->sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		//				}
-		//				selectedQueue->queueFamilyIndex = familyIdx;
-		//				avaliableQueues = queueFamilyProps[familyIdx].queueCount - selectedQueue->queueCount;
-		//				break;
-		//			}
-		//		}
-
-		//		// for the graphics queue we select the first avaliable
-		//		if( configureQueue[initIdx].queueType == RI_QUEUE_GRAPHICS && ( configureQueue[initIdx].requiredBits & queueFamilyProps[familyIdx].queueFlags ) > 0 ) {
-		//			found = true;
-		//			break;
-		//		}
-
-		//		assert( createQueueIdx < Q_ARRAY_COUNT( deviceQueueCreateInfo ) );
-		//		if( avaliableQueues == 0 ) {
-		//			continue; // skip queue family there is no more avaliable
-		//		}
-		//		const uint32_t matchingQueueFlags = ( queueFamilyProps[familyIdx].queueFlags & requiredFlags );
-
-		//		// Example: Required flag is VK_QUEUE_TRANSFER_BIT and the queue family has only VK_QUEUE_TRANSFER_BIT set
-		//		if( matchingQueueFlags && ( ( queueFamilyProps[familyIdx].queueFlags & ~requiredFlags ) == 0 ) && avaliableQueues > 0 ) {
-		//			found = true;
-		//			break;
-		//		}
-
-		//		// Queue family 1 has VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT
-		//		// Queue family 2 has VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_SPARSE_BINDING_BIT
-		//		// Since 1 has less flags, we choose queue family 1
-		//		if( matchingQueueFlags && ( ( queueFamilyProps[familyIdx].queueFlags - matchingQueueFlags ) < minQueueFlag ) ) {
-		//			found = true;
-		//			minQueueFlag = ( queueFamilyProps[familyIdx].queueFlags - matchingQueueFlags );
-		//		}
-		//	}
-
-		//	if( found ) {
-		//		struct RIQueue_s *queue = &device->queues[configureQueue[initIdx].queueType];
-		//		queue->vk.queueFlags = queueFamilyProps[selectedQueue->queueFamilyIndex].queueFlags;
-		//		queue->vk.slotIdx = selectedQueue->queueCount++;
-		//		queue->vk.queueFamilyIdx = selectedQueue->queueFamilyIndex;
-		//	} else {
-		//		struct RIQueue_s *dupQueue = NULL;
-		//		minQueueFlag = UINT32_MAX;
-		//		for( size_t i = 0; i < Q_ARRAY_COUNT( device->queues ); i++ ) {
-		//			const uint32_t matchingQueueFlags = ( device->queues[i].vk.queueFlags & requiredFlags );
-		//			if( matchingQueueFlags && ( ( device->queues[i].vk.queueFlags & ~requiredFlags ) == 0 ) ) {
-		//				dupQueue = &device->queues[i];
-		//				break;
-		//			}
-
-		//			if( matchingQueueFlags && ( ( device->queues[i].vk.queueFlags - matchingQueueFlags ) < minQueueFlag ) ) {
-		//				found = true;
-		//				minQueueFlag = ( device->queues[i].vk.queueFlags - matchingQueueFlags );
-		//				dupQueue = &device->queues[i];
-		//			}
-		//		}
-		//		if( dupQueue ) {
-		//			device->queues[configureQueue[initIdx].queueType] = *dupQueue;
-		//		}
-		//	}
-		//}
-
 		VkPhysicalDeviceFeatures2 features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
 
 		VkPhysicalDeviceVulkan11Features features11 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES };
@@ -760,11 +682,6 @@ int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, st
 			device->vk.maintenance5Features = true;
 		}
 
-		// VkPhysicalDeviceFragmentShadingRateFeaturesKHR shadingRateFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR };
-		// if( __VK_isExtensionSupported( VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME, , extensionProperties, extensionNum ) ) {
-		//	APPEND_EXT( shadingRateFeatures );
-		// }
-
 		VkPhysicalDevicePresentIdFeaturesKHR presentIdFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR };
 		if( __VK_isExtensionNamesSupported( qCToStrRef( VK_KHR_PRESENT_ID_EXTENSION_NAME ), enabledExtensionNames, arrlen( enabledExtensionNames ) ) ) {
 			R_VK_ADD_STRUCT( &features, &presentIdFeatures );
@@ -779,61 +696,6 @@ int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, st
 		if( __VK_isExtensionNamesSupported( qCToStrRef( VK_KHR_LINE_RASTERIZATION_EXTENSION_NAME ), enabledExtensionNames, arrlen( enabledExtensionNames ) ) ) {
 			R_VK_ADD_STRUCT( &features, &lineRasterizationFeatures );
 		}
-
-		//VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT };
-		//if( IsExtensionSupported( VK_EXT_MESH_SHADER_EXTENSION_NAME, desiredDeviceExts ) ) {
-		//	APPEND_EXT( meshShaderFeatures );
-		//}
-
-	 // VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR};
-   // if (IsExtensionSupported(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, desiredDeviceExts)) {
-   //     APPEND_EXT(accelerationStructureFeatures);
-   // }
-
-   // VkPhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipelineFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR};
-   // if (IsExtensionSupported(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME, desiredDeviceExts)) {
-   //     APPEND_EXT(rayTracingPipelineFeatures);
-   // }
-
-   // VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR};
-   // if (IsExtensionSupported(VK_KHR_RAY_QUERY_EXTENSION_NAME, desiredDeviceExts)) {
-   //     APPEND_EXT(rayQueryFeatures);
-   // }
-
-   // VkPhysicalDeviceRayTracingMaintenance1FeaturesKHR rayTracingMaintenanceFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_MAINTENANCE_1_FEATURES_KHR};
-   // if (IsExtensionSupported(VK_KHR_RAY_TRACING_MAINTENANCE_1_EXTENSION_NAME, desiredDeviceExts)) {
-   //     APPEND_EXT(rayTracingMaintenanceFeatures);
-   // }
-
-   // VkPhysicalDeviceOpacityMicromapFeaturesEXT micromapFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_FEATURES_EXT};
-   // if (IsExtensionSupported(VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME, desiredDeviceExts)) {
-   //     APPEND_EXT(micromapFeatures);
-   // }
-
-   // VkPhysicalDeviceShaderAtomicFloatFeaturesEXT shaderAtomicFloatFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT};
-   // if (IsExtensionSupported(VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME, desiredDeviceExts)) {
-   //     APPEND_EXT(shaderAtomicFloatFeatures);
-   // }
-
-   // VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT shaderAtomicFloat2Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_2_FEATURES_EXT};
-   // if (IsExtensionSupported(VK_EXT_SHADER_ATOMIC_FLOAT_2_EXTENSION_NAME, desiredDeviceExts)) {
-   //     APPEND_EXT(shaderAtomicFloat2Features);
-   // }
-
-   // VkPhysicalDeviceMemoryPriorityFeaturesEXT memoryPriorityFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT};
-   // if (IsExtensionSupported(VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME, desiredDeviceExts)) {
-   //     APPEND_EXT(memoryPriorityFeatures);
-   // }
-
-   // VkPhysicalDeviceImageSlicedViewOf3DFeaturesEXT slicedViewFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_SLICED_VIEW_OF_3D_FEATURES_EXT};
-   // if (IsExtensionSupported(VK_EXT_IMAGE_SLICED_VIEW_OF_3D_EXTENSION_NAME, desiredDeviceExts)) {
-   //     APPEND_EXT(slicedViewFeatures);
-   // }
-
-   // VkPhysicalDeviceCustomBorderColorFeaturesEXT borderColorFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT};
-   // if (IsExtensionSupported(VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME, desiredDeviceExts)) {
-   //     APPEND_EXT(borderColorFeatures);
-   // }
 
 		vkGetPhysicalDeviceFeatures2( physicalAdapter->vk.physicalDevice, &features );
 

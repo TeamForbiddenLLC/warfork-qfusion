@@ -45,10 +45,10 @@ struct descriptor_pool_alloc_slot_s {
 
 };
 
-struct descriptor_set_allloc_s;
-typedef void ( *RIAllocDescriptor_Func )( struct RIDevice_s *device, struct descriptor_set_allloc_s *alloc );
+struct DescriptorSetAllocator;
+typedef void ( *RIAllocDescriptor_Func )( struct RIDevice_s *device, struct DescriptorSetAllocator *alloc );
 
-struct descriptor_set_allloc_s {
+struct DescriptorSetAllocator {
 	RIAllocDescriptor_Func descriptorAllocator;
 	uint8_t framesInFlight; // the number of frames in flight 
 
@@ -68,14 +68,14 @@ struct descriptor_set_result_s {
 };
 
 struct descriptor_set_result_s ResolveDescriptorSet( struct RIDevice_s *device,
-													 struct descriptor_set_allloc_s *alloc,
+													 struct DescriptorSetAllocator *alloc,
 													 uint32_t frameCount,
 													 uint32_t hash );
-void FreeDescriptorSetAlloc( struct RIDevice_s *device, struct descriptor_set_allloc_s *alloc );
+void FreeDescriptorSetAlloc( struct RIDevice_s *device, struct DescriptorSetAllocator *alloc );
 
 // utility
-struct descriptor_set_slot_s *AllocDescriptorsetSlot( struct descriptor_set_allloc_s *alloc );
-void AttachDescriptorSlot( struct descriptor_set_allloc_s *alloc, struct descriptor_set_slot_s *slot );
-void DetachDescriptorSlot( struct descriptor_set_allloc_s *alloc, struct descriptor_set_slot_s *slot );
+struct descriptor_set_slot_s *AllocDescriptorsetSlot( struct DescriptorSetAllocator *alloc );
+void AttachDescriptorSlot( struct DescriptorSetAllocator *alloc, struct descriptor_set_slot_s *slot );
+void DetachDescriptorSlot( struct DescriptorSetAllocator *alloc, struct descriptor_set_slot_s *slot );
 
 #endif

@@ -138,11 +138,11 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	struct RIBackendInit_s backendInit = { 0 };
 	backendInit.api = RI_DEVICE_API_VK;
 	backendInit.applicationName = applicationName;
-//#ifndef NDEBUG
-	backendInit.vk.enableValidationLayer = true;
-//#else
-//	backendInit.vk.enableValidationLayer = false;
-//#endif
+#ifndef NDEBUG
+	backendInit.vk.enableValidationLayer = 1;
+#else
+	backendInit.vk.enableValidationLayer = 0;
+#endif
 
 	if(InitRIRenderer(&backendInit, &rsh.renderer) != RI_SUCCESS) {
 		return rserr_unknown;
