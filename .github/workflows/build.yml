@@ -199,9 +199,7 @@ jobs:
       - name: Download steamworks sdk
         run: |
           curl -L https://github.com/Warfork/sdk_internal/raw/refs/heads/main/sdk.zip --output third-party/steamworks/sdk.zip
-          7z x third-party/steamworks/sdk.zip -othird-party/steamworks -p"$SDK_PASSWORD" -y
-        env:
-          SDK_PASSWORD: ${{ secrets.SDK_PASSWORD }}
+          7z x third-party/steamworks/sdk.zip -othird-party/steamworks -p${{secrets.SDK_PASSWORD}} -y
 
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
