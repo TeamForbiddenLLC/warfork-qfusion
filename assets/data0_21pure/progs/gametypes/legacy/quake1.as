@@ -377,3 +377,42 @@ void ambient_swamp2( Entity @ent )
 	AmbientSound( ent, "sound/ambience/swamp2.wav" );
 }
 
+// Boost pads from futsball
+void target_boost( Entity @boost )
+{
+	@boost.use = WF_Boost_Use;
+	boost.linkEntity();
+}
+
+// Boost pads from futsball
+void WF_Boost_Use( Entity @ent, Entity @other, Entity @activator )
+{
+	/*G_Print("other = " + other.classname + "\n");
+	G_Print("activator = " + activator.classname + "\n");*/
+	if ( @activator.client == null )
+		return;
+
+	Vec3 mins, maxs;
+	other.getSize( mins, maxs );
+
+	Vec3 origin = other.origin + ( mins + maxs ) * 0.5;
+
+	G_PositionedSound( origin, CHAN_AUTO, G_SoundIndex("sounds/world/launchpad.wav"), 1.0 );
+
+	Vec3 fwd, right, up;
+	ent.angles.angleVectors( fwd, right, up );
+
+	@activator.groundEntity = null;
+
+	Vec3 vel = activator.velocity;
+	/*vel = fwd * 2000;
+	vel.z = 300;*/
+
+	float len = vel.length();
+	len += 1000;
+	vel.normalize();
+	vel *= len;
+
+	activator.velocity = vel;
+}
+
