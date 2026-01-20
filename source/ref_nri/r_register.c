@@ -127,12 +127,12 @@ cvar_t *r_maxglslbones;
 
 cvar_t *gl_cull;
 
-static bool	r_verbose;
-static bool	r_postinit;
-
 static void R_InitVolatileAssets( void );
 
-static void R_Register( const char *screenshotsPrefix )
+rserr_t R_Init( const char *applicationName, const char *screenshotPrefix, int startupColor,
+	int iconResource, const int *iconXPM,
+	void *hinstance, void *wndproc, void *parenthWnd, 
+	bool verbose )
 {
 	char tmp[128];
 	vid_width = Cvar_Get( "vid_width", "0", CVAR_ARCHIVE | CVAR_LATCH_VIDEO );
@@ -221,7 +221,7 @@ static void R_Register( const char *screenshotsPrefix )
 	r_texturefilter = Cvar_Get( "r_texturefilter", "4", CVAR_ARCHIVE );
 	r_texturecompression = Cvar_Get( "r_texturecompression", "0", CVAR_ARCHIVE | CVAR_LATCH_VIDEO );
 
-	r_screenshot_fmtstr = Cvar_Get( "r_screenshot_fmtstr", va_r( tmp, sizeof( tmp ), "%s%y%%m%%d_%H%M%%S", screenshotsPrefix ), CVAR_ARCHIVE );
+	r_screenshot_fmtstr = Cvar_Get( "r_screenshot_fmtstr", va_r( tmp, sizeof( tmp ), "%s%y%%m%%d_%H%M%%S", screenshotPrefix ), CVAR_ARCHIVE );
 	r_screenshot_format = Cvar_Get( "r_screenshot_format", "1", CVAR_ARCHIVE );
 
 #if defined(GLX_VERSION) && !defined(USE_SDL2)
@@ -256,16 +256,6 @@ static void R_Register( const char *screenshotsPrefix )
 	Cmd_AddCommand( "modellist", Mod_Modellist_f );
 	Cmd_AddCommand( "glslprogramlist", RP_ProgramList_f );
 	Cmd_AddCommand( "cinlist", R_CinList_f );
-}
-
-rserr_t R_Init( const char *applicationName, const char *screenshotPrefix, int startupColor,
-	int iconResource, const int *iconXPM,
-	void *hinstance, void *wndproc, void *parenthWnd, 
-	bool verbose )
-{
-	r_verbose = verbose;
-	r_postinit = true;
-	R_Register( screenshotPrefix );
 	return rserr_ok;
 }
 
