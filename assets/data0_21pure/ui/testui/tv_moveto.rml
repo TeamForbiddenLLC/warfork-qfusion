@@ -1,0 +1,74 @@
+<rml>
+<head>
+	<title>modal</title>
+	<link type="text/template" href="template_modal.rml" />
+	<script>
+		const uint START_TIMER = 10000;
+		uint timer_abs;
+		String hostname = '';
+		String ipportchan = '';
+		int timer_id;
+		String timer_msg_tpl;
+		Element @timer_msg;
+
+		void onTVMoveToLoad( Element @body, Event @evt )
+		{
+			timer_id = 0;
+			@timer_msg = body.getElementById( 'timer_msg' );
+
+			timer_msg_tpl = _T( 'You will be automatically connected to WarforkTV server "%s" at %s in %s seconds...' );
+
+			URL url( body.ownerDocument.URL );		
+			const Dictionary @dict = url.getParameters();
+			dict.get( 'param1', hostname );
+			dict.get( 'param2', ipportchan );
+			
+			onModalLoad( body, evt );
+		}
+		
+		void updateTimerMessage()
+		{
+			if( @timer_msg == null ) {
+				return;
+			}
+
+			int left_secs = int(timer_abs - window.time) / 1000;
+			if( left_secs < 0 ) {
+				timer_msg.setInnerRML( '' );
+				return;
+			}
+			timer_msg.setInnerRML( StringUtils::Format( timer_msg_tpl, hostname, ipportchan, '' + left_secs ) );		
+		}
+
+		bool connectToTVServer( Element @body, Event @evt )
+		{
+			game.execAppend( 'connect "' + ipportchan + '"\n' );
+			return true;
+		}
+		
+		bool onTVTimerPoll()
+		{
+			updateTimerMessage();
+			if( window.time > timer_abs ) {
+				connectToTVServer( null, null );
+				return false;
+			}
+			return true;
+		}
+
+		void onTVMoveToShow( Element @body, Event @evt )
+		{		
+			timer_id = window.setInterval( onTVTimerPoll, 500 );
+			timer_abs = window.time + START_TIMER;
+			updateTimerMessage();
+
+			onModalShow( body, evt, connectToTVServer );
+		}
+	</script>
+</head>
+<body template="porkui_modal" onload="$onTVMoveToLoad" onshow="$onTVMoveToShow">
+	<div>The game server is suggesting you can watch this match on WarforkTV. Do you agree?<br/>
+	<span id="timer_msg"></span>
+	</div>
+</body>
+</rml>

@@ -1,0 +1,258 @@
+<rml>
+<head>
+	<title>game</title>
+	<link type="text/template" href="template_ingame.rml" />
+	<script>
+		Element @gamemenu;
+		Element @gamecommands;
+
+		void onGameLoad( Element @body, Event @evt )
+		{
+			onTemplateLoad( body, evt );
+
+			@gamemenu = body.getElementById( 'menu-ingame' );
+			@gamecommands = gamemenu.getElementById( 'menu-commands' );
+		}
+
+		void onCmdButtonClick( Element @self, Event @evt )
+		{
+			window.close();
+
+			String command = self.getAttr( 'command', '' );
+			String alt_command = self.getAttr( 'alt-command', '' );
+			
+			if( evt.getParameter( 'ctrl_key', false ) && !alt_command.empty() ) {
+				game.execAppend( alt_command + '\n' );
+			}
+			else if( !command.empty() ) {
+				game.execAppend( command + '\n' );
+			}
+		}
+
+		void showMenuButton( const String @id )
+		{
+			gamemenu.getElementById( id ).css( 'display', 'block' );
+		}
+
+		void onGameShow( Element @body, Event @evt )
+		{
+			bool isTeamBased = false;
+			int team = 0;
+			int challenger = 0;
+			bool needsReady = false, isReady = false;
+			String gametype = "";
+			bool hasGametypeMenu = false;
+			int firstTeam = 0, lastTeam = 0, specTeam = 0;
+
+			// parse query string parameters
+			const Dictionary @params = body.ownerDocument.URL.getParameters();
+
+			int tempInt;
+			String tempStr;
+
+			if( @gamemenu == null || !params.get( 'gametype', gametype ) ) {
+				if( @gamemenu != null ) {
+					gamemenu.css( 'visibility', 'hidden' );
+				}
+
+				if( game.clientState >= CA_CONNECTED ) {
+					game.exec( 'gamemenu\n' );
+					return;
+				}
+
+				// assume an offline menu
+				window.location = 'game_join.rml';
+				return;
+			}
+
+			gamemenu.css( 'visibility', 'visible' );		
+
+			if( params.get( 'is_teambased', tempStr ) ) {
+				isTeamBased = (tempStr.toInt() != 0);
+			}
+			if( params.get( 'team', tempStr ) ) {
+				team = tempStr.toInt();
+			}
+			if( params.get( 'queue', tempStr ) ) {
+				challenger = tempStr.toInt();
+			}
+			if( params.get( 'needs_ready', tempStr ) ) {		
+				needsReady = (tempStr.toInt() != 0);
+			}
+			if( params.get( 'is_ready', tempStr ) ) {
+				isReady = (tempStr.toInt() != 0);
+			}
+			if( params.get( 'has_gametypemenu', tempStr ) ) {
+				hasGametypeMenu = (tempStr.toInt() != 0);
+			}
+
+			if( isTeamBased && params.get( 'team_list', tempStr ) ) {
+				uint whitespace = tempStr.locate( ' ', 0 );
+
+				if( whitespace != tempStr.length() ) {
+					firstTeam = tempStr.substr( 0, whitespace ).toInt();
+					lastTeam = tempStr.substr( whitespace + 1 ).toInt();
+				}
+			}
+			if( params.get( 'team_spec', tempStr ) ) {
+				specTeam = tempStr.toInt();
+			}
+
+			// build RML code for our menu items
+			String rml = '';
+
+			// display game name
+			gamemenu.getElementById( 'menu-header1' ).setAttr( 'value', game.cs( CS_HOSTNAME ) );
+
+			// display map name
+			String mapName = game.cs( CS_MAPNAME );
+			String mapMessage = game.cs( CS_MESSAGE );
+
+			rml = mapName;
+			if( !mapMessage.empty() && mapMessage != mapName ) {
+				rml += ' "' + mapMessage + '"';
+			}
+
+			gamemenu.getElementById( 'menu-header2' ).setAttr( 'value', rml );
+
+			// various commands follow
+			
+			if( @gamecommands == null ) {
+				return;
+			}
+
+			// hide all buttons by default
+			for( uint i = 0; i < gamecommands.getNumChildren(); i++ ) {
+				Element @button = @gamecommands.getChild( i );
+				button.css( 'display', 'none' );
+			}
+
+			// ready button
+			if( needsReady ) {
+				showMenuButton( 'btn-ready' );
+			}
+
+			// not ready button
+			if( isReady ) {
+				showMenuButton( 'btn-not-ready' );
+			}
+
+			showMenuButton( 'btn-chat' );
+			
+			// 0 = gametype has no queue, 1 = is not in queue, 2 = is in queue
+			if( challenger != 0 ) {
+				if( gametype == "tutorial" ) {
+					if( challenger == 1 ) {
+						showMenuButton( 'btn-join' );
+					}
+					else {
+						showMenuButton( 'btn-spectate' );
+					}				
+				}
+				else {
+					if( challenger == 1 ) {
+						showMenuButton( 'btn-join-queue' );
+					}
+					else {
+						showMenuButton( 'btn-leave-queue' );
+					}
+				}
+			}
+			else {
+				if( team == specTeam ) {
+					if( isTeamBased ) {
+						Element @join_btn_any = gamemenu.getElementById( 'btn-join' );
+						String @join_btn_any_cmd = join_btn_any.getAttr( 'command', '' );
+
+						join_btn_any.css( 'display', 'block' );
+
+						// set cmd's and texts for team buttons
+						for( int i = firstTeam; i <= lastTeam; i++ ) {
+							Element @join_team_btn = gamemenu.getElementById( 'btn-join-team' + (i - firstTeam + 1) );
+							if( @join_team_btn == null ) {
+								// no button reserved
+								return;
+							}
+
+							String @teamName = game.cs( CS_TEAM_ALPHA_NAME + i - firstTeam );
+							join_team_btn.setInnerRML( StringUtils::Format( _T( 'Join %s' ), teamName ) );
+							join_team_btn.setAttr( 'command', join_btn_any_cmd + ' "' + teamName + '"' );
+
+							showMenuButton( join_team_btn.id );
+						}
+					}
+					else {
+						showMenuButton( 'btn-join' );
+					}
+				}
+				else {
+					showMenuButton( 'btn-spectate' );
+				}
+			}
+
+			if( hasGametypeMenu ) {
+				showMenuButton( 'btn-gametype-menu' );
+				gamemenu.getElementById( 'btn-gametype-menu' ).setInnerRML( 
+					StringUtils::Format( _T( '"%s" options' ), game.cs( CS_GAMETYPETITLE ) )
+				);
+			}
+
+			if( team == specTeam ) {
+				showMenuButton( 'link-chasecam' );
+			}
+			
+			if( gametype != "tutorial" ) {
+				showMenuButton( 'link-callvotes' );
+				gamemenu.getElementById( 'link-callvotes' ).setInnerRML(
+					game.cs( CS_ACTIVE_CALLVOTE ).empty() ? 'Call a vote' : 'Cast a vote'
+				);
+			}
+
+			showMenuButton( 'btn-disconnect' );
+
+			showMenuButton( 'link-main' );			
+			showMenuButton( 'btn-return' );
+
+			setModalY( 0.5f );
+			animationsOnShow();
+		}
+	</script>
+</head>
+<body template="porkui_ingame" onload="$onGameLoad" onshow="$onGameShow">
+	<div id="menu-ingame">
+		<field id="menu-header1" formatter="colorcode" />
+		<field id="menu-header2" formatter="colorcode" />
+
+		<div id="menu-commands">
+			<button id="btn-ready" command="cmd ready" onclick="$onCmdButtonClick">Ready!</button>
+			<button id="btn-not-ready" command="cmd notready" onclick="$onCmdButtonClick">Not ready!</button>
+
+			<button id="btn-join-queue" command="cmd enterqueue" onclick="$onCmdButtonClick">Join challengers queue</button>
+			<button id="btn-leave-queue" command="cmd leavequeue" onclick="$onCmdButtonClick">Leave challengers queue</button>
+
+			<button id="btn-join" command="cmd join" onclick="$onCmdButtonClick">Join the game</button>
+
+			<button id="btn-join-any" command="cmd join" onclick="$onCmdButtonClick">Join any team</button>
+			<button id="btn-join-team1" command="cmd join" onclick="$onCmdButtonClick">Join</button>
+			<button id="btn-join-team2" command="cmd join" onclick="$onCmdButtonClick">Join</button>
+			
+			<!-- possibly team buttons follow -->
+
+			<button id="btn-chat" command="messagemode" alt-command="messagemode2" onclick="$onCmdButtonClick">Open chat</button>
+			
+			<button id="btn-spectate" command="cmd spec" onclick="$onCmdButtonClick">Spectate</button>
+			<button id="btn-disconnect" command="disconnect" onclick="$onCmdButtonClick">Disconnect</button>
+			
+			<button id="btn-gametype-menu" onclick="game.exec( 'gametypemenu\n' );">Game menu</button>
+
+			<a id="link-callvotes" href="callvotes.rml" class="styled-button">Call a vote</a>
+
+			<a id="link-chasecam" href="chasecam.rml" class="styled-button">Chasecam</a>
+
+			<br/>
+			<a id="link-main" href="index.rml" class="styled-button">Main menu</a>
+			<button id="btn-return" command="" onclick="$onCmdButtonClick">Return to game</button>
+		</div>
+	</div>
+</body>
+</rml>

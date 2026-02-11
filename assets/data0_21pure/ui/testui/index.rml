@@ -1,0 +1,181 @@
+<rml>
+<head>
+	<title>home</title>
+	<link type="text/template" href="template.rml" />
+	<link type="text/css" rel="stylesheet" href="css/home.rcss" />
+	<script>
+		int lastClientState = 0;
+		bool resetBgTrack = false; 
+		const String defaultBackgroundTrack = "sounds/music/menu.m3u";
+
+		void onNewsImageLoad( Element @elem, Event @event )
+		{
+			Element @imageElem = event.getTarget();
+			ElementImage @image = imageElem;
+			if( @image == null ) {
+				return;
+			}
+
+			float pixelRatio = window.pixelRatio;
+
+			int imageWidth = int( image.width * pixelRatio );
+			int imageHeight = int( image.height * pixelRatio );
+			if( ( imageWidth <= 0 ) || ( imageHeight <= 0 ) ) {
+				imageElem.css( 'display', 'none' );
+				return;
+			}
+
+			Element @body = window.document.body;
+			Element @content = body.getElementById( 'content' );
+			Element @news_container = body.getElementById( 'news_container' );
+			int newsWidth = int( news_container.resolveProp( 'width', content.clientWidth() ) - 16.0f * pixelRatio );
+			if( imageWidth > newsWidth ) {
+				float scale = float( newsWidth ) / float( imageWidth );
+				imageWidth = int( float( imageWidth ) * scale );
+				imageHeight = int( float( imageHeight ) * scale );
+			}
+
+			imageElem.css( 'width', imageWidth + 'px' );
+			imageElem.css( 'height', imageHeight + 'px' );
+		}
+
+		void onNewsLoad( Element @elem, Event @event )
+		{
+			if( event.getPhase() != EVENT_PHASE_TARGET ) {
+				return;
+			}
+			if( elem.getAttr( 'src', '' ).empty() ) {
+				return;
+			}
+
+			uint i;
+
+			array<Element @> anchors = elem.getElementsByTagName( 'a' );
+			for( i = 0; i < anchors.length(); i++ ) {
+				Element @anchor = anchors[i];
+				if( anchor.getAttr( 'target', '' ).empty() ) {
+					anchor.setAttr( 'target', '_browser' );
+				}
+
+				if( !window.browserAvailable && ( anchor.getAttr( 'target', '' ) == '_browser' ) ) {
+					anchor.setInnerRML( anchor.getAttr( 'href', '' ) );
+					anchor.setAttr( 'href', '#' );
+					anchor.setAttr( 'target', '' );
+				}
+			}
+
+			if( !window.browserAvailable ) {
+				array<Element @> openInBrowser = elem.getElementsByClassName( 'open-in-browser' );
+				for( i = 0; i < openInBrowser.length(); i++ ) {
+					openInBrowser[i].css( 'display', 'none' );
+				}
+			}
+		}
+		
+		void onHomeLoad( Element @body, Event @event )
+		{
+			if( event.getPhase() != EVENT_PHASE_TARGET ) {
+				return;
+			}
+
+			onTemplateLoad( body, event );
+				
+			window.setInterval( trackClientState, 100 );
+			
+			Element @news_container = body.getElementById( 'news_container' );
+			Element @content = body.getElementById( 'content' );
+			Element @friends_container = body.getElementById( 'friends_container' );
+			news_container.css( 'height',
+				( content.clientHeight() 
+				- body.getElementById( 'profile_container' ).clientHeight()
+				- int( content.resolveProp( 'padding-top', content.clientHeight() ) )
+				) + 'px'
+			)
+			.css( 'width', 
+				( content.clientWidth() 
+				- friends_container.clientWidth()
+				- int( content.resolveProp( 'padding-left', content.clientWidth() ) )
+				- int( content.resolveProp( 'padding-right', content.clientWidth() ) )
+				) + 'px'
+			);
+			
+			friends_container.css( 'height', news_container.css( 'height' ) );
+
+		}
+
+		void onHomeShow( Element @body, Event @event )
+		{
+			onTemplateShow( body, event );
+		}
+
+		// precache UI pages while the renderer is busy loading textures in background threads
+		void onHomeRegisterWorldModel( Element @body, Event @event )
+		{
+			// list of most used sibling documents we're going to precache
+			array<const String @> precaches = { 
+				'options.rml',
+				'options_player.rml',
+				'options_teams.rml',
+				'options_video.rml',
+				'options_input.rml',
+				'options_audio.rml',
+				'game_join.rml',
+				'game_join.rml?servers=all',
+				'game_join.rml?servers=normal',
+				'game_join.rml?servers=race',
+				'game_join.rml?servers=instagib',
+				'game_join.rml?servers=favorites'
+			};
+
+			for( uint i = 0; i < precaches.length(); i++ ) {
+				window.preload( precaches[i] );
+			}		
+		}
+
+		void onHomeFirstRender( Element @body, Event @event )
+		{
+			if( event.getTarget().getAttr( 'id', '' ) == 'background-map' ) {
+				String bgTrack = body.css( 'background-music' );
+				if( bgTrack.empty() ) {
+					bgTrack = defaultBackgroundTrack;
+				}
+				startBackgroundTrack( bgTrack );
+			}
+		}
+
+		bool startBackgroundTrack( const String &track )
+		{
+			/* start the background track if not already playing */
+			if( window.drawBackground ) {
+				window.startBackgroundTrack( track, "3",  // shuffle and loop
+					resetBgTrack );
+				resetBgTrack = false;
+			}
+			return false;
+		}
+
+		bool trackClientState()
+		{
+			if( game.clientState != lastClientState ) {
+				resetBgTrack = lastClientState != 0; // restart the bg music if the client's state has changed
+				lastClientState = game.clientState;
+			}
+			return true;
+		}		
+	</script>
+</head>
+<body template="porkui" onload="$onHomeLoad" onshow="$onHomeShow" onfirstrender="$onHomeFirstRender" onregisterworldmodel="$onHomeRegisterWorldModel">
+
+<iframe id="profile_container" src="profile.rml" />
+
+<hr class="w100p nicehr" id="nicehr" />
+
+<div id="news_container">
+Join fellow forkers on Discord: https://warfork.com/discord
+</div>
+
+<iframe id="friends_container" src="friends.rml" />
+
+
+</body>
+</rml>

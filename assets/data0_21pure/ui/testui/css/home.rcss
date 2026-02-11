@@ -1,0 +1,36 @@
+#profile_container {
+	width: 100%;
+	height: 30em;
+	overflow: auto;
+}
+
+#news_container {
+	font-size: 20dp;
+	float: left;
+	width: 75%;
+	overflow: auto;
+    color: yellow;
+
+}
+
+#friends_container {
+	float: right;
+	width: 245dp;
+	overflow: auto;
+}
+
+#wmm-news img { 
+	max-width: 98%;
+}
+
+#wmm-news a.open-in-browser {
+	display: inline-block;
+	margin-top: 1em;
+	width: 20%;
+	white-space: nowrap;
+}
+
+
+
+
+

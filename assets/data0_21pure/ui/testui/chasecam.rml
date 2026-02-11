@@ -1,0 +1,78 @@
+<!--
+Copyright (C) 2012 Chasseur de bots
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
+-->
+
+<rml>
+<head>
+	<title>home</title>
+	<link type="text/template" href="template_ingame.rml" />
+	<script>
+		Element @back_btn;
+		Element @watchtv_btn;
+
+		void onChasecamLoad( Element @body, Event @evt )
+		{
+			onTemplateLoad( body, evt );
+			
+			@back_btn = body.getElementById( 'back-btn' );
+			@watchtv_btn = body.getElementById( 'watchtv-btn' );
+		}
+
+		void onChasecamModeClick( Element @self, Event @evt )
+		{
+			window.close();
+
+			String chase = self.getAttr( 'chase', '' );
+			if( !chase.empty() ) {
+				game.execAppend( 'chase "' + chase + '"\n' );
+			}
+		}
+
+		void onChasecamShow( Element @body, Event @evt )
+		{
+			if( window.history_size() <= 1 )
+				back_btn.css( 'display', 'none' );
+			if( game.isTV || game.demo.isPlaying )
+				watchtv_btn.css( 'display', 'none' );
+
+			setModalY( 0.5f );
+			animationsOnShow();
+		}
+	</script>
+</head>
+<body template="porkui_ingame" onload="$onChasecamLoad" onshow="$onChasecamShow">
+	<div id="menu-ingame">
+		<div id="menu-header">Chasecam mode</div>
+		
+		<div id="menu-commands">
+			<button chase="auto" onclick="$onChasecamModeClick">Auto</button>
+			<button chase="objectives" onclick="$onChasecamModeClick">Objectives</button>
+			<button chase="powerups" onclick="$onChasecamModeClick">Powerups</button>
+			<button chase="fragger" onclick="$onChasecamModeClick">Fraggers</button>			
+			<button chase="score" onclick="$onChasecamModeClick">Highest score</button>
+			<button chase="none" onclick="$onChasecamModeClick">Disable</button>
+
+			<br/>
+			<button onclick="window.history_back();" id="back-btn">Back</button>
+			<button onclick="window.close();">Return to game</button>
+			<button onclick="game.execAppend('tvconnect\n');" id="watchtv-btn">Watch on TV</button>
+			</div>
+	</div>
+</body>
+</rml>

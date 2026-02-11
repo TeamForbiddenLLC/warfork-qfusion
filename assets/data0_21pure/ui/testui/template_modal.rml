@@ -1,0 +1,133 @@
+<template name="porkui_modal" content="content">
+<head>
+	<link rel="stylesheet" type="text/css" href="css/html4.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/common.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/controls.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/modal_body.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/modal.rcss" />
+	<script src="as/base.as" />
+	<script src="as/modal.as" />
+	<script>	
+		int dragOffsetLeft, dragOffsetTop;
+
+		funcdef bool clickCallback( Element @body, Event @ev );
+		clickCallback @beforeOKClickCb;
+		clickCallback @beforeCancelClickCb;
+		clickCallback @beforeOtherClickCb;
+
+		void onModalLoadExt( Element @body, Event @evt, bool cancel = true )
+		{
+			URL url( body.ownerDocument.URL );		
+			const Dictionary @dict = url.getParameters();
+	
+			if( evt.getPhase() != EVENT_PHASE_TARGET ) {
+				// some idiv loading
+				return;
+			}
+
+			if( !cancel ) {
+				body.getElementById( 'button-cancel' ).css( 'display', 'none' );
+			}
+
+			if( ( window.supportedInputDevices & IN_DEVICE_TOUCHSCREEN ) == 0 ) {
+				body.getElementById( 'modal-frame' ).css( 'drag', 'drag' );
+			}
+
+			String other = '';
+			dict.get( 'other', other );
+			Element @other_button = body.getElementById( 'button-other' );
+			if( other.empty() ) {
+				other_button.css( 'display', 'none' );
+			}
+			else {
+				other_button.setInnerRML( other );
+			}
+		}
+		
+		void onModalLoad( Element @body, Event @evt )
+		{
+			onModalLoadExt( body, evt );
+		}
+		
+		void onModalShow( Element @body, Event @ev, clickCallback @beforeOKClick = null, clickCallback @beforeCancelClick = null, clickCallback @beforeOtherClick = null )
+		{
+			@beforeOKClickCb = @beforeOKClick;
+			@beforeCancelClickCb = @beforeCancelClick;
+			@beforeOtherClickCb = @beforeOtherClick;
+
+			// reset frame position
+			Element @modal_frame = body.getElementById( 'modal-frame' );
+			modal_frame.css( 'left', '0px' );
+			modal_frame.css( 'top', '0px' );
+		}
+
+		/* Called on drag-and-drop start */
+		void onModalFrameDragStart( Element @self, Event @ev )
+		{
+			if( ev.getPhase() != EVENT_PHASE_TARGET ) {
+				return;
+			}
+			dragOffsetLeft = self.css( 'left' ).toInt() - ev.getParameter( 'mouse_x', 0 );
+			dragOffsetTop = self.css( 'top' ).toInt() - ev.getParameter( 'mouse_y', 0 );
+		}
+
+		/* Continuosly called for an element during the dragging */
+		void onModalFrameDrag( Element @self, Event @ev )
+		{
+			if( ev.getPhase() != EVENT_PHASE_TARGET ) {
+				return;
+			}
+			self.css( 'left', (dragOffsetLeft + ev.getParameter( 'mouse_x', 0 )) + 'px' );
+			self.css( 'top', (dragOffsetTop + ev.getParameter( 'mouse_y', 0 )) + 'px' );
+		}
+
+		void onOtherClick( Element @self, Event @ev )
+		{
+			if( @beforeOtherClickCb != null ) {
+				if( beforeOtherClickCb( self, ev ) != true ) {
+					return;
+				}
+			}
+			window.close( 2 );
+		}
+		
+		void onCancelClick( Element @self, Event @ev )
+		{
+			if( @beforeCancelClickCb != null ) {
+				if( beforeCancelClickCb( self, ev ) != true ) {
+					return;
+				}
+			}
+			window.close( 1 );
+		}
+
+		void onOKClick( Element @self, Event @ev )
+		{
+			if( @beforeOKClickCb != null ) {
+				if( beforeOKClickCb( self, ev ) != true ) {
+					return;
+				}
+			}
+			window.close( 0 );
+		}
+	</script>	
+</head>
+<body>
+	<!-- Content -->
+	<div id="modal-block-abs">
+		<div id="modal-block-rel">	
+			<div id="modal-frame" ondragstart="$onModalFrameDragStart" ondrag="$onModalFrameDrag">
+				<div id="modal-contentflow">
+					<div id="content" />
+				</div>
+
+				<div id="modal-controls">
+					<button class="button-apply" onclick="$onOKClick">OK</button>
+					<button class="button-cancel" onclick="$onCancelClick" id="button-cancel">Cancel</button>
+					<button class="button-other" onclick="$onOtherClick" id="button-other">Other</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</template>

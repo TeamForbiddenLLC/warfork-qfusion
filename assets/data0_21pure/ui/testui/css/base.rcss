@@ -1,0 +1,391 @@
+/* Main layout */
+body {
+	width: 100%; 
+	height: 100%;
+	margin: 0; 
+	padding: 0;
+	font-family: Droid Sans;
+	font-size: 14dp;
+	color: #fff;
+}
+
+h1 {
+/*
+	font-family: Droid Sans;
+	font-weight: bold;
+	font-style: italic;
+*/
+}
+
+h2 {
+/*
+	font-family: Droid Sans;
+	font-weight: bold;
+	font-style: italic;
+*/
+}
+
+#background-map {
+	position: fixed;
+	width: 100%;
+	height: 100%;
+	visibility: hidden;
+}
+
+#background-overlay {
+	position: fixed;
+	width: 100%;
+	height: 100%;
+	bg-decorator: image;
+	bg-image: /ui/porkui/gfx/background 0 0 1 1;
+	bg2-decorator: image;
+	bg2-image: /ui/porkui/gfx/background2 0 0 1 1;
+}
+
+#header {
+	position: fixed;
+	top: 0dp; left: 0dp;
+	width: 100%;
+	height: 10dp;
+	grad-decorator: gradient;
+	grad-gradient: vertical #3e384ec0 #1f1c27a0;
+}
+		
+#header-top {
+	position: fixed;
+	top: 0dp; left: 0dp;
+	width: 100%;
+	height: 64dp;
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/logo;
+	ninep-coords: 0 0 0 1;
+	ninep-size: 0 0 0 512dp;
+    margin: auto;
+}
+
+
+#header-bottom {
+	position: fixed;
+	bottom: 0dp; left: 0dp;
+	ninep-src: /ui/porkui/gfx/rankings;
+
+}
+
+
+#content {
+	position: fixed;
+	top: 56dp;
+	left: 0dp;
+	padding: 6dp 16dp;
+	height: 636dp;
+	background: #111016a0;
+}
+
+#footer {
+	position: fixed;
+	bottom: 0dp;
+	left: 0dp;
+	width: 100%;
+	height: 18dp;
+	background: #1f1c27a0;
+	text-align: right;
+}
+
+#version_str {
+	margin-right: 4dp;
+	font-size: 12dp;
+}
+
+/* Anchors */
+a {
+	tab-index: none;
+	color: #99ccff;
+}
+
+a:hover, a:focus {
+	color: #fff;
+}
+
+/* Navigation */
+#navi {
+	position: fixed;
+	top: 10dp;
+	left: 0dp;
+	height: 46dp;
+	text-align: center;
+	background: #1f1c27a0;
+	border-bottom: 1dp #2c2839;
+}
+
+#navi a, #navi button {
+	darken-font-effect: shadow;
+	darken-offset: 1dp 1dp;
+	darken-color: black;
+	color: #99ccff;
+/*
+	font-family: Droid Sans;
+	font-weight: bold;
+	font-style: italic;
+*/
+	font-size: 1.8em;
+	margin: 0 6dp;
+	padding: 8dp 12dp;
+	sound-hover: /sounds/menu/mouseover.wav;
+	sound-click: /sounds/menu/ok.wav;
+	
+	/* note, this is fucked up at the moment, due to buggy */
+	/* focus search in libRocket, pressing TAB loops through */
+	/* #navi a elements only */
+	/*tab-index: auto;*/
+}
+
+#navi a:hover, #navi a:active, #navi a:focus, #navi button:hover, #navi button:active, #navi button:focus {
+	color: #fff;
+	darken-font-effect: none;
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/controls/button;
+	ninep-coords: 0.125 0.125 0.125 0.125;
+	ninep-size: 4dp 4dp 4dp 4dp;
+}
+
+#login_button, #logout_button {
+	display: none;
+}
+
+/* top nicehr for navi/content */
+.uitop { margin-top: 16dp; }
+
+/* Notification popup */
+#notification {
+	position: fixed;
+	bottom: 20dp;
+	left: 35%;
+	height: 16dp;
+	padding-top: 4dp;
+	padding-bottom: 4dp;
+	width: 30%;
+	text-align: center;
+	z-index: 2;
+	display: none;
+	font-size: 12dp;
+	font-weight: bold;
+}
+
+.ok {
+	color: black;
+	background: #98c6f9;
+}
+
+.error {
+	color: black;
+	background: red;
+}
+
+/* Console icon */
+#console {
+	position: fixed;
+	bottom: 24dp;
+	width: 32dp;
+	height: 32dp;
+	z-index: 2;
+}
+
+#link_console { 
+	float: left;
+	width: 32dp;
+	height: 32dp;
+	margin-left: 5dp;
+}
+
+/** Left side container */
+#leftside {
+	float: left;
+	height: 100%;
+	width: 75%;
+	overflow-y: auto;
+}
+		
+/** Right side containers */
+#sidebar {
+	float: right;
+	height: 100%;
+	width: 24%;
+	border-left: 1dp #121017;
+}
+		
+/* used to generate the 'nice vr' */
+#sidebar2 {
+	height: 100%;
+	width: 100%;
+	border-left: 1dp #2c2839;
+	overflow-y: auto;
+}
+
+/* Sidebar buttons and tabs */			
+
+/* only for sidebar buttons */
+#sidebar2 a, #sidebar2 button {
+	display: inline-block;
+	margin: auto;
+}
+
+#sidebar2 button { margin-top: 8dp; }
+
+#sidebar2 a, #sidebar2 button, .styled-button {
+	darken-font-effect: shadow;
+	darken-offset: 1dp 1dp;
+	darken-color: black;		
+	width: 75%;
+	margin-top: 0;
+	margin-bottom: 8dp;
+	padding: 8dp;
+	text-align: center;
+	color: #99ccff;
+/*	sound-hover: /sounds/menu/mouseover.wav; */
+	sound-click: /sounds/menu/ok.wav;
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/controls/button_purple;
+	ninep-coords: 0.125 0.125 0.125 0.125;
+	ninep-size: 4dp 4dp 4dp 4dp;
+	tab-index: auto;
+}
+
+#sidebar2 a:hover, #sidebar2 button:hover, #sidebar2 a:focus, #sidebar2 button:focus, .styled-button:hover, .styled-button:focus {
+	color: #fff;
+	ninep-src: /ui/porkui/gfx/controls/button_lightpurple;
+}
+
+#sidebar2 a:active, #sidebar2 button:active, .styled-button:active {
+	color: #fff;
+	ninep-src: /ui/porkui/gfx/controls/button_purple_active;
+}
+
+#sidebar2 hr {
+	margin-bottom: 8dp;
+}
+
+#sidebar2sub { margin-top: 16dp; }
+
+/* in-ui titles for inputs */
+
+/* must be div.title, not .title, because .title is also map title in the host game datagrid */
+div.title, .optionstext {
+	padding-left: 15%;
+	display: inline-block;
+	text-align: left;
+	margin-bottom: 12dp;
+}
+
+div.title {
+	width: 40%;
+}
+
+.optionstext {
+	width: 70%;
+}
+
+tabset tab, #navibar a {
+	darken-font-effect: shadow;
+	darken-offset: 1dp 1dp;
+	darken-color: black;		
+	width: 75%;
+	padding: 8dp;
+	margin-right: 4dp;
+	margin-left: 4dp;
+	text-align: center;
+	color: #99ccff;	
+/*	font-family: Droid Sans; */
+/*	sound-hover: /sounds/menu/mouseover.wav;*/
+	sound-click: /sounds/menu/ok.wav;
+	white-space: nowrap;
+
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/controls/button_purple_trans;
+	ninep-coords: 0.125 0.125 0.125 0.125;
+	ninep-size: 4dp 4dp 0 4dp;
+}
+
+tabset tab:active {
+	color: #fff;
+}
+
+tabset tab:selected, tabset tab:hover, tabset tab:focus, #navibar a:active, #navibar a:hover {
+	color: #fff;
+	ninep-src: /ui/porkui/gfx/controls/button_purple_active;
+}
+
+tabset tabs, #navibar {
+	text-align: center;
+}
+
+/* notes:
+   #navibar is kind of an 'alias' for tabset tab here (used in the server browser),
+   but server browser doesn't (and can't) use tabset.   
+   the rest of the styling is in the serverlist.css, 
+   but we need to override width for these fake-tabs
+   here and use inline-block to be able to set width
+   for it.
+*/
+#navibar a {
+	width: 150dp;
+	display: inline-block;
+}
+
+.infoblock {
+	font-size: 0.9em;
+	text-align: center;
+	padding-left: 8dp;
+	padding-right: 8dp;
+}
+
+.infoblock .description {
+	font-size: 1.2em;
+}
+
+.left-arrow {
+	float: left;
+	width: 32dp;
+	height: 100%;
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/arrow_left;
+	ninep-coords: 0 0 0 0;
+	ninep-size: -16dp 0 -16dp 0;
+}
+
+.left-arrow:hover {
+	ninep-src: /ui/porkui/gfx/arrow_left_h;
+}
+
+.right-arrow {
+	float: right;
+	width: 32dp;
+	height: 100%;
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/arrow_right;
+	ninep-coords: 0 0 0 0;
+	ninep-size: -16dp 0 -16dp 0;
+}
+
+.right-arrow:hover {
+	ninep-src: /ui/porkui/gfx/arrow_right_h;
+}
+
+a#link_game {
+	padding: 8dp 32dp;
+	font-weight: bold;
+	border-bottom-width: 1px;
+	border-bottom-color: #8bb6e3;
+}
+
+#legacy_ui_switcher {
+	position: fixed;
+	width: 200dp;
+	top: 12dp;
+	right: 24dp;
+	z-index: 2;
+}
+
+#experimental_ui_string {
+	position: absolute;
+	z-index: 9999;
+}

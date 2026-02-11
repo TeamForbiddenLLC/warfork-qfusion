@@ -1,0 +1,294 @@
+<rml>
+<head>
+	<title>options</title>
+	<link type="text/template" href="options.rml" />
+	<link rel="stylesheet" type="text/css" href="css/options/audio.rcss" />
+	<script>
+		ElementOptionsForm @form;
+		bool allowSRestart;
+
+		void onAudioShow( Element @body, Event @evt )
+		{
+			onTemplateShow( body, evt );
+	
+			ElementOptionsForm @f = body.getElementById("options-form");
+			f.storeOptions();
+			@form = @f;
+
+			ElementFormControl @bar = body.getElementById( 'sound-volume' );
+			Element @txt = body.getElementById( 'sound-volume-txt' );	
+			if( @bar != null && @txt != null ) {
+				txt.setInnerRML( StringUtils::FormatFloat( bar.value.toFloat()*100, "0", 1, 0 ) + "%" );
+			}
+
+			@bar = body.getElementById( 'music-volume' );
+			@txt = body.getElementById( 'music-volume-txt' );	
+			if( @bar != null && @txt != null ) {
+				txt.setInnerRML( StringUtils::FormatFloat( bar.value.toFloat()*100, "0", 1, 0 ) + "%" );
+			}
+
+			@bar = body.getElementById( 'player-volume' );
+			@txt = body.getElementById( 'player-volume-txt' );	
+			if( @bar != null && @txt != null ) {
+				txt.setInnerRML( StringUtils::FormatFloat( bar.value.toFloat()*100, "0", 1, 0 ) + "%" );
+			}
+
+			@bar = body.getElementById( 'effort-volume' );
+			@txt = body.getElementById( 'effort-volume-txt' );	
+			if( @bar != null && @txt != null ) {
+				txt.setInnerRML( StringUtils::FormatFloat( bar.value.toFloat()*100, "0", 1, 0 ) + "%" );
+			}
+
+			@bar = body.getElementById( 'effects-volume' );
+			@txt = body.getElementById( 'effects-volume-txt' );	
+			if( @bar != null && @txt != null ) {
+				txt.setInnerRML( StringUtils::FormatFloat( bar.value.toFloat()*100, "0", 1, 0 ) + "%" );
+			}
+
+			@bar = body.getElementById( 'announcer-volume' );
+			@txt = body.getElementById( 'announcer-volume-txt' );	
+			if( @bar != null && @txt != null ) {
+				txt.setInnerRML( StringUtils::FormatFloat( bar.value.toFloat()*100, "0", 1, 0 ) + "%" );
+			}
+
+			@bar = body.getElementById( 'voice-chat-volume' );
+			@txt = body.getElementById( 'voice-chat-volume-txt' );	
+			if( @bar != null && @txt != null ) {
+				txt.setInnerRML( StringUtils::FormatFloat( bar.value.toFloat()*100, "0", 1, 0 ) + "%" );
+			}
+
+			@bar = body.getElementById( 'hit-volume' );
+			@txt = body.getElementById( 'hit-volume-txt' );	
+			if( @bar != null && @txt != null ) {
+				txt.setInnerRML( StringUtils::FormatFloat( bar.value.toFloat()*100, "0", 1, 0 ) + "%" );
+			}
+
+			animationsOnShow();
+			allowSRestart = false;
+		}
+
+		void onVolumeChange( Element @elem, Event @ev )
+		{
+			ElementFormControl @bar = elem;
+			Element @txt = elem.getElementById( 'sound-volume-txt' );	
+
+			if( @bar == null || @txt == null )
+				return;
+
+			txt.setInnerRML( StringUtils::FormatFloat( bar.value.toFloat()*100, "0", 1, 0 ) + "%" );
+		}
+
+		void onReactChangeRange( Element @elem, Event @ev ) {
+			ElementFormControl @bar = elem;
+			ElementFormControl @input = elem.getElementById( 'react-input' );
+			
+			if( @bar == null || @input == null )
+				return;
+			input.value = StringUtils::FormatFloat( bar.value.toFloat(), "0", 1, 0 );
+		}
+		
+		void onReactChangeInput( Element @elem, Event @ev ) {	
+			ElementFormControl @bar = elem;
+			ElementFormControl @range= elem.getElementById( 'react-range' );
+			
+			if( @bar == null || @range == null )
+				return;
+			range.value = bar.value;
+		}
+		
+		void onMusicChange( Element @elem, Event @ev )
+		{
+			ElementFormControl @bar = elem;
+			Element @txt = elem.getElementById( 'music-volume-txt' );	
+
+			if( @bar == null || @txt == null )
+				return;
+
+			txt.setInnerRML( StringUtils::FormatFloat( bar.value.toFloat()*100, "0", 1, 0 ) + "%" );
+		}
+
+		void onPlayerVolChange( Element @elem, Event @ev )
+		{
+			ElementFormControl @bar = elem;
+			Element @txt = elem.getElementById( 'player-volume-txt' );	
+
+			if( @bar == null || @txt == null )
+				return;
+				
+			txt.setInnerRML( StringUtils::FormatFloat( bar.value.toFloat()*100, "0", 1, 0 ) + "%" );
+		}
+
+		void onEffortVolChange( Element @elem, Event @ev )
+		{
+			ElementFormControl @bar = elem;
+			Element @txt = elem.getElementById( 'effort-volume-txt' );	
+
+			if( @bar == null || @txt == null )
+				return;
+				
+			txt.setInnerRML( StringUtils::FormatFloat( bar.value.toFloat()*100, "0", 1, 0 ) + "%" );
+		}
+
+		void onEffectsVolChange( Element @elem, Event @ev )
+		{
+			ElementFormControl @bar = elem;
+			Element @txt = elem.getElementById( 'effects-volume-txt' );	
+
+			if( @bar == null || @txt == null )
+				return;
+				
+			txt.setInnerRML( StringUtils::FormatFloat( bar.value.toFloat()*100, "0", 1, 0 ) + "%" );
+		}
+
+		void onAnnouncerVolChange( Element @elem, Event @ev )
+		{
+			ElementFormControl @bar = elem;
+			Element @txt = elem.getElementById( 'announcer-volume-txt' );	
+
+			if( @bar == null || @txt == null )
+				return;
+
+			txt.setInnerRML( StringUtils::FormatFloat( bar.value.toFloat()*100, "0", 1, 0 ) + "%" );
+		}
+
+		void onVoiceChatVolChange( Element @elem, Event @ev )
+		{
+			ElementFormControl @bar = elem;
+			Element @txt = elem.getElementById( 'voice-chat-volume-txt' );	
+
+			if( @bar == null || @txt == null )
+				return;
+
+			txt.setInnerRML( StringUtils::FormatFloat( bar.value.toFloat()*100, "0", 1, 0 ) + "%" );
+		}
+
+		void onHitVolChange( Element @elem, Event @ev )
+		{
+			ElementFormControl @bar = elem;
+			Element @txt = elem.getElementById( 'hit-volume-txt' );	
+
+			if( @bar == null || @txt == null )
+				return;
+
+			txt.setInnerRML( StringUtils::FormatFloat( bar.value.toFloat()*100, "0", 1, 0 ) + "%" );
+		}
+		
+		void sModuleRestart()
+		{
+			allowSRestart = true;
+		}
+		
+		void soundApply()
+		{
+			if( allowSRestart )
+			{
+				game.execAppend ( "s_restart\n" );
+			}
+			allowSRestart = false;
+		}
+		
+		void soundReset()
+		{
+			allowSRestart = false;
+		}
+		
+	</script>	
+</head>
+<body template="options" onshow="$onAudioShow">
+
+	<div>
+		
+		<!-- audio setup -->
+		<div id="audio-options">
+			<optionsform id="options-form">
+				<div class="title">Sound module</div>
+				<select cvar="s_module" id="sound-module" name="sound-module" onchange="sModuleRestart();">
+					<option value="0" selected>No sound</option>
+					<option value="1" selected>OpenAL</option>
+				</select>
+				<br/>
+				
+				<br/>			
+				<hr class="nicehr" />
+				<br/>					
+				
+				<div class="title">Sound volume</div>
+				<input id="sound-volume" cvar="s_volume" class="slider" type="range" min="0" max="1.0" step="0.05" value="0.7" realtime="1" onchange="$onVolumeChange"/>
+				<div id="sound-volume-txt" class="slider-value"></div>
+				<br />
+				
+				<div class="title">Music volume</div>
+				<input id="music-volume" cvar="s_musicvolume" class="slider" type="range" min="0" max="1.0" step="0.05" value="0.25" realtime="1" onchange="$onMusicChange"/>
+				<div id="music-volume-txt" class="slider-value"></div>
+				<br />
+				
+				<br/>			
+				<hr class="nicehr" />
+				<br/>					
+
+				<div class="title">Players volume</div>
+				<input id="player-volume" cvar="cg_volume_players" class="slider" type="range" min="0.0" max="1.0" step="0.05" value="1.0" realtime="1" onchange="$onPlayerVolChange"/>
+				<div id="player-volume-txt" class="slider-value"></div>
+				<br />
+				
+				<div class="title">Effects volume</div>
+				<input id="effects-volume" cvar="cg_volume_effects" class="slider" type="range" min="0.0" max="1.0" step="0.05" value="1.0" realtime="1" onchange="$onEffectsVolChange"/>
+				<div id="effects-volume-txt" class="slider-value"></div>
+				<br />
+				
+				<div class="title">Announcer volume</div>
+				<input id="announcer-volume" cvar="cg_volume_announcer" class="slider" type="range" min="0.0" max="1.0" step="0.05" value="1.0" realtime="1" onchange="$onAnnouncerVolChange"/>
+				<div id="announcer-volume-txt" class="slider-value"></div>
+				<br />
+				
+				<div class="title">Voice commands volume</div>
+				<input id="voice-chat-volume" cvar="cg_volume_voicechats" class="slider" type="range" min="0.0" max="1.0" step="0.05" value="1.0" realtime="1" onchange="$onVoiceChatVolChange"/>
+				<div id="voice-chat-volume-txt" class="slider-value"></div>
+				<br />
+				
+				<div class="title">Hit sounds volume</div>
+				<input id="hit-volume" cvar="cg_volume_hitsound" class="slider" type="range" min="0.0" max="1.0" step="0.05" value="1.0" realtime="1" onchange="$onHitVolChange"/>
+				<div id="hit-volume-txt" class="slider-value"></div>
+				<br/ >
+
+				<div class="title">Grunts volume</div>
+				<input id="effort-volume" cvar="cg_volume_efforts" class="slider" type="range" min="0.25" max="1.0" step="0.05" value="1.0" realtime="1" onchange="$onEffortVolChange"/>
+				<div id="effort-volume-txt" class="slider-value"></div>
+				<br />
+				
+				<br/>			
+				<hr class="nicehr" />
+				<br/>
+				
+				<div class="title">Play reaction kills</div>
+				<input cvar="cg_reactionKills" type="checkbox" realtime="1"/>
+				<br/>
+
+				<div class="title">Reaction kills frequency (seconds)</div>
+				<input id="react-range" cvar="cg_reactionKillsTimeout" type="range" min="1.0" max="300.00" step="1.00" value="45.0" realtime="1" onchange="$onReactChangeRange"/>
+				<input id="react-input" cvar="cg_reactionKillsTimeout" type="text" class="short text" min="1.0" max="300.00" step="1.00" value="45.0" realtime="1" onchange="$onReactChangeInput"/>
+				<br/>
+
+				<br/>			
+				<hr class="nicehr" />
+				<br/>
+				
+				<div class="title">Keep playing sounds in background</div>
+				<input cvar="s_globalfocus" type="checkbox" realtime="1"/>
+				<br/>
+				
+				<div class="title">Chat message sound</div>
+				<input cvar="cg_chatBeep" type="checkbox" realtime="1"/>
+				<br/>
+				<br/>
+
+				<button onclick="form.restoreOptions(); soundReset();" class="button-cancel">Cancel</button>	
+				<button onclick="form.applyOptions(); notificationPopup('Saved'); soundApply();" class="button-apply">Save changes</button>
+
+			</optionsform>
+		</div>
+
+	</div>
+
+</body>
+</rml>

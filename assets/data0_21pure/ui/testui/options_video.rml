@@ -1,0 +1,234 @@
+<rml>
+<head>
+	<title>options</title>
+	<link type="text/template" href="options.rml" />
+	<link rel="stylesheet" type="text/css" href="css/options/video.rcss" />
+	<script src="as/video_setup.as"></script>
+	<script>
+		VideoSetup video;
+		ElementOptionsForm @form;
+
+		void onVideoLoad( Element @body, Event @evt )
+		{
+			onTemplateLoad( body, evt );
+
+			// setup class
+			VideoSetup setup( @body,
+				"graphics-profile",
+				"video-frame",
+				"mode", "mode-frame",
+				"fullscreen-frame", "vsync-frame",
+				"r_maxfps-frame", "cl_maxfps-frame",
+				"gamma-frame",
+				"picmip", "picmip-frame",
+				"filtering", "filtering-frame",
+				"lighting",
+				"softparticles-frame" );
+			video = setup;
+
+			@form = body.getElementById( "options-form" );
+			form.storeOptions();
+		}
+
+		void onVideoShow( Element @body, Event @evt )
+		{
+			onTemplateShow( body, evt );
+			form.storeOptions();
+			animationsOnShow();
+			
+			ElementFormControl @bar = body.getElementById( 'gamma' );
+			Element @txt = body.getElementById( 'gamma-txt' );	
+			if( @bar != null && @txt != null ) {
+				txt.setInnerRML( StringUtils::FormatFloat( bar.value.toFloat()*100, "0", 1, 0 ) + "%" );
+			}
+		}
+		
+		void onRmaxfpsChange( Element @elem, Event @ev ) //this only works if r_multithreading = 1
+		{
+			ElementFormControl @bar = elem;
+			Element @txt = elem.getElementById( 'rmaxfps' );
+			
+			if( @bar == null || @txt == null )
+				return;
+			
+			if( bar.value.toFloat() > 250 ) //if r_maxfps > cl_maxfps default value
+			{
+				game.execAppend ( "cl_maxfps " + StringUtils::FormatFloat( bar.value.toFloat(), "0", 1, 0 ) + " ;\n" );
+			}
+			else
+			{
+				game.execAppend ( "cl_maxfps 250;\n" ); //250 is default value
+			}	
+		}
+		
+		void onGammaChange( Element @elem, Event @ev )
+		{
+			ElementFormControl @bar = elem;
+			Element @txt = elem.getElementById( 'gamma-txt' );	
+
+			if( @bar == null || @txt == null )
+				return;
+
+			txt.setInnerRML( StringUtils::FormatFloat( bar.value.toFloat()*100, "0", 1, 0 ) + "%" );
+		}
+
+		void onVideoHide( Element @body, Event @evt )
+		{
+			video.Reset( body );
+			form.restoreOptions();
+		}
+
+	</script>
+</head>
+<body template="options" onload="$onVideoLoad" onshow="$onVideoShow" onhide="$onVideoHide">
+
+	<div>
+		
+		<!-- video setup -->
+		<div id="video-options">
+			<optionsform id="options-form" onchange="video.Changed();">
+				<div id="video-frame">
+					<div id="mode-frame">
+						<div class="title">Screen resolution</div>
+						<select id="mode"/>
+						<br/>
+					</div>
+
+					<div id="fullscreen-frame">
+						<div class="title">Fullscreen</div>
+						<input cvar="vid_fullscreen" type="checkbox" class="checkbox"/>
+						<br/>
+					</div>
+
+					<div id="vsync-frame">
+						<div class="title">Vertical sync</div>
+						<input cvar="r_swapinterval" type="checkbox" class="checkbox"/>
+						<br/>
+					</div>
+
+					<div id="r_maxfps-frame">
+						<div class="title">Framerate (FPS) limit</div>
+						<select id="rmaxfps" cvar="r_maxfps" realtime="1" onchange="$onRmaxfpsChange">
+							<option value="60" selected>60</option>
+							<option value="90" selected>90</option>
+							<option value="100" selected>100</option>
+							<option value="125" selected>125</option>
+							<option value="142" selected>144</option>
+							<option value="166" selected>166</option>
+							<option value="200" selected>200</option>
+							<option value="250" selected>250</option>
+							<option value="333" selected>333</option>
+							<option value="500" selected>500</option>
+							<option value="1000" selected>1000</option>
+						</select>
+					</div>
+					
+					<div id="cl_maxfps-frame">
+						<div class="title">Framerate (FPS) limit</div>
+						<select cvar="cl_maxfps" realtime="1">
+							<option value="60" selected>60</option>
+							<option value="90" selected>90</option>
+							<option value="100" selected>100</option>
+							<option value="125" selected>125</option>
+							<option value="142" selected>144</option>
+							<option value="166" selected>166</option>
+							<option value="200" selected>200</option>
+							<option value="250" selected>250</option>
+							<option value="333" selected>333</option>
+							<option value="500" selected>500</option>
+							<option value="1000" selected>1000</option>
+						</select>
+					</div>
+					
+					<div id="gamma-frame">
+						<div class="title">Brightness</div>
+						<input id="gamma" cvar="r_gamma" class="slider" type="range" min="0.5" max="1.5" step="0.1" value="1.0" realtime="1" onchange="$onGammaChange"/>
+						<div id="gamma-txt" class="slider-value"></div>
+						<br/>
+					</div>
+
+					<br/>
+					<hr class="nicehr" />
+					<br/>
+				</div>
+
+				<div class="title">Graphics profile</div>
+				<dataselect id="graphics-profile" source="profiles.list" fields="name" onchange="video.SelectGraphicsProfile(self,false);"/>				
+				<br/>
+
+				<br/>
+				<hr class="nicehr" />
+				<br/>
+
+				<div id="picmip-frame">
+					<div class="title">Texture quality</div>
+					<input id="picmip" class="slider" type="range" min="0" max="3" step="1" value="0"/>
+					<br/>
+				</div>
+
+				<div class="title">Lighting quality</div>
+				<select id="lighting">
+					<option value="0">vertex lighting</option>
+					<option value="1">lightmaps</option>
+					<option value="2">per-pixel lighting</option>
+				</select>
+				<br/>
+
+				<div class="title">Dynamic lights</div>
+				<select cvar="r_dynamiclight" id="dynamiclight">
+					<option value="0">off</option>
+					<option value="2">simple lights</option>
+					<option value="1">per-pixel lights</option>
+				</select>
+				<br/>
+
+				<div class="title">Shadows</div>
+				<select cvar="cg_shadows" id="shadows">
+					<option value="0">off</option>
+					<option value="1">simple shadows</option>
+					<option value="2">shadowmaps</option>					
+				</select>
+				<br/>
+
+				<div id="filtering-frame">
+					<div class="title">Anisotropic filtering</div>
+					<select id="filtering" >
+						<!-- dynamically populated -->
+					</select>
+					<br/>
+				</div>
+
+				<div class="title">Fullscreen anti-aliasing</div>
+				<input cvar="r_fxaa" type="checkbox" class="checkbox"/>
+				<br/>
+
+				<div id="softparticles-frame">
+					<div class="title">Soft particles</div>
+					<input cvar="r_soft_particles" type="checkbox" class="checkbox"/>
+					<br/>
+				</div>
+
+				<div class="title">Color correction</div>
+				<input cvar="cg_colorCorrection" type="checkbox" class="checkbox"/>
+				<br/>
+
+				<div class="title">Greyscale lighting</div>
+				<input cvar="r_lighting_grayscale" type="checkbox" class="checkbox"/>
+				<br/>
+
+				<div class="title">Use solid colors for world</div>
+				<input cvar="r_drawflat" type="checkbox" class="checkbox"/>
+				<br/>
+
+				<br/>
+
+				<button onclick="form.restoreOptions(); video.Reset(self);" class="button-cancel">Cancel</button>				
+				<button onclick="form.applyOptions(); video.Apply(self);" class="button-apply">Save changes</button>
+			</optionsform>
+		</div>
+
+		<!-- ******* main view end   ******* -->
+	</div>
+
+</body>
+</rml>

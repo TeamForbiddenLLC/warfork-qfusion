@@ -1,0 +1,282 @@
+<!--
+Copyright (C) 2012 Chasseur de bots
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
+-->
+
+<rml>
+<head>
+	<title>callvotes</title>
+	<link type="text/template" href="template_ingame.rml" />
+	<link type="text/css" rel="stylesheet" href="css/callvotes.rcss" />
+	<script src="as/callvotes.as" />
+	<script>
+		const uint CALLVOTES_POLL_INTERVAL = 500;
+		Element @callvotesDatagrid;
+		Element @callvoteHelp;
+		ElementForm @callvoteForm;
+		ElementFormControl @callvoteName;
+		ElementFormControl @callvoteNumArgs;
+		Element @callvoteOptions;
+		Element @callvoteToggle;
+		Element @callvoteText;
+		ElementFormControl @callvoteValue;
+		Element @callvoteBtnStart;
+		Element @callvoteOngoingText;
+		Element @callvoteFrameF1F2;
+		Element @callvoteBtnF1;
+		Element @callvoteBtnF2;
+		int callvoteTimer;
+		
+		void onCallvotesLoad( Element @body, Event @evt )
+		{
+			onTemplateLoad( body, evt );
+			
+			@callvotesDatagrid = body.getElementById( 'callvotes_datagrid' );
+			@callvoteForm = body.getElementById('callvotes_form_start');
+			@callvoteHelp = body.getElementById( "callvote_help" );
+			@callvoteName = body.getElementById( "callvote_name" );
+			@callvoteNumArgs = body.getElementById( "callvote_numargs" );
+			@callvoteOptions = body.getElementById( "callvote_options" );
+			@callvoteToggle = body.getElementById( "callvote_yesno" );
+			@callvoteText = body.getElementById( "callvote_text" );
+			@callvoteBtnStart = body.getElementById( "callvote_btn_start" );
+			@callvoteOngoingText = body.getElementById( "callvote_ongoing_text" );
+			@callvoteFrameF1F2 = body.getElementById( "callvotes_frame_f1f2" );
+			@callvoteBtnF1 = body.getElementById( "callvote_btn_f1" );
+			@callvoteBtnF2 = body.getElementById( "callvote_btn_f2" );
+
+			callvoteTimer = -1;
+		}
+
+		void onCallvotesClick( Element @self, Event @evt )
+		{
+			window.close();
+		}
+
+		void onCallvotesShow( Element @body, Event @evt )
+		{
+			animationsOnShow();
+
+			body.getElementById( 'back-btn' ).css( 'display', window.history_size()>1 ? 'block' : 'none' );
+			
+			callvotesSetDataSources();
+
+			callvotesCheckState();
+
+			callvoteTimer = window.setInterval( callvotesTimerPoll, CALLVOTES_POLL_INTERVAL );
+		}
+		
+		void onCallvotesHide( Element @body, Event @evt )
+		{
+			// force datasource update on next show event
+			callvotesClearDataSources();
+
+			if( callvoteTimer != -1 ) {
+				window.clearInterval( callvoteTimer );
+				callvoteTimer = -1;
+			}
+		}
+		
+		void onCallvoteStartSubmit( Element @elem, Event @ev )
+		{
+			String name = ev.getParameter( 'name', '' );
+			String value = ev.getParameter( 'value', '' );
+			int expected_args = ev.getParameter( 'numargs', 0 );
+
+			if( name.empty() ) {
+				return;
+			}
+
+			game.execAppend( "callvote " + name + (expected_args > 0 ? " \"" + value + "\" " : '') + "\n" );
+		}
+
+		void onCallvoteF1F2Submit( Element @elem, Event @ev )
+		{
+			String vote = ev.getParameter( 'vote', '' );
+			game.execAppend( "vote " + vote + "\n" );
+		}
+		
+		void callvotesSetDataSources( void )
+		{
+			cast<ElementDataGrid>(callvotesDatagrid).setDataSource( 'gameajax.callvotes/' );
+		}
+
+		void callvotesClearDataSources( void )
+		{		
+			cast<ElementDataGrid>(callvotesDatagrid).setDataSource( '' );
+			cast<ElementFormControlDataSelect>(callvoteOptions).setDataSource( '' );
+		}
+
+		void callvotesCheckState( void )
+		{
+			String activeCv = game.cs( CS_ACTIVE_CALLVOTE );
+
+			if( @callvoteFrameF1F2 == null ) {
+				return;
+			}
+
+			bool callvoteGoing = !activeCv.empty();
+			bool voted = callvoteGoing && Callvotes::playerHasVoted( game.playerNum );
+			
+			if( voted ) {
+				callvoteBtnF1.setAttr( 'disabled', 'true' );
+				callvoteBtnF2.setAttr( 'disabled', 'true' );
+			}
+			else {
+				callvoteBtnF1.removeAttr( 'disabled' );
+				callvoteBtnF1.removeAttr( 'disabled' );			
+			}
+
+			if( !callvoteGoing ) {
+				bool validCallvote = true;
+				
+				if( callvoteName.value.empty() ) {
+					validCallvote = false;
+				}
+				else if( callvoteNumArgs.value.toInt() > 0 
+					&& ( @callvoteValue == null || callvoteValue.value.empty() ) ) {
+					validCallvote = false;
+				}
+
+				callvoteBtnStart.css( 'display', 'inline-block' );
+				callvoteBtnStart.css( 'visibility', validCallvote ? 'visible' : 'hidden' );
+				callvoteFrameF1F2.css( 'display', 'none' );
+				callvoteOngoingText.css( 'display', 'none' );
+			}
+			else {
+				callvoteBtnStart.css( 'display', 'none' );
+				callvoteFrameF1F2.css( 'display', 'block' );
+				callvoteOngoingText.css( 'display', 'inline' );
+				callvoteOngoingText.setInnerRML( 
+					StringUtils::Format( _T( 'Vote "%s" has been called' ), activeCv ) );
+			}
+
+			setModalY( 0.5f );
+		}
+
+		bool callvotesTimerPoll( )
+		{
+			callvotesCheckState();
+			return true;
+		}
+
+		void onCallvotesRowSelect( Element @elem, Event @ev )
+		{
+			int selectedRow = ev.getParameter( 'index', -1 );			
+			if( selectedRow < 0 ) {
+				return;
+			}
+
+			DataSource @data = getDataSource( 'gameajax' );
+
+			// grab information for the picked row from the table
+			String name = data.getField( 'callvotes/', selectedRow, 'name' );	
+			String help = data.getField( 'callvotes/', selectedRow, 'help' );
+			int expected_args = data.getField( 'callvotes/', selectedRow, 'expected_args' ).toInt();
+			String argument_type = data.getField( 'callvotes/', selectedRow, 'argument_type' );
+
+			callvoteName.value = name;
+			callvoteHelp.setInnerRML( help.replace( '\n', '<br/>' ) );
+			cast<ElementFormControl>(callvoteNumArgs).value = String( expected_args );
+
+			@callvoteValue = null;
+
+			if( expected_args > 0 && argument_type == 'option' ) {
+				@callvoteValue = callvoteOptions;
+				cast<ElementFormControlDataSelect>(callvoteOptions).setDataSource( 'gameajax.callvote/' + name );
+			}
+			else {
+				callvoteOptions.setAttr( 'name', '' );
+				callvoteOptions.css( 'display', 'none' );
+			}
+
+			if( expected_args > 0 && argument_type == 'bool' ) {
+				@callvoteValue = callvoteToggle;
+				cast<ElementFormControl>(callvoteToggle).value = '1';
+			}
+			else {
+				callvoteToggle.setAttr( 'name', '' );
+				callvoteToggle.css( 'display', 'none' );
+			}
+
+			if( expected_args > 0 && ( argument_type == 'integer' || argument_type == 'text' ) ) {
+				@callvoteValue = callvoteText;
+				cast<ElementFormControl>(callvoteText).value = '';
+			}
+			else {
+				callvoteText.setAttr( 'name', '' );
+				callvoteText.css( 'display', 'none' );
+			}
+			
+			if( @callvoteValue != null ) {
+				cast<Element>(callvoteValue)
+					.setAttr( 'name', 'value' )
+					.css( 'display', 'inline-block' );
+			}
+
+			callvotesCheckState();
+		}
+	</script>
+</head>
+<body template="porkui_ingame" onload="$onCallvotesLoad" onshow="$onCallvotesShow" onhide="$onCallvotesHide">
+	<div id="menu-ingame">
+		<div id="menu-header">Votes</div>
+
+		<div id="menu-commands">
+			<form id="callvotes_form_start" onsubmit="$onCallvoteStartSubmit">			
+				<div id="callvotes-container">
+					<div id="callvotes_left_frame">
+						<datagrid id="callvotes_datagrid" source="" onrowselect="$onCallvotesRowSelect">
+							<col fields="name" width="150dp">Name</col>
+						</datagrid>
+					</div>
+					<div id="callvotes_spacer_frame" >&nbsp;</div>
+					<div id="callvotes_right_frame">
+						<div id="callvotes_options_frame">
+							<div id="callvote_picker_frame">
+								<input id="callvote_name" type="text" style="display: none;" name="name" />
+								<input id="callvote_numargs" type="text" style="display: none;" name="numargs" />
+								<select id="callvote_yesno"><option value="0">no</option><option value="1" selected>yes</option></select>
+								<dataselect id="callvote_options" fields="name" valuefield="value" formatter="colorcode" />
+								<input id="callvote_text" type="text" />
+							<br/>
+							<span id="callvote_help" />
+							</div>
+						</div>
+					</div>
+					<br/>
+					<input id="callvote_btn_start" type="submit">Call a vote</input>
+				</div>			
+			</form>
+
+			<span id="callvote_ongoing_text"></span>
+
+			<form id="callvotes_form_f1f2" onsubmit="$onCallvoteF1F2Submit">
+				<div id="callvotes_frame_f1f2">
+					<br/>
+					<input type="submit" id="callvote_btn_f1" name="vote" value="yes">Vote yes</input>
+					<input type="submit" id="callvote_btn_f2" name="vote" value="no">Vote no</input>
+				</div>
+			</form>
+
+			<button onclick="window.history_back();" id="back-btn">Back</button>
+			<button onclick="window.close();">Return to game</button>		
+		</div>			
+	</div>
+</body>
+</rml>

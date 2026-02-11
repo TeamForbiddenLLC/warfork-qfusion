@@ -1,0 +1,7 @@
+<rml>
+<head>
+	<title>modal remote</title>
+	<link type="text/template" href="template_modal_remote.rml" />
+</head>
+<body template="porkui_modal_remote" />
+</rml>

@@ -1,0 +1,102 @@
+<!--
+Copyright (C) 2012 Jannik Kolodziej ("drahtmaul")
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
+-->
+
+<rml>
+<head>
+	<title>home</title>
+	<link type="text/template" href="template_ingame.rml" />
+	<script>
+		void onCustomClick( Element @self, Event @evt )
+		{
+			window.close();
+
+			String command = self.getAttr( 'command', '' );
+			if( !command.empty() ) {
+				game.execAppend( command + '\n' );
+			}
+		}
+
+		void setupCustomMenu( Element @body )
+		{
+			Element @mecu = @body.getElementById( 'menu-ingame' );
+			if ( @mecu == null )
+				return;
+
+			const Dictionary @dict = body.ownerDocument.URL.getParameters();
+			if ( dict.empty() )
+				return;
+
+			String @tempName;
+			String @tempCmd;
+
+			dict.get( "title", @tempName );
+			if ( @tempName == null )
+				return;
+
+			// display gametype title
+			String gametypeTitle = game.cs( CS_GAMETYPETITLE );
+			mecu.getElementById( 'menu-header1' ).setInnerRML( gametypeTitle );
+
+			// display menu title
+			mecu.getElementById( 'menu-header2' ).setInnerRML( _T( tempName ) );
+
+			String menuRml = "";
+			
+			for( int i = 1; ; i++ )
+			{
+				@tempName = null;
+				@tempCmd = null;
+
+				dict.get( "btn" + i, @tempName );
+				dict.get( "cmd" + i, @tempCmd );
+
+				if( @tempName == null || @tempCmd == null )
+					break;
+
+				menuRml += '<button command="' + tempCmd + '" onclick="$onCustomClick">' + tempName + '</button>';
+			}
+
+			menuRml += '<br/>';
+
+			if( window.history_size() > 1 ) {
+				menuRml += '<button command="" onclick="window.history_back();">Back</button>';
+			}
+			menuRml += '<button command="" onclick="$onCustomClick">Return to game</button>';
+
+			mecu.getElementById( 'menu-commands' ).setInnerRML( menuRml );
+
+			setModalY( 0.5f );
+		}
+		
+		void onCustomShow( Element @body, Event @evt )
+		{
+			setupCustomMenu( body );
+			animationsOnShow();
+		}
+	</script>
+</head>
+<body template="porkui_ingame" onload="$onTemplateLoad" onshow="$onCustomShow">
+	<div id="menu-ingame">
+		<div id="menu-header1" />
+		<div id="menu-header2" />
+		<div id="menu-commands" />
+	</div>
+</body>
+</rml>

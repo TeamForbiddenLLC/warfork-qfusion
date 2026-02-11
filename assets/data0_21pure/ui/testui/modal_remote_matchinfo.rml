@@ -1,0 +1,8 @@
+<rml>
+<head>
+	<title>remote matchinfo</title>
+	<link type="text/template" href="template_modal_remote.rml" />
+	<link rel="stylesheet" type="text/css" href="css/remote_matchinfo.rcss" />
+</head>
+<body template="porkui_modal_remote" />
+</rml>

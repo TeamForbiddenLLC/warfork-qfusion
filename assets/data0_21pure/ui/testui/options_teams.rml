@@ -1,0 +1,273 @@
+<rml>
+<head>
+	<title>options</title>
+	<link type="text/template" href="options.rml" />
+	<link rel="stylesheet" type="text/css" href="css/modelview.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/options/teams.rcss" />
+	<script src="as/modelview.as"></script>
+	<script src="as/model_setup.as"></script>
+	<script>
+		ModelSetup alphaModel;
+		ModelSetup betaModel;
+		ModelSetup playersModel;
+		
+		ElementOptionsForm @form;
+
+		Element @fullbrightAlpha;
+		Element @fullbrightBeta;
+		Element @fullbrightPlayers;
+		
+		void onTeamsShow( Element @body, Event @evt )
+		{
+			onTemplateShow( body, evt );
+
+			//===== form =====
+			ElementOptionsForm @f = body.getElementById("options-form");
+			f.storeOptions();
+			@form = @f;
+			
+			//===== models =====
+			ModelSetup alpha( "alpha-model-view", "alpha-model-skin", "alpha-model-color", 
+				              "cg_teamALPHAmodel", "cg_teamALPHAskin", "cg_teamALPHAcolor",
+								false );
+			alpha.InitializeModelSetup( @body );
+			alphaModel = alpha;
+			
+			ModelSetup beta( "beta-model-view", "beta-model-skin", "beta-model-color",
+			                 "cg_teamBETAmodel", "cg_teamBETAskin", "cg_teamBETAcolor",
+							false );
+			beta.InitializeModelSetup( @body );
+			betaModel = beta;
+			
+			ModelSetup players( "players-model-view", "players-model-skin", "players-model-color", 
+			                    "cg_teamPLAYERSmodel", "cg_teamPLAYERSskin", "cg_teamPLAYERScolor",
+								false );
+			players.InitializeModelSetup( @body );
+			playersModel = players;	
+
+			@fullbrightAlpha = body.getElementById( 'fullbright-alpha' );
+			@fullbrightBeta = body.getElementById( 'fullbright-beta' );
+			@fullbrightPlayers = body.getElementById( 'fullbright-players' );
+
+			Element @forceModel = body.getElementById( 'force-alpha' );
+			if( ( @forceModel != null ) && ( @fullbrightAlpha != null ) ) {
+				fullbrightAlpha.css( 'display', forceModel.hasAttr( 'checked' ) ? 'block' : 'none' );
+			}
+			@forceModel = body.getElementById( 'force-beta' );
+			if( ( @forceModel != null ) && ( @fullbrightBeta != null ) ) {
+				fullbrightBeta.css( 'display', forceModel.hasAttr( 'checked' ) ? 'block' : 'none' );
+			}
+			@forceModel = body.getElementById( 'force-players' );
+			if( ( @forceModel != null ) && ( @fullbrightPlayers != null ) ) {
+				fullbrightPlayers.css( 'display', forceModel.hasAttr( 'checked' ) ? 'block' : 'none' );
+			}
+
+			animationsOnShow();
+		}	
+		
+		// koochi( TODO bugfix): models disappear at the first show
+		void RefreshModels( Element @elem )
+		{
+			/*
+				Waiting for this: http://forums.librocket.com/viewtopic.php?f=2&t=146
+				we have to use this: bad baad baaaaaad.
+			 */
+			alphaModel.UpdateModel( @elem );
+			betaModel.UpdateModel( @elem );
+			playersModel.UpdateModel( @elem );
+		}
+		
+		void ResetSkins( Element @elem )
+		{
+			alphaModel.Reset( @elem );
+			betaModel.Reset( @elem );
+			playersModel.Reset( @elem );
+		}
+				
+		void FixSkins( Element @elem )
+		{
+			alphaModel.Fix( @elem );
+			betaModel.Fix( @elem );
+			playersModel.Fix( @elem );		
+		}
+
+		void UpdateFullbrightVisibility( Element @elem, Element @fb )
+		{
+			if( @fb == null ) {
+				return;
+			}
+
+			fb.css( 'display', elem.hasAttr( 'checked' ) ? 'block' : 'none' );
+		}
+	</script>
+</head>
+<body template="options" onshow="$onTeamsShow">
+
+	<!-- divide the screen to two vertical contexts -->	
+	<div>
+
+			<!-- team setup -->
+			<div id="teams-central-view">
+				
+				<optionsform id="options-form">			
+					<div id="team">
+						<tabset ontabchange="RefreshModels(self);">
+					
+							<tab class="side-tab">Forbidden</tab>
+						
+							<!-- ALPHA view -->
+							<panel class="dropshadow">
+								<div class="team-setup">							
+									<div class="model-view-content">
+										<div class="left-arrow" onclick="alphaModel.SelectPrevModel(self);"/>
+										<div class="right-arrow" onclick="alphaModel.SelectNextModel(self);"/>
+										<modelview id="alpha-model-view" class="model-view">
+											<!-- magic modelview is magic -->
+										</modelview>
+									</div>
+								
+									<div class="team-model">
+										<colorselector id="alpha-model-color" cvar="cg_teamALPHAcolor" onclick="alphaModel.SetColor(self);">
+											<!-- ch : originally meant to be cga palette, but nah -->
+											<color rgb="#910000" /> <color rgb="#ff462d" />
+											<color rgb="#963f00" /> <color rgb="#ff6a00" />
+											<color rgb="#ffff00" /> <color rgb="#00ff46" />
+											<color rgb="#008000" /> <color rgb="#00ffff" />
+											<color rgb="#0050a6" /> <color rgb="#0000ff" />
+											<color rgb="#5b00b5" /> <color rgb="#ff00ff" />
+											<color rgb="#ff87f7" /> <color rgb="#5e5e5e" />
+											<color rgb="#ffffff" /> <color />
+										</colorselector>	
+										<br/>
+
+										<br/><hr class="nicehr"/>
+										<h4>Team model options</h4>
+
+										<div class="title">Use the selected model for all players</div>
+										<input id="force-alpha" type="checkbox" cvar="cg_teamALPHAmodelForce" onchange="UpdateFullbrightVisibility(self, fullbrightAlpha);" />
+										<br/>
+
+										<div id="fullbright-alpha">
+											<div class="title">Fullbright skin</div>
+											<input id="alpha-model-skin" type="checkbox" onchange="alphaModel.SetSkin(self);"/>
+											<br/>
+										</div>
+
+										<div class="title">Force your team as FORBIDDEN</div>
+										<input type="checkbox" cvar="cg_forceMyTeamAlpha" />
+										<br/>
+										
+									</div>
+								</div>								
+							</panel>
+										
+							<tab class="side-tab">Icy</tab>
+						
+							<!-- BETA view -->														
+							<panel class="dropshadow">
+								<div class="team-setup">	
+									<div class="model-view-content">
+										<div class="left-arrow" onclick="betaModel.SelectPrevModel(self);" />
+										<div class="right-arrow" onclick="betaModel.SelectNextModel(self);" />
+										<modelview id="beta-model-view" class="model-view">
+											<!-- magic modelview is magic -->
+										</modelview>
+									</div>
+								
+									<div class="team-model">
+										<colorselector id="beta-model-color" cvar="cg_teamBETAcolor" onclick="betaModel.SetColor(self);">
+											<!-- ch : originally meant to be cga palette, but nah -->
+											<color rgb="#910000" /> <color rgb="#ff462d" />
+											<color rgb="#963f00" /> <color rgb="#ff6a00" />
+											<color rgb="#ffff00" /> <color rgb="#00ff46" />
+											<color rgb="#008000" /> <color rgb="#00ffff" />
+											<color rgb="#0050a6" /> <color rgb="#0000ff" />
+											<color rgb="#5b00b5" /> <color rgb="#ff00ff" />
+											<color rgb="#ff87f7" /> <color rgb="#5e5e5e" />
+											<color rgb="#ffffff" /> <color />
+										</colorselector>
+										<br/>			
+
+										<br/><hr class="nicehr"/>
+										<h4>Team model options</h4>
+
+										<div class="title">Use the selected model for all players</div>
+										<input id="force-beta" type="checkbox" cvar="cg_teamBETAmodelForce" onchange="UpdateFullbrightVisibility(self, fullbrightBeta);" />
+										<br/>
+
+										<div id="fullbright-beta">
+											<div class="title">Fullbright skin</div>
+											<input id="beta-model-skin" type="checkbox" onchange="betaModel.SetSkin(self);"/>
+											<br/>
+										</div>
+										
+									</div>
+								</div>								
+							</panel>	
+
+							<tab class="side-tab">Enemies</tab>
+						
+							<!-- PLAYERS view -->												
+							<panel class="dropshadow">
+								<div class="team-setup">								
+									<div class="model-view-content">
+										<div class="left-arrow" onclick="playersModel.SelectPrevModel(self);">
+											<div class="left-arrow-gfx"></div>
+										</div>
+										<div class="right-arrow" onclick="playersModel.SelectNextModel(self);">
+											<div class="right-arrow-gfx"></div>
+										</div>									
+									
+										<modelview id="players-model-view" class="model-view">
+											<!-- magic modelview is magic -->
+										</modelview>
+									</div>
+								
+									<div class="team-model">
+										<colorselector id="players-model-color" cvar="cg_teamPLAYERScolor" onclick="playersModel.SetColor(self);">
+											<!-- ch : originally meant to be cga palette, but nah -->
+											<color rgb="#910000" /> <color rgb="#ff462d" />
+											<color rgb="#963f00" /> <color rgb="#ff6a00" />
+											<color rgb="#ffff00" /> <color rgb="#00ff46" />
+											<color rgb="#008000" /> <color rgb="#00ffff" />
+											<color rgb="#0050a6" /> <color rgb="#0000ff" />
+											<color rgb="#5b00b5" /> <color rgb="#ff00ff" />
+											<color rgb="#ff87f7" /> <color rgb="#5e5e5e" />
+											<color rgb="#ffffff" /> <color />
+										</colorselector>
+										<br/>							
+
+										<br/><hr class="nicehr"/>
+										<h4>Team model options</h4>
+
+										<div class="title">Use the selected model for all players</div>
+										<input id="force-players" type="checkbox" cvar="cg_teamPLAYERSmodelForce" onchange="UpdateFullbrightVisibility(self, fullbrightPlayers);"/>
+										<br/>
+
+										<div id="fullbright-players">
+											<div class="title">Fullbright skin</div>
+											<input id="players-model-skin" type="checkbox" onchange="playersModel.SetSkin(self);"/>
+											<br/>
+										</div>
+
+										<div class="title">Use the selected color for all players</div>
+										<input type="checkbox" cvar="cg_teamPLAYERScolorForce" />
+										<br/>
+
+									</div>
+								</div>								
+							</panel>	
+						
+						</tabset>
+					</div>
+
+					<button onclick="form.restoreOptions(); ResetSkins(self);" class="button-cancel">Cancel</button>
+					<button onclick="form.applyOptions(); FixSkins(self);notificationPopup('Saved');" class="button-apply">Save changes</button>
+				</optionsform>				
+			</div>
+			<!-- ******* main view end   ******* -->	
+
+	</div>
+	
+</body>
+</rml>

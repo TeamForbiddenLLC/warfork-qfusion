@@ -1,0 +1,110 @@
+#modal-frame {
+	width: 600dp;
+}
+
+#modal-block-rel {
+	position: relative;
+	left: -332dp; 	 /* - ( 0.5 * modal-frame width + padding-left ) */
+}
+
+#tv-header1 {
+/*
+	font-family: Hemi Head;
+	font-weight: bold;
+	font-style: italic;
+*/
+	font-size: 1.5em;
+}
+
+#tvchannels-frame {
+	width: 100%;
+	padding-bottom: 16dp;
+}
+
+#tvchannels-datagrid {
+	width: 100%;
+	height: 26em;
+	text-align: left;
+	overflow-y: auto;
+}
+
+#tvchannels-datagrid datagridrow:hover, #tvchannels-datagrid datagridrow:active, #tvchannels-datagrid datagridrow:selected { 
+	background: #3f3c49; 
+}
+
+.tv-button {
+	display: inline-block;
+	float: left;
+	width: 40dp;
+	height: 40dp;
+	margin-right: 8dp;
+	margin-bottom: 0;
+	tab-index: none; /* broken for divs */
+}
+
+.tv-back-button {
+	display: inline-block;
+	float: right;
+	width: 100dp;
+	height: 24dp;
+	margin-left: 8dp;
+	margin-bottom: 0;
+	white-space: nowrap;
+	tab-index: none; /* wrong order */
+}
+
+#chasecam-button {
+	display: inline-block;
+	float: left;
+	height: 40dp;
+	width: 40dp;
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/controls/tvchasecam;
+	ninep-coords: 0.125 0.125 0.125 0.125;
+	ninep-size: 4dp 4dp 4dp 4dp;
+}
+
+#chasecam-button:hover {
+	ninep-src: /ui/porkui/gfx/controls/tvchasecam_hover;
+}
+
+#chasecam-button:active {
+	ninep-src: /ui/porkui/gfx/controls/tvchasecam_active;
+}
+
+#refresh-button {
+	float: left;
+	height: 40dp;
+	width: 40dp;
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/controls/tvrefresh;
+	ninep-coords: 0.125 0.125 0.125 0.125;
+	ninep-size: 4dp 4dp 4dp 4dp;
+}
+
+#refresh-button:hover {
+	ninep-src: /ui/porkui/gfx/controls/tvrefresh_hover;
+}
+
+#refresh-button:active {
+	ninep-src: /ui/porkui/gfx/controls/tvrefresh_active;
+}
+
+#watch-button {
+	display: block;
+	float: left;
+	height: 40dp;
+	width: 40dp;
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/controls/demoplay;
+	ninep-coords: 0.125 0.125 0.125 0.125;
+	ninep-size: 4dp 4dp 4dp 4dp;
+}
+
+#watch-button:hover {
+	ninep-src: /ui/porkui/gfx/controls/demoplay_hover;
+}
+
+#watch-button:active {
+	ninep-src: /ui/porkui/gfx/controls/demoplay_active;
+}

@@ -1,0 +1,59 @@
+#player-setup { text-align: center; }
+#player-setup panel { text-align: left; }
+#player-options-form { text-align: left; }
+
+#player-options-form input {
+	width: 200dp;	
+}
+
+tabset tab {
+	width: 15%;
+	text-align: center;
+}
+
+#crosshairs {
+	display: inline-block;
+	position: relative;
+	width: 60dp;
+	height: 28dp;
+}
+
+.crosshair {
+	color: black;
+	display: inline-block;
+	font-charset: U+0020-007E;
+	font-family: Warsow Crosshairs;
+	font-size: 28dp;
+	position: absolute;
+	left: 0dp;
+	top: 0dp;
+	width: 28dp;
+}
+
+#crosshair-strong, #crosshair-strong-white {
+	left: 32dp;
+}
+
+
+.table {
+   display: block;
+   width: 100%;
+}
+
+.caption {
+   font-weight: bold;
+}
+
+.row {
+   display: block;
+   clear: both;
+}
+
+.cell {
+   width: 10%;
+   float: left;
+}
+
+.header {
+   font-weight: bold;
+}

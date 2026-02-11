@@ -1,0 +1,166 @@
+#modal-block-abs, .modal-block-abs {
+	position: fixed;
+	left: 50%;
+	top: 100%;
+}
+
+#modal-block-rel, .modal-block-rel {
+	position: relative;
+	left: -384dp; /* - ( 0.5 * modal-frame width + padding-left ) */
+	top: -230dp;
+}
+
+#modal-frame, .modal-frame {
+	padding: 24dp;
+	position: relative;
+
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/controls/modal;
+	ninep-coords: 0.375 0.375 0.375 0.375;
+	ninep-size: 24dp 24dp 24dp 24dp;
+
+	width: 720dp;
+	overflow-y: hidden;
+	text-align: center;
+}
+
+#demo-header {
+	display: block;
+	overflow-x: hidden;
+	font-size: 1.2em;
+	font-weight: bold;
+	margin-top: 10dp;
+	margin-bottom: 4dp;
+}
+
+#timer-text {
+	position: relative;
+	display: block;
+	text-align: center;
+}
+
+#timer-bar {
+	position: relative;
+	display: block;
+	margin-left: auto;
+	margin-right: auto;
+	width: 710dp;
+	max-width: 710dp;
+	height: 24dp;
+}
+
+#timer-bar sliderbar {
+	width: 24dp;
+}
+
+#play-button {
+	float: left;
+	height: 40dp;
+	width: 40dp;
+	margin-left: 10dp;
+	margin-bottom: 10dp;
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/controls/demoplay;
+	ninep-coords: 0.125 0.125 0.125 0.125;
+	ninep-size: 4dp 4dp 4dp 4dp;
+}
+
+#play-button:hover {
+	ninep-src: /ui/porkui/gfx/controls/demoplay_hover;
+}
+
+#play-button:active {
+	ninep-src: /ui/porkui/gfx/controls/demoplay_active;
+}
+
+#menu-ingame #menu-button {
+	float: right;
+	height: 24dp;
+	width: 100dp;
+	margin-left: 0;
+	margin-right: 10dp;
+	white-space: nowrap;
+	tab-index: none;
+}
+
+#stop-button {
+	float: left;
+	height: 40dp;
+	width: 40dp;
+	margin-left: 10dp;
+	margin-bottom: 10dp;
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/controls/demostop;
+	ninep-coords: 0.125 0.125 0.125 0.125;
+	ninep-size: 4dp 4dp 4dp 4dp;
+}
+
+#stop-button:hover {
+	ninep-src: /ui/porkui/gfx/controls/demostop_hover;
+}
+
+#stop-button:active {
+	ninep-src: /ui/porkui/gfx/controls/demostop_active;
+}
+
+#pause-button {
+	display: none; /* default at startup */
+
+	float: left;
+	height: 40dp;
+	width: 40dp;
+	margin-left: 10dp;
+	margin-bottom: 10dp;
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/controls/demopause;
+	ninep-coords: 0.125 0.125 0.125 0.125;
+	ninep-size: 4dp 4dp 4dp 4dp;
+}
+
+#pause-button:hover {
+	ninep-src: /ui/porkui/gfx/controls/demopause_hover;
+}
+
+#pause-button:active {
+	ninep-src: /ui/porkui/gfx/controls/demopause_active;
+}
+
+#jumpforward-button {
+	float: left;
+	height: 40dp;
+	width: 40dp;
+	margin-left: 10dp;
+	margin-bottom: 10dp;
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/controls/demojumpforward;
+	ninep-coords: 0.125 0.125 0.125 0.125;
+	ninep-size: 4dp 4dp 4dp 4dp;
+}
+
+#jumpforward-button:hover {
+	ninep-src: /ui/porkui/gfx/controls/demojumpforward_hover;
+}
+
+#jumpforward-button:active {
+	ninep-src: /ui/porkui/gfx/controls/demojumpforward_active;
+}
+
+#jumpbackward-button {
+	float: left;
+	height: 40dp;
+	width: 40dp;
+	margin-left: 10dp;
+	margin-bottom: 10dp;
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/controls/demojumpbackward;
+	ninep-coords: 0.125 0.125 0.125 0.125;
+	ninep-size: 4dp 4dp 4dp 4dp;
+}
+
+#jumpbackward-button:hover {
+	ninep-src: /ui/porkui/gfx/controls/demojumpbackward_hover;
+}
+
+#jumpbackward-button:active {
+	ninep-src: /ui/porkui/gfx/controls/demojumpbackward_active;
+}

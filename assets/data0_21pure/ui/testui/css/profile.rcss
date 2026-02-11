@@ -1,0 +1,103 @@
+/* login form */
+#profile_login {
+	padding-left: 0dp;
+	padding-right: 0dp;
+}
+
+#message {
+	color: #eb8c8a;
+}
+
+.smaller { font-size: 11dp; }
+.smaller a { color: #eb8c8a; text-decoration: none; }
+.smaller a:hover { text-decoration: underline; }
+.intro { text-align: center; }
+#intro-text { font-weight: bold; margin-top: 0; }
+#login-form { padding-left: 11%; padding-right: 4%;}
+#login-resetpassword { padding-left: 8dp; width: 0; white-space: nowrap; }
+#login-submit { margin: 0; float: none; }
+#message { padding-left: 40%; }
+
+/* matchmaker profile stuffs  */
+
+/* text-align: center here is a trick to get tabs centered - for content divs, align text to left; */
+#wmm-home { text-align: center; }
+
+/* profile header */
+#wmm-profile {
+	width: 100%;
+	height: 96dp;
+	padding-right: 8dp;
+	overflow: hidden;
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/controls/button_purple;
+	ninep-coords: 0.125 0.125 0.125 0.125;
+	ninep-size: 4dp 4dp 4dp 4dp;	
+}
+
+/* profile header headings */
+#wmm-profile h1, #wmm-profile hr, #wmm-profile h3 { padding: 0dp; margin: 0dp; }
+#wmm-profile hr { width: 95%; }
+#wmm-profile h3 { margin-top: 8dp; }
+
+/* image and name alignment */
+#wmm-player-image, #wmm-player-name { float: left; text-align: left; margin-top: 8dp; }
+#wmm-player-image img { width: 80dp; height: 80dp; margin-left: 8dp; margin-top: 0dp; }
+#wmm-player-image { width: 15%; }
+#wmm-player-name { width: 25%; overflow-x: hidden; }
+#wmm-player-name h1 { white-space: nowrap; }
+
+/* top header stats - main, non-floating element in the block, so width is 100% to prevent line wrapping due to rounding */
+#wmm-player-accuracy { width: 100%; margin-top: 6dp; margin-left: 40%; font-size: 12dp; }
+.wmm-player-item { width: 15%; float: left; text-align: center; } /* 4x 15% after the 40% margin to fill the block entirely */
+
+/* time played block */
+#wmm-random-stats { 
+	width: 100%;
+	margin-top: 8dp; 
+	padding-left: 8dp; 
+	padding-right: 8dp;
+	padding-top: 4dp; 
+	padding-bottom: 8dp;
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/controls/button_purple;
+	ninep-coords: 0.125 0.125 0.125 0.125;
+	ninep-size: 4dp 4dp 4dp 4dp;
+}
+
+#wmm-time-ingame, #wmm-time-played { float: left; font-size: 11dp; }
+#wmm-time-played { width: 75%; }
+#wmm-random-stats { font-size: 11dp; }
+#wmm-time-ingame { width: 10%; color: #ccc; }
+
+/* headings fixes */
+#wmm-stats h1 { padding-bottom: 0dp; margin-bottom: 8dp; }
+#wmm-stats h3 { padding-left: 4dp; }
+
+.alt { background: #1c1923a1; }
+
+/* stats */
+#wmm-stats { margin-top: 8dp; margin-right: 16dp; }
+#stat-web-button { float: right; text-align: right; }
+#stat-web-button a { margin-left: 1em; }
+.stats { padding-left: 8dp; padding-right: 8dp; padding-top: 4dp; padding-bottom: 4dp; width: 100%; }
+.wep-img { float: left; }
+.wep-img, .wep-img img { width: 24dp; height: 24dp; }
+.wep-name { padding-left: 8dp; max-width: 45%; float: left; text-align: left; }
+.wep-name b { margin-left: 8dp; font-weight: bold; }
+.use-percent { width: 10%; float: right; text-align: right; }
+.use-percent b { margin-left: 4dp; font-weight: bold; }
+.accuracy-info { width: 10%; float: right; text-align: right; }
+.accuracy-info b { margin-left: 8dp; font-weight: bold; }
+.clear { clear: both; }
+
+/* tabs */
+tab { margin-top: 16dp; z-index: 1; }
+panel { margin-top: 0dp; padding: 0dp; z-index: 999; } /* content always at top */
+.side-tab { max-width: 175dp; }
+
+/* awards */
+.award { padding: 2dp; width: 100%; }
+.awardCount { text-align: left; margin-top: 14dp; margin-left: 18dp; font-size: 11dp; font-weight: bold; float: left; position: absolute; }
+.awardImg { width: 96dp; height: 96dp; float: left; }
+.awardText { text-align: left; }

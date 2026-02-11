@@ -1,0 +1,70 @@
+<rml>
+<head>
+	<title>options</title>
+	<link type="text/template" href="options.rml" />
+	<link rel="stylesheet" type="text/css" href="css/options/troubleshoot.rcss" />
+	<script>
+		ElementOptionsForm @form;
+
+		void onLoad( Element @body, Event @evt )
+		{
+			onTemplateLoad( body, evt );
+			@form = body.getElementById( "options-form" );
+		}
+
+		void onShow( Element @body, Event @evt )
+		{
+			onTemplateShow( body, evt );
+			form.storeOptions();
+			animationsOnShow();
+		}
+	</script>
+</head>
+<body template="options" onshow="$onShow" onload="$onLoad">
+
+	<div>
+		
+		<div id="troubleshoot">
+			<optionsform id="options-form">
+				<h2>
+					<strong>Pure check failed</strong>
+				</h2>
+				<div class="block">
+					<p><strong>TL;DR: add "+set fs_usehomedir 0" in the <a href="https://help.steampowered.com/en/faqs/view/7D01-D2DD-D75E-2955">launch options</a>, this fixes 95% of issues that can cause this error</strong></p>
+					<br/>
+					<p>If TL;DR not helped:</p> 
+					<p>
+						Remove modified "_pure" .pk3's from <a href="https://warforkwiki.com/index.php?title=Frequently_Asked_Questions#Where_can_I_find_my_configuration_file.2C_demos.2C_screenshots_and_other.3F">game folder</a>: These are pure checked, that means you can't join non local servers with sv_pure != 0. If you're using any mods, these could be causing the pure check to fail. Try removing them and see if the error persists.
+					</p>
+					<p>
+						Verify your game files (with steam): This will check your local files and redownload corrupted or modified ones
+					</p>
+					<p>
+						Connect to a different server: There is a very little chance that the server you're trying to connect to has modified game files. Try connecting to a different server and see if you still get the error.
+					</p>
+
+					<br/>
+					<hr class="w100p nicehr" />
+					<br/>
+				</div>
+
+				<h2>
+					<strong>Couldn't load maps/{MAP NAME HERE}</strong>
+				</h2>
+				<div class="block">	
+					<p>Read the TL;DR of the Pure check failed error</p>
+					<p>
+						If issue repeats - verify your game files.
+					</p>
+					<p>
+						If issue repeats - propably map that you trying to load is corrupted
+					</p>
+				</div>
+
+			</optionsform>
+		</div>
+
+	</div>
+
+</body>
+</rml>

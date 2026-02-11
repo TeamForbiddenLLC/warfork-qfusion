@@ -1,0 +1,31 @@
+#callvotes_left_frame { overflow-y: auto; width: 150dp; height: 160dp; float: left; }
+
+#callvotes_datagrid datagridheader { font-size: 14dp; text-align: left; }
+#callvotes_datagrid datagridrow { font-size: 14dp; text-align: left; }
+#callvotes_datagrid datagridrow:hover { background: #3f3c49; }
+#callvotes_datagrid datagridrow:selected  { background: #3f3c49; }
+#callvotes_datagrid datagridcolumn:hover { background: #3f3c49; }
+
+#callvotes_spacer_frame { width: 12dp; height: 160dp; float: left; }
+
+#callvotes_right_frame { height: 160dp; font-size: 14dp; text-align: left; }
+#callvotes_options_frame { }
+
+#callvote_picker_frame { height: 100dp; }
+#callvote_options { display: none; }
+#callvote_options selectvalue { height: 18dp; overflow-x: hidden; }
+
+#callvote_yesno { display: none; }
+
+#callvote_text { display: none; margin-bottom: 8dp; }
+
+#callvote_help { display: inline-block; width: 170dp; }
+
+#callvote_active { position: relative; height: 40dp; }
+
+#callvotes_frame_f1f2 { width: 60%; margin: 0 auto; }
+#callvotes_form_f1f2 input.submit { display: inline-block; max-width: 40%; margin-left: 0dp; margin-right: 0dp; position: relative; }
+#callvote_btn_f1 { float: left; left: -8dp; }
+#callvote_btn_f2 { float: right; left: 8dp; }
+
+#callvote_yesno selectbox { overflow-y: hidden; }

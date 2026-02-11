@@ -1,0 +1,91 @@
+<rml>
+<head>
+	<title>friends</title>
+	<link rel="stylesheet" type="text/css" href="css/html4.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/base.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/common.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/controls.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/friends.rcss" />
+	<script src="as/base.as" />
+	<script>
+	
+	const uint FRIENDS_LIST_REFRESH_INTERVAL = 1000*60;
+	URL friendsURL;
+	bool hidden;
+	uint lastUpdate;
+	Element @friends_list;
+
+	void onFriendsLoad( Element @body, Event @ev )
+	{
+		if( ev.getPhase() != EVENT_PHASE_TARGET ) {
+			return;
+		}
+
+		@friends_list = body.getElementById( 'friends_list' );
+
+		friendsListTrackState();
+		
+		matchmaker.addEventListener( 'stateChange', onMatchMakerEvent );
+
+		lastUpdate = 0;
+		window.setInterval( refreshFriendsList, FRIENDS_LIST_REFRESH_INTERVAL );
+	}
+
+	void onFriendsShow( Element @body, Event @ev )
+	{
+		hidden = false;
+		if( lastUpdate + FRIENDS_LIST_REFRESH_INTERVAL <= window.time ) {
+			refreshFriendsList();
+		}
+	}
+	
+	void onFriendsHide( Element @body, Event @ev )
+	{
+		hidden = true;
+	}
+	
+	bool refreshFriendsList()
+	{
+		if( hidden ) {
+			return true;
+		}
+		
+		switch( matchmaker.state ) {
+			case MM_LOGIN_STATE_LOGGED_OUT:
+				lastUpdate = 0;
+				friends_list.css( 'display', 'none' ).setAttr( 'src', '' );
+				break;
+			case MM_LOGIN_STATE_LOGGED_IN:
+				lastUpdate = window.time;		
+				friends_list.css( 'display', 'block' ).setAttr( 'src', friendsURL.getURL() );
+				break;
+		}
+		return true;
+	}
+
+	void friendsListTrackState( void )
+	{
+		// ok, matchmaker's state has changed, do something about it!
+		friendsURL.setURL( matchmaker.profileURL( true ) );
+		friendsURL.setParameter( 'lang', GetUserLanguage() );
+		friendsURL.setParameter( 'friendsOnly', '1' );
+
+		refreshFriendsList();
+	}
+	
+	void onMatchMakerEvent( Event @event )
+	{
+		if( event.getType() == 'stateChange' ) {
+			friendsListTrackState();
+		}
+	}
+	
+	</script>
+</head>
+<body onload="$onFriendsLoad" onshow="$onFriendsShow" onhide="$onFriendsHide">
+	<!-- Content -->
+	<div id="friends_container">
+		<idiv id="friends_list" nocache="1" />
+	</div>
+</body>
+</rml>

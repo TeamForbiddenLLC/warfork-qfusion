@@ -1,0 +1,46 @@
+body, div,
+h1, h2, h3, h4,
+h5, h6, p,
+hr, pre, datagrid,
+dataselect,
+tabset tabs,
+idiv {
+	display: block;
+}
+
+h1 {
+	font-size: 2em;
+	margin: .67em 0;
+}
+
+h2 {
+	font-size: 1.5em;
+	margin: .67em 0;
+}
+
+h3 {
+	font-size: 1.17em;
+	margin: .67em 0;
+}
+
+h4, p { margin: .67em 0; }
+
+h5 {
+	font-size: .83em;
+	line-height: 1.17em;
+	margin: .67em 0;
+}
+
+h6 {
+	font-size: .67em;
+	margin: .67em 0;
+}
+
+h1, h2, h3, h4,
+h5, h6, strong {
+	font-weight: bold;
+}
+
+em { font-style: italic; }
+pre { white-space: pre; }
+

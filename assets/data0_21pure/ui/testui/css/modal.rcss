@@ -1,0 +1,72 @@
+#modal-block-abs, .modal-block-abs {
+	position: fixed;
+	width: 520dp;
+	left: 50%;
+	top: 50%;
+}
+
+#modal-block-rel, .modal-block-rel {
+	position: relative;
+	left: -292dp; /* - ( 0.5 * modal-frame width + padding-left ) */
+	top: -230dp;
+}
+
+#modal-frame, .modal-frame {
+	padding: 32dp;
+	position: relative;
+
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/controls/modal;
+	ninep-coords: 0.375 0.375 0.375 0.375;
+	ninep-size: 24dp 24dp 24dp 24dp;
+
+	width: 520dp;
+	overflow-y: hidden;
+	text-align: center;
+}
+
+#modal-contentflow, .modal-contentflow {
+	overflow-y: auto;
+	max-height: 370dp;
+}
+
+#modal-controls, .modal-controls {
+	padding-top: 16dp;
+/*	padding-bottom: 15dp; */
+}
+
+/* Sidebar buttons and tabs */	
+button, input.submit {
+	darken-font-effect: shadow;
+	darken-offset: 1dp 1dp;
+	darken-color: black;		
+
+	margin-bottom: 8dp;
+	padding: 8dp;
+	text-align: center;
+	color: #eb8c8a;
+	width: 100dp;	
+	display: inline-block;
+	drag: none;
+
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/controls/button_purple;
+	ninep-coords: 0.125 0.125 0.125 0.125;
+	ninep-size: 4dp 4dp 4dp 4dp;
+}
+
+#modal-controls button:hover, .modal-controls button:hover, #modal-controls input.submit:hover, .modal-controls input.submit:hover {
+	color: white;
+	ninep-src: /ui/porkui/gfx/controls/button_lightpurple;
+}
+
+#modal-controls .button-apply, .modal-controls .button-apply, #modal-controls .button-cancel, .modal-controls .button-cancel, .button-other { 
+	width: 100dp; 
+	float: none;
+	margin-left: 4dp;
+	margin-right: 4dp;
+}
+
+.button-other {
+	min-width: 175dp;
+}

@@ -1,0 +1,262 @@
+/* Common */
+input.text, input.password, input.checkbox,
+scrollbarvertical,
+select, dataselect, keyselect,
+select selectbox, dataselect selectbox {
+	border-top: 1dp #272134;
+	border-right: 1dp #272134;
+	border-bottom: 1dp #272134;
+	border-left: 1dp #272134;
+	background-color: #141219;
+}
+
+/* Buttons */
+button {
+	tab-index: auto;
+}
+
+button, .button, input.submit {
+	darken-font-effect: shadow;
+	darken-offset: 1dp 1dp;
+	darken-color: black;		
+	margin-bottom: 8dp;
+	padding: 8dp;
+	text-align: center;
+	color: #eb8c8a;	
+/*	sound-hover: /sounds/menu/mouseover.wav; */
+	sound-click: /sounds/menu/ok.wav;
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/controls/button_purple;
+	ninep-coords: 0.125 0.125 0.125 0.125;
+	ninep-size: 4dp 4dp 4dp 4dp;
+}
+
+input.submit:disabled, input.submit:disabled:hover, input.submit:disabled:active {
+	color: #fff;
+	ninep-src: /ui/porkui/gfx/controls/button_lightpurple;
+}
+
+button:hover, .button:hover, input.submit:hover, button:focus, .button:focus, input.submit:focus {
+	color: #fff;
+	ninep-src: /ui/porkui/gfx/controls/button_lightpurple;
+}
+
+button:active, .button:active, input.submit:active {
+	color: #fff;
+	ninep-src: /ui/porkui/gfx/controls/button_purple_active;
+}
+
+/* Inputs */
+input {
+	tab-index: auto;
+}
+
+input.text, input.password {
+	height: 1.7em;
+	padding: 2dp;
+	max-width: 25%;
+	margin-bottom: 12dp;
+	color: #fff;
+	vertical-align: middle;
+}
+
+.short { width: 52dp; }
+
+input.text:hover, input.text:focus, input.password:hover, input.password:focus { background-color: #3f3c49; }
+
+/* Tabsets */
+tabset tab {
+	tab-index: auto;
+}
+
+tabset panel {
+	padding-top: 16dp;
+}
+
+/* Apply buttons class */
+.button-apply, .button-cancel { 
+	width: 100dp; 
+	float: left; 
+	margin-left: 8dp;
+}
+
+.button-large {
+	float: left; 
+	margin-left: 8dp;
+	min-width: 175dp;
+}
+
+.button-cancel  { 
+	margin-left: 50%;
+	sound-click: /sounds/menu/back.wav;
+}
+
+.button-apply { 
+	font-weight: bold;
+}
+
+/* Scrollbar */
+scrollbarvertical {
+	width: 14dp;
+	z-index: 99999;
+}
+
+scrollbarvertical sliderarrowdec, scrollbarvertical sliderarrowinc {
+	width: 16dp; height: 16dp;
+	background-decorator: image;
+	z-index: 99999;
+}
+
+scrollbarvertical sliderarrowdec {
+	background-image: /ui/porkui/gfx/controls/scrollbar_arrow 0 0 1 1;
+}
+
+scrollbarvertical sliderarrowinc {
+	background-image: /ui/porkui/gfx/controls/scrollbar_arrow 0 1 1 0;
+}
+
+scrollbarvertical sliderbar {
+	width: 16dp;
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/controls/scrollbar_bar;
+	ninep-coords: 0.5 0.5 0.5 0.5;
+	ninep-size: 4dp 4dp 4dp 4dp;
+	z-index: 99999;
+}
+
+scrollbarvertical sliderbar:hover, scrollbarvertical sliderbar:focus {
+	ninep-src: /ui/porkui/gfx/controls/scrollbar_bar_hover;
+}
+
+/* Input: checkbox */
+input.checkbox {
+	width: 1.5em;
+	height: 1.5em;
+}
+
+input.checkbox:hover, input.checkbox:focus {
+	background-color: #3f3c49;
+}
+
+input.checkbox:checked {
+	checkbox-decorator: image;
+	checkbox-image: /ui/porkui/gfx/controls/checkbox 0 0 1 1;
+}
+
+/* Color picker */
+colorselector {
+	position: relative;
+	display: inline-block;
+	margin-left: auto;
+	margin-right: auto;
+	width: 100%;
+	text-align: center;
+}
+
+colorselector color {
+	display: inline-block;
+	margin: 2dp;
+	height: 18dp;
+	min-height: 18dp;
+	width: 18dp;
+	min-width: 18dp;
+	border-color: #fff;
+}
+
+colorselector color:selected, colorselector color:focus {
+	border-width: 2dp;
+	margin: 0dp;
+}
+
+/* Selects */
+
+select, dataselect, keyselect {
+	width: 30%;
+	display: inline-block;
+	text-align: left;
+	padding: 2dp 4dp;
+	margin-bottom: 8dp;
+}
+
+select, dataselect, selectvalue {
+	height: 1.8em;
+}
+
+select:hover, dataselect:hover, keyselect:hover,/* input.range slidertrack:hover,*/
+select:focus, dataselect:focus, keyselect:focus/*, input.range slidertrack:focus*/ {
+	background-color: #3f3c49;
+}
+
+select selectbox, dataselect selectbox {
+	max-height: 10em;
+	padding: 4dp;
+	padding-left: 8dp;
+	overflow-y: auto;	
+	background-color: #141219;	
+}
+
+/* Dropdowns row hover */
+select selectbox option:hover, dataselect selectbox option:hover, dataselect selectbox option:focus { color: #eb8c8a; }
+
+/* Range slider */
+input.range slidertrack {
+	ninep-decorator: ninepatch;
+	ninep-src: /ui/porkui/gfx/controls/range;
+	ninep-coords: 0 0.5 0 0.5;
+	ninep-size: 0 24dp 0 24dp;
+}
+
+input.range {
+	max-width: 30%;
+	height: 24dp;
+	padding: 0dp;
+	margin-bottom: 8dp;
+}
+
+input sliderarrowdec, input sliderarrowinc {
+	display: none;
+}
+
+input.range sliderbar {
+	width: 24dp; 
+	height: 24dp;
+
+	icon-decorator: image;
+	icon-image: /ui/porkui/gfx/controls/range_slider 0 0 1 1;
+}
+
+input.range sliderbar:hover, input.range sliderbar:focus {
+	icon-image: /ui/porkui/gfx/controls/range_slider_hover 0 0 1 1;	
+}
+
+.slider-value {
+	display: inline-block;
+	width: 7%;
+	padding-left: 4dp;
+	text-align: right;
+}
+
+/* datagrids */
+datagrid datagridheader { font-weight: bold; }
+
+datagrid datagridrow datagridcell {
+	overflow: hidden;
+	white-space: pre;
+}
+
+/* filebrowser classes */
+dirtype  {
+	darken-font-effect: shadow;
+	darken-offset: 1dp 1dp;
+	darken-color: black;		
+	color: #eb8c8a;	
+}
+
+filetype { color: #fff; }
+
+/* dataspinner */
+
+dataspinner {
+	margin-top: -36dp;
+	z-index: 2;
+}

@@ -1,0 +1,747 @@
+<rml>
+<head>
+	<title>options</title>
+	<link type="text/template" href="options.rml" />
+
+	<link rel="stylesheet" type="text/css" href="css/options/input.rcss" />
+	<script>
+		Cvar m_pitch = Cvar( "m_pitch", '', ::CVAR_ARCHIVE );
+					
+		bool requireInputDeviceForElement( Element @body, const String &name, uint mask ) {
+			if( ( window.supportedInputDevices & mask ) != 0 ) {
+				return true;
+			}
+
+			Element @elem = body.getElementById( name );
+			if( @elem != null ) {
+				elem.css( 'display', 'none' );
+			}
+			return false;
+		}
+
+		void onInputLoad( Element @body, Event @evt ) {
+			onTemplateLoad( body, evt );
+
+			String lasthr = '';
+			if( requireInputDeviceForElement( body, 'mouse-form', IN_DEVICE_MOUSE ) ) {
+				lasthr = 'mouse-hr';
+			}
+			if( requireInputDeviceForElement( body, 'touch-form', IN_DEVICE_TOUCHSCREEN ) ) {
+				lasthr = 'touch-hr';
+			}
+			if( requireInputDeviceForElement( body, 'joy-form', IN_DEVICE_JOYSTICK ) ) {
+				lasthr = 'joy-hr';
+			}
+			if( !lasthr.empty() ) {
+				Element @hr = body.getElementById( lasthr );
+				if( @hr != null ) {
+					hr.css( 'display', 'none' );
+				}
+			}
+
+			ElementTabSet @tabset = body.getElementById( 'binds-tabset' );
+			if( @tabset != null ) {
+				if( ( window.supportedInputDevices & IN_DEVICE_KEYBOARD ) != 0 || ( window.supportedInputDevices & IN_DEVICE_JOYSTICK ) == 0 ) {
+					tabset.removeTab( 5 );
+				}
+				if( ( window.supportedInputDevices & IN_DEVICE_KEYBOARD ) == 0 ) {
+					tabset.removeTab( 4 );
+					tabset.removeTab( 3 );
+					tabset.removeTab( 2 );
+					tabset.removeTab( 1 );
+				}
+			}
+		}
+
+		void onInputShow( Element @body, Event @evt )
+		{
+			onTemplateShow( body, evt );
+
+			ElementOptionsForm @optForm = body.getElementById("options-form");
+			if( @optForm == null ) 
+				return;
+
+			optForm.storeOptions();
+			onMouseInvertShow( body.getElementById( 'mouse-invert' ) );
+			
+			ElementFormControl @bar = body.getElementById( 'mouse-sens-input' );
+			if( @bar != null ) {
+				bar.value = StringUtils::FormatFloat( bar.value.toFloat(), "0", 1, 2 );
+			}
+		
+			@bar = body.getElementById( 'mouse-accel-input' );
+			if( @bar != null ) {
+				bar.value = StringUtils::FormatFloat( bar.value.toFloat(), "0", 1, 3 );
+			}
+			
+			@bar = body.getElementById( 'zoom-sens-input' );
+			if( @bar != null ) {
+				bar.value = StringUtils::FormatFloat( bar.value.toFloat(), "0", 1, 2 );
+			}
+			
+			@bar = body.getElementById( 'mouse-yaw-input' );
+			if( @bar != null ) {
+				bar.value = StringUtils::FormatFloat( bar.value.toFloat(), "0", 1, 4 );
+			}
+			
+			//check if m_pitch is inverted and use abs value for
+			float pitch_value = m_pitch.value;
+			bool inverted = pitch_value < 0 ? true : false;
+
+			if( inverted ) {
+				pitch_value = pitch_value * -1 ;
+			} else {
+				pitch_value = pitch_value;
+			}
+			
+			@bar = body.getElementById( 'mouse-pitch-range' );
+			if( @bar != null ) {
+				bar.value = StringUtils::FormatFloat( pitch_value, "0", 1, 4 );
+			}
+			
+			@bar = body.getElementById( 'mouse-pitch-input' );
+			if( @bar != null ) {
+				bar.value = StringUtils::FormatFloat( pitch_value, "0", 1, 4 );
+			}
+
+			animationsOnShow();
+		}
+		
+		//sensitivity
+		void onSensChangeRange( Element @elem, Event @ev ) {
+			ElementFormControl @bar = elem;
+			ElementFormControl @input = elem.getElementById( 'mouse-sens-input' );
+			
+			if( @bar == null || @input == null )
+				return;
+			input.value = StringUtils::FormatFloat( bar.value.toFloat(), "0", 1, 2 );
+		}
+		
+		void onSensChangeInput( Element @elem, Event @ev ) {	
+			ElementFormControl @bar = elem;
+			ElementFormControl @range= elem.getElementById( 'mouse-sens-range' );
+			
+			if( @bar == null || @range == null )
+				return;
+			range.value = bar.value;
+		}
+		
+		//accel
+		void onAccelChangeRange( Element @elem, Event @ev ) {
+			ElementFormControl @bar = elem;
+			ElementFormControl @input = elem.getElementById( 'mouse-accel-input' );
+			
+			if( @bar == null || @input == null )
+				return;
+			input.value = StringUtils::FormatFloat( bar.value.toFloat(), "0", 1, 3 );
+		}
+		
+		void onAccelChangeInput( Element @elem, Event @ev ) {	
+			ElementFormControl @bar = elem;
+			ElementFormControl @range= elem.getElementById( 'mouse-accel-range' );
+			
+			if( @bar == null || @range == null )
+				return;
+			range.value = bar.value;
+		}
+		
+		//zoom sens
+		void onZoomSensChangeRange( Element @elem, Event @ev ) {
+			ElementFormControl @bar = elem;
+			ElementFormControl @input = elem.getElementById( 'zoom-sens-input' );
+			
+			if( @bar == null || @input == null )
+				return;
+			input.value = StringUtils::FormatFloat( bar.value.toFloat(), "0", 1, 2 );
+		}
+		
+		void onZoomSensChangeInput( Element @elem, Event @ev ) {	
+			ElementFormControl @bar = elem;
+			ElementFormControl @range= elem.getElementById( 'zoom-sens-range' );
+			
+			if( @bar == null || @range == null )
+				return;
+			range.value = bar.value;
+		}
+		
+		//mouse yaw
+		void onYawChangeRange( Element @elem, Event @ev ) {
+			ElementFormControl @bar = elem;
+			ElementFormControl @input = elem.getElementById( 'mouse-yaw-input' );
+			
+			if( @bar == null || @input == null )
+				return;
+			input.value = StringUtils::FormatFloat( bar.value.toFloat(), "0", 1, 4 );
+		}
+		
+		void onYawChangeInput( Element @elem, Event @ev ) {	
+			ElementFormControl @bar = elem;
+			ElementFormControl @range= elem.getElementById( 'mouse-yaw-range' );
+			
+			if( @bar == null || @range == null )
+				return;
+			range.value = bar.value;
+		}
+		
+		//mouse pitch
+		void onPitchChangeRange( Element @elem, Event @ev ) {
+			ElementFormControl @bar = elem;
+			ElementFormControl @input = elem.getElementById( 'mouse-pitch-input' );
+			
+			float pitch_value = m_pitch.value;
+			bool inverted = pitch_value < 0 ? true : false;
+			
+			if( @bar == null || @input == null )
+				return;
+				
+			if( inverted ) {
+				m_pitch.set( bar.value * -1 );
+			} else {
+				m_pitch.set( bar.value );
+			}
+			
+			input.value = StringUtils::FormatFloat( bar.value.toFloat(), "0", 1, 4 );
+		}
+		
+		void onPitchChangeInput( Element @elem, Event @ev ) {	
+			ElementFormControl @bar = elem;
+			ElementFormControl @range= elem.getElementById( 'mouse-pitch-range' );
+			
+			float pitch_value = m_pitch.value;
+			bool inverted = pitch_value < 0 ? true : false;
+			
+			if( @bar == null || @range == null )
+				return;
+				
+			if( inverted ) {
+				m_pitch.set( bar.value * -1 );
+			} else {
+				m_pitch.set( bar.value );
+			}
+			
+			range.value = bar.value;
+		}
+
+		// reflect m_pitch state on the checkbox
+		void onMouseInvertShow( Element @elem ) {
+			bool inverted = Cvar( "m_pitch", '', ::CVAR_ARCHIVE ).value < 0 ? true : false;
+			if( inverted ) {
+				elem.setAttr( 'checked', '1' );
+			} else {
+				elem.removeAttr( 'checked' );
+			}
+		}
+
+		void onMouseInvertChange( Element @elem, Event @ev ) {
+			float pitch_value = m_pitch.value;
+			bool inverted = pitch_value < 0 ? true : false;
+
+			bool checked = elem.hasAttr( 'checked' );			
+			if( checked == inverted ) {
+				// prevent endless loops
+				return;
+			}
+			m_pitch.set( -pitch_value );
+		}
+	</script>
+</head>
+<body template="options" onload="$onInputLoad" onshow="$onInputShow">
+
+	<div>
+		
+		<!-- input setup -->
+		<div id="binds">
+			<tabset id="binds-tabset">
+				<tab>Input</tab>
+				<panel class="dropshadow">
+					<div class="keys">
+						<optionsform id="options-form">
+							<div id="mouse-form">
+								<div class="title">Mouse sensitivity</div>
+								<input id="mouse-sens-range" cvar="sensitivity" type="range" min="0" max="13" step="0.01" value="3" realtime="1" onchange="$onSensChangeRange"/>
+								<input id="mouse-sens-input" cvar="sensitivity" type="text" class="short text" min="0" max="13" step="0.05" value="3" realtime="1" onchange="$onSensChangeInput"/>
+								<br/>
+								
+								<div class="title">Mouse acceleration</div>						
+								<input id="mouse-accel-range" cvar="m_accel" type="range" min="0" max="1" step="0.001" value="0" realtime="1" onchange="$onAccelChangeRange"/>
+								<input id="mouse-accel-input" cvar="m_accel" type="text" class="short text" min="0" max="1" step="0.001" value="0" realtime="1" onchange="$onAccelChangeInput"/>
+								<br/>
+								
+								<div class="title">Zoom sensitivity</div>
+								<input id="zoom-sens-range" cvar="zoomsens" type="range" min="0" max="13" step="0.01" value="0" realtime="1" onchange="$onZoomSensChangeRange"/>
+								<input id="zoom-sens-input" cvar="zoomsens" type="text" class="short text" min="0" max="13" step="0.01" value="0" realtime="1" onchange="$onZoomSensChangeInput"/>
+								<br/>
+								
+								<div class="title">Mouse yaw</div>
+								<input id="mouse-yaw-range" cvar="m_yaw" type="range" min="0.0001" max="0.05" step="0.0001" value="0.022" realtime="1" onchange="$onYawChangeRange"/>
+								<input id="mouse-yaw-input" cvar="m_yaw" type="text" class="short text" min="0.0001" max="0.05" step="0.0001" value="0.022" realtime="1" onchange="$onYawChangeInput"/>
+								<br/>
+								
+								<div class="title">Mouse pitch</div>
+								<input id="mouse-pitch-range" type="range" min="0.0001" max="0.05" step="0.0001" value="0.022" realtime="1" onchange="$onPitchChangeRange"/>
+								<input id="mouse-pitch-input" type="text" class="short text" min="0.0001" max="0.05" step="0.0001" value="0.022" realtime="1" onchange="$onPitchChangeInput"/>
+								<br/>
+
+								<div class="title checkbox_opt">Invert mouse</div>
+								<input id="mouse-invert" type="checkbox" onchange="$onMouseInvertChange"/>
+								<br/>
+
+								<div class="title checkbox_opt">Mouse filter</div>
+								<input id="mouse-filter" cvar="m_filter" type="checkbox" realtime="1"/>
+								<br/>
+
+								<div id="mouse-hr">
+									<br/>
+									<hr class="nicehr" />
+									<br/>
+								</div>
+							</div>
+
+							<div id="touch-form">
+								<div class="title">Touch look sensitivity</div>
+								<input id="touch-looksens" cvar="cg_touch_lookSens" type="range" min="6" max="12" step="0.1" value="9" realtime="1"/>
+								<br/>
+
+								<div class="title">Touch look deceleration</div>
+								<input id="touch-lookdecel" cvar="cg_touch_lookDecel" type="range" min="7" max="10" step="0.1" value="8.5" realtime="1"/>
+								<br/>
+
+								<div class="title checkbox_opt">Invert touch look</div>
+								<input id="touch-invert" cvar="cg_touch_lookInvert" type="checkbox" realtime="1"/>
+								<br/>
+
+								<div class="title">Touch controls size</div>
+								<input id="touch-scale" cvar="cg_touch_scale" type="range" min="85" max="115" step="1" value="100" realtime="1"/>
+								<br/>
+
+								<div class="title">Flip touch controls</div>
+								<input id="touch-flip" cvar="cg_touch_flip" type="checkbox" realtime="1"/>
+								<br/>
+
+								<div id="touch-hr">
+									<br/>
+									<hr class="nicehr" />
+									<br/>
+								</div>
+							</div>
+
+							<div id="joy-form">
+								<div class="title">Horizontal stick sensitivity</div>
+								<input id="joy-yawspeed" cvar="cg_gamepad_yawSpeed" type="range" min="150" max="350" step="10" value="260" realtime="1"/>
+								<br/>
+
+								<div class="title">Vertical stick sensitivity</div>
+								<input id="joy-pitchspeed" cvar="cg_gamepad_pitchSpeed" type="range" min="150" max="350" step="10" value="240" realtime="1"/>
+								<br/>
+
+								<div class="title">Gamepad look acceleration</div>
+								<input id="joy-accel" cvar="cg_gamepad_accelMax" type="range" min="0" max="4" step="0.5" value="2" realtime="1"/>
+								<br/>
+
+								<div class="title checkbox_opt">Invert gamepad look</div>
+								<input id="joy-invert" cvar="cg_gamepad_pitchInvert" type="checkbox" realtime="1"/>
+								<br/>
+
+								<div class="title checkbox_opt">Swap gamepad sticks</div>
+								<input id="joy-swap" cvar="cg_gamepad_swapSticks" type="checkbox" realtime="1"/>
+								<br/>
+
+								<div id="joy-hr">
+									<br/>
+									<hr class="nicehr" />
+									<br/>
+								</div>
+							</div>
+
+						</optionsform>
+					</div>				
+				</panel>
+				<tab>Movement</tab>
+				<panel class="dropshadow">
+					<div class="keys">
+						<div class="title">Forward</div>
+						<keyselect bind="+forward"/>
+						<br />
+						
+						<div class="title">Backward</div>
+						<keyselect bind="+back"/>
+						<br />
+						
+						<div class="title">Left</div>
+						<keyselect bind="+moveleft"/>
+						<br/>
+						
+						<div class="title">Right</div>
+						<keyselect bind="+moveright"/>
+						<br />
+						
+						<div class="title">Up / jump</div>
+						<keyselect bind="+moveup"/>
+						<br />
+						
+						<div class="title">Down / crouch</div>
+						<keyselect bind="+movedown"/>
+						<br />
+						
+						<div class="title">Dash / walljump</div>
+						<keyselect bind="+special"/>
+						<br />
+						
+						<div class="title">Run / walk</div>
+						<keyselect bind="+speed"/>
+						<br />
+					</div>
+				</panel>
+				<tab>Actions</tab>
+				<panel class="dropshadow">
+					<div class="keys">
+						<div class="title">Attack</div>
+						<keyselect bind="+attack"/>
+						<br />
+					
+						<div class="title">Previous weapon</div>
+						<keyselect bind="weapprev"/>
+						<br />
+					
+						<div class="title">Next weapon</div>
+						<keyselect bind="weapnext"/>
+						<br />
+					
+						<div class="title">Last weapon</div>
+						<keyselect bind="weaplast"/>
+						<br />
+					
+						<div class="title">Zoom</div>
+						<keyselect bind="+zoom"/>
+						<br />	
+					
+						<div class="title">Drop weapon</div>
+						<keyselect bind="drop fullweapon"/>
+						<br />
+					
+						<div class="title">Drop bomb / flag</div>
+						<keyselect bind="drop flag"/>
+						<br />					
+					
+						<div class="title">Class action 1</div>
+						<keyselect bind="classaction1"/>
+						<br />				
+					
+						<div class="title">Class action 2</div>
+						<keyselect bind="classaction2"/>
+						<br />
+
+						<div class="title">Chat</div>
+						<keyselect bind="messagemode"/>
+						<br />
+
+						<div class="title">Team chat</div>
+						<keyselect bind="messagemode2"/>
+						<br />
+
+						<div class="title">Scoreboard</div>
+						<keyselect bind="+scores"/>
+						<br />
+
+						<div class="title">Quick menu</div>
+						<keyselect bind="+quickmenu"/>
+						<br />
+												
+						<div class="title">Vote yes</div>
+						<keyselect bind="vote yes"/>
+						<br />
+												
+						<div class="title">Vote no</div>
+						<keyselect bind="vote no"/>
+						<br />
+												
+						<div class="title">Join</div>
+						<keyselect bind="join"/>
+						<br />
+													
+						<div class="title">Ready!</div>
+						<keyselect bind="ready"/>
+						<br />
+						
+						<div class="title">Screenshot</div>
+						<keyselect bind="screenshot"/>
+						<br />
+					</div>
+				</panel>
+				<tab>Weapons</tab>
+				<panel class="dropshadow">
+					<div class="keys">
+						<div class="title"><t>Gunblade</t> (GB)</div>
+						<keyselect bind="use Gunblade"/>
+						<br />
+						
+						<div class="title"><t>Machinegun</t> (MG)</div>
+						<keyselect bind="use Machinegun"/>
+						<br />
+						
+						<div class="title"><t>Riotgun</t> (RG)</div>
+						<keyselect bind="use Riotgun"/>
+						<br />
+						
+						<div class="title"><t>Grenade Launcher</t> (GL)</div>
+						<keyselect bind="use Grenade Launcher"/>
+						<br />
+						
+						<div class="title"><t>Rocket Launcher</t> (RL)</div>
+						<keyselect bind="use Rocket Launcher"/>
+						<br />	
+						
+						<div class="title"><t>Plasmagun</t> (PG)</div>
+						<keyselect bind="use Plasmagun"/>
+						<br />
+						
+						<div class="title"><t>Lasergun</t> (LG)</div>
+						<keyselect bind="use Lasergun"/>
+						<br />
+						
+						<div class="title"><t>Electrobolt</t> (EB)</div>
+						<keyselect bind="use Electrobolt"/>
+						<br />
+						
+						<div class="title"><t>Instagun</t> (IG)</div>
+						<keyselect bind="use Instagun"/>
+						<br />
+						
+						<br/>			
+						<hr class="nicehr" />
+						<br/>
+
+						<div class="title"><t>Gunblade</t> / <t>Machinegun</t></div>
+						<keyselect bind="weapcross 1"/>
+						<br />
+
+						<div class="title"><t>Riotgun</t> / <t>Grenade Launcher</t></div>
+						<keyselect bind="weapcross 2"/>
+						<br />
+
+						<div class="title"><t>Rocket Launcher</t> / <t>Plasmagun</t></div>
+						<keyselect bind="weapcross 3"/>
+						<br />
+
+						<div class="title"><t>Lasergun</t> / <t>Electrobolt</t></div>
+						<keyselect bind="weapcross 4"/>
+						<br />
+					</div>
+				</panel>
+				<tab>Voice commands</tab>
+				<panel class="dropshadow">
+					<div class="keys">
+						<div class="title">Yes</div>
+						<keyselect bind="vsay yes"/>
+						<br/>
+						
+						<div class="title">No</div>
+						<keyselect bind="vsay no"/>
+						<br/>
+
+						<div class="title">Ok</div>
+						<keyselect bind="vsay ok"/>
+						<br/>
+						
+						<div class="title">Oops</div>
+						<keyselect bind="vsay oops"/>
+						<br/>
+						
+						<div class="title">Shut up!</div>
+						<keyselect bind="vsay shutup"/>
+						<br/>
+						
+						<div class="title">Sorry</div>
+						<keyselect bind="vsay sorry"/>
+						<br/>
+						
+						<div class="title">Thanks</div>
+						<keyselect bind="vsay thanks"/>
+						<br/>
+						
+						<div class="title">Yeehaa</div>
+						<keyselect bind="vsay yeehaa"/>
+						<br/>
+						
+						<div class="title">Good game</div>
+						<keyselect bind="vsay goodgame"/>
+						<br/>
+						
+						<div class="title">Booo</div>
+						<keyselect bind="vsay booo"/>
+						<br/>
+						
+						<div class="title">Affirmative</div>
+						<keyselect bind="vsay_team affirmative"/>
+						<br/>
+						
+						<div class="title">Roger</div>
+						<keyselect bind="vsay_team roger"/>
+						<br/>
+						
+						<div class="title">Negative</div>
+						<keyselect bind="vsay_team negative"/>
+						<br/>
+
+						<div class="title">Go to quad</div>
+						<keyselect bind="vsay_team gotoquad"/>
+						<br/>
+
+						<div class="title">Go to warshell</div>
+						<keyselect bind="vsay_team gotowarshell"/>
+						<br/>
+
+						<div class="title">Need boomstick</div>
+						<keyselect bind="vsay_team boomstick"/>
+						<br/>
+
+						<div class="title">Need health</div>
+						<keyselect bind="vsay_team needhealth"/>
+						<br/>
+						
+						<div class="title">Need weapon</div>
+						<keyselect bind="vsay_team needweapon"/>
+						<br/>
+						
+						<div class="title">Need armor</div>
+						<keyselect bind="vsay_team needarmor"/>
+						<br/>
+						
+						<div class="title">On defense</div>
+						<keyselect bind="vsay_team ondefense"/>
+						<br/>
+						
+						<div class="title">On offense</div>
+						<keyselect bind="vsay_team onoffense"/>
+						<br/>
+						
+						<div class="title">No problem</div>
+						<keyselect bind="vsay_team noproblem"/>
+						<br/>
+						
+						<div class="title">Defend!</div>
+						<keyselect bind="vsay_team defend"/>
+						<br/>
+						
+						<div class="title">Defend A!</div>
+						<keyselect bind="vsay_team defend_a"/>
+						<br/>
+						
+						<div class="title">Defend B!</div>
+						<keyselect bind="vsay_team defend_b"/>
+						<br/>
+						
+						<div class="title">Attack!</div>
+						<keyselect bind="vsay_team attack"/>
+						<br/>
+
+						<div class="title">Attack A!</div>
+						<keyselect bind="vsay_team attack_a"/>
+						<br/>
+
+						<div class="title">Attack B!</div>
+						<keyselect bind="vsay_team attack_b"/>
+						<br/>
+						
+						<div class="title">Need backup</div>
+						<keyselect bind="vsay_team needbackup"/>
+						<br/>							
+						
+						<div class="title">Need defense</div>
+						<keyselect bind="vsay_team needdefense"/>
+						<br/>
+						
+						<div class="title">Need offense</div>
+						<keyselect bind="vsay_team needoffense"/>
+						<br/>
+						
+						<div class="title">Need help</div>
+						<keyselect bind="vsay_team needhelp"/>
+						<br/>
+						
+						<div class="title">Armor free</div>
+						<keyselect bind="vsay_team armorfree"/>
+						<br/>
+						
+						<div class="title">Area secured</div>
+						<keyselect bind="vsay_team areasecured"/>
+						<br/>	
+					</div>				
+				</panel>
+				<!-- Shorter menu for gamepad-only systems -->
+				<tab>Actions</tab>
+				<panel class="dropshadow">
+					<div class="keys">
+						<div class="title">Up / jump</div>
+						<keyselect bind="+moveup"/>
+						<br />
+
+						<div class="title">Down / crouch</div>
+						<keyselect bind="+movedown"/>
+						<br />
+
+						<div class="title">Dash / walljump</div>
+						<keyselect bind="+special"/>
+						<br />
+
+						<br/>
+						<hr class="nicehr" />
+						<br/>
+
+						<div class="title">Attack</div>
+						<keyselect bind="+attack"/>
+						<br />
+
+						<div class="title">Zoom</div>
+						<keyselect bind="+zoom"/>
+						<br />
+
+						<div class="title"><t>Gunblade</t> / <t>Machinegun</t></div>
+						<keyselect bind="weapcross 1"/>
+						<br />
+
+						<div class="title"><t>Riotgun</t> / <t>Grenade Launcher</t></div>
+						<keyselect bind="weapcross 2"/>
+						<br />
+
+						<div class="title"><t>Rocket Launcher</t> / <t>Plasmagun</t></div>
+						<keyselect bind="weapcross 3"/>
+						<br />
+
+						<div class="title"><t>Lasergun</t> / <t>Electrobolt</t></div>
+						<keyselect bind="weapcross 4"/>
+						<br />
+
+						<div class="title">Drop weapon</div>
+						<keyselect bind="drop fullweapon"/>
+						<br />
+
+						<br/>
+						<hr class="nicehr" />
+						<br/>
+
+						<div class="title">Class action 1</div>
+						<keyselect bind="classaction1"/>
+						<br />
+
+						<div class="title">Class action 2</div>
+						<keyselect bind="classaction2"/>
+						<br />
+
+						<div class="title">Drop flag</div>
+						<keyselect bind="drop flag"/>
+						<br />
+
+						<div class="title">Scoreboard</div>
+						<keyselect bind="+scores"/>
+						<br />
+					</div>
+				</panel>
+			</tabset>
+		</div>
+		
+		<!-- ******* main view end   ******* -->
+	</div>
+
+</body>
+</rml>

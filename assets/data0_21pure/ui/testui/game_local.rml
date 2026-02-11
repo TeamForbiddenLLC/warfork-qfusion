@@ -1,0 +1,208 @@
+<rml>
+<head>
+	<title>game</title>
+	<link type="text/template" href="template.rml" />
+	<link type="text/css" rel="stylesheet" href="css/game_local.rcss" />
+	<script>
+		ElementDataGrid @mapgrid;
+		Element @mapinfo;
+		ElementOptionsForm @optForm;
+
+		void onLocalGameLoad( Element @body, Event @evt )
+		{
+			onTemplateLoad( body, evt );
+
+			@optForm = body.getElementById( "options-form" );
+			@mapgrid = cast<ElementDataGrid>( body.getElementById( 'maps-datagrid' ) );
+			@mapinfo = body.getElementById( 'mapinfo' );			
+		}
+
+		void onLocalGameShow( Element @body, Event @evt )
+		{
+			onTemplateShow( body, @evt );
+
+			optForm.storeOptions();	
+
+			if( @mapgrid != null ) {
+				Element @header = mapgrid.getColumnHeader( 0 );
+				if( @header != null ) {
+					header.setProp( 'width', String( cast<Element>( mapgrid ).clientWidth() / 3.0 ) );
+				}
+			}
+
+			if( @mapinfo != null ) {
+				mapinfo.css( 'display', 'none' );
+			}
+
+			animationsOnShow();
+		}
+
+		void onMaplistRowSelect( Element @elem, Event @ev )
+		{
+			if( @mapgrid == null ) {
+				return;
+			}
+			if( @mapinfo == null ) {
+				return;
+			}
+
+			// get selected row index
+			int selectedRow = ev.getParameter( 'index', -1 );			
+			if( selectedRow < 0 ) {
+				return;
+			}
+
+			DataSource @data = getDataSource( 'maps' );
+
+			// grab information for the picked row from the table
+			String mapname = data.getField( 'list', selectedRow, 'name' );
+			String maptitle = data.getField( 'list', selectedRow, 'title' );
+
+			mapinfo.css( 'display', 'block' );
+
+			// FIXME: precache getElementById + check?
+			mapinfo.getElementById( 'mapshot' ).setAttr( 'src', mapname );
+			mapinfo.getElementById( 'mapname' ).setInnerRML( mapname );
+			mapinfo.getElementById( 'maptitle' ).setAttr( 'value', maptitle );
+		}
+
+		void StartServer( Element @elem, Event @evt )
+		{
+			// get selected map
+			Element @datagrid = elem.getElementById( 'maps-datagrid' );
+			DataSource @data = getDataSource( 'maps' );
+			
+			if( @datagrid == null || @data == null )
+				return;
+				
+			String map = "";
+
+			// index of the map
+			String prop = datagrid.css( 'selected-row' );
+			if( !prop.empty() )
+			{
+				int selectedRow = prop.toInt();
+				if( selectedRow >= 0 )
+					map = data.getField( 'list', selectedRow, 'name' );
+			}
+
+			if( map.empty() ) {
+				return;
+			}
+
+			optForm.applyOptions();
+
+			String startServerCmd = "";
+
+			array<Element @>inputs = cast<Element @>(optForm).getElementsByTagName( 'input' );
+			for( uint i = 0; i < inputs.length(); i++ ) {
+				Element @input = inputs[i];
+				String @cvar = input.getAttr( 'cvar', '' );
+				if (cvar.empty()) {
+					continue;
+				}
+
+				startServerCmd += 'set ' + cvar + ' "' + Cvar( cvar, '', 0 ).string + '";';
+			}
+
+			Cvar( 'ui_startservercmd', '', 0 ).set( startServerCmd );
+
+			game.execAppend( "map " + map + "\n" );
+		}
+	</script>
+</head>
+<body template="porkui" onload="$onLocalGameLoad" onshow="$onLocalGameShow">
+	<!-- divide the screen to two vertical contexts -->	
+	<div id="leftside">
+		<div id="game-local">
+			<optionsform id="options-form">
+				<div class="title">Server name</div>
+				<input cvar="sv_hostname" type="text" />
+				<br />
+
+				<div class="title">Gametype</div>
+				<dataselect cvar="g_gametype" source="gametypes_source.gametypes" fields="title" valuefield="name"></dataselect>
+				<br />
+
+				<div class="title">Instagib</div> 
+				<input cvar="g_instagib" type="checkbox" class="checkbox"/>
+				<br />
+
+				<div class="title">Public server</div>
+				<input cvar="sv_public"  type="checkbox" class="checkbox"/>
+				<br />
+
+				<br />
+				<hr class="nicehr" />
+				<br/>
+
+				<div class="title">Score limit</div>
+				<input cvar="g_scorelimit" class="short text" type="text" />
+				<br />
+
+				<div class="title">Max players</div>
+				<input cvar="sv_maxclients" class="short text" type="text" />
+				<br/>
+
+				<div class="title"><t>Time limit</t> (<t>min.</t>)</div>
+				<input cvar="g_timelimit" class="short text" type="text" />
+				<br />
+
+				<br />
+				<hr class="nicehr" />
+				<br/>
+
+				<div class="title">Bot skill level</div>
+			
+				<select cvar="sv_skilllevel" name="bot">
+					<option value="0">easy</option>
+					<option value="1" selected>medium</option>
+					<option value="2">hard</option>
+				</select>
+				<br/>
+			
+				<div class="title">Number of bots</div>
+				<input cvar="g_numbots" class="short text" type="text" />
+				<br />			
+
+				<br />
+				<hr class="nicehr" />
+				<br/>
+
+				<!-- Maps list here -->
+				<div>
+					<div class="title">Map</div>				
+					<datagrid id="maps-datagrid" source="maps.list" onrowselect="$onMaplistRowSelect">
+						<col fields="name" width="150dp">Map</col>
+						<col fields="title" width="300dp" formatter="colorcode">Mapname</col>
+					</datagrid>
+					</div>
+				<br/>
+
+				<!-- button apply styles it, button-cancel aligns it correctly -->
+				<input type="submit" class="button-apply button-cancel" onclick="$StartServer">Start game</input>
+			</optionsform>
+		</div>
+	</div>
+
+	<div id="sidebar">
+		<div id="sidebar2">
+			<a href="#" onclick="animOpenMenu('game_join.rml');">Server browser</a>
+			<a href="#" onclick="animOpenMenu('game_local.rml');">Host game</a>
+			<a href="#" onclick="animOpenMenu('game_demos.rml');">Demo browser</a>
+			<a href="#" onclick="Tutorial::OpenModal2();">Gameplay tutorial</a>
+
+			<hr class="nicehr" />
+			
+			<div id="mapinfo" class="infoblock">
+				<levelshot id="mapshot" src="" />
+				<br/>
+				<t>Map</t>:&nbsp;<span id="mapname" /><br/>
+				<t>Title</t>:&nbsp;<field id="maptitle" formatter="colorcode" value="" />
+			</div>
+		</div>
+	</div>
+
+</body> 
+</rml> 
+ 

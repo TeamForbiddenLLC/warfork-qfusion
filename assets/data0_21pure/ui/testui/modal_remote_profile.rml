@@ -1,0 +1,14 @@
+<rml>
+<head>
+	<title>remote profile</title>
+	<link type="text/template" href="template_modal_remote.rml" />
+	<link rel="stylesheet" type="text/css" href="css/profile.rcss" />
+	<script>
+		void onModalRemoteProfileLoad( Element @body, Event @evt )
+		{
+			onModalLoadExt( body, evt, false );
+		}
+	</script>
+</head>
+<body template="porkui_modal_remote" onload="$onModalRemoteProfileLoad"/>
+</rml>
