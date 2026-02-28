@@ -1,0 +1,189 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Warfork Server Deploy
+# Deploys and updates game servers across regions using a matrix strategy.
+# Uses appleboy/ssh-action to execute commands on Digital Ocean droplets.
+# ─────────────────────────────────────────────────────────────────────────────
+name: Deploy Servers
+
+on:
+  workflow_dispatch:
+    inputs:
+      steam_branch:
+        description: 'Steam branch to deploy'
+        required: true
+        type: choice
+        options:
+          - beta
+          - public
+        default: beta
+      regions:
+        description: 'Regions to deploy (comma-separated, or "all")'
+        required: true
+        type: string
+        default: 'all'
+      server_types:
+        description: 'Server types to deploy (comma-separated, or "all")'
+        required: true
+        type: string
+        default: 'all'
+      action:
+        description: 'Action to perform'
+        required: true
+        type: choice
+        options:
+          - provision
+          - update-and-restart
+          - update-only
+          - restart-only
+          - stop
+          - status
+        default: update-and-restart
+
+  # Reusable workflow — called by update-servers, restart-servers, etc.
+  workflow_call:
+    inputs:
+      steam_branch:
+        required: true
+        type: string
+      regions:
+        required: true
+        type: string
+      server_types:
+        required: true
+        type: string
+      action:
+        required: true
+        type: string
+
+# Only allow one deploy at a time
+concurrency:
+  group: server-deploy
+  cancel-in-progress: false
+
+jobs:
+  # ─── Build the matrix dynamically ────────────────────────────────────────
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build deployment matrix
+        id: set-matrix
+        env:
+          CONFIG: .github/server-management/server-config.json
+          REGIONS: ${{ inputs.regions }}
+          TYPES: ${{ inputs.server_types }}
+        run: bash .github/scripts/build-matrix.sh
+
+  # ─── Deploy to each server in the matrix ─────────────────────────────────
+  deploy:
+    needs: prepare-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+      fail-fast: false
+      max-parallel: 4
+    name: "${{ matrix.region_label }} - ${{ matrix.type_label }}"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Upload Warfork.sh to server
+        if: ${{ inputs.action != 'status' }}
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ matrix.host }}
+          username: ${{ matrix.username }}
+          key: ${{ secrets[matrix.key_secret] }}
+          port: 22
+          source: ".github/server-management/Warfork.sh"
+          target: "~/scripts/"
+          strip_components: 2
+
+      - name: Upload server configs
+        if: ${{ inputs.action != 'status' }}
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ matrix.host }}
+          username: ${{ matrix.username }}
+          key: ${{ secrets[matrix.key_secret] }}
+          port: 22
+          source: ".github/server-management/configs/"
+          target: "~/server/basewf/"
+          strip_components: 2
+
+      - name: Execute server action
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          STEAM_BRANCH: ${{ inputs.steam_branch }}
+          SERVER_TYPE: ${{ matrix.server_type }}
+          WF_PARAMS: ${{ matrix.wf_params }}
+          REGION_LABEL: ${{ matrix.region_label }}
+          ACTION: ${{ inputs.action }}
+          RCON_PASSWORD: ${{ secrets.SERVER_RCON_PASSWORD }}
+          OPERATOR_PASSWORD: ${{ secrets.SERVER_OPERATOR_PASSWORD }}
+        with:
+          host: ${{ matrix.host }}
+          username: ${{ matrix.username }}
+          key: ${{ secrets[matrix.key_secret] }}
+          port: 22
+          envs: STEAM_BRANCH,SERVER_TYPE,WF_PARAMS,REGION_LABEL,ACTION,RCON_PASSWORD,OPERATOR_PASSWORD
+          command_timeout: 15m
+          script: |
+            chmod +x ~/scripts/Warfork.sh
+
+            # Substitute region label into params (for hostname)
+            export WF_PARAMS=$(echo "${WF_PARAMS}" | sed "s/\${REGION_LABEL}/${REGION_LABEL}/g")
+
+            # Inject credentials if set
+            [ -n "${RCON_PASSWORD}" ]    && WF_PARAMS="${WF_PARAMS} +set rcon_password \"${RCON_PASSWORD}\""
+            [ -n "${OPERATOR_PASSWORD}" ] && WF_PARAMS="${WF_PARAMS} +set g_operator_password \"${OPERATOR_PASSWORD}\""
+
+            export STEAM_BRANCH="${STEAM_BRANCH}"
+            export SERVER_TYPE="${SERVER_TYPE}"
+
+            # Script handles tmux sessions internally (named wf-{port})
+            case "${ACTION}" in
+              provision)
+                sudo ~/scripts/Warfork.sh setup
+                ~/scripts/Warfork.sh run
+                ;;
+              update-and-restart)
+                ~/scripts/Warfork.sh stop
+                ~/scripts/Warfork.sh update
+                ~/scripts/Warfork.sh start
+                ;;
+              update-only)
+                ~/scripts/Warfork.sh update
+                ;;
+              restart-only)
+                ~/scripts/Warfork.sh restart
+                ;;
+              stop)
+                ~/scripts/Warfork.sh stop
+                ;;
+              status)
+                ~/scripts/Warfork.sh status || true
+                ;;
+            esac
+
+  # ─── Summary ─────────────────────────────────────────────────────────────
+  summary:
+    needs: [prepare-matrix, deploy]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Deployment summary
+        run: |
+          echo "## Warfork Server Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${{ inputs.steam_branch }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Regions | \`${{ inputs.regions }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Server Types | \`${{ inputs.server_types }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Action | \`${{ inputs.action }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Triggered by | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Time | $(date -u '+%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
