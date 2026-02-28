@@ -1,0 +1,72 @@
+{
+  "servers": {
+    "US": {
+      "host": "us.warfork.com",
+      "key_secret": "DO_SSH_PRIVATE_KEY_US",
+      "username": "steam",
+      "label": "US East"
+    },
+    "EU": {
+      "host": "eu.warfork.com",
+      "key_secret": "DO_SSH_PRIVATE_KEY_EU",
+      "username": "steam",
+      "label": "EU"
+    }
+  },
+  "server_defaults": {
+    "cvars": {
+      "dedicated": 1,
+      "sv_maxclients": 15
+    }
+  },
+  "server_types": {
+    "clan-arena": {
+      "label": "Clan Arena",
+      "port": 44401,
+      "cvars": {
+        "sv_hostname": "[ WF Beta - ${REGION_LABEL} ] Clan Arena",
+        "g_gametype": "ca"
+      }
+    },
+    "duel": {
+      "label": "Duel",
+      "port": 44402,
+      "cvars": {
+        "sv_hostname": "[ WF Beta - ${REGION_LABEL} ] Duel",
+        "g_gametype": "duel"
+      }
+    },
+    "votable": {
+      "label": "Votable",
+      "port": 44403,
+      "cvars": {
+        "sv_hostname": "[ WF Beta - ${REGION_LABEL} ] Votable",
+        "g_gametype": "dm"
+      }
+    },
+    "instagib": {
+      "label": "Instagib",
+      "port": 44404,
+      "cvars": {
+        "sv_hostname": "[ WF Beta - ${REGION_LABEL} ] Instagib",
+        "g_gametype": "dm"
+      }
+    },
+    "race": {
+      "label": "Race",
+      "port": 44407,
+      "cvars": {
+        "sv_hostname": "[ WF Beta - ${REGION_LABEL} ] Race",
+        "g_gametype": "race"
+      }
+    }
+  },
+  "steam_branches": {
+    "public": {
+      "label": "Public"
+    },
+    "beta": {
+      "label": "Beta"
+    }
+  }
+}
