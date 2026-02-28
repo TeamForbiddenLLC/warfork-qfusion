@@ -97,7 +97,7 @@ jobs:
           host: ${{ matrix.host }}
           username: ${{ matrix.username }}
           key: ${{ secrets[matrix.key_secret] }}
-          port: 22
+          port: 4343
           source: ".github/server-management/Warfork.sh"
           target: "~/scripts/"
           strip_components: 2
@@ -109,7 +109,7 @@ jobs:
           host: ${{ matrix.host }}
           username: ${{ matrix.username }}
           key: ${{ secrets[matrix.key_secret] }}
-          port: 22
+          port: 4343
           source: ".github/server-management/configs/"
           target: "~/server/basewf/"
           strip_components: 2
@@ -128,7 +128,7 @@ jobs:
           host: ${{ matrix.host }}
           username: ${{ matrix.username }}
           key: ${{ secrets[matrix.key_secret] }}
-          port: 22
+          port: 4343
           envs: STEAM_BRANCH,SERVER_TYPE,WF_PARAMS,REGION_LABEL,ACTION,RCON_PASSWORD,OPERATOR_PASSWORD
           command_timeout: 15m
           script: |
