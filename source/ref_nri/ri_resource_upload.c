@@ -65,7 +65,7 @@ void RI_InitResourceUploader( struct RIDevice_s *device, struct RIResourceUpload
 			stageBufferCreateInfo.pNext = NULL;
 			stageBufferCreateInfo.flags = 0;
 			stageBufferCreateInfo.size = RI_RESOURCE_STAGE_SIZE;
-			stageBufferCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+			stageBufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 			VK_WrapResult(vmaCreateBuffer(device->vk.vmaAllocator, &stageBufferCreateInfo, &allocInfo, &resource->vk.stageBuffer, &resource->vk.stageAlloc, &allocationInfo));
 			resource->vk.pMappedData = allocationInfo.pMappedData;
 

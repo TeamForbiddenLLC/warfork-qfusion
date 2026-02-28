@@ -1,7 +1,7 @@
 #include "r_descriptor_pool.h"
 #include "stb_ds.h"
 
-struct descriptor_set_slot_s *AllocDescriptorsetSlot( struct descriptor_set_allloc_s *alloc )
+struct descriptor_set_slot_s *AllocDescriptorsetSlot( struct DescriptorSetAllocator *alloc )
 {
 	if( alloc->blocks == NULL || alloc->blockIndex == RESERVE_BLOCK_SIZE ) {
 		struct descriptor_set_slot_s *block = calloc( RESERVE_BLOCK_SIZE, sizeof( struct descriptor_set_slot_s ) );
@@ -12,7 +12,7 @@ struct descriptor_set_slot_s *AllocDescriptorsetSlot( struct descriptor_set_alll
 	return alloc->blocks[arrlen( alloc->blocks ) - 1] + ( alloc->blockIndex++ );
 }
 
-void AttachDescriptorSlot( struct descriptor_set_allloc_s *alloc, struct descriptor_set_slot_s *slot )
+void AttachDescriptorSlot( struct DescriptorSetAllocator *alloc, struct descriptor_set_slot_s *slot )
 {
 	assert( slot );
 	{
@@ -38,7 +38,7 @@ void AttachDescriptorSlot( struct descriptor_set_allloc_s *alloc, struct descrip
 	}
 }
 
-void DetachDescriptorSlot( struct descriptor_set_allloc_s *alloc, struct descriptor_set_slot_s *slot )
+void DetachDescriptorSlot( struct DescriptorSetAllocator *alloc, struct descriptor_set_slot_s *slot )
 {
 	assert( slot );
 	// remove from queue
@@ -81,7 +81,7 @@ void DetachDescriptorSlot( struct descriptor_set_allloc_s *alloc, struct descrip
 	}
 }
 
-struct descriptor_set_result_s ResolveDescriptorSet( struct RIDevice_s *device, struct descriptor_set_allloc_s *alloc, uint32_t frameCount, uint32_t hash )
+struct descriptor_set_result_s ResolveDescriptorSet( struct RIDevice_s *device, struct DescriptorSetAllocator *alloc, uint32_t frameCount, uint32_t hash )
 {
 	struct descriptor_set_result_s result = { 0 };
 	const size_t hashIndex = hash % ALLOC_HASH_RESERVE;
@@ -143,7 +143,7 @@ struct descriptor_set_result_s ResolveDescriptorSet( struct RIDevice_s *device, 
 	return result;
 }
 
-void FreeDescriptorSetAlloc( struct RIDevice_s *device, struct descriptor_set_allloc_s *alloc )
+void FreeDescriptorSetAlloc( struct RIDevice_s *device, struct DescriptorSetAllocator *alloc )
 {
 #if ( DEVICE_IMPL_VULKAN )
 	for( size_t i = 0; i < arrlen( alloc->blocks ); i++ ) {

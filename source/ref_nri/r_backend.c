@@ -30,64 +30,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 rbackend_t rb;
 
-
-//static size_t __VK_SegmentIndexRealloc( struct RIDevice_s *device, struct RISegmentAlloc_s *segment, size_t numElements) {
-//	VkBufferCreateInfo stageBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-//	stageBufferCreateInfo.pNext = NULL;
-//	stageBufferCreateInfo.flags = 0;
-//	stageBufferCreateInfo.size = numElements * segment->elementStride;
-//	stageBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-//	stageBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-//	stageBufferCreateInfo.queueFamilyIndexCount = 0;
-//	stageBufferCreateInfo.pQueueFamilyIndices = NULL;
-//	VK_WrapResult( vkCreateBuffer( device->vk.device, &stageBufferCreateInfo, NULL, &segment->vk.buffer ) );
-//
-//	VmaAllocationInfo allocationInfo = { 0 };
-//	VmaAllocationCreateInfo allocInfo = { 0 };
-//	allocInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
-//	vmaAllocateMemoryForBuffer( device->vk.vmaAllocator, segment->vk.buffer, &allocInfo, &segment->vk.allocator, &allocationInfo );
-//	vmaBindBufferMemory2( device->vk.vmaAllocator, segment->vk.allocator, 0, segment->vk.buffer, NULL );
-//	segment->pMappedAddress = allocationInfo.pMappedData;
-//
-//	VkBufferViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO };
-//	createInfo.flags = (VkBufferViewCreateFlags)0;
-//	createInfo.buffer = segment->vk.buffer;
-//	createInfo.format = VK_FORMAT_UNDEFINED;
-//	createInfo.offset = 0;
-//	createInfo.range = numElements * segment->elementStride;
-//	VK_WrapResult( vkCreateBufferView( device->vk.device, &createInfo, NULL, &segment->vk.blockView ) );
-//	return createInfo.range;
-//}
-//
-//static size_t __VK_SegmentVertexRealloc( struct RIDevice_s *device, struct RISegmentAlloc_s *segment, size_t numElements )
-//{
-//	VkBufferCreateInfo stageBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-//	stageBufferCreateInfo.pNext = NULL;
-//	stageBufferCreateInfo.flags = 0;
-//	stageBufferCreateInfo.size = numElements * segment->elementStride;
-//	stageBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-//	stageBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-//	stageBufferCreateInfo.queueFamilyIndexCount = 0;
-//	stageBufferCreateInfo.pQueueFamilyIndices = NULL;
-//	VK_WrapResult( vkCreateBuffer( device->vk.device, &stageBufferCreateInfo, NULL, &segment->vk.buffer ) );
-//
-//	VmaAllocationInfo allocationInfo = { 0 };
-//	VmaAllocationCreateInfo allocInfo = { 0 };
-//	allocInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
-//	vmaAllocateMemoryForBuffer( device->vk.vmaAllocator, segment->vk.buffer, &allocInfo, &segment->vk.allocator, &allocationInfo );
-//	vmaBindBufferMemory2( device->vk.vmaAllocator, segment->vk.allocator, 0, segment->vk.buffer, NULL );
-//	segment->pMappedAddress = allocationInfo.pMappedData;
-//
-//	VkBufferViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO };
-//	createInfo.flags = (VkBufferViewCreateFlags)0;
-//	createInfo.buffer = segment->vk.buffer;
-//	createInfo.format = VK_FORMAT_UNDEFINED;
-//	createInfo.offset = 0;
-//	createInfo.range = numElements * segment->elementStride;
-//	VK_WrapResult( vkCreateBufferView( device->vk.device, &createInfo, NULL, &segment->vk.blockView ) );
-//	return createInfo.range;
-//}
-
 void RB_Init( void )
 {
 	memset( &rb, 0, sizeof( rb ) );
