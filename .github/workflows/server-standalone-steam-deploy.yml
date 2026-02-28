@@ -165,7 +165,7 @@ jobs:
       matrix:
         config:
           - {
-              agent: "macos-13",
+              agent: "macos-14",
               name: "OSX-x86_64-Release",
               xcode-version: "15.0.1",
               type: "release",
