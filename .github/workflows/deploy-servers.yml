@@ -66,9 +66,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      server_matrix: ${{ steps.set-matrix.outputs.server_matrix }}
     steps:
       - uses: actions/checkout@v4
-
       - name: Build deployment matrix
         id: set-matrix
         env:
@@ -77,43 +77,71 @@ jobs:
           TYPES: ${{ inputs.server_types }}
         run: bash .github/scripts/build-matrix.sh
 
-  # ─── Deploy to each server in the matrix ─────────────────────────────────
-  deploy:
+  # ─── Setup server environment (runs once per region/host) ────────────────
+  setup-server:
     needs: prepare-matrix
+    # Only run setup if we are deploying/updating (skip for status-only if desired, 
+    # but user request implies always separating it. Let's keep the logic consistent.)
+    if: inputs.action == 'update-and-restart' || inputs.action == 'provision' || inputs.action == 'update-only'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.server_matrix) }}
+      fail-fast: false
+      max-parallel: 4
+    name: "Setup ${{ matrix.region_label }}"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Upload Warfork.sh to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ matrix.host }}
+          username: root
+          key: ${{ secrets[matrix.key_secret] }}
+          port: 22
+          source: ".github/server-management/Warfork.sh"
+          target: "/app/scripts/"
+          strip_components: 2
+
+      - name: Upload server configs
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ matrix.host }}
+          username: root
+          key: ${{ secrets[matrix.key_secret] }}
+          port: 22
+          source: ".github/server-management/configs/"
+          target: "/app/server/basewf/"
+          strip_components: 2
+
+      - name: Make Warfork.sh executable
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ matrix.host }}
+          username: root
+          key: ${{ secrets[matrix.key_secret] }}
+          port: 22
+          script: | 
+            chmod +x /app/scripts/Warfork.sh
+            /app/scripts/Warfork.sh provision
+
+  # ─── Deploy to each server instance in the matrix ────────────────────────
+  deploy:
+    needs: [prepare-matrix, setup-server]
+    # If setup-server was skipped (status action), deploy should still run if needed?
+    # Actually, if action is status, setup-server is skipped. Deploy should run.
+    # If action is NOT status, setup-server runs. Deploy must wait for it.
+    if: |
+      always() &&
+      needs.prepare-matrix.result == 'success' &&
+      (needs.setup-server.result == 'success' || needs.setup-server.result == 'skipped')
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
       fail-fast: false
       max-parallel: 4
     name: "${{ matrix.region_label }} - ${{ matrix.type_label }}"
-
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Upload Warfork.sh to server
-        if: ${{ inputs.action != 'status' }}
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ matrix.host }}
-          username: ${{ matrix.username }}
-          key: ${{ secrets[matrix.key_secret] }}
-          port: 22
-          source: ".github/server-management/Warfork.sh"
-          target: "~/scripts/"
-          strip_components: 2
-
-      - name: Upload server configs
-        if: ${{ inputs.action != 'status' }}
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ matrix.host }}
-          username: ${{ matrix.username }}
-          key: ${{ secrets[matrix.key_secret] }}
-          port: 22
-          source: ".github/server-management/configs/"
-          target: "~/server/basewf/"
-          strip_components: 2
-
       - name: Execute server action
         uses: appleboy/ssh-action@v1.2.0
         env:
@@ -126,13 +154,15 @@ jobs:
           OPERATOR_PASSWORD: ${{ secrets.SERVER_OPERATOR_PASSWORD }}
         with:
           host: ${{ matrix.host }}
-          username: ${{ matrix.username }}
+          username: root
           key: ${{ secrets[matrix.key_secret] }}
           port: 22
           envs: STEAM_BRANCH,SERVER_TYPE,WF_PARAMS,REGION_LABEL,ACTION,RCON_PASSWORD,OPERATOR_PASSWORD
           command_timeout: 15m
           script: |
-            chmod +x ~/scripts/Warfork.sh
+            useradd wf || echo "wf User already exists."
+            mkdir -p /home/wf
+            chown wf:wf /home/wf
 
             # Substitute region label into params (for hostname)
             export WF_PARAMS=$(echo "${WF_PARAMS}" | sed "s/\${REGION_LABEL}/${REGION_LABEL}/g")
@@ -145,27 +175,27 @@ jobs:
             export SERVER_TYPE="${SERVER_TYPE}"
 
             # Script handles tmux sessions internally (named wf-{port})
+            SUDO_CMD="sudo -u wf STEAM_BRANCH='${STEAM_BRANCH}' SERVER_TYPE='${SERVER_TYPE}' WF_PARAMS='${WF_PARAMS}' REGION_LABEL='${REGION_LABEL}' ACTION='${ACTION}' RCON_PASSWORD='${RCON_PASSWORD}' OPERATOR_PASSWORD='${OPERATOR_PASSWORD}'"
+
             case "${ACTION}" in
               provision)
-                sudo ~/scripts/Warfork.sh setup
-                ~/scripts/Warfork.sh run
+                eval $SUDO_CMD /app/scripts/Warfork.sh run
                 ;;
               update-and-restart)
-                ~/scripts/Warfork.sh stop
-                ~/scripts/Warfork.sh update
-                ~/scripts/Warfork.sh start
+                eval $SUDO_CMD /app/scripts/Warfork.sh stop
+                eval $SUDO_CMD /app/scripts/Warfork.sh start
                 ;;
               update-only)
-                ~/scripts/Warfork.sh update
+                eval $SUDO_CMD /app/scripts/Warfork.sh restart
                 ;;
               restart-only)
-                ~/scripts/Warfork.sh restart
+                eval $SUDO_CMD /app/scripts/Warfork.sh restart
                 ;;
               stop)
-                ~/scripts/Warfork.sh stop
+                eval $SUDO_CMD /app/scripts/Warfork.sh stop
                 ;;
               status)
-                ~/scripts/Warfork.sh status || true
+                eval $SUDO_CMD /app/scripts/Warfork.sh status || true
                 ;;
             esac
 
