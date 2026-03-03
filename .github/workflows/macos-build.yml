@@ -7,16 +7,9 @@ on:
         description: 'Build configuration: release or debug'
         type: string
         default: 'release'
-      upload_sentry:
-        description: 'Upload debug files to Sentry'
-        type: boolean
-        default: false
-        required: false
     secrets:
       SDK_PASSWORD:
         required: true
-      SENTRY_AUTH_TOKEN:
-        required: false
 
 jobs:
   osx:
@@ -69,15 +62,3 @@ jobs:
         with:
           name: ${{ env.CONFIG_NAME }}
           path: source/build/${{ env.CONFIG_NAME }}.tar.gz
-
-      - name: Sentry Upload
-        if: inputs.upload_sentry == true
-        working-directory: ./source/build/warfork-qfusion
-        run: |
-          curl -sL https://sentry.io/get-cli/ | bash
-          sentry-cli --version
-          sentry-cli debug-files upload ./
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: team-forbidden-llc
-          SENTRY_PROJECT: warfork

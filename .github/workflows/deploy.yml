@@ -14,21 +14,18 @@ jobs:
     uses: ./.github/workflows/linux-build.yml
     with:
       config: 'release'
-      upload_sentry: true
     secrets: inherit
 
   macos:
     uses: ./.github/workflows/macos-build.yml
     with:
       config: 'release'
-      upload_sentry: true
     secrets: inherit
 
   windows:
     uses: ./.github/workflows/windows-build.yml
     with:
       config: 'release'
-      upload_sentry: true
     secrets: inherit
 
   # Prepare builds for Steam deployment
@@ -66,6 +63,16 @@ jobs:
       - name: Remove steam_appid.txt from all depots
         run: | # find then remove steam_appid.txt files from all depots 
           find steam-build -type f -name steam_appid.txt -exec rm -v {} \;
+
+      - name: Sentry Upload
+        run: |
+          curl -sL https://sentry.io/get-cli/ | bash
+          sentry-cli --version
+          sentry-cli debug-files upload steam-build/
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: team-forbidden-llc
+          SENTRY_PROJECT: warfork
 
       - name: Upload prepared Steam build
         uses: actions/upload-artifact@v4
