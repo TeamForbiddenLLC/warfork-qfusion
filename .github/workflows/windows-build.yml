@@ -1,0 +1,75 @@
+name: Windows Build
+
+on:
+  workflow_call:
+    inputs:
+      config:
+        description: 'Build configuration: release or debug'
+        type: string
+        default: 'release'
+      upload_sentry:
+        description: 'Upload debug files to Sentry'
+        type: boolean
+        default: false
+        required: false
+    secrets:
+      SDK_PASSWORD:
+        required: true
+      SENTRY_AUTH_TOKEN:
+        required: false
+
+jobs:
+  windows:
+    name: "win-x86_64-${{ inputs.config }}"
+    runs-on: windows-2022
+    env:
+      CONFIG_NAME: "win-x86_64-${{ inputs.config }}"
+      BUILD_FOLDER: "${{ inputs.config == 'release' && 'RelWithDebInfo' || 'Debug' }}"
+      VS_VERSION: "Visual Studio 17 2022"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Download steamworks sdk
+        run: |
+          curl -L https://github.com/Warfork/sdk_internal/raw/refs/heads/main/sdk.zip --output third-party/steamworks/sdk.zip
+          7z x third-party/steamworks/sdk.zip -othird-party/steamworks -p"${{secrets.SDK_PASSWORD}}" -y
+
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v1.1
+
+      - name: Building
+        working-directory: .\source
+        run: |
+          cmake -B ./build --preset workflow-windows-${{ inputs.config }} -G "${{env.VS_VERSION}}" -A x64
+          cd build
+          msbuild qfusion.sln /p:configuration=${{ env.BUILD_FOLDER }} /maxcpucount:8
+
+      - name: Package Assets
+        working-directory: .\source\build
+        run: cmake --build . --target deploy --config ${{ env.BUILD_FOLDER }}
+          
+      - name: Package warfork
+        working-directory: .\source\build\warfork-qfusion\${{ env.BUILD_FOLDER }}
+        run: 7z a ..\..\${{ env.CONFIG_NAME }}.zip * '-xr!*.exp' '-xr!*.lib' '-xr!test'
+
+      - name: Upload warfork artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.CONFIG_NAME }}
+          path: source\build\${{ env.CONFIG_NAME }}.zip
+
+      - name: Sentry Upload
+        if: inputs.upload_sentry == true
+        working-directory: .\source\build\warfork-qfusion\${{ env.BUILD_FOLDER }}
+        run: |
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+          Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+          scoop install sentry-cli 
+          sentry-cli debug-files upload .
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: team-forbidden-llc
+          SENTRY_PROJECT: warfork
