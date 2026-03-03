@@ -22,7 +22,7 @@ jobs:
     runs-on: macos-14
     env:
       CONFIG_NAME: "osx-x86_64-${{ inputs.config }}"
-      BUILD_FOLDER: "${{ inputs.config == 'release' && 'Release' || 'Debug' }}"
+      BUILD_FOLDER: "${{ inputs.config == 'release' && 'RelWithDebInfo' || 'Debug' }}"
     steps:
       - name: Replace problem-causing python installation - https://github.com/TeamForbiddenLLC/warfork-qfusion/pull/325 - Fixed in macos-14
         shell: bash
@@ -60,7 +60,7 @@ jobs:
           
       - name: Package warfork
         working-directory: ./source/build/warfork-qfusion
-        run: tar -czvf ../${{ env.CONFIG_NAME }}.tar.gz ${{ env.BUILD_FOLDER }}/*.app
+        run: tar -czvf ../${{ env.CONFIG_NAME }}.tar.gz ${{ env.BUILD_FOLDER }}/*.app ${{ env.BUILD_FOLDER }}/test
 
       - name: Upload warfork artifact
         uses: actions/upload-artifact@v4

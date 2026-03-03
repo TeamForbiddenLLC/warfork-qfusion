@@ -12,7 +12,7 @@
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
                 "BUILD_STEAMLIB": "1",
-                "BUILD_UNIT_TEST": "1"
+                "USE_CRASHPAD": "1"
             }
         },
         {
@@ -25,8 +25,7 @@
                 "USE_SYSTEM_ZLIB": "1",
                 "USE_SYSTEM_OPENAL": "1",
                 "USE_SYSTEM_CURL": "1",
-                "USE_SYSTEM_FREETYPE": "1",
-                "USE_CRASHPAD": "1"
+                "USE_SYSTEM_FREETYPE": "1"
             }
         },
         {
@@ -85,8 +84,7 @@
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
                 "BUILD_UNIT_TEST": "1",
                 "BUILD_STEAMLIB": "1",
-                "USE_GRAPHICS_NRI": "1",
-                "USE_CRASHPAD": "1"
+                "USE_GRAPHICS_NRI": "1"
             }
         },
         {

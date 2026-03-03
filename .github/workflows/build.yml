@@ -79,7 +79,7 @@ jobs:
         run: tar -xzf osx-x86_64-release.tar.gz
 
       - name: Unit Test
-        working-directory: ./drop/Release
+        working-directory: ./drop/RelWithDebInfo
         shell: bash
         run: |
           set -e
