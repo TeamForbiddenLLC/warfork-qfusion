@@ -7,6 +7,11 @@ on:
         description: 'Build configuration: release or debug'
         type: string
         default: 'release'
+      cmake_args:
+        description: 'Additional CMake arguments'
+        type: string
+        default: ''
+        required: false
     secrets:
       SDK_PASSWORD:
         required: true
@@ -42,7 +47,7 @@ jobs:
         working-directory: ./source
         run: |
           export CC=gcc-12 CXX=g++-12
-          cmake -B ./build --preset workflow-linux-${{ inputs.config }}
+          cmake -B ./build --preset workflow-linux-${{ inputs.config }} ${{ inputs.cmake_args }}
           cd build
           make -j8
 

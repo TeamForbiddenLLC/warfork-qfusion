@@ -7,6 +7,11 @@ on:
         description: 'Build configuration: release or debug'
         type: string
         default: 'release'
+      cmake_args:
+        description: 'Additional CMake arguments'
+        type: string
+        default: ''
+        required: false
     secrets:
       SDK_PASSWORD:
         required: true
@@ -25,7 +30,6 @@ jobs:
         with:
           submodules: recursive
 
-
       - name: Download steamworks sdk
         run: |
           curl -L https://github.com/Warfork/sdk_internal/raw/refs/heads/main/sdk.zip --output third-party/steamworks/sdk.zip
@@ -36,7 +40,7 @@ jobs:
       - name: Building
         working-directory: .\source
         run: |
-          cmake -B ./build --preset workflow-windows-${{ inputs.config }} -G "${{env.VS_VERSION}}" -A x64
+          cmake -B ./build --preset workflow-windows-${{ inputs.config }} ${{ inputs.cmake_args }} -G "${{env.VS_VERSION}}" -A x64
           cd build
           msbuild qfusion.sln /p:configuration=${{ env.BUILD_FOLDER }} /maxcpucount:8
 
@@ -46,7 +50,7 @@ jobs:
           
       - name: Package warfork
         working-directory: .\source\build\warfork-qfusion\${{ env.BUILD_FOLDER }}
-        run: 7z a ..\..\${{ env.CONFIG_NAME }}.zip * '-xr!*.exp' '-xr!*.lib' '-xr!test'
+        run: 7z a ..\..\${{ env.CONFIG_NAME }}.zip * '-xr!*.exp' '-xr!*.lib'
 
       - name: Upload warfork artifact
         uses: actions/upload-artifact@v4

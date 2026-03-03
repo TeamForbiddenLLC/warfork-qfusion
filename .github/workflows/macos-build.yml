@@ -7,6 +7,11 @@ on:
         description: 'Build configuration: release or debug'
         type: string
         default: 'release'
+      cmake_args:
+        description: 'Additional CMake arguments'
+        type: string
+        default: ''
+        required: false
     secrets:
       SDK_PASSWORD:
         required: true
@@ -45,7 +50,7 @@ jobs:
       - name: Build
         working-directory: ./source
         run: |
-          cmake -B ./build --preset workflow-macos-${{ inputs.config }} -G Xcode
+          cmake -B ./build --preset workflow-macos-${{ inputs.config }} ${{ inputs.cmake_args }} -G Xcode
           cd build
           xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration ${{ env.BUILD_FOLDER }} -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
@@ -55,7 +60,7 @@ jobs:
           
       - name: Package warfork
         working-directory: ./source/build/warfork-qfusion
-        run: tar --exclude='test' -czvf ../${{ env.CONFIG_NAME }}.tar.gz ${{ env.BUILD_FOLDER }}/*.app
+        run: tar -czvf ../${{ env.CONFIG_NAME }}.tar.gz ${{ env.BUILD_FOLDER }}/*.app
 
       - name: Upload warfork artifact
         uses: actions/upload-artifact@v4
