@@ -48,12 +48,12 @@ jobs:
           cd ../..
 
           # Extract Linux build  
-          cd artifacts/Linux-x86_64-Release
+          cd artifacts/linux-x86_64-Release
           tar -xzf *.tar.gz -C ../../steam-build/linux/
           cd ../..
 
           # Extract macOS build
-          cd artifacts/OSX-x86_64-Release
+          cd artifacts/osx-x86_64-Release
           tar -xzf *.tar.gz -C ../../steam-build/macos/
           cd ../..
 

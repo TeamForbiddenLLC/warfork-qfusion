@@ -34,7 +34,7 @@ jobs:
     needs: linux
     strategy:
       matrix:
-        config: [Release, Debug]
+        config: [release, debug]
     runs-on: ubuntu-24.04
     container:
       image: registry.gitlab.steamos.cloud/steamrt/sniper/sdk:latest
@@ -42,12 +42,12 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: Linux-x86_64-${{ matrix.config }}
+          name: linux-x86_64-${{ matrix.config }}
           path: drop
 
       - name: Extract artifact
         working-directory: ./drop
-        run: tar -xzf Linux-x86_64-${{ matrix.config }}.tar.gz
+        run: tar -xzf linux-x86_64-${{ matrix.config }}.tar.gz
 
       - name: Unit Test
         working-directory: ./drop
@@ -63,18 +63,18 @@ jobs:
     needs: macos
     strategy:
       matrix:
-        config: [Release, Debug]
+        config: [release, debug]
     runs-on: macos-14
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: OSX-x86_64-${{ matrix.config }}
+          name: osx-x86_64-${{ matrix.config }}
           path: drop
 
       - name: Extract artifact
         working-directory: ./drop
-        run: tar -xzf OSX-x86_64-${{ matrix.config }}.tar.gz
+        run: tar -xzf osx-x86_64-${{ matrix.config }}.tar.gz
 
       - name: Unit Test
         working-directory: ./drop/${{ matrix.config == 'Release' && 'Release' || 'Debug' }}
@@ -90,7 +90,7 @@ jobs:
     needs: windows
     strategy:
       matrix:
-        config: [Release, Debug]
+        config: [release, debug]
     runs-on: windows-2022
     steps:
       - name: Download artifact

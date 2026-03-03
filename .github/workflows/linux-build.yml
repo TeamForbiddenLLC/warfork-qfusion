@@ -13,12 +13,12 @@ on:
 
 jobs:
   linux:
-    name: "Linux-x86_64-${{ inputs.config }}"
+    name: "linux-x86_64-${{ inputs.config }}"
     runs-on: ubuntu-24.04
     container:
       image: registry.gitlab.steamos.cloud/steamrt/sniper/sdk:latest
     env:
-      CONFIG_NAME: "Linux-x86_64-${{ inputs.config }}"
+      CONFIG_NAME: "linux-x86_64-${{ inputs.config }}"
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -52,7 +52,7 @@ jobs:
           
       - name: Package warfork
         working-directory: ./source/build/warfork-qfusion
-        run: tar --exclude='*.a' --exclude='base*/*.a' --exclude='libs/*.a' --exclude='test' -zcvf ../${CONFIG_NAME}.tar.gz *
+        run: tar --exclude='*.a' --exclude='base*/*.a' --exclude='libs/*.a' --exclude='test' -zcvf ../${{ env.CONFIG_NAME }}.tar.gz *
 
       - name: Upload warfork artifact
         uses: actions/upload-artifact@v4
