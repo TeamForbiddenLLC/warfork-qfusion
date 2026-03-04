@@ -108,6 +108,5 @@ jobs:
         run: |
           set -e
           for exc in ./test/*[^.pdb]; do
-            chmod +x $exc
             $exc
           done

@@ -8,7 +8,6 @@ on:
         required: true
         default: 'beta'
         type: string
-
 jobs:
   linux:
     uses: ./.github/workflows/linux-build.yml
@@ -43,17 +42,17 @@ jobs:
           mkdir -p steam-build/windows steam-build/linux steam-build/macos
           
           # Extract Windows build
-          cd artifacts/win-x86_64-Release
+          cd artifacts/win-x86_64-release
           unzip -o *.zip -d ../../steam-build/windows/
           cd ../..
 
           # Extract Linux build  
-          cd artifacts/linux-x86_64-Release
+          cd artifacts/linux-x86_64-release
           tar -xzf *.tar.gz -C ../../steam-build/linux/
           cd ../..
 
           # Extract macOS build
-          cd artifacts/osx-x86_64-Release
+          cd artifacts/osx-x86_64-release
           tar -xzf *.tar.gz -C ../../steam-build/macos/
           cd ../..
 

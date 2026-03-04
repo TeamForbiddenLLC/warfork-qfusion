@@ -74,8 +74,7 @@
             "architecture": {
                 "value": "x64",
                 "strategy": "set"
-            },
-            "cacheVariables": {}
+            }
         },
         {
             "name": "workflow-windows-release",
