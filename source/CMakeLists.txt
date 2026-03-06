@@ -351,7 +351,7 @@ elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} 
         COMMAND ${CMAKE_COMMAND} 
         -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}
-        -DBIN_DIR=${CMAKE_BINARY_DIR}/warfork-qfusion/$<CONFIG> 
+        -DBIN_DIR=${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/${QFUSION_CLIENT_NAME}.app/Contents
         -DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../assets
         -P ${CMAKE_CURRENT_SOURCE_DIR}/package_assets.cmake 
         COMMENT "packaging assets ...")
