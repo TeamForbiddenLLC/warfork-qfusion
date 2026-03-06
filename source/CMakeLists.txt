@@ -339,21 +339,21 @@ endif()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     add_custom_target(deploy
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} 
-        COMMAND ${CMAKE_COMMAND} 
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND ${CMAKE_COMMAND}
         -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}
         -DBIN_DIR=${CMAKE_BINARY_DIR}/warfork-qfusion/$(Configuration)
         -DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../assets
-        -P ${CMAKE_CURRENT_SOURCE_DIR}/package_assets.cmake 
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/package_assets.cmake
         COMMENT "packaging assets ...")
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_custom_target(deploy
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} 
-        COMMAND ${CMAKE_COMMAND} 
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND ${CMAKE_COMMAND}
         -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}
-        -DBIN_DIR=${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/${QFUSION_CLIENT_NAME}.app/Contents
+        -DBIN_DIR=${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/${QFUSION_CLIENT_NAME}.app/Contents/Resources
         -DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../assets
-        -P ${CMAKE_CURRENT_SOURCE_DIR}/package_assets.cmake 
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/package_assets.cmake
         COMMENT "packaging assets ...")
 else()
     add_custom_target(deploy

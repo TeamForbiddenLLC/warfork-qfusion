@@ -83,7 +83,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          for exc in ./test/*[^.dSYM]; do
+          for exc in ./Warfork.app/Contents/MacOS/*_test[^.dSYM]; do
             chmod +x $exc
             $exc
           done
