@@ -42,7 +42,7 @@ jobs:
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: 15.0.1
+          xcode-version: ${{ inputs.arch == 'x86_64' && '26.3.0' || '15.0.1' }}
 
       - name: Download steamworks sdk
         run: |
