@@ -7,6 +7,10 @@ on:
         description: 'Build configuration: release or debug'
         type: string
         default: 'release'
+      arch:
+        description: 'Architecture: arm64 or x86_64'
+        type: string
+        default: 'arm64'
       cmake_args:
         description: 'Additional CMake arguments'
         type: string
@@ -18,10 +22,10 @@ on:
 
 jobs:
   osx:
-    name: "osx-x86_64-${{ inputs.config }}"
-    runs-on: macos-14
+    name: "osx-${{ inputs.arch }}-${{ inputs.config }}"
+    runs-on: ${{ inputs.arch == 'x86_64' && 'macos-15-intel' || 'macos-14' }}
     env:
-      CONFIG_NAME: "osx-x86_64-${{ inputs.config }}"
+      CONFIG_NAME: "osx-${{ inputs.arch }}-${{ inputs.config }}"
       BUILD_FOLDER: "${{ inputs.config == 'release' && 'RelWithDebInfo' || 'Debug' }}"
     steps:
       - name: Replace problem-causing python installation - https://github.com/TeamForbiddenLLC/warfork-qfusion/pull/325 - Fixed in macos-14
@@ -38,7 +42,7 @@ jobs:
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: 15.0.1
+          xcode-version: ${{ inputs.arch == 'x86_64' && '16.0.0' || '15.0.1' }}
 
       - name: Download steamworks sdk
         run: |
@@ -60,7 +64,7 @@ jobs:
           
       - name: Package warfork
         working-directory: ./source/build/warfork-qfusion
-        run: tar -czvf ../${{ env.CONFIG_NAME }}.tar.gz ${{ env.BUILD_FOLDER }}/*.app ${{ env.BUILD_FOLDER }}/test
+        run: tar -czvf ../${{ env.CONFIG_NAME }}.tar.gz ${{ env.BUILD_FOLDER }}/*.app
 
       - name: Upload warfork artifact
         uses: actions/upload-artifact@v4
