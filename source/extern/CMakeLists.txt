@@ -42,6 +42,7 @@ if(USE_SYSTEM_ZLIB)
 else()
   option(ZLIB_BUILD_EXAMPLES "" OFF)
   add_subdirectory(zlib)
+  qf_set_output_dir(zlib libs)
 endif()
 
 if (USE_SDL2)
