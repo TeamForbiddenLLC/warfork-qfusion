@@ -64,7 +64,9 @@ jobs:
           
       - name: Package warfork
         working-directory: ./source/build/warfork-qfusion
-        run: tar -czvf ../${{ env.CONFIG_NAME }}.tar.gz ${{ env.BUILD_FOLDER }}/*.app
+        run: |
+          shopt -s nullglob
+          tar -czvf ../${{ env.CONFIG_NAME }}.tar.gz ${{ env.BUILD_FOLDER }}/*.app ${{ env.BUILD_FOLDER }}/*.dSYM
 
       - name: Upload warfork artifact
         uses: actions/upload-artifact@v4
