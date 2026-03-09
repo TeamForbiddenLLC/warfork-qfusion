@@ -133,6 +133,7 @@ else()
     option(CURL_DISABLE_INSTALL "" OFF )
     set(CURL_CA_PATH "none" CACHE PATH "")
     add_subdirectory(curl)
+    qf_set_output_dir_dep(zlib libs)
 endif()
 
 endif()
