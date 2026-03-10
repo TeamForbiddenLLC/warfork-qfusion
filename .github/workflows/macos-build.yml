@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          
+
       - name: Download steamworks sdk
         run: |
           curl -L https://github.com/Warfork/sdk_internal/raw/refs/heads/main/sdk.zip --output third-party/steamworks/sdk.zip
@@ -50,7 +50,7 @@ jobs:
       - name: Build
         working-directory: ./source
         run: |
-          cmake -B ./build --preset workflow-macos-${{ inputs.config }} ${{ inputs.cmake_args }} -G Xcode
+          cmake -B ./build --preset workflow-macos-${{ inputs.config }} ${{ inputs.cmake_args }}
           cd build
           cmake --build .
 
