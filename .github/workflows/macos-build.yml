@@ -56,7 +56,7 @@ jobs:
         run: |
           cmake -B ./build --preset workflow-macos-${{ inputs.config }} ${{ inputs.cmake_args }} -G Xcode
           cd build
-          xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration ${{ env.BUILD_FOLDER }} -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
+          cmake --build .
 
       - name: Package Assets
         working-directory: ./source
