@@ -77,6 +77,12 @@ declared in. No positional arguments may follow any named arguments.
   func(flagB: true, flagA: true);
 </pre>
 
+For function templates it is necessary to explicitly inform the subtypes so the 
+compiler can evaluate the correct function template instance to call.
+
+<pre>
+  templ<int,float>(arg1, arg2);
+</pre>
 
 
 
@@ -428,6 +434,12 @@ For types that support it, the anonymous objects can also be initialized with in
   // When there is only one possible type that support initialization lists it is possible  
   // to omit the type and let the compiler implicitly determine it based on the use
   funcExpectsAnArrayOfInts({1,2,3,4});
+</pre>
+
+If the desired type for the anonymous object is a template, it may be necessary to explicitly inform the template type;
+
+<pre>
+  funcExpectsAnArray(array<int> = {1,2,3,4});
 </pre>
 
 */

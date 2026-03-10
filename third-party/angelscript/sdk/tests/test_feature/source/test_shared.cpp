@@ -10,6 +10,110 @@ bool Test()
 	asIScriptEngine* engine;
 	int r;
 
+	// Test memory management on shared entities
+	// https://www.gamedev.net/forums/topic/718724-shared-types-refcounting-bug/5470582/
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		RegisterScriptArray(engine, false);
+
+		// 2 has a dependency on 3
+		const char* script2 =
+			"shared interface IMedal {}\n"
+			"import void setMedal(IMedal@ medal) from \"test3\";\n"
+			"class MyMedal : IMedal {}\n"
+			"MyMedal@ g_medal;\n"
+			"void Main() {\n"
+			"  @g_medal = MyMedal();\n"
+			"  setMedal(g_medal);\n"
+			"}\n"
+			"namespace Bar {\n" // If `Foo` is not in the `Bar` namespace, the error doesn't reproduce
+			"  shared class Foo {\n" // `Foo` is only defined and used here
+			"    Foo(int) {}\n"
+			"  }\n"
+			"}\n"
+			"void Test() {\n" // Test() is actually never called
+			"  Bar::Foo(2);\n"
+			"}";
+
+		// 3 has no dependencies
+		const char* script3 =
+			"shared interface IMedal {}\n"
+			"IMedal@ g_foo;\n"
+			"void setMedal(IMedal@ medal) {\n"
+			"  @g_foo = medal;\n"
+			"}";
+
+		asIScriptModule* mod;
+		asIScriptContext* ctx;
+
+		// Build 3 before 2
+		mod = engine->GetModule("test3", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test3", script3);
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		// Build 2
+		mod = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test2", script2);
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+		r = mod->BindAllImportedFunctions();
+		if (r < 0)
+			TEST_FAILED;
+
+		//asITypeInfo* barFooTypeInfo = mod->GetTypeInfoByDecl("Bar::Foo"); // At this point, there are 8 internal references
+
+		// Execute test2 Main()
+		mod = engine->GetModule("test2");
+		ctx = engine->CreateContext();
+		ctx->Prepare(mod->GetFunctionByName("Main"));
+		r = ctx->Execute();  // Main calls the setMedal function on module test3, which will store a handle to MyMedal, thus keeping module test2 alive
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		ctx->Release();
+
+		// It's time to reload 2
+		// We do this twice, as it only happens after the second reload
+		for (int i = 0; i < 2; i++) 
+		{
+			// Unload 2
+			engine->GarbageCollect(); // On the second iteration this releases the Bar::Foo type since now the test2 module was truly destroyed. Ownership of Bar::Foo is transfered to the newly compiled test2
+			engine->DiscardModule("test2"); // The module isn't deleted on the first run, because module test3 holds a handle to MyMedal.
+
+			// Rebuild 2 before 1
+			mod = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+			mod->AddScriptSection("test2", script2);
+			r = mod->Build(); // Adds 3 internal references, since Bar::Foo was still existing. 
+			if (r < 0)
+				TEST_FAILED;
+			r = mod->BindAllImportedFunctions();
+			if (r < 0)
+				TEST_FAILED;
+
+			// Execute test2 Main()
+			mod = engine->GetModule("test2");
+			ctx = engine->CreateContext();
+			ctx->Prepare(mod->GetFunctionByName("Main"));
+			r = ctx->Execute(); // Now the handle to MyMedal in the discarded "test2" will be released, as the handle to MyMedal in the newly built "test2" replaces it
+			if (r != asEXECUTION_FINISHED)
+				TEST_FAILED;
+			ctx->Release();
+		}
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
 	// Test duplicate declaration of shared class (allowed with engine property)
 	// https://www.gamedev.net/forums/topic/707753-bug-when-importing-an-external-interface/
 	{
@@ -625,14 +729,14 @@ const char* file2 = "					\
 			TEST_FAILED;
 
 		asDWORD crc32 = ComputeCRC32(&bc1.buffer[0], asUINT(bc1.buffer.size()));
-		if (crc32 != 0x8FA1584B)
+		if (crc32 != 0x59B3E29)
 		{
 			PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
 			TEST_FAILED;
 		}
 
 		crc32 = ComputeCRC32(&bc2.buffer[0], asUINT(bc2.buffer.size()));
-		if (crc32 != 0xC1DD769E)
+		if (crc32 != 0x504D4243)
 		{
 			PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
 			TEST_FAILED;
@@ -1086,8 +1190,8 @@ const char* file2 = "					\
 		if( r >= 0 )
 			TEST_FAILED;
 
-		if( bout.buffer != "B (3, 13) : Error   : Shared type 'ielement' doesn't match the original declaration in other module\n"
-		                   "B (3, 18) : Error   : Shared type 'ielement' doesn't match the original declaration in other module\n" )
+		if( bout.buffer != "B (3, 13) : Error   : Shared type 'ielement' doesn't match the declaration in module 'A'\n"
+		                   "B (3, 18) : Error   : Shared type 'ielement' doesn't match the declaration in module 'A'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -1132,15 +1236,15 @@ const char* file2 = "					\
 		engine->Release();
 	}
 
-	// Compiling a script with a shared class that refers to other non declared entities must give
-	// error even if the shared class is already existing in a previous module
+	// Compiling a script with a shared class that refers to other non declared entities must not give
+	// error if the shared class is already existing in a previous module
 	// http://www.gamedev.net/topic/632922-huge-problems-with-precompilde-byte-code/
 	{
 		const char *script1 = 
 			"shared class A { \n"
 			"  B @b; \n"
 			"  void setB(B@) {} \n"
-			"  void func() {B@ l;} \n" // TODO: The method isn't compiled so this error isn't seen. Should it be?
+			"  void func() {B@ l;} \n" // The method isn't compiled so this error isn't seen
 			"  string c; \n"
 			"} \n";
 
@@ -1165,9 +1269,7 @@ const char* file2 = "					\
 		if( r >= 0 )
 			TEST_FAILED;
 		if( bout.buffer != "A (3, 13) : Error   : Identifier 'B' is not a data type in global namespace\n"
-		                   "A (3, 3) : Error   : Shared type 'A' doesn't match the original declaration in other module\n"
-		                 /*  "A (2, 3) : Error   : Identifier 'B' is not a data type in global namespace\n"
-		                   "A (2, 6) : Error   : Shared type 'A' doesn't match the original declaration in other module\n" */)
+		                   "A (3, 3) : Error   : Shared type 'A' doesn't match the declaration in module 'A'\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

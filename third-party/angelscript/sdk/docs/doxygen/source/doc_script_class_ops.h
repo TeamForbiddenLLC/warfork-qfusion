@@ -91,7 +91,7 @@ The assignment expressions <tt>a <i>op</i> b</tt> are rewritten as <tt>a.<i>opfu
 best matching method is used. An assignment operator can for example be implemented like this:
 
 <pre>
-  obj@ opAssign(const obj &in other)
+  obj &opAssign(const obj &inout other)
   {
     // Do the proper assignment
     ...
@@ -101,8 +101,23 @@ best matching method is used. An assignment operator can for example be implemen
   }
 </pre>
 
-All script classes have a default assignment operator that does a bitwise copy of the content of the class,
-so if that is all you want to do, then there is no need to implement this method. \todo This statement is wrong. The auto generated opAssign doesn't do a bitwise copy. Also, it is not always generated, only when the script class isn't declaring any constructors
+
+
+
+\subsection doc_script_class_assign_ops_auto Auto-generated assignment operator
+
+The compiler will automatically generate an opAssign to copy the content of an instance of the same type 
+in case no opAssign method with a single parameter is explicitly declared. The generated opAssign will simply copy each member.
+
+If the auto generated opAssign is not desired, then it can be explicitly excluded by flagging it as deleted.
+
+<pre>
+  class MyClass
+  {
+	MyClass &opAssign(const MyClass &inout) delete;
+  }
+</pre>
+
 
 
 
@@ -146,8 +161,8 @@ parameters, the first is for the indexing, and the second for the new value.
 <pre>
   class MyObj
   {
-    float get_opIndex(int idx) const       { return 0; }
-    void set_opIndex(int idx, float value) { }
+    float get_opIndex(int idx) const property { return 0; }
+    void set_opIndex(int idx, float value) property { }
   }
 </pre>
 
@@ -231,5 +246,42 @@ An example where the opCast/opImplCast operator overloads come in handy is when 
 
 \see \ref conversion, \ref doc_adv_inheritappclass
 
+\section doc_script_class_foreach_ops Foreach loop operators
+
+<table cellspacing=0 cellpadding=0 border=0>
+<tr><td width=150><b>op</b></td><td width=400><b>opfunc</b></td></tr>
+<tr><td><i>begin foreach</i></td><td>opForBegin</td></tr>
+<tr><td><i>end foreach</i></td><td>opForEnd</td></tr>
+<tr><td><i>next foreach iteration</i></td><td>opForNext</td></tr>
+<tr><td><i>foreach value</i></td><td>opForValue, opForValue0, opForValue1, opForValue2...</td></tr>
+</table>
+
+When the compiler tries to compile a <code>foreach</code> loop it will need a use a set of methods on the container type.
+
+<pre>
+  foreach( auto val, auto key : <i>expr</i> )
+  {
+    ...
+  }
+</pre>
+
+The above will be compiled as if it was written as
+
+<pre>
+  for( auto \@container = <i>expr</i>, auto \@it = container.opForBegin(); !container.opForEnd(it); \@it = container.opForNext(it) )
+  {
+    auto val = container.opForValue0(it);
+    auto key = container.opForValue1(it);
+    ...
+  }
+</pre>
+
+Where the types support handles the compiler will use handle assignments, otherwise it will use value assignments.
+
+The iterator type returned by <code>opForBegin</code>, can be a simple integer for indexing, or an iterator class if more complex operations are needed for keeping track of the iterations.
+
+If the container only supports a single value, then the operator <code>opForValue</code> can be used, otherwise multiple numbered <code>opForValue#</code> operators must be used.
+
+\see \ref while
 
 */

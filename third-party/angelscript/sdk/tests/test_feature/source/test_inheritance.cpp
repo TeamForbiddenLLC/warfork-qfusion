@@ -20,14 +20,22 @@ class FooScripted
 public:
 	void CallMe()
 	{
+		// Check that the script object is still alive
 		if( !m_isDead->Get() )
 		{
-			asIScriptEngine *engine = m_obj->GetEngine();
-			asIScriptContext *ctx = engine->RequestContext();
-			ctx->Prepare(m_obj->GetObjectType()->GetMethodByDecl("void CallMe()"));
-			ctx->SetObject(m_obj);
-			ctx->Execute();
-			engine->ReturnContext(ctx);
+			// Check that it isn't our script class instance that is makng the call, in which case we do not callback to the script
+			asIScriptContext* ctx = asGetActiveContext();
+			asIScriptFunction* func = ctx ? ctx->GetFunction(0) : 0;
+			if (!func || strcmp(func->GetName(), "CallMe") != 0 || !ctx || ctx->GetThisPointer(0) != m_obj)
+			{
+				// Call the script function CallMe so the script can provide the overloaded behavior
+				asIScriptEngine* engine = m_obj->GetEngine();
+				ctx = engine->RequestContext();
+				ctx->Prepare(m_obj->GetObjectType()->GetMethodByDecl("void CallMe()"));
+				ctx->SetObject(m_obj);
+				ctx->Execute();
+				engine->ReturnContext(ctx);
+			}
 		}
 	}
 	int m_value;
@@ -122,6 +130,81 @@ bool Test()
 	CBufferedOutStream bout;
  	asIScriptEngine *engine = 0;
 
+	// Test inheritance in initialization lists
+	// https://www.gamedev.net/forums/topic/711197-value-array-of-parent-type-with-initializer-list-containing-child-type-constructor/
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+		RegisterScriptArray(engine, true);
+		engine->RegisterGlobalFunction("void print(const string &in)", asFUNCTION(print), asCALL_CDECL);
+		printResult = "";
+
+		mod = engine->GetModule("Test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("Test",
+			"class ReportA { \n"
+			"	void Report() const { print('A'); } \n"
+			"} \n"
+			"class ReportB : ReportA { \n"
+			"	void Report() const override { print('B'); } \n"
+			"} \n"
+
+			"void main() { \n"
+			"	array<ReportA> startWithConstructorA = { ReportA() }; \n"
+			"	startWithConstructorA[0].Report(); \n" //A
+			"	startWithConstructorA = { ReportB() }; \n" // When the array is copied from one to the other the elements are copied (hence correctly converted to A)
+			"	startWithConstructorA[0].Report(); \n" //A
+			"	startWithConstructorA.insertAt(0, ReportB()); \n" // The array will allocate an object A with default constructor, then use copy operator
+			"	startWithConstructorA[0].Report(); \n" //A
+
+			"	array<ReportA> startWithConstructorB = { ReportB() }; \n" // The array constructor doesn't copy the object, it relies on the object being correct for storage. The compiler must make sure the type is correct
+			"	startWithConstructorB[0].Report(); \n" //A
+			"	startWithConstructorB = { ReportB() }; \n" // The array will use the elements copy operator, since it was stored as B it will copy as B
+			"	startWithConstructorB[0].Report(); \n" //A
+			"	startWithConstructorB.insertAt(0, ReportB()); \n" // The array will allocate an object A with default constructor, then use copy operator
+			"	startWithConstructorB[0].Report(); \n" //A
+
+			"	ReportB variableB; \n"
+			"	array<ReportA> startWithVariableB = { variableB }; \n" // The compiler correctly copies the value to a temp ReportA
+			"	startWithVariableB[0].Report(); \n" //A
+			"	startWithVariableB = { variableB }; \n"
+			"	startWithVariableB[0].Report(); \n" //A
+			"	startWithVariableB = { ReportB() }; \n"
+			"	startWithVariableB[0].Report(); \n" //A
+			"	startWithVariableB.insertAt(0, variableB); \n"
+			"	startWithVariableB[0].Report(); \n" //A
+			"	startWithVariableB.insertAt(0, ReportB()); \n"
+			"	startWithVariableB[0].Report(); \n" //A
+			"} \n");
+
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptContext* ctx = engine->CreateContext();
+		r = ExecuteString(engine, "main(); \n", mod, ctx);
+		if (r != asEXECUTION_FINISHED)
+		{
+			if (r == asEXECUTION_EXCEPTION)
+				PRINTF("Exception: %s\n", ctx->GetExceptionString());
+			TEST_FAILED;
+		}
+		ctx->Release();
+
+		if (printResult != "AAAAAAAAAAA")
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
 	// Script class inheriting from an application class through proxy and copy object
 	// https://www.gamedev.net/forums/topic/704232-add-ref-proxy-class-causes-crash-in-asiscriptobjectoperator-due-to-early-destruction/
 	{
@@ -146,10 +229,10 @@ bool Test()
 			"  } \n"
 			"  FooScripted(const FooScripted &o) { \n"
 			"    @m_obj = FooScripted_t(); \n" // Create a new C++ instance
-			"    m_obj = o.m_obj; \n"          // copy content of C++ instance
+			"    m_obj = o.m_obj; \n"          // copy content of other C++ instance
 			"  } \n"
 			"  FooScripted &opAssign(const FooScripted &o) { \n"
-			"    m_obj = o.m_obj; \n"  // copy content of C++ instance
+			"    m_obj = o.m_obj; \n"  // copy content of other C++ instance
 			"    return this; \n"
 			"  } \n"
 			"  void CallMe() { m_obj.CallMe(); } \n"
@@ -166,6 +249,7 @@ bool Test()
 		mod->AddScriptSection("Foo2",
 			"class FooDerived : FooScripted { \n"
 			"  void CallMe() { \n"
+			"    FooScripted::CallMe(); \n"
 			"    m_value += 1; \n"
 			"  } \n"
 			"} \n"
@@ -514,7 +598,7 @@ bool Test()
 		asIScriptFunction *func = mod->GetFunctionByName("foo");
 		asBYTE expect[] = 
 			{	
-				asBC_SUSPEND,asBC_PSF,asBC_Cast,asBC_STOREOBJ,asBC_ClrVPtr,asBC_CmpPtr,asBC_TZ,asBC_CpyRtoV4,asBC_FREE,asBC_FREE,asBC_PshV4,asBC_CALLSYS,
+				asBC_PSF,asBC_Cast,asBC_STOREOBJ,asBC_ClrVPtr,asBC_CmpPtr,asBC_TZ,asBC_CpyRtoV4,asBC_FREE,asBC_FREE,asBC_PshV4,asBC_CALLSYS,
 				asBC_SUSPEND,asBC_RET
 			};
 		if( !ValidateByteCode(func, expect) )

@@ -25,6 +25,7 @@
 #include "../../../add_on/debugger/debugger.h"
 #include "../../../add_on/contextmgr/contextmgr.h"
 #include "../../../add_on/datetime/datetime.h"
+#include "../../../add_on/scriptsocket/scriptsocket.h"
 
 #ifdef _WIN32
 #include <Windows.h> // WriteConsoleW
@@ -35,8 +36,26 @@
 #endif
 #endif
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && defined(_DEBUG)
 #include <crtdbg.h>   // MSVC debugging routines
+
+// This class should be declared as a global singleton so the leak detection is initiated as soon as possible
+class MemoryLeakDetector
+{
+public:
+	MemoryLeakDetector()
+	{
+		_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF | _CRTDBG_ALLOC_MEM_DF);
+		_CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
+		_CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
+
+		// Use _CrtSetBreakAlloc(n) to find a specific memory leak
+		// Remember to "Enable Windows Debug Heap Allocator" in the debug options on MSVC2015. Without it
+		// enabled the memory allocation numbers shifts randomly from one execution to another making it
+		// impossible to predict the correct number for a specific allocation.
+		//_CrtSetBreakAlloc(124);
+	}
+} g_leakDetector;
 #endif
 
 using namespace std;
@@ -75,15 +94,6 @@ vector<asIScriptContext*> g_ctxPool;
 
 int main(int argc, char **argv)
 {
-#if defined(_MSC_VER)
-	// Tell MSVC to report any memory leaks
-	_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF|_CRTDBG_ALLOC_MEM_DF);
-	_CrtSetReportMode(_CRT_ASSERT,_CRTDBG_MODE_FILE);
-	_CrtSetReportFile(_CRT_ASSERT,_CRTDBG_FILE_STDERR);
-
-	// Use _CrtSetBreakAlloc(n) to find a specific memory leak
-#endif
-
 #if defined(_WIN32)
 	// Turn on support for virtual terminal sequences to add support for colored text in the console
 	// Ref: https://docs.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences
@@ -150,19 +160,16 @@ int main(int argc, char **argv)
 
 	// Compile the script code
 	r = CompileScript(engine, argv[scriptArg]);
-	if (r < 0)
+	if (r >= 0)
 	{
-		WaitForUser();
-		return -1;
-	}
+		// Execute the script
+		r = ExecuteScript(engine, argv[scriptArg]);
 
-	// Execute the script
-	r = ExecuteScript(engine, argv[scriptArg]);
-	
-	// Shut down the engine
-	if( g_commandLineArgs )
-		g_commandLineArgs->Release();
-	engine->ShutDownAndRelease();
+		// Shut down the engine
+		if (g_commandLineArgs)
+			g_commandLineArgs->Release();
+		engine->ShutDownAndRelease();
+	}
 
 	if (r < 0)
 		WaitForUser();
@@ -189,6 +196,9 @@ int ConfigureEngine(asIScriptEngine *engine)
 	// The script compiler will send any compiler messages to the callback
 	r = engine->SetMessageCallback(asFUNCTION(MessageCallback), 0, asCALL_CDECL); assert( r >= 0 );
 
+	// Turn off output of AS_DEBUG files
+	r = engine->SetEngineProperty(asEP_NO_DEBUG_OUTPUT, true);
+
 	// Register the standard add-ons that we'll allow the scripts to use
 	RegisterStdString(engine);
 	RegisterScriptArray(engine, false);
@@ -198,6 +208,7 @@ int ConfigureEngine(asIScriptEngine *engine)
 	RegisterScriptFile(engine);
 	RegisterScriptFileSystem(engine);
 	RegisterExceptionRoutines(engine);
+	RegisterScriptSocket(engine);
 
 	// Register a couple of extra functions for the scripts
 	r = engine->RegisterGlobalFunction("void print(const string &in)", asFUNCTION(PrintString), asCALL_CDECL); assert( r >= 0 );

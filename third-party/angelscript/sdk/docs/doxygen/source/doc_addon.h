@@ -29,7 +29,48 @@ This page gives a brief description of the add-ons that you'll find in the /sdk/
  - \subpage doc_addon_math
  - \subpage doc_addon_grid
  - \subpage doc_addon_datetime
+ - \subpage doc_addon_socket
  - \subpage doc_addon_helpers_try
+
+
+
+
+
+\page doc_addon_socket socket object
+
+<b>Path:</b> /sdk/add_on/scriptsocket/
+
+The <code>CScriptSocket</code> provides an easy to use TCP socket for the scripts.
+
+\note Currently this add-on only works on Windows.
+
+\section doc_addon_socket_1 Public C++ interface
+
+\code
+class CScriptSocket
+{
+public:
+  CScriptSocket();
+
+  // Memory management
+  void AddRef() const;
+  void Release() const;
+
+  // Methods
+  int            Listen(asWORD port);
+  int            Close();
+  CScriptSocket* Accept(asINT64 timeoutMicrosec = 0);
+  int            Connect(asUINT ipv4Address, asWORD port);
+  int            Send(const std::string& data);
+  std::string    Receive(asINT64 timeoutMicrosec = 0);
+  bool           IsActive() const;
+};
+\endcode
+
+\section doc_addon_socket_2 Public script interface
+
+\see \ref doc_script_stdlib_socket "socket in the script language"
+
 
 
 
@@ -64,6 +105,7 @@ public:
   asUINT getHour() const;
   asUINT getMinute() const;
   asUINT getSecond() const;
+  asUINT getWeekDay() const;
   
   // Setters
   // Returns true if valid
@@ -125,7 +167,7 @@ public:
 
   // Clear the serializer to free references held internally
   void Clear();
-	
+
   // Add implementation for serializing user types
   void AddUserType(CUserType *ref, const std::string &name);
 
@@ -134,7 +176,7 @@ public:
 
   // Restore all global variables after reloading script
   int Restore(asIScriptModule *mod);
-  
+
   // Store extra objects that are not seen from the module's global variables
   void AddExtraObjectToStore(asIScriptObject *object);
 
@@ -177,9 +219,9 @@ struct CStringType : public CUserType
 {
   void *AllocateUnitializedMemory(CSerializedValue* value)
   {
-	// This must not be done for strings
-	assert(false);
-	return 0;
+    // This must not be done for strings
+    assert(false);
+    return 0;
   }	
   void Store(CSerializedValue *val, void *ptr)
   {
@@ -202,8 +244,8 @@ struct CArrayType : public CUserType
 {
   void* AllocateUnitializedMemory(CSerializedValue* value)
   {
-	CScriptArray* arr = CScriptArray::Create(value->GetType());
-	return arr;
+    CScriptArray* arr = CScriptArray::Create(value->GetType());
+    return arr;
   }
   void Store(CSerializedValue *val, void *ptr)
   {
@@ -328,6 +370,11 @@ public:
   // by callbacks that need it. This will hold a reference to the engine.
   virtual void SetEngine(asIScriptEngine *engine);
   virtual asIScriptEngine *GetEngine();
+  
+  // Sets the flag to decide if section name should be converted to just filename (true)
+  // or should not be converted and full path should be used instead (false).
+  virtual bool GetUseSectionFileNameOnly() const;
+  virtual void SetUseSectionFileNameOnly(bool useSectionFileNameOnly);
 };
 \endcode
 
@@ -936,8 +983,48 @@ doesn't match the stored handle the returned pointer will be null.
 To retrieve an object of an unknown type use the GetType() or GetTypeId() to
 determine the type stored in the handle, then use the Cast() method.
 
+\section doc_addon_handle_5 Example on how to return a newly registered function from C++
 
+The following is a bit more practical example of using the CScriptHandle to return a recently registered function. The 
+function could for example have been loaded from a shared library, based on informed function and name from the script.
 
+\code
+// This C++ function would be called from script, register a new C++ function and then return it to the script as a function pointer
+// Register with engine->RegisterGlobalFunction("ref @getDynamicFunction()", asFUNCTION(getDynamicFunction), asCALL_CDECL);
+CScriptHandle getDynamicFunction()
+{
+  // Get the active context and engine to register the function with
+  asIScriptContext* ctx = asGetActiveContext();
+  asIScriptEngine *engine = ctx->GetEngine();
+
+  // Register the function. The actual function could be dynamically loaded from a shared library
+  int funcId = engine->RegisterGlobalFunction("void dynamicFunction()", asFUNCTION(dynamicFunction), asCALL_CDECL);
+
+  // Create the CScriptHandle and put the function pointer in it for return to script
+  asIScriptFunction* func = engine->GetFunctionById(funcId);
+  CScriptHandle ref;
+  ref.Set(func, engine->GetTypeInfoById(func->GetTypeId()));
+
+  return ref;
+}
+\endcode
+
+In the script the this would be used in the following way:
+
+<pre>
+  funcdef void func();
+  void main()
+  {
+    // Get the function pointer as a generic ref
+    ref \@r = getDynamicFunction();
+
+    // Cast the ref to the expected function pointer
+    func \@f = cast<func>(r);
+
+    // Call the function
+    f();
+  }
+</pre>
 
 
 
@@ -1869,7 +1956,7 @@ int CompareEquality(asIScriptEngine *engine, void *leftObj, void *rightObj, int 
 int ExecuteString(asIScriptEngine *engine, const char *code, asIScriptModule *mod = 0, asIScriptContext *ctx = 0);
 
 // Compile and execute simple statements with option of return value.
-// The module is optional. If given the statements can access the entitites compiled in the module.
+// The module is optional. If given the statements can access the entities compiled in the module.
 // The caller can optionally provide its own context, for example if a context should be reused.
 int ExecuteString(asIScriptEngine *engine, const char *code, void *ret, int retTypeId, asIScriptModule *mod = 0, asIScriptContext *ctx = 0);
 

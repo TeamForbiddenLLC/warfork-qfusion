@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2023 Andreas Jonsson
+   Copyright (c) 2003-2025 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -47,7 +47,7 @@ template <class T> class asCArray
 public:
 	asCArray();
 	asCArray(const asCArray<T> &);
-	asCArray(asUINT reserve);
+	explicit asCArray(asUINT reserve);
 	~asCArray();
 
 	void   Allocate(asUINT numElements, bool keepData);
@@ -289,6 +289,7 @@ void asCArray<T>::AllocateNoConstruct(asUINT numElements, bool keepData)
 	T *tmp = 0;
 	if( numElements )
 	{
+		asASSERT(asQWORD(numElements) * sizeof(T) <= 2147483647);
 		if( sizeof(T)*numElements <= sizeof(buf) )
 			// Use the internal buffer
 			tmp = reinterpret_cast<T*>(buf);

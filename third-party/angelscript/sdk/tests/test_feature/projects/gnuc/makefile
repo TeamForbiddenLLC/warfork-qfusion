@@ -15,6 +15,7 @@ SRCNAMES = \
   bstr.cpp \
   main.cpp \
   test_2func.cpp \
+  test_addon_autowrapper.cpp \
   test_addon_contextmgr.cpp \
   test_addon_datetime.cpp \
   test_addon_scriptarray.cpp \
@@ -23,6 +24,7 @@ SRCNAMES = \
   test_addon_scriptgrid.cpp \
   test_addon_scripthandle.cpp \
   test_addon_scriptmath.cpp \
+  test_addon_scriptsocket.cpp \
   test_addon_serializer.cpp \
   test_addon_dictionary.cpp \
   test_addon_debugger.cpp \
@@ -65,6 +67,7 @@ SRCNAMES = \
   test_exceptionmemory.cpp \
   test_float.cpp \
   test_for.cpp \
+  test_foreach.cpp \
   test_funcoverload.cpp \
   test_functionptr.cpp \
   test_garbagecollect.cpp \
@@ -78,6 +81,7 @@ SRCNAMES = \
   test_import2.cpp \
   test_inheritance.cpp \
   test_interface.cpp \
+  test_literal.cpp \
   test_mixin.cpp \
   test_module.cpp \
   test_multiassign.cpp \
@@ -185,6 +189,7 @@ OBJ = $(addprefix $(OBJDIR)/, $(notdir $(SRCNAMES:.cpp=.o))) \
   obj/scriptany.o \
   obj/scriptmath.o \
   obj/scriptmathcomplex.o \
+  obj/scriptsocket.o \
   obj/scriptdictionary.o \
   obj/scriptfile.o \
   obj/scriptfilesystem.o \
@@ -234,6 +239,9 @@ obj/scriptmath.o: ../../../../add_on/scriptmath/scriptmath.cpp
 	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
 
 obj/scriptmathcomplex.o: ../../../../add_on/scriptmath/scriptmathcomplex.cpp
+	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
+
+obj/scriptsocket.o: ../../../../add_on/scriptsocket/scriptsocket.cpp
 	$(CXX) $(CXXFLAGS_ADDON) -o $@ -c $<
 
 obj/scriptany.o: ../../../../add_on/scriptany/scriptany.cpp

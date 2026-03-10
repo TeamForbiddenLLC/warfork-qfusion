@@ -59,7 +59,7 @@ const char *script =
 "#include \"dont_include\" \n"
 "*/ \n"
 // namespaces can also contain entities with metadata
-"namespace NS { \n"
+"namespace NS::nested { \n"
 " [func] void func() {} \n"
 " [class] class Class {} \n"
 "} \n"
@@ -77,6 +77,147 @@ bool Test()
 	CBufferedOutStream bout;
 
 	// TODO: Preprocessor directives should be alone on the line
+
+	// Test reusing builder for different scripts with metadata
+	// https://www.gamedev.net/forums/topic/718144-potential-bug-in-cscriptbuilder/5469392/
+	{
+		asIScriptEngine* engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		CScriptBuilder builder;
+		builder.StartNewModule(engine, "test");
+		builder.AddSectionFromMemory("test", "class A { [a] int a; } \n");
+		r = builder.BuildModule();
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptModule* mod = engine->GetModule("test");
+		vector<string> metadata = builder.GetMetadataForTypeProperty(mod->GetTypeIdByDecl("A"), 0);
+		if (metadata[0] != "a")
+			TEST_FAILED;
+		engine->ShutDownAndRelease();
+
+		// Restart the engine
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		builder.StartNewModule(engine, "test");
+		builder.AddSectionFromMemory("test", "class A { int a; } \n");
+		r = builder.BuildModule();
+		if (r < 0)
+			TEST_FAILED;
+
+		mod = engine->GetModule("test");
+		metadata = builder.GetMetadataForTypeProperty(mod->GetTypeIdByDecl("A"), 0);
+		if (!metadata.empty())
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
+	// Test Metadata with namespaces using double scopes
+	// https://www.gamedev.net/forums/topic/717547-script-builder-metadata-namespace-bug/5466636/
+	{
+		asIScriptEngine* engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		CScriptBuilder builder;
+		builder.StartNewModule(engine, "test");
+		builder.AddSectionFromMemory("test",
+			"namespace Foo::Bar { \n"
+			"  int a = 5; \n"
+			"} \n"
+			"namespace Thing { \n"
+			"  [Setting] \n"
+			"  int b = 10; \n"
+			"} \n");
+		r = builder.BuildModule();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		asIScriptModule* mod = engine->GetModule("test");
+		int varIdx = mod->GetGlobalVarIndexByName("Thing::b");
+		vector<string> metadata = builder.GetMetadataForVar(varIdx);
+		if (metadata[0] != "Setting")
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test Metadata on property using initialization with param list
+	// https://www.gamedev.net/forums/topic/717099-script-builder-addon-fails-on-variable-declaration/5464949/
+	{
+		asIScriptEngine* engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		CScriptBuilder builder;
+		builder.StartNewModule(engine, "test");
+		builder.AddSectionFromMemory("test", 
+			"class Bar {} \n"
+			"class Foo { Foo(const Bar& in b) {} } \n"
+			"[Metadata] \n"
+			"Foo Test(Bar()); \n"); 
+		r = builder.BuildModule();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		asIScriptModule* mod = engine->GetModule("test");
+		int varIdx = mod->GetGlobalVarIndexByName("Test");
+		vector<string> metadata = builder.GetMetadataForVar(varIdx);
+		if (metadata[0] != "Metadata")
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test #include with international characters in file name
+	// Reported by Rémy Stivani
+	{
+		asIScriptEngine* engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		CScriptBuilder builder;
+		builder.StartNewModule(engine, "test");
+		builder.AddSectionFromMemory("test", "#include \"scripts/j\xc3\xb6nsson.as\"  \n"); // \xc3\xb6 is utf-8 for ö
+		r = builder.BuildModule();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		asIScriptModule* mod = engine->GetModule("test");
+		int* var = (int*)mod->GetAddressOfGlobalVar(mod->GetGlobalVarIndexByName("jonsson"));
+		if (var == 0 || *var != 48)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test #include with a non-terminated string
 	{
@@ -150,6 +291,8 @@ bool Test()
 		builder.AddSectionFromMemory("test",
 			"class GameObject { \n"
 			"   [metadata] \n"
+			"   GameObject() delete; \n"
+			"   [metadata] \n"
 			"   private void onActivate1(int id, GameObject@ from) {} \n"
 			"   [metadata] \n"
 			"   void onActivate2(int id, GameObject@ from) final {} \n"
@@ -204,7 +347,7 @@ bool Test()
 		if (metadata[0] != " test['hello'] ")
 			TEST_FAILED;
 
-		engine->GetModule(0)->SetDefaultNamespace("NS");
+		engine->GetModule(0)->SetDefaultNamespace("NS::nested");
 		func = engine->GetModule(0)->GetFunctionByName("func");
 		metadata = builder.GetMetadataForFunc(func);
 		if (metadata[0] != "func")
@@ -216,7 +359,7 @@ bool Test()
 		if (metadata[0] != " myclass ")
 			TEST_FAILED;
 
-		typeId = engine->GetModule(0)->GetTypeIdByDecl("NS::Class");
+		typeId = engine->GetModule(0)->GetTypeIdByDecl("NS::nested::Class");
 		metadata = builder.GetMetadataForType(typeId);
 		if (metadata[0] != "class")
 			TEST_FAILED;
