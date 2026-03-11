@@ -52,7 +52,7 @@ jobs:
         run: |
           cmake -B ./build --preset workflow-macos-${{ inputs.config }} ${{ inputs.cmake_args }}
           cd build
-          cmake --build .
+          cmake --build . --config ${{ env.BUILD_FOLDER }}
 
       - name: Package Assets
         working-directory: ./source
