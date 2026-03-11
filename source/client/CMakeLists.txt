@@ -239,6 +239,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         cp -r ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/test/*[^.dSYM] ${BUNDLE_PATH}/MacOS/ &&
         cp ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/${QFUSION_SERVER_NAME} ${BUNDLE_PATH}/MacOS/ &&
         cp ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/wf_steam${CMAKE_EXECUTABLE_SUFFIX} ${BUNDLE_PATH}/Resources/ &&
+        cp ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/crashpad_handler${CMAKE_EXECUTABLE_SUFFIX} ${BUNDLE_PATH}/Resources/ &&
         cp ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/${QFUSION_TVSERVER_NAME} ${BUNDLE_PATH}/MacOS/ &&
         cp ${CMAKE_BINARY_DIR}/warfork-qfusion/libsteam_api.dylib ${BUNDLE_PATH}/Resources/ &&
         cp ${CMAKE_BINARY_DIR}/warfork-qfusion/commit.txt ${BUNDLE_PATH}/MacOS/ &&
