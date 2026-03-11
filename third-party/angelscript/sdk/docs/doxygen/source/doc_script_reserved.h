@@ -10,6 +10,7 @@ may reserve additional keywords that are specific to that application.
 <tr>
 <td width=100 valign=top><code>
 and<br>
+abstract*<br>
 auto<br>
 bool<br>
 break<br>
@@ -20,21 +21,26 @@ class<br>
 const<br>
 continue<br>
 default<br>
+do<br>
 </code></td>
 <td width=100 valign=top><code>
-do<br>
 double<br>
 else<br>
 enum<br>
+explicit*<br>
+external*<br>
 false<br>
+final*<br>
 float<br>
 for<br>
-foreach<br>
+from*<br>
 funcdef<br>
-if<br>
-import<br>
+function*<br>
+get*<br>
 </code></td>
 <td width=100 valign=top><code>
+if<br>
+import<br>
 in<br>
 inout<br>
 int<br>
@@ -52,21 +58,26 @@ not<br>
 null<br>
 or<br>
 out<br>
+override*<br>
 private<br>
+property*<br>
 protected<br>
 return<br>
+set*<br>
+shared*<br>
+super*<br>
 switch<br>
-true<br>
-try<br>
 </code></td>
 <td width=100 valign=top><code>
+this*<br>
+true<br>
+try<br>
 typedef<br>
 uint<br>
 uint8<br>
 uint16<br>
 uint32<br>
 uint64<br>
-using<br>
 void<br>
 while<br>
 xor<br>
@@ -74,37 +85,7 @@ xor<br>
 </tr>
 </table>
 
-The following keywords are context sensitive, i.e. depending on where they appear they will have
-a meaning to the compiler, but can otherwise be used as identifiers for functions and variables.
-
-<table cellspacing=0 cellpadding=0 border=0>
-<tr>
-<td width=100 valign=top><code>
-abstract<br>
-delete<br>
-explicit<br>
-</code></td>
-<td width=100 valign=top><code>
-external<br>
-final<br>
-from<br>
-</code></td>
-<td width=100 valign=top><code>
-function<br>
-get<br>
-override<br>
-</code></td>
-<td width=100 valign=top><code>
-property<br>
-set<br>
-shared<br>
-</code></td>
-<td width=100 valign=top><code>
-super<br>
-this<br>
-</code></td>
-</tr>
-</table>
+<small>* Not really a reserved keyword, but is recognized by the compiler as a built-in keyword.</small>
 
 These are the non-alphabetical tokens that are also used in the language syntax.
 
@@ -145,8 +126,8 @@ These are the non-alphabetical tokens that are also used in the language syntax.
 ;<br>
 |<br>
 ^<br>
-~<br>
 </code></td><td width=100 valign=top><code>
+~<br>
 &lt;&lt;<br>
 &gt;&gt;<br>
 &gt;&gt;&gt;<br>
@@ -156,9 +137,8 @@ These are the non-alphabetical tokens that are also used in the language syntax.
 &lt;&lt;=<br>
 &gt;&gt;=<br>
 &gt;&gt;&gt;=<br>
-.<br>
 </code></td><td width=100 valign=top><code>
-...<br>
+.<br>
 &amp;&amp;<br>
 ||<br>
 !<br>
@@ -193,7 +173,5 @@ _Abc123
 
 The characters space (32), tab (9), carriage return (13), line feed (10), and the 
 UTF8 byte-order-mark (U+FEFF) are all recognized as whitespace.
-
-\todo number literals now support separators
 
 */

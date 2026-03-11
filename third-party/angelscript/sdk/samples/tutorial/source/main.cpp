@@ -1,7 +1,7 @@
 #include <iostream>  // cout
 #include <assert.h>  // assert()
 #include <string.h>  // strstr()
-#ifdef defined(__linux__) || defined(__unix__)
+#ifdef __linux__
 	#include <sys/time.h>
 	#include <stdio.h>
 	#include <termios.h>
@@ -15,7 +15,7 @@
 
 using namespace std;
 
-#ifdef defined(__linux__) || defined(__unix__)
+#ifdef __linux__
 
 #define UINT unsigned int 
 typedef unsigned int DWORD;
@@ -182,12 +182,10 @@ int RunApplication()
 
 			// Write some information about the script exception
 			asIScriptFunction *func = ctx->GetExceptionFunction();
-			const char* scriptSection = 0;
-			int line = ctx->GetExceptionLineNumber(0, &scriptSection);
 			cout << "func: " << func->GetDeclaration() << endl;
 			cout << "modl: " << func->GetModuleName() << endl;
-			cout << "sect: " << (scriptSection ? scriptSection : "") << endl;
-			cout << "line: " << line << endl;
+			cout << "sect: " << func->GetScriptSectionName() << endl;
+			cout << "line: " << ctx->GetExceptionLineNumber() << endl;
 			cout << "desc: " << ctx->GetExceptionString() << endl;
 		}
 		else

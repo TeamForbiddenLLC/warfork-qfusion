@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2025 Andreas Jonsson
+   Copyright (c) 2003-2017 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -80,13 +80,12 @@ public:
 	const char      *GetNamespace() const;
 	asITypeInfo     *GetBaseType() const { return 0; }
 	bool             DerivesFrom(const asITypeInfo *objType) const { UNUSED_VAR(objType); return 0; }
-	asQWORD          GetFlags() const;
+	asDWORD          GetFlags() const;
 	asUINT           GetSize() const;
 	int              GetTypeId() const;
 	int              GetSubTypeId(asUINT subtypeIndex = 0) const { UNUSED_VAR(subtypeIndex); return -1; }
 	asITypeInfo     *GetSubType(asUINT subtypeIndex = 0) const { UNUSED_VAR(subtypeIndex); return 0; }
 	asUINT           GetSubTypeCount() const { return 0; }
-	int	             GetUnderlyingTypeId() const { return asERROR; }
 
 	// Interfaces
 	asUINT           GetInterfaceCount() const { return 0; }
@@ -106,7 +105,7 @@ public:
 
 	// Properties
 	asUINT      GetPropertyCount() const { return 0; }
-	int         GetProperty(asUINT index, const char **name, int *typeId, bool *isPrivate, bool *isProtected, int *offset, bool *isReference, asDWORD *accessMask, int *compositeOffset, bool *isCompositeIndirect, bool *isConst) const;
+	int         GetProperty(asUINT index, const char **name, int *typeId, bool *isPrivate, bool *isProtected, int *offset, bool *isReference, asDWORD *accessMask, int *compositeOffset, bool *isCompositeIndirect) const;
 	const char *GetPropertyDeclaration(asUINT index, bool includeNamespace = false) const { UNUSED_VAR(index); UNUSED_VAR(includeNamespace); return 0; }
 
 	// Behaviours
@@ -119,17 +118,14 @@ public:
 	asITypeInfo *GetParentType() const { return 0; }
 
 	// Enums
-	asUINT      GetEnumValueCount() const { return 0; }
-	const char *GetEnumValueByIndex(asUINT index, asINT64 *outValue) const { UNUSED_VAR(index); if (outValue) *outValue = 0; return 0; }
+	virtual asUINT      GetEnumValueCount() const { return 0; }
+	virtual const char *GetEnumValueByIndex(asUINT index, int *outValue) const { UNUSED_VAR(index); if (outValue) *outValue = 0; return 0; }
 
-#ifdef AS_DEPRECATED
-	// deprecated since 2025-09-13, 2.39.0
 	// Typedef
-	int GetTypedefTypeId() const { return asERROR; }
-#endif
+	virtual int GetTypedefTypeId() const { return asERROR; }
 
 	// Funcdef
-	asIScriptFunction *GetFuncdefSignature() const { return 0; }
+	virtual asIScriptFunction *GetFuncdefSignature() const { return 0; }
 
 	// User data
 	void *SetUserData(void *data, asPWORD type);
@@ -164,7 +160,7 @@ public:
 	asSNameSpace                *nameSpace;
 	int                          size;
 	mutable int                  typeId;
-	asQWORD                      flags;
+	asDWORD                      flags;
 	asDWORD                      accessMask;
 
 	// Store the script section where the code was declared
@@ -190,9 +186,7 @@ protected:
 struct asSEnumValue
 {
 	asCString name;
-	asINT64   value;
-
-	asSEnumValue() : value(0) {}
+	int       value;
 };
 
 class asCEnumType : public asCTypeInfo
@@ -202,12 +196,9 @@ public:
 	~asCEnumType();
 
 	asCArray<asSEnumValue*> enumValues;
-	asCDataType enumType;
 
 	asUINT      GetEnumValueCount() const;
-	const char *GetEnumValueByIndex(asUINT index, asINT64 *outValue) const;
-
-	int GetUnderlyingTypeId() const;
+	const char *GetEnumValueByIndex(asUINT index, int *outValue) const;
 
 protected:
 	asCEnumType() : asCTypeInfo() {}
@@ -223,11 +214,7 @@ public:
 
 	asCDataType aliasForType; // increase refCount for typeinfo inside datatype
 
-	int GetUnderlyingTypeId() const;
-#ifdef AS_DEPRECATED
-	// deprecated since 2025-09-13, 2.39.0
 	int GetTypedefTypeId() const;
-#endif
 
 protected:
 	asCTypedefType() : asCTypeInfo() {}

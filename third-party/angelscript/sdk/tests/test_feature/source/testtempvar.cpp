@@ -32,8 +32,6 @@ Object2 ScriptObject;
 
 bool TestTempVar()
 {
-    RET_ON_MAX_PORT;
-
 	bool fail = false;
 
 	asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);

@@ -94,138 +94,6 @@ bool TestCondition()
 	CBufferedOutStream bout;
 	asIScriptEngine* engine;
 
-	// Test assert in condition
-	// https://github.com/anjo76/angelscript/issues/37
-	{
-		engine = asCreateScriptEngine();
-		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
-		bout.buffer = "";
-
-		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
-		mod->AddScriptSection("test",
-			"int f(int x) { \n"
-			"  return x; \n"
-			"} \n"
-			"int main() { \n"
-			"  f((true ? -1.0f : -1)); \n"
-			"  return 0; \n"
-			"} \n");
-		r = mod->Build();
-		if (r < 0)
-			TEST_FAILED;
-
-		engine->ShutDownAndRelease();
-
-		if (bout.buffer != "test (4, 1) : Info    : Compiling int main()\n"
-						   "test (5, 6) : Warning : Float value truncated in implicit conversion to integer\n")
-		{
-			PRINTF("%s", bout.buffer.c_str());
-			TEST_FAILED;
-		}
-	}
-
-	// Test crash on condition
-	// https://www.gamedev.net/forums/topic/718945-ternary-operator-with-global-assignment-causes-crash/
-	{
-		engine = asCreateScriptEngine();
-		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
-		bout.buffer = "";
-//		engine->SetEngineProperty(asEP_OPTIMIZE_BYTECODE, false);
-
-		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
-		mod->AddScriptSection("test",
-			"int a = -1; \n"
-			"int b = -1; \n"
-			"void Main() { \n"
-			"	int i = true ? (a = 1) : (b = 0); \n" // TODO: issue is SetV4, LDG, WRTV4 is replaced with SetG4 which doesn't load the address of the global var into the value register. Should make it SetG4, LDG if the value register is used afterwards
-			"} \n");
-		r = mod->Build();
-		if (r < 0)
-			TEST_FAILED;
-
-		r = ExecuteString(engine, "Main()", mod);
-		if (r != asEXECUTION_FINISHED)
-			TEST_FAILED;
-
-		engine->ShutDownAndRelease();
-
-		if (bout.buffer != "")
-		{
-			PRINTF("%s", bout.buffer.c_str());
-			TEST_FAILED;
-		}
-	}
-
-	// Test crash on condition
-	// https://www.gamedev.net/forums/topic/718891-ternary-operator-crash-when-using-auto/5470948/
-	{
-		engine = asCreateScriptEngine();
-		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
-		bout.buffer = "";
-//		engine->SetEngineProperty(asEP_OPTIMIZE_BYTECODE, false);
-
-		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
-		mod->AddScriptSection("test",
-			"class test \n"
-			"{ \n"
-			"} \n"
-			"void test_function(const test & in value) \n"
-			"{ \n"
-			"} \n"
-			"void failing_test() \n"
-			"{ \n"
-			"	auto test_a = test(); \n"
-			"	auto test_b = test(); \n"
-			"   test copy; \n"
-			"	copy = true ? test_a : test_b; \n"
-			"	test_function(true ? test_a : test_b); \n"
-			"} \n");
-		r = mod->Build();
-		if (r < 0)
-			TEST_FAILED;
-
-		r = ExecuteString(engine, "failing_test()", mod);
-		if (r != asEXECUTION_FINISHED)
-			TEST_FAILED;
-
-		engine->ShutDownAndRelease();
-
-		if (bout.buffer != "")
-		{
-			PRINTF("%s", bout.buffer.c_str());
-			TEST_FAILED;
-		}
-	}
-
-	// Test proper conversion of null in condition
-	// https://www.gamedev.net/forums/topic/717777-opimplconv-with-different-return-types-crashes-application-in-ternary-operator-assignment/5467648/
-	{
-		engine = asCreateScriptEngine();
-		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
-		bout.buffer = "";
-
-		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
-		mod->AddScriptSection("test",
-			"class Thing {\n"
-			"    int opImplConv() { return 0; }\n"
-			"    float opImplConv() { return 0; }\n"
-			"} \n"
-			"void Main() {\n"
-			"    auto foo = true ? Thing() : null;\n"
-			"} \n");
-		r = mod->Build();
-		if (r < 0)
-			TEST_FAILED;
-
-		if (bout.buffer != "")
-		{
-			PRINTF("%s", bout.buffer.c_str());
-			TEST_FAILED;
-		}
-
-		engine->ShutDownAndRelease();
-	}
-
 	// Test condition with objects. Should return handle for better efficiency. TODO: Can this be done in all scenarios?
 	// https://www.gamedev.net/forums/topic/711022-ternary-operators-stopped-paying-attention-to-expected-return-type/
 	{
@@ -561,7 +429,7 @@ bool TestCondition()
 		asIScriptFunction *func = mod->GetFunctionByName("func");
 		asBYTE expect[] =
 		{
-			asBC_FREE,asBC_RET
+			asBC_SUSPEND,asBC_FREE,asBC_RET
 		};
 		if (!ValidateByteCode(func, expect))
 			TEST_FAILED;

@@ -134,9 +134,6 @@ protected:
 	void  Construct(SArrayBuffer *buf, asUINT start, asUINT end);
 	void  Destruct(SArrayBuffer *buf, asUINT start, asUINT end);
 	bool  Equals(const void *a, const void *b, asIScriptContext *ctx, SArrayCache *cache) const;
-
-private:
-	struct customLess;
 };
 
 void RegisterScriptArray(asIScriptEngine *engine, bool defaultArray);

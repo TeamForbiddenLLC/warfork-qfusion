@@ -171,8 +171,6 @@ void Print(float f)
 
 bool Test()
 {
-	RET_ON_MAX_PORT;
-
 	bool fail = false;
 
 	asIScriptEngine*        pSE;

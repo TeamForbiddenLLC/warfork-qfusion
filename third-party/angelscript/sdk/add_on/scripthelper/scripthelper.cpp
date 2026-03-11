@@ -281,12 +281,11 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 			engine->SetDefaultNamespace(currNamespace.c_str());
 		}
 		const char *enumName = ti->GetName();
-		const char* underlyingType = engine->GetTypeDeclaration(ti->GetUnderlyingTypeId());
-		strm << "enum " << enumName << " " << underlyingType << "\n";
+		strm << "enum " << enumName << "\n";
 		for( asUINT m = 0; m < ti->GetEnumValueCount(); m++ )
 		{
 			const char *valName;
-			asINT64 val;
+			int val;
 			valName = ti->GetEnumValueByIndex(m, &val);
 			strm << "enumval " << enumName << " " << valName << " " << val << "\n";
 		}
@@ -352,7 +351,7 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 			strm << "access " << hex << (unsigned int)(accessMask) << dec << "\n";
 			currAccessMask = accessMask;
 		}
-		strm << "typedef " << ti->GetName() << " \"" << engine->GetTypeDeclaration(ti->GetUnderlyingTypeId()) << "\"\n";
+		strm << "typedef " << ti->GetName() << " \"" << engine->GetTypeDeclaration(ti->GetTypedefTypeId()) << "\"\n";
 	}
 
 	c = engine->GetFuncdefCount();
@@ -544,7 +543,7 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 	}
 
 	asDWORD flags = 0;
-	int typeId = engine->GetStringFactory(&flags);
+	int typeId = engine->GetStringFactoryReturnTypeId(&flags);
 	if( typeId > 0 )
 		strm << "strfactory \"" << ((flags & asTM_CONST) ? "const " : "") << engine->GetTypeDeclaration(typeId) << ((flags & asTM_INOUTREF) ? "&" : "") << "\"\n";
 
@@ -740,18 +739,13 @@ int ConfigEngineFromStream(asIScriptEngine *engine, istream &strm, const char *c
 		}
 		else if( token == "objprop" )
 		{
-			string name, decl, compositeOffset = "0", isCompositeIndirect = "0";
+			string name, decl, compositeOffset, isCompositeIndirect;
 			in::GetToken(engine, name, config, pos);
 			name = name.substr(1, name.length() - 2);
 			in::GetToken(engine, decl, config, pos);
 			decl = decl.substr(1, decl.length() - 2);
 			in::GetToken(engine, compositeOffset, config, pos);
 			in::GetToken(engine, isCompositeIndirect, config, pos);
-			if( !(isCompositeIndirect == "0" || isCompositeIndirect == "1") )
-			{
-				engine->WriteMessage(configFile, in::GetLineNumber(config, pos), 0, asMSGTYPE_ERROR, "Wrong value for composite indirect. Is it an old config version?");
-				return -1;
-			}
 
 			asITypeInfo *type = engine->GetTypeInfoById(engine->GetTypeIdByDecl(name.c_str()));
 			if( type == 0 )
@@ -862,11 +856,10 @@ int ConfigEngineFromStream(asIScriptEngine *engine, istream &strm, const char *c
 		}
 		else if( token == "enum" )
 		{
-			string typeName, typeOf;
-			in::GetToken(engine, typeName, config, pos);
-			in::GetToken(engine, typeOf, config, pos);
+			string type;
+			in::GetToken(engine, type, config, pos);
 
-			r = engine->RegisterEnum(typeName.c_str(), typeOf.c_str());
+			r = engine->RegisterEnum(type.c_str());
 			if( r < 0 )
 			{
 				engine->WriteMessage(configFile, in::GetLineNumber(config, pos), 0, asMSGTYPE_ERROR, "Failed to register enum type");
@@ -880,7 +873,7 @@ int ConfigEngineFromStream(asIScriptEngine *engine, istream &strm, const char *c
 			in::GetToken(engine, name, config, pos);
 			in::GetToken(engine, value, config, pos);
 
-			r = engine->RegisterEnumValue(type.c_str(), name.c_str(), atoll(value.c_str()));
+			r = engine->RegisterEnumValue(type.c_str(), name.c_str(), atol(value.c_str()));
 			if( r < 0 )
 			{
 				engine->WriteMessage(configFile, in::GetLineNumber(config, pos), 0, asMSGTYPE_ERROR, "Failed to register enum value");
@@ -926,12 +919,10 @@ string GetExceptionInfo(asIScriptContext *ctx, bool showStack)
 	stringstream text;
 
 	const asIScriptFunction *function = ctx->GetExceptionFunction();
-	const char* scriptSection = 0;
-	int line = ctx->GetExceptionLineNumber(0, &scriptSection);
 	text << "func: " << function->GetDeclaration() << "\n";
 	text << "modl: " << (function->GetModuleName() ? function->GetModuleName() : "") << "\n";
-	text << "sect: " << (scriptSection ? scriptSection : "") << "\n";
-	text << "line: " << line << "\n";
+	text << "sect: " << (function->GetScriptSectionName() ? function->GetScriptSectionName() : "") << "\n";
+	text << "line: " << ctx->GetExceptionLineNumber() << "\n";
 	text << "desc: " << ctx->GetExceptionString() << "\n";
 
 	if( showStack )
@@ -944,8 +935,7 @@ string GetExceptionInfo(asIScriptContext *ctx, bool showStack)
 			{
 				if( function->GetFuncType() == asFUNC_SCRIPT )
 				{
-					line = ctx->GetLineNumber(n, 0, &scriptSection);
-					text << (scriptSection ? scriptSection : "") << " (" << line << "): " << function->GetDeclaration() << "\n";
+					text << (function->GetScriptSectionName() ? function->GetScriptSectionName() : "") << " (" << ctx->GetLineNumber(n) << "): " << function->GetDeclaration() << "\n";
 				}
 				else
 				{

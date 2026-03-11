@@ -60,7 +60,7 @@ void Get(asIScriptGeneric *gen)
 	gen->SetReturnDWord(false);
 }
 
-static CScriptString *g_test = 0;
+static CScriptString *g_test = new CScriptString("test");
 void GetConstStringRef(asIScriptGeneric *gen)
 {
 	gen->SetReturnAddress(g_test);
@@ -267,7 +267,6 @@ bool Test()
 
 
 		// Test string copy constructor
-		g_test = new CScriptString("test");
 		r = ExecuteString(engine, "string tst(getconststringref()); print(tst);");
 		if (r != asEXECUTION_FINISHED) TEST_FAILED;
 		if (printOutput != "test") TEST_FAILED;
@@ -431,8 +430,7 @@ bool Test()
 		if (bout.buffer != "TestScriptString (1, 1) : Info    : Compiling void Main()\n"
 						   "TestScriptString (4, 4) : Error   : No matching signatures to 'test(const string@&)'\n"
 						   "TestScriptString (4, 4) : Info    : Candidates are:\n"
-						   "TestScriptString (4, 4) : Info    : void test(string@ s)\n"
-						   "TestScriptString (4, 4) : Info    : Rejected due to type mismatch on parameter 's'\n")
+						   "TestScriptString (4, 4) : Info    : void test(string@ s)\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

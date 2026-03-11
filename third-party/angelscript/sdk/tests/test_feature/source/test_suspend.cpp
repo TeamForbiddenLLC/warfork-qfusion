@@ -50,7 +50,7 @@ void Abort(asIScriptGeneric *)
 	doAbort = true;
 }
 
-void LineCallback(asIScriptContext *ctx, void * /*param*/)
+void STDCALL LineCallback(asIScriptContext *ctx, void * /*param*/)
 {
 	// Suspend immediately
 	ctx->Suspend();
@@ -81,7 +81,7 @@ bool Test()
 	mod->Build();
 
 	ctx = engine->CreateContext();
-	ctx->SetLineCallback(asFUNCTION(LineCallback), 0, asCALL_CDECL);
+	ctx->SetLineCallback(asFUNCTION(LineCallback), 0, asCALL_STDCALL);
 	if( ctx->Prepare(mod->GetFunctionByDecl("void TestSuspend()")) >= 0 )
 	{
 		while( loopCount < 5 && !doSuspend )
@@ -113,7 +113,7 @@ bool Test()
 		mod->Build();
 
 		ctx = engine->CreateContext();
-		ctx->SetLineCallback(asFUNCTION(LineCallback), 0, asCALL_CDECL);
+		ctx->SetLineCallback(asFUNCTION(LineCallback), 0, asCALL_STDCALL);
 		asIScriptFunction *func = engine->GetModule(0)->GetFunctionByDecl("void TestSuspend2()");
 		ctx->Prepare(func);
 		loopCount = 0;

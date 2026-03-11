@@ -416,40 +416,10 @@ int* factory_func(int* aux)
 	return new int();
 }
 
-// Factory copy func (registered with asOBJ_CDECL_OBJLAST + auxiliary pointer)
-int* factory_copy_func(int* obj, int* aux)
-{
-	(*aux)++;
-	return new int();
-}
-
-// Factory copy func (registered with asOBJ_CDECL_OBJFIRST + auxiliary pointer)
-int* factory_copy_func2(int* aux, int* obj)
-{
-	(*aux)++;
-	return new int();
-}
-
 void release_func(int* obj)
 {
 	delete obj;
 }
-
-struct EnemyTypeDetails {
-	//...blah...
-	int a;
-};
-
-class Enemy {
-public:
-	Enemy(const EnemyTypeDetails& type) : typeRef(type), typePtr(&type) {  }
-
-	int a;
-	const EnemyTypeDetails& typeRef; //What I want, but can't register
-	const EnemyTypeDetails* typePtr;
-};
-
-Enemy e(EnemyTypeDetails());
 
 bool Test()
 {
@@ -462,111 +432,8 @@ bool Test()
 	COutStream out;
  	asIScriptEngine *engine;
 
-	// Test class with constructor where all args have default values
-	// Reported by Patrick Jeeves
-	{
-		engine = asCreateScriptEngine();
-		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
-		bout.buffer = "";
-
-		r = engine->RegisterObjectType("Material", sizeof(uint32_t),
-			asOBJ_APP_CLASS_CONSTRUCTOR | asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS | asOBJ_APP_CLASS_ALLINTS); assert(r >= 0);
-		r = engine->RegisterObjectBehaviour("Material",
-			asBEHAVE_CONSTRUCT, "void f(int detail = 0, int border = 0, int light = 0)", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
-
-		r = engine->RegisterObjectType("Style", 0, asOBJ_REF | asOBJ_NOCOUNT); assert(r >= 0);
-		r = engine->RegisterObjectBehaviour("Style", asBEHAVE_FACTORY, "Style@ f(Material = Material())", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
-
-		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
-		mod->AddScriptSection("test",
-			"void main() { \n"
-			"  Style s(); \n" // call to the Style factory with default arg, which in turn calls Material constructor with default arg
-			"} \n");
-		r = mod->Build();
-		if (r < 0)
-			TEST_FAILED;
-
-		engine->ShutDownAndRelease();
-
-		if (bout.buffer != "")
-		{
-			PRINTF("%s", bout.buffer.c_str());
-			TEST_FAILED;
-		}
-	}
-
-
-	// Test placement constructor in global variable for registered type
-	// Reported by Patrick Jeeves
-	{
-		engine = asCreateScriptEngine();
-		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
-		bout.buffer = "";
-
-		engine->SetEngineProperty(asEP_INIT_GLOBAL_VARS_AFTER_BUILD, 0);
-
-		r = engine->RegisterObjectType("Foo", 0, asOBJ_REF | asOBJ_NOCOUNT); assert(r >= 0);
-		r = engine->RegisterObjectBehaviour("Foo", asBEHAVE_FACTORY, "Foo @f(int a, int b)", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
-
-		asIScriptModule* mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
-		mod->AddScriptSection("test",
-			"Foo s = Foo(1,2); \n" // Should be allowed. There should not be a copy of the object in this case
-			"Foo t(1,2); \n"); // Syntax sugar. Same effect as previous declaration
-		r = mod->Build();
-		if (r < 0)
-			TEST_FAILED;
-
-		if (bout.buffer != "")
-		{
-			PRINTF("%s", bout.buffer.c_str());
-			TEST_FAILED;
-		}
-
-		engine->ShutDownAndRelease();
-	}
-
-	// Test asOFFSET for an object member property as reference
-	// https://www.gamedev.net/forums/topic/717443-registerobjectmethod-crash-registering-a-const-reference/5466144/
-	{
-		engine = asCreateScriptEngine();
-		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
-		bout.buffer = "";
-
-		r = engine->RegisterObjectType("EnemyTypeDetails", sizeof(EnemyTypeDetails), asOBJ_VALUE | asOBJ_POD); assert(r >= 0);
-		r = engine->RegisterObjectType("Enemy", 0, asOBJ_REF | asOBJ_NOCOUNT); assert(r >= 0);
-	
-		// asOFFSET cannot be used to determine the offset of the member. This is because when the
-		// address of the member is taken C++ actually returns the address that it is referring to
-		// Standard offsetof and __builtin_offsetof also do not work
-		//int off1 = offsetof(Enemy, typeRef);
-		//int off2 = __builtin_offsetof(Enemy, typeRef);
-
-/* 
-		Disabled this test because the asOFFSET macro causes an exception when generating the
-		project with CMake for MSVC, even though I don't see any difference in the project settings. 
-		It also doesn't work on GNUC. It is anyway an invalid use of asOFFSET as it is not possible 
-		to get the offset for members declared as references in C++.
-
-		r = engine->RegisterObjectProperty("Enemy", "const EnemyTypeDetails &typeRef", asOFFSET(Enemy, typeRef));
-*/
-		// Simulating a very large offset that would be calculated by asOFFSET for members as references (since it would try to compare with the actual referenced address)
-		r = engine->RegisterObjectProperty("Enemy", "const EnemyTypeDetails &typeRef", 124353256);
-		if (r != asINVALID_ARG)
-			TEST_FAILED;
-		r = engine->RegisterObjectProperty("Enemy", "const EnemyTypeDetails &typePtr", asOFFSET(Enemy, typePtr)); assert(r >= 0);
-
-		if (bout.buffer != " (0, 0) : Error   : Failed in call to function 'RegisterObjectProperty' with 'Enemy' and 'const EnemyTypeDetails &typeRef' (Code: asINVALID_ARG, -5)\n")
-		{
-			PRINTF("%s", bout.buffer.c_str());
-			TEST_FAILED;
-		}
-
-		engine->ShutDownAndRelease();
-	}
-
 	// Test factory functions with auxiliary pointers using asOBJ_CDECL_OBJLAST and asOBJ_CDECL_OBJFIRST
 	// https://www.gamedev.net/forums/topic/711801-why-are-the-ascall_cdecl_objlastfirst-calling-conventions-only-supported-in-methods/5445516/
-	SKIP_ON_MAX_PORT
 	{
 		engine = asCreateScriptEngine();
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
@@ -597,50 +464,6 @@ bool Test()
 
 		engine->ShutDownAndRelease();
 	}
-
-	// Test factory functions with auxiliary pointers using asOBJ_CDECL_OBJLAST and asOBJ_CDECL_OBJFIRST
-	// https://www.gamedev.net/forums/topic/717287-auxiliary-object-not-provided-when-using-type-in-template-array/5465594/
-SKIP_ON_MAX_PORT
-	{
-		engine = asCreateScriptEngine();
-		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
-		bout.buffer = "";
-
-		int aux = 0;
-		engine->RegisterObjectType("boo", 0, asOBJ_REF | asOBJ_SCOPED);
-		// even though factory functions are really global functions, it is possible to use asCALL_CDECL_OBJLAST with an auxiliary object that will be passed to the factory function
-		engine->RegisterObjectBehaviour("boo", asBEHAVE_FACTORY, "boo @f()", asFUNCTION(factory_func), asCALL_CDECL_OBJLAST, &aux);
-		engine->RegisterObjectBehaviour("boo", asBEHAVE_FACTORY, "boo @f(const boo &in)", asFUNCTION(factory_copy_func), asCALL_CDECL_OBJLAST, &aux);
-		engine->RegisterObjectBehaviour("boo", asBEHAVE_RELEASE, "void f()", asFUNCTION(release_func), asCALL_CDECL_OBJLAST);
-
-		engine->RegisterObjectType("foo", 0, asOBJ_REF | asOBJ_SCOPED);
-		// even though factory functions are really global functions, it is possible to use asCALL_CDECL_OBJFIRST with an auxiliary object that will be passed to the factory function
-		engine->RegisterObjectBehaviour("foo", asBEHAVE_FACTORY, "foo @f()", asFUNCTION(factory_func), asCALL_CDECL_OBJFIRST, &aux);
-		engine->RegisterObjectBehaviour("foo", asBEHAVE_FACTORY, "foo @f(const foo &in)", asFUNCTION(factory_copy_func2), asCALL_CDECL_OBJFIRST, &aux);
-		engine->RegisterObjectBehaviour("foo", asBEHAVE_RELEASE, "void f()", asFUNCTION(release_func), asCALL_CDECL_OBJLAST);
-
-		void *boo = engine->CreateScriptObject(engine->GetTypeInfoByName("boo"));
-		void* boo2 = engine->CreateScriptObjectCopy(boo, engine->GetTypeInfoByName("boo"));
-		release_func((int*)boo);
-		release_func((int*)boo2);
-
-		void* foo = engine->CreateScriptObject(engine->GetTypeInfoByName("foo"));
-		void* foo2 = engine->CreateScriptObjectCopy(foo, engine->GetTypeInfoByName("foo"));
-		release_func((int*)foo);
-		release_func((int*)foo2);
-
-		if (bout.buffer != "")
-		{
-			PRINTF("%s", bout.buffer.c_str());
-			TEST_FAILED;
-		}
-
-		if (aux != 4)
-			TEST_FAILED;
-
-		engine->ShutDownAndRelease();
-	}
-
 
 	// Test with incorrect opImplCast signature
 	// Reported by Patrick Jeeves
@@ -715,8 +538,8 @@ SKIP_ON_MAX_PORT
 
 	// Test WRAP_MFN_PR on method without overload in derived class
 	// https://www.gamedev.net/forums/topic/708971-class-members-unregistering/5436764/
-#if defined(__GNUC__) || defined(__clang__)
-	PRINTF("Skipping test for WRAP_MFN_PR on GNUC and clang because it doesn't work\n");
+#if defined(__GNUC__)
+	PRINTF("Skipping test for WRAP_MFN_PR on GNUC because it doesn't work\n");
 #else
 	{
 		engine = asCreateScriptEngine();
@@ -862,7 +685,7 @@ SKIP_ON_MAX_PORT
 		if( r < 0 )
 			TEST_FAILED;
 		asIScriptFunction *func = mod->GetFunctionByName("func");
-		asBYTE bc[] = {asBC_PshC4, asBC_PshC4, asBC_PSF, asBC_CALLSYS, asBC_PSF, asBC_PshGPtr, asBC_ADDSi, asBC_RDSPtr, asBC_COPY, asBC_PopPtr,
+		asBYTE bc[] = {asBC_SUSPEND, asBC_PshC4, asBC_PshC4, asBC_PSF, asBC_CALLSYS, asBC_PSF, asBC_PshGPtr, asBC_ADDSi, asBC_RDSPtr, asBC_COPY, asBC_PopPtr, 
 					   asBC_SUSPEND, asBC_PshC4, asBC_PshC4, asBC_PSF, asBC_CALLSYS, asBC_PSF, asBC_PshGPtr, asBC_ADDSi, asBC_COPY, asBC_PopPtr, 
 					   asBC_SUSPEND, asBC_RET};
 		if( !ValidateByteCode(func, bc) )
@@ -1583,7 +1406,9 @@ SKIP_ON_MAX_PORT
 			TEST_FAILED;
 		if (bout.buffer != "script (1, 1) : Info    : Compiling ref func(ref)\n"
 			"script (1, 1) : Error   : Return type can't be 'ref'\n"
-			"script (1, 1) : Error   : Parameter type can't be 'ref', because the type cannot be instantiated.\n")
+			"script (1, 1) : Error   : Parameter type can't be 'ref', because the type cannot be instantiated.\n"
+			"script (1, 23) : Error   : Data type can't be 'ref'\n"
+			"script (1, 34) : Error   : Data type can't be 'ref'\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -2730,7 +2555,6 @@ bool TestAlignedScoped()
 		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
 		mod->AddScriptSection("test",
 			"vec g_pos = vec(-74.25679016113281f, 0.0f, 27.4027156829834f); \n"
-			"vec g_pos2(-74.25679016113281f, 0.0f, 27.4027156829834f); \n"
 			"void loop() \n"
 			"{ \n"
 			"  vec l_pos = vec(-74.25679016113281f, 0.0f, 27.4027156829834f); \n"
@@ -2740,10 +2564,6 @@ bool TestAlignedScoped()
 		// TODO: runtime optimize: The bytecode produced is not optimal. It should use the copy constructor to copy the global variable to a local variable
 		r = mod->Build();
 		if( r < 0 )
-			TEST_FAILED;
-
-		vec* g_pos = reinterpret_cast<vec*>(mod->GetAddressOfGlobalVar(mod->GetGlobalVarIndexByName("g_pos")));
-		if (g_pos == 0 || (g_pos->x < -75 || g_pos->x > -74))
 			TEST_FAILED;
 
 		r = ExecuteString(engine, "loop()", mod);

@@ -728,8 +728,7 @@ bool Test()
 		if (bout.buffer != "test (2, 1) : Info    : Compiling void main()\n"
 						   "test (4, 3) : Error   : No matching signatures to 'func(const string)'\n"
 						   "test (4, 3) : Info    : Candidates are:\n"
-						   "test (4, 3) : Info    : void func(string&inout)\n"
-						   "test (4, 3) : Info    : Rejected due to type mismatch at positional parameter 1\n")
+						   "test (4, 3) : Info    : void func(string&inout)\n")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -861,8 +860,7 @@ bool Test()
 		if( bout.buffer != "TestUnsafeRef (1, 1) : Info    : Compiling void func()\n"
 		                   "TestUnsafeRef (5, 3) : Error   : No matching signatures to 'funcA(int, float, uint8)'\n"
 		                   "TestUnsafeRef (5, 3) : Info    : Candidates are:\n"
-		                   "TestUnsafeRef (5, 3) : Info    : void funcA(float&inout a, uint8&inout b, int&inout c)\n"
-						   "TestUnsafeRef (5, 3) : Info    : Rejected due to type mismatch on parameter 'a'\n")
+		                   "TestUnsafeRef (5, 3) : Info    : void funcA(float&inout a, uint8&inout b, int&inout c)\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -936,8 +934,7 @@ bool Test()
 		if( bout.buffer != "TestUnsafeRef (7, 1) : Info    : Compiling void func()\n"
 						   "TestUnsafeRef (8, 3) : Error   : No matching signatures to 'f(T)'\n"
 						   "TestUnsafeRef (8, 3) : Info    : Candidates are:\n"
-						   "TestUnsafeRef (8, 3) : Info    : void f(T@&inout t)\n"
-						   "TestUnsafeRef (8, 3) : Info    : Rejected due to type mismatch on parameter 't'\n")
+						   "TestUnsafeRef (8, 3) : Info    : void f(T@&inout t)\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

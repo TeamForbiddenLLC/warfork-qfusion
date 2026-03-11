@@ -40,11 +40,9 @@ void Assert(asIScriptGeneric *gen)
 			{
 				PRINTF("func: %s\n", function->GetDeclaration());
 				PRINTF("mdle: %s\n", function->GetModuleName());
+				PRINTF("sect: %s\n", function->GetScriptSectionName());
 			}
-			const char* section = 0;
-			int line = ctx->GetLineNumber(0, 0, &section);
-			PRINTF("sect: %s\n", section ? section : "");
-			PRINTF("line: %d\n", line);
+			PRINTF("line: %d\n", ctx->GetLineNumber());
 			ctx->SetException("Assert failed", false);
 			PRINTF("---------------------\n");
 		}

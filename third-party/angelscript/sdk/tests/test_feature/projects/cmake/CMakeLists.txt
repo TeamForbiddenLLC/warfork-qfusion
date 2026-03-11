@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.5)
 project(test_feature)
 
 add_executable(
@@ -10,7 +10,6 @@ add_executable(
         ../../source/scriptstring_utils.cpp
         ../../source/test2modules.cpp
         ../../source/test_2func.cpp
-        ../../source/test_addon_autowrapper.cpp
         ../../source/test_addon_contextmgr.cpp
         ../../source/test_addon_datetime.cpp
         ../../source/test_addon_debugger.cpp
@@ -21,7 +20,6 @@ add_executable(
         ../../source/test_addon_scriptgrid.cpp
         ../../source/test_addon_scripthandle.cpp
         ../../source/test_addon_scriptmath.cpp
-        ../../source/test_addon_scriptsocket.cpp
         ../../source/test_addon_serializer.cpp
         ../../source/test_addon_stdstring.cpp
         ../../source/test_addon_weakref.cpp
@@ -66,7 +64,6 @@ add_executable(
         ../../source/test_factory.cpp
         ../../source/test_float.cpp
         ../../source/test_for.cpp
-        ../../source/test_foreach.cpp
         ../../source/test_funcoverload.cpp
         ../../source/test_functionptr.cpp
         ../../source/test_garbagecollect.cpp
@@ -80,7 +77,6 @@ add_executable(
         ../../source/test_inheritance.cpp
         ../../source/test_int8.cpp
         ../../source/test_interface.cpp
-		../../source/test_literal.cpp
         ../../source/test_mixin.cpp
         ../../source/test_module.cpp
         ../../source/test_multiassign.cpp
@@ -183,7 +179,6 @@ add_executable(
         ../../../../add_on/scripthelper/scripthelper.cpp
         ../../../../add_on/scriptmath/scriptmath.cpp
         ../../../../add_on/scriptmath/scriptmathcomplex.cpp
-        ../../../../add_on/scriptsocket/scriptsocket.cpp
         ../../../../add_on/scriptstdstring/scriptstdstring.cpp
         ../../../../add_on/scriptstdstring/scriptstdstring_utils.cpp
         ../../../../add_on/serializer/serializer.cpp

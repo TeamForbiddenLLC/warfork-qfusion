@@ -35,9 +35,7 @@
 #include <map>
 #include <set>
 #include <vector>
-#include <cstring>
-#include <algorithm>
-#include <cctype>
+#include <string.h> // _strcmpi
 
 BEGIN_AS_NAMESPACE
 
@@ -165,9 +163,8 @@ protected:
 		std::string              nameSpace;
 	};
 	std::vector<SMetadataDecl> foundDeclarations;
-	std::string                currentClass;
-	std::string                currentNamespace;
-	std::vector<int>           currentNamespaceStack;
+	std::string currentClass;
+	std::string currentNamespace;
 
 	// Storage of metadata for global declarations
 	std::map<int, std::vector<std::string> > typeMetadataMap;
@@ -201,18 +198,9 @@ protected:
 
 	struct ci_less
 	{
-		static int tolower_impl(unsigned char c)
-		{
-			return std::tolower(c);
-		}
-		static std::string str_tolower(std::string s)
-		{
-			std::transform(s.begin(), s.end(), s.begin(), tolower_impl);
-			return s;
-		}
 		bool operator()(const std::string &a, const std::string &b) const
 		{
-			return str_tolower(a) < str_tolower(b);
+			return _stricmp(a.c_str(), b.c_str()) < 0;
 		}
 	};
 	std::set<std::string, ci_less> includedScripts;

@@ -1,9 +1,6 @@
 #include "scriptbuilder.h"
 #include <vector>
 #include <assert.h>
-#ifdef _WIN32
-#include <windows.h> // MultiByteToWideChar()
-#endif
 using namespace std;
 
 #include <stdio.h>
@@ -152,11 +149,9 @@ void CScriptBuilder::ClearAll()
 	currentNamespace = "";
 
 	foundDeclarations.clear();
-
 	typeMetadataMap.clear();
 	funcMetadataMap.clear();
 	varMetadataMap.clear();
-	classMetadataMap.clear();
 #endif
 }
 
@@ -175,24 +170,13 @@ bool CScriptBuilder::IncludeIfNotAlreadyIncluded(const char *filename)
 	return true;
 }
 
-int CScriptBuilder::LoadScriptSection(const char* filename)
+int CScriptBuilder::LoadScriptSection(const char *filename)
 {
 	// Open the script file
 	string scriptFile = filename;
 #if _MSC_VER >= 1500 && !defined(__S3E__)
-  #ifdef _WIN32
-	// Convert the filename from UTF8 to UTF16
-	wchar_t bufUTF16_name[10000] = {0};
-	wchar_t bufUTF16_mode[10] = {0};
-	MultiByteToWideChar(CP_UTF8, 0, filename, -1, bufUTF16_name, 10000);
-	MultiByteToWideChar(CP_UTF8, 0, "rb", -1, bufUTF16_mode, 10);
-
 	FILE *f = 0;
-	_wfopen_s(&f, bufUTF16_name, bufUTF16_mode);
-  #else
-	FILE* f = 0;
 	fopen_s(&f, scriptFile.c_str(), "rb");
-  #endif
 #else
 	FILE *f = fopen(scriptFile.c_str(), "rb");
 #endif
@@ -397,26 +381,16 @@ int CScriptBuilder::ProcessScriptSection(const char *script, unsigned int length
 		// Check if namespace so the metadata for members can be gathered
 		if( token == "namespace" )
 		{
-			// Get the scope after "namespace". It can be composed of multiple nested namespaces, e.g. A::B::C
-			// Keep track of the number of nested namespace scopes are declared for each block
-			int nestedNamespaces = 0;
+			// Get the identifier after "namespace"
 			do
 			{
-				do
-				{
-					pos += len;
-					t = engine->ParseToken(&modifiedScript[pos], modifiedScript.size() - pos, &len);
-				} while (t == asTC_COMMENT || t == asTC_WHITESPACE);
+				pos += len;
+				t = engine->ParseToken(&modifiedScript[pos], modifiedScript.size() - pos, &len);
+			} while(t == asTC_COMMENT || t == asTC_WHITESPACE);
 
-				if (t == asTC_IDENTIFIER)
-				{
-					if (currentNamespace != "")
-						currentNamespace += "::";
-					currentNamespace += modifiedScript.substr(pos, len);
-					nestedNamespaces++;
-				}
-			} while (t == asTC_IDENTIFIER || (t == asTC_KEYWORD && modifiedScript.substr(pos, len) == "::"));
-			currentNamespaceStack.push_back(nestedNamespaces);
+			if( currentNamespace != "" )
+				currentNamespace += "::";
+			currentNamespace += modifiedScript.substr(pos,len);
 
 			// Search until first { is encountered
 			while( pos < modifiedScript.length() )
@@ -440,20 +414,14 @@ int CScriptBuilder::ProcessScriptSection(const char *script, unsigned int length
 		// Check if end of namespace
 		if( currentNamespace != "" && token == "}" )
 		{
-			assert(currentNamespaceStack.size() > 0);
-			int nestedNamespaces = currentNamespaceStack[currentNamespaceStack.size()-1];
-			currentNamespaceStack.pop_back();
-			while (nestedNamespaces-- > 0)
+			size_t found = currentNamespace.rfind( "::" );
+			if( found != string::npos )
 			{
-				size_t found = currentNamespace.rfind("::");
-				if (found != string::npos)
-				{
-					currentNamespace.erase(found);
-				}
-				else
-				{
-					currentNamespace = "";
-				}
+				currentNamespace.erase( found );
+			}
+			else
+			{
+				currentNamespace = "";
 			}
 			pos += len;
 			continue;
@@ -792,6 +760,7 @@ int CScriptBuilder::Build()
 					// Look for the matching method instead
 					asITypeInfo *type = engine->GetTypeInfoById(typeId);
 					asIScriptFunction *func = type->GetMethodByDecl(decl->declaration.c_str());
+					assert(func);
 					if (func)
 						it->second.funcMetadataMap.insert(map<int, vector<string> >::value_type(func->GetId(), decl->metadata));
 				}
@@ -1061,13 +1030,11 @@ int CScriptBuilder::ExtractDeclaration(int pos, string &name, string &declaratio
 				}
 				else if( t == asTC_IDENTIFIER )
 				{
-					// If a parenthesis is already found then the name is already known so it must not be overwritten
-					if( !hasParenthesis )
-						name = token;
+					name = token;
 				}
 
 				// Skip trailing decorators
-				if( !hasParenthesis || nestedParenthesis > 0 || t != asTC_IDENTIFIER || (token != "final" && token != "override" && token != "delete" && token != "property"))
+				if( !hasParenthesis || nestedParenthesis > 0 || t != asTC_IDENTIFIER || (token != "final" && token != "override") )
 					declaration += token;
 
 				pos += len;
@@ -1217,23 +1184,8 @@ string GetCurrentDir()
 	#elif defined(_M_ARM)
 	// TODO: How to determine current working dir on Windows Phone?
 	return "";
-	#elif defined(_MSC_VER)
-	return _getcwd(buffer, (int)1024);
 	#else
-	std::string filename;
-    #if defined(__argc) && defined(__argv)
-    	if (__argc) filename = std::string(__argv[0]);
-    #endif
-
-	if (!filename.length())
-	{
-		char path[MAX_PATH] = { 0 };
-		GetModuleFileNameA(NULL, path, MAX_PATH);
-		filename = std::string(path);
-	}
-	const size_t last_slash_idx = filename.rfind('\\');
-	if (std::string::npos != last_slash_idx) filename = filename.substr(0, last_slash_idx);
-	return filename;
+	return _getcwd(buffer, (int)1024);
 	#endif // _MSC_VER
 #elif defined(__APPLE__) || defined(__linux__)
 	return getcwd(buffer, 1024);

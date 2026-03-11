@@ -305,7 +305,7 @@ public:
 			int enumValueCount = enumInfo->GetEnumValueCount();
 			for( j = 0; j < enumValueCount; j++ )
 			{
-				asINT64 outValue;
+				int outValue;
 				const char *valueName = enumInfo->GetEnumValueByIndex( j, &outValue );
 				str = va( "\t%s = 0x%x,\r\n", valueName, outValue );
 				FS_Write( str, strlen( str ), filenum );

@@ -57,8 +57,6 @@ bool TestOptimize();
 bool TestNotInitialized();
 bool TestVector3();
 
-namespace TestLiteral           { bool Test(); }
-namespace TestForEach           { bool Test(); }
 namespace TestException         { bool Test(); }
 namespace TestCDeclReturn       { bool Test(); }
 namespace TestCustomMem         { bool Test(); }
@@ -77,6 +75,7 @@ namespace TestMultiAssign       { bool Test(); }
 namespace TestSaveLoad          { bool Test(); }
 namespace TestConstructor2      { bool Test(); }
 namespace TestContext           { bool Test(); }
+namespace TestScriptCall        { bool Test(); }
 namespace TestArray             { bool Test(); }
 namespace TestArrayHandle       { bool Test(); }
 namespace TestStdVector         { bool Test(); }
@@ -160,7 +159,6 @@ namespace Test_Native_DefaultFunc         { bool Test(); }
 namespace TestFuncOverload                { bool Test(); }
 namespace TestConstructor                 { bool Test(); }
 
-namespace Test_Addon_Autowrapper   { bool Test(); }
 namespace Test_Addon_ScriptArray   { bool Test(); }
 namespace Test_Addon_ScriptHandle  { bool Test(); }
 namespace Test_Addon_Serializer    { bool Test(); }
@@ -174,29 +172,24 @@ namespace Test_Addon_ContextMgr    { bool Test(); }
 namespace Test_Addon_ScriptFile    { bool Test(); }
 namespace Test_Addon_DateTime      { bool Test(); }
 namespace Test_Addon_StdString     { bool Test(); }
-namespace Test_Addon_ScriptSocket  { bool Test(); }
 
 #include "utils.h"
 
-// This class should be declared as a global singleton so the leak detection is initiated as soon as possible
-#if defined(_MSC_VER)
-class MemoryLeakDetector
+void DetectMemoryLeaks()
 {
-public:
-	MemoryLeakDetector()
-	{
-		_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF | _CRTDBG_ALLOC_MEM_DF);
-		_CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
-		_CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
+#if defined(_MSC_VER)
+	_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF|_CRTDBG_ALLOC_MEM_DF);
+	_CrtSetReportMode(_CRT_ASSERT,_CRTDBG_MODE_FILE);
+	_CrtSetReportFile(_CRT_ASSERT,_CRTDBG_FILE_STDERR);
 
-		// Use _CrtSetBreakAlloc(n) to find a specific memory leak
-		// Remember to "Enable Windows Debug Heap Allocator" in the debug options on MSVC2015. Without it
-		// enabled the memory allocation numbers shifts randomly from one execution to another making it
-		// impossible to predict the correct number for a specific allocation.
-		//_CrtSetBreakAlloc(124);
-	}
-} g_leakDetector;
+	// Use _CrtSetBreakAlloc(n) to find a specific memory leak
+	// Remember to "Enable Windows Debug Heap Allocator" in the debug options on MSVC2015. Without it
+	// enabled the memory allocation numbers shifts randomly from one execution to another making it
+	// impossible to predict the correct number for a specific allocation.
+	//_CrtSetBreakAlloc(924);
+
 #endif
+}
 
 // This class is just to verify that releasing the engine as part of the cleanup
 // of global variables doesn't cause crashes due to out-of-order cleanup with
@@ -217,6 +210,8 @@ public:
 
 int allTests()
 {
+	DetectMemoryLeaks();
+
 	PRINTF("AngelScript version: %s\n", asGetLibraryVersion());
 	PRINTF("AngelScript options: %s\n", asGetLibraryOptions());
 
@@ -234,7 +229,6 @@ int allTests()
 
 	InstallMemoryManager();
 
-	if( Test_Addon_Autowrapper::Test()   ) goto failed; else PRINTF("-- Test_Addon_Autowrapper passed\n");
 	if( Test_Addon_ScriptFile::Test()    ) goto failed; else PRINTF("-- Test_Addon_ScriptFile passed\n");
 	if( Test_Addon_ContextMgr::Test()    ) goto failed; else PRINTF("-- Test_Addon_ContextMgr passed\n");
 	if( Test_Addon_ScriptGrid::Test()    ) goto failed; else PRINTF("-- Test_Addon_ScriptGrid passed\n");
@@ -248,14 +242,7 @@ int allTests()
 	if( Test_Addon_Dictionary::Test()    ) goto failed; else PRINTF("-- Test_Addon_Dictionary passed\n");
 	if( Test_Addon_DateTime::Test()      ) goto failed; else PRINTF("-- Test_Addon_DateTime passed\n");
 	if( Test_Addon_StdString::Test()     ) goto failed; else PRINTF("-- Test_Addon_StdString passed\n");
-#ifndef _WIN32
-	PRINTF("Skipping test Addon_ScriptSocket as it only works on Windows\n");
-#else
-	if( Test_Addon_ScriptSocket::Test()  ) goto failed; else PRINTF("-- Test_Addon_ScriptSocket passed\n");
-#endif
 
-	if( TestLiteral::Test()                     ) goto failed; else PRINTF("-- TestLiteral passed\n");
-	if( TestForEach::Test()                     ) goto failed; else PRINTF("-- TestForEach passed\n");
 	if( TestContext::Test()                     ) goto failed; else PRINTF("-- TestContext passed\n");
 	if( TestComposition::Test()                 ) goto failed; else PRINTF("-- TestComposition passed\n");
 	if( TestPropIntegerDivision::Test()         ) goto failed; else PRINTF("-- TestPropIntegerDivision passed\n");
@@ -429,7 +416,7 @@ int allTests()
 //succeed:
 	PRINTF("--------------------------------------------\n");
 	PRINTF("All of the tests passed with success.\n\n");
-#if defined(WAIT_ON_END) && !defined(_M_ARM) && (defined(WIN32) || defined(_WIN64))
+#if !defined(DONT_WAIT) && !defined(_M_ARM) && (defined(WIN32) || defined(_WIN64))
 	PRINTF("Press any key to quit.\n");
 	while(!_getch());
 #endif
@@ -438,7 +425,7 @@ int allTests()
 failed:
 	PRINTF("--------------------------------------------\n");
 	PRINTF("One of the tests failed, see details above.\n\n");
-#if defined(WAIT_ON_END) && !defined(_M_ARM) && (defined(WIN32) || defined(_WIN64))
+#if !defined(DONT_WAIT) && !defined(_M_ARM) && (defined(WIN32) || defined(_WIN64))
 	PRINTF("Press any key to quit.\n");
 	while(!_getch());
 #endif
