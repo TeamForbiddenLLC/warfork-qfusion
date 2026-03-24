@@ -1434,7 +1434,6 @@ void SV_ConnectionlessPacket( const socket_t *socket, const netadr_t *address, m
 	{
 		if( !strcmp( c, cmd->name ) )
 		{
-			printf("%s\n", cmd->name);
 			cmd->func( socket, address );
 			return;
 		}
