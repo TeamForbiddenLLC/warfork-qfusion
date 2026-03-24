@@ -67,8 +67,6 @@ static time_t time_since_last_pump = 0;
 
 static void handleSteamConnectionStatusChanged( steam_cmd_s cmd, SteamNetConnectionStatusChangedCallback_t *pCallback )
 {
-	printf( "SteamNetConnectionStatusChangedCallback_t\n" );
-	printf( "status: %u\n", pCallback->m_info.m_eState );
 	struct p2p_net_connection_changed_evt_s evt;
 	evt.cmd = cmd;
 	evt.hConn = pCallback->m_hConn;
@@ -130,10 +128,6 @@ static void processRPC( steam_rpc_pkt_s *req, size_t size )
 	switch( req->common.cmd ) {
 		case RPC_PUMP: {
 			time( &time_since_last_pump );
-			// if( GRunServer )
-			// 	SteamGameServer_RunCallbacks();
-			// if( GRunClient )
-			// 	SteamAPI_RunCallbacks();
 			struct steam_rpc_shim_common_s recv;
 			prepared_rpc_packet( &req->common, &recv );
 			write_packet( GPipeWrite, &recv, sizeof( steam_rpc_shim_common_s ) );
@@ -199,6 +193,9 @@ static void processRPC( steam_rpc_pkt_s *req, size_t size )
 		}
 		case RPC_ACTIVATE_OVERLAY: {
 			SteamFriends()->ActivateGameOverlayToUser( "steamid", (uint64)req->open_overlay.id );
+			struct steam_rpc_shim_common_s recv;
+			prepared_rpc_packet( &req->common, &recv );
+			write_packet( GPipeWrite, &recv, sizeof( steam_rpc_shim_common_s ) );
 			break;
 		}
 		case RPC_UPDATE_SERVERINFO_GAME_DATA: {
@@ -272,23 +269,19 @@ static void processRPC( steam_rpc_pkt_s *req, size_t size )
 		}
 		case RPC_END_AUTH_SESSION: {
 			GSteamGameServer->EndAuthSession( (uint64)req->end_auth_session.id );
+			struct steam_rpc_shim_common_s recv;
+			prepared_rpc_packet( &req->common, &recv );
+			write_packet( GPipeWrite, &recv, sizeof( steam_rpc_shim_common_s ) );
 			break;
 		}
 		case RPC_SRV_P2P_LISTEN: {
 			ISteamGameServer *gameServer = SteamGameServer();
 			ISteamNetworkingSockets *networkSocket = SteamGameServerNetworkingSockets();
-			if( gameServer && networkSocket ) {
-				gameServer->LogOnAnonymous();
-				struct p2p_connect_recv_s recv;
-				prepared_rpc_packet( &req->common, &recv );
-				recv.handle = networkSocket->CreateListenSocketP2P( 0, 0, nullptr );
-				write_packet( GPipeWrite, &recv, sizeof( p2p_connect_recv_s ) );
-			} else {
-				struct p2p_connect_recv_s recv;
-				prepared_rpc_packet( &req->common, &recv );
-				recv.handle = 0;
-				write_packet( GPipeWrite, &recv, sizeof( p2p_listen_recv_s ) );
-			}
+			gameServer->LogOnAnonymous();
+			struct p2p_connect_recv_s recv;
+			prepared_rpc_packet( &req->common, &recv );
+			recv.handle = networkSocket->CreateListenSocketP2P( 0, 0, nullptr );
+			write_packet( GPipeWrite, &recv, sizeof( p2p_connect_recv_s ) );
 			break;
 		}
 		case RPC_SRV_P2P_CLOSE_LISTEN: {
@@ -296,13 +289,12 @@ static void processRPC( steam_rpc_pkt_s *req, size_t size )
 			struct steam_rpc_shim_common_s recv;
 			prepared_rpc_packet( &req->common, &recv );
 			write_packet( GPipeWrite, &recv, sizeof( steam_rpc_shim_common_s ) );
+			break;
 		}
 		case RPC_P2P_CONNECT: {
 			SteamNetworkingIdentity id;
 			CSteamID steamID = CSteamID( (uint64)req->p2p_connect.steamID );
 			id.SetSteamID( steamID );
-			// GClientToServerConn = ;
-			// memcpy( &GCurrent_p2p_connect_request, req, sizeof( steam_rpc_pkt_s ) );
 			struct p2p_connect_recv_s recv;
 			prepared_rpc_packet( &req->common, &recv );
 			recv.handle = SteamNetworkingSockets()->ConnectP2P( id, 0, 0, nullptr );
@@ -344,9 +336,7 @@ static void processRPC( steam_rpc_pkt_s *req, size_t size )
 			SteamNetConnectionInfo_t info;
 			SteamGameServerNetworkingSockets()->GetConnectionInfo( req->recv_messages.handle, &info );
 			const uint64_t steamid = info.m_identityRemote.GetSteamID().ConvertToUint64();
-
 			const int n = SteamGameServerNetworkingSockets()->ReceiveMessagesOnConnection( req->recv_messages.handle, msgs, 1 );
-			printf("num messages: %d\n", n);
 			handleRecvMessageRPC( &req->common, msgs, n, steamid, req->recv_messages.handle );
 			break;
 		}
@@ -378,7 +368,6 @@ static void processRPC( steam_rpc_pkt_s *req, size_t size )
 
 			prepared_rpc_packet( &req->common, recv );
 			write_packet( GPipeWrite, recv, sizeof( struct getvoice_recv_s ) + size );
-
 			break;
 		}
 		case RPC_DECOMPRESS_VOICE: {

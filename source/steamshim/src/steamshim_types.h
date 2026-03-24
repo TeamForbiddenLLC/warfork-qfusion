@@ -233,7 +233,6 @@ enum steam_cmd_s {
 	EVT_SRV_P2P_POLICY_RESPONSE,
 	EVT_HEART_BEAT,
 	EVT_GAME_JOIN,
-	EVT_P2P_LOST_CONNECTION,
 	EVT_P2P_CONNECTION_CHANGED,
 
 	EVT_SRV_P2P_CONNECTION_CHANGED,
@@ -511,7 +510,7 @@ STEAM_EVT( p2p_lost_connection )
 STEAM_EVT( p2p_net_connection_changed )
 {
 	STEAM_SHIM_COMMON()
-	uint32_t identityRemoteSteamID;
+	uint64_t identityRemoteSteamID;
 	uint32_t listenSocket;
 	uint32_t hConn;
 	uint32_t oldState;

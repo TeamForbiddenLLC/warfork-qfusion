@@ -1113,6 +1113,10 @@ void SV_Shutdown( const char *finalmsg )
 {
 	if( !sv_initialized )
 		return;
+
+	STEAMSHIM_unsubscribeEvent(EVT_SRV_P2P_POLICY_RESPONSE,CL_EVT_cb_policy_response);
+	STEAMSHIM_unsubscribeEvent(EVT_SRV_P2P_CONNECTION_CHANGED, CL_EVT_cb_connect_status_response);
+
 	sv_initialized = false;
 
 	SV_Web_Shutdown();

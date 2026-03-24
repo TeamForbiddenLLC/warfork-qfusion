@@ -826,7 +826,7 @@ static void SVC_DirectConnect( const socket_t *socket, const netadr_t *address )
 		// find the connection
 		for( i = 0; i < MAX_INCOMING_CONNECTIONS; i++ )
 		{
-			if( !svs.incomingp2p[i].active || !svs.incomingp2p[i].socket.connected)
+			if( !svs.incomingp2p[i].active)
 				continue;
 
 			if( NET_CompareAddress( &svs.incomingp2p[i].address, address ) && socket == &svs.incomingp2p[i].socket )
@@ -1434,6 +1434,7 @@ void SV_ConnectionlessPacket( const socket_t *socket, const netadr_t *address, m
 	{
 		if( !strcmp( c, cmd->name ) )
 		{
+			printf("%s\n", cmd->name);
 			cmd->func( socket, address );
 			return;
 		}

@@ -2191,7 +2191,7 @@ static void CL_RPC_cb_persona( void *self, struct steam_rpc_pkt_s *rec )
 	cvar_t *name_cvar = self;
 	assert( rec->common.cmd == RPC_PERSONA_NAME );
 	char steamname[MAX_NAME_BYTES * 4], *steamnameIn = steamname, c;
-	strncpy( steamname, (char *)rec->persona_name.buf, sizeof( steamname ) );
+	strncpy( steamname, (char *)rec->persona_name.buf, sizeof( steamname ) - 1 );
 
 	bool steamnamePrintable = true;
 	while( ( c = *steamnameIn ) != '\0' ) {
@@ -2212,8 +2212,7 @@ static void CL_RPC_cb_persona( void *self, struct steam_rpc_pkt_s *rec )
 
 static void CL_EVT_cb_connection_changed(void *self, struct steam_evt_pkt_s *pkt) {
 	struct p2p_net_connection_changed_evt_s *evt = &pkt->p2p_net_connection_changed;
-	if(cls.socket->steam_handle == evt->hConn) {
-		printf("update state: %u\n", evt->state);
+	if(cls.socket && cls.socket->steam_handle == evt->hConn) {
 		switch(evt->state) {
 			case STEAMSHIM_ESteamNetworkingConnectionState_Connected:
 				cls.socket->connected = true;
@@ -2404,6 +2403,7 @@ static void CL_ShutdownLocal( void )
 	Cmd_RemoveCommand( "stop" );
 	Cmd_RemoveCommand( "quit" );
 	Cmd_RemoveCommand( "connect" );
+	STEAMSHIM_unsubscribeEvent(EVT_P2P_CONNECTION_CHANGED, CL_EVT_cb_connection_changed);
 #if defined(TCP_ALLOW_CONNECT)
 	Cmd_RemoveCommand( "tcpconnect" );
 #endif
