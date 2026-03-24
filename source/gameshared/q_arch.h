@@ -268,7 +268,6 @@ typedef UINT_PTR socket_handle_t;
 typedef int ioctl_param_t;
 
 typedef int socket_handle_t;
-typedef uint32_t socket_steam_handle_t;
 
 #define SOCKET_ERROR (-1)
 #define INVALID_SOCKET (-1)
@@ -321,6 +320,8 @@ typedef int socket_handle_t;
 #define INVALID_SOCKET (-1)
 
 #endif
+
+typedef uint32_t socket_steam_handle_t;
 
 //==============================================
 
