@@ -78,14 +78,14 @@ static void handleSteamConnectionStatusChanged( steam_cmd_s cmd, SteamNetConnect
 
 static void handleRecvMessageRPC( const steam_rpc_shim_common_s *req, SteamNetworkingMessage_t **msgs, int num_messages, uint64_t steamID, uint32_t handle )
 {
-	if(num_messages == -1) {
+	if( num_messages == -1 ) {
 		recv_messages_recv_s recv;
 		recv.steamID = steamID;
 		recv.handle = handle;
 		recv.count = 0;
 		prepared_rpc_packet( req, &recv );
-		write_packet( GPipeWrite, &recv, sizeof( struct recv_messages_recv_s ));
-		printf("invalid handle for req: %d\n", req->cmd);
+		write_packet( GPipeWrite, &recv, sizeof( struct recv_messages_recv_s ) );
+		printf( "invalid handle for req: %d\n", req->cmd );
 		return;
 	}
 
@@ -132,9 +132,74 @@ static void processRPC( steam_rpc_pkt_s *req, size_t size )
 			write_packet( GPipeWrite, &recv, sizeof( steam_rpc_shim_common_s ) );
 			break;
 		}
+		case RPC_WORKSHOP_SUBMIT_ITEM: {
+			SteamAPICall_t call = GSteamUGC->SubmitItemUpdate( req->workshop_submit_item.handle, (const char *)req->workshop_submit_item.buf );
+			steam_async_push_rpc_shim( call, &req->common );
+			break;
+		}
+		case RPC_WORKSHOP_BEGIN_ITEM_UPDATE: {
+			STEAM_UGCUpdateHandle_t handle = GSteamUGC->StartItemUpdate( GAppID, req->workshop_start_item_update.publish_item_file );
+			struct start_item_update_recv_s recv;
+			recv.handle = handle;
+			prepared_rpc_packet( &req->common, &recv );
+			write_packet( GPipeWrite, &recv, sizeof( start_item_update_recv_s ) );
+			break;
+		}
 		case RPC_WORKSHOP_CREATE_ITEM: {
 			SteamAPICall_t call = GSteamUGC->CreateItem( GAppID, k_EWorkshopFileTypeGameManagedItem );
 			steam_async_push_rpc_shim( call, &req->common );
+			break;
+		}
+		case RPC_WORKSHOP_ITEM_SET_TITLE: {
+			struct success_recv_s recv;
+			recv.success = GSteamUGC->SetItemTitle( req->workshop_set_title.handle, (const char *)req->workshop_set_title.buf );
+			prepared_rpc_packet( &req->common, &recv );
+			write_packet( GPipeWrite, &recv, sizeof( success_recv_s ) );
+			break;
+		}
+		case RPC_WORKSHOP_ITEM_SET_DESCRIPTION: {
+			struct success_recv_s recv;
+			recv.success = GSteamUGC->SetItemDescription( req->workshop_set_description.handle, (const char *)req->workshop_set_description.buf );
+			prepared_rpc_packet( &req->common, &recv );
+			write_packet( GPipeWrite, &recv, sizeof( success_recv_s ) );
+			break;
+		}
+		case RPC_WORKSHOP_ITEM_SET_ITEM_CONTENT: {
+			struct success_recv_s recv;
+			recv.success = GSteamUGC->SetItemContent( req->workshop_set_item_content.handle, (const char *)req->workshop_set_item_content.buf );
+			prepared_rpc_packet( &req->common, &recv );
+			write_packet( GPipeWrite, &recv, sizeof( success_recv_s ) );
+			break;
+		}
+		case RPC_WORKSHOP_ITEM_SET_VISIBILITY: {
+			struct success_recv_s recv;
+			recv.success = GSteamUGC->SetItemVisibility( req->workshop_set_visibility.itemID, (ERemoteStoragePublishedFileVisibility)req->workshop_set_visibility.visibility );
+			prepared_rpc_packet( &req->common, &recv );
+			write_packet( GPipeWrite, &recv, sizeof( success_recv_s ) );
+			break;
+		}
+		case RPC_WORKSHOP_ITEM_SET_TAGS: {
+			struct SteamParamStringArray_t tags;
+			tags.m_ppStrings = (const char **)malloc( sizeof( char * ) * req->workshop_set_tags.num_tags );
+			tags.m_nNumStrings = 0;
+			const char *c = req->workshop_set_tags.buffer;
+			for( size_t i = 0; i < req->workshop_set_tags.num_tags; i++ ) {
+				tags.m_ppStrings[tags.m_nNumStrings++] = c;
+				while( *c != '\0' ) {
+					c++;
+				}
+			}
+			struct success_recv_s recv;
+			recv.success = GSteamUGC->SetItemTags( req->workshop_set_tags.handle, &tags );
+			free( tags.m_ppStrings );
+			write_packet( GPipeWrite, &recv, sizeof( success_recv_s ) );
+			break;
+		}
+		case RPC_WORKSHOP_ITEM_SET_PREVIEW: {
+			struct success_recv_s recv;
+			recv.success = GSteamUGC->SetItemPreview( req->workshop_set_preview.handle, (const char *)req->workshop_set_preview.buf );
+			prepared_rpc_packet( &req->common, &recv );
+			write_packet( GPipeWrite, &recv, sizeof( success_recv_s ) );
 			break;
 		}
 		case RPC_AUTHSESSION_TICKET: {
@@ -453,7 +518,7 @@ static void processSteamServerDispatch()
 {
 	if( GRunServer ) {
 		HSteamPipe steamPipe = SteamGameServer_GetHSteamPipe();
-		
+
 		// perform period actions
 		SteamAPI_ManualDispatch_RunFrame( steamPipe );
 
@@ -561,8 +626,17 @@ static void processSteamDispatch()
 					handleSteamConnectionStatusChanged( EVT_P2P_CONNECTION_CHANGED, (SteamNetConnectionStatusChangedCallback_t *)data );
 					break;
 				}
+				case SubmitItemUpdateResult_t::k_iCallback: {
+					SubmitItemUpdateResult_t *result = (SubmitItemUpdateResult_t *)data;
+					struct submit_item_result_recv_s recv;
+					recv.file_id = result->m_nPublishedFileId;
+					recv.result = result->m_eResult;
+					prepared_rpc_packet( &rpc_callback, &recv );
+					write_packet( GPipeWrite, &recv, sizeof( struct submit_item_result_recv_s ) );
+					break;
+				}
 				case CreateItemResult_t::k_iCallback: {
-					CreateItemResult_t* result = (CreateItemResult_t*)data;
+					CreateItemResult_t *result = (CreateItemResult_t *)data;
 					struct create_item_recv_s recv;
 					recv.file_id = result->m_nPublishedFileId;
 					recv.result = result->m_eResult;
@@ -662,7 +736,6 @@ static bool initSteamworks( PipeType fd )
 		if( !SteamAPI_Init() )
 			return 0;
 
-
 		GSteamStats = SteamUserStats();
 		GSteamUtils = SteamUtils();
 		GSteamUser = SteamUser();
@@ -692,8 +765,8 @@ static bool initSteamworks( PipeType fd )
 
 		GSteamGameServer->SetAdvertiseServerActive( true );
 	}
-	
-	SteamAPI_ManualDispatch_Init ();
+
+	SteamAPI_ManualDispatch_Init();
 
 	return 1;
 }
