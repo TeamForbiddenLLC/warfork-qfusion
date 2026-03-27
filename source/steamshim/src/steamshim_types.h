@@ -28,7 +28,8 @@ freely, subject to the following restrictions:
 #define AUTH_TICKET_MAXSIZE 1024
 #define SDR_MAX_MESSAGE_SIZE 32768
 
-typedef uint64_t PublishedFileId_t;
+typedef uint64_t STEAM_PublishedFileId_t;
+typedef uint64_t STEAM_UGCUpdateHandle_t;
 typedef struct {
 	char pTicket[AUTH_TICKET_MAXSIZE];
 	long long pcbTicket;
@@ -39,15 +40,20 @@ typedef struct {
 #define STEAM_MAX_AVATAR_SIZE ( 128 * 128 * 4 )
 #define STEAM_AUTH_TICKET_MAXSIZE 1024
 
-
 enum steam_avatar_size_e { STEAM_AVATAR_LARGE, STEAM_AVATAR_MED, STEAM_AVATAR_SMALL };
+
+enum steam_visibility_e {
+	STEAM_VISIBILITY_PUBLIC = 0,
+	STEAM_VISIBILITY_FRIENDS_ONLY = 1,
+	STEAM_VISIBILITY_PRIVATE = 2,
+};
 
 enum steam_result_e {
 	STEAMSHIM_EResultNone = 0,					 // no result
 	STEAMSHIM_EResultOK = 1,					 // success
 	STEAMSHIM_EResultFail = 2,					 // generic failure
 	STEAMSHIM_EResultNoConnection = 3,			 // no/failed network connection
-										 //	k_EResultNoConnectionRetry = 4,				// OBSOLETE - removed
+												 //	k_EResultNoConnectionRetry = 4,				// OBSOLETE - removed
 	STEAMSHIM_EResultInvalidPassword = 5,		 // password/ticket is invalid
 	STEAMSHIM_EResultLoggedInElsewhere = 6,		 // same user logged in elsewhere
 	STEAMSHIM_EResultInvalidProtocolVer = 7,	 // protocol version is incorrect
@@ -209,6 +215,7 @@ enum steam_cmd_s {
 	RPC_UPDATE_SERVERINFO_SERVERNAME,
 
 	RPC_WORKSHOP_SUBMIT_ITEM,
+	RPC_WORKSHOP_BEGIN_ITEM_UPDATE,
 	RPC_WORKSHOP_CREATE_ITEM,
 	RPC_WORKSHOP_ITEM_SET_TITLE,
 	RPC_WORKSHOP_ITEM_SET_DESCRIPTION,
@@ -276,16 +283,30 @@ struct steam_id_rpc_s {
 	uint64_t id;
 };
 
+struct buffer_workshop_rpc_s {
+	STEAM_RPC_SHIM_COMMON()
+	STEAM_UGCUpdateHandle_t handle;
+	uint8_t buf[];
+};
+
 struct buffer_rpc_s {
 	STEAM_RPC_SHIM_COMMON()
 	uint8_t buf[];
 };
 #define RPC_BUFFER_SIZE( buf, size ) ( size - sizeof( buf ) )
 
-STEAM_RPC_RECV(create_item) {
+STEAM_RPC_RECV( submit_item_result )
+{
 	STEAM_RPC_SHIM_COMMON()
-	uint32_t result; // enum steam_result_e 
-	PublishedFileId_t file_id;
+	uint32_t result; // enum steam_result_e
+	STEAM_PublishedFileId_t file_id;
+};
+
+STEAM_RPC_RECV( create_item )
+{
+	STEAM_RPC_SHIM_COMMON()
+	uint32_t result; // enum steam_result_e
+	STEAM_PublishedFileId_t file_id;
 };
 
 STEAM_RPC_REQ( server_info )
@@ -398,6 +419,40 @@ STEAM_RPC_REQ( recv_messages )
 	uint32_t handle;
 };
 
+STEAM_RPC_REQ( start_item_update )
+{
+	STEAM_RPC_SHIM_COMMON()
+	STEAM_PublishedFileId_t publish_item_file;
+};
+
+STEAM_RPC_RECV( start_item_update )
+{
+	STEAM_RPC_SHIM_COMMON()
+	STEAM_UGCUpdateHandle_t handle;
+	bool success;
+};
+
+STEAM_RPC_REQ( tags )
+{
+	STEAM_RPC_SHIM_COMMON()
+	STEAM_UGCUpdateHandle_t handle;
+	uint8_t num_tags;
+	char buffer[];
+};
+
+STEAM_RPC_REQ( item_visiblity )
+{
+	STEAM_RPC_SHIM_COMMON()
+	STEAM_PublishedFileId_t itemID;
+	enum steam_visibility_e visibility; // ERemoteStoragePublishedFileVisibility
+};
+
+STEAM_RPC_RECV( success )
+{
+	STEAM_RPC_SHIM_COMMON()
+	bool success;
+};
+
 STEAM_RPC_RECV( recv_messages )
 {
 	STEAM_RPC_SHIM_COMMON()
@@ -476,6 +531,19 @@ struct steam_rpc_pkt_s {
 		struct buffer_rpc_s server_product;
 		struct buffer_rpc_s server_region;
 		struct buffer_rpc_s server_name;
+
+		struct buffer_workshop_rpc_s workshop_set_title;
+		struct buffer_workshop_rpc_s workshop_set_description;
+		struct buffer_workshop_rpc_s workshop_set_item_content;
+		struct buffer_workshop_rpc_s workshop_set_preview;
+		struct buffer_workshop_rpc_s workshop_submit_item;
+		struct item_visiblity_req_s workshop_set_visibility;
+		struct tags_req_s workshop_set_tags;
+
+		struct start_item_update_req_s workshop_start_item_update;
+		struct start_item_update_recv_s workshop_start_item_update_recv;
+
+		struct success_recv_s success;
 	};
 };
 
@@ -544,7 +612,7 @@ struct steam_evt_pkt_s {
 		struct p2p_lost_connection_evt_s p2p_lost_connection;
 		struct p2p_connection_status_changed_evt_s p2p_connection_status_changed;
 		struct p2p_net_connection_changed_evt_s p2p_net_connection_changed;
-		struct policy_response_evt_s policy_response; 
+		struct policy_response_evt_s policy_response;
 	};
 };
 
