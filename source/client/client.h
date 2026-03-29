@@ -18,9 +18,10 @@
 
  */
 // client.h -- primary header for client
+#include "../ref_base/ref_mod.h"
 
 #include "../qcommon/qcommon.h"
-#include "../ref_gl/r_public.h"
+#include "../ref_base/r_public.h"
 #include "../cgame/cg_public.h"
 #include "../matchmaker/mm_rating.h"
 #include "snd_public.h"
@@ -30,6 +31,7 @@
 #include "input.h"
 #include "keys.h"
 #include "console.h"
+
 
 typedef struct shader_s shader_t;
 typedef struct qfontface_s qfontface_t;
@@ -223,6 +225,7 @@ typedef struct
 	socket_t socket_loopback;
 	socket_t socket_udp;
 	socket_t socket_udp6;
+	socket_t socket_sdr;
 #ifdef TCP_SUPPORT
 	socket_t socket_tcp;
 #endif
@@ -241,6 +244,7 @@ typedef struct
 	socket_type_t servertype;       // socket type used to connect to the server
 	netadr_t serveraddress;         // address of that server
 	int connect_time;               // for connection retransmits
+	int full_connect_time;          // the time that the user actually clicked "connect"
 	int connect_count;
 
 	socket_t *socket;               // socket used by current connection
@@ -355,15 +359,17 @@ extern cvar_t *cl_downloads_from_web;
 extern cvar_t *cl_downloads_from_web_timeout;
 extern cvar_t *cl_download_allow_modules;
 
+extern cvar_t *cl_enablevoice;
+
 // delta from this if not from a previous frame
 extern entity_state_t cl_baselines[MAX_EDICTS];
 
 //=============================================================================
 
 //
-// cl_discord.c
+// cl_presence.c
 //
-void CL_UpdateDiscord( void );
+void CL_UpdatePresence( void );
 void CL_InitDiscord( void );
 void CL_ShutdownDiscord( void );
 
@@ -445,6 +451,8 @@ void CL_GameModule_AddViewAngles( vec3_t viewangles, float frametime, bool flipp
 void CL_GameModule_AddMovement( vec3_t movement );
 void CL_GameModule_TouchEvent( int id, touchevent_t type, int x, int y, unsigned int time );
 bool CL_GameModule_IsTouchDown( int id );
+bool CL_GameModule_GetBlocklistItem( size_t index, uint64_t* steamid_out, char* name, size_t* name_len_in_out );
+void CL_GameModule_PlayVoice( void *buffer, size_t size, int clientnum );
 
 //
 // cl_sound.c
@@ -501,6 +509,7 @@ void CL_UIModule_ForceMenuOff( void );
 void CL_UIModule_ShowQuickMenu( bool show );
 bool CL_UIModule_HaveQuickMenu( void );
 void CL_UIModule_AddToServerList( const char *adr, const char *info );
+void CL_UIModule_AjaxResponse( const char *resource, const char *data );
 void CL_UIModule_MouseMove( int dx, int dy );
 void CL_UIModule_MouseSet( int mx, int my, bool showCursor );
 
@@ -671,3 +680,10 @@ void CL_Sys_Init( void );
  * Shuts down the client parts of the platform module.
  */
 void CL_Sys_Shutdown( void );
+
+
+//
+// cl_steam.c
+//
+
+void Steam_AdvertiseGame( netadr_t *addr, uint32_t* syncToken);

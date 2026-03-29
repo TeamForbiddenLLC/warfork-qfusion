@@ -783,15 +783,15 @@ String @GT_ScoreboardMessage( uint maxlen )
 
             if ( gametype.isInstagib )
             {
-                // "Name Clan Score Ping R"
-                entry = "&p " + playerID + " " + ent.client.clanName + " "
+                // "AVATAR Name Clan Score Ping R"
+                entry = "&p " + playerID + " " + playerID + " " + ent.client.clanName + " "
                         + ent.client.stats.score + " "
                         + ent.client.ping + " " + ( ent.client.isReady() ? "1" : "0" ) + " ";
             }
             else
             {
-                // "Name Clan Score Frags Ping R"
-                entry = "&p " + playerID + " " + ent.client.clanName + " "
+                // "AVATAR Name Clan Score Frags Ping R"
+                entry = "&p " + playerID + " " + playerID + " " + ent.client.clanName + " "
                         + ent.client.stats.score + " " + ent.client.stats.frags + " "
                         + ent.client.ping + " " + ( ent.client.isReady() ? "1" : "0" ) + " ";
             }
@@ -1061,7 +1061,7 @@ void GT_InitGametype()
         config = "// '" + gametype.title + "' gametype configuration file\n"
                  + "// This config will be executed each time the gametype is started\n"
                  + "\n\n// map rotation\n"
-                 + "set g_maplist \"wfca1\" // list of maps in automatic rotation\n"
+                 + "set g_maplist \"return pressure\" // list of maps in automatic rotation\n"
                  + "set g_maprotation \"0\"   // 0 = same map, 1 = in order, 2 = random\n"
                  + "\n// game settings\n"
                  + "set g_scorelimit \"11\"\n"
@@ -1080,7 +1080,7 @@ void GT_InitGametype()
 				 + "set g_ca_timelimit1v1 \"60\"\n"
                  + "\n// classes settings\n"
                  + "set g_noclass_inventory \"gb mg rg gl rl pg lg eb cells shells grens rockets plasma lasers bolts bullets\"\n"
-                 + "set g_class_strong_ammo \"1 75 15 20 20 125 140 10\" // GB MG RG GL RL PG LG EB\n"
+                 + "set g_class_strong_ammo \"1 75 20 20 40 125 180 15\" // GB MG RG GL RL PG LG EB\n"
                  + "\necho \"" + gametype.name + ".cfg executed\"\n";
 
         G_WriteFile( "configs/server/gametypes/" + gametype.name + ".cfg", config );
@@ -1133,13 +1133,13 @@ void GT_InitGametype()
     // define the scoreboard layout
     if ( gametype.isInstagib )
     {
-        G_ConfigString( CS_SCB_PLAYERTAB_LAYOUT, "%n 112 %s 52 %i 52 %l 48 %r l1" );
-        G_ConfigString( CS_SCB_PLAYERTAB_TITLES, "Name Clan Score Ping R" );
+        G_ConfigString( CS_SCB_PLAYERTAB_LAYOUT, "%a l1 %n 112 %s 52 %i 52 %l 48 %r l1" );
+        G_ConfigString( CS_SCB_PLAYERTAB_TITLES, "AVATAR Name Clan Score Ping R" );
     }
     else
     {
-        G_ConfigString( CS_SCB_PLAYERTAB_LAYOUT, "%n 112 %s 52 %i 52 %i 52 %l 48 %r l1" );
-        G_ConfigString( CS_SCB_PLAYERTAB_TITLES, "Name Clan Score Frags Ping R" );
+        G_ConfigString( CS_SCB_PLAYERTAB_LAYOUT, "%a l1 %n 112 %s 52 %i 52 %i 52 %l 48 %r l1" );
+        G_ConfigString( CS_SCB_PLAYERTAB_TITLES, "AVATAR Name Clan Score Frags Ping R" );
     }
 
     // add commands

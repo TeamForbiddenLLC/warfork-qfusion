@@ -1,0 +1,121 @@
+# (c) Team Forbidden LLC. All Rights Reserved.
+
+#. Console/tv
+msgid "tv_autorecord"
+msgstr "<0/1> Automatically records all TV demos.\n"
+"^6Disable: tv_autorecord \"0\"\n"
+"^6Enable: tv_autorecord \"1\""
+
+#. Console/tv
+msgid "tv_compresspackets"
+msgstr "<0/1> Compresses TV network packets.\n"
+"^6Disable: tv_compresspackets \"0\"\n"
+"^6Enable: tv_compresspackets \"1\""
+
+#. Console/tv
+msgid "tv_floodprotection_messages"
+msgstr "<value> The amount of messages a viewer is permitted to send before triggering flood protection.\n"
+"^6Note: The amount of messages sent resets to \"0\" after the specified value of tv_floodprotection_seconds elapses."
+
+#. Console/tv
+msgid "tv_floodprotection_delay"
+msgstr "<value> The amount of time (in seconds) a viewer is prevented from chatting upon triggering flood protection."
+
+#. Console/tv
+msgid "tv_floodprotection_seconds"
+msgstr "<value> The amount of time before \"tv_floodprotection_messages\" resets."
+
+#. Console/tv
+msgid "tv_log_heartbeats"
+msgstr "<0/1> Prints transmitted heartbeat messages to the TV server console.\n"
+"^6Disable: tv_log_heartbeats \"0\"\n"
+"^6Enable: tv_log_heartbeats \"1\""
+
+#. Console/tv
+msgid "tv_ip"
+msgstr "<ip> If set, binds the Warfork TV server to a specific IPv4 address."
+
+#. Console/tv
+msgid "tv_ip6"
+msgstr "<ip> If set, binds the Warfork TV server to a specific IPv6 address."
+
+#. Console/tv
+msgid "tv_lobbymusic"
+msgstr "<url> Specifies an audio track that should be played for viewers.\n"
+"^6Note: Can be used to stream shoutcasts in OGG format."
+
+#. Console/tv
+msgid "tv_masterservers"
+msgstr "<value> Specifies the master servers used to query a list of Warfork TV servers."
+
+#. Console/tv
+msgid "tv_masterservers_steam"
+msgstr "<value> Specifies the Steam masterservers used to query a list of Warfork TV servers."
+
+#. Console/tv
+msgid "tv_maxclients"
+msgstr "<value>	Maximum amount of viewers allowed on the TV server."
+
+#. Console/tv
+msgid "tv_maxmvclients"
+msgstr "Maximum amount of multiview clients.\n"
+"^6Note: Multiview clients are limited to Warfork TV."
+
+#. Console/tv
+msgid "tv_name"
+msgstr "<name> Name of the TV server.\n"
+"^6Note: Appears in the server browser list. Also appears as the client name on game servers."
+
+#. Console/tv
+msgid "tv_password"
+msgstr "<password> The password required to join the TV server."
+
+#. Console/tv
+msgid "tv_port"
+msgstr "<port> Changes the IPv4 port of the Warfork TV server."
+
+#. Console/tv
+msgid "tv_port6"
+msgstr "<port> Changes the IPv6 port of the Warfork TV server."
+
+#. Console/tv
+msgid "tv_public"
+msgstr "<0/1> The TV server will appear on the public server list.\n"
+"^6Disable: tv_public \"0\"\n"
+"^6Enable: tv_public \"1\""
+
+#. Console/tv
+msgid "tv_rcon_password"
+msgstr "<password> Sets the password for connecting via rcon."
+
+#. Console/tv
+msgid "tv_reconnectlimit"
+msgstr "<value> Seconds a client must wait until they can reconnect with a TV server."
+
+#. Console/tv
+msgid "tv_server"
+msgstr "<0/1> Whether or not the server is a TV server.\n"
+"^6Disable: tv_server \"0\"\n"
+"^6Enable: tv_server \"1\"\n"
+"^6Note: This cvar is write protected."
+
+#. Console/tv
+msgid "tv_tcp"
+msgstr "<0/1> Whether or not to allow TCP connections.\n"
+"^6Disable: tv_tcp \"0\"\n"
+"^6Enable: tv_tcp \"1\""
+
+#. Console/tv
+msgid "tv_timeout"
+msgstr "<value>	Kicks players from TV server if connection is lost for more than defined seconds.\n"
+"^6Note: Takes priority over cl_timeout."
+
+#. Console/tv
+msgid "tv_udp"
+msgstr "<0/1> Whether or not to allow UDP connections.\n"
+"^6Disable: tv_udp \"0\"\n"
+"^6Enable: tv_udp \"1\""
+
+#. Console/tv
+msgid "tv_zombietime"
+msgstr "<value> Determines how long a connected client remains open after it has either timed out with tv_timeout or disconnected."

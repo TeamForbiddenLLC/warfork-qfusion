@@ -18,6 +18,10 @@ msgstr "<0/1> Compresses network packets.\n"
 "^6Enable: cl_compresspackets \"1\""
 
 #. Console/cl
+msgid "cl_prefer_steam_p2p"
+msgstr "<0/1> Route packets through the Steam network when available\n"
+
+#. Console/cl
 msgid "cl_debug_serverCmd"
 msgstr "<0/1> Server command information will printed to console.\n"
 "^6Disable: cl_debug_serverCmd \"0\"\n"
@@ -161,7 +165,7 @@ msgstr "<0-1.0> Camera offset with cl_stereo\n"
 
 #. Console/cl
 msgid "cl_timeout"
-msgstr "<value> Disconnects you from server if packet isn't recieved more than specified time in seconds."
+msgstr "<value> Disconnects you from server if packet isn't received more than specified time in seconds."
 
 #. Console/cl
 msgid "cl_ucmdMaxResend"

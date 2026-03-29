@@ -19,7 +19,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "server.h"
-
+#include "../qcommon/steam.h"
+#include "../steamshim/src/mod_steam.h"
 static bool sv_initialized = false;
 
 mempool_t *sv_mempool;
@@ -71,6 +72,7 @@ cvar_t *sv_hostname;
 cvar_t *sv_public;         // should heartbeats be sent
 cvar_t *sv_log_heartbeats;         // should the sending heartbeat message be printed
 cvar_t *sv_defaultmap;
+cvar_t *sv_whitelist;
 
 cvar_t *sv_iplimit;
 
@@ -82,6 +84,7 @@ cvar_t *sv_maxrate;
 cvar_t *sv_compresspackets;
 cvar_t *sv_masterservers;
 cvar_t *sv_masterservers_steam;
+cvar_t *sv_masterservers_warfork;
 cvar_t *sv_skilllevel;
 
 // wsw : debug netcode
@@ -91,10 +94,8 @@ cvar_t *sv_MOTD;
 cvar_t *sv_MOTDFile;
 cvar_t *sv_MOTDString;
 
-cvar_t *sv_autoUpdate;
-cvar_t *sv_lastAutoUpdate;
-
 cvar_t *sv_demodir;
+cvar_t *sv_useSteamAuth;
 
 //============================================================================
 
@@ -174,6 +175,102 @@ static bool SV_ProcessPacket( netchan_t *netchan, msg_t *msg )
 
 	return true;
 }
+
+static void CL_EVT_cb_policy_response( void *self, struct steam_evt_pkt_s *pkt )
+{
+	svs.steamid = pkt->policy_response.steamID;
+	// re-update the masterserver now that we have the right steamid
+	svc.nextHeartbeat = 0;
+	SV_MasterHeartbeat();
+}
+
+static void CL_RPC_cb_accept_connection( void *self, struct steam_rpc_pkt_s *pReq )
+{
+	incoming_t *inc = self;
+	struct p2p_accept_connection_recv_s *pRecv = &pReq->p2p_accept_connection_recv;
+	if( pRecv->result != STEAMSHIM_EResultOK ) {
+		struct p2p_disconnect_req_s req;
+		req.cmd = RPC_SRV_P2P_DISCONNECT;
+		req.handle = inc->socket.steam_handle;
+		STEAMSHIM_sendRPC( &req, sizeof( struct p2p_disconnect_req_s ), NULL, NULL, NULL );
+		inc->active = false;
+		return;
+	}
+	inc->socket.open = true;
+	inc->socket.connected = true;
+}
+
+static void CL_EVT_cb_connect_status_response( void *self, struct steam_evt_pkt_s *pkt )
+{
+	struct p2p_net_connection_changed_evt_s *evt = &pkt->p2p_net_connection_changed;
+	if( evt->listenSocket == svs.steam_listen_socket && evt->oldState == STEAMSHIM_ESteamNetworkingConnectionState_None && evt->state == STEAMSHIM_ESteamNetworkingConnectionState_Connecting ) {
+		int free = -1;
+		for( int i = 0; i < MAX_INCOMING_CONNECTIONS; i++ ) {
+			if( !svs.incomingp2p[i].active ) {
+				free = i;
+				break;
+			} 
+		}
+		if( free == -1 ) {
+			Com_Printf( "No free slot for P2P connection\n" );
+			return;
+		}
+		incoming_t *inc = &svs.incomingp2p[free];
+		netadr_t address;
+		NET_InitAddress( &address, NA_SDR );
+		address.address.steamid = evt->identityRemoteSteamID;
+		
+		inc->active = true;
+		inc->time = svs.realtime;
+		inc->address = address;
+		
+		inc->socket.type = SOCKET_SDR;
+		inc->socket.steam_handle = evt->hConn;
+		inc->socket.server = true;
+		inc->socket.open = false;
+		inc->socket.connected = false;
+
+		struct p2p_accept_connect_req_s req;
+		req.cmd = RPC_SRV_P2P_ACCEPT_CONNECTION;
+		req.handle = evt->hConn;
+		STEAMSHIM_sendRPC( &req, sizeof( struct p2p_accept_connect_req_s ), inc, CL_RPC_cb_accept_connection, NULL);
+	}
+}
+
+
+//static void SV_P2P_NewConnection( void *self, struct steam_evt_pkt_s *evt )
+//{
+//	struct p2p_new_connection_evt_s *p2p = &evt->p2p_new_connection;
+//
+//	// find a free slot
+//	int free = -1;
+//	for( int i = 0; i < MAX_INCOMING_CONNECTIONS; i++ ) {
+//		if( !svs.incomingp2p[i].active ) {
+//			free = i;
+//			break;
+//		}
+//	}
+//	if( free == -1 ) {
+//		Com_Printf( "No free slot for P2P connection\n" );
+//		return;
+//	}
+//
+//	incoming_t *inc = &svs.incomingp2p[free];
+//	netadr_t address;
+//	NET_InitAddress( &address, NA_SDR );
+//	address.address.steamid = p2p->steamID;
+//
+//	inc->active = true;
+//	inc->time = svs.realtime;
+//	inc->address = address;
+//
+//	inc->socket.address = address;
+//	inc->socket.type = SOCKET_SDR;
+//	inc->socket.handle = p2p->handle;
+//	inc->socket.server = true;
+//	inc->socket.open = true;
+//	inc->socket.connected = true;
+//}
 
 /*
 * SV_ReadPackets
@@ -367,6 +464,28 @@ static void SV_ReadPackets( void )
 			}
 		}
 	}
+
+  // sdr packets without a connection
+  for( int i = 0; i < MAX_INCOMING_CONNECTIONS; i++ ) {
+      if( !svs.incomingp2p[i].active || !svs.incomingp2p[i].socket.connected )
+          continue;
+      ret = NET_GetPacket( &svs.incomingp2p[i].socket, &address, &msg );
+      if( ret == -1 ) {
+          Com_Printf( "NET_GetPacket: Error: %s\n", NET_ErrorString() );
+          NET_CloseSocket( &svs.incomingp2p[i].socket );
+          svs.incomingp2p[i].active = false;
+      } else if( ret == 1 ) {
+          if( *(int *)msg.data != -1 ) {
+              Com_Printf( "Sequence packet without connection\n" );
+              NET_CloseSocket( &svs.incomingp2p[i].socket );
+              svs.incomingp2p[i].active = false;
+              continue;
+          }
+
+          SV_ConnectionlessPacket( &svs.incomingp2p[i].socket, &address, &msg );
+      }
+  }
+
 }
 
 /*
@@ -597,31 +716,6 @@ void SV_UpdateActivity( void )
 	//Com_Printf( "Server activity\n" );
 }
 
-/*
-* SV_CheckAutoUpdate
-*/
-static void SV_CheckAutoUpdate( void )
-{
-	unsigned int days;
-	unsigned int uptimeMinute;
-
-	if( !sv_pure->integer && sv_autoUpdate->integer )
-	{
-		Com_Printf( "WARNING: Autoupdate is not available for unpure servers.\n" );
-		Cvar_ForceSet( "sv_autoUpdate", "0" );
-	}
-
-	if( !sv_autoUpdate->integer || !dedicated->integer )
-		return;
-
-	days = (unsigned int)sv_lastAutoUpdate->integer;
-	uptimeMinute = ( Sys_Milliseconds() / 60000 ) % 60;
-
-	// daily check
-	if( ( days < Com_DaysSince1900() ) && ( uptimeMinute == svc.autoUpdateMinute ) ) {
-		SV_AutoUpdateFromWeb( false );
-	}
-}
 
 /*
 * SV_CheckPostUpdateRestart
@@ -719,6 +813,10 @@ void SV_Frame( int realmsec, int gamemsec )
 
 		SV_MM_Frame();
 
+		if (STEAMSHIM_active()) {
+			STEAMSHIM_dispatch();
+		}
+
 		// send a heartbeat to the master if needed
 		SV_MasterHeartbeat();
 
@@ -728,8 +826,6 @@ void SV_Frame( int realmsec, int gamemsec )
 
 	// handle HTTP connections
 	SV_Web_GameFrame( ge->WebRequest );
-
-	SV_CheckAutoUpdate();
 
 	SV_CheckPostUpdateRestart();
 }
@@ -890,7 +986,6 @@ void SV_Init( void )
 	sv_uploads_demos_baseurl =	Cvar_Get( "sv_uploads_demos_baseurl", "", CVAR_ARCHIVE );
 	if( dedicated->integer )
 	{
-		sv_autoUpdate = Cvar_Get( "sv_autoUpdate", "1", CVAR_ARCHIVE );
 
 		sv_pure =		Cvar_Get( "sv_pure", "1", CVAR_ARCHIVE | CVAR_LATCH | CVAR_SERVERINFO );
 
@@ -903,16 +998,14 @@ void SV_Init( void )
 	}
 	else
 	{
-		sv_autoUpdate = Cvar_Get( "sv_autoUpdate", "0", CVAR_READONLY );
-
 		sv_pure =		Cvar_Get( "sv_pure", "0", CVAR_ARCHIVE | CVAR_LATCH | CVAR_SERVERINFO );
 		sv_public =		Cvar_Get( "sv_public", "0", CVAR_ARCHIVE );
 		sv_log_heartbeats =		Cvar_Get( "sv_log_heartbeats", "1", CVAR_ARCHIVE );
 	}
+	sv_whitelist = Cvar_Get( "sv_whitelist", "", CVAR_ARCHIVE );
 
 	sv_iplimit = Cvar_Get( "sv_iplimit", "3", CVAR_ARCHIVE );
 
-	sv_lastAutoUpdate = Cvar_Get( "sv_lastAutoUpdate", "0", CVAR_READONLY|CVAR_ARCHIVE );
 	sv_pure_forcemodulepk3 =    Cvar_Get( "sv_pure_forcemodulepk3", "", CVAR_LATCH );
 
 	sv_defaultmap =		    Cvar_Get( "sv_defaultmap", "wfdm1", CVAR_ARCHIVE );
@@ -948,8 +1041,10 @@ void SV_Init( void )
 
 	sv_masterservers =			Cvar_Get( "masterservers", DEFAULT_MASTER_SERVERS_IPS, CVAR_LATCH );
 	sv_masterservers_steam =	Cvar_Get( "masterservers_steam", DEFAULT_MASTER_SERVERS_STEAM_IPS, CVAR_LATCH );
+	sv_masterservers_warfork =	Cvar_Get( "masterservers_warfork", DEFAULT_MASTER_SERVERS_WARFORK_IPS, CVAR_LATCH );
 
 	sv_debug_serverCmd =	    Cvar_Get( "sv_debug_serverCmd", "0", CVAR_ARCHIVE );
+	sv_useSteamAuth = Cvar_Get( "sv_useSteamAuth", "1", CVAR_SERVERINFO|CVAR_LATCH );
 
 	sv_MOTD = Cvar_Get( "sv_MOTD", "0", CVAR_ARCHIVE );
 	sv_MOTDFile = Cvar_Get( "sv_MOTDFile", "", CVAR_ARCHIVE );
@@ -984,8 +1079,6 @@ void SV_Init( void )
 		Cvar_ForceSet( "sv_fps", sv_pps->dvalue );
 	}
 
-	svc.autoUpdateMinute = rand() % 60;
-
 	Com_Printf( "Game running at %i fps. Server transmit at %i pps\n", sv_fps->integer, sv_pps->integer );
 
 	//init the master servers list
@@ -997,6 +1090,17 @@ void SV_Init( void )
 
 	SV_Web_Init();
 
+	if (STEAMSHIM_active()) {
+		if (!dedicated->integer)
+			Cvar_ForceSet( "sv_useSteamAuth", "1" );
+	} else {
+		Cvar_ForceSet( "sv_useSteamAuth", "0" );
+	}
+	
+	STEAMSHIM_subscribeEvent( EVT_SRV_P2P_POLICY_RESPONSE, NULL, CL_EVT_cb_policy_response );
+	STEAMSHIM_subscribeEvent( EVT_SRV_P2P_CONNECTION_CHANGED, NULL, CL_EVT_cb_connect_status_response );
+
+	// Register net callback
 	sv_initialized = true;
 }
 
@@ -1009,6 +1113,10 @@ void SV_Shutdown( const char *finalmsg )
 {
 	if( !sv_initialized )
 		return;
+
+	STEAMSHIM_unsubscribeEvent(EVT_SRV_P2P_POLICY_RESPONSE,CL_EVT_cb_policy_response);
+	STEAMSHIM_unsubscribeEvent(EVT_SRV_P2P_CONNECTION_CHANGED, CL_EVT_cb_connect_status_response);
+
 	sv_initialized = false;
 
 	SV_Web_Shutdown();

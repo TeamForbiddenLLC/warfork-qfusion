@@ -35,6 +35,20 @@ static inline asstring_t *objectString_Alloc( void )
 	return object;
 }
 
+static inline void objectString_Free( asstring_t* obj )
+{
+	if( ( obj->size & CONST_STRING_BITFLAG ) == 0 )
+	{
+		delete[] obj->buffer;
+		delete obj;
+	}
+	else
+	{
+		uint8_t *rawmem = ( uint8_t * )obj;
+		delete[] rawmem;
+	}
+}
+
 asstring_t *objectString_FactoryBuffer( const char *buffer, unsigned int length )
 {
 	asstring_t *object;
@@ -201,29 +215,79 @@ void objectString_Release( asstring_t *obj )
 	clamp_low( obj->asRefCount, 0 );
 
 	if( !obj->asRefCount )
+		objectString_Free(obj);
+}
+
+class StringFactory : public asIStringFactory
+{
+private:
+	typedef std::unordered_map<asstring_t*, int> cachemap_t;
+	cachemap_t stringCache;
+
+private:
+	cachemap_t::iterator findCache(const char *data, asUINT length)
 	{
-		if( ( obj->size & CONST_STRING_BITFLAG ) == 0 )
-		{
-			delete[] obj->buffer;
-			delete obj;
-		}
-		else
-		{
-			uint8_t *rawmem = ( uint8_t * )obj;
-			delete[] rawmem;
-		}
+		return std::find_if(stringCache.begin(), stringCache.end(),
+			[data, length](const cachemap_t::value_type &pair) -> bool {
+				if (pair.first->len != length)
+					return false;
+				return !strcmp( pair.first->buffer, data );
+			});
 	}
-}
 
-static asstring_t *StringFactory( unsigned int length, const char *s )
-{
-	return objectString_FactoryBuffer( s, length );
-}
+public:
+	virtual const void *GetStringConstant(const char *data, asUINT length) override
+	{
+		auto it = findCache( data, length );
+		if (it != stringCache.end())
+		{
+			it->second++;
+			return it->first;
+		}
 
-static const asstring_t *ConstStringFactory( unsigned int length, const char *s )
-{
-	return objectString_ConstFactoryBuffer( s, length );
-}
+		asstring_t* ret = objectString_FactoryBuffer( data, length );
+		stringCache[ret] = 1;
+		return ret;
+	}
+
+	virtual int ReleaseStringConstant(const void *str) override
+	{
+		if (str == nullptr)
+			return asERROR;
+
+		asstring_t* obj = (asstring_t*)str;
+
+		auto it = stringCache.find(obj);
+		if (it == stringCache.end())
+			return asERROR;
+
+		if (--it->second == 0)
+		{
+			objectString_Free(it->first);
+			stringCache.erase(it);
+		}
+
+		return asSUCCESS;
+	}
+
+	virtual int GetRawStringData(const void *str, char *data, asUINT *length) const override
+	{
+		if (str == nullptr)
+			return asERROR;
+
+		asstring_t* obj = (asstring_t*)str;
+
+		if (length != nullptr)
+			*length = obj->len;
+
+		if (data != nullptr)
+			memcpy(data, obj->buffer, obj->len);
+
+		return asSUCCESS;
+	}
+};
+
+static StringFactory angelStringFactory;
 
 static char *objectString_Index( unsigned int i, asstring_t *self )
 {
@@ -409,7 +473,7 @@ static asstring_t *objectString_Substring( int start, int length, asstring_t *se
 	if( start >= (int)self->len )
 		return objectString_FactoryBuffer( NULL, 0 );
 
-	return objectString_FactoryBuffer( self->buffer + start, min( length, (int)self->len - start ) );
+	return objectString_FactoryBuffer( self->buffer + start, std::min( length, (int)self->len - start ) );
 }
 
 static asstring_t *objectString_Substring2( int start, asstring_t *self )
@@ -528,8 +592,7 @@ void RegisterStringAddon( asIScriptEngine *engine )
 	int r;
 
 	// register the string factory
-	r = engine->RegisterStringFactory( "String @", asFUNCTION( StringFactory ), asCALL_CDECL ); assert( r >= 0 );
-	r = engine->RegisterStringFactory( "const String @", asFUNCTION( ConstStringFactory ), asCALL_CDECL ); assert( r >= 0 );
+	r = engine->RegisterStringFactory( "String", &angelStringFactory ); assert( r >= 0 );
 
 	// register object behaviours
 	r = engine->RegisterObjectBehaviour( "String", asBEHAVE_FACTORY, "String @f()", asFUNCTION( objectString_Factory ), asCALL_CDECL ); assert( r >= 0 );
@@ -542,9 +605,9 @@ void RegisterStringAddon( asIScriptEngine *engine )
 	r = engine->RegisterObjectBehaviour( "String", asBEHAVE_RELEASE, "void f()", asFUNCTION( objectString_Release ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
 
 #ifdef ENABLE_STRING_IMPLICIT_CASTS
-	r = engine->RegisterObjectBehaviour( "String", asBEHAVE_IMPLICIT_VALUE_CAST, "int f() const", asFUNCTION( objectString_CastToInt ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour( "String", asBEHAVE_IMPLICIT_VALUE_CAST, "float f() const", asFUNCTION( objectString_CastToFloat ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour( "String", asBEHAVE_IMPLICIT_VALUE_CAST, "double f() const", asFUNCTION( objectString_CastToDouble ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "int opImplConv() const", asFUNCTION( objectString_CastToInt ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "float opImplConv() const", asFUNCTION( objectString_CastToFloat ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "double opImplConv() const", asFUNCTION( objectString_CastToDouble ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
 #endif
 
 	// register object methods
@@ -589,7 +652,7 @@ void RegisterStringAddon( asIScriptEngine *engine )
 	r = engine->RegisterObjectMethod( "String", "int toInt() const", asFUNCTION( objectString_toInt ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
 	r = engine->RegisterObjectMethod( "String", "float toFloat() const", asFUNCTION( objectString_toFloat ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
 
-	r = engine->RegisterObjectMethod( "String", "uint locate(String &, const uint) const", asFUNCTION( objectString_Locate ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "uint locate(const String &in, const uint) const", asFUNCTION( objectString_Locate ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
 	r = engine->RegisterObjectMethod( "String", "String @substr(const uint start, const uint length) const", asFUNCTION( objectString_Substring ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
 	r = engine->RegisterObjectMethod( "String", "String @subString(const uint start, const uint length) const", asFUNCTION( objectString_Substring ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
 	r = engine->RegisterObjectMethod( "String", "String @substr(const uint start) const", asFUNCTION( objectString_Substring2 ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );

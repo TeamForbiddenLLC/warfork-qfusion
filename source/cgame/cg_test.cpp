@@ -292,7 +292,7 @@ static void CG_TestEntities( void )
 
 	memset( &ent, 0, sizeof( ent ) );
 
-	trap_R_ClearScene();
+	RF_ClearScene();
 
 	for( i = 0; i < 100; i++ )
 	{

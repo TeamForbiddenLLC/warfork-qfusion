@@ -487,6 +487,7 @@ static cmd_function_t cmdlist[] =
 #if defined(TCP_ALLOW_TVCONNECT)
 	{ "tcpconnect", TV_TCPConnect_f },
 #endif
+	{ "disc", TV_Disconnect_f },
 	{ "disconnect", TV_Disconnect_f },
 
 	{ "demo", TV_Demo_f },

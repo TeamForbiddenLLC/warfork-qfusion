@@ -1,0 +1,43 @@
+tests = {
+    'alloc': false,
+    'expect_check': false,
+    'expect_check_fail': true,
+    'group_setup_assert': true,
+    'group_setup_fail': true,
+    'fixtures': false,
+    'group_fixtures': false,
+    'groups': false,
+    'float_macros': false,
+    'double_macros': false,
+    'assert_macros': false,
+    'assert_macros_fail': true,
+    'assert_ptr': false,
+    'assert_ptr_fail': true,
+    'assert_u_int': false,
+    'assert_u_int_fail': true,
+    'assert_range': false,
+    'assert_range_fail': true,
+    'assert_set': false,
+    'assert_set_fail': true,
+    'basics': false,
+    'skip': false,
+    'stop': false,
+    'stop_fail': true,
+    'strmatch': false,
+    'setup_fail': true,
+    'ordering': false,
+    'ordering_fail': true,
+    'returns': false,
+    'returns_fail': true,
+    'string': false,
+    'wildcard': false,
+    'skip_filter': false,
+}
+
+foreach name, should_fail: tests
+    exe = executable(name,
+                     'test_@0@.c'.format(name),
+                     include_directories: [cmocka_includes],
+                     link_with: [libcmocka])
+    test(name, exe, should_fail: should_fail)
+endforeach

@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2014 Andreas Jonsson
+   Copyright (c) 2003-2024 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -52,7 +52,7 @@
 
 BEGIN_AS_NAMESPACE
 
-#ifdef AS_MAX_PORTABILITY
+#if defined(AS_MAX_PORTABILITY) || defined(AS_NO_CLASS_METHODS)
 
 static void ScriptFunction_AddRef_Generic(asIScriptGeneric *gen)
 {
@@ -98,14 +98,16 @@ static void ScriptFunction_ReleaseAllHandles_Generic(asIScriptGeneric *gen)
 	self->ReleaseAllHandles(engine);
 }
 
+#ifdef AS_MAX_PORTABILITY
 static void ScriptFunction_CreateDelegate_Generic(asIScriptGeneric *gen)
 {
 	asCScriptFunction *func = (asCScriptFunction*)gen->GetArgAddress(0);
 	void *obj = gen->GetArgAddress(1);
 	gen->SetReturnAddress(CreateDelegate(func, obj));
 }
+#endif
 
-// TODO: 2.29.0: operator==
+// TODO: operator==
 /*static void ScriptFunction_opEquals_Generic(asIScriptGeneric *gen)
 {
 	asCScriptFunction *funcSelf = (asCScriptFunction*)gen->GetObject();
@@ -123,9 +125,9 @@ void RegisterScriptFunction(asCScriptEngine *engine)
 	int r = 0;
 	UNUSED_VAR(r); // It is only used in debug mode
 	engine->functionBehaviours.engine = engine;
-	engine->functionBehaviours.flags = asOBJ_REF | asOBJ_GC | asOBJ_SCRIPT_FUNCTION;
-	engine->functionBehaviours.name = "_builtin_function_";
-#ifndef AS_MAX_PORTABILITY
+	engine->functionBehaviours.flags = asOBJ_REF | asOBJ_GC;
+	engine->functionBehaviours.name = "$func";
+#if !defined(AS_MAX_PORTABILITY) && !defined(AS_NO_CLASS_METHODS)
 	r = engine->RegisterBehaviourToObjectType(&engine->functionBehaviours, asBEHAVE_ADDREF, "void f()", asMETHOD(asCScriptFunction,AddRef), asCALL_THISCALL, 0); asASSERT( r >= 0 );
 	r = engine->RegisterBehaviourToObjectType(&engine->functionBehaviours, asBEHAVE_RELEASE, "void f()", asMETHOD(asCScriptFunction,Release), asCALL_THISCALL, 0); asASSERT( r >= 0 );
 	r = engine->RegisterBehaviourToObjectType(&engine->functionBehaviours, asBEHAVE_GETREFCOUNT, "int f()", asMETHOD(asCScriptFunction,GetRefCount), asCALL_THISCALL, 0); asASSERT( r >= 0 );
@@ -133,7 +135,7 @@ void RegisterScriptFunction(asCScriptEngine *engine)
 	r = engine->RegisterBehaviourToObjectType(&engine->functionBehaviours, asBEHAVE_GETGCFLAG, "bool f()", asMETHOD(asCScriptFunction,GetFlag), asCALL_THISCALL, 0); asASSERT( r >= 0 );
 	r = engine->RegisterBehaviourToObjectType(&engine->functionBehaviours, asBEHAVE_ENUMREFS, "void f(int&in)", asMETHOD(asCScriptFunction,EnumReferences), asCALL_THISCALL, 0); asASSERT( r >= 0 );
 	r = engine->RegisterBehaviourToObjectType(&engine->functionBehaviours, asBEHAVE_RELEASEREFS, "void f(int&in)", asMETHOD(asCScriptFunction,ReleaseAllHandles), asCALL_THISCALL, 0); asASSERT( r >= 0 );
-	// TODO: 2.29.0: Need some way to allow the arg type to adapt when the funcdefs are instantiated
+	// TODO: Need some way to allow the arg type to adapt when the funcdefs are instantiated
 //	r = engine->RegisterMethodToObjectType(&engine->functionBehaviours, "bool opEquals(const int &in)", asMETHOD(asCScriptFunction,operator==), asCALL_THISCALL); asASSERT( r >= 0 );
 #else
 	r = engine->RegisterBehaviourToObjectType(&engine->functionBehaviours, asBEHAVE_ADDREF, "void f()", asFUNCTION(ScriptFunction_AddRef_Generic), asCALL_GENERIC, 0); asASSERT( r >= 0 );
@@ -163,7 +165,7 @@ void RegisterScriptFunction(asCScriptEngine *engine)
 	engine->registeredGlobalFuncs.Put(engine->scriptFunctions[r]);
 
 	// Change the return type so the VM will know the function really returns a handle
-	engine->scriptFunctions[r]->returnType = asCDataType::CreateObject(&engine->functionBehaviours, false);
+	engine->scriptFunctions[r]->returnType = asCDataType::CreateType(&engine->functionBehaviours, false);
 	engine->scriptFunctions[r]->returnType.MakeHandle(true);
 }
 
@@ -206,13 +208,22 @@ void asCScriptFunction::MakeDelegate(asCScriptFunction *func, void *obj)
 }
 
 // interface
+void *asCScriptFunction::GetAuxiliary() const
+{
+	if (sysFuncIntf)
+		return sysFuncIntf->auxiliary;
+
+	return 0;
+}
+
+// interface
 void *asCScriptFunction::GetDelegateObject() const
 {
 	return objForDelegate;
 }
 
 // interface
-asIObjectType *asCScriptFunction::GetDelegateObjectType() const
+asITypeInfo *asCScriptFunction::GetDelegateObjectType() const
 {
 	if( objForDelegate == 0 || funcForDelegate == 0 )
 		return 0;
@@ -226,7 +237,7 @@ asIScriptFunction *asCScriptFunction::GetDelegateFunction() const
 	return funcForDelegate;
 }
 
-// TODO: 2.29.0: operator==
+// TODO: operator==
 /*
 // internal
 bool asCScriptFunction::operator==(const asCScriptFunction &other) const
@@ -297,7 +308,9 @@ int asCScriptFunction::ParseListPattern(asSListPatternNode *&target, const char 
 			asCBuilder builder(engine, 0);
 			asCScriptCode code;
 			code.SetCode("", decl, 0, false);
-			dt = builder.CreateDataTypeFromNode(listNodes, &code, engine->defaultNamespace, false, returnType.GetObjectType());
+
+			// For list factory we get the object type from the return type, for list constructor we get it from the object type directly
+			dt = builder.CreateDataTypeFromNode(listNodes, &code, engine->defaultNamespace, false, objectType ? objectType : CastToObjectType(returnType.GetTypeInfo()));
 
 			node->next = asNEW(asSListPatternDataTypeNode)(dt);
 			node = node->next;
@@ -332,17 +345,24 @@ int asCScriptFunction::ParseListPattern(asSListPatternNode *&target, const char 
 // internal
 asCScriptFunction::asCScriptFunction(asCScriptEngine *engine, asCModule *mod, asEFuncType _funcType)
 {
-	refCount.set(1);
+	funcType               = _funcType;
+	if( funcType == asFUNC_DELEGATE )
+	{
+		// Delegates behave like object instances, rather than script code
+		externalRefCount.set(1);
+		internalRefCount.set(0);
+	}
+	else
+	{
+		internalRefCount.set(1);
+		externalRefCount.set(0);
+	}
+
 	this->engine           = engine;
 	this->scriptData       = 0;
-	funcType               = _funcType;
 	module                 = mod;
 	objectType             = 0;
 	name                   = "";
-	isReadOnly             = false;
-	isPrivate              = false;
-	isFinal                = false;
-	isOverride             = false;
 	sysFuncIntf            = 0;
 	signatureId            = 0;
 	dontCleanUpOnException = false;
@@ -351,17 +371,17 @@ asCScriptFunction::asCScriptFunction(asCScriptEngine *engine, asCModule *mod, as
 	userData               = 0;
 	id                     = 0;
 	accessMask             = 0xFFFFFFFF;
-	isShared               = false;
 	nameSpace              = engine->nameSpaces[0];
 	objForDelegate         = 0;
 	funcForDelegate        = 0;
 	listPattern            = 0;
+	funcdefType            = 0;
 
 	if( funcType == asFUNC_SCRIPT )
 		AllocateScriptFunctionData();
 
-	// Notify the GC of script functions
-	if( (funcType == asFUNC_SCRIPT && mod == 0) || (funcType == asFUNC_DELEGATE) )
+	// Notify the GC of delegates
+	if( funcType == asFUNC_DELEGATE )
 		engine->gc.AddScriptObjectToGC(this, &engine->functionBehaviours);
 }
 
@@ -395,19 +415,19 @@ asCScriptFunction::~asCScriptFunction()
 {
 	// Dummy functions that are allocated on the stack are not reference counted
 	asASSERT( funcType == asFUNC_DUMMY    ||
-		      refCount.get() == 0         );
+		      (externalRefCount.get() == 0 && internalRefCount.get() == 0) );
+
+	// Remove the script function from the engine's scriptFunctions array here
+	// Don't remove it before, because there may still be functions referring to it
+	// by index until now. If it was removed in DestroyInternal, those would not
+	// be able to release the refcount, thus causing memory leak.
+	if( engine && id != 0 && funcType != asFUNC_DUMMY )
+		engine->RemoveScriptFunction(this);
 
 	// If the engine pointer is 0, then DestroyInternal has already been called and there is nothing more to do
 	if( engine == 0 ) return;
 
 	DestroyInternal();
-
-	// Tell engine to free the function id. This will make it impossible to
-	// refer to the function by id. Where this is done, it is quite possible
-	// they will leak.
-	if( funcType != -1 && funcType != asFUNC_IMPORTED && id )
-		engine->FreeScriptFunctionId(id);
-	id = 0;
 
 	// Finally set the engine pointer to 0 because it must not be accessed again
 	engine = 0;
@@ -416,7 +436,7 @@ asCScriptFunction::~asCScriptFunction()
 // internal
 void asCScriptFunction::DestroyHalfCreated()
 {
-	asASSERT( refCount.get() == 1 );
+	asASSERT( externalRefCount.get() == 0 && internalRefCount.get() == 1 );
 
 	// Set the funcType to dummy so the destructor won't complain
 	funcType = asFUNC_DUMMY;
@@ -427,7 +447,7 @@ void asCScriptFunction::DestroyHalfCreated()
 	if( scriptData )
 		scriptData->byteCode.SetLength(0);
 
-	delete this;
+	asDELETE(this, asCScriptFunction);
 }
 
 // internal
@@ -459,6 +479,12 @@ void asCScriptFunction::DestroyInternal()
 		asDELETE(sysFuncIntf,asSSystemFunctionInterface);
 	sysFuncIntf = 0;
 
+	if( objectType )
+	{
+		objectType->ReleaseInternal();
+		objectType = 0;
+	}
+
 	DeallocateScriptFunctionData();
 
 	// Deallocate list pattern data
@@ -480,43 +506,61 @@ int asCScriptFunction::GetId() const
 int asCScriptFunction::AddRef() const
 {
 	gcFlag = false;
-	return refCount.atomicInc();
+	return externalRefCount.atomicInc();
 }
 
 // interface
 int asCScriptFunction::Release() const
 {
 	gcFlag = false;
-	int r = refCount.atomicDec();
+	int r = externalRefCount.atomicDec();
 	if( r == 0 &&
-		funcType != asFUNC_FUNCDEF && // Funcdefs are treated as object types and will be deleted by ClearUnusedTypes()
 		funcType != asFUNC_DUMMY )    // Dummy functions are allocated on the stack and cannot be deleted
-		asDELETE(const_cast<asCScriptFunction*>(this),asCScriptFunction);
+	{
+		// There are no more external references, if there are also no
+		// internal references then it is time to delete the function
+		if( internalRefCount.get() == 0 )
+		{
+			// If there are no internal references, then no module is owning the function
+			// For example if the function was dynamically compiled without adding it to the scope of the module
+			asASSERT( module == 0 );
+
+			asDELETE(const_cast<asCScriptFunction*>(this),asCScriptFunction);
+		}
+	}
 
 	return r;
 }
 
 // internal
-void asCScriptFunction::Orphan(asIScriptModule *mod)
+int asCScriptFunction::AddRefInternal()
 {
-	if( mod && module == mod )
+	return internalRefCount.atomicInc();
+}
+
+// internal
+int asCScriptFunction::ReleaseInternal()
+{
+	int r = internalRefCount.atomicDec();
+	if( r == 0 &&
+		funcType != asFUNC_DUMMY )
 	{
-		module = 0;
-		if( (funcType == asFUNC_SCRIPT || funcType == asFUNC_IMPORTED) && refCount.get() > 1 )
+		// There are no more internal references, if there are also no
+		// external references then it is time to delete the function
+		if( externalRefCount.get() == 0 )
 		{
-			// This function is being orphaned, so notify the GC so it can check for circular references
-			engine->gc.AddScriptObjectToGC(this, &engine->functionBehaviours);
+			asDELETE(const_cast<asCScriptFunction*>(this),asCScriptFunction);
 		}
 	}
 
-	Release();
+	return r;
 }
 
 // interface
 int asCScriptFunction::GetTypeId() const
 {
 	// This const cast is ok, the object won't be modified
-	asCDataType dt = asCDataType::CreateFuncDef(const_cast<asCScriptFunction*>(this));
+	asCDataType dt = asCDataType::CreateType(engine->FindMatchingFuncdef(const_cast<asCScriptFunction*>(this), 0), false);
 	return engine->GetTypeIdFromDataType(dt);
 }
 
@@ -526,10 +570,10 @@ bool asCScriptFunction::IsCompatibleWithTypeId(int typeId) const
 	asCDataType dt = engine->GetDataTypeFromTypeId(typeId);
 
 	// Make sure the type is a function
-	asCScriptFunction *func = dt.GetFuncDef();
-	if( func == 0 )
+	if (!dt.IsFuncdef())
 		return false;
 
+	asCScriptFunction *func = CastToFuncdefType(dt.GetTypeInfo())->funcdef;
 	if( !IsSignatureExceptNameEqual(func) )
 		return false;
 
@@ -544,9 +588,7 @@ bool asCScriptFunction::IsCompatibleWithTypeId(int typeId) const
 const char *asCScriptFunction::GetModuleName() const
 {
 	if( module )
-	{
-		return module->name.AddressOf();
-	}
+		return module->GetName();
 
 	return 0;
 }
@@ -558,7 +600,7 @@ asIScriptModule *asCScriptFunction::GetModule() const
 }
 
 // interface
-asIObjectType *asCScriptFunction::GetObjectType() const
+asITypeInfo *asCScriptFunction::GetObjectType() const
 {
 	return objectType;
 }
@@ -581,19 +623,28 @@ const char *asCScriptFunction::GetName() const
 // interface
 const char *asCScriptFunction::GetNamespace() const
 {
-	return nameSpace->name.AddressOf();
+	if (nameSpace)
+		return nameSpace->name.AddressOf();
+
+	return 0;
 }
 
 // interface
 bool asCScriptFunction::IsReadOnly() const
 {
-	return isReadOnly;
+	return traits.GetTrait(asTRAIT_CONST);
 }
 
 // interface
 bool asCScriptFunction::IsPrivate() const
 {
-	return isPrivate;
+	return traits.GetTrait(asTRAIT_PRIVATE);
+}
+
+// interface
+bool asCScriptFunction::IsProtected() const
+{
+	return traits.GetTrait(asTRAIT_PROTECTED);
 }
 
 // internal
@@ -616,8 +667,8 @@ int asCScriptFunction::GetSpaceNeededForReturnValue()
 // internal
 bool asCScriptFunction::DoesReturnOnStack() const
 {
-	if( returnType.GetObjectType() &&
-		(returnType.GetObjectType()->flags & asOBJ_VALUE) &&
+	if( returnType.GetTypeInfo() &&
+		(returnType.GetTypeInfo()->flags & asOBJ_VALUE) &&
 		!returnType.IsReference() )
 		return true;
 
@@ -635,34 +686,36 @@ asCString asCScriptFunction::GetDeclarationStr(bool includeObjectName, bool incl
 	if( !(returnType.GetTokenType() == ttVoid &&
 		  objectType &&
 		  (name == objectType->name || (name.GetLength() > 0 && name[0] == '~') ||
-		   name == "_beh_0_" || name == "_beh_2_")) )
+		   name == "$beh0" || name == "$beh2")) )
 	{
-		str = returnType.Format();
+		str = returnType.Format(nameSpace, includeNamespace);
 		str += " ";
 	}
 	if( objectType && includeObjectName )
 	{
-		if( includeNamespace )
-			str += objectType->nameSpace->name + "::";
-
-		if( objectType->name != "" )
-			str += objectType->name + "::";
-		else
-			str += "_unnamed_type_::";
+		asCDataType dt = asCDataType::CreateType(objectType, false);
+		str += dt.Format(nameSpace, includeNamespace);
+		str += "::";
 	}
-	else if( includeNamespace )
+	else if (funcdefType && funcdefType->parentClass && includeObjectName)
+	{
+		asCDataType dt = asCDataType::CreateType(funcdefType->parentClass, false);
+		str += dt.Format(nameSpace, includeNamespace);
+		str += "::";
+	}
+	else if( includeNamespace && nameSpace->name != "" && !objectType && !(funcdefType && funcdefType->parentClass) )
 	{
 		str += nameSpace->name + "::";
 	}
 	if( name == "" )
 		str += "_unnamed_function_(";
-	else if( name.SubString(0,5) == "_beh_" && name.GetLength() == 7 )
+	else if( name.SubString(0,4) == "$beh" && name.GetLength() == 5 )
 	{
-		if( name[5] == '0' + asBEHAVE_CONSTRUCT )
+		if( name[4] == '0' + asBEHAVE_CONSTRUCT )
 			str += objectType->name + "(";
-		else if( name[5] == '0' + asBEHAVE_FACTORY )
-			str += returnType.GetObjectType()->name + "(";
-		else if( name[5] == '0' + asBEHAVE_DESTRUCT )
+		else if( name[4] == '0' + asBEHAVE_FACTORY )
+			str += returnType.GetTypeInfo()->name + "(";
+		else if( name[4] == '0' + asBEHAVE_DESTRUCT )
 			str += "~" + objectType->name + "(";
 		else
 			str += name + "(";
@@ -675,7 +728,7 @@ asCString asCScriptFunction::GetDeclarationStr(bool includeObjectName, bool incl
 		asUINT n;
 		for( n = 0; n < parameterTypes.GetLength() - 1; n++ )
 		{
-			str += parameterTypes[n].Format();
+			str += parameterTypes[n].Format(nameSpace, includeNamespace);
 			if( parameterTypes[n].IsReference() && inOutFlags.GetLength() > n )
 			{
 				if( inOutFlags[n] == asTM_INREF ) str += "in";
@@ -700,7 +753,7 @@ asCString asCScriptFunction::GetDeclarationStr(bool includeObjectName, bool incl
 		}
 
 		// Add the last parameter
-		str += parameterTypes[n].Format();
+		str += parameterTypes[n].Format(nameSpace, includeNamespace);
 		if( parameterTypes[n].IsReference() && inOutFlags.GetLength() > n )
 		{
 			if( inOutFlags[n] == asTM_INREF ) str += "in";
@@ -724,7 +777,7 @@ asCString asCScriptFunction::GetDeclarationStr(bool includeObjectName, bool incl
 
 	str += ")";
 
-	if( isReadOnly )
+	if( IsReadOnly() )
 		str += " const";
 
 	// Add the declaration of the list pattern
@@ -757,7 +810,7 @@ asCString asCScriptFunction::GetDeclarationStr(bool includeObjectName, bool incl
 				}
 				else
 					str += ", ";
-				str += reinterpret_cast<asSListPatternDataTypeNode*>(n)->dataType.Format();
+				str += reinterpret_cast<asSListPatternDataTypeNode*>(n)->dataType.Format(nameSpace, includeNamespace);
 			}
 
 			n = n->next;
@@ -813,6 +866,22 @@ int asCScriptFunction::FindNextLineWithCode(int line) const
 	}
 
 	return -1;
+}
+
+// interface
+int asCScriptFunction::GetDeclaredAt(const char** scriptSection, int* row, int* col) const
+{
+	if (!scriptData)
+	{
+		if (scriptSection) *scriptSection = 0;
+		if (row) *row = 0;
+		if (col) *col = 0;
+		return asNOT_SUPPORTED;
+	}
+	if (scriptSection) *scriptSection = engine->scriptSectionNames[scriptData->scriptSectionIdx]->AddressOf();
+	if (row) *row = scriptData->declaredAt & 0xFFFFF;
+	if (col) *col = scriptData->declaredAt >> 20;
+	return 0;
 }
 
 // internal
@@ -881,17 +950,17 @@ asUINT asCScriptFunction::GetVarCount() const
 }
 
 // interface
-int asCScriptFunction::GetVar(asUINT index, const char **name, int *typeId) const
+int asCScriptFunction::GetVar(asUINT index, const char **out_name, int *out_typeId) const
 {
 	if( scriptData == 0 )
 		return asNOT_SUPPORTED;
 	if( index >= scriptData->variables.GetLength() )
 		return asINVALID_ARG;
 
-	if( name )
-		*name = scriptData->variables[index]->name.AddressOf();
-	if( typeId )
-		*typeId = engine->GetTypeIdFromDataType(scriptData->variables[index]->type);
+	if( out_name )
+		*out_name = scriptData->variables[index]->name.AddressOf();
+	if( out_typeId )
+		*out_typeId = engine->GetTypeIdFromDataType(scriptData->variables[index]->type);
 
 	return asSUCCESS;
 }
@@ -903,14 +972,14 @@ const char *asCScriptFunction::GetVarDecl(asUINT index, bool includeNamespace) c
 		return 0;
 
 	asCString *tempString = &asCThreadManager::GetLocalData()->string;
-	*tempString = scriptData->variables[index]->type.Format(includeNamespace);
+	*tempString = scriptData->variables[index]->type.Format(nameSpace, includeNamespace);
 	*tempString += " " + scriptData->variables[index]->name;
 
 	return tempString->AddressOf();
 }
 
 // internal
-void asCScriptFunction::AddVariable(asCString &name, asCDataType &type, int stackOffset)
+void asCScriptFunction::AddVariable(const asCString &in_name, asCDataType &in_type, int in_stackOffset, bool in_onHeap)
 {
 	asASSERT( scriptData );
 	asSScriptVariable *var = asNEW(asSScriptVariable);
@@ -919,22 +988,23 @@ void asCScriptFunction::AddVariable(asCString &name, asCDataType &type, int stac
 		// Out of memory
 		return;
 	}
-	var->name                 = name;
-	var->type                 = type;
-	var->stackOffset          = stackOffset;
+	var->name                 = in_name;
+	var->type                 = in_type;
+	var->stackOffset          = in_stackOffset;
+	var->onHeap               = in_onHeap;
 	var->declaredAtProgramPos = 0;
 	scriptData->variables.PushLast(var);
 }
 
 // internal
-asCObjectType *asCScriptFunction::GetObjectTypeOfLocalVar(short varOffset)
+asCTypeInfo *asCScriptFunction::GetTypeInfoOfLocalVar(short varOffset)
 {
 	asASSERT( scriptData );
 
-	for( asUINT n = 0; n < scriptData->objVariablePos.GetLength(); n++ )
+	for( asUINT n = 0; n < scriptData->variables.GetLength(); n++ )
 	{
-		if( scriptData->objVariablePos[n] == varOffset )
-			return scriptData->objVariableTypes[n];
+		if (scriptData->variables[n]->stackOffset == varOffset)
+			return scriptData->variables[n]->type.GetTypeInfo();
 	}
 
 	return 0;
@@ -965,7 +1035,7 @@ void asCScriptFunction::ComputeSignatureId()
 // internal
 bool asCScriptFunction::IsSignatureEqual(const asCScriptFunction *func) const
 {
-	if( !IsSignatureExceptNameEqual(func) || name != func->name ) return false;
+	if( name != func->name || !IsSignatureExceptNameEqual(func) ) return false;
 
 	return true;
 }
@@ -973,7 +1043,7 @@ bool asCScriptFunction::IsSignatureEqual(const asCScriptFunction *func) const
 // internal
 bool asCScriptFunction::IsSignatureExceptNameEqual(const asCScriptFunction *func) const
 {
-	return IsSignatureExceptNameEqual(func->returnType, func->parameterTypes, func->inOutFlags, func->objectType, func->isReadOnly);
+	return IsSignatureExceptNameEqual(func->returnType, func->parameterTypes, func->inOutFlags, func->objectType, func->IsReadOnly());
 }
 
 // internal
@@ -987,22 +1057,22 @@ bool asCScriptFunction::IsSignatureExceptNameEqual(const asCDataType &retType, c
 // internal
 bool asCScriptFunction::IsSignatureExceptNameAndObjectTypeEqual(const asCScriptFunction *func) const
 {
-	return IsSignatureExceptNameEqual(func->returnType, func->parameterTypes, func->inOutFlags, objectType, isReadOnly);
+	return IsSignatureExceptNameEqual(func->returnType, func->parameterTypes, func->inOutFlags, objectType, IsReadOnly());
 }
 
 // internal
 bool asCScriptFunction::IsSignatureExceptNameAndReturnTypeEqual(const asCScriptFunction *func) const
 {
-	return IsSignatureExceptNameAndReturnTypeEqual(func->parameterTypes, func->inOutFlags, func->objectType, func->isReadOnly);
+	return IsSignatureExceptNameAndReturnTypeEqual(func->parameterTypes, func->inOutFlags, func->objectType, func->IsReadOnly());
 }
 
 // internal
 bool asCScriptFunction::IsSignatureExceptNameAndReturnTypeEqual(const asCArray<asCDataType> &paramTypes, const asCArray<asETypeModifiers> &paramInOut, const asCObjectType *objType, bool readOnly) const
 {
-	if( this->isReadOnly        != readOnly       ) return false;
+	if( this->IsReadOnly()      != readOnly       ) return false;
+	if( (this->objectType != 0) != (objType != 0) ) return false;
 	if( this->inOutFlags        != paramInOut     ) return false;
 	if( this->parameterTypes    != paramTypes     ) return false;
-	if( (this->objectType != 0) != (objType != 0) ) return false;
 
 	return true;
 }
@@ -1020,16 +1090,34 @@ void asCScriptFunction::AddReferences()
 	// Only count references if there is any bytecode
 	if( scriptData && scriptData->byteCode.GetLength() )
 	{
-		if( returnType.IsObject() )
-			returnType.GetObjectType()->AddRef();
+		if( returnType.GetTypeInfo() )
+		{
+			returnType.GetTypeInfo()->AddRefInternal();
+
+			asCConfigGroup *group = engine->FindConfigGroupForTypeInfo(returnType.GetTypeInfo());
+			if( group != 0 ) group->AddRef();
+		}
 
 		for( asUINT p = 0; p < parameterTypes.GetLength(); p++ )
-			if( parameterTypes[p].IsObject() )
-				parameterTypes[p].GetObjectType()->AddRef();
+			if( parameterTypes[p].GetTypeInfo() )
+			{
+				parameterTypes[p].GetTypeInfo()->AddRefInternal();
 
-		for( asUINT v = 0; v < scriptData->objVariableTypes.GetLength(); v++ )
-			if( scriptData->objVariableTypes[v] ) // The null handle is also stored, but it doesn't have an object type
-				scriptData->objVariableTypes[v]->AddRef();
+				asCConfigGroup *group = engine->FindConfigGroupForTypeInfo(parameterTypes[p].GetTypeInfo());
+				if( group != 0 ) group->AddRef();
+			}
+
+		for (asUINT v = 0; v < scriptData->variables.GetLength(); v++)
+		{
+			asCTypeInfo* ti = reinterpret_cast<asCTypeInfo*>(scriptData->variables[v]->type.GetTypeInfo());
+			if (ti) // The null handle is also stored, but it doesn't have an object type
+			{
+				ti->AddRefInternal();
+
+				asCConfigGroup* group = engine->FindConfigGroupForTypeInfo(ti);
+				if (group != 0) group->AddRef();
+			}
+		}
 
 		// Go through the byte code and add references to all resources used by the function
 		asCArray<asDWORD> &bc = scriptData->byteCode;
@@ -1046,7 +1134,7 @@ void asCScriptFunction::AddReferences()
 					asCObjectType *objType = (asCObjectType*)asBC_PTRARG(&bc[n]);
 					asASSERT( objType );
 					if( objType )
-						objType->AddRef();
+						objType->AddRefInternal();
 				}
 				break;
 
@@ -1056,11 +1144,11 @@ void asCScriptFunction::AddReferences()
 					asCObjectType *objType = (asCObjectType*)asBC_PTRARG(&bc[n]);
 					asASSERT( objType );
 					if( objType )
-						objType->AddRef();
+						objType->AddRefInternal();
 
 					int funcId = asBC_INTARG(&bc[n]+AS_PTR_SIZE);
 					if( funcId )
-						engine->scriptFunctions[funcId]->AddRef();
+						engine->scriptFunctions[funcId]->AddRefInternal();
 				}
 				break;
 
@@ -1078,7 +1166,31 @@ void asCScriptFunction::AddReferences()
 					void *gvarPtr = (void*)asBC_PTRARG(&bc[n]);
 					if( !gvarPtr ) break;
 					asCGlobalProperty *prop = GetPropertyByGlobalVarPtr(gvarPtr);
-					if( !prop ) break;
+
+					if (!prop)
+					{
+						// The pointer is a string constant. In order to make sure the correct resource
+						// management is maintained we request a new string constant here, so the compiler
+						// or bytecode loader can release its copy afterwards.
+						asCString str;
+						asUINT length;
+						int r = engine->stringFactory->GetRawStringData(gvarPtr, 0, &length);
+						if (r >= 0)
+						{
+							str.SetLength(length);
+							engine->stringFactory->GetRawStringData(gvarPtr, str.AddressOf(), &length);
+
+							// Get a new pointer (depending on the string factory implementation it may actually be the same)
+							gvarPtr = const_cast<void*>(engine->stringFactory->GetStringConstant(str.AddressOf(), length));
+							asBC_PTRARG(&bc[n]) = (asPWORD)gvarPtr;
+						}
+						
+						// If we get an error from the string factory there is not
+						// anything we can do about it, except report a message.
+						// TODO: NEWSTRING: Write a message and then exit gracefully
+						asASSERT(r >= 0);
+						break;
+					}
 
 					// Only addref the properties once
 					if( !ptrs.Exists(gvarPtr) )
@@ -1101,7 +1213,7 @@ void asCScriptFunction::AddReferences()
 
 					asASSERT( funcId > 0 );
 					if( funcId > 0 )
-						engine->scriptFunctions[funcId]->AddRef();
+						engine->scriptFunctions[funcId]->AddRefInternal();
 				}
 				break;
 
@@ -1112,7 +1224,7 @@ void asCScriptFunction::AddReferences()
 					int funcId = asBC_INTARG(&bc[n]);
 					asASSERT( funcId > 0 );
 					if( funcId > 0 )
-						engine->scriptFunctions[funcId]->AddRef();
+						engine->scriptFunctions[funcId]->AddRefInternal();
 				}
 				break;
 
@@ -1122,7 +1234,7 @@ void asCScriptFunction::AddReferences()
 					asCScriptFunction *func = (asCScriptFunction*)asBC_PTRARG(&bc[n]);
 					asASSERT( func );
 					if( func )
-						func->AddRef();
+						func->AddRefInternal();
 				}
 				break;
 			}
@@ -1138,16 +1250,34 @@ void asCScriptFunction::ReleaseReferences()
 	// Only count references if there is any bytecode
 	if( scriptData && scriptData->byteCode.GetLength() )
 	{
-		if( returnType.IsObject() )
-			returnType.GetObjectType()->Release();
+		if( returnType.GetTypeInfo() )
+		{
+			returnType.GetTypeInfo()->ReleaseInternal();
+
+			asCConfigGroup *group = engine->FindConfigGroupForTypeInfo(returnType.GetTypeInfo());
+			if( group != 0 ) group->Release();
+		}
 
 		for( asUINT p = 0; p < parameterTypes.GetLength(); p++ )
-			if( parameterTypes[p].IsObject() )
-				parameterTypes[p].GetObjectType()->Release();
+			if( parameterTypes[p].GetTypeInfo() )
+			{
+				parameterTypes[p].GetTypeInfo()->ReleaseInternal();
 
-		for( asUINT v = 0; v < scriptData->objVariableTypes.GetLength(); v++ )
-			if( scriptData->objVariableTypes[v] )
-				scriptData->objVariableTypes[v]->Release();
+				asCConfigGroup *group = engine->FindConfigGroupForTypeInfo(parameterTypes[p].GetTypeInfo());
+				if( group != 0 ) group->Release();
+			}
+
+		for (asUINT v = 0; v < scriptData->variables.GetLength(); v++)
+		{
+			asCTypeInfo* ti = reinterpret_cast<asCTypeInfo*>(scriptData->variables[v]->type.GetTypeInfo());
+			if (ti) // The null handle is also stored, but it doesn't have an object type
+			{
+				ti->ReleaseInternal();
+
+				asCConfigGroup* group = engine->FindConfigGroupForTypeInfo(ti);
+				if (group != 0) group->Release();
+			}
+		}
 
 		// Go through the byte code and release references to all resources used by the function
 		asCArray<asDWORD> &bc = scriptData->byteCode;
@@ -1163,7 +1293,7 @@ void asCScriptFunction::ReleaseReferences()
 				{
 					asCObjectType *objType = (asCObjectType*)asBC_PTRARG(&bc[n]);
 					if( objType )
-						objType->Release();
+						objType->ReleaseInternal();
 				}
 				break;
 
@@ -1172,14 +1302,14 @@ void asCScriptFunction::ReleaseReferences()
 				{
 					asCObjectType *objType = (asCObjectType*)asBC_PTRARG(&bc[n]);
 					if( objType )
-						objType->Release();
+						objType->ReleaseInternal();
 
 					int funcId = asBC_INTARG(&bc[n]+AS_PTR_SIZE);
 					if( funcId > 0 )
 					{
 						asCScriptFunction *fptr = engine->scriptFunctions[funcId];
 						if( fptr )
-							fptr->Release();
+							fptr->ReleaseInternal();
 
 						// The engine may have been forced to destroy the function internals early
 						// and this may will make it impossible to find the function by id anymore.
@@ -1204,7 +1334,21 @@ void asCScriptFunction::ReleaseReferences()
 					void *gvarPtr = (void*)asBC_PTRARG(&bc[n]);
 					if( !gvarPtr ) break;
 					asCGlobalProperty *prop = GetPropertyByGlobalVarPtr(gvarPtr);
-					if( !prop ) break;
+
+					if (!prop)
+					{
+						// The pointer is a string constant, so it needs to be released by the string factory
+						int r = engine->stringFactory->ReleaseStringConstant(gvarPtr);
+						UNUSED_VAR(r);
+
+						// If we get an error from the string factory there is not
+						// anything we can do about it, except report a message.
+						// TODO: Write a message showing that the string couldn't be 
+						//       released. Include the first 10 characters and the length
+						//       to make it easier to identify which string it was
+						asASSERT(r >= 0);
+						break;
+					}
 
 					// Only release the properties once
 					if( !ptrs.Exists(gvarPtr) )
@@ -1226,7 +1370,11 @@ void asCScriptFunction::ReleaseReferences()
 					if( group != 0 ) group->Release();
 
 					if( funcId )
-						engine->scriptFunctions[funcId]->Release();
+					{
+						asCScriptFunction *fptr = engine->scriptFunctions[funcId];
+						if( fptr )
+							fptr->ReleaseInternal();
+					}
 				}
 				break;
 
@@ -1239,7 +1387,7 @@ void asCScriptFunction::ReleaseReferences()
 					{
 						asCScriptFunction *fptr = engine->scriptFunctions[funcId];
 						if( fptr )
-							fptr->Release();
+							fptr->ReleaseInternal();
 
 						// The engine may have been forced to destroy the function internals early
 						// and this may will make it impossible to find the function by id anymore.
@@ -1255,15 +1403,20 @@ void asCScriptFunction::ReleaseReferences()
 				{
 					asCScriptFunction *func = (asCScriptFunction*)asBC_PTRARG(&bc[n]);
 					if( func )
-						func->Release();
+						func->ReleaseInternal();
 				}
 				break;
 			}
 		}
 
 		// Release the jit compiled function
-		if( scriptData->jitFunction )
-			engine->jitCompiler->ReleaseJITFunction(scriptData->jitFunction);
+		if (scriptData->jitFunction)
+		{
+			if (engine->ep.jitInterfaceVersion == 1)
+				static_cast<asIJITCompiler*>(engine->jitCompiler)->ReleaseJITFunction(scriptData->jitFunction);
+			else if (engine->ep.jitInterfaceVersion == 2)
+				static_cast<asIJITCompilerV2*>(engine->jitCompiler)->CleanFunction(this, scriptData->jitFunction);
+		}
 		scriptData->jitFunction = 0;
 	}
 
@@ -1300,56 +1453,39 @@ asUINT asCScriptFunction::GetParamCount() const
 }
 
 // interface
-int asCScriptFunction::GetParam(asUINT index, int *typeId, asDWORD *flags, const char **name, const char **defaultArg) const
+int asCScriptFunction::GetParam(asUINT index, int *out_typeId, asDWORD *out_flags, const char **out_name, const char **out_defaultArg) const
 {
 	if( index >= parameterTypes.GetLength() )
 		return asINVALID_ARG;
 
-	if( typeId )
-		*typeId = engine->GetTypeIdFromDataType(parameterTypes[index]);
+	if( out_typeId )
+		*out_typeId = engine->GetTypeIdFromDataType(parameterTypes[index]);
 
-	if( flags )
+	if( out_flags )
 	{
-		*flags = inOutFlags[index];
-		*flags |= parameterTypes[index].IsReadOnly() ? asTM_CONST : 0;
+		*out_flags = inOutFlags[index];
+		*out_flags |= parameterTypes[index].IsReadOnly() ? asTM_CONST : 0;
 	}
 
-	if( name )
+	if( out_name )
 	{
 		// The parameter names are not stored if loading from bytecode without debug information
 		if( index < parameterNames.GetLength() )
-			*name = parameterNames[index].AddressOf();
+			*out_name = parameterNames[index].AddressOf();
 		else
-			*name = 0;
+			*out_name = 0;
 	}
 
-	if( defaultArg )
+	if( out_defaultArg )
 	{
 		if( index < defaultArgs.GetLength() && defaultArgs[index] )
-			*defaultArg = defaultArgs[index]->AddressOf();
+			*out_defaultArg = defaultArgs[index]->AddressOf();
 		else
-			*defaultArg = 0;
+			*out_defaultArg = 0;
 	}
 
 	return asSUCCESS;
 }
-
-#ifdef AS_DEPRECATED
-// Deprecated since 2014-04-06, 2.29.0
-int asCScriptFunction::GetParamTypeId(asUINT index, asDWORD *flags) const
-{
-	if( index >= parameterTypes.GetLength() )
-		return asINVALID_ARG;
-
-	if( flags )
-	{
-		*flags = inOutFlags[index];
-		*flags |= parameterTypes[index].IsReadOnly() ? asTM_CONST : 0;
-	}
-
-	return engine->GetTypeIdFromDataType(parameterTypes[index]);
-}
-#endif
 
 // interface
 asIScriptEngine *asCScriptFunction::GetEngine() const
@@ -1360,8 +1496,9 @@ asIScriptEngine *asCScriptFunction::GetEngine() const
 // interface
 const char *asCScriptFunction::GetDeclaration(bool includeObjectName, bool includeNamespace, bool includeParamNames) const
 {
-	asCString *tempString = &asCThreadManager::GetLocalData()->string;
-	*tempString = GetDeclarationStr(includeObjectName, includeNamespace, includeParamNames);
+	asCString str = GetDeclarationStr(includeObjectName, includeNamespace, includeParamNames);
+	asCString* tempString = &asCThreadManager::GetLocalData()->string;
+	*tempString = str;
 	return tempString->AddressOf();
 }
 
@@ -1381,7 +1518,7 @@ const char *asCScriptFunction::GetConfigGroup() const
 	if( funcType != asFUNC_FUNCDEF )
 		group = engine->FindConfigGroupForFunction(id);
 	else
-		group = engine->FindConfigGroupForFuncDef(this);
+		group = engine->FindConfigGroupForFuncDef(this->funcdefType);
 
 	if( group == 0 )
 		return 0;
@@ -1395,6 +1532,36 @@ asDWORD asCScriptFunction::GetAccessMask() const
 	return accessMask;
 }
 
+// interface
+int asCScriptFunction::SetJITFunction(asJITFunction jitFunc)
+{
+	if (engine->ep.jitInterfaceVersion == 1)
+		return asNOT_SUPPORTED;
+
+	if (funcType != asFUNC_SCRIPT)
+		return asERROR;
+
+	if (scriptData->jitFunction && scriptData->jitFunction != jitFunc )
+	{
+		if (engine->ep.jitInterfaceVersion == 2)
+			static_cast<asIJITCompilerV2*>(engine->jitCompiler)->CleanFunction(this, scriptData->jitFunction);
+		scriptData->jitFunction = 0;
+	}
+
+	scriptData->jitFunction = jitFunc;
+
+	return asSUCCESS;
+}
+
+// interface
+asJITFunction asCScriptFunction::GetJITFunction() const
+{
+	if (scriptData)
+		return scriptData->jitFunction;
+
+	return 0;
+}
+
 // internal
 void asCScriptFunction::JITCompile()
 {
@@ -1403,8 +1570,7 @@ void asCScriptFunction::JITCompile()
 
 	asASSERT( scriptData );
 
-	asIJITCompiler *jit = engine->GetJITCompiler();
-	if( !jit )
+	if( !engine->jitCompiler )
 		return;
 
 	// Make sure the function has been compiled with JitEntry instructions
@@ -1437,14 +1603,27 @@ void asCScriptFunction::JITCompile()
 	// Release the previous function, if any
 	if( scriptData->jitFunction )
 	{
-		engine->jitCompiler->ReleaseJITFunction(scriptData->jitFunction);
+		if (engine->ep.jitInterfaceVersion == 1)
+			static_cast<asIJITCompiler*>(engine->jitCompiler)->ReleaseJITFunction(scriptData->jitFunction);
+		else if (engine->ep.jitInterfaceVersion == 2)
+			static_cast<asIJITCompilerV2*>(engine->jitCompiler)->CleanFunction(this, scriptData->jitFunction);
 		scriptData->jitFunction = 0;
 	}
 
-	// Compile for native system
-	int r = jit->CompileFunction(this, &scriptData->jitFunction);
-	if( r < 0 )
-		asASSERT( scriptData->jitFunction == 0 );
+	if (engine->ep.jitInterfaceVersion == 1)
+	{
+		// Compile for native system. If the JIT compiler decides to compile the function it 
+		// must do so now, as it is not allowed to do it later.
+		int r = static_cast<asIJITCompiler*>(engine->jitCompiler)->CompileFunction(this, &scriptData->jitFunction);
+		if (r < 0)
+			asASSERT(scriptData->jitFunction == 0);
+	}
+	else if (engine->ep.jitInterfaceVersion == 2)
+	{
+		// Notify the JIT compiler about the new function, it may do JIT compilation now, or later, or not at all.
+		// If it does the compilation now, it will use SetJITFunction to inform the compiled JIT function.
+		static_cast<asIJITCompilerV2*>(engine->jitCompiler)->NewFunction(this);
+	}
 }
 
 // interface
@@ -1529,7 +1708,9 @@ asCGlobalProperty *asCScriptFunction::GetPropertyByGlobalVarPtr(void *gvarPtr)
 // internal
 int asCScriptFunction::GetRefCount()
 {
-	return refCount.get();
+	asASSERT( funcType == asFUNC_DELEGATE );
+
+	return externalRefCount.get();
 }
 
 // internal
@@ -1547,218 +1728,185 @@ bool asCScriptFunction::GetFlag()
 // internal
 void asCScriptFunction::EnumReferences(asIScriptEngine *)
 {
-	// Notify the GC of all object types used
-	if( returnType.IsObject() )
-		engine->GCEnumCallback(returnType.GetObjectType());
-
-	for( asUINT p = 0; p < parameterTypes.GetLength(); p++ )
-		if( parameterTypes[p].IsObject() )
-			engine->GCEnumCallback(parameterTypes[p].GetObjectType());
-
-	if( scriptData )
-	{
-		for( asUINT t = 0; t < scriptData->objVariableTypes.GetLength(); t++ )
-			engine->GCEnumCallback(scriptData->objVariableTypes[t]);
-
-		// Notify the GC of all script functions that is accessed
-		asCArray<asDWORD> &bc = scriptData->byteCode;
-		for( asUINT n = 0; n < bc.GetLength(); n += asBCTypeSize[asBCInfo[*(asBYTE*)&bc[n]].type] )
-		{
-			switch( *(asBYTE*)&bc[n] )
-			{
-			case asBC_OBJTYPE:
-			case asBC_FREE:
-			case asBC_REFCPY:
-			case asBC_RefCpyV:
-				{
-					asCObjectType *objType = (asCObjectType*)asBC_PTRARG(&bc[n]);
-					engine->GCEnumCallback(objType);
-				}
-				break;
-
-			case asBC_ALLOC:
-				{
-					asCObjectType *objType = (asCObjectType*)asBC_PTRARG(&bc[n]);
-					engine->GCEnumCallback(objType);
-
-					int func = asBC_INTARG(&bc[n]+AS_PTR_SIZE);
-					if( func )
-						engine->GCEnumCallback(engine->scriptFunctions[func]);
-				}
-				break;
-
-			case asBC_CALL:
-			case asBC_CALLINTF:
-				{
-					int func = asBC_INTARG(&bc[n]);
-					if( func )
-						engine->GCEnumCallback(engine->scriptFunctions[func]);
-				}
-				break;
-
-			// Function pointers
-			case asBC_FuncPtr:
-				{
-					asCScriptFunction *func = (asCScriptFunction*)asBC_PTRARG(&bc[n]);
-					if( func )
-						engine->GCEnumCallback(func);
-				}
-				break;
-
-			// Global variables
-			case asBC_PGA:
-			case asBC_PshGPtr:
-			case asBC_LDG:
-			case asBC_PshG4:
-			case asBC_LdGRdR4:
-			case asBC_CpyGtoV4:
-			case asBC_CpyVtoG4:
-			case asBC_SetG4:
-				// Need to enumerate the reference for each global variable
-				{
-					// TODO: optimize: Keep an array of accessed global properties
-					void *gvarPtr = (void*)asBC_PTRARG(&bc[n]);
-					asCGlobalProperty *prop = GetPropertyByGlobalVarPtr(gvarPtr);
-
-					engine->GCEnumCallback(prop);
-				}
-				break;
-			}
-		}
-	}
+	asASSERT( funcType == asFUNC_DELEGATE );
 
 	// Delegate
 	if( objForDelegate )
 		engine->GCEnumCallback(objForDelegate);
-	if( funcForDelegate )
-		engine->GCEnumCallback(funcForDelegate);
 }
 
 // internal
 void asCScriptFunction::ReleaseAllHandles(asIScriptEngine *)
 {
+	asASSERT( funcType == asFUNC_DELEGATE );
+
 	// Release paramaters
-	if( scriptData && scriptData->byteCode.GetLength() )
-	{
-		if( returnType.IsObject() )
-		{
-			returnType.GetObjectType()->Release();
-			returnType = asCDataType::CreatePrimitive(ttVoid, false);
-		}
-
-		for( asUINT p = 0; p < parameterTypes.GetLength(); p++ )
-			if( parameterTypes[p].IsObject() )
-			{
-				parameterTypes[p].GetObjectType()->Release();
-				parameterTypes[p] = asCDataType::CreatePrimitive(ttInt, false);
-			}
-
-		for( asUINT n = 0; n < scriptData->objVariableTypes.GetLength(); n++ )
-			if( scriptData->objVariableTypes[n] ) // Null handle is also stored, but it doesn't have an object type
-				scriptData->objVariableTypes[n]->Release();
-		scriptData->objVariableTypes.SetLength(0);
-
-		// Release all script functions
-		asCArray<asDWORD> &bc = scriptData->byteCode;
-		for( asUINT n = 0; n < bc.GetLength(); n += asBCTypeSize[asBCInfo[*(asBYTE*)&bc[n]].type] )
-		{
-			switch( *(asBYTE*)&bc[n] )
-			{
-			// Object types
-			case asBC_OBJTYPE:
-			case asBC_FREE:
-			case asBC_REFCPY:
-			case asBC_RefCpyV:
-				{
-					asCObjectType *objType = (asCObjectType*)asBC_PTRARG(&bc[n]);
-					if( objType )
-					{
-						objType->Release();
-						*(asPWORD*)&bc[n+1] = 0;
-					}
-				}
-				break;
-
-			case asBC_ALLOC:
-				{
-					asCObjectType *objType = (asCObjectType*)asBC_PTRARG(&bc[n]);
-					if( objType )
-					{
-						objType->Release();
-						*(asPWORD*)&bc[n+1] = 0;
-					}
-
-					int func = asBC_INTARG(&bc[n]+AS_PTR_SIZE);
-					if( func )
-					{
-						engine->scriptFunctions[func]->Release();
-						bc[n+AS_PTR_SIZE+1] = 0;
-					}
-				}
-				break;
-
-			case asBC_CALL:
-			case asBC_CALLINTF:
-				{
-					int func = asBC_INTARG(&bc[n]);
-					if( func )
-					{
-						engine->scriptFunctions[func]->Release();
-						bc[n+1] = 0;
-					}
-				}
-				break;
-
-			// Function pointers
-			case asBC_FuncPtr:
-				{
-					asCScriptFunction *func = (asCScriptFunction*)asBC_PTRARG(&bc[n]);
-					if( func )
-					{
-						func->Release();
-						*(asPWORD*)&bc[n+1] = 0;
-					}
-				}
-				break;
-
-			// The global variables are not released here. It is enough that the global
-			// variable itself release the function to break the circle
-			}
-		}
-	}
 
 	// Delegate
 	if( objForDelegate )
 		engine->ReleaseScriptObject(objForDelegate, funcForDelegate->GetObjectType());
 	objForDelegate = 0;
-	if( funcForDelegate )
-		funcForDelegate->Release();
-	funcForDelegate = 0;
 }
 
-// internal
+// interface
 bool asCScriptFunction::IsShared() const
 {
 	// All system functions are shared
 	if( funcType == asFUNC_SYSTEM ) return true;
 
 	// All class methods for shared classes are also shared
+	asASSERT( objectType == 0 || objectType->engine == engine || objectType->engine == 0 );
 	if( objectType && (objectType->flags & asOBJ_SHARED) ) return true;
 
+	// funcdefs that are registered by the application are shared
+	if (funcType == asFUNC_FUNCDEF && module == 0) return true;
+
 	// Functions that have been specifically marked as shared are shared
-	return isShared;
+	return traits.GetTrait(asTRAIT_SHARED);
 }
 
-// internal
+// interface
 bool asCScriptFunction::IsFinal() const
 {
-	return isFinal;
+	return traits.GetTrait(asTRAIT_FINAL);
+}
+
+// interface
+bool asCScriptFunction::IsOverride() const
+{
+	return traits.GetTrait(asTRAIT_OVERRIDE);
+}
+
+// interface
+bool asCScriptFunction::IsExplicit() const
+{
+	return traits.GetTrait(asTRAIT_EXPLICIT);
+}
+
+// interface
+bool asCScriptFunction::IsProperty() const
+{
+	return traits.GetTrait(asTRAIT_PROPERTY);
 }
 
 // internal
-bool asCScriptFunction::IsOverride() const
+bool asCScriptFunction::IsFactory() const
 {
-	return isOverride;
+	if (objectType) return false;
+	
+	asCObjectType* type = CastToObjectType(returnType.GetTypeInfo());
+	if (type == 0) return false;
+
+	if (type->name != name) return false;
+
+	if (type->nameSpace != nameSpace) return false;
+	
+	return true;
+}
+
+// internal
+asCScriptFunction* asCScriptFunction::FindNextFunctionCalled(asUINT startSearchFromProgramPos, int *outStackDelta, asUINT *outProgramPos)
+{
+	if (scriptData == 0)
+		return 0;
+
+	if (outProgramPos)
+		*outProgramPos = startSearchFromProgramPos;
+
+	// Find out which function that will be called
+	asCScriptFunction* calledFunc = 0;
+	int stackDelta = 0;
+	for (asUINT n = startSearchFromProgramPos; scriptData->byteCode.GetLength(); )
+	{
+		asBYTE bc = *(asBYTE*)&scriptData->byteCode[n];
+		if (bc == asBC_CALL ||
+			bc == asBC_CALLSYS ||
+			bc == asBC_Thiscall1 ||
+			bc == asBC_CALLINTF ||
+			bc == asBC_ALLOC ||
+			bc == asBC_CALLBND ||
+			bc == asBC_CallPtr)
+		{
+			calledFunc = GetCalledFunction(n);
+
+			if (outProgramPos)
+				*outProgramPos = n + asBCTypeSize[asBCInfo[bc].type];
+
+			break;
+		}
+
+		// Keep track of the stack size between the
+		// instruction that needs to be adjusted and the call
+		stackDelta += asBCInfo[bc].stackInc;
+
+		n += asBCTypeSize[asBCInfo[bc].type];
+	}
+
+	if (outStackDelta)
+		*outStackDelta = stackDelta;
+
+	return calledFunc;
+}
+
+// internal
+asCScriptFunction* asCScriptFunction::GetCalledFunction(asDWORD programPos)
+{
+	if (scriptData == 0)
+		return 0;
+
+	asBYTE bc = *(asBYTE*)&scriptData->byteCode[programPos];
+
+	if (bc == asBC_CALL ||
+		bc == asBC_CALLSYS ||
+		bc == asBC_Thiscall1 ||
+		bc == asBC_CALLINTF)
+	{
+		// Find the function from the function id in bytecode
+		int funcId = asBC_INTARG(&scriptData->byteCode[programPos]);
+		return engine->scriptFunctions[funcId];
+	}
+	else if (bc == asBC_ALLOC)
+	{
+		// Find the function from the function id in the bytecode
+		int funcId = asBC_INTARG(&scriptData->byteCode[programPos + AS_PTR_SIZE]);
+		return engine->scriptFunctions[funcId];
+	}
+	else if (bc == asBC_CALLBND)
+	{
+		// Find the function from the engine's bind array
+		int funcId = asBC_INTARG(&scriptData->byteCode[programPos]);
+		return engine->importedFunctions[funcId & ~FUNC_IMPORTED]->importedFunctionSignature;
+	}
+	else if (bc == asBC_CallPtr)
+	{
+		asUINT v;
+		int var = asBC_SWORDARG0(&scriptData->byteCode[programPos]);
+
+		// Find the funcdef from the local variable
+		for (v = 0; v < scriptData->variables.GetLength(); v++)
+			if (scriptData->variables[v]->stackOffset == var)
+				return CastToFuncdefType(scriptData->variables[v]->type.GetTypeInfo())->funcdef;
+
+		// Look in parameters
+		int paramPos = 0;
+		if (objectType)
+			paramPos -= AS_PTR_SIZE;
+		if (DoesReturnOnStack())
+			paramPos -= AS_PTR_SIZE;
+		for (v = 0; v < parameterTypes.GetLength(); v++)
+		{
+			if (var == paramPos)
+			{
+				if (parameterTypes[v].IsFuncdef())
+					return CastToFuncdefType(parameterTypes[v].GetTypeInfo())->funcdef;
+				else
+					return 0;
+			}
+			paramPos -= parameterTypes[v].GetSizeOnStackDWords();
+		}
+	}
+
+	return 0;
 }
 
 END_AS_NAMESPACE

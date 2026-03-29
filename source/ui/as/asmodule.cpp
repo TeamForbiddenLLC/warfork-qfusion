@@ -7,6 +7,7 @@
 
 #include <list>
 
+#include "../qcommon/mod_fs.h"
 #define UI_AS_MODULE "UI_AS_MODULE"
 
 namespace ASUI {
@@ -45,18 +46,19 @@ public:
 	void *getData() { return data; }
 
 	// asIBinaryStream implementation
-	void Read(void *ptr, asUINT _size)
+	int Read(void *ptr, asUINT _size)
 	{
 		if(!data || !ptr)
 			trap::Error("BinaryBuffer::Read null pointer");
 		if((offset+_size)>allocated)
-			trap::Error("BinaryBuffer::Read tried to read more bytes than available");
+			_size = allocated-offset;
 
 		memcpy(ptr, data+offset, _size);
 		offset+= _size;
+		return (int)_size;
 	}
 
-	void Write(const void *ptr, asUINT _size)
+	int Write(const void *ptr, asUINT _size)
 	{
 		if(!data || !ptr)
 			trap::Error("BinaryBuffer::Write null pointer");
@@ -70,6 +72,7 @@ public:
 		}
 		memcpy(data+size, ptr, _size);
 		size += _size;
+		return (int)_size;
 	}
 };
 
@@ -86,7 +89,7 @@ public:
 
 	BinaryFileStream(const char *filename, int mode)
 	{
-		if(trap::FS_FOpenFile(filename, &fh, mode) == -1)
+		if(FS_FOpenFile(filename, &fh, mode) == -1)
 			trap::Error("BinaryFileStream: failed to open file");
 	}
 
@@ -98,30 +101,30 @@ public:
 	bool Open(const char *filename, int mode)
 	{
 		Close();
-		return trap::FS_FOpenFile(filename, &fh, mode) == -1;
+		return FS_FOpenFile(filename, &fh, mode) == -1;
 	}
 
 	void Close()
 	{
 		if( fh )
-			trap::FS_FCloseFile( fh );
+			FS_FCloseFile( fh );
 	}
 
 	// asIBinaryStream implementation
-	void Read(void *ptr, asUINT size)
+	int Read(void *ptr, asUINT size)
 	{
 		if(!fh)
 			trap::Error("BinaryFileStream::Read tried to read from closed file");
 
-		trap::FS_Read(ptr, size, fh);
+		return FS_Read(ptr, size, fh);
 	}
 
-	void Write(const void *ptr, asUINT size)
+	int Write(const void *ptr, asUINT size)
 	{
 		if(!fh)
 			trap::Error("BinaryFileStream::Write tried to write to closed file");
 
-		trap::FS_Write(ptr, size, fh);
+		return FS_Write(ptr, size, fh);
 	}
 };
 
@@ -133,7 +136,7 @@ class ASModule : public ASInterface
 
 	asIScriptEngine *engine;
 	struct angelwrap_api_s *as_api;
-	asIObjectType *stringObjectType;
+	asITypeInfo *stringObjectType;
 
 // private class, its ok to have everything as public :)
 public:
@@ -165,7 +168,7 @@ public:
 			return false;
 		}
 
-		stringObjectType = engine->GetObjectTypeById(engine->GetTypeIdByDecl("String"));
+		stringObjectType = engine->GetTypeInfoByDecl("String");
 
 		/*
 		module = engine->GetModule( UI_AS_MODULE, asGM_ALWAYS_CREATE );
@@ -230,7 +233,7 @@ public:
 		return currentFunction->GetModule();
 	}
 
-	virtual asIObjectType *getStringObjectType( void ) const {
+	virtual asITypeInfo *getStringObjectType( void ) const {
 		return stringObjectType;
 	}
 
@@ -281,7 +284,7 @@ public:
 
 		// global file
 		std::string global_file( spath + "globals.h" );
-		if( trap::FS_FOpenFile( global_file.c_str(), &filenum, FS_WRITE ) == -1 )
+		if( FS_FOpenFile( global_file.c_str(), &filenum, FS_WRITE ) == -1 )
 		{
 			Com_Printf( "ASModule::dumpAPI: Couldn't write %s.\n", global_file.c_str() );
 			return;
@@ -289,33 +292,32 @@ public:
 
 		// global enums
 		str = "/**\r\n * Enums\r\n */\r\n";
-		trap::FS_Write( str, strlen( str ), filenum );
+		FS_Write( str, strlen( str ), filenum );
 
 		int enumCount = engine->GetEnumCount();
 		for( i = 0; i < enumCount; i++ )
 		{
 			str = "typedef enum\r\n{\r\n";
-			trap::FS_Write( str, strlen( str ), filenum );
+			FS_Write( str, strlen( str ), filenum );
 
-			int enumTypeId;
-			const char *enumName = engine->GetEnumByIndex( i, &enumTypeId );
+			asITypeInfo *enumInfo = engine->GetEnumByIndex( i );
 
-			int enumValueCount = engine->GetEnumValueCount( enumTypeId );
+			int enumValueCount = enumInfo->GetEnumValueCount();
 			for( j = 0; j < enumValueCount; j++ )
 			{
 				int outValue;
-				const char *valueName = engine->GetEnumValueByIndex( enumTypeId, j, &outValue );
+				const char *valueName = enumInfo->GetEnumValueByIndex( j, &outValue );
 				str = va( "\t%s = 0x%x,\r\n", valueName, outValue );
-				trap::FS_Write( str, strlen( str ), filenum );
+				FS_Write( str, strlen( str ), filenum );
 			}
 
-			str = va( "} %s;\r\n\r\n", enumName );
-			trap::FS_Write( str, strlen( str ), filenum );
+			str = va( "} %s;\r\n\r\n", enumInfo->GetName() );
+			FS_Write( str, strlen( str ), filenum );
 		}
 
 		// global properties
 		str = "/**\r\n * Global properties\r\n */\r\n";
-		trap::FS_Write( str, strlen( str ), filenum );
+		FS_Write( str, strlen( str ), filenum );
 
 		int propertyCount = engine->GetGlobalPropertyCount();
 		for( i = 0; i < propertyCount; i++ )
@@ -329,13 +331,13 @@ public:
 			{
 				const char *decl = va( "%s%s %s::%s;\r\n", propertyIsConst ? "const " : "",
 							engine->GetTypeDeclaration( propertyTypeId ), propertyNamespace, propertyName );
-				trap::FS_Write( decl, strlen( decl ), filenum );
+				FS_Write( decl, strlen( decl ), filenum );
 			}
 		}
 
 		// global functions
 		str = "/**\r\n * Global functions\r\n */\r\n";
-		trap::FS_Write( str, strlen( str ), filenum );
+		FS_Write( str, strlen( str ), filenum );
 
 		int functionCount = engine->GetGlobalFunctionCount();
 		for( i = 0; i < functionCount; i++ )
@@ -344,47 +346,47 @@ public:
 			if( func )
 			{
 				const char *decl = va( "%s;\r\n", func->GetDeclaration( false ) );
-				trap::FS_Write( decl, strlen( decl ), filenum );
+				FS_Write( decl, strlen( decl ), filenum );
 			}
 		}
 
-		trap::FS_FCloseFile( filenum );
+		FS_FCloseFile( filenum );
 		Com_Printf( "Wrote %s\n", global_file.c_str() );
 
 		// classes
 		int objectCount = engine->GetObjectTypeCount();
 		for( i = 0; i < objectCount; i++ )
 		{
-			asIObjectType *objectType = engine->GetObjectTypeByIndex( i );
+			asITypeInfo *objectType = engine->GetObjectTypeByIndex( i );
 			if( objectType )
 			{
 				// class file
 				std::string class_file( spath + objectType->GetName() + ".h" );
-				if( trap::FS_FOpenFile( class_file.c_str(), &filenum, FS_WRITE ) == -1 )
+				if( FS_FOpenFile( class_file.c_str(), &filenum, FS_WRITE ) == -1 )
 				{
 					Com_Printf( "ASModule::dumpAPI: Couldn't write %s.\n", class_file.c_str() );
 					continue;
 				}
 
 				str = va( "/**\r\n * %s\r\n */\r\n", objectType->GetName() );
-				trap::FS_Write( str, strlen( str ), filenum );
+				FS_Write( str, strlen( str ), filenum );
 				str = va( "class %s\r\n{\r\npublic:", objectType->GetName() );
-				trap::FS_Write( str, strlen( str ), filenum );
+				FS_Write( str, strlen( str ), filenum );
 
 				// properties
 				str = "\r\n\t/* object properties */\r\n";
-				trap::FS_Write( str, strlen( str ), filenum );
+				FS_Write( str, strlen( str ), filenum );
 
 				int memberCount = objectType->GetPropertyCount();
 				for( j = 0; j < memberCount; j++ )
 				{
 					const char *decl = va( "\t%s;\r\n", objectType->GetPropertyDeclaration( j ) );
-					trap::FS_Write( decl, strlen( decl ), filenum );
+					FS_Write( decl, strlen( decl ), filenum );
 				}
 
 				// behaviours
 				str = "\r\n\t/* object behaviors */\r\n";
-				trap::FS_Write( str, strlen( str ), filenum );
+				FS_Write( str, strlen( str ), filenum );
 
 				int behaviourCount = objectType->GetBehaviourCount();
 				for( j = 0; j < behaviourCount; j++ )
@@ -396,24 +398,24 @@ public:
 						continue;
 					const char *decl = va( "\t%s;&s\r\n", function->GetDeclaration( false ),
 							( behaviourType == asBEHAVE_FACTORY ? " /* factory */ " : "" ) );
-					trap::FS_Write( decl, strlen( decl ), filenum );
+					FS_Write( decl, strlen( decl ), filenum );
 				}
 
 				// methods
 				str = "\r\n\t/* object methods */\r\n";
-				trap::FS_Write( str, strlen( str ), filenum );
+				FS_Write( str, strlen( str ), filenum );
 
 				int methodCount = objectType->GetMethodCount();
 				for( j = 0; j < methodCount; j++ )
 				{
 					asIScriptFunction *method = objectType->GetMethodByIndex( j );
 					const char *decl = va( "\t%s;\r\n", method->GetDeclaration( false ) );
-					trap::FS_Write( decl, strlen( decl ), filenum );
+					FS_Write( decl, strlen( decl ), filenum );
 				}
 
 				str = "};\r\n\r\n";
-				trap::FS_Write( str, strlen( str ), filenum );
-				trap::FS_FCloseFile( filenum );
+				FS_Write( str, strlen( str ), filenum );
+				FS_FCloseFile( filenum );
 
 				Com_Printf( "Wrote %s\n", class_file.c_str() );
 			}
@@ -450,7 +452,7 @@ public:
 	}
 
 	// array factory
-	virtual CScriptArrayInterface *createArray( unsigned int size, asIObjectType *ot )
+	virtual CScriptArrayInterface *createArray( unsigned int size, asITypeInfo *ot )
 	{
 		if( as_api ) {
 			return static_cast<CScriptArrayInterface *>( as_api->asCreateArrayCpp( size, static_cast<void *>( ot ) ) );

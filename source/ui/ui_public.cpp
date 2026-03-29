@@ -17,6 +17,13 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+#define FS_DEFINE_INTERFACE_IMPL 1
+#include "../qcommon/mod_fs.h"
+#define STEAM_DEFINE_INTERFACE_IMPL 1 
+#include "../steamshim/src/mod_steam.h"
+
+#define REF_DEFINE_INTERFACE_IMPL 1
+#include "../qcommon/mod_fs.h"
 
 #include "ui_precompiled.h"
 #include "kernel/ui_common.h"
@@ -184,6 +191,13 @@ namespace WSWUI
 			ui_main->addToServerList( adr, info );
 		}
 	}
+
+	void AjaxResponse( const char *resource, const char *data )
+	{
+		if( ui_main ) {
+			ui_main->ajaxResponse( resource, data );
+		}
+	}
 }	// namespace
 
 //=================================
@@ -194,7 +208,10 @@ ui_export_t *GetUIAPI( ui_import_t *import )
 
 	// Trap::UI_IMPORT = *import;
 	WSWUI::UI_IMPORT = *import;
+	Q_ImportSteamModule(&import->steam_import);
+	Q_ImportRefModule(&import->refImport);
 
+	fs_import = *(import->fsImport);
 	globals.API = WSWUI::API;
 
 	globals.Init = WSWUI::Init;
@@ -219,6 +236,7 @@ ui_export_t *GetUIAPI( ui_import_t *import )
 	globals.HaveQuickMenu = WSWUI::HaveQuickMenu;
 
 	globals.AddToServerList = WSWUI::AddToServerList;
+	globals.AjaxResponse = WSWUI::AjaxResponse;
 
 	return &globals;
 }
@@ -235,6 +253,7 @@ void Sys_Error( const char *format, ... )
 	va_start( argptr, format );
 	Q_vsnprintfz( msg, sizeof( msg ), format, argptr );
 	va_end( argptr );
+	printf("%s\n", msg);
 
 	trap::Error( msg );
 }

@@ -114,7 +114,7 @@ static void PrintColoredText( const char *s )
 
 	while( *s )
 	{
-		int gc = Q_GrabCharFromColorString( &s, &c, &colorindex );
+		int gc = Q_GrabCharFromColorString( &s, &c, &colorindex, NULL, NULL, NULL );
 		if( gc == GRABCHAR_CHAR )
 		{
 			if( c == '\n' )
@@ -142,6 +142,10 @@ static void PrintColoredText( const char *s )
 		}
 		else if( gc == GRABCHAR_END )
 			break;
+		else if ( gc == GRABCHAR_RGB || gc == GRABCHAR_ANSI)
+			{
+				// TODO, ignore for now
+			}
 		else
 			assert( 0 );
 	}

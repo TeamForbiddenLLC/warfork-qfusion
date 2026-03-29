@@ -1,3 +1,6 @@
+#!asrun
+#pragma debug // This turns on debugging, same as the command line argument -d
+
 /*
 
   Script must have 'int main()' or 'void main()' as the entry point.
@@ -16,6 +19,7 @@
    array<T>
    dictionary
    file
+   filesystem
 
 */
 
@@ -69,6 +73,9 @@ int main()
     print("The size of the array is currently " + links.length() + "\n");
     yield();
   }
+  
+  print("Press enter to exit\n");
+  getInput();
 
   return 0;
 }
@@ -79,7 +86,7 @@ void function()
 
   int n = 0;
   {
-    int n = 1;
+    int n = 1; // This will warn that it is hiding the above variable of the same name
     string s = "hello";
     print(s + "\n");
   }

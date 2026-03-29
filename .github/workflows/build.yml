@@ -1,423 +1,117 @@
 name: Build
 
-on: [push, pull_request]
+on:
+  pull_request:
+  push:
+    branches: 
+      - master
+      - release/**
 
 jobs:
+  linux:
+    strategy:
+      matrix:
+        config: [release, debug]
+    uses: ./.github/workflows/linux-build.yml
+    with:
+      config: ${{ matrix.config }}
+      cmake_args: "-DBUILD_UNIT_TEST=1"
+    secrets: inherit
+    
+  macos:
+    strategy:
+      matrix:
+        config: [release, debug]
+        arch: [arm64, x86_64]
+    uses: ./.github/workflows/macos-build.yml
+    with:
+      config: ${{ matrix.config }}
+      arch: ${{ matrix.arch }}
+      cmake_args: "-DBUILD_UNIT_TEST=1"
+    secrets: inherit
+    
+  windows:
+    strategy:
+      matrix:
+        config: [release, debug]
+    uses: ./.github/workflows/windows-build.yml
+    with:
+      config: ${{ matrix.config }}
+      cmake_args: "-DBUILD_UNIT_TEST=1"
+    secrets: inherit
 
-  build-linux32:
-    runs-on: ubuntu-20.04
+  test-linux:
+    needs: linux
+    runs-on: ubuntu-24.04
     container:
-      image: ubuntu:20.04
-      env:
-        DEBIAN_FRONTEND: noninteractive
-        DEBCONF_NONINTERACTIVE_SEEN: true
+      image: registry.gitlab.steamos.cloud/steamrt/sniper/sdk:latest
     steps:
-      - name: Update git before checkout - https://github.com/actions/checkout/issues/335
-        run: |
-          apt update
-          apt install -y git
-
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Add safe directory - https://github.com/actions/checkout/issues/1169
-        run: git config --system --add safe.directory /__w/warfork-qfusion/warfork-qfusion
-
-      - name: Enable i386 packages
-        run: dpkg --add-architecture i386
-
-      - name: Add legacy archive repo
-        run: |
-          apt update
-          apt install -y software-properties-common
-          add-apt-repository "deb http://archive.ubuntu.com/ubuntu/ xenial main universe"
-
-      - name: Install build dependencies
-        run: |
-          apt update
-          apt install -y curl clang cmake build-essential libsdl2-dev libopenal-dev libvorbis-dev libtheora-dev libfreetype6-dev libcurl4-gnutls-dev git zip unzip g++-4.9 g++-4.9-multilib g++-multilib gcc-4.9 gcc-4.9-multilib gcc-multilib libcurl4-gnutls-dev:i386 libfreetype6-dev:i386 libgl1-mesa-dev:i386 libglib2.0-dev:i386 libglu1-mesa-dev:i386 libopenal-dev:i386 libpng-dev:i386 libpulse-dev:i386 libsdl2-dev:i386 libstdc++6-i386-cross libtheora-dev:i386 libvorbis-dev:i386
-
-      - name: Download steamworks sdk
-        run: |
-          curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
-          unzip third-party/steamworks/sdk.zip -d third-party/steamworks
-
-      - name: Generate makefiles
-        working-directory: ./source
-        run: |
-          export CC=clang CXX=clang++
-          CFLAGS=-m32 CXXFLAGS=-m32 cmake -DBUILD_STEAMLIB=1 -DCMAKE_TOOLCHAIN_FILE=cmake/i386-linux-gnu.cmake -DWF_BUILD_32=ON .
-
-      - name: Build project
-        working-directory: ./source
-        run: make -j8
-      
-      - name: Package warfork
-        working-directory: ./source/build
-        run: tar -czvf ../Linux-x86-Release.tar.gz * --exclude *.a --exclude base*/*.a libs/*.a
-
-      - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: linux-x86-release
-          path: source/Linux-x86-Release.tar.gz
-
-  build-linux32-debug:
-    runs-on: ubuntu-20.04
-    container:
-      image: ubuntu:20.04
-      env:
-        DEBIAN_FRONTEND: noninteractive
-        DEBCONF_NONINTERACTIVE_SEEN: true
-    steps:
-      - name: Update git before checkout - https://github.com/actions/checkout/issues/335
-        run: |
-          apt update
-          apt install -y git
-
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Add safe directory - https://github.com/actions/checkout/issues/1169
-        run: git config --system --add safe.directory /__w/warfork-qfusion/warfork-qfusion
-
-      - name: Enable i386 packages
-        run: dpkg --add-architecture i386
-
-      - name: Add legacy archive repo
-        run: |
-          apt update
-          apt install -y software-properties-common
-          add-apt-repository "deb http://archive.ubuntu.com/ubuntu/ xenial main universe"
-
-      - name: Install build dependencies
-        run: |
-          apt update
-          apt install -y curl clang cmake build-essential libsdl2-dev libopenal-dev libvorbis-dev libtheora-dev libfreetype6-dev libcurl4-gnutls-dev git zip unzip g++-4.9 g++-4.9-multilib g++-multilib gcc-4.9 gcc-4.9-multilib gcc-multilib libcurl4-gnutls-dev:i386 libfreetype6-dev:i386 libgl1-mesa-dev:i386 libglib2.0-dev:i386 libglu1-mesa-dev:i386 libopenal-dev:i386 libpng-dev:i386 libpulse-dev:i386 libsdl2-dev:i386 libstdc++6-i386-cross libtheora-dev:i386 libvorbis-dev:i386
-
-      - name: Download steamworks sdk
-        run: |
-          curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
-          unzip third-party/steamworks/sdk.zip -d third-party/steamworks
-
-      - name: Generate makefiles
-        working-directory: ./source
-        run: |
-          export CC=clang CXX=clang++
-          CFLAGS=-m32 CXXFLAGS=-m32 cmake -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_STEAMLIB=1 -DCMAKE_TOOLCHAIN_FILE=cmake/i386-linux-gnu.cmake -DWF_BUILD_32=ON .
-
-      - name: Build project
-        working-directory: ./source
-        run: make -j8
-      
-      - name: Package warfork
-        working-directory: ./source/build
-        run: tar -czvf ../Linux-x86-Debug.tar.gz * --exclude *.a --exclude base*/*.a libs/*.a
-
-      - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: linux-x86-debug
-          path: source/Linux-x86-Debug.tar.gz
-
-  build-linux64:
-    runs-on: ubuntu-20.04
-    container:
-      image: ubuntu:20.04
-      env:
-        DEBIAN_FRONTEND: noninteractive
-        DEBCONF_NONINTERACTIVE_SEEN: true
-    steps:
-      - name: Update git before checkout - https://github.com/actions/checkout/issues/335
-        run: |
-          apt update
-          apt install -y git
-
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Add safe directory - https://github.com/actions/checkout/issues/1169
-        run: git config --system --add safe.directory /__w/warfork-qfusion/warfork-qfusion
-
-      - name: Install build dependencies
-        run: |
-          apt update
-          apt install -y curl clang cmake build-essential libsdl2-dev libopenal-dev libvorbis-dev libtheora-dev libfreetype6-dev libcurl4-gnutls-dev git zip unzip
-
-      - name: Download steamworks sdk
-        run: |
-          curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
-          unzip third-party/steamworks/sdk.zip -d third-party/steamworks
-
-      - name: Generate makefiles
-        working-directory: ./source
-        run: |
-          export CC=clang CXX=clang++
-          cmake -DBUILD_STEAMLIB=1 .
-
-      - name: Build project
-        working-directory: ./source
-        run: make -j8
-      
-      - name: Package warfork
-        working-directory: ./source/build
-        run: tar -czvf ../Linux-x86_64-Release.tar.gz * --exclude *.a --exclude base*/*.a libs/*.a
-
-      - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3
+      - name: Download artifact
+        uses: actions/download-artifact@v4
         with:
           name: linux-x86_64-release
-          path: source/Linux-x86_64-Release.tar.gz
+          path: drop
 
-  build-linux64-debug:
-    runs-on: ubuntu-20.04
-    container:
-      image: ubuntu:20.04
-      env:
-        DEBIAN_FRONTEND: noninteractive
-        DEBCONF_NONINTERACTIVE_SEEN: true
+      - name: Extract artifact
+        working-directory: ./drop
+        run: tar -xzf linux-x86_64-release.tar.gz
+
+      - name: Unit Test
+        working-directory: ./drop
+        shell: bash
+        run: |
+          set -e
+          for exc in ./test/*; do
+            chmod +x $exc
+            $exc
+          done
+
+  test-macos:
+    needs: macos
+    strategy:
+      matrix:
+        arch: [arm64, x86_64]
+    runs-on: ${{ matrix.arch == 'x86_64' && 'macos-15-intel' || 'macos-14' }}
     steps:
-      - name: Update git before checkout - https://github.com/actions/checkout/issues/335
-        run: |
-          apt update
-          apt install -y git
-
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Add safe directory - https://github.com/actions/checkout/issues/1169
-        run: git config --system --add safe.directory /__w/warfork-qfusion/warfork-qfusion
-
-      - name: Install build dependencies
-        run: |
-          apt update
-          apt install -y curl clang cmake build-essential libsdl2-dev libopenal-dev libvorbis-dev libtheora-dev libfreetype6-dev libcurl4-gnutls-dev git zip unzip
-
-      - name: Download steamworks sdk
-        run: |
-          curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
-          unzip third-party/steamworks/sdk.zip -d third-party/steamworks
-
-      - name: Generate makefiles
-        working-directory: ./source
-        run: |
-          export CC=clang CXX=clang++
-          cmake -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_STEAMLIB=1 .
-
-      - name: Build project
-        working-directory: ./source
-        run: make -j8
-      
-      - name: Package warfork
-        working-directory: ./source/build
-        run: tar -czvf ../Linux-x86_64-Debug.tar.gz * --exclude *.a --exclude base*/*.a libs/*.a
-
-      - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3
+      - name: Download artifact
+        uses: actions/download-artifact@v4
         with:
-          name: linux-x86_64-debug
-          path: source/Linux-x86_64-Debug.tar.gz
+          name: osx-${{ matrix.arch }}-release
+          path: drop
 
-  build-osx:
-    runs-on: macos-12
+      - name: Extract artifact
+        working-directory: ./drop
+        run: tar -xzf osx-${{ matrix.arch }}-release.tar.gz
+
+      - name: Unit Test
+        working-directory: ./drop/RelWithDebInfo
+        shell: bash
+        run: |
+          set -e
+          for exc in ./Warfork.app/Contents/MacOS/*_test; do
+            chmod +x $exc
+            $exc
+          done
+
+  test-windows:
+    needs: windows
+    runs-on: windows-2022
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '13.4.1'
-
-      - name: Install build dependencies
-        run: |
-          brew update
-          brew install curl cmake sdl2 openal-soft libvorbis theora freetype git zip unzip
-
-      - name: Download steamworks sdk
-        run: |
-          curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
-          unzip third-party/steamworks/sdk.zip -d third-party/steamworks
-
-      - name: Generate makefiles
-        working-directory: ./source
-        run: cmake -DBUILD_STEAMLIB=1 -G Xcode .
-
-      - name: Build project
-        working-directory: ./source
-        run: xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration Release -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
-      
-      - name: Package warfork
-        working-directory: ./source/build
-        run: tar -czvf ../OSX-x86_64-Release.tar.gz Release/*.app
-
-      - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: osx-x86_64-release
-          path: source/OSX-x86_64-Release.tar.gz
-
-  build-osx-debug:
-    runs-on: macos-12
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '13.4.1'
-
-      - name: Install build dependencies
-        run: |
-          brew update
-          brew install curl cmake sdl2 openal-soft libvorbis theora freetype git zip unzip
-
-      - name: Download steamworks sdk
-        run: |
-          curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
-          unzip third-party/steamworks/sdk.zip -d third-party/steamworks
-
-      - name: Generate makefiles
-        working-directory: ./source
-        run: cmake -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_STEAMLIB=1 -DWF_BUILD_DSYM=ON -G Xcode .
-
-      - name: Build project
-        working-directory: ./source
-        run: xcodebuild -project qfusion.xcodeproj/ -jobs 4 -configuration Debug -target ALL_BUILD CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
-      
-      - name: Package warfork
-        working-directory: ./source/build
-        run: tar -czvf ../OSX-x86_64-Debug.tar.gz Debug/*.app
-
-      - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: osx-x86_64-debug
-          path: source/OSX-x86_64-Debug.tar.gz
-
-  build-win32:
-    runs-on: windows-2019
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Download steamworks sdk
-        run: |
-          curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
-          7z x third-party/steamworks/sdk.zip -othird-party/steamworks
-
-      - name: Generate makefiles
-        working-directory: .\source
-        run: cmake -G "Visual Studio 16 2019" -A Win32 -T "v142" -DBUILD_STEAMLIB=1 .
-
-      - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v1
-
-      - name: Build project
-        working-directory: .\source
-        run: msbuild qfusion.sln /p:configuration=Release /maxcpucount:8
-
-      - name: Package warfork
-        working-directory: .\source\build\Release
-        run: 7z a ..\..\win-x86-Release.zip * '-xr!*.exp' '-xr!*.lib'
-
-      - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: win-x86-release
-          path: source\win-x86-Release.zip
-
-  build-win32-debug:
-    runs-on: windows-2019
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Download steamworks sdk
-        run: |
-          curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
-          7z x third-party/steamworks/sdk.zip -othird-party/steamworks
-
-      - name: Generate makefiles
-        working-directory: .\source
-        run: cmake -G "Visual Studio 16 2019" -A Win32 -T "v142" -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_STEAMLIB=1 .
-
-      - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v1
-
-      - name: Build project
-        working-directory: .\source
-        run: msbuild qfusion.sln /p:configuration=Debug /maxcpucount:8
-
-      - name: Package warfork
-        working-directory: .\source\build\Debug
-        run: 7z a ..\..\win-x86-Debug.zip * '-xr!*.exp' '-xr!*.lib'
-
-      - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: win-x86-debug
-          path: source\win-x86-Debug.zip
-
-  build-win64:
-    runs-on: windows-2019
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Download steamworks sdk
-        run: |
-          curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
-          7z x third-party/steamworks/sdk.zip -othird-party/steamworks
-
-      - name: Generate makefiles
-        working-directory: .\source
-        run: cmake -G "Visual Studio 16 2019" -A x64 -T "v142" -DBUILD_STEAMLIB=1 .
-
-      - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v1
-
-      - name: Build project
-        working-directory: .\source
-        run: msbuild qfusion.sln /p:configuration=Release /maxcpucount:8
-
-      - name: Package warfork
-        working-directory: .\source\build\Release
-        run: 7z a ..\..\win-x86_64-Release.zip * '-xr!*.exp' '-xr!*.lib'
-
-      - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3
+      - name: Download artifact
+        uses: actions/download-artifact@v4
         with:
           name: win-x86_64-release
-          path: source\win-x86_64-Release.zip
+          path: drop
 
-  build-win64-debug:
-    runs-on: windows-2019
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - name: Extract artifact
+        working-directory: .\drop
+        run: 7z x win-x86_64-release.zip -y
 
-      - name: Download steamworks sdk
+      - name: Unit Test
+        shell: bash
+        working-directory: .\drop
         run: |
-          curl https://warfork.com/downloads/sdk/ --output third-party/steamworks/sdk.zip
-          7z x third-party/steamworks/sdk.zip -othird-party/steamworks
-
-      - name: Generate makefiles
-        working-directory: .\source
-        run: cmake -G "Visual Studio 16 2019" -A x64 -T "v142" -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_STEAMLIB=1 .
-
-      - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v1
-
-      - name: Build project
-        working-directory: .\source
-        run: msbuild qfusion.sln /p:configuration=Debug /maxcpucount:8
-
-      - name: Package warfork
-        working-directory: .\source\build\Debug
-        run: 7z a ..\..\win-x86_64-Debug.zip * '-xr!*.exp' '-xr!*.lib'
-
-      - name: Upload warfork artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: win-x86_64-debug
-          path: source\win-x86_64-Debug.zip
+          set -e
+          for exc in ./test/*[^.pdb]; do
+            $exc
+          done

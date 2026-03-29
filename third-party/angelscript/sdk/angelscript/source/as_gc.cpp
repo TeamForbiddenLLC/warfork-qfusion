@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2014 Andreas Jonsson
+   Copyright (c) 2003-2018 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -60,6 +60,9 @@ asCGarbageCollector::asCGarbageCollector()
 	seqAtSweepStart[0] = 0;
 	seqAtSweepStart[1] = 0;
 	seqAtSweepStart[2] = 0;
+
+	circularRefDetectCallbackFunc  = 0;
+	circularRefDetectCallbackParam = 0;
 }
 
 asCGarbageCollector::~asCGarbageCollector()
@@ -130,7 +133,7 @@ int asCGarbageCollector::AddScriptObjectToGC(void *obj, asCObjectType *objType)
 	return ot.seqNbr;
 }
 
-int asCGarbageCollector::GetObjectInGC(asUINT idx, asUINT *seqNbr, void **obj, asIObjectType **type)
+int asCGarbageCollector::GetObjectInGC(asUINT idx, asUINT *seqNbr, void **obj, asITypeInfo **type)
 {
 	if( seqNbr ) *seqNbr = 0;
 	if( obj )    *obj    = 0;
@@ -217,17 +220,7 @@ int asCGarbageCollector::GarbageCollect(asDWORD flags, asUINT iterations)
 				if( count != (unsigned int)(gcOldObjects.GetLength()) )
 					count = (unsigned int)(gcOldObjects.GetLength());
 				else
-				{
-					// Let the engine destroy the types that reached refCount 0
-					// If none were destroyed, then leave the GC
-					// TODO: The asCObjectType should destroy its content when refCount reaches 0
-					//       since no-one is using them. The registered types should have their
-					//       refcount increased by the config groups. Doing it like that will allow 
-					//       me to remove this call to ClearUnusedTypes() that the GC really 
-					//       shouldn't be calling.
-					if( engine->ClearUnusedTypes() == 0 )
-						break;
-				}
+					break;
 			}
 
 			isProcessing = false;
@@ -496,21 +489,16 @@ int asCGarbageCollector::ReportAndReleaseUndestroyedObjects()
 		engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, msg.AddressOf());
 
 		// Add additional info for builtin types
-		if( gcObj.type->name == "_builtin_function_" )
+		if( gcObj.type->name == "$func" )
 		{
 			// Unfortunately we can't show the function declaration here, because the engine may have released the parameter list already so the declaration would only be misleading
 			// We need to show the function type too as for example delegates do not have a name
 			msg.Format(TXT_PREV_FUNC_IS_NAMED_s_TYPE_IS_d, reinterpret_cast<asCScriptFunction*>(gcObj.obj)->GetName(), reinterpret_cast<asCScriptFunction*>(gcObj.obj)->GetFuncType());
 			engine->WriteMessage("", 0, 0, asMSGTYPE_INFORMATION, msg.AddressOf());
 		}
-		else if( gcObj.type->name == "_builtin_objecttype_" )
+		else if( gcObj.type->name == "$obj" )
 		{
 			msg.Format(TXT_PREV_TYPE_IS_NAMED_s, reinterpret_cast<asCObjectType*>(gcObj.obj)->GetName());
-			engine->WriteMessage("", 0, 0, asMSGTYPE_INFORMATION, msg.AddressOf());
-		}
-		else if( gcObj.type->name == "_builtin_globalprop_" )
-		{
-			msg.Format(TXT_PREV_TYPE_IS_NAMED_s, reinterpret_cast<asCGlobalProperty*>(gcObj.obj)->name.AddressOf());
 			engine->WriteMessage("", 0, 0, asMSGTYPE_INFORMATION, msg.AddressOf());
 		}
 
@@ -872,6 +860,25 @@ int asCGarbageCollector::IdentifyGarbageWithCyclicRefs()
 		{
 			gcMap.MoveFirst(&gcMapCursor);
 			detectState = breakCircles_loop;
+
+			// If the application has requested a callback for detected circular references,
+			// then make that callback now for all the objects in the list. This step is not
+			// done in incremental steps as it is only meant for debugging purposes and thus
+			// doesn't require interactivity
+			if (gcMapCursor && circularRefDetectCallbackFunc)
+			{
+				while (gcMapCursor)
+				{
+					void *gcObj = gcMap.GetKey(gcMapCursor);
+					asCObjectType *type = gcMap.GetValue(gcMapCursor).type;
+					circularRefDetectCallbackFunc(type, gcObj, circularRefDetectCallbackParam);
+
+					gcMap.MoveNext(&gcMapCursor, gcMapCursor);
+				}
+
+				// Reset iterator
+				gcMap.MoveFirst(&gcMapCursor);
+			}
 		}
 		break;
 

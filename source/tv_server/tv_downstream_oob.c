@@ -360,8 +360,7 @@ static void TV_Downstream_DirectConnect( const socket_t *socket, const netadr_t 
 	{
 		if( version <= 6 )
 		{            // before reject packet was added
-			Netchan_OutOfBandPrint( socket, address, "print\nServer is version %4.2f. Protocol %3i\n",
-				APP_VERSION, APP_PROTOCOL_VERSION );
+			Netchan_OutOfBandPrint( socket, address, "print\nServer is version "APP_VERSION_STR_MAJORMINOR". Protocol %3i\n", APP_PROTOCOL_VERSION );
 		}
 		else
 		{

@@ -343,7 +343,7 @@ class cPlayer
 		this.pendingSecondary = weapon;
 	}
 
-	void selectWeapon( String &weapon )
+	void selectWeapon( const String &in weapon )
 	{
 		String token;
 		int len;

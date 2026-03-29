@@ -30,6 +30,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../qalgo/md5.h"
 #include "../matchmaker/mm_common.h"
 #include "compression.h"
+#include "mem.h"
+
+#include "crashpad.h"
 
 #define MAX_NUM_ARGVS	50
 
@@ -77,8 +80,6 @@ unsigned int time_after_game;
 unsigned int time_before_ref;
 unsigned int time_after_ref;
 
-// debug/performance counter vars
-int c_pointcontents, c_traces, c_brush_traces;
 
 /*
 ==============================================================
@@ -229,6 +230,8 @@ void Com_Printf( const char *format, ... )
 	va_start( argptr, format );
 	Q_vsnprintfz( msg, sizeof( msg ), format, argptr );
 	va_end( argptr );
+
+	printf("%s\n", msg);
 
 	QMutex_Lock( com_print_mutex );
 
@@ -637,117 +640,6 @@ void Com_FreePureList( purelist_t **purelist )
 
 //============================================================================
 
-static unsigned int com_CPUFeatures = 0xFFFFFFFF;
-
-static inline int CPU_haveCPUID()
-{
-	int has_CPUID = 0;
-#if defined(__GNUC__) && defined(i386)
-	has_CPUID = __get_cpuid_max( 0, NULL ) ? 1 : 0;
-#elif defined(_MSC_VER) && defined(_M_IX86)
-	__asm {
-		pushfd                      ; Get original EFLAGS
-			pop     eax
-			mov     ecx, eax
-			xor     eax, 200000h        ; Flip ID bit in EFLAGS
-			push    eax                 ; Save new EFLAGS value on stack
-			popfd                       ; Replace current EFLAGS value
-			pushfd                      ; Get new EFLAGS
-			pop     eax                 ; Store new EFLAGS in EAX
-			xor     eax, ecx            ; Can not toggle ID bit,
-			jz      done                ; Processor=80486
-			mov     has_CPUID,1         ; We have CPUID support
-done:
-	}
-#endif
-	return has_CPUID;
-}
-
-static inline unsigned CPU_getCPUIDFeatures()
-{
-	unsigned features = 0;
-#if defined(__GNUC__) && defined(i386)
-	if( __get_cpuid_max( 0, NULL ) >= 1 ) {
-		unsigned temp, temp2, temp3;
-		__get_cpuid( 1, &temp, &temp2, &temp3, &features );
-	}
-#elif defined(_MSC_VER) && defined(_M_IX86)
-	__asm {
-		xor     eax, eax            ; Set up for CPUID instruction
-			cpuid                       ; Get and save vendor ID
-			cmp     eax, 1              ; Make sure 1 is valid input for CPUID
-			jl      done                ; We dont have the CPUID instruction
-			xor     eax, eax
-			inc     eax
-			cpuid                       ; Get family/model/stepping/features
-			mov     features, edx
-done:
-	}
-#endif
-	return features;
-}
-
-static inline unsigned CPU_getCPUIDFeaturesExt( )
-{
-	unsigned features = 0;
-#if defined(__GNUC__) && defined(i386)
-	if( __get_cpuid_max( 0x80000000, NULL ) >= 0x80000001 ) {
-		unsigned temp, temp2, temp3;
-		__get_cpuid( 0x80000001, &temp, &temp2, &temp3, &features );
-	}
-#elif defined(_MSC_VER) && defined(_M_IX86)
-	__asm {
-		mov     eax,80000000h       ; Query for extended functions
-			cpuid                       ; Get extended function limit
-			cmp     eax,80000001h
-			jl      done                ; Nope, we dont have function 800000001h
-			mov     eax,80000001h       ; Setup extended function 800000001h
-			cpuid                       ; and get the information
-			mov     features,edx
-done:
-	}
-#endif
-	return features;
-}
-
-/*
-* COM_CPUFeatures
-*
-* CPU features detection code, taken from SDL
-*/
-unsigned int COM_CPUFeatures( void )
-{
-	if( com_CPUFeatures == 0xFFFFFFFF )
-	{
-		com_CPUFeatures = 0;
-
-		if( CPU_haveCPUID() )
-		{
-			int CPUIDFeatures = CPU_getCPUIDFeatures();
-			int CPUIDFeaturesExt = CPU_getCPUIDFeaturesExt();
-
-			if( CPUIDFeatures & 0x00000010 )
-				com_CPUFeatures |= QCPU_HAS_RDTSC;
-			if( CPUIDFeatures & 0x00800000 )
-				com_CPUFeatures |= QCPU_HAS_MMX;
-			if( CPUIDFeaturesExt & 0x00400000 )
-				com_CPUFeatures |= QCPU_HAS_MMXEXT;
-			if( CPUIDFeaturesExt & 0x80000000 )
-				com_CPUFeatures |= QCPU_HAS_3DNOW;
-			if( CPUIDFeaturesExt & 0x40000000 )
-				com_CPUFeatures |= QCPU_HAS_3DNOWEXT;
-			if( CPUIDFeatures & 0x02000000 )
-				com_CPUFeatures |= QCPU_HAS_SSE;
-			if( CPUIDFeatures & 0x04000000 )
-				com_CPUFeatures |= QCPU_HAS_SSE2;
-		}
-	}
-
-	return com_CPUFeatures;
-}
-
-//========================================================
-
 void Key_Init( void );
 void Key_Shutdown( void );
 void SCR_EndLoadingPlaque( void );
@@ -783,44 +675,6 @@ static void Com_Lag_f( void )
 	Com_Printf( "Lagged %i milliseconds\n", msecs );
 }
 #endif
-
-/*
-* Q_malloc
-* 
-* Just like malloc(), but die if allocation fails
-*/
-void *Q_malloc( size_t size )
-{
-	void *buf = malloc( size );
-
-	if( !buf )
-		Sys_Error( "Q_malloc: failed on allocation of %i bytes.\n", size );
-
-	return buf;
-}
-
-/*
-* Q_realloc
-* 
-* Just like realloc(), but die if reallocation fails
-*/
-void *Q_realloc( void *buf, size_t newsize )
-{
-	void *newbuf = realloc( buf, newsize );
-
-	if( !newbuf && newsize )
-		Sys_Error( "Q_realloc: failed on allocation of %i bytes.\n", newsize );
-
-	return newbuf;
-}
-
-/*
-* Q_free
-*/
-void Q_free( void *buf )
-{
-	free( buf );
-}
 
 /*
 * Qcommon_InitCommands
@@ -888,7 +742,9 @@ void Qcommon_InitCvarDescriptions( void )
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/rcon" );
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/s" );
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/scr" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/steam" );    
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/sv" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/tv" );	
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/ui" );
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/vid" );
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/vsay" );
@@ -970,14 +826,16 @@ void Qcommon_Init( int argc, char **argv )
 #endif
 	developer =	    Cvar_Get( "developer", "0", 0 );
     
-	Com_LoadCompressionLibraries();
 
 	FS_Init();
 
-    // init localization subsystem
-    L10n_Init();
-        Qcommon_InitCvarDescriptions();
-        
+#ifdef USE_CRASHPAD
+	Init_Crashpad( FS_WriteDirectory() );
+#endif
+	// init localization subsystem
+	L10n_Init();
+	Qcommon_InitCvarDescriptions();
+
 	Cbuf_AddText( "exec default.cfg\n" );
 	if( !dedicated->integer )
 	{
@@ -1026,8 +884,6 @@ void Qcommon_Init( int argc, char **argv )
 
 	NET_Init();
 	Netchan_Init();
-
-	Com_Autoupdate_Init();
 
 	CM_Init();
 
@@ -1116,8 +972,6 @@ void Qcommon_Frame( unsigned int realmsec )
 
 	FS_Frame();
 
-	Steam_RunFrame();
-
 	if( dedicated->integer )
 	{
 		do
@@ -1191,21 +1045,17 @@ void Qcommon_Shutdown( void )
 	NET_Shutdown();
 	Key_Shutdown();
 
-	Steam_UnloadLibrary();
-
-	Com_Autoupdate_Shutdown();
 
 	Qcommon_ShutdownCommands();
 	Memory_ShutdownCommands();
 
+	// Mem_DumpMemoryReport();
 	Com_CloseConsoleLog( true, true );
 
    Qcommon_ShutdownCvarDescriptions();
    L10n_Shutdown();
 
 	FS_Shutdown();
-
-	Com_UnloadCompressionLibraries();
 
    wswcurl_cleanup();
    
@@ -1219,4 +1069,8 @@ void Qcommon_Shutdown( void )
 	QMutex_Destroy( &com_print_mutex );
 
 	QThreads_Shutdown();
+
+#ifdef USE_CRASHPAD
+	Exit_Crashpad();
+#endif
 }

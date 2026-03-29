@@ -2,6 +2,9 @@ project(${QFUSION_TVSERVER_NAME})
 
 include_directories(${MINIZ_INCLUDE_DIR} ${CURL_INCLUDE_DIR})
 
+set(STEAMSHIMPARENT_LIBRARY steamshim_parent)
+
+
 file(GLOB TV_SERVER_HEADERS
     "*.h"
 	"../gameshared/q_*.h"
@@ -14,14 +17,16 @@ file(GLOB TV_SERVER_HEADERS
 
 file(GLOB TV_SERVER_SOURCES
 	"../qcommon/asyncstream.c"
-	"../qcommon/autoupdate.c"
     "../qcommon/cm_main.c"
     "../qcommon/cm_q3bsp.c"
+    "../qcommon/cm_q1bsp.c"
+    "../qcommon/cm_q2bsp.c"
     "../qcommon/cm_trace.c"
 	"../qcommon/compression.c"
     "../qcommon/bsp.c"
     "../qcommon/patch.c"
     "../qcommon/common.c"
+    "../qcommon/crashpad.cpp"
     "../qcommon/files.c"
     "../qcommon/cmd.c"
     "../qcommon/mem.c"
@@ -81,7 +86,12 @@ else()
 endif()
 
 add_executable(${QFUSION_TVSERVER_NAME} ${TV_SERVER_BINARY_TYPE} ${TV_SERVER_HEADERS} ${TV_SERVER_SOURCES} ${TV_SERVER_PLATFORM_SOURCES})
-target_link_libraries(${QFUSION_TVSERVER_NAME} PRIVATE ${CURL_LIBRARY} ${TV_SERVER_PLATFORM_LIBRARIES})
+target_link_libraries(${QFUSION_TVSERVER_NAME} PRIVATE CURL::libcurl ${TV_SERVER_PLATFORM_LIBRARIES} ${STEAMSHIMPARENT_LIBRARY})
+if (USE_CRASHPAD)
+    target_link_libraries(${QFUSION_TVSERVER_NAME} PRIVATE crashpad_client)
+endif()
+
+
 qf_set_output_dir(${QFUSION_TVSERVER_NAME} "")
 
 set_target_properties(${QFUSION_TVSERVER_NAME} PROPERTIES COMPILE_DEFINITIONS "DEDICATED_ONLY;TV_SERVER_ONLY;TV_MODULE_HARD_LINKED")

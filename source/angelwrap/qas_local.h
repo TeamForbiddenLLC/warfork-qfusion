@@ -23,6 +23,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <new>
 #include <string>
+#include <algorithm>
+#include <unordered_map>
 
 #if defined ( _WIN32 ) || ( _WIN64 )
 #include <string.h>
@@ -37,6 +39,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../gameshared/q_angeliface.h"
 #include "qas_public.h"
 #include "qas_syscalls.h"
+
+// We must undefine max & min (from q_math) for Angelscript's addons
+#ifdef max
+#  undef max
+#endif
+#ifdef min
+#  undef min
+#endif
 
 extern struct mempool_s *angelwrappool;
 

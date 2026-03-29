@@ -1298,7 +1298,7 @@ void IN_WinIME_Shutdown( void )
 
 	if( in_winime_candList )
 	{
-		Q_free( in_winime_candList );
+		free( in_winime_candList );
 		in_winime_candList = NULL;
 		in_winime_candListSize = 0;
 	}
@@ -1443,7 +1443,7 @@ unsigned int IN_IME_GetCandidates( char * const *cands, size_t candSize, unsigne
 
 	if( candListSize > in_winime_candListSize )
 	{
-		candList = Q_realloc( candList, candListSize );
+		candList = realloc( candList, candListSize );
 		if( !candList )
 			return 0;
 		in_winime_candList = candList;

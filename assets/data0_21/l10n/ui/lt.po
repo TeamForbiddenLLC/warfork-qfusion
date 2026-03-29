@@ -375,10 +375,6 @@ msgstr "Išjungti automatišką šokinėjimą"
 msgid "Enable view animation"
 msgstr "Įjungti žiūrėjimo animaciją"
 
-#. UI option for cg_cartoonHitEffect, shows effects on critical hit.
-msgid "Show critical hit effect"
-msgstr ""
-
 #. Touch screen setting
 msgid "Touch look sensitivity"
 msgstr "Žiūrėjimo jautrumas liečiant"

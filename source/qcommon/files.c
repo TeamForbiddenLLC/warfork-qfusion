@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "wswcurl.h"
 #include "../qalgo/md5.h"
 #include "../qalgo/q_trie.h"
+#include "../gameshared/q_sds.h"
 
 /*
 =============================================================================
@@ -641,8 +642,8 @@ bool FS_IsExplicitPurePak( const char *pakname, bool *wrongver )
 
 	// check version match
 	if( wrongver ) {
-		begin = pakbasename + pakbasename_len - strlen( APP_VERSION_STR_MAJORMINOR "pure" ) - extension_len;
-		*wrongver = begin < pakbasename || Q_strnicmp( begin,  APP_VERSION_STR_MAJORMINOR, strlen( APP_VERSION_STR_MAJORMINOR ) ) != 0;
+		begin = pakbasename + pakbasename_len - strlen( APP_PK3_VERSION "pure" ) - extension_len;
+		*wrongver = begin < pakbasename || Q_strnicmp( begin, APP_PK3_VERSION, strlen( APP_PK3_VERSION ) ) != 0;
 	}
 
 	return pure;
@@ -748,7 +749,7 @@ static inline int FS_FileNumForHandle( filehandle_t *fh )
 
 	file = ( fh - fs_filehandles ) + 1;
 	if( file < 1 || file > FS_MAX_HANDLES )
-		Sys_Error( "FS_FileHandleForNum: bad handle: %i", file );
+		Sys_Error( "FS_FileNumForHandle: bad handle: %i", file );
 	return file;
 }
 
@@ -768,6 +769,76 @@ static void FS_CloseFileHandle( filehandle_t *fh )
 	fs_free_filehandles = fh;
 
 	QMutex_Unlock( fs_fh_mutex );
+}
+
+
+/**
+ * this method does not try and strip the extension from the filepath.
+ * takes the filepath tacks on the extension and tries to find a valid file.
+ **/
+const char *FS_FirstExtension2( const char *filename, const char *extensions[], int num_extensions ) {
+	
+	if( !COM_ValidateRelativeFilename( filename ) )
+		return NULL;
+
+	// search through the path, one element at a time
+	QMutex_Lock( fs_searchpaths_mutex );
+	const char *implicitpure = NULL;
+	bool purepass = true;
+	const char *result = NULL;
+
+	sds filepath = sdsempty();
+	filepath = sdscat(filepath, filename);
+	size_t basepathLen = sdslen(filepath);
+	searchpath_t* search = fs_searchpaths;
+	while( search ) {
+		if( search->pack ) // is the element a pak file?
+		{
+			if( ( search->pack->pure > FS_PURE_NONE ) == purepass ) {
+				for(size_t i = 0; i < num_extensions; i++ ) {
+				  sdssubstr(filepath, 0, basepathLen);
+				  filepath = sdscat(filepath, extensions[i]);
+				  if( FS_SearchPakForFile( search->pack, filepath, NULL ) ) {
+				  	if( !purepass || search->pack->pure == FS_PURE_EXPLICIT ) {
+				  		result = extensions[i];
+				  		goto return_result;
+				  	} else if( implicitpure == NULL ) {
+				  		implicitpure = extensions[i];
+				  		break;
+				  	}
+				  }
+				}
+			}
+		} else {
+			if( !purepass ) {
+				for(size_t i = 0; i < num_extensions; i++ ) {
+					void *vfsHandle = NULL; // search in VFS as well
+				  sdssubstr(filepath, 0, basepathLen);
+				  filepath = sdscat(filepath, extensions[i]);
+					if( FS_SearchDirectoryForFile( search, filepath, NULL, 0, &vfsHandle ) ) {
+						result = extensions[i];
+						goto return_result;
+					}
+				}
+			}
+		}
+
+		if( !search->next && purepass ) {
+			if( implicitpure ) {
+				result = implicitpure;
+				goto return_result;
+			}
+			search = fs_searchpaths;
+			purepass = false;
+		} else {
+			search = search->next;
+		}
+	}
+
+return_result:
+	QMutex_Unlock( fs_searchpaths_mutex );
+	sdsfree(filepath);
+	return result;
 }
 
 /*
@@ -1023,7 +1094,7 @@ int FS_FOpenAbsoluteFile( const char *filename, int *filenum, int mode )
 		return -1;
 	}
 
-	end = (mode == FS_WRITE || FS_FileLength( f, false ));
+	end = (mode == FS_WRITE ? 0 : FS_FileLength( f, false ));
 
 	*filenum = FS_OpenFileHandle();
 	file = &fs_filehandles[*filenum - 1];
@@ -1124,9 +1195,15 @@ static int _FS_FOpenPakFile( packfile_t *pakFile, int *filenum )
 * 
 * Finds the file in the search path. Returns filesize and an open handle
 * Used for streaming data out of either a pak file or a separate file.
+*
+* this only applies to pak and vfs
+* if a group is not defined then its filled in 
+*  - requires the next query to comes from the same pak/vfs for packs
+*  
 */
-static int _FS_FOpenFile( const char *filename, int *filenum, int mode, bool base )
+static int _FS_FOpenFile( const char *filename, int *filenum, int mode, bool base, group_handle_t* group)
 {
+
 	searchpath_t *search;
 	filehandle_t *file;
 	bool noSize;
@@ -1257,10 +1334,18 @@ static int _FS_FOpenFile( const char *filename, int *filenum, int mode, bool bas
 	if( !search )
 		goto notfound_dprint;
 
-	if( pakFile )
+	if(pakFile)
 	{
-		int uncompressedSize;
+		if(group) {
+			if(*group == 0) {
+				(*group) = (uintptr_t)pakFile;
+			} else if(( *group ) != (uintptr_t)pakFile ) {
+				Com_DPrintf( "FS_FOpen%sFile: Skipping not in the same group %s\n", (base ? "Base" : ""), filename );
+				goto error;
+			}
+		}
 
+		int uncompressedSize;
 		assert( !base );
 
 		uncompressedSize = _FS_FOpenPakFile( pakFile, filenum );
@@ -1274,8 +1359,17 @@ static int _FS_FOpenFile( const char *filename, int *filenum, int mode, bool bas
 		Com_DPrintf( "PackFile: %s : %s\n", search->pack->filename, filename );
 		return uncompressedSize;
 	}
-	else if( vfsHandle )
+	else if( vfsHandle)
 	{
+		if(group) {
+			if(*group == 0) {
+				(*group) = (uintptr_t)vfsHandle;
+			} else if(( *group ) != (uintptr_t)vfsHandle) {
+				Com_DPrintf( "FS_FOpen%sFile: Skipping not in the same group %s\n", (base ? "Base" : ""), filename );
+				goto error;
+			}
+		}
+
 		const char *vfsName;
 		FILE *f;
 		unsigned int vfsOffset;
@@ -1341,7 +1435,12 @@ error:
 */
 int FS_FOpenFile( const char *filename, int *filenum, int mode )
 {
-	return _FS_FOpenFile( filename, filenum, mode, false );
+	return _FS_FOpenFile( filename, filenum, mode, false, NULL);
+}
+
+int FS_FOpenFileGroup( const char *filename, int *filenum, int mode, group_handle_t *group )
+{
+	return _FS_FOpenFile( filename, filenum, mode, false, group );
 }
 
 /*
@@ -1351,7 +1450,7 @@ int FS_FOpenFile( const char *filename, int *filenum, int mode )
 */
 int FS_FOpenBaseFile( const char *filename, int *filenum, int mode )
 {
-	return _FS_FOpenFile( filename, filenum, mode, true );
+	return _FS_FOpenFile( filename, filenum, mode, true, NULL );
 }
 
 /*
@@ -1532,6 +1631,17 @@ int FS_Printf( int file, const char *format, ... )
 	}
 	va_end( argptr );
 
+	return FS_Write( msg, len, file );
+}
+
+int FS_vPrintf( int file, const char *format, va_list argptr )
+{
+	char msg[8192];
+	size_t len;
+	if( ( len = Q_vsnprintfz( msg, sizeof( msg ), format, argptr ) ) >= sizeof( msg ) - 1 ) {
+		msg[sizeof( msg ) - 1] = '\0';
+		Com_Printf( "FS_Printf: Buffer overflow" );
+	}
 	return FS_Write( msg, len, file );
 }
 
@@ -2107,7 +2217,7 @@ bool _FS_CopyFile( const char *src, const char *dst, bool base, bool absolute )
 	int srcnum, dstnum, length, result, l;
 	uint8_t buffer[FS_MAX_BLOCK_SIZE];
 
-	length = _FS_FOpenFile( src, &srcnum, FS_READ, base );
+	length = _FS_FOpenFile( src, &srcnum, FS_READ, base, NULL);
 	if( length == -1 )
 	{
 		return false;
@@ -2116,7 +2226,7 @@ bool _FS_CopyFile( const char *src, const char *dst, bool base, bool absolute )
 	if( absolute )
 		result = FS_FOpenAbsoluteFile( dst, &dstnum, FS_WRITE ) == -1;
 	else
-		result = _FS_FOpenFile( dst, &dstnum, FS_WRITE, base ) == -1;
+		result = _FS_FOpenFile( dst, &dstnum, FS_WRITE, base, NULL) == -1;
 	if( result == -1 )
 	{
 		FS_FCloseFile( srcnum );
@@ -2657,8 +2767,6 @@ static pack_t *FS_LoadPK3File( const char *packfilename, bool silent )
 	// read manifest file if it's a module pk3
 	if( modulepack && manifestFilesize > 0 )
 		FS_ReadPackManifest( pack );
-
-	if( !silent ) Com_Printf( "Added pk3 file %s (%i files)\n", pack->filename, pack->numFiles );
 
 	return pack;
 
@@ -4298,12 +4406,7 @@ void FS_Init( void )
 
 	// Need to initialize before FS is done, but after the basic search path is constructed.
 #if APP_STEAMID
-	Steam_LoadLibrary();
-#if !defined(DEDICATED_ONLY)
 	Steam_Init();
-#else
-	// FIXME: Steam server init here!
-#endif
 #endif
 
 	//

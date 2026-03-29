@@ -58,7 +58,7 @@ class cPlayerClass
 
     ~cPlayerClass() {}
 
-    void setup( String &class_name, int tag, String &model, int health, int armor, int maxSpeed, int dashSpeed, bool stun,
+    void setup( const String &in class_name, int tag, const String &in model, int health, int armor, int maxSpeed, int dashSpeed, bool stun,
         const String &icon, const String @action1Icon, const String @action2Icon )
     {
         this.name = class_name;

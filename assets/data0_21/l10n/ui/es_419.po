@@ -384,10 +384,6 @@ msgstr "Desactivar salto automático"
 msgid "Enable view animation"
 msgstr "Activar animación de vista"
 
-#. UI option for cg_cartoonHitEffect, shows effects on critical hit.
-msgid "Show critical hit effect"
-msgstr "Mostrar efectos de Golpes críticos"
-
 #. Touch screen setting
 msgid "Touch look sensitivity"
 msgstr ""

@@ -1,0 +1,10 @@
+@PACKAGE_INIT@
+
+get_filename_component(cmocka_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+if(NOT TARGET cmocka::cmocka)
+	include("${cmocka_CMAKE_DIR}/cmocka-targets.cmake")
+endif()
+
+# for backwards compatibility
+set(CMOCKA_LIBRARY cmocka::cmocka)
+set(CMOCKA_LIBRARIES cmocka::cmocka)

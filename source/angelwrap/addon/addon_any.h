@@ -1,7 +1,7 @@
 #ifndef SCRIPTANY_H
 #define SCRIPTANY_H
 
-#ifndef ANGELSCRIPT_H 
+#ifndef ANGELSCRIPT_H
 // Avoid having to inform include path if header is already include before
 #include <angelscript.h>
 #endif
@@ -15,7 +15,6 @@ public:
 	// Constructors
 	CScriptAny(asIScriptEngine *engine);
 	CScriptAny(void *ref, int refTypeId, asIScriptEngine *engine);
-	CScriptAny(const CScriptAny &other);
 
 	// Memory management
 	int AddRef() const;
@@ -48,7 +47,6 @@ public:
 protected:
 	virtual ~CScriptAny();
 	void FreeObject();
-	void Initialize(asIScriptEngine *engine);
 
 	mutable int refCount;
 	mutable bool gcFlag;
@@ -71,6 +69,8 @@ protected:
 
 void PreRegisterScriptAny(asIScriptEngine *engine);
 void RegisterScriptAny(asIScriptEngine *engine);
+void RegisterScriptAny_Native(asIScriptEngine *engine);
+void RegisterScriptAny_Generic(asIScriptEngine *engine);
 
 END_AS_NAMESPACE
 

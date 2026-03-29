@@ -61,7 +61,7 @@ class cPlayerClass
 
     ~cPlayerClass() {}
 
-    void setup( String &class_name, String &list, int health, int armor, String &icon )
+    void setup( const String &in class_name, const String &in list, int health, int armor, const String &in icon )
     {
         this.name = class_name;
         this.itemList = list;
@@ -325,7 +325,7 @@ void GENERIC_GiveClientClassInventory( Client @client, bool giveItems, bool give
         cPlayerClassInfos[ c ].giveArmor( client );
 }
 
-void GENERIC_PlayerclassCommand( Client @client, String &argsString )
+void GENERIC_PlayerclassCommand( Client @client, const String &in argsString )
 {
     String token = argsString.getToken( 0 );
 

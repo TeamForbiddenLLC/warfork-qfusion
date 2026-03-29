@@ -480,24 +480,16 @@ static void Cmd_PlayersExt_f( edict_t *ent, bool onlyspecs )
 		{
 			edict_t *ent = &game.edicts[i+1];
 			gclient_t *cl;
-			const char *login;
 
 			if( onlyspecs && ent->s.team != TEAM_SPECTATOR )
 				continue;
 
 			cl = ent->r.client;
 
-			login = NULL;
-			if( cl->mm_session > 0 ) {
-				login = Info_ValueForKey( cl->userinfo, "cl_mm_login" );
-			}
-			if( !login ) {
-				login = "";
-			}
+			char name[MAX_NAME_BYTES];
+			Q_strncpyz( name, cl->netname, sizeof( name ) );
 
-			Q_snprintfz( line, sizeof( line ), "%3i %s" S_COLOR_WHITE "%s%s%s%s\n", i, cl->netname,
-				login[0] ? "(" S_COLOR_YELLOW : "", login, login[0] ? S_COLOR_WHITE ")" : "",
-				cl->isoperator ? " op" : "" );
+			Q_snprintfz( line, sizeof( line ), "%3i %-16s" S_COLOR_WHITE "%s %llu\n", i, COM_RemoveColorTokens(name), cl->isoperator ? "op" : "no", ent->r.client->steamid);
 
 			if( strlen( line ) + strlen( msg ) > sizeof( msg ) - 100 )
 			{
@@ -508,8 +500,8 @@ static void Cmd_PlayersExt_f( edict_t *ent, bool onlyspecs )
 
 			if( count == 0 )
 			{
-				Q_strncatz( msg, "num name\n", sizeof( msg ) );
-				Q_strncatz( msg, "--- ------------------------------\n", sizeof( msg ) );
+				Q_strncatz( msg, "num name            op steamid      \n", sizeof( msg ) );
+				Q_strncatz( msg, "--- --------------- -- -------------\n", sizeof( msg ) );
 			}
 
 			Q_strncatz( msg, line, sizeof( msg ) );
@@ -518,7 +510,7 @@ static void Cmd_PlayersExt_f( edict_t *ent, bool onlyspecs )
 	}
 
 	if( count )
-		Q_strncatz( msg, "--- ------------------------------\n", sizeof( msg ) );
+		Q_strncatz( msg, "--- --------------- -- -------------\n", sizeof( msg ) );
 	Q_strncatz( msg, va( "%3i %s\n", count, trap_Cmd_Argv( 0 ) ), sizeof( msg ) );
 	G_PrintMsg( ent, "%s", msg );
 
@@ -706,8 +698,13 @@ void Cmd_Say_f( edict_t *ent, bool arg0, bool checkflood )
 			return;
 	}
 
-	if( ent->r.client && ( ent->r.client->muted & 1 ) )
+	if( ent->r.client && ent->r.client->muted )
 		return;
+
+	if (ent->r.client->authenticated && SV_FilterSteamID(ent->r.client->steamid, FILTER_MUTE)) { 
+		G_PrintMsg(ent, "You are muted.\n");
+		return;
+	}
 
 	if( trap_Cmd_Argc() < 2 && !arg0 )
 		return;
@@ -740,7 +737,12 @@ void Cmd_Say_f( edict_t *ent, bool arg0, bool checkflood )
 	if( !Q_stricmp( text, "gg" ) || !Q_stricmp( text, "good game" ) )
 		G_AwardFairPlay( ent );
 
-	G_ChatMsg( NULL, ent, false, "%s", text );
+	if (ent->r.client->authenticated && SV_FilterSteamID(ent->r.client->steamid, FILTER_MUTE | FILTER_SHADOWMUTE)) { 
+		// chat message is only sent to the player
+		G_ChatMsg( ent, ent, false, "%s", text );
+	}else {
+		G_ChatMsg( NULL, ent, false, "%s", text );
+	}
 }
 
 /*
@@ -854,7 +856,10 @@ static void G_vsay_f( edict_t *ent, bool team )
 	const char *text = NULL;
 	char *msg = trap_Cmd_Argv( 1 );
 
-	if( ent->r.client && ( ent->r.client->muted & 2 ) )
+	if( ent->r.client && ent->r.client->muted )
+		return;
+
+	if (ent->r.client->authenticated && SV_FilterSteamID(ent->r.client->steamid, FILTER_MUTE))
 		return;
 
 	if( ( !GS_TeamBasedGametype() || GS_InvidualGameType() ) && ent->s.team != TEAM_SPECTATOR )
@@ -907,6 +912,13 @@ static void G_vsay_f( edict_t *ent, bool team )
 				Q_strncatz( saystring, " ", sizeof( saystring ) );
 			}
 			text = saystring;
+		}
+
+
+		if (ent->r.client->authenticated && SV_FilterSteamID(ent->r.client->steamid, FILTER_MUTE | FILTER_SHADOWMUTE)) { 
+			// if shadowmuted only send the message back to the player
+			G_ChatMsg( ent, ent, false, "(v) %s", text );
+			return;
 		}
 
 		if( team )
@@ -1419,6 +1431,7 @@ void G_InitGameCommands( void )
 	G_AddCommand( "servermaplist", Cmd_ServerMaplist_f );
 
 	// callvotes commands
+	G_AddCommand( "ajax", G_Ajax_Cmd );
 	G_AddCommand( "callvote", G_CallVote_Cmd );
 	G_AddCommand( "vote", G_CallVotes_CmdVote );
 

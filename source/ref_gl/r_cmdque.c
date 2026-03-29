@@ -783,40 +783,39 @@ typedef struct
 
 typedef unsigned (*refPipeCmdHandler_t)( const void * );
 
-static unsigned R_HandleInitReliableCmd( void *pcmd );
-static unsigned R_HandleShutdownReliableCmd( void *pcmd );
-static unsigned R_HandleSurfaceChangeReliableCmd( void *pcmd );
-static unsigned R_HandleScreenShotReliableCmd( void *pcmd );
-static unsigned R_HandleEnvShotReliableCmd( void *pcmd );
-static unsigned R_HandleBeginRegistrationReliableCmd( void *pcmd );
-static unsigned R_HandleEndRegistrationReliableCmd( void *pcmd );
-static unsigned R_HandleSetCustomColorReliableCmd( void *pcmd );
-static unsigned R_HandleSetWallFloorColorsReliableCmd( void *pcmd );
-static unsigned R_HandleSetDrawBufferReliableCmd( void *pcmd );
-static unsigned R_HandleSetTextureModeReliableCmd( void *pcmd );
-static unsigned R_HandleSetTextureFilterReliableCmd( void *pcmd );
-static unsigned R_HandleSetGammaReliableCmd( void *pcmd );
+static unsigned R_HandleInitReliableCmd( const void *pcmd );
+static unsigned R_HandleShutdownReliableCmd( const void *pcmd );
+static unsigned R_HandleSurfaceChangeReliableCmd( const void *pcmd );
+static unsigned R_HandleScreenShotReliableCmd( const void *pcmd );
+static unsigned R_HandleEnvShotReliableCmd( const void *pcmd );
+static unsigned R_HandleBeginRegistrationReliableCmd( const void *pcmd );
+static unsigned R_HandleEndRegistrationReliableCmd( const void *pcmd );
+static unsigned R_HandleSetCustomColorReliableCmd( const void *pcmd );
+static unsigned R_HandleSetWallFloorColorsReliableCmd( const void *pcmd );
+static unsigned R_HandleSetDrawBufferReliableCmd( const void *pcmd );
+static unsigned R_HandleSetTextureModeReliableCmd( const void *pcmd );
+static unsigned R_HandleSetTextureFilterReliableCmd( const void *pcmd );
+static unsigned R_HandleSetGammaReliableCmd( const void *pcmd );
 
-static refPipeCmdHandler_t refPipeCmdHandlers[NUM_REF_PIPE_CMDS] =
-{
-	(refPipeCmdHandler_t)R_HandleInitReliableCmd,
-	(refPipeCmdHandler_t)R_HandleShutdownReliableCmd,
-	(refPipeCmdHandler_t)R_HandleSurfaceChangeReliableCmd,
-	(refPipeCmdHandler_t)R_HandleScreenShotReliableCmd,
-	(refPipeCmdHandler_t)R_HandleEnvShotReliableCmd,
-	(refPipeCmdHandler_t)R_HandleBeginRegistrationReliableCmd,
-	(refPipeCmdHandler_t)R_HandleEndRegistrationReliableCmd,
-	(refPipeCmdHandler_t)R_HandleSetCustomColorReliableCmd,
-	(refPipeCmdHandler_t)R_HandleSetWallFloorColorsReliableCmd,
-	(refPipeCmdHandler_t)R_HandleSetDrawBufferReliableCmd,
-	(refPipeCmdHandler_t)R_HandleSetTextureModeReliableCmd,
-	(refPipeCmdHandler_t)R_HandleSetTextureFilterReliableCmd,
-	(refPipeCmdHandler_t)R_HandleSetGammaReliableCmd,
+static refPipeCmdHandler_t refPipeCmdHandlers[NUM_REF_PIPE_CMDS] = {
+	[REF_PIPE_CMD_INIT] = R_HandleInitReliableCmd,
+	[REF_PIPE_CMD_SHUTDOWN] = R_HandleShutdownReliableCmd,
+	[REF_PIPE_CMD_SURFACE_CHANGE] = R_HandleSurfaceChangeReliableCmd,
+	[REF_PIPE_CMD_SCREEN_SHOT] = R_HandleScreenShotReliableCmd,
+	[REF_PIPE_CMD_ENV_SHOT] = R_HandleEnvShotReliableCmd,
+	[REF_PIPE_CMD_BEGIN_REGISTRATION] = R_HandleBeginRegistrationReliableCmd,
+	[REF_PIPE_CMD_END_REGISTRATION] = R_HandleEndRegistrationReliableCmd,
+	[REF_PIPE_CMD_SET_CUSTOM_COLOR] = R_HandleSetCustomColorReliableCmd,
+	[REF_PIPE_CMD_SET_WALL_FLOOR_COLORS] = R_HandleSetWallFloorColorsReliableCmd,
+	[REF_PIPE_CMD_SET_DRAWBUFFER] = R_HandleSetDrawBufferReliableCmd,
+	[REF_PIPE_CMD_SET_TEXTURE_MODE] = R_HandleSetTextureModeReliableCmd,
+	[REF_PIPE_CMD_SET_TEXTURE_FILTER] = R_HandleSetTextureFilterReliableCmd,
+	[REF_PIPE_CMD_SET_GAMMA] = R_HandleSetGammaReliableCmd,
 };
 
-static unsigned R_HandleInitReliableCmd( void *pcmd )
+static unsigned R_HandleInitReliableCmd(const void *pcmd )
 {
-	refReliableCmdInitShutdown_t *cmd = pcmd;
+	const refReliableCmdInitShutdown_t *cmd = pcmd;
 
 	RB_Init();
 
@@ -829,9 +828,9 @@ static unsigned R_HandleInitReliableCmd( void *pcmd )
 	return sizeof( *cmd );
 }
 
-static unsigned R_HandleShutdownReliableCmd( void *pcmd )
+static unsigned R_HandleShutdownReliableCmd( const void *pcmd )
 {
-	refReliableCmdInitShutdown_t *cmd = pcmd;
+	const refReliableCmdInitShutdown_t *cmd = pcmd;
 
 	R_ReleaseBuiltinScreenImages();
 
@@ -842,45 +841,45 @@ static unsigned R_HandleShutdownReliableCmd( void *pcmd )
 	return sizeof( *cmd );
 }
 
-static unsigned R_HandleSurfaceChangeReliableCmd( void *pcmd )
+static unsigned R_HandleSurfaceChangeReliableCmd(const void *pcmd )
 {
-	refReliableCmdSurfaceChange_t *cmd = pcmd;
+	const refReliableCmdSurfaceChange_t *cmd = pcmd;
 
 	GLimp_UpdatePendingWindowSurface();
 
 	return sizeof( *cmd );
 }
 
-static unsigned R_HandleScreenShotReliableCmd( void *pcmd )
+static unsigned R_HandleScreenShotReliableCmd(const void *pcmd )
 {
-	refReliableCmdScreenShot_t *cmd = pcmd;
+	const refReliableCmdScreenShot_t *cmd = pcmd;
 
 	R_TakeScreenShot( cmd->path, cmd->name, cmd->fmtstring, cmd->x, cmd->y, cmd->w, cmd->h, cmd->silent, cmd->media );
 
 	return sizeof( *cmd );
 }
 
-static unsigned R_HandleEnvShotReliableCmd( void *pcmd )
+static unsigned R_HandleEnvShotReliableCmd(const void *pcmd )
 {
-	refReliableCmdScreenShot_t *cmd = pcmd;
+	const refReliableCmdScreenShot_t *cmd = pcmd;
 
 	R_TakeEnvShot( cmd->path, cmd->name, cmd->pixels );
 
 	return sizeof( *cmd );
 }
 
-static unsigned R_HandleBeginRegistrationReliableCmd( void *pcmd )
+static unsigned R_HandleBeginRegistrationReliableCmd(const void *pcmd )
 {
-	refReliableCmdBeginEndRegistration_t *cmd = pcmd;
+	const refReliableCmdBeginEndRegistration_t *cmd = pcmd;
 
 	RB_BeginRegistration();
 
 	return sizeof( *cmd );
 }
 
-static unsigned R_HandleEndRegistrationReliableCmd( void *pcmd )
+static unsigned R_HandleEndRegistrationReliableCmd(const void *pcmd )
 {
-	refReliableCmdBeginEndRegistration_t *cmd = pcmd;
+	const refReliableCmdBeginEndRegistration_t *cmd = pcmd;
 
 	RB_EndRegistration();
 
@@ -889,43 +888,43 @@ static unsigned R_HandleEndRegistrationReliableCmd( void *pcmd )
 	return sizeof( *cmd );
 }
 
-static unsigned R_HandleSetCustomColorReliableCmd( void *pcmd )
+static unsigned R_HandleSetCustomColorReliableCmd(const void *pcmd )
 {
-	refReliableCmdSetCustomColor_t *cmd = pcmd;
+	const refReliableCmdSetCustomColor_t *cmd = pcmd;
 
 	R_SetCustomColor( cmd->num, cmd->r, cmd->g, cmd->b );
 
 	return sizeof( *cmd );
 }
 
-static unsigned R_HandleSetWallFloorColorsReliableCmd( void *pcmd )
+static unsigned R_HandleSetWallFloorColorsReliableCmd(const void *pcmd )
 {
-	refReliableCmdSetWallFloorColors_t *cmd = pcmd;
+	const refReliableCmdSetWallFloorColors_t *cmd = pcmd;
 	
 	R_SetWallFloorColors( cmd->wall, cmd->floor );
 	
 	return sizeof( *cmd );
 }
 
-static unsigned R_HandleSetDrawBufferReliableCmd( void *pcmd )
+static unsigned R_HandleSetDrawBufferReliableCmd(const void *pcmd )
 {
-	refReliableCmdSetDrawBuffer_t *cmd = pcmd;
+	const refReliableCmdSetDrawBuffer_t *cmd = pcmd;
 	
 	R_SetDrawBuffer( cmd->drawbuffer );
 
 	return sizeof( *cmd );
 }
 
-static unsigned R_HandleSetTextureModeReliableCmd( void *pcmd )
+static unsigned R_HandleSetTextureModeReliableCmd(const void *pcmd )
 {
-	refReliableCmdSetTextureMode_t *cmd = pcmd;
+	const refReliableCmdSetTextureMode_t *cmd = pcmd;
 	
 	R_TextureMode( cmd->texturemode );
 	
 	return sizeof( *cmd );
 }
 
-static unsigned R_HandleSetTextureFilterReliableCmd( void *pcmd )
+static unsigned R_HandleSetTextureFilterReliableCmd(const void *pcmd )
 {
 	refReliableCmdSetTextureFilter_t *cmd = pcmd;
 
@@ -934,9 +933,9 @@ static unsigned R_HandleSetTextureFilterReliableCmd( void *pcmd )
 	return sizeof( *cmd );
 }
 
-static unsigned R_HandleSetGammaReliableCmd( void *pcmd )
+static unsigned R_HandleSetGammaReliableCmd(const void *pcmd )
 {
-	refReliableCmdSetGamma_t *cmd = pcmd;
+	const refReliableCmdSetGamma_t *cmd = pcmd;
 
 	R_SetGamma( cmd->gamma );
 

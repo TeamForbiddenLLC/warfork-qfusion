@@ -22,6 +22,9 @@ typedef struct cmodel_state_s cmodel_state_t;
 
 extern cvar_t *cm_noCurves;
 
+// debug/performance counter vars
+extern int c_pointcontents, c_traces, c_brush_traces;
+
 struct cmodel_s *CM_LoadMap( cmodel_state_t *cms, const char *name, bool clientload, unsigned *checksum );
 struct cmodel_s *CM_InlineModel( cmodel_state_t *cms, int num ); // 1, 2, etc
 char *CM_LoadMapMessage( char *name, char *message, int size );
@@ -46,6 +49,8 @@ int CM_TransformedPointContents( cmodel_state_t *cms, vec3_t p, struct cmodel_s 
 
 void CM_TransformedBoxTrace( cmodel_state_t *cms, trace_t *tr, vec3_t start, vec3_t end, vec3_t mins, vec3_t maxs,
                              struct cmodel_s *cmodel, int brushmask, vec3_t origin, vec3_t angles );
+
+void CM_RoundUpToHullSize( cmodel_state_t *cms, vec3_t mins, vec3_t maxs, struct cmodel_s *cmodel );
 
 void CM_RoundUpToHullSize( cmodel_state_t *cms, vec3_t mins, vec3_t maxs, struct cmodel_s *cmodel );
 

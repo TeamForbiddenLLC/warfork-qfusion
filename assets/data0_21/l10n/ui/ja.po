@@ -357,10 +357,6 @@ msgstr "autohopを無効"
 msgid "Enable view animation"
 msgstr "ビューアニメーションを有効にする"
 
-#. UI option for cg_cartoonHitEffect, shows effects on critical hit.
-msgid "Show critical hit effect"
-msgstr "クリティカルヒット時のエフェクトを表示する"
-
 #. Touch screen setting
 msgid "Touch look sensitivity"
 msgstr ""

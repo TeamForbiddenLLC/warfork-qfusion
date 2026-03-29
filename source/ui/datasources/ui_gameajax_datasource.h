@@ -34,6 +34,7 @@ public:
 	GameAjaxDataSource( void );
 	~GameAjaxDataSource( void );
 
+	void AjaxResponse( const char *resource, const char *data );
 	void GetRow( StringList& row, const String& table, int row_index, const StringList& columns );
 	int GetNumRows( const String& table );
 
@@ -54,10 +55,6 @@ private:
 	typedef std::pair<GameAjaxDataSource *, DynTableFetcher *> SourceFetcherPair;
 	typedef std::map<std::string, DynTableFetcher *> DynTableList;
 	DynTableList tableList;
-
-	static size_t StreamRead( const void *buf, size_t numb, float percentage, int status,
-			const char *contentType, void *privatep );
-	static void StreamDone( int status, const char *contentType, void *privatep );
 };
 
 Rocket::Controls::DataSource *GetCallvotesDataSourceInstance();

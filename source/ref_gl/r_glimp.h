@@ -140,54 +140,41 @@ enum
 
 typedef struct
 {
-	int			_extMarker;
-
 	//
 	// only uint8_ts must follow the extensionsBoolMarker
 	//
-
-	char		draw_range_elements
-				,multitexture
-				,texture_cube_map
-				,texture_edge_clamp
-				,texture_filter_anisotropic
-				,texture_compression
-				,compressed_ETC1_RGB8_texture
-				,vertex_buffer_object
-				,GLSL
-				,GLSL_core
-				,GLSL130
-				,depth_texture
-				,framebuffer_object
-				,vertex_shader
-				,fragment_shader
-				,shader_objects
-				,shading_language_100
-				,shading_language_130
-				,bgra
-				,gamma_control
-				,swap_control
-				,draw_instanced
-				,instanced_arrays
-				,gpu_memory_info
-				,meminfo
-				,framebuffer_blit
-				,depth24
-				,depth_nonlinear
-				,get_program_binary
-				,rgb8_rgba8
-				,ES3_compatibility
-				,blend_func_separate
-				,texture_array
-				,fragment_precision_high
-				,packed_depth_stencil
-				,texture_lod
-				,gpu_shader5
-				;
-	union { char shadow, shadow_samplers; };
-	union { char texture3D, texture_3D; };
-	union { char texture_non_power_of_two, texture_npot; };
-	union { char half_float_vertex, vertex_half_float; };
+	unsigned int  draw_range_elements: 1;
+	unsigned int  texture_cube_map: 1;
+	unsigned int  texture_edge_clamp: 1;
+	unsigned int  texture_filter_anisotropic: 1;
+	unsigned int  texture_compression: 1;
+	unsigned int  compressed_ETC1_RGB8_texture: 1;
+	unsigned int  GLSL_core: 1;
+	unsigned int  GLSL130: 1;
+	unsigned int  depth_texture: 1;
+	unsigned int  vertex_shader: 1;
+	unsigned int  shading_language_130: 1;
+	unsigned int  gamma_control: 1;
+	unsigned int  swap_control: 1;
+	unsigned int  draw_instanced: 1;
+	unsigned int  instanced_arrays: 1;
+	unsigned int  gpu_memory_info: 1;
+	unsigned int  meminfo: 1;
+	unsigned int  framebuffer_blit: 1;
+	unsigned int  depth24: 1;
+	unsigned int  depth_nonlinear: 1;
+	unsigned int  get_program_binary: 1;
+	unsigned int  rgb8_rgba8: 1;
+	unsigned int  ES3_compatibility: 1;
+	unsigned int  texture_array: 1;
+	unsigned int  fragment_precision_high: 1;
+	unsigned int  packed_depth_stencil: 1;
+	unsigned int  texture_lod: 1;
+	unsigned int  gpu_shader5: 1;
+	unsigned int  shadow: 1;
+	unsigned int  texture3D: 1;
+	unsigned int  texture_non_power_of_two: 1;
+	unsigned int  half_float_vertex: 1;
 } glextinfo_t;
 
 typedef struct

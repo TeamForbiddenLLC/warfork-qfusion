@@ -477,10 +477,6 @@
 						<div class="title">Enable view animation</div>
 						<input cvar="cg_viewBob" type="checkbox" realtime="1"/>
 						<br/>
-
-						<div class="title">Show critical hit effect</div>
-						<input cvar="cg_cartoonHitEffect" type="checkbox" realtime="1"/>
-						<br/>
                         
                         <div class="title">Show damage numbers</div>
 						<input cvar="cg_damageNumbers" type="checkbox" realtime="1"/>
@@ -525,6 +521,9 @@
 					<optionsform id="matchbrowser-options-form" onsubmit="$OptionsForm_OnSubmit">
 						<div class="title">Don't suggest servers</div>
 						<input type="checkbox" cvar="ui_autobrowse_manual" realtime="1" />
+						<br />
+						<div class="title">Route traffic through Steam, potentially improving ping</div>
+						<input type="checkbox" cvar="cl_prefer_steam_p2p" realtime="1" />
 						<br />
 					</optionsform>
 				</panel>

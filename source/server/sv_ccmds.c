@@ -84,63 +84,6 @@ found_player:
 //=========================================================
 
 /*
-* SV_AutoUpdateComplete_f
-*/
-static void SV_AutoUpdateComplete_f( void )
-{
-	// update the map list, which also does a filesystem rescan
-	ML_Update();
-
-	if( FS_GetNotifications() & FS_NOTIFY_NEWPAKS )
-	{
-		// force restart
-		svc.lastActivity = 0;
-	}
-}
-
-/*
-* SV_AutoUpdateFromWeb
-*/
-void SV_AutoUpdateFromWeb( bool checkOnly )
-{
-	if( checkOnly ) {
-		Com_Autoupdate_Run( true, NULL );
-		return;
-	}
-
-	Cvar_ForceSet( "sv_lastAutoUpdate", va( "%i", (int)Com_DaysSince1900() ) );
-	Com_Autoupdate_Run( false, &SV_AutoUpdateComplete_f );
-}
-
-/*
-* SV_AutoUpdate_f
-*/
-static void SV_AutoUpdate_f( void )
-{
-	if( !sv_pure->integer )
-	{
-		Com_Printf( "Autoupdate is only available for pure servers\n" );
-		return;
-	}
-
-	SV_AutoUpdateFromWeb( false );
-}
-
-/*
-* SV_AutoUpdateCheck_f
-*/
-static void SV_AutoUpdateCheck_f( void )
-{
-	if( !sv_pure->integer )
-	{
-		Com_Printf( "Autoupdate is only available for pure servers\n" );
-		return;
-	}
-
-	SV_AutoUpdateFromWeb( true );
-}
-
-/*
 * SV_Map_f
 * 
 * User command to change the map
@@ -252,8 +195,8 @@ void SV_Status_f( void )
 	}
 	Com_Printf( "map              : %s\n", sv.mapname );
 
-	Com_Printf( "num score ping name            lastmsg address               port   rate  \n" );
-	Com_Printf( "--- ----- ---- --------------- ------- --------------------- ------ ------\n" );
+	Com_Printf( "num score ping name            steamid           lastmsg address               port   rate  \n" );
+	Com_Printf( "--- ----- ---- --------------- ----------------- ------- --------------------- ------ ------\n" );
 	for( i = 0, cl = svs.clients; i < sv_maxclients->integer; i++, cl++ )
 	{
 		if( !cl->state )
@@ -278,6 +221,8 @@ void SV_Status_f( void )
 		l = 16 - (int)strlen( s );
 		for( j = 0; j < l; j++ )
 			Com_Printf( " " );
+
+		Com_Printf("%17llu ", cl->steamid);
 
 		Com_Printf( "%7i ", svs.realtime - cl->lastPacketReceivedTime );
 
@@ -426,13 +371,6 @@ void SV_InitOperatorCommands( void )
 	Cmd_AddCommand( "serverrecordpurge", SV_Demo_Purge_f );
 
 	Cmd_AddCommand( "purelist", SV_PureList_f );
-
-	if( dedicated->integer )
-	{
-		Cmd_AddCommand( "autoupdate", SV_AutoUpdate_f );
-		Cmd_AddCommand( "autoupdatecheck", SV_AutoUpdateCheck_f );
-	}
-
 	Cmd_AddCommand( "cvarcheck", SV_CvarCheck_f );
 
 	Cmd_SetCompletionFunc( "map", SV_MapComplete_f );
@@ -461,12 +399,6 @@ void SV_ShutdownOperatorCommands( void )
 	Cmd_RemoveCommand( "serverrecordpurge" );
 
 	Cmd_RemoveCommand( "purelist" );
-
-	if( dedicated->integer )
-	{
-		Cmd_RemoveCommand( "autoupdate" );
-		Cmd_RemoveCommand( "autoupdatecheck" );
-	}
 
 	Cmd_RemoveCommand( "cvarcheck" );
 }

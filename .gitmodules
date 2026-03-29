@@ -1,0 +1,42 @@
+[submodule "source/extern/glslang"]
+	path = source/extern/glslang
+	url = https://github.com/TeamForbiddenLLC/glslang.git
+[submodule "source/extern/stb"]
+	path = source/extern/stb
+	url = https://github.com/TeamForbiddenLLC/stb.git
+[submodule "source/extern/zlib"]
+	path = source/extern/zlib
+	url = https://github.com/TeamForbiddenLLC/zlib.git
+[submodule "source/extern/ogg"]
+	path = source/extern/ogg
+	url = https://github.com/TeamForbiddenLLC/ogg.git
+[submodule "source/extern/freetype"]
+	path = source/extern/freetype
+	url = https://github.com/TeamForbiddenLLC/freetype.git
+[submodule "source/extern/openal-soft"]
+	path = source/extern/openal-soft
+	url = https://github.com/TeamForbiddenLLC/openal-soft.git
+[submodule "source/extern/SDL"]
+	path = source/extern/SDL
+	url = https://github.com/TeamForbiddenLLC/SDL.git
+[submodule "source/extern/vorbis"]
+	path = source/extern/vorbis
+	url = https://github.com/TeamForbiddenLLC/vorbis.git
+[submodule "source/extern/curl"]
+	path = source/extern/curl
+	url = https://github.com/TeamForbiddenLLC/curl.git
+[submodule "source/extern/volk"]
+	path = source/extern/volk
+	url = https://github.com/TeamForbiddenLLC/volk.git
+[submodule "source/extern/Vulkan-Headers"]
+	path = source/extern/Vulkan-Headers
+	url = https://github.com/KhronosGroup/Vulkan-Headers.git
+[submodule "source/extern/VulkanMemoryAllocator"]
+	path = source/extern/VulkanMemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+[submodule "source/extern/tracy"]
+	path = source/extern/tracy
+	url = https://github.com/wolfpld/tracy.git
+[submodule "source/extern/crashpad"]
+	path = source/extern/crashpad
+	url = https://github.com/TeamForbiddenLLC/crashpad.git

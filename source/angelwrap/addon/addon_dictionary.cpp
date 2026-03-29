@@ -28,7 +28,7 @@ CScriptDictionary::CScriptDictionary(asBYTE *buffer)
 
 	// Notify the garbage collector of this object
 	// TODO: The type id should be cached
-	engine->NotifyGarbageCollectorOfNewObject(this, engine->GetObjectTypeByName("Dictionary"));
+	engine->NotifyGarbageCollectorOfNewObject(this, engine->GetTypeInfoByName("Dictionary"));
 
 	// Initialize the dictionary from the buffer
 	asUINT length = *(asUINT*)buffer;
@@ -80,7 +80,7 @@ CScriptDictionary::CScriptDictionary(asBYTE *buffer)
 		{
 			if( (typeId & asTYPEID_MASK_OBJECT) && 
 				!(typeId & asTYPEID_OBJHANDLE) && 
-				(engine->GetObjectTypeById(typeId)->GetFlags() & asOBJ_REF) )
+				(engine->GetTypeInfoById(typeId)->GetFlags() & asOBJ_REF) )
 			{
 				// Dereference the pointer to get the reference to the actual object
 				ref = *(void**)ref;
@@ -92,9 +92,9 @@ CScriptDictionary::CScriptDictionary(asBYTE *buffer)
 		// Advance the buffer pointer with the size of the value
 		if( typeId & asTYPEID_MASK_OBJECT )
 		{
-			asIObjectType *ot = engine->GetObjectTypeById(typeId);
-			if( ot->GetFlags() & asOBJ_VALUE )
-				buffer += ot->GetSize();
+			asITypeInfo *ti = engine->GetTypeInfoById(typeId);
+			if( ti->GetFlags() & asOBJ_VALUE )
+				buffer += ti->GetSize();
 			else
 				buffer += sizeof(void*);
 		}
@@ -129,7 +129,7 @@ void CScriptDictionary::Initialize(asIScriptEngine *engine)
 
 	// Notify the garbage collector of this object
 	// TODO: The type id should be cached
-	engine->NotifyGarbageCollectorOfNewObject(this, engine->GetObjectTypeByName("Dictionary"));
+	engine->NotifyGarbageCollectorOfNewObject(this, engine->GetTypeInfoByName("Dictionary"));
 }
 
 CScriptDictionary::~CScriptDictionary()
@@ -214,12 +214,12 @@ void CScriptDictionary::Set_(const char *key, void *value, int typeId)
 	{
 		// We're receiving a reference to the handle, so we need to dereference it
 		valStruct.valueObj = *(void**)value;
-		engine->AddRefScriptObject(valStruct.valueObj, engine->GetObjectTypeById(typeId));
+		engine->AddRefScriptObject(valStruct.valueObj, engine->GetTypeInfoById(typeId));
 	}
 	else if( typeId & asTYPEID_MASK_OBJECT )
 	{
 		// Create a copy of the object
-		valStruct.valueObj = engine->CreateScriptObjectCopy(value, engine->GetObjectTypeById(typeId));
+		valStruct.valueObj = engine->CreateScriptObjectCopy(value, engine->GetTypeInfoById(typeId));
 	}
 	else
 	{
@@ -285,11 +285,14 @@ bool CScriptDictionary::Get(const asstring_t &key, void *value, int typeId) cons
 		{
 			// A handle can be retrieved if the stored type is a handle of same or compatible type
 			// or if the stored type is an object that implements the interface that the handle refer to.
-			if( (it->second.typeId & asTYPEID_MASK_OBJECT) && 
-				engine->IsHandleCompatibleWithObject(it->second.valueObj, it->second.typeId, typeId) )
+			if( (it->second.typeId & asTYPEID_MASK_OBJECT) )
 			{
-				engine->AddRefScriptObject(it->second.valueObj, engine->GetObjectTypeById(it->second.typeId));
-				*(void**)value = it->second.valueObj;
+				// Don't allow the get if the stored handle is to a const, but the desired handle is not
+				if( (it->second.typeId & asTYPEID_HANDLETOCONST) && !(typeId & asTYPEID_HANDLETOCONST) )
+					return false;
+
+				// RefCastObject will increment the refcount if successful
+				engine->RefCastObject(it->second.valueObj, engine->GetTypeInfoById(it->second.typeId), engine->GetTypeInfoById(typeId), reinterpret_cast<void**>(value));
 
 				return true;
 			}
@@ -304,7 +307,7 @@ bool CScriptDictionary::Get(const asstring_t &key, void *value, int typeId) cons
 			// Copy the object into the given reference
 			if( isCompatible )
 			{
-				engine->AssignScriptObject(value, it->second.valueObj, engine->GetObjectTypeById(typeId));
+				engine->AssignScriptObject(value, it->second.valueObj, engine->GetTypeInfoById(typeId));
 
 				return true;
 			}
@@ -403,7 +406,7 @@ void CScriptDictionary::FreeValue(valueStruct &value)
 	if( value.typeId & asTYPEID_MASK_OBJECT )
 	{
 		// Let the engine release the object
-		engine->ReleaseScriptObject(value.valueObj, engine->GetObjectTypeById(value.typeId));
+		engine->ReleaseScriptObject(value.valueObj, engine->GetTypeInfoById(value.typeId));
 		value.valueObj = 0;
 		value.typeId = 0;
 	}
@@ -419,10 +422,10 @@ CScriptArrayInterface * CScriptDictionary::GetKeys() const
 	//                 share the same type id. Alternatively it can be stored in the 
 	//                 user data for the dictionary type.
 	int stringArrayType = engine->GetTypeIdByDecl("array<String @>");
-	asIObjectType *ot = engine->GetObjectTypeById(stringArrayType);
+	asITypeInfo *ti = engine->GetTypeInfoById(stringArrayType);
 
 	// Create the array object
-	CScriptArrayInterface *arr = QAS_NEW(CScriptArray)(dict.size(), ot);
+	CScriptArrayInterface *arr = QAS_NEW(CScriptArray)(dict.size(), ti);
 	int n = 0;
 	std::map<std::string, valueStruct>::const_iterator it;
 	for( it = dict.begin(); it != dict.end(); it++ )

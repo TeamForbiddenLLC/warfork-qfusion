@@ -551,6 +551,24 @@ static void G_FindTeams( void )
 		G_Printf( "%i teams with %i entities\n", c, c2 );
 }
 
+void G_UpdateConfigStrings() {
+	trap_ConfigString( CS_MAPNAME, level.mapname );
+	trap_ConfigString( CS_SKYBOX, "" );
+	trap_ConfigString( CS_AUDIOTRACK, "" );
+	trap_ConfigString( CS_STATNUMS, va( "%i %i %i", STAT_SCORE, STAT_HEALTH, STAT_LAST_KILLER ) );
+	trap_ConfigString( CS_POWERUPEFFECTS, va( "%i %i %i %i", EF_QUAD, EF_SHELL, EF_CARRIER, EF_REGEN ) );
+	trap_ConfigString( CS_SCB_PLAYERTAB_LAYOUT, "" );
+	trap_ConfigString( CS_SCB_PLAYERTAB_TITLES, "" );
+	trap_ConfigString( CS_MATCHNAME, "" );
+	trap_ConfigString( CS_MATCHSCORE, "" );
+	trap_ConfigString( CS_MOVEMENT, va( "%i %i %i", g_pmove_dashjump_timedelay->integer, g_pmove_walljump_timedelay->integer, g_pmove_walljump_failed_timedelay->integer )); // dashjump, walljump, failed walljump
+
+	// reset map messages
+	for( int i = 0; i < MAX_HELPMESSAGES; i++ ) {
+		trap_ConfigString( CS_HELPMESSAGES + i, "" );
+	}
+}
+
 void G_PrecacheMedia( void )
 {
 	//
@@ -919,22 +937,8 @@ void G_InitLevel( char *mapname, char *entities, int entstrlen, unsigned int lev
 		game.clients[i].level.timeStamp = level.time;
 	}
 
+	G_UpdateConfigStrings();
 	// initialize game subsystems
-	trap_ConfigString( CS_MAPNAME, level.mapname );
-	trap_ConfigString( CS_SKYBOX, "" );
-	trap_ConfigString( CS_AUDIOTRACK, "" );
-	trap_ConfigString( CS_STATNUMS, va( "%i %i %i", STAT_SCORE, STAT_HEALTH, STAT_LAST_KILLER ) );
-	trap_ConfigString( CS_POWERUPEFFECTS, va( "%i %i %i %i", EF_QUAD, EF_SHELL, EF_CARRIER, EF_REGEN ) );
-	trap_ConfigString( CS_SCB_PLAYERTAB_LAYOUT, "" );
-	trap_ConfigString( CS_SCB_PLAYERTAB_TITLES, "" );
-	trap_ConfigString( CS_MATCHNAME, "" );
-	trap_ConfigString( CS_MATCHSCORE, "" );
-
-	// reset map messages
-	for( i = 0; i < MAX_HELPMESSAGES; i++ ) {
-		trap_ConfigString( CS_HELPMESSAGES + i, "" );
-	}
-
 	G_InitGameCommands();
 	G_MapLocations_Init();
 	G_CallVotes_Init();

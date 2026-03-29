@@ -869,6 +869,16 @@ static void CG_StartVoiceTokenEffect( int entNum, int type, int vsay )
 
 	cent = &cg_entities[entNum];
 
+	int i = 0;
+	uint64_t test_steamid;
+	while (CG_GetBlocklistItem(i, &test_steamid, NULL, NULL))  {
+		if (test_steamid == cgs.clientInfo[entNum-1].steamid) {
+			// player is blocked
+			return;
+		}
+		i++;
+	}
+
 	// ignore repeated/flooded events
 	if( cent->localEffects[LOCALEFFECT_VSAY_HEADICON_TIMEOUT] > cg.time )
 		return;
@@ -1152,20 +1162,17 @@ void CG_Event_WallJump( entity_state_t *state, int parm, int ev )
 }
 
 /*
-* CG_Event_DoubleJump
-*/
+ * CG_Event_DoubleJump
+ */
 void CG_Event_DoubleJump( entity_state_t *state, int parm )
 {
-
-                if( ISVIEWERENTITY( state->number ) ){
-				CG_SexedSound( state->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_2, ( rand()&1 )+1 ), 
-					cg_volume_efforts->value, state->attenuation );
-                }
-                else
-                {
-				CG_SexedSound( state->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_2, ( rand()&1 )+1 ), 
-					cg_volume_players->value, state->attenuation );
-                }
+	if( ISVIEWERENTITY( state->number ) ) {
+				CG_SexedSound( state->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_4, rand()%4 + 1 ), 
+                    cg_volume_efforts->value, state->attenuation );
+	} else {
+				CG_SexedSound( state->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_4, rand()%4 + 1 ), 
+                    cg_volume_players->value, state->attenuation );
+	}
 }
 
 /*
@@ -1184,12 +1191,12 @@ void CG_Event_Jump( entity_state_t *state, int parm )
 		CG_PModel_AddAnimation( state->number, LEGS_JUMP_NEUTRAL, 0, 0, EVENT_CHANNEL );
 
                 if( ISVIEWERENTITY( state->number ) ){
-				CG_SexedSound( state->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_2, ( rand()&1 )+1 ), 
+				CG_SexedSound( state->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_4, rand()%4 + 1 ), 
 					cg_volume_efforts->value, state->attenuation );
                 }
                 else
                 {
-				CG_SexedSound( state->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_2, ( rand()&1 )+1 ), 
+				CG_SexedSound( state->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_4, rand()%4 + 1 ), 
 					cg_volume_players->value, state->attenuation );
                 }
 
@@ -1216,12 +1223,12 @@ void CG_Event_Jump( entity_state_t *state, int parm )
 				CG_PModel_AddAnimation( state->number, LEGS_JUMP_LEG2, 0, 0, EVENT_CHANNEL );
                
                 if( ISVIEWERENTITY( state->number ) ){
-				CG_SexedSound( state->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_2, ( rand()&1 )+1 ), 
+				CG_SexedSound( state->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_4, rand()%4 + 1 ), 
 					cg_volume_efforts->value, state->attenuation );
                 }
                 else
                 {
-				CG_SexedSound( state->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_2, ( rand()&1 )+1 ), 
+				CG_SexedSound( state->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_4, rand()%4 + 1 ), 
 					cg_volume_players->value, state->attenuation );
                 }
 
@@ -1231,12 +1238,12 @@ void CG_Event_Jump( entity_state_t *state, int parm )
 				CG_PModel_AddAnimation( state->number, LEGS_JUMP_LEG1, 0, 0, EVENT_CHANNEL );
 
                 if( ISVIEWERENTITY( state->number ) ){
-				CG_SexedSound( state->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_2, ( rand()&1 )+1 ), 
+				CG_SexedSound( state->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_4, rand()%4 + 1 ), 
 					cg_volume_efforts->value, state->attenuation );
                 }
                 else
                 {
-				CG_SexedSound( state->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_2, ( rand()&1 )+1 ), 
+				CG_SexedSound( state->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_4, rand()%4 + 1 ), 
 					cg_volume_players->value, state->attenuation );
                 }
 
@@ -1247,12 +1254,12 @@ void CG_Event_Jump( entity_state_t *state, int parm )
 			CG_PModel_AddAnimation( state->number, LEGS_JUMP_NEUTRAL, 0, 0, EVENT_CHANNEL );
 
                 if( ISVIEWERENTITY( state->number ) ){
-				CG_SexedSound( state->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_2, ( rand()&1 )+1 ), 
+				CG_SexedSound( state->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_4, rand()%4 + 1 ), 
 					cg_volume_efforts->value, state->attenuation );
                 }
                 else
                 {
-				CG_SexedSound( state->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_2, ( rand()&1 )+1 ), 
+				CG_SexedSound( state->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_4, rand()%4 + 1 ), 
 					cg_volume_players->value, state->attenuation );
                 }
 
@@ -1427,12 +1434,12 @@ void CG_EntityEvent( entity_state_t *ent, int ev, int parm, bool predicted )
 	case EV_JUMP_PAD:
 
                 if( ISVIEWERENTITY( ent->number ) ){
-				CG_SexedSound( ent->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_2, ( rand()&1 )+1 ), 
+				CG_SexedSound( ent->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_4, rand()%4 + 1 ), 
 					cg_volume_efforts->value, ent->attenuation );
                 }
                 else
                 {
-				CG_SexedSound( ent->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_2, ( rand()&1 )+1 ), 
+				CG_SexedSound( ent->number, CHAN_BODY, va( S_PLAYER_JUMP_1_to_4, rand()%4 + 1 ), 
 					cg_volume_players->value, ent->attenuation );
                 }
 
@@ -1675,7 +1682,6 @@ void CG_EntityEvent( entity_state_t *ent, int ev, int parm, bool predicted )
 			break;
 		ByteToDir( parm, dir );
 		CG_BloodDamageEffect( ent->origin, dir, ent->damage );
-		CG_CartoonHitEffect( ent->origin, dir, ent->damage );
 		break;
 
 		// func movers
@@ -1801,7 +1807,7 @@ static void CG_FirePlayerStateEvents( void )
 	            reactionKillsDelay += cg.realFrameTime * 1000;
 
 	            if( reactionKillsDelay > cg_reactionKillsTimeout->integer ){     
-                CG_SexedSound( cg.view.POVent, CHAN_ANNOUNCER, va( S_PLAYER_RKILL_1_to_50, ( 1+rand()%51 ) ),
+                CG_SexedSound( cg.view.POVent, CHAN_ANNOUNCER, va( S_PLAYER_RKILL_1_to_2, ( 1+rand()%3 ) ),
                 cg_volume_voicechats->value, 1.0f );
 		        reactionKillsDelay = 0.0f; // reset back to 0 
                 }
@@ -1823,9 +1829,6 @@ static void CG_FirePlayerStateEvents( void )
 			break;
 
 		case PSEV_PICKUP:
-			if( cg_pickup_flash->integer && !cg.view.thirdperson )
-				CG_StartColorBlendEffect( 1.0f, 1.0f, 1.0f, 0.25f, 150 );
-
 			// auto-switch
 			if( cg_weaponAutoSwitch->integer && ( parm > WEAP_NONE && parm < WEAP_TOTAL ) )
 			{

@@ -1,0 +1,532 @@
+---
+variables:
+  BUILD_IMAGES_PROJECT: cmocka/gitlab-build-images
+  FEDORA_BUILD: buildenv-fedora
+  CENTOS7_BUILD: buildenv-centos7
+  TUMBLEWEED_BUILD: buildenv-tumbleweed
+  MINGW_BUILD: buildenv-mingw
+  UBUNTU_BUILD: buildenv-ubuntu
+
+stages:
+  - build
+  - test
+  - analysis
+
+centos7/x86_64:
+  stage: test
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$CENTOS7_BUILD
+  script:
+    - mkdir -p obj && cd obj && cmake3
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      -DPICKY_DEVELOPER=ON
+      -DUNIT_TESTING=ON .. &&
+      make -j$(nproc) && ctest --output-on-failure
+  tags:
+    - shared
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/
+
+fedora/gcc/x86_64:
+  stage: test
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$FEDORA_BUILD
+  script:
+    - mkdir -p obj && cd obj && cmake
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      -DPICKY_DEVELOPER=ON
+      -DUNIT_TESTING=ON .. &&
+      make -j$(nproc) && ctest --output-on-failure
+  tags:
+    - shared
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/
+
+fedora/clang/x86_64:
+  stage: test
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$FEDORA_BUILD
+  script:
+    - mkdir -p obj && cd obj && cmake
+      -DCMAKE_C_COMPILER=clang
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      -DPICKY_DEVELOPER=ON
+      -DUNIT_TESTING=ON .. &&
+      make -j$(nproc) && ctest --output-on-failure
+  tags:
+    - shared
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/
+
+fedora/build:
+  stage: build
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$FEDORA_BUILD
+  script:
+    - pushd coverity && make && popd
+    - mkdir -p obj && cd obj && cmake
+      -DCMAKE_BUILD_TYPE=Release
+      -DCMAKE_INSTALL_PREFIX=/tmp/cmocka
+      -DPICKY_DEVELOPER=ON
+      .. &&
+      make -j$(nproc) && make install
+  tags:
+    - shared
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/
+
+fedora/meson:
+  stage: build
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$FEDORA_BUILD
+  script:
+    - meson build -Dunit_testing=true &&
+      meson test -C build --print-errorlogs
+  tags:
+    - shared
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - build/
+
+fedora/address-sanitizer:
+  stage: build
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$FEDORA_BUILD
+  script:
+    - mkdir -p obj && cd obj && cmake
+      -DCMAKE_BUILD_TYPE=AddressSanitizer
+      -DPICKY_DEVELOPER=ON
+      -DUNIT_TESTING=ON .. &&
+      make -j$(nproc) && ctest --output-on-failure
+  tags:
+    - shared
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/
+
+fedora/memory-sanitizer:
+  stage: analysis
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$FEDORA_BUILD
+  script:
+    - mkdir -p obj && cd obj && cmake
+      -DCMAKE_BUILD_TYPE=MemorySanitizer
+      -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+      -DUNIT_TESTING=ON ..
+      && make -j$(nproc) && ctest --output-on-failure
+  tags:
+    - shared
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/
+
+fedora/undefined-sanitizer:
+  stage: analysis
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$FEDORA_BUILD
+  script:
+    - mkdir -p obj && cd obj && cmake
+      -DCMAKE_BUILD_TYPE=UndefinedSanitizer
+      -DUNIT_TESTING=ON ..
+      && make -j$(nproc) && ctest --output-on-failure
+  tags:
+    - shared
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/
+
+fedora/csbuild:
+  stage: analysis
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$FEDORA_BUILD
+  script:
+    - |
+      if [[ -z "$CI_COMMIT_BEFORE_SHA" ]]; then
+          export CI_COMMIT_BEFORE_SHA=$(git rev-parse "${CI_COMMIT_SHA}~20")
+      fi
+
+      # Check if the commit exists in this branch
+      # This is not the case for a force push
+      git branch --contains $CI_COMMIT_BEFORE_SHA 2>/dev/null ||
+        export CI_COMMIT_BEFORE_SHA=$(git rev-parse "${CI_COMMIT_SHA}~20")
+
+      export CI_COMMIT_RANGE="$CI_COMMIT_BEFORE_SHA..$CI_COMMIT_SHA"
+
+    - csbuild
+      --build-dir=obj-csbuild
+      --prep-cmd="cmake -DCMAKE_BUILD_TYPE=Debug -DPICKY_DEVELOPER=ON -DUNIT_TESTING=ON @SRCDIR@"
+      --build-cmd "make clean && make -j$(nproc)"
+      --git-commit-range $CI_COMMIT_RANGE
+      --color
+      --print-current --print-fixed
+  tags:
+    - shared
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj-csbuild/
+
+fedora/coverage:
+  stage: analysis
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$FEDORA_BUILD
+  script:
+    - mkdir -p obj && cd obj && cmake
+      -DCMAKE_BUILD_TYPE=Profiling
+      -DCMAKE_INSTALL_PREFIX=/tmp/cmocka
+      -DPICKY_DEVELOPER=ON
+      -DUNIT_TESTING=ON
+      .. &&
+      make -j$(nproc) &&
+      make ExperimentalTest &&
+      make ExperimentalCoverage
+  coverage: '/Percentage Coverage: \d+.\d+%/'
+  tags:
+    - shared
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/
+
+freebsd/x86_64:
+  stage: test
+  image:
+  script:
+    - mkdir -p obj && cd obj && cmake
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      -DPICKY_DEVELOPER=ON
+      -DUNIT_TESTING=ON .. &&
+      make && ctest --output-on-failure
+  tags:
+    - freebsd
+  except:
+    - tags
+  only:
+    - branches@cmocka/cmocka
+    - branches@cryptomilk/cmocka
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/
+
+fedora/mingw64:
+  stage: test
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$MINGW_BUILD
+  script:
+    - export WINEPATH=/usr/x86_64-w64-mingw32/sys-root/mingw/bin
+    - export WINEDEBUG=-all
+    - mkdir -p obj && cd obj && mingw64-cmake
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      -DPICKY_DEVELOPER=ON
+      -DUNIT_TESTING=ON .. &&
+      make -j$(nproc) &&
+      ctest --output-on-failure
+  tags:
+    - shared
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/
+
+fedora/mingw32:
+  stage: test
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$MINGW_BUILD
+  script:
+    - export WINEPATH=/usr/i686-w64-mingw32/sys-root/mingw/bin
+    - export WINEDEBUG=-all
+    - mkdir -p obj && cd obj && mingw32-cmake
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      -DPICKY_DEVELOPER=ON
+      -DWITH_SFTP=ON -DWITH_SERVER=ON -DWITH_ZLIB=ON -DWITH_PCAP=ON
+      -DUNIT_TESTING=ON .. &&
+      make -j$(nproc) &&
+      ctest --output-on-failure
+  tags:
+    - shared
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/
+
+tumbleweed/x86_64/gcc:
+  stage: test
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$TUMBLEWEED_BUILD
+  script:
+    - mkdir -p obj && cd obj && cmake
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      -DPICKY_DEVELOPER=ON
+      -DUNIT_TESTING=ON .. &&
+      make -j$(nproc) && ctest --output-on-failure
+  tags:
+    - shared
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/
+
+tumbleweed/x86/gcc:
+  stage: test
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$TUMBLEWEED_BUILD
+  script:
+    - mkdir -p obj && cd obj && cmake
+      -DCMAKE_TOOLCHAIN_FILE=../cmake/Toolchain-cross-m32.cmake
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      -DPICKY_DEVELOPER=ON
+      -DUNIT_TESTING=ON .. &&
+      make -j$(nproc) && ctest --output-on-failure
+  tags:
+    - shared
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/
+
+tumbleweed/x86_64/gcc7:
+  stage: test
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$TUMBLEWEED_BUILD
+  script:
+    - mkdir -p obj && cd obj && cmake
+      -DCMAKE_C_COMPILER=gcc-7 -DCMAKE_CXX_COMPILER=g++-7
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      -DPICKY_DEVELOPER=ON
+      -DUNIT_TESTING=ON .. &&
+      make -j$(nproc) && ctest --output-on-failure
+  tags:
+    - shared
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/
+
+tumbleweed/x86/gcc7:
+  stage: test
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$TUMBLEWEED_BUILD
+  script:
+    - mkdir -p obj && cd obj && cmake
+      -DCMAKE_TOOLCHAIN_FILE=../cmake/Toolchain-cross-m32.cmake
+      -DCMAKE_C_COMPILER=gcc-7 -DCMAKE_CXX_COMPILER=g++-7
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      -DPICKY_DEVELOPER=ON
+      -DUNIT_TESTING=ON .. &&
+      make -j$(nproc) && ctest --output-on-failure
+  tags:
+    - shared
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/
+
+tumbleweed/x86_64/clang:
+  stage: test
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$TUMBLEWEED_BUILD
+  script:
+    - mkdir -p obj && cd obj && cmake
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+      -DPICKY_DEVELOPER=ON
+      -DUNIT_TESTING=ON .. &&
+      make -j$(nproc) && ctest --output-on-failure
+  tags:
+    - shared
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/
+
+tumbleweed/docs:
+  stage: build
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$TUMBLEWEED_BUILD
+  script:
+    - mkdir -p obj && cd obj && cmake .. && make docs
+  tags:
+    - shared
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/
+
+tumbleweed/static-analysis:
+  stage: analysis
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$TUMBLEWEED_BUILD
+  script:
+    - export CCC_CC=clang
+    - export CCC_CXX=clang++
+    - mkdir -p obj && cd obj && scan-build cmake
+      -DCMAKE_BUILD_TYPE=Debug
+      -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+      -DPICKY_DEVELOPER=ON
+      -DUNIT_TESTING=ON .. &&
+      scan-build --status-bugs -o scan make -j$(nproc)
+  tags:
+    - shared
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/scan
+
+ubuntu/x86_64:
+  stage: test
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$UBUNTU_BUILD
+  script:
+    - mkdir -p obj && cd obj && cmake
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      -DPICKY_DEVELOPER=ON
+      -DUNIT_TESTING=ON .. &&
+      make -j$(nproc) && ctest --output-on-failure
+  tags:
+    - shared
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/
+
+###############################################################################
+#                           Visual Studio builds                              #
+###############################################################################
+.vs:
+  stage: test
+  cache:
+    key: vcpkg.${CI_JOB_NAME}
+    paths:
+      - .vcpkg
+  variables:
+    ErrorActionPreference: STOP
+  tags:
+    - windows
+    - shared-windows
+  except:
+    - tags
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/
+  before_script:
+    - If (!(test-path .vcpkg\archives)) { mkdir -p .vcpkg\archives }
+    - mkdir -p obj; if ($?) {cd obj}; if (! $?) {exit 1}
+    - cmake
+        -A $PLATFORM
+        -DCMAKE_BUILD_TYPE=Debug
+        -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+        -DPICKY_DEVELOPER=ON
+        -DUNIT_TESTING=ON ..
+  script:
+    - cmake --build .
+    - ctest --output-on-failure
+
+visualstudio/x86_64:
+  extends: .vs
+  variables:
+    PLATFORM: "x64"
+    TRIPLET: "x64"
+
+visualstudio/x86:
+  extends: .vs
+  variables:
+    PLATFORM: "win32"
+    TRIPLET: "x86"
+
+###############################################################################
+#                                 Coverity                                    #
+###############################################################################
+#
+# git push -o ci.variable="COVERITY_SCAN_TOKEN=XXXXXX" \
+#          -o ci.variable="COVERITY_SCAN_PROJECT_NAME=XXXXXX" \
+#          -o ci.variable="COVERITY_SCAN_EMAIL=XXXXXX" \
+#          -f gitlab
+
+coverity:
+  stage: analysis
+  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$FEDORA_BUILD
+  script:
+    - mkdir obj && cd obj
+    - wget https://scan.coverity.com/download/linux64 --post-data "token=$COVERITY_SCAN_TOKEN&project=$COVERITY_SCAN_PROJECT_NAME" -O /tmp/coverity_tool.tgz
+    - tar xf /tmp/coverity_tool.tgz
+    - cmake -DCMAKE_BUILD_TYPE=Debug -DPICKY_DEVELOPER=ON -DUNIT_TESTING=ON ..
+    - cov-analysis-linux64-*/bin/cov-build --dir cov-int make -j$(nproc)
+    - tar czf cov-int.tar.gz cov-int
+    - curl
+      --form token=$COVERITY_SCAN_TOKEN
+      --form email=$COVERITY_SCAN_EMAIL
+      --form file=@cov-int.tar.gz
+      --form version="`git describe --tags`"
+      --form description="CI build"
+      https://scan.coverity.com/builds?project=$COVERITY_SCAN_PROJECT_NAME
+  tags:
+    - shared
+  only:
+    refs:
+      - master
+      - schedules
+    variables:
+      - $COVERITY_SCAN_TOKEN != null
+      - $COVERITY_SCAN_PROJECT_NAME != null
+      - $COVERITY_SCAN_EMAIL != null
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - obj/cov-int/*.txt

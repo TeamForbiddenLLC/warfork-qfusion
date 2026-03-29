@@ -194,6 +194,7 @@ static svcmd_t svcmds[] =
 	{ "precache", TV_Relay_Precache_f },
 	{ "cmd", NULL },
 	{ "cs", TV_Relay_ParseConfigstringCommand_f },
+	{ "disc", TV_Relay_ServerDisconnect_f },
 	{ "disconnect", TV_Relay_ServerDisconnect_f },
 	//{ "initdownload", CL_InitDownload_f },
 	{ "multiview", TV_Relay_Multiview_f },

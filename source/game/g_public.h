@@ -79,6 +79,7 @@ typedef struct
 
 	// server commands sent to clients
 	void ( *GameCmd )( edict_t *ent, const char *cmd );
+	void ( *ServerCmd )( edict_t *ent, const char *cmd );
 
 	// config strings hold all the index strings,
 	// and misc data like audio track and gridsize.
@@ -220,6 +221,7 @@ typedef struct
 	void ( *ClientDisconnect )( edict_t *ent, const char *reason );
 	void ( *ClientCommand )( edict_t *ent );
 	void ( *ClientThink )( edict_t *ent, usercmd_t *cmd, int timeDelta );
+	void ( *ClientAuth )( edict_t *ent, uint64_t steamid );
 
 	void ( *RunFrame )( unsigned int msec, unsigned int serverTime );
 	void ( *SnapFrame )( void );

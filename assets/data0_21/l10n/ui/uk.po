@@ -378,10 +378,6 @@ msgstr "Відключити автоприжкі"
 msgid "Enable view animation"
 msgstr "Анімація камери при приземленні"
 
-#. UI option for cg_cartoonHitEffect, shows effects on critical hit.
-msgid "Show critical hit effect"
-msgstr ""
-
 #. Touch screen setting
 msgid "Touch look sensitivity"
 msgstr "Чутливість сенсорного екрану"

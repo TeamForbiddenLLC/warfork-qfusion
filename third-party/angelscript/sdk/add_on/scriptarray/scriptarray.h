@@ -12,9 +12,14 @@
 //
 //  0 = off
 //  1 = on
-
 #ifndef AS_USE_STLNAMES
 #define AS_USE_STLNAMES 0
+#endif
+
+// Some prefer to use property accessors to get/set the length of the array
+// This option registers the accessors instead of the method length()
+#ifndef AS_USE_ACCESSORS
+#define AS_USE_ACCESSORS 0
 #endif
 
 BEGIN_AS_NAMESPACE
@@ -29,19 +34,19 @@ public:
 	static void SetMemoryFunctions(asALLOCFUNC_t allocFunc, asFREEFUNC_t freeFunc);
 
 	// Factory functions
-	static CScriptArray *Create(asIObjectType *ot);
-	static CScriptArray *Create(asIObjectType *ot, asUINT length);
-	static CScriptArray *Create(asIObjectType *ot, asUINT length, void *defaultValue);
-	static CScriptArray *Create(asIObjectType *ot, void *listBuffer);
+	static CScriptArray *Create(asITypeInfo *ot);
+	static CScriptArray *Create(asITypeInfo *ot, asUINT length);
+	static CScriptArray *Create(asITypeInfo *ot, asUINT length, void *defaultValue);
+	static CScriptArray *Create(asITypeInfo *ot, void *listBuffer);
 
 	// Memory management
 	void AddRef() const;
 	void Release() const;
 
 	// Type information
-	asIObjectType *GetArrayObjectType() const;
-	int            GetArrayTypeId() const;
-	int            GetElementTypeId() const;
+	asITypeInfo *GetArrayObjectType() const;
+	int          GetArrayTypeId() const;
+	int          GetElementTypeId() const;
 
 	// Get the current size
 	asUINT GetSize() const;
@@ -73,19 +78,25 @@ public:
 
 	// Array manipulation
 	void InsertAt(asUINT index, void *value);
-	void RemoveAt(asUINT index);
+	void InsertAt(asUINT index, const CScriptArray &arr);
 	void InsertLast(void *value);
+	void RemoveAt(asUINT index);
 	void RemoveLast();
+	void RemoveRange(asUINT start, asUINT count);
 	void SortAsc();
 	void SortDesc();
 	void SortAsc(asUINT startAt, asUINT count);
 	void SortDesc(asUINT startAt, asUINT count);
 	void Sort(asUINT startAt, asUINT count, bool asc);
+	void Sort(asIScriptFunction *less, asUINT startAt, asUINT count);
 	void Reverse();
-	int  Find(void *value) const;
-	int  Find(asUINT startAt, void *value) const;
-	int  FindByRef(void *ref) const;
-	int  FindByRef(asUINT startAt, void *ref) const;
+	int  Find(const void *value) const;
+	int  Find(asUINT startAt, const void *value) const;
+	int  FindByRef(const void *ref) const;
+	int  FindByRef(asUINT startAt, const void *ref) const;
+
+	// Return the address of internal buffer for direct manipulation of elements
+	void *GetBuffer();
 
 	// GC methods
 	int  GetRefCount();
@@ -95,24 +106,25 @@ public:
 	void ReleaseAllHandles(asIScriptEngine *engine);
 
 protected:
-	mutable int       refCount;
-	mutable bool      gcFlag;
-	asIObjectType    *objType;
-	SArrayBuffer     *buffer;
-	int               elementSize;
-	int               subTypeId;
+	mutable int     refCount;
+	mutable bool    gcFlag;
+	asITypeInfo    *objType;
+	SArrayBuffer   *buffer;
+	int             elementSize;
+	int             subTypeId;
 
 	// Constructors
-	CScriptArray(asIObjectType *ot, void *initBuf); // Called from script when initialized with list
-	CScriptArray(asUINT length, asIObjectType *ot);
-	CScriptArray(asUINT length, void *defVal, asIObjectType *ot);
+	CScriptArray(asITypeInfo *ot, void *initBuf); // Called from script when initialized with list
+	CScriptArray(asUINT length, asITypeInfo *ot);
+	CScriptArray(asUINT length, void *defVal, asITypeInfo *ot);
 	CScriptArray(const CScriptArray &other);
 	virtual ~CScriptArray();
 
-	bool  Less(const void *a, const void *b, bool asc, asIScriptContext *ctx, SArrayCache *cache);
+	bool  Less(const void *a, const void *b, bool asc);
 	void *GetArrayItemPointer(int index);
 	void *GetDataPointer(void *buffer);
 	void  Copy(void *dst, void *src);
+	void  Swap(void *a, void *b);
 	void  Precache();
 	bool  CheckMaxSize(asUINT numElements);
 	void  Resize(int delta, asUINT at);

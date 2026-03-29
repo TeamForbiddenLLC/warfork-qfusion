@@ -19,16 +19,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "server.h"
-
+#include "../qcommon/steam.h"
 #include "../qcommon/sys_library.h"
+#include "../steamshim/src/mod_steam.h"
 
 server_constant_t svc;              // constant server info (trully persistant since sv_init)
 server_static_t	svs;                // persistant server info
 server_t sv;                 // local server
 
 /*
-* SV_FindIndex
-*/
+ * SV_FindIndex
+ */
 static int SV_FindIndex( const char *name, int start, int max, bool create )
 {
 	int i;
@@ -40,7 +41,7 @@ static int SV_FindIndex( const char *name, int start, int max, bool create )
 		Com_Error( ERR_DROP, "Configstring too long: %s\n", name );
 
 	for( i = 1; i < max && sv.configstrings[start+i][0]; i++ )
-	{
+{
 		if( !strncmp( sv.configstrings[start+i], name, sizeof( sv.configstrings[start+i] ) ) )
 			return i;
 	}
@@ -82,19 +83,19 @@ int SV_SkinIndex( const char *name )
 }
 
 /*
-* SV_CreateBaseline
-* 
-* Entity baselines are used to compress the update messages
-* to the clients -- only the fields that differ from the
-* baseline will be transmitted
-*/
+ * SV_CreateBaseline
+ *
+ * Entity baselines are used to compress the update messages
+ * to the clients -- only the fields that differ from the
+ * baseline will be transmitted
+ */
 static void SV_CreateBaseline( void )
 {
 	edict_t	*svent;
 	int entnum;
 
 	for( entnum = 1; entnum < sv.gi.num_edicts; entnum++ )
-	{
+{
 		svent = EDICT_NUM( entnum );
 
 		if( !svent->r.inuse )
@@ -114,8 +115,8 @@ static void SV_CreateBaseline( void )
 }
 
 /*
-* SV_PureList_f
-*/
+ * SV_PureList_f
+ */
 void SV_PureList_f( void )
 {
 	purelist_t *purefile;
@@ -123,15 +124,15 @@ void SV_PureList_f( void )
 	Com_Printf( "Pure files:\n" );
 	purefile = svs.purelist;
 	while( purefile )
-	{
+{
 		Com_Printf( "- %s (%u)\n", purefile->filename, purefile->checksum );
 		purefile = purefile->next;
 	}
 }
 
 /*
-* SV_AddPurePak
-*/
+ * SV_AddPurePak
+ */
 static void SV_AddPurePak( const char *pakname )
 {
 	if( !Com_FindPakInPureList( svs.purelist, pakname ) )
@@ -139,8 +140,8 @@ static void SV_AddPurePak( const char *pakname )
 }
 
 /*
-* SV_AddPureFile
-*/
+ * SV_AddPureFile
+ */
 void SV_AddPureFile( const char *filename )
 {
 	const char *pakname;
@@ -151,15 +152,15 @@ void SV_AddPureFile( const char *filename )
 	pakname = FS_PakNameForFile( filename );
 
 	if( pakname )
-	{
+{
 		Com_DPrintf( "Pure file: %s (%s)\n", pakname, filename );
 		SV_AddPurePak( pakname );
 	}
 }
 
 /*
-* SV_ReloadPureList
-*/
+ * SV_ReloadPureList
+ */
 static void SV_ReloadPureList( void )
 {
 	char **paks;
@@ -169,21 +170,21 @@ static void SV_ReloadPureList( void )
 
 	// game modules
 	if( sv_pure_forcemodulepk3->string[0] )
-	{
+{
 		if( Q_strnicmp( COM_FileBase( sv_pure_forcemodulepk3->string ), "modules", strlen( "modules" ) ) ||
-			!FS_IsPakValid( sv_pure_forcemodulepk3->string, NULL ) )
-		{
+!FS_IsPakValid( sv_pure_forcemodulepk3->string, NULL ) )
+{
 			Com_Printf( "Warning: Invalid value for sv_pure_forcemodulepk3, disabling\n" );
 			Cvar_ForceSet( "sv_pure_forcemodulepk3", "" );
 		}
-		else
-		{
+else
+{
 			SV_AddPurePak( sv_pure_forcemodulepk3->string );
 		}
 	}
 
 	if( !sv_pure_forcemodulepk3->string[0] )
-	{
+{
 		char *libname;
 		int libname_size;
 
@@ -192,16 +193,16 @@ static void SV_ReloadPureList( void )
 		Q_snprintfz( libname, libname_size, LIB_PREFIX "game_" ARCH LIB_SUFFIX );
 
 		if( !FS_PakNameForFile( libname ) )
-		{
+{
 			if( sv_pure->integer )
-			{
+{
 				Com_Printf( "Warning: Game module not in pk3, disabling pure mode\n" );
 				Com_Printf( "sv_pure_forcemodulepk3 can be used to force the pure system to use a different module\n" );
 				Cvar_ForceSet( "sv_pure", "0" );
 			}
 		}
-		else
-		{
+else
+{
 			SV_AddPureFile( libname );
 		}
 
@@ -213,9 +214,9 @@ static void SV_ReloadPureList( void )
 	paks = NULL;
 	numpaks = FS_GetExplicitPurePakList( &paks );
 	if( numpaks )
-	{
+{
 		for( i = 0; i < numpaks; i++ )
-		{
+{
 			SV_AddPurePak( paks[i] );
 			Mem_ZoneFree( paks[i] );
 		}
@@ -224,20 +225,21 @@ static void SV_ReloadPureList( void )
 }
 
 /*
-* SV_SetServerConfigStrings
-*/
+ * SV_SetServerConfigStrings
+ */
 void SV_SetServerConfigStrings( void )
 {
 	Q_snprintfz( sv.configstrings[CS_MAXCLIENTS], sizeof( sv.configstrings[0] ), "%i", sv_maxclients->integer );
 	Q_strncpyz( sv.configstrings[CS_TVSERVER], "0", sizeof( sv.configstrings[0] ) );
 	Q_strncpyz( sv.configstrings[CS_HOSTNAME], Cvar_String( "sv_hostname" ), sizeof( sv.configstrings[0] ) );
 	Q_strncpyz( sv.configstrings[CS_MODMANIFEST], Cvar_String( "sv_modmanifest" ), sizeof( sv.configstrings[0] ) );
+	Q_strncpyz( sv.configstrings[CS_USESTEAMAUTH], Cvar_String( "sv_useSteamAuth" ), sizeof( sv.configstrings[0] ) );
 }
 
 /*
-* SV_SpawnServer
-* Change the server to a new map, taking all connected clients along with it.
-*/
+ * SV_SpawnServer
+ * Change the server to a new map, taking all connected clients along with it.
+ */
 static void SV_SpawnServer( const char *server, bool devmap )
 {
 	unsigned checksum;
@@ -309,10 +311,15 @@ static void SV_SpawnServer( const char *server, bool devmap )
 	Com_Printf( "-------------------------------------\n" );
 }
 
+static void CL_RPC_cb_listenp2p( void *self, struct steam_rpc_pkt_s *pReq )
+{
+	svs.steam_listen_socket = pReq->p2p_connect_recv.handle;
+}
+
 /*
-* SV_InitGame
-* A brand new game has been started
-*/
+ * SV_InitGame
+ * A brand new game has been started
+ */
 void SV_InitGame( void )
 {
 	int i;
@@ -351,21 +358,23 @@ void SV_InitGame( void )
 		Cvar_FullSet( "sv_maxclients", va( "%i", MAX_CLIENTS ), CVAR_SERVERINFO | CVAR_LATCH, true );
 
 	svs.spawncount = rand();
-	svs.clients = Mem_Alloc( sv_mempool, sizeof( client_t )*sv_maxclients->integer );
+	svs.clients = Mem_Alloc( sv_mempool, sizeof( client_t ) * sv_maxclients->integer );
 	svs.client_entities.num_entities = sv_maxclients->integer * UPDATE_BACKUP * MAX_SNAP_ENTITIES;
 	svs.client_entities.entities = Mem_Alloc( sv_mempool, sizeof( entity_state_t ) * svs.client_entities.num_entities );
 
 	// init network stuff
-
 	address.type = NA_NOTRANSMIT;
 	ipv6_address.type = NA_NOTRANSMIT;
 
-	if( !dedicated->integer )
-	{
+	if( !dedicated->integer ) {
 		NET_InitAddress( &address, NA_LOOPBACK );
 		if( !NET_OpenSocket( &svs.socket_loopback, SOCKET_LOOPBACK, &address, true ) )
 			Com_Error( ERR_FATAL, "Couldn't open loopback socket: %s\n", NET_ErrorString() );
 	}
+
+	struct steam_rpc_shim_common_s listenreq;
+	listenreq.cmd = RPC_SRV_P2P_LISTEN;
+	STEAMSHIM_sendRPC( &listenreq, sizeof listenreq, NULL, CL_RPC_cb_listenp2p, NULL );
 
 	if( dedicated->integer || sv_maxclients->integer > 1 )
 	{
@@ -469,13 +478,13 @@ void SV_InitGame( void )
 }
 
 /*
-* SV_FinalMessage
-* 
-* Used by SV_ShutdownGame to send a final message to all
-* connected clients before the server goes down.  The messages are sent immediately,
-* not just stuck on the outgoing message list, because the server is going
-* to totally exit after returning from this function.
-*/
+ * SV_FinalMessage
+ *
+ * Used by SV_ShutdownGame to send a final message to all
+ * connected clients before the server goes down.  The messages are sent immediately,
+ * not just stuck on the outgoing message list, because the server is going
+ * to totally exit after returning from this function.
+ */
 static void SV_FinalMessage( const char *message, bool reconnect )
 {
 	int i, j;
@@ -503,14 +512,27 @@ static void SV_FinalMessage( const char *message, bool reconnect )
 }
 
 /*
-* SV_ShutdownGame
-* 
-* Called when each game quits
-*/
+ * SV_ShutdownGame
+ *
+ * Called when each game quits
+ */
 void SV_ShutdownGame( const char *finalmsg, bool reconnect )
 {
+
 	if( !svs.initialized )
 		return;
+
+	// clean up remaining auth tickets or clients will fail to auth later
+	if (STEAMSHIM_active()){
+		client_t *cl;
+		int i;
+		for( i = 0, cl = svs.clients; i < sv_maxclients->integer; i++, cl++ )
+		{
+			if( !cl->state )
+				continue;
+			Steam_EndAuthSession(cl->steamid);
+		}
+	}
 
 	if( svs.demo.file )
 		SV_Demo_Stop_f();
@@ -585,9 +607,9 @@ void SV_ShutdownGame( const char *finalmsg, bool reconnect )
 }
 
 /*
-* SV_Map
-* command from the console or progs.
-*/
+ * SV_Map
+ * command from the console or progs.
+ */
 void SV_Map( const char *level, bool devmap )
 {
 	client_t *cl;
@@ -622,6 +644,10 @@ void SV_Map( const char *level, bool devmap )
 		{
 			svs.clients[i].state = CS_CONNECTING;
 		}
+
+		// we never kick the clients or stop the server proper, so make sure to tell steam we're done with the session
+		if (svs.clients[i].steamid)
+			Steam_EndAuthSession(svs.clients[i].steamid);
 
 		// limit number of connected multiview clients
 		if( svs.clients[i].mv )

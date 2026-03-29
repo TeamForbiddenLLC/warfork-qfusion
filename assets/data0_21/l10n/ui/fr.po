@@ -382,10 +382,6 @@ msgstr "Désactiver le saut automatique"
 msgid "Enable view animation"
 msgstr "Activer voir l'animation"
 
-#. UI option for cg_cartoonHitEffect, shows effects on critical hit.
-msgid "Show critical hit effect"
-msgstr ""
-
 #. Touch screen setting
 msgid "Touch look sensitivity"
 msgstr "Sensibilité du regard avec l'écran tactile"

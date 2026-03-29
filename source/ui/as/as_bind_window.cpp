@@ -496,7 +496,7 @@ void BindWindow( ASInterface *as )
 		.method( &ASWindow::historyBack, "history_back" )
 
 		.constmethod( &ASWindow::startLocalSound, "startLocalSound" )
-		.method2( &ASWindow::startBackgroundTrack, "void startBackgroundTrack( String &in intro, String &in loop, bool stopIfPlaying = true ) const" )
+		.method2( &ASWindow::startBackgroundTrack, "void startBackgroundTrack( const String &in intro, String &in loop, bool stopIfPlaying = true ) const" )
 		.constmethod( &ASWindow::stopBackgroundTrack, "stopBackgroundTrack" )
 
 		.method2<int (ASWindow::*)(asIScriptFunction *, unsigned int)>

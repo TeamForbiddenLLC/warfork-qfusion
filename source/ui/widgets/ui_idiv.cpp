@@ -109,7 +109,7 @@ void InlineDiv::LoadSource()
 
 	SetPseudoClass( "loading", true );
 
-	if( trap::FS_IsUrl( source.CString() ) ) {
+	if( FS_IsUrl( source.CString() ) ) {
 		// the stream cache object references this element
 		// (passed as the void * pointer below)
 		AddReference();

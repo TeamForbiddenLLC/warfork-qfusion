@@ -40,6 +40,8 @@ h2 {
 	bg-image: /ui/porkui/gfx/background 0 0 1 1;
 	bg2-decorator: image;
 	bg2-image: /ui/porkui/gfx/background2 0 0 1 1;
+	background: #111016a0;
+
 }
 
 #header {
@@ -78,7 +80,7 @@ h2 {
 	left: 0dp;
 	padding: 6dp 16dp;
 	height: 636dp;
-	background: #111016a0;
+	z-index: 3;
 }
 
 #footer {
@@ -183,19 +185,9 @@ a:hover, a:focus {
 
 /* Console icon */
 #console {
-	position: fixed;
-	bottom: 24dp;
-	width: 32dp;
-	height: 32dp;
-	z-index: 2;
+	float: left;
 }
 
-#link_console { 
-	float: left;
-	width: 32dp;
-	height: 32dp;
-	margin-left: 5dp;
-}
 
 /** Left side container */
 #leftside {
@@ -377,7 +369,6 @@ tabset tabs, #navibar {
 	margin-left: auto;
 	margin-right: 8dp;
 	height: 32dp;
-	z-index: 3;
 }
 
 .social-icon {
@@ -385,4 +376,5 @@ tabset tabs, #navibar {
 	height: 32dp;
 	width: 32dp;
 	float: right;
+	z-index: 3;
 }

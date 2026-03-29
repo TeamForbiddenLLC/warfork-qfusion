@@ -79,6 +79,7 @@ void MSG_WriteByte( msg_t *sb, int c );
 void MSG_WriteShort( msg_t *sb, int c );
 void MSG_WriteInt3( msg_t *sb, int c );
 void MSG_WriteLong( msg_t *sb, int c );
+void MSG_WriteLongLong( msg_t *sb, long long c );
 void MSG_WriteFloat( msg_t *sb, float f );
 void MSG_WriteString( msg_t *sb, const char *s );
 #define MSG_WriteCoord( sb, f ) ( MSG_WriteInt3( ( sb ), Q_rint( ( f*PM_VECTOR_SNAP ) ) ) )
@@ -207,6 +208,7 @@ PROTOCOL
 
 #define	PORT_MASTER			27950
 #define	PORT_MASTER_STEAM	27011
+#define	PORT_MASTER_WARFORK			27951
 #define	PORT_SERVER			44400
 #define	PORT_HTTP_SERVER	44444
 #define PORT_TV_SERVER		44440
@@ -247,6 +249,7 @@ enum svc_ops_e
 	svc_servercs,			//tmp jalfixme : send reliable commands as unreliable
 	svc_frame,
 	svc_demoinfo,
+	svc_voice,
 	svc_extension			// for future expansion
 };
 
@@ -262,7 +265,9 @@ enum clc_ops_e
 	clc_move,				// [[usercmd_t]
 	clc_svcack,
 	clc_clientcommand,      // [string] message
-	clc_extension
+	clc_extension,
+	clc_voice,
+	clc_steamauth,
 };
 
 //==============================================
@@ -440,30 +445,33 @@ then searches for a command or variable that matches the first token.
 
 */
 
-typedef void ( *xcommand_t )( void );
-typedef char ** ( *xcompletionf_t )( const char *partial );
 
+//typedef void ( *xcommand_t )( void );
+//typedef char ** ( *xcompletionf_t )( const char *partial );
+//
+//void	    Cmd_AddCommand( const char *cmd_name, xcommand_t function );
+//void	    Cmd_RemoveCommand( const char *cmd_name );
+//bool    Cmd_Exists( const char *cmd_name );
+//bool	Cmd_CheckForCommand( char *text );
+//void	    Cmd_WriteAliases( int file );
+//int			Cmd_CompleteAliasCountPossible( const char *partial );
+//char		**Cmd_CompleteAliasBuildList( const char *partial );
+//int			Cmd_CompleteCountPossible( const char *partial );
+//char		**Cmd_CompleteBuildList( const char *partial );
+//char		**Cmd_CompleteBuildArgList( const char *partial );
+//char		**Cmd_CompleteBuildArgListExt( const char *command, const char *arguments );
+//char		**Cmd_CompleteFileList( const char *partial, const char *basedir, const char *extension, bool subdirectories );
+//int			Cmd_Argc( void );
+//char		*Cmd_Argv( int arg );
+//char		*Cmd_Args( void );
+//void	    Cmd_TokenizeString( const char *text );
+//void	    Cmd_ExecuteString( const char *text );
+//void		Cmd_SetCompletionFunc( const char *cmd_name, xcompletionf_t completion_func );
+
+#include "mod_cmd.h"
 void	    Cmd_PreInit( void );
 void	    Cmd_Init( void );
 void	    Cmd_Shutdown( void );
-void	    Cmd_AddCommand( const char *cmd_name, xcommand_t function );
-void	    Cmd_RemoveCommand( const char *cmd_name );
-bool    Cmd_Exists( const char *cmd_name );
-bool	Cmd_CheckForCommand( char *text );
-void	    Cmd_WriteAliases( int file );
-int			Cmd_CompleteAliasCountPossible( const char *partial );
-char		**Cmd_CompleteAliasBuildList( const char *partial );
-int			Cmd_CompleteCountPossible( const char *partial );
-char		**Cmd_CompleteBuildList( const char *partial );
-char		**Cmd_CompleteBuildArgList( const char *partial );
-char		**Cmd_CompleteBuildArgListExt( const char *command, const char *arguments );
-char		**Cmd_CompleteFileList( const char *partial, const char *basedir, const char *extension, bool subdirectories );
-int			Cmd_Argc( void );
-char		*Cmd_Argv( int arg );
-char		*Cmd_Args( void );
-void	    Cmd_TokenizeString( const char *text );
-void	    Cmd_ExecuteString( const char *text );
-void		Cmd_SetCompletionFunc( const char *cmd_name, xcompletionf_t completion_func );
 
 /*
 ==============================================================
@@ -497,7 +505,7 @@ NET
 
 #define	PACKET_HEADER			10          // two ints, and a short
 
-#define	MAX_RELIABLE_COMMANDS	64          // max string commands buffered for restransmit
+#define	MAX_RELIABLE_COMMANDS	256 // max string commands buffered for restransmit
 #define	MAX_PACKETLEN			1400        // max size of a network packet
 #define	MAX_MSGLEN				32768       // max length of a message, which may be fragmented into multiple packets
 
@@ -512,6 +520,7 @@ typedef enum
 	NA_LOOPBACK,
 	NA_IP,
 	NA_IP6,
+	NA_SDR,
 } netadrtype_t;
 
 typedef struct netadr_ipv4_s
@@ -534,13 +543,15 @@ typedef struct netadr_s
 	{
 		netadr_ipv4_t ipv4;
 		netadr_ipv6_t ipv6;
+		uint64_t steamid;
 	} address;
 } netadr_t;
 
 typedef enum
 {
 	SOCKET_LOOPBACK,
-	SOCKET_UDP
+	SOCKET_UDP,
+	SOCKET_SDR
 #ifdef TCP_SUPPORT
 	, SOCKET_TCP
 #endif
@@ -558,8 +569,10 @@ typedef struct
 	bool connected;
 #endif
 	netadr_t remoteAddress;
-
-	socket_handle_t handle;
+	union {
+		socket_steam_handle_t steam_handle;
+		socket_handle_t handle;
+	};
 } socket_t;
 
 typedef enum
@@ -694,52 +707,80 @@ int			FS_Rescan( void );
 void	    FS_Frame( void );
 void	    FS_Shutdown( void );
 
-const char *FS_GameDirectory( void );
-const char *FS_BaseGameDirectory( void );
+#include "mod_fs.h"
+
+static const struct fs_import_s default_fs_imports_s = {
+	.FS_GameDirectory = FS_GameDirectory,
+	.FS_BaseGameDirectory = FS_BaseGameDirectory,
+	.FS_WriteDirectory = FS_WriteDirectory,
+	.FS_CacheDirectory = FS_CacheDirectory,
+	.FS_SecureDirectory = FS_SecureDirectory,
+	.FS_MediaDirectory = FS_MediaDirectory,
+	.FS_DownloadsDirectory = FS_DownloadsDirectory,
+	.FS_RuntimeDirectory = FS_RuntimeDirectory,
+	.FS_GetGameDirectoryList = FS_GetGameDirectoryList,
+	.FS_GetExplicitPurePakList = FS_GetExplicitPurePakList,
+	.FS_IsExplicitPurePak = FS_IsExplicitPurePak,
+	.FS_Read = FS_Read,
+	.FS_Print = FS_Print,
+	.FS_vPrintf = FS_vPrintf,
+	.FS_Write = FS_Write,
+	.FS_Tell = FS_Tell,
+	.FS_Seek = FS_Seek,
+	.FS_Eof = FS_Eof,
+	.FS_Flush = FS_Flush,
+	.FS_IsUrl = FS_IsUrl,
+	.FS_FileNo = FS_FileNo,
+	.FS_FOpenFile = FS_FOpenFile,
+	.FS_FOpenFileGroup = FS_FOpenFileGroup,
+	.FS_CreateAbsolutePath = FS_CreateAbsolutePath,
+	.FS_AbsoluteNameForFile = FS_AbsoluteNameForFile,
+	.FS_AbsoluteNameForBaseFile = FS_AbsoluteNameForBaseFile,
+	.FS_AddExtraPK3Directory = FS_AddExtraPK3Directory,
+	.FS_LoadFileExt = FS_LoadFileExt,
+	.FS_LoadBaseFileExt = FS_LoadBaseFileExt,
+	.FS_FreeFile = FS_FreeFile,
+	.FS_FreeBaseFile = FS_FreeBaseFile,
+	.FS_CopyFile = FS_CopyFile,
+	.FS_CopyBaseFile = FS_CopyBaseFile,
+	.FS_ExtractFile = FS_ExtractFile,
+	.FS_MoveFile = FS_MoveFile,
+	.FS_MoveBaseFile = FS_MoveBaseFile,
+	.FS_MoveCacheFile = FS_MoveCacheFile,
+	.FS_RemoveFile = FS_RemoveFile,
+	.FS_RemoveBaseFile = FS_RemoveBaseFile,
+	.FS_RemoveAbsoluteFile = FS_RemoveAbsoluteFile,
+	.FS_RemoveDirectory = FS_RemoveDirectory,
+	.FS_RemoveBaseDirectory = FS_RemoveBaseDirectory,
+	.FS_RemoveAbsoluteDirectory = FS_RemoveAbsoluteDirectory,
+	.FS_ChecksumAbsoluteFile = FS_ChecksumAbsoluteFile,
+	.FS_ChecksumBaseFile = FS_ChecksumBaseFile,
+	.FS_CheckPakExtension = FS_CheckPakExtension,
+	.FS_PakFileExists = FS_PakFileExists,
+	.FS_FileMTime = FS_FileMTime,
+	.FS_BaseFileMTime = FS_BaseFileMTime,
+	.FS_FirstExtension2 = FS_FirstExtension2,
+	.FS_FirstExtension = FS_FirstExtension,
+	.FS_PakNameForFile = FS_PakNameForFile,
+	.FS_IsPureFile = FS_IsPureFile,
+	.FS_FileManifest = FS_FileManifest,
+	.FS_BaseNameForFile = FS_BaseNameForFile,
+	.FS_GetFileList = FS_GetFileList,
+	.FS_GetFileListExt = FS_GetFileListExt,
+	.FS_IsPakValid = FS_IsPakValid,
+	.FS_AddPurePak = FS_AddPurePak,
+	.FS_RemovePurePaks = FS_RemovePurePaks,
+	.FS_AddFileToMedia = FS_AddFileToMedia,
+	.FS_FOpenAbsoluteFile = FS_FOpenAbsoluteFile,
+	.FS_FCloseFile = FS_FCloseFile,
+	.FS_FOpenBaseFile = FS_FOpenBaseFile,
+};
+
+
 bool		FS_SetGameDirectory( const char *dir, bool force );
 int			FS_GetGameDirectoryList( char *buf, size_t bufsize );
 int			FS_GetExplicitPurePakList( char ***paknames );
 bool		FS_IsExplicitPurePak( const char *pakname, bool *wrongver );
-
-// handling of absolute filenames
-// only to be used if necessary (library not supporting custom file handling functions etc.)
-const char *FS_WriteDirectory( void );
-const char *FS_CacheDirectory( void );
-const char *FS_SecureDirectory( void );
-const char *FS_MediaDirectory( fs_mediatype_t type );
-const char *FS_DownloadsDirectory( void );
-const char *FS_RuntimeDirectory( void );
-void	    FS_CreateAbsolutePath( const char *path );
-const char *FS_AbsoluteNameForFile( const char *filename );
-const char *FS_AbsoluteNameForBaseFile( const char *filename );
-void	    FS_AddExtraPK3Directory( const char *path );
-
-// // game and base files
-// file streaming
-int	    FS_FOpenFile( const char *filename, int *filenum, int mode );
-int	    FS_FOpenBaseFile( const char *filename, int *filenum, int mode );
-int		FS_FOpenAbsoluteFile( const char *filename, int *filenum, int mode );
-void	FS_FCloseFile( int file );
-
-int	    FS_Read( void *buffer, size_t len, int file );
-int	    FS_Print( int file, const char *msg );
-int	    FS_Printf( int file, const char *format, ... );
-int	    FS_Write( const void *buffer, size_t len, int file );
-int	    FS_Tell( int file );
-int	    FS_Seek( int file, int offset, int whence );
-int	    FS_Eof( int file );
-int	    FS_Flush( int file );
-bool	FS_IsUrl( const char *url );
-int		FS_FileNo( int file, size_t *offset );
-
-// file loading
-int	    FS_LoadFileExt( const char *path, int flags, void **buffer, void *stack, size_t stackSize, const char *filename, int fileline );
-int	    FS_LoadBaseFileExt( const char *path, int flags, void **buffer, void *stack, size_t stackSize, const char *filename, int fileline );
-void	FS_FreeFile( void *buffer );
-void	FS_FreeBaseFile( void *buffer );
-#define FS_LoadFile(path,buffer,stack,stacksize) FS_LoadFileExt(path,0,buffer,stack,stacksize,__FILE__,__LINE__)
-#define FS_LoadBaseFile(path,buffer,stack,stacksize) FS_LoadBaseFileExt(path,0,buffer,stack,stacksize,__FILE__,__LINE__)
-#define FS_LoadCacheFile(path,buffer,stack,stacksize) FS_LoadFileExt(path,FS_CACHE,buffer,stack,stacksize,__FILE__,__LINE__)
 
 /**
 * Maps an existing file on disk for reading. 
@@ -753,43 +794,7 @@ void	FS_UnMMapBaseFile( int file, void *data );
 int		FS_GetNotifications( void );
 int		FS_RemoveNotifications( int bitmask );
 
-// util functions
-bool    FS_CopyFile( const char *src, const char *dst );
-bool    FS_CopyBaseFile( const char *src, const char *dst );
-bool    FS_ExtractFile( const char *src, const char *dst );
-bool    FS_MoveFile( const char *src, const char *dst );
-bool    FS_MoveBaseFile( const char *src, const char *dst );
-bool    FS_MoveCacheFile( const char *src, const char *dst );
-bool    FS_RemoveFile( const char *filename );
-bool    FS_RemoveBaseFile( const char *filename );
-bool    FS_RemoveAbsoluteFile( const char *filename );
-bool    FS_RemoveDirectory( const char *dirname );
-bool    FS_RemoveBaseDirectory( const char *dirname );
-bool    FS_RemoveAbsoluteDirectory( const char *dirname );
-unsigned    FS_ChecksumAbsoluteFile( const char *filename );
-unsigned    FS_ChecksumBaseFile( const char *filename, bool ignorePakChecksum );
-bool	FS_CheckPakExtension( const char *filename );
-bool	FS_PakFileExists( const char *packfilename );
-
-time_t		FS_FileMTime( const char *filename );
-time_t		FS_BaseFileMTime( const char *filename );
-
-// // only for game files
-const char *FS_FirstExtension( const char *filename, const char *extensions[], int num_extensions );
-const char *FS_PakNameForFile( const char *filename );
-bool    FS_IsPureFile( const char *pakname );
-const char *FS_FileManifest( const char *filename );
-const char *FS_BaseNameForFile( const char *filename );
-
-int			FS_GetFileList( const char *dir, const char *extension, char *buf, size_t bufsize, int start, int end );
-int			FS_GetFileListExt( const char *dir, const char *extension, char *buf, size_t *bufsize, int start, int end );
-
-// // only for base files
-bool    FS_IsPakValid( const char *filename, unsigned *checksum );
-bool    FS_AddPurePak( unsigned checksum );
-void	FS_RemovePurePaks( void );
-
-void	FS_AddFileToMedia( const char *filename );
+bool FS_SetGameDirectory( const char *dir, bool force );
 
 /*
 ==============================================================
@@ -873,7 +878,6 @@ void _Mem_FreePool( mempool_t **pool, int musthave, int canthave, const char *fi
 void _Mem_EmptyPool( mempool_t *pool, int musthave, int canthave, const char *filename, int fileline );
 char *_Mem_CopyString( mempool_t *pool, const char *in, const char *filename, int fileline );
 
-void _Mem_CheckSentinels( void *data, const char *filename, int fileline );
 void _Mem_CheckSentinelsGlobal( const char *filename, int fileline );
 
 size_t Mem_PoolTotalSize( mempool_t *pool );
@@ -888,7 +892,6 @@ size_t Mem_PoolTotalSize( mempool_t *pool );
 #define Mem_EmptyPool( pool ) _Mem_EmptyPool( pool, 0, 0, __FILE__, __LINE__ )
 #define Mem_CopyString( pool, str ) _Mem_CopyString( pool, str, __FILE__, __LINE__ )
 
-#define Mem_CheckSentinels( data ) _Mem_CheckSentinels( data, __FILE__, __LINE__ )
 #define Mem_CheckSentinelsGlobal() _Mem_CheckSentinelsGlobal( __FILE__, __LINE__ )
 #ifdef NDEBUG
 #define Mem_DebugCheckSentinelsGlobal()
@@ -908,9 +911,6 @@ extern mempool_t *zoneMemPool;
 #define Mem_TempMalloc( size ) Mem_Alloc( tempMemPool, size )
 #define Mem_TempFree( data ) Mem_Free( data )
 
-void *Q_malloc( size_t size );
-void *Q_realloc( void *buf, size_t newsize );
-void Q_free( void *buf );
 void Qcommon_InitCvarDescriptions( void );
 
 void Qcommon_Init( int argc, char **argv );
@@ -958,24 +958,6 @@ void	*Sys_AcquireWakeLock( void );
 void	Sys_ReleaseWakeLock( void *wl );
 
 int 	Sys_GetCurrentProcessId( void );
-
-/*
-==============================================================
-
-CPU FEATURES
-
-==============================================================
-*/
-
-#define QCPU_HAS_RDTSC		0x00000001
-#define QCPU_HAS_MMX		0x00000002
-#define QCPU_HAS_MMXEXT		0x00000004
-#define QCPU_HAS_3DNOW		0x00000010
-#define QCPU_HAS_3DNOWEXT	0x00000020
-#define QCPU_HAS_SSE		0x00000040
-#define QCPU_HAS_SSE2		0x00000080
-
-unsigned int COM_CPUFeatures( void );
 
 /*
 ==============================================================
@@ -1059,17 +1041,5 @@ MULTITHREADING
 ==============================================================
 */
 #include "qthreads.h"
-
-/*
-==============================================================
-
-AUTOMATIC UPDATES
-
-==============================================================
-*/
-void Com_Autoupdate_Init( void );
-void Com_Autoupdate_Run( bool checkOnly, void (*newfiles_cb)(void) );
-void Com_Autoupdate_Cancel( void );
-void Com_Autoupdate_Shutdown( void );
 
 #endif // __QCOMMON_H

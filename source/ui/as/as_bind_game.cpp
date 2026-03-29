@@ -25,6 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "kernel/ui_downloadinfo.h"
 #include "as/asui.h"
 #include "as/asui_local.h"
+#include "../../steamshim/src/mod_steam.h"
 
 namespace ASUI {
 
@@ -97,6 +98,19 @@ static asstring_t *Game_ConfigString( Game *game, int cs )
 	return ASSTR( configstring );
 }
 
+static asstring_t *Game_Cvar( Game *game, asstring_t* name )
+{
+	return ASSTR (trap::Cvar_String(name->buffer));
+}
+
+static void Game_SteamOpenProfile( Game *game, asstring_t* steamid )
+{
+	struct steam_id_rpc_s request;
+	request.cmd = RPC_ACTIVATE_OVERLAY;
+	request.id = atoll( steamid->buffer );
+	STEAMSHIM_sendRPC( &request, sizeof( struct steam_id_rpc_s ), NULL, NULL, NULL);
+}
+
 static int Game_ClientState( Game *game )
 {
 	return UI_Main::Get()->getRefreshState().clientState;
@@ -142,6 +156,7 @@ void BindGame( ASInterface *as )
 		( "CS_TVSERVER", CS_TVSERVER )
 		( "CS_MODMANIFEST", CS_MODMANIFEST )
 		( "CS_MESSAGE", CS_MESSAGE )
+		( "CS_USESTEAMAUTH", CS_USESTEAMAUTH )
 		( "CS_MAPNAME", CS_MAPNAME )
 		( "CS_AUDIOTRACK", CS_AUDIOTRACK )
 		( "CS_HOSTNAME", CS_HOSTNAME )
@@ -197,6 +212,9 @@ void BindGame( ASInterface *as )
 
 		.constmethod( Game_ConfigString, "configString", true )
 		.constmethod( Game_ConfigString, "cs", true )
+		.constmethod( Game_Cvar, "cvar", true )
+
+		.constmethod( Game_SteamOpenProfile, "steamopenprofile", true )
 
 		.constmethod( Game_PlayerNum, "get_playerNum", true )
 

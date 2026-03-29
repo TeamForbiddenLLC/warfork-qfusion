@@ -356,10 +356,6 @@ msgstr "禁用自动跳过"
 msgid "Enable view animation"
 msgstr "启用视图动画"
 
-#. UI option for cg_cartoonHitEffect, shows effects on critical hit.
-msgid "Show critical hit effect"
-msgstr "显示暴击特效"
-
 #. Touch screen setting
 msgid "Touch look sensitivity"
 msgstr "触控视角灵敏度"

@@ -21,6 +21,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef __CG_PUBLIC_H__
 #define __CG_PUBLIC_H__
 
+#include "../ref_base/ref_mod.h"
+#include "../steamshim/src/mod_steam.h"
+#include "../qcommon/mod_fs.h"
+
 struct orientation_s;
 struct bonepose_s;
 struct shader_s;
@@ -81,12 +85,16 @@ typedef struct snapshot_s
 //
 typedef struct
 {
+	const struct fs_import_s* fsImport;
+
 	// drops to console a client game error
 	void ( *Error )( const char *msg );
 
 	// console messages
 	void ( *Print )( const char *msg );
 	void ( *PrintToLog )( const char *msg );
+
+	struct ref_import_s ref_import;
 
 	// dynvars
 	dynvar_t *( *Dynvar_Create )( const char *name, bool console, dynvar_getter_f getter, dynvar_setter_f setter );
@@ -117,29 +125,6 @@ typedef struct
 	void ( *Cmd_Execute )( void );
 	void ( *Cmd_SetCompletionFunc )( const char *cmd_name, char **( *completion_func )( const char *partial ) );
 
-	// files will be memory mapped read only
-	// the returned buffer may be part of a larger pak file,
-	// or a discrete file from anywhere in the quake search path
-	// a -1 return means the file does not exist
-	// NULL can be passed for buf to just determine existance
-	int ( *FS_FOpenFile )( const char *filename, int *filenum, int mode );
-	int ( *FS_Read )( void *buffer, size_t len, int file );
-	int ( *FS_Write )( const void *buffer, size_t len, int file );
-	int ( *FS_Print )( int file, const char *msg );
-	int ( *FS_Tell )( int file );
-	int ( *FS_Seek )( int file, int offset, int whence );
-	int ( *FS_Eof )( int file );
-	int ( *FS_Flush )( int file );
-	void ( *FS_FCloseFile )( int file );
-	bool ( *FS_RemoveFile )( const char *filename );
-	int ( *FS_GetFileList )( const char *dir, const char *extension, char *buf, size_t bufsize, int start, int end );
-	const char *( *FS_FirstExtension )( const char *filename, const char *extensions[], int num_extensions );
-	bool ( *FS_IsPureFile )( const char *filename );
-	bool ( *FS_MoveFile )( const char *src, const char *dst );
-	bool ( *FS_IsUrl )( const char *url );
-	time_t ( *FS_FileMTime )( const char *filename );
-	bool ( *FS_RemoveDirectory )( const char *dirname );
-
 	// key bindings
 	const char *( *Key_GetBindingBuf )( int binding );
 	const char *( *Key_KeynumToString )( int keynum );
@@ -165,42 +150,8 @@ typedef struct
 
 	// refresh system
 	void ( *R_UpdateScreen )( void );
-	int ( *R_GetClippedFragments )( const vec3_t origin, float radius, vec3_t axis[3], int maxfverts, vec4_t *fverts, int maxfragments, struct fragment_s *fragments );
-	void ( *R_ClearScene )( void );
-	void ( *R_AddEntityToScene )( const struct entity_s *ent );
-	void ( *R_AddLightToScene )( const vec3_t org, float intensity, float r, float g, float b );
-	void ( *R_AddPolyToScene )( const struct poly_s *poly );
-	void ( *R_AddLightStyleToScene )( int style, float r, float g, float b );
-	void ( *R_RenderScene )( const struct refdef_s *fd );
-	const char *( *R_GetSpeedsMessage )( char *out, size_t size );
-	int ( *R_GetAverageFramerate )( void );
 	void ( *R_RegisterWorldModel )( const char *name );
-	void ( *R_ModelBounds )( const struct model_s *mod, vec3_t mins, vec3_t maxs );
-	void ( *R_ModelFrameBounds )( const struct model_s *mod, int frame, vec3_t mins, vec3_t maxs );
-	struct model_s *( *R_RegisterModel )( const char *name );
-	struct shader_s *( *R_RegisterPic )( const char *name );
-	struct shader_s *( *R_RegisterRawPic )( const char *name, int width, int height, uint8_t *data, int samples );
-	struct shader_s *( *R_RegisterLevelshot )( const char *name, struct shader_s *defaultPic, bool *matchesDefault );
-	struct shader_s *( *R_RegisterSkin )( const char *name );
-	struct skinfile_s *( *R_RegisterSkinFile )( const char *name );
-	struct shader_s *( *R_RegisterVideo )( const char *name );
-	bool ( *R_LerpTag )( struct orientation_s *orient, const struct model_s *mod, int oldframe, int frame, float lerpfrac, const char *name );
-	void ( *R_SetCustomColor )( int num, int r, int g, int b );
-	void ( *R_LightForOrigin )( const vec3_t origin, vec3_t dir, vec4_t ambient, vec4_t diffuse, float radius );
-	void ( *R_DrawStretchPic )( int x, int y, int w, int h, float s1, float t1, float s2, float t2, const vec4_t color, const struct shader_s *shader );
-	void ( *R_DrawStretchPoly )( const struct poly_s *poly, float x_offset, float y_offset );
-	void ( *R_DrawRotatedStretchPic )( int x, int y, int w, int h, float s1, float t1, float s2, float t2, float angle, const vec4_t color, const struct shader_s *shader );
-	void ( *R_Scissor )( int x, int y, int w, int h );
-	void ( *R_GetScissor )( int *x, int *y, int *w, int *h );
-	void ( *R_ResetScissor )( void );
-	void ( *R_GetShaderDimensions )( const struct shader_s *shader, int *width, int *height );
-	void ( *R_TransformVectorToScreen )( const struct refdef_s *rd, const vec3_t in, vec2_t out );
-	int ( *R_SkeletalGetNumBones )( const struct model_s *mod, int *numFrames );
-	int ( *R_SkeletalGetBoneInfo )( const struct model_s *mod, int bone, char *name, size_t name_size, int *flags );
-	void ( *R_SkeletalGetBonePose )( const struct model_s *mod, int bone, int frame, struct bonepose_s *bonepose );
-	struct shader_s *( *R_GetShaderForOrigin )( const vec3_t origin );
-	struct cinematics_s *( *R_GetShaderCinematic )( struct shader_s *shader );
-
+	
 	void ( *VID_FlashWindow )( int count );
 
 	// collision detection
@@ -270,6 +221,8 @@ typedef struct
 	unsigned int ( *IN_IME_GetCandidates )( char * const *cands, size_t candSize, unsigned int maxCands,
 		int *selected, int *firstKey );
 	unsigned int ( *IN_SupportedDevices )( void );
+
+	struct steam_import_s steam_import;
 } cgame_import_t;
 
 //
@@ -361,6 +314,21 @@ typedef struct
 	 * @return whether the finger is in cgame touch context
 	 */
 	bool ( *IsTouchDown )( int id );
+
+
+	/**
+	 * Retrieves the blocklist item at the given index.
+	 *
+	 * @param index      index of the blocklist item
+	 * @param steamid_out steamid of the blocked user
+	 * @param name       name of the blocked user
+	 * @param name_len_in_out length of the name buffer, updated with the actual length
+	 * @return whether the index is valid
+	 */
+	bool ( *GetBlocklistItem )( size_t index, uint64_t* steamid_out, char* name, size_t* name_len_in_out );
+
+
+	void ( *PlayVoice )( void *buffer, size_t size, int clientnum );
 } cgame_export_t;
 
 #endif

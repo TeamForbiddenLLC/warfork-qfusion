@@ -25,9 +25,9 @@ struct SArrayCache;
 class CScriptArray : public CScriptArrayInterface
 {
 public:
-	CScriptArray(asIObjectType *ot, void *initBuf); // Called from script when initialized with list
-	CScriptArray(asUINT length, asIObjectType *ot);
-	CScriptArray(asUINT length, void *defVal, asIObjectType *ot);
+	CScriptArray(asITypeInfo *ti, void *initBuf); // Called from script when initialized with list
+	CScriptArray(asUINT length, asITypeInfo *ti);
+	CScriptArray(asUINT length, void *defVal, asITypeInfo *ti);
 	CScriptArray(const CScriptArray &other);
 	virtual ~CScriptArray();
 
@@ -35,7 +35,7 @@ public:
 	void Release() const;
 
 	// Type information
-	asIObjectType *GetArrayObjectType() const;
+	asITypeInfo   *GetArrayObjectType() const;
 	int            GetArrayTypeId() const;
 	int            GetElementTypeId() const;
 
@@ -77,7 +77,7 @@ public:
 protected:
 	mutable int       refCount;
 	mutable bool      gcFlag;
-	asIObjectType    *objType;
+	asITypeInfo      *objType;
 	SArrayBuffer     *buffer;
 	int               elementSize;
 	int               subTypeId;

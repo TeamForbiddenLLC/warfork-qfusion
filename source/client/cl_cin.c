@@ -219,7 +219,7 @@ bool SCR_DrawCinematic( void )
 	if( cl.cin.yuv ) {
 		ref_yuv_t *cyuv = cl.cin.cyuv;
 
-		re.DrawStretchRawYUV( x, y, w, h, 		
+		RF_DrawStretchRawYUV( x, y, w, h, 		
 			(float)(cyuv->x_offset) / cyuv->image_width,
 			(float)(cyuv->y_offset) / cyuv->image_height,
 			(float)(cyuv->x_offset + cyuv->width) / cyuv->image_width,
@@ -227,7 +227,7 @@ bool SCR_DrawCinematic( void )
 			cl.cin.redraw ? cyuv->yuv : NULL );
 	}
 	else {
-		re.DrawStretchRaw( x, y, w, h, cl.cin.width, cl.cin.height, 
+		RF_DrawStretchRaw( x, y, w, h, cl.cin.width, cl.cin.height, 
 			0, 0, 1, 1, cl.cin.redraw ? cl.cin.pic : NULL );
 	}
 

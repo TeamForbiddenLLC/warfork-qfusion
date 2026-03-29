@@ -319,6 +319,13 @@ void G_CheckCvars( void )
 		g_allow_falldamage->modified = false;
 	}
 
+	if ( g_pmove_dashjump_timedelay->modified || g_pmove_walljump_timedelay->modified || g_pmove_walljump_failed_timedelay->modified ) { 
+		G_UpdateConfigStrings();
+		g_pmove_dashjump_timedelay->modified = false;
+		g_pmove_walljump_timedelay->modified = false;
+		g_pmove_walljump_failed_timedelay->modified = false;
+	}
+
 	// update gameshared server settings
 
 	// FIXME: This should be restructured so gameshared settings are the master settings

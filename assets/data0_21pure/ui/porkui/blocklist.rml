@@ -1,0 +1,194 @@
+<!--
+Copyright (C) 2012 Chasseur de bots
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
+-->
+
+<rml>
+<head>
+	<title>players</title>
+	<link type="text/template" href="template_ingame.rml" />
+	<link type="text/css" rel="stylesheet" href="css/blocklist.rcss" />
+	<!-- <script src="as/players.as" /> -->
+	<script>
+		Element @playersDatagrid;
+		Element @blockedDatagrid;
+		ElementForm @playerForm;
+		ElementFormControl @playerName;
+		ElementFormControl @playerNumArgs;
+		Element @playerOptions;
+		Element @playerText;
+		ElementFormControl @playerValue;
+
+		Element @blockBtn;
+		Element @viewprofileBtn;
+
+		String @selsteamid;
+		String @selname;
+
+		bool unblock = false;
+
+
+		void onPlayersLoad( Element @body, Event @evt )
+		{
+			onTemplateLoad( body, evt );
+
+			@playersDatagrid = body.getElementById( 'players_datagrid' );
+			@blockedDatagrid = body.getElementById( 'blocked_datagrid' );
+			@playerForm = body.getElementById('players_form_start');
+			@playerName = body.getElementById( "player_name" );
+			@playerNumArgs = body.getElementById( "player_numargs" );
+			@playerOptions = body.getElementById( "player_options" );
+			@playerText = body.getElementById( "player_text" );
+			@blockBtn = body.getElementById( "block_btn" );
+			@viewprofileBtn = body.getElementById( "viewprofile_btn" );
+
+		}
+
+		void onPlayersClick( Element @self, Event @evt )
+		{
+			window.close();
+		}
+
+		void onPlayersShow( Element @body, Event @evt )
+		{
+			blockBtn.css( 'visibility', 'hidden' );
+			viewprofileBtn.css( 'visibility', 'hidden' );
+			animationsOnShow();
+
+			playersSetDataSources();
+		}
+
+		void onPlayersHide( Element @body, Event @evt )
+		{
+			// force datasource update on next show event
+			playersClearDataSources();
+		}
+
+		void playersSetDataSources( void )
+		{
+			cast<ElementDataGrid>(blockedDatagrid).setDataSource( 'blockedplayers.what' );
+			cast<ElementDataGrid>(playersDatagrid).setDataSource( 'gameajax.players' );
+		}
+
+		void playersClearDataSources( void )
+		{		
+			cast<ElementDataGrid>(playersDatagrid).setDataSource( '' );
+			cast<ElementDataGrid>(blockedDatagrid).setDataSource( '' );
+		}
+
+		void onPlayersRowSelect( Element @elem, Event @ev )
+		{
+			unblock = false;
+			int selectedRow = ev.getParameter( 'index', -1 );			
+			if( selectedRow < 0 ) {
+				return;
+			}
+
+			DataSource @data = getDataSource( 'gameajax' );
+
+			// grab information for the picked row from the table
+			String name = data.getField( 'players', selectedRow, 'name' );
+			String cleanname = data.getField( 'players', selectedRow, 'cleanname' );
+			int playerid = data.getField( 'players', selectedRow, 'value' ).toInt();
+			String steamid = data.getField( 'players', selectedRow, 'steamid' );
+
+
+			blockBtn.css( 'display', 'inline-block' );
+			blockBtn.css( 'visibility', 'visible' );
+
+			viewprofileBtn.css( 'display', 'inline-block' );
+			viewprofileBtn.css( 'visibility', 'visible' );
+			blockBtn.setInnerRML("Block " + cleanname);
+			@selname = name;
+			@selsteamid = steamid;
+
+		}
+
+		void onBlockedRowSelect( Element @elem, Event @ev )
+		{
+			unblock = true;
+			int selectedRow = ev.getParameter( 'index', -1 );			
+			if( selectedRow < 0 ) {
+				return;
+			}
+
+			DataSource @data = getDataSource( 'blockedplayers' );
+
+			String name = data.getField( 'players', selectedRow, 'name' );
+			String cleanname = data.getField( 'players', selectedRow, 'cleanname' );
+			int idx = data.getField( 'players', selectedRow, 'index' ).toInt();
+			String steamid = data.getField( 'players', selectedRow, 'steamid' );
+
+
+			blockBtn.css( 'display', 'inline-block' );
+			blockBtn.css( 'visibility', 'visible' );
+
+			viewprofileBtn.css( 'display', 'inline-block' );
+			viewprofileBtn.css( 'visibility', 'visible' );
+			blockBtn.setInnerRML("Unblock " + cleanname);
+			@selname = name;
+			@selsteamid = steamid;
+
+		}
+
+		void onBlockSubmit( Element @elem, Event @ev )
+		{
+			if (unblock) {
+				game.execAppend("unblock " + selsteamid);
+			}else if (selsteamid.length() == 17) {
+				game.execAppend("block \"" + selname + "\" " + selsteamid);
+			}
+			window.close();
+		}
+
+		void onShowProfile( Element @elem, Event @ev )
+		{
+			window.close();
+			game.steamopenprofile(selsteamid);
+		}
+	</script>
+</head>
+<body template="porkui_ingame" onload="$onPlayersLoad" onshow="$onPlayersShow" onhide="$onPlayersHide">
+	<div id="menu-ingame">
+		<div id="menu-header">Players</div>
+
+		<div id="menu-commands">
+			<form id="players_form_start" onsubmit="$onBlockSubmit">			
+				<div id="players-container">
+					<div id="players_left_frame">
+						<datagrid id="players_datagrid" source="" onrowselect="$onPlayersRowSelect">
+							<col fields="name" width="150dp" formatter="colorcode">In Game</col>
+						</datagrid>
+					</div>
+					<div id="players_spacer_frame" >&nbsp;</div>
+					<div id="players_right_frame">
+						<datagrid id="blocked_datagrid" source="" onrowselect="$onBlockedRowSelect">
+							<col fields="name" width="150dp" formatter="colorcode">Blocked</col>
+						</datagrid>
+					</div>
+					<br/>
+				</div>			
+				<input id="block_btn" type="submit"></input>
+			</form>
+
+			<button id="viewprofile_btn" onclick="$onShowProfile">View Profile</button>		
+			<button onclick="window.close();">Return to game</button>		
+		</div>			
+	</div>
+</body>
+</rml> 

@@ -381,10 +381,6 @@ msgstr "Poista automaattinen hyppy"
 msgid "Enable view animation"
 msgstr "Kytke näkökentän täristys"
 
-#. UI option for cg_cartoonHitEffect, shows effects on critical hit.
-msgid "Show critical hit effect"
-msgstr "Näytä kriittisen osuman efekti"
-
 #. Touch screen setting
 msgid "Touch look sensitivity"
 msgstr "Ympärillekatsomisen kosketusherkkyys"

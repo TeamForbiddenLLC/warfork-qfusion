@@ -24,7 +24,7 @@ namespace WSWUI
 				if( !fullPath.Empty() ) {
 					// precache fallback shader
 					if( !fallbackShader ) {
-						fallbackShader = trap::R_RegisterPic( PATH_UKNOWN_MAP_PIC );
+						fallbackShader = R_RegisterPic( PATH_UKNOWN_MAP_PIC );
 
 						// let the global shader cache know about the fallback shader
 						UI_RenderInterface *renderer = dynamic_cast<UI_RenderInterface *>(GetRenderInterface());
@@ -39,7 +39,7 @@ namespace WSWUI
 					// precache the levelshot shader here, so that
 					// the subsequent trap::R_RegisterPic call in UI_RenderInterface::LoadTexture 
 					// will return proper shader (with fallback image, etc)
-					trap::R_RegisterLevelshot( fullPath.CString(), fallbackShader, NULL );
+					R_RegisterLevelshot( fullPath.CString(), fallbackShader, NULL );
 					return;
 				}
 			}

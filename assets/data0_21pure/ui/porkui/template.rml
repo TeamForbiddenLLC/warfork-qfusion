@@ -209,11 +209,6 @@
 		<span id="version_str"></span>
 	</div>
 	
-    <div id="console">
-		<!-- Console icon -->
-		<img src="/ui/porkui/gfx/console.png" onclick="$openConsole" id="link_console" />
-	</div>
-
 	<div id="social-links"> 
 		<a href="https://twitter.com/warforksocial" target="_browser">
 			<img src="/ui/porkui/gfx/x.png" class="social-icon" />
@@ -223,6 +218,9 @@
 		</a>
 		<a href="https://warfork.com/" target="_browser">
 			<img src="/ui/porkui/gfx/www.png" class="social-icon" />
+		</a>
+		<a href="#" onclick="$openConsole">
+			<img src="/ui/porkui/gfx/console.png" class="social-icon" id="console" />
 		</a>
 	</div>
 

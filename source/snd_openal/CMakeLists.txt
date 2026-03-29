@@ -1,6 +1,6 @@
 project(snd_openal)
 
-include_directories(${VORBIS_INCLUDE_DIR} ${OGG_INCLUDE_DIR} ${OPENAL_INCLUDE_DIR} "../snd_common" ".")
+include_directories("../snd_common" ".")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     include_directories("../win32/include") # For al.h
@@ -19,11 +19,11 @@ file(GLOB SND_OPENAL_SOURCES
 )
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-        set(SND_OPENAL_PLATFORM_LIBRARIES "m" "dl")
+        set(SND_OPENAL_PLATFORM_LIBRARIES "")
 else ()
         set(SND_OPENAL_PLATFORM_LIBRARIES "")
 endif()
 
 add_library(snd_openal SHARED ${SND_OPENAL_HEADERS} ${SND_OPENAL_SOURCES})
-target_link_libraries(snd_openal PRIVATE ${OGG_LIBRARY} ${VORBIS_LIBRARIES} ${OPENAL_LIBRARIES} ${SND_OPENAL_PLATFORM_LIBRARIES})
+target_link_libraries(snd_openal PRIVATE ogg vorbis vorbisfile OpenAL::OpenAL ${SND_OPENAL_PLATFORM_LIBRARIES})
 qf_set_output_dir(snd_openal libs)

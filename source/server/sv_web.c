@@ -1321,7 +1321,7 @@ static size_t SV_Web_SendResponse( sv_http_connection_t *con )
 		con->last_active = Sys_Milliseconds();
 	}
 
-	// if done sending content body, make the transition to recieving state
+	// if done sending content body, make the transition to receiving state
 	if( stream->header_done 
 		&& (!stream->content_length || stream->content_p >= stream->content_length) ) {
 		con->state = HTTP_CONN_STATE_RECV;

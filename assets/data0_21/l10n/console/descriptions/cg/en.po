@@ -50,13 +50,6 @@ msgstr "<0|1|2|3|4|7> Cartoon effects.\n"
 "^6Enable all cartoon effects: cg_cartoonEffects \"7\""
 
 #. Console/cg
-msgid "cg_cartoonHitEffect"
-msgstr "<0/1> Critical hit effects will be displayed for high damage value attacks.\n"
-"^6Disable: cg_cartoonHitEffect \"0\"\n"
-"^6Enable: cg_cartoonHitEffect \"1\"\n"
-"^6Note: Critical hit effect color varies based on damage dealt. Green (39 or more), Yellow (50 or more), and Red (64 or more)."
-
-#. Console/cg
 msgid "cg_chatBeep"
 msgstr "<0/1> Plays a chat beep sound when someone sends a message.\n"
 "^6Disable: cg_chatBeep \"0\"\n"
@@ -254,18 +247,6 @@ msgid "cg_ebbeam_width"
 msgstr "<value> Sets the width of the Elecrobolt beam."
 
 #. Console/cg
-msgid "cg_explosionsDust"
-msgstr "<0/1> Explosion dust will appear around Grenade Launcher and Rocket Launcher projectiles upon impact.\n"
-"^6Disable: cg_explosionsDust \"0\"\n"
-"^6Enable: cg_explosionsDust \"1\""
-
-#. Console/cg
-msgid "cg_explosionsRing"
-msgstr "<0/1> An explosion ring will appear around Grenade Launcher and Rocket Launcher projectiles upon impact.\n"
-"^6Disable: cg_explosionsRing \"0\"\n"
-"^6Enable: cg_explosionsRing \"1\""
-
-#. Console/cg
 msgid "cg_flashWindowCount"
 msgstr "<value> The amount of times Warfork flashes in your taskbar if warmup ends and a match starts."
 
@@ -436,18 +417,6 @@ msgstr "<0/1> Particles.\n"
 "^6Disable: cg_particles \"0\"\n"
 "^6Enable: cg_particles \"1\"\n"
 "^6Note: You can test particles by shooting the Riotgun against a wall."
-
-#. Console/cg
-msgid "cg_pickup_flash"
-msgstr "<0/1> You will see a flash when picking up an item or weapon.\n"
-"^6Disable: cg_pickup_flash \"0\"\n"
-"^6Enable: cg_pickup_flash \"1\"\n"
-"^6Note: For this command to work you must also set cg_showViewBlends \"1\"."
-
-#. Console/cg
-msgid "cg_placebo"
-msgstr "<value> This command sometimes yields a competitive edge over players similar to sv_cheats \"1\"\n"
-"^6Note: User experience varies. Satisfaction not guaranteed. Adult supervision is recommended."
 
 #. Console/cg
 msgid "cg_playList"

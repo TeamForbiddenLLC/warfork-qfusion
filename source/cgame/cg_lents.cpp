@@ -641,24 +641,6 @@ void CG_RocketExplosionMode( const vec3_t pos, const vec3_t dir, int fire_mode, 
 	VectorAdd( le->velocity, vec, le->velocity );
 	le->ent.rotation = rand() % 360;
 
-	if( cg_explosionsRing->integer )
-	{
-		// explosion ring sprite
-		VectorMA( pos, radius*0.20f, dir, origin );
-		le = CG_AllocSprite( LE_ALPHA_FADE, origin, radius, 3,
-			1, 1, 1, 1,
-			0, 0, 0, 0, // no dlight
-			CG_MediaShader( cgs.media.shaderRocketExplosionRing ) );
-
-		le->ent.rotation = rand() % 360;
-	}
-
-	if( cg_explosionsDust->integer == 1 )
-	{
-		// dust ring parallel to the contact surface
-		CG_ExplosionsDust(pos, dir, radius);
-	}
-
 	// Explosion particles
 	CG_ParticleExplosionEffect( pos, dir, 1, 0.5, 0, 32 );
 
@@ -754,7 +736,7 @@ void CG_LaserGunImpact( const vec3_t pos, const vec3_t dir, float radius, const 
 
 	AnglesToAxis( angles, ent.axis );
 				
-	trap_R_AddEntityToScene( &ent );
+	RF_AddEntityToScene( &ent );
 }
 
 /*
@@ -993,69 +975,6 @@ void CG_BloodDamageEffect( const vec3_t origin, const vec3_t dir, int damage )
 }
 
 /*
-* CG_CartoonHitEffect
-*/
-void CG_CartoonHitEffect( const vec3_t origin, const vec3_t dir, int damage )
-{
-	lentity_t *le;
-	int time = 6;	
-	float radius = 11.0f, alpha = cg_bloodTrailAlpha->value;
-	struct shader_s *shader = CG_MediaShader( cgs.media.shaderCartoonHit );	
-	struct shader_s *shader2 = CG_MediaShader( cgs.media.shaderCartoonHit2 );	
-	struct shader_s *shader3 = CG_MediaShader( cgs.media.shaderCartoonHit3 );
-	vec3_t local_origin, local_dir;
-
-	if( !cg_cartoonHitEffect->integer )
-		return;	
-
-	if ( damage < 39 )
-		return;
-
-	if( !VectorLength( dir ) )
-	{
-		VectorNegate( &cg.view.axis[AXIS_FORWARD], local_dir );
-	}
-	else
-	{
-		VectorNormalize2( dir, local_dir );
-	}
-
-	// Move effect a bit up from player
-	VectorCopy( origin, local_origin );
-	local_origin[2] += 65;
-
-	// small buff
-	if ( damage < 64 ) 
-	{
-		if( damage < 50 ) 
-		{			
-			// SPLITZOW!
-			radius = 7.0f;
-			le = CG_AllocSprite( LE_SCALE_ALPHA_FADE, local_origin, radius, time, 1, 1, 1, alpha, 0, 0, 0, 0, shader2 );
-		}
-		else 
-		{
-			// POW!
-			radius = 9.0f;
-			le = CG_AllocSprite( LE_SCALE_ALPHA_FADE, local_origin, radius, time, 1, 1, 1, alpha, 0, 0, 0, 0, shader );
-		}
-	} 
-	else
-		// big buff
-	{
-		// OUCH!
-		le = CG_AllocSprite( LE_SCALE_ALPHA_FADE, local_origin, radius, time, 1, 1, 1, alpha, 0, 0, 0, 0, shader3 );
-	}		
-
-	// randomize dir
-	VectorSet( le->velocity,
-		-local_dir[0] * 5 + crandom()*5,
-		-local_dir[1] * 5 + crandom()*5,
-		-local_dir[2] * 5 + crandom()*5 + 3);
-	VectorMA( local_dir, 1, le->velocity, le->velocity );
-}
-
-/*
 * CG_PModel_SpawnTeleportEffect
 */
 void CG_PModel_SpawnTeleportEffect( centity_t *cent )
@@ -1148,24 +1067,6 @@ void CG_GrenadeExplosionMode( const vec3_t pos, const vec3_t dir, int fire_mode,
 	VectorScale( dir, expvelocity, le->velocity );
 	VectorAdd( le->velocity, vec, le->velocity );
 	le->ent.rotation = rand() % 360;
-
-	// explosion ring sprite
-	if( cg_explosionsRing->integer )
-	{
-		VectorMA( pos, radius*0.25f, dir, origin );
-		le = CG_AllocSprite( LE_ALPHA_FADE, origin, radius, 3,
-			1, 1, 1, 1,
-			0, 0, 0, 0, // no dlight
-			CG_MediaShader( cgs.media.shaderRocketExplosionRing ) );
-
-		le->ent.rotation = rand() % 360;
-	}
-
-	if( cg_explosionsDust->integer == 1 )
-	{
-		// dust ring parallel to the contact surface
-		CG_ExplosionsDust(pos, dir, radius);
-	}
 
 	// Explosion particles
 	CG_ParticleExplosionEffect( pos, dir, 1, 0.5, 0, 32 );	
@@ -1409,45 +1310,6 @@ void CG_DustCircle( const vec3_t pos, const vec3_t dir, float radius, int count 
 		VectorScale( dir_temp, crandom()*10 + radius, dir_temp );
 		CG_Explosion_Puff_2( pos, dir_temp, 10 );
 	}
-}
-
-void CG_ExplosionsDust( const vec3_t pos, const vec3_t dir, float radius )
-{
-	const int count = 32; /* Number of sprites used to create the circle */
-	lentity_t *le;
-	struct shader_s *shader = CG_MediaShader( cgs.media.shaderSmokePuff3 );
-
-	vec3_t dir_per1;
-	vec3_t dir_per2;
-	vec3_t dir_temp = { 0.0f, 0.0f, 0.0f };
-	int i;
-	float angle;
-
-	if( CG_PointContents( pos ) & MASK_WATER )
-		return; // no smoke under water :)
-
-	PerpendicularVector( dir_per2, dir );
-	CrossProduct( dir, dir_per2, dir_per1 );
-
-	//VectorScale( dir_per1, VectorNormalize( dir_per1 ), dir_per1 );
-	//VectorScale( dir_per2, VectorNormalize( dir_per2 ), dir_per2 );
-
-	// make a circle out of the specified number (int count) of sprites
-	for( i = 0; i < count; i++ )
-	{
-		angle = (float)( 6.2831f / count * i );
-		VectorSet( dir_temp, 0.0f, 0.0f, 0.0f );
-		VectorMA( dir_temp, sin( angle ), dir_per1, dir_temp );
-		VectorMA( dir_temp, cos( angle ), dir_per2, dir_temp );
-		//VectorScale(dir_temp, VectorNormalize(dir_temp),dir_temp );
-		VectorScale( dir_temp, crandom()*8 + radius + 16.0f, dir_temp );
-		// make the sprite smaller & alpha'd
-		le = CG_AllocSprite( LE_ALPHA_FADE, pos, 10, 10,
-			1.0f, 1.0f, 1.0f, 1.0f,
-			0, 0, 0, 0,
-			shader );
-		VectorCopy( dir_temp, le->velocity );
-	}       
 }
 
 void CG_SmallPileOfGibs( const vec3_t origin, int damage, const vec3_t initialVelocity, int team )

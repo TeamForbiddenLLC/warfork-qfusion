@@ -280,7 +280,7 @@ void GENERIC_RequestCheatVars()
         cheatVarChecked = 0;
 }
 
-void GENERIC_CheatVarResponse( Client @client, String &cmdString, String &argsString, int argc )
+void GENERIC_CheatVarResponse( Client @client, const String &in cmdString, const String &in argsString, int argc )
 {
     //G_Print( S_COLOR_RED + "cvarinfo response: (argc" + argc + ") " + S_COLOR_WHITE + client.name + S_COLOR_WHITE + " " + argsString + "\n" );
 
@@ -459,7 +459,7 @@ class cSpawnPoint
     ~cSpawnPoint() {}
 }
 
-Entity @GENERIC_SelectBestRandomTeamSpawnPoint( Entity @self, String &className, bool onlyTeam )
+Entity @GENERIC_SelectBestRandomTeamSpawnPoint( Entity @self, const String &in className, bool onlyTeam )
 {
     Entity @spawn;
     Entity @enemy;
@@ -591,7 +591,7 @@ Entity @GENERIC_SelectBestRandomTeamSpawnPoint( Entity @self, String &className,
     return spawns[0].ent;
 }
 
-Entity @GENERIC_SelectBestRandomSpawnPoint( Entity @self, String &className )
+Entity @GENERIC_SelectBestRandomSpawnPoint( Entity @self, const String &in className )
 {
     return GENERIC_SelectBestRandomTeamSpawnPoint( self, className, false );
 }

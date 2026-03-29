@@ -23,7 +23,7 @@
 		<string>MacOSX</string>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>4252</string>
+	<string>4270</string>
 	<key>CSResourcesFileMapped</key>
 	<true/>
 	<key>DTCompiler</key>
@@ -43,6 +43,6 @@
 	<key>DTXcodeBuild</key>
 	<string>13F100</string>
 	<key>LSMinimumSystemVersion</key>
-	<string>10.9</string>
+	<string>10.11</string>
 </dict>
 </plist>

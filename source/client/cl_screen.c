@@ -34,6 +34,8 @@ end of unit intermissions
 
 #include "client.h"
 #include "ftlib.h"
+#include "tracy/TracyC.h"
+
 
 float scr_con_current;    // aproaches scr_conlines at scr_conspeed
 float scr_con_previous;
@@ -44,7 +46,6 @@ static bool scr_initialized;    // ready to draw
 static int scr_draw_loading;
 
 static cvar_t *scr_consize;
-static cvar_t *scr_conspeed;
 static cvar_t *scr_netgraph;
 static cvar_t *scr_timegraph;
 static cvar_t *scr_debuggraph;
@@ -271,7 +272,7 @@ void SCR_DrawRawChar( int x, int y, wchar_t num, qfontface_t *font, vec4_t color
 
 void SCR_DrawClampChar( int x, int y, wchar_t num, int xmin, int ymin, int xmax, int ymax, qfontface_t *font, vec4_t color )
 {
-	FTLIB_DrawClampChar( x, y, num, xmin, ymin, xmax, ymax, font, color );
+	FTLIB_DrawClampChar( x, y, num, xmin, ymin, xmax, ymax, font, color, NULL );
 }
 
 void SCR_DrawClampString( int x, int y, const char *str, int xmin, int ymin, int xmax, int ymax, qfontface_t *font, vec4_t color, int flags )
@@ -347,7 +348,7 @@ size_t SCR_DrawStringWidth( int x, int y, int align, const char *str, size_t max
 */
 struct shader_s *SCR_RegisterPic( const char *name )
 {
-	return re.RegisterPic( name );
+	return R_RegisterPic( name );
 }
 
 /*
@@ -355,7 +356,7 @@ struct shader_s *SCR_RegisterPic( const char *name )
 */
 void SCR_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, const float *color, const struct shader_s *shader )
 {
-	re.DrawStretchPic( x, y, w, h, s1, t1, s2, t2, color, shader );
+	RF_DrawStretchPic( x, y, w, h, s1, t1, s2, t2, color, shader );
 }
 
 /*
@@ -365,7 +366,7 @@ void SCR_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s
 */
 void SCR_DrawFillRect( int x, int y, int w, int h, vec4_t color )
 {
-	re.DrawStretchPic( x, y, w, h, 0, 0, 1, 1, color, cls.whiteShader );
+	RF_DrawStretchPic( x, y, w, h, 0, 0, 1, 1, color, cls.whiteShader );
 }
 
 /*
@@ -391,7 +392,7 @@ void SCR_DrawClampFillRect( int x, int y, int w, int h, int xmin, int ymin, int 
 	if( ( w <= 0 ) || ( h <= 0 ) )
 		return;
 
-	re.DrawStretchPic( x, y, w, h, 0, 0, 1, 1, color, cls.whiteShader );
+	RF_DrawStretchPic( x, y, w, h, 0, 0, 1, 1, color, cls.whiteShader );
 }
 
 /*
@@ -496,7 +497,6 @@ static void SCR_DrawDebugGraph( void )
 void SCR_InitScreen( void )
 {
 	scr_consize = Cvar_Get( "scr_consize", "0.4", CVAR_ARCHIVE );
-	scr_conspeed = Cvar_Get( "scr_conspeed", "0", CVAR_ARCHIVE );
 	scr_netgraph = Cvar_Get( "netgraph", "0", 0 );
 	scr_timegraph = Cvar_Get( "timegraph", "0", 0 );
 	scr_debuggraph = Cvar_Get( "debuggraph", "0", 0 );
@@ -571,25 +571,9 @@ void SCR_RunConsole( int msec )
 	else
 		scr_conlines = 0;
 
-	if( scr_conspeed->value == 0 ) {
-		scr_con_current = scr_conlines;
-		return;
-	}
+	scr_con_current = scr_conlines;
 
 	scr_con_previous = scr_con_current;
-	if( scr_conlines < scr_con_current )
-	{
-		scr_con_current -= scr_conspeed->value * msec * 0.001f;
-		if( scr_conlines > scr_con_current )
-			scr_con_current = scr_conlines;
-
-	}
-	else if( scr_conlines > scr_con_current )
-	{
-		scr_con_current += scr_conspeed->value * msec * 0.001f;
-		if( scr_conlines < scr_con_current )
-			scr_con_current = scr_conlines;
-	}
 }
 
 /*
@@ -646,8 +630,8 @@ void SCR_EndLoadingPlaque( void )
 */
 void SCR_RegisterConsoleMedia()
 {
-	cls.whiteShader = re.RegisterPic( "$whiteimage" );
-	cls.consoleShader = re.RegisterPic( "gfx/ui/console" );
+	cls.whiteShader = R_RegisterPic( "$whiteimage" );
+	cls.consoleShader = R_RegisterPic( "gfx/ui/console" );
 
 	SCR_InitFonts();
 }
@@ -692,6 +676,7 @@ static void SCR_RenderView( float stereo_separation )
 */
 void SCR_UpdateScreen( void )
 {
+	TracyCFrameMark
 	static dynvar_t *updatescreen = NULL;
 	int numframes;
 	int i;
@@ -714,7 +699,7 @@ void SCR_UpdateScreen( void )
 		return;
 	}
 
-	if( !scr_initialized || !con_initialized || !cls.mediaInitialized || !re.RenderingEnabled() )
+	if( !scr_initialized || !con_initialized || !cls.mediaInitialized || !RF_RenderingEnabled() )
 		return;     // not ready yet
 
 	Con_CheckResize();
@@ -749,7 +734,9 @@ void SCR_UpdateScreen( void )
 
 	for( i = 0; i < numframes; i++ )
 	{
-		re.BeginFrame( separation[i], forceclear, forcevsync );
+		static const char* const cl_frame = "Render Frame"; 	
+		TracyCFrameMarkStart(cl_frame);
+		RF_BeginFrame( separation[i], forceclear, forcevsync );
 
 		if( scr_draw_loading == 2 )
 		{ 
@@ -804,6 +791,7 @@ void SCR_UpdateScreen( void )
 		// wsw : aiwa : call any listeners so they can draw their stuff
 		Dynvar_CallListeners( updatescreen, NULL );
 
-		re.EndFrame();
+		RF_EndFrame();
+		TracyCFrameMarkEnd(cl_frame);
 	}
 }

@@ -643,6 +643,7 @@ static ucmd_t ucmds[] =
 	{ "configstrings", TV_Downstream_Configstrings_f },
 	{ "baselines", TV_Downstream_Baselines_f },
 	{ "begin", TV_Downstream_Begin_f },
+	{ "disc", TV_Downstream_Disconnect_f },
 	{ "disconnect", TV_Downstream_Disconnect_f },
 	{ "usri", TV_Downstream_UserinfoCommand_f },
 	{ "nodelta", TV_Downstream_NoDelta_f },

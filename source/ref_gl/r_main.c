@@ -31,31 +31,7 @@ refinst_t rn;
 
 r_scene_t rsc;
 
-/*
-* R_TransformBounds
-*/
-void R_TransformBounds( const vec3_t origin, const mat3_t axis, vec3_t mins, vec3_t maxs, vec3_t bbox[8] )
-{
-	int i;
-	vec3_t tmp;
-	mat3_t axis_;
-
-	Matrix3_Transpose( axis, axis_ );	// switch row-column order
-
-	// rotate local bounding box and compute the full bounding box
-	for( i = 0; i < 8; i++ )
-	{
-		vec_t *corner = bbox[i];
-
-		corner[0] = ( ( i & 1 ) ? mins[0] : maxs[0] );
-		corner[1] = ( ( i & 2 ) ? mins[1] : maxs[1] );
-		corner[2] = ( ( i & 4 ) ? mins[2] : maxs[2] );
-
-		Matrix3_TransformVector( axis_, corner, tmp );
-		VectorAdd( tmp, origin, corner );
-	}
-}
-
+void Mod_FixupQ1MipTex( model_t *mod );
 /*
 * R_TransformForWorld
 */
@@ -972,6 +948,8 @@ static void R_SetupFrame( void )
 
 			// load all world images if not yet
 			R_FinishLoadingImages();
+		
+			//Mod_FixupQ1MipTex(rsh.worldModel);
 		}
 	}
 	else
@@ -1720,45 +1698,6 @@ void R_EndFrame( void )
 	assert( qglGetError() == GL_NO_ERROR );
 }
 
-//===================================================================
-
-/*
-* R_NormToLatLong
-*/
-void R_NormToLatLong( const vec_t *normal, uint8_t latlong[2] )
-{
-	float flatlong[2];
-
-	NormToLatLong( normal, flatlong );
-	latlong[0] = (int)( flatlong[0] * 255.0 / M_TWOPI ) & 255;
-	latlong[1] = (int)( flatlong[1] * 255.0 / M_TWOPI ) & 255;
-}
-
-/*
-* R_LatLongToNorm4
-*/
-void R_LatLongToNorm4( const uint8_t latlong[2], vec4_t out )
-{
-	static float * const sinTable = rsh.sinTableByte;
-	float sin_a, sin_b, cos_a, cos_b;
-
-	cos_a = sinTable[( latlong[0] + 64 ) & 255];
-	sin_a = sinTable[latlong[0]];
-	cos_b = sinTable[( latlong[1] + 64 ) & 255];
-	sin_b = sinTable[latlong[1]];
-
-	Vector4Set( out, cos_b * sin_a, sin_b * sin_a, cos_a, 0 );
-}
-
-/*
-* R_LatLongToNorm
-*/
-void R_LatLongToNorm( const uint8_t latlong[2], vec3_t out )
-{
-	vec4_t t;
-	R_LatLongToNorm4( latlong, t );
-	VectorCopy( t, out );
-}
 
 /*
 * R_CopyString
@@ -1773,10 +1712,7 @@ char *R_CopyString_( const char *in, const char *filename, int fileline )
 	return out;
 }
 
-/*
-* R_LoadFile
-*/
-int R_LoadFile_( const char *path, int flags, void **buffer, const char *filename, int fileline )
+int R_LoadFileGroup_( const char *path, int flags, group_handle_t* group, void **buffer, const char *filename, int fileline )
 {
 	uint8_t *buf;
 	unsigned int len;
@@ -1785,7 +1721,7 @@ int R_LoadFile_( const char *path, int flags, void **buffer, const char *filenam
 	buf = NULL; // quiet compiler warning
 
 	// look for it in the filesystem or pack files
-	len = ri.FS_FOpenFile( path, &fhandle, FS_READ|flags );
+	len = FS_FOpenFileGroup( path, &fhandle, FS_READ|flags, group );
 
 	if( !fhandle )
 	{
@@ -1796,7 +1732,7 @@ int R_LoadFile_( const char *path, int flags, void **buffer, const char *filenam
 
 	if( !buffer )
 	{
-		ri.FS_FCloseFile( fhandle );
+		FS_FCloseFile( fhandle );
 		return len;
 	}
 
@@ -1804,8 +1740,42 @@ int R_LoadFile_( const char *path, int flags, void **buffer, const char *filenam
 	buf[len] = 0;
 	*buffer = buf;
 
-	ri.FS_Read( buf, len, fhandle );
-	ri.FS_FCloseFile( fhandle );
+	FS_Read( buf, len, fhandle );
+	FS_FCloseFile( fhandle );
+
+	return len;
+}
+
+int R_LoadFile_( const char *path, int flags, void **buffer, const char *filename, int fileline )
+{
+	uint8_t *buf;
+	unsigned int len;
+	int fhandle;
+
+	buf = NULL; // quiet compiler warning
+
+	// look for it in the filesystem or pack files
+	len = FS_FOpenFile( path, &fhandle, FS_READ|flags );
+
+	if( !fhandle )
+	{
+		if( buffer )
+			*buffer = NULL;
+		return -1;
+	}
+
+	if( !buffer )
+	{
+		FS_FCloseFile( fhandle );
+		return len;
+	}
+
+	buf = ( uint8_t *)ri.Mem_AllocExt( r_mempool, len + 1, 16, 0, filename, fileline );
+	buf[len] = 0;
+	*buffer = buf;
+
+	FS_Read( buf, len, fhandle );
+	FS_FCloseFile( fhandle );
 
 	return len;
 }

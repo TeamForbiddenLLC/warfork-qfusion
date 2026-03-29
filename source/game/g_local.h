@@ -33,6 +33,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "g_gametypes.h"
 
 #include "../matchmaker/mm_rating.h"
+#include <cstdint>
 
 //==================================================================
 // round(x)==floor(x+0.5f)
@@ -307,9 +308,11 @@ extern int meansOfDeath;
 
 extern cvar_t *password;
 extern cvar_t *g_operator_password;
+extern cvar_t *g_permanent_operators;
 extern cvar_t *g_select_empty;
 extern cvar_t *dedicated;
 extern cvar_t *developer;
+extern cvar_t *sv_useSteamAuth;
 
 extern cvar_t *filterban;
 
@@ -352,6 +355,11 @@ extern cvar_t *g_allow_falldamage;
 extern cvar_t *g_allow_selfdamage;
 extern cvar_t *g_allow_teamdamage;
 extern cvar_t *g_allow_bunny;
+
+extern cvar_t *g_pmove_dashjump_timedelay;
+extern cvar_t *g_pmove_walljump_timedelay;
+extern cvar_t *g_pmove_walljump_failed_timedelay;
+
 extern cvar_t *g_ammo_respawn;
 extern cvar_t *g_weapon_respawn;
 extern cvar_t *g_health_respawn;
@@ -700,6 +708,7 @@ void G_SetBoundsForSpanEntity( edict_t *ent, vec_t size );
 //
 // g_callvotes.c
 //
+void G_Ajax_Cmd( edict_t *ent );
 void G_CallVotes_Init( void );
 void G_FreeCallvotes( void );
 void G_CallVotes_ResetClient( int n );
@@ -708,8 +717,6 @@ void G_CallVotes_Think( void );
 void G_CallVote_Cmd( edict_t *ent );
 void G_OperatorVote_Cmd( edict_t *ent );
 void G_RegisterGametypeScriptCallvote( const char *name, const char *usage, const char *type, const char *help );
-http_response_code_t G_CallVotes_WebRequest( http_query_method_t method, const char *resource, 
-	const char *query_string, char **content, size_t *content_length );
 
 //
 // g_trigger.c
@@ -762,6 +769,7 @@ void G_Killed( edict_t *targ, edict_t *inflictor, edict_t *attacker, int damage,
 int G_ModToAmmo( int mod );
 bool CheckTeamDamage( edict_t *targ, edict_t *attacker );
 void G_SplashFrac( const vec3_t origin, const vec3_t mins, const vec3_t maxs, const vec3_t point, float maxradius, vec3_t pushdir, float *kickFrac, float *dmgFrac );
+void G_ApplyHandicapDamage( edict_t *attacker, float *damage );
 void G_Damage( edict_t *targ, edict_t *inflictor, edict_t *attacker, const vec3_t pushdir, const vec3_t dmgdir, const vec3_t point, float damage, float knockback, float stun, int dflags, int mod );
 void G_RadiusDamage( edict_t *inflictor, edict_t *attacker, cplane_t *plane, edict_t *ignore, int mod );
 
@@ -854,6 +862,7 @@ void G_CheckClientRespawnClick( edict_t *ent );
 bool ClientConnect( edict_t *ent, char *userinfo, bool fakeClient, bool tvClient );
 void ClientDisconnect( edict_t *ent, const char *reason );
 void ClientBegin( edict_t *ent );
+void ClientAuth( edict_t *ent, uint64_t steamid );
 void ClientCommand( edict_t *ent );
 void G_PredictedEvent( int entNum, int ev, int parm );
 void G_TeleportPlayer( edict_t *player, edict_t *dest );
@@ -896,6 +905,10 @@ void SP_target_kill( edict_t *self );
 //
 void SV_ResetPacketFiltersTimeouts( void );
 bool SV_FilterPacket( char *from );
+#define FILTER_BAN ( 1 << 0 )
+#define FILTER_MUTE ( 1 << 1 )
+#define FILTER_SHADOWMUTE ( 1 << 2 )
+bool SV_FilterSteamID( uint64_t id, int filtertype );
 void G_AddServerCommands( void );
 void G_RemoveCommands( void );
 void SV_ReadIPList( void );
@@ -973,6 +986,7 @@ bool G_RespawnLevel( void );
 void G_ResetLevel( void );
 void G_InitLevel( char *mapname, char *entities, int entstrlen, unsigned int levelTime, unsigned int serverTime, unsigned int realTime );
 const char *G_GetEntitySpawnKey( const char *key, edict_t *self );
+void G_UpdateConfigStrings();
 
 //
 // g_awards.c
@@ -1231,7 +1245,8 @@ struct gclient_s
 	int movestyle_latched;
 	bool isoperator;
 	unsigned int queueTimeStamp;
-	int muted;     // & 1 = chat disabled, & 2 = vsay disabled
+	int muted; // fallback if steam auth is disabled. see SV_FilterSteamID
+	int lastFailedCallvoteTime;
 
 	usercmd_t ucmd;
 	int timeDelta;              // time offset to adjust for shots collision (antilag)
@@ -1241,6 +1256,9 @@ struct gclient_s
 	pmove_state_t old_pmove;    // for detecting out-of-pmove changes
 
 	int asRefCount, asFactored;
+
+	bool authenticated;
+	uint64_t steamid;
 };
 
 // quit or teamchange data for clients (stats)

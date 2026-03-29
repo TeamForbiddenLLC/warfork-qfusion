@@ -23,10 +23,10 @@ namespace ASUI {
 // dummy class since ASBIND only can only bind unique classes 
 // and AngelScript arrays are more like composite classes
 class ASElementsArray : public CScriptArrayInterface {};
-static asIObjectType *elementsArrayType;
+static asITypeInfo *elementsArrayType;
 
 class ASStringsArray : public CScriptArrayInterface {};
-static asIObjectType *stringsArrayType;
+static asITypeInfo *stringsArrayType;
 
 typedef Rocket::Controls::ElementForm ElementForm;
 typedef Rocket::Controls::ElementFormControl ElementFormControl;
@@ -1157,9 +1157,9 @@ void BindElement( ASInterface *as )
 		;
 
 	// cache type id for array<Element @>
-	elementsArrayType = engine->GetObjectTypeById(engine->GetTypeIdByDecl(ASBind::typestr<ASElementsArray>()));
+	elementsArrayType = engine->GetTypeInfoByDecl(ASBind::typestr<ASElementsArray>());
 	// cache type id for array<String @>
-	stringsArrayType = engine->GetObjectTypeById(engine->GetTypeIdByDecl(ASBind::typestr<ASStringsArray>()));
+	stringsArrayType = engine->GetTypeInfoByDecl(ASBind::typestr<ASStringsArray>());
 
 	// ElementDocument
 	BindElementDocument( as );

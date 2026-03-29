@@ -30,6 +30,7 @@ libsrcs/libRocket/libRocket/Build/obj/
 *.sln
 *.vcxproj
 *.vcxproj.filters
+source/compile_commands.json
 
 # Ignore windows cmake generated files
 **/*.dir/

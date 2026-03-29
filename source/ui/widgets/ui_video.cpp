@@ -13,7 +13,7 @@ namespace WSWUI
 	void Video::OnAttributeChange(const Rocket::Core::AttributeNameList& anl)
 	{
 		if(anl.find("src") != anl.end())
-			trap::R_RegisterVideo( GetAttribute<Rocket::Core::String>("src", "").CString() ); // register a default video-shader, so R_RegisterPic will return this shader
+			R_RegisterVideo( GetAttribute<Rocket::Core::String>("src", "").CString() ); // register a default video-shader, so R_RegisterPic will return this shader
 		ElementImage::OnAttributeChange(anl);
 	}
 

@@ -2,6 +2,9 @@ project(${QFUSION_SERVER_NAME})
 
 include_directories(${MINIZ_INCLUDE_DIR} ${CURL_INCLUDE_DIR})
 
+set(STEAMSHIMPARENT_LIBRARY steamshim_parent)
+
+
 file(GLOB SERVER_HEADERS
     "*.h"
 	"../gameshared/q_*.h"
@@ -17,14 +20,16 @@ file(GLOB SERVER_HEADERS
 
 file(GLOB SERVER_SOURCES
 	"../qcommon/asyncstream.c"
-	"../qcommon/autoupdate.c"	
     "../qcommon/cm_main.c"
     "../qcommon/cm_q3bsp.c"
+    "../qcommon/cm_q1bsp.c"
+    "../qcommon/cm_q2bsp.c"
     "../qcommon/cm_trace.c"
 	"../qcommon/compression.c"	
     "../qcommon/bsp.c"
     "../qcommon/patch.c"
     "../qcommon/common.c"
+    "../qcommon/crashpad.cpp"
     "../qcommon/files.c"
     "../qcommon/cmd.c"
     "../qcommon/l10n.c"
@@ -80,13 +85,21 @@ else()
         "../null/sys_vfs_null.c"
     )
 
-    set(SERVER_PLATFORM_LIBRARIES "pthread" "dl" "m")
+    set(SERVER_PLATFORM_LIBRARIES "-ldl" "pthread")
     set(SERVER_BINARY_TYPE "")
 endif()
 
 add_executable(${QFUSION_SERVER_NAME} ${SERVER_BINARY_TYPE} ${SERVER_HEADERS} ${SERVER_SOURCES} ${SERVER_PLATFORM_SOURCES})
 add_dependencies(${QFUSION_SERVER_NAME} angelwrap game)
-target_link_libraries(${QFUSION_SERVER_NAME} PRIVATE ${CURL_LIBRARY} ${SERVER_PLATFORM_LIBRARIES})
+if (BUILD_STEAMLIB)
+    add_dependencies(${QFUSION_SERVER_NAME} wf_steam)
+endif()
+target_link_libraries(${QFUSION_SERVER_NAME} PRIVATE CURL::libcurl ${SERVER_PLATFORM_LIBRARIES} ${STEAMSHIMPARENT_LIBRARY})
+
+if (USE_CRASHPAD)
+    target_link_libraries(${QFUSION_SERVER_NAME} PRIVATE crashpad_client)
+endif()
+
 qf_set_output_dir(${QFUSION_SERVER_NAME} "")
 
 set_target_properties(${QFUSION_SERVER_NAME} PROPERTIES COMPILE_DEFINITIONS "DEDICATED_ONLY")

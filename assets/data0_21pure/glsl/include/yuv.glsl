@@ -1,4 +1,4 @@
-myhalf3 YUV2RGB(vec3 yuv)
+vec3 YUV2RGB(vec3 yuv)
 {
 	// Standard definition TV color matrix
 	const mat3 yuv2rgb = mat3(
@@ -13,7 +13,7 @@ myhalf3 YUV2RGB(vec3 yuv)
 	return clamp( (yuv2rgb * (yuv - yuv_sub)).xyz, 0.0, 1.0 );
 }
 
-myhalf3 YUV2RGB_HDTV(vec3 yuv)
+vec3 YUV2RGB_HDTV(vec3 yuv)
 {
 	// High Definition TV color matrix
 	const mat3 yuv2rgb = mat3(

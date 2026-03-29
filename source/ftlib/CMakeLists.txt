@@ -1,6 +1,6 @@
 project(ftlib)
 
-include_directories(${CURL_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR} ${FREETYPE_INCLUDE_DIRS})
+include_directories(${CURL_INCLUDE_DIR} ${FREETYPE_INCLUDE_DIRS})
 
 file(GLOB FTLIB_HEADERS
     "*.h"
@@ -19,5 +19,5 @@ else ()
 endif()
 
 add_library(ftlib SHARED ${FTLIB_SOURCES} ${FTLIB_HEADERS})
-target_link_libraries(ftlib PRIVATE ${FREETYPE_LIBRARIES} ${FTLIB_PLATFORM_LIBRARIES})
+target_link_libraries(ftlib PRIVATE Freetype::Freetype ${FTLIB_PLATFORM_LIBRARIES} zlib)
 qf_set_output_dir(ftlib libs)

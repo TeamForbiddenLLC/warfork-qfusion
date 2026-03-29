@@ -21,10 +21,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // Main windowed and fullscreen graphics interface module. This module
 // is used for both the software and OpenGL rendering versions of the
 // qfusion refresh engine.
+#define REF_DEFINE_INTERFACE_IMPL 1
+#include "../ref_base/ref_mod.h"
+
 #include "client.h"
 #include "cin.h"
 #include "ftlib.h"
 #include "xpm.h"
+
+#include "../qcommon/mod_mem.h"
+#include "../qcommon/mod_win.h"
+#include "../qcommon/mod_cvar.h"
 
 cvar_t *vid_ref;
 cvar_t *vid_width, *vid_height;
@@ -142,7 +149,7 @@ static rserr_t VID_Sys_Init_( void *parentWindow, bool verbose )
 void VID_AppActivate( bool active, bool destroy )
 {
 	vid_app_active = active;
-	re.AppActivate( active, destroy );
+	RF_AppActivate( active, destroy );
 }
 
 /*
@@ -199,7 +206,7 @@ static rserr_t VID_ChangeMode( void )
 	disp_freq = vid_displayfrequency->integer;
 	stereo = Cvar_Value( "cl_stereo" ) != 0;
 
-	err = re.SetMode( x, y, w, h, disp_freq, fs, stereo );
+	err = RF_SetMode( x, y, w, h, disp_freq, fs, stereo );
 
 	if( err == rserr_ok ) {
 		// store fallback mode
@@ -228,7 +235,7 @@ static rserr_t VID_ChangeMode( void )
 			vid_fullscreen->modified = false;
 			fs = false;
 
-			err = re.SetMode( x, y, w, h, disp_freq, false, stereo );
+			err = RF_SetMode( x, y, w, h, disp_freq, false, stereo );
 		}
 
 		if( err == rserr_invalid_mode ) {
@@ -240,7 +247,7 @@ static rserr_t VID_ChangeMode( void )
 			Cvar_ForceSet( vid_height->name, va( "%i", h ) );
 
 			// try setting it back to something safe
-			err = re.SetMode( x, y, w, h, disp_freq, fs, stereo );
+			err = RF_SetMode( x, y, w, h, disp_freq, fs, stereo );
 			if( err == rserr_invalid_fullscreen ) {
 				Com_Printf( "VID_ChangeMode() - could not revert to safe fullscreen mode\n" );
 
@@ -248,7 +255,7 @@ static rserr_t VID_ChangeMode( void )
 				vid_fullscreen->modified = false;
 				fs = false;
 
-				err = re.SetMode( x, y, w, h, disp_freq, false, stereo );
+				err = RF_SetMode( x, y, w, h, disp_freq, false, stereo );
 			}
 			if( err != rserr_ok ) {
 				Com_Printf( "VID_ChangeMode() - could not revert to safe mode\n" );
@@ -271,7 +278,7 @@ static void VID_UnloadRefresh( void )
 {
 	if( vid_ref_libhandle ) {
 		if( vid_ref_active ) {
-			re.Shutdown( false );
+			RF_Shutdown( false );
 			vid_ref_active = false;
 		}
 		Com_UnloadLibrary( &vid_ref_libhandle );
@@ -309,7 +316,17 @@ static struct cinematics_s *VID_RefModule_CIN_Open( const char *name, unsigned i
 */
 static bool VID_LoadRefresh( const char *name )
 {
-	static ref_import_t import;
+	if(vid_ref_mempool) {
+		VID_UnloadRefresh();
+	}
+	vid_ref_mempool = Q_CreatePool( NULL, "Refresh" );
+	
+	ref_import_t import;
+	struct mem_import_s memImport = DECLARE_MEM_STRUCT( vid_ref_mempool );
+	struct cmd_import_s cmdImport = DECLARE_CMD_STRUCT();
+	struct cvar_import_s cvarImport = DECLARE_CVAR_STRUCT();	
+	struct win_import_s winImport = DECLARE_WIN_STRUCT();
+
 	size_t file_size;
 	char *file;
 	dllfunc_t funcs[2];
@@ -317,6 +334,12 @@ static bool VID_LoadRefresh( const char *name )
 
 	VID_UnloadRefresh();
 
+
+	import.winImport = &winImport;
+	import.memImport = &memImport;
+	import.cmdImport = &cmdImport;
+	import.cvarImport = &cvarImport;
+	import.fsImport = &default_fs_imports_s;
 	import.Com_Error = &Com_Error;
 	import.Com_Printf = &Com_Printf;
 	import.Com_DPrintf = &Com_DPrintf;
@@ -344,29 +367,6 @@ static bool VID_LoadRefresh( const char *name )
 	import.Cmd_Execute = &Cbuf_Execute;
 	import.Cmd_ExecuteText = &Cbuf_ExecuteText;
 	import.Cmd_SetCompletionFunc = &Cmd_SetCompletionFunc;
-
-	import.FS_FOpenFile = &FS_FOpenFile;
-	import.FS_FOpenAbsoluteFile = &FS_FOpenAbsoluteFile;
-	import.FS_Read = &FS_Read;
-	import.FS_Write = &FS_Write;
-	import.FS_Printf = &FS_Printf;
-	import.FS_Tell = &FS_Tell;
-	import.FS_Seek = &FS_Seek;
-	import.FS_Eof = &FS_Eof;
-	import.FS_Flush = &FS_Flush;
-	import.FS_FCloseFile = &FS_FCloseFile;
-	import.FS_RemoveFile = &FS_RemoveFile;
-	import.FS_GetFileList = &FS_GetFileList;
-	import.FS_GetGameDirectoryList = &FS_GetGameDirectoryList;
-	import.FS_FirstExtension = &FS_FirstExtension;
-	import.FS_MoveFile = &FS_MoveFile;
-	import.FS_IsUrl = &FS_IsUrl;
-	import.FS_FileMTime = &FS_FileMTime;
-	import.FS_RemoveDirectory = &FS_RemoveDirectory;
-	import.FS_GameDirectory = &FS_GameDirectory;
-	import.FS_WriteDirectory = &FS_WriteDirectory;
-	import.FS_MediaDirectory = &FS_MediaDirectory;
-	import.FS_AddFileToMedia = &FS_AddFileToMedia;
 
 	import.CIN_Open = &VID_RefModule_CIN_Open;
 	import.CIN_NeedNextFrame = &CIN_NeedNextFrame;
@@ -415,22 +415,32 @@ static bool VID_LoadRefresh( const char *name )
 		// load succeeded
 		int api_version;
 		ref_export_t *rep;
+		
 
 		rep = GetRefAPI_f( &import );
 		re = *rep;
-		vid_ref_mempool = Mem_AllocPool( NULL, "Refresh" );
+
 		api_version = re.API();
 
 		if( api_version != REF_API_VERSION ) {
 			// wrong version
 			Com_Printf( "Wrong version: %i, not %i.\n", api_version, REF_API_VERSION );
 			VID_UnloadRefresh();
+			if(vid_ref_mempool) {
+				Q_FreePool(vid_ref_mempool);
+				vid_ref_mempool = NULL;
+			}
 			return false;
 		}
+		Q_ImportRefModule(&re.refImport);
 	}
 	else
 	{
 		Com_Printf( "Not found %s.\n", va( LIB_DIRECTORY "/" LIB_PREFIX "%s_" ARCH LIB_SUFFIX, name ) );
+		if(vid_ref_mempool) {
+			Q_FreePool(vid_ref_mempool);
+			vid_ref_mempool = NULL;
+		}
 		return false;
 	}
 
@@ -608,7 +618,7 @@ load_refresh:
 		// stop and free all sounds
 		CL_SoundModule_Init( verbose );
 
-		re.BeginRegistration();
+		RF_BeginRegistration();
 		CL_SoundModule_BeginRegistration();
 
 		FTLIB_PrecacheFonts( verbose );
@@ -638,7 +648,7 @@ load_refresh:
 			CL_SetKeyDest( key_menu );
 		}
 
-		re.EndRegistration();
+		RF_EndRegistration();
 		CL_SoundModule_EndRegistration();
 
 		vid_ref_modified = false;

@@ -311,6 +311,16 @@ static void G_KnockBackPush( edict_t *targ, edict_t *attacker, const vec3_t base
 }
 
 /*
+* G_ApplyHandicapDamage
+*/
+void G_ApplyHandicapDamage( edict_t *attacker, float *damage )
+{
+	// handicap is a percentage value
+	if( attacker->r.client->handicap != 0 )
+		*damage *= 1.0 - ( attacker->r.client->handicap * 0.01f );
+}
+
+/*
 * G_Damage
 * targ		entity that is being damaged
 * inflictor	entity that is causing the damage
@@ -379,9 +389,7 @@ void G_Damage( edict_t *targ, edict_t *inflictor, edict_t *attacker, const vec3_
 	// apply handicap on the damage given
 	if( statDmg && attacker->r.client && !GS_Instagib() )
 	{
-		// handicap is a percentage value
-		if( attacker->r.client->handicap != 0 )
-			damage *= 1.0 - (attacker->r.client->handicap * 0.01f);
+		G_ApplyHandicapDamage(attacker, &damage);
 	}
 
 	take = damage;

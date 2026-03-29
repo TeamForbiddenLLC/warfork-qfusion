@@ -17,6 +17,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+#define REF_DEFINE_INTERFACE_IMPL 1
+#include "../ref_base/ref_mod.h"
 
 #include "ftlib_local.h"
 
@@ -32,6 +34,8 @@ QF_DLL_EXPORT ftlib_export_t *GetFTLibAPI( ftlib_import_t *import )
 	static ftlib_export_t globals;
 
 	FTLIB_IMPORT = *import;
+
+	Q_ImportRefModule(&import->refImport);
 
 	globals.API = &FTLIB_API;
 

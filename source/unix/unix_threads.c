@@ -41,20 +41,23 @@ struct qcondvar_s {
 */
 int Sys_Mutex_Create( qmutex_t **pmutex )
 {
-	int res;
-	qmutex_t *mutex;
+	assert(pmutex);
+	qmutex_t *const mutex = ( qmutex_t * )malloc( sizeof( *mutex ) );
+	if(!mutex) {
+		return -1;
+	}
+	
 	pthread_mutexattr_t mta;
 	pthread_mutex_t m;
-
 	pthread_mutexattr_init( &mta );
 	pthread_mutexattr_settype( &mta, PTHREAD_MUTEX_RECURSIVE );
 
-	res = pthread_mutex_init( &m, &mta );
+	const int res = pthread_mutex_init( &m, &mta );
 	if( res != 0 ) {
+		free(mutex);
 		return res;
 	}
 	
-	mutex = ( qmutex_t * )Q_malloc( sizeof( *mutex ) );
 	mutex->m = m;
 	*pmutex = mutex;
 	return 0;
@@ -69,7 +72,7 @@ void Sys_Mutex_Destroy( qmutex_t *mutex )
 		return;
 	}
 	pthread_mutex_destroy( &mutex->m );
-	Q_free( mutex );
+	free( mutex );
 }
 
 /*
@@ -93,16 +96,22 @@ void Sys_Mutex_Unlock( qmutex_t *mutex )
 */
 int Sys_Thread_Create( qthread_t **pthread, void *(*routine) (void*), void *param )
 {
-	qthread_t *thread;
-	pthread_t t;
-	int res;
+	assert(pthread);
+	if(!pthread) {
+		return -1;
+	}
+	qthread_t *const thread = ( qthread_t * )malloc( sizeof( *thread ) );
+	if(!thread) {
+		return -1;
+	}
 
-	res = pthread_create( &t, NULL, routine, param );
+	pthread_t t;
+	int res = pthread_create( &t, NULL, routine, param );
 	if( res != 0 ) {
+		free(thread);
 		return res;
 	}
 
-	thread = ( qthread_t * )Q_malloc( sizeof( *thread ) );
 	thread->t = t;
 	*pthread = thread;
 	return 0;
@@ -148,14 +157,12 @@ bool Sys_Atomic_CAS( volatile int *value, int oldval, int newval, qmutex_t *mute
 */
 int Sys_CondVar_Create( qcondvar_t **pcond )
 {
-	qcondvar_t *cond;
-
-	if( !pcond ) {
-		return -1;
+	assert(pcond);
+	qcondvar_t *const cond = ( qcondvar_t * )malloc( sizeof( *cond ) );
+	int res = pthread_cond_init( &cond->c, NULL );
+	if( res != 0 ) {
+		return res;
 	}
-
-	cond = ( qcondvar_t * )Q_malloc( sizeof( *cond ) );
-	pthread_cond_init( &cond->c, NULL );
 
 	*pcond = cond;
 	return 0;
@@ -170,7 +177,7 @@ void Sys_CondVar_Destroy( qcondvar_t *cond )
 		return;
 	}
 	pthread_cond_destroy( &cond->c );
-	Q_free( cond );
+	free( cond );
 }
 
 /*

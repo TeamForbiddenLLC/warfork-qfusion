@@ -29,6 +29,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../qcommon/bsp.h"
 #include "../qcommon/patch.h"
 
+#include "../qcommon/mod_fs.h"
+
 typedef struct { char *name; void **funcPointer; } dllfunc_t;
 
 typedef struct mempool_s mempool_t;
@@ -209,8 +211,6 @@ typedef struct
 
 	// bumped each time R_RegisterWorldModel is called
 	volatile int 	worldModelSequence;
-
-	float			sinTableByte[256];
 
 	model_t			*worldModel;
 	mbrushmodel_t	*worldBrushModel;
@@ -438,13 +438,6 @@ extern cvar_t *gl_cull;
 extern cvar_t *vid_displayfrequency;
 extern cvar_t *vid_multiscreen_head;
 
-//====================================================================
-
-void R_NormToLatLong( const vec_t *normal, uint8_t latlong[2] );
-void R_LatLongToNorm( const uint8_t latlong[2], vec3_t out );
-void R_LatLongToNorm4( const uint8_t latlong[2], vec4_t out );
-
-//====================================================================
 
 //
 // r_alias.c
@@ -558,8 +551,10 @@ char		*R_CopyString_( const char *in, const char *filename, int fileline );
 #define		R_CopyString(in) R_CopyString_(in,__FILE__,__LINE__)
 
 int			R_LoadFile_( const char *path, int flags, void **buffer, const char *filename, int fileline );
+int			R_LoadFileGroup_( const char *path, int flags, group_handle_t* group, void **buffer, const char *filename, int fileline );
 void		R_FreeFile_( void *buffer, const char *filename, int fileline );
 
+#define		R_LoadFileGroup(path, group, buffer) R_LoadFileGroup_(path,0, group, buffer,__FILE__,__LINE__)
 #define		R_LoadFile(path,buffer) R_LoadFile_(path,0,buffer,__FILE__,__LINE__)
 #define		R_LoadCacheFile(path,buffer) R_LoadFile_(path,FS_CACHE,buffer,__FILE__,__LINE__)
 #define		R_FreeFile(buffer) R_FreeFile_(buffer,__FILE__,__LINE__)
@@ -605,7 +600,6 @@ struct mesh_vbo_s *R_InitPostProcessingVBO( void );
 void		R_TransformForWorld( void );
 void		R_TransformForEntity( const entity_t *e );
 void		R_TranslateForEntity( const entity_t *e );
-void		R_TransformBounds( const vec3_t origin, const mat3_t axis, vec3_t mins, vec3_t maxs, vec3_t bbox[8] );
 
 void		R_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	const vec4_t color, const shader_t *shader );
@@ -680,8 +674,8 @@ void		R_BatchPolySurf( const entity_t *e, const shader_t *shader, const mfog_t *
 void		R_DrawPolys( void );
 void		R_DrawStretchPoly( const poly_t *poly, float x_offset, float y_offset );
 bool	R_SurfPotentiallyFragmented( const msurface_t *surf );
-int			R_GetClippedFragments( const vec3_t origin, float radius, vec3_t axis[3], int maxfverts,
-								  vec4_t *fverts, int maxfragments, fragment_t *fragments );
+//int			R_GetClippedFragments( const vec3_t origin, float radius, vec3_t axis[3], int maxfverts,
+//								  vec4_t *fverts, int maxfragments, fragment_t *fragments );
 
 //
 // r_register.c
@@ -739,8 +733,6 @@ bool	R_AddSkeletalModelToDrawList( const entity_t *e );
 void	R_DrawSkeletalSurf( const entity_t *e, const shader_t *shader, const mfog_t *fog, const portalSurface_t *portalSurface, unsigned int shadowBits, drawSurfaceSkeletal_t *drawSurf );
 float		R_SkeletalModelBBox( const entity_t *e, vec3_t mins, vec3_t maxs );
 void		R_SkeletalModelFrameBounds( const model_t *mod, int frame, vec3_t mins, vec3_t maxs );
-int			R_SkeletalGetBoneInfo( const model_t *mod, int bonenum, char *name, size_t name_size, int *flags );
-void		R_SkeletalGetBonePose( const model_t *mod, int bonenum, int frame, bonepose_t *bonepose );
 int			R_SkeletalGetNumBones( const model_t *mod, int *numFrames );
 
 void		R_InitSkeletalCache( void );

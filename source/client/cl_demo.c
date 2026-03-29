@@ -218,7 +218,7 @@ static int demofilelen, demofilelentotal;
 	cls.demo.avi_frame = 0;
 
 	if( cls.demo.avi_video )
-		re.BeginAviDemo();
+		RF_BeginAviDemo();
 
 	if( cls.demo.avi_audio )
 		CL_SoundModule_BeginAviDemo();
@@ -234,7 +234,7 @@ static void CL_StopDemoAviDump( void )
 
 	if( cls.demo.avi_video )
 	{
-		re.StopAviDemo();
+		RF_StopAviDemo();
 		cls.demo.avi_video = false;
 	}
 

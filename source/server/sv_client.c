@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // sv_client.c -- server code for moving users
 
 #include "server.h"
+#include "../qcommon/steam.h"
 
 
 //============================================================================
@@ -117,6 +118,11 @@ bool SV_ClientConnect( const socket_t *socket, const netadr_t *address, client_t
 			client->individual_socket = false;
 			client->socket.open = false;
 			break;
+		case SOCKET_SDR:
+				client->reliable = false;
+				client->individual_socket = true;
+				client->socket = *socket;
+				break;
 
 		default:
 			assert( false );
@@ -243,6 +249,10 @@ void SV_DropClient( client_t *drop, int type, const char *format, ... )
 
 	SV_Web_RemoveGameClient( drop->session );
 
+	if (drop->authenticated) {
+		Steam_EndAuthSession(drop->steamid);
+	}
+
 	if( drop->download.name )
 		SV_ClientCloseDownload( drop );
 
@@ -364,6 +374,12 @@ static void SV_New_f( client_t *client )
 
 	SV_SendMessageToClient( client, &tmpMessage );
 	Netchan_PushAllFragments( &client->netchan );
+
+
+	if (Cvar_Integer("sv_useSteamAuth") != 0 && !client->tvclient){
+		// ask client to authenticate with steam
+		SV_SendServerCommand( client, "steamauth" );
+	}
 
 	// don't let it send reliable commands until we get the first configstring request
 	client->state = CS_CONNECTING;
@@ -494,6 +510,13 @@ static void SV_Begin_f( client_t *client )
 	}
 	// wsw : r1q2[end]
 
+	if (Cvar_Integer("sv_useSteamAuth") != 0 && !client->authenticated && !client->tvclient)
+	{
+		SV_DropClient( client, DROP_TYPE_GENERAL, "Steam authentication timed out. Please ensure Steam is running and restart Warfork." );
+		return;
+	}
+
+	
 	// handle the case of a level changing while a client was connecting
 	if( atoi( Cmd_Argv( 1 ) ) != svs.spawncount )
 	{
@@ -933,6 +956,7 @@ ucmd_t ucmds[] =
 	{ "configstrings", SV_Configstrings_f },
 	{ "baselines", SV_Baselines_f },
 	{ "begin", SV_Begin_f },
+	{ "disc", SV_Disconnect_f },
 	{ "disconnect", SV_Disconnect_f },
 	{ "usri", SV_UserinfoCommand_f },
 
@@ -1226,6 +1250,82 @@ void SV_ParseClientMessage( client_t *client, msg_t *msg )
 				}
 			}
 			break;
+		case clc_steamauth:
+			{
+				SteamAuthTicket_t ticket;
+				ticket.pcbTicket = MSG_ReadLong(msg);
+				MSG_ReadData(msg, ticket.pTicket, ticket.pcbTicket);
+
+				char *steamid = Info_ValueForKey(client->userinfo, "steam_id");
+				if (!steamid || !steamid[0]){
+					SV_DropClient(client, DROP_TYPE_GENERAL, "steam authentication required and no steam id present");
+					break;
+				}
+				client->steamid = atoll(steamid);
+				client->authenticated = true;
+
+				int result = Steam_BeginAuthSession(client->steamid, &ticket);
+				if (result != 0){
+					SV_DropClient(client, DROP_TYPE_GENERAL, "Steam authentication failed. Make sure you aren't already connected on this account");
+					break;
+				}
+
+				if ( sv_whitelist->string[0] ){
+					bool whitelisted = false;
+
+					char *whitelist = strdup(sv_whitelist->string);
+					char *pch = strtok(whitelist, ":");
+					while (pch != NULL){
+						if (atoll(pch) == atoll(steamid)){
+							whitelisted = true;
+							break;
+						}
+						pch = strtok(NULL, ":");
+					}
+					if (!whitelisted)
+						SV_DropClient(client, DROP_TYPE_GENERAL, "you are not whitelisted!");
+					free(whitelist);
+				}
+
+
+				edict_t	*ent;
+				int edictnum;
+
+				edictnum = ( client - svs.clients ) + 1;
+				ent = EDICT_NUM( edictnum );
+
+				Com_Printf("Client %s "S_COLOR_WHITE "authenticated with steamid %llu\n", client->name, client->steamid);
+				ge->ClientAuth( ent, client->steamid);
+				
+			}
+			break;
+			case clc_voice:
+			{
+				int voiceDataSize = MSG_ReadShort(msg);
+				uint8_t voiceData[VOICE_BUFFER_MAX];
+				if (voiceDataSize > VOICE_BUFFER_MAX)
+				{
+					Com_Printf("SV_ParseClientMessage: voice data too large\n");
+					SV_DropClient(client, DROP_TYPE_GENERAL, "%s", "Error: Voice data too large");
+					return;
+				}
+				MSG_ReadData(msg, voiceData, voiceDataSize);
+
+				for (int i = 0; i < sv_maxclients->integer; i++)
+				{
+					client_t *cl = svs.clients + i;
+					if (cl->state >= CS_SPAWNED && cl->state != CS_ZOMBIE)
+					{
+						SV_InitClientMessage(cl, &tmpMessage, NULL, 0);
+						MSG_WriteByte(&tmpMessage, svc_voice);
+						MSG_WriteShort(&tmpMessage, client->edict->s.number - 1);
+						MSG_WriteShort(&tmpMessage, voiceDataSize);
+						MSG_CopyData(&tmpMessage, voiceData, voiceDataSize);
+						SV_SendMessageToClient(cl, &tmpMessage);
+					}
+				}
+				break;
+			}
 		}
 	}
 }

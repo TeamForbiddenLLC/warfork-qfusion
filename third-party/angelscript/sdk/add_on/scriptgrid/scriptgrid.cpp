@@ -31,19 +31,18 @@ struct SGridBuffer
 	asBYTE  data[1];
 };
 
-CScriptGrid *CScriptGrid::Create(asIObjectType *ot)
+CScriptGrid *CScriptGrid::Create(asITypeInfo *ti)
 {
-	return CScriptGrid::Create(ot, 0, 0);
+	return CScriptGrid::Create(ti, 0, 0);
 }
 
-CScriptGrid *CScriptGrid::Create(asIObjectType *ot, asUINT w, asUINT h)
+CScriptGrid *CScriptGrid::Create(asITypeInfo *ti, asUINT w, asUINT h)
 {
-	asIScriptContext *ctx = asGetActiveContext();
-
 	// Allocate the memory
 	void *mem = userAlloc(sizeof(CScriptGrid));
 	if( mem == 0 )
 	{
+		asIScriptContext *ctx = asGetActiveContext();
 		if( ctx )
 			ctx->SetException("Out of memory");
 
@@ -51,27 +50,18 @@ CScriptGrid *CScriptGrid::Create(asIObjectType *ot, asUINT w, asUINT h)
 	}
 
 	// Initialize the object
-	CScriptGrid *a = new(mem) CScriptGrid(w, h, ot);
-
-	// It's possible the constructor raised a script exception, in which case we
-	// need to free the memory and return null instead, else we get a memory leak.
-	if( ctx && ctx->GetState() == asEXECUTION_EXCEPTION )
-	{
-		a->Release();
-		return 0;
-	}
+	CScriptGrid *a = new(mem) CScriptGrid(w, h, ti);
 
 	return a;
 }
 
-CScriptGrid *CScriptGrid::Create(asIObjectType *ot, void *initList)
+CScriptGrid *CScriptGrid::Create(asITypeInfo *ti, void *initList)
 {
-	asIScriptContext *ctx = asGetActiveContext();
-
 	// Allocate the memory
 	void *mem = userAlloc(sizeof(CScriptGrid));
 	if( mem == 0 )
 	{
+		asIScriptContext *ctx = asGetActiveContext();
 		if( ctx )
 			ctx->SetException("Out of memory");
 
@@ -79,27 +69,18 @@ CScriptGrid *CScriptGrid::Create(asIObjectType *ot, void *initList)
 	}
 
 	// Initialize the object
-	CScriptGrid *a = new(mem) CScriptGrid(ot, initList);
-
-	// It's possible the constructor raised a script exception, in which case we
-	// need to free the memory and return null instead, else we get a memory leak.
-	if( ctx && ctx->GetState() == asEXECUTION_EXCEPTION )
-	{
-		a->Release();
-		return 0;
-	}
+	CScriptGrid *a = new(mem) CScriptGrid(ti, initList);
 
 	return a;
 }
 
-CScriptGrid *CScriptGrid::Create(asIObjectType *ot, asUINT w, asUINT h, void *defVal)
+CScriptGrid *CScriptGrid::Create(asITypeInfo *ti, asUINT w, asUINT h, void *defVal)
 {
-	asIScriptContext *ctx = asGetActiveContext();
-
 	// Allocate the memory
 	void *mem = userAlloc(sizeof(CScriptGrid));
 	if( mem == 0 )
 	{
+		asIScriptContext *ctx = asGetActiveContext();
 		if( ctx )
 			ctx->SetException("Out of memory");
 
@@ -107,15 +88,7 @@ CScriptGrid *CScriptGrid::Create(asIObjectType *ot, asUINT w, asUINT h, void *de
 	}
 
 	// Initialize the object
-	CScriptGrid *a = new(mem) CScriptGrid(w, h, defVal, ot);
-
-	// It's possible the constructor raised a script exception, in which case we
-	// need to free the memory and return null instead, else we get a memory leak.
-	if( ctx && ctx->GetState() == asEXECUTION_EXCEPTION )
-	{
-		a->Release();
-		return 0;
-	}
+	CScriptGrid *a = new(mem) CScriptGrid(w, h, defVal, ti);
 
 	return a;
 }
@@ -125,16 +98,16 @@ CScriptGrid *CScriptGrid::Create(asIObjectType *ot, asUINT w, asUINT h, void *de
 // subtype at compile time, instead of at runtime. The output argument dontGarbageCollect
 // allow the callback to tell the engine if the template instance type shouldn't be garbage collected,
 // i.e. no asOBJ_GC flag.
-static bool ScriptGridTemplateCallback(asIObjectType *ot, bool &dontGarbageCollect)
+static bool ScriptGridTemplateCallback(asITypeInfo *ti, bool &dontGarbageCollect)
 {
 	// Make sure the subtype can be instantiated with a default factory/constructor,
 	// otherwise we won't be able to instantiate the elements.
-	int typeId = ot->GetSubTypeId();
+	int typeId = ti->GetSubTypeId();
 	if( typeId == asTYPEID_VOID )
 		return false;
 	if( (typeId & asTYPEID_MASK_OBJECT) && !(typeId & asTYPEID_OBJHANDLE) )
 	{
-		asIObjectType *subtype = ot->GetEngine()->GetObjectTypeById(typeId);
+		asITypeInfo *subtype = ti->GetEngine()->GetTypeInfoById(typeId);
 		asDWORD flags = subtype->GetFlags();
 		if( (flags & asOBJ_VALUE) && !(flags & asOBJ_POD) )
 		{
@@ -157,7 +130,7 @@ static bool ScriptGridTemplateCallback(asIObjectType *ot, bool &dontGarbageColle
 			if( !found )
 			{
 				// There is no default constructor
-				ot->GetEngine()->WriteMessage("array", 0, 0, asMSGTYPE_ERROR, "The subtype has no default constructor");
+				ti->GetEngine()->WriteMessage("array", 0, 0, asMSGTYPE_ERROR, "The subtype has no default constructor");
 				return false;
 			}
 		}
@@ -167,7 +140,7 @@ static bool ScriptGridTemplateCallback(asIObjectType *ot, bool &dontGarbageColle
 
 			// If value assignment for ref type has been disabled then the array
 			// can be created if the type has a default factory function
-			if( !ot->GetEngine()->GetEngineProperty(asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE) )
+			if( !ti->GetEngine()->GetEngineProperty(asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE) )
 			{
 				// Verify that there is a default factory
 				for( asUINT n = 0; n < subtype->GetFactoryCount(); n++ )
@@ -185,7 +158,7 @@ static bool ScriptGridTemplateCallback(asIObjectType *ot, bool &dontGarbageColle
 			if( !found )
 			{
 				// No default factory
-				ot->GetEngine()->WriteMessage("array", 0, 0, asMSGTYPE_ERROR, "The subtype has no default factory");
+				ti->GetEngine()->WriteMessage("array", 0, 0, asMSGTYPE_ERROR, "The subtype has no default factory");
 				return false;
 			}
 		}
@@ -199,6 +172,39 @@ static bool ScriptGridTemplateCallback(asIObjectType *ot, bool &dontGarbageColle
 		// Arrays with primitives cannot form circular references,
 		// thus there is no need to garbage collect them
 		dontGarbageCollect = true;
+	}
+	else
+	{
+		assert( typeId & asTYPEID_OBJHANDLE );
+
+		// It is not necessary to set the array as garbage collected for all handle types.
+		// If it is possible to determine that the handle cannot refer to an object type
+		// that can potentially form a circular reference with the array then it is not 
+		// necessary to make the array garbage collected.
+		asITypeInfo *subtype = ti->GetEngine()->GetTypeInfoById(typeId);
+		asDWORD flags = subtype->GetFlags();
+		if( !(flags & asOBJ_GC) )
+		{
+			if( (flags & asOBJ_SCRIPT_OBJECT) )
+			{
+				// Even if a script class is by itself not garbage collected, it is possible
+				// that classes that derive from it may be, so it is not possible to know 
+				// that no circular reference can occur.
+				if( (flags & asOBJ_NOINHERIT) )
+				{
+					// A script class declared as final cannot be inherited from, thus
+					// we can be certain that the object cannot be garbage collected.
+					dontGarbageCollect = true;
+				}
+			}
+			else
+			{
+				// For application registered classes we assume the application knows
+				// what it is doing and don't mark the array as garbage collected unless
+				// the type is also garbage collected.
+				dontGarbageCollect = true;
+			}
+		}
 	}
 
 	// The type is ok
@@ -223,12 +229,12 @@ static void RegisterScriptGrid_Native(asIScriptEngine *engine)
 	r = engine->RegisterObjectBehaviour("grid<T>", asBEHAVE_TEMPLATE_CALLBACK, "bool f(int&in, bool&out)", asFUNCTION(ScriptGridTemplateCallback), asCALL_CDECL); assert( r >= 0 );
 
 	// Templates receive the object type as the first parameter. To the script writer this is hidden
-	r = engine->RegisterObjectBehaviour("grid<T>", asBEHAVE_FACTORY, "grid<T>@ f(int&in)", asFUNCTIONPR(CScriptGrid::Create, (asIObjectType*), CScriptGrid*), asCALL_CDECL); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour("grid<T>", asBEHAVE_FACTORY, "grid<T>@ f(int&in, uint, uint)", asFUNCTIONPR(CScriptGrid::Create, (asIObjectType*, asUINT, asUINT), CScriptGrid*), asCALL_CDECL); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour("grid<T>", asBEHAVE_FACTORY, "grid<T>@ f(int&in, uint, uint, const T &in)", asFUNCTIONPR(CScriptGrid::Create, (asIObjectType*, asUINT, asUINT, void *), CScriptGrid*), asCALL_CDECL); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour("grid<T>", asBEHAVE_FACTORY, "grid<T>@ f(int&in)", asFUNCTIONPR(CScriptGrid::Create, (asITypeInfo*), CScriptGrid*), asCALL_CDECL); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour("grid<T>", asBEHAVE_FACTORY, "grid<T>@ f(int&in, uint, uint)", asFUNCTIONPR(CScriptGrid::Create, (asITypeInfo*, asUINT, asUINT), CScriptGrid*), asCALL_CDECL); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour("grid<T>", asBEHAVE_FACTORY, "grid<T>@ f(int&in, uint, uint, const T &in)", asFUNCTIONPR(CScriptGrid::Create, (asITypeInfo*, asUINT, asUINT, void *), CScriptGrid*), asCALL_CDECL); assert( r >= 0 );
 
 	// Register the factory that will be used for initialization lists
-	r = engine->RegisterObjectBehaviour("grid<T>", asBEHAVE_LIST_FACTORY, "grid<T>@ f(int&in type, int&in list) {repeat {repeat_same T}}", asFUNCTIONPR(CScriptGrid::Create, (asIObjectType*, void*), CScriptGrid*), asCALL_CDECL); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour("grid<T>", asBEHAVE_LIST_FACTORY, "grid<T>@ f(int&in type, int&in list) {repeat {repeat_same T}}", asFUNCTIONPR(CScriptGrid::Create, (asITypeInfo*, void*), CScriptGrid*), asCALL_CDECL); assert( r >= 0 );
 
 	// The memory management methods
 	r = engine->RegisterObjectBehaviour("grid<T>", asBEHAVE_ADDREF, "void f()", asMETHOD(CScriptGrid,AddRef), asCALL_THISCALL); assert( r >= 0 );
@@ -251,16 +257,16 @@ static void RegisterScriptGrid_Native(asIScriptEngine *engine)
 	r = engine->RegisterObjectBehaviour("grid<T>", asBEHAVE_RELEASEREFS, "void f(int&in)", asMETHOD(CScriptGrid, ReleaseAllHandles), asCALL_THISCALL); assert( r >= 0 );
 }
 
-CScriptGrid::CScriptGrid(asIObjectType *ot, void *buf)
+CScriptGrid::CScriptGrid(asITypeInfo *ti, void *buf)
 {
 	refCount = 1;
 	gcFlag = false;
-	objType = ot;
+	objType = ti;
 	objType->AddRef();
 	buffer = 0;
 	subTypeId = objType->GetSubTypeId();
 
-	asIScriptEngine *engine = ot->GetEngine();
+	asIScriptEngine *engine = ti->GetEngine();
 
 	// Determine element size
 	if( subTypeId & asTYPEID_MASK_OBJECT )
@@ -270,7 +276,7 @@ CScriptGrid::CScriptGrid(asIObjectType *ot, void *buf)
 
 	// Determine the initial size from the buffer
 	asUINT height = *(asUINT*)buf;
-	asUINT width = *(asUINT*)((char*)(buf)+4);
+	asUINT width = height ? *(asUINT*)((char*)(buf)+4) : 0;
 
 	// Make sure the grid size isn't too large for us to handle
 	if( !CheckMaxSize(width, height) )
@@ -283,7 +289,7 @@ CScriptGrid::CScriptGrid(asIObjectType *ot, void *buf)
 	buf = (asUINT*)(buf)+1;
 
 	// Copy the values of the grid elements from the buffer
-	if( (ot->GetSubTypeId() & asTYPEID_MASK_OBJECT) == 0 )
+	if( (ti->GetSubTypeId() & asTYPEID_MASK_OBJECT) == 0 )
 	{
 		CreateBuffer(&buffer, width, height);
 
@@ -305,7 +311,7 @@ CScriptGrid::CScriptGrid(asIObjectType *ot, void *buf)
 				buf = (char*)(buf) + 4 - (asPWORD(buf) & 0x3);
 		}
 	}
-	else if( ot->GetSubTypeId() & asTYPEID_OBJHANDLE )
+	else if( ti->GetSubTypeId() & asTYPEID_OBJHANDLE )
 	{
 		CreateBuffer(&buffer, width, height);
 
@@ -333,7 +339,7 @@ CScriptGrid::CScriptGrid(asIObjectType *ot, void *buf)
 				buf = (char*)(buf) + 4 - (asPWORD(buf) & 0x3);
 		}
 	}
-	else if( ot->GetSubType()->GetFlags() & asOBJ_REF )
+	else if( ti->GetSubType()->GetFlags() & asOBJ_REF )
 	{
 		// Only allocate the buffer, but not the objects
 		subTypeId |= asTYPEID_OBJHANDLE;
@@ -374,7 +380,7 @@ CScriptGrid::CScriptGrid(asIObjectType *ot, void *buf)
 		CreateBuffer(&buffer, width, height);
 
 		// For value types we need to call the opAssign for each individual object
-		asIObjectType *subType = ot->GetSubType();
+		asITypeInfo *subType = ti->GetSubType();
 		asUINT subTypeSize = subType->GetSize();
 		for( asUINT y = 0;y < height; y++ )
 		{
@@ -403,11 +409,11 @@ CScriptGrid::CScriptGrid(asIObjectType *ot, void *buf)
 		objType->GetEngine()->NotifyGarbageCollectorOfNewObject(this, objType);
 }
 
-CScriptGrid::CScriptGrid(asUINT width, asUINT height, asIObjectType *ot)
+CScriptGrid::CScriptGrid(asUINT width, asUINT height, asITypeInfo *ti)
 {
 	refCount = 1;
 	gcFlag = false;
-	objType = ot;
+	objType = ti;
 	objType->AddRef();
 	buffer = 0;
 	subTypeId = objType->GetSubTypeId();
@@ -460,11 +466,11 @@ void CScriptGrid::Resize(asUINT width, asUINT height)
 	buffer = tmpBuffer;
 }
 
-CScriptGrid::CScriptGrid(asUINT width, asUINT height, void *defVal, asIObjectType *ot)
+CScriptGrid::CScriptGrid(asUINT width, asUINT height, void *defVal, asITypeInfo *ti)
 {
 	refCount = 1;
 	gcFlag = false;
-	objType = ot;
+	objType = ti;
 	objType->AddRef();
 	buffer = 0;
 	subTypeId = objType->GetSubTypeId();
@@ -585,7 +591,7 @@ bool CScriptGrid::CheckMaxSize(asUINT width, asUINT height)
 	return true;
 }
 
-asIObjectType *CScriptGrid::GetGridObjectType() const
+asITypeInfo *CScriptGrid::GetGridObjectType() const
 {
 	return objType;
 }
@@ -679,7 +685,7 @@ void CScriptGrid::Construct(SGridBuffer *buf)
 		void **d = (void**)(buf->data);
 
 		asIScriptEngine *engine = objType->GetEngine();
-		asIObjectType *subType = objType->GetSubType();
+		asITypeInfo *subType = objType->GetSubType();
 
 		for( ; d < max; d++ )
 		{
@@ -723,15 +729,30 @@ void CScriptGrid::EnumReferences(asIScriptEngine *engine)
 {
 	if( buffer == 0 ) return;
 
-	// If the array is holding handles, then we need to notify the GC of them
-	if( subTypeId & asTYPEID_MASK_OBJECT )
+	// If the grid is holding handles, then we need to notify the GC of them
+	if (subTypeId & asTYPEID_MASK_OBJECT)
 	{
 		asUINT numElements = buffer->width * buffer->height;
 		void **d = (void**)buffer->data;
-		for( asUINT n = 0; n < numElements; n++ )
+		asITypeInfo *subType = engine->GetTypeInfoById(subTypeId);
+		if ((subType->GetFlags() & asOBJ_REF))
 		{
-			if( d[n] )
-				engine->GCEnumCallback(d[n]);
+			// For reference types we need to notify the GC of each instance
+			for (asUINT n = 0; n < numElements; n++)
+			{
+				if (d[n])
+					engine->GCEnumCallback(d[n]);
+			}
+		}
+		else if ((subType->GetFlags() & asOBJ_VALUE) && (subType->GetFlags() & asOBJ_GC))
+		{
+			// For value types we need to forward the enum callback
+			// to the object so it can decide what to do
+			for (asUINT n = 0; n < numElements; n++)
+			{
+				if (d[n])
+					engine->ForwardGCEnumReferences(d[n], subType);
+			}
 		}
 	}
 }

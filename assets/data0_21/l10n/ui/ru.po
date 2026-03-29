@@ -1,12 +1,12 @@
 # Translators:
-# Andrei Stepanov <adem4ik@gmail.com>, 2019
+# Andrei Stepanov <adem4ik@gmail.com>, 2019, 2025
 # 
 msgid ""
 msgstr ""
 "Project-Id-Version: VERSION\n"
 "POT-Creation-Date: 2016-12-05 19:41+0000\n"
 "PO-Revision-Date: 2019-08-28 19:43+0000\n"
-"Last-Translator: Andrei Stepanov <adem4ik@gmail.com>, 2019\n"
+"Last-Translator: Andrei Stepanov <adem4ik@gmail.com>, 2025\n"
 "Language-Team: Russian (https://www.transifex.com/team-forbidden-llc/teams/102732/ru/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -25,6 +25,10 @@ msgstr "Играть"
 #. Top button
 msgid "Options"
 msgstr "Настройки"
+
+#. Top button
+msgid "Credits"
+msgstr "Благодарности"
 
 #. Top button
 msgid "Quit"
@@ -383,9 +387,65 @@ msgstr "Отключить автопрыжки"
 msgid "Enable view animation"
 msgstr "Анимация камеры при приземлении"
 
-#. UI option for cg_cartoonHitEffect, shows effects on critical hit.
-msgid "Show critical hit effect"
-msgstr "Эффект критического попадания"
+msgid "Show damage numbers"
+msgstr "Показывать числа урона"
+
+msgid "Damage numbers size"
+msgstr "Размер чисел урона"
+
+msgid "Tiny"
+msgstr "Крошечный"
+
+msgid "Small"
+msgstr "Малый"
+
+msgid "Medium"
+msgstr "Средний"
+
+msgid "Large"
+msgstr "Крупный"
+
+msgid "Damage numbers color"
+msgstr "Цвет чисел урона"
+
+msgid "Black"
+msgstr "Чёрный"
+
+msgid "Blue"
+msgstr "Синий"
+
+msgid "Cyan"
+msgstr "Бирюзовый"
+
+msgid "Dark Grey"
+msgstr "Тёмно-серый"
+
+msgid "Green"
+msgstr "Зелёный"
+
+msgid "Light Grey"
+msgstr "Светло-серый"
+
+msgid "Magenta"
+msgstr "Сиреневый"
+
+msgid "Medium Grey"
+msgstr "Серый"
+
+msgid "Orange"
+msgstr "Оранжевый"
+
+msgid "White"
+msgstr "Белый"
+
+msgid "Yellow"
+msgstr "Жёлтый"
+
+msgid "Red"
+msgstr "Красный"
+
+msgid "Light Blue"
+msgstr "Голубой"
 
 #. Touch screen setting
 msgid "Touch look sensitivity"
@@ -760,6 +820,9 @@ msgstr "Громкость голосовых команд"
 msgid "Hit sounds volume"
 msgstr "Громкость попаданий в цель"
 
+msgid "Grunts volume"
+msgstr "Громкость вздохов"
+
 msgid "Mouse"
 msgstr "Мышь"
 
@@ -885,6 +948,9 @@ msgstr "Вход"
 msgid "Normal weapons"
 msgstr "Обычное оружие"
 
+msgid "All"
+msgstr "Все"
+
 msgid "Instagib"
 msgstr "Инстагиб"
 
@@ -894,11 +960,20 @@ msgstr "ТВ"
 msgid "Watch on TV"
 msgstr "Смотреть по ТВ"
 
+msgid "In Game"
+msgstr "В игре"
+
+msgid "Blocked"
+msgstr "В блоке"
+
 msgid "Favorites"
 msgstr "Избранное"
 
 msgid "Ping"
 msgstr "Пинг"
+
+msgid "Players"
+msgstr "Игроки"
 
 msgid "Hostname"
 msgstr "Название"
@@ -907,7 +982,7 @@ msgid "Gametype"
 msgstr "Режим игры"
 
 msgid "Server browser"
-msgstr "Браузер серверов"
+msgstr "Обзор серверов"
 
 msgid "Host game"
 msgstr "Создать игру"
@@ -922,7 +997,7 @@ msgid "Refresh"
 msgstr "Обновить"
 
 msgid "Map"
-msgstr "Карта"
+msgstr "Арена"
 
 msgid "Title"
 msgstr "Название"
@@ -964,7 +1039,7 @@ msgid "Add to favorites"
 msgstr "Добавить в избранное"
 
 msgid "Map: %s"
-msgstr "Карта: %s"
+msgstr "Арена: %s"
 
 msgid "Players: %s"
 msgstr "Игроки: %s"
@@ -1012,7 +1087,7 @@ msgid "Score: %s"
 msgstr "Счёт: %s"
 
 msgid "Duration: %s"
-msgstr "Длительность: %s"
+msgstr "Длина: %s"
 
 msgid "Ready!"
 msgstr "Готов!"
@@ -1314,3 +1389,15 @@ msgstr "Производится поиск серверов..."
 
 msgid "Browse servers manually"
 msgstr "Просмотр списка серверов"
+
+msgid "Official Repository"
+msgstr "Официальный репозиторий"
+
+msgid "License"
+msgstr "Лицензия"
+
+msgid "View License Online"
+msgstr "Смотреть лицензию в сети"
+
+msgid "Warfork (Steam Release)"
+msgstr "Warfork (сборка для Steam)"

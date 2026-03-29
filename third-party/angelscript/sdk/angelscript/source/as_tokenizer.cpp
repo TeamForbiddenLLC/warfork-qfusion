@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2014 Andreas Jonsson
+   Copyright (c) 2003-2023 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -346,12 +346,16 @@ bool asCTokenizer::IsConstant(const char *source, size_t sourceLength, size_t &t
 			size_t n;
 			for( n = 3; n < sourceLength-2; n++ )
 			{
-				if( source[n] == '"' && source[n+1] == '"' && source[n+2] == '"' )
-					break;
+				if (source[n] == '"' && source[n + 1] == '"' && source[n + 2] == '"')
+				{
+					tokenType = ttHeredocStringConstant;
+					tokenLength = n + 3;
+					return true;
+				}
 			}
 
-			tokenType   = ttHeredocStringConstant;
-			tokenLength = n+3;
+			tokenType   = ttNonTerminatedStringConstant;
+			tokenLength = n+2;
 		}
 		else
 		{
@@ -395,20 +399,27 @@ bool asCTokenizer::IsConstant(const char *source, size_t sourceLength, size_t &t
 
 bool asCTokenizer::IsIdentifier(const char *source, size_t sourceLength, size_t &tokenLength, eTokenType &tokenType) const
 {
+	// char is unsigned by default on some architectures, e.g. ppc and arm
+	// Make sure the value is always treated as signed in the below comparisons
+	signed char c = source[0];
+
 	// Starting with letter or underscore
-	if( (source[0] >= 'a' && source[0] <= 'z') ||
-		(source[0] >= 'A' && source[0] <= 'Z') ||
-		source[0] == '_' )
+	if( (c >= 'a' && c <= 'z') ||
+		(c >= 'A' && c <= 'Z') ||
+		c == '_' ||
+		(c < 0 && engine->ep.allowUnicodeIdentifiers) )
 	{
 		tokenType   = ttIdentifier;
 		tokenLength = 1;
 
 		for( size_t n = 1; n < sourceLength; n++ )
 		{
-			if( (source[n] >= 'a' && source[n] <= 'z') ||
-				(source[n] >= 'A' && source[n] <= 'Z') ||
-				(source[n] >= '0' && source[n] <= '9') ||
-				source[n] == '_' )
+			c = source[n];
+			if( (c >= 'a' && c <= 'z') ||
+				(c >= 'A' && c <= 'Z') ||
+				(c >= '0' && c <= '9') ||
+				c == '_' ||
+				(c < 0 && engine->ep.allowUnicodeIdentifiers) )
 				tokenLength++;
 			else
 				break;

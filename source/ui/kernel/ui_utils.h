@@ -11,6 +11,8 @@
 #include <iostream>
 #include <iomanip>
 
+#include "../qcommon/mod_fs.h"
+
 namespace WSWUI
 {
 	// container is of type that stores Element*, implements push_back and clear
@@ -87,14 +89,14 @@ namespace WSWUI
 		int		ptrlen;
 		int		numOfFiles;
 
-		numOfFiles = trap::FS_GetFileList( path.c_str(), extension.c_str(), NULL, 0, 0, 0 );
+		numOfFiles = FS_GetFileList( path.c_str(), extension.c_str(), NULL, 0, 0, 0 );
 
 		// DAMN: remember this.
 		i = 0;
 
 		do
 		{
-			if( (k = trap::FS_GetFileList( path.c_str(), extension.c_str(), listbuf, sizeof( listbuf ), i, numOfFiles )) == 0 )
+			if( (k = FS_GetFileList( path.c_str(), extension.c_str(), listbuf, sizeof( listbuf ), i, numOfFiles )) == 0 )
 			{
 				i++; // can happen if the filename is too long to fit into the buffer or we're done
 				continue;

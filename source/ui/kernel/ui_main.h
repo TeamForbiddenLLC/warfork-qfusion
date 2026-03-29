@@ -42,6 +42,7 @@ class ModsDataSource;
 class ModelsDataSource;
 class TVChannelsDataSource;
 class GameAjaxDataSource;
+class BlockedPlayersDataSource;
 
 class LevelShotFormatter;
 class DatetimeFormatter;
@@ -67,6 +68,7 @@ public:
 
 	void forceMenuOff( void );
 	void addToServerList( const char *adr, const char *info );
+	void ajaxResponse( const char *resource, const char *data );
 
 	void mouseMove( int contextId, int x, int y, bool absolute, bool showCursor );
 	void textInput( int contextId, wchar_t c );
@@ -205,6 +207,7 @@ private:
 	ModelsDataSource *playerModels;
 	TVChannelsDataSource *tvchannels;
 	GameAjaxDataSource *gameajax;
+	BlockedPlayersDataSource *blockedplayers;
 
 	UI_Navigation navigations[UI_NUM_CONTEXTS];
 	Rocket::Core::String quickMenuURL;

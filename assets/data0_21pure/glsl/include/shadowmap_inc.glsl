@@ -26,7 +26,7 @@
 		#  define texval(x, y) dshadow2D(SHADOW_TEXTURE, vec3(center + vec2(x, y)*ShadowMap_TextureScale, shadowmaptc.z))
 
 		// this method can be described as a 'dithered pinwheel' (4 texture lookups)
-		// which is a combination of the 'pinwheel' filter suggested by eihrul and dithered 4x4 PCF,
+		// which is a combination of the 'pinwheel' filter suggested by Lee "eihrul" Salzman and dithered 4x4 PCF,
 		// described here: http://http.developer.nvidia.com/GPUGems/gpugems_ch11.html 
 
 		vec2 offset_dither = mod(floor(gl_FragCoord.xy), 2.0);
@@ -47,7 +47,7 @@
 		# endif // APPLY_PCF
 	
 		#else
-		// an essay by eihrul:
+		// an essay by Lee "eihrul" Salzman:
 		// now think of bilinear filtering as a 1x1 weighted box filter
 		// that is, it's sampling over a 2x2 area, but only collecting the portion of each pixel it actually steps on
 		// with a linear shadowmap filter, you are getting that, like normal bilinear sampling

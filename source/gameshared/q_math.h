@@ -104,6 +104,7 @@ extern vec4_t colorLtBlue;
 #define MAX_S_COLORS 10
 
 extern vec4_t color_table[MAX_S_COLORS];
+extern vec4_t ansi_color_table[16];
 
 #define	nanmask ( 255<<23 )
 

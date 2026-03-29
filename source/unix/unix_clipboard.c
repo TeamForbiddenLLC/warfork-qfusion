@@ -16,7 +16,7 @@ char *Sys_GetClipboardData( bool primary )
 	int format, ret;
 	unsigned long nitems, bytes_after, bytes_left;
 	unsigned char *data;
-	char *buffer;
+	char *buffer = NULL;
 	Atom atom;
 
 	if( !x11display.dpy )
@@ -49,12 +49,8 @@ char *Sys_GetClipboardData( bool primary )
 		&format, &nitems, &bytes_after, &data );
 	if( ret == Success )
 	{
-		buffer = Q_malloc( bytes_left + 1 );
+		buffer = malloc( bytes_left + 1 );
 		memcpy( buffer, data, bytes_left + 1 );
-	}
-	else
-	{
-		buffer = NULL;
 	}
 
 	XFree( data );
@@ -73,9 +69,10 @@ char *Sys_GetClipboardData( bool primary )
 bool Sys_SetClipboardData( const char *data )
 {
 	// Save the message
-	Q_free( clip_data );
-	clip_data = Q_malloc( strlen( data ) - 1 );
-	memcpy( clip_data, data, strlen( data ) - 1 );
+	const size_t clip_len = strlen(data);
+	clip_data = realloc(clip_data, clip_len + 1 );
+	memcpy( clip_data, data, strlen( data ) );
+	clip_data[clip_len] = '\0';
 	
 	// Requesting clipboard ownership
 	Atom XA_CLIPBOARD = XInternAtom( x11display.dpy, "CLIPBOARD", True );
@@ -96,5 +93,5 @@ bool Sys_SetClipboardData( const char *data )
 */
 void Sys_FreeClipboardData( char *data )
 {
-	Q_free( data );
+	free( data );
 }

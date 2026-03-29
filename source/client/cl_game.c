@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "client.h"
 #include "cin.h"
 #include "../qcommon/asyncstream.h"
+#include <stdint.h>
 
 static cgame_export_t *cge;
 
@@ -166,7 +167,7 @@ static void CL_GameModule_RefreshMouseAngles( void )
 * CL_GameModule_R_RegisterWorldModel
 */
 static void CL_GameModule_R_RegisterWorldModel( const char *model ) {
-	re.RegisterWorldModel( model, cl.cms ? CM_PVSData( cl.cms ) : NULL );
+	RF_RegisterWorldModel( model, cl.cms ? CM_PVSData( cl.cms ) : NULL );
 }
 
 /*
@@ -392,6 +393,7 @@ void CL_GameModule_Init( void )
 
 	cl_gamemodulepool = _Mem_AllocPool( NULL, "Client Game Progs", MEMPOOL_CLIENTGAME, __FILE__, __LINE__ );
 
+	import.fsImport = &default_fs_imports_s;
 	import.Error = CL_GameModule_Error;
 	import.Print = CL_GameModule_Print;
 	import.PrintToLog = CL_GameModule_PrintToLog;
@@ -423,25 +425,6 @@ void CL_GameModule_Init( void )
 	import.Cmd_Execute = Cbuf_Execute;
 	import.Cmd_SetCompletionFunc = Cmd_SetCompletionFunc;
 
-	import.FS_FOpenFile = FS_FOpenFile;
-	import.FS_Read = FS_Read;
-	import.FS_Write = FS_Write;
-
-	import.FS_Print = FS_Print;
-	import.FS_Tell = FS_Tell;
-	import.FS_Seek = FS_Seek;
-	import.FS_Eof = FS_Eof;
-	import.FS_Flush = FS_Flush;
-	import.FS_FCloseFile = FS_FCloseFile;
-	import.FS_RemoveFile = FS_RemoveFile;
-	import.FS_GetFileList = FS_GetFileList;
-	import.FS_FirstExtension = FS_FirstExtension;
-	import.FS_IsPureFile = FS_IsPureFile;
-	import.FS_MoveFile = FS_MoveFile;
-	import.FS_IsUrl = FS_IsUrl;
-	import.FS_FileMTime = FS_BaseFileMTime;
-	import.FS_RemoveDirectory = FS_RemoveDirectory;
-
 	import.Key_GetBindingBuf = Key_GetBindingBuf;
 	import.Key_KeynumToString = Key_KeynumToString;
 
@@ -454,42 +437,9 @@ void CL_GameModule_Init( void )
 	import.NET_GetCurrentState = CL_GameModule_NET_GetCurrentState;
 	import.RefreshMouseAngles = CL_GameModule_RefreshMouseAngles;
 
+	import.ref_import = RF_Forward_Mod();
 	import.R_UpdateScreen = SCR_UpdateScreen;
-	import.R_GetClippedFragments = re.GetClippedFragments;
-	import.R_ClearScene = re.ClearScene;
-	import.R_AddEntityToScene = re.AddEntityToScene;
-	import.R_AddLightToScene = re.AddLightToScene;
-	import.R_AddPolyToScene = re.AddPolyToScene;
-	import.R_AddLightStyleToScene = re.AddLightStyleToScene;
-	import.R_RenderScene = re.RenderScene;
-	import.R_GetSpeedsMessage = re.GetSpeedsMessage;
-	import.R_GetAverageFramerate = re.GetAverageFramerate;
 	import.R_RegisterWorldModel = CL_GameModule_R_RegisterWorldModel;
-	import.R_ModelBounds = re.ModelBounds;
-	import.R_ModelFrameBounds = re.ModelFrameBounds;
-	import.R_RegisterModel = re.RegisterModel;
-	import.R_RegisterPic = re.RegisterPic;
-	import.R_RegisterRawPic = re.RegisterRawPic;
-	import.R_RegisterLevelshot = re.RegisterLevelshot;
-	import.R_RegisterSkin = re.RegisterSkin;
-	import.R_RegisterSkinFile = re.RegisterSkinFile;
-	import.R_LerpTag = re.LerpTag;
-	import.R_LightForOrigin = re.LightForOrigin;
-	import.R_SetCustomColor = re.SetCustomColor;
-	import.R_DrawStretchPic = re.DrawStretchPic;
-	import.R_DrawStretchPoly = re.DrawStretchPoly;
-	import.R_DrawRotatedStretchPic = re.DrawRotatedStretchPic;
-	import.R_Scissor = re.Scissor;
-	import.R_GetScissor = re.GetScissor;
-	import.R_ResetScissor = re.ResetScissor;
-	import.R_GetShaderDimensions = re.GetShaderDimensions;
-	import.R_TransformVectorToScreen = re.TransformVectorToScreen;
-	import.R_SkeletalGetNumBones = re.SkeletalGetNumBones;
-	import.R_SkeletalGetBoneInfo = re.SkeletalGetBoneInfo;
-	import.R_SkeletalGetBonePose = re.SkeletalGetBonePose;
-
-	import.R_GetShaderForOrigin = re.GetShaderForOrigin;
-	import.R_GetShaderCinematic = re.GetShaderCinematic;
 
 	import.VID_FlashWindow = VID_FlashWindow;
 
@@ -555,6 +505,8 @@ void CL_GameModule_Init( void )
 	import.IN_GetThumbsticks = IN_GetThumbsticks;
 	import.IN_IME_GetCandidates = IN_IME_GetCandidates;
 	import.IN_SupportedDevices = IN_SupportedDevices;
+
+	import.steam_import = (struct steam_import_s)DECLARE_STEAM_STRUCT();
 
 	if( builtinAPIfunc ) {
 		cge = builtinAPIfunc( &import );
@@ -752,3 +704,15 @@ bool CL_GameModule_IsTouchDown( int id )
 	return false;
 }
 
+bool CL_GameModule_GetBlocklistItem( size_t index, uint64_t* steamid_out, char* name, size_t* name_len_in_out )
+{
+	if ( cge )
+		return cge->GetBlocklistItem(index, steamid_out, name, name_len_in_out);
+	return false;
+}
+
+void CL_GameModule_PlayVoice( void *buffer, size_t size, int clientnum )
+{
+	if ( cge )
+		cge->PlayVoice(buffer, size, clientnum);
+}

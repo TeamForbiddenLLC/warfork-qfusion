@@ -19,6 +19,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "cg_local.h"
+#include "../qcommon/steam.h"
+#include "../qcommon/mod_fs.h"
+#include <cstdint>
 
 static const char *cg_defaultSexedSounds[] =
 {
@@ -26,12 +29,12 @@ static const char *cg_defaultSexedSounds[] =
 	"*fall_0_1", "*fall_0_2", "*fall_1", "*fall_2",
 	"*falldeath",
 	"*gasp", "*drown",
-	"*jump_1", "*jump_2",
+	"*jump_1", "*jump_2", "*jump_3", "*jump_4",
 	"*pain25", "*pain50", "*pain75", "*pain100",
 	"*wj_1", "*wj_2",
 	"*dash_1", "*dash_2",
 	"*taunt",
-	"*rkill_1", "*rkill_2", "*rkill_3", "*rkill_4", "*rkill_5", "*rkill_6", "*rkill_7", "*rkill_8", "*rkill_9", "*rkill_10", "*rkill_11", "*rkill_12", "*rkill_13", "*rkill_14", "*rkill_15", "*rkill_16", "*rkill_17", "*rkill_18", "*rkill_19", "*rkill_20", "*rkill_21", "*rkill_22", "*rkill_23", "*rkill_24", "*rkill_25", "*rkill_26", "*rkill_27", "*rkill_28", "*rkill_29", "*rkill_30", "*rkill_31", "*rkill_32", "*rkill_33", "*rkill_34", "*rkill_35", "*rkill_36", "*rkill_37", "*rkill_38", "*rkill_39", "*rkill_40", "*rkill_41", "*rkill_42", "*rkill_43", "*rkill_44", "*rkill_45", "*rkill_46", "*rkill_47", "*rkill_48", "*rkill_49", "*rkill_50",
+	"*rkill_1", "*rkill_2",
 	NULL
 };
 
@@ -128,8 +131,8 @@ static struct sfx_s *CG_RegisterPmodelSexedSound( pmodelinfo_t *pmodelinfo, cons
 	Q_snprintfz( sexedFilename, sizeof( sexedFilename ), "sounds/players/%s/%s", model, oname+1 );
 
 	if( ( !COM_FileExtension( sexedFilename ) &&
-		trap_FS_FirstExtension( sexedFilename, SOUND_EXTENSIONS, NUM_SOUND_EXTENSIONS ) ) ||
-		trap_FS_FOpenFile( sexedFilename, NULL, FS_READ ) != -1 )
+		FS_FirstExtension( sexedFilename, SOUND_EXTENSIONS, NUM_SOUND_EXTENSIONS ) ) ||
+		FS_FOpenFile( sexedFilename, NULL, FS_READ ) != -1 )
 	{
 		sexedSfx->sfx = trap_S_RegisterSound( sexedFilename );
 	}
@@ -232,7 +235,55 @@ void CG_SexedVSay( int entnum, int vsay, float fvol )
 	CG_SexedSound( entnum, CHAN_AUTO, cg_vsaySexedSounds[vsay], fvol, ATTN_NONE);
 }
 
+static void CG_CallbackRequestAvatar(uint64_t steamid, uint8_t *avatar){
+	for (int i = 0; i < gs.maxclients; i++){
+		cg_clientInfo_t *ci = &cgs.clientInfo[i];
+		if (ci->steamid == steamid){
+			ci->avatar = R_RegisterRawPic(va("avatar-%llu", ci->steamid), 32, 32, avatar, 4);
+			return;
+		}
+	}
+}
+static void CG_RPC_cb_requestAvatar( void *self, struct steam_rpc_pkt_s *rec )
+{
+	assert(rec->common.cmd == RPC_REQUEST_AVATAR);
+	if(rec->avatar_recv.width == 0 || rec->avatar_recv.height == 0) {
+		return;
+	}
 
+	cg_clientInfo_t *target = (cg_clientInfo_t *)self;
+	for( int i = 0; i < gs.maxclients; i++ ) {
+		cg_clientInfo_t *ci = &cgs.clientInfo[i];
+		if( ci == target ) {
+			ci->avatar = R_RegisterRawPic( va( "avatar-%llu", ci->steamid ), rec->avatar_recv.width, rec->avatar_recv.height, rec->avatar_recv.buf, 4 );
+			return;
+		}
+	}
+}
+
+static void CG_EVT_cb_personaChanged(void* self, struct steam_evt_pkt_s* pkt) {
+	assert( pkt->common.cmd == EVT_PERSONA_CHANGED );
+	if( pkt->persona_changed.avatar_changed > 0 ) {
+		for( int i = 0; i < gs.maxclients; i++ ) {
+			cg_clientInfo_t *ci = &cgs.clientInfo[i];
+			if( ci->steamid == pkt->persona_changed.steamID ) {
+				struct steam_avatar_req_s req;
+				req.cmd = RPC_REQUEST_AVATAR;
+				req.size = STEAM_AVATAR_SMALL;
+				req.steamID = ci->steamid;
+				STEAMSHIM_sendRPC( &req, sizeof( struct steam_avatar_req_s ), ci, CG_RPC_cb_requestAvatar, NULL );
+			}
+		}
+	}
+}
+
+void CG_initPlayer() {
+	STEAMSHIM_subscribeEvent(EVT_PERSONA_CHANGED, NULL, CG_EVT_cb_personaChanged);
+}
+
+void CG_deinitPlayer() {
+	STEAMSHIM_unsubscribeEvent(EVT_PERSONA_CHANGED, CG_EVT_cb_personaChanged);
+}
 /*
 * CG_LoadClientInfo
 */
@@ -267,4 +318,15 @@ void CG_LoadClientInfo( cg_clientInfo_t *ci, const char *info, int client )
 
 	s = Info_ValueForKey( info, "m" );
 	ci->modelindex = s && s[0] ? atoi( s ) : 0;
+
+
+	s = Info_ValueForKey( info, "steam_id" );
+	if (s && atol(s)){
+		ci->steamid = atoll(s);
+		struct steam_avatar_req_s req;
+		req.cmd = RPC_REQUEST_AVATAR;
+		req.size = STEAM_AVATAR_SMALL;
+		req.steamID = ci->steamid;
+		STEAMSHIM_sendRPC(&req, sizeof(struct steam_avatar_req_s), ci, CG_RPC_cb_requestAvatar, NULL);
+	}
 }

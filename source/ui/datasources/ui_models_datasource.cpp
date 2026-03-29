@@ -2,6 +2,7 @@
 #include "kernel/ui_common.h"
 #include "kernel/ui_utils.h"
 #include "datasources/ui_models_datasource.h"
+#include "../qcommon/mod_fs.h"
 
 #define MODELS_SOURCE	"models"
 #define TABLE_NAME		"list"
@@ -39,7 +40,7 @@ void ModelsDataSource::UpdateModelsList( void )
 		std::string basePath = std::string( "models/players/" ) + *it + "/";
 		for( i = 0; i < numMustHaveFiles; i++ ) {
 			std::string filePath = basePath + mustHaveFiles[i];
-			if( trap::FS_FOpenFile( filePath.c_str(), NULL, FS_READ ) < 0 ) {
+			if( FS_FOpenFile( filePath.c_str(), NULL, FS_READ ) < 0 ) {
 				break;
 			}
 		}

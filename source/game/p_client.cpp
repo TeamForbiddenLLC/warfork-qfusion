@@ -18,6 +18,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "g_local.h"
+#include <cstdint>
+#include <cstdlib>
 
 #define PLAYER_MASS 200
 
@@ -798,6 +800,41 @@ void ClientBegin( edict_t *ent )
 	G_Gametype_ScoreEvent( client, "enterGame", NULL );
 }
 
+void ClientAuth ( edict_t *ent, uint64_t steamid )
+{
+	gclient_t *client = ent->r.client;
+
+	if (SV_FilterSteamID(steamid, FILTER_BAN)) {
+
+		trap_DropClient(ent, DROP_TYPE_GENERAL, "You are banned from this server.");
+		return;
+	}
+
+	client->steamid = steamid;
+	client->authenticated = true;
+
+
+	if ( g_permanent_operators->string[0] ){
+		char *operators = strdup(g_permanent_operators->string);
+		char *pch = strtok(operators, ":");
+		while (pch != NULL){
+			uint64_t testid = atoll(pch);
+
+			if (testid == steamid){
+
+				if( !ent->r.client->isoperator )
+					G_PrintMsg( NULL, "%s" S_COLOR_WHITE " is now a game operator\n", ent->r.client->netname );
+
+				ent->r.client->isoperator = true;
+				break;
+			}
+
+			pch = strtok(NULL, ":");
+		}
+		free(operators);
+	}
+}
+
 /*
 * strip_highchars
 * kill all chars with code >= 127
@@ -1043,6 +1080,7 @@ static void G_UpdatePlayerInfoString( int playerNum )
 	playerString[0] = 0;
 
 	Info_SetValueForKey( playerString, "name", client->netname );
+	Info_SetValueForKey( playerString, "steam_id", va( "%llu", client->steamid ) );
 	Info_SetValueForKey( playerString, "hand", va( "%i", client->hand ) );
 	Info_SetValueForKey( playerString, "color",
 		va( "%i %i %i", client->color[0], client->color[1], client->color[2] ) );

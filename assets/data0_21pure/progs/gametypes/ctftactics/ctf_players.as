@@ -81,12 +81,12 @@ class cPlayer
         this.invisibilityWasUsingWeapon = -1;
     }
 
-    void printMessage( String &string )
+    void printMessage( const String &in string )
     {
         this.client.printMessage( string );
     }
 
-    void setHudMessage( String &message, int timeout, int placement )
+    void setHudMessage( const String &in message, int timeout, int placement )
     {
         if ( this.ent.team != TEAM_SPECTATOR && !this.ent.isGhosting() )
         {
@@ -285,7 +285,7 @@ class cPlayer
         return success;
     }
 
-    void setPlayerClassCommand( String &argsString )
+    void setPlayerClassCommand( const String &in argsString )
     {
         String token = argsString.getToken( 0 );
 

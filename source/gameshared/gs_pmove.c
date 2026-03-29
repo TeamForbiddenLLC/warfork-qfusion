@@ -42,9 +42,6 @@ int playerbox_gib_viewheight = 8;
 
 #define SPEEDKEY    500
 
-#define PM_DASHJUMP_TIMEDELAY 1000 // delay in milliseconds
-#define PM_WALLJUMP_TIMEDELAY	1300
-#define PM_WALLJUMP_FAILED_TIMEDELAY	700
 #define PM_SPECIAL_CROUCH_INHIBIT 400
 #define PM_AIRCONTROL_BOUNCE_DELAY 200
 #define PM_OVERBOUNCE		1.01f
@@ -838,15 +835,18 @@ static void PM_Move( void )
 		bool inhibit = false;
 		bool accelerating, decelerating;
 
+		int dashjumpCooldown, walljumpCooldown, failedWalljumpCooldown;
+		sscanf(module_GetConfigString(CS_MOVEMENT),"%i %i %i", &dashjumpCooldown, &walljumpCooldown, &failedWalljumpCooldown);
+
 		accelerating = ( DotProduct( pml.velocity, wishdir ) > 0.0f ) ? true : false;
 		decelerating = ( DotProduct( pml.velocity, wishdir ) < -0.0f ) ? true : false;
 		
 		if( ( pm->playerState->pmove.pm_flags & PMF_WALLJUMPING ) &&
-			( pm->playerState->pmove.stats[PM_STAT_WJTIME] >= ( PM_WALLJUMP_TIMEDELAY - PM_AIRCONTROL_BOUNCE_DELAY ) ) )
+			( pm->playerState->pmove.stats[PM_STAT_WJTIME] >= ( walljumpCooldown - PM_AIRCONTROL_BOUNCE_DELAY ) ) )
 			inhibit = true;
 
 		if( ( pm->playerState->pmove.pm_flags & PMF_DASHING ) &&
-			( pm->playerState->pmove.stats[PM_STAT_DASHTIME] >= ( PM_DASHJUMP_TIMEDELAY - PM_AIRCONTROL_BOUNCE_DELAY ) ) )
+			( pm->playerState->pmove.stats[PM_STAT_DASHTIME] >= ( dashjumpCooldown - PM_AIRCONTROL_BOUNCE_DELAY ) ) )
 			inhibit = true;
 
 		if( !( pm->playerState->pmove.stats[PM_STAT_FEATURES] & PMFEAT_FWDBUNNY ) ||
@@ -884,7 +884,7 @@ static void PM_Move( void )
 			}
 
 			if( ( pm->playerState->pmove.pm_flags & PMF_DASHING ) &&
-				( pm->playerState->pmove.stats[PM_STAT_DASHTIME] >= ( PM_DASHJUMP_TIMEDELAY - PM_AIRCONTROL_BOUNCE_DELAY ) ) )
+				( pm->playerState->pmove.stats[PM_STAT_DASHTIME] >= ( dashjumpCooldown - PM_AIRCONTROL_BOUNCE_DELAY ) ) )
 				aircontrol = false;
 
 			if( !( pm->playerState->pmove.stats[PM_STAT_FEATURES] & PMFEAT_AIRCONTROL ) )
@@ -1148,7 +1148,10 @@ static void PM_CheckDash( void )
 		VectorCopy( dashdir, pml.velocity );
 		pml.velocity[2] = upspeed;
 
-		pm->playerState->pmove.stats[PM_STAT_DASHTIME] = PM_DASHJUMP_TIMEDELAY;
+		int dashjumpCooldown, walljumpCooldown, failedWalljumpCooldown;
+		sscanf(module_GetConfigString(CS_MOVEMENT),"%i %i %i", &dashjumpCooldown, &walljumpCooldown, &failedWalljumpCooldown);
+
+		pm->playerState->pmove.stats[PM_STAT_DASHTIME] = dashjumpCooldown;
 
 		// return sound events
 		if( fabs( pml.sidePush ) > 10 && fabs( pml.sidePush ) >= fabs( pml.forwardPush ) )
@@ -1201,9 +1204,12 @@ static void PM_CheckWallJump( void )
 	if( pm->playerState->pmove.pm_type != PM_NORMAL )
 		return;
 
+	int dashjumpCooldown, walljumpCooldown, failedWalljumpCooldown;
+	sscanf(module_GetConfigString(CS_MOVEMENT),"%i %i %i", &dashjumpCooldown, &walljumpCooldown, &failedWalljumpCooldown);
+
 	// don't walljump in the first 100 milliseconds of a dash jump
 	if( pm->playerState->pmove.pm_flags & PMF_DASHING 
-		&& ( pm->playerState->pmove.stats[PM_STAT_DASHTIME] > ( PM_DASHJUMP_TIMEDELAY - 100 ) ) )
+		&& ( pm->playerState->pmove.stats[PM_STAT_DASHTIME] > ( dashjumpCooldown - 100 ) ) )
 		return;
 
 	
@@ -1280,14 +1286,15 @@ static void PM_CheckWallJump( void )
 
 				if( pm->playerState->pmove.stats[PM_STAT_STUN] > 0 )
 				{
-					pm->playerState->pmove.stats[PM_STAT_WJTIME] = PM_WALLJUMP_FAILED_TIMEDELAY;
+					pm->playerState->pmove.stats[PM_STAT_WJTIME] = failedWalljumpCooldown;
 
 					// Create the event
 					module_PredictedEvent( pm->playerState->POVnum, EV_WALLJUMP_FAILED, DirToByte( normal ) );
 				}
 				else
 				{
-					pm->playerState->pmove.stats[PM_STAT_WJTIME] = PM_WALLJUMP_TIMEDELAY;
+					
+					pm->playerState->pmove.stats[PM_STAT_WJTIME] = walljumpCooldown;
 
 					// Create the event
 					module_PredictedEvent( pm->playerState->POVnum, EV_WALLJUMP, DirToByte( normal ) );
@@ -1494,9 +1501,12 @@ static void PM_AdjustBBox( void )
 		pm->playerState->viewheight = playerbox_stand_viewheight;
 	}
 
+	int dashjumpCooldown, walljumpCooldown, failedWalljumpCooldown;
+	sscanf(module_GetConfigString(CS_MOVEMENT),"%i %i %i", &dashjumpCooldown, &walljumpCooldown, &failedWalljumpCooldown);
+
 	if( pml.upPush < 0 && ( pm->playerState->pmove.stats[PM_STAT_FEATURES] & PMFEAT_CROUCH ) && 
-		pm->playerState->pmove.stats[PM_STAT_WJTIME] < ( PM_WALLJUMP_TIMEDELAY - PM_SPECIAL_CROUCH_INHIBIT ) &&
-		pm->playerState->pmove.stats[PM_STAT_DASHTIME] < ( PM_DASHJUMP_TIMEDELAY - PM_SPECIAL_CROUCH_INHIBIT ) )
+		pm->playerState->pmove.stats[PM_STAT_WJTIME] < ( walljumpCooldown - PM_SPECIAL_CROUCH_INHIBIT ) &&
+		pm->playerState->pmove.stats[PM_STAT_DASHTIME] < ( dashjumpCooldown - PM_SPECIAL_CROUCH_INHIBIT ) )
 	{
 		pm->playerState->pmove.stats[PM_STAT_CROUCHTIME] += pm->cmd.msec;
 		clamp( pm->playerState->pmove.stats[PM_STAT_CROUCHTIME], 0, CROUCHTIME );
@@ -2060,11 +2070,15 @@ void Pmove( pmove_t *pmove )
 
 	if( pm->groundentity != -1 ) // remove wall-jump and dash bits when touching ground
 	{
+
+		int dashjumpCooldown, walljumpCooldown, failedWalljumpCooldown;
+		sscanf(module_GetConfigString(CS_MOVEMENT),"%i %i %i", &dashjumpCooldown, &walljumpCooldown, &failedWalljumpCooldown);
+
 		// always keep the dash flag 50 msecs at least (to prevent being removed at the start of the dash)
-		if( pm->playerState->pmove.stats[PM_STAT_DASHTIME] < ( PM_DASHJUMP_TIMEDELAY - 50 ) )
+		if( pm->playerState->pmove.stats[PM_STAT_DASHTIME] < ( dashjumpCooldown - 50 ) )
 			pm->playerState->pmove.pm_flags &= ~PMF_DASHING;
 
-		if( pm->playerState->pmove.stats[PM_STAT_WJTIME] < ( PM_WALLJUMP_TIMEDELAY - 50 ) )
+		if( pm->playerState->pmove.stats[PM_STAT_WJTIME] < ( walljumpCooldown - 50 ) )
 			PM_ClearWallJump();
 	}
 

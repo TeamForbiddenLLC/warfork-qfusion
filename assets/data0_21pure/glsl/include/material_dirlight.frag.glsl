@@ -1,10 +1,10 @@
 #include_if(APPLY_CELSHADING) "material_celshading.frag.glsl"
 
-myhalf3 DirectionalLightColor(in myhalf3 surfaceNormalModelspace, out myhalf3 weightedDiffuseNormalModelspace)
+vec3 DirectionalLightColor(in vec3 surfaceNormalModelspace, out vec3 weightedDiffuseNormalModelspace)
 {
-	myhalf3 diffuseNormalModelspace;
-	myhalf diffuseProduct;
-	myhalf3 color = myhalf3(0.0);
+	vec3 diffuseNormalModelspace;
+	float diffuseProduct;
+	vec3 color = vec3(0.0);
 
 #ifdef APPLY_DIRECTIONAL_LIGHT_FROM_NORMAL
 	diffuseNormalModelspace = v_StrMatrix[2];
@@ -30,7 +30,7 @@ myhalf3 DirectionalLightColor(in myhalf3 surfaceNormalModelspace, out myhalf3 we
 #ifdef APPLY_DIRECTIONAL_LIGHT_MIX
 	color.rgb += qf_FrontColor.rgb;
 #else
-	color.rgb += u_LightDiffuse.rgb * myhalf(max (diffuseProduct, 0.0)) + u_LightAmbient;
+	color.rgb += u_LightDiffuse.rgb * float(max (diffuseProduct, 0.0)) + u_LightAmbient;
 #endif
 
 #endif // APPLY_CELSHADING

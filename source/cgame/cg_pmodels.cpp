@@ -29,7 +29,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // by Jalisk0
 
 #include "cg_local.h"
-
+#include "../qcommon/mod_fs.h"
 pmodel_t cg_entPModels[MAX_EDICTS];
 pmodelinfo_t *cg_PModelInfos;
 
@@ -170,7 +170,7 @@ static bool CG_ParseAnimationScript( pmodelinfo_t *pmodelinfo, char *filename )
 		debug = false;
 
 	// load the file
-	length = trap_FS_FOpenFile( filename, &filenum, FS_READ );
+	length = FS_FOpenFile( filename, &filenum, FS_READ );
 	if( length == -1 )
 	{
 		CG_Printf( "Couldn't find animation script: %s\n", filename );
@@ -178,8 +178,8 @@ static bool CG_ParseAnimationScript( pmodelinfo_t *pmodelinfo, char *filename )
 	}
 
 	buf = ( uint8_t * )CG_Malloc( length + 1 );
-	length = trap_FS_Read( buf, length, filenum );
-	trap_FS_FCloseFile( filenum );
+	length = FS_Read( buf, length, filenum );
+	FS_FCloseFile( filenum );
 	if( !length )
 	{
 		CG_Free( buf );
@@ -400,11 +400,11 @@ static bool CG_LoadPlayerModel( pmodelinfo_t *pmodelinfo, const char *filename )
 	char scratch[MAX_QPATH];
 
 	Q_snprintfz( scratch, sizeof( scratch ), "%s/tris.iqm", filename );
-	if( cgs.pure && !trap_FS_IsPureFile( scratch ) )
+	if( cgs.pure && !FS_IsPureFile( scratch ) )
 		return false;
 
 	pmodelinfo->model = CG_RegisterModel( scratch );
-	if( !trap_R_SkeletalGetNumBones( pmodelinfo->model, NULL ) )
+	if( !R_SkeletalGetNumBones( pmodelinfo->model, NULL ) )
 	{
 		// pmodels only accept skeletal models
 		pmodelinfo->model = NULL;
@@ -415,7 +415,7 @@ static bool CG_LoadPlayerModel( pmodelinfo_t *pmodelinfo, const char *filename )
 	if( pmodelinfo->model )
 	{
 		Q_snprintfz( anim_filename, sizeof( anim_filename ), "%s/animation.cfg", filename );
-		if( !cgs.pure || trap_FS_IsPureFile( anim_filename ) )
+		if( !cgs.pure || FS_IsPureFile( anim_filename ) )
 			loaded_model = CG_ParseAnimationScript( pmodelinfo, anim_filename );
 	}
 
@@ -474,7 +474,7 @@ void CG_RegisterBasePModel( void )
 	cgs.basePModelInfo = CG_RegisterPlayerModel( filename );
 
 	Q_snprintfz( filename, sizeof( filename ), "%s/%s/%s", "models/players", DEFAULT_PLAYERMODEL, DEFAULT_PLAYERSKIN );
-	cgs.baseSkin = trap_R_RegisterSkinFile( filename );
+	cgs.baseSkin = R_RegisterSkinFile( filename );
 	if( !cgs.baseSkin )
 		CG_Error( "'Default Player Model'(%s): Skin (%s) failed to load", DEFAULT_PLAYERMODEL, filename );
 
@@ -503,7 +503,7 @@ bool CG_GrabTag( orientation_t *tag, entity_t *ent, const char *tagname )
 	if( skel )
 		return CG_SkeletalPoseGetAttachment( tag, skel, ent->boneposes, tagname );
 
-	return trap_R_LerpTag( tag, ent->model, ent->frame, ent->oldframe, ent->backlerp, tagname );
+	return RF_LerpTag( tag, ent->model, ent->frame, ent->oldframe, ent->backlerp, tagname );
 }
 
 /*
@@ -877,7 +877,7 @@ static void CG_AddHeadIcon( centity_t *cent )
 			balloon.radius = radius;
 			balloon.model = NULL;
 
-			trap_R_AddEntityToScene( &balloon );
+			RF_AddEntityToScene( &balloon );
 		}
 
 		// add stun effect: not really a head icon, but there's no point in finding the head location twice
@@ -891,7 +891,7 @@ static void CG_AddHeadIcon( centity_t *cent )
 			if( !( cent->current.effects & EF_PLAYER_STUNNED ) )
 				balloon.shaderRGBA[3] = ( 255 * ( 1.0f - cg.lerpfrac ) );
 
-			trap_R_AddEntityToScene( &balloon );
+			RF_AddEntityToScene( &balloon );
 		}
 	}
 }

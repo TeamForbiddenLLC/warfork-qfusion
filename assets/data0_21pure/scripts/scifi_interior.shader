@@ -84,7 +84,7 @@ textures/scifi_interior/blue_glass_tvscreen
 
 // Panels
 
-﻿textures/scifi_interior/aluminium_airvent
+textures/scifi_interior/aluminium_airvent
 {	
 	qer_editorimage textures/scifi_interior/aluminium_airvent.png
 

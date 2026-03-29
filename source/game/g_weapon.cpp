@@ -565,6 +565,8 @@ static void G_Fire_SunflowerPattern( edict_t *self, vec3_t start, vec3_t dir, in
     
 		}   
 	} 
+
+ G_ApplyHandicapDamage(self,&damage);
     
      for( int i = 1; i <= MAX_CLIENTS; i++ ) {
 		if( hits[i] == 0 )

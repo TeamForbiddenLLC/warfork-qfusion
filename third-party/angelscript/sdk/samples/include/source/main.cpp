@@ -5,7 +5,7 @@
 #include <iostream>  // cout
 #include <assert.h>  // assert()
 #include <string.h>  // strstr()
-#ifdef _LINUX_
+#ifdef __linux__
 	#include <sys/time.h>
 	#include <stdio.h>
 	#include <termios.h>
@@ -22,12 +22,12 @@
 
 using namespace std;
 
-#ifdef _LINUX_
+#ifdef __linux__
 
 #define UINT unsigned int 
 typedef unsigned int DWORD;
 
-// Linux doesn't have timeGetTime(), this essintially does the same
+// Linux doesn't have timeGetTime(), this essentially does the same
 // thing, except this is milliseconds since Epoch (Jan 1st 1970) instead
 // of system start. It will work the same though...
 DWORD timeGetTime()
@@ -95,7 +95,7 @@ int RunApplication()
 	int r;
 
 	// Create the script engine
-	asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+	asIScriptEngine *engine = asCreateScriptEngine();
 	if( engine == 0 )
 	{
 		cout << "Failed to create script engine." << endl;
@@ -202,8 +202,8 @@ int RunApplication()
 	// We must release the contexts when no longer using them
 	ctx->Release();
 
-	// Release the engine
-	engine->Release();
+	// Shut down the engine
+	engine->ShutDownAndRelease();
 
 	return 0;
 }

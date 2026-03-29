@@ -433,6 +433,10 @@ void CG_StartKickAnglesEffect( vec3_t source, float knockback, float radius, int
 */
 void CG_StartFallKickEffect( int bounceTime )
 {
+
+	cg.fallEffectTime = 0;
+	cg.fallEffectRebounceTime = 0;
+
 	if( !cg_viewBob->integer )
 	{
 		cg.fallEffectTime = 0;
@@ -517,11 +521,11 @@ void CG_AddEntityToScene( entity_t *ent )
 {
 	if( ent->model && ( !ent->boneposes || !ent->oldboneposes ) )
 	{
-		if( trap_R_SkeletalGetNumBones( ent->model, NULL ) )
+		if( R_SkeletalGetNumBones( ent->model, NULL ) )
 			CG_SetBoneposesForTemporaryEntity( ent );
 	}
 
-	trap_R_AddEntityToScene( ent );
+	RF_AddEntityToScene( ent );
 }
 
 //============================================================================
@@ -1074,7 +1078,7 @@ void CG_RenderView( float frameTime, float realFrameTime, int realTime, unsigned
 	{
 		CG_AddLocalSounds();
 
-		trap_R_DrawStretchPic( 0, 0, cgs.vidWidth, cgs.vidHeight, 0, 0, 1, 1, colorBlack, cgs.shaderWhite );
+		RF_DrawStretchPic( 0, 0, cgs.vidWidth, cgs.vidHeight, 0, 0, 1, 1, colorBlack, cgs.shaderWhite );
 
 		trap_S_Update( vec3_origin, vec3_origin, axis_identity, cgs.clientInfo[cgs.playerNum].name );
 
@@ -1125,7 +1129,7 @@ void CG_RenderView( float frameTime, float realFrameTime, int realTime, unsigned
 
 	CG_ClearFragmentedDecals();
 
-	trap_R_ClearScene();
+	RF_ClearScene();
 
 	if( CG_DemoCam_Update() )
 		CG_SetupViewDef( &cg.view, CG_DemoCam_GetViewType(), flipped );
@@ -1178,7 +1182,7 @@ void CG_RenderView( float frameTime, float realFrameTime, int realTime, unsigned
 	CG_AddLocalSounds();
 	CG_SetSceneTeamColors(); // update the team colors in the renderer
 
-	trap_R_RenderScene( &cg.view.refdef );
+	RF_RenderScene( &cg.view.refdef );
 
 	cg.oldAreabits = true;
 

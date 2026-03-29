@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2014 Andreas Jonsson
+   Copyright (c) 2003-2020 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -38,7 +38,7 @@
 
 #include <stdlib.h>
 
-#if !defined(__APPLE__) && !defined( __SNC__ ) && !defined( __ghs__ ) && !defined(__FreeBSD__)
+#if !defined(__APPLE__) && !defined(__SNC__) && !defined(__ghs__) && !defined(__FreeBSD__) && !defined(__OpenBSD__) && !defined(__DragonFly__)
 #include <malloc.h>
 #endif
 
@@ -142,6 +142,11 @@ extern "C"
 // interface
 int asSetGlobalMemoryFunctions(asALLOCFUNC_t allocFunc, asFREEFUNC_t freeFunc)
 {
+	// Clean-up thread local memory before changing the allocation routines to avoid 
+	// potential problem with trying to free memory using a different allocation
+	// routine than used when allocating it.
+	asThreadCleanup();
+
 	userAlloc = allocFunc;
 	userFree  = freeFunc;
 
@@ -151,6 +156,9 @@ int asSetGlobalMemoryFunctions(asALLOCFUNC_t allocFunc, asFREEFUNC_t freeFunc)
 // interface
 int asResetGlobalMemoryFunctions()
 {
+	// Clean-up thread local memory before changing the allocation routines to avoid 
+	// potential problem with trying to free memory using a different allocation
+	// routine than used when allocating it.
 	asThreadCleanup();
 
 	userAlloc = malloc;
@@ -233,6 +241,11 @@ void asCMemoryMgr::FreeScriptNode(void *ptr)
 		scriptNodePool.Allocate(100, 0);
 
 	scriptNodePool.PushLast(ptr);
+	
+#ifdef AS_DEBUG
+	// clear the memory to facilitate identification of use after free
+	memset(ptr, 0xCDCDCDCD, sizeof(asCScriptNode));
+#endif
 
 	LEAVECRITICALSECTION(cs);
 }
@@ -241,6 +254,8 @@ void asCMemoryMgr::FreeScriptNode(void *ptr)
 
 void *asCMemoryMgr::AllocByteInstruction()
 {
+	// This doesn't need a critical section because, only one compilation is allowed at a time
+	
 	if( byteInstructionPool.GetLength() )
 		return byteInstructionPool.PopLast();
 
@@ -258,6 +273,11 @@ void asCMemoryMgr::FreeByteInstruction(void *ptr)
 		byteInstructionPool.Allocate(100, 0);
 
 	byteInstructionPool.PushLast(ptr);
+	
+#ifdef AS_DEBUG
+	// clear the memory to facilitate identification of use after free
+	memset(ptr, 0xCDCDCDCD, sizeof(asCByteInstruction));
+#endif
 }
 
 #endif // AS_NO_COMPILER

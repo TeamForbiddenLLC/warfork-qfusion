@@ -6,6 +6,7 @@
 #include <angelscript.h>
 #include "../../../add_on/scriptstdstring/scriptstdstring.h"
 #include "../../../add_on/scripthelper/scripthelper.h"
+#include "../../../add_on/scriptarray/scriptarray.h"
 
 using namespace std;
 
@@ -38,7 +39,7 @@ string         p_name = "player";
 int main(int argc, char **argv)
 {
 	// Create the script engine
-	asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+	asIScriptEngine *engine = asCreateScriptEngine();
 	if( engine == 0 )
 	{
 		cout << "Failed to create script engine." << endl;
@@ -102,8 +103,8 @@ int main(int argc, char **argv)
 			cout << "Unknown command." << endl;
 	}
 
-	// Release the engine
-	engine->Release();
+	// Shut down the engine
+	engine->ShutDownAndRelease();
 
 	return 0;
 }
@@ -149,6 +150,9 @@ void ConfigureEngine(asIScriptEngine *engine)
 	// Look at the implementation for this function for more information
 	// on how to register a custom string type, and other object types.
 	RegisterStdString(engine);
+
+	// Register the script array type
+	RegisterScriptArray(engine, false);
 
 	// Register the global variables
 	r = engine->RegisterGlobalProperty("float g_gravity", &g_gravity); assert( r >= 0 );

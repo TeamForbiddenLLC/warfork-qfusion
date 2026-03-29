@@ -108,9 +108,6 @@ mesh_vbo_t *R_CreateMeshVBO( void *owner, int numVerts, int numElems, int numIns
 	size_t vertexSize;
 	vattribbit_t lmattrbit;
 
-	if( !glConfig.ext.vertex_buffer_object )
-		return NULL;
-
 	if( !r_free_vbohandles )
 		return NULL;
 

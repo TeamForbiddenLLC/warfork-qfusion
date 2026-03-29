@@ -424,7 +424,7 @@ void CG_DrawNet( int x, int y, int w, int h, int align, vec4_t color )
 		return;
 	x = CG_HorizontalAlignForWidth( x, align, w );
 	y = CG_VerticalAlignForHeight( y, align, h );
-	trap_R_DrawStretchPic( x, y, w, h, 0, 0, 1, 1, color, CG_MediaShader( cgs.media.shaderNet ) );
+	RF_DrawStretchPic( x, y, w, h, 0, 0, 1, 1, color, CG_MediaShader( cgs.media.shaderNet ) );
 }
 
 /*
@@ -601,7 +601,7 @@ void CG_DrawKeyState( int x, int y, int w, int h, int align, const char *key )
 	if( !on )
 		color[3] = 0.5f;
 
-	trap_R_DrawStretchPic( x, y, w, h, 0, 0, 1, 1, color, CG_MediaShader( cgs.media.shaderKeyIcon[i] ) );
+	RF_DrawStretchPic( x, y, w, h, 0, 0, 1, 1, color, CG_MediaShader( cgs.media.shaderKeyIcon[i] ) );
 }
 
 /*
@@ -805,7 +805,7 @@ void CG_DrawPlayerNames( struct qfontface_s *font, vec4_t color )
 		VectorSet( drawOrigin, cent->ent.origin[0], cent->ent.origin[1], cent->ent.origin[2] + playerbox_stand_maxs[2] + 16 );
 
 		// find the 3d point in 2d screen
-		trap_R_TransformVectorToScreen( &cg.view.refdef, drawOrigin, coords );
+		RF_TransformVectorToScreen( &cg.view.refdef, drawOrigin, coords );
 		if( ( coords[0] < 0 || coords[0] > cgs.vidWidth ) || ( coords[1] < 0 || coords[1] > cgs.vidHeight ) )
 			continue;
 
@@ -914,7 +914,7 @@ void CG_DrawTeamMates( void )
 			continue;
 
 		// find the 3d point in 2d screen
-		trap_R_TransformVectorToScreen( &cg.view.refdef, drawOrigin, coords );
+		RF_TransformVectorToScreen( &cg.view.refdef, drawOrigin, coords );
 		if( ( coords[0] < 0 || coords[0] > cgs.vidWidth ) || ( coords[1] < 0 || coords[1] > cgs.vidHeight ) )
 			continue;
 
@@ -937,7 +937,7 @@ void CG_DrawTeamMates( void )
 		if( cent->localEffects[LOCALEFFECT_VSAY_HEADICON_TIMEOUT] > cg.time && cent->localEffects[LOCALEFFECT_VSAY_HEADICON] < VSAY_TOTAL )
 			media = cgs.media.shaderVSayIcon[cent->localEffects[LOCALEFFECT_VSAY_HEADICON]];
 
-		trap_R_DrawStretchPic( coords[0], coords[1], pic_size, pic_size, 0, 0, 1, 1, color, CG_MediaShader( media ) );
+		RF_DrawStretchPic( coords[0], coords[1], pic_size, pic_size, 0, 0, 1, 1, color, CG_MediaShader( media ) );
 	}
 }
 
@@ -1010,7 +1010,7 @@ void CG_DrawDamageNumbers() {
 			continue;
 
 		vec2_t coords;
-		trap_R_TransformVectorToScreen( &cg.view.refdef, o, coords );
+		RF_TransformVectorToScreen( &cg.view.refdef, o, coords );
 		if( ( coords[ 0 ] < 0 || coords[ 0 ] > cgs.vidWidth ) || ( coords[ 1 ] < 0 || coords[ 1 ] > cgs.vidHeight ) ) {
 			continue;
 		}
@@ -1290,7 +1290,7 @@ void CG_DrawTeamInfo( int x, int y, int align, struct qfontface_s *font, vec4_t 
 			{
 				for( icon = 0; icon < numIcons; icon++ )
 				{
-					trap_R_DrawStretchPic( icons[icon][0], icons[icon][1], height, height, 0, 0, 1, 1, color,
+					RF_DrawStretchPic( icons[icon][0], icons[icon][1], height, height, 0, 0, 1, 1, color,
 						CG_MediaShader( cgs.media.shaderVSayIcon[icons[icon][2]] ) );
 				}
 				numIcons = 0;
@@ -1304,7 +1304,7 @@ void CG_DrawTeamInfo( int x, int y, int align, struct qfontface_s *font, vec4_t 
 
 	for( icon = 0; icon < numIcons; icon++ )
 	{
-		trap_R_DrawStretchPic( icons[icon][0], icons[icon][1], height, height, 0, 0, 1, 1, color,
+		RF_DrawStretchPic( icons[icon][0], icons[icon][1], height, height, 0, 0, 1, 1, color,
 			CG_MediaShader( cgs.media.shaderVSayIcon[icons[icon][2]] ) );
 	}
 }
@@ -1316,7 +1316,7 @@ void CG_DrawRSpeeds( int x, int y, int align, struct qfontface_s *font, vec4_t c
 {
 	char msg[1024];
 
-	trap_R_GetSpeedsMessage( msg, sizeof( msg ) );
+	RF_GetSpeedsMessage( msg, sizeof( msg ) );
 
 	if( msg[0] )
 	{
@@ -1434,13 +1434,13 @@ void CG_DrawLoading( void )
 
 	float scale = cgs.vidHeight / 1080.0f;
 
-	trap_R_DrawStretchPic( 0, 0, cgs.vidWidth, cgs.vidHeight, 0.0f, 0.0f, 1.0f, 1.0f, colorWhite, trap_R_RegisterPic( UI_SHADER_LOADINGBACKGROUND ) );
-	trap_R_DrawStretchPic( cgs.vidWidth / 2 - ( int )( 256 * scale ), cgs.vidHeight / 2 - ( int )( 64 * scale ),
-		512 * scale, 128 * scale, 0.0f, 0.0f, 1.0f, 1.0f, colorWhite, trap_R_RegisterPic( UI_SHADER_LOADINGLOGO ) );
+	RF_DrawStretchPic( 0, 0, cgs.vidWidth, cgs.vidHeight, 0.0f, 0.0f, 1.0f, 1.0f, colorWhite, R_RegisterPic( UI_SHADER_LOADINGBACKGROUND ) );
+	RF_DrawStretchPic( cgs.vidWidth / 2 - ( int )( 256 * scale ), cgs.vidHeight / 2 - ( int )( 64 * scale ),
+		512 * scale, 128 * scale, 0.0f, 0.0f, 1.0f, 1.0f, colorWhite, R_RegisterPic( UI_SHADER_LOADINGLOGO ) );
 
 	if( cgs.precacheCount && cgs.precacheTotal )
 	{
-		struct shader_s *shader = trap_R_RegisterPic( UI_SHADER_LOADINGBAR );
+		struct shader_s *shader = R_RegisterPic( UI_SHADER_LOADINGBAR );
 		int width = 480 * scale;
 		int height = 32 * scale;
 		float percent = ( ( float )cgs.precacheCount / ( float )cgs.precacheTotal );
@@ -1448,11 +1448,11 @@ void CG_DrawLoading( void )
 		int x = ( cgs.vidWidth - width ) / 2;
 		int y = cgs.vidHeight / 2 + ( int )( 32 * scale );
 
-		trap_R_DrawStretchPic( x, y, height, height, 0.0f, 0.0f, 0.5f, 0.5f, colorWhite, shader );
-		trap_R_DrawStretchPic( x + height, y, width - height * 2, height, 0.5f, 0.0f, 0.5f, 0.5f, colorWhite, shader );
-		trap_R_DrawStretchPic( x + width - height, y, height, height, 0.5f, 0.0f, 1.0f, 0.5f, colorWhite, shader );
-		trap_R_DrawStretchPic( x + height / 2, y, barWidth, height, 0.25f, 0.5f, 0.25f, 1.0f, colorWhite, shader );
-		trap_R_DrawStretchPic( x + barWidth, y, height, height, 0.5f, 0.5f, 1.0f, 1.0f, colorWhite, shader );
+		RF_DrawStretchPic( x, y, height, height, 0.0f, 0.0f, 0.5f, 0.5f, colorWhite, shader );
+		RF_DrawStretchPic( x + height, y, width - height * 2, height, 0.5f, 0.0f, 0.5f, 0.5f, colorWhite, shader );
+		RF_DrawStretchPic( x + width - height, y, height, height, 0.5f, 0.0f, 1.0f, 0.5f, colorWhite, shader );
+		RF_DrawStretchPic( x + height / 2, y, barWidth, height, 0.25f, 0.5f, 0.25f, 1.0f, colorWhite, shader );
+		RF_DrawStretchPic( x + barWidth, y, height, height, 0.5f, 0.5f, 1.0f, 1.0f, colorWhite, shader );
 	}
 }
 
@@ -1491,7 +1491,7 @@ static void CG_TileClearRect( int x, int y, int w, int h, struct shader_s *shade
 	iw = 1.0f / 64.0;
 	ih = 1.0f / 64.0;
 
-	trap_R_DrawStretchPic( x, y, w, h, x*iw, y*ih, ( x+w )*iw, ( y+h )*ih, colorWhite, shader );
+	RF_DrawStretchPic( x, y, w, h, x*iw, y*ih, ( x+w )*iw, ( y+h )*ih, colorWhite, shader );
 }
 
 /*
@@ -1610,7 +1610,7 @@ static void CG_SCRDrawViewBlend( void )
 	if( colorblend[3] < 0.01f )
 		return;
 
-	trap_R_DrawStretchPic( 0, 0, cgs.vidWidth, cgs.vidHeight, 0, 0, 1, 1, colorblend, cgs.shaderWhite );
+	RF_DrawStretchPic( 0, 0, cgs.vidWidth, cgs.vidHeight, 0, 0, 1, 1, colorblend, cgs.shaderWhite );
 }
 
 
@@ -1650,8 +1650,8 @@ void CG_Draw2DView( void )
 	{
 		int barheight = cgs.vidHeight * 0.08;
 		const vec4_t barcolor = { 0.0f, 0.0f, 0.0f, 0.6f };
-		trap_R_DrawStretchPic( 0, 0, cgs.vidWidth, barheight, 0, 0, 1, 1, barcolor, cgs.shaderWhite );
-		trap_R_DrawStretchPic( 0, cgs.vidHeight - barheight, cgs.vidWidth, barheight, 0, 0, 1, 1, barcolor, cgs.shaderWhite );
+		RF_DrawStretchPic( 0, 0, cgs.vidWidth, barheight, 0, 0, 1, 1, barcolor, cgs.shaderWhite );
+		RF_DrawStretchPic( 0, cgs.vidHeight - barheight, cgs.vidWidth, barheight, 0, 0, 1, 1, barcolor, cgs.shaderWhite );
 	}
 
 	if( cg.motd && ( cg.time > cg.motd_time ) )

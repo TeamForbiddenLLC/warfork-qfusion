@@ -1,4 +1,3 @@
-﻿
 textures/noir/null
 {
 

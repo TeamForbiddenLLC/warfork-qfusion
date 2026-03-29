@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
-bool G_FileExists( String &filename )
+bool G_FileExists( const String &in filename )
 {
 	return (G_FileLength( filename ) > -1);
 }

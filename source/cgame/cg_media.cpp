@@ -20,6 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "cg_local.h"
 
+#include "../qcommon/mod_fs.h"
+
 cgs_media_handle_t *sfx_headnode;
 
 /*
@@ -139,10 +141,10 @@ struct model_s *CG_RegisterModel( const char *name )
 {
 	struct model_s *model;
 
-	model = trap_R_RegisterModel( name );
+	model = R_RegisterModel( name );
 
 	// precache bones
-	if( trap_R_SkeletalGetNumBones( model, NULL ) )
+	if( R_SkeletalGetNumBones( model, NULL ) )
 		CG_SkeletonForModel( model );
 
 	return model;
@@ -236,7 +238,7 @@ static cgs_media_handle_t *CG_RegisterMediaShader( const char *name, bool precac
 	shader_headnode = mediashader;
 
 	if( precache )
-		mediashader->data = ( void * )trap_R_RegisterPic( mediashader->name );
+		mediashader->data = ( void * )R_RegisterPic( mediashader->name );
 
 	return mediashader;
 }
@@ -247,7 +249,7 @@ static cgs_media_handle_t *CG_RegisterMediaShader( const char *name, bool precac
 struct shader_s *CG_MediaShader( cgs_media_handle_t *mediashader )
 {
 	if( !mediashader->data )
-		mediashader->data = ( void * )trap_R_RegisterPic( mediashader->name );
+		mediashader->data = ( void * )R_RegisterPic( mediashader->name );
 	return ( struct shader_s * )mediashader->data;
 }
 
@@ -284,9 +286,6 @@ void CG_RegisterMediaShaders( void )
 	cgs.media.shaderBloodTrailPuff = CG_RegisterMediaShader( "gfx/misc/bloodtrail_puff", true );
 	cgs.media.shaderBloodTrailLiquidPuff = CG_RegisterMediaShader( "gfx/misc/bloodtrailliquid_puff", true );
 	cgs.media.shaderBloodImpactPuff = CG_RegisterMediaShader( "gfx/misc/bloodimpact_puff", true );
-	cgs.media.shaderCartoonHit = CG_RegisterMediaShader( "gfx/misc/cartoonhit", true );
-	cgs.media.shaderCartoonHit2 = CG_RegisterMediaShader( "gfx/misc/cartoonhit2", true );
-	cgs.media.shaderCartoonHit3 = CG_RegisterMediaShader( "gfx/misc/cartoonhit3", true );
 	cgs.media.shaderTeamMateIndicator = CG_RegisterMediaShader( "gfx/indicators/teammate_indicator", true );
 	cgs.media.shaderTeamCarrierIndicator = CG_RegisterMediaShader( "gfx/indicators/teamcarrier_indicator", true );
 	cgs.media.shaderTeleportShellGfx = CG_RegisterMediaShader( "gfx/misc/teleportshell", true );
@@ -313,7 +312,6 @@ void CG_RegisterMediaShaders( void )
 	cgs.media.shaderInstaBeam = CG_RegisterMediaShader( "gfx/misc/instagun", true );
 	cgs.media.shaderLaserGunBeam = CG_RegisterMediaShader( "gfx/misc/laserbeam", true );
 	cgs.media.shaderRocketExplosion = CG_RegisterMediaShader( PATH_ROCKET_EXPLOSION_SPRITE, true );
-	cgs.media.shaderRocketExplosionRing = CG_RegisterMediaShader( PATH_ROCKET_EXPLOSION_RING_SPRITE, true );
 
 	cgs.media.shaderLaser = CG_RegisterMediaShader( "gfx/misc/laser", false );
 
@@ -412,10 +410,10 @@ void CG_RegisterLevelMinimap( void )
 	for( i = 0; i < NUM_IMAGE_EXTENSIONS; i++ )
 	{
 		Q_snprintfz( minimap, sizeof( minimap ), "minimaps/%s%s", name, IMAGE_EXTENSIONS[i] );
-		file = trap_FS_FOpenFile( minimap, NULL, FS_READ );
+		file = FS_FOpenFile( minimap, NULL, FS_READ );
 		if( file != -1 )
 		{
-			cgs.shaderMiniMap = trap_R_RegisterPic( minimap );
+			cgs.shaderMiniMap = R_RegisterPic( minimap );
 			break;
 		}
 	}

@@ -1,0 +1,8 @@
+sdk
+testapp
+steamshim
+testapp.dSYM
+steamshim.dSYM
+steam_api.dll
+libsteam_api.dylib
+libsteam_api.so

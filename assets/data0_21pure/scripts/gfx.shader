@@ -334,19 +334,6 @@ gfx/rocket_explosion
 	}
 }
 
-gfx/misc/rlexplo_ring
-{
-	nopicmip
-	cull disable
-	softParticle
-	{
-		Clampmap gfx/misc/rlexplo_ring.png
-		rgbGen wave Inversesawtooth 0 1 0 4
-		blendfunc add
-		tcMod stretch sawtooth .75 .5 0 4
-	}
-}
-
 gfx/misc/waterBubble
 {
 	nopicmip

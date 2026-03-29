@@ -1,10 +1,13 @@
+setFontFamily "Hemi Head"
+setFontSize %VIDHEIGHT / 30
+setColor 1, 1, 1, 1
+setCursor 400 110
+
 if %SCOREBOARD == 0
-	setFontFamily "Hemi Head"
-	setFontSize %VIDHEIGHT / 30
-	setColor 1, 1, 1, 1
-	setCursor 400 90
-	setAlign #CENTER, #TOP
-	drawAwards
+setAlign #CENTER, #TOP
+endif
+if %SCOREBOARD != 0
+setAlign #CENTER, #BOTTOM
 endif
 
-
+drawAwards

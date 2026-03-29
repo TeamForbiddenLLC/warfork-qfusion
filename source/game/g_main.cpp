@@ -31,6 +31,7 @@ int meansOfDeath;
 
 cvar_t *password;
 cvar_t *g_operator_password;
+cvar_t *g_permanent_operators;
 cvar_t *g_select_empty;
 cvar_t *dedicated;
 cvar_t *developer;
@@ -86,6 +87,10 @@ cvar_t *g_allow_falldamage;
 cvar_t *g_allow_selfdamage;
 cvar_t *g_allow_teamdamage;
 cvar_t *g_allow_bunny;
+
+cvar_t *g_pmove_dashjump_timedelay;
+cvar_t *g_pmove_walljump_timedelay;
+cvar_t *g_pmove_walljump_failed_timedelay;
 
 cvar_t *g_respawn_delay_min;
 cvar_t *g_respawn_delay_max;
@@ -270,6 +275,7 @@ void G_Init( unsigned int seed, unsigned int framemsec, int protocol, const char
 	password = trap_Cvar_Get( "password", "", CVAR_USERINFO );
 	password->modified = true; // force an update of g_needpass in G_UpdateServerInfo
 	g_operator_password = trap_Cvar_Get( "g_operator_password", "", CVAR_ARCHIVE );
+	g_permanent_operators = trap_Cvar_Get( "g_permanent_operators", "", CVAR_ARCHIVE );
 	filterban = trap_Cvar_Get( "filterban", "1", 0 );
 
 	cm_mapHeader = trap_Cvar_Get( "cm_mapHeader", "", 0 );
@@ -337,6 +343,11 @@ void G_Init( unsigned int seed, unsigned int framemsec, int protocol, const char
 	g_instagib = trap_Cvar_Get( "g_instagib", "0", CVAR_SERVERINFO|CVAR_ARCHIVE|CVAR_LATCH );
 	g_instajump = trap_Cvar_Get( "g_instajump", "1", CVAR_ARCHIVE );
 	g_instashield = trap_Cvar_Get( "g_instashield", "1", CVAR_ARCHIVE );
+
+	// pmove
+	g_pmove_dashjump_timedelay = trap_Cvar_Get( "g_pmove_dashjump_timedelay", "1000", CVAR_ARCHIVE );
+	g_pmove_walljump_timedelay = trap_Cvar_Get( "g_pmove_walljump_timedelay", "1300", CVAR_ARCHIVE );
+	g_pmove_walljump_failed_timedelay = trap_Cvar_Get( "g_pmove_walljump_failed_timedelay", "700", CVAR_ARCHIVE );
 
 	// helper cvars to show current status in serverinfo reply
 	trap_Cvar_Get( "g_match_time", "", CVAR_SERVERINFO|CVAR_READONLY );

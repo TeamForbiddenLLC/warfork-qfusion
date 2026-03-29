@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "client.h"
 
 //#define UNSAFE_EXIT
-#define MAX_MASTER_SERVERS					4
+#define MAX_MASTER_SERVERS					8
 
 #ifdef PUBLIC_BUILD
 #define SERVERBROWSER_PROTOCOL_VERSION		APP_PROTOCOL_VERSION
@@ -280,6 +280,7 @@ void CL_ParseGetInfoResponse( const socket_t *socket, const netadr_t *address, m
 void CL_ParseGetStatusResponse( const socket_t *socket, const netadr_t *address, msg_t *msg )
 {
 	char *s = MSG_ReadString( msg );
+
 	Com_DPrintf( "%s\n", s );
 }
 

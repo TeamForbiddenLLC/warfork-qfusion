@@ -372,10 +372,6 @@ msgstr "Autohop Devre disi"
 msgid "Enable view animation"
 msgstr "Görünümü animasyon etkinlestirme"
 
-#. UI option for cg_cartoonHitEffect, shows effects on critical hit.
-msgid "Show critical hit effect"
-msgstr ""
-
 #. Touch screen setting
 msgid "Touch look sensitivity"
 msgstr "Dokunmatik bakmak hassasiyeti"

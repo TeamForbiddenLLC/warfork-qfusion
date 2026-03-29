@@ -78,6 +78,7 @@
 			txt.setInnerRML( StringUtils::FormatFloat( bar.value.toFloat()*100, "0", 1, 0 ) + "%" );
 		}
 
+
 		void onReactChangeRange( Element @elem, Event @ev ) {
 			ElementFormControl @bar = elem;
 			ElementFormControl @input = elem.getElementById( 'react-input' );
@@ -256,6 +257,7 @@
 				<div id="effort-volume-txt" class="slider-value"></div>
 				<br />
 				
+				<!--
 				<br/>			
 				<hr class="nicehr" />
 				<br/>
@@ -268,6 +270,7 @@
 				<input id="react-range" cvar="cg_reactionKillsTimeout" type="range" min="1.0" max="300.00" step="1.00" value="45.0" realtime="1" onchange="$onReactChangeRange"/>
 				<input id="react-input" cvar="cg_reactionKillsTimeout" type="text" class="short text" min="1.0" max="300.00" step="1.00" value="45.0" realtime="1" onchange="$onReactChangeInput"/>
 				<br/>
+				-->
 
 				<br/>			
 				<hr class="nicehr" />
@@ -279,6 +282,12 @@
 				
 				<div class="title">Chat message sound</div>
 				<input cvar="cg_chatBeep" type="checkbox" realtime="1"/>
+				<br/>
+
+				<div class="title">Enable voice chat</div>
+				<input cvar="cl_enablevoice" type="checkbox" realtime="1"/>
+				<br/>
+				(To change microphone settings, press shift-tab to activate the steam overlay, and open "in-game voice" in settings)
 				<br/>
 				<br/>
 

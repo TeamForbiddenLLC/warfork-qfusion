@@ -32,6 +32,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "cg_public.h"
 #include "cg_syscalls.h"
+#include <cstdint>
 
 #define CG_OBITUARY_HUD	    1
 #define CG_OBITUARY_CENTER  2
@@ -129,6 +130,8 @@ typedef struct
 	float yawVelocity;
 
 	struct cinematics_s *cin;
+	bool speaking;
+	int lastSpeakTime;
 } centity_t;
 
 #include "cg_pmodels.h"
@@ -235,7 +238,6 @@ typedef struct
 	cgs_media_handle_t *shaderParticle;
 	cgs_media_handle_t *shaderGrenadeExplosion;
 	cgs_media_handle_t *shaderRocketExplosion;
-	cgs_media_handle_t *shaderRocketExplosionRing;
 	cgs_media_handle_t *shaderBulletExplosion;
 	cgs_media_handle_t *shaderRaceGhostEffect;
 	cgs_media_handle_t *shaderWaterBubble;
@@ -253,9 +255,6 @@ typedef struct
 	cgs_media_handle_t *shaderBloodTrailPuff;
 	cgs_media_handle_t *shaderBloodTrailLiquidPuff;
 	cgs_media_handle_t *shaderBloodImpactPuff;
-	cgs_media_handle_t *shaderCartoonHit;
-	cgs_media_handle_t *shaderCartoonHit2;
-	cgs_media_handle_t *shaderCartoonHit3;
 	cgs_media_handle_t *shaderTeamMateIndicator;
 	cgs_media_handle_t *shaderTeamCarrierIndicator;
 	cgs_media_handle_t *shaderTeleporterSmokePuff;
@@ -373,6 +372,8 @@ typedef struct
 	byte_vec4_t color;
 	struct shader_s *icon;
 	int modelindex;
+	uint64_t steamid;
+	shader_s *avatar;
 } cg_clientInfo_t;
 
 #define MAX_ANGLES_KICKS 3
@@ -704,6 +705,8 @@ extern cvar_t *cg_model;
 extern cvar_t *cg_skin;
 extern cvar_t *cg_hand;
 
+void CG_initPlayer();
+void CG_deinitPlayer(); 
 void CG_LoadClientInfo( cg_clientInfo_t *ci, const char *s, int client );
 void CG_UpdateSexedSoundsRegistration( pmodelinfo_t *pmodelinfo );
 void CG_SexedSound( int entnum, int entchannel, const char *name, float fvol, float attn );
@@ -833,7 +836,6 @@ void CG_SetTouchpad( int padID, int touchID );
 //
 extern cvar_t *cg_showminimap;
 extern cvar_t *cg_showitemtimers;
-extern cvar_t *cg_placebo;
 extern cvar_t *cg_strafeHUD;
 extern cvar_t *cg_touch_flip;
 extern cvar_t *cg_touch_scale;
@@ -904,10 +906,7 @@ extern cvar_t *cg_projectileFireTrailAlpha;
 extern cvar_t *cg_bloodTrailAlpha;
 
 extern cvar_t *cg_cartoonEffects;
-extern cvar_t *cg_cartoonHitEffect;
 
-extern cvar_t *cg_explosionsRing;
-extern cvar_t *cg_explosionsDust;
 extern cvar_t *cg_gibs;
 extern cvar_t *cg_outlineModels;
 extern cvar_t *cg_outlineWorld;
@@ -967,6 +966,7 @@ void CG_Init(	const char *serverName, unsigned int playerNum,
 				int vidWidth, int vidHeight, float pixelRatio,
 				bool demoplaying, const char *demoName, bool pure, unsigned int snapFrameTime,
 				int protocol, const char *demoExtension, int sharedSeed, bool gameStart );
+void CG_PlayVoice(void *buffer, size_t size, int clientnum);
 void CG_Shutdown( void );
 void CG_ValidateItemDef( int tag, char *name );
 void CG_Printf( const char *format, ... );
@@ -975,6 +975,11 @@ void CG_Reset( void );
 void CG_Precache( void );
 char *_CG_CopyString( const char *in, const char *filename, int fileline );
 #define CG_CopyString( in ) _CG_CopyString( in, __FILE__, __LINE__ )
+
+
+bool CG_GetBlocklistItem(size_t index, uint64_t* steamid_out, char* name, size_t* name_len_in_out);
+void CG_ReadBlockList( void );
+bool CG_FilterSteamID( uint64_t steamid );
 
 void CG_UseItem( const char *name );
 void CG_RegisterCGameCommands( void );
@@ -1071,7 +1076,6 @@ void CG_Explosion2( const vec3_t pos );
 void CG_ProjectileTrail( centity_t *cent );
 void CG_NewBloodTrail( centity_t *cent );
 void CG_BloodDamageEffect( const vec3_t origin, const vec3_t dir, int damage );
-void CG_CartoonHitEffect( const vec3_t origin, const vec3_t dir, int damage );
 void CG_NewElectroBeamPuff( centity_t *cent, const vec3_t origin, vec3_t dir );
 void CG_FlagTrail( const vec3_t origin, const vec3_t start, const vec3_t end, float r, float g, float b );
 void CG_GreenLaser( const vec3_t start, const vec3_t end );
@@ -1182,7 +1186,6 @@ void CG_ViewWeapon_RefreshAnimation( cg_viewweapon_t *viewweapon );
 //extern cvar_t *cg_footSteps;
 extern cvar_t *cg_damage_indicator;
 extern cvar_t *cg_damage_indicator_time;
-extern cvar_t *cg_pickup_flash;
 extern cvar_t *cg_weaponAutoSwitch;
 
 void CG_FireEvents( bool early );

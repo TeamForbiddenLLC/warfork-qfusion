@@ -279,7 +279,7 @@ bool ElementImage::LoadTexture()
 	SetPseudoClass( "loading", true );
 
 	if( !source.Empty() ) {
-		if( trap::FS_IsUrl( source.CString() ) ) {
+		if( FS_IsUrl( source.CString() ) ) {
 			texture_dirty = false;
 
 			// the stream cache object references this element

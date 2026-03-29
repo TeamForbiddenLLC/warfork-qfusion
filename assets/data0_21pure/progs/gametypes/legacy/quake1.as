@@ -307,7 +307,7 @@ void shooter_rocket( Entity @ent )
 
 //============================================================================
 
-void AmbientSound( Entity @ent, String &str )
+void AmbientSound( Entity @ent, const String &in str )
 {
 	ent.svflags &= ~uint( SVF_NOCLIENT );
 	ent.sound = G_SoundIndex( str );

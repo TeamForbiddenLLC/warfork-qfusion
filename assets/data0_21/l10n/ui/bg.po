@@ -376,10 +376,6 @@ msgstr "Изключи автоматично подскачане"
 msgid "Enable view animation"
 msgstr "Анимация камера на разтоварване"
 
-#. UI option for cg_cartoonHitEffect, shows effects on critical hit.
-msgid "Show critical hit effect"
-msgstr ""
-
 #. Touch screen setting
 msgid "Touch look sensitivity"
 msgstr "Чувствителност на сензорния екран"

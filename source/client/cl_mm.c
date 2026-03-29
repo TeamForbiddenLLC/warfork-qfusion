@@ -740,18 +740,18 @@ static bool CL_MM_LoginSteam( void )
 		cl_mm_steam_token = NULL;
 	}
 
-	if( Steam_GetAuthSessionTicket( &CL_MM_LoginSteamCb ) == 0 ) {
-		return false;
-	}
-
-	// wait for GetAuthSessionTicket callback but not for too long
-	start_time = Sys_Milliseconds();
-	while( !cl_mm_login_steam_complete ) { 
-		if( Sys_Milliseconds() > start_time + MM_STEAM_TICKET_AUTH_TIMEOUT ) {
-			break;
-		}
-		Steam_RunFrame(); 
-	}
+	// if( Steam_GetAuthSessionTicket( &CL_MM_LoginSteamCb ) == 0 ) {
+	// 	return false;
+	// }
+	//
+	// // wait for GetAuthSessionTicket callback but not for too long
+	// start_time = Sys_Milliseconds();
+	// while( !cl_mm_login_steam_complete ) { 
+	// 	if( Sys_Milliseconds() > start_time + MM_STEAM_TICKET_AUTH_TIMEOUT ) {
+	// 		break;
+	// 	}
+	// 	Steam_RunFrame(); 
+	// }
 	
 	return cl_mm_login_steam_ok;
 }
@@ -897,6 +897,7 @@ static void CL_MM_ErrorMessage( bool printToConsole, const char *format, ... )
 
 void CL_MM_Init( void )
 {
+
 	if( cl_mm_initialized )
 		return;
 
@@ -941,7 +942,7 @@ void CL_MM_Init( void )
 	/*
 	* steam
 	*/
-	cl_mm_steam_id = Steam_GetSteamID();
+	// cl_mm_steam_id = Steam_GetSteamID();
 
 	/*
 	* login

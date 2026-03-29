@@ -5,6 +5,7 @@
  *      Author: hc
  */
 
+#include "datasources/ui_blockedplayers_datasource.h"
 #include "ui_precompiled.h"
 #include "kernel/ui_common.h"
 #include "kernel/ui_main.h"
@@ -51,7 +52,7 @@ UI_Main::UI_Main( int vidWidth, int vidHeight, float pixelRatio,
 	empty_fmt(0), serverflags_fmt(0),
 	serverBrowser(0), gameTypes(0), maps(0), vidProfiles(0), huds(0), videoModes(0), 
 	demos(0), mods(0), 
-	playerModels(0), tvchannels(0), gameajax(0),
+	playerModels(0), tvchannels(0), gameajax(0), blockedplayers(0),
 
 	// other members
 	quickMenuURL(""),
@@ -391,6 +392,7 @@ void UI_Main::createDataSources( void )
 	mods = __new__( ModsDataSource )();
 	tvchannels = __new__( TVChannelsDataSource )();
 	gameajax = __new__( GameAjaxDataSource )();
+	blockedplayers = __new__( BlockedPlayersDataSource )();
 	playerModels = __new__( ModelsDataSource )();
 	vidProfiles = __new__( ProfilesDataSource )();
 }
@@ -406,6 +408,7 @@ void UI_Main::destroyDataSources( void )
 	__SAFE_DELETE_NULLIFY( mods );
 	__SAFE_DELETE_NULLIFY( tvchannels );
 	__SAFE_DELETE_NULLIFY( gameajax );
+	__SAFE_DELETE_NULLIFY( blockedplayers );
 	__SAFE_DELETE_NULLIFY( playerModels );
 	__SAFE_DELETE_NULLIFY( vidProfiles );
 }
@@ -683,6 +686,14 @@ void UI_Main::addToServerList(const char *adr, const char *info)
 		return;
 
 	serverBrowser->addToServerList( adr, info );
+}
+
+void UI_Main::ajaxResponse( const char *resource, const char *data )
+{
+	if( !gameajax )
+		return;
+
+	gameajax->AjaxResponse( resource, data );
 }
 
 void UI_Main::forceMenuOff( void )

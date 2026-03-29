@@ -175,9 +175,9 @@ static CScriptArrayInterface *QAS_SplitString( const asstring_t &str, const asst
 	asIScriptContext *ctx = asGetActiveContext();
 	asIScriptEngine *engine = ctx->GetEngine();
 
-	asIObjectType *ot = engine->GetObjectTypeById(engine->GetTypeIdByDecl("array<String @>"));
+	asITypeInfo *ti = engine->GetTypeInfoByDecl("array<String @>");
 
-	CScriptArrayInterface *arr = QAS_NEW(CScriptArray)(0, ot);
+	CScriptArrayInterface *arr = QAS_NEW(CScriptArray)(0, ti);
 	const char *pdelim = delim.buffer;
 	const size_t delim_len = strlen( pdelim );
 

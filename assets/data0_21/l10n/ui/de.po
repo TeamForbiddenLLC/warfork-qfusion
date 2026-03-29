@@ -384,10 +384,6 @@ msgstr "Autohop abschalten"
 msgid "Enable view animation"
 msgstr "Animierte Blickfeld-Kamera einschalten"
 
-#. UI option for cg_cartoonHitEffect, shows effects on critical hit.
-msgid "Show critical hit effect"
-msgstr ""
-
 #. Touch screen setting
 msgid "Touch look sensitivity"
 msgstr "Touch Umsehen-Sensitivität"

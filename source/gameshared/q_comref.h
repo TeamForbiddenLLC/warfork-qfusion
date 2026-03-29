@@ -173,6 +173,7 @@ typedef struct
 #define CS_TVSERVER			1
 #define	CS_MAXCLIENTS		2
 #define CS_MODMANIFEST		3
+#define CS_USESTEAMAUTH 4
 
 #define SERVER_PROTECTED_CONFIGSTRINGS 5
 
@@ -206,8 +207,10 @@ typedef struct
 #define CS_WORLDMODEL		30
 #define	CS_MAPCHECKSUM		31		// for catching cheater maps
 
+#define CS_MOVEMENT 32
+
 //precache stuff begins here
-#define	CS_MODELS			32
+#define	CS_MODELS			33
 #define	CS_SOUNDS			( CS_MODELS+MAX_MODELS )
 #define	CS_IMAGES			( CS_SOUNDS+MAX_SOUNDS )
 #define	CS_SKINFILES		( CS_IMAGES+MAX_IMAGES )
@@ -226,8 +229,9 @@ typedef struct
 //==============================================
 
 // masterservers cvar is shared by client and server. This ensures both have the same default string
-#define	DEFAULT_MASTER_SERVERS_IPS			"master1.forbidden.gg master1.icy.gg"
-#define DEFAULT_MASTER_SERVERS_STEAM_IPS	""
+#define	DEFAULT_MASTER_SERVERS_IPS			"master1.forbidden.gg master2.forbidden.gg:27777 master3.forbidden.gg:42863 master1.icy.gg master2.icy.gg:27777 master3.icy.gg:42863"
+#define DEFAULT_MASTER_SERVERS_STEAM_IPS	"hl1master.steampowered.com:27010 hl2master.steampowered.com:27011"
+#define DEFAULT_MASTER_SERVERS_WARFORK_IPS "warmonger.warfork.com"
 #define SERVER_PINGING_TIMEOUT				50
 #define LAN_SERVER_PINGING_TIMEOUT			20
 #define DEFAULT_PLAYERMODEL					"bigvic"

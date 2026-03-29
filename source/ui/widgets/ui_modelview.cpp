@@ -100,7 +100,7 @@ public:
 		{
 			// Update origin to make the rotation centered into viewport
 			vec3_t mins, maxs;
-			trap::R_ModelBounds( entity.model, mins, maxs );
+			R_ModelBounds( entity.model, mins, maxs );
 			vec3_t buf;
 			buf[0] = -0.5 * (mins[0] + maxs[0]);
 			buf[1] = -0.5 * (mins[1] + maxs[1]);
@@ -120,19 +120,19 @@ public:
 
 		// clip scissor region to parent
 		int scissor_x, scissor_y, scissor_w, scissor_h;
-		trap::R_GetScissor( &scissor_x, &scissor_y, &scissor_w, &scissor_h );
+		RF_GetScissor( &scissor_x, &scissor_y, &scissor_w, &scissor_h );
 		refdef.scissor_x = std::max( scissor_x, refdef.x );
 		refdef.scissor_y = std::max( scissor_y, refdef.y );
 		refdef.scissor_width = std::min( scissor_w, refdef.width );
 		refdef.scissor_height = std::min( scissor_h, refdef.height );
 
-		trap::R_ClearScene();
+		RF_ClearScene();
 
-		trap::R_AddEntityToScene( &entity );
+		RF_AddEntityToScene( &entity );
 
-		trap::R_RenderScene( &refdef );
+		RF_RenderScene( &refdef );
 
-		trap::R_Scissor( scissor_x, scissor_y, scissor_w, scissor_h );
+		RF_SetScissor( scissor_x, scissor_y, scissor_w, scissor_h );
 
 		// TODO: Should this be done here or in ComputePosition?
 		BonePoses->ResetTemporaryBoneposesCache();
@@ -298,8 +298,8 @@ private:
 			return;
 		}
 
-		entity.model = trap::R_RegisterModel( modelName.CString() );
-		entity.customSkin = trap::R_RegisterSkinFile( skinName.CString() );
+		entity.model = R_RegisterModel(modelName.CString());
+		entity.customSkin = R_RegisterSkinFile(skinName.CString());
 	}
 
 	void ComputePosition()
@@ -324,7 +324,7 @@ private:
 			refdef.fov_y = CalcFov( refdef.fov_x, refdef.width, refdef.height );
 
 		skel = NULL;
-		if (trap::R_SkeletalGetNumBones( entity.model, NULL ))
+		if (R_SkeletalGetNumBones( entity.model, NULL ))
 		{
 			skel = BonePoses->SkeletonForModel( entity.model );
 			BonePoses->SetBoneposesForTemporaryEntity( &entity );
@@ -335,7 +335,7 @@ private:
 		//trap::R_FitModelPositionInViewport( entity.model, baseangles, refdef.fov_x, refdef.fov_y, entity.origin);
 
 		vec3_t mins, maxs;
-		trap::R_ModelFrameBounds( entity.model, entity.frame, mins, maxs );
+		R_ModelFrameBounds( entity.model, entity.frame, mins, maxs );
 
 		entity.origin[0] = 0.5 * ( maxs[2] - mins[2] ) * ( 1.0 / 0.220 );
 		entity.origin[1] = 0.5 * ( mins[1] + maxs[1] );

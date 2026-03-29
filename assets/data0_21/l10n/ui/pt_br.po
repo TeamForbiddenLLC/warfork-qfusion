@@ -382,10 +382,6 @@ msgstr "Desativar pulo automático ao segurar o botão"
 msgid "Enable view animation"
 msgstr "Ativar animação da câmera ao aterrissar"
 
-#. UI option for cg_cartoonHitEffect, shows effects on critical hit.
-msgid "Show critical hit effect"
-msgstr "Exibir efeito de acerto crítico"
-
 #. Touch screen setting
 msgid "Touch look sensitivity"
 msgstr "Sensibilidade do toque"

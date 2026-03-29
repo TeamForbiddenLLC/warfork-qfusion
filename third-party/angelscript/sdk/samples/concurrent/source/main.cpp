@@ -9,7 +9,7 @@
 #include <crtdbg.h>
 #endif
 
-#ifdef _LINUX_ 
+#ifdef __linux__ 
 	#include <sys/time.h>
 	#include <stdio.h>
 	#include <termios.h>
@@ -25,12 +25,12 @@
 
 using namespace std;
 
-#ifdef _LINUX_
+#ifdef __linux__
 
 #define UINT unsigned int 
 typedef unsigned int DWORD;
 
-// Linux doesn't have timeGetTime(), this essintially does the same
+// Linux doesn't have timeGetTime(), this essentially does the same
 // thing, except this is milliseconds since Epoch (Jan 1st 1970) instead
 // of system start. It will work the same though...
 DWORD timeGetTime()
@@ -73,7 +73,7 @@ int kbhit()
 #define UINT unsigned int
 typedef unsigned int DWORD;
 
-// Linux doesn't have timeGetTime(), this essintially does the same
+// MacOS doesn't have timeGetTime(), this essentially does the same
 // thing, except this is milliseconds since Epoch (Jan 1st 1970) instead
 // of system start. It will work the same though...
 DWORD timeGetTime()
@@ -130,7 +130,7 @@ int main(int argc, char **argv)
 	contextManager.SetGetTimeCallback((TIMEFUNC_t)&timeGetTime);
 
 	// Create the script engine
-	engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+	engine = asCreateScriptEngine();
 
 	if( engine == 0 )
 	{
@@ -170,8 +170,8 @@ int main(int argc, char **argv)
 		contextManager.ExecuteScripts();
 	}
 
-	// Release the engine
-	engine->Release();
+	// Shut down the engine
+	engine->ShutDownAndRelease();
 
 	return 0;
 }
