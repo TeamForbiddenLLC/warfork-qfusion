@@ -33,3 +33,27 @@ tabset tab {
 #crosshair-strong, #crosshair-strong-white {
 	left: 32dp;
 }
+
+
+.table {
+   display: block;
+   width: 100%;
+}
+
+.caption {
+   font-weight: bold;
+}
+
+.row {
+   display: block;
+   clear: both;
+}
+
+.cell {
+   width: 10%;
+   float: left;
+}
+
+.header {
+   font-weight: bold;
+}
