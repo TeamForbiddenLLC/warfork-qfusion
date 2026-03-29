@@ -33,7 +33,7 @@ static const char* beacon_rcss =
 "	right: 33px;\n"
 "	z-index: top;\n"
 "	width: 20px;\n"
-"	font-family: Lacuna;\n"
+"	font-family: Droid Sans;\n"
 "	font-size: 12px;\n"
 "	color: black;\n"
 "	visibility: hidden;\n"
