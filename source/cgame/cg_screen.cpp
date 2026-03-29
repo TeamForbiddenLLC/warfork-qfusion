@@ -1365,7 +1365,7 @@ static void CG_InGameMenu( void )
 		is_ready = ( ( cg.predictedPlayerState.stats[STAT_LAYOUTS] & STAT_LAYOUT_READY ) != 0 );
 
 	Q_snprintfz( menuparms, sizeof( menuparms ),
-		"menu_open game"
+		"menu_open index"
 			" is_teambased %i"
 			" team %i"
 			" queue %i"

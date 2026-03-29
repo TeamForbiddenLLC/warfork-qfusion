@@ -1,18 +1,18 @@
 <rml>
 <head>
 	<title>options</title>
-	<link type="text/template" href="options.rml" />
+	<link type="text/template" href="template.rml" />
 	<link rel="stylesheet" type="text/css" href="css/options/troubleshoot.rcss" />
 	<script>
 		ElementOptionsForm @form;
 
-		void onLoad( Element @body, Event @evt )
+		void onTroubleshootLoad( Element @body, Event @evt )
 		{
 			onTemplateLoad( body, evt );
 			@form = body.getElementById( "options-form" );
 		}
 
-		void onShow( Element @body, Event @evt )
+		void onTroubleshootShow( Element @body, Event @evt )
 		{
 			onTemplateShow( body, evt );
 			form.storeOptions();
@@ -20,10 +20,9 @@
 		}
 	</script>
 </head>
-<body template="options" onshow="$onShow" onload="$onLoad">
+<body template="porkui" onload="$onTroubleshootLoad" onshow="$onTroubleshootShow">
 
-	<div>
-		
+	<div id="leftside">
 		<div id="troubleshoot">
 			<optionsform id="options-form">
 				<h2>
@@ -63,8 +62,9 @@
 
 			</optionsform>
 		</div>
-
 	</div>
+
+	<template src="options-sidebar" />
 
 </body>
 </rml>
