@@ -11,22 +11,12 @@
 </head>
 
 <body>
+<br/>
+
+<img id="logo" src="/ui/porkui/gfx/logo.png"/>
+	
 <div id="news" src="" onload="$onNewsLoad" onimageload="$onNewsImageLoad" />
-    
-<img src="/ui/porkui/gfx/logo.tga"/>
 
-<p id="intro-text" class="intro">
-
-
-	<br/>
-   <a class="button open-in-browser" href="https://warfork.com/discord" target="_browser">Chat with us on Discord!</a>
-
-	<br/>
-	<br/>
-    
-
-
-
-</p>
 </body>
+
 </rml>

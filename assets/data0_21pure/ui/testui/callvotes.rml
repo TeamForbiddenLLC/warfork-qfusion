@@ -19,12 +19,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 -->
 
 <rml>
-<head>
-	<title>callvotes</title>
-	<link type="text/template" href="template_ingame.rml" />
-	<link type="text/css" rel="stylesheet" href="css/callvotes.rcss" />
-	<script src="as/callvotes.as" />
-	<script>
+
+	<head>
+		<title>callvotes</title>
+		<link type="text/template" href="template_ingame.rml" />
+		<link type="text/css" rel="stylesheet" href="css/callvotes.rcss" />
+		<script src="as/callvotes.as" />
+		<script>
 		const uint CALLVOTES_POLL_INTERVAL = 500;
 		Element @callvotesDatagrid;
 		Element @callvoteHelp;
@@ -232,51 +233,49 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 			callvotesCheckState();
 		}
 	</script>
-</head>
-<body template="porkui_ingame" onload="$onCallvotesLoad" onshow="$onCallvotesShow" onhide="$onCallvotesHide">
-	<div id="menu-ingame">
-		<div id="menu-header">Votes</div>
+	</head>
 
-		<div id="menu-commands">
-			<form id="callvotes_form_start" onsubmit="$onCallvoteStartSubmit">			
-				<div id="callvotes-container">
-					<div id="callvotes_left_frame">
-						<datagrid id="callvotes_datagrid" source="" onrowselect="$onCallvotesRowSelect">
-							<col fields="name" width="150dp">Name</col>
-						</datagrid>
-					</div>
-					<div id="callvotes_spacer_frame" >&nbsp;</div>
-					<div id="callvotes_right_frame">
-						<div id="callvotes_options_frame">
-							<div id="callvote_picker_frame">
-								<input id="callvote_name" type="text" style="display: none;" name="name" />
-								<input id="callvote_numargs" type="text" style="display: none;" name="numargs" />
-								<select id="callvote_yesno"><option value="0">no</option><option value="1" selected>yes</option></select>
-								<dataselect id="callvote_options" fields="name" valuefield="value" formatter="colorcode" />
-								<input id="callvote_text" type="text" />
-							<br/>
-							<span id="callvote_help" />
-							</div>
+	<body template="porkui_ingame" onload="$onCallvotesLoad" onshow="$onCallvotesShow" onhide="$onCallvotesHide">
+		<div id="menu-ingame">
+			<div id="menu-header">Callvote</div>
+
+			<div id="menu-commands">
+				<form id="callvotes_form_start" onsubmit="$onCallvoteStartSubmit">
+					<div id="callvotes_container">
+						<div id="callvotes_left_frame">
+							<datagrid id="callvotes_datagrid" source="" onrowselect="$onCallvotesRowSelect">
+								<col fields="name">Name</col>
+							</datagrid>
+						</div>
+						<div id="callvotes_right_frame">
+							<input id="callvote_name" type="text" name="name" />
+							<input id="callvote_numargs" type="text" name="numargs" />
+							<select id="callvote_yesno">
+								<option value="0">no</option>
+								<option value="1" selected>yes</option>
+							</select>
+							<dataselect id="callvote_options" fields="name" valuefield="value" formatter="colorcode" />
+							<input id="callvote_text" type="text" />
+							<br />
+							<div id="callvote_help" />
 						</div>
 					</div>
-					<br/>
-					<input id="callvote_btn_start" type="submit">Call a vote</input>
-				</div>			
-			</form>
+					<br /> <input id="callvote_btn_start" type="submit"> Call a vote </input>
+				</form>
 
-			<span id="callvote_ongoing_text"></span>
+				<span id="callvote_ongoing_text"></span>
 
-			<form id="callvotes_form_f1f2" onsubmit="$onCallvoteF1F2Submit">
-				<div id="callvotes_frame_f1f2">
-					<br/>
-					<input type="submit" id="callvote_btn_f1" name="vote" value="yes">Vote yes</input>
-					<input type="submit" id="callvote_btn_f2" name="vote" value="no">Vote no</input>
-				</div>
-			</form>
+				<form id="callvotes_form_f1f2" onsubmit="$onCallvoteF1F2Submit">
+					<div id="callvotes_frame_f1f2">
+						<br />
+						<input type="submit" id="callvote_btn_f1" name="vote" value="yes">Vote yes</input>
+						<input type="submit" id="callvote_btn_f2" name="vote" value="no">Vote no</input>
+					</div>
+				</form>
 
-			<button onclick="window.history_back();" id="back-btn">Back</button>
-			<button onclick="window.close();">Return to game</button>		
-		</div>			
-	</div>
-</body>
+				<button onclick="window.history_back();" id="back-btn">Back</button>
+				<button onclick="window.close();">Return to game</button>
+			</div>
+		</div>
+	</body>
 </rml>

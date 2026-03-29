@@ -1,7 +1,7 @@
 <rml>
 <head>
 	<title>options</title>
-	<link type="text/template" href="options.rml" />
+	<link type="text/template" href="template.rml" />
 	<link rel="stylesheet" type="text/css" href="css/modelview.rcss" />
 	<link rel="stylesheet" type="text/css" href="css/options/teams.rcss" />
 	<script src="as/modelview.as"></script>
@@ -101,10 +101,10 @@
 		}
 	</script>
 </head>
-<body template="options" onshow="$onTeamsShow">
+<body template="porkui" onshow="$onTeamsShow">
 
 	<!-- divide the screen to two vertical contexts -->	
-	<div>
+	<div id="leftside">
 
 			<!-- team setup -->
 			<div id="teams-central-view">
@@ -267,6 +267,17 @@
 			</div>
 			<!-- ******* main view end   ******* -->	
 
+	</div>
+
+	<div id="sidebar">
+		<div id="sidebar2">
+			<!-- options navigation -->
+			<a href="#" onclick="animOpenMenu('options_player.rml');">Player</a>
+			<a href="#" onclick="animOpenMenu('options_teams.rml');">Teams</a>
+			<a href="#" onclick="animOpenMenu('options_video.rml');">Video</a>
+			<a href="#" onclick="animOpenMenu('options_audio.rml');">Audio</a>
+			<a href="#" onclick="animOpenMenu('options_input.rml');">Input</a>
+		</div>
 	</div>
 	
 </body>

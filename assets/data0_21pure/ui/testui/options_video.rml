@@ -1,7 +1,7 @@
 <rml>
 <head>
 	<title>options</title>
-	<link type="text/template" href="options.rml" />
+	<link type="text/template" href="template.rml" />
 	<link rel="stylesheet" type="text/css" href="css/options/video.rcss" />
 	<script src="as/video_setup.as"></script>
 	<script>
@@ -80,9 +80,9 @@
 
 	</script>
 </head>
-<body template="options" onload="$onVideoLoad" onshow="$onVideoShow" onhide="$onVideoHide">
-
-	<div>
+<body template="porkui" onload="$onVideoLoad" onshow="$onVideoShow" onhide="$onVideoHide">
+	<!-- divide the screen to two vertical contexts -->	
+	<div id="leftside">
 		
 		<!-- video setup -->
 		<div id="video-options">
@@ -220,6 +220,15 @@
 				<input cvar="r_drawflat" type="checkbox" class="checkbox"/>
 				<br/>
 
+				<div id="module-frame">
+					<div class="title">Graphics Driver</div>
+					<select cvar="vid_ref" id="vid-module" onchange="video.Changed();">
+						<option value="ref_gl" selected>OpenGL</option>
+						<option value="ref_nri" selected>Vulkan/Metal</option>
+					</select>
+					<br/>
+				</div>
+
 				<br/>
 
 				<button onclick="form.restoreOptions(); video.Reset(self);" class="button-cancel">Cancel</button>				
@@ -228,6 +237,17 @@
 		</div>
 
 		<!-- ******* main view end   ******* -->
+	</div>
+
+	<div id="sidebar">
+		<div id="sidebar2">
+			<!-- options navigation -->
+			<a href="#" onclick="animOpenMenu('options_player.rml');">Player</a>
+			<a href="#" onclick="animOpenMenu('options_teams.rml');">Teams</a>
+			<a href="#" onclick="animOpenMenu('options_video.rml');">Video</a>
+			<a href="#" onclick="animOpenMenu('options_audio.rml');">Audio</a>
+			<a href="#" onclick="animOpenMenu('options_input.rml');">Input</a>
+		</div>
 	</div>
 
 </body>

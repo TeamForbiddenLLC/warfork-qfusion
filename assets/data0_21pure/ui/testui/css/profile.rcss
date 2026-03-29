@@ -101,3 +101,10 @@ panel { margin-top: 0dp; padding: 0dp; z-index: 999; } /* content always at top 
 .awardCount { text-align: left; margin-top: 14dp; margin-left: 18dp; font-size: 11dp; font-weight: bold; float: left; position: absolute; }
 .awardImg { width: 96dp; height: 96dp; float: left; }
 .awardText { text-align: left; }
+
+/* logo fix */
+#logo {
+	width: 100%;
+	height: auto;
+	margin: auto;
+}

@@ -1,7 +1,7 @@
 <rml>
 <head>
 	<title>options</title>
-	<link type="text/template" href="options.rml" />
+	<link type="text/template" href="template.rml" />
 	<link rel="stylesheet" type="text/css" href="css/options/audio.rcss" />
 	<script>
 		ElementOptionsForm @form;
@@ -194,9 +194,9 @@
 		
 	</script>	
 </head>
-<body template="options" onshow="$onAudioShow">
-
-	<div>
+<body template="porkui" onshow="$onAudioShow">
+	<!-- divide the screen to two vertical contexts -->	
+	<div id="leftside">
 		
 		<!-- audio setup -->
 		<div id="audio-options">
@@ -256,6 +256,7 @@
 				<div id="effort-volume-txt" class="slider-value"></div>
 				<br />
 				
+				<!--
 				<br/>			
 				<hr class="nicehr" />
 				<br/>
@@ -268,6 +269,7 @@
 				<input id="react-range" cvar="cg_reactionKillsTimeout" type="range" min="1.0" max="300.00" step="1.00" value="45.0" realtime="1" onchange="$onReactChangeRange"/>
 				<input id="react-input" cvar="cg_reactionKillsTimeout" type="text" class="short text" min="1.0" max="300.00" step="1.00" value="45.0" realtime="1" onchange="$onReactChangeInput"/>
 				<br/>
+				-->
 
 				<br/>			
 				<hr class="nicehr" />
@@ -280,6 +282,12 @@
 				<div class="title">Chat message sound</div>
 				<input cvar="cg_chatBeep" type="checkbox" realtime="1"/>
 				<br/>
+
+				<div class="title">Enable voice chat</div>
+				<input cvar="cl_enablevoice" type="checkbox" realtime="1"/>
+				<br/>
+				(To change microphone settings, press shift-tab to activate the steam overlay, and open "in-game voice" in settings)
+				<br/>
 				<br/>
 
 				<button onclick="form.restoreOptions(); soundReset();" class="button-cancel">Cancel</button>	
@@ -288,6 +296,17 @@
 			</optionsform>
 		</div>
 
+	</div>
+
+	<div id="sidebar">
+		<div id="sidebar2">
+			<!-- options navigation -->
+			<a href="#" onclick="animOpenMenu('options_player.rml');">Player</a>
+			<a href="#" onclick="animOpenMenu('options_teams.rml');">Teams</a>
+			<a href="#" onclick="animOpenMenu('options_video.rml');">Video</a>
+			<a href="#" onclick="animOpenMenu('options_audio.rml');">Audio</a>
+			<a href="#" onclick="animOpenMenu('options_input.rml');">Input</a>
+		</div>
 	</div>
 
 </body>
