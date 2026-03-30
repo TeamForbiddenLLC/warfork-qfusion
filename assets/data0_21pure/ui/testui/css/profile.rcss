@@ -30,7 +30,7 @@
 	padding-right: 8dp;
 	overflow: hidden;
 	ninep-decorator: ninepatch;
-	ninep-src: /ui/porkui/gfx/controls/button_purple;
+	ninep-src: /ui/testui/gfx/controls/button_purple;
 	ninep-coords: 0.125 0.125 0.125 0.125;
 	ninep-size: 4dp 4dp 4dp 4dp;	
 }
@@ -60,7 +60,7 @@
 	padding-top: 4dp; 
 	padding-bottom: 8dp;
 	ninep-decorator: ninepatch;
-	ninep-src: /ui/porkui/gfx/controls/button_purple;
+	ninep-src: /ui/testui/gfx/controls/button_purple;
 	ninep-coords: 0.125 0.125 0.125 0.125;
 	ninep-size: 4dp 4dp 4dp 4dp;
 }

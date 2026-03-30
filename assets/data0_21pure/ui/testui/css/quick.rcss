@@ -36,7 +36,7 @@ button {
 	background-color: transparent;
 	
 	ninep-decorator: ninepatch;
-	ninep-src: /ui/porkui/gfx/controls/modal;
+	ninep-src: /ui/testui/gfx/controls/modal;
 	ninep-coords: 0.375 0.375 0.375 0.375;
 	ninep-size: 24dp 24dp 24dp 24dp;
 }

@@ -18,5 +18,5 @@ br     { clear: both; margin-bottom: 8dp; }
 .dropshadow {
 	padding-top: 16dp;
 	background-decorator: image;
-	background-image: /ui/porkui/gfx/dropshadow.tga	0 0 1 1;
+	background-image: /ui/testui/gfx/dropshadow.tga	0 0 1 1;
 }

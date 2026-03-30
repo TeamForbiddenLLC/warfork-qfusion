@@ -717,7 +717,7 @@
 			<div id="serverbrowser_frame">
 				<div id="serverbrowser-manual-container">
 					<span id="in-progress-counter"></span>
-					<img id="in-progress-spinner" src="/ui/porkui/gfx/loader_simple" />
+					<img id="in-progress-spinner" src="/ui/testui/gfx/loader_simple" />
 					<br/>
 					<span id="in-progress-title">Searching for game servers...</span>
 					<br/>

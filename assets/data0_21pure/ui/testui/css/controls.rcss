@@ -26,24 +26,24 @@ button, .button, input.submit {
 /*	sound-hover: /sounds/menu/mouseover.wav; */
 	sound-click: /sounds/menu/ok.wav;
 	ninep-decorator: ninepatch;
-	ninep-src: /ui/porkui/gfx/controls/button_purple;
+	ninep-src: /ui/testui/gfx/controls/button_purple;
 	ninep-coords: 0.125 0.125 0.125 0.125;
 	ninep-size: 4dp 4dp 4dp 4dp;
 }
 
 input.submit:disabled, input.submit:disabled:hover, input.submit:disabled:active {
 	color: #fff;
-	ninep-src: /ui/porkui/gfx/controls/button_lightpurple;
+	ninep-src: /ui/testui/gfx/controls/button_lightpurple;
 }
 
 button:hover, .button:hover, input.submit:hover, button:focus, .button:focus, input.submit:focus {
 	color: #fff;
-	ninep-src: /ui/porkui/gfx/controls/button_lightpurple;
+	ninep-src: /ui/testui/gfx/controls/button_lightpurple;
 }
 
 button:active, .button:active, input.submit:active {
 	color: #fff;
-	ninep-src: /ui/porkui/gfx/controls/button_purple_active;
+	ninep-src: /ui/testui/gfx/controls/button_purple_active;
 }
 
 /* Inputs */
@@ -108,24 +108,24 @@ scrollbarvertical sliderarrowdec, scrollbarvertical sliderarrowinc {
 }
 
 scrollbarvertical sliderarrowdec {
-	background-image: /ui/porkui/gfx/controls/scrollbar_arrow 0 0 1 1;
+	background-image: /ui/testui/gfx/controls/scrollbar_arrow 0 0 1 1;
 }
 
 scrollbarvertical sliderarrowinc {
-	background-image: /ui/porkui/gfx/controls/scrollbar_arrow 0 1 1 0;
+	background-image: /ui/testui/gfx/controls/scrollbar_arrow 0 1 1 0;
 }
 
 scrollbarvertical sliderbar {
 	width: 16dp;
 	ninep-decorator: ninepatch;
-	ninep-src: /ui/porkui/gfx/controls/scrollbar_bar;
+	ninep-src: /ui/testui/gfx/controls/scrollbar_bar;
 	ninep-coords: 0.5 0.5 0.5 0.5;
 	ninep-size: 4dp 4dp 4dp 4dp;
 	z-index: 99999;
 }
 
 scrollbarvertical sliderbar:hover, scrollbarvertical sliderbar:focus {
-	ninep-src: /ui/porkui/gfx/controls/scrollbar_bar_hover;
+	ninep-src: /ui/testui/gfx/controls/scrollbar_bar_hover;
 }
 
 /* Input: checkbox */
@@ -140,7 +140,7 @@ input.checkbox:hover, input.checkbox:focus {
 
 input.checkbox:checked {
 	checkbox-decorator: image;
-	checkbox-image: /ui/porkui/gfx/controls/checkbox 0 0 1 1;
+	checkbox-image: /ui/testui/gfx/controls/checkbox 0 0 1 1;
 }
 
 /* Color picker */
@@ -201,7 +201,7 @@ select selectbox option:hover, dataselect selectbox option:hover, dataselect sel
 /* Range slider */
 input.range slidertrack {
 	ninep-decorator: ninepatch;
-	ninep-src: /ui/porkui/gfx/controls/range;
+	ninep-src: /ui/testui/gfx/controls/range;
 	ninep-coords: 0 0.5 0 0.5;
 	ninep-size: 0 24dp 0 24dp;
 }
@@ -222,11 +222,11 @@ input.range sliderbar {
 	height: 24dp;
 
 	icon-decorator: image;
-	icon-image: /ui/porkui/gfx/controls/range_slider 0 0 1 1;
+	icon-image: /ui/testui/gfx/controls/range_slider 0 0 1 1;
 }
 
 input.range sliderbar:hover, input.range sliderbar:focus {
-	icon-image: /ui/porkui/gfx/controls/range_slider_hover 0 0 1 1;	
+	icon-image: /ui/testui/gfx/controls/range_slider_hover 0 0 1 1;	
 }
 
 .slider-value {

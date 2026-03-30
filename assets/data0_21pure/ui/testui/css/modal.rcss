@@ -16,7 +16,7 @@
 	position: relative;
 
 	ninep-decorator: ninepatch;
-	ninep-src: /ui/porkui/gfx/controls/modal;
+	ninep-src: /ui/testui/gfx/controls/modal;
 	ninep-coords: 0.375 0.375 0.375 0.375;
 	ninep-size: 24dp 24dp 24dp 24dp;
 
@@ -50,14 +50,14 @@ button, input.submit {
 	drag: none;
 
 	ninep-decorator: ninepatch;
-	ninep-src: /ui/porkui/gfx/controls/button_purple;
+	ninep-src: /ui/testui/gfx/controls/button_purple;
 	ninep-coords: 0.125 0.125 0.125 0.125;
 	ninep-size: 4dp 4dp 4dp 4dp;
 }
 
 #modal-controls button:hover, .modal-controls button:hover, #modal-controls input.submit:hover, .modal-controls input.submit:hover {
 	color: white;
-	ninep-src: /ui/porkui/gfx/controls/button_lightpurple;
+	ninep-src: /ui/testui/gfx/controls/button_lightpurple;
 }
 
 #modal-controls .button-apply, .modal-controls .button-apply, #modal-controls .button-cancel, .modal-controls .button-cancel, .button-other { 

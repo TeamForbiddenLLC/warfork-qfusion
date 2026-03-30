@@ -37,9 +37,9 @@ h2 {
 	width: 100%;
 	height: 100%;
 	bg-decorator: image;
-	bg-image: /ui/porkui/gfx/background 0 0 1 1;
+	bg-image: /ui/testui/gfx/background 0 0 1 1;
 	bg2-decorator: image;
-	bg2-image: /ui/porkui/gfx/background2 0 0 1 1;
+	bg2-image: /ui/testui/gfx/background2 0 0 1 1;
 	background: #111016a0;
 
 }
@@ -59,7 +59,7 @@ h2 {
 	width: 100%;
 	height: 64dp;
 	ninep-decorator: ninepatch;
-	ninep-src: /ui/porkui/gfx/logo;
+	ninep-src: /ui/testui/gfx/logo;
 	ninep-coords: 0 0 0 1;
 	ninep-size: 0 0 0 512dp;
     margin: auto;
@@ -69,7 +69,7 @@ h2 {
 #header-bottom {
 	position: fixed;
 	bottom: 0dp; left: 0dp;
-	ninep-src: /ui/porkui/gfx/rankings;
+	ninep-src: /ui/testui/gfx/rankings;
 
 }
 
@@ -145,7 +145,7 @@ a:hover, a:focus {
 	color: #fff;
 	darken-font-effect: none;
 	ninep-decorator: ninepatch;
-	ninep-src: /ui/porkui/gfx/controls/button;
+	ninep-src: /ui/testui/gfx/controls/button;
 	ninep-coords: 0.125 0.125 0.125 0.125;
 	ninep-size: 4dp 4dp 4dp 4dp;
 }
@@ -237,7 +237,7 @@ a:hover, a:focus {
 /*	sound-hover: /sounds/menu/mouseover.wav; */
 	sound-click: /sounds/menu/ok.wav;
 	ninep-decorator: ninepatch;
-	ninep-src: /ui/porkui/gfx/controls/button_purple;
+	ninep-src: /ui/testui/gfx/controls/button_purple;
 	ninep-coords: 0.125 0.125 0.125 0.125;
 	ninep-size: 4dp 4dp 4dp 4dp;
 	tab-index: auto;
@@ -245,12 +245,12 @@ a:hover, a:focus {
 
 #sidebar2 a:hover, #sidebar2 button:hover, #sidebar2 a:focus, #sidebar2 button:focus, .styled-button:hover, .styled-button:focus {
 	color: #fff;
-	ninep-src: /ui/porkui/gfx/controls/button_lightpurple;
+	ninep-src: /ui/testui/gfx/controls/button_lightpurple;
 }
 
 #sidebar2 a:active, #sidebar2 button:active, .styled-button:active {
 	color: #fff;
-	ninep-src: /ui/porkui/gfx/controls/button_purple_active;
+	ninep-src: /ui/testui/gfx/controls/button_purple_active;
 }
 
 #sidebar2 hr {
@@ -293,7 +293,7 @@ tabset tab, #navibar a {
 	white-space: nowrap;
 
 	ninep-decorator: ninepatch;
-	ninep-src: /ui/porkui/gfx/controls/button_purple_trans;
+	ninep-src: /ui/testui/gfx/controls/button_purple_trans;
 	ninep-coords: 0.125 0.125 0.125 0.125;
 	ninep-size: 4dp 4dp 0 4dp;
 }
@@ -304,7 +304,7 @@ tabset tab:active {
 
 tabset tab:selected, tabset tab:hover, tabset tab:focus, #navibar a:active, #navibar a:hover {
 	color: #fff;
-	ninep-src: /ui/porkui/gfx/controls/button_purple_active;
+	ninep-src: /ui/testui/gfx/controls/button_purple_active;
 }
 
 tabset tabs, #navibar {
@@ -340,13 +340,13 @@ tabset tabs, #navibar {
 	width: 32dp;
 	height: 100%;
 	ninep-decorator: ninepatch;
-	ninep-src: /ui/porkui/gfx/arrow_left;
+	ninep-src: /ui/testui/gfx/arrow_left;
 	ninep-coords: 0 0 0 0;
 	ninep-size: -16dp 0 -16dp 0;
 }
 
 .left-arrow:hover {
-	ninep-src: /ui/porkui/gfx/arrow_left_h;
+	ninep-src: /ui/testui/gfx/arrow_left_h;
 }
 
 .right-arrow {
@@ -354,13 +354,13 @@ tabset tabs, #navibar {
 	width: 32dp;
 	height: 100%;
 	ninep-decorator: ninepatch;
-	ninep-src: /ui/porkui/gfx/arrow_right;
+	ninep-src: /ui/testui/gfx/arrow_right;
 	ninep-coords: 0 0 0 0;
 	ninep-size: -16dp 0 -16dp 0;
 }
 
 .right-arrow:hover {
-	ninep-src: /ui/porkui/gfx/arrow_right_h;
+	ninep-src: /ui/testui/gfx/arrow_right_h;
 }
 
 a#link_game {

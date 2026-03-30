@@ -59,17 +59,17 @@
 	height: 40dp;
 	width: 40dp;
 	ninep-decorator: ninepatch;
-	ninep-src: /ui/porkui/gfx/controls/tvchasecam;
+	ninep-src: /ui/testui/gfx/controls/tvchasecam;
 	ninep-coords: 0.125 0.125 0.125 0.125;
 	ninep-size: 4dp 4dp 4dp 4dp;
 }
 
 #chasecam-button:hover {
-	ninep-src: /ui/porkui/gfx/controls/tvchasecam_hover;
+	ninep-src: /ui/testui/gfx/controls/tvchasecam_hover;
 }
 
 #chasecam-button:active {
-	ninep-src: /ui/porkui/gfx/controls/tvchasecam_active;
+	ninep-src: /ui/testui/gfx/controls/tvchasecam_active;
 }
 
 #refresh-button {
@@ -77,17 +77,17 @@
 	height: 40dp;
 	width: 40dp;
 	ninep-decorator: ninepatch;
-	ninep-src: /ui/porkui/gfx/controls/tvrefresh;
+	ninep-src: /ui/testui/gfx/controls/tvrefresh;
 	ninep-coords: 0.125 0.125 0.125 0.125;
 	ninep-size: 4dp 4dp 4dp 4dp;
 }
 
 #refresh-button:hover {
-	ninep-src: /ui/porkui/gfx/controls/tvrefresh_hover;
+	ninep-src: /ui/testui/gfx/controls/tvrefresh_hover;
 }
 
 #refresh-button:active {
-	ninep-src: /ui/porkui/gfx/controls/tvrefresh_active;
+	ninep-src: /ui/testui/gfx/controls/tvrefresh_active;
 }
 
 #watch-button {
@@ -96,15 +96,15 @@
 	height: 40dp;
 	width: 40dp;
 	ninep-decorator: ninepatch;
-	ninep-src: /ui/porkui/gfx/controls/demoplay;
+	ninep-src: /ui/testui/gfx/controls/demoplay;
 	ninep-coords: 0.125 0.125 0.125 0.125;
 	ninep-size: 4dp 4dp 4dp 4dp;
 }
 
 #watch-button:hover {
-	ninep-src: /ui/porkui/gfx/controls/demoplay_hover;
+	ninep-src: /ui/testui/gfx/controls/demoplay_hover;
 }
 
 #watch-button:active {
-	ninep-src: /ui/porkui/gfx/controls/demoplay_active;
+	ninep-src: /ui/testui/gfx/controls/demoplay_active;
 }

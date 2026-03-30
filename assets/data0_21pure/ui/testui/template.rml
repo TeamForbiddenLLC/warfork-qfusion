@@ -375,7 +375,7 @@
 	<div id="header">
 	</div>
 	
-	<span id="experimental_ui_string">Using experimental UI v4</span>
+	<span id="experimental_ui_string">Using experimental UI v5</span>
 
 	<!-- Main navigation bar -->
 	<div id="navi">
@@ -403,22 +403,22 @@
 	
     <div id="console">
 		<!-- Console icon -->
-		<img src="/ui/porkui/gfx/console.tga" onclick="$openConsole" id="link_console" />
+		<img src="/ui/testui/gfx/console.tga" onclick="$openConsole" id="link_console" />
 	</div>
 		
 	
 	<div id="social-links"> 
 		<a href="https://twitter.com/warforksocial" target="_browser">
-			<img src="/ui/porkui/gfx/x.png" class="social-icon" />
+			<img src="/ui/testui/gfx/x.png" class="social-icon" />
 		</a>
 		<a href="https://warfork.com/discord" target="_browser">
-			<img src="/ui/porkui/gfx/discord.png" class="social-icon" />
+			<img src="/ui/testui/gfx/discord.png" class="social-icon" />
 		</a>
 		<a href="https://warfork.com/" target="_browser">
-			<img src="/ui/porkui/gfx/www.png" class="social-icon" />
+			<img src="/ui/testui/gfx/www.png" class="social-icon" />
 		</a>
 		<a href="#" onclick="$openConsole">
-			<img src="/ui/porkui/gfx/console.png" class="social-icon" id="console" />
+			<img src="/ui/testui/gfx/console.png" class="social-icon" id="console" />
 		</a>
 	</div>
 

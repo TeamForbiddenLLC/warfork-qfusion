@@ -13,7 +13,7 @@
 <body>
 <br/>
 
-<img id="logo" src="/ui/porkui/gfx/logo.png"/>
+<img id="logo" src="/ui/testui/gfx/logo.png"/>
 	
 <div id="news" src="" onload="$onNewsLoad" onimageload="$onNewsImageLoad" />
 
