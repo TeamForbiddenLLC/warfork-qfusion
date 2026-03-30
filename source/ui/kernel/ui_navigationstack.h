@@ -5,6 +5,7 @@
 #include <list>
 #include <set>
 #include <string>
+#include <vector>
 
 namespace WSWUI {
 	class Document;
@@ -97,6 +98,8 @@ namespace WSWUI {
 
 		void invalidateAssets(void);
 		int getContextId(void) const { return cache.getContextId(); };
+
+		std::vector<std::string> getStackDocumentNames() const;
 
 		// DEBUG
 		void printStack();
