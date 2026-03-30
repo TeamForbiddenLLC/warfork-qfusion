@@ -414,6 +414,9 @@
 		<a href="https://warfork.com/discord" target="_browser">
 			<img src="/ui/testui/gfx/discord.png" class="social-icon" />
 		</a>
+		<a href="https://github.com/TeamForbiddenLLC/warfork-qfusion" target="_browser">
+			<img src="/ui/testui/gfx/github.png" class="social-icon" />
+		</a>
 		<a href="https://warfork.com/" target="_browser">
 			<img src="/ui/testui/gfx/www.png" class="social-icon" />
 		</a>
