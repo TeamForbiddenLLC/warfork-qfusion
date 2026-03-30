@@ -20,6 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #pragma once
 
+#include "../gameshared/q_arch.h"
+
 // odd values include alpha channel
 typedef enum
 {
@@ -42,3 +44,4 @@ typedef struct
 bool WriteScreenShot( const char * filename, r_imginfo_t *info, int type );
 
 void DecompressETC1( const uint8_t *in, int width, int height, uint8_t *out, bool bgr );
+
