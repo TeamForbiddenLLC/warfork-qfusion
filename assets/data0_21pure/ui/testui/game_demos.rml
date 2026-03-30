@@ -3,11 +3,14 @@
 	<title>game</title>
 	<link type="text/template" href="template.rml" />
 	<link type="text/css" rel="stylesheet" href="css/demos.rcss" />
+	<script src="as/fuzzy_search.as" />
 	<script>
 		Element @demogrid;
 		Element @demoblock;
 		Element @demopath;
 		Element @playbutton;
+		Element @searchInput;
+		array<String> @searchFields = {'name'};
 
 		int lastSelectedRow = -1;
 
@@ -70,6 +73,11 @@
 
 			cast<ElementDataGrid>(demogrid).setDataSource( demogridSource + "." + currentPath );
 
+			fuzzySearch_saveQuery( "" );
+			if( @searchInput !is null ) {
+				searchInput.setAttr( "value", "" );
+			}
+
 			// clear selected demo
 			clearDemoSelection();
 			
@@ -99,6 +107,7 @@
 			@demoblock = @elem.getElementById( 'demoblock' );
 			@demopath = @elem.getElementById( 'demopath' );
 			@playbutton = @elem.getElementById( 'play-btn' );
+			@searchInput = @elem.getElementById( 'demos-search-input' );
 
 			setDemogridPath( "/" );
 		}
@@ -107,6 +116,12 @@
 		{
 			onTemplateShow( elem, ev );
 			animationsOnShow();
+
+			if( @searchInput !is null ) {
+				String savedQuery = fuzzySearch_loadQuery();
+				searchInput.setAttr( "value", savedQuery );
+				fuzzySearch_filterDatagrid( cast<ElementDataGrid>(demogrid), demogridSource, currentPath, savedQuery, searchFields );
+			}
 		}
 
 		// displays selected demo information in the sidebar
@@ -243,6 +258,13 @@
 		{
 			playSelectedDemo();
 		}
+
+		void onDemosSearchInput( Element @elem, Event @ev )
+		{
+			String query = elem.getAttr( "value", "" );
+			fuzzySearch_saveQuery( query );
+			fuzzySearch_filterDatagrid( cast<ElementDataGrid>(demogrid), demogridSource, currentPath, query, searchFields );
+		}
 	</script>
 </head>
 <body template="porkui" onload="$onDemosLoad" onshow="$onDemosShow">
@@ -251,6 +273,11 @@
 		<div id="demopath" />
 
 		<div id="demolist">
+			<div class="search-bar">
+				<img class="search-icon" src="/ui/testui/gfx/controls/search.png"/>
+				<input id="demos-search-input" type="text" class="search-input text" value=""
+					ontextinput="$onDemosSearchInput" onchange="$onDemosSearchInput"/>
+			</div>
 			<datagrid id="demolist_datagrid" source="demos./" onrowselect="$onDemolistRowSelect" ondblclick="$onDemolistDblClick">
 				<col fields="name" width="650dp" formatter="filetype">Demo filename</col>
 			</datagrid>

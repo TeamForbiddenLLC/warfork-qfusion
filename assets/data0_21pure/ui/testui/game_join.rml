@@ -5,6 +5,7 @@
 	<link type="text/css" rel="stylesheet" href="css/serverlist.rcss" />
 	<link type="text/css" rel="stylesheet" href="css/modal.rcss" />
 	<script src="as/favorites.as" />
+	<script src="as/fuzzy_search.as" />
 	<script>
 
 	class SortedServer
@@ -47,6 +48,9 @@
 	Element @suggestionmodal;
 	ElementFormControlDataSelect @suggestionspinner;
 	Element @suggestionserverblock;
+	Element @searchInput;
+	array<String> @serverSearchFields = {'cleanname', 'map', 'gametype'};
+	String serverSearchQuery = "";
 
 	void onJoinLoad( Element @body, Event @ev )
 	{
@@ -73,6 +77,7 @@
 		@suggestionmodal = body.getElementById( 'suggestion-modal' );
 		@suggestionspinner = body.getElementById( 'suggestion-spinner' );
 		@suggestionserverblock = body.getElementById( 'suggestion-serverblock' );
+		@searchInput = body.getElementById( 'server-search-input' );
 
 		ElementDataGrid @grid = servergrid;
 		if( @grid == null ) {
@@ -92,7 +97,7 @@
 		suggestionspinner.setDataSource( browserDataSourceName + "." + browserTableName + suggestionTableNameSuffix );
 
 		Element @cleanname = null;
-		float width = 0.0;
+		float width = 48.0;
 		for( int i = 0; i < int( grid.getNumColumns() ); i++ ) {
 			if( grid.getFields( i )[0] == 'cleanname' ) {
 				@cleanname = grid.getColumnHeader( i );
@@ -101,7 +106,7 @@
 			}
 		}
 		if( @cleanname != null ) {
-			cleanname.setProp( 'width', String( servergrid.clientWidth() - width ) + 'px' );
+			cleanname.setProp( 'width', String( servergrid.clientWidth() - width ) + 'dx' );
 		}
 
 		// hide the infoblock as we haven't picked a server yet
@@ -149,11 +154,20 @@
 		lasttab.set( browserTableName );
 
 		Element @container = body.getElementById( 'serverbrowser-container' );
+		Element @searchBar = body.getElementById( 'server-search-bar' );
+		int searchBarHeight = 0;
+		if( @searchBar != null ) {
+			searchBarHeight = searchBar.clientHeight()
+				+ int( searchBar.resolveProp( 'margin-top', searchBar.clientHeight() ) )
+				+ int( searchBar.resolveProp( 'margin-bottom', searchBar.clientHeight() ) );
+		}
 		body.getElementById( 'serverbrowser_frame' ).css( 'height',
 			(body.getElementById( 'leftside' ).clientHeight() 
 			- body.getElementById( 'navibar' ).clientHeight()
 			- int( container.resolveProp( 'padding-top', container.clientHeight() ) )
 			- int( container.resolveProp( 'padding-bottom', container.clientHeight() ) )
+			- searchBarHeight
+			- 1
 			) + 'px'
 		);
 
@@ -170,6 +184,12 @@
 		onJoinThink();
 		
 		updateBrowserVisibility();
+
+		if( @searchInput !is null ) {
+			String savedQuery = fuzzySearch_loadQuery();
+			searchInput.setAttr( "value", savedQuery );
+			serverSearchQuery = savedQuery;
+		}
 
 		if( isSuggestionVisible ) {
 			focusSuggestionDialog();
@@ -228,6 +248,7 @@
 				servergrid.css( 'display', 'block' );
 				navibar.css( 'display', 'block' );
 				window.document.body.getElementById( 'serverbrowser-manual-container' ).css( 'display', 'none' );
+				applyServerFilter();
 			}
 			isGridHidden = false;			
 		}
@@ -335,6 +356,8 @@
 		}
 
 		progresscounter.setInnerRML( '' + browserDataSource.numRows( browserTableName ) );
+
+		applyServerFilter();
 	}
 
 	void formatSuggestionServerInfoBlock( Element @el, const String &in table, int sel )
@@ -633,6 +656,21 @@
 		toggleFavoriteOnSelectedServer();
 	}
 
+	void applyServerFilter()
+	{
+		if( @servergrid == null || @browserDataSource == null || browserTableName.empty() ) {
+			return;
+		}
+		fuzzySearch_filterDatagrid( cast<ElementDataGrid>(servergrid), browserDataSourceName, browserTableName, serverSearchQuery, serverSearchFields );
+	}
+
+	void onServerSearchInput( Element @elem, Event @ev )
+	{
+		serverSearchQuery = elem.getAttr( "value", "" );
+		fuzzySearch_saveQuery( serverSearchQuery );
+		applyServerFilter();
+	}
+
 	</script>
 </head>
 <body template="porkui" onload="$onJoinLoad" onshow="$onJoinShow" onhide="$onJoinHide">
@@ -667,6 +705,15 @@
 			<a href="game_join.rml?servers=favorites" id="link-favorites">Favorites</a>
 		</div>
 		<div id="serverbrowser-container" class="dropshadow">
+			<div id="server-search-bar" class="search-bar search-container">
+				<div class="icon-wrapper">
+					<img class="search-icon" src="/ui/testui/gfx/controls/search.png"/>
+				</div>
+				<div class="input-wrapper">
+					<input id="server-search-input" type="text" class="search-input text" value=""
+						ontextinput="$onServerSearchInput" onchange="$onServerSearchInput"/>
+				</div>
+			</div>
 			<div id="serverbrowser_frame">
 				<div id="serverbrowser-manual-container">
 					<span id="in-progress-counter"></span>
@@ -685,10 +732,11 @@
 					onrowactivate="$onServerBrowserRowActivate">
 					<col fields="flags" width="30dp" formatter="serverflags">&nbsp;</col>
 					<col fields="ping" width="50dp">Ping</col>
-					<col fields="cleanname" width="400dp">Hostname</col>
+					<col fields="cleanname" width="200dp">Hostname</col>
 					<col fields="players" width="70dp">Players</col>
 					<col fields="gametype" width="100dp">Gametype</col>
-					<col fields="steam" width="110dp">Steam</col>
+					<col fields="map" width="120dp">Map</col>
+					<col fields="steam" width="40dp">Steam</col>
 				</datagrid>
 			</div>		
 		</div>

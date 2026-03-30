@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 	<title>players</title>
 	<link type="text/template" href="template_ingame.rml" />
 	<link type="text/css" rel="stylesheet" href="css/blocklist.rcss" />
+	<script src="as/fuzzy_search.as" />
 	<!-- <script src="as/players.as" /> -->
 	<script>
 		Element @playersDatagrid;
@@ -36,6 +37,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 		Element @blockBtn;
 		Element @viewprofileBtn;
+		Element @searchInput;
+		array<String> @searchFields = {'name', 'cleanname'};
 
 		String @selsteamid;
 		String @selname;
@@ -56,6 +59,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 			@playerText = body.getElementById( "player_text" );
 			@blockBtn = body.getElementById( "block_btn" );
 			@viewprofileBtn = body.getElementById( "viewprofile_btn" );
+			@searchInput = body.getElementById( 'players-search-input' );
 
 		}
 
@@ -71,6 +75,21 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 			animationsOnShow();
 
 			playersSetDataSources();
+
+			if( @searchInput !is null ) {
+				String savedQuery = fuzzySearch_loadQuery();
+				searchInput.setAttr( "value", savedQuery );
+				fuzzySearch_filterDatagrid( cast<ElementDataGrid>(playersDatagrid), "gameajax", "players", savedQuery, searchFields );
+				fuzzySearch_filterDatagrid( cast<ElementDataGrid>(blockedDatagrid), "blockedplayers", "players", savedQuery, searchFields );
+			}
+		}
+
+		void onPlayersSearchInput( Element @elem, Event @ev )
+		{
+			String query = elem.getAttr( "value", "" );
+			fuzzySearch_saveQuery( query );
+			fuzzySearch_filterDatagrid( cast<ElementDataGrid>(playersDatagrid), "gameajax", "players", query, searchFields );
+			fuzzySearch_filterDatagrid( cast<ElementDataGrid>(blockedDatagrid), "blockedplayers", "players", query, searchFields );
 		}
 
 		void onPlayersHide( Element @body, Event @evt )
@@ -146,6 +165,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 		}
 
+		void onPlayersSearchInput( Element @elem, Event @ev )
+		{
+			String query = elem.getAttr( "value", "" );
+			fuzzySearch_saveQuery( query );
+			fuzzySearch_filterDatagrid( cast<ElementDataGrid>(playersDatagrid), "gameajax", "players", query, searchFields );
+			fuzzySearch_filterDatagrid( cast<ElementDataGrid>(blockedDatagrid), "blockedplayers", "what", query, searchFields );
+		}
+
 		void onBlockSubmit( Element @elem, Event @ev )
 		{
 			if (unblock) {
@@ -168,6 +195,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 		<div id="menu-header">Players</div>
 
 		<div id="menu-commands">
+			<div class="search-bar">
+				<img class="search-icon" src="/ui/testui/gfx/controls/search.png"/>
+				<input id="players-search-input" type="text" class="search-input text" value=""
+					ontextinput="$onPlayersSearchInput" onchange="$onPlayersSearchInput"/>
+			</div>
 			<form id="players_form_start" onsubmit="$onBlockSubmit">			
 				<div id="players-container">
 					<div id="players_left_frame">

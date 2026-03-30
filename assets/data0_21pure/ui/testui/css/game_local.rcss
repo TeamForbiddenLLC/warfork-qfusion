@@ -1,10 +1,28 @@
+.map-container {
+	margin-left: 15%;
+	margin-right: 15%;
+}
+
+.search-bar {
+	margin-bottom: 16dp;
+}
+
+#map-search-input, h3 {
+	width: 90%;
+	max-width: 100%;
+}
+
+.search-bar .search-icon {
+	width: 20dp;
+	height: 20dp;
+	vertical-align: middle;
+	margin-right: 8dp;
+	opacity: 0.6;
+}
+
 #maps-datagrid { 
 	height: 250dp;
-	float: right;
-	margin-left: 50%;
-	margin-right: 8dp;
 	overflow-y: auto;
-	margin-top: -24dp;/*hack*/
 }
 
 #maps-datagrid datagridrow:hover, #maps-datagrid datagridrow:active, #maps-datagrid datagridrow:selected { 

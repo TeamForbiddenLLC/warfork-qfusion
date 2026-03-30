@@ -375,7 +375,7 @@
 	<div id="header">
 	</div>
 	
-	<span id="experimental_ui_string">Using experimental UI v3</span>
+	<span id="experimental_ui_string">Using experimental UI v4</span>
 
 	<!-- Main navigation bar -->
 	<div id="navi">

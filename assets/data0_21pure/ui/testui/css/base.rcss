@@ -193,7 +193,8 @@ a:hover, a:focus {
 #leftside {
 	float: left;
 	height: 100%;
-	width: 75%;
+	width: 74%;
+	padding-right: 16dp;
 	overflow-y: auto;
 }
 		

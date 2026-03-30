@@ -23,9 +23,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 	<title>home</title>
 	<link type="text/template" href="template_ingame.rml" />
 	<link type="text/css" rel="stylesheet" href="css/tv.rcss" />
+	<script src="as/fuzzy_search.as" />
 	<script>
 		DataSource @chanDataSource;
 		Element @changrid;
+		Element @searchInput;
+		array<String> @searchFields = {'complexname', 'map'};
 	
 		void onTVLoad( Element @body, Event @evt )
 		{
@@ -33,12 +36,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 		
 			@chanDataSource = getDataSource( 'tvchannels' );		
 			@changrid = body.getElementById( 'tvchannels-datagrid' );
+			@searchInput = body.getElementById( 'tv-search-input' );
 		}
 
 		void onTVShow( Element @body, Event @evt )
 		{
 			setModalY( 0.5f );
 			animationsOnShow();
+
+			if( @searchInput !is null ) {
+				String savedQuery = fuzzySearch_loadQuery();
+				searchInput.setAttr( "value", savedQuery );
+				fuzzySearch_filterDatagrid( cast<ElementDataGrid>(changrid), "tvchannels", "list", savedQuery, searchFields );
+			}
 		}
 
 		void onChanListDoubleClick( Element @elem, Event @ev )
@@ -88,6 +98,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 				}
 			}
 		}
+
+		void onTVSearchInput( Element @elem, Event @ev )
+		{
+			String query = elem.getAttr( "value", "" );
+			fuzzySearch_saveQuery( query );
+			fuzzySearch_filterDatagrid( cast<ElementDataGrid>(changrid), "tvchannels", "list", query, searchFields );
+		}
 	</script>
 </head>
 <body template="porkui_ingame" onload="$onTVLoad" onshow="$onTVShow">
@@ -96,8 +113,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 		<div id="menu-commands">
 			<!-- "table" for channels -->
-			<div id="tvchannels-frame">
-				<datagrid id="tvchannels-datagrid" source="tvchannels.list" ondblclick="$onChanListDoubleClick">
+		<div id="tvchannels-frame">
+			<div class="search-bar">
+				<img class="search-icon" src="/ui/testui/gfx/controls/search.png"/>
+				<input id="tv-search-input" type="text" class="search-input text" value=""
+					ontextinput="$onTVSearchInput" onchange="$onTVSearchInput"/>
+			</div>
+			<datagrid id="tvchannels-datagrid" source="tvchannels.list" ondblclick="$onChanListDoubleClick">
 					<col fields="complexname" width="350dp" formatter="colorcode">Name</col>
 					<col fields="map" width="100dp" formatter="colorcode">Map</col>
 					<col fields="players" width="75dp">Players</col>

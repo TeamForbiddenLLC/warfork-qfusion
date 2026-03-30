@@ -25,6 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 		<link type="text/template" href="template_ingame.rml" />
 		<link type="text/css" rel="stylesheet" href="css/callvotes.rcss" />
 		<script src="as/callvotes.as" />
+		<script src="as/fuzzy_search.as" />
 		<script>
 		const uint CALLVOTES_POLL_INTERVAL = 500;
 		Element @callvotesDatagrid;
@@ -41,6 +42,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 		Element @callvoteFrameF1F2;
 		Element @callvoteBtnF1;
 		Element @callvoteBtnF2;
+		Element @searchInput;
+		array<String> @searchFields = {'name'};
 		int callvoteTimer;
 		
 		void onCallvotesLoad( Element @body, Event @evt )
@@ -60,6 +63,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 			@callvoteFrameF1F2 = body.getElementById( "callvotes_frame_f1f2" );
 			@callvoteBtnF1 = body.getElementById( "callvote_btn_f1" );
 			@callvoteBtnF2 = body.getElementById( "callvote_btn_f2" );
+			@searchInput = body.getElementById( 'callvotes-search-input' );
 
 			callvoteTimer = -1;
 		}
@@ -76,6 +80,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 			body.getElementById( 'back-btn' ).css( 'display', window.history_size()>1 ? 'block' : 'none' );
 			
 			callvotesSetDataSources();
+
+			if( @searchInput !is null ) {
+				String savedQuery = fuzzySearch_loadQuery();
+				searchInput.setAttr( "value", savedQuery );
+				fuzzySearch_filterDatagrid( cast<ElementDataGrid>(callvotesDatagrid), "gameajax", "callvotes/", savedQuery, searchFields );
+			}
 
 			callvotesCheckState();
 
@@ -232,6 +242,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 			callvotesCheckState();
 		}
+
+		void onCallvotesSearchInput( Element @elem, Event @ev )
+		{
+			String query = elem.getAttr( "value", "" );
+			fuzzySearch_saveQuery( query );
+			fuzzySearch_filterDatagrid( cast<ElementDataGrid>(callvotesDatagrid), "gameajax", "callvotes/", query, searchFields );
+		}
 	</script>
 	</head>
 
@@ -242,8 +259,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 			<div id="menu-commands">
 				<form id="callvotes_form_start" onsubmit="$onCallvoteStartSubmit">
 					<div id="callvotes_container">
-						<div id="callvotes_left_frame">
-							<datagrid id="callvotes_datagrid" source="" onrowselect="$onCallvotesRowSelect">
+					<div id="callvotes_left_frame">
+						<div class="search-bar">
+							<img class="search-icon" src="/ui/testui/gfx/controls/search.png"/>
+							<input id="callvotes-search-input" type="text" class="search-input text" value=""
+								ontextinput="$onCallvotesSearchInput" onchange="$onCallvotesSearchInput"/>
+						</div>
+						<datagrid id="callvotes_datagrid" source="" onrowselect="$onCallvotesRowSelect">
 								<col fields="name">Name</col>
 							</datagrid>
 						</div>
