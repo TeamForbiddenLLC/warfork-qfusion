@@ -86,5 +86,13 @@ bool IsVisible()
 	return plugin->IsVisible();
 }
 
+// Sets a callback for the "Reload UI" button.
+void SetReloadUICallback(void (*callback)(void))
+{
+	Plugin* plugin = Plugin::GetInstance();
+	if (plugin != NULL)
+		plugin->SetReloadUICallback(callback);
+}
+
 }
 }

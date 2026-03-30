@@ -82,4 +82,5 @@ static const char* menu_rml =
 "	<button id =\"event-log-button\">Event Log</button>\n"
 "	<button id =\"debug-info-button\">Element Info</button>\n"
 "	<button id =\"outlines-button\">Outlines</button>\n"
+"	<button id =\"reload-ui-button\">Reload UI</button>\n"
 "</div>\n";

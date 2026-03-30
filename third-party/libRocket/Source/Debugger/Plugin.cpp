@@ -41,6 +41,7 @@ namespace Rocket {
 namespace Debugger {
 
 Plugin* Plugin::instance = NULL;
+Plugin::ReloadUICallback Plugin::reload_ui_callback = NULL;
 
 Plugin::Plugin()
 {
@@ -276,12 +277,22 @@ void Plugin::ProcessEvent(Core::Event& event)
 		{
 			render_outlines = !render_outlines;
 		}
+		else if (event.GetTargetElement()->GetId() == "reload-ui-button")
+		{
+			if (reload_ui_callback)
+				reload_ui_callback();
+		}
 	}
 }
 
 Plugin* Plugin::GetInstance()
 {
 	return instance;
+}
+
+void Plugin::SetReloadUICallback(ReloadUICallback callback)
+{
+	reload_ui_callback = callback;
 }
 
 bool Plugin::LoadFont()
@@ -327,6 +338,9 @@ bool Plugin::LoadMenuElement()
 
 	Core::Element* outlines_button = menu_element->GetElementById("outlines-button");
 	outlines_button->AddEventListener("click", this);
+
+	Core::Element* reload_ui_button = menu_element->GetElementById("reload-ui-button");
+	reload_ui_button->AddEventListener("click", this);
 
 	return true;
 }

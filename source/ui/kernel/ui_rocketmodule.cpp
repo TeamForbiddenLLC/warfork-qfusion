@@ -163,6 +163,9 @@ void RocketModule::keyEvent( int contextId, int key, bool pressed )
 		{
 			if( !Rocket::Debugger::Initialise( contextMain ) )
 				return;
+			Rocket::Debugger::SetReloadUICallback( []() {
+				trap::Cmd_ExecuteText( EXEC_APPEND, "ui_reload\n" );
+			} );
 			debuggerInitialized = true;
 		}
 		Rocket::Debugger::SetVisible( !Rocket::Debugger::IsVisible() );
