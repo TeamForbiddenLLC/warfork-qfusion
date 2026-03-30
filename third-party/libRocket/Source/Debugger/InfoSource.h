@@ -42,7 +42,7 @@ static const char* info_rcss =
 "}\n"
 "div#content div div\n"
 "{\n"
-"	font-size: 10dp;\n"
+"	font-size: 20dp;\n"
 "}\n"
 "div#ancestors p:hover,\n"
 "div#children p:hover\n"
