@@ -81,7 +81,7 @@
 	padding: 0.5em;
 	height: auto;
 	font-size: 1.25rem;
-	line-height: 90%;
+	line-height: 100%;
 	box-sizing: border-box;
 }
 
