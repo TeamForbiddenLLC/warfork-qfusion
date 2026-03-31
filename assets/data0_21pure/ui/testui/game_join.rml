@@ -49,6 +49,8 @@
 	ElementFormControlDataSelect @suggestionspinner;
 	Element @suggestionserverblock;
 	Element @searchInput;
+	Element @connectipModal;
+	Element @connectipInput;
 	array<String> @serverSearchFields = {'cleanname', 'map', 'gametype'};
 	String serverSearchQuery = "";
 
@@ -78,6 +80,8 @@
 		@suggestionspinner = body.getElementById( 'suggestion-spinner' );
 		@suggestionserverblock = body.getElementById( 'suggestion-serverblock' );
 		@searchInput = body.getElementById( 'server-search-input' );
+		@connectipModal = body.getElementById( 'connectip-modal' );
+		@connectipInput = body.getElementById( 'connectip-input' );
 
 		ElementDataGrid @grid = servergrid;
 		if( @grid == null ) {
@@ -294,6 +298,50 @@
 	void focusSuggestionDialog()
 	{
 		suggestionmodal.getElementById( 'suggestion-connect' ).focus();
+	}
+
+	void onConnectIpOpenClick( Element @self, Event @ev )
+	{
+		if( @connectipModal != null ) {
+			connectipModal.css( 'display', 'block' );
+			if( @connectipInput != null ) {
+				connectipInput.focus();
+			}
+		}
+	}
+
+	void onConnectIpCancelClick( Element @self, Event @ev )
+	{
+		if( @connectipModal != null ) {
+			connectipModal.css( 'display', 'none' );
+		}
+	}
+
+	void onConnectIpConnectClick( Element @self, Event @ev )
+	{
+		if( @connectipInput != null ) {
+			String address = connectipInput.getAttr( 'value', '' );
+			if( !address.empty() ) {
+				game.exec( 'connect "' + address + '"\n' );
+			}
+		}
+		if( @connectipModal != null ) {
+			connectipModal.css( 'display', 'none' );
+		}
+	}
+
+	void onConnectIpDialogKeydown( Element @self, Event @ev )
+	{
+		int phase = ev.getPhase();
+		eInputKey key = eInputKey( ev.getParameter( "key_identifier", 0 ) );
+		if( phase == EVENT_PHASE_TARGET || phase == EVENT_PHASE_BUBBLE ) {
+			if( key == KI_ESCAPE ) {
+				onConnectIpCancelClick( self, ev );
+			}
+			if( key == KI_RETURN ) {
+				onConnectIpConnectClick( self, ev );
+			}
+		}
 	}
 
 	void onSuggestionDialogCancelClick( Element @self, Event @ev )
@@ -674,6 +722,22 @@
 	</script>
 </head>
 <body template="porkui" onload="$onJoinLoad" onshow="$onJoinShow" onhide="$onJoinHide">
+	<div id="connectip-modal" class="modal-block-abs" style="display: none;" onkeydown="$onConnectIpDialogKeydown">
+		<div class="modal-block-rel">
+			<div class="modal-frame">
+				<div class="modal-contentflow">
+					<h3>Connect by IP</h3>
+					<input id="connectip-input" type="text" class="text" value="" />
+				</div>
+
+				<div class="modal-controls">
+					<button class="button-apply" onclick="$onConnectIpConnectClick">Connect</button><br/>
+					<button class="button-cancel" onclick="$onConnectIpCancelClick">Close</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
 	<div id="suggestion-modal" class="modal-block-abs" onkeydown="$onSuggestionDialogKeydown">
 		<div class="modal-block-rel">
 			<div class="modal-frame">
@@ -742,25 +806,15 @@
 		</div>
 	</div>
 
-	<div id="sidebar">
-		<div id="sidebar2">
-			<a href="#" onclick="animOpenMenu('game_join.rml');">Server browser</a>
-			<a href="#" onclick="animOpenMenu('game_local.rml');">Host game</a>
-			<a href="#" onclick="animOpenMenu('game_demos.rml');">Demo browser</a>
-			<a href="#" onclick="Tutorial::OpenModal2();">Gameplay tutorial</a>
-
-			<br/>
-			<hr class="nicehr" />
-
+	<template src="game-sidebar">
 			<a href="#" onclick="animOpenMenu('options_player.rml?tab=3');">Options</a>
-			<br/>
 
 			<button id="refresh-btn" onClick="$onRefreshButtonClick">Refresh</button>
 			<button id="connect-btn" onClick="$onConnectButtonClick">Connect</button>
+			<button id="connectip-btn" onClick="$onConnectIpOpenClick">Connect by IP</button>
 			<button id="favorite-btn" onClick="$onFavoriteButtonClick">Add to favorites</button>
 
 			<div id="serverblock" class="infoblock" />
-		</div>
-	</div>
+	</template>
 </body>
 </rml>

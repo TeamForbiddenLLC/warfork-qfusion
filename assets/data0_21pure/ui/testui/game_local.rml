@@ -218,23 +218,14 @@
 		</div>
 	</div>
 
-	<div id="sidebar">
-		<div id="sidebar2">
-			<a href="#" onclick="animOpenMenu('game_join.rml');">Server browser</a>
-			<a href="#" onclick="animOpenMenu('game_local.rml');">Host game</a>
-			<a href="#" onclick="animOpenMenu('game_demos.rml');">Demo browser</a>
-			<a href="#" onclick="Tutorial::OpenModal2();">Gameplay tutorial</a>
-
-			<hr class="nicehr" />
-			
+	<template src="game-sidebar">
 			<div id="mapinfo" class="infoblock">
 				<levelshot id="mapshot" src="" />
 				<br/>
 				<t>Map</t>:&nbsp;<span id="mapname" /><br/>
 				<t>Title</t>:&nbsp;<field id="maptitle" formatter="colorcode" value="" />
 			</div>
-		</div>
-	</div>
+	</template>
 
 </body> 
 </rml> 

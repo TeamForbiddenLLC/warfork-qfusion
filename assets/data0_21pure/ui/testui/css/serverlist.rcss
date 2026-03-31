@@ -64,6 +64,27 @@
 }
 
 
+#connectip-modal {
+	position: fixed;
+	z-index: 999999;
+	left: 50%;
+}
+
+#connectip-modal .modal-block-rel {
+	top: -230dp;
+}
+
+#connectip-input {
+	max-width: 100%;
+	width: 100%;
+	margin-bottom: 0;
+	padding: 0.5em;
+	height: auto;
+	font-size: 1.25rem;
+	line-height: 90%;
+	box-sizing: border-box;
+}
+
 #serverbrowser_datagrid datagridheader { }
 #serverbrowser_datagrid datagridrow { height: 20dp; }
 #serverbrowser_datagrid datagridrow:hover { background: #3f3c49; }

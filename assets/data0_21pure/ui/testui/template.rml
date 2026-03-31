@@ -7,6 +7,7 @@
 	<link rel="stylesheet" type="text/css" href="css/gamepanel.rcss" />
 	<link rel="stylesheet" type="text/css" href="/gfx/ui/css/ui_map.rcss" />
 	<link type="text/template" href="template_options_sidebar.rml" />
+	<link type="text/template" href="template_game_sidebar.rml" />
 	<script src="as/base.as" />
 	<script src="as/popup.as" />
 	<script src="as/animations.as" />
