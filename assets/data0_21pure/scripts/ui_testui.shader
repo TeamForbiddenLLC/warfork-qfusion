@@ -9,8 +9,24 @@ ui/testui/gfx/background
 	{
 		map ui/testui/gfx/back2.png
 		blendFunc blend
-		tcMod scroll -.1  0
-		alphaGen const .1 
+		alphaGen const .1
+	}
+
+	{
+		map textures/billboard/scanlinenoise.png
+		blendFunc blend
+		tcMod scale 2 2
+		tcMod scroll 0 0.02
+		alphaGen const 0.05
+	}
+	
+	{
+		map textures/billboard/scanlinenoise.png
+		blendFunc blend
+		tcMod scale 2 2
+		tcMod transform 1 1 0 0 0.32 0.32
+		tcMod scroll 0 0.05
+		alphaGen const 0.05
 	}
 }
 
