@@ -2293,7 +2293,7 @@ static void CL_InitLocal( void )
 	cl_download_allow_modules = Cvar_Get( "cl_download_allow_modules", "1", CVAR_ARCHIVE );
 	cl_checkForUpdate =	Cvar_Get( "cl_checkForUpdate", "1", CVAR_ARCHIVE );
 
-	cl_enablevoice = Cvar_Get( "cl_enablevoice", "1", CVAR_ARCHIVE );
+	cl_enablevoice = Cvar_Get( "cl_enablevoice", "0", CVAR_ARCHIVE );
 
 	//
 	// userinfo
