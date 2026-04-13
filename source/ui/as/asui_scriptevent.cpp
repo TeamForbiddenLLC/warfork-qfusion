@@ -107,7 +107,6 @@ public:
 	ScriptEventListener( const String &s, int uniqueId, Element *target ) : script( s ), 
 		loaded( false ), released( false ),  uniqueId( uniqueId ), target( target )
 	{
-		Com_Printf("ScriptEventListener code: %s", s.CString());
 		asmodule = UI_Main::Get()->getAS();
 		if( target ) {
 			target->AddReference();
