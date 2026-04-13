@@ -45,7 +45,7 @@ class ScriptEventListener : public EventListener
 	String createFunctionName( int uniqueId )
 	{
 		std::ostringstream os;
-		os << "__eventfunc_" << uniqueId;
+		os << "__eventfunc_" << std::to_string(uniqueId);
 		return String( os.str().c_str() );
 	}
 
@@ -53,7 +53,7 @@ class ScriptEventListener : public EventListener
 	{
 		std::ostringstream os;
 		// TODO: grab the typenames from ASBind::TypeString
-		os << "void __eventfunc_" << uniqueId << "( Element @self, Event @event){" << code.CString() << "}";
+		os << "void __eventfunc_" << std::to_string(uniqueId) << "( Element @self, Event @event){" << code.CString() << "}";
 		return String( os.str().c_str() );
 	}
 
@@ -107,6 +107,7 @@ public:
 	ScriptEventListener( const String &s, int uniqueId, Element *target ) : script( s ), 
 		loaded( false ), released( false ),  uniqueId( uniqueId ), target( target )
 	{
+		Com_Printf("ScriptEventListener code: %s", s.CString());
 		asmodule = UI_Main::Get()->getAS();
 		if( target ) {
 			target->AddReference();
