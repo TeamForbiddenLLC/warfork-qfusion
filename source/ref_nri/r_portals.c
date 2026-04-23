@@ -264,7 +264,7 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 		  createInfo.image = bestFB->colorTexture.vk.image;
 			
 			bestFB->colorDescriptor.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-			bestFB->colorDescriptor.texture = &bestFB->colorTexture;
+			bestFB->colorDescriptor.texture = bestFB->colorTexture;
 			bestFB->colorDescriptor.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 			bestFB->colorDescriptor.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->colorDescriptor.vk.image.imageView ) );
@@ -309,7 +309,7 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 		  createInfo.image = bestFB->depthTexture.vk.image;
 
 		  bestFB->depthDescriptor.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-		  bestFB->depthDescriptor.texture = &bestFB->depthTexture;
+		  bestFB->depthDescriptor.texture = bestFB->depthTexture;
 		  bestFB->depthDescriptor.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 		  bestFB->depthDescriptor.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		  VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->depthDescriptor.vk.image.imageView ) );
@@ -623,10 +623,10 @@ setup_and_render:
 		}
 		{
 			VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-			RI_VK_FillColorAttachment( &colorAttachment, &fb->colorDescriptor, true );
+			RI_VK_FillColorAttachment( &colorAttachment, TextureviewRIDescriptor(&fb->colorDescriptor), true );
 
 			VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-			RI_VK_FillDepthAttachment( &depthStencil, &fb->depthDescriptor, true );
+			RI_VK_FillDepthAttachment( &depthStencil, TextureviewRIDescriptor(&fb->depthDescriptor), true );
 			enum RI_Format_e attachments[] = {PortalTextureFormat };
 			FR_ConfigurePipelineAttachment(& sub.pipeline, attachments, Q_ARRAY_COUNT(attachments), PortalTextureDepthFormat );
 			

@@ -264,16 +264,6 @@ enum capture_state_e {
 struct r_frame_set_s {
 	struct RIScratchAlloc_s uboScratchAlloc;
 	struct RIFree_s* freeList;
-	struct RICmd_s primaryCmd;
-	struct RICmd_s backBufferCmd; // command buffer  
-	struct RICmd_s* secondaryCmd; // secondary views
-	union {
-#if ( DEVICE_IMPL_VULKAN )
-		struct {
-				VkCommandPool pool;
-		} vk;
-#endif
-	};
 };
 
 // globals shared by the frontend and the backend
@@ -331,8 +321,9 @@ typedef struct
 		};
 	} screenshot;
 
-	struct RISwapchain_s riSwapchain;
+	struct RISwapchain_s swapchain;
 	struct RIResourceUploader_s uploader;
+	struct RICommandRingBuffer_s graphicsCmdRing; 
 
 	struct shadow_fb_s shadowFBs[NUMBER_FRAMES_FLIGHT][MAX_SHADOWGROUPS];
 	struct portal_fb_s portalFBs[MAX_PORTAL_TEXTURES];
@@ -341,24 +332,16 @@ typedef struct
 	struct RIRenderer_s renderer;
  	struct RIDevice_s device;
 
+	struct RICommandRingElement_s primary;
+	struct RICommandRingElement_s* secondary;
 	struct FrameState_s frame;
-
-	union {
-#if ( DEVICE_IMPL_VULKAN )
-		struct {
-			uint32_t swapchainIndex;
-			VkSemaphore frameSemaphore;	
-    	struct VmaAllocation_T* pogoAlloc[RI_MAX_SWAPCHAIN_IMAGES * 2];
-    	struct VmaAllocation_T* depthAlloc[RI_MAX_SWAPCHAIN_IMAGES];
-		} vk;
-#endif
-	};
-	struct RITexture_s pogoTextures[RI_MAX_SWAPCHAIN_IMAGES * 2];
-	struct RITexture_s depthTextures[RI_MAX_SWAPCHAIN_IMAGES];
-	struct RIDescriptor_s colorAttachment[RI_MAX_SWAPCHAIN_IMAGES];
-	struct RIDescriptor_s depthAttachment[RI_MAX_SWAPCHAIN_IMAGES];
-	struct RI_PogoBuffer pogoBuffer[RI_MAX_SWAPCHAIN_IMAGES];
 	
+	uint32_t swapchainIndex;
+	struct RITexture_s depthTextures[RI_MAX_SWAPCHAIN_IMAGES];
+	struct RITextureView_s depthView[RI_MAX_SWAPCHAIN_IMAGES];
+	struct RI_PogoBuffer pogoBuffer[RI_MAX_SWAPCHAIN_IMAGES];
+
+
 	uint64_t frameSetCount;
 	struct r_frame_set_s frameSets[NUMBER_FRAMES_FLIGHT];
 

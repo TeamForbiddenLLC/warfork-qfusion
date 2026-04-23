@@ -421,7 +421,7 @@ static struct shadow_fb_s *__ResolveShadowSurface(size_t i, int width, int heigh
 		bestFB->width = width;
 		bestFB->height = height;
 		bestFB->descriptor.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-		bestFB->descriptor.texture = &bestFB->texture;
+		bestFB->descriptor.texture = bestFB->texture;
 		bestFB->descriptor.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 		bestFB->descriptor.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->descriptor.vk.image.imageView ) );
@@ -462,13 +462,7 @@ void R_DrawShadowmaps(struct FrameState_s* cmd)
 		return;
 	}
 	R_InitSubpass( cmd, &sub );
-#if ( DEVICE_IMPL_VULKAN )
-	VkCommandBufferInheritanceInfo inheritanceInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO };
-	VkCommandBufferBeginInfo info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-	info.pInheritanceInfo = &inheritanceInfo;
-	info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	vkBeginCommandBuffer( sub.handle.vk.cmd, &info );
-#endif
+	BeginRICmd(&rsh.device, &sub.handle);
 
 	lodScale = rn.lod_dist_scale_for_fov;
 	VectorCopy( rn.lodOrigin, lodOrigin );
@@ -565,7 +559,7 @@ void R_DrawShadowmaps(struct FrameState_s* cmd)
 		}
 
 		VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-		RI_VK_FillDepthAttachment( &depthStencil, &fb->descriptor, true );
+		RI_VK_FillDepthAttachment( &depthStencil, TextureviewRIDescriptor(&fb->descriptor), true );
 		VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
 		renderingInfo.flags = 0;
 		renderingInfo.renderArea.extent.width = fb->width;
@@ -607,7 +601,7 @@ void R_DrawShadowmaps(struct FrameState_s* cmd)
 
 		rsc.renderedShadowBits |= group->bit;
 	}
-	vkEndCommandBuffer( sub.handle.vk.cmd );
+	EndRICmd(&rsh.device, &sub.handle);
 
 	R_PopRefInst( &sub);
 }

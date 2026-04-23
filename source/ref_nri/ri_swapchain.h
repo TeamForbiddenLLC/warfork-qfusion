@@ -33,12 +33,17 @@ struct RISwapchainDesc_s {
 
 int InitRISwapchain(struct RIDevice_s* dev, struct RISwapchainDesc_s* init, struct RISwapchain_s* swapchain);
 uint32_t RISwapchainAcquireNextTexture(struct RIDevice_s* dev, struct RISwapchain_s* swapchain);
-void RISwapchainPresent(struct RIDevice_s* dev, struct RISwapchain_s* swapchain);
 void FreeRISwapchain(struct RIDevice_s* dev, struct RISwapchain_s* swapchain);
+struct RIDescriptor_s RISwapchainDescriptor(struct RISwapchain_s* swapchain, uint32_t index);
+uint32_t RISwapchainGetImageCount(struct RISwapchain_s *swapchain);
+
+int RISwapchainResize(struct RIDevice_s* dev, struct RISwapchain_s* swapchain, uint16_t width, uint16_t height);
+void RISwapchainPresent_vk(struct RIDevice_s* dev, struct RISwapchain_s* swapchain, uint32_t index, size_t num_wait_semaphores, VkSemaphore* wait_semaphores );
+
 
 static inline bool IsRISwapchainValid( struct RISwapchain_s *swapchain )
 {
-	return swapchain->imageCount > 0 && swapchain->width > 0 && swapchain->height > 0;
+	return RISwapchainGetImageCount(swapchain) > 0 && swapchain->width > 0 && swapchain->height > 0;
 }
 
 #endif

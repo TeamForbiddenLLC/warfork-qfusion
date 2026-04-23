@@ -310,13 +310,8 @@ void R_UploadVBOVertexRawData( mesh_vbo_t *vbo, int vertsOffset, int numVerts, c
 		.offset = vertsOffset * vbo->vertexSize,
 	};
 
-#if ( DEVICE_IMPL_VULKAN )
-		uploadDesc.postBarrier.vk.stage = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT;
-		uploadDesc.postBarrier.vk.access = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
-#endif
-
 	RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
-	memcpy( uploadDesc.data, data, uploadDesc.size);
+	memcpy( uploadDesc.mapped.data, data, uploadDesc.size );
 	RI_ResourceEndCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
 }
 
@@ -1319,17 +1314,9 @@ void R_UploadVBOElemData( mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, con
 		.size = mesh->numElems * sizeof( elem_t ),
 		.offset = elemsOffset * sizeof( elem_t ),
 	};
-	const uint64_t test= VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
-#if ( DEVICE_IMPL_VULKAN )
-	{
-		uploadDesc.postBarrier.vk.stage = VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
-		uploadDesc.postBarrier.vk.access = VK_ACCESS_2_INDEX_READ_BIT;
-	}
-#endif
-assert(test == uploadDesc.postBarrier.vk.stage);
 
-	RI_ResourceBeginCopyBuffer(&rsh.device, &rsh.uploader, &uploadDesc );
-	elem_t *dest = (elem_t *)uploadDesc.data;
+	RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
+	elem_t *dest = (elem_t *)uploadDesc.mapped.data;
 	for( size_t i = 0; i < mesh->numElems; i++ ) {
 		dest[i] = vertsOffset + mesh->elems[i];
 	}
@@ -1365,14 +1352,8 @@ vattribmask_t R_UploadVBOInstancesData( mesh_vbo_t *vbo, int instOffset, int num
 			.offset = instOffset * sizeof( instancePoint_t ),
 		};
 
-#if ( DEVICE_IMPL_VULKAN )
-	{
-		uploadDesc.postBarrier.vk.stage = VK_SHADER_STAGE_VERTEX_BIT;
-		uploadDesc.postBarrier.vk.access = VK_ACCESS_2_UNIFORM_READ_BIT;
-	}
-#endif
 		RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
-		instancePoint_t *dest = (instancePoint_t *)uploadDesc.data;
+		instancePoint_t *dest = (instancePoint_t *)uploadDesc.mapped.data;
 		for( size_t i = 0; i < numInstances; i++ ) {
 			memcpy( dest[i], instances[i], sizeof( instancePoint_t ) );
 		}

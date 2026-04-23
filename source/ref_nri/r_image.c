@@ -816,7 +816,7 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		createInfo.image = image->handle.vk.image;
 
 		image->binding.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-		image->binding.texture = &image->handle;
+		image->binding.texture = image->handle;
 		image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 		image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
@@ -1004,25 +1004,17 @@ static void __R_CopyTextureDataTexture(struct image_s* image, int layer, int mip
 	uploadDesc.width = w; 
 	uploadDesc.height = h;
 	uploadDesc.format = __R_GetImageFormat(image);
-#if ( DEVICE_IMPL_VULKAN )
-	{
-		uploadDesc.postBarrier.vk.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		uploadDesc.postBarrier.vk.stage = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-		uploadDesc.postBarrier.vk.access = VK_ACCESS_2_SHADER_READ_BIT;
-	}
-#endif
-
 	RI_ResourceBeginCopyTexture( &rsh.device, &rsh.uploader, &uploadDesc );
 	for( size_t slice = 0; slice < uploadDesc.height; slice++ ) {
 		const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
-		memset( &( (uint8_t *)uploadDesc.data )[dstRowStart], 255, uploadDesc.rowPitch );
+		memset( &( (uint8_t *)uploadDesc.mapped.data )[dstRowStart], 255, uploadDesc.rowPitch );
 		for( size_t column = 0; column < uploadDesc.width; column++ ) {
 			switch( srcFormat ) {
 				case RI_FORMAT_L8_A8_UNORM: {
 					const uint8_t luminance = data[( uploadDesc.width * srcDef->stride * slice ) + ( column * srcDef->stride )];
 					const uint8_t alpha = data[( uploadDesc.width * srcDef->stride * slice ) + ( column * srcDef->stride ) + 1];
 					uint8_t color[4] = { luminance, luminance, luminance, alpha };
-					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destDef->stride * column )], color, Q_MIN( sizeof( color ), destDef->stride ) );
+					memcpy( &( (uint8_t *)uploadDesc.mapped.data )[dstRowStart + ( destDef->stride * column )], color, Q_MIN( sizeof( color ), destDef->stride ) );
 					break;
 				}
 				case RI_FORMAT_A8_UNORM:
@@ -1036,11 +1028,11 @@ static void __R_CopyTextureDataTexture(struct image_s* image, int layer, int mip
 						color[0] = color[1] = color[2] = c1;
 						color[3] = 255;
 					}
-					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destDef->stride * column )], color, min( 4, destDef->stride ) );
+					memcpy( &( (uint8_t *)uploadDesc.mapped.data )[dstRowStart + ( destDef->stride * column )], color, min( 4, destDef->stride ) );
 					break;
 				}
 				default:
-					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destDef->stride * column )], &data[( uploadDesc.width * srcDef->stride * slice ) + ( column * srcDef->stride )],
+					memcpy( &( (uint8_t *)uploadDesc.mapped.data )[dstRowStart + ( destDef->stride * column )], &data[( uploadDesc.width * srcDef->stride * slice ) + ( column * srcDef->stride )],
 							min( srcDef->stride, destDef->stride ) );
 					break;
 			}
@@ -1143,7 +1135,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	createInfo.image = image->handle.vk.image;
 
 	image->binding.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-	image->binding.texture = &image->handle;
+	image->binding.texture = image->handle;
 	image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
@@ -1302,7 +1294,7 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 		createInfo.image = image->handle.vk.image;
 	
 		image->binding.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-		image->binding.texture = &image->handle;
+		image->binding.texture = image->handle;
 		image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 		image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
@@ -1662,7 +1654,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 		createInfo.image = image->handle.vk.image;
 		
 		image->binding.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-		image->binding.texture = &image->handle;
+		image->binding.texture = image->handle;
 		image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 		image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
