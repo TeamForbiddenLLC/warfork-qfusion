@@ -22,8 +22,8 @@ void RI_PogoBufferDestroy( struct RIDevice_s *device, struct RI_PogoBuffer *pogo
 void RI_PogoBufferToggle( struct RIDevice_s *device, struct RI_PogoBuffer *pogo, struct RICmd_s *handle );
 
 #if ( DEVICE_IMPL_VULKAN )
-static VkImageMemoryBarrier2 VK_RI_PogoShaderMemoryBarrier2( VkImage image, bool initial );
-static VkImageMemoryBarrier2 VK_RI_PogoAttachmentMemoryBarrier2( VkImage image, bool initial );
+VkImageMemoryBarrier2 VK_RI_PogoShaderMemoryBarrier2( VkImage image, bool initial );
+VkImageMemoryBarrier2 VK_RI_PogoAttachmentMemoryBarrier2( VkImage image, bool initial );
 #endif
 
 static inline struct RITextureView_s *RI_PogoBufferAttachment( struct RI_PogoBuffer *pogo )

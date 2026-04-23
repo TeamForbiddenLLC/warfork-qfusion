@@ -341,7 +341,6 @@ typedef struct
 	struct RITextureView_s depthView[RI_MAX_SWAPCHAIN_IMAGES];
 	struct RI_PogoBuffer pogoBuffer[RI_MAX_SWAPCHAIN_IMAGES];
 
-
 	uint64_t frameSetCount;
 	struct r_frame_set_s frameSets[NUMBER_FRAMES_FLIGHT];
 
