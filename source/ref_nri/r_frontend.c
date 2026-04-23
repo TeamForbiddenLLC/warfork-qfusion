@@ -717,7 +717,7 @@ void RF_EndFrame( void )
 		VkCommandBufferSubmitInfo cmdSubmitInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO };
 		cmdSubmitInfo.commandBuffer = rsh.primary.cmds[0].vk.cmd;
 
-		VkSemaphoreSubmitInfo *wait_semaphore_info = alloca(sizeof(VkSemaphoreSubmitInfo) * (2 + arrlen(rsh.secondary)));
+		VkSemaphoreSubmitInfo *wait_semaphore_info = malloc(sizeof(VkSemaphoreSubmitInfo) * (2 + arrlen(rsh.secondary)));
 		size_t num_wait_semaphores = 0;
 
 		{
@@ -764,6 +764,7 @@ void RF_EndFrame( void )
 		};
 		VK_WrapResult(vkResetFences( rsh.device.vk.device, 1, reset_fence ));
 		VK_WrapResult(vkQueueSubmit2( graphicsQueue->vk.queue, 1, &submitInfo, VK_NULL_HANDLE ) );
+		free(wait_semaphore_info);
 
 		VkSemaphore wait_semaphores[] = {
 			rsh.primary.vk.semaphore
