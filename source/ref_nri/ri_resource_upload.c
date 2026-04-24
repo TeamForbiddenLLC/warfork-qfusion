@@ -26,11 +26,11 @@ static VkCommandBuffer __AcquireCmd( struct RIDevice_s *device, struct RITransfe
 
 		/* free overflow temporary buffers from the previous use of this set */
 		group->staging_buffer_offset = 0;
-		for( size_t j = 0; j < (size_t)arrlen( group->temporary_buffers ); j++ ) {
-			vkDestroyBuffer( device->vk.device, group->temporary_buffers[j].vk.buffer, NULL );
-			vmaFreeMemory( device->vk.vmaAllocator, group->temporary_buffers[j].vk.allocation );
+		for( size_t j = 0; j < (size_t)arrlen( group->temporary_buffers[group->active_set] ); j++ ) {
+			vkDestroyBuffer( device->vk.device, group->temporary_buffers[group->active_set][j].vk.buffer, NULL );
+			vmaFreeMemory( device->vk.vmaAllocator, group->temporary_buffers[group->active_set][j].vk.allocation );
 		}
-		arrsetlen( group->temporary_buffers, 0 );
+		arrsetlen( group->temporary_buffers[group->active_set], 0 );
 
 		ResetRIPool( device, &group->cmd_pool[group->active_set] );
 		BeginRICmd( device, &group->cmd[group->active_set] );
@@ -106,7 +106,9 @@ static void __InitTransferCommandGroup( struct RIDevice_s *device, struct RITran
 			VK_WrapResult( vkCreateSemaphore( device->vk.device, &info, NULL, &group->vk.semaphores[i] ) );
 		}
 	}
-	group->temporary_buffers = NULL; /* stb_ds array, starts empty */
+	for( size_t i = 0; i < RI_RESOURCE_MAX_SETS; i++ ) {
+		group->temporary_buffers[i] = NULL; /* stb_ds array, starts empty */
+	}
 #endif
 }
 
@@ -119,11 +121,13 @@ static void __FreeTransferCommandGroup( struct RIDevice_s *device, struct RITran
 {
 #if ( DEVICE_IMPL_VULKAN )
 	/* free any remaining overflow temporary buffers */
-	for( size_t j = 0; j < (size_t)arrlen( group->temporary_buffers ); j++ ) {
-		vkDestroyBuffer( device->vk.device, group->temporary_buffers[j].vk.buffer, NULL );
-		vmaFreeMemory( device->vk.vmaAllocator, group->temporary_buffers[j].vk.allocation );
+	for( size_t i = 0; i < RI_RESOURCE_MAX_SETS; i++ ) {
+		for( size_t j = 0; j < (size_t)arrlen( group->temporary_buffers[i] ); j++ ) {
+			vkDestroyBuffer( device->vk.device, group->temporary_buffers[i][j].vk.buffer, NULL );
+			vmaFreeMemory( device->vk.vmaAllocator, group->temporary_buffers[i][j].vk.allocation );
+		}
+		arrfree( group->temporary_buffers[i] );
 	}
-	arrfree( group->temporary_buffers );
 
 	for( size_t i = 0; i < RI_RESOURCE_MAX_SETS; i++ ) {
 		vkFreeCommandBuffers( device->vk.device, group->cmd_pool[i].vk.pool, 1, &group->cmd[i].vk.cmd );
@@ -196,7 +200,7 @@ static void __AllocateTemporaryBuffer( struct RIDevice_s *device, struct RITrans
 	VmaAllocationInfo vmaInfo = { 0 };
 	VK_WrapResult( vmaCreateBuffer( device->vk.vmaAllocator, &bufInfo, &allocInfo, &tmp.vk.buffer, &tmp.vk.allocation, &vmaInfo ) );
 
-	arrpush( group->temporary_buffers, tmp );
+	arrpush( group->temporary_buffers[group->active_set], tmp );
 
 	out->offset = 0;
 	out->size = size;

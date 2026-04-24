@@ -48,8 +48,8 @@ struct RITransferCommandGroup_s {
 	size_t staging_buffer_offset; /* running tail within the active set's staging buf */
 	struct RIBuffer_s staging_buffer[RI_RESOURCE_MAX_SETS];
 
-	/* temporary overflow buffers – freed when the set is reused */
-	struct RIBuffer_s *temporary_buffers; /* stb_ds array */
+	/* temporary overflow buffers – per-set, freed when the set is reused */
+	struct RIBuffer_s *temporary_buffers[RI_RESOURCE_MAX_SETS]; /* stb_ds arrays */
 
 	union {
 		struct {

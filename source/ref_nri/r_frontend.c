@@ -667,6 +667,7 @@ void RF_EndFrame( void )
 	
 #if ( DEVICE_IMPL_VULKAN )
 	{
+		vkCmdEndRendering( rsh.frame.handle.vk.cmd );
 
 		{
 			VkImageMemoryBarrier2 imageBarriers[1] = { 0 };
@@ -699,6 +700,7 @@ void RF_EndFrame( void )
 			secondarySubmitInfo.commandBuffer = rsh.secondary[i].cmds[0].vk.cmd;
 
 			VkSemaphoreSubmitInfo secondarySignal = {
+				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
 				.semaphore = rsh.secondary[i].vk.semaphore,
 				.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
 			};
@@ -725,11 +727,13 @@ void RF_EndFrame( void )
 			struct RIResourceUploaderVKResult_s flush = RI_VKFlushResourceUpdate( &rsh.device, &rsh.uploader, 0, NULL );
 			wait_semaphore_info[num_wait_semaphores++] =
 				(VkSemaphoreSubmitInfo){ 
+					.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
 					.semaphore = rsh.swapchain.vk.signaled[rsh.swapchain.vk.signal_idx], 
 					.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT 
 				};
 			if( flush.signaled ) {
 				wait_semaphore_info[num_wait_semaphores++] = (VkSemaphoreSubmitInfo){ 
+					.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
 					.semaphore = flush.vk.semaphore, 
 					.stageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT 
 				};
@@ -737,6 +741,7 @@ void RF_EndFrame( void )
 
 			for (size_t i = 0; i < arrlen(rsh.secondary); i++) {
 				wait_semaphore_info[num_wait_semaphores++] = (VkSemaphoreSubmitInfo){ 
+					.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
 					.semaphore = rsh.secondary[i].vk.semaphore, 
 					.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT 
 				};
@@ -745,6 +750,7 @@ void RF_EndFrame( void )
 
 		VkSemaphoreSubmitInfo signal_semaphore[1] = {
 			{
+				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
 				.semaphore = rsh.primary.vk.semaphore,
 				.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
 			}
