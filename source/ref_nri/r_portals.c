@@ -264,7 +264,7 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 		  createInfo.image = bestFB->colorTexture.vk.image;
 			
 			bestFB->colorDescriptor.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-			bestFB->colorDescriptor.texture = bestFB->colorTexture;
+			//bestFB->colorDescriptor.texture = bestFB->colorTexture;
 			bestFB->colorDescriptor.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 			bestFB->colorDescriptor.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->colorDescriptor.vk.image.imageView ) );
@@ -309,7 +309,7 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 		  createInfo.image = bestFB->depthTexture.vk.image;
 
 		  bestFB->depthDescriptor.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-		  bestFB->depthDescriptor.texture = bestFB->depthTexture;
+		  //bestFB->depthDescriptor.texture = bestFB->depthTexture;
 		  bestFB->depthDescriptor.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 		  bestFB->depthDescriptor.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		  VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->depthDescriptor.vk.image.imageView ) );

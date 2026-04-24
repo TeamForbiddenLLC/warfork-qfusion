@@ -34,8 +34,8 @@ struct RISwapchainDesc_s {
 int InitRISwapchain(struct RIDevice_s* dev, struct RISwapchainDesc_s* init, struct RISwapchain_s* swapchain);
 uint32_t RISwapchainAcquireNextTexture(struct RIDevice_s* dev, struct RISwapchain_s* swapchain);
 void FreeRISwapchain(struct RIDevice_s* dev, struct RISwapchain_s* swapchain);
-struct RIDescriptor_s RISwapchainDescriptor(struct RISwapchain_s* swapchain, uint32_t index);
 uint32_t RISwapchainGetImageCount(struct RISwapchain_s *swapchain);
+struct RITextureView_s RISwapchainGetTextureView(struct RISwapchain_s* swapchain, uint32_t index); 
 
 int RISwapchainResize(struct RIDevice_s* dev, struct RISwapchain_s* swapchain, uint16_t width, uint16_t height);
 void RISwapchainPresent_vk(struct RIDevice_s* dev, struct RISwapchain_s* swapchain, uint32_t index, size_t num_wait_semaphores, VkSemaphore* wait_semaphores );

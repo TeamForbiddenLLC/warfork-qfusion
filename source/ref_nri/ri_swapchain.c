@@ -172,12 +172,10 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 		vkGetSwapchainImagesKHR( dev->vk.device, swapchain->vk.swapchain, &imageNum, swapchain->vk.images );
 		swapchain->vk.imageCount = imageNum;
 
-		// Cache surface format and present mode for resize (Zig: image_format, image_colorspace, present_mode)
 		swapchain->format = VKToRIFormat( selectedSurf->format );
 		swapchain->vk.imageColorSpace = selectedSurf->colorSpace;
 		swapchain->vk.presentMode = presentMode;
 
-		// Create binary semaphores (Zig: signal_semaphores)
 		for( size_t i = 0; i < imageNum; i++ ) {
 			VkSemaphoreCreateInfo createInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
 			VkSemaphoreTypeCreateInfo timelineCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO };
@@ -188,7 +186,6 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 			VK_WrapResult( result );
 		}
 
-		// Create image views (Zig: for (0..images.len) |k| { dkb.createImageView(...) })
 		for( size_t i = 0; i < imageNum; i++ ) {
 			VkImageViewCreateInfo viewCreateInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 			viewCreateInfo.image = swapchain->vk.images[i];
@@ -226,9 +223,9 @@ uint32_t RISwapchainAcquireNextTexture( struct RIDevice_s *dev, struct RISwapcha
 	return 0;
 }
 
-//void RISwapchainPresent( struct RIDevice_s *dev, struct RISwapchain_s *swapchain )
+// void RISwapchainPresent( struct RIDevice_s *dev, struct RISwapchain_s *swapchain )
 //{
-//#if ( DEVICE_IMPL_VULKAN )
+// #if ( DEVICE_IMPL_VULKAN )
 //	{
 //		VkSemaphore renderingFinishedSemaphore = swapchain->vk.renderFinished[swapchain->vk.signal_idx];
 //		{
@@ -243,19 +240,17 @@ uint32_t RISwapchainAcquireNextTexture( struct RIDevice_s *dev, struct RISwapcha
 //			VK_WrapResult( vkQueuePresentKHR( swapchain->presentQueue->vk.queue, &presentInfo ) );
 //		}
 //	}
-//#endif
-//}
+// #endif
+// }
 
 void FreeRISwapchain( struct RIDevice_s *dev, struct RISwapchain_s *swapchain )
 {
 #if ( DEVICE_IMPL_VULKAN )
 	{
-		// Zig: for (self.backend.vk.signal_semaphores) |sem| { destroySemaphore }
 		for( size_t p = 0; p < RI_MAX_SWAPCHAIN_IMAGES; p++ ) {
 			if( swapchain->vk.signaled[p] )
 				vkDestroySemaphore( dev->vk.device, swapchain->vk.signaled[p], NULL );
 		}
-		// Zig: for (self.backend.vk.views) |view| { destroyImageView }
 		for( size_t p = 0; p < RI_MAX_SWAPCHAIN_IMAGES; p++ ) {
 			if( swapchain->vk.views[p] )
 				vkDestroyImageView( dev->vk.device, swapchain->vk.views[p], NULL );
@@ -269,21 +264,20 @@ void FreeRISwapchain( struct RIDevice_s *dev, struct RISwapchain_s *swapchain )
 #endif
 }
 
-void RISwapchainPresent_vk(struct RIDevice_s* dev, struct RISwapchain_s* swapchain, uint32_t index, size_t num_wait_semaphores, VkSemaphore* wait_semaphores ) {
+void RISwapchainPresent_vk( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, uint32_t index, size_t num_wait_semaphores, VkSemaphore *wait_semaphores )
+{
 #if ( DEVICE_IMPL_VULKAN )
 	{
-			VkPresentInfoKHR presentInfo = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
-			presentInfo.waitSemaphoreCount = num_wait_semaphores;
-			presentInfo.pWaitSemaphores = wait_semaphores;
-			presentInfo.swapchainCount = 1;
-			presentInfo.pSwapchains = &swapchain->vk.swapchain;
-			presentInfo.pImageIndices = &index;
-			VK_WrapResult( vkQueuePresentKHR( swapchain->presentQueue->vk.queue, &presentInfo ) );
+		VkPresentInfoKHR presentInfo = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
+		presentInfo.waitSemaphoreCount = num_wait_semaphores;
+		presentInfo.pWaitSemaphores = wait_semaphores;
+		presentInfo.swapchainCount = 1;
+		presentInfo.pSwapchains = &swapchain->vk.swapchain;
+		presentInfo.pImageIndices = &index;
+		VK_WrapResult( vkQueuePresentKHR( swapchain->presentQueue->vk.queue, &presentInfo ) );
 	}
 #endif
-
 }
-
 
 int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, uint16_t width, uint16_t height )
 {
@@ -297,7 +291,7 @@ int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, 
 		VkSwapchainCreateInfoKHR swapChainCreateInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
 		swapChainCreateInfo.surface = swapchain->vk.surface;
 		swapChainCreateInfo.minImageCount = swapchain->vk.imageCount;
-		swapChainCreateInfo.imageFormat = RIFormatToVK(swapchain->format);
+		swapChainCreateInfo.imageFormat = RIFormatToVK( swapchain->format );
 		swapChainCreateInfo.imageColorSpace = swapchain->vk.imageColorSpace;
 		swapChainCreateInfo.imageExtent.width = width;
 		swapChainCreateInfo.imageExtent.height = height;
@@ -321,7 +315,7 @@ int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, 
 			if( swapchain->vk.views[i] )
 				vkDestroyImageView( dev->vk.device, swapchain->vk.views[i], NULL );
 			swapchain->vk.views[i] = VK_NULL_HANDLE;
-			//swapchain->vk.images[i] = VK_NULL_HANDLE;
+			// swapchain->vk.images[i] = VK_NULL_HANDLE;
 		}
 
 		// Zig: re-query images
@@ -336,7 +330,7 @@ int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, 
 			VkImageViewCreateInfo viewCreateInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 			viewCreateInfo.image = swapchain->vk.images[i];
 			viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-			viewCreateInfo.format = RIFormatToVK(swapchain->format);
+			viewCreateInfo.format = RIFormatToVK( swapchain->format );
 			viewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
 			viewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 			viewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -357,32 +351,40 @@ int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, 
 	return 1;
 }
 
-struct RIDescriptor_s RISwapchainDescriptor( struct RISwapchain_s *swapchain, uint32_t index )
-{
-	struct RIDescriptor_s desc = {
-		.texture = {
-			.vk = {
-				.image =  swapchain->vk.images[index],
-			}
-		},
+struct RITextureView_s RISwapchainGetTextureView(struct RISwapchain_s *swapchain, uint32_t index) {
+	struct RITextureView_s view = {
 		.vk = {
-			.image = {
-				.imageView = swapchain->vk.views[index],
-			},
+			.image = swapchain->vk.views[index]
 		}
 	};
-	return desc;
+	return view;
 }
 
-//struct RITexture_s RISwapchainGetTexture( struct RISwapchain_s *swapchain, uint32_t index )
+
+//struct RIDescriptor_s RISwapchainDescriptor( struct RISwapchain_s *swapchain, uint32_t index )
+//{
+//	struct RIDescriptor_s desc = { .texture = { .vk =
+//													{
+//														.image = swapchain->vk.images[index],
+//													} },
+//								   .vk = {
+//									   .image =
+//										   {
+//											   .imageView = swapchain->vk.views[index],
+//										   },
+//								   } };
+//	return desc;
+//}
+
+// struct RITexture_s RISwapchainGetTexture( struct RISwapchain_s *swapchain, uint32_t index )
 //{
 //	struct RITexture_s tex;
 //	memset( &tex, 0, sizeof( tex ) );
-//#if ( DEVICE_IMPL_VULKAN )
+// #if ( DEVICE_IMPL_VULKAN )
 //	tex.vk.image = swapchain->vk.images[index];
-//#endif
+// #endif
 //	return tex;
-//}
+// }
 
 uint32_t RISwapchainGetImageCount( struct RISwapchain_s *swapchain )
 {
@@ -392,11 +394,10 @@ uint32_t RISwapchainGetImageCount( struct RISwapchain_s *swapchain )
 	return 0;
 }
 
-//uint32_t RISwapchainGetFormat( struct RISwapchain_s *swapchain )
+// uint32_t RISwapchainGetFormat( struct RISwapchain_s *swapchain )
 //{
-//#if ( DEVICE_IMPL_VULKAN )
+// #if ( DEVICE_IMPL_VULKAN )
 //	return VKToRIFormat( swapchain->vk.imageFormat );
-//#endif
+// #endif
 //	return 0;
-//}
-
+// }

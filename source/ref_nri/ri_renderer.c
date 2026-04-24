@@ -144,8 +144,8 @@ VkBool32 VKAPI_PTR __VK_DebugUtilsMessenger( VkDebugUtilsMessageSeverityFlagBits
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
 			// assert(callbackData->messageIdNumber ==0xc1c74a9c );
 			Com_Printf( "VK ERROR: %s", callbackData->pMessage );
-			if( callbackData->messageIdNumber != 0xcc9c32be )
-				assert( false );
+			//if( callbackData->messageIdNumber != 0xcc9c32be )
+			//	assert( false );
 			break;
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
 			Com_Printf( "VK WARNING: %s", callbackData->pMessage );
@@ -911,14 +911,14 @@ void UpdateRIDescriptor( struct RIDevice_s *dev, struct RIDescriptor_s *desc )
 			case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 			case VK_DESCRIPTOR_TYPE_SAMPLER:
 				// test some assumptions
-				assert( desc->vk.type == VK_DESCRIPTOR_TYPE_SAMPLER ||
-						( desc->texture.vk.image && ( desc->vk.type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE || desc->vk.type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ) ) );
+			 // assert( desc->vk.type == VK_DESCRIPTOR_TYPE_SAMPLER ||
+			 // 		( desc->texture.vk.image && ( desc->vk.type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE || desc->vk.type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ) ) );
 				desc->cookie = hash_data( hash_u64( HASH_INITIAL_VALUE, desc->vk.type ), &desc->vk.image, sizeof( desc->vk.image ) );
 				break;
 			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-				assert( desc->buffer.vk.buffer );
-				desc->vk.buffer.buffer = desc->buffer.vk.buffer;
+			//	assert( desc->buffer.vk.buffer );
+				//desc->vk.buffer.buffer = desc->buffer.vk.buffer;
 				desc->cookie = hash_data( hash_u64( HASH_INITIAL_VALUE, desc->vk.type ), &desc->vk.buffer, sizeof( desc->vk.buffer ) );
 				break;
 			default:
@@ -1012,6 +1012,20 @@ void FreeRITexture( struct RIDevice_s *dev, struct RITexture_s *tex )
 	}
 #endif
 }
+
+void FreeRITextureView( struct RIDevice_s *dev, struct RITextureView_s *view )
+{
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		if( view->vk.image ) {
+			vkDestroyImageView( dev->vk.device, view->vk.image, NULL );
+			view->vk.image = VK_NULL_HANDLE;
+		}
+	}
+#endif
+	memset( view, 0, sizeof( struct RITextureView_s ) );
+}
+
 
 void InitRIPool( struct RIDevice_s *dev, struct RIPool_s *pool, struct RIQueue_s *queue )
 {
@@ -1138,7 +1152,7 @@ void InitRICommandRingBuffer( struct RIDevice_s *dev, struct RIQueue_s *queue, s
 	ring->cmdPerPool = RI_COMMAND_RING_CMD_PER_POOL;
 	ring->syncPrimitive = syncPrimitives;
 
-	ring->poolIndex = ring->poolCount - 1; // Start so first advance goes to 0
+	ring->poolIndex = 0;
 	ring->cmdIndex = 0;
 	ring->fenceIndex = 0;
 

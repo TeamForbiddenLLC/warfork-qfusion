@@ -29,6 +29,7 @@ static inline bool RI_IsEmptyDescriptor( struct RIDescriptor_s *desc )
 
 // RITexture
 void FreeRITexture( struct RIDevice_s *dev, struct RITexture_s *tex );
+void FreeRITextureView( struct RIDevice_s *dev, struct RITextureView_s *view );
 
 // RICmd
 void FreeRICmd( struct RIDevice_s *dev, struct RICmd_s *cmd, struct RIPool_s *pool );

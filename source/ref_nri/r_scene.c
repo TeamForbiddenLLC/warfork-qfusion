@@ -22,10 +22,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_program.h"
 #include "r_frame_cmd_buffer.h"
 
+#include "ri_renderer.h"
 #include "ri_types.h"
 #include "stb_ds.h"
 #include "ri_conversion.h"
 #include "ri_vk.h"
+#include "ri_swapchain.h"
 
 static void R_RenderDebugBounds(  struct FrameState_s* frame);
 
@@ -223,6 +225,7 @@ void __FXAA_PostProcessing(const refdef_t* ref,struct FrameState_s* cmd, struct 
 	srcDesc.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	srcDesc.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	srcDesc.vk.image.imageView = src->vk.image;
+	UpdateRIDescriptor(&rsh.device, &srcDesc);
 
 	descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
 		.descriptor = srcDesc, 
@@ -241,10 +244,6 @@ void __FXAA_PostProcessing(const refdef_t* ref,struct FrameState_s* cmd, struct 
 	struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_FXAA, NULL, "", NULL, 0, programFeatures );
 	struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline);
 
-
-	//rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
-	//rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
-	//rsh.nri.coreI.CmdSetRootConstants( cmd->cmd, 0, &push, sizeof( struct FxaaPushConstant ) );
 	RP_BindPipeline( cmd, pipeline );
 	RP_BindPushConstant( &rsh.device, cmd, program, &push, sizeof( struct FxaaPushConstant ) );
 	RP_BindDescriptorSets( &rsh.device, cmd, program, descriptors, descriptorIndex );
@@ -354,19 +353,11 @@ void R_RenderScene(const refdef_t *fd )
 
 #if ( DEVICE_IMPL_VULKAN )
 	{
+
 		if( numPostProcessing > 0 ) {
 			vkCmdEndRendering( rsh.frame.handle.vk.cmd ); // end back buffer and swap to pogo attachment
-			VkRenderingAttachmentInfo colorAttachment = { 
-				.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-				.imageView = RI_PogoBufferAttachment( rsh.pogoBuffer + rsh.swapchainIndex)->vk.image,
-				.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-				.resolveMode = VK_RESOLVE_MODE_NONE,
-				.resolveImageView = VK_NULL_HANDLE,
-				.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-				.loadOp =  VK_ATTACHMENT_LOAD_OP_LOAD,
-				.storeOp = VK_ATTACHMENT_STORE_OP_STORE
-			};
-			//RI_VK_FillColorAttachment( &colorAttachment, RI_PogoBufferAttachment( rsh.pogoBuffer + rsh.vk.swapchainIndex ), false);
+			VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+			RI_VK_FillColorAttachment( &colorAttachment, *RI_PogoBufferAttachment( rsh.pogoBuffer + rsh.swapchainIndex ), false);
 
 			VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 			RI_VK_FillDepthAttachment( &depthStencil, rsh.depthView[rsh.swapchainIndex], false);
@@ -382,7 +373,7 @@ void R_RenderScene(const refdef_t *fd )
 			renderingInfo.pStencilAttachment = NULL;
 			vkCmdBeginRendering( rsh.frame.handle.vk.cmd, &renderingInfo );
 			
-			enum RI_Format_e attachments[] = {POGO_BUFFER_TEXTURE_FORMAT };
+			enum RI_Format_e attachments[] = {POGO_BUFFER_TEXTURE_FORMAT};
 			FR_ConfigurePipelineAttachment(&rsh.frame.pipeline, attachments, Q_ARRAY_COUNT(attachments), RI_FORMAT_D32_SFLOAT);
 		}
 	}
@@ -457,7 +448,7 @@ void R_RenderScene(const refdef_t *fd )
 			// reset back to back buffer
 			{
 				VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-				RI_VK_FillColorAttachment( &colorAttachment, *RI_PogoBufferAttachment( rsh.pogoBuffer + rsh.swapchainIndex ), true );
+				RI_VK_FillColorAttachment( &colorAttachment, RISwapchainGetTextureView(&rsh.swapchain, rsh.swapchainIndex), true );
 
 				VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 				RI_VK_FillDepthAttachment( &depthStencil, rsh.depthView[rsh.swapchainIndex], true );

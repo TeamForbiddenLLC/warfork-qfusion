@@ -1331,6 +1331,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			if( mapConfig.lightmapArrays )
 				programFeatures |= GLSL_SHADER_Q3_LIGHTMAP_ARRAYS;
 
+			if( isLightmapped && rsh.worldBrushModel )
 			for(size_t i = 0; i < rsh.worldBrushModel->numLightmapImages; i++) {
 				if(i == 0) {
 					descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){

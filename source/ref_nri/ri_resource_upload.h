@@ -90,6 +90,20 @@ struct RIResourceBufferTransaction_s {
 struct RIResourceTextureTransaction_s {
 	struct RITexture_s target;
 
+		union {
+#if ( DEVICE_IMPL_VULKAN )
+			struct {
+					VkPipelineStageFlags2 current_stage;
+					VkAccessFlags2 current_access;
+					VkImageLayout current_layout;
+
+					VkPipelineStageFlags2 post_stage;
+					VkAccessFlags2 post_access;
+					VkImageLayout post_layout;
+			} vk;
+#endif
+		};
+
 	/* https://github.com/microsoft/DirectXTex/wiki/Image */
 	uint32_t format; /* RI_Format_e */
 	uint32_t sliceNum;

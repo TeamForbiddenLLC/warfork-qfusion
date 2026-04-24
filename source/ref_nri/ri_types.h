@@ -319,8 +319,6 @@ struct RIDescriptor_s {
 	// unique id to mark the descriptor
 	hash_t cookie;
 	uint8_t flags;
-	struct RIBuffer_s buffer;
-	struct RITexture_s texture;
 	union {
 #if ( DEVICE_IMPL_VULKAN )
 		struct {

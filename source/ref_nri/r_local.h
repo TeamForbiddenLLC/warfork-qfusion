@@ -337,11 +337,11 @@ typedef struct
 	struct FrameState_s frame;
 	
 	uint32_t swapchainIndex;
+	uint64_t frameSetCount;
 	struct RITexture_s depthTextures[RI_MAX_SWAPCHAIN_IMAGES];
 	struct RITextureView_s depthView[RI_MAX_SWAPCHAIN_IMAGES];
 	struct RI_PogoBuffer pogoBuffer[RI_MAX_SWAPCHAIN_IMAGES];
 
-	uint64_t frameSetCount;
 	struct r_frame_set_s frameSets[NUMBER_FRAMES_FLIGHT];
 
 	byte_vec4_t		customColors[NUM_CUSTOMCOLORS];

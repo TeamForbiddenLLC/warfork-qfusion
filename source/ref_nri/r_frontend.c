@@ -70,6 +70,7 @@ static void __ShutdownSwapchainTexture()
 	if( IsRISwapchainValid( &rsh.swapchain ) ) {
 		for( uint32_t i = 0; i < RISwapchainGetImageCount( &rsh.swapchain ); i++ ) {
 			RI_PogoBufferDestroy( &rsh.device, &rsh.pogoBuffer[i] );
+			FreeRITextureView(&rsh.device, &rsh.depthView[i]);
 			FreeRITexture( &rsh.device, &rsh.depthTextures[i] );
 		}
 		FreeRISwapchain( &rsh.device, &rsh.swapchain );
@@ -487,13 +488,13 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 {
 	TracyCZone(ctx, 1);
 	RF_CheckCvars();
+	AdvanceRICommandRingBuffer(&rsh.graphicsCmdRing);
 
 	// run cinematic passes on shaders
 	R_RunAllCinematics();
 	struct r_frame_set_s *activeSet = R_GetActiveFrameSet();
 
 	arrsetlen( rsh.secondary, 0 );
-
 	rsh.primary = GetRICommandRingElement(&rsh.device, &rsh.graphicsCmdRing, 1);
 	WaitRICommandRingElement(&rsh.device, &rsh.primary);
 	ResetRIPool(&rsh.device, rsh.primary.pool);
@@ -763,7 +764,7 @@ void RF_EndFrame( void )
 			rsh.primary.vk.fence
 		};
 		VK_WrapResult(vkResetFences( rsh.device.vk.device, 1, reset_fence ));
-		VK_WrapResult(vkQueueSubmit2( graphicsQueue->vk.queue, 1, &submitInfo, VK_NULL_HANDLE ) );
+		VK_WrapResult(vkQueueSubmit2( graphicsQueue->vk.queue, 1, &submitInfo, rsh.primary.vk.fence ) );
 		free(wait_semaphore_info);
 
 		VkSemaphore wait_semaphores[] = {
