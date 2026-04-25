@@ -760,6 +760,8 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 	const uint32_t numberOfFaces = R_KTXGetNumberFaces( &ktxContext );
 	const uint16_t minMipSize = __R_calculateMipMapLevel(image->flags, R_KTXWidth(&ktxContext), R_KTXHeight(&ktxContext), image->minmipsize);
 	const uint16_t numberOfMipLevels = R_KTXIsCompressed( &ktxContext )  ? 1 : min(minMipSize, R_KTXGetNumberMips( &ktxContext ));
+	image->mipNum = numberOfMipLevels;
+	image->layers = ( image->flags & IT_CUBEMAP ) ? 6 : 1;
 	
 	image->extension = extensionKTX;
 	image->width = R_KTXWidth(&ktxContext);
@@ -804,12 +806,12 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
 		VkImageSubresourceRange subresource = {
-			VK_IMAGE_ASPECT_COLOR_BIT, 0, Q_MAX(image->mipNum, 1), 0, 1,
+			VK_IMAGE_ASPECT_COLOR_BIT, 0, info.mipLevels, 0, info.arrayLayers,
 		};
 
 		VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 		createInfo.pNext = &usageInfo;
-		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		createInfo.viewType = ( image->flags & IT_CUBEMAP ) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
 		createInfo.format = RIFormatToVK( dstFormat );
 		createInfo.subresourceRange = subresource;
 		createInfo.image = image->handle.vk.image;
@@ -1262,13 +1264,13 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 #if ( DEVICE_IMPL_VULKAN )
 		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
 		VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-		VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
+		VkImageCreateFlags imageCreateFlags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
 		const struct RIFormatProps_s *formatProps = GetRIFormatProps( destFormat );
 		if( formatProps->blockWidth > 1 )
-			flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
+			imageCreateFlags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
 		if( flags & IT_CUBEMAP )
-			flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
-		info.flags = flags;
+			imageCreateFlags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
+		info.flags = imageCreateFlags;
 		info.imageType = VK_IMAGE_TYPE_2D;
 		info.format = RIFormatToVK( destFormat );
 		info.extent.width = width;
@@ -1295,12 +1297,12 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 		usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
 		VkImageSubresourceRange subresource = {
-			VK_IMAGE_ASPECT_COLOR_BIT, 0, mipNum, 0, 1,
+			VK_IMAGE_ASPECT_COLOR_BIT, 0, mipNum, 0, info.arrayLayers,
 		};
 
 		VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 		createInfo.pNext = &usageInfo;
-		createInfo.viewType = ( image->flags & IT_CUBEMAP ) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
+		createInfo.viewType = ( flags & IT_CUBEMAP ) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
 		createInfo.format = RIFormatToVK( destFormat );
 		createInfo.subresourceRange = subresource;
 		createInfo.image = image->handle.vk.image;
@@ -1321,6 +1323,8 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 	}
 	image->flags = flags;
 	image->samples = samples;
+	image->mipNum = mipNum;
+	image->layers = ( flags & IT_CUBEMAP ) ? 6 : 1;
 	image->minmipsize = minmipsize;
 
 	R_ReplaceSubImage( image, 0, 0, 0, pic, width, height );
