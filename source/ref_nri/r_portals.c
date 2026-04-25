@@ -180,6 +180,7 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 		if( IsRITextureValid( &rsh.renderer, &portalFB->colorTexture ) ) {
 			if( portalFB->width == width && portalFB->height == height ) {
 				portalFB->samplerDescriptor = R_ResolveSamplerDescriptor( filtered ? 0 : IT_NOFILTERING );
+				assert(portalFB->samplerDescriptor);
 				portalFB->frameNum = rsh.frameSetCount;
 				return portalFB;
 			}
@@ -188,6 +189,7 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
   }
   if( bestFB ) {
 	  bestFB->samplerDescriptor = R_ResolveSamplerDescriptor( filtered ? 0 : IT_NOFILTERING );
+	  assert(bestFB->samplerDescriptor);
 	  bestFB->frameNum = rsh.frameSetCount;
 	  bestFB->width = width;
 	  bestFB->height = height;
@@ -441,13 +443,6 @@ static void R_DrawPortalSurface( struct FrameState_s *cmd, portalSurface_t *port
 
 	if( useCaptureTexture ) {
 		R_InitSubpass( cmd, &sub );
-#if ( DEVICE_IMPL_VULKAN )
-		VkCommandBufferInheritanceInfo inheritanceInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO };
-		VkCommandBufferBeginInfo info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-		info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		info.pInheritanceInfo = &inheritanceInfo;
-		vkBeginCommandBuffer( sub.handle.vk.cmd, &info );
-#endif
 	}
 
 	VectorCopy( rn.viewOrigin, viewerOrigin );
@@ -656,6 +651,9 @@ setup_and_render:
 	R_RenderView( captureTextureId >= 0 ? &sub : cmd, &rn.refdef );
 
 	if( useCaptureTexture && portalTexures[captureTextureId] ) {
+#if ( DEVICE_IMPL_VULKAN )
+		vkCmdEndRendering( sub.handle.vk.cmd );
+#endif
 		VkImageMemoryBarrier2 imageBarriers[1] = { 0 };
 		imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 		imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;

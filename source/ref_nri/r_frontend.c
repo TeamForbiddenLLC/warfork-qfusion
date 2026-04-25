@@ -694,7 +694,6 @@ void RF_EndFrame( void )
 		struct RIQueue_s *graphicsQueue = &rsh.device.queues[RI_QUEUE_GRAPHICS];
 
 		for (size_t i = 0; i < arrlen(rsh.secondary); i++) {
-			EndRICmd(&rsh.device, &rsh.secondary[i].cmds[0]);
 
 			VkCommandBufferSubmitInfo secondarySubmitInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO };
 			secondarySubmitInfo.commandBuffer = rsh.secondary[i].cmds[0].vk.cmd;
@@ -895,7 +894,6 @@ void R_InitSubpass( struct FrameState_s *parent, struct FrameState_s *child )
 
 	struct RICommandRingElement_s cmdElem = GetRICommandRingElement(&rsh.device, &rsh.graphicsCmdRing, 1);
 	WaitRICommandRingElement(&rsh.device, &cmdElem);
-	ResetRIPool(&rsh.device, cmdElem.pool);
 	BeginRICmd(&rsh.device, &cmdElem.cmds[0]);
 	child->handle = cmdElem.cmds[0];
 	arrpush( rsh.secondary, cmdElem);

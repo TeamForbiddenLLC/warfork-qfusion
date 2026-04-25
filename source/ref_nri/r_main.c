@@ -1008,7 +1008,8 @@ static void R_SetupGL(struct FrameState_s* frame)
 		.width = rn.viewport[2],
 		.height = rn.viewport[3],
 		.depthMin = 0.0f,
-		.depthMax = 1.0f
+		.depthMax = 1.0f,
+		.originBottomLeft = frame->pipeline.flippedViewport
 	} );
 
 	if( rn.renderFlags & RF_CLIPPLANE )

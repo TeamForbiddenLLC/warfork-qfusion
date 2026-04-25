@@ -157,7 +157,6 @@ struct RIDescriptor_s *R_ResolveSamplerDescriptor( int flags )
 				samplerDescriptors[index].vk.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 				samplerDescriptors[index].flags = RI_VK_DESC_OWN_SAMPLER;
 				VK_WrapResult( vkCreateSampler( rsh.device.vk.device, &info, NULL, &samplerDescriptors[index].vk.image.sampler ) );
-				UpdateRIDescriptor( &rsh.device, &samplerDescriptors[index] );
 				return &samplerDescriptors[index];
 			}
 			index = ( index + 1 ) % IMAGE_SAMPLER_HASH_SIZE;
