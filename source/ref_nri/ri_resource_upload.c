@@ -270,7 +270,43 @@ void RI_ResourceEndCopyBuffer( struct RIDevice_s *device, struct RIResourceUploa
 	region.size = trans->size;
 
 	VkCommandBuffer cmd = __AcquireCmd( device, &res->upload_resource );
+
+	if( trans->vk.current_stage != VK_PIPELINE_STAGE_2_COPY_BIT || trans->vk.current_access != VK_ACCESS_2_TRANSFER_WRITE_BIT ) {
+		VkBufferMemoryBarrier2 pre_barrier = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 };
+		pre_barrier.srcStageMask = trans->vk.current_stage;
+		pre_barrier.srcAccessMask = trans->vk.current_access;
+		pre_barrier.dstStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
+		pre_barrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+		pre_barrier.buffer = trans->target.vk.buffer;
+		pre_barrier.offset = 0;
+		pre_barrier.size = VK_WHOLE_SIZE;
+
+		VkDependencyInfo pre_dependency_info = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+		pre_dependency_info.bufferMemoryBarrierCount = 1;
+		pre_dependency_info.pBufferMemoryBarriers = &pre_barrier;
+		vkCmdPipelineBarrier2( cmd, &pre_dependency_info );
+	}
+
 	vkCmdCopyBuffer( cmd, trans->mapped.buffer, trans->target.vk.buffer, 1, &region );
+
+	if( trans->vk.post_stage != VK_PIPELINE_STAGE_2_COPY_BIT || trans->vk.post_access != VK_ACCESS_2_TRANSFER_WRITE_BIT ) {
+		// Only issue post-barrier if the post state is actually specified (non-zero stage)
+		if( trans->vk.post_stage != 0 ) {
+			VkBufferMemoryBarrier2 post_barrier = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 };
+			post_barrier.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
+			post_barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+			post_barrier.dstStageMask = trans->vk.post_stage;
+			post_barrier.dstAccessMask = trans->vk.post_access;
+			post_barrier.buffer = trans->target.vk.buffer;
+			post_barrier.offset = 0;
+			post_barrier.size = VK_WHOLE_SIZE;
+
+			VkDependencyInfo post_dependency_info = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+			post_dependency_info.bufferMemoryBarrierCount = 1;
+			post_dependency_info.pBufferMemoryBarriers = &post_barrier;
+			vkCmdPipelineBarrier2( cmd, &post_dependency_info );
+		}
+	}
 #endif
 }
 

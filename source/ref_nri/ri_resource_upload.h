@@ -80,6 +80,18 @@ struct RIResourceBufferTransaction_s {
 	size_t size;
 	size_t offset; /* destination offset inside 'target'          */
 
+	union {
+#if ( DEVICE_IMPL_VULKAN )
+		struct {
+			VkPipelineStageFlags2 current_stage;
+			VkAccessFlags2 current_access;
+
+			VkPipelineStageFlags2 post_stage;
+			VkAccessFlags2 post_access;
+		} vk;
+#endif
+	};
+
 	/* filled by RI_ResourceBeginCopyBuffer */
 	struct RIMappedMemoryRange mapped;
 };

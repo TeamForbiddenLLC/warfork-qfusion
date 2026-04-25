@@ -308,6 +308,12 @@ void R_UploadVBOVertexRawData( mesh_vbo_t *vbo, int vertsOffset, int numVerts, c
 		.target = vbo->vertexBuffer,
 		.size = numVerts * vbo->vertexSize,
 		.offset = vertsOffset * vbo->vertexSize,
+#if ( DEVICE_IMPL_VULKAN )
+		.vk = {
+			.post_stage = VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT, 
+			.post_access = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT,         		
+		}
+#endif
 	};
 
 	RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
@@ -1313,6 +1319,10 @@ void R_UploadVBOElemData( mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, con
 		.target = vbo->indexBuffer,
 		.size = mesh->numElems * sizeof( elem_t ),
 		.offset = elemsOffset * sizeof( elem_t ),
+#if ( DEVICE_IMPL_VULKAN )
+		.vk.post_stage = VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT,
+		.vk.post_access = VK_ACCESS_2_INDEX_READ_BIT,
+#endif
 	};
 
 	RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
@@ -1350,6 +1360,10 @@ vattribmask_t R_UploadVBOInstancesData( mesh_vbo_t *vbo, int instOffset, int num
 			.target = vbo->instanceBuffer,
 			.size = numInstances * sizeof( instancePoint_t ),
 			.offset = instOffset * sizeof( instancePoint_t ),
+#if ( DEVICE_IMPL_VULKAN )
+			.vk.post_stage = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
+			.vk.post_access = VK_ACCESS_2_UNIFORM_READ_BIT,
+#endif
 		};
 
 		RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
