@@ -287,6 +287,7 @@ void __ColorCorrection_PostProcessing(const refdef_t* ref,struct FrameState_s* c
 }
 
 
+//TODO: remove frame only bound to primary backbuffer
 void R_RenderScene(const refdef_t *fd )
 {
 	//R_FlushTransitionBarrier(rsh.primaryCmd.cmd);

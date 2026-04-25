@@ -307,25 +307,20 @@ int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, 
 		result = vkCreateSwapchainKHR( dev->vk.device, &swapChainCreateInfo, NULL, &swapchain->vk.swapchain );
 		VK_WrapResult( result );
 
-		// Zig: dkb.destroySwapchainKHR(device, old_swapchain, null)
 		vkDestroySwapchainKHR( dev->vk.device, oldSwapchain, NULL );
 
-		// Zig: destroy old views, zero slices
 		for( size_t i = 0; i < swapchain->vk.imageCount; i++ ) {
 			if( swapchain->vk.views[i] )
 				vkDestroyImageView( dev->vk.device, swapchain->vk.views[i], NULL );
 			swapchain->vk.views[i] = VK_NULL_HANDLE;
-			// swapchain->vk.images[i] = VK_NULL_HANDLE;
 		}
 
-		// Zig: re-query images
 		uint32_t imageNum = 0;
 		vkGetSwapchainImagesKHR( dev->vk.device, swapchain->vk.swapchain, &imageNum, NULL );
 		assert( imageNum <= RI_MAX_SWAPCHAIN_IMAGES );
 		vkGetSwapchainImagesKHR( dev->vk.device, swapchain->vk.swapchain, &imageNum, swapchain->vk.images );
 		swapchain->vk.imageCount = imageNum;
 
-		// Zig: recreate image views
 		for( size_t i = 0; i < imageNum; i++ ) {
 			VkImageViewCreateInfo viewCreateInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 			viewCreateInfo.image = swapchain->vk.images[i];
