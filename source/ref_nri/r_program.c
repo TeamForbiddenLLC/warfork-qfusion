@@ -1180,6 +1180,7 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd,
 				if( !refl || setIndex != refl->set || RI_IsEmptyDescriptor( &bindings[i].descriptor ) )
 					continue;
 				hash = hash_u64( hash, refl->hash );
+				assert(bindings[i].descriptor.cookie != 0); // the cookie can't be 0
 				hash = hash_u64( hash, bindings[i].descriptor.cookie );
 			}
 			if( hash == HASH_INITIAL_VALUE )
