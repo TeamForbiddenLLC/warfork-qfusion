@@ -180,6 +180,7 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 		if( IsRITextureValid( &rsh.renderer, &portalFB->colorTexture ) ) {
 			if( portalFB->width == width && portalFB->height == height ) {
 				portalFB->samplerDescriptor = R_ResolveSamplerDescriptor( filtered ? 0 : IT_NOFILTERING );
+				assert(portalFB->samplerDescriptor);
 				portalFB->frameNum = rsh.frameSetCount;
 				return portalFB;
 			}
@@ -188,6 +189,7 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
   }
   if( bestFB ) {
 	  bestFB->samplerDescriptor = R_ResolveSamplerDescriptor( filtered ? 0 : IT_NOFILTERING );
+	  assert(bestFB->samplerDescriptor);
 	  bestFB->frameNum = rsh.frameSetCount;
 	  bestFB->width = width;
 	  bestFB->height = height;
@@ -264,7 +266,7 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 		  createInfo.image = bestFB->colorTexture.vk.image;
 			
 			bestFB->colorDescriptor.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-			bestFB->colorDescriptor.texture = &bestFB->colorTexture;
+			//bestFB->colorDescriptor.texture = bestFB->colorTexture;
 			bestFB->colorDescriptor.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 			bestFB->colorDescriptor.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->colorDescriptor.vk.image.imageView ) );
@@ -309,7 +311,7 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 		  createInfo.image = bestFB->depthTexture.vk.image;
 
 		  bestFB->depthDescriptor.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-		  bestFB->depthDescriptor.texture = &bestFB->depthTexture;
+		  //bestFB->depthDescriptor.texture = bestFB->depthTexture;
 		  bestFB->depthDescriptor.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 		  bestFB->depthDescriptor.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		  VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->depthDescriptor.vk.image.imageView ) );
@@ -441,13 +443,6 @@ static void R_DrawPortalSurface( struct FrameState_s *cmd, portalSurface_t *port
 
 	if( useCaptureTexture ) {
 		R_InitSubpass( cmd, &sub );
-#if ( DEVICE_IMPL_VULKAN )
-		VkCommandBufferInheritanceInfo inheritanceInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO };
-		VkCommandBufferBeginInfo info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-		info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		info.pInheritanceInfo = &inheritanceInfo;
-		vkBeginCommandBuffer( sub.handle.vk.cmd, &info );
-#endif
 	}
 
 	VectorCopy( rn.viewOrigin, viewerOrigin );
@@ -623,10 +618,10 @@ setup_and_render:
 		}
 		{
 			VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-			RI_VK_FillColorAttachment( &colorAttachment, &fb->colorDescriptor, true );
+			RI_VK_FillColorAttachment( &colorAttachment, TextureviewRIDescriptor(&fb->colorDescriptor), true );
 
 			VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-			RI_VK_FillDepthAttachment( &depthStencil, &fb->depthDescriptor, true );
+			RI_VK_FillDepthAttachment( &depthStencil, TextureviewRIDescriptor(&fb->depthDescriptor), true );
 			enum RI_Format_e attachments[] = {PortalTextureFormat };
 			FR_ConfigurePipelineAttachment(& sub.pipeline, attachments, Q_ARRAY_COUNT(attachments), PortalTextureDepthFormat );
 			
@@ -656,6 +651,9 @@ setup_and_render:
 	R_RenderView( captureTextureId >= 0 ? &sub : cmd, &rn.refdef );
 
 	if( useCaptureTexture && portalTexures[captureTextureId] ) {
+#if ( DEVICE_IMPL_VULKAN )
+		vkCmdEndRendering( sub.handle.vk.cmd );
+#endif
 		VkImageMemoryBarrier2 imageBarriers[1] = { 0 };
 		imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 		imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;

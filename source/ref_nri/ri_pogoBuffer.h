@@ -6,24 +6,34 @@
 struct FrameState_s;
 
 struct RI_PogoBuffer {
-	struct RIDescriptor_s pogoAttachment[2];
 	uint16_t attachmentIndex;
+	union {
+#if ( DEVICE_IMPL_VULKAN )
+		struct {
+			struct RITexture_s textures[2];
+			struct RITextureView_s views[2];
+		} vk;
+#endif
+	};
 };
 
-VkImageMemoryBarrier2 VK_RI_PogoShaderMemoryBarrier2( VkImage image, bool initial );
-VkImageMemoryBarrier2 VK_RI_PogoAttachmentMemoryBarrier2( VkImage image, bool initial );
-
+void RI_PogoBufferInit( struct RIDevice_s *device, struct RI_PogoBuffer *pogo, uint32_t width, uint32_t height, uint32_t format );
+void RI_PogoBufferDestroy( struct RIDevice_s *device, struct RI_PogoBuffer *pogo );
 void RI_PogoBufferToggle( struct RIDevice_s *device, struct RI_PogoBuffer *pogo, struct RICmd_s *handle );
 
-static inline struct RIDescriptor_s *RI_PogoBufferAttachment( struct RI_PogoBuffer *pogo )
+#if ( DEVICE_IMPL_VULKAN )
+VkImageMemoryBarrier2 VK_RI_PogoShaderMemoryBarrier2( VkImage image, bool initial );
+VkImageMemoryBarrier2 VK_RI_PogoAttachmentMemoryBarrier2( VkImage image, bool initial );
+#endif
+
+static inline struct RITextureView_s *RI_PogoBufferAttachment( struct RI_PogoBuffer *pogo )
 {
-	return pogo->pogoAttachment + pogo->attachmentIndex;
+	return &pogo->vk.views[pogo->attachmentIndex];
 }
 
-static inline struct RIDescriptor_s *RI_PogoBufferShaderResource( struct RI_PogoBuffer *pogo )
+static inline struct RITextureView_s *RI_PogoBufferShaderResource( struct RI_PogoBuffer *pogo )
 {
-	return pogo->pogoAttachment + ( ( pogo->attachmentIndex + 1 ) % 2 );
+	return &pogo->vk.views[( pogo->attachmentIndex + 1 ) % 2];
 }
 
 #endif
-
