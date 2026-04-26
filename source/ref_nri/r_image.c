@@ -157,7 +157,6 @@ struct RIDescriptor_s *R_ResolveSamplerDescriptor( int flags )
 				samplerDescriptors[index].vk.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 				samplerDescriptors[index].flags = RI_VK_DESC_OWN_SAMPLER;
 				VK_WrapResult( vkCreateSampler( rsh.device.vk.device, &info, NULL, &samplerDescriptors[index].vk.image.sampler ) );
-				UpdateRIDescriptor( &rsh.device, &samplerDescriptors[index] );
 				return &samplerDescriptors[index];
 			}
 			index = ( index + 1 ) % IMAGE_SAMPLER_HASH_SIZE;
@@ -761,6 +760,8 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 	const uint32_t numberOfFaces = R_KTXGetNumberFaces( &ktxContext );
 	const uint16_t minMipSize = __R_calculateMipMapLevel(image->flags, R_KTXWidth(&ktxContext), R_KTXHeight(&ktxContext), image->minmipsize);
 	const uint16_t numberOfMipLevels = R_KTXIsCompressed( &ktxContext )  ? 1 : min(minMipSize, R_KTXGetNumberMips( &ktxContext ));
+	image->mipNum = numberOfMipLevels;
+	image->layers = ( image->flags & IT_CUBEMAP ) ? 6 : 1;
 	
 	image->extension = extensionKTX;
 	image->width = R_KTXWidth(&ktxContext);
@@ -805,18 +806,18 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
 		VkImageSubresourceRange subresource = {
-			VK_IMAGE_ASPECT_COLOR_BIT, 0, Q_MAX(image->mipNum, 1), 0, 1,
+			VK_IMAGE_ASPECT_COLOR_BIT, 0, info.mipLevels, 0, info.arrayLayers,
 		};
 
 		VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 		createInfo.pNext = &usageInfo;
-		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		createInfo.viewType = ( image->flags & IT_CUBEMAP ) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
 		createInfo.format = RIFormatToVK( dstFormat );
 		createInfo.subresourceRange = subresource;
 		createInfo.image = image->handle.vk.image;
 
 		image->binding.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-		image->binding.texture = &image->handle;
+		//image->binding.texture = image->handle;
 		image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 		image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
@@ -991,38 +992,43 @@ static void __R_CopyTextureDataTexture(struct image_s* image, int layer, int mip
 {
 	const struct RIFormatProps_s *srcDef = GetRIFormatProps( srcFormat );
 	const struct RIFormatProps_s *destDef = GetRIFormatProps( __R_GetImageFormat( image ) );
+	struct RIResourceTextureTransaction_s uploadDesc = { 
+		.target = image->handle,
+		.sliceNum = h,
+		.rowPitch = w * destDef->stride,
+		.arrayOffset = layer,
+		.mipOffset = mipOffset, 
+		.x = x,
+		.y = y,
+		.depth = 1,
+		.width = w, 
+		.height = h,
+		.format = __R_GetImageFormat(image)
+	};
 
-	struct RIResourceTextureTransaction_s uploadDesc = { 0 };
-	uploadDesc.target = image->handle;
-	uploadDesc.sliceNum = h;
-	uploadDesc.rowPitch = w * destDef->stride;
-	uploadDesc.arrayOffset = layer;
-	uploadDesc.mipOffset = mipOffset; 
-	uploadDesc.x = x;
-	uploadDesc.y = y;
-	uploadDesc.depth = 1;
-	uploadDesc.width = w; 
-	uploadDesc.height = h;
-	uploadDesc.format = __R_GetImageFormat(image);
 #if ( DEVICE_IMPL_VULKAN )
 	{
-		uploadDesc.postBarrier.vk.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		uploadDesc.postBarrier.vk.stage = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-		uploadDesc.postBarrier.vk.access = VK_ACCESS_2_SHADER_READ_BIT;
+		uploadDesc.vk.post_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		uploadDesc.vk.post_stage = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		uploadDesc.vk.post_access = VK_ACCESS_2_SHADER_READ_BIT;
 	}
 #endif
+
+	 // uploadDesc.postBarrier.vk.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	 // uploadDesc.postBarrier.vk.stage = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+	 // uploadDesc.postBarrier.vk.access = VK_ACCESS_2_SHADER_READ_BIT;
 
 	RI_ResourceBeginCopyTexture( &rsh.device, &rsh.uploader, &uploadDesc );
 	for( size_t slice = 0; slice < uploadDesc.height; slice++ ) {
 		const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
-		memset( &( (uint8_t *)uploadDesc.data )[dstRowStart], 255, uploadDesc.rowPitch );
+		memset( &( (uint8_t *)uploadDesc.mapped.data )[dstRowStart], 255, uploadDesc.rowPitch );
 		for( size_t column = 0; column < uploadDesc.width; column++ ) {
 			switch( srcFormat ) {
 				case RI_FORMAT_L8_A8_UNORM: {
 					const uint8_t luminance = data[( uploadDesc.width * srcDef->stride * slice ) + ( column * srcDef->stride )];
 					const uint8_t alpha = data[( uploadDesc.width * srcDef->stride * slice ) + ( column * srcDef->stride ) + 1];
 					uint8_t color[4] = { luminance, luminance, luminance, alpha };
-					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destDef->stride * column )], color, Q_MIN( sizeof( color ), destDef->stride ) );
+					memcpy( &( (uint8_t *)uploadDesc.mapped.data )[dstRowStart + ( destDef->stride * column )], color, Q_MIN( sizeof( color ), destDef->stride ) );
 					break;
 				}
 				case RI_FORMAT_A8_UNORM:
@@ -1036,11 +1042,11 @@ static void __R_CopyTextureDataTexture(struct image_s* image, int layer, int mip
 						color[0] = color[1] = color[2] = c1;
 						color[3] = 255;
 					}
-					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destDef->stride * column )], color, min( 4, destDef->stride ) );
+					memcpy( &( (uint8_t *)uploadDesc.mapped.data )[dstRowStart + ( destDef->stride * column )], color, min( 4, destDef->stride ) );
 					break;
 				}
 				default:
-					memcpy( &( (uint8_t *)uploadDesc.data )[dstRowStart + ( destDef->stride * column )], &data[( uploadDesc.width * srcDef->stride * slice ) + ( column * srcDef->stride )],
+					memcpy( &( (uint8_t *)uploadDesc.mapped.data )[dstRowStart + ( destDef->stride * column )], &data[( uploadDesc.width * srcDef->stride * slice ) + ( column * srcDef->stride )],
 							min( srcDef->stride, destDef->stride ) );
 					break;
 			}
@@ -1143,7 +1149,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	createInfo.image = image->handle.vk.image;
 
 	image->binding.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-	image->binding.texture = &image->handle;
+	//image->binding.texture = image->handle;
 	image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
@@ -1258,13 +1264,13 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 #if ( DEVICE_IMPL_VULKAN )
 		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
 		VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-		VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
+		VkImageCreateFlags imageCreateFlags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
 		const struct RIFormatProps_s *formatProps = GetRIFormatProps( destFormat );
 		if( formatProps->blockWidth > 1 )
-			flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
+			imageCreateFlags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT; // format can be used to create a view with an uncompressed format (1 texel covers 1 block)
 		if( flags & IT_CUBEMAP )
-			flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
-		info.flags = flags;
+			imageCreateFlags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // allow cube maps
+		info.flags = imageCreateFlags;
 		info.imageType = VK_IMAGE_TYPE_2D;
 		info.format = RIFormatToVK( destFormat );
 		info.extent.width = width;
@@ -1291,18 +1297,18 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 		usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
 		VkImageSubresourceRange subresource = {
-			VK_IMAGE_ASPECT_COLOR_BIT, 0, mipNum, 0, 1,
+			VK_IMAGE_ASPECT_COLOR_BIT, 0, mipNum, 0, info.arrayLayers,
 		};
 
 		VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 		createInfo.pNext = &usageInfo;
-		createInfo.viewType = ( image->flags & IT_CUBEMAP ) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
+		createInfo.viewType = ( flags & IT_CUBEMAP ) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
 		createInfo.format = RIFormatToVK( destFormat );
 		createInfo.subresourceRange = subresource;
 		createInfo.image = image->handle.vk.image;
 	
 		image->binding.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-		image->binding.texture = &image->handle;
+		//image->binding.texture = image->handle;
 		image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 		image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
@@ -1317,6 +1323,8 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 	}
 	image->flags = flags;
 	image->samples = samples;
+	image->mipNum = mipNum;
+	image->layers = ( flags & IT_CUBEMAP ) ? 6 : 1;
 	image->minmipsize = minmipsize;
 
 	R_ReplaceSubImage( image, 0, 0, 0, pic, width, height );
@@ -1662,7 +1670,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 		createInfo.image = image->handle.vk.image;
 		
 		image->binding.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-		image->binding.texture = &image->handle;
+		//image->binding.texture = image->handle;
 		image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 		image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
