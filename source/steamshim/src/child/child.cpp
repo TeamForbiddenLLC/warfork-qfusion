@@ -20,11 +20,13 @@ freely, subject to the following restrictions:
 
 #include <cassert>
 #include <chrono>
+#include <cinttypes>
 #include <cstddef>
 #include <cstdint>
 #include <ctime>
 #include <stdlib.h>
 #include <thread>
+#include <vector>
 
 #include "../os.h"
 #include "../steamshim_private.h"
@@ -126,64 +128,87 @@ static void processRPC( steam_rpc_pkt_s *req, size_t size )
 {
 	switch( req->common.cmd ) {
 		case RPC_PUMP: {
-			time( &time_since_last_pump );
 			struct steam_rpc_shim_common_s recv;
 			prepared_rpc_packet( &req->common, &recv );
 			write_packet( GPipeWrite, &recv, sizeof( steam_rpc_shim_common_s ) );
 			break;
 		}
 		case RPC_WORKSHOP_SUBMIT_ITEM: {
+			dbgprintf( "RPC_WORKSHOP_SUBMIT_ITEM handle=%" PRIu64 " note=\"%s\"\n",
+				(uint64_t)req->workshop_submit_item.handle, (const char *)req->workshop_submit_item.buf );
 			SteamAPICall_t call = GSteamUGC->SubmitItemUpdate( req->workshop_submit_item.handle, (const char *)req->workshop_submit_item.buf );
+			dbgprintf( "  -> api_call=%" PRIu64 "\n", (uint64_t)call );
 			steam_async_push_rpc_shim( call, &req->common );
 			break;
 		}
 		case RPC_WORKSHOP_BEGIN_ITEM_UPDATE: {
+			dbgprintf( "RPC_WORKSHOP_BEGIN_ITEM_UPDATE file_id=%" PRIu64 "\n",
+				(uint64_t)req->workshop_start_item_update.publish_item_file );
 			STEAM_UGCUpdateHandle_t handle = GSteamUGC->StartItemUpdate( GAppID, req->workshop_start_item_update.publish_item_file );
+			dbgprintf( "  -> handle=%" PRIu64 " valid=%d\n", (uint64_t)handle, handle != k_UGCUpdateHandleInvalid );
 			struct start_item_update_recv_s recv;
 			recv.handle = handle;
+			recv.success = handle != k_UGCUpdateHandleInvalid;
 			prepared_rpc_packet( &req->common, &recv );
 			write_packet( GPipeWrite, &recv, sizeof( start_item_update_recv_s ) );
 			break;
 		}
 		case RPC_WORKSHOP_CREATE_ITEM: {
+			dbgprintf( "RPC_WORKSHOP_CREATE_ITEM app_id=%u\n", (unsigned)GAppID );
 			SteamAPICall_t call = GSteamUGC->CreateItem( GAppID, k_EWorkshopFileTypeGameManagedItem );
+			dbgprintf( "  -> api_call=%" PRIu64 "\n", (uint64_t)call );
 			steam_async_push_rpc_shim( call, &req->common );
 			break;
 		}
 		case RPC_WORKSHOP_ITEM_SET_TITLE: {
+			dbgprintf( "RPC_WORKSHOP_ITEM_SET_TITLE handle=%" PRIu64 " title=\"%s\"\n",
+				(uint64_t)req->workshop_set_title.handle, (const char *)req->workshop_set_title.buf );
 			struct success_recv_s recv;
 			recv.success = GSteamUGC->SetItemTitle( req->workshop_set_title.handle, (const char *)req->workshop_set_title.buf );
+			dbgprintf( "  -> success=%d\n", recv.success );
 			prepared_rpc_packet( &req->common, &recv );
 			write_packet( GPipeWrite, &recv, sizeof( success_recv_s ) );
 			break;
 		}
 		case RPC_WORKSHOP_ITEM_SET_DESCRIPTION: {
+			dbgprintf( "RPC_WORKSHOP_ITEM_SET_DESCRIPTION handle=%" PRIu64 "\n",
+				(uint64_t)req->workshop_set_description.handle );
 			struct success_recv_s recv;
 			recv.success = GSteamUGC->SetItemDescription( req->workshop_set_description.handle, (const char *)req->workshop_set_description.buf );
+			dbgprintf( "  -> success=%d\n", recv.success );
 			prepared_rpc_packet( &req->common, &recv );
 			write_packet( GPipeWrite, &recv, sizeof( success_recv_s ) );
 			break;
 		}
 		case RPC_WORKSHOP_ITEM_SET_ITEM_CONTENT: {
+			dbgprintf( "RPC_WORKSHOP_ITEM_SET_ITEM_CONTENT handle=%" PRIu64 " path=\"%s\"\n",
+				(uint64_t)req->workshop_set_item_content.handle, (const char *)req->workshop_set_item_content.buf );
 			struct success_recv_s recv;
 			recv.success = GSteamUGC->SetItemContent( req->workshop_set_item_content.handle, (const char *)req->workshop_set_item_content.buf );
+			dbgprintf( "  -> success=%d\n", recv.success );
 			prepared_rpc_packet( &req->common, &recv );
 			write_packet( GPipeWrite, &recv, sizeof( success_recv_s ) );
 			break;
 		}
 		case RPC_WORKSHOP_ITEM_SET_VISIBILITY: {
+			dbgprintf( "RPC_WORKSHOP_ITEM_SET_VISIBILITY item_id=%" PRIu64 " visibility=%d\n",
+				(uint64_t)req->workshop_set_visibility.handle, (int)req->workshop_set_visibility.visibility );
 			struct success_recv_s recv;
-			recv.success = GSteamUGC->SetItemVisibility( req->workshop_set_visibility.itemID, (ERemoteStoragePublishedFileVisibility)req->workshop_set_visibility.visibility );
+			recv.success = GSteamUGC->SetItemVisibility( req->workshop_set_visibility.handle, (ERemoteStoragePublishedFileVisibility)req->workshop_set_visibility.visibility );
+			dbgprintf( "  -> success=%d\n", recv.success );
 			prepared_rpc_packet( &req->common, &recv );
 			write_packet( GPipeWrite, &recv, sizeof( success_recv_s ) );
 			break;
 		}
 		case RPC_WORKSHOP_ITEM_SET_TAGS: {
+			dbgprintf( "RPC_WORKSHOP_ITEM_SET_TAGS handle=%" PRIu64 " num_tags=%u\n",
+				(uint64_t)req->workshop_set_tags.handle, (unsigned)req->workshop_set_tags.num_tags );
 			struct SteamParamStringArray_t tags;
 			tags.m_ppStrings = (const char **)malloc( sizeof( char * ) * req->workshop_set_tags.num_tags );
 			tags.m_nNumStrings = 0;
 			const char *c = req->workshop_set_tags.buffer;
 			for( size_t i = 0; i < req->workshop_set_tags.num_tags; i++ ) {
+				dbgprintf( "  tag[%zu]=\"%s\"\n", i, c );
 				tags.m_ppStrings[tags.m_nNumStrings++] = c;
 				while( *c != '\0' ) {
 					c++;
@@ -191,15 +216,78 @@ static void processRPC( steam_rpc_pkt_s *req, size_t size )
 			}
 			struct success_recv_s recv;
 			recv.success = GSteamUGC->SetItemTags( req->workshop_set_tags.handle, &tags );
+			dbgprintf( "  -> success=%d\n", recv.success );
 			free( tags.m_ppStrings );
+			prepared_rpc_packet( &req->common, &recv );
 			write_packet( GPipeWrite, &recv, sizeof( success_recv_s ) );
 			break;
 		}
 		case RPC_WORKSHOP_ITEM_SET_PREVIEW: {
+			dbgprintf( "RPC_WORKSHOP_ITEM_SET_PREVIEW handle=%" PRIu64 " path=\"%s\"\n",
+				(uint64_t)req->workshop_set_preview.handle, (const char *)req->workshop_set_preview.buf );
 			struct success_recv_s recv;
 			recv.success = GSteamUGC->SetItemPreview( req->workshop_set_preview.handle, (const char *)req->workshop_set_preview.buf );
+			dbgprintf( "  -> success=%d\n", recv.success );
 			prepared_rpc_packet( &req->common, &recv );
 			write_packet( GPipeWrite, &recv, sizeof( success_recv_s ) );
+			break;
+		}
+		case RPC_WORKSHOP_INSTALLED_INFO: {
+			dbgprintf( "RPC_WORKSHOP_INSTALLED_INFO workshop_id=%" PRIu64 "\n",
+				(uint64_t)req->steam_workshop_item.workshop_id );
+			struct steam_workshop_install_info_s recv = {};
+			char folder[1024] = { 0 };
+
+			prepared_rpc_packet( &req->common, &recv );
+			recv.workshop_id = req->steam_workshop_item.workshop_id;
+			if( GSteamUGC != NULL ) {
+				uint64 size_on_disk;
+				recv.success = GSteamUGC->GetItemInstallInfo( req->steam_workshop_item.workshop_id, &size_on_disk, folder, sizeof( folder ), &recv.time_stamp );
+				recv.size_on_disk = size_on_disk;
+			}
+
+			dbgprintf( "  -> success=%d folder=\"%s\"\n", recv.success, folder );
+			const size_t folderLen = recv.success ? strlen( folder ) : 0;
+			const uint32_t bufferSize = sizeof( recv ) + folderLen + 1;
+			writePipe( GPipeWrite, &bufferSize, sizeof( uint32_t ) );
+			writePipe( GPipeWrite, &recv, sizeof( recv ) );
+			writePipe( GPipeWrite, folder, folderLen + 1 );
+			break;
+		}
+		case RPC_WORKSHOP_QUERY_ITEM_DETAILS: {
+			dbgprintf( "RPC_WORKSHOP_QUERY_ITEM_DETAILS num_ids=%u\n", (unsigned)req->steam_workshop_items.num_ids );
+			UGCQueryHandle_t query = GSteamUGC->CreateQueryUGCDetailsRequest( (uint64 *)req->steam_workshop_items.workshop_ids, req->steam_workshop_items.num_ids );
+			SteamAPICall_t call = GSteamUGC->SendQueryUGCRequest( query );
+			dbgprintf( "  -> api_call=%" PRIu64 " valid=%d\n", (uint64_t)call, call != k_uAPICallInvalid );
+			struct steam_result_recv_s recv;
+			prepared_rpc_packet( &req->common, &recv );
+			recv.result = call;
+			if( call == k_uAPICallInvalid ) {
+				GSteamUGC->ReleaseQueryUGCRequest( query );
+			} else {
+				steam_async_push_rpc_shim( call, &req->common );
+			}
+			write_packet( GPipeWrite, &recv, sizeof( struct steam_result_recv_s ) );
+			break;
+		}
+		case RPC_WORKSHOP_REFRESH_SUBSCRIBED_ITEMS: {
+			dbgprintf( "RPC_WORKSHOP_REFRESH_SUBSCRIBED_ITEMS cookie=%u\n", (unsigned)req->stream_workshop_refresh.cookie );
+			struct success_recv_s recv;
+			std::vector<PublishedFileId_t> items( GSteamUGC->GetNumSubscribedItems() );
+			const uint32 numItems = GSteamUGC->GetSubscribedItems( items.data(), items.size() );
+			dbgprintf( "  -> num_subscribed=%u\n", (unsigned)numItems );
+			prepared_rpc_packet( &req->common, &recv );
+			write_packet( GPipeWrite, &recv, sizeof( success_recv_s ) );
+
+			for( size_t i = 0; i < numItems; i++ ) {
+				struct workshop_refresh_items_evt_s evt_res = {};
+				evt_res.cookie = req->stream_workshop_refresh.cookie;
+				evt_res.cmd = EVT_WORKSHOP_REFRESH_SUBSCRIBE_ITEMS;
+				for( ; evt_res.num_ids < 256 && i < numItems; i++ ) {
+					evt_res.ids[evt_res.num_ids++] = items[i];
+				}
+				write_packet( GPipeWrite, &evt_res, sizeof( workshop_refresh_items_evt_s ) + ( sizeof( uint64_t ) * evt_res.num_ids ) );
+			}
 			break;
 		}
 		case RPC_AUTHSESSION_TICKET: {
@@ -606,7 +694,6 @@ static void processSteamDispatch()
 						SteamAPI_ManualDispatch_FreeLastCallback( steamPipe );
 						continue;
 					}
-
 					id = callCompleted->m_iCallback;
 					data = callResultData;
 					// dmLogInfo( "SteamAPICallCompleted_t %llu result %d", callCompleted->m_hAsyncCall, id );
@@ -644,6 +731,61 @@ static void processSteamDispatch()
 					write_packet( GPipeWrite, &recv, sizeof( struct create_item_recv_s ) );
 					break;
 				}
+				case SteamUGCQueryCompleted_t::k_iCallback: {
+					SteamUGCQueryCompleted_t *result = (SteamUGCQueryCompleted_t *)data;
+					SteamUGCDetails_t details = {};
+					char preview_url[4096] = { 0 };
+					const bool got_result = result->m_eResult == k_EResultOK && result->m_unNumResultsReturned > 0 && GSteamUGC->GetQueryUGCResult( result->m_handle, 0, &details );
+
+					{
+						struct workshop_item_details_evt_s recv = {};
+						recv.cmd = EVT_WORKSHOP_DETAIL;
+						const char *title = "";
+						const char *description = "";
+						const char *tags = "";
+						const char *preview = "";
+
+						if( got_result ) {
+							GSteamUGC->GetQueryUGCPreviewURL( result->m_handle, 0, preview_url, sizeof( preview_url ) );
+							title = details.m_rgchTitle;
+							description = details.m_rgchDescription;
+							tags = details.m_rgchTags;
+							preview = preview_url;
+
+							recv.workshop_id = details.m_nPublishedFileId; 
+							recv.success = true;
+							recv.owner_id = details.m_ulSteamIDOwner;
+							recv.creator_app_id = details.m_nCreatorAppID;
+							recv.consumer_app_id = details.m_nConsumerAppID;
+							recv.file_type = details.m_eFileType;
+							recv.visibility = details.m_eVisibility;
+							recv.time_created = details.m_rtimeCreated;
+							recv.time_updated = details.m_rtimeUpdated;
+							recv.votes_up = details.m_unVotesUp;
+							recv.votes_down = details.m_unVotesDown;
+							recv.num_children = details.m_unNumChildren;
+							recv.item_state = GSteamUGC->GetItemState( details.m_nPublishedFileId );
+							recv.score = details.m_flScore;
+						}
+
+						recv.result = result->m_eResult;
+						recv.title_len = strlen( title );
+						recv.description_len = strlen( description );
+						recv.tags_len = strlen( tags );
+						recv.preview_url_len = strlen( preview );
+
+						const uint32_t buffer_size = sizeof( recv ) + recv.title_len + 1 + recv.description_len + 1 + recv.tags_len + 1 + recv.preview_url_len + 1;
+						writePipe( GPipeWrite, &buffer_size, sizeof( uint32_t ) );
+						writePipe( GPipeWrite, &recv, sizeof( recv ) );
+						writePipe( GPipeWrite, title, recv.title_len + 1 );
+						writePipe( GPipeWrite, description, recv.description_len + 1 );
+						writePipe( GPipeWrite, tags, recv.tags_len + 1 );
+						writePipe( GPipeWrite, preview, recv.preview_url_len + 1 );
+					}
+
+					GSteamUGC->ReleaseQueryUGCRequest( result->m_handle );
+					break;
+				}
 				case GameRichPresenceJoinRequested_t::k_iCallback: {
 					GameRichPresenceJoinRequested_t *pCallback = (GameRichPresenceJoinRequested_t *)data;
 					join_request_evt_s evt;
@@ -662,6 +804,33 @@ static void processSteamDispatch()
 					write_packet( GPipeWrite, &evt, sizeof( struct persona_changes_evt_s ) );
 					break;
 				}
+				case RemoteStoragePublishedFileSubscribed_t::k_iCallback: {
+					RemoteStoragePublishedFileSubscribed_t *pCallback = (RemoteStoragePublishedFileSubscribed_t *)data;
+					struct workshop_item_evt_s evt;
+					evt.cmd = EVT_WORKSHOP_ITEM_SUBSCRIBED;
+					evt.app_id = pCallback->m_nAppID;
+					evt.workshop_id = pCallback->m_nPublishedFileId;
+					write_packet( GPipeWrite, &evt, sizeof( workshop_item_evt_s ) );
+					break;
+				}
+				case RemoteStoragePublishedFileUnsubscribed_t::k_iCallback: {
+					RemoteStoragePublishedFileUnsubscribed_t *pCallback = (RemoteStoragePublishedFileUnsubscribed_t *)data;
+					struct workshop_item_evt_s evt;
+					evt.cmd = EVT_WORKSHOP_ITEM_UNSUBSCRIBED;
+					evt.app_id = pCallback->m_nAppID;
+					evt.workshop_id = pCallback->m_nPublishedFileId;
+					write_packet( GPipeWrite, &evt, sizeof( workshop_item_evt_s ) );
+					break;
+				}
+				case ItemInstalled_t::k_iCallback: {
+					ItemInstalled_t *pCallback = (ItemInstalled_t *)data;
+					struct workshop_item_evt_s evt;
+					evt.cmd = EVT_WORKSHOP_ITEM_INSTALLED;
+					evt.app_id = pCallback->m_unAppID;
+					evt.workshop_id = pCallback->m_nPublishedFileId;
+					write_packet( GPipeWrite, &evt, sizeof( workshop_item_evt_s ) );
+					break;
+				}
 			}
 			free( call_result_data );
 			SteamAPI_ManualDispatch_FreeLastCallback( steamPipe );
@@ -671,7 +840,7 @@ static void processSteamDispatch()
 
 static void processCommands()
 {
-	static struct steam_packet_buf packet;
+	static std::vector<uint8_t> packet_buf;
 	static size_t cursor = 0;
 	while( 1 ) {
 		if( time_since_last_pump != 0 ) {
@@ -680,14 +849,16 @@ static void processCommands()
 				return;
 		}
 
-		assert( sizeof( struct steam_packet_buf ) == STEAM_PACKED_RESERVE_SIZE );
-
 		if( !pipeReady( GPipeRead ) ) {
 			std::this_thread::sleep_for( std::chrono::microseconds( 1000 ) );
 			continue;
 		}
 
-		const int bytesRead = readPipe( GPipeRead, packet.buffer + cursor, STEAM_PACKED_RESERVE_SIZE - cursor );
+		if( packet_buf.empty() ) {
+			packet_buf.resize( STEAM_PACKED_RESERVE_SIZE );
+		}
+
+		const int bytesRead = readPipe( GPipeRead, packet_buf.data() + cursor, packet_buf.size() - cursor );
 		if( bytesRead > 0 ) {
 			cursor += bytesRead;
 		} else {
@@ -699,25 +870,34 @@ static void processCommands()
 		processSteamDispatch();
 	continue_processing:
 
-		if( packet.size > STEAM_PACKED_RESERVE_SIZE - sizeof( uint32_t ) ) {
-			// the packet is larger then the reserved size
-			return;
-		}
-
-		if( cursor < packet.size + sizeof( uint32_t ) ) {
+		if( cursor < sizeof( uint32_t ) ) {
 			continue;
 		}
 
-		if( packet.common.cmd >= RPC_BEGIN && packet.common.cmd < RPC_END ) {
-			processRPC( &packet.rpc_payload, packet.size );
-		} else if( packet.common.cmd >= EVT_BEGIN && packet.common.cmd < EVT_END ) {
-			processEVT( &packet.evt_payload, packet.size );
+		struct steam_packet_buf *packet = reinterpret_cast<struct steam_packet_buf *>( packet_buf.data() );
+		const size_t packetlen = packet->size + sizeof( uint32_t );
+		if( packetlen < sizeof( uint32_t ) ) {
+			return;
 		}
 
-		if( cursor > packet.size + sizeof( uint32_t ) ) {
-			const size_t packetlen = packet.size + sizeof( uint32_t );
+		if( packetlen > packet_buf.size() ) {
+			packet_buf.resize( packetlen );
+			packet = reinterpret_cast<struct steam_packet_buf *>( packet_buf.data() );
+		}
+
+		if( cursor < packetlen ) {
+			continue;
+		}
+
+		if( packet->common.cmd >= RPC_BEGIN && packet->common.cmd < RPC_END ) {
+			processRPC( &packet->rpc_payload, packet->size );
+		} else if( packet->common.cmd >= EVT_BEGIN && packet->common.cmd < EVT_END ) {
+			processEVT( &packet->evt_payload, packet->size );
+		}
+
+		if( cursor > packetlen ) {
 			const size_t remainingLen = cursor - packetlen;
-			memmove( packet.buffer, packet.buffer + packet.size + sizeof( uint32_t ), remainingLen );
+			memmove( packet_buf.data(), packet_buf.data() + packetlen, remainingLen );
 			cursor = remainingLen;
 			goto continue_processing;
 		} else {

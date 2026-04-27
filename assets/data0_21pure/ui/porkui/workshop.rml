@@ -1,20 +1,145 @@
 <rml>
-    <head>
-        <title>workshop</title>
-        <link type="text/template" href="template.rml" />
-        <link rel="stylesheet" type="text/css" href="css/options/input.rcss" />
-        <script src="as/base.as" />
-    </head>
-    <body template="porkui">
-        <div id="leftside">
-            <div id="workshop">
-                <panel class="dropshadow">
-                    <h3 class="intro">Workshop</h3>
-                    <p>Workshop integration is currently under development.</p>
-                    <br/><br/>
-                    <!-- Add your workshop UI elements here -->
-                </panel>
-            </div>
-        </div>
-    </body>
+	<head>
+		<title>workshop</title>
+		<link type="text/template" href="template.rml" />
+		<link rel="stylesheet" type="text/css" href="css/workshop.rcss" />
+		<script>
+			ElementFormControl @modSelect;
+			ElementFormControl @titleInput;
+			ElementFormControl @descriptionInput;
+			ElementFormControl @tagsInput;
+			ElementFormControl @visibilityInput;
+			ElementFormControl @changeNoteInput;
+
+			void populateModSelect( Element @body )
+			{
+				Element @sel = body.getElementById( 'workshop-mod-select' );
+				if( @sel == null ) return;
+
+				String mods = game.workshopLocalMods();
+				String rml = '';
+				if( mods == '' ) {
+					rml = '<option value="-1">No local mods found</option>';
+				} else {
+					uint pos = 0;
+					while( pos < mods.len() ) {
+						uint nl = mods.locate( "\n", pos );
+						if( nl == mods.len() ) nl = mods.len();
+						String line = mods.substr( pos, nl - pos );
+						pos = nl + 1;
+						if( line == '' ) continue;
+						uint tab = line.locate( "\t", 0 );
+						if( tab == line.len() ) continue;
+						String name  = line.substr( 0, tab );
+						String index = line.substr( tab + 1, line.len() - tab - 1 );
+						rml += '<option value="' + index + '">' + name + '</option>';
+					}
+					if( rml == '' ) rml = '<option value="-1">No local mods found</option>';
+				}
+				sel.setInnerRML( rml );
+			}
+
+			void onWorkshopLoad( Element @body, Event @evt )
+			{
+				onTemplateLoad( body, evt );
+
+				@modSelect = cast<ElementFormControl>( body.getElementById( 'workshop-mod-select' ) );
+				@titleInput = cast<ElementFormControl>( body.getElementById( 'workshop-title' ) );
+				@descriptionInput = cast<ElementFormControl>( body.getElementById( 'workshop-description' ) );
+				@tagsInput = cast<ElementFormControl>( body.getElementById( 'workshop-tags' ) );
+				@visibilityInput = cast<ElementFormControl>( body.getElementById( 'workshop-visibility' ) );
+				@changeNoteInput = cast<ElementFormControl>( body.getElementById( 'workshop-change-note' ) );
+
+				populateModSelect( body );
+			}
+
+			void onWorkshopShow( Element @body, Event @evt )
+			{
+				onTemplateShow( body, evt );
+				animationsOnShow();
+				game.workshopRefresh();
+				populateModSelect( body );
+			}
+
+			void onWorkshopSubmit( Element @elem, Event @evt )
+			{
+				if( @modSelect == null || @titleInput == null || @visibilityInput == null ) {
+					return;
+				}
+
+				int modIndex = modSelect.value.toInt();
+
+				String result = game.workshopSubmitMap(
+					modIndex,
+					titleInput.value,
+					@descriptionInput != null ? descriptionInput.value : '',
+					@tagsInput != null ? tagsInput.value : '',
+					visibilityInput.value,
+					@changeNoteInput != null ? changeNoteInput.value : ''
+				);
+
+				String lowerResult = result.tolower();
+				bool isError = lowerResult.locate( 'failed', 0 ) != lowerResult.len()
+					|| lowerResult.locate( 'required', 0 ) != lowerResult.len()
+					|| lowerResult.locate( 'unavailable', 0 ) != lowerResult.len()
+					|| lowerResult.locate( 'invalid', 0 ) != lowerResult.len()
+					|| lowerResult.locate( 'too many', 0 ) != lowerResult.len();
+
+				notificationPopup( result, isError );
+				if( !isError ) {
+					game.workshopRefresh();
+				}
+			}
+		</script>
+	</head>
+	<body template="porkui" onload="$onWorkshopLoad" onshow="$onWorkshopShow">
+
+		<div id="leftside">
+			<div id="workshop-list">
+				<datagrid id="workshop-installed-grid" source="workshop.installed">
+					<col fields="display_name" width="55%">Mod</col>
+					<col fields="workshop_id" width="20%">Workshop ID</col>
+					<col fields="is_local" width="24%">Local</col>
+				</datagrid>
+			</div>
+		</div>
+
+		<div id="sidebar">
+			<div id="sidebar2">
+				<button onclick="game.workshopRefresh();">Refresh</button>
+			</div>
+		</div>
+
+		<div id="workshop-submit">
+			<div class="dropshadow">
+				<p class="workshop-help">Publish a local mod to Steam Workshop. Place your mod folder in <em>mods/</em> and add a <em>preview.png</em> for a thumbnail.</p>
+				<br/>
+				<div class="title">Mod folder</div>
+				<select id="workshop-mod-select" class="workshop-select"></select>
+				<br/>
+				<div class="title">Title</div>
+				<input id="workshop-title" class="text workshop-input" type="text" />
+				<br/>
+				<div class="title">Description</div>
+				<input id="workshop-description" class="text workshop-input" type="text" />
+				<br/>
+				<div class="title">Tags</div>
+				<input id="workshop-tags" class="text workshop-input" type="text" value="map" />
+				<br/>
+				<div class="title">Visibility</div>
+				<select id="workshop-visibility" class="workshop-select">
+					<option value="private" selected>Private</option>
+					<option value="friends">Friends only</option>
+					<option value="public">Public</option>
+				</select>
+				<br/>
+				<div class="title">Change note</div>
+				<input id="workshop-change-note" class="text workshop-input" type="text" value="Initial upload" />
+				<br/>
+				<br/>
+				<button class="button-apply" onclick="$onWorkshopSubmit">Publish to Workshop</button>
+			</div>
+		</div>
+
+	</body>
 </rml>

@@ -29,7 +29,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../qalgo/md5.h"
 #include "../qalgo/q_trie.h"
 #include "../gameshared/q_sds.h"
-
+#include "../extern/stb/stb_ds.h"
 /*
 =============================================================================
 
@@ -153,6 +153,7 @@ typedef struct searchpath_s
 	pack_t *pack;
 	struct searchpath_s *base;		// parent basepath
 	struct searchpath_s *next;
+	struct searchpath_s *group_next; // will be grouping the search paths together 
 	bool append_basegame;
 } searchpath_t;
 
@@ -161,6 +162,11 @@ typedef struct
 	char *name;
 	searchpath_t *searchPath;
 } searchfile_t;
+
+struct steam_fs_mod {
+	uint64_t mod_id;
+	struct searchpath_s* search_path;
+};
 
 static searchfile_t *fs_searchfiles;
 static int fs_numsearchfiles;
@@ -181,6 +187,9 @@ static searchpath_t *fs_base_searchpaths;       // same as above, but without ex
 static searchpath_t *fs_root_searchpath;        // base path directory
 static searchpath_t *fs_write_searchpath;       // write directory
 static searchpath_t *fs_downloads_searchpath;   // write directory for downloads from game servers
+
+static searchpath_t *fs_base_steam_paths = NULL;
+static struct steam_fs_mod *fs_mod_paths = NULL;
 
 static mempool_t *fs_mempool;
 
@@ -4111,13 +4120,46 @@ bool FS_SetGameDirectory( const char *dir, bool force )
 	return true;
 }
 
-/*
-* FS_AddBasePath
-*/
+static searchpath_t* FS_AddSearchPath(searchpath_t* base, const char *path, bool append_basegame) {
+	assert(base);
+	assert(base->next);
+
+	searchpath_t *newpath = ( searchpath_t* )FS_Malloc( sizeof( searchpath_t ) );
+	newpath->base = base;
+	newpath->next = base->next;
+	base->next = newpath;
+	if(newpath->next) {
+		newpath->next->base = newpath;
+	}
+	newpath->path = FS_CopyString( path );
+	newpath->append_basegame = append_basegame;
+	COM_SanitizeFilePath( newpath->path );
+	return newpath;
+}
+
+static void FS_RemoveSearchPath(searchpath_t *search_path) {
+	assert(search_path);
+	if(search_path->base) {
+		search_path->base->next = search_path->next;
+	}
+	else {
+		fs_searchpaths = search_path->next;
+	}
+	if(search_path->next) {
+		search_path->next->base = search_path->base;
+	}
+
+	if(search_path->group_next) {
+		FS_RemoveSearchPath(search_path->group_next);
+	}
+
+	FS_Free( search_path->path );
+	FS_Free( search_path );
+}
+
 static void FS_AddBasePath( const char *path, bool append_basegame )
 {
 	searchpath_t *newpath;
-
 	newpath = ( searchpath_t* )FS_Malloc( sizeof( searchpath_t ) );
 	newpath->path = FS_CopyString( path );
 	newpath->next = fs_basepaths;
@@ -4132,9 +4174,101 @@ void FS_AddExtraPK3Directory( const char *path )
 }
 
 
+void FS_UnRegisterSteamModPath( uint64_t mod )
+{
+	QMutex_Lock( fs_searchpaths_mutex );
+
+	for(size_t i = 0; i < stbds_arrlen(fs_mod_paths); i++) {
+		if(fs_mod_paths[i].mod_id == mod) {
+			FS_RemoveSearchPath(fs_mod_paths[i].search_path);
+			stbds_arrdel(fs_mod_paths, i);
+			break;
+		}
+	}
+
+	QMutex_Unlock( fs_searchpaths_mutex );
+}
+
+void FS_RegisterSteamModPath( uint64_t mod, const char *path )
+{
+	int i, totalpaks;
+	char **paknames;
+	pack_t *pak;
+	searchpath_t *search, *prev, *next;
+
+	QMutex_Lock( fs_searchpaths_mutex );
+	for(size_t i = 0; i < stbds_arrlen(fs_mod_paths); i++) {
+		if(fs_mod_paths[i].mod_id == mod) {
+			QMutex_Unlock( fs_searchpaths_mutex );
+			return;
+		}
+	}
+
+	struct steam_fs_mod steam_mod = { 0 };
+	steam_mod.mod_id = mod;
+	steam_mod.search_path = FS_AddSearchPath(fs_base_steam_paths, path, false);
+	searchpath_t* head = steam_mod.search_path;
+
+	totalpaks = 0;
+	if( ( paknames = FS_GamePathPaks( steam_mod.search_path, "", &totalpaks ) ) != 0 )
+	{
+		for( i = 0; i < totalpaks; i++ )
+		{
+			searchpath_t *compare = fs_searchpaths;
+			while( compare )
+			{
+				if( compare->pack )
+				{
+					int cmp = Q_stricmp( COM_FileBase( compare->pack->filename ), COM_FileBase( paknames[i] ) );
+					if( !cmp )
+					{
+						if( !Q_stricmp( compare->pack->filename, paknames[i] ) )
+							goto freename;
+					}
+				}
+				compare = compare->next;
+			}
+
+			if( !FS_FindPackFilePos( paknames[i], NULL, NULL, NULL ) )
+				continue;
+
+			pak = ( pack_t* )FS_Malloc( sizeof( *pak ) );
+			pak->filename = FS_CopyString( paknames[i] );
+			pak->deferred_pack = NULL;
+			pak->deferred_load = true;
+
+			if( FS_FindPackFilePos( paknames[i], &search, &prev, &next ) )
+			{
+				search->base = prev;
+				search->pack = pak;
+				if( !prev )
+				{
+					search->next = fs_searchpaths;
+					fs_searchpaths = search;
+				}
+				else
+				{
+					prev->next = search;
+					search->next = next;
+				}
+				if( search->next ) {
+					search->next->base = search;
+				}
+				head->group_next = search;
+				head = head->group_next;
+			}
+freename:
+			Mem_ZoneFree( paknames[i] );
+		}
+		Mem_ZoneFree( paknames );
+	}
+	stbds_arrpush(fs_mod_paths, steam_mod);
+	QMutex_Unlock( fs_searchpaths_mutex );
+}
+
 /*
-* FS_FreeSearchFiles
-*/
+ * FS_FreeSearchFiles
+ */
 static void FS_FreeSearchFiles( void )
 {
 	int i;
@@ -4348,6 +4482,7 @@ void FS_Init( void )
 	fs_numsearchfiles = FS_MIN_SEARCHFILES;
 	fs_searchfiles = ( searchfile_t* )FS_Malloc( sizeof( searchfile_t ) * fs_numsearchfiles );
 
+
 	memset( fs_filehandles, 0, sizeof( fs_filehandles ) );
 
 	//
@@ -4385,6 +4520,7 @@ void FS_Init( void )
 		FS_AddBasePath( downloadsdir, true );
 		fs_downloads_searchpath = fs_basepaths;
 	}
+	fs_base_steam_paths = fs_basepaths;
 
 	if( fs_cdpath->string[0] )
 		FS_AddBasePath( fs_cdpath->string, true );
@@ -4508,6 +4644,7 @@ void FS_Shutdown( void )
 
 	Sys_VFS_Shutdown();
 
+	stbds_arrfree(fs_mod_paths);
 	Mem_FreePool( &fs_mempool );
 
 	QMutex_Destroy( &fs_fh_mutex );

@@ -6,6 +6,7 @@
  */
 
 #include "datasources/ui_blockedplayers_datasource.h"
+#include "datasources/ui_workshop_datasource.h"
 #include "ui_precompiled.h"
 #include "kernel/ui_common.h"
 #include "kernel/ui_main.h"
@@ -393,6 +394,7 @@ void UI_Main::createDataSources( void )
 	tvchannels = __new__( TVChannelsDataSource )();
 	gameajax = __new__( GameAjaxDataSource )();
 	blockedplayers = __new__( BlockedPlayersDataSource )();
+	workshop = __new__( WorkshopDataSource )();
 	playerModels = __new__( ModelsDataSource )();
 	vidProfiles = __new__( ProfilesDataSource )();
 }
@@ -409,6 +411,7 @@ void UI_Main::destroyDataSources( void )
 	__SAFE_DELETE_NULLIFY( tvchannels );
 	__SAFE_DELETE_NULLIFY( gameajax );
 	__SAFE_DELETE_NULLIFY( blockedplayers );
+	__SAFE_DELETE_NULLIFY( workshop );
 	__SAFE_DELETE_NULLIFY( playerModels );
 	__SAFE_DELETE_NULLIFY( vidProfiles );
 }

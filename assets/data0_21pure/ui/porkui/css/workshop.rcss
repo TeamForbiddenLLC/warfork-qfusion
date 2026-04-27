@@ -1,0 +1,64 @@
+/* The mod list occupies the scrollable upper portion of #leftside.
+   #content is 636dp tall; leave ~280dp for the fixed submit panel. */
+#leftside {
+	height: 340dp;
+	overflow-y: auto;
+}
+
+#workshop-list {
+	width: 100%;
+	height: 100%;
+}
+
+#workshop-installed-grid {
+	width: 100%;
+}
+
+#workshop-installed-grid datagridcolumn {
+	background-color: #1e1a28;
+	color: #99ccff;
+	padding: 6dp 8dp;
+	font-weight: bold;
+}
+
+#workshop-installed-grid datagridrow {
+	background-color: #141219;
+	border-bottom: 1dp #272134;
+}
+
+#workshop-installed-grid datagridrow:hover {
+	background-color: #1e1a28;
+}
+
+#workshop-installed-grid datagridcell {
+	padding: 6dp 8dp;
+	color: #ffffff;
+}
+
+/* Publish panel — floats above the footer, fixed to the bottom-left */
+#workshop-submit {
+	position: fixed;
+	bottom: 18dp;
+	left: 0dp;
+	width: 75%;
+	z-index: 4;
+	padding: 0dp 16dp 8dp 16dp;
+}
+
+#workshop-submit .dropshadow {
+	padding: 10dp 14dp;
+}
+
+.workshop-help {
+	margin-bottom: 6dp;
+	color: #b9c7d6;
+}
+
+.workshop-input {
+	max-width: 44%;
+	width: 44%;
+}
+
+.workshop-select {
+	width: 44%;
+}

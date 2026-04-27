@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "as/asui.h"
 #include "as/asui_local.h"
 #include "../../steamshim/src/mod_steam.h"
+#include "../../extern/stb/stb_ds.h"
 
 namespace ASUI {
 
@@ -109,6 +110,70 @@ static void Game_SteamOpenProfile( Game *game, asstring_t* steamid )
 	request.cmd = RPC_ACTIVATE_OVERLAY;
 	request.id = atoll( steamid->buffer );
 	STEAMSHIM_sendRPC( &request, sizeof( struct steam_id_rpc_s ), NULL, NULL, NULL);
+}
+
+static bool Game_SteamAvaliable( Game *game )
+{
+	return STEAMSHIM_active();
+}
+
+static void Game_WorkshopRefresh( Game *game )
+{
+	Steam_RefreshWorkshopMods();
+}
+
+// Returns one entry per local (publishable) mod: "name\tindex\n"
+// index is the position in Steam_GetWorkshopMods() so workshopSubmitMap can look it up.
+static asstring_t *Game_WorkshopLocalMods( Game *game )
+{
+	const struct steam_workshop_mod_s *mods = Steam_GetWorkshopMods();
+	size_t count = Steam_GetWorkshopModCount();
+	std::ostringstream stream;
+	for( size_t i = 0; i < count; i++ ) {
+		if( !mods[i].is_local )
+			continue;
+		const char *name = mods[i].name ? mods[i].name : ( mods[i].path ? mods[i].path : "" );
+		stream << name << "\t" << i << "\n";
+	}
+	return ASSTR( stream.str() );
+}
+
+static asstring_t *Game_WorkshopSubmitMap( Game *game, int modIndex, const asstring_t &title,
+	const asstring_t &description, const asstring_t &tags,
+	const asstring_t &visibility, const asstring_t &changeNote )
+{
+
+	struct steam_workshop_publish_s params;
+	params.title       = title.buffer;
+	params.description = description.buffer;
+	params.tags        = tags.buffer;
+	params.visibility  = visibility.buffer;
+	params.change_note = changeNote.buffer;
+
+	struct steam_workshop_publish_result_s result = Steam_PublishLocalMod( modIndex, &params );
+
+	switch( result.res ) {
+		case STEAM_PUBLISH_OK: {
+			std::ostringstream stream;
+			stream << "Workshop item " << ( result.is_new_item ? "published" : "updated" )
+			       << " (" << result.file_id << ").";
+			return ASSTR( stream.str() );
+		}
+		case STEAM_PUBLISH_ERR_STEAM_UNAVAILABLE:  return ASSTR( "Steam is not available." );
+		case STEAM_PUBLISH_ERR_TITLE_REQUIRED:     return ASSTR( "Title is required." );
+		case STEAM_PUBLISH_ERR_INVALID_MOD:        return ASSTR( "Invalid mod selection." );
+		case STEAM_PUBLISH_ERR_TOO_MANY_TAGS:      return ASSTR( "Too many tags." );
+		case STEAM_PUBLISH_ERR_CREATE_FAILED:      return ASSTR( "Creating workshop item failed." );
+		case STEAM_PUBLISH_ERR_UPDATE_FAILED:      return ASSTR( "Starting workshop update failed." );
+		case STEAM_PUBLISH_ERR_SET_TITLE:          return ASSTR( "Setting workshop title failed." );
+		case STEAM_PUBLISH_ERR_SET_DESCRIPTION:    return ASSTR( "Setting workshop description failed." );
+		case STEAM_PUBLISH_ERR_SET_CONTENT:        return ASSTR( "Setting workshop content directory failed." );
+		case STEAM_PUBLISH_ERR_SET_PREVIEW:        return ASSTR( "Setting workshop preview image failed." );
+		case STEAM_PUBLISH_ERR_SET_VISIBILITY:     return ASSTR( "Setting workshop visibility failed." );
+		case STEAM_PUBLISH_ERR_SET_TAGS:           return ASSTR( "Setting workshop tags failed." );
+		case STEAM_PUBLISH_ERR_SUBMIT_FAILED:      return ASSTR( "Submitting workshop item failed." );
+		default:                                   return ASSTR( "Unknown error." );
+	}
 }
 
 static int Game_ClientState( Game *game )
@@ -215,6 +280,12 @@ void BindGame( ASInterface *as )
 		.constmethod( Game_Cvar, "cvar", true )
 
 		.constmethod( Game_SteamOpenProfile, "steamopenprofile", true )
+		.constmethod( Game_SteamAvaliable, "steamAvaliable", true )
+		.constmethod( Game_WorkshopRefresh, "workshopRefresh", true )
+		.constmethod( Game_WorkshopLocalMods, "workshopLocalMods", true )
+		.method2( Game_WorkshopSubmitMap,
+			"String @workshopSubmitMap( int modIndex, const String &in title, const String &in description, const String &in tags, const String &in visibility, const String &in changeNote ) const",
+			true )
 
 		.constmethod( Game_PlayerNum, "get_playerNum", true )
 
