@@ -25,6 +25,7 @@ freely, subject to the following restrictions:
 #include <mutex>
 #include <stdio.h>
 #include <thread>
+#include <vector>
 #define DEBUGPIPE 1
 #include "../os.h"
 #include "../steamshim_private.h"
@@ -37,7 +38,7 @@ int GArgc = 0;
 char **GArgv = NULL;
 
 #define NUM_RPC_ASYNC_HANDLE 2048
-#define NUM_EVT_HANDLE 8 
+#define NUM_EVT_HANDLE 8
 
 struct steam_rpc_async_s {
 	uint32_t token;
@@ -54,9 +55,10 @@ struct event_subscriber_s {
 };
 
 static std::atomic<size_t> SyncToken;
-static size_t currentSync;
+static size_t currentSync = 0;
 static struct steam_rpc_async_s rpc_handles[NUM_RPC_ASYNC_HANDLE];
 static struct event_subscriber_s evt_handles[STEAM_EVT_LEN];
+static std::vector<uint8_t> packet_buf;
 
 std::mutex writeGuard;
 
@@ -89,10 +91,10 @@ static bool setEnvironmentVars( PipeType pipeChildRead, PipeType pipeChildWrite 
 
 void taskHeartbeat()
 {
-	while (STEAMSHIM_active()) {
+	while( STEAMSHIM_active() ) {
 		struct steam_shim_common_s pkt;
 		pkt.cmd = EVT_HEART_BEAT;
-		STEAMSHIM_sendEVT( &pkt, sizeof( struct steam_shim_common_s ));
+		STEAMSHIM_sendEVT( &pkt, sizeof( struct steam_shim_common_s ) );
 		std::this_thread::sleep_for( std::chrono::milliseconds( 1000 ) );
 	}
 }
@@ -107,6 +109,8 @@ int STEAMSHIM_init( SteamshimOptions *options )
 	PipeType pipeChildRead = NULLPIPE;
 	PipeType pipeChildWrite = NULLPIPE;
 	ProcessType childPid;
+
+	packet_buf.resize( STEAM_PACKED_RESERVE_SIZE );
 
 	if( options->runclient )
 		setEnvVar( "STEAMSHIM_RUNCLIENT", "1" );
@@ -160,8 +164,10 @@ int STEAMSHIM_init( SteamshimOptions *options )
 
 void STEAMSHIM_deinit( void )
 {
+	packet_buf.clear();
+
 	dbgprintf( "Child deinit.\n" );
-	if( GPipeWrite != NULLPIPE ) 
+	if( GPipeWrite != NULLPIPE )
 		closePipe( GPipeWrite );
 
 	if( GPipeRead != NULLPIPE )
@@ -214,11 +220,13 @@ int STEAMSHIM_waitDispatchSync( uint32_t syncIndex )
 	if( currentSync == syncIndex ) {
 		return 0; // can't wait on dispatch if there is no RPC's staged
 	}
-	static struct steam_packet_buf packet;
 	static size_t cursor = 0;
 	while( 1 ) {
-		assert( sizeof( struct steam_packet_buf ) == STEAM_PACKED_RESERVE_SIZE );
-		int bytesRead = readPipe( GPipeRead, packet.buffer + cursor, STEAM_PACKED_RESERVE_SIZE - cursor );
+		if( packet_buf.empty() ) {
+			packet_buf.resize( STEAM_PACKED_RESERVE_SIZE );
+		}
+
+		int bytesRead = readPipe( GPipeRead, packet_buf.data() + cursor, packet_buf.size() - cursor );
 		if( bytesRead > 0 ) {
 			cursor += bytesRead;
 		} else {
@@ -226,33 +234,42 @@ int STEAMSHIM_waitDispatchSync( uint32_t syncIndex )
 		}
 	continue_processing:
 
-		if( packet.size > STEAM_PACKED_RESERVE_SIZE - sizeof( uint32_t ) ) {
-			// the packet is larger then the reserved size
+		if( cursor < sizeof( uint32_t ) ) {
+			continue;
+		}
+
+		struct steam_packet_buf *packet = reinterpret_cast<struct steam_packet_buf *>( packet_buf.data() );
+		const size_t packetlen = packet->size + sizeof( uint32_t );
+		if( packetlen < sizeof( uint32_t ) ) {
 			return -1;
 		}
 
-		if( cursor < packet.size + sizeof( uint32_t ) ) {
+		if( packetlen > packet_buf.size() ) {
+			packet_buf.resize( packetlen );
+			packet = reinterpret_cast<struct steam_packet_buf *>( packet_buf.data() );
+		}
+
+		if( cursor < packetlen ) {
 			continue;
 		}
-		const bool rpcPacket = packet.common.cmd >= RPC_BEGIN && packet.common.cmd < RPC_END;
+		const bool rpcPacket = packet->common.cmd >= RPC_BEGIN && packet->common.cmd < RPC_END;
 		if( rpcPacket ) {
 			// assert(packet.rpc_payload.common.sync > currentSync); // rpc's are FIFO no out of order
-			struct steam_rpc_async_s *handle = rpc_handles + ( packet.rpc_payload.common.sync % NUM_RPC_ASYNC_HANDLE );
+			struct steam_rpc_async_s *handle = rpc_handles + ( packet->rpc_payload.common.sync % NUM_RPC_ASYNC_HANDLE );
 			if( handle->cb ) {
-				handle->cb( handle->self, &packet.rpc_payload );
+				handle->cb( handle->self, &packet->rpc_payload );
 			}
-			currentSync = packet.rpc_payload.common.sync;
-		} else if( packet.common.cmd >= EVT_BEGIN && packet.common.cmd < EVT_END ) {
-			struct event_subscriber_s *handle = evt_handles + ( packet.common.cmd - EVT_BEGIN );
+			currentSync = packet->rpc_payload.common.sync;
+		} else if( packet->common.cmd >= EVT_BEGIN && packet->common.cmd < EVT_END ) {
+			struct event_subscriber_s *handle = evt_handles + ( packet->common.cmd - EVT_BEGIN );
 			for( size_t i = 0; i < handle->numSubscribers; i++ ) {
-				handle->handles[i].cb( handle->handles[i].self, &packet.evt_payload );
+				handle->handles[i].cb( handle->handles[i].self, &packet->evt_payload );
 			}
 		}
 
-		if( cursor > packet.size + sizeof( uint32_t ) ) {
-			const size_t packetlen = packet.size + sizeof( uint32_t );
+		if( cursor > packetlen ) {
 			const size_t remainingLen = cursor - packetlen;
-			memmove( packet.buffer, packet.buffer + packet.size + sizeof( uint32_t ), remainingLen );
+			memmove( packet_buf.data(), packet_buf.data() + packetlen, remainingLen );
 			cursor = remainingLen;
 			goto continue_processing;
 		} else {

@@ -34,6 +34,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "crashpad.h"
 
+#define STB_DS_IMPLEMENTATION 1
+#include "../extern/stb/stb_ds.h"
+
 #define MAX_NUM_ARGVS	50
 
 static bool	dynvars_initialized = false;

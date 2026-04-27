@@ -24,6 +24,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <stdint.h>
 #define STEAMID_CHARS 18
+
+typedef struct cvar_s cvar_t;
+
 void Steam_Init( void );
 void Steam_Shutdown( void );
 
