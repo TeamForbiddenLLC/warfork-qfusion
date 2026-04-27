@@ -7,16 +7,14 @@
 #include "qtypes.h"
 
 struct RISegmentAlloc_s {
-  // configuration
-//  RISegmentRealloc_Func reallocFunc; 
  	uint16_t elementStride;
  	uint16_t numSegments;
-  uint16_t maxElements;
+  uint32_t maxElements;
 
   // data
   int16_t tail;
   int16_t head;
-  uint16_t numElements;
+  uint32_t elementsConsumed;
   size_t elementOffset;
   struct {
     uint64_t frameNum;
@@ -34,8 +32,7 @@ struct RISegmentAllocDesc_s{
 	uint32_t numElements;
 	uint16_t elementStride;
 	uint16_t numSegments;
-	uint16_t maxElements; 
-//	RISegmentRealloc_Func alloc;
+	uint32_t maxElements;
 };
 
 void InitRISegmentAlloc( struct RISegmentAlloc_s *pool, const struct RISegmentAllocDesc_s *desc );

@@ -52,8 +52,8 @@ layout(set = DESCRIPTOR_OBJECT_SET, binding = 0) uniform ObjectCB {
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 1) uniform TransformCB { 
   vec4 instancePoints[MAX_UNIFORM_INSTANCES * 2];
 }; 
-#define a_InstanceQuat instancePoints[gl_InstanceID*2]
-#define a_InstancePosAndScale instancePoints[gl_InstanceID*2+1]
+#define a_InstanceQuat instancePoints[gl_InstanceIndex*2]
+#define a_InstancePosAndScale instancePoints[gl_InstanceIndex*2+1]
 
 #define MAX_GLSL_BONES 128
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 2) uniform BoneCB {
