@@ -132,7 +132,7 @@ static asstring_t *Game_WorkshopLocalMods( Game *game )
 	for( size_t i = 0; i < count; i++ ) {
 		if( !mods[i].is_local )
 			continue;
-		const char *name = mods[i].name ? mods[i].name : ( mods[i].path ? mods[i].path : "" );
+		const char *name = mods[i].name ? mods[i].name : ( mods[i].local_path ? mods[i].local_path : "" );
 		stream << name << "\t" << i << "\n";
 	}
 	return ASSTR( stream.str() );

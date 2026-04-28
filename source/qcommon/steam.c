@@ -62,16 +62,29 @@ static void __RemoveWorkshopMod( uint64_t id )
 	for( size_t i = 0; i < arrlen( steam_workshop_mods ); i++ ) {
 		if( steam_workshop_mods[i].workshop_id != id )
 			continue;
-		FS_UnRegisterSteamModPath( steam_workshop_mods[i].workshop_id );
-		if( steam_workshop_mods[i].path ) {
-			free( (void *)steam_workshop_mods[i].path );
+		if( steam_workshop_mods[i].fs_search_path ) {
+			FS_UnRegisterModPath( steam_workshop_mods[i].fs_search_path );
+			steam_workshop_mods[i].fs_search_path = NULL;
 		}
+		free( (void *)steam_workshop_mods[i].local_path );
+		free( (void *)steam_workshop_mods[i].path );
 		free( (void *)steam_workshop_mods[i].title );
 		free( (void *)steam_workshop_mods[i].description );
 		free( (void *)steam_workshop_mods[i].tags );
 		free( (void *)steam_workshop_mods[i].preview_url );
 		arrdel( steam_workshop_mods, i );
 		return;
+	}
+}
+
+static void __RefreshModPath( struct steam_workshop_mod_s *mod ) {
+	if( mod->fs_search_path ) {
+		FS_UnRegisterModPath( mod->fs_search_path );
+		mod->fs_search_path = NULL;
+	}
+	const char *active_path = mod->local_path ? mod->local_path : mod->path;
+	if( active_path ) {
+		mod->fs_search_path = FS_RegisterModPath( active_path );
 	}
 }
 
@@ -84,12 +97,11 @@ static void Steam_WorkshopInstallInfoCallback( void *self, struct steam_rpc_pkt_
 	}
 
 	if( mod->path ) {
-		FS_UnRegisterSteamModPath( mod->workshop_id );
 		free( (void *)mod->path );
 	}
-
 	mod->path = Steam_CopyString( pkt->workshop_install_info.folder );
-	FS_RegisterSteamModPath( mod->workshop_id, mod->path );
+	mod->is_remote = true;
+	__RefreshModPath( mod );
 }
 
 static void Steam_EVT_WorkshopRefreshItems( void *self, struct steam_evt_pkt_s *pkt )
@@ -235,16 +247,21 @@ static void Steam_ScanLocalMods( void )
 			fclose( f );
 		}
 
-		if(workshop_id > 0) {
-			stbds_arrpush(workshop_ids, workshop_id);
+		struct steam_workshop_mod_s *mod;
+		if( workshop_id > 0 ) {
+			stbds_arrpush( workshop_ids, workshop_id );
+			mod = __UpsertWorkshopMod( workshop_id );
+		} else {
+			struct steam_workshop_mod_s new_mod = { 0 };
+			arrput( steam_workshop_mods, new_mod );
+			mod = &steam_workshop_mods[arrlen( steam_workshop_mods ) - 1];
 		}
 
-		struct steam_workshop_mod_s mod = { 0 };
-		mod.is_local = true;
-		mod.workshop_id = workshop_id;
-		mod.path = Steam_CopyString( modpath );
-		mod.name = Steam_CopyString( name );
-		arrput( steam_workshop_mods, mod );
+		mod->is_local = true;
+		mod->local_path = Steam_CopyString( modpath );
+		if( !mod->name )
+			mod->name = Steam_CopyString( name );
+		__RefreshModPath( mod );
 
 		entry = Sys_FS_FindNext( SFF_SUBDIR, SFF_HIDDEN | SFF_SYSTEM );
 	}
@@ -311,11 +328,11 @@ struct steam_workshop_publish_result_s Steam_PublishLocalMod( int modIndex, cons
 
 	const struct steam_workshop_mod_s *mods = Steam_GetWorkshopMods();
 	size_t count = Steam_GetWorkshopModCount();
-	if( modIndex < 0 || (size_t)modIndex >= count || !mods[modIndex].is_local || !mods[modIndex].path ) {
+	if( modIndex < 0 || (size_t)modIndex >= count || !mods[modIndex].is_local || !mods[modIndex].local_path ) {
 		res.res = STEAM_PUBLISH_ERR_INVALID_MOD;
 		return res;
 	}
-	const char *contentPath = mods[modIndex].path;
+	const char *contentPath = mods[modIndex].local_path;
 
 	// Check for preview.png
 	char previewPath[1024];
@@ -538,7 +555,10 @@ void Steam_Shutdown( void )
 	STEAMSHIM_unsubscribeEvent( EVT_WORKSHOP_DETAIL, Steam_EVT_WorkshopDetail );
 
 	for( size_t i = 0; i < arrlen( steam_workshop_mods ); i++ ) {
-		FS_UnRegisterSteamModPath( steam_workshop_mods[i].workshop_id );
+		if( steam_workshop_mods[i].fs_search_path ) {
+			FS_UnRegisterModPath( steam_workshop_mods[i].fs_search_path );
+		}
+		free( (void *)steam_workshop_mods[i].local_path );
 		free( (void *)steam_workshop_mods[i].path );
 		free( (void *)steam_workshop_mods[i].name );
 		free( (void *)steam_workshop_mods[i].title );

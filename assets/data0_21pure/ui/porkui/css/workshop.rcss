@@ -54,11 +54,8 @@
 	color: #b9c7d6;
 }
 
-.workshop-input {
-	max-width: 44%;
-	width: 44%;
-}
 
-.workshop-select {
-	width: 44%;
+.required {
+	color: #eb8c8a;
+	font-weight: bold;
 }
