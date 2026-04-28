@@ -19,6 +19,7 @@ namespace WSWUI
 WorkshopDataSource::WorkshopDataSource() :
 	Rocket::Controls::DataSource( WORKSHOP_SOURCE )
 {
+	STEAMSHIM_subscribeEvent( EVT_WORKSHOP_REFRESH_SUBSCRIBE_ITEMS, this, OnWorkshopRefresh );
 	STEAMSHIM_subscribeEvent( EVT_WORKSHOP_DETAIL, this, OnWorkshopDetail );
 	STEAMSHIM_subscribeEvent( EVT_WORKSHOP_ITEM_INSTALLED, this, OnWorkshopItemInstalled );
 	STEAMSHIM_subscribeEvent( EVT_WORKSHOP_ITEM_UNSUBSCRIBED, this, OnWorkshopItemUnsubscribed );
@@ -27,6 +28,7 @@ WorkshopDataSource::WorkshopDataSource() :
 
 WorkshopDataSource::~WorkshopDataSource()
 {
+	STEAMSHIM_unsubscribeEvent( EVT_WORKSHOP_REFRESH_SUBSCRIBE_ITEMS, OnWorkshopRefresh );
 	STEAMSHIM_unsubscribeEvent( EVT_WORKSHOP_DETAIL, OnWorkshopDetail );
 	STEAMSHIM_unsubscribeEvent( EVT_WORKSHOP_ITEM_INSTALLED, OnWorkshopItemInstalled );
 	STEAMSHIM_unsubscribeEvent( EVT_WORKSHOP_ITEM_UNSUBSCRIBED, OnWorkshopItemUnsubscribed );
@@ -50,12 +52,12 @@ void WorkshopDataSource::UpdateMods()
 	size_t count = Steam_GetWorkshopModCount();
 
 	for( size_t i = 0; i < count; i++ ) {
-		if( !mods[i].path ) {
+		if( !mods[i].path && !mods[i].local_path ) {
 			continue;
 		}
 
 		InstalledMod mod;
-		mod.title = mods[i].title ? mods[i].title : "";
+		mod.title = mods[i].title ? mods[i].title : ( mods[i].name ? mods[i].name : "" );
 		mod.name  = mods[i].name  ? mods[i].name  : "";
 		mod.is_local = mods[i].is_local;
 
@@ -96,6 +98,11 @@ int WorkshopDataSource::GetNumRows( const Rocket::Core::String &table )
 	if( table == TABLE_INSTALLED )
 		return (int)installedMods.size();
 	return 0;
+}
+
+void WorkshopDataSource::OnWorkshopRefresh( void *self, struct steam_evt_pkt_s *pkt )
+{
+	static_cast<WorkshopDataSource *>( self )->UpdateMods();
 }
 
 void WorkshopDataSource::OnWorkshopDetail( void *self, struct steam_evt_pkt_s *pkt )

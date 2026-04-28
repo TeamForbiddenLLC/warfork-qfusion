@@ -32,6 +32,7 @@ namespace WSWUI
 
 		void UpdateMods();
 
+		static void OnWorkshopRefresh( void *self, struct steam_evt_pkt_s *pkt );
 		static void OnWorkshopDetail( void *self, struct steam_evt_pkt_s *pkt );
 		static void OnWorkshopItemInstalled( void *self, struct steam_evt_pkt_s *pkt );
 		static void OnWorkshopItemUnsubscribed( void *self, struct steam_evt_pkt_s *pkt );

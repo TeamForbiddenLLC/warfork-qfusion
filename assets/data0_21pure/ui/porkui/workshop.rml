@@ -68,6 +68,14 @@
 				}
 
 				int modIndex = modSelect.value.toInt();
+				if( modIndex == -1 ) {
+					notificationPopup( 'Please select a mod folder.', true );
+					return;
+				}
+				if( titleInput.value.trim() == '' ) {
+					notificationPopup( 'Title is required.', true );
+					return;
+				}
 
 				String result = game.workshopSubmitMap(
 					modIndex,
@@ -99,7 +107,7 @@
 				<datagrid id="workshop-installed-grid" source="workshop.installed">
 					<col fields="display_name" width="55%">Mod</col>
 					<col fields="workshop_id" width="20%">Workshop ID</col>
-					<col fields="is_local" width="24%">Local</col>
+					<col fields="is_local" width="24%">Uploaded</col>
 				</datagrid>
 			</div>
 		</div>
@@ -115,26 +123,27 @@
 				<p class="workshop-help">Publish a local mod to Steam Workshop. Place your mod folder in <em>mods/</em> and add a <em>preview.png</em> for a thumbnail.</p>
 				<br/>
 				<div class="title">Mod folder</div>
-				<select id="workshop-mod-select" class="workshop-select"></select>
+				<select id="workshop-mod-select"></select>
 				<br/>
-				<div class="title">Title</div>
-				<input id="workshop-title" class="text workshop-input" type="text" />
+				<div class="title">Title <span class="required">*</span></div>
+				<input id="workshop-title" class="text" type="text" />
 				<br/>
 				<div class="title">Description</div>
-				<input id="workshop-description" class="text workshop-input" type="text" />
+				<input id="workshop-description" class="text" type="text" placeholder="Short description of your mod" />
 				<br/>
 				<div class="title">Tags</div>
-				<input id="workshop-tags" class="text workshop-input" type="text" value="map" />
+				<input id="workshop-tags" class="text" type="text" value="map" placeholder="e.g. map, weapon" />
 				<br/>
+				<hr class="nicehr"/>
 				<div class="title">Visibility</div>
-				<select id="workshop-visibility" class="workshop-select">
+				<select id="workshop-visibility">
 					<option value="private" selected>Private</option>
 					<option value="friends">Friends only</option>
 					<option value="public">Public</option>
 				</select>
 				<br/>
 				<div class="title">Change note</div>
-				<input id="workshop-change-note" class="text workshop-input" type="text" value="Initial upload" />
+				<input id="workshop-change-note" class="text" type="text" value="Initial upload" />
 				<br/>
 				<br/>
 				<button class="button-apply" onclick="$onWorkshopSubmit">Publish to Workshop</button>

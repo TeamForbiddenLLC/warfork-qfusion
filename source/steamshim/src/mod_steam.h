@@ -3,11 +3,15 @@
 
 #include "./steamshim_types.h"
 
+struct searchpath_s;
+
 struct steam_workshop_mod_s {
 	uint64_t workshop_id;
 	bool is_remote;
 	bool is_local;  // discovered from the local mods folder, may be unpublished (workshop_id == 0)
 	const char *path;
+	const char *local_path;
+	struct searchpath_s *fs_search_path;
 	const char *name;        // folder name for local mods, NULL for remote-only mods
 	const char *title;
 	const char *description;

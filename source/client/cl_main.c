@@ -2308,7 +2308,7 @@ static void CL_InitLocal( void )
 	if ( !CL_IsNameValid(name->string) ){
 		if ( STEAMSHIM_active() ){
 			struct steam_rpc_shim_common_s request;
-			request.cmd = RPC_REQUEST_STEAM_ID;
+			request.cmd = RPC_PERSONA_NAME;
 			STEAMSHIM_sendRPC( &request, sizeof( struct steam_rpc_shim_common_s ), name, CL_RPC_cb_persona, &syncIndex );
 		} else {
 			Cvar_Set( name->name, CL_RandomName() );

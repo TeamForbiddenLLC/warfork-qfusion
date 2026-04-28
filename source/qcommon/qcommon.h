@@ -737,8 +737,8 @@ static const struct fs_import_s default_fs_imports_s = {
 	.FS_AbsoluteNameForFile = FS_AbsoluteNameForFile,
 	.FS_AbsoluteNameForBaseFile = FS_AbsoluteNameForBaseFile,
 	.FS_AddExtraPK3Directory = FS_AddExtraPK3Directory,
-	.FS_RegisterSteamModPath = FS_RegisterSteamModPath,
-	.FS_UnRegisterSteamModPath = FS_UnRegisterSteamModPath,
+	.FS_RegisterModPath = FS_RegisterModPath,
+	.FS_UnRegisterModPath = FS_UnRegisterModPath,
 	.FS_LoadFileExt = FS_LoadFileExt,
 	.FS_LoadBaseFileExt = FS_LoadBaseFileExt,
 	.FS_FreeFile = FS_FreeFile,
@@ -783,8 +783,9 @@ bool		FS_SetGameDirectory( const char *dir, bool force );
 int			FS_GetGameDirectoryList( char *buf, size_t bufsize );
 int			FS_GetExplicitPurePakList( char ***paknames );
 bool		FS_IsExplicitPurePak( const char *pakname, bool *wrongver );
-void		FS_RegisterSteamModPath( uint64_t mod, const char *path );
-void		FS_UnRegisterSteamModPath( uint64_t mod );
+struct searchpath_s *FS_RegisterModPath( const char *path );
+void		FS_UnRegisterModPath( struct searchpath_s *search_path );
+
 
 /**
 * Maps an existing file on disk for reading. 
