@@ -521,7 +521,7 @@ static void R_RenderDebugBounds( struct FrameState_s *frame )
 			Vector4Copy( color, colors[j] );
 		}
 
-		RB_AddDynamicMesh( frame, rsc.worldent, rsh.whiteShader, NULL, NULL, 0, &mesh, GL_LINES, 0.0f, 0.0f );
+		RB_AddDynamicMesh( frame, rsc.worldent, rsh.whiteShader, NULL, NULL, 0, &mesh, RI_TOPOLOGY_LINE_LIST, 0.0f, 0.0f );
 	}
 
 	RB_FlushDynamicMeshes( frame );

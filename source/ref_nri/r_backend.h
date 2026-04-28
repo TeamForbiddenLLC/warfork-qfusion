@@ -53,11 +53,11 @@ void RB_Scissor( int x, int y, int w, int h );
 void RB_GetScissor( int *x, int *y, int *w, int *h );
 void RB_SetZClip( float zNear, float zFar );
 
-void RB_BindVBO( int id, int primitive);
+void RB_BindVBO( int id, enum RITopology_e primitive );
 
-void RB_AddDynamicMesh(struct FrameState_s* cmd, const entity_t *entity, const shader_t *shader,
+void RB_AddDynamicMesh( struct FrameState_s *cmd, const entity_t *entity, const shader_t *shader,
 	const struct mfog_s *fog, const struct portalSurface_s *portalSurface, unsigned int shadowBits,
-	const struct mesh_s *mesh, int primitive, float x_offset, float y_offset );
+	const struct mesh_s *mesh, enum RITopology_e primitive, float x_offset, float y_offset );
 void RB_FlushDynamicMeshes(struct FrameState_s* cmd);
 
 void RB_DrawElements(struct FrameState_s *cmd, int firstVert, int numVerts, int firstElem, int numElems, int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems );

@@ -40,6 +40,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "stb_ds.h"
 #include "stb_image.h"
 #include <qstr.h>
+#include "qgl_types.h"
 
 #include "tracy/TracyC.h"
 
@@ -1640,7 +1641,8 @@ void R_ScreenShot( const char *filename, int x, int y, int width, int height, bo
 	imginfo.samples = 3;
 	imginfo.pixels = flipped ? flipped : buffer;
 
-	qglReadPixels( 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer );
+	assert(false);
+	//qglReadPixels( 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer );
 
 	rgb = rgba = buffer;
 	while( (size_t)( rgb - buffer ) < size ) {

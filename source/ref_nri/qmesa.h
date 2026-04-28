@@ -40,6 +40,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "qgl_types.h"
+
 /**
  * Sometimes we treat GLfloats as GLints.  On x86 systems, moving a float
  * as a int (thereby using integer registers instead of FP registers) is
