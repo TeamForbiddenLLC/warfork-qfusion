@@ -39,6 +39,9 @@ DECLARE_TYPEDEF_METHOD( void, FS_CreateAbsolutePath, const char *path );
 DECLARE_TYPEDEF_METHOD( const char *, FS_AbsoluteNameForFile, const char *filename );
 DECLARE_TYPEDEF_METHOD( const char *, FS_AbsoluteNameForBaseFile, const char *filename );
 DECLARE_TYPEDEF_METHOD( void, FS_AddExtraPK3Directory, const char *path );
+struct searchpath_s;
+DECLARE_TYPEDEF_METHOD( struct searchpath_s *, FS_RegisterModPath, const char *path );
+DECLARE_TYPEDEF_METHOD( void, FS_UnRegisterModPath, struct searchpath_s *search_path );
 
 DECLARE_TYPEDEF_METHOD( int, FS_FOpenFile, const char *filename, int *filenum, int mode );
 DECLARE_TYPEDEF_METHOD( int, FS_FOpenFileGroup, const char *filename, int *filenum, int mode, group_handle_t *group );
@@ -124,6 +127,8 @@ struct fs_import_s {
 	FS_AbsoluteNameForFileFn FS_AbsoluteNameForFile;
 	FS_AbsoluteNameForBaseFileFn FS_AbsoluteNameForBaseFile;
 	FS_AddExtraPK3DirectoryFn FS_AddExtraPK3Directory;
+	FS_RegisterModPathFn FS_RegisterModPath;
+	FS_UnRegisterModPathFn FS_UnRegisterModPath;
 	FS_LoadFileExtFn FS_LoadFileExt;
 	FS_LoadBaseFileExtFn FS_LoadBaseFileExt;
 	FS_FreeFileFn FS_FreeFile;
@@ -198,6 +203,8 @@ void FS_CreateAbsolutePath( const char *path ){ fs_import.FS_CreateAbsolutePath(
 const char * FS_AbsoluteNameForFile(const char *filename ){ return fs_import.FS_AbsoluteNameForFile(filename);}
 const char * FS_AbsoluteNameForBaseFile(const char *filename ){ return fs_import.FS_AbsoluteNameForBaseFile(filename);}
 void FS_AddExtraPK3Directory(const char *path ){ fs_import.FS_AddExtraPK3Directory(path);}
+struct searchpath_s *FS_RegisterModPath( const char *path ) { return fs_import.FS_RegisterModPath( path ); }
+void FS_UnRegisterModPath( struct searchpath_s *search_path ) { fs_import.FS_UnRegisterModPath( search_path ); }
 int FS_FOpenFile(const char *filename, int *filenum, int mode ){ return fs_import.FS_FOpenFile(filename, filenum, mode);}
 int FS_FOpenFileGroup(const char *filename, int *filenum, int mode, group_handle_t *group ){ return fs_import.FS_FOpenFileGroup(filename, filenum, mode, group);}
 int FS_FOpenBaseFile(const char *filename, int *filenum, int mode ){ return fs_import.FS_FOpenBaseFile(filename, filenum, mode);}
@@ -245,4 +252,3 @@ static inline void Q_ImportFsModule(struct fs_import_s* mod) {
 
 
 #endif
-

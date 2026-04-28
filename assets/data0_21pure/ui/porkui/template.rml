@@ -40,7 +40,13 @@
 				}
 			}
 			
-		body.getElementById( 'version_str' ).setInnerRML( "Warfork (Steam Release)" );
+			body.getElementById( 'version_str' ).setInnerRML( "Warfork (Steam Release)" );
+
+			/* hide the workshop tab when Steam is unavailable */
+			Element @workshopLink = body.getElementById( 'link_workshop' );
+			if( @workshopLink != null && !game.steamAvaliable() ) {
+				workshopLink.css( 'display', 'none' );
+			}
 
 			/* grab the navigation panel */
 			@navi = body.getElementById( 'navi' );
@@ -190,6 +196,7 @@
 		<a href="index.rml" id="link_profile">Home</a>	
 		<a href="#" id="link_game" onclick="$openTutorialDialog">Play</a>	
 		<!-- <a href="chat.rml" id="link_chat">Chat</a> -->		
+		<a href="workshop.rml" id="link_workshop">Workshop</a>
 		<a href="options.rml" id="link_options">Options</a>
 		<a href="credits.rml" id="link_credits">Credits</a>
 		<a href="#" id="link_quit" onclick="OpenQuitDialog();">Quit</a>

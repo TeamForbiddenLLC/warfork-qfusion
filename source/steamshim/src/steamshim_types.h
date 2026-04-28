@@ -27,6 +27,9 @@ freely, subject to the following restrictions:
 #define PIPEMESSAGE_MAX ( STEAM_AVATAR_SIZE + 64 )
 #define AUTH_TICKET_MAXSIZE 1024
 #define SDR_MAX_MESSAGE_SIZE 32768
+
+typedef uint64_t STEAM_PublishedFileId_t;
+typedef uint64_t STEAM_UGCUpdateHandle_t;
 typedef struct {
 	char pTicket[AUTH_TICKET_MAXSIZE];
 	long long pcbTicket;
@@ -39,12 +42,18 @@ typedef struct {
 
 enum steam_avatar_size_e { STEAM_AVATAR_LARGE, STEAM_AVATAR_MED, STEAM_AVATAR_SMALL };
 
+enum steam_visibility_e {
+	STEAM_VISIBILITY_PUBLIC = 0,
+	STEAM_VISIBILITY_FRIENDS_ONLY = 1,
+	STEAM_VISIBILITY_PRIVATE = 2,
+};
+
 enum steam_result_e {
 	STEAMSHIM_EResultNone = 0,					 // no result
 	STEAMSHIM_EResultOK = 1,					 // success
 	STEAMSHIM_EResultFail = 2,					 // generic failure
 	STEAMSHIM_EResultNoConnection = 3,			 // no/failed network connection
-										 //	k_EResultNoConnectionRetry = 4,				// OBSOLETE - removed
+												 //	k_EResultNoConnectionRetry = 4,				// OBSOLETE - removed
 	STEAMSHIM_EResultInvalidPassword = 5,		 // password/ticket is invalid
 	STEAMSHIM_EResultLoggedInElsewhere = 6,		 // same user logged in elsewhere
 	STEAMSHIM_EResultInvalidProtocolVer = 7,	 // protocol version is incorrect
@@ -205,7 +214,19 @@ enum steam_cmd_s {
 	RPC_UPDATE_SERVERINFO_REGION,
 	RPC_UPDATE_SERVERINFO_SERVERNAME,
 
-	RPC_CREATE_WORKSHOP_ITEM,
+	RPC_WORKSHOP_SUBMIT_ITEM,
+	RPC_WORKSHOP_BEGIN_ITEM_UPDATE,
+	RPC_WORKSHOP_CREATE_ITEM,
+	RPC_WORKSHOP_ITEM_SET_TITLE,
+	RPC_WORKSHOP_ITEM_SET_DESCRIPTION,
+	RPC_WORKSHOP_ITEM_SET_ITEM_CONTENT,
+	RPC_WORKSHOP_ITEM_SET_VISIBILITY,
+	RPC_WORKSHOP_ITEM_SET_TAGS,
+	RPC_WORKSHOP_ITEM_SET_PREVIEW,
+
+	RPC_WORKSHOP_REFRESH_SUBSCRIBED_ITEMS,
+	RPC_WORKSHOP_INSTALLED_INFO,
+	RPC_WORKSHOP_QUERY_ITEM_DETAILS,
 
 	RPC_SRV_P2P_LISTEN,
 	RPC_SRV_P2P_ACCEPT_CONNECTION,
@@ -234,6 +255,12 @@ enum steam_cmd_s {
 	EVT_HEART_BEAT,
 	EVT_GAME_JOIN,
 	EVT_P2P_CONNECTION_CHANGED,
+
+	EVT_WORKSHOP_REFRESH_SUBSCRIBE_ITEMS,
+	EVT_WORKSHOP_ITEM_SUBSCRIBED,
+	EVT_WORKSHOP_ITEM_UNSUBSCRIBED,
+	EVT_WORKSHOP_ITEM_INSTALLED,
+	EVT_WORKSHOP_DETAIL,
 
 	EVT_SRV_P2P_CONNECTION_CHANGED,
 
@@ -266,11 +293,57 @@ struct steam_id_rpc_s {
 	uint64_t id;
 };
 
+struct steam_workshop_list_rpc_s {
+	STEAM_RPC_SHIM_COMMON()
+	uint32_t cookie;
+};
+
+struct steam_workshop_install_info_s {
+	STEAM_RPC_SHIM_COMMON()
+	uint64_t workshop_id;
+	bool success;
+	uint64_t size_on_disk;
+	uint32_t time_stamp;
+	char folder[];
+};
+
+
+struct steam_workshop_req_rpcs_s {
+	STEAM_RPC_SHIM_COMMON()
+  uint32_t num_ids;	
+	uint64_t workshop_ids[];
+};
+
+struct steam_workshop_req_rpc_s {
+	STEAM_RPC_SHIM_COMMON()
+	uint64_t workshop_id;
+};
+
+struct buffer_workshop_rpc_s {
+	STEAM_RPC_SHIM_COMMON()
+	STEAM_UGCUpdateHandle_t handle;
+	uint8_t buf[];
+};
+
 struct buffer_rpc_s {
 	STEAM_RPC_SHIM_COMMON()
 	uint8_t buf[];
 };
 #define RPC_BUFFER_SIZE( buf, size ) ( size - sizeof( buf ) )
+
+STEAM_RPC_RECV( submit_item_result )
+{
+	STEAM_RPC_SHIM_COMMON()
+	uint32_t result; // enum steam_result_e
+	STEAM_PublishedFileId_t file_id;
+};
+
+STEAM_RPC_RECV( create_item )
+{
+	STEAM_RPC_SHIM_COMMON()
+	uint32_t result; // enum steam_result_e
+	STEAM_PublishedFileId_t file_id;
+};
 
 STEAM_RPC_REQ( server_info )
 {
@@ -382,6 +455,46 @@ STEAM_RPC_REQ( recv_messages )
 	uint32_t handle;
 };
 
+STEAM_RPC_REQ( start_item_update )
+{
+	STEAM_RPC_SHIM_COMMON()
+	STEAM_PublishedFileId_t publish_item_file;
+};
+
+STEAM_RPC_RECV( start_item_update )
+{
+	STEAM_RPC_SHIM_COMMON()
+	STEAM_UGCUpdateHandle_t handle;
+	bool success;
+};
+
+STEAM_RPC_REQ( tags )
+{
+	STEAM_RPC_SHIM_COMMON()
+	STEAM_UGCUpdateHandle_t handle;
+	uint32_t num_tags;
+	char buffer[];
+};
+
+STEAM_RPC_REQ( item_visiblity )
+{
+	STEAM_RPC_SHIM_COMMON()
+	STEAM_UGCUpdateHandle_t handle;
+	enum steam_visibility_e visibility; // ERemoteStoragePublishedFileVisibility
+};
+
+STEAM_RPC_RECV( success )
+{
+	STEAM_RPC_SHIM_COMMON()
+	bool success;
+};
+
+STEAM_RPC_RECV( workshop_installed_maps )
+{
+	STEAM_RPC_SHIM_COMMON()
+	char buffer[];
+};
+
 STEAM_RPC_RECV( recv_messages )
 {
 	STEAM_RPC_SHIM_COMMON()
@@ -426,10 +539,19 @@ struct steam_rpc_pkt_s {
 		struct buffer_rpc_s launch_command;
 		struct buffer_rpc_s rich_presence;
 
+		struct create_item_recv_s create_item_recv;
+		struct submit_item_result_recv_s submit_item_result;
+		struct steam_workshop_install_info_s workshop_install_info;
+		struct workshop_installed_maps_recv_s workshop_installed_maps_recv;
+
 		struct auth_session_ticket_recv_s auth_session;
+		struct steam_workshop_list_rpc_s stream_workshop_refresh;
 
 		struct p2p_accept_connect_req_s p2p_accept_connection_req;
 		struct p2p_accept_connection_recv_s p2p_accept_connection_recv;
+
+		struct steam_workshop_req_rpc_s steam_workshop_item;
+		struct steam_workshop_req_rpcs_s steam_workshop_items;
 
 		struct p2p_connect_req_s p2p_connect;
 		struct p2p_disconnect_req_s p2p_disconnect;
@@ -458,7 +580,59 @@ struct steam_rpc_pkt_s {
 		struct buffer_rpc_s server_product;
 		struct buffer_rpc_s server_region;
 		struct buffer_rpc_s server_name;
+
+		struct buffer_workshop_rpc_s workshop_set_title;
+		struct buffer_workshop_rpc_s workshop_set_description;
+		struct buffer_workshop_rpc_s workshop_set_item_content;
+		struct buffer_workshop_rpc_s workshop_set_preview;
+		struct buffer_workshop_rpc_s workshop_submit_item;
+		struct item_visiblity_req_s workshop_set_visibility;
+		struct tags_req_s workshop_set_tags;
+
+		struct start_item_update_req_s workshop_start_item_update;
+		struct start_item_update_recv_s workshop_start_item_update_recv;
+
+		struct success_recv_s success;
 	};
+};
+
+STEAM_EVT(workshop_item_details) {
+	STEAM_SHIM_COMMON()
+	uint64_t workshop_id;
+	bool success;
+	uint32_t result;
+	uint64_t owner_id;
+	uint32_t creator_app_id;
+	uint32_t consumer_app_id;
+	uint32_t file_type;
+	uint32_t visibility;
+	uint32_t time_created;
+	uint32_t time_updated;
+	uint32_t votes_up;
+	uint32_t votes_down;
+	uint32_t num_children;
+	uint32_t item_state;
+	float score;
+	uint32_t title_len;
+	uint32_t description_len;
+	uint32_t tags_len;
+	uint32_t preview_url_len;
+	char buffer[];
+};
+
+
+STEAM_EVT(workshop_refresh_items) {
+	STEAM_SHIM_COMMON()
+	uint32_t cookie; // marker cookie for the batch
+	uint16_t num_ids;
+	uint64_t ids[];
+};
+
+STEAM_EVT( workshop_item )
+{
+	STEAM_SHIM_COMMON()
+	uint32_t app_id;
+	uint64_t workshop_id;
 };
 
 STEAM_EVT( policy_response )
@@ -526,23 +700,23 @@ struct steam_evt_pkt_s {
 		struct p2p_lost_connection_evt_s p2p_lost_connection;
 		struct p2p_connection_status_changed_evt_s p2p_connection_status_changed;
 		struct p2p_net_connection_changed_evt_s p2p_net_connection_changed;
-		struct policy_response_evt_s policy_response; 
+		struct policy_response_evt_s policy_response;
+		struct workshop_refresh_items_evt_s workshop_refresh_items;
+		struct workshop_item_evt_s workshop_item;
+		struct workshop_item_details_evt_s workshop_item_details;
 	};
 };
 
 #define STEAM_PACKED_RESERVE_SIZE ( 16384 )
 struct steam_packet_buf {
-	union {
-		struct {
-			uint32_t size;
-			union {
-				struct steam_shim_common_s common;
-				struct steam_rpc_shim_common_s rpc_common;
-				struct steam_rpc_pkt_s rpc_payload;
-				struct steam_evt_pkt_s evt_payload;
-			};
+	struct {
+		uint32_t size;
+		union {
+			struct steam_shim_common_s common;
+			struct steam_rpc_shim_common_s rpc_common;
+			struct steam_rpc_pkt_s rpc_payload;
+			struct steam_evt_pkt_s evt_payload;
 		};
-		uint8_t buffer[STEAM_PACKED_RESERVE_SIZE];
 	};
 };
 
