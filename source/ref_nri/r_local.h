@@ -335,6 +335,7 @@ typedef struct
 	struct RICommandRingElement_s primary;
 	struct RICommandRingElement_s* secondary;
 	struct FrameState_s frame;
+	bool frameActive;
 	
 	uint32_t swapchainIndex;
 	uint64_t frameSetCount;
