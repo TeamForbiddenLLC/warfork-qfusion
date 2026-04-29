@@ -235,7 +235,8 @@ static void processRPC( steam_rpc_pkt_s *req, size_t size )
 		case RPC_WORKSHOP_INSTALLED_INFO: {
 			dbgprintf( "RPC_WORKSHOP_INSTALLED_INFO workshop_id=%" PRIu64 "\n",
 				(uint64_t)req->steam_workshop_item.workshop_id );
-			struct steam_workshop_install_info_s recv = {};
+			alignas( steam_workshop_install_info_s ) char recv_storage[sizeof( steam_workshop_install_info_s )] = {};
+			steam_workshop_install_info_s &recv = *reinterpret_cast<steam_workshop_install_info_s *>( recv_storage );
 			char folder[1024] = { 0 };
 
 			prepared_rpc_packet( &req->common, &recv );
@@ -280,7 +281,8 @@ static void processRPC( steam_rpc_pkt_s *req, size_t size )
 			write_packet( GPipeWrite, &recv, sizeof( success_recv_s ) );
 
 			for( size_t i = 0; i < numItems; i++ ) {
-				struct workshop_refresh_items_evt_s evt_res = {};
+				alignas( workshop_refresh_items_evt_s ) char evt_res_storage[sizeof( workshop_refresh_items_evt_s ) + 256 * sizeof( uint64_t )] = {};
+				workshop_refresh_items_evt_s &evt_res = *reinterpret_cast<workshop_refresh_items_evt_s *>( evt_res_storage );
 				evt_res.cookie = req->stream_workshop_refresh.cookie;
 				evt_res.cmd = EVT_WORKSHOP_REFRESH_SUBSCRIBE_ITEMS;
 				for( ; evt_res.num_ids < 256 && i < numItems; i++ ) {
@@ -738,7 +740,8 @@ static void processSteamDispatch()
 					const bool got_result = result->m_eResult == k_EResultOK && result->m_unNumResultsReturned > 0 && GSteamUGC->GetQueryUGCResult( result->m_handle, 0, &details );
 
 					{
-						struct workshop_item_details_evt_s recv = {};
+						alignas( workshop_item_details_evt_s ) char recv_storage[sizeof( workshop_item_details_evt_s )] = {};
+						workshop_item_details_evt_s &recv = *reinterpret_cast<workshop_item_details_evt_s *>( recv_storage );
 						recv.cmd = EVT_WORKSHOP_DETAIL;
 						const char *title = "";
 						const char *description = "";

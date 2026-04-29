@@ -158,14 +158,13 @@ static void Steam_EVT_WorkshopItemInstalled( void *self, struct steam_evt_pkt_s 
 	request.workshop_id = mod->workshop_id;
 	STEAMSHIM_sendRPC( &request, sizeof( request ), NULL, Steam_WorkshopInstallInfoCallback, NULL );
 
-	struct {
-		struct steam_workshop_req_rpcs_s req;
-		uint64_t id;
-	} details_request;
-	details_request.req.cmd = RPC_WORKSHOP_QUERY_ITEM_DETAILS;
-	details_request.req.num_ids = 1;
-	details_request.id = mod->workshop_id;
-	STEAMSHIM_sendRPC( &details_request, sizeof( details_request ), NULL, NULL, NULL );
+	char details_request_buf[sizeof( struct steam_workshop_req_rpcs_s ) + sizeof( uint64_t )];
+	struct steam_workshop_req_rpcs_s *details_req = (struct steam_workshop_req_rpcs_s *)details_request_buf;
+	memset( details_request_buf, 0, sizeof( details_request_buf ) );
+	details_req->cmd = RPC_WORKSHOP_QUERY_ITEM_DETAILS;
+	details_req->num_ids = 1;
+	details_req->workshop_ids[0] = mod->workshop_id;
+	STEAMSHIM_sendRPC( details_req, sizeof( details_request_buf ), NULL, NULL, NULL );
 }
 
 static void Steam_EVT_WorkshopDetail( void *self, struct steam_evt_pkt_s *pkt )
