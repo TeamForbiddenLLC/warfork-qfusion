@@ -687,7 +687,7 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 				ri.Com_Printf( S_COLOR_YELLOW "R_LoadKTX: Truncated MipLevel size: (orignal: %lu expected: %lu) mip: (orignal: %lu expected: %lu): %s\n", err.errTruncated.size,
 							   err.errTruncated.expected, err.mipTruncated.mipLevels, err.mipTruncated.expectedMipLevels, pathname );
 				break;
-			case KTX_ERR_ZER_TEXTURE_SIZE:
+			case KTX_ERR_ZERO_TEXTURE_SIZE:
 				ri.Com_Printf( S_COLOR_RED "R_LoadKTX: Zero texture size: %s\n", pathname );
 				goto error;
 				break;
