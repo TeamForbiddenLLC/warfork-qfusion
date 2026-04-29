@@ -35,7 +35,7 @@ bool RISegmentAlloc( uint32_t frameIndex, struct RISegmentAlloc_s *alloc, size_t
 		assert( alloc->head != alloc->tail ); // this shouldn't happen
 	}
 
-	assert( alloc->elementOffset < alloc->maxElements );
+	assert( alloc->elementOffset <= alloc->maxElements );
 
 	// not enough total free space
 	if( ( alloc->maxElements - alloc->elementsConsumed ) < numElements ) {
