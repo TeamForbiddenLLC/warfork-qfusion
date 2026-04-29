@@ -105,9 +105,12 @@
 		<div id="leftside">
 			<div id="workshop-list">
 				<datagrid id="workshop-installed-grid" source="workshop.installed">
-					<col fields="display_name" width="55%">Mod</col>
-					<col fields="workshop_id" width="20%">Workshop ID</col>
-					<col fields="is_local" width="24%">Uploaded</col>
+					<col fields="display_name" width="35%">Mod</col>
+					<col fields="tags"         width="20%">Tags</col>
+					<col fields="is_installed" width="12%">Installed</col>
+					<col fields="is_local"     width="12%">Uploaded</col>
+					<col fields="score"        width="10%">Score</col>
+					<col fields="votes_up"     width="10%">+</col>
 				</datagrid>
 			</div>
 		</div>

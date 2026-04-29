@@ -30,8 +30,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 cvar_t *steam_debug;
 static struct steam_workshop_mod_s *steam_workshop_mods;
-static uint32_t steam_workshop_refresh_cookie;
-
 static char *Steam_CopyString( const char *in )
 {
 	int size;
@@ -104,25 +102,21 @@ static void Steam_WorkshopInstallInfoCallback( void *self, struct steam_rpc_pkt_
 	__RefreshModPath( mod );
 }
 
-static void Steam_EVT_WorkshopRefreshItems( void *self, struct steam_evt_pkt_s *pkt )
+static void Steam_WorkshopRefreshCallback( void *self, struct steam_rpc_pkt_s *pkt )
 {
-	if( pkt->workshop_refresh_items.cookie != steam_workshop_refresh_cookie ) {
-		return;
+	struct workshop_subscribed_items_recv_s *recv = &pkt->workshop_subscribed_items;
+
+	for( uint32_t i = 0; i < recv->num_ids; i++ ) {
+		__UpsertWorkshopMod( recv->ids[i] );
 	}
 
-	for( size_t i = 0; i < pkt->workshop_refresh_items.num_ids; i++ ) {
-		uint64_t workshop_id = pkt->workshop_refresh_items.ids[i];
-		__UpsertWorkshopMod( workshop_id );
-	}
-
-	if( pkt->workshop_refresh_items.num_ids > 0 ) {
-		uint16_t num_ids = pkt->workshop_refresh_items.num_ids;
-		size_t req_size = sizeof( struct steam_workshop_req_rpcs_s ) + sizeof( uint64_t ) * num_ids;
+	if( recv->num_ids > 0 ) {
+		size_t req_size = sizeof( struct steam_workshop_req_rpcs_s ) + sizeof( uint64_t ) * recv->num_ids;
 		struct steam_workshop_req_rpcs_s *request = (struct steam_workshop_req_rpcs_s *)malloc( req_size );
 		request->cmd = RPC_WORKSHOP_QUERY_ITEM_DETAILS;
-		request->num_ids = num_ids;
-		for( uint16_t i = 0; i < num_ids; i++ ) {
-			request->workshop_ids[i] = pkt->workshop_refresh_items.ids[i];
+		request->num_ids = recv->num_ids;
+		for( uint32_t i = 0; i < recv->num_ids; i++ ) {
+			request->workshop_ids[i] = recv->ids[i];
 		}
 		STEAMSHIM_sendRPC( request, req_size, NULL, NULL, NULL );
 		free( request );
@@ -190,16 +184,20 @@ static void Steam_EVT_WorkshopDetail( void *self, struct steam_evt_pkt_s *pkt )
 	mod->tags = Steam_CopyString( buf );
 	buf += evt->tags_len + 1;
 	mod->preview_url = Steam_CopyString( buf );
-	Com_Printf("Mod: %s Description: %s preview: %s", mod->title, mod->description, mod->preview_url);
+
+	mod->votes_up   = evt->votes_up;
+	mod->votes_down = evt->votes_down;
+	mod->score      = evt->score;
+	mod->item_state = evt->item_state;
+	mod->visibility = evt->visibility;
+	mod->time_updated = evt->time_updated;
 }
 
 void Steam_RefreshWorkshopMods( void )
 {
 	struct steam_workshop_list_rpc_s request;
-	uint32_t sync = 0;
 	request.cmd = RPC_WORKSHOP_REFRESH_SUBSCRIBED_ITEMS;
-	request.cookie = ++steam_workshop_refresh_cookie;
-	STEAMSHIM_sendRPC( &request, sizeof( request ), NULL, NULL, &sync );
+	STEAMSHIM_sendRPC( &request, sizeof( request ), NULL, Steam_WorkshopRefreshCallback, NULL );
 }
 
 /*
@@ -532,7 +530,6 @@ void Steam_Init( void )
 		return;
 	}
 
-	STEAMSHIM_subscribeEvent( EVT_WORKSHOP_REFRESH_SUBSCRIBE_ITEMS, NULL, Steam_EVT_WorkshopRefreshItems );
 	STEAMSHIM_subscribeEvent( EVT_WORKSHOP_ITEM_SUBSCRIBED, NULL, Steam_EVT_WorkshopItemSubscribed );
 	STEAMSHIM_subscribeEvent( EVT_WORKSHOP_ITEM_UNSUBSCRIBED, NULL, Steam_EVT_WorkshopItemUnSubscribed );
 	STEAMSHIM_subscribeEvent( EVT_WORKSHOP_ITEM_INSTALLED, NULL, Steam_EVT_WorkshopItemInstalled );
@@ -547,7 +544,6 @@ void Steam_Init( void )
  */
 void Steam_Shutdown( void )
 {
-	STEAMSHIM_unsubscribeEvent( EVT_WORKSHOP_REFRESH_SUBSCRIBE_ITEMS, Steam_EVT_WorkshopRefreshItems );
 	STEAMSHIM_unsubscribeEvent( EVT_WORKSHOP_ITEM_SUBSCRIBED, Steam_EVT_WorkshopItemSubscribed );
 	STEAMSHIM_unsubscribeEvent( EVT_WORKSHOP_ITEM_UNSUBSCRIBED, Steam_EVT_WorkshopItemUnSubscribed );
 	STEAMSHIM_unsubscribeEvent( EVT_WORKSHOP_ITEM_INSTALLED, Steam_EVT_WorkshopItemInstalled );

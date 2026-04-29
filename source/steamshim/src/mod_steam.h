@@ -17,6 +17,12 @@ struct steam_workshop_mod_s {
 	const char *description;
 	const char *tags;
 	const char *preview_url;
+	uint32_t votes_up;
+	uint32_t votes_down;
+	float score;
+	uint32_t item_state;
+	uint32_t visibility;
+	uint32_t time_updated;
 };
 
 #ifdef __cplusplus

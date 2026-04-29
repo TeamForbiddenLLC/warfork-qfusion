@@ -260,36 +260,27 @@ static void processRPC( steam_rpc_pkt_s *req, size_t size )
 			UGCQueryHandle_t query = GSteamUGC->CreateQueryUGCDetailsRequest( (uint64 *)req->steam_workshop_items.workshop_ids, req->steam_workshop_items.num_ids );
 			SteamAPICall_t call = GSteamUGC->SendQueryUGCRequest( query );
 			dbgprintf( "  -> api_call=%" PRIu64 " valid=%d\n", (uint64_t)call, call != k_uAPICallInvalid );
-			struct steam_result_recv_s recv;
-			prepared_rpc_packet( &req->common, &recv );
-			recv.result = call;
 			if( call == k_uAPICallInvalid ) {
 				GSteamUGC->ReleaseQueryUGCRequest( query );
 			} else {
 				steam_async_push_rpc_shim( call, &req->common );
 			}
-			write_packet( GPipeWrite, &recv, sizeof( struct steam_result_recv_s ) );
 			break;
 		}
 		case RPC_WORKSHOP_REFRESH_SUBSCRIBED_ITEMS: {
-			dbgprintf( "RPC_WORKSHOP_REFRESH_SUBSCRIBED_ITEMS cookie=%u\n", (unsigned)req->stream_workshop_refresh.cookie );
-			struct success_recv_s recv;
 			std::vector<PublishedFileId_t> items( GSteamUGC->GetNumSubscribedItems() );
 			const uint32 numItems = GSteamUGC->GetSubscribedItems( items.data(), items.size() );
-			dbgprintf( "  -> num_subscribed=%u\n", (unsigned)numItems );
-			prepared_rpc_packet( &req->common, &recv );
-			write_packet( GPipeWrite, &recv, sizeof( success_recv_s ) );
+			dbgprintf( "RPC_WORKSHOP_REFRESH_SUBSCRIBED_ITEMS num_subscribed=%u\n", (unsigned)numItems );
 
-			for( size_t i = 0; i < numItems; i++ ) {
-				alignas( workshop_refresh_items_evt_s ) char evt_res_storage[sizeof( workshop_refresh_items_evt_s ) + 256 * sizeof( uint64_t )] = {};
-				workshop_refresh_items_evt_s &evt_res = *reinterpret_cast<workshop_refresh_items_evt_s *>( evt_res_storage );
-				evt_res.cookie = req->stream_workshop_refresh.cookie;
-				evt_res.cmd = EVT_WORKSHOP_REFRESH_SUBSCRIBE_ITEMS;
-				for( ; evt_res.num_ids < 256 && i < numItems; i++ ) {
-					evt_res.ids[evt_res.num_ids++] = items[i];
-				}
-				write_packet( GPipeWrite, &evt_res, sizeof( workshop_refresh_items_evt_s ) + ( sizeof( uint64_t ) * evt_res.num_ids ) );
+			const uint32_t pkt_size = sizeof( workshop_subscribed_items_recv_s ) + numItems * sizeof( uint64_t );
+			std::vector<char> pkt( pkt_size );
+			workshop_subscribed_items_recv_s *recv = reinterpret_cast<workshop_subscribed_items_recv_s *>( pkt.data() );
+			prepared_rpc_packet( &req->common, recv );
+			recv->num_ids = numItems;
+			for( uint32 i = 0; i < numItems; i++ ) {
+				recv->ids[i] = items[i];
 			}
+			write_packet( GPipeWrite, pkt.data(), pkt_size );
 			break;
 		}
 		case RPC_AUTHSESSION_TICKET: {
@@ -735,58 +726,71 @@ static void processSteamDispatch()
 				}
 				case SteamUGCQueryCompleted_t::k_iCallback: {
 					SteamUGCQueryCompleted_t *result = (SteamUGCQueryCompleted_t *)data;
-					SteamUGCDetails_t details = {};
-					char preview_url[4096] = { 0 };
-					const bool got_result = result->m_eResult == k_EResultOK && result->m_unNumResultsReturned > 0 && GSteamUGC->GetQueryUGCResult( result->m_handle, 0, &details );
+					dbgprintf( "SteamUGCQueryCompleted handle=%" PRIu64 " result=%d num_results=%u\n",
+						(uint64_t)result->m_handle, (int)result->m_eResult, (unsigned)result->m_unNumResultsReturned );
 
-					{
-						alignas( workshop_item_details_evt_s ) char recv_storage[sizeof( workshop_item_details_evt_s )] = {};
-						workshop_item_details_evt_s &recv = *reinterpret_cast<workshop_item_details_evt_s *>( recv_storage );
-						recv.cmd = EVT_WORKSHOP_DETAIL;
-						const char *title = "";
-						const char *description = "";
-						const char *tags = "";
-						const char *preview = "";
+					if( result->m_eResult == k_EResultOK ) {
+						SteamUGCDetails_t details = {};
+						char preview_url[4096];
+						for( uint32_t i = 0; i < result->m_unNumResultsReturned; i++ ) {
+							const char *title = "";
+							const char *description = "";
+							const char *tags = "";
+							const char *preview = "";
 
-						if( got_result ) {
-							GSteamUGC->GetQueryUGCPreviewURL( result->m_handle, 0, preview_url, sizeof( preview_url ) );
-							title = details.m_rgchTitle;
-							description = details.m_rgchDescription;
-							tags = details.m_rgchTags;
-							preview = preview_url;
+							alignas( workshop_item_details_evt_s ) char recv_storage[sizeof( workshop_item_details_evt_s )] = {};
+							workshop_item_details_evt_s &recv = *reinterpret_cast<workshop_item_details_evt_s *>( recv_storage );
+							recv.cmd = EVT_WORKSHOP_DETAIL;
+							recv.result = result->m_eResult;
 
-							recv.workshop_id = details.m_nPublishedFileId; 
-							recv.success = true;
-							recv.owner_id = details.m_ulSteamIDOwner;
-							recv.creator_app_id = details.m_nCreatorAppID;
-							recv.consumer_app_id = details.m_nConsumerAppID;
-							recv.file_type = details.m_eFileType;
-							recv.visibility = details.m_eVisibility;
-							recv.time_created = details.m_rtimeCreated;
-							recv.time_updated = details.m_rtimeUpdated;
-							recv.votes_up = details.m_unVotesUp;
-							recv.votes_down = details.m_unVotesDown;
-							recv.num_children = details.m_unNumChildren;
-							recv.item_state = GSteamUGC->GetItemState( details.m_nPublishedFileId );
-							recv.score = details.m_flScore;
+							if( GSteamUGC->GetQueryUGCResult( result->m_handle, i, &details ) ) {
+								preview_url[0] = '\0';
+								GSteamUGC->GetQueryUGCPreviewURL( result->m_handle, i, preview_url, sizeof( preview_url ) );
+								title = details.m_rgchTitle;
+								description = details.m_rgchDescription;
+								tags = details.m_rgchTags;
+								preview = preview_url;
+
+								recv.workshop_id = details.m_nPublishedFileId;
+								recv.success = true;
+								recv.owner_id = details.m_ulSteamIDOwner;
+								recv.creator_app_id = details.m_nCreatorAppID;
+								recv.consumer_app_id = details.m_nConsumerAppID;
+								recv.file_type = details.m_eFileType;
+								recv.visibility = details.m_eVisibility;
+								recv.time_created = details.m_rtimeCreated;
+								recv.time_updated = details.m_rtimeUpdated;
+								recv.votes_up = details.m_unVotesUp;
+								recv.votes_down = details.m_unVotesDown;
+								recv.num_children = details.m_unNumChildren;
+								recv.item_state = GSteamUGC->GetItemState( details.m_nPublishedFileId );
+								recv.score = details.m_flScore;
+								dbgprintf( "  -> [%u] workshop_id=%" PRIu64 " title=\"%s\" tags=\"%s\" preview=\"%s\"\n",
+									i, (uint64_t)recv.workshop_id, title, tags, preview );
+							}
+
+							recv.title_len = strlen( title );
+							recv.description_len = strlen( description );
+							recv.tags_len = strlen( tags );
+							recv.preview_url_len = strlen( preview );
+
+							const uint32_t buffer_size = sizeof( recv ) + recv.title_len + 1 + recv.description_len + 1 + recv.tags_len + 1 + recv.preview_url_len + 1;
+							std::vector<char> pkt( buffer_size );
+							char *cursor = pkt.data();
+							memcpy( cursor, &recv, sizeof( recv ) ); cursor += sizeof( recv );
+							memcpy( cursor, title, recv.title_len + 1 ); cursor += recv.title_len + 1;
+							memcpy( cursor, description, recv.description_len + 1 ); cursor += recv.description_len + 1;
+							memcpy( cursor, tags, recv.tags_len + 1 ); cursor += recv.tags_len + 1;
+							memcpy( cursor, preview, recv.preview_url_len + 1 );
+							write_packet( GPipeWrite, pkt.data(), buffer_size );
 						}
-
-						recv.result = result->m_eResult;
-						recv.title_len = strlen( title );
-						recv.description_len = strlen( description );
-						recv.tags_len = strlen( tags );
-						recv.preview_url_len = strlen( preview );
-
-						const uint32_t buffer_size = sizeof( recv ) + recv.title_len + 1 + recv.description_len + 1 + recv.tags_len + 1 + recv.preview_url_len + 1;
-						writePipe( GPipeWrite, &buffer_size, sizeof( uint32_t ) );
-						writePipe( GPipeWrite, &recv, sizeof( recv ) );
-						writePipe( GPipeWrite, title, recv.title_len + 1 );
-						writePipe( GPipeWrite, description, recv.description_len + 1 );
-						writePipe( GPipeWrite, tags, recv.tags_len + 1 );
-						writePipe( GPipeWrite, preview, recv.preview_url_len + 1 );
 					}
 
 					GSteamUGC->ReleaseQueryUGCRequest( result->m_handle );
+
+					struct success_recv_s recv;
+					prepared_rpc_packet( &rpc_callback, &recv );
+					write_packet( GPipeWrite, &recv, sizeof( struct success_recv_s ) );
 					break;
 				}
 				case GameRichPresenceJoinRequested_t::k_iCallback: {

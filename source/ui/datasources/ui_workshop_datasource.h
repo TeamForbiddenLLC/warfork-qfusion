@@ -2,6 +2,7 @@
 #define __UI_WORKSHOP_DATASOURCE_H__
 
 #include <Rocket/Controls/DataSource.h>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -26,13 +27,20 @@ namespace WSWUI
 			std::string title;
 			std::string name;
 			std::string workshop_id;
-			bool        is_local = false;
+			std::string tags;
+			std::string preview_url;
+			bool        is_local     = false;
+			bool        is_installed = false;
+			uint32_t    votes_up     = 0;
+			uint32_t    votes_down   = 0;
+			float       score        = 0.0f;
+			uint32_t    visibility   = 0;
+			uint32_t    time_updated = 0;
 		};
 		std::vector<InstalledMod> installedMods;
 
 		void UpdateMods();
 
-		static void OnWorkshopRefresh( void *self, struct steam_evt_pkt_s *pkt );
 		static void OnWorkshopDetail( void *self, struct steam_evt_pkt_s *pkt );
 		static void OnWorkshopItemInstalled( void *self, struct steam_evt_pkt_s *pkt );
 		static void OnWorkshopItemUnsubscribed( void *self, struct steam_evt_pkt_s *pkt );

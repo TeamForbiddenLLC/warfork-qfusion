@@ -295,7 +295,12 @@ struct steam_id_rpc_s {
 
 struct steam_workshop_list_rpc_s {
 	STEAM_RPC_SHIM_COMMON()
-	uint32_t cookie;
+};
+
+struct workshop_subscribed_items_recv_s {
+	STEAM_RPC_SHIM_COMMON()
+	uint32_t num_ids;
+	uint64_t ids[];
 };
 
 struct steam_workshop_install_info_s {
@@ -546,6 +551,7 @@ struct steam_rpc_pkt_s {
 
 		struct auth_session_ticket_recv_s auth_session;
 		struct steam_workshop_list_rpc_s stream_workshop_refresh;
+		struct workshop_subscribed_items_recv_s workshop_subscribed_items;
 
 		struct p2p_accept_connect_req_s p2p_accept_connection_req;
 		struct p2p_accept_connection_recv_s p2p_accept_connection_recv;
