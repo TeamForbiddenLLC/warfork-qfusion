@@ -25,7 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../gameshared/q_math.h"
 #include "../gameshared/q_cvar.h"
 #include "../gameshared/q_shared.h"
-#include "../gameshared/q_sds.h"
+#include "../qcore/qstr.h"
 #include "../qcommon/qfiles.h"
 #include "../qcommon/bsp.h"
 #include "../qcommon/patch.h"
@@ -313,7 +313,7 @@ typedef struct
 		union {
 			struct {
 				uint64_t frameCnt;
-				sds path;
+				struct QStr path;
 				void *memory; //TODO: fix
 				void *buffer; //TODO: fix
 				struct texture_buf_desc_s textureBuferDesc;

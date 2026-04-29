@@ -28,8 +28,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "wswcurl.h"
 #include "../qalgo/md5.h"
 #include "../qalgo/q_trie.h"
-#include "../gameshared/q_sds.h"
-
+#include "../qcore/qstr.h"
 /*
 =============================================================================
 
@@ -787,18 +786,18 @@ const char *FS_FirstExtension2( const char *filename, const char *extensions[], 
 	bool purepass = true;
 	const char *result = NULL;
 
-	sds filepath = sdsempty();
-	filepath = sdscat(filepath, filename);
-	size_t basepathLen = sdslen(filepath);
+	struct QStr filepath = {0};
+	qStrAssign(&filepath, qCToStrRef(filename));
+	size_t basepathLen = filepath.len;
 	searchpath_t* search = fs_searchpaths;
 	while( search ) {
 		if( search->pack ) // is the element a pak file?
 		{
 			if( ( search->pack->pure > FS_PURE_NONE ) == purepass ) {
 				for(size_t i = 0; i < num_extensions; i++ ) {
-				  sdssubstr(filepath, 0, basepathLen);
-				  filepath = sdscat(filepath, extensions[i]);
-				  if( FS_SearchPakForFile( search->pack, filepath, NULL ) ) {
+				  qStrSetLen(&filepath, basepathLen);
+				  qStrAppendSlice(&filepath, qCToStrRef(extensions[i]));
+				  if( FS_SearchPakForFile( search->pack, filepath.buf, NULL ) ) {
 				  	if( !purepass || search->pack->pure == FS_PURE_EXPLICIT ) {
 				  		result = extensions[i];
 				  		goto return_result;
@@ -813,9 +812,9 @@ const char *FS_FirstExtension2( const char *filename, const char *extensions[], 
 			if( !purepass ) {
 				for(size_t i = 0; i < num_extensions; i++ ) {
 					void *vfsHandle = NULL; // search in VFS as well
-				  sdssubstr(filepath, 0, basepathLen);
-				  filepath = sdscat(filepath, extensions[i]);
-					if( FS_SearchDirectoryForFile( search, filepath, NULL, 0, &vfsHandle ) ) {
+				  qStrSetLen(&filepath, basepathLen);
+				  qStrAppendSlice(&filepath, qCToStrRef(extensions[i]));
+					if( FS_SearchDirectoryForFile( search, filepath.buf, NULL, 0, &vfsHandle ) ) {
 						result = extensions[i];
 						goto return_result;
 					}
@@ -837,7 +836,7 @@ const char *FS_FirstExtension2( const char *filename, const char *extensions[], 
 
 return_result:
 	QMutex_Unlock( fs_searchpaths_mutex );
-	sdsfree(filepath);
+	qStrFree(&filepath);
 	return result;
 }
 

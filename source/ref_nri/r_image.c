@@ -25,7 +25,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_texture_format.h"
 
 #include "../gameshared/q_arch.h"
-#include "../gameshared/q_sds.h"
 #include "r_texture_buffer_load.h"
 
 #include "r_ktx_loader.h"
@@ -1355,8 +1354,8 @@ image_t *R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	struct QStr resolvedPath = { 0 };
 	qStrSetResv( &resolvedPath, reserveSize );
 	{
-		int lastDot = -1;
-		int lastSlash = -1;
+		size_t lastDot = (size_t)-1;
+		size_t lastSlash = (size_t)-1;
 		for( size_t i = ( name[0] == '/' || name[0] == '\\' ); name[i]; i++ ) {
 			const char c = name[i];
 			if( c == '\\' ) {
@@ -1366,17 +1365,18 @@ image_t *R_FindImage( const char *name, const char *suffix, int flags, int minmi
 			}
 			switch( c ) {
 				case '.':
-					lastDot = i;
+					lastDot = resolvedPath.len - 1;
 					break;
 				case '/':
-					lastSlash = i;
+					lastSlash = resolvedPath.len - 1;
 					break;
 			}
 		}
 		// don't confuse paths such as /ui/xyz.cache/123 with file extensions
-		if( lastDot >= lastSlash && lastDot >= 0 ) {
+		if( lastDot != (size_t)-1 && lastDot >= lastSlash ) {
 			// truncate string omitting the extension
 			qStrSetLen( &resolvedPath, lastDot );
+			qStrSetNullTerm( &resolvedPath );
 		}
 	}
 	if( suffix ) {

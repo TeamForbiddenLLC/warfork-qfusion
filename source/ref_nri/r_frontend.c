@@ -1042,7 +1042,7 @@ void RF_ScreenShot( const char *path, const char *name, const char *fmtstring, b
 		lastIndex++;
 	}
 
-	rsh.screenshot.single.path = sdsnew( checkname );
+	qStrAssign( &rsh.screenshot.single.path, qCToStrRef( checkname ) );
 	rsh.screenshot.state = CAPTURE_STATE_RECORD_SCREENSHOT;
 }
 
