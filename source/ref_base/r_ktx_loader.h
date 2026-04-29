@@ -14,7 +14,7 @@ enum ktx_context_result_type_e {
   KTX_ERR_UNHANDLED_TEXTURE_TYPE,
   KTX_ERR_TRUNCATED,
   KTX_WARN_MIPLEVEL_TRUNCATED, 
-  KTX_ERR_ZER_TEXTURE_SIZE 
+  KTX_ERR_ZERO_TEXTURE_SIZE
 };
 
 struct ktx_context_err_s {
@@ -38,7 +38,7 @@ struct ktx_context_err_s {
 };
 
 struct ktx_context_s {
-	bool swapEndianess;
+	bool swapEndianness;
 	int type;
 	int typeSize;
 	int format;

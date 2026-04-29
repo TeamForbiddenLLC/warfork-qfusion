@@ -499,6 +499,7 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 	WaitRICommandRingElement(&rsh.device, &rsh.primary);
 	ResetRIPool(&rsh.device, rsh.primary.pool);
 	BeginRICmd(&rsh.device, &rsh.primary.cmds[0]);
+	rsh.frameActive = true;
 
 	memset( &rsh.frame, 0, sizeof( rsh.frame ) ); // reset the primary cmd buffer
 	rsh.frame.handle = rsh.primary.cmds[0];
@@ -690,6 +691,7 @@ void RF_EndFrame( void )
 			vkCmdPipelineBarrier2( rsh.primary.cmds[0].vk.cmd, &dependencyInfo );
 		}
 		EndRICmd( &rsh.device, &rsh.primary.cmds[0]);
+		rsh.frameActive = false;
 
 		struct RIQueue_s *graphicsQueue = &rsh.device.queues[RI_QUEUE_GRAPHICS];
 
@@ -839,11 +841,15 @@ void RF_RenderScene( const refdef_t *fd )
 
 void RF_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, const vec4_t color, const shader_t *shader )
 {
+	if( !rsh.frameActive )
+		return;
 	R_DrawRotatedStretchPic( &rsh.frame, x, y, w, h, s1, t1, s2, t2, 0, color, shader );
 }
 
 void RF_DrawRotatedStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, float angle, const vec4_t color, const shader_t *shader )
 {
+	if( !rsh.frameActive )
+		return;
 	R_DrawRotatedStretchPic( &rsh.frame, x, y, w, h, s1, t1, s2, t2, 0, color, shader );
 }
 
@@ -869,6 +875,8 @@ void RF_DrawStretchRawYUV( int x, int y, int w, int h, float s1, float t1, float
 
 void RF_DrawStretchPoly( const poly_t *poly, float x_offset, float y_offset )
 {
+	if( !rsh.frameActive )
+		return;
 	R_DrawStretchPoly( &rsh.frame, poly, x_offset, y_offset );
 }
 
@@ -1042,7 +1050,7 @@ void RF_ScreenShot( const char *path, const char *name, const char *fmtstring, b
 		lastIndex++;
 	}
 
-	rsh.screenshot.single.path = sdsnew( checkname );
+	qStrAssign( &rsh.screenshot.single.path, qCToStrRef( checkname ) );
 	rsh.screenshot.state = CAPTURE_STATE_RECORD_SCREENSHOT;
 }
 
