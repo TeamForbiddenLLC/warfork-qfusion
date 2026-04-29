@@ -901,7 +901,11 @@ static inline int qStrIndexOfCmp(const struct QStrSpan haystack, size_t offset, 
     }
     for (size_t i = 0; i < needle.len - 1; i++)
     {
-        skip_table[(unsigned char)needle.buf[i]] = needle.len - i - 1;
+        const unsigned char c = (unsigned char)needle.buf[i];
+        const char skip = needle.len - i - 1;
+        skip_table[c] = skip;
+        skip_table[(unsigned char)tolower(c)] = skip;
+        skip_table[(unsigned char)toupper(c)] = skip;
     }
 
     size_t i = offset;
@@ -950,7 +954,10 @@ static inline int qstrLastIndexOfCmp(const struct QStrSpan haystack, size_t offs
 
     for (size_t i = needle.len - 1;; i--)
     {
-        skip_table[(unsigned char)needle.buf[i]] = i;
+        const unsigned char c = (unsigned char)needle.buf[i];
+        skip_table[c] = i;
+        skip_table[(unsigned char)tolower(c)] = i;
+        skip_table[(unsigned char)toupper(c)] = i;
         if (i == 1)
             break;
     }
