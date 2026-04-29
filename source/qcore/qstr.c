@@ -137,7 +137,7 @@ bool qStrResize(struct QStr* str, size_t len)
 
 bool qStrSetLen(struct QStr* str, size_t len)
 {
-    if (len > str->alloc)
+    if (len + 1 > str->alloc)
     {
         size_t reqSize = len + 1;
         if (reqSize < QSTR_MAX_PREALLOC)
@@ -218,7 +218,9 @@ struct QStr qStrDup(const struct QStr* str)
     if (result.buf == NULL)
         return result;
     memcpy(result.buf, str->buf, str->len);
-    result.buf[result.len] = str->len;
+    result.buf[str->len] = '\0';
+    result.len = str->len;
+    result.alloc = str->len + 1;
     return result;
 }
 
@@ -447,7 +449,7 @@ bool qstrcatfmt(struct QStr* s, char const* fmt, ...)
         return false;
     /* Add null-term */
     s->buf[s->len] = '\0';
-    return s;
+    return true;
 }
 
 static inline size_t readNumberSign(const char* buf, size_t pos, size_t len, int* result_sign)
@@ -592,7 +594,7 @@ bool qStrReadDouble(struct QStrSpan slice, double* result) {
         if(slice.buf[pos] == '.') {
             pos++;
             size_t pos2 = slice.len - 1;
-            double fract = 0.0f;
+            double fract = 0.0;
             while (pos <= pos2) {
                 if (!charToDigit(slice.buf[pos2], 10, &digit))
                     return false;
@@ -692,7 +694,7 @@ bool qstrcatvprintf(struct QStr* str, const char* fmt, va_list ap)
     /* Finally concat the obtained string to the bstr string and return it. */
     qStrAppendSlice(str, (struct QStrSpan){ buf, (size_t)bufstrlen });
     if (buf != staticbuf)
-        free(buf);
+        Q_Free(buf);
     return true;
 }
 
@@ -859,7 +861,6 @@ bool qStrCaselessEqual(const struct QStrSpan b0, const struct QStrSpan b1)
 
 bool qStrEqual(const struct QStrSpan b0, const struct QStrSpan b1)
 {
-    // printf("EQ: \"%.*s\" -- \"%.*s\"\n", (int)b0.len, b0.buf, (int)b1.len, b1.buf);
     if (b0.len != b1.len)
         return 0;
     size_t i0 = 0;
@@ -884,12 +885,9 @@ static inline int qStrIndexOfCmp(const struct QStrSpan haystack, size_t offset, 
     {
         for (size_t i = offset; i < (haystack.len - (needle.len - 1)); i++)
         {
-            for (size_t j = 0; j < needle.len; j++)
+            if (handle((struct QStrSpan){ haystack.buf + i, needle.len }, needle))
             {
-                if (handle((struct QStrSpan){  haystack.buf + i, needle.len }, needle))
-                {
-                    return i;
-                }
+                return i;
             }
         }
         return -1;
@@ -903,13 +901,17 @@ static inline int qStrIndexOfCmp(const struct QStrSpan haystack, size_t offset, 
     }
     for (size_t i = 0; i < needle.len - 1; i++)
     {
-        skip_table[(unsigned char)needle.buf[i]] = needle.len - i - 1;
+        const unsigned char c = (unsigned char)needle.buf[i];
+        const char skip = needle.len - i - 1;
+        skip_table[c] = skip;
+        skip_table[(unsigned char)tolower(c)] = skip;
+        skip_table[(unsigned char)toupper(c)] = skip;
     }
 
     size_t i = offset;
     while (i <= haystack.len - needle.len)
     {
-        if (qStrEqual((struct QStrSpan){ haystack.buf + i,  needle.len }, needle))
+        if (handle((struct QStrSpan){ haystack.buf + i, needle.len }, needle))
         {
             return i;
         }
@@ -932,12 +934,9 @@ static inline int qstrLastIndexOfCmp(const struct QStrSpan haystack, size_t offs
         for (size_t i = startIndex;; i--)
         {
             assert(i < haystack.len);
-            for (size_t j = 0; j < needle.len; j++)
+            if (handle((struct QStrSpan){ haystack.buf + i, needle.len }, needle))
             {
-                if (handle((struct QStrSpan){ haystack.buf + i, needle.len }, needle))
-                {
-                    return i;
-                }
+                return i;
             }
             if (i == 0)
                 break;
@@ -955,7 +954,10 @@ static inline int qstrLastIndexOfCmp(const struct QStrSpan haystack, size_t offs
 
     for (size_t i = needle.len - 1;; i--)
     {
-        skip_table[(unsigned char)needle.buf[i]] = i;
+        const unsigned char c = (unsigned char)needle.buf[i];
+        skip_table[c] = i;
+        skip_table[(unsigned char)tolower(c)] = i;
+        skip_table[(unsigned char)toupper(c)] = i;
         if (i == 1)
             break;
     }
@@ -1019,7 +1021,7 @@ int qStrIndexOfAny(const struct QStrSpan haystack, const struct QStrSpan charact
 {
     for (size_t i = 0; i < haystack.len; i++)
     {
-        for (size_t j = 0; characters.len; j++)
+        for (size_t j = 0; j < characters.len; j++)
         {
             if (haystack.buf[i] == characters.buf[j])
             {
@@ -1027,7 +1029,7 @@ int qStrIndexOfAny(const struct QStrSpan haystack, const struct QStrSpan charact
             }
         }
     }
-    return false;
+    return -1;
 }
 
 bool qstrcatjoin(struct QStr* str, struct QStrSpan* slices, size_t numSlices, struct QStrSpan sep)
@@ -1086,17 +1088,21 @@ bool qstrcatjoinCStr(struct QStr* str, const char** argv, size_t argc, struct QS
 
 int qStrLastIndexOfAny(const struct QStrSpan haystack, const struct QStrSpan characters)
 {
-    for (size_t i = haystack.len;; i--)
+    if (haystack.len == 0)
+        return -1;
+    for (size_t i = haystack.len - 1;; i--)
     {
-        for (size_t j = 0; characters.len; j++)
+        for (size_t j = 0; j < characters.len; j++)
         {
             if (haystack.buf[i] == characters.buf[j])
             {
                 return i;
             }
         }
+        if (i == 0)
+            break;
     }
-    return false;
+    return -1;
 }
 
 // minimum length is 7 + precision
