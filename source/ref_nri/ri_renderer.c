@@ -6,6 +6,7 @@
 
 #include "ri_conversion.h"
 #include "ri_gpu_preset.h"
+#include "ri_vk.h"
 
 #include "ri_types.h"
 
@@ -994,6 +995,60 @@ void FreeRIFree( struct RIDevice_s *dev, struct RIFree_s *mem )
 			assert( false ); // invalid type to free
 			break;
 	}
+}
+
+int InitRITexture( struct RIDevice_s *dev, const struct RITextureDesc_s *desc, struct RITexture_s *tex )
+{
+	memset( tex, 0, sizeof( *tex ) );
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+
+		VkImageUsageFlags usage = 0;
+		if( desc->usageMask & RI_USAGE_TRANSFER_SRC )
+			usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		if( desc->usageMask & RI_USAGE_TRANSFER_DST )
+			usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+		if( desc->usageMask & RI_USAGE_SHADER_RESOURCE )
+			usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+		if( desc->usageMask & RI_USAGE_SHADER_RESOURCE_STORAGE )
+			usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+		if( desc->usageMask & RI_USAGE_COLOR_ATTACHMENT )
+			usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+		if( desc->usageMask & RI_USAGE_DEPTH_STENCIL_ATTACHMENT )
+			usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		if( desc->usageMask & RI_USAGE_SHADING_RATE )
+			usage |= VK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV;
+
+		VkImageCreateFlags createFlags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+		if( desc->cubemap )
+			createFlags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+
+		VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+		info.flags = createFlags;
+		info.imageType = (VkImageType)desc->type; // RI_TEXTURE_1D/2D/3D values match VK_IMAGE_TYPE_1D/2D/3D
+		info.format = RIFormatToVK( desc->format );
+		info.extent.width = desc->width;
+		info.extent.height = desc->height;
+		info.extent.depth = desc->depth;
+		info.mipLevels = desc->mipLevels;
+		info.arrayLayers = desc->arrayLayers;
+		info.samples = (VkSampleCountFlagBits)desc->sampleCount; // RI_SAMPLE_COUNT_N values match VK_SAMPLE_COUNT_N_BIT
+		info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		info.usage = usage;
+		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		VK_ConfigureImageQueueFamilies( &info, dev->queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+
+		VmaAllocationCreateInfo memCreateInfo = { 0 };
+		memCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+
+		if( !VK_WrapResult( vmaCreateImage( dev->vk.vmaAllocator, &info, &memCreateInfo, &tex->vk.image, &tex->vk.allocation, NULL ) ) )
+			return RI_FAIL;
+
+		return RI_SUCCESS;
+	}
+#endif
+	return RI_FAIL;
 }
 
 void FreeRITexture( struct RIDevice_s *dev, struct RITexture_s *tex )
