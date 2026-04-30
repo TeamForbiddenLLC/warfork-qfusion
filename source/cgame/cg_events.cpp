@@ -265,8 +265,10 @@ void CG_LaserBeamEffect( centity_t *cent )
 	}
 
 	// enable continuous flash on the weapon owner
-	if( cg_weaponFlashes->integer )
+	if( cg_weaponFlashes->integer && cg_entities[cent->current.number].current.weapon == WEAP_LASERGUN )
 		cg_entPModels[cent->current.number].flash_time = cg.time + CG_GetWeaponInfo( WEAP_LASERGUN )->flashTime;
+	else
+		cg_entPModels[cent->current.number].flash_time = 0;
 
 	if( sound )
 	{
@@ -390,6 +392,8 @@ static void CG_FireWeaponEvent( int entNum, int weapon, int fireMode )
 			// start barrel rotation or offsetting
 			if( weaponInfo->barrelTime )
 				cg_entPModels[entNum].barrel_time = cg.time + weaponInfo->barrelTime;
+			if( weaponInfo->barrel2Time )
+				cg_entPModels[entNum].barrel2_time = cg.time + weaponInfo->barrel2Time;
 		}
 	}
 	else
@@ -401,6 +405,8 @@ static void CG_FireWeaponEvent( int entNum, int weapon, int fireMode )
 		// start barrel rotation or offsetting
 		if( weaponInfo->barrelTime )
 			cg_entPModels[entNum].barrel_time = cg.time + weaponInfo->barrelTime;
+		if( weaponInfo->barrel2Time )
+			cg_entPModels[entNum].barrel2_time = cg.time + weaponInfo->barrel2Time;
 	}
 
 	// add animation to the player model
@@ -1302,6 +1308,10 @@ void CG_EntityEvent( entity_state_t *ent, int ev, int parm, bool predicted )
 
 			CG_ViewWeapon_RefreshAnimation( &cg.weapon );
 		}
+
+		//resets barrel and flash animations upon weapon switch, prevents random anims
+		cg_entPModels[ent->number].barrel_time = cg_entPModels[ent->number].barrel2_time = cg_entPModels[ent->number].flash_time = 0;
+		cg_entities[ent->number].localEffects[LOCALEFFECT_LASERBEAM] = 0;
 
 		if( viewer )
 			cg.predictedWeaponSwitch = 0;

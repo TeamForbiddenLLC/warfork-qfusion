@@ -79,6 +79,10 @@ typedef struct weaponinfo_s
 	unsigned int barrelTime;
 	float barrelSpeed;
 
+	// barrel2
+	unsigned int barrel2Time;
+	float barrel2Speed;
+
 	// sfx
 	int num_fire_sounds;
 	struct sfx_s *sound_fire[WEAPONINFO_MAX_FIRE_SOUNDS];
@@ -128,6 +132,7 @@ typedef struct
 	// weapon. Not sure about keeping it here
 	unsigned int flash_time;
 	unsigned int barrel_time;
+	unsigned int barrel2_time;
 
 } pmodel_t;
 
@@ -166,7 +171,7 @@ void CG_PModel_ClearEventAnimations( int entNum );
 //
 struct weaponinfo_s *CG_CreateWeaponZeroModel( char *cgs_name );
 struct weaponinfo_s *CG_RegisterWeaponModel( char *cgs_name, int weaponTag );
-void CG_AddWeaponOnTag( entity_t *ent, orientation_t *tag, int weapon, int effects, orientation_t *projectionSource, unsigned int flash_time, unsigned int barrel_time );
+void CG_AddWeaponOnTag( entity_t *ent, orientation_t *tag, int weapon, int effects, orientation_t *projectionSource, unsigned int flash_time, unsigned int barrel_time, unsigned int barrel2_time );
 struct weaponinfo_s *CG_GetWeaponInfo( int currentweapon );
 
 //=================================================

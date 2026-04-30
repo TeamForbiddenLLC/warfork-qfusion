@@ -39,7 +39,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 weaponinfo_t cg_pWeaponModelInfos[WEAP_TOTAL];
 
-static const char *wmPartSufix[] = { "", "_expansion", "_barrel", "_flash", "_hand", NULL };
+static const char *wmPartSufix[] = { "", "_expansion", "_barrel", "_barrel2", "_flash", "_hand", NULL };
 
 /*
 * CG_vWeap_ParseAnimationScript
@@ -68,6 +68,7 @@ static bool CG_vWeap_ParseAnimationScript( weaponinfo_t *weaponinfo, const char 
 
 	// set some defaults
 	weaponinfo->barrelSpeed = 0;
+	weaponinfo->barrel2Speed = 0;
 	weaponinfo->flashFade = true;
 
 	if( !cg_debugWeaponModels->integer )
@@ -122,6 +123,20 @@ static bool CG_vWeap_ParseAnimationScript( weaponinfo_t *weaponinfo, const char 
 
 				if( debug )
 					CG_Printf( "%s time:%i, speed:%.2f\n", S_COLOR_BLUE, (int)weaponinfo->barrelTime, weaponinfo->barrelSpeed, S_COLOR_WHITE );
+			}
+			else if( !Q_stricmp( token, "barrel2" ) ) {
+				if( debug )
+					CG_Printf( "%sScript: barrel2:%s", S_COLOR_BLUE, S_COLOR_WHITE );
+
+				// time
+				i = atoi( COM_ParseExt( &ptr, false ) );
+				weaponinfo->barrel2Time = (unsigned int)( i > 0 ? i : 0 );
+
+				// speed
+				weaponinfo->barrel2Speed = atof( COM_ParseExt( &ptr, false ) );
+
+				if( debug )
+					CG_Printf( "%s time:%i, speed:%.2f\n", S_COLOR_BLUE, (int)weaponinfo->barrel2Time, weaponinfo->barrel2Speed, S_COLOR_WHITE );
 			}
 			else if( !Q_stricmp( token, "flash" ) )
 			{
@@ -278,6 +293,7 @@ static void CG_CreateHandDefaultAnimations( weaponinfo_t *weaponinfo )
 	float defaultfps = 15.0f;
 
 	weaponinfo->barrelSpeed = 0; // default
+	weaponinfo->barrel2Speed = 0;
 
 	// default wsw hand
 	weaponinfo->firstframe[WEAPMODEL_STANDBY] = 0;
@@ -318,7 +334,7 @@ static void CG_CreateHandDefaultAnimations( weaponinfo_t *weaponinfo )
 */
 static void CG_BuildProjectionOrigin( weaponinfo_t *weaponinfo )
 {
-	orientation_t tag, tag_barrel;
+	orientation_t tag, tag_barrel, tag_barrel2;
 	static entity_t	ent;
 
 	if( !weaponinfo )
@@ -357,8 +373,16 @@ static void CG_BuildProjectionOrigin( weaponinfo_t *weaponinfo )
 					tag_barrel.axis,
 					tag.origin,
 					tag.axis );
-				return; // succesfully
+				return; // successfully
 			}
+		}
+		if( CG_GrabTag( &tag_barrel2, &ent, "tag_barrel2" ) && weaponinfo->model[BARREL2] ) {
+			// assign the model to an entity_t, so we can build boneposes
+			memset( &ent, 0, sizeof( ent ) );
+			ent.rtype = RT_MODEL;
+			ent.scale = 1.0f;
+			ent.model = weaponinfo->model[BARREL2];
+			CG_SetBoneposesForTemporaryEntity( &ent );
 		}
 	}
 
@@ -554,7 +578,7 @@ struct weaponinfo_s *CG_GetWeaponInfo( int weapon )
 *
 * Add weapon model(s) positioned at the tag
 */
-void CG_AddWeaponOnTag( entity_t *ent, orientation_t *tag, int weaponid, int effects, orientation_t *projectionSource, unsigned int flash_time, unsigned int barrel_time )
+void CG_AddWeaponOnTag( entity_t *ent, orientation_t *tag, int weaponid, int effects, orientation_t *projectionSource, unsigned int flash_time, unsigned int barrel_time, unsigned int barrel2_time )
 {
 	entity_t weapon;
 	weaponinfo_t *weaponInfo;
@@ -671,6 +695,45 @@ void CG_AddWeaponOnTag( entity_t *ent, orientation_t *tag, int weaponid, int eff
 				CG_AddEntityToScene( &barrel ); // skelmod
 
 			CG_AddShellEffects( &barrel, effects );
+		}
+	}
+
+	// barrel 2 Added for additional rotating detail (eg: double chaingun)
+	if( weaponInfo->model[BARREL2] ) {
+		if( CG_GrabTag( tag, &weapon, "tag_barrel2" ) ) {
+			orientation_t barrel2_recoiled;
+			vec3_t rotangles = { 0, 0, 0 };
+
+			entity_t barrel2;
+			memset( &barrel2, 0, sizeof( barrel2 ) );
+			Vector4Set( barrel2.shaderRGBA, 255, 255, 255, ent->shaderRGBA[3] );
+			barrel2.model = weaponInfo->model[BARREL2];
+			barrel2.scale = ent->scale;
+			barrel2.renderfx = ent->renderfx;
+			barrel2.frame = 0;
+			barrel2.oldframe = 0;
+
+			// rotation
+			if( barrel2_time >= cg.time ) {
+				intensity = (float)( barrel2_time - cg.time ) / (float)weaponInfo->barrel2Time;
+				rotangles[2] = anglemod( 360.0f * weaponInfo->barrel2Speed * intensity * intensity );
+
+				// Check for tag_recoil
+				if( CG_GrabTag( &barrel2_recoiled, &weapon, "tag_recoil2" ) )
+					VectorLerp( tag->origin, intensity, barrel2_recoiled.origin, tag->origin );
+			}
+
+			AnglesToAxis( rotangles, barrel2.axis );
+
+			// barrel requires special tagging
+			CG_PlaceRotatedModelOnTag( &barrel2, &weapon, tag );
+
+			CG_AddColoredOutLineEffect( &barrel2, effects, 0, 0, 0, ent->shaderRGBA[3] );
+
+			if( !( effects & EF_RACEGHOST ) )
+				CG_AddEntityToScene( &barrel2 ); // skelmod
+
+			CG_AddShellEffects( &barrel2, effects );
 		}
 	}
 
