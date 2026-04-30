@@ -401,7 +401,7 @@ void R_RenderScene(const refdef_t *fd )
 
 	R_RenderView(&rsh.frame, fd );
 
-	R_RenderDebugSurface( fd );
+	R_RenderDebugSurface( &rsh.frame, fd );
 
 	R_RenderDebugBounds(&rsh.frame);
 

@@ -770,15 +770,15 @@ bool RB_EnableTriangleOutlines( bool enable )
 		rb.triangleOutlines = enable;
 
 		// OpenGL ES systems don't support glPolygonMode
-//#ifndef GL_ES_VERSION_2_0
-//		if( enable ) {
-//			RB_SetShaderStateMask( 0, GLSTATE_NO_DEPTH_TEST );
-//			qglPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-//		} else {
-//			RB_SetShaderStateMask( ~0, 0 );
-//			qglPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-//		}
-//#endif
+#ifndef GL_ES_VERSION_2_0
+		if( enable ) {
+			RB_SetShaderStateMask( 0, GLSTATE_NO_DEPTH_TEST );
+			//qglPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+		} else {
+			RB_SetShaderStateMask( ~0, 0 );
+			//qglPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+		}
+#endif
 	}
 
 	return oldVal;

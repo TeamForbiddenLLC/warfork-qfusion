@@ -1423,7 +1423,7 @@ const msurface_t *R_GetDebugSurface( void )
 	return debugSurface;
 }
 
-void R_RenderDebugSurface( const refdef_t *fd )
+void R_RenderDebugSurface( struct FrameState_s *frame, const refdef_t *fd )
 {
 	rtrace_t tr;
 	vec3_t forward;
@@ -1448,9 +1448,9 @@ void R_RenderDebugSurface( const refdef_t *fd )
 			
 			if( R_AddSurfToDrawList( rn.meshlist, R_NUM2ENT(tr.ent), NULL, surf->shader, 0, 0, NULL, surf->drawSurf ) ) {
 				if( rn.refdef.rdflags & RDF_FLIPPED ) {
-					RB_FlipFrontFace(NULL);
+					RB_FlipFrontFace(frame);
 				}
-				
+
 				if( r_speeds->integer == 5 ) {
 					// VBO debug mode
 					R_AddVBOSlice( surf->drawSurf - rsh.worldBrushModel->drawSurfaces,
@@ -1463,11 +1463,11 @@ void R_RenderDebugSurface( const refdef_t *fd )
 								  surf->mesh->numVerts, surf->mesh->numElems,
 								  surf->firstDrawSurfVert, surf->firstDrawSurfElem );
 				}
-				
-				R_DrawOutlinedSurfaces( NULL, rn.meshlist );
-				
+
+				R_DrawOutlinedSurfaces( frame, rn.meshlist );
+
 				if( rn.refdef.rdflags & RDF_FLIPPED )
-					RB_FlipFrontFace(NULL);
+					RB_FlipFrontFace(frame);
 				
 				debugSurf = surf;
 			}
