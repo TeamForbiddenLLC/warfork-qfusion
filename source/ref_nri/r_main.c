@@ -314,7 +314,7 @@ void R_BatchSpriteSurf( struct FrameState_s* cmd, const entity_t *e, const shade
 	mesh.colorsArray[1] = NULL;
 	mesh.sVectorsArray = NULL;
 
-	RB_AddDynamicMesh( cmd, e, shader, fog, portalSurface, 0, &mesh, GL_TRIANGLES, 0.0f, 0.0f );
+	RB_AddDynamicMesh( cmd, e, shader, fog, portalSurface, 0, &mesh, RI_TOPOLOGY_TRIANGLE_LIST, 0.0f, 0.0f );
 }
 
 /*
@@ -421,7 +421,7 @@ void R_DrawNullSurf( const entity_t *e, const shader_t *shader, const mfog_t *fo
 		return;
 	}
 
-	RB_BindVBO( rsh.nullVBO->index, GL_LINES );
+	RB_BindVBO( rsh.nullVBO->index, RI_TOPOLOGY_LINE_LIST );
 
 	RB_DrawElements(NULL, 0, 6, 0, 6, 0, 0, 0, 0 );
 }
@@ -571,7 +571,7 @@ void R_DrawRotatedStretchPic(struct FrameState_s* cmd, int x, int y, int w, int 
 		}
 	}
 
-	RB_AddDynamicMesh( cmd, NULL, shader, NULL, NULL, 0, &pic_mesh, GL_TRIANGLES, 0.0f, 0.0f );
+	RB_AddDynamicMesh( cmd, NULL, shader, NULL, NULL, 0, &pic_mesh, RI_TOPOLOGY_TRIANGLE_LIST, 0.0f, 0.0f );
 }
 
 /*
@@ -1423,7 +1423,7 @@ const msurface_t *R_GetDebugSurface( void )
 	return debugSurface;
 }
 
-void R_RenderDebugSurface( const refdef_t *fd )
+void R_RenderDebugSurface( struct FrameState_s *frame, const refdef_t *fd )
 {
 	rtrace_t tr;
 	vec3_t forward;
@@ -1448,9 +1448,9 @@ void R_RenderDebugSurface( const refdef_t *fd )
 			
 			if( R_AddSurfToDrawList( rn.meshlist, R_NUM2ENT(tr.ent), NULL, surf->shader, 0, 0, NULL, surf->drawSurf ) ) {
 				if( rn.refdef.rdflags & RDF_FLIPPED ) {
-					RB_FlipFrontFace(NULL);
+					RB_FlipFrontFace(frame);
 				}
-				
+
 				if( r_speeds->integer == 5 ) {
 					// VBO debug mode
 					R_AddVBOSlice( surf->drawSurf - rsh.worldBrushModel->drawSurfaces,
@@ -1463,11 +1463,11 @@ void R_RenderDebugSurface( const refdef_t *fd )
 								  surf->mesh->numVerts, surf->mesh->numElems,
 								  surf->firstDrawSurfVert, surf->firstDrawSurfElem );
 				}
-				
-				R_DrawOutlinedSurfaces( NULL, rn.meshlist );
-				
+
+				R_DrawOutlinedSurfaces( frame, rn.meshlist );
+
 				if( rn.refdef.rdflags & RDF_FLIPPED )
-					RB_FlipFrontFace(NULL);
+					RB_FlipFrontFace(frame);
 				
 				debugSurf = surf;
 			}

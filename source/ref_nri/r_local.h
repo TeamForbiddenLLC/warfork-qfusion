@@ -65,6 +65,7 @@ enum
 
 #include "r_math.h"
 #include "r_public.h"
+#include "qgl_types.h"
 #include "r_vattribs.h"
 
 typedef struct
@@ -661,7 +662,7 @@ void		R_Set2DMode(struct FrameState_s* cmd, bool enable );
 void		R_RenderView(struct FrameState_s* frame, const refdef_t *fd );
 const msurface_t *R_GetDebugSurface( void );
 const char *R_WriteSpeedsMessage( char *out, size_t size );
-void		R_RenderDebugSurface( const refdef_t *fd );
+void		R_RenderDebugSurface( struct FrameState_s *frame, const refdef_t *fd );
 
 
 /**
