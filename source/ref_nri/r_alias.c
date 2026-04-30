@@ -598,7 +598,7 @@ void R_DrawAliasSurf(struct FrameState_s* cmd, const entity_t *e, const shader_t
 
 	if( aliasmesh->vbo != NULL && !framenum && !oldframenum )
 	{
-		// RB_BindVBO( aliasmesh->vbo->index, GL_TRIANGLES );
+		// RB_BindVBO( aliasmesh->vbo->index, RI_TOPOLOGY_TRIANGLE_LIST );
 		cmd->pipeline.numStreams = 1;
 		cmd->pipeline.streams[0] = (struct frame_cmd_vertex_stream_s ) {
 			.stride = aliasmesh->vbo->vertexSize,
@@ -706,7 +706,7 @@ void R_DrawAliasSurf(struct FrameState_s* cmd, const entity_t *e, const shader_t
 		if( !calcSTVectors )
 			dynamicMesh.sVectorsArray = aliasmesh->sVectorsArray;
 
-		RB_AddDynamicMesh(cmd, e, shader, fog, portalSurface, shadowBits, &dynamicMesh, GL_TRIANGLES, 0.0f, 0.0f );
+		RB_AddDynamicMesh(cmd, e, shader, fog, portalSurface, shadowBits, &dynamicMesh, RI_TOPOLOGY_TRIANGLE_LIST, 0.0f, 0.0f );
 
 		RB_FlushDynamicMeshes(cmd);
 	}

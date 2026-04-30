@@ -39,6 +39,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "stb_ds.h"
 #include "stb_image.h"
 #include <qstr.h>
+#include "qgl_types.h"
 
 #include "tracy/TracyC.h"
 
@@ -967,22 +968,9 @@ static void __R_CopyTextureDataTexture( struct image_s *image, int layer, int mi
 
 static uint16_t __R_calculateMipMapLevel( int flags, int width, int height, uint32_t minMipSize )
 {
-	if( !( flags & IT_NOPICMIP ) ) {
-		// let people sample down the sky textures for speed
-		uint16_t mip = 1;
-		int picmip = ( flags & IT_SKY ) ? r_skymip->integer : r_picmip->integer;
-		while( ( mip < picmip ) && ( ( width > minMipSize ) || ( height > minMipSize ) ) ) {
-			++mip;
-			width >>= 1;
-			height >>= 1;
-			if( !width )
-				width = 1;
-			if( !height )
-				height = 1;
-		}
-		return max( 1, mip );
-	}
-	return max( 1, ( flags & IT_NOMIPMAP ) ? 1 : ceil( log2( max( width, height ) ) ) );
+	if( flags & IT_NOMIPMAP )
+		return 1;
+	return max( 1, (int)ceil( log2( max( width, height ) ) ) );
 }
 
 struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int height, int flags, int minmipsize, int tags, int samples )
@@ -1640,7 +1628,8 @@ void R_ScreenShot( const char *filename, int x, int y, int width, int height, bo
 	imginfo.samples = 3;
 	imginfo.pixels = flipped ? flipped : buffer;
 
-	qglReadPixels( 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer );
+	assert(false);
+	//qglReadPixels( 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer );
 
 	rgb = rgba = buffer;
 	while( (size_t)( rgb - buffer ) < size ) {

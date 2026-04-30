@@ -102,7 +102,7 @@ void R_BatchCoronaSurf(struct FrameState_s* cmd,  const entity_t *e, const shade
 	mesh.stArray = texcoords;
 	mesh.colorsArray[0] = colors;
 
-	RB_AddDynamicMesh(cmd, e, shader, fog, portalSurface, 0, &mesh, GL_TRIANGLES, 0.0f, 0.0f );
+	RB_AddDynamicMesh(cmd, e, shader, fog, portalSurface, 0, &mesh, RI_TOPOLOGY_TRIANGLE_LIST, 0.0f, 0.0f );
 }
 
 /*

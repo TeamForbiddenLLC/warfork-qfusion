@@ -300,7 +300,7 @@ static void R_DrawSkyBoxSide(struct FrameState_s* cmd, const skydome_t *skydome,
 	FR_CmdSetVertexBuffer(cmd, 0, &skydome->linearVbos[side]->vertexBuffer, 0);
 	FR_CmdSetIndexBuffer(cmd, &skydome->linearVbos[side]->indexBuffer, sizeof(elem_t) * visSide->firstElem, RI_INDEX_TYPE_16);
 
-	//RB_BindVBO( skydome->linearVbos[side]->index, GL_TRIANGLES );
+	//RB_BindVBO( skydome->linearVbos[side]->index, RI_TOPOLOGY_TRIANGLE_LIST );
 
 	RB_SetSkyboxShader( skyboxShader );
 
@@ -467,7 +467,7 @@ void R_DrawSkySurf( struct FrameState_s* cmd,const entity_t *e, const shader_t *
 				RB_DrawShadedElements_2(cmd, 0, visSide->numVerts, 0, visSide->numElems, 
 						0, 0, 0, 0);
 
-				// RB_BindVBO( skydome->sphereVbos[i]->index, GL_TRIANGLES );
+				// RB_BindVBO( skydome->sphereVbos[i]->index, RI_TOPOLOGY_TRIANGLE_LIST );
 
 				// RB_DrawElements(NULL, visSide->firstVert, visSide->numVerts, visSide->firstElem, visSide->numElems, 0, 0, 0, 0 );
 			}
