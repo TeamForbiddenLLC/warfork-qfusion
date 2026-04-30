@@ -73,7 +73,7 @@ typedef struct
 	unsigned int shadowBits;
 	vattribmask_t vattribs; // based on the fields above - cached to avoid rebinding
 	enum dynamic_stream_e dynamicStreamIdx;
-	int primitive;
+	enum RITopology_e primitive;
 	vec2_t offset;
 	int scissor[4];
 
@@ -149,7 +149,7 @@ typedef struct r_backend_s
 
 	vattribmask_t currentVAttribs;
 
-	int primitive;
+	enum RITopology_e primitive;
 	int currentVBOId;
 	mesh_vbo_t *currentVBO;
 

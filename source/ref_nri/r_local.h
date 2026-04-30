@@ -65,6 +65,7 @@ enum
 
 #include "r_math.h"
 #include "r_public.h"
+#include "qgl_types.h"
 #include "r_vattribs.h"
 
 typedef struct

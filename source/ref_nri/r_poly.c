@@ -41,7 +41,7 @@ void R_BatchPolySurf( struct FrameState_s* cmd,const entity_t *e, const shader_t
 	mesh.colorsArray[1] = NULL;
 	mesh.sVectorsArray = NULL;
 
-	RB_AddDynamicMesh( cmd, e, shader, fog, portalSurface, shadowBits, &mesh, GL_TRIANGLES, 0.0f, 0.0f );
+	RB_AddDynamicMesh( cmd, e, shader, fog, portalSurface, shadowBits, &mesh, RI_TOPOLOGY_TRIANGLE_LIST, 0.0f, 0.0f );
 }
 
 /*
@@ -111,7 +111,7 @@ void R_DrawStretchPoly(struct FrameState_s* cmd, const poly_t *poly, float x_off
 		mesh.xyzArray = translated;
 	}
 
-	RB_AddDynamicMesh( cmd, NULL, poly->shader, NULL, NULL, 0, &mesh, GL_TRIANGLES, x_offset, y_offset );
+	RB_AddDynamicMesh( cmd, NULL, poly->shader, NULL, NULL, 0, &mesh, RI_TOPOLOGY_TRIANGLE_LIST, x_offset, y_offset );
 }
 
 //==================================================================================

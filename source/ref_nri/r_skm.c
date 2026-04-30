@@ -1229,7 +1229,7 @@ void R_DrawSkeletalSurf(struct FrameState_s* cmd, const entity_t *e, const shade
 
 	if( bp == oldbp && !framenum && skmesh->vbo != NULL ) {
 		// fastpath: render static frame 0 as is
-		RB_BindVBO( skmesh->vbo->index, GL_TRIANGLES );
+		RB_BindVBO( skmesh->vbo->index, RI_TOPOLOGY_TRIANGLE_LIST );
 
 		RB_DrawShadedElements_2(cmd, 0, skmesh->numverts, 0, skmesh->numtris * 3, 
 			0, skmesh->numverts, 0, skmesh->numtris * 3 );
@@ -1349,7 +1349,7 @@ void R_DrawSkeletalSurf(struct FrameState_s* cmd, const entity_t *e, const shade
 		0, skmesh->numverts, 0, skmesh->numtris * 3);
 	// if( hardwareTransform )
 	// {
-		// RB_BindVBO( skmesh->vbo->index, GL_TRIANGLES );
+		// RB_BindVBO( skmesh->vbo->index, RI_TOPOLOGY_TRIANGLE_LIST );
 		// RB_DrawElements(cmd, 0, skmesh->numverts, 0, skmesh->numtris * 3, 
 		// 	0, skmesh->numverts, 0, skmesh->numtris * 3 );
 	// }
@@ -1381,7 +1381,7 @@ void R_DrawSkeletalSurf(struct FrameState_s* cmd, const entity_t *e, const shade
 
 	// 	dynamicMesh.stArray = skmesh->stArray;
 
-	// 	RB_AddDynamicMesh( cmd, e, shader, fog, portalSurface, shadowBits, &dynamicMesh, GL_TRIANGLES, 0.0f, 0.0f );
+	// 	RB_AddDynamicMesh( cmd, e, shader, fog, portalSurface, shadowBits, &dynamicMesh, RI_TOPOLOGY_TRIANGLE_LIST, 0.0f, 0.0f );
 
 	// 	RB_FlushDynamicMeshes(cmd);
 	// }

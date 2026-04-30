@@ -98,7 +98,7 @@ void RB_Shutdown( void )
  */
 void RB_BeginRegistration( void )
 {
-	RB_BindVBO( 0, 0 );
+	RB_BindVBO( 0, RI_TOPOLOGY_TRIANGLE_LIST );
 }
 
 /*
@@ -106,7 +106,7 @@ void RB_BeginRegistration( void )
  */
 void RB_EndRegistration( void )
 {
-	RB_BindVBO( 0, 0 );
+	RB_BindVBO( 0, RI_TOPOLOGY_TRIANGLE_LIST );
 }
 
 /*
@@ -130,7 +130,7 @@ void RB_BeginFrame( void )
 
 	// start fresh each frame
 	RB_SetShaderStateMask( ~0, 0 );
-	RB_BindVBO( 0, 0 );
+	RB_BindVBO( 0, RI_TOPOLOGY_TRIANGLE_LIST );
 }
 
 void RB_EndFrame( void ) {}
@@ -169,7 +169,7 @@ void RB_DepthOffset( bool enable )
 	if( depthmin != depthmax ) {
 		if( !enable )
 			depthmin += 4.0f / 65535.0f;
-		qglDepthRange( depthmin, depthmax );
+		//qglDepthRange( depthmin, depthmax );
 	}
 }
 
@@ -178,7 +178,7 @@ void RB_DepthOffset( bool enable )
  */
 void RB_ClearDepth( float depth )
 {
-	qglClearDepth( depth );
+	//qglClearDepth( depth );
 }
 
 /*
@@ -356,7 +356,7 @@ int RB_BoundFrameBufferObject( void )
 /*
  * RB_BindVBO
  */
-void RB_BindVBO( int id, int primitive )
+void RB_BindVBO( int id, enum RITopology_e primitive )
 {
 	mesh_vbo_t *vbo;
 
@@ -380,7 +380,7 @@ void RB_AddDynamicMesh( struct FrameState_s *cmd,
 						const struct portalSurface_s *portalSurface,
 						unsigned int shadowBits,
 						const struct mesh_s *mesh,
-						int primitive,
+						enum RITopology_e primitive,
 						float x_offset,
 						float y_offset )
 {
@@ -393,7 +393,7 @@ void RB_AddDynamicMesh( struct FrameState_s *cmd,
 
 	// can't (and shouldn't because that would break batching) merge strip draw calls
 	// (consider simply disabling merge later in this case if models with tristrips are added in the future, but that's slow)
-	assert( ( primitive == GL_TRIANGLES ) || ( primitive == GL_LINES ) );
+	assert( ( primitive == RI_TOPOLOGY_TRIANGLE_LIST ) || ( primitive == RI_TOPOLOGY_LINE_LIST ) );
 
 	if( !numElems ) {
 		numElems = ( max( numVerts, 2 ) - 2 ) * 3;
@@ -565,7 +565,7 @@ void RB_AddDynamicMesh( struct FrameState_s *cmd,
 	if( trifan ) {
 		R_BuildTrifanElements( vertexStartIdx, numElems, (elem_t *)( eleMemory ) );
 	} else {
-		if( primitive == GL_TRIANGLES ) {
+		if( primitive == RI_TOPOLOGY_TRIANGLE_LIST ) {
 			R_CopyOffsetTriangles( mesh->elems, numElems, vertexStartIdx, (elem_t *)( (uint8_t *)eleMemory ) );
 		} else {
 			R_CopyOffsetElements( mesh->elems, numElems, vertexStartIdx, (elem_t *)( (uint8_t *)eleMemory ) );
@@ -609,14 +609,7 @@ void RB_FlushDynamicMeshes( struct FrameState_s *cmd )
 		cmd->pipeline.numStreams = 1;
 		cmd->pipeline.streams[0] = (struct frame_cmd_vertex_stream_s){ .stride = draw->layout->vertexStride, .bindingSlot = 0 };
 		cmd->pipeline.numAttribs = 0;
-		switch( draw->primitive ) {
-			case GL_LINES:
-				cmd->pipeline.topology = RI_TOPOLOGY_LINE_LIST;
-				break;
-			default:
-				cmd->pipeline.topology = RI_TOPOLOGY_TRIANGLE_LIST;
-				break;
-		}
+		cmd->pipeline.topology = draw->primitive;
 		R_FillNriVertexAttribLayout( draw->layout, cmd->pipeline.attribs, &cmd->pipeline.numAttribs );
 		RB_BindShader( cmd, draw->entity, draw->shader, draw->fog );
 		RB_SetPortalSurface( draw->portalSurface );
@@ -777,15 +770,15 @@ bool RB_EnableTriangleOutlines( bool enable )
 		rb.triangleOutlines = enable;
 
 		// OpenGL ES systems don't support glPolygonMode
-#ifndef GL_ES_VERSION_2_0
-		if( enable ) {
-			RB_SetShaderStateMask( 0, GLSTATE_NO_DEPTH_TEST );
-			qglPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-		} else {
-			RB_SetShaderStateMask( ~0, 0 );
-			qglPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-		}
-#endif
+//#ifndef GL_ES_VERSION_2_0
+//		if( enable ) {
+//			RB_SetShaderStateMask( 0, GLSTATE_NO_DEPTH_TEST );
+//			qglPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+//		} else {
+//			RB_SetShaderStateMask( ~0, 0 );
+//			qglPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+//		}
+//#endif
 	}
 
 	return oldVal;
