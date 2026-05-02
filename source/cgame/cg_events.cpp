@@ -381,32 +381,35 @@ static void CG_FireWeaponEvent( int entNum, int weapon, int fireMode )
 	
 	if( weapon == WEAP_GUNBLADE ) // gunblade is special
 	{
-		if( fireMode == FIRE_MODE_STRONG )
-		{
-			// light flash
+		if( fireMode == FIRE_MODE_STRONG ) {
 			if( cg_weaponFlashes->integer && weaponInfo->flashTime )
 				cg_entPModels[entNum].flash_time = cg.time + weaponInfo->flashTime;
+		} else {
+			if( weaponInfo->barrelInfo.time ) {
+				if( cg_entPModels[entNum].barrel.time <= cg.time )
+					cg_entPModels[entNum].barrel.startTime = cg.time;
+				cg_entPModels[entNum].barrel.time = cg.time + weaponInfo->barrelInfo.time;
+			}
+			if( weaponInfo->barrel2Info.time ) {
+				if( cg_entPModels[entNum].barrel2.time <= cg.time )
+					cg_entPModels[entNum].barrel2.startTime = cg.time;
+				cg_entPModels[entNum].barrel2.time = cg.time + weaponInfo->barrel2Info.time;
+			}
 		}
-		else
-		{
-			// start barrel rotation or offsetting
-			if( weaponInfo->barrelTime )
-				cg_entPModels[entNum].barrel_time = cg.time + weaponInfo->barrelTime;
-			if( weaponInfo->barrel2Time )
-				cg_entPModels[entNum].barrel2_time = cg.time + weaponInfo->barrel2Time;
-		}
-	}
-	else
-	{
-		// light flash
+	} else {
 		if( cg_weaponFlashes->integer && weaponInfo->flashTime )
 			cg_entPModels[entNum].flash_time = cg.time + weaponInfo->flashTime;
 
-		// start barrel rotation or offsetting
-		if( weaponInfo->barrelTime )
-			cg_entPModels[entNum].barrel_time = cg.time + weaponInfo->barrelTime;
-		if( weaponInfo->barrel2Time )
-			cg_entPModels[entNum].barrel2_time = cg.time + weaponInfo->barrel2Time;
+		if( weaponInfo->barrelInfo.time ) {
+			if( cg_entPModels[entNum].barrel.time <= cg.time )
+				cg_entPModels[entNum].barrel.startTime = cg.time;
+			cg_entPModels[entNum].barrel.time = cg.time + weaponInfo->barrelInfo.time;
+		}
+		if( weaponInfo->barrel2Info.time ) {
+			if( cg_entPModels[entNum].barrel2.time <= cg.time )
+				cg_entPModels[entNum].barrel2.startTime = cg.time;
+			cg_entPModels[entNum].barrel2.time = cg.time + weaponInfo->barrel2Info.time;
+		}
 	}
 
 	// add animation to the player model
@@ -1310,8 +1313,9 @@ void CG_EntityEvent( entity_state_t *ent, int ev, int parm, bool predicted )
 		}
 
 		//resets barrel and flash animations upon weapon switch, prevents random anims
-		cg_entPModels[ent->number].barrel_time = cg_entPModels[ent->number].barrel2_time = cg_entPModels[ent->number].flash_time = 0;
-		cg_entities[ent->number].localEffects[LOCALEFFECT_LASERBEAM] = 0;
+		memset( &cg_entPModels[ent->number].barrel, 0, sizeof( cg_barrelstate_t ) );
+		memset( &cg_entPModels[ent->number].barrel2, 0, sizeof( cg_barrelstate_t ) );
+		cg_entPModels[ent->number].flash_time = 0;
 
 		if( viewer )
 			cg.predictedWeaponSwitch = 0;

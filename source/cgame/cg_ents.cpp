@@ -225,8 +225,8 @@ static void CG_NewPacketEntityState( entity_state_t *state )
 				// if it's a player and new in PVS, remove the old power time
 				// This is way far from being the right thing. But will make it less bad for now
 				cg_entPModels[state->number].flash_time = cg.time;
-				cg_entPModels[state->number].barrel_time = cg.time;
-				cg_entPModels[state->number].barrel2_time = cg.time;
+				cg_entPModels[state->number].barrel.time = cg.time;
+				cg_entPModels[state->number].barrel2.time = cg.time;
 			}
 		}
 		else // shuffle the last state to previous

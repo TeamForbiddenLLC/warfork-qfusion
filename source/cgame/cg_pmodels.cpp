@@ -54,7 +54,7 @@ void CG_ResetPModels( void )
 
 	for( i = 0; i < MAX_EDICTS; i++ )
 	{
-		cg_entPModels[i].flash_time = cg_entPModels[i].barrel_time = cg_entPModels[i].barrel2_time = 0;
+		cg_entPModels[i].flash_time = cg_entPModels[i].barrel.time = cg_entPModels[i].barrel2.time = 0;
 		memset( &cg_entPModels[i].animState, 0, sizeof( gs_pmodel_animationstate_t ) );
 	}
 	memset( &cg.weapon, 0, sizeof( cg.weapon ) );
@@ -1320,5 +1320,5 @@ void CG_AddPModel( centity_t *cent )
 
 	// add weapon model
 	if( cent->current.weapon && CG_GrabTag( &tag_weapon, &cent->ent, "tag_weapon" ) )
-		CG_AddWeaponOnTag( &cent->ent, &tag_weapon, cent->current.weapon, cent->effects, &pmodel->projectionSource, pmodel->flash_time, pmodel->barrel_time, pmodel->barrel2_time );
+		CG_AddWeaponOnTag( &cent->ent, &tag_weapon, cent->current.weapon, cent->effects, &pmodel->projectionSource, pmodel->flash_time, cg_entPModels[cent->current.number].barrel, cg_entPModels[cent->current.number].barrel2 );
 }
