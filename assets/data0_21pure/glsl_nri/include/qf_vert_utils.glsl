@@ -138,13 +138,13 @@ void QF_TransformVerts(inout vec4 Position, inout vec3 Normal, inout vec3 Tangen
 		#if defined(DEFORMV_WAVE)
 		{
 			vec4 arg = DEFORMV_WAVE_CONSTANT;
-			Position.xyz += DEFORMV_WAVE_FUNC(frame.shaderTime,arg.x,arg.y,arg.z+(arg.w > 0 ? arg.x : 0.0)*(Position.x+Position.y+Position.z),arg.w) * Normal.xyz;
+			Position.xyz += DEFORMV_WAVE_FUNC(frame.shaderTime, arg.x, arg.y, arg.z + DEFORMV_WAVE_DIVISOR * (Position.x + Position.y + Position.z), arg.w) * Normal.xyz;
 		}
 		#endif
 		#if defined(DEFORMV_MOVE)
 		{
 			vec4 arg = DEFORMV_MOVE_CONSTANT;
-			Position.xyz += DEFORMV_MOVE_FUNC(frame.shaderTime,arg.x,arg.y,arg.z,arg.w) * vec3(arg.x, arg.y, arg.z);
+			Position.xyz += DEFORMV_MOVE_FUNC(frame.shaderTime, arg.x, arg.y, arg.z, arg.w) * DEFORMV_MOVE_DIRECTION;
 		}
 		#endif
 		#if defined(DEFORMV_BULGE)

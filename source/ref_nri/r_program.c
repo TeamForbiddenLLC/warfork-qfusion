@@ -135,7 +135,6 @@ static void __appendGLSLDeformv( struct QStr *str, const deformv_t *deformv, int
 	if( !numDeforms ) {
 		return;
 	}
-
 	const int funcType = deformv->func.type;
 	for( size_t i = 0; i < numDeforms; i++, deformv++ ) {
 		switch( deformv->type ) {
@@ -144,22 +143,38 @@ static void __appendGLSLDeformv( struct QStr *str, const deformv_t *deformv, int
 					break;
 				qStrAppendSlice( str, qCToStrRef( "#define DEFORMV_WAVE 1 \n" ) );
 				qstrcatfmt( str, "#define DEFORMV_WAVE_FUNC %s \n", funcs[funcType] );
-				qstrcatprintf( str, "#define DEFORMV_WAVE_CONSTANT vec4(%f,%f,%f,%f) \n", deformv->func.args[0], deformv->func.args[1], deformv->func.args[2], deformv->func.args[3] );
+				qstrcatprintf( str, "#define DEFORMV_WAVE_CONSTANT vec4(%f,%f,%f,%f) \n",
+							   deformv->func.args[0],	// base
+							   deformv->func.args[1],	// amplitude
+							   deformv->func.args[2],	// phase
+							   deformv->func.args[3] ); // frequency
+				qstrcatprintf( str, "#define DEFORMV_WAVE_DIVISOR %f \n",
+							   deformv->args[0] ); // spatial divisor (1.0 / wavelength)
 				break;
 			}
 			case DEFORMV_MOVE: {
 				if( funcType <= SHADER_FUNC_NONE || funcType > numSupportedFuncs || !funcs[funcType] )
 					break;
-
 				qStrAppendSlice( str, qCToStrRef( "#define DEFORMV_MOVE 1 \n" ) );
 				qstrcatfmt( str, "#define DEFORMV_MOVE_FUNC %s \n", funcs[funcType] );
-				qstrcatprintf( str, "#define DEFORMV_MOVE_CONSTANT vec4(%f,%f,%f,%f) \n", deformv->func.args[0], deformv->func.args[1], deformv->func.args[2], deformv->func.args[3] );
-
+				qstrcatprintf( str, "#define DEFORMV_MOVE_CONSTANT vec4(%f,%f,%f,%f) \n",
+							   deformv->func.args[0],	// base
+							   deformv->func.args[1],	// amplitude
+							   deformv->func.args[2],	// phase
+							   deformv->func.args[3] ); // frequency
+				qstrcatprintf( str, "#define DEFORMV_MOVE_DIRECTION vec3(%f,%f,%f) \n",
+							   deformv->args[0],   // move x
+							   deformv->args[1],   // move y
+							   deformv->args[2] ); // move z
 				break;
 			}
 			case DEFORMV_BULGE:
 				qStrAppendSlice( str, qCToStrRef( "#define DEFORMV_BULGE 1 \n" ) );
-				qstrcatprintf( str, "#define DEFORMV_BULGE_CONSTANT vec4(%f,%f,%f,%f) \n", deformv->func.args[0], deformv->func.args[1], deformv->func.args[2], deformv->func.args[3] );
+				qstrcatprintf( str, "#define DEFORMV_BULGE_CONSTANT vec4(%f,%f,%f,%f) \n",
+							   deformv->args[0],   // width
+							   deformv->args[1],   // height
+							   deformv->args[2],   // speed
+							   deformv->args[3] ); // phase
 				break;
 			case DEFORMV_AUTOSPRITE:
 				qStrAppendSlice( str, qCToStrRef( "#define DEFORMV_AUTOSPRITE 1 \n" ) );
