@@ -327,6 +327,7 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 
 	memset( rrf.customColors, 0, sizeof( rrf.customColors ) );
 
+	RB_Shutdown();
 	RB_Init();
 
 	TracyCZoneEnd( ctx );
@@ -385,8 +386,6 @@ void RF_Shutdown( bool verbose )
 
 	RB_Shutdown();
 
-	// R_ExitResourceUpload();
-
 	R_DisposeScene( &rsc );
 
 	for( size_t i = 0; i < NUMBER_FRAMES_FLIGHT; i++ ) {
@@ -395,25 +394,9 @@ void RF_Shutdown( bool verbose )
 		for( size_t i = 0; i < arrlen( frameSet->freeList ); i++ ) {
 			FreeRIFree( &rsh.device, &frameSet->freeList[i] );
 		}
-		//struct RIPool_s framePool = { 0 };
-		//framePool.vk.pool = frameSet->vk.pool;
-		//for( size_t i = 0; i < arrlen( frameSet->secondaryCmd ); i++ ) {
-		//	FreeRICmd( &rsh.device, &frameSet->secondaryCmd[i], &framePool );
-		//}
-		//FreeRICmd( &rsh.device, &frameSet->primaryCmd, &framePool );
-		//FreeRICmd( &rsh.device, &frameSet->backBufferCmd, &framePool );
-
-//#if ( DEVICE_IMPL_VULKAN )
-//		vkDestroyCommandPool( rsh.device.vk.device, frameSet->vk.pool, NULL );
-//#endif
 		arrfree( frameSet->freeList );
-		//arrfree( frameSet->secondaryCmd );
 		memset( frameSet, 0, sizeof( struct r_frame_set_s ) );
 	}
-//#if ( DEVICE_IMPL_VULKAN )
-//	vkDestroySemaphore( rsh.device.vk.device, rsh.vk.frameSemaphore, NULL );
-//#endif
-
 	__ShutdownSwapchainTexture();
 
 	ri.Mutex_Destroy( &rf.speedsMsgLock );
@@ -424,7 +407,6 @@ void RF_Shutdown( bool verbose )
 	R_WIN_Shutdown();
 	FreeRIDevice( &rsh.device );
 	ShutdownRIRenderer( &rsh.renderer );
-	// R_FreeNriBackend(&rsh.nri);
 }
 
 static void RF_CheckCvars( void )
