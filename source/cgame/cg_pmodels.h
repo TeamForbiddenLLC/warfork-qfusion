@@ -35,6 +35,14 @@ extern cvar_t *cg_gunbob;
 extern cvar_t *cg_gun_fov;
 extern cvar_t *cg_handOffset;
 
+typedef struct {
+	unsigned int time;
+	unsigned int startTime;
+	float speed;
+	unsigned int initialDelay;
+	unsigned int recoilDelay;
+} cg_barrelstate_t;
+
 enum
 {
 	WEAPMODEL_NOANIM,
@@ -75,9 +83,8 @@ typedef struct weaponinfo_s
 	float flashRadius;
 	vec3_t flashColor;
 
-	// barrel
-	unsigned int barrelTime;
-	float barrelSpeed;
+	cg_barrelstate_t barrelInfo;
+	cg_barrelstate_t barrel2Info;
 
 	// sfx
 	int num_fire_sounds;
@@ -127,7 +134,8 @@ typedef struct
 	orientation_t projectionSource;     // for projectiles
 	// weapon. Not sure about keeping it here
 	unsigned int flash_time;
-	unsigned int barrel_time;
+	cg_barrelstate_t barrel;
+	cg_barrelstate_t barrel2;
 
 } pmodel_t;
 
@@ -166,7 +174,7 @@ void CG_PModel_ClearEventAnimations( int entNum );
 //
 struct weaponinfo_s *CG_CreateWeaponZeroModel( char *cgs_name );
 struct weaponinfo_s *CG_RegisterWeaponModel( char *cgs_name, int weaponTag );
-void CG_AddWeaponOnTag( entity_t *ent, orientation_t *tag, int weapon, int effects, orientation_t *projectionSource, unsigned int flash_time, unsigned int barrel_time );
+void CG_AddWeaponOnTag( entity_t *ent, orientation_t *tag, int weapon, int effects, orientation_t *projectionSource, unsigned int flash_time, cg_barrelstate_t barrel, cg_barrelstate_t barrel2 );
 struct weaponinfo_s *CG_GetWeaponInfo( int currentweapon );
 
 //=================================================
