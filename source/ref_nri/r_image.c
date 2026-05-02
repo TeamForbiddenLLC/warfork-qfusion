@@ -96,6 +96,7 @@ static void __FreeGPUImageData( struct image_s *image )
 		freeSlot.vkImageView = image->binding.vk.image.imageView;
 		arrpush( activeset->freeList, freeSlot );
 		memset( &image->binding, 0, sizeof( struct RIDescriptor_s ) );
+		image->vk.vmaAlloc = VK_NULL_HANDLE;
 	}
 #endif
 }
@@ -1178,8 +1179,9 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 
 		info.pQueueFamilyIndices = queueFamilies;
 		VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
-		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		if( !VK_WrapResult( vkCreateImage( rsh.device.vk.device, &info, NULL, &image->handle.vk.image ) ) ) {
+		VmaAllocationCreateInfo mem_reqs = { 0 };
+		mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+		if( !VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &image->handle.vk.image, &image->vk.vmaAlloc, NULL ) ) ) {
 			ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name.buf );
 			__FreeImage( image );
 			image = NULL;
