@@ -337,6 +337,11 @@ static void CL_CheckForResend( void )
 			CL_Disconnect( "Connection timed out" );
 			return;
 		}
+		// SDR sockets open asynchronously via EVT_P2P_CONNECTION_CHANGED;
+		// don't transmit until then. Retries aren't consumed so the user
+		// still gets the full window before the timeout above fires.
+		if( !cls.socket || !cls.socket->open )
+			return;
 		cls.connect_count++;
 		cls.connect_time = realtime; // for retransmit requests
 
@@ -2268,7 +2273,7 @@ static void CL_InitLocal( void )
 	cl_masterservers =	Cvar_Get( "masterservers", DEFAULT_MASTER_SERVERS_IPS, 0 );
 	cl_masterservers_warfork =	Cvar_Get( "masterservers_warfork", DEFAULT_MASTER_SERVERS_WARFORK_IPS, 0 );
 
-	cl_prefer_steam_p2p = Cvar_Get( "cl_prefer_steam_p2p", "0", CVAR_ARCHIVE );
+	cl_prefer_steam_p2p = Cvar_Get( "cl_prefer_steam_p2p", "1", CVAR_ARCHIVE );
 	cl_shownet =		Cvar_Get( "cl_shownet", "0", 0 );
 	cl_timeout =		Cvar_Get( "cl_timeout", "120", 0 );
 	cl_timedemo =		Cvar_Get( "timedemo", "0", CVAR_CHEAT );
