@@ -679,8 +679,9 @@ static bool initSteamworks( PipeType fd )
 		if( !GSteamGameServer )
 			return 0;
 
-		// GSLT can be used but seems to do nothing currently?
-		// SteamGameServer()->LogOnAnonymous();
+		if( !GRunClient ) {
+			GSteamGameServer->LogOnAnonymous();
+		}
 
 		GSteamGameServer->SetAdvertiseServerActive( true );
 	}
