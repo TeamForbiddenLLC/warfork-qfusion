@@ -335,8 +335,6 @@ void SV_InitGame( void )
 	{
 		// cause any connected clients to reconnect
 		SV_ShutdownGame( "Server restarted", true );
-
-		// SV_ShutdownGame will also call Cvar_GetLatchedVars
 	}
 	else
 	{
@@ -372,9 +370,13 @@ void SV_InitGame( void )
 			Com_Error( ERR_FATAL, "Couldn't open loopback socket: %s\n", NET_ErrorString() );
 	}
 
-	struct steam_rpc_shim_common_s listenreq;
-	listenreq.cmd = RPC_SRV_P2P_LISTEN;
-	STEAMSHIM_sendRPC( &listenreq, sizeof listenreq, NULL, CL_RPC_cb_listenp2p, NULL );
+	if( STEAMSHIM_active() && svs.steam_listen_socket == 0 ) {
+		struct steam_rpc_shim_common_s listenreq;
+		listenreq.cmd = RPC_SRV_P2P_LISTEN;
+		uint32_t sync;
+		STEAMSHIM_sendRPC( &listenreq, sizeof listenreq, NULL, CL_RPC_cb_listenp2p, &sync );
+		STEAMSHIM_waitDispatchSync( sync );
+	}
 
 	if( dedicated->integer || sv_maxclients->integer > 1 )
 	{
@@ -529,7 +531,7 @@ void SV_ShutdownGame( const char *finalmsg, bool reconnect )
 		for( i = 0, cl = svs.clients; i < sv_maxclients->integer; i++, cl++ )
 		{
 			if( !cl->state )
-				continue;
+				continue;			
 			Steam_EndAuthSession(cl->steamid);
 		}
 	}
@@ -601,8 +603,11 @@ void SV_ShutdownGame( const char *finalmsg, bool reconnect )
 		svs.wakelock = NULL;
 	}
 
+	uint32_t prev_steam_listen_socket = svs.steam_listen_socket;
+	uint64_t prev_steam_steamid = svs.steamid;
 	memset( &svs, 0, sizeof( svs ) );
-
+	svs.steam_listen_socket = prev_steam_listen_socket;
+	svs.steamid = prev_steam_steamid;
 	svs.initialized = false;
 }
 
@@ -645,10 +650,7 @@ void SV_Map( const char *level, bool devmap )
 			svs.clients[i].state = CS_CONNECTING;
 		}
 
-		// we never kick the clients or stop the server proper, so make sure to tell steam we're done with the session
-		if (svs.clients[i].steamid)
-			Steam_EndAuthSession(svs.clients[i].steamid);
-
+	
 		// limit number of connected multiview clients
 		if( svs.clients[i].mv )
 		{
@@ -669,4 +671,15 @@ void SV_Map( const char *level, bool devmap )
 	SV_SendClientMessages();
 	SV_SpawnServer( level, devmap );
 	SV_BroadcastCommand( "reconnect\n" );
+	SV_SendClientMessages(); // Flush the reliable command before ending the auth session
+
+	if(STEAMSHIM_active()) {
+		STEAMSHIM_dispatch();
+		for( i = 0; i < sv_maxclients->integer; i++ )
+		{
+			// we never kick the clients or stop the server proper, so make sure to tell steam we're done with the session
+			if (svs.clients[i].steamid)
+				Steam_EndAuthSession(svs.clients[i].steamid);
+		}
+	}
 }
