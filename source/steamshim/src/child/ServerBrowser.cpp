@@ -60,8 +60,6 @@ void ServerBrowser::ServerResponded( HServerListRequest hReq, int iServer )
 	{
 		if ( server->m_nAppID == SteamUtils()->GetAppID() )
 		{
-			PipeBuffer msg;
-
 			const char *pstr = server->m_NetAdr.GetConnectionAddressString();
 			printf( "Server %d: %s\n", iServer, pstr );
 		}

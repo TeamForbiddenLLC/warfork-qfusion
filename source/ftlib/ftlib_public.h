@@ -25,12 +25,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 // ftlib_public.h - font provider subsystem
 
-#define	FTLIB_API_VERSION			11
+#define	FTLIB_API_VERSION			14
 
 //===============================================================
 
 struct shader_s;
 struct qfontface_s;
+struct fs_import_s;
+struct mem_import_s;
 
 typedef void ( *fdrawchar_t )( int x, int y, int w, int h, float s1, float t1, float s2, float t2, const vec4_t color, const struct shader_s *shader );
 
@@ -63,24 +65,6 @@ typedef struct
 	void ( *Cmd_Execute )( void );
 	void ( *Cmd_SetCompletionFunc )( const char *cmd_name, char **( *completion_func )( const char *partial ) );
 
-	// files will be memory mapped read only
-	// the returned buffer may be part of a larger pak file,
-	// or a discrete file from anywhere in the quake search path
-	// a -1 return means the file does not exist
-	// NULL can be passed for buf to just determine existance
-	int ( *FS_FOpenFile )( const char *filename, int *filenum, int mode );
-	int ( *FS_Read )( void *buffer, size_t len, int file );
-	int ( *FS_Write )( const void *buffer, size_t len, int file );
-	int ( *FS_Print )( int file, const char *msg );
-	int ( *FS_Tell )( int file );
-	int ( *FS_Seek )( int file, int offset, int whence );
-	int ( *FS_Eof )( int file );
-	int ( *FS_Flush )( int file );
-	void ( *FS_FCloseFile )( int file );
-	bool ( *FS_RemoveFile )( const char *filename );
-	int ( *FS_GetFileList )( const char *dir, const char *extension, char *buf, size_t bufsize, int start, int end );
-	bool ( *FS_IsUrl )( const char *url );
-
 	// clock
 	unsigned int ( *Sys_Milliseconds )( void );
 	uint64_t ( *Sys_Microseconds )( void );
@@ -90,22 +74,9 @@ typedef struct
 
 	// renderer
 	struct ref_import_s refImport;
-	struct shader_s *( *R_RegisterPic )( const char *name );
-	struct shader_s * ( *R_RegisterRawPic )( const char *name, int width, int height, uint8_t *data, int samples );
-	struct shader_s * ( *R_RegisterRawAlphaMask )( const char *name, int width, int height, uint8_t *data );
-	void ( *R_DrawStretchPic )( int x, int y, int w, int h, float s1, float t1, float s2, float t2, const vec4_t color, const struct shader_s *shader );
-	void ( *R_ReplaceRawSubPic )( struct shader_s *shader, int x, int y, int width, int height, uint8_t *data );
-	void ( *R_Scissor )( int x, int y, int w, int h );
-	void ( *R_GetScissor )( int *x, int *y, int *w, int *h );
-	void ( *R_ResetScissor )( void );
 
-	// managed memory allocation
-	struct mempool_s *( *Mem_AllocPool )( const char *name, const char *filename, int fileline );
-	void *( *Mem_Alloc )( struct mempool_s *pool, size_t size, const char *filename, int fileline );
-	void *( *Mem_Realloc )( void *data, size_t size, const char *filename, int fileline );
-	void ( *Mem_Free )( void *data, const char *filename, int fileline );
-	void ( *Mem_FreePool )( struct mempool_s **pool, const char *filename, int fileline );
-	void ( *Mem_EmptyPool )( struct mempool_s *pool, const char *filename, int fileline );
+	const struct fs_import_s *fsImport;
+	const struct mem_import_s *memImport;
 } ftlib_import_t;
 
 //

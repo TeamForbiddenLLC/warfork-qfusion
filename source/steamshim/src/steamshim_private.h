@@ -19,44 +19,7 @@ freely, subject to the following restrictions:
 */
 
 #include "os.h"
-#include "steamshim_types.h"
-#include <cstdint>
 
 extern PipeType GPipeRead;
 extern PipeType GPipeWrite;
 extern bool debug;
-
-class PipeBuffer
-{
-  public:
-  PipeBuffer();
-
-  bool hasmsg = false;
-
-  void WriteData(const void* val, size_t vallen);
-  void WriteByte(char val);
-  void WriteInt(int val);
-  void WriteFloat(float val);
-  void WriteLong(uint64_t val);
-  void WriteString(const char *val);
-
-  void *ReadData(size_t vallen);
-  char *ReadString();
-  char ReadByte();
-  int ReadInt();
-  float ReadFloat();
-  uint64_t ReadLong();
-
-  int Transmit();
-  int Recieve();
-
-  private:
-  char buffer[PIPEMESSAGE_MAX];
-  unsigned int cursor = 0;
-  int bytesRead = 0;
-  int lastmsglen = 0;
-
-};
-
-int ReadMessage(char* buf);
-int Write1ByteMessage(const uint8_t message);

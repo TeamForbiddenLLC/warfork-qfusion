@@ -301,7 +301,7 @@ static void QFT_UploadRenderedGlyphs( uint8_t *pic, struct shader_s *shader, int
 	for( i = 0; i < height; i++, src += src_width, dest += width ) {
 		memmove( dest, src, width );
 	}
-	trap_R_ReplaceRawSubPic( shader, x, y, width, height, pic );
+	RF_ReplaceRawSubPic( shader, x, y, width, height, pic );
 }
 
 /*
@@ -409,7 +409,7 @@ static void QFT_RenderString( qfontface_t *qfont, const char *str )
 					qttf->imageCurX = 0;
 					qttf->imageCurY = 0;
 					shaderNum = ( qfont->numShaders )++;
-					shader = trap_R_RegisterRawAlphaMask( FTLIB_FontShaderName( qfont, shaderNum ),
+					shader = R_RegisterRawAlphaMask( FTLIB_FontShaderName( qfont, shaderNum ),
 						qfont->shaderWidth, qfont->shaderHeight, NULL );
 					qfont->shaders = FTLIB_Realloc( qfont->shaders, qfont->numShaders * sizeof( struct shader_s * ) );
 					qfont->shaders[shaderNum] = shader;
@@ -571,7 +571,7 @@ static qfontface_t *QFT_LoadFace( qfontfamily_t *family, unsigned int size )
 
 	qfont->numShaders = 1;
 	qfont->shaders = FTLIB_Alloc( ftlibPool, sizeof( struct shader_s * ) );
-	qfont->shaders[0] = trap_R_RegisterRawAlphaMask( FTLIB_FontShaderName( qfont, 0 ),
+	qfont->shaders[0] = R_RegisterRawAlphaMask( FTLIB_FontShaderName( qfont, 0 ),
 		qfont->shaderWidth, qfont->shaderHeight, NULL );
 	qfont->hasKerning = hasKerning;
 	qfont->f = &qft_face_funcs;
@@ -710,19 +710,19 @@ static void QFT_LoadFamilyFromFile( const char *name, const char *fileName, bool
 	int length;
 	uint8_t *buffer;
 
-	length = trap_FS_FOpenFile( fileName, &fileNum, FS_READ );
+	length = FS_FOpenFile( fileName, &fileNum, FS_READ );
 	if( length < 0 ) {
 		return;
 	}
 
 	buffer = ( uint8_t * )FTLIB_Alloc( ftlibPool, length );
-	trap_FS_Read( buffer, length, fileNum );
+	FS_Read( buffer, length, fileNum );
 
 	if( !QFT_LoadFamily( name, buffer, length, verbose, fallback ) ) {
 		FTLIB_Free( buffer );
 	}
 
-	trap_FS_FCloseFile( fileNum );
+	FS_FCloseFile( fileNum );
 }
 
 /*
@@ -746,14 +746,14 @@ static void QFT_PrecacheFontsByExt( bool verbose, const char *ext, bool fallback
 		return;
 	}
 
-	if( ( numfiles = trap_FS_GetFileList( dir, ext, NULL, 0, 0, 0 ) ) == 0 ) {
+	if( ( numfiles = FS_GetFileList( dir, ext, NULL, 0, 0, 0 ) ) == 0 ) {
 		return;
 	}
 
 	i = 0;
 	length = 0;
 	do {
-		if( ( j = trap_FS_GetFileList( dir, ext, buffer, sizeof( buffer ), i, numfiles ) ) == 0 ) {
+		if( ( j = FS_GetFileList( dir, ext, buffer, sizeof( buffer ), i, numfiles ) ) == 0 ) {
 			// can happen if the filename is too long to fit into the buffer or we're done
 			i++;
 			continue;
@@ -935,7 +935,7 @@ void FTLIB_TouchFont( qfontface_t *qfont )
 	unsigned int i;
 
 	for( i = 0; i < qfont->numShaders; i++ ) {
-		trap_R_RegisterPic( FTLIB_FontShaderName( qfont, i ) ); 
+		R_RegisterPic( FTLIB_FontShaderName( qfont, i ) );
 	}
 }
 

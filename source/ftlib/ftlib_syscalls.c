@@ -20,6 +20,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define REF_DEFINE_INTERFACE_IMPL 1
 #include "../ref_base/ref_mod.h"
 
+#define FS_DEFINE_INTERFACE_IMPL 1
+#include "../qcommon/mod_fs.h"
+
+#define MEM_DEFINE_INTERFACE_IMPL 1
+#include "../qcommon/mod_mem.h"
+
 #include "ftlib_local.h"
 
 ftlib_import_t FTLIB_IMPORT;
@@ -36,6 +42,8 @@ QF_DLL_EXPORT ftlib_export_t *GetFTLibAPI( ftlib_import_t *import )
 	FTLIB_IMPORT = *import;
 
 	Q_ImportRefModule(&import->refImport);
+	Q_ImportFsModule( import->fsImport );
+	Q_ImportMemModule( import->memImport );
 
 	globals.API = &FTLIB_API;
 

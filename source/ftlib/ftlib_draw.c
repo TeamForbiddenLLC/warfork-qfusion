@@ -273,7 +273,7 @@ fdrawchar_t FTLIB_SetDrawIntercept( fdrawchar_t intercept )
 void FTLIB_DrawRawChar( int x, int y, wchar_t num, qfontface_t *font, vec4_t color )
 {
 	qglyph_t *glyph;
-	fdrawchar_t draw = trap_R_DrawStretchPic;
+	fdrawchar_t draw = RF_DrawStretchPic;
 
 	if( ( num <= ' ' ) || !font || ( y <= -font->height ) )
 		return;
@@ -315,7 +315,7 @@ void FTLIB_DrawClampChar( int x, int y, wchar_t num, int xmin, int ymin, int xma
 	int x2, y2;
 	float s1 = 0.0f, t1 = 0.0f, s2 = 1.0f, t2 = 1.0f;
 	float tw, th;
-	fdrawchar_t draw = trap_R_DrawStretchPic;
+	fdrawchar_t draw = RF_DrawStretchPic;
 
 	if( ( num <= ' ' ) || !font || ( xmax <= xmin ) || ( ymax <= ymin ) )
 		return;
@@ -371,7 +371,7 @@ void FTLIB_DrawClampChar( int x, int y, wchar_t num, int xmin, int ymin, int xma
 		draw = drawCharIntercept;
 
 	if (!shaderWhite)
-		shaderWhite = trap_R_RegisterPic("$whiteimage");
+		shaderWhite = R_RegisterPic("$whiteimage");
 
 	draw( ix - 1, iy - 1, glyph->x_advance, font->height + 1,
 		0.0f, 0.0f, 1.0f, 1.0f,

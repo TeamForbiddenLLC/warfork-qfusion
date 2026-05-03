@@ -30,17 +30,25 @@ typedef struct { char *name; void **funcPointer; } dllfunc_t;
 #include "../gameshared/q_cvar.h"
 
 #include "ftlib_public.h"
+#include "../qcommon/mod_fs.h"
+#include "../qcommon/mod_mem.h"
 #include "ftlib_syscalls.h"
 
 extern struct mempool_s *ftlibPool;
 typedef struct shader_s shader_t;
 
-#define FTLIB_Alloc( pool, size ) trap_MemAlloc( pool, size, __FILE__, __LINE__ )
-#define FTLIB_Realloc( data, size ) trap_MemRealloc( data, size, __FILE__, __LINE__ )
-#define FTLIB_Free( mem ) trap_MemFree( mem, __FILE__, __LINE__ )
-#define FTLIB_AllocPool( name ) trap_MemAllocPool( name, __FILE__, __LINE__ )
-#define FTLIB_FreePool( pool ) trap_MemFreePool( pool, __FILE__, __LINE__ )
-#define FTLIB_EmptyPool( pool ) trap_MemEmptyPool( pool, __FILE__, __LINE__ )
+static inline void *_FTLIB_Alloc( mempool_t *pool, size_t size, const char *file, const char *func, int line ) {
+	void *ptr = __Q_Malloc( size, file, func, line );
+	Q_LinkToPool( ptr, pool );
+	return ptr;
+}
+
+#define FTLIB_Alloc( pool, size ) _FTLIB_Alloc( pool, size, __FILE__, __FUNCTION__, __LINE__ )
+#define FTLIB_Realloc( data, size ) Q_Realloc( data, size )
+#define FTLIB_Free( mem ) Q_Free( mem )
+#define FTLIB_AllocPool( name ) Q_CreatePool( NULL, name )
+#define FTLIB_FreePool( poolptr ) do { Q_FreePool( *(poolptr) ); *(poolptr) = NULL; } while( 0 )
+#define FTLIB_EmptyPool( pool ) Q_EmptyPool( pool )
 
 #define FTLIB_REPLACEMENT_GLYPH			'?'
 
