@@ -97,6 +97,7 @@ void UpdateFrameUBO( struct FrameState_s *cmd, struct RIDescriptor_s *req, void 
 
 void FR_ConfigurePipelineAttachment( struct pipeline_desc_s *desc, enum RI_Format_e *formats, size_t numAttachment, enum RI_Format_e depthFormat ) {
 	assert(desc);
+	assert( numAttachment <= Q_ARRAY_COUNT( desc->colorAttachments ) );
 	desc->numColorsAttachments = numAttachment;
 	for(size_t i = 0; i < numAttachment; i++) {
 		desc->colorAttachments[i] = formats[i];
@@ -109,20 +110,14 @@ void FR_CmdDraw( struct FrameState_s *cmd, uint32_t vertexNum, uint32_t instance
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		if( cmd->dirty & CMD_DIRT_VIEWPORT ) {
-			VkViewport viewports[MAX_COLOR_ATTACHMENTS];
-			for( size_t i = 0; i < FR_CmdNumViewports( cmd ); i++ ) {
-				viewports[i] = RIToVKViewport( &cmd->viewport );
-			}
-			vkCmdSetViewport( cmd->handle.vk.cmd, 0, FR_CmdNumViewports( cmd ), viewports );
+			VkViewport viewport = RIToVKViewport( &cmd->viewport );
+			vkCmdSetViewport( cmd->handle.vk.cmd, 0, 1, &viewport );
 			cmd->dirty &= ~CMD_DIRT_VIEWPORT;
 		}
 
 		if( cmd->dirty & CMD_DIRT_SCISSOR ) {
-			VkRect2D scissors[MAX_COLOR_ATTACHMENTS];
-			for( size_t i = 0; i < FR_CmdNumViewports( cmd ); i++ ) {
-				scissors[i] = RIToVKRect2D( &cmd->scissor );
-			}
-			vkCmdSetScissor( cmd->handle.vk.cmd, 0, FR_CmdNumViewports( cmd ), scissors );
+			VkRect2D scissor = RIToVKRect2D( &cmd->scissor );
+			vkCmdSetScissor( cmd->handle.vk.cmd, 0, 1, &scissor );
 			cmd->dirty &= ~CMD_DIRT_SCISSOR;
 		}
 		vkCmdDraw( cmd->handle.vk.cmd, vertexNum, Q_MAX( 1, instanceNum ), baseVertex, baseInstance );
@@ -150,20 +145,14 @@ void FR_CmdDrawElements( struct FrameState_s *cmd, uint32_t indexNum, uint32_t i
 		}
 
 		if( cmd->dirty & CMD_DIRT_VIEWPORT ) {
-			VkViewport viewports[MAX_COLOR_ATTACHMENTS];
-			for( size_t i = 0; i < FR_CmdNumViewports( cmd ); i++ ) {
-				viewports[i] = RIToVKViewport( &cmd->viewport );
-			}
-			vkCmdSetViewport( cmd->handle.vk.cmd, 0, FR_CmdNumViewports( cmd ), viewports );
+			VkViewport viewport = RIToVKViewport( &cmd->viewport );
+			vkCmdSetViewport( cmd->handle.vk.cmd, 0, 1, &viewport );
 			cmd->dirty &= ~CMD_DIRT_VIEWPORT;
 		}
 
 		if( cmd->dirty & CMD_DIRT_SCISSOR ) {
-			VkRect2D scissors[MAX_COLOR_ATTACHMENTS];
-			for( size_t i = 0; i < FR_CmdNumViewports( cmd ); i++ ) {
-				scissors[i] = RIToVKRect2D( &cmd->scissor );
-			}
-			vkCmdSetScissor( cmd->handle.vk.cmd, 0, FR_CmdNumViewports( cmd ), scissors );
+			VkRect2D scissor = RIToVKRect2D( &cmd->scissor );
+			vkCmdSetScissor( cmd->handle.vk.cmd, 0, 1, &scissor );
 			cmd->dirty &= ~CMD_DIRT_SCISSOR;
 		}
 		vkCmdDrawIndexed( cmd->handle.vk.cmd, indexNum, Q_MAX( 1, instanceNum ), baseIndex, baseVertex, baseInstance );

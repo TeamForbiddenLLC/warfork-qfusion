@@ -968,20 +968,27 @@ static void R_Clear(struct FrameState_s* frame, int bitMask  /* unused variable 
 		  if(frame->pipeline.numColorsAttachments > 0)
 			{
 				size_t numClear = 0;
-			  VkClearRect clearRect[2] = { 0 };
-			  VkClearAttachment clearAttach[2] = { 0 };
+			  VkClearRect clearRect[5] = { 0 };
+			  VkClearAttachment clearAttach[5] = { 0 };
 			  if( clearColor ) {
-				  clearRect[numClear].baseArrayLayer = 0;
-				  clearRect[numClear].rect = RIViewportToRect2D( &frame->viewport );
-				  clearRect[numClear].layerCount = frame->pipeline.numColorsAttachments;
-				  clearAttach[numClear].clearValue.color.float32[0] = envColor[0];
-				  clearAttach[numClear].clearValue.color.float32[1] = envColor[1];
-				  clearAttach[numClear].clearValue.color.float32[2] = envColor[2];
-				  clearAttach[numClear].clearValue.color.float32[3] = envColor[3];
-				  clearAttach[numClear].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-				  numClear++;
+				  for (size_t i = 0; i < frame->pipeline.numColorsAttachments; i++) {
+					  assert( numClear < Q_ARRAY_COUNT( clearRect ) );
+					  assert( numClear < Q_ARRAY_COUNT( clearAttach ) );
+					  clearRect[numClear].baseArrayLayer = 0;
+					  clearRect[numClear].rect = RIViewportToRect2D( &frame->viewport );
+					  clearRect[numClear].layerCount = 1;
+					  clearAttach[numClear].colorAttachment = i;
+					  clearAttach[numClear].clearValue.color.float32[0] = envColor[0];
+					  clearAttach[numClear].clearValue.color.float32[1] = envColor[1];
+					  clearAttach[numClear].clearValue.color.float32[2] = envColor[2];
+					  clearAttach[numClear].clearValue.color.float32[3] = envColor[3];
+					  clearAttach[numClear].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+					  numClear++;
+				  }
 			  }
 			  if( !depthPortal ) {
+				  assert( numClear < Q_ARRAY_COUNT( clearRect ) );
+				  assert( numClear < Q_ARRAY_COUNT( clearAttach ) );
 				  clearRect[numClear].baseArrayLayer = 0;
 				  clearRect[numClear].rect = RIViewportToRect2D( &frame->viewport );
 				  clearRect[numClear].layerCount = 1;

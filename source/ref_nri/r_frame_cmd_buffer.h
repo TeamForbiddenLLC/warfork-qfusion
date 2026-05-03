@@ -114,12 +114,6 @@ struct FrameState_s {
 
 void UpdateFrameUBO( struct FrameState_s *cmd, struct RIDescriptor_s *frame, void *data, size_t size );
 
-// cmd buffer
-static inline int FR_CmdNumViewports( struct FrameState_s *cmd )
-{
-	return Q_MAX( cmd->pipeline.numColorsAttachments, 1 );
-}
-
 void FR_ConfigureAttachment( struct pipeline_desc_s *pipelineDesc, enum RI_Format_e *formats, size_t numAttachment, enum RI_Format_e depthFormat );
 
 void FR_CmdResetCmdState( struct FrameState_s *cmd, enum CmdStateResetBits bits );
