@@ -784,7 +784,7 @@ static void CG_RegisterVariables( void )
 	cg_gibs =		trap_Cvar_Get( "cg_gibs", "1", CVAR_ARCHIVE );
 	cg_outlineModels =	trap_Cvar_Get( "cg_outlineModels", "1", CVAR_ARCHIVE );
 	cg_outlineWorld =	trap_Cvar_Get( "cg_outlineWorld", "0", CVAR_ARCHIVE );
-	cg_outlinePlayers =	trap_Cvar_Get( "cg_outlinePlayers", "2", CVAR_ARCHIVE );
+	cg_outlinePlayers =	trap_Cvar_Get( "cg_outlinePlayers", "1", CVAR_ARCHIVE );
 	cg_drawEntityBoxes =	trap_Cvar_Get( "cg_drawEntityBoxes", "0", CVAR_DEVELOPER );
 	cg_showObituaries =	trap_Cvar_Get( "cg_showObituaries", va( "%i", CG_OBITUARY_HUD|CG_OBITUARY_CENTER ), CVAR_ARCHIVE );
     cg_damageNumbers = trap_Cvar_Get( "cg_damageNumbers", "1", CVAR_ARCHIVE );
