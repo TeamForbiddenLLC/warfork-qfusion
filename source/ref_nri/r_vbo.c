@@ -429,6 +429,7 @@ R_FillVertexBuffer_f( int, int, );
 
 void R_FillNriVertexAttribLayout(const struct vbo_layout_s* layout, struct frame_cmd_vertex_attrib_s * desc, size_t* numDesc) {
 	assert(layout);
+	assert( *numDesc < MAX_ATTRIBUTES );
 	desc[( *numDesc )++] = ( struct frame_cmd_vertex_attrib_s ){
 		.offset = 0, 
 		.format = ( layout->halfFloatAttribs & VATTRIB_POSITION_BIT ) ? R_FORMAT_RGBA16_SFLOAT : R_FORMAT_RGBA32_SFLOAT, 
@@ -535,20 +536,22 @@ void R_FillNriVertexAttribLayout(const struct vbo_layout_s* layout, struct frame
 		for(size_t i = 0; i < ( MAX_LIGHTMAPS + 3 ) / 4; i++ ) {
 			if( layout->vertexAttribs & ( VATTRIB_LMLAYERS0123_BIT << i ) ) {
 				desc[( *numDesc )++] = ( struct frame_cmd_vertex_attrib_s ){
-					.offset = layout->lmlayersOffset[i], 
-					.format = R_FORMAT_RGBA8_UINT, 
-					.vk = { VATTRIB_LMLAYERS0123 }, 
+					.offset = layout->lmlayersOffset[i],
+					.format = R_FORMAT_RGBA8_UINT,
+					.vk = { VATTRIB_LMLAYERS0123 },
 		//			.d3d = {.semanticName = "TEXCOORD5", .semanticIndex = lmattr  },
-					.streamIndex = 0 
+					.streamIndex = 0
 				};
 			}
 		}
 
 	}
 
+	assert( *numDesc <= MAX_ATTRIBUTES );
 }
 
 void R_FillNriVertexAttrib(mesh_vbo_t* vbo, struct frame_cmd_vertex_attrib_s * desc, size_t* numDesc) {
+	assert( *numDesc < MAX_ATTRIBUTES );
 	desc[( *numDesc )++] = (struct frame_cmd_vertex_attrib_s){ .offset = 0,
 															   .format = ( vbo->halfFloatAttribs & VATTRIB_POSITION_BIT ) ? RI_FORMAT_RGBA16_SFLOAT : RI_FORMAT_RGBA32_SFLOAT,
 															   .vk = { VATTRIB_POSITION },
@@ -645,14 +648,15 @@ void R_FillNriVertexAttrib(mesh_vbo_t* vbo, struct frame_cmd_vertex_attrib_s * d
 		for(size_t i = 0; i < ( MAX_LIGHTMAPS + 3 ) / 4; i++ ) {
 			if( vbo->vertexAttribs & ( VATTRIB_LMLAYERS0123_BIT << i ) ) {
 				desc[( *numDesc )++] = ( struct frame_cmd_vertex_attrib_s ){
-					.offset = vbo->lmlayersOffset[i], 
-					.format = RI_FORMAT_RGBA8_UINT, 
-					.vk = { VATTRIB_LMLAYERS0123 }, 
-					.streamIndex = 0 
+					.offset = vbo->lmlayersOffset[i],
+					.format = RI_FORMAT_RGBA8_UINT,
+					.vk = { VATTRIB_LMLAYERS0123 },
+					.streamIndex = 0
 				};
 			}
 		}
 	}
+	assert( *numDesc <= MAX_ATTRIBUTES );
 }
 
 struct vbo_layout_s R_CreateVBOLayout( vattribmask_t vattribs, vattribmask_t halfFloatVattribs)

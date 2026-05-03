@@ -631,8 +631,10 @@ int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, st
 			}
 
 			VkDeviceQueueCreateInfo *createInfo = __VK_findQueueCreateInfo( deviceQueueCreateInfo, deviceCreateInfo.queueCreateInfoCount, bestQueueFamilyIdx );
-			if( createInfo == NULL )
+			if( createInfo == NULL ) {
+				assert( deviceCreateInfo.queueCreateInfoCount < Q_ARRAY_COUNT( deviceQueueCreateInfo ) );
 				createInfo = &deviceQueueCreateInfo[deviceCreateInfo.queueCreateInfoCount++];
+			}
 			createInfo->queueFamilyIndex = bestQueueFamilyIdx;
 			createInfo->pQueuePriorities = priorities;
 			createInfo->sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
