@@ -162,7 +162,9 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	}
 	struct RIDeviceDesc_s deviceInit = { 0 };
 	deviceInit.physicalAdapter = &physicalAdapters[selectedAdapterIdx];
-	InitRIDevice( &rsh.renderer, &deviceInit, &rsh.device );
+	if( InitRIDevice( &rsh.renderer, &deviceInit, &rsh.device ) != RI_SUCCESS ) {
+		return rserr_unknown;
+	}
 
 	rf.applicationName = R_CopyString( applicationName );
 	rf.screenshotPrefix = R_CopyString( screenshotPrefix );
@@ -272,7 +274,10 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 		swapchainInit.width = width;
 		swapchainInit.height = height;
 		swapchainInit.format = RI_SWAPCHAIN_BT709_G22_8BIT;
-		InitRISwapchain( &rsh.device, &swapchainInit, &rsh.swapchain );
+		if( InitRISwapchain( &rsh.device, &swapchainInit, &rsh.swapchain ) != RI_SUCCESS ) {
+			ri.Com_Error( ERR_DROP, "failed to initialize swapchain" );
+			return rserr_unknown;
+		}
 		rsh.postProcessingSampler = R_ResolveSamplerDescriptor( IT_NOFILTERING );
 
 #if ( DEVICE_IMPL_VULKAN )
@@ -493,6 +498,10 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 		arrsetlen( activeSet->freeList, 0 );
 		RIResetScratchAlloc( &rsh.device, &activeSet->uboScratchAlloc );
 		rsh.swapchainIndex = RISwapchainAcquireNextTexture( &rsh.device, &rsh.swapchain );
+		if( rsh.swapchainIndex == UINT32_MAX ) {
+			ri.Com_Error( ERR_DROP, "failed to acquire next swapchain image" );
+			return;
+		}
 
 		{
 			VkImageMemoryBarrier2 imageBarriers[4] = { 0 };

@@ -216,7 +216,10 @@ uint32_t RISwapchainAcquireNextTexture( struct RIDevice_s *dev, struct RISwapcha
 		uint32_t image_index;
 		swapchain->vk.signal_idx = ( swapchain->vk.signal_idx + 1 ) % swapchain->vk.imageCount;
 		VkSemaphore imageAcquiredSemaphore = swapchain->vk.signaled[swapchain->vk.signal_idx];
-		VK_WrapResult( vkAcquireNextImageKHR( dev->vk.device, swapchain->vk.swapchain, UINT64_MAX, imageAcquiredSemaphore, VK_NULL_HANDLE, &image_index ) );
+		VkResult result = vkAcquireNextImageKHR( dev->vk.device, swapchain->vk.swapchain, UINT64_MAX, imageAcquiredSemaphore, VK_NULL_HANDLE, &image_index );
+		if( !VK_WrapResult( result ) ) {
+			return UINT32_MAX;
+		}
 		return image_index;
 	}
 #endif
@@ -274,7 +277,11 @@ void RISwapchainPresent_vk( struct RIDevice_s *dev, struct RISwapchain_s *swapch
 		presentInfo.swapchainCount = 1;
 		presentInfo.pSwapchains = &swapchain->vk.swapchain;
 		presentInfo.pImageIndices = &index;
-		VK_WrapResult( vkQueuePresentKHR( swapchain->presentQueue->vk.queue, &presentInfo ) );
+		VkResult result = vkQueuePresentKHR( swapchain->presentQueue->vk.queue, &presentInfo );
+		if( !VK_WrapResult( result ) ) {
+			assert( false && "vkQueuePresentKHR failed" );
+			return;
+		}
 	}
 #endif
 }

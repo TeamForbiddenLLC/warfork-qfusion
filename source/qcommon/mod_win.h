@@ -80,10 +80,10 @@ struct win_import_s {
 static struct win_import_s win_import;
 void R_WIN_Init(const char *applicationName, void *hinstance, void *wndproc, void *parenthWnd, int iconResource, const int *iconXPM ) { win_import.R_WIN_Init(applicationName, hinstance, wndproc, parenthWnd, iconResource, iconXPM); }
 void R_WIN_Shutdown(){ win_import.R_WIN_Shutdown(); } 
-bool R_WIN_InitWindow(win_init_t *init ){ win_import.R_WIN_InitWindow(init); }  
-bool R_WIN_SetFullscreen(int displayFrequency, uint16_t width, uint16_t height ){ win_import.R_WIN_SetFullscreen(displayFrequency, width, height); }   
-bool R_WIN_SetWindowed(int x, int y, uint16_t width, uint16_t height ){ win_import.R_WIN_SetWindowed(x, y, width, height); }    
-bool R_WIN_GetWindowHandle(win_handle_t *handle ){ win_import.R_WIN_GetWindowHandle(handle); }     
+bool R_WIN_InitWindow(win_init_t *init ){ return win_import.R_WIN_InitWindow(init); }  
+bool R_WIN_SetFullscreen(int displayFrequency, uint16_t width, uint16_t height ){ return win_import.R_WIN_SetFullscreen(displayFrequency, width, height); }   
+bool R_WIN_SetWindowed(int x, int y, uint16_t width, uint16_t height ){ return win_import.R_WIN_SetWindowed(x, y, width, height); }    
+bool R_WIN_GetWindowHandle(win_handle_t *handle ){ return win_import.R_WIN_GetWindowHandle(handle); }     
 
 static inline void Q_ImportWinModule(const struct win_import_s* ref) {
 	win_import = *ref;
