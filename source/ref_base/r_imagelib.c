@@ -17,9 +17,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
-#include "r_local.h"
 #include "r_imagelib.h"
 #include "../qalgo/hash.h"
+#include "../gameshared/q_math.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -182,3 +182,4 @@ void DecompressETC1( const uint8_t *in, int width, int height, uint8_t *out, boo
 		}
 	}
 }
+

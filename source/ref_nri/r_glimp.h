@@ -28,50 +28,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #ifdef _WIN32
 #include <windows.h>
-
-#define QGL_WGL( type, name, params ) QGL_EXTERN type( APIENTRY * q ## name ) params;
-#define QGL_WGL_EXT( type, name, params ) QGL_EXTERN type( APIENTRY * q ## name ) params;
-#define QGL_GLX( type, name, params )
-#define QGL_GLX_EXT( type, name, params )
-#define QGL_EGL( type, name, params )
-#define QGL_EGL_EXT( type, name, params )
 #endif
 
-#if defined ( __linux__ ) || defined ( __FreeBSD__ )
-#define QGL_WGL( type, name, params )
-#define QGL_WGL_EXT( type, name, params )
-#define QGL_GLX( type, name, params ) QGL_EXTERN type( APIENTRY * q ## name ) params;
-#define QGL_GLX_EXT( type, name, params ) QGL_EXTERN type( APIENTRY * q ## name ) params;
-#define QGL_EGL( type, name, params )
-#define QGL_EGL_EXT( type, name, params )
-#endif
-
-#if defined ( __MACOSX__ )
-#define QGL_WGL( type, name, params )
-#define QGL_WGL_EXT( type, name, params )
-#define QGL_GLX( type, name, params )
-#define QGL_GLX_EXT( type, name, params )
-#define QGL_EGL( type, name, params )
-#define QGL_EGL_EXT( type, name, params )
-#endif
-
-#define QGL_FUNC( type, name, params ) QGL_EXTERN type( APIENTRY * q ## name ) params;
-#define QGL_FUNC_OPT( type, name, params ) QGL_EXTERN type( APIENTRY * q ## name ) params;
-#define QGL_EXT( type, name, params ) QGL_EXTERN type( APIENTRY * q ## name ) params;
-
-#include "qgl.h"
-
-#undef QGL_EGL_EXT
-#undef QGL_EGL
-#undef QGL_GLX_EXT
-#undef QGL_GLX
-#undef QGL_WGL_EXT
-#undef QGL_WGL
-#undef QGL_EXT
-#undef QGL_FUNC_OPT
-#undef QGL_FUNC
-
-//====================================================================
 
 #define MAX_TEXTURE_UNITS				8
 
@@ -79,7 +37,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define MAX_GLSL_UNIFORM_INSTANCES		40
 
 #define GAMMARAMP_STRIDE				4096
-
 
 enum
 {

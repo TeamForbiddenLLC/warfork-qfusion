@@ -19,16 +19,18 @@
 #include "vk_mem_alloc.h"
 #endif
 
-#define R_VK_ADD_STRUCT(current, next) { \
-  void* __pNext = (void*)((current)->pNext); \
-  (current)->pNext = (next); \
-  (next)->pNext = __pNext; \
-}
+#define R_VK_ADD_STRUCT( current, next )                \
+	{                                                   \
+		void *__pNext = (void *)( ( current )->pNext ); \
+		( current )->pNext = ( next );                  \
+		( next )->pNext = __pNext;                      \
+	}
 #define VK_WrapResult( res ) __vk_WrapResult( res, __FILE__, __FUNCTION__, __LINE__ )
 
-static inline bool __vk_WrapResult(VkResult result, const char *sourceFilename, const char *functionName, int sourceLine) {
-	if(result != VK_SUCCESS) {
-		printf( "RI: VK %i, file %s:%i (%s)\n", result, sourceFilename, sourceLine, functionName);
+static inline bool __vk_WrapResult( VkResult result, const char *sourceFilename, const char *functionName, int sourceLine )
+{
+	if( result != VK_SUCCESS ) {
+		printf( "RI: VK %i, file %s:%i (%s)\n", result, sourceFilename, sourceLine, functionName );
 		return false;
 	}
 	return true;
@@ -45,14 +47,14 @@ static inline bool __vk_WrapResult(VkResult result, const char *sourceFilename, 
 #define RI_QUEUE_INVALID 0x0
 
 enum RIPresetLevel_e {
-    RI_GPU_PRESET_NONE = 0,
-    RI_GPU_PRESET_OFFICE,  // This means unsupported
-    RI_GPU_PRESET_VERYLOW, // Mostly for mobile GPU
-    RI_GPU_PRESET_LOW,
-    RI_GPU_PRESET_MEDIUM,
-    RI_GPU_PRESET_HIGH,
-    RI_GPU_PRESET_ULTRA,
-    RI_GPU_PRESET_COUNT
+	RI_GPU_PRESET_NONE = 0,
+	RI_GPU_PRESET_OFFICE,  // This means unsupported
+	RI_GPU_PRESET_VERYLOW, // Mostly for mobile GPU
+	RI_GPU_PRESET_LOW,
+	RI_GPU_PRESET_MEDIUM,
+	RI_GPU_PRESET_HIGH,
+	RI_GPU_PRESET_ULTRA,
+	RI_GPU_PRESET_COUNT
 };
 
 enum RITextureViewType_s {
@@ -86,12 +88,12 @@ enum RITextureUsageBits_e {
 
 enum RISampleCount_e
 {
-    RI_SAMPLE_COUNT_1 = 1,
-    RI_SAMPLE_COUNT_2 = 2,
-    RI_SAMPLE_COUNT_4 = 4,
-    RI_SAMPLE_COUNT_8 = 8,
-    RI_SAMPLE_COUNT_16 = 16,
-    RI_SAMPLE_COUNT_COUNT = 5,
+	RI_SAMPLE_COUNT_1 = 1,
+	RI_SAMPLE_COUNT_2 = 2,
+	RI_SAMPLE_COUNT_4 = 4,
+	RI_SAMPLE_COUNT_8 = 8,
+	RI_SAMPLE_COUNT_16 = 16,
+	RI_SAMPLE_COUNT_COUNT = 5,
 };
 
 enum RIDeviceAPI_e { 
@@ -124,12 +126,7 @@ enum RIAdapterType_e {
 	RI_ADAPTER_TYPE_DISCRETE_GPU,
 };
 
-enum RIResult_e { 
-	RI_INCOMPLETE_DEVICE = -2,
-	RI_FAIL = -1, 
-	RI_SUCCESS = 0, 
-	RI_INCOMPLETE 
-};
+enum RIResult_e { RI_INCOMPLETE_DEVICE = -2, RI_FAIL = -1, RI_SUCCESS = 0, RI_INCOMPLETE };
 
 enum RIBufferUsage_e {
 	RI_BUFFER_USAGE_NONE = 0,
@@ -160,16 +157,16 @@ enum RIVendor_e {
 };
 
 enum RITopology_e {
-    RI_TOPOLOGY_POINT_LIST,
-    RI_TOPOLOGY_LINE_LIST,
-    RI_TOPOLOGY_LINE_STRIP,
-    RI_TOPOLOGY_TRIANGLE_LIST,
-    RI_TOPOLOGY_TRIANGLE_STRIP,
-    RI_TOPOLOGY_LINE_LIST_WITH_ADJACENCY,
-    RI_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY,
-    RI_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY,
-    RI_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY,
-    RI_TOPOLOGY_PATCH_LIST
+	RI_TOPOLOGY_POINT_LIST,
+	RI_TOPOLOGY_LINE_LIST,
+	RI_TOPOLOGY_LINE_STRIP,
+	RI_TOPOLOGY_TRIANGLE_LIST,
+	RI_TOPOLOGY_TRIANGLE_STRIP,
+	RI_TOPOLOGY_LINE_LIST_WITH_ADJACENCY,
+	RI_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY,
+	RI_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY,
+	RI_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY,
+	RI_TOPOLOGY_PATCH_LIST
 };
 
 // R - fragment's depth or stencil reference
@@ -186,17 +183,9 @@ enum RICompareFunc_e {
 	RI_COMPARE_GREATER_EQUAL // R >= D
 };
 
-enum RICullMode_e {
-	RI_CULL_MODE_NONE = 0,
-	RI_CULL_MODE_FRONT = 0x1,
-	RI_CULL_MODE_BACK = 0x2,
-	RI_CULL_MODE_BOTH = RI_CULL_MODE_FRONT | RI_CULL_MODE_BACK
-};
+enum RICullMode_e { RI_CULL_MODE_NONE = 0, RI_CULL_MODE_FRONT = 0x1, RI_CULL_MODE_BACK = 0x2, RI_CULL_MODE_BOTH = RI_CULL_MODE_FRONT | RI_CULL_MODE_BACK };
 
-enum RIIndexType_e {
-	RI_INDEX_TYPE_16,
-	RI_INDEX_TYPE_32
-};
+enum RIIndexType_e { RI_INDEX_TYPE_16, RI_INDEX_TYPE_32 };
 
 enum RIColorWriteMask_e {
 	RI_COLOR_WRITE_NONE = 0,
@@ -205,58 +194,47 @@ enum RIColorWriteMask_e {
 	RI_COLOR_WRITE_B = 0x4,
 	RI_COLOR_WRITE_A = 0x8,
 
-	RI_COLOR_WRITE_RGB = 
-		RI_COLOR_WRITE_R |
-		RI_COLOR_WRITE_G |
-		RI_COLOR_WRITE_B,
-	
-	RI_COLOR_WRITE_RGBA = 
-		RI_COLOR_WRITE_R |
-		RI_COLOR_WRITE_G |
-		RI_COLOR_WRITE_B |
-		RI_COLOR_WRITE_A
+	RI_COLOR_WRITE_RGB = RI_COLOR_WRITE_R | RI_COLOR_WRITE_G | RI_COLOR_WRITE_B,
+
+	RI_COLOR_WRITE_RGBA = RI_COLOR_WRITE_R | RI_COLOR_WRITE_G | RI_COLOR_WRITE_B | RI_COLOR_WRITE_A
 };
 
 // S0 - source color 0
 // S1 - source color 1
 // D - destination color
 // C - blend constants, set by "CmdSetBlendConstants"
-enum RIBlendFactor_e {   // RGB                               ALPHA
-    RI_BLEND_ZERO,                       // 0                                 0
-    RI_BLEND_ONE,                        // 1                                 1
-    RI_BLEND_SRC_COLOR,                  // S0.r, S0.g, S0.b                  S0.a
-    RI_BLEND_ONE_MINUS_SRC_COLOR,        // 1 - S0.r, 1 - S0.g, 1 - S0.b      1 - S0.a
-    RI_BLEND_DST_COLOR,                  // D.r, D.g, D.b                     D.a
-    RI_BLEND_ONE_MINUS_DST_COLOR,        // 1 - D.r, 1 - D.g, 1 - D.b         1 - D.a
-    RI_BLEND_SRC_ALPHA,                  // S0.a                              S0.a
-    RI_BLEND_ONE_MINUS_SRC_ALPHA,        // 1 - S0.a                          1 - S0.a
-    RI_BLEND_DST_ALPHA,                  // D.a                               D.a
-    RI_BLEND_ONE_MINUS_DST_ALPHA,        // 1 - D.a                           1 - D.a
-    RI_BLEND_CONSTANT_COLOR,             // C.r, C.g, C.b                     C.a
-    RI_BLEND_ONE_MINUS_CONSTANT_COLOR,   // 1 - C.r, 1 - C.g, 1 - C.b         1 - C.a
-    RI_BLEND_CONSTANT_ALPHA,             // C.a                               C.a
-    RI_BLEND_ONE_MINUS_CONSTANT_ALPHA,   // 1 - C.a                           1 - C.a
-    RI_BLEND_SRC_ALPHA_SATURATE,         // min(S0.a, 1 - D.a)                1
-    RI_BLEND_SRC1_COLOR,                 // S1.r, S1.g, S1.b                  S1.a
-    RI_BLEND_ONE_MINUS_SRC1_COLOR,       // 1 - S1.r, 1 - S1.g, 1 - S1.b      1 - S1.a
-    RI_BLEND_SRC1_ALPHA,                 // S1.a                              S1.a
-    RI_BLEND_ONE_MINUS_SRC1_ALPHA        // 1 - S1.a                          1 - S1.a
+enum RIBlendFactor_e {				   // RGB                               ALPHA
+	RI_BLEND_ZERO,					   // 0                                 0
+	RI_BLEND_ONE,					   // 1                                 1
+	RI_BLEND_SRC_COLOR,				   // S0.r, S0.g, S0.b                  S0.a
+	RI_BLEND_ONE_MINUS_SRC_COLOR,	   // 1 - S0.r, 1 - S0.g, 1 - S0.b      1 - S0.a
+	RI_BLEND_DST_COLOR,				   // D.r, D.g, D.b                     D.a
+	RI_BLEND_ONE_MINUS_DST_COLOR,	   // 1 - D.r, 1 - D.g, 1 - D.b         1 - D.a
+	RI_BLEND_SRC_ALPHA,				   // S0.a                              S0.a
+	RI_BLEND_ONE_MINUS_SRC_ALPHA,	   // 1 - S0.a                          1 - S0.a
+	RI_BLEND_DST_ALPHA,				   // D.a                               D.a
+	RI_BLEND_ONE_MINUS_DST_ALPHA,	   // 1 - D.a                           1 - D.a
+	RI_BLEND_CONSTANT_COLOR,		   // C.r, C.g, C.b                     C.a
+	RI_BLEND_ONE_MINUS_CONSTANT_COLOR, // 1 - C.r, 1 - C.g, 1 - C.b         1 - C.a
+	RI_BLEND_CONSTANT_ALPHA,		   // C.a                               C.a
+	RI_BLEND_ONE_MINUS_CONSTANT_ALPHA, // 1 - C.a                           1 - C.a
+	RI_BLEND_SRC_ALPHA_SATURATE,	   // min(S0.a, 1 - D.a)                1
+	RI_BLEND_SRC1_COLOR,			   // S1.r, S1.g, S1.b                  S1.a
+	RI_BLEND_ONE_MINUS_SRC1_COLOR,	   // 1 - S1.r, 1 - S1.g, 1 - S1.b      1 - S1.a
+	RI_BLEND_SRC1_ALPHA,			   // S1.a                              S1.a
+	RI_BLEND_ONE_MINUS_SRC1_ALPHA	   // 1 - S1.a                          1 - S1.a
 };
 
-enum RIWindowType_e {
-	RI_WINDOW_X11,
-	RI_WINDOW_WIN32,
-	RI_WINDOW_METAL,
-	RI_WINDOW_WAYLAND
-};
+enum RIWindowType_e { RI_WINDOW_X11, RI_WINDOW_WIN32, RI_WINDOW_METAL, RI_WINDOW_WAYLAND };
 
 struct RIBuffer_s {
 	union {
-    #if(DEVICE_IMPL_VULKAN)
-    struct {
-    	VkBuffer buffer;
-    } vk;
-    #endif
+#if ( DEVICE_IMPL_VULKAN )
+		struct {
+			VkBuffer buffer;
+			struct VmaAllocation_T *allocation;
+		} vk;
+#endif
 	};
 };
 
@@ -285,11 +263,22 @@ struct RIBarrierBufferHandle_s {
 
 struct RITexture_s {
 	union {
-    #if(DEVICE_IMPL_VULKAN)
-    struct {
-    	VkImage image;
-    } vk;
-    #endif
+#if ( DEVICE_IMPL_VULKAN )
+		struct {
+			VkImage image;
+			struct VmaAllocation_T *allocation;
+		} vk;
+#endif
+	};
+};
+
+struct RITextureView_s {
+	union {
+#if ( DEVICE_IMPL_VULKAN )
+		struct {
+			VkImageView image;
+		} vk;
+#endif
 	};
 };
 
@@ -315,14 +304,14 @@ struct RIFree_s {
 		VkBuffer vkBuffer;
 		VkSampler vkSampler;
 		VkBufferView vkBufferView;
-		struct VmaAllocation_T*  vmaAlloc;
+		struct VmaAllocation_T *vmaAlloc;
 #endif
 	};
 };
 
 enum RIDescriptorFlags_e {
 	RI_VK_DESC_BEGIN = 0,
-	RI_VK_DESC_OWN_SAMPLER = 0x1,		 // owns the backing assets VKImage, VkBuffer
+	RI_VK_DESC_OWN_SAMPLER = 0x1,	// owns the backing assets VKImage, VkBuffer
 	RI_VK_DESC_OWN_IMAGE_VIEW = 0x2 // owns the backing sampler
 };
 
@@ -330,10 +319,8 @@ struct RIDescriptor_s {
 	// unique id to mark the descriptor
 	hash_t cookie;
 	uint8_t flags;
-	struct RIBuffer_s* buffer;
-	struct RITexture_s* texture; 
 	union {
-#if( DEVICE_IMPL_VULKAN )
+#if ( DEVICE_IMPL_VULKAN )
 		struct {
 			VkDescriptorType type;
 			union {
@@ -346,98 +333,147 @@ struct RIDescriptor_s {
 };
 
 struct RIRect_s {
-    int16_t x;
-    int16_t y;
-    int16_t width;
-    int16_t height;
+	int16_t x;
+	int16_t y;
+	int16_t width;
+	int16_t height;
 };
 
 struct RIViewport_s {
-    float x;
-    float y;
-    float width;
-    float height;
-    float depthMin;
-    float depthMax;
-    bool originBottomLeft; // expects "isViewportOriginBottomLeftSupported"
+	float x;
+	float y;
+	float width;
+	float height;
+	float depthMin;
+	float depthMax;
+	bool originBottomLeft; // expects "isViewportOriginBottomLeftSupported"
+};
+
+struct RIPool_s {
+	union {
+#if ( DEVICE_IMPL_VULKAN )
+		struct {
+			VkQueue queue;
+			VkCommandPool pool;
+		} vk;
+#endif
+	};
 };
 
 struct RICmd_s {
 	union {
-    #if(DEVICE_IMPL_VULKAN)
-    struct {
-    	VkCommandPool pool;
-    	VkCommandBuffer cmd;  
-    } vk;
-    #endif
+#if ( DEVICE_IMPL_VULKAN )
+		struct {
+			VkCommandBuffer cmd;
+		} vk;
+#endif
 	};
 };
 
+#define RI_COMMAND_RING_POOL_COUNT RI_NUMBER_FRAMES_FLIGHT
+#define RI_COMMAND_RING_CMD_PER_POOL 8
 
-struct RIQueue_s {
-  union {
-    #if(DEVICE_IMPL_VULKAN)
-      struct {
-        VkQueueFlags queueFlags;
-        uint16_t queueFamilyIdx;
-        uint16_t slotIdx;
-        VkQueue queue;
-      } vk;
-    #endif
-  };
-};
-
-struct RISwapchain_s {
-  struct RIQueue_s* presentQueue;
-	uint16_t imageCount;
-	uint16_t width;
-	uint16_t height;
-	uint32_t format; // RI_Format_e 
-	struct RITexture_s textures[RI_MAX_SWAPCHAIN_IMAGES];
+struct RICommandRingElement_s {
+	struct RICmd_s *cmds;
+	uint32_t numCmds;
+	struct RIPool_s *pool;
 	union {
 #if ( DEVICE_IMPL_VULKAN )
 		struct {
-			uint32_t frameIndex;
-			uint32_t textureIndex;
-			uint64_t presentID;
+			VkSemaphore semaphore;
+			VkFence fence;
+		} vk;
+#endif
+	};
+};
+
+struct RICommandRingBuffer_s {
+	uint32_t poolIndex;
+	uint32_t cmdIndex;
+	uint32_t fenceIndex;
+
+	uint32_t poolCount;
+	uint32_t cmdPerPool;
+	bool syncPrimitive;
+
+	struct RIPool_s pools[RI_COMMAND_RING_POOL_COUNT];
+	struct RICmd_s cmds[RI_COMMAND_RING_POOL_COUNT][RI_COMMAND_RING_CMD_PER_POOL];
+
+	union {
+#if ( DEVICE_IMPL_VULKAN )
+		struct {
+			VkFence fences[RI_COMMAND_RING_POOL_COUNT][RI_COMMAND_RING_CMD_PER_POOL];
+			VkSemaphore semaphores[RI_COMMAND_RING_POOL_COUNT][RI_COMMAND_RING_CMD_PER_POOL];
+		} vk;
+#endif
+	};
+};
+
+struct RIQueue_s {
+	union {
+#if ( DEVICE_IMPL_VULKAN )
+		struct {
+			VkQueueFlags queueFlags;
+			uint16_t queueFamilyIdx;
+			uint16_t slotIdx;
+			VkQueue queue;
+		} vk;
+#endif
+	};
+};
+
+struct RISwapchain_s {
+	struct RIQueue_s *presentQueue;
+	uint16_t width;
+	uint16_t height;
+	uint32_t format; // RI_Format_e
+
+	union {
+#if ( DEVICE_IMPL_VULKAN )
+		struct {
 			VkSwapchainKHR swapchain;
 			VkSurfaceKHR surface;
+			uint32_t imageCount;
 			VkImage images[RI_MAX_SWAPCHAIN_IMAGES];
-			VkSemaphore imageAcquireSem[RI_MAX_SWAPCHAIN_IMAGES];
-			VkSemaphore finishSem[RI_MAX_SWAPCHAIN_IMAGES];
+			VkImageView views[RI_MAX_SWAPCHAIN_IMAGES];
+
+			uint32_t signal_idx;
+			VkSemaphore signaled[RI_MAX_SWAPCHAIN_IMAGES];
+
+			VkColorSpaceKHR imageColorSpace;
+			VkPresentModeKHR presentMode;
 		} vk;
 #endif
 	};
 };
 
 struct RIRenderer_s {
-  uint8_t api; // RIDeviceAPI_e  
-  union {
-    #if(DEVICE_IMPL_VULKAN)
-      struct {
-      	uint32_t apiVersion;
-        VkInstance instance;
-        VkDebugUtilsMessengerEXT debugMessageUtils;
-      } vk;
-    #endif
-  };
+	uint8_t api; // RIDeviceAPI_e
+	union {
+#if ( DEVICE_IMPL_VULKAN )
+		struct {
+			uint32_t apiVersion;
+			VkInstance instance;
+			VkDebugUtilsMessengerEXT debugMessageUtils;
+		} vk;
+#endif
+	};
 };
 
-
 struct RIBackendInit_s {
-  uint8_t api; // RIDeviceAPI_e 
-  const char* applicationName;
-  union {
-    #if(DEVICE_IMPL_VULKAN)
-    struct {
-      uint32_t enableValidationLayer: 1;
-      size_t numFilterLayers;
-      const char* filterLayers[]; // filter layers for the renderer 
-    } vk;
-    #endif
-    #if(DEVICE_IMPL_MTL)
-    #endif
-  };
+	uint8_t api; // RIDeviceAPI_e
+	const char *applicationName;
+	union {
+#if ( DEVICE_IMPL_VULKAN )
+		struct {
+			uint32_t enableValidationLayer : 1;
+			size_t numFilterLayers;
+			const char *filterLayers[]; // filter layers for the renderer
+		} vk;
+#endif
+#if ( DEVICE_IMPL_MTL )
+#endif
+	};
 };
 
 struct RIPhysicalAdapter_s {
@@ -446,9 +482,9 @@ struct RIPhysicalAdapter_s {
 	uint64_t videoMemorySize;
 	uint64_t systemMemorySize;
 	uint32_t deviceId;
-	uint8_t vendor; // RIVendor_e
-	uint8_t presetLevel; // RIPresetLevel_e  
-	uint8_t type; // RIAdapterType_e 
+	uint8_t vendor;		 // RIVendor_e
+	uint8_t presetLevel; // RIPresetLevel_e
+	uint8_t type;		 // RIAdapterType_e
 
 	// Viewports
 	uint32_t viewportMaxNum;
@@ -491,8 +527,8 @@ struct RIPhysicalAdapter_s {
 	uint32_t uploadBufferTextureSliceAlignment;
 	uint32_t bufferShaderResourceOffsetAlignment;
 	uint32_t constantBufferOffsetAlignment;
-	//uint32_t scratchBufferOffsetAlignment;
-	//uint32_t shaderBindingTableAlignment;
+	// uint32_t scratchBufferOffsetAlignment;
+	// uint32_t shaderBindingTableAlignment;
 
 	// Pipeline layout
 	// D3D12 only: rootConstantSize + descriptorSetNum * 4 + rootDescriptorNum * 8 <= 256 (see "FitPipelineLayoutSettingsIntoDeviceLimits")
@@ -549,20 +585,20 @@ struct RIPhysicalAdapter_s {
 	uint32_t computeShaderWorkGroupMaxDim[3];
 
 	// Ray tracing
-	//uint32_t rayTracingShaderGroupIdentifierSize;
-	//uint32_t rayTracingShaderTableMaxStride;
-	//uint32_t rayTracingShaderRecursionMaxDepth;
-	//uint32_t rayTracingGeometryObjectMaxNum;
+	// uint32_t rayTracingShaderGroupIdentifierSize;
+	// uint32_t rayTracingShaderTableMaxStride;
+	// uint32_t rayTracingShaderRecursionMaxDepth;
+	// uint32_t rayTracingGeometryObjectMaxNum;
 
 	// Mesh shaders
-	//uint32_t meshControlSharedMemoryMaxSize;
-	//uint32_t meshControlWorkGroupInvocationMaxNum;
-	//uint32_t meshControlPayloadMaxSize;
-	//uint32_t meshEvaluationOutputVerticesMaxNum;
-	//uint32_t meshEvaluationOutputPrimitiveMaxNum;
-	//uint32_t meshEvaluationOutputComponentMaxNum;
-	//uint32_t meshEvaluationSharedMemoryMaxSize;
-	//uint32_t meshEvaluationWorkGroupInvocationMaxNum;
+	// uint32_t meshControlSharedMemoryMaxSize;
+	// uint32_t meshControlWorkGroupInvocationMaxNum;
+	// uint32_t meshControlPayloadMaxSize;
+	// uint32_t meshEvaluationOutputVerticesMaxNum;
+	// uint32_t meshEvaluationOutputPrimitiveMaxNum;
+	// uint32_t meshEvaluationOutputComponentMaxNum;
+	// uint32_t meshEvaluationSharedMemoryMaxSize;
+	// uint32_t meshEvaluationWorkGroupInvocationMaxNum;
 
 	// Precision bits
 	uint32_t viewportPrecisionBits;
@@ -583,26 +619,26 @@ struct RIPhysicalAdapter_s {
 	uint32_t clipDistanceMaxNum;
 	uint32_t cullDistanceMaxNum;
 	uint32_t combinedClipAndCullDistanceMaxNum;
-	//uint8_t shadingRateAttachmentTileSize;
-	//uint8_t shaderModel; // major * 10 + minor
+	// uint8_t shadingRateAttachmentTileSize;
+	// uint8_t shaderModel; // major * 10 + minor
 
 	// Tiers (0 - unsupported)
 	// 1 - 1/2 pixel uncertainty region and does not support post-snap degenerates
 	// 2 - reduces the maximum uncertainty region to 1/256 and requires post-snap degenerates not be culled
 	// 3 - maintains a maximum 1/256 uncertainty region and adds support for inner input coverage, aka "SV_InnerCoverage"
-	//uint8_t conservativeRasterTier;
+	// uint8_t conservativeRasterTier;
 
 	// 1 - a single sample pattern can be specified to repeat for every pixel ("locationNum / sampleNum" must be 1 in "CmdSetSampleLocations")
 	// 2 - four separate sample patterns can be specified for each pixel in a 2x2 grid ("locationNum / sampleNum" can be up to 4 in "CmdSetSampleLocations")
-	//uint8_t sampleLocationsTier;
+	// uint8_t sampleLocationsTier;
 
 	// 1 - DXR 1.0: full raytracing functionality, except features below
 	// 2 - DXR 1.1: adds - ray query, "CmdDispatchRaysIndirect", "GeometryIndex()" intrinsic, additional ray flags & vertex formats
-	//uint8_t rayTracingTier;
+	// uint8_t rayTracingTier;
 
 	// 1 - shading rate can be specified only per draw
 	// 2 - adds: per primitive shading rate, per "shadingRateAttachmentTileSize" shading rate, combiners, "SV_ShadingRate" support
-	//uint8_t shadingRateTier;
+	// uint8_t shadingRateTier;
 
 	// 1 - unbound arrays with dynamic indexing
 	// 2 - D3D12 dynamic resources: https://microsoft.github.io/DirectX-Specs/d3d/HLSL_SM_6_6_DynamicResources.html
@@ -614,13 +650,13 @@ struct RIPhysicalAdapter_s {
 	uint32_t isDepthBoundsTestSupported : 1;
 	uint32_t isDrawIndirectCountSupported : 1;
 	uint32_t isIndependentFrontAndBackStencilReferenceAndMasksSupported : 1;
-	//uint32_t isLineSmoothingSupported : 1;
+	// uint32_t isLineSmoothingSupported : 1;
 	uint32_t isCopyQueueTimestampSupported : 1;
-	//uint32_t isMeshShaderPipelineStatsSupported : 1;
+	// uint32_t isMeshShaderPipelineStatsSupported : 1;
 	uint32_t isEnchancedBarrierSupported : 1; // aka - can "Layout" be ignored?
 	uint32_t isMemoryTier2Supported : 1;	  // a memory object can support resources from all 3 categories (buffers, attachments, all other textures)
 	uint32_t isDynamicDepthBiasSupported : 1;
-	//uint32_t isAdditionalShadingRatesSupported : 1;
+	// uint32_t isAdditionalShadingRatesSupported : 1;
 	uint32_t isViewportOriginBottomLeftSupported : 1;
 	uint32_t isRegionResolveSupported : 1;
 
@@ -642,56 +678,55 @@ struct RIPhysicalAdapter_s {
 	uint32_t isDrawParametersEmulationEnabled : 1;
 
 	//// Extensions (unexposed are always supported)
-	//uint32_t isSwapChainSupported : 1;	// swapchain Support
-	//uint32_t isRayTracingSupported : 1; // raytracing support
-	//uint32_t isMeshShaderSupported : 1; // meshshader support
+	// uint32_t isSwapChainSupported : 1;	// swapchain Support
+	// uint32_t isRayTracingSupported : 1; // raytracing support
+	// uint32_t isMeshShaderSupported : 1; // meshshader support
 
 	union {
 #if ( DEVICE_IMPL_VULKAN )
 		struct {
 			uint32_t apiVersion;
 			VkPhysicalDevice physicalDevice;
-			
-			uint32_t isSwapChainSupported : 1;	// swapchain Support
-			uint32_t isBufferDeviceAddressSupported: 1;
-			uint32_t isAMDDeviceCoherentMemorySupported: 1;
-			uint32_t isPresentIDSupported: 1;
-			//uint32_t YCbCrExtension : 1;
-			//uint32_t FillModeNonSolid : 1;
-			//uint32_t KHRRayQueryExtension : 1;
-			//uint32_t AMDGCNShaderExtension : 1;
-			//uint32_t AMDDrawIndirectCountExtension : 1;
-			//uint32_t AMDShaderInfoExtension : 1;
-			//uint32_t DescriptorIndexingExtension : 1;
-			//uint32_t DynamicRenderingExtension : 1;
-			//uint32_t ShaderSampledImageArrayDynamicIndexingSupported : 1;
-			//uint32_t BufferDeviceAddressSupported : 1;
-			//uint32_t DrawIndirectCountExtension : 1;
-			//uint32_t DedicatedAllocationExtension : 1;
-			//uint32_t DebugMarkerExtension : 1;
-			//uint32_t MemoryReq2Extension : 1;
-			//uint32_t FragmentShaderInterlockExtension : 1;
-			//uint32_t BufferDeviceAddressExtension : 1;
-			//uint32_t accelerationStructureExtension : 1;
-			//uint32_t rayTracingPipelineExtension : 1;
-			//uint32_t rayQueryExtension : 1;
-			//uint32_t ShaderAtomicInt64Extension : 1;
-			//uint32_t BufferDeviceAddressFeature : 1;
-			//uint32_t ShaderFloatControlsExtension : 1;
-			//uint32_t Spirv14Extension : 1;
-			//uint32_t DeferredHostOperationsExtension : 1;
-			//uint32_t DeviceFaultExtension : 1;
-			//uint32_t DeviceFaultSupported : 1;
-			//uint32_t ASTCDecodeModeExtension : 1;
-			//uint32_t DeviceMemoryReportExtension : 1;
-			//uint32_t AMDBufferMarkerExtension : 1;
-			//uint32_t AMDDeviceCoherentMemoryExtension : 1;
-			//uint32_t AMDDeviceCoherentMemorySupported : 1;
+
+			uint32_t isSwapChainSupported : 1; // swapchain Support
+			uint32_t isBufferDeviceAddressSupported : 1;
+			uint32_t isAMDDeviceCoherentMemorySupported : 1;
+			uint32_t isPresentIDSupported : 1;
+			// uint32_t YCbCrExtension : 1;
+			// uint32_t FillModeNonSolid : 1;
+			// uint32_t KHRRayQueryExtension : 1;
+			// uint32_t AMDGCNShaderExtension : 1;
+			// uint32_t AMDDrawIndirectCountExtension : 1;
+			// uint32_t AMDShaderInfoExtension : 1;
+			// uint32_t DescriptorIndexingExtension : 1;
+			// uint32_t DynamicRenderingExtension : 1;
+			// uint32_t ShaderSampledImageArrayDynamicIndexingSupported : 1;
+			// uint32_t BufferDeviceAddressSupported : 1;
+			// uint32_t DrawIndirectCountExtension : 1;
+			// uint32_t DedicatedAllocationExtension : 1;
+			// uint32_t DebugMarkerExtension : 1;
+			// uint32_t MemoryReq2Extension : 1;
+			// uint32_t FragmentShaderInterlockExtension : 1;
+			// uint32_t BufferDeviceAddressExtension : 1;
+			// uint32_t accelerationStructureExtension : 1;
+			// uint32_t rayTracingPipelineExtension : 1;
+			// uint32_t rayQueryExtension : 1;
+			// uint32_t ShaderAtomicInt64Extension : 1;
+			// uint32_t BufferDeviceAddressFeature : 1;
+			// uint32_t ShaderFloatControlsExtension : 1;
+			// uint32_t Spirv14Extension : 1;
+			// uint32_t DeferredHostOperationsExtension : 1;
+			// uint32_t DeviceFaultExtension : 1;
+			// uint32_t DeviceFaultSupported : 1;
+			// uint32_t ASTCDecodeModeExtension : 1;
+			// uint32_t DeviceMemoryReportExtension : 1;
+			// uint32_t AMDBufferMarkerExtension : 1;
+			// uint32_t AMDDeviceCoherentMemoryExtension : 1;
+			// uint32_t AMDDeviceCoherentMemorySupported : 1;
 		} vk;
 #endif
 #if ( DEVICE_IMPL_MTL )
 		struct {
-
 		} mtl;
 #endif
 	};
@@ -699,36 +734,36 @@ struct RIPhysicalAdapter_s {
 
 struct RIDevice_s {
 	struct RIPhysicalAdapter_s physicalAdapter;
-  struct RIRenderer_s* renderer;
-  struct RIQueue_s queues[RI_QUEUE_LEN];
-  union {
-    #if(DEVICE_IMPL_VULKAN)
-    struct {
-      uint32_t maintenance5Features: 1;
-      uint32_t conservaitveRasterTier: 1;
-      uint32_t swapchainMutableFormat: 1;
-      uint32_t memoryBudget: 1;
-      VkDevice device;
-      VmaAllocator vmaAllocator;
-    } vk; 
-    #endif
-    #if(DEVICE_IMPL_MTL)
-    #endif
-  };
+	struct RIRenderer_s *renderer;
+	struct RIQueue_s queues[RI_QUEUE_LEN];
+	union {
+#if ( DEVICE_IMPL_VULKAN )
+		struct {
+			uint32_t maintenance5Features : 1;
+			uint32_t conservaitveRasterTier : 1;
+			uint32_t swapchainMutableFormat : 1;
+			uint32_t memoryBudget : 1;
+			VkDevice device;
+			VmaAllocator vmaAllocator;
+		} vk;
+#endif
+#if ( DEVICE_IMPL_MTL )
+#endif
+	};
 };
 
-static inline bool IsRICmdValid( struct RIRenderer_s *renderer, struct RICmd_s *cmd )
-{
-#if ( DEVICE_IMPL_VULKAN )
-	return cmd->vk.pool && cmd->vk.cmd;
-#endif
-	return false;
-}
+// static inline bool IsRICmdValid( struct RIRenderer_s *renderer, struct RICmd_s *cmd )
+//{
+// #if ( DEVICE_IMPL_VULKAN )
+//	return cmd->vk.pool && cmd->vk.cmd;
+// #endif
+//	return false;
+// }
 
 static inline bool IsRIBufferValid( struct RIRenderer_s *renderer, const struct RIBuffer_s *handle )
 {
 #if ( DEVICE_IMPL_VULKAN )
-		return handle && handle->vk.buffer!= NULL;
+	return handle && handle->vk.buffer != NULL;
 #endif
 	return false;
 }
@@ -736,7 +771,7 @@ static inline bool IsRIBufferValid( struct RIRenderer_s *renderer, const struct 
 static inline bool IsRITextureValid( struct RIRenderer_s *renderer, const struct RITexture_s *handle )
 {
 #if ( DEVICE_IMPL_VULKAN )
-		return handle && handle->vk.image != NULL;
+	return handle && handle->vk.image != NULL;
 #endif
 	return false;
 }

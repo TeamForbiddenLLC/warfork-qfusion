@@ -521,5 +521,98 @@ UTEST(qstr, qsscanf)
 //   }
 // }
 
+UTEST(qstr, qStrDup_content)
+{
+    struct QStr s1 = { 0 };
+    EXPECT_TRUE(qStrAssign(&s1, qCToStrRef("Hello World")));
+    struct QStr s2 = qStrDup(&s1);
+    EXPECT_NE(s1.buf, s2.buf);
+    EXPECT_EQ(s2.len, (size_t)11);
+    EXPECT_EQ(s2.alloc, (size_t)12);
+    EXPECT_EQ(qStrEqual(qToStrRef(s2), qCToStrRef("Hello World")), true);
+    qStrFree(&s1);
+    qStrFree(&s2);
+}
+
+UTEST(qstr, qStrDup_empty)
+{
+    struct QStr s1 = { 0 };
+    struct QStr s2 = qStrDup(&s1);
+    EXPECT_EQ(s2.buf, (char*)NULL);
+    EXPECT_EQ(s2.len, (size_t)0);
+}
+
+UTEST(qstr, qIndexOfAny_basic)
+{
+    EXPECT_EQ(qStrIndexOfAny(qCToStrRef("hello world"), qCToStrRef(" ")), 5);
+    EXPECT_EQ(qStrIndexOfAny(qCToStrRef("hello world"), qCToStrRef("aeiou")), 1);
+    EXPECT_EQ(qStrIndexOfAny(qCToStrRef("hello"), qCToStrRef("xyz")), -1);
+    EXPECT_EQ(qStrIndexOfAny(qCToStrRef(""), qCToStrRef("abc")), -1);
+    EXPECT_EQ(qStrIndexOfAny(qCToStrRef("abc"), qCToStrRef("c")), 2);
+    EXPECT_EQ(qStrIndexOfAny(qCToStrRef("abc"), qCToStrRef("a")), 0);
+}
+
+UTEST(qstr, qLastIndexOfAny_basic)
+{
+    EXPECT_EQ(qStrLastIndexOfAny(qCToStrRef("hello world"), qCToStrRef(" ")), 5);
+    EXPECT_EQ(qStrLastIndexOfAny(qCToStrRef("hello world"), qCToStrRef("aeiou")), 7);
+    EXPECT_EQ(qStrLastIndexOfAny(qCToStrRef("hello"), qCToStrRef("xyz")), -1);
+    EXPECT_EQ(qStrLastIndexOfAny(qCToStrRef(""), qCToStrRef("abc")), -1);
+    EXPECT_EQ(qStrLastIndexOfAny(qCToStrRef("abc"), qCToStrRef("a")), 0);
+    EXPECT_EQ(qStrLastIndexOfAny(qCToStrRef("abc"), qCToStrRef("c")), 2);
+    EXPECT_EQ(qStrLastIndexOfAny(qCToStrRef("abcabc"), qCToStrRef("a")), 3);
+}
+
+UTEST(qstr, qIndexOfCaseless_short)
+{
+    EXPECT_EQ(qStrIndexOfCaseless(qCToStrRef("Hello World"), qCToStrRef("world")), 6);
+    EXPECT_EQ(qStrIndexOfCaseless(qCToStrRef("Hello World"), qCToStrRef("HELLO")), 0);
+    EXPECT_EQ(qStrIndexOfCaseless(qCToStrRef("Hello World"), qCToStrRef("xyz")), -1);
+}
+
+UTEST(qstr, qIndexOfCaseless_long)
+{
+    // long haystack (>52) with long needle (>4) exercises the BMH path
+    EXPECT_EQ(qStrIndexOfCaseless(
+        qCToStrRef("This is a test string to see how Boyer-Moore handles longer searches"),
+        qCToStrRef("SEARCHES")), 60);
+    EXPECT_EQ(qStrIndexOfCaseless(
+        qCToStrRef("This is a test string to see how Boyer-Moore handles longer searches"),
+        qCToStrRef("LONGER")), 53);
+    EXPECT_EQ(qStrIndexOfCaseless(
+        qCToStrRef("This is a test string to see how Boyer-Moore handles longer searches"),
+        qCToStrRef("NOTHERE")), -1);
+}
+
+UTEST(qstr, qLastIndexOfCaseless_short)
+{
+    EXPECT_EQ(qStrLastIndexOfCaseless(qCToStrRef("foo FOO foo"), qCToStrRef("foo")), 8);
+    EXPECT_EQ(qStrLastIndexOfCaseless(qCToStrRef("Hello World"), qCToStrRef("HELLO")), 0);
+    EXPECT_EQ(qStrLastIndexOfCaseless(qCToStrRef("Hello World"), qCToStrRef("xyz")), -1);
+}
+
+UTEST(qstr, qStrSetLen_null_term)
+{
+    // verify null terminator is within bounds after qStrSetLen
+    struct QStr s = { 0 };
+    EXPECT_TRUE(qStrSetLen(&s, 4));
+    EXPECT_GE(s.alloc, (size_t)5);
+    s.buf[0] = 'a'; s.buf[1] = 'b'; s.buf[2] = 'c'; s.buf[3] = 'd';
+    s.buf[s.len] = '\0';
+    EXPECT_EQ(qStrEqual(qToStrRef(s), qCToStrRef("abcd")), true);
+    qStrFree(&s);
+}
+
+UTEST(qstr, qStrReadll_negative)
+{
+    long long res = 0;
+    EXPECT_TRUE(qStrReadll(qCToStrRef("-123"), &res));
+    EXPECT_EQ(res, -123);
+    EXPECT_TRUE(qStrReadll(qCToStrRef("-1"), &res));
+    EXPECT_EQ(res, -1);
+    EXPECT_TRUE(qStrReadll(qCToStrRef("-9999"), &res));
+    EXPECT_EQ(res, -9999);
+}
+
 UTEST_MAIN();
 

@@ -135,7 +135,6 @@ static void __appendGLSLDeformv( struct QStr *str, const deformv_t *deformv, int
 	if( !numDeforms ) {
 		return;
 	}
-
 	const int funcType = deformv->func.type;
 	for( size_t i = 0; i < numDeforms; i++, deformv++ ) {
 		switch( deformv->type ) {
@@ -144,22 +143,38 @@ static void __appendGLSLDeformv( struct QStr *str, const deformv_t *deformv, int
 					break;
 				qStrAppendSlice( str, qCToStrRef( "#define DEFORMV_WAVE 1 \n" ) );
 				qstrcatfmt( str, "#define DEFORMV_WAVE_FUNC %s \n", funcs[funcType] );
-				qstrcatprintf( str, "#define DEFORMV_WAVE_CONSTANT vec4(%f,%f,%f,%f) \n", deformv->func.args[0], deformv->func.args[1], deformv->func.args[2], deformv->func.args[3] );
+				qstrcatprintf( str, "#define DEFORMV_WAVE_CONSTANT vec4(%f,%f,%f,%f) \n",
+							   deformv->func.args[0],	// base
+							   deformv->func.args[1],	// amplitude
+							   deformv->func.args[2],	// phase
+							   deformv->func.args[3] ); // frequency
+				qstrcatprintf( str, "#define DEFORMV_WAVE_DIVISOR %f \n",
+							   deformv->args[0] ); // spatial divisor (1.0 / wavelength)
 				break;
 			}
 			case DEFORMV_MOVE: {
 				if( funcType <= SHADER_FUNC_NONE || funcType > numSupportedFuncs || !funcs[funcType] )
 					break;
-
 				qStrAppendSlice( str, qCToStrRef( "#define DEFORMV_MOVE 1 \n" ) );
 				qstrcatfmt( str, "#define DEFORMV_MOVE_FUNC %s \n", funcs[funcType] );
-				qstrcatprintf( str, "#define DEFORMV_MOVE_CONSTANT vec4(%f,%f,%f,%f) \n", deformv->func.args[0], deformv->func.args[1], deformv->func.args[2], deformv->func.args[3] );
-
+				qstrcatprintf( str, "#define DEFORMV_MOVE_CONSTANT vec4(%f,%f,%f,%f) \n",
+							   deformv->func.args[0],	// base
+							   deformv->func.args[1],	// amplitude
+							   deformv->func.args[2],	// phase
+							   deformv->func.args[3] ); // frequency
+				qstrcatprintf( str, "#define DEFORMV_MOVE_DIRECTION vec3(%f,%f,%f) \n",
+							   deformv->args[0],   // move x
+							   deformv->args[1],   // move y
+							   deformv->args[2] ); // move z
 				break;
 			}
 			case DEFORMV_BULGE:
 				qStrAppendSlice( str, qCToStrRef( "#define DEFORMV_BULGE 1 \n" ) );
-				qstrcatprintf( str, "#define DEFORMV_BULGE_CONSTANT vec4(%f,%f,%f,%f) \n", deformv->func.args[0], deformv->func.args[1], deformv->func.args[2], deformv->func.args[3] );
+				qstrcatprintf( str, "#define DEFORMV_BULGE_CONSTANT vec4(%f,%f,%f,%f) \n",
+							   deformv->args[0],   // width
+							   deformv->args[1],   // height
+							   deformv->args[2],   // speed
+							   deformv->args[3] ); // phase
 				break;
 			case DEFORMV_AUTOSPRITE:
 				qStrAppendSlice( str, qCToStrRef( "#define DEFORMV_AUTOSPRITE 1 \n" ) );
@@ -951,8 +966,9 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	const bool useDepthBias = ( cmd->depthBiasConstant != 0 || cmd->depthBiasSlope != 0 );
 
 	//	uint32_t attribFlags = 0;
-	assert( cmd->numStreams < MAX_ATTRIBUTES );
-	assert( cmd->numStreams < MAX_STREAMS );
+	assert( cmd->numAttribs <= MAX_ATTRIBUTES );
+	assert( cmd->numStreams <= MAX_STREAMS );
+	assert( cmd->numColorsAttachments <= MAX_COLOR_ATTACHMENTS );
 	if( cmd->numStreams > 0 ) {
 		uint32_t numVertexAttribs = 0;
 		for( size_t i = 0; i < cmd->numAttribs; i++ ) {
@@ -990,19 +1006,19 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 		uint16_t colorDstFactor : 5; // RIBlendFactor_e
 		uint16_t topology : 4;		 // RITopology_e
 		uint16_t compareFunc : 4;	 // RICompareFunc_e
-	} encode = {
-		.depthBiasConstant = useDepthBias ? cmd->depthBiasConstant : 0,
-		.depthBiasClamp = useDepthBias ? cmd->depthBiasClamp : 0,
-		.depthBiasSlope = useDepthBias ? cmd->depthBiasSlope : 0,
-		.cullMode = cullMode,
-		.colorBlendEnabled = cmd->colorBlendEnabled,
-		.depthWrite = cmd->depthWrite,
-		.colorWriteMask = cmd->colorBlendEnabled ? cmd->colorWriteMask : 0,
-		.colorSrcFactor = cmd->colorBlendEnabled ? cmd->colorSrcFactor : 0,
-		.colorDstFactor = cmd->colorBlendEnabled ? cmd->colorDstFactor : 0,
-		.topology = cmd->topology,
-		.compareFunc = cmd->compareFunc,
-	};
+	} encode;
+	memset( &encode, 0, sizeof( encode ) );
+	encode.depthBiasConstant = useDepthBias ? cmd->depthBiasConstant : 0;
+	encode.depthBiasClamp = useDepthBias ? cmd->depthBiasClamp : 0;
+	encode.depthBiasSlope = useDepthBias ? cmd->depthBiasSlope : 0;
+	encode.cullMode = cullMode;
+	encode.colorBlendEnabled = cmd->colorBlendEnabled;
+	encode.depthWrite = cmd->depthWrite;
+	encode.colorWriteMask = cmd->colorBlendEnabled ? cmd->colorWriteMask : 0;
+	encode.colorSrcFactor = cmd->colorBlendEnabled ? cmd->colorSrcFactor : 0;
+	encode.colorDstFactor = cmd->colorBlendEnabled ? cmd->colorDstFactor : 0;
+	encode.topology = cmd->topology;
+	encode.compareFunc = cmd->compareFunc;
 	for( size_t i = 0; i < cmd->numColorsAttachments; i++ ) {
 		colorAttachmentsVK[i] = RIFormatToVK( cmd->colorAttachments[i] );
 	}
@@ -1083,8 +1099,8 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 		}
 
 		VkPipelineViewportStateCreateInfo viewportState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-		viewportState.viewportCount = Q_MAX( 1, cmd->numColorsAttachments );
-		viewportState.scissorCount = Q_MAX( 1, cmd->numColorsAttachments );
+		viewportState.viewportCount = 1;
+		viewportState.scissorCount = 1;
 		pipelineCreateInfo.pViewportState = &viewportState;
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
@@ -1180,6 +1196,7 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd,
 				if( !refl || setIndex != refl->set || RI_IsEmptyDescriptor( &bindings[i].descriptor ) )
 					continue;
 				hash = hash_u64( hash, refl->hash );
+				assert(bindings[i].descriptor.cookie != 0); // the cookie can't be 0
 				hash = hash_u64( hash, bindings[i].descriptor.cookie );
 			}
 			if( hash == HASH_INITIAL_VALUE )
@@ -1192,6 +1209,7 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd,
 					if( !refl || setIndex != refl->set || RI_IsEmptyDescriptor( &bindings[i].descriptor ) )
 						continue;
 
+					assert( numWrites < Q_ARRAY_COUNT( descriptorWrite ) );
 					VkWriteDescriptorSet *vkDesc = descriptorWrite + ( numWrites++ );
 					memset( vkDesc, 0, sizeof( VkWriteDescriptorSet ) );
 					vkDesc->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1306,7 +1324,7 @@ void _vk__descriptorSetAlloc( struct RIDevice_s *device, struct DescriptorSetAll
 			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, programDescriptor->structuredBufferMaxNum * DESCRIPTOR_MAX_SIZE + programDescriptor->storageStructuredBufferMaxNum * DESCRIPTOR_MAX_SIZE };
 	if( programDescriptor->accelerationStructureMaxNum > 0 )
 		descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, programDescriptor->accelerationStructureMaxNum * DESCRIPTOR_MAX_SIZE };
-	assert( descriptorPoolLen < Q_ARRAY_COUNT( descriptorPoolSize ) );
+	assert( descriptorPoolLen <= Q_ARRAY_COUNT( descriptorPoolSize ) );
 	const VkDescriptorPoolCreateInfo info = {
 		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, NULL, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT, DESCRIPTOR_MAX_SIZE, descriptorPoolLen, descriptorPoolSize };
 	struct descriptor_pool_alloc_slot_s poolSlot = { 0 };

@@ -314,7 +314,7 @@ void R_BatchSpriteSurf( struct FrameState_s* cmd, const entity_t *e, const shade
 	mesh.colorsArray[1] = NULL;
 	mesh.sVectorsArray = NULL;
 
-	RB_AddDynamicMesh( cmd, e, shader, fog, portalSurface, 0, &mesh, GL_TRIANGLES, 0.0f, 0.0f );
+	RB_AddDynamicMesh( cmd, e, shader, fog, portalSurface, 0, &mesh, RI_TOPOLOGY_TRIANGLE_LIST, 0.0f, 0.0f );
 }
 
 /*
@@ -421,7 +421,7 @@ void R_DrawNullSurf( const entity_t *e, const shader_t *shader, const mfog_t *fo
 		return;
 	}
 
-	RB_BindVBO( rsh.nullVBO->index, GL_LINES );
+	RB_BindVBO( rsh.nullVBO->index, RI_TOPOLOGY_LINE_LIST );
 
 	RB_DrawElements(NULL, 0, 6, 0, 6, 0, 0, 0, 0 );
 }
@@ -571,7 +571,7 @@ void R_DrawRotatedStretchPic(struct FrameState_s* cmd, int x, int y, int w, int 
 		}
 	}
 
-	RB_AddDynamicMesh( cmd, NULL, shader, NULL, NULL, 0, &pic_mesh, GL_TRIANGLES, 0.0f, 0.0f );
+	RB_AddDynamicMesh( cmd, NULL, shader, NULL, NULL, 0, &pic_mesh, RI_TOPOLOGY_TRIANGLE_LIST, 0.0f, 0.0f );
 }
 
 /*
@@ -968,20 +968,27 @@ static void R_Clear(struct FrameState_s* frame, int bitMask  /* unused variable 
 		  if(frame->pipeline.numColorsAttachments > 0)
 			{
 				size_t numClear = 0;
-			  VkClearRect clearRect[2] = { 0 };
-			  VkClearAttachment clearAttach[2] = { 0 };
+			  VkClearRect clearRect[5] = { 0 };
+			  VkClearAttachment clearAttach[5] = { 0 };
 			  if( clearColor ) {
-				  clearRect[numClear].baseArrayLayer = 0;
-				  clearRect[numClear].rect = RIViewportToRect2D( &frame->viewport );
-				  clearRect[numClear].layerCount = frame->pipeline.numColorsAttachments;
-				  clearAttach[numClear].clearValue.color.float32[0] = envColor[0];
-				  clearAttach[numClear].clearValue.color.float32[1] = envColor[1];
-				  clearAttach[numClear].clearValue.color.float32[2] = envColor[2];
-				  clearAttach[numClear].clearValue.color.float32[3] = envColor[3];
-				  clearAttach[numClear].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-				  numClear++;
+				  for (size_t i = 0; i < frame->pipeline.numColorsAttachments; i++) {
+					  assert( numClear < Q_ARRAY_COUNT( clearRect ) );
+					  assert( numClear < Q_ARRAY_COUNT( clearAttach ) );
+					  clearRect[numClear].baseArrayLayer = 0;
+					  clearRect[numClear].rect = RIViewportToRect2D( &frame->viewport );
+					  clearRect[numClear].layerCount = 1;
+					  clearAttach[numClear].colorAttachment = i;
+					  clearAttach[numClear].clearValue.color.float32[0] = envColor[0];
+					  clearAttach[numClear].clearValue.color.float32[1] = envColor[1];
+					  clearAttach[numClear].clearValue.color.float32[2] = envColor[2];
+					  clearAttach[numClear].clearValue.color.float32[3] = envColor[3];
+					  clearAttach[numClear].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+					  numClear++;
+				  }
 			  }
 			  if( !depthPortal ) {
+				  assert( numClear < Q_ARRAY_COUNT( clearRect ) );
+				  assert( numClear < Q_ARRAY_COUNT( clearAttach ) );
 				  clearRect[numClear].baseArrayLayer = 0;
 				  clearRect[numClear].rect = RIViewportToRect2D( &frame->viewport );
 				  clearRect[numClear].layerCount = 1;
@@ -1008,7 +1015,8 @@ static void R_SetupGL(struct FrameState_s* frame)
 		.width = rn.viewport[2],
 		.height = rn.viewport[3],
 		.depthMin = 0.0f,
-		.depthMax = 1.0f
+		.depthMax = 1.0f,
+		.originBottomLeft = frame->pipeline.flippedViewport
 	} );
 
 	if( rn.renderFlags & RF_CLIPPLANE )
@@ -1422,7 +1430,7 @@ const msurface_t *R_GetDebugSurface( void )
 	return debugSurface;
 }
 
-void R_RenderDebugSurface( const refdef_t *fd )
+void R_RenderDebugSurface( struct FrameState_s *frame, const refdef_t *fd )
 {
 	rtrace_t tr;
 	vec3_t forward;
@@ -1447,9 +1455,9 @@ void R_RenderDebugSurface( const refdef_t *fd )
 			
 			if( R_AddSurfToDrawList( rn.meshlist, R_NUM2ENT(tr.ent), NULL, surf->shader, 0, 0, NULL, surf->drawSurf ) ) {
 				if( rn.refdef.rdflags & RDF_FLIPPED ) {
-					RB_FlipFrontFace(NULL);
+					RB_FlipFrontFace(frame);
 				}
-				
+
 				if( r_speeds->integer == 5 ) {
 					// VBO debug mode
 					R_AddVBOSlice( surf->drawSurf - rsh.worldBrushModel->drawSurfaces,
@@ -1462,11 +1470,11 @@ void R_RenderDebugSurface( const refdef_t *fd )
 								  surf->mesh->numVerts, surf->mesh->numElems,
 								  surf->firstDrawSurfVert, surf->firstDrawSurfElem );
 				}
-				
-				R_DrawOutlinedSurfaces( NULL, rn.meshlist );
-				
+
+				R_DrawOutlinedSurfaces( frame, rn.meshlist );
+
 				if( rn.refdef.rdflags & RDF_FLIPPED )
-					RB_FlipFrontFace(NULL);
+					RB_FlipFrontFace(frame);
 				
 				debugSurf = surf;
 			}

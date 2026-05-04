@@ -308,15 +308,16 @@ void R_UploadVBOVertexRawData( mesh_vbo_t *vbo, int vertsOffset, int numVerts, c
 		.target = vbo->vertexBuffer,
 		.size = numVerts * vbo->vertexSize,
 		.offset = vertsOffset * vbo->vertexSize,
+#if ( DEVICE_IMPL_VULKAN )
+		.vk = {
+			.post_stage = VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT, 
+			.post_access = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT,         		
+		}
+#endif
 	};
 
-#if ( DEVICE_IMPL_VULKAN )
-		uploadDesc.postBarrier.vk.stage = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT;
-		uploadDesc.postBarrier.vk.access = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
-#endif
-
 	RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
-	memcpy( uploadDesc.data, data, uploadDesc.size);
+	memcpy( uploadDesc.mapped.data, data, uploadDesc.size );
 	RI_ResourceEndCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
 }
 
@@ -428,6 +429,7 @@ R_FillVertexBuffer_f( int, int, );
 
 void R_FillNriVertexAttribLayout(const struct vbo_layout_s* layout, struct frame_cmd_vertex_attrib_s * desc, size_t* numDesc) {
 	assert(layout);
+	assert( *numDesc < MAX_ATTRIBUTES );
 	desc[( *numDesc )++] = ( struct frame_cmd_vertex_attrib_s ){
 		.offset = 0, 
 		.format = ( layout->halfFloatAttribs & VATTRIB_POSITION_BIT ) ? R_FORMAT_RGBA16_SFLOAT : R_FORMAT_RGBA32_SFLOAT, 
@@ -534,20 +536,22 @@ void R_FillNriVertexAttribLayout(const struct vbo_layout_s* layout, struct frame
 		for(size_t i = 0; i < ( MAX_LIGHTMAPS + 3 ) / 4; i++ ) {
 			if( layout->vertexAttribs & ( VATTRIB_LMLAYERS0123_BIT << i ) ) {
 				desc[( *numDesc )++] = ( struct frame_cmd_vertex_attrib_s ){
-					.offset = layout->lmlayersOffset[i], 
-					.format = R_FORMAT_RGBA8_UINT, 
-					.vk = { VATTRIB_LMLAYERS0123 }, 
+					.offset = layout->lmlayersOffset[i],
+					.format = R_FORMAT_RGBA8_UINT,
+					.vk = { VATTRIB_LMLAYERS0123 },
 		//			.d3d = {.semanticName = "TEXCOORD5", .semanticIndex = lmattr  },
-					.streamIndex = 0 
+					.streamIndex = 0
 				};
 			}
 		}
 
 	}
 
+	assert( *numDesc <= MAX_ATTRIBUTES );
 }
 
 void R_FillNriVertexAttrib(mesh_vbo_t* vbo, struct frame_cmd_vertex_attrib_s * desc, size_t* numDesc) {
+	assert( *numDesc < MAX_ATTRIBUTES );
 	desc[( *numDesc )++] = (struct frame_cmd_vertex_attrib_s){ .offset = 0,
 															   .format = ( vbo->halfFloatAttribs & VATTRIB_POSITION_BIT ) ? RI_FORMAT_RGBA16_SFLOAT : RI_FORMAT_RGBA32_SFLOAT,
 															   .vk = { VATTRIB_POSITION },
@@ -644,14 +648,15 @@ void R_FillNriVertexAttrib(mesh_vbo_t* vbo, struct frame_cmd_vertex_attrib_s * d
 		for(size_t i = 0; i < ( MAX_LIGHTMAPS + 3 ) / 4; i++ ) {
 			if( vbo->vertexAttribs & ( VATTRIB_LMLAYERS0123_BIT << i ) ) {
 				desc[( *numDesc )++] = ( struct frame_cmd_vertex_attrib_s ){
-					.offset = vbo->lmlayersOffset[i], 
-					.format = RI_FORMAT_RGBA8_UINT, 
-					.vk = { VATTRIB_LMLAYERS0123 }, 
-					.streamIndex = 0 
+					.offset = vbo->lmlayersOffset[i],
+					.format = RI_FORMAT_RGBA8_UINT,
+					.vk = { VATTRIB_LMLAYERS0123 },
+					.streamIndex = 0
 				};
 			}
 		}
 	}
+	assert( *numDesc <= MAX_ATTRIBUTES );
 }
 
 struct vbo_layout_s R_CreateVBOLayout( vattribmask_t vattribs, vattribmask_t halfFloatVattribs)
@@ -1318,18 +1323,14 @@ void R_UploadVBOElemData( mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, con
 		.target = vbo->indexBuffer,
 		.size = mesh->numElems * sizeof( elem_t ),
 		.offset = elemsOffset * sizeof( elem_t ),
-	};
-	const uint64_t test= VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
 #if ( DEVICE_IMPL_VULKAN )
-	{
-		uploadDesc.postBarrier.vk.stage = VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
-		uploadDesc.postBarrier.vk.access = VK_ACCESS_2_INDEX_READ_BIT;
-	}
+		.vk.post_stage = VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT,
+		.vk.post_access = VK_ACCESS_2_INDEX_READ_BIT,
 #endif
-assert(test == uploadDesc.postBarrier.vk.stage);
+	};
 
-	RI_ResourceBeginCopyBuffer(&rsh.device, &rsh.uploader, &uploadDesc );
-	elem_t *dest = (elem_t *)uploadDesc.data;
+	RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
+	elem_t *dest = (elem_t *)uploadDesc.mapped.data;
 	for( size_t i = 0; i < mesh->numElems; i++ ) {
 		dest[i] = vertsOffset + mesh->elems[i];
 	}
@@ -1363,16 +1364,14 @@ vattribmask_t R_UploadVBOInstancesData( mesh_vbo_t *vbo, int instOffset, int num
 			.target = vbo->instanceBuffer,
 			.size = numInstances * sizeof( instancePoint_t ),
 			.offset = instOffset * sizeof( instancePoint_t ),
+#if ( DEVICE_IMPL_VULKAN )
+			.vk.post_stage = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
+			.vk.post_access = VK_ACCESS_2_UNIFORM_READ_BIT,
+#endif
 		};
 
-#if ( DEVICE_IMPL_VULKAN )
-	{
-		uploadDesc.postBarrier.vk.stage = VK_SHADER_STAGE_VERTEX_BIT;
-		uploadDesc.postBarrier.vk.access = VK_ACCESS_2_UNIFORM_READ_BIT;
-	}
-#endif
 		RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
-		instancePoint_t *dest = (instancePoint_t *)uploadDesc.data;
+		instancePoint_t *dest = (instancePoint_t *)uploadDesc.mapped.data;
 		for( size_t i = 0; i < numInstances; i++ ) {
 			memcpy( dest[i], instances[i], sizeof( instancePoint_t ) );
 		}

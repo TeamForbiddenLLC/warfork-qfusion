@@ -401,9 +401,10 @@ msgstr "<0/1> Outlines models.\n"
 
 #. Console/cg
 msgid "cg_outlinePlayers"
-msgstr "<0/1> Outlines players.\n"
+msgstr "<0-2> Outlines players.\n"
 "^6Disable: cg_outlinePlayers \"0\"\n"
-"^6Enable: cg_outlinePlayers \"1\""
+"^6Black: cg_outlinePlayers \"1\"\n"
+"^6Color: cg_outlinePlayers \"2\""
 
 #. Console/cg
 msgid "cg_outlineWorld"

@@ -33,26 +33,24 @@ enum { BUILTIN_GLSLPASS_FOG, BUILTIN_GLSLPASS_SHADOWMAP, BUILTIN_GLSLPASS_OUTLIN
 
 #define NOISE_LERP( a, b, w ) ( a * ( 1.0f - w ) + b * w )
 
-
-static void RB_SetShaderpassState_2(struct FrameState_s *cmd, int state );
+static void RB_SetShaderpassState_2( struct FrameState_s *cmd, int state );
 
 static int __NumberLightMaps( const struct superLightStyle_s *lightStyle )
 {
 	int i = 0;
-	for( ; i < MAX_LIGHTMAPS && lightStyle->lightmapStyles[i] != 255; i++ ) {}
+	for( ; i < MAX_LIGHTMAPS && lightStyle->lightmapStyles[i] != 255; i++ ) {
+	}
 	return i;
 }
 
 /*
  * RB_InitShading
  */
-void RB_InitShading( void )
+void RB_InitShading( void ) {}
+
+static inline float __Shader_Func( unsigned int func, float value )
 {
-}
-
-
-static inline float __Shader_Func(unsigned int func, float value) {
-	const float t = fmod(value, 1.0f);
+	const float t = fmod( value, 1.0f );
 	switch( func ) {
 		case SHADER_FUNC_TRIANGLE:
 			if( t < 0.25 )
@@ -71,31 +69,31 @@ static inline float __Shader_Func(unsigned int func, float value) {
 			break;
 	}
 
-	return sin(t * M_TWOPI);
-
+	return sin( t * M_TWOPI );
 }
 /*
  * RB_FastSin
  */
 static inline float RB_FastSin( float value )
 {
-	return __Shader_Func(SHADER_FUNC_SIN, value);
+	return __Shader_Func( SHADER_FUNC_SIN, value );
 }
 
-static void __ConfigureLightCB (struct DynamicLightCB* cb,
-	const vec3_t entOrigin, const mat3_t entAxis, unsigned int dlightbits ) {
+static void __ConfigureLightCB( struct DynamicLightCB *cb, const vec3_t entOrigin, const mat3_t entAxis, unsigned int dlightbits )
+{
 	float colorScale = mapConfig.mapLightColorScale;
 	vec3_t dlorigin, tvec, dlcolor;
 	bool identityAxis = Matrix3_Compare( entAxis, axis_identity );
 
-	for(int i = 0; i < MAX_DLIGHTS; i++ ) {
+	for( int i = 0; i < MAX_DLIGHTS; i++ ) {
 		dlight_t *dl = rsc.dlights + i;
 		if( !dl->intensity ) {
 			continue;
 		}
-		const size_t batchIndex = cb->numberLights / 4; 
+		const size_t batchIndex = cb->numberLights / 4;
 		const size_t batchOffset = cb->numberLights % 4;
-		struct DynLight* dynLight = &cb->dynLights[cb->numberLights++];
+		assert( cb->numberLights < Q_ARRAY_COUNT( cb->dynLights ) );
+		struct DynLight *dynLight = &cb->dynLights[cb->numberLights++];
 
 		VectorSubtract( dl->origin, entOrigin, dlorigin );
 		if( !identityAxis ) {
@@ -107,38 +105,38 @@ static void __ConfigureLightCB (struct DynamicLightCB* cb,
 		dynLight->position.y = dlorigin[1];
 		dynLight->position.z = dlorigin[2];
 
-		cb->dynLights[(batchIndex * 4)].diffuseAndInvRadius.v[batchOffset] = dlcolor[0];
-		cb->dynLights[(batchIndex * 4) + 1].diffuseAndInvRadius.v[batchOffset] = dlcolor[1];
-		cb->dynLights[(batchIndex * 4) + 2].diffuseAndInvRadius.v[batchOffset] = dlcolor[2];
-		cb->dynLights[(batchIndex * 4) + 3].diffuseAndInvRadius.v[batchOffset] = dl->intensity;
+		cb->dynLights[( batchIndex * 4 )].diffuseAndInvRadius.v[batchOffset] = dlcolor[0];
+		cb->dynLights[( batchIndex * 4 ) + 1].diffuseAndInvRadius.v[batchOffset] = dlcolor[1];
+		cb->dynLights[( batchIndex * 4 ) + 2].diffuseAndInvRadius.v[batchOffset] = dlcolor[2];
+		cb->dynLights[( batchIndex * 4 ) + 3].diffuseAndInvRadius.v[batchOffset] = dl->intensity;
 
-		dlightbits &= ~(1<<i);
+		dlightbits &= ~( 1 << i );
 		if( !dlightbits ) {
 			break;
 		}
 	}
 	// fill the rest with zero lights
-	while((cb->numberLights % 4) > 0) {
-		const size_t batchIndex = cb->numberLights / 4; 
+	while( ( cb->numberLights % 4 ) > 0 ) {
+		const size_t batchIndex = cb->numberLights / 4;
 		const size_t batchOffset = cb->numberLights % 4;
+		assert( cb->numberLights < Q_ARRAY_COUNT( cb->dynLights ) );
 		cb->numberLights++;
-		cb->dynLights[(batchIndex * 4)].diffuseAndInvRadius.v[batchOffset] = 0;
-		cb->dynLights[(batchIndex * 4) + 1].diffuseAndInvRadius.v[batchOffset] = 0;
-		cb->dynLights[(batchIndex * 4) + 2].diffuseAndInvRadius.v[batchOffset] = 0;
-		cb->dynLights[(batchIndex * 4) + 3].diffuseAndInvRadius.v[batchOffset] = 1.0;
+		cb->dynLights[( batchIndex * 4 )].diffuseAndInvRadius.v[batchOffset] = 0;
+		cb->dynLights[( batchIndex * 4 ) + 1].diffuseAndInvRadius.v[batchOffset] = 0;
+		cb->dynLights[( batchIndex * 4 ) + 2].diffuseAndInvRadius.v[batchOffset] = 0;
+		cb->dynLights[( batchIndex * 4 ) + 3].diffuseAndInvRadius.v[batchOffset] = 1.0;
 	}
-	assert(cb->numberLights <= 32);
-
+	assert( cb->numberLights <= Q_ARRAY_COUNT( cb->dynLights ) );
 }
 
-
-static inline hash_t __pseudoUniqueNoise(int a1, int a2, int a3, int a4) {
+static inline hash_t __pseudoUniqueNoise( int a1, int a2, int a3, int a4 )
+{
 	hash_t hash = HASH_INITIAL_VALUE;
-	hash = hash_s32(hash, a1);
-	hash = hash_s32(hash, a2);
-	hash = hash_s32(hash, a3);
-	hash = hash_s32(hash, a4);
-	return fmod((float)hash, 1.0f) * 2.0f - 1.0f;
+	hash = hash_s32( hash, a1 );
+	hash = hash_s32( hash, a2 );
+	hash = hash_s32( hash, a3 );
+	hash = hash_s32( hash, a4 );
+	return fmod( (float)hash, 1.0f ) * 2.0f - 1.0f;
 }
 
 static float __BackendGetNoiseValue( float x, float y, float z, float t )
@@ -159,7 +157,6 @@ static float __BackendGetNoiseValue( float x, float y, float z, float t )
 	ft = t - it;
 
 	for( i = 0; i < 2; i++ ) {
-
 		front[0] = __pseudoUniqueNoise( ix, iy, iz, it + i );
 		front[1] = __pseudoUniqueNoise( ix + 1, iy, iz, it + i );
 		front[2] = __pseudoUniqueNoise( ix, iy + 1, iz, it + i );
@@ -285,7 +282,7 @@ void RB_ApplyTCMods( const shaderpass_t *pass, mat4_t result )
 				break;
 			case TC_MOD_STRETCH:
 				t2 = tcmod->args[3] + rb.currentShaderTime * tcmod->args[4];
-				t1 =__Shader_Func(tcmod->args[0], t2) * tcmod->args[2] + tcmod->args[1];
+				t1 = __Shader_Func( tcmod->args[0], t2 ) * tcmod->args[2] + tcmod->args[1];
 				t1 = t1 ? 1.0f / t1 : 1.0f;
 				t2 = 0.5f - 0.5f * t1;
 				Matrix4_Stretch2D( result, t1, t2 );
@@ -313,7 +310,6 @@ void RB_ApplyTCMods( const shaderpass_t *pass, mat4_t result )
 static inline image_t *RB_ShaderpassTex( const shaderpass_t *pass )
 {
 	const image_t *tex;
-	
 
 	if( pass->anim_fps ) {
 		return pass->images[(int)( pass->anim_fps * rb.currentShaderTime ) % pass->anim_numframes];
@@ -321,7 +317,7 @@ static inline image_t *RB_ShaderpassTex( const shaderpass_t *pass )
 
 	if( pass->flags & SHADERPASS_PORTALMAP ) {
 		return rsh.blackTexture;
-		//return rb.currentPortalSurface && rb.currentPortalSurface->texures[0] ? rb.currentPortalSurface->texures[0] : rsh.blackTexture;
+		// return rb.currentPortalSurface && rb.currentPortalSurface->texures[0] ? rb.currentPortalSurface->texures[0] : rsh.blackTexture;
 	}
 
 	if( ( pass->flags & SHADERPASS_SKYBOXSIDE ) && rb.skyboxShader && rb.skyboxSide >= 0 ) {
@@ -425,26 +421,26 @@ static r_glslfeat_t RB_BonesTransformsToProgramFeatures( void )
 static r_glslfeat_t RB_DlightbitsToProgramFeatures( unsigned int dlightBits )
 {
 	// always do 16
-//	int numDlights;
+	//	int numDlights;
 
- // if( !dlightBits ) {
- // 	return 0;
- // }
+	// if( !dlightBits ) {
+	// 	return 0;
+	// }
 
- // numDlights = Q_bitcount( dlightBits );
- // if( r_lighting_maxglsldlights->integer && numDlights > r_lighting_maxglsldlights->integer ) {
- // 	numDlights = r_lighting_maxglsldlights->integer;
- // }
+	// numDlights = Q_bitcount( dlightBits );
+	// if( r_lighting_maxglsldlights->integer && numDlights > r_lighting_maxglsldlights->integer ) {
+	// 	numDlights = r_lighting_maxglsldlights->integer;
+	// }
 
- // if( numDlights <= 4 ) {
- // 	return GLSL_SHADER_COMMON_DLIGHTS_4;
- // }
- // if( numDlights <= 8 ) {
- // 	return GLSL_SHADER_COMMON_DLIGHTS_8;
- // }
- // if( numDlights <= 12 ) {
- // 	return GLSL_SHADER_COMMON_DLIGHTS_12;
- // }
+	// if( numDlights <= 4 ) {
+	// 	return GLSL_SHADER_COMMON_DLIGHTS_4;
+	// }
+	// if( numDlights <= 8 ) {
+	// 	return GLSL_SHADER_COMMON_DLIGHTS_8;
+	// }
+	// if( numDlights <= 12 ) {
+	// 	return GLSL_SHADER_COMMON_DLIGHTS_12;
+	// }
 	return GLSL_SHADER_COMMON_DLIGHTS_16;
 }
 
@@ -513,38 +509,38 @@ r_glslfeat_t RB_TcGenToProgramFeatures( int tcgen, vec_t *tcgenVec, mat4_t texMa
 
 	Matrix4_Identity( texMatrix );
 
-	switch( tcgen )
-	{
-	case TC_GEN_ENVIRONMENT:
-		programFeatures |= GLSL_SHADER_Q3_TC_GEN_ENV;
-		break;
-	case TC_GEN_VECTOR:
-		Matrix4_Identity( genVectors );
-		Vector4Copy( &tcgenVec[0], &genVectors[0] );
-		Vector4Copy( &tcgenVec[4], &genVectors[4] );
-		programFeatures |= GLSL_SHADER_Q3_TC_GEN_VECTOR;
-		break;
-	case TC_GEN_PROJECTION:
-		programFeatures |= GLSL_SHADER_Q3_TC_GEN_PROJECTION;
-		break;
-	case TC_GEN_REFLECTION_CELSHADE:
-		RB_VertexTCCelshadeMatrix( texMatrix );
-		programFeatures |= GLSL_SHADER_Q3_TC_GEN_CELSHADE;
-		break;
-	case TC_GEN_REFLECTION:
-		programFeatures |= GLSL_SHADER_Q3_TC_GEN_REFLECTION;
-		break;
-	case TC_GEN_SURROUND:
-		programFeatures |= GLSL_SHADER_Q3_TC_GEN_SURROUND;
-		break;
-	default:
-		break;
+	switch( tcgen ) {
+		case TC_GEN_ENVIRONMENT:
+			programFeatures |= GLSL_SHADER_Q3_TC_GEN_ENV;
+			break;
+		case TC_GEN_VECTOR:
+			Matrix4_Identity( genVectors );
+			Vector4Copy( &tcgenVec[0], &genVectors[0] );
+			Vector4Copy( &tcgenVec[4], &genVectors[4] );
+			programFeatures |= GLSL_SHADER_Q3_TC_GEN_VECTOR;
+			break;
+		case TC_GEN_PROJECTION:
+			programFeatures |= GLSL_SHADER_Q3_TC_GEN_PROJECTION;
+			break;
+		case TC_GEN_REFLECTION_CELSHADE:
+			RB_VertexTCCelshadeMatrix( texMatrix );
+			programFeatures |= GLSL_SHADER_Q3_TC_GEN_CELSHADE;
+			break;
+		case TC_GEN_REFLECTION:
+			programFeatures |= GLSL_SHADER_Q3_TC_GEN_REFLECTION;
+			break;
+		case TC_GEN_SURROUND:
+			programFeatures |= GLSL_SHADER_Q3_TC_GEN_SURROUND;
+			break;
+		default:
+			break;
 	}
 
 	return programFeatures;
 }
 
-static inline bool __IsAlphaBlendingGLState(int state) {
+static inline bool __IsAlphaBlendingGLState( int state )
+{
 	return ( ( state & GLSTATE_SRCBLEND_MASK ) == GLSTATE_SRCBLEND_SRC_ALPHA || state == GLSTATE_DSTBLEND_SRC_ALPHA ) ||
 		   ( ( state & GLSTATE_SRCBLEND_MASK ) == GLSTATE_SRCBLEND_ONE_MINUS_SRC_ALPHA || state == GLSTATE_DSTBLEND_ONE_MINUS_SRC_ALPHA );
 }
@@ -575,7 +571,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 		programFeatures |= GLSL_SHADER_COMMON_GREYSCALE;
 	}
 
-	if(((rb.currentShader->flags & SHADER_POLYGONOFFSET) > 0)) {
+	if( ( ( rb.currentShader->flags & SHADER_POLYGONOFFSET ) > 0 ) ) {
 		cmd->pipeline.depthBiasSlope = -1.3f;
 		cmd->pipeline.depthBiasConstant = -.3f;
 	} else {
@@ -587,14 +583,14 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 	programFeatures |= RB_AutospriteProgramFeatures();
 	programFeatures |= RB_InstancedArraysProgramFeatures();
 	programFeatures |= RB_AlphatestProgramFeatures( pass );
-	if(pass->numtcmods) {
+	if( pass->numtcmods ) {
 		programFeatures |= GLSL_SHADER_COMMON_TC_MOD;
 	}
 
 	if( ( rb.currentShader->flags & SHADER_SOFT_PARTICLE ) && rsh.screenDepthTextureCopy && ( rb.renderFlags & RF_SOFT_PARTICLES ) ) {
 		programFeatures |= GLSL_SHADER_COMMON_SOFT_PARTICLE;
 	}
-	
+
 	const entity_t *e = rb.currentEntity;
 	struct FrameCB frameData = { 0 };
 	struct ObjectCB objectData = { 0 };
@@ -602,7 +598,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 		const bool isAlphaBlending = __IsAlphaBlendingGLState( pass->flags );
 		const shaderfunc_t *rgbgenfunc = &pass->rgbgen.func;
 		const shaderfunc_t *alphagenfunc = &pass->alphagen.func;
-	
+
 		frameData.shaderTime = rb.currentShaderTime;
 		objectData.isAlphaBlending = isAlphaBlending ? 1.0f : 0.0f;
 
@@ -634,11 +630,11 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 		frameData.viewAxis.col0[0] = rb.cameraAxis[0];
 		frameData.viewAxis.col0[1] = rb.cameraAxis[1];
 		frameData.viewAxis.col0[2] = rb.cameraAxis[2];
-		
+
 		frameData.viewAxis.col1[0] = rb.cameraAxis[3];
 		frameData.viewAxis.col1[1] = rb.cameraAxis[4];
 		frameData.viewAxis.col1[2] = rb.cameraAxis[5];
-		
+
 		frameData.viewAxis.col2[0] = rb.cameraAxis[6];
 		frameData.viewAxis.col2[1] = rb.cameraAxis[7];
 		frameData.viewAxis.col2[2] = rb.cameraAxis[8];
@@ -653,13 +649,13 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			Matrix3_TransformVector( e->axis, tmp, objectData.entityDist.v );
 		}
 
-		if(pass->rgbgen.func.type != SHADER_FUNC_NONE) {
-				objectData.rgbGenFuncArgs.x = pass->rgbgen.func.args[0];
-				objectData.rgbGenFuncArgs.y = pass->rgbgen.func.args[1];
-				objectData.rgbGenFuncArgs.z = pass->rgbgen.func.args[2];
-				objectData.rgbGenFuncArgs.w = pass->rgbgen.func.args[3];
+		if( pass->rgbgen.func.type != SHADER_FUNC_NONE ) {
+			objectData.rgbGenFuncArgs.x = pass->rgbgen.func.args[0];
+			objectData.rgbGenFuncArgs.y = pass->rgbgen.func.args[1];
+			objectData.rgbGenFuncArgs.z = pass->rgbgen.func.args[2];
+			objectData.rgbGenFuncArgs.w = pass->rgbgen.func.args[3];
 		} else {
-			if(pass->rgbgen.args) {
+			if( pass->rgbgen.args ) {
 				objectData.rgbGenFuncArgs.x = pass->rgbgen.args[0];
 				objectData.rgbGenFuncArgs.y = pass->rgbgen.args[1];
 				objectData.rgbGenFuncArgs.z = pass->rgbgen.args[2];
@@ -667,25 +663,25 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			}
 		}
 
-		if(pass->alphagen.func.type != SHADER_FUNC_NONE) {
-				objectData.alphaGenFuncArgs.x = pass->alphagen.func.args[0];
-				objectData.alphaGenFuncArgs.y = pass->alphagen.func.args[1];
-				objectData.alphaGenFuncArgs.z = pass->alphagen.func.args[2];
-				objectData.alphaGenFuncArgs.w = pass->alphagen.func.args[3];
+		if( pass->alphagen.func.type != SHADER_FUNC_NONE ) {
+			objectData.alphaGenFuncArgs.x = pass->alphagen.func.args[0];
+			objectData.alphaGenFuncArgs.y = pass->alphagen.func.args[1];
+			objectData.alphaGenFuncArgs.z = pass->alphagen.func.args[2];
+			objectData.alphaGenFuncArgs.w = pass->alphagen.func.args[3];
 		} else {
-			if(pass->alphagen.args) {
+			if( pass->alphagen.args ) {
 				objectData.alphaGenFuncArgs.x = pass->alphagen.args[0];
 				objectData.alphaGenFuncArgs.y = pass->alphagen.args[1];
 				objectData.alphaGenFuncArgs.z = pass->alphagen.args[2];
 				objectData.alphaGenFuncArgs.w = pass->alphagen.args[3];
 			}
 		}
-		
+
 		objectData.colorConst.v[0] = 1.0f;
 		objectData.colorConst.v[1] = 1.0f;
 		objectData.colorConst.v[2] = 1.0f;
 		objectData.colorConst.v[3] = 1.0f;
-		
+
 		switch( pass->rgbgen.type ) {
 			case RGB_GEN_IDENTITY:
 				break;
@@ -708,8 +704,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 					if( rgbgenfunc->type == SHADER_FUNC_NOISE ) {
 						adjust = __BackendGetNoiseValue( 0, 0, 0, ( rb.currentShaderTime + rgbgenfunc->args[2] ) * rgbgenfunc->args[3] );
 					} else {
-						adjust = __Shader_Func( rgbgenfunc->type, 
-								rb.currentShaderTime * rgbgenfunc->args[3] + rgbgenfunc->args[2] ) * rgbgenfunc->args[1] + rgbgenfunc->args[0];
+						adjust = __Shader_Func( rgbgenfunc->type, rb.currentShaderTime * rgbgenfunc->args[3] + rgbgenfunc->args[2] ) * rgbgenfunc->args[1] + rgbgenfunc->args[0];
 					}
 					adjust = adjust * rgbgenfunc->args[1] + rgbgenfunc->args[0];
 				}
@@ -757,7 +752,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 				break;
 		}
 
-		if( isAlphaBlending) {
+		if( isAlphaBlending ) {
 			// blendMix[1] = 1;
 			if( rb.alphaHack ) {
 				objectData.colorConst.v[3] *= rb.hackedAlpha;
@@ -787,8 +782,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 					if( alphagenfunc->type == SHADER_FUNC_NOISE ) {
 						objectData.colorConst.v[3] = __BackendGetNoiseValue( 0, 0, 0, ( rb.currentShaderTime + alphagenfunc->args[2] ) * alphagenfunc->args[3] );
 					} else {
-						objectData.colorConst.v[3] = __Shader_Func( alphagenfunc->type, 
-													alphagenfunc->args[2] + rb.currentShaderTime * alphagenfunc->args[3] );
+						objectData.colorConst.v[3] = __Shader_Func( alphagenfunc->type, alphagenfunc->args[2] + rb.currentShaderTime * alphagenfunc->args[3] );
 					}
 					objectData.colorConst.v[3] = objectData.colorConst.v[3] * alphagenfunc->args[1] + alphagenfunc->args[0];
 				}
@@ -802,17 +796,14 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 				break;
 		}
 		// objectData.colorConst = ConstColorAdjust( isAlphaBlending, rb.alphaHack, objectData.colorConst );
-	}		
-	if(rb.currentModelType == mod_skeletal && rb.bonesData.numBones) {
-		struct DualQuatCB dualQuatCB = {0};	
-		programFeatures |= (rb.bonesData.maxWeights * GLSL_SHADER_COMMON_BONE_TRANSFORMS1);
-		assert(rb.bonesData.numBones <= 128);
-		memcpy(dualQuatCB.bones, rb.bonesData.dualQuats, sizeof(struct dualQuat8) * rb.bonesData.numBones);
-		UpdateFrameUBO( cmd, &cmd->uboBoneObject, &dualQuatCB, sizeof(struct dualQuat8) * rb.bonesData.numBones);
-		descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-			.descriptor = cmd->uboBoneObject, 
-			.handle = Create_DescriptorHandle( "bones" ) 
-		};
+	}
+	if( rb.currentModelType == mod_skeletal && rb.bonesData.numBones ) {
+		struct DualQuatCB dualQuatCB = { 0 };
+		programFeatures |= ( rb.bonesData.maxWeights * GLSL_SHADER_COMMON_BONE_TRANSFORMS1 );
+		assert( rb.bonesData.numBones <= 128 );
+		memcpy( dualQuatCB.bones, rb.bonesData.dualQuats, sizeof( struct dualQuat8 ) * rb.bonesData.numBones );
+		UpdateFrameUBO( cmd, &cmd->uboBoneObject, &dualQuatCB, sizeof( struct dualQuat8 ) * rb.bonesData.numBones );
+		descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboBoneObject, .handle = Create_DescriptorHandle( "bones" ) };
 	}
 
 	// if(rb.currentDlightBits) {
@@ -830,7 +821,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			const image_t *decalmap = pass->images[3] && !pass->images[3]->missing ? pass->images[3] : NULL;
 			const image_t *entdecalmap = pass->images[4] && !pass->images[4]->missing ? pass->images[4] : NULL;
 			// const superLightStyle_t *lightStyle = NULL;
-			struct DefaultMaterialCB passCB = {0};
+			struct DefaultMaterialCB passCB = { 0 };
 
 			if( normalmap && !normalmap->loaded ) {
 				normalmap = rsh.blankBumpTexture;
@@ -850,26 +841,25 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 				normalmap = rsh.blankBumpTexture;
 			}
 
-			if( !(( rb.currentModelType == mod_brush && !mapConfig.deluxeMappingEnabled )
-				|| ( normalmap == rsh.blankBumpTexture && !glossmap && !decalmap && !entdecalmap ) )) {
+			if( !( ( rb.currentModelType == mod_brush && !mapConfig.deluxeMappingEnabled ) || ( normalmap == rsh.blankBumpTexture && !glossmap && !decalmap && !entdecalmap ) ) ) {
 				float offsetmappingScale = ( normalmap->samples == 4 ) ? ( r_offsetmapping_scale->value * rb.currentShader->offsetmappingScale ) : 0;
 
 				if( normalmap->samples == 4 )
 					offsetmappingScale = r_offsetmapping_scale->value * rb.currentShader->offsetmappingScale;
-				else	// no alpha in normalmap, don't bother with offset mapping
+				else // no alpha in normalmap, don't bother with offset mapping
 					offsetmappingScale = 0;
 
 				const float glossIntensity = rb.currentShader->glossIntensity ? rb.currentShader->glossIntensity : r_lighting_glossintensity->value;
 				const float glossExponent = rb.currentShader->glossExponent ? rb.currentShader->glossExponent : r_lighting_glossexponent->value;
 				const bool applyDecal = decalmap != NULL;
 
-				mat4_t texMatrix = {0};
+				mat4_t texMatrix = { 0 };
 				Matrix4_Identity( texMatrix );
 				if( pass->numtcmods ) {
 					RB_ApplyTCMods( pass, texMatrix );
 				}
 				ObjectCB_SetTextureMatrix( &objectData, texMatrix );
-			
+
 				// possibly apply the "texture" fog inline
 				if( fog == rb.texFog ) {
 					if( ( rb.currentShader->numpasses == 1 ) && !rb.currentShadowBits ) {
@@ -880,8 +870,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 				}
 				programFeatures |= RB_FogProgramFeatures( pass, fog );
 
-				if( rb.currentModelType == mod_brush )
-				{
+				if( rb.currentModelType == mod_brush ) {
 					// brush models
 					if( !( r_offsetmapping->integer & 1 ) ) {
 						offsetmappingScale = 0;
@@ -890,26 +879,22 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 						programFeatures |= GLSL_SHADER_MATERIAL_BASETEX_ALPHA_ONLY;
 					}
 					if( DRAWFLAT() ) {
-						programFeatures |= GLSL_SHADER_COMMON_DRAWFLAT|GLSL_SHADER_MATERIAL_BASETEX_ALPHA_ONLY;
+						programFeatures |= GLSL_SHADER_COMMON_DRAWFLAT | GLSL_SHADER_MATERIAL_BASETEX_ALPHA_ONLY;
 					}
-				}
-				else if( rb.currentModelType == mod_bad )
-				{
+				} else if( rb.currentModelType == mod_bad ) {
 					// polys
 					if( !( r_offsetmapping->integer & 2 ) )
 						offsetmappingScale = 0;
-				}
-				else
-				{
+				} else {
 					// regular models
 					if( !( r_offsetmapping->integer & 4 ) )
 						offsetmappingScale = 0;
-				#ifdef CELSHADEDMATERIAL
+#ifdef CELSHADEDMATERIAL
 					programFeatures |= GLSL_SHADER_MATERIAL_CELSHADING;
-				#endif
-				#ifdef HALFLAMBERTLIGHTING
+#endif
+#ifdef HALFLAMBERTLIGHTING
 					programFeatures |= GLSL_SHADER_MATERIAL_HALFLAMBERT;
-				#endif
+#endif
 				}
 
 				// add dynamic lights
@@ -918,49 +903,27 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 				// }
 				if( pass->flags & SHADERPASS_PORTALMAP && rb.currentPortalSurface && rb.currentPortalSurface->portalfbs[0] ) {
 					descriptors[descriptorCount++] =
-						( struct glsl_descriptor_binding_s ){ 
-							.descriptor = rb.currentPortalSurface->portalfbs[0]->colorDescriptor, 
-							.handle = Create_DescriptorHandle( "u_BaseTexture" ) 
-					};
+						(struct glsl_descriptor_binding_s){ .descriptor = rb.currentPortalSurface->portalfbs[0]->colorDescriptor, .handle = Create_DescriptorHandle( "u_BaseTexture" ) };
 
 					descriptors[descriptorCount++] =
-						( struct glsl_descriptor_binding_s ){ 
-							.descriptor = *rb.currentPortalSurface->portalfbs[0]->samplerDescriptor, 
-							.handle = Create_DescriptorHandle( "u_BaseSampler" ) };
+						(struct glsl_descriptor_binding_s){ .descriptor = *rb.currentPortalSurface->portalfbs[0]->samplerDescriptor, .handle = Create_DescriptorHandle( "u_BaseSampler" ) };
 				} else {
-					descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-						.descriptor = base->binding, 
-						.handle = Create_DescriptorHandle( "u_BaseTexture" ) };
-					descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-						.descriptor = *base->samplerBinding, 
-						.handle = Create_DescriptorHandle( "u_BaseSampler" ) 
-					};
+					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = base->binding, .handle = Create_DescriptorHandle( "u_BaseTexture" ) };
+					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *base->samplerBinding, .handle = Create_DescriptorHandle( "u_BaseSampler" ) };
 				}
 
 				// convert rgbgen and alphagen to GLSL feature defines
 				programFeatures |= RB_RGBAlphaGenToProgramFeatures( &pass->rgbgen, &pass->alphagen );
-				RB_SetShaderpassState_2(cmd, pass->flags );
+				RB_SetShaderpassState_2( cmd, pass->flags );
 
 				// we only send S-vectors to GPU and recalc T-vectors as cross product
-				descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-					.descriptor = normalmap->binding, 
-					.handle = Create_DescriptorHandle( "u_NormalTexture" ) 
-				};
-				descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-					.descriptor = *normalmap->samplerBinding, 
-					.handle = Create_DescriptorHandle( "u_NormalSampler" ) 
-				};
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = normalmap->binding, .handle = Create_DescriptorHandle( "u_NormalTexture" ) };
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *normalmap->samplerBinding, .handle = Create_DescriptorHandle( "u_NormalSampler" ) };
 
 				if( glossmap && glossIntensity ) {
 					programFeatures |= GLSL_SHADER_MATERIAL_SPECULAR;
-					descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-						.descriptor = glossmap->binding, 
-						.handle = Create_DescriptorHandle( "u_GlossTexture" ) 
-					};
-					descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-						.descriptor = *glossmap->samplerBinding, 
-						.handle = Create_DescriptorHandle( "u_GlossSampler" ) 
-					};
+					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = glossmap->binding, .handle = Create_DescriptorHandle( "u_GlossTexture" ) };
+					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *glossmap->samplerBinding, .handle = Create_DescriptorHandle( "u_GlossSampler" ) };
 				}
 
 				if( applyDecal ) {
@@ -975,14 +938,8 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 							programFeatures |= GLSL_SHADER_MATERIAL_DECAL_ADD;
 					}
 
-					descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-						.descriptor = decalmap->binding, 
-						.handle = Create_DescriptorHandle( "u_DecalTexture" ) 
-					};
-					descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-						.descriptor = *decalmap->samplerBinding, 
-						.handle = Create_DescriptorHandle( "u_DecalSampler" ) 
-					};
+					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = decalmap->binding, .handle = Create_DescriptorHandle( "u_DecalTexture" ) };
+					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *decalmap->samplerBinding, .handle = Create_DescriptorHandle( "u_DecalSampler" ) };
 				}
 
 				if( entdecalmap ) {
@@ -994,21 +951,13 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 
 					// RB_BindImage( 4, entdecalmap ); // decal
 					// DescSimple_WriteImage( &materialDesc, 4, entdecalmap );
-					descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-						.descriptor = entdecalmap->binding, 
-						.handle = Create_DescriptorHandle( "u_EntityDecalTexture" ) 
-					};
-					descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-						.descriptor = *entdecalmap->samplerBinding, 
-						.handle = Create_DescriptorHandle( "u_EntityDecalSampler" ) 
-					};
+					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = entdecalmap->binding, .handle = Create_DescriptorHandle( "u_EntityDecalTexture" ) };
+					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *entdecalmap->samplerBinding, .handle = Create_DescriptorHandle( "u_EntityDecalSampler" ) };
 				}
 
 				if( offsetmappingScale > 0 )
-					programFeatures |= r_offsetmapping_reliefmapping->integer ? 
-						GLSL_SHADER_MATERIAL_RELIEFMAPPING : GLSL_SHADER_MATERIAL_OFFSETMAPPING;
+					programFeatures |= r_offsetmapping_reliefmapping->integer ? GLSL_SHADER_MATERIAL_RELIEFMAPPING : GLSL_SHADER_MATERIAL_OFFSETMAPPING;
 
-	
 				if( rb.currentModelType == mod_brush ) {
 					// world surface
 					if( rb.superLightStyle && rb.superLightStyle->lightmapNum[0] >= 0 ) {
@@ -1018,25 +967,21 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 
 						for( size_t i = 0; i < rsh.worldBrushModel->numLightmapImages; i++ ) {
 							if( i == 0 ) {
-								descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-									.descriptor = *rsh.worldBrushModel->lightmapImages[i]->samplerBinding,
-									.handle = Create_DescriptorHandle( "lightmapTextureSample" ) 
-								};
+								descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *rsh.worldBrushModel->lightmapImages[i]->samplerBinding,
+																									 .handle = Create_DescriptorHandle( "lightmapTextureSample" ) };
 							}
-							descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){
-								.descriptor = rsh.worldBrushModel->lightmapImages[i]->binding, 
-								.registerOffset = i, .handle = Create_DescriptorHandle( "lightmapTexture" ) 
-							};
+							descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){
+								.descriptor = rsh.worldBrushModel->lightmapImages[i]->binding, .registerOffset = i, .handle = Create_DescriptorHandle( "lightmapTexture" ) };
 						}
-						
+
 						const int numLightMaps = __NumberLightMaps( lightStyle );
 						programFeatures |= ( numLightMaps * GLSL_SHADER_MATERIAL_LIGHTSTYLE0 );
 						for( int i = 0; i < numLightMaps; i++ ) {
-							float rgb[4] = {0};
+							float rgb[4] = { 0 };
 							VectorCopy( rsc.lightStyles[lightStyle->lightmapStyles[i]].rgb, rgb );
 							if( mapConfig.lightingIntensity )
 								VectorScale( rgb, mapConfig.lightingIntensity, rgb );
-							VectorCopy(rgb, passCB.lightstyleColor[i].v);
+							VectorCopy( rgb, passCB.lightstyleColor[i].v );
 							passCB.deluxLightMapScale.v[i] = lightStyle->stOffset[i][0];
 						}
 
@@ -1088,7 +1033,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 
 							if( e->flags & RF_MINLIGHT ) {
 								float minLight = rb.minLight;
-								if( objectData.lightAmbient.x <= minLight ||  objectData.lightAmbient.y <= minLight ||  objectData.lightAmbient.z <= minLight )
+								if( objectData.lightAmbient.x <= minLight || objectData.lightAmbient.y <= minLight || objectData.lightAmbient.z <= minLight )
 									VectorSet( objectData.lightAmbient.v, minLight, minLight, minLight );
 							}
 
@@ -1097,62 +1042,48 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 						}
 					}
 				}
-				passCB.floorColor = ( struct vec3 ){ .x = rsh.floorColor[0], .y = rsh.floorColor[1], .z = rsh.floorColor[2] };
-				passCB.wallColor = ( struct vec3 ){ .x = rsh.wallColor[0], .y = rsh.wallColor[1], .z = rsh.wallColor[2] };
-				passCB.entityColor = ( struct vec4 ){ .x = rb.entityColor[0] * (1.0 / 255.0), .y = rb.entityColor[1] * (1.0 / 255.0), .z = rb.entityColor[2] * (1.0 / 255.0), .w = rb.entityColor[3]  * (1.0 / 255.0)};
+				passCB.floorColor = (struct vec3){ .x = rsh.floorColor[0], .y = rsh.floorColor[1], .z = rsh.floorColor[2] };
+				passCB.wallColor = (struct vec3){ .x = rsh.wallColor[0], .y = rsh.wallColor[1], .z = rsh.wallColor[2] };
+				passCB.entityColor = (struct vec4){
+					.x = rb.entityColor[0] * ( 1.0 / 255.0 ), .y = rb.entityColor[1] * ( 1.0 / 255.0 ), .z = rb.entityColor[2] * ( 1.0 / 255.0 ), .w = rb.entityColor[3] * ( 1.0 / 255.0 ) };
 				passCB.offsetScale = offsetmappingScale;
 				passCB.glossIntensity = glossIntensity;
 				passCB.glossExponent = glossExponent;
 
-				if(rb.currentDlightBits) {
-					struct DynamicLightCB lightData = {0}; //= lightCB.address;
-					__ConfigureLightCB(&lightData, e->origin, rb.currentEntity->axis, rb.currentDlightBits);
-					if(lightData.numberLights > 0) {
-						UpdateFrameUBO( cmd, &cmd->uboLight, &lightData, DynamicLightCB_Size(lightData.numberLights)) ;
-						descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-							.descriptor = cmd->uboLight, 
-							.handle = Create_DescriptorHandle( "lights" ) 
-						};
+				if( rb.currentDlightBits ) {
+					struct DynamicLightCB lightData = { 0 }; //= lightCB.address;
+					__ConfigureLightCB( &lightData, e->origin, rb.currentEntity->axis, rb.currentDlightBits );
+					if( lightData.numberLights > 0 ) {
+						UpdateFrameUBO( cmd, &cmd->uboLight, &lightData, DynamicLightCB_Size( lightData.numberLights ) );
+						descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboLight, .handle = Create_DescriptorHandle( "lights" ) };
 						programFeatures |= GLSL_SHADER_COMMON_DLIGHTS_16;
 					}
 				}
-	
-				struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_MATERIAL, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-				struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline);
 
-				if(RP_ProgramHasUniform(program, Create_DescriptorHandle("pass"))) {
-					UpdateFrameUBO( cmd, &cmd->uboPassObject, &passCB, sizeof(struct DefaultQ3ShaderCB));
-					descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-						.descriptor = cmd->uboPassObject, 
-						.handle = Create_DescriptorHandle( "pass" ) 
-					};
+				struct glsl_program_s *program =
+					RP_ResolveProgram( GLSL_PROGRAM_TYPE_MATERIAL, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
+				struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline );
+
+				if( RP_ProgramHasUniform( program, Create_DescriptorHandle( "pass" ) ) ) {
+					UpdateFrameUBO( cmd, &cmd->uboPassObject, &passCB, sizeof( struct DefaultQ3ShaderCB ) );
+					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboPassObject, .handle = Create_DescriptorHandle( "pass" ) };
 				}
-			
+
 				UpdateFrameUBO( cmd, &cmd->uboSceneFrame, &frameData, sizeof( struct FrameCB ) );
 				UpdateFrameUBO( cmd, &cmd->uboSceneObject, &objectData, sizeof( struct ObjectCB ) );
-				descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){
-					.descriptor = cmd->uboSceneFrame, 
-					.handle = Create_DescriptorHandle( "frame" ) 
-				};
-				descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){
-					.descriptor = cmd->uboSceneObject, 
-					.handle = Create_DescriptorHandle( "obj" ) 
-				};
-				//rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboSceneFrame, .handle = Create_DescriptorHandle( "frame" ) };
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboSceneObject, .handle = Create_DescriptorHandle( "obj" ) };
+				// rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
 				RP_BindPipeline( cmd, pipeline );
+				assert( descriptorCount <= Q_ARRAY_COUNT( descriptors ) );
 				RP_BindDescriptorSets( &rsh.device, cmd, program, descriptors, descriptorCount );
 
-				//rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
-				FR_CmdDrawElements(cmd, 
-					cmd->drawElements.numElems,
-					cmd->drawElements.numInstances,
-					cmd->drawElements.firstElem,
-					cmd->drawElements.firstVert,
-					0);
+				// rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
+				FR_CmdDrawElements( cmd, cmd->drawElements.numElems, cmd->drawElements.numInstances, cmd->drawElements.firstElem, cmd->drawElements.firstVert, 0 );
 
 				break;
 			}
-		} 
+		}
 		// drop through and default to the Q3A shader program
 		case GLSL_PROGRAM_TYPE_Q3A_SHADER: {
 			int rgbgen = pass->rgbgen.type;
@@ -1163,15 +1094,9 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 
 			// lightmapped surface pass
 			if( isWorldSurface && rb.superLightStyle && rb.superLightStyle->lightmapNum[0] >= 0 &&
-				( rgbgen == RGB_GEN_IDENTITY 
-				  || rgbgen == RGB_GEN_CONST 
-				  || rgbgen == RGB_GEN_WAVE 
-				  || rgbgen == RGB_GEN_CUSTOMWAVE 
-				  || rgbgen == RGB_GEN_VERTEX 
-				  || rgbgen == RGB_GEN_ONE_MINUS_VERTEX 
-				  || rgbgen == RGB_GEN_EXACT_VERTEX ) &&
-				( rb.currentShader->flags & SHADER_LIGHTMAP ) && 
-				( pass->flags & GLSTATE_BLEND_ADD ) != GLSTATE_BLEND_ADD ) {
+				( rgbgen == RGB_GEN_IDENTITY || rgbgen == RGB_GEN_CONST || rgbgen == RGB_GEN_WAVE || rgbgen == RGB_GEN_CUSTOMWAVE || rgbgen == RGB_GEN_VERTEX || rgbgen == RGB_GEN_ONE_MINUS_VERTEX ||
+				  rgbgen == RGB_GEN_EXACT_VERTEX ) &&
+				( rb.currentShader->flags & SHADER_LIGHTMAP ) && ( pass->flags & GLSTATE_BLEND_ADD ) != GLSTATE_BLEND_ADD ) {
 				lightStyle = rb.superLightStyle;
 				isLightmapped = true;
 			}
@@ -1216,23 +1141,20 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 				// rotate direction
 				Matrix3_TransformVector( e->axis, temp, objectData.lightDir.v );
 			} else {
-				VectorSet(  objectData.lightDir.v, 0, 0, 0 );
-				Vector4Set(  objectData.lightAmbient.v, 1, 1, 1, 1 );
-				Vector4Set(  objectData.lightDiffuse.v, 1, 1, 1, 1 );
+				VectorSet( objectData.lightDir.v, 0, 0, 0 );
+				Vector4Set( objectData.lightAmbient.v, 1, 1, 1, 1 );
+				Vector4Set( objectData.lightDiffuse.v, 1, 1, 1, 1 );
 			}
 
 			image_t *shaderPassImage = RB_ShaderpassTex( pass );
 			if( isLightmapped || isWorldVertexLight ) {
 				// add dynamic lights
 				if( rb.currentDlightBits ) {
-					struct DynamicLightCB lightData = {0}; //= lightCB.address;
-					__ConfigureLightCB(&lightData, e->origin, rb.currentEntity->axis, rb.currentDlightBits);
-					if(lightData.numberLights > 0) {
-						UpdateFrameUBO( cmd, &cmd->uboLight, &lightData, DynamicLightCB_Size(lightData.numberLights)) ;
-						descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-							.descriptor = cmd->uboLight, 
-							.handle = Create_DescriptorHandle( "lights" ) 
-						};
+					struct DynamicLightCB lightData = { 0 }; //= lightCB.address;
+					__ConfigureLightCB( &lightData, e->origin, rb.currentEntity->axis, rb.currentDlightBits );
+					if( lightData.numberLights > 0 ) {
+						UpdateFrameUBO( cmd, &cmd->uboLight, &lightData, DynamicLightCB_Size( lightData.numberLights ) );
+						descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboLight, .handle = Create_DescriptorHandle( "lights" ) };
 						programFeatures |= GLSL_SHADER_COMMON_DLIGHTS_16;
 					}
 				}
@@ -1255,39 +1177,38 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			mat4_t texMatrix;
 			Matrix4_Identity( texMatrix );
 			{
-				switch( pass->tcgen )
-				{
-				case TC_GEN_ENVIRONMENT:
-					programFeatures |= GLSL_SHADER_Q3_TC_GEN_ENV;
-					break;
-				case TC_GEN_VECTOR:
-					Matrix4_Identity( passCB.genTexMatrix.v );
-					Vector4Copy( &pass->tcgenVec[0], passCB.genTexMatrix.col0 );
-					Vector4Copy( &pass->tcgenVec[4], passCB.genTexMatrix.col3 );
-					programFeatures |= GLSL_SHADER_Q3_TC_GEN_VECTOR;
-					break;
-				case TC_GEN_PROJECTION:
-					programFeatures |= GLSL_SHADER_Q3_TC_GEN_PROJECTION;
-					break;
-				case TC_GEN_REFLECTION_CELSHADE:
-					RB_VertexTCCelshadeMatrix( texMatrix);
-					programFeatures |= GLSL_SHADER_Q3_TC_GEN_CELSHADE;
-					break;
-				case TC_GEN_REFLECTION:
-					programFeatures |= GLSL_SHADER_Q3_TC_GEN_REFLECTION;
-					break;
-				case TC_GEN_SURROUND:
-					programFeatures |= GLSL_SHADER_Q3_TC_GEN_SURROUND;
-					break;
-				default:
-					break;
+				switch( pass->tcgen ) {
+					case TC_GEN_ENVIRONMENT:
+						programFeatures |= GLSL_SHADER_Q3_TC_GEN_ENV;
+						break;
+					case TC_GEN_VECTOR:
+						Matrix4_Identity( passCB.genTexMatrix.v );
+						Vector4Copy( &pass->tcgenVec[0], passCB.genTexMatrix.col0 );
+						Vector4Copy( &pass->tcgenVec[4], passCB.genTexMatrix.col3 );
+						programFeatures |= GLSL_SHADER_Q3_TC_GEN_VECTOR;
+						break;
+					case TC_GEN_PROJECTION:
+						programFeatures |= GLSL_SHADER_Q3_TC_GEN_PROJECTION;
+						break;
+					case TC_GEN_REFLECTION_CELSHADE:
+						RB_VertexTCCelshadeMatrix( texMatrix );
+						programFeatures |= GLSL_SHADER_Q3_TC_GEN_CELSHADE;
+						break;
+					case TC_GEN_REFLECTION:
+						programFeatures |= GLSL_SHADER_Q3_TC_GEN_REFLECTION;
+						break;
+					case TC_GEN_SURROUND:
+						programFeatures |= GLSL_SHADER_Q3_TC_GEN_SURROUND;
+						break;
+					default:
+						break;
 				}
 			}
-			if(pass->numtcmods) {
+			if( pass->numtcmods ) {
 				RB_ApplyTCMods( pass, texMatrix );
 			}
 			ObjectCB_SetTextureMatrix( &objectData, texMatrix );
-			
+
 			// set shaderpass state (blending, depthwrite, etc)
 			int state = pass->flags;
 
@@ -1304,90 +1225,66 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			// struct glsl_descriptor_binding_s descriptors[16] = { 0 };
 
 			if( programFeatures & GLSL_SHADER_COMMON_SOFT_PARTICLE ) {
-				descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-					.descriptor = rsh.screenDepthTextureCopy->binding, 
-					.handle = Create_DescriptorHandle( "u_DepthTexture" ) 
-				};
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = rsh.screenDepthTextureCopy->binding, .handle = Create_DescriptorHandle( "u_DepthTexture" ) };
 			}
-			if(pass->flags & SHADERPASS_PORTALMAP && rb.currentPortalSurface && rb.currentPortalSurface->portalfbs[0]  ) {
-				 descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){
-				 	.descriptor = rb.currentPortalSurface->portalfbs[0]->colorDescriptor,
-				 	.handle = Create_DescriptorHandle( "u_BaseTexture" ) };
+			if( pass->flags & SHADERPASS_PORTALMAP && rb.currentPortalSurface && rb.currentPortalSurface->portalfbs[0] ) {
+				descriptors[descriptorCount++] =
+					(struct glsl_descriptor_binding_s){ .descriptor = rb.currentPortalSurface->portalfbs[0]->colorDescriptor, .handle = Create_DescriptorHandle( "u_BaseTexture" ) };
 
-				 descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){
-				 	.descriptor = *rb.currentPortalSurface->portalfbs[0]->samplerDescriptor,
-				 	.handle = Create_DescriptorHandle( "u_BaseSampler" ) };
+				descriptors[descriptorCount++] =
+					(struct glsl_descriptor_binding_s){ .descriptor = *rb.currentPortalSurface->portalfbs[0]->samplerDescriptor, .handle = Create_DescriptorHandle( "u_BaseSampler" ) };
 
 			} else if( shaderPassImage ) {
-				descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-					.descriptor = shaderPassImage->binding, 
-					.handle = Create_DescriptorHandle( "u_BaseTexture" ) };
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = shaderPassImage->binding, .handle = Create_DescriptorHandle( "u_BaseTexture" ) };
 
-				descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-					.descriptor = *shaderPassImage->samplerBinding, 
-					.handle = Create_DescriptorHandle( "u_BaseSampler" ) };
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *shaderPassImage->samplerBinding, .handle = Create_DescriptorHandle( "u_BaseSampler" ) };
 			}
-			
-			if( mapConfig.lightmapArrays )
-				programFeatures |= GLSL_SHADER_Q3_LIGHTMAP_ARRAYS;
 
-			for(size_t i = 0; i < rsh.worldBrushModel->numLightmapImages; i++) {
-				if(i == 0) {
-					descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){
-						.descriptor = *rsh.worldBrushModel->lightmapImages[i]->samplerBinding, 
-						.handle = Create_DescriptorHandle( "lightmapTextureSample" ) 
-					};
+			if( isLightmapped ) {
+				if( mapConfig.lightmapArrays )
+					programFeatures |= GLSL_SHADER_Q3_LIGHTMAP_ARRAYS;
+
+				for( size_t i = 0; i < rsh.worldBrushModel->numLightmapImages; i++ ) {
+					if( i == 0 ) {
+						descriptors[descriptorCount++] =
+							(struct glsl_descriptor_binding_s){ .descriptor = *rsh.worldBrushModel->lightmapImages[i]->samplerBinding, .handle = Create_DescriptorHandle( "lightmapTextureSample" ) };
+					}
+					descriptors[descriptorCount++] =
+						(struct glsl_descriptor_binding_s){ .descriptor = rsh.worldBrushModel->lightmapImages[i]->binding, .registerOffset = i, .handle = Create_DescriptorHandle( "lightmapTexture" ) };
 				}
-				descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){
-					.descriptor = rsh.worldBrushModel->lightmapImages[i]->binding, 
-					.registerOffset = i, 
-					.handle = Create_DescriptorHandle( "lightmapTexture" ) };
 			}
-			
+
 			const int numLightMaps = isLightmapped ? __NumberLightMaps( lightStyle ) : 0;
 			programFeatures |= ( numLightMaps * GLSL_SHADER_Q3_LIGHTSTYLE0 );
 			for( int i = 0; i < numLightMaps; i++ ) {
-				float rgb[4] = {0};
+				float rgb[4] = { 0 };
 				VectorCopy( rsc.lightStyles[lightStyle->lightmapStyles[i]].rgb, rgb );
 				if( mapConfig.lightingIntensity )
 					VectorScale( rgb, mapConfig.lightingIntensity, rgb );
-				VectorCopy(rgb, passCB.lightstyleColor[i].v);
+				VectorCopy( rgb, passCB.lightstyleColor[i].v );
 			}
-  
+
 			struct glsl_program_s *program =
 				RP_ResolveProgram( GLSL_PROGRAM_TYPE_Q3A_SHADER, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline);
-			
+			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline );
+
 			UpdateFrameUBO( cmd, &cmd->uboSceneFrame, &frameData, sizeof( struct FrameCB ) );
 			UpdateFrameUBO( cmd, &cmd->uboSceneObject, &objectData, sizeof( struct ObjectCB ) );
-			descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-				.descriptor = cmd->uboSceneFrame, 
-				.handle = Create_DescriptorHandle( "frame" ) };
-			descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-				.descriptor = cmd->uboSceneObject, 
-				.handle = Create_DescriptorHandle( "obj" ) 
-			};
-			
-			if(RP_ProgramHasUniform(program, Create_DescriptorHandle("pass"))) {
-				UpdateFrameUBO( cmd, &cmd->uboPassObject, &passCB, sizeof(struct DefaultQ3ShaderCB));
-				descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-					.descriptor = cmd->uboPassObject,
-					.handle = Create_DescriptorHandle( "pass" ) 
-				};
+			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboSceneFrame, .handle = Create_DescriptorHandle( "frame" ) };
+			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboSceneObject, .handle = Create_DescriptorHandle( "obj" ) };
+
+			if( RP_ProgramHasUniform( program, Create_DescriptorHandle( "pass" ) ) ) {
+				UpdateFrameUBO( cmd, &cmd->uboPassObject, &passCB, sizeof( struct DefaultQ3ShaderCB ) );
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboPassObject, .handle = Create_DescriptorHandle( "pass" ) };
 			}
 
 			RP_BindPipeline( cmd, pipeline );
+			assert( descriptorCount <= Q_ARRAY_COUNT( descriptors ) );
 			RP_BindDescriptorSets( &rsh.device, cmd, program, descriptors, descriptorCount );
-			FR_CmdDrawElements(cmd, 
-				cmd->drawElements.numElems,
-				cmd->drawElements.numInstances,
-				cmd->drawElements.firstElem,
-				cmd->drawElements.firstVert,
-				0);
+			FR_CmdDrawElements( cmd, cmd->drawElements.numElems, cmd->drawElements.numInstances, cmd->drawElements.firstElem, cmd->drawElements.firstVert, 0 );
 			break;
 		}
 		case GLSL_PROGRAM_TYPE_DISTORTION: {
-
 			struct distortion_push_constant_s {
 				float width;
 				float height;
@@ -1395,7 +1292,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			} push;
 			mat4_t texMatrix;
 			Matrix4_Identity( texMatrix );
-			if(pass->numtcmods) {
+			if( pass->numtcmods ) {
 				RB_ApplyTCMods( pass, texMatrix );
 			}
 			ObjectCB_SetTextureMatrix( &objectData, texMatrix );
@@ -1406,11 +1303,11 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			const struct portal_fb_s *reflectionFB = rb.currentPortalSurface->portalfbs[0];
 			const struct portal_fb_s *refractionFB = rb.currentPortalSurface->portalfbs[1];
 			if( reflectionFB ) {
-					push.width = reflectionFB->width;
-					push.height = reflectionFB->height;
-					descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ .descriptor = reflectionFB->colorDescriptor, .handle = Create_DescriptorHandle( "u_ReflectionTexture" ) };
-					descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ .descriptor = *reflectionFB->samplerDescriptor, .handle = Create_DescriptorHandle( "u_ReflectionSampler" ) };
-					programFeatures |= GLSL_SHADER_DISTORTION_REFLECTION;
+				push.width = reflectionFB->width;
+				push.height = reflectionFB->height;
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = reflectionFB->colorDescriptor, .handle = Create_DescriptorHandle( "u_ReflectionTexture" ) };
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *reflectionFB->samplerDescriptor, .handle = Create_DescriptorHandle( "u_ReflectionSampler" ) };
+				programFeatures |= GLSL_SHADER_DISTORTION_REFLECTION;
 			} else {
 				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = rsh.blackTexture->binding, .handle = Create_DescriptorHandle( "u_ReflectionTexture" ) };
 				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *rsh.blackTexture->samplerBinding, .handle = Create_DescriptorHandle( "u_ReflectionSampler" ) };
@@ -1426,8 +1323,8 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *rsh.blackTexture->samplerBinding, .handle = Create_DescriptorHandle( "u_RefractionSampler" ) };
 			}
 
-			const image_t* dudvmap = pass->images[0] && !pass->images[0]->missing ? pass->images[0] : rsh.blankBumpTexture;
-			const image_t* normalmap = pass->images[1] && !pass->images[1]->missing ? pass->images[1] : rsh.blankBumpTexture;
+			const image_t *dudvmap = pass->images[0] && !pass->images[0]->missing ? pass->images[0] : rsh.blankBumpTexture;
+			const image_t *normalmap = pass->images[1] && !pass->images[1]->missing ? pass->images[1] : rsh.blankBumpTexture;
 
 			if( dudvmap != rsh.blankBumpTexture )
 				programFeatures |= GLSL_SHADER_DISTORTION_DUDV;
@@ -1439,67 +1336,50 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 					programFeatures |= GLSL_SHADER_DISTORTION_DISTORTION_ALPHA;
 			}
 			push.frontPlane = frontPlane ? 1.0f : -1.0f;
-	
-			descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-				.descriptor = dudvmap->binding, 
-				.handle = Create_DescriptorHandle( "u_DuDvMapTexture" ) };
-			descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-				.descriptor = *dudvmap->samplerBinding, 
-				.handle = Create_DescriptorHandle( "u_DuDvMapSampler" ) };
+
+			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = dudvmap->binding, .handle = Create_DescriptorHandle( "u_DuDvMapTexture" ) };
+			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *dudvmap->samplerBinding, .handle = Create_DescriptorHandle( "u_DuDvMapSampler" ) };
 
 			// convert rgbgen and alphagen to GLSL feature defines
 			programFeatures |= RB_RGBAlphaGenToProgramFeatures( &pass->rgbgen, &pass->alphagen );
 			programFeatures |= RB_FogProgramFeatures( pass, rb.fog );
 
 			// set shaderpass state (blending, depthwrite, etc)
-			RB_SetShaderpassState_2( cmd, pass->flags);
+			RB_SetShaderpassState_2( cmd, pass->flags );
 
 			if( normalmap != rsh.blankBumpTexture ) {
 				// eyeDot
 				programFeatures |= GLSL_SHADER_DISTORTION_EYEDOT;
-				descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-					.descriptor = normalmap->binding, 
-					.handle = Create_DescriptorHandle( "u_NormalmapTexture" ) };
-				descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-					.descriptor = *normalmap->samplerBinding, 
-					.handle = Create_DescriptorHandle( "u_NormalmapSampler" ) };
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = normalmap->binding, .handle = Create_DescriptorHandle( "u_NormalmapTexture" ) };
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *normalmap->samplerBinding, .handle = Create_DescriptorHandle( "u_NormalmapSampler" ) };
 
-				//RB_BindImage( 1, normalmap );
+				// RB_BindImage( 1, normalmap );
 			}
 
 			UpdateFrameUBO( cmd, &cmd->uboSceneFrame, &frameData, sizeof( struct FrameCB ) );
 			UpdateFrameUBO( cmd, &cmd->uboSceneObject, &objectData, sizeof( struct ObjectCB ) );
-			descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-				.descriptor = cmd->uboSceneFrame, 
-				.handle = Create_DescriptorHandle( "frame" ) };
-			descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-				.descriptor = cmd->uboSceneObject, 
-				.handle = Create_DescriptorHandle( "obj" ) 
-			};
+			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboSceneFrame, .handle = Create_DescriptorHandle( "frame" ) };
+			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboSceneObject, .handle = Create_DescriptorHandle( "obj" ) };
 
 			struct glsl_program_s *program =
 				RP_ResolveProgram( GLSL_PROGRAM_TYPE_DISTORTION, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline);
-			
+			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline );
+
 			RP_BindPipeline( cmd, pipeline );
 			if( program->hasPushConstant )
 				RP_BindPushConstant( &rsh.device, cmd, program, &push, sizeof( struct distortion_push_constant_s ) );
+			assert( descriptorCount <= Q_ARRAY_COUNT( descriptors ) );
 			RP_BindDescriptorSets( &rsh.device, cmd, program, descriptors, descriptorCount );
-			FR_CmdDrawElements(cmd, 
-				cmd->drawElements.numElems,
-				cmd->drawElements.numInstances,
-				cmd->drawElements.firstElem,
-				cmd->drawElements.firstVert,
-				0);
+			FR_CmdDrawElements( cmd, cmd->drawElements.numElems, cmd->drawElements.numInstances, cmd->drawElements.firstElem, cmd->drawElements.firstVert, 0 );
 
 			break;
 		}
 		case GLSL_PROGRAM_TYPE_SHADOWMAP: {
-			int scissor[4] = {INT_MAX, INT_MAX, INT_MIN, INT_MIN};
+			int scissor[4] = { INT_MAX, INT_MAX, INT_MIN, INT_MIN };
 			int old_scissor[4];
-				
+
 			// set shaderpass state (blending, depthwrite, etc)
-			RB_SetShaderpassState_2(cmd, pass->flags );
+			RB_SetShaderpassState_2( cmd, pass->flags );
 
 			if( r_shadows_pcf->integer )
 				programFeatures |= GLSL_SHADER_SHADOWMAP_PCF;
@@ -1616,33 +1496,23 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 					}
 
 					UpdateFrameUBO( cmd, &cmd->uboPassObject, &shadowCB, sizeof( struct DefaultShadowCB ) );
-					descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-						.descriptor = cmd->uboPassObject, 
-						.handle = Create_DescriptorHandle( "pass" ) 
-					};
+					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboPassObject, .handle = Create_DescriptorHandle( "pass" ) };
 
 					if( rb.currentModelType == mod_brush ) {
-						RB_Scissor(  
-								 scissor[0], 
-								 scissor[1], 
-								 scissor[2] - scissor[0], 
-								 scissor[3] - scissor[1] );
+						RB_Scissor( scissor[0], scissor[1], scissor[2] - scissor[0], scissor[3] - scissor[1] );
 					}
 
 					// update uniforms
 					// program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_SHADOWMAP, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 					struct glsl_program_s *program =
 						RP_ResolveProgram( GLSL_PROGRAM_TYPE_SHADOWMAP, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-					struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline);
+					struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline );
 
 					RP_BindPipeline( cmd, pipeline );
+					assert( descriptorCount <= Q_ARRAY_COUNT( descriptors ) );
 					RP_BindDescriptorSets( &rsh.device, cmd, program, descriptors, descriptorCount );
 
-					FR_CmdDrawElements( cmd, 
-												cmd->drawShadowElements.numElems, 
-												cmd->drawShadowElements.numInstances, 
-												cmd->drawShadowElements.firstElem, 
-												cmd->drawShadowElements.firstVert, 0 );
+					FR_CmdDrawElements( cmd, cmd->drawShadowElements.numElems, cmd->drawShadowElements.numInstances, cmd->drawShadowElements.firstElem, cmd->drawShadowElements.firstVert, 0 );
 				}
 			}
 
@@ -1650,56 +1520,46 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			break;
 		}
 		case GLSL_PROGRAM_TYPE_OUTLINE: {
-
 			const enum RICullMode_e prevCullMode = cmd->pipeline.cullMode;
 			cmd->pipeline.cullMode = RI_CULL_MODE_BACK;
 
-			mat4_t texMatrix = {0};
+			mat4_t texMatrix = { 0 };
 			Matrix4_Identity( texMatrix );
 			if( pass->numtcmods ) {
 				RB_ApplyTCMods( pass, texMatrix );
 			}
 			ObjectCB_SetTextureMatrix( &objectData, texMatrix );
-			
+
 			if( rb.currentModelType == mod_brush ) {
 				programFeatures |= GLSL_SHADER_OUTLINE_OUTLINES_CUTOFF;
 			}
 
 			programFeatures |= RB_RGBAlphaGenToProgramFeatures( &pass->rgbgen, &pass->alphagen );
 			programFeatures |= RB_FogProgramFeatures( pass, rb.fog );
-			
+
 			UpdateFrameUBO( cmd, &cmd->uboSceneFrame, &frameData, sizeof( struct FrameCB ) );
 			UpdateFrameUBO( cmd, &cmd->uboSceneObject, &objectData, sizeof( struct ObjectCB ) );
-			
-			descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){
-				.descriptor = cmd->uboSceneFrame, 
-				.handle = Create_DescriptorHandle( "frame" ) 
-			};
-			descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){
-				.descriptor = cmd->uboSceneObject, 
-				.handle = Create_DescriptorHandle( "obj" ) 
-			};
 
-			struct DefaultOutlinePushConstant constant; 
-			constant.outlineCutoff = max( 0, r_outlines_cutoff->value ) ;
+			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboSceneFrame, .handle = Create_DescriptorHandle( "frame" ) };
+			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboSceneObject, .handle = Create_DescriptorHandle( "obj" ) };
+
+			struct DefaultOutlinePushConstant constant;
+			constant.outlineCutoff = max( 0, r_outlines_cutoff->value );
 			constant.outlineHeight = rb.currentEntity->outlineHeight * r_outlines_scale->value;
 
-			struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_OUTLINE, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline);
-			
-			RP_BindPipeline(cmd, pipeline);
-			if( program->hasPushConstant == true )
-				RP_BindPushConstant( &rsh.device, cmd, program, &constant, sizeof( struct DefaultOutlinePushConstant ));
-				//rsh.nri.coreI.CmdSetRootConstants( cmd->cmd, 0, &constant, sizeof( struct DefaultOutlinePushConstant ) );
+			struct glsl_program_s *program =
+				RP_ResolveProgram( GLSL_PROGRAM_TYPE_OUTLINE, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
+			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline );
 
+			RP_BindPipeline( cmd, pipeline );
+			if( program->hasPushConstant == true )
+				RP_BindPushConstant( &rsh.device, cmd, program, &constant, sizeof( struct DefaultOutlinePushConstant ) );
+			// rsh.nri.coreI.CmdSetRootConstants( cmd->cmd, 0, &constant, sizeof( struct DefaultOutlinePushConstant ) );
+
+			assert( descriptorCount <= Q_ARRAY_COUNT( descriptors ) );
 			RP_BindDescriptorSets( &rsh.device, cmd, program, descriptors, descriptorCount );
 
-			FR_CmdDrawElements(cmd, 
-				cmd->drawElements.numElems,
-				cmd->drawElements.numInstances,
-				cmd->drawElements.firstElem,
-				cmd->drawElements.firstVert,
-				0);
+			FR_CmdDrawElements( cmd, cmd->drawElements.numElems, cmd->drawElements.numInstances, cmd->drawElements.firstElem, cmd->drawElements.firstVert, 0 );
 
 			cmd->pipeline.cullMode = prevCullMode;
 			break;
@@ -1715,34 +1575,28 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			image_t *stripes = pass->images[5];
 			image_t *light = pass->images[6];
 
-			struct DefaultCellShadeCB passCB = {0};
-			passCB.entityColor = ( struct vec4 ){ .x = rb.entityColor[0] * (1.0 / 255.0), .y = rb.entityColor[1] * (1.0 / 255.0), .z = rb.entityColor[2] * (1.0 / 255.0), .w = rb.entityColor[3]  * (1.0 / 255.0)};
+			struct DefaultCellShadeCB passCB = { 0 };
+			passCB.entityColor =
+				(struct vec4){ .x = rb.entityColor[0] * ( 1.0 / 255.0 ), .y = rb.entityColor[1] * ( 1.0 / 255.0 ), .z = rb.entityColor[2] * ( 1.0 / 255.0 ), .w = rb.entityColor[3] * ( 1.0 / 255.0 ) };
 
 			mat4_t reflectionMatrix;
-			RB_VertexTCCelshadeMatrix( reflectionMatrix);
+			RB_VertexTCCelshadeMatrix( reflectionMatrix );
 			memcpy( &passCB.reflectionTexMatrix.col0, &reflectionMatrix[0], 3 * sizeof( vec_t ) );
 			memcpy( &passCB.reflectionTexMatrix.col1, &reflectionMatrix[4], 3 * sizeof( vec_t ) );
 			memcpy( &passCB.reflectionTexMatrix.col2, &reflectionMatrix[8], 3 * sizeof( vec_t ) );
-			
+
 			mat4_t texMatrix;
 			Matrix4_Identity( texMatrix );
-			if(pass->numtcmods) {
+			if( pass->numtcmods ) {
 				RB_ApplyTCMods( pass, texMatrix );
 			}
 			ObjectCB_SetTextureMatrix( &objectData, texMatrix );
-			
-			{
-				image_t* baseImage = base->loaded ? base : rsh.blackTexture;
-				descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-					.descriptor = baseImage->binding, 
-					.handle = Create_DescriptorHandle( "u_BaseTexture" ) 
-				};
-				descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-					.descriptor = *baseImage->samplerBinding, 
-					.handle = Create_DescriptorHandle( "u_BaseSampler" ) 
-				};
-			}
 
+			{
+				image_t *baseImage = base->loaded ? base : rsh.blackTexture;
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = baseImage->binding, .handle = Create_DescriptorHandle( "u_BaseTexture" ) };
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *baseImage->samplerBinding, .handle = Create_DescriptorHandle( "u_BaseSampler" ) };
+			}
 
 			// possibly apply the "texture" fog inline
 			if( fog == rb.texFog ) {
@@ -1763,85 +1617,97 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			// replacement images are there to ensure that the entity is still
 			// properly colored despite real images still being loaded in a separate thread
 			struct {
-				image_t* image;
-				image_t* overloadImage;
+				image_t *image;
+				image_t *overloadImage;
 				r_glslfeat_t feature;
 				r_glslfeat_t featureAdditive;
 				struct glsl_descriptor_handle_s handle;
 				struct glsl_descriptor_handle_s samplerHandle;
 			} imageBinding[] = {
-				{ .image = shade, .overloadImage = NULL, .feature = 0, .featureAdditive = 0, .handle =  Create_DescriptorHandle( "u_CelShadeTexture" ), .samplerHandle = Create_DescriptorHandle( "u_CelShadeSampler" ) },
-				{ .image = diffuse, .overloadImage = NULL,.feature = GLSL_SHADER_CELSHADE_DIFFUSE, .featureAdditive = 0, .handle  =  Create_DescriptorHandle( "u_DiffuseTexture" ), .samplerHandle = Create_DescriptorHandle( "u_DiffuseSampler" ) },
-				{ .image = decal, .overloadImage = NULL,.feature = GLSL_SHADER_CELSHADE_DECAL, .featureAdditive = GLSL_SHADER_CELSHADE_DECAL_ADD, .handle   =  Create_DescriptorHandle( "u_DecalTexture" ) , .samplerHandle = Create_DescriptorHandle( "u_DecalSampler" ) },
-				{ .image = entdecal, .overloadImage = rsh.whiteTexture,.feature = GLSL_SHADER_CELSHADE_ENTITY_DECAL, .featureAdditive = GLSL_SHADER_CELSHADE_ENTITY_DECAL_ADD, .handle    =  Create_DescriptorHandle( "u_EntityDecalTexture" ), .samplerHandle = Create_DescriptorHandle( "u_EntityDecalSampler" ) },
-				{ .image = stripes, .overloadImage = NULL,.feature = GLSL_SHADER_CELSHADE_STRIPES, .featureAdditive = GLSL_SHADER_CELSHADE_STRIPES_ADD, .handle  =  Create_DescriptorHandle( "u_StripesTexture" ), .samplerHandle = Create_DescriptorHandle( "u_StripesSampler" ) },
-				{ .image = light, .overloadImage = NULL,.feature = GLSL_SHADER_CELSHADE_CEL_LIGHT, .featureAdditive = GLSL_SHADER_CELSHADE_CEL_LIGHT_ADD, .handle  =  Create_DescriptorHandle( "u_CelLightTexture" ), .samplerHandle = Create_DescriptorHandle( "u_CelLightSampler" ) },
+				{ .image = shade,
+				  .overloadImage = NULL,
+				  .feature = 0,
+				  .featureAdditive = 0,
+				  .handle = Create_DescriptorHandle( "u_CelShadeTexture" ),
+				  .samplerHandle = Create_DescriptorHandle( "u_CelShadeSampler" ) },
+				{ .image = diffuse,
+				  .overloadImage = NULL,
+				  .feature = GLSL_SHADER_CELSHADE_DIFFUSE,
+				  .featureAdditive = 0,
+				  .handle = Create_DescriptorHandle( "u_DiffuseTexture" ),
+				  .samplerHandle = Create_DescriptorHandle( "u_DiffuseSampler" ) },
+				{ .image = decal,
+				  .overloadImage = NULL,
+				  .feature = GLSL_SHADER_CELSHADE_DECAL,
+				  .featureAdditive = GLSL_SHADER_CELSHADE_DECAL_ADD,
+				  .handle = Create_DescriptorHandle( "u_DecalTexture" ),
+				  .samplerHandle = Create_DescriptorHandle( "u_DecalSampler" ) },
+				{ .image = entdecal,
+				  .overloadImage = rsh.whiteTexture,
+				  .feature = GLSL_SHADER_CELSHADE_ENTITY_DECAL,
+				  .featureAdditive = GLSL_SHADER_CELSHADE_ENTITY_DECAL_ADD,
+				  .handle = Create_DescriptorHandle( "u_EntityDecalTexture" ),
+				  .samplerHandle = Create_DescriptorHandle( "u_EntityDecalSampler" ) },
+				{ .image = stripes,
+				  .overloadImage = NULL,
+				  .feature = GLSL_SHADER_CELSHADE_STRIPES,
+				  .featureAdditive = GLSL_SHADER_CELSHADE_STRIPES_ADD,
+				  .handle = Create_DescriptorHandle( "u_StripesTexture" ),
+				  .samplerHandle = Create_DescriptorHandle( "u_StripesSampler" ) },
+				{ .image = light,
+				  .overloadImage = NULL,
+				  .feature = GLSL_SHADER_CELSHADE_CEL_LIGHT,
+				  .featureAdditive = GLSL_SHADER_CELSHADE_CEL_LIGHT_ADD,
+				  .handle = Create_DescriptorHandle( "u_CelLightTexture" ),
+				  .samplerHandle = Create_DescriptorHandle( "u_CelLightSampler" ) },
 			};
 			for( size_t i = 0; i < Q_ARRAY_COUNT( imageBinding ); i++ ) {
 				if( imageBinding[i].image && !imageBinding[i].image->missing ) {
-					image_t* btex = imageBinding[i].image;
+					image_t *btex = imageBinding[i].image;
 					if( rb.renderFlags & RF_SHADOWMAPVIEW ) {
 						btex = btex->flags & IT_CUBEMAP ? rsh.whiteCubemapTexture : rsh.whiteTexture;
 					} else {
-						btex = imageBinding[i].image->loaded ? imageBinding[i].image: imageBinding[i].overloadImage;
+						btex = imageBinding[i].image->loaded ? imageBinding[i].image : imageBinding[i].overloadImage;
 						if( btex ) {
 							programFeatures |= imageBinding[i].feature;
 							if( imageBinding[i].featureAdditive && ( btex->samples & 1 ) )
 								programFeatures |= imageBinding[i].featureAdditive;
 						}
 					}
-					if(btex) {
-						descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){
-							.descriptor = btex->binding, 
-							.handle = imageBinding[i].handle
-						};
-						
-						descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){
-							.descriptor = *btex->samplerBinding, 
-							.handle = imageBinding[i].samplerHandle
-						};
+					if( btex ) {
+						descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = btex->binding, .handle = imageBinding[i].handle };
+
+						descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *btex->samplerBinding, .handle = imageBinding[i].samplerHandle };
 					}
 				}
 			}
 
 			UpdateFrameUBO( cmd, &cmd->uboSceneFrame, &frameData, sizeof( struct FrameCB ) );
 			UpdateFrameUBO( cmd, &cmd->uboSceneObject, &objectData, sizeof( struct ObjectCB ) );
-			descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){
-				.descriptor = cmd->uboSceneFrame, 
-				.handle = Create_DescriptorHandle( "frame" ) 
-			};
-			descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){
-				.descriptor = cmd->uboSceneObject, 
-				.handle = Create_DescriptorHandle( "obj" ) 
-			};
+			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboSceneFrame, .handle = Create_DescriptorHandle( "frame" ) };
+			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboSceneObject, .handle = Create_DescriptorHandle( "obj" ) };
 
-			struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_CELSHADE, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
+			struct glsl_program_s *program =
+				RP_ResolveProgram( GLSL_PROGRAM_TYPE_CELSHADE, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 
-			if(RP_ProgramHasUniform(program, Create_DescriptorHandle("pass"))) {
-				UpdateFrameUBO( cmd, &cmd->uboPassObject, &passCB, sizeof(struct DefaultCellShadeCB));
-				descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){ 
-					.descriptor = cmd->uboPassObject, 
-					.handle = Create_DescriptorHandle( "pass" ) 
-				};
+			if( RP_ProgramHasUniform( program, Create_DescriptorHandle( "pass" ) ) ) {
+				UpdateFrameUBO( cmd, &cmd->uboPassObject, &passCB, sizeof( struct DefaultCellShadeCB ) );
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboPassObject, .handle = Create_DescriptorHandle( "pass" ) };
 			}
-			
-			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline);
 
-			RP_BindPipeline(cmd, pipeline);
+			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline );
+
+			RP_BindPipeline( cmd, pipeline );
+			assert( descriptorCount <= Q_ARRAY_COUNT( descriptors ) );
 			RP_BindDescriptorSets( &rsh.device, cmd, program, descriptors, descriptorCount );
 
-			FR_CmdDrawElements(cmd, 
-				cmd->drawElements.numElems,
-				cmd->drawElements.numInstances,
-				cmd->drawElements.firstElem,
-				cmd->drawElements.firstVert,
-				0);
+			FR_CmdDrawElements( cmd, cmd->drawElements.numElems, cmd->drawElements.numInstances, cmd->drawElements.firstElem, cmd->drawElements.firstVert, 0 );
 			break;
 		}
 		case GLSL_PROGRAM_TYPE_FOG: {
 			mat4_t texMatrix;
 			Matrix4_Identity( texMatrix );
-			if(pass->numtcmods) {
+			if( pass->numtcmods ) {
 				RB_ApplyTCMods( pass, texMatrix );
 			}
 			ObjectCB_SetTextureMatrix( &objectData, texMatrix );
@@ -1849,54 +1715,43 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			programFeatures |= GLSL_SHADER_COMMON_FOG;
 
 			// set shaderpass state (blending, depthwrite, etc)
-			RB_SetShaderpassState_2(cmd, pass->flags );
+			RB_SetShaderpassState_2( cmd, pass->flags );
 
 			UpdateFrameUBO( cmd, &cmd->uboSceneFrame, &frameData, sizeof( struct FrameCB ) );
 			UpdateFrameUBO( cmd, &cmd->uboSceneObject, &objectData, sizeof( struct ObjectCB ) );
-			descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){
-				.descriptor = cmd->uboSceneFrame, 
-				.handle = Create_DescriptorHandle( "frame" ) 
-			};
-			descriptors[descriptorCount++] = ( struct glsl_descriptor_binding_s ){
-				.descriptor = cmd->uboSceneObject, 
-				.handle = Create_DescriptorHandle( "obj" ) 
-			};
-		
-			struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_FOG, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline);
+			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboSceneFrame, .handle = Create_DescriptorHandle( "frame" ) };
+			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboSceneObject, .handle = Create_DescriptorHandle( "obj" ) };
 
-			RP_BindPipeline(cmd, pipeline);
+			struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_FOG, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
+			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline );
+
+			RP_BindPipeline( cmd, pipeline );
+			assert( descriptorCount <= Q_ARRAY_COUNT( descriptors ) );
 			RP_BindDescriptorSets( &rsh.device, cmd, program, descriptors, descriptorCount );
-			
-			FR_CmdDrawElements(cmd, 
-				cmd->drawElements.numElems,
-				cmd->drawElements.numInstances,
-				cmd->drawElements.firstElem,
-				cmd->drawElements.firstVert,
-				0);
+
+			FR_CmdDrawElements( cmd, cmd->drawElements.numElems, cmd->drawElements.numInstances, cmd->drawElements.firstElem, cmd->drawElements.firstVert, 0 );
 			break;
 		}
 		case GLSL_PROGRAM_TYPE_YUV: {
-			assert(false);
-			mat4_t texMatrix = { 0 };
+			assert( false );
 
 			// set shaderpass state (blending, depthwrite, etc)
-			RB_SetShaderpassState_2(cmd, pass->flags );
+			RB_SetShaderpassState_2( cmd, pass->flags );
 
-			//RB_BindImage( 0, pass->images[0] );
-			//RB_BindImage( 1, pass->images[1] );
-			//RB_BindImage( 2, pass->images[2] );
+			// RB_BindImage( 0, pass->images[0] );
+			// RB_BindImage( 1, pass->images[1] );
+			// RB_BindImage( 2, pass->images[2] );
 
 			// update uniforms
 			struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_YUV, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
-			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline);
-			
-		 // program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_YUV, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, features );
-		 // if( RB_BindProgram( program ) ) {
-		 // 	RB_UpdateCommonUniforms( program, pass, texMatrix );
+			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline );
 
-		 // 	RB_DrawElementsReal( &rb.drawElements );
-		 // }
+			// program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_YUV, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, features );
+			// if( RB_BindProgram( program ) ) {
+			// 	RB_UpdateCommonUniforms( program, pass, texMatrix );
+
+			// 	RB_DrawElementsReal( &rb.drawElements );
+			// }
 			// RB_RenderMeshGLSL_YUV( pass, features );
 			break;
 		}
@@ -2037,7 +1892,6 @@ void RB_SetBonesData( int numBones, dualquat_t *dualQuats, int maxWeights )
 	memcpy( rb.bonesData.dualQuats, dualQuats, numBones * sizeof( *dualQuats ) );
 	rb.bonesData.maxWeights = maxWeights;
 
-
 	RB_UpdateVertexAttribs();
 }
 
@@ -2103,7 +1957,6 @@ static void RB_RenderPass( struct FrameState_s *cmd, const shaderpass_t *pass )
 	if( cmd->pipeline.depthWrite ) {
 		rb.doneDepthPass = true;
 	}
-	
 }
 
 /*
@@ -2133,15 +1986,7 @@ static void RB_SetShaderpassState_2( struct FrameState_s *cmd, int state )
 	RB_SetState_2( cmd, state );
 }
 
-void RB_DrawShadedElements_2( struct FrameState_s *cmd,
-							  int firstVert,
-							  int numVerts,
-							  int firstElem,
-							  int numElems,
-							  int firstShadowVert,
-							  int numShadowVerts,
-							  int firstShadowElem,
-							  int numShadowElems )
+void RB_DrawShadedElements_2( struct FrameState_s *cmd, int firstVert, int numVerts, int firstElem, int numElems, int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems )
 {
 	cmd->drawElements.numVerts = numVerts;
 	cmd->drawElements.numElems = numElems;
@@ -2150,7 +1995,7 @@ void RB_DrawShadedElements_2( struct FrameState_s *cmd,
 	cmd->drawElements.numInstances = 0;
 
 	cmd->drawShadowElements.numVerts = numShadowVerts;
-	cmd->drawShadowElements.numElems = numShadowElems ;
+	cmd->drawShadowElements.numElems = numShadowElems;
 	cmd->drawShadowElements.firstVert = firstShadowVert;
 	cmd->drawShadowElements.firstElem = firstShadowElem;
 	cmd->drawShadowElements.numInstances = 0;
@@ -2162,17 +2007,17 @@ void RB_DrawShadedElements_2( struct FrameState_s *cmd,
 	}
 
 	// Face culling
-	
+
 	if( !gl_cull->integer || rb.currentEntity->rtype == RT_SPRITE ) {
 		cmd->pipeline.cullMode = RI_CULL_MODE_NONE;
 	} else if( rb.currentShader->flags & SHADER_CULL_FRONT ) {
 		cmd->pipeline.cullMode = RI_CULL_MODE_FRONT;
 	} else if( rb.currentShader->flags & SHADER_CULL_BACK ) {
-		cmd->pipeline.cullMode = RI_CULL_MODE_BACK ;
+		cmd->pipeline.cullMode = RI_CULL_MODE_BACK;
 	} else {
 		cmd->pipeline.cullMode = RI_CULL_MODE_NONE;
 	}
-	
+
 	int state = 0;
 
 	if( rb.currentShader->flags & SHADER_POLYGONOFFSET )
@@ -2182,7 +2027,7 @@ void RB_DrawShadedElements_2( struct FrameState_s *cmd,
 
 	if( rb.noDepthTest )
 		state |= GLSTATE_NO_DEPTH_TEST;
-	
+
 	rb.currentShaderState = ( state & rb.shaderStateANDmask ) | rb.shaderStateORmask;
 
 	shaderpass_t *pass;
@@ -2197,32 +2042,26 @@ void RB_DrawShadedElements_2( struct FrameState_s *cmd,
 
 	// shadow map
 	if( rb.currentShadowBits && ( rb.currentShader->sort >= SHADER_SORT_OPAQUE ) && ( rb.currentShader->sort <= SHADER_SORT_ALPHATEST ) ) {
-		const shaderpass_t pass = {
-			.flags = GLSTATE_DEPTHFUNC_EQ /*|GLSTATE_OFFSET_FILL*/ | GLSTATE_SRCBLEND_ZERO | GLSTATE_DSTBLEND_SRC_COLOR,
-			.tcgen = TC_GEN_NONE,
-			.rgbgen = {
-				.type = RGB_GEN_IDENTITY, 
-			},
-			.alphagen = {
-				.type = ALPHA_GEN_IDENTITY
-			},
-			.program_type = GLSL_PROGRAM_TYPE_SHADOWMAP
-		};
+		const shaderpass_t pass = { .flags = GLSTATE_DEPTHFUNC_EQ /*|GLSTATE_OFFSET_FILL*/ | GLSTATE_SRCBLEND_ZERO | GLSTATE_DSTBLEND_SRC_COLOR,
+									.tcgen = TC_GEN_NONE,
+									.rgbgen =
+										{
+											.type = RGB_GEN_IDENTITY,
+										},
+									.alphagen = { .type = ALPHA_GEN_IDENTITY },
+									.program_type = GLSL_PROGRAM_TYPE_SHADOWMAP };
 		RB_RenderPass( cmd, &pass );
 	}
 	// outlines
 	if( addGLSLOutline ) {
-		const shaderpass_t pass = {
-			.flags = GLSTATE_DEPTHWRITE,
-			.tcgen = TC_GEN_NONE,
-			.rgbgen = {
-				.type = RGB_GEN_OUTLINE, 
-			},
-			.alphagen = {
-				.type = ALPHA_GEN_OUTLINE
-			},
-			.program_type = GLSL_PROGRAM_TYPE_OUTLINE
-		};
+		const shaderpass_t pass = { .flags = GLSTATE_DEPTHWRITE,
+									.tcgen = TC_GEN_NONE,
+									.rgbgen =
+										{
+											.type = RGB_GEN_OUTLINE,
+										},
+									.alphagen = { .type = ALPHA_GEN_OUTLINE },
+									.program_type = GLSL_PROGRAM_TYPE_OUTLINE };
 		RB_RenderPass( cmd, &pass );
 	}
 

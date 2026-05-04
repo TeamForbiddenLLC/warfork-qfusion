@@ -25,7 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../gameshared/q_math.h"
 #include "../gameshared/q_cvar.h"
 #include "../gameshared/q_shared.h"
-#include "../gameshared/q_sds.h"
+#include "../qcore/qstr.h"
 #include "../qcommon/qfiles.h"
 #include "../qcommon/bsp.h"
 #include "../qcommon/patch.h"
@@ -65,6 +65,7 @@ enum
 
 #include "r_math.h"
 #include "r_public.h"
+#include "qgl_types.h"
 #include "r_vattribs.h"
 
 typedef struct
@@ -264,16 +265,6 @@ enum capture_state_e {
 struct r_frame_set_s {
 	struct RIScratchAlloc_s uboScratchAlloc;
 	struct RIFree_s* freeList;
-	struct RICmd_s primaryCmd;
-	struct RICmd_s backBufferCmd; // command buffer  
-	struct RICmd_s* secondaryCmd; // secondary views
-	union {
-#if ( DEVICE_IMPL_VULKAN )
-		struct {
-				VkCommandPool pool;
-		} vk;
-#endif
-	};
 };
 
 // globals shared by the frontend and the backend
@@ -323,7 +314,7 @@ typedef struct
 		union {
 			struct {
 				uint64_t frameCnt;
-				sds path;
+				struct QStr path;
 				void *memory; //TODO: fix
 				void *buffer; //TODO: fix
 				struct texture_buf_desc_s textureBuferDesc;
@@ -331,8 +322,9 @@ typedef struct
 		};
 	} screenshot;
 
-	struct RISwapchain_s riSwapchain;
+	struct RISwapchain_s swapchain;
 	struct RIResourceUploader_s uploader;
+	struct RICommandRingBuffer_s graphicsCmdRing; 
 
 	struct shadow_fb_s shadowFBs[NUMBER_FRAMES_FLIGHT][MAX_SHADOWGROUPS];
 	struct portal_fb_s portalFBs[MAX_PORTAL_TEXTURES];
@@ -341,25 +333,17 @@ typedef struct
 	struct RIRenderer_s renderer;
  	struct RIDevice_s device;
 
+	struct RICommandRingElement_s primary;
+	struct RICommandRingElement_s* secondary;
 	struct FrameState_s frame;
-
-	union {
-#if ( DEVICE_IMPL_VULKAN )
-		struct {
-			uint32_t swapchainIndex;
-			VkSemaphore frameSemaphore;	
-    	struct VmaAllocation_T* pogoAlloc[RI_MAX_SWAPCHAIN_IMAGES * 2];
-    	struct VmaAllocation_T* depthAlloc[RI_MAX_SWAPCHAIN_IMAGES];
-		} vk;
-#endif
-	};
-	struct RITexture_s pogoTextures[RI_MAX_SWAPCHAIN_IMAGES * 2];
-	struct RITexture_s depthTextures[RI_MAX_SWAPCHAIN_IMAGES];
-	struct RIDescriptor_s colorAttachment[RI_MAX_SWAPCHAIN_IMAGES];
-	struct RIDescriptor_s depthAttachment[RI_MAX_SWAPCHAIN_IMAGES];
-	struct RI_PogoBuffer pogoBuffer[RI_MAX_SWAPCHAIN_IMAGES];
+	bool frameActive;
 	
+	uint32_t swapchainIndex;
 	uint64_t frameSetCount;
+	struct RITexture_s depthTextures[RI_MAX_SWAPCHAIN_IMAGES];
+	struct RITextureView_s depthView[RI_MAX_SWAPCHAIN_IMAGES];
+	struct RI_PogoBuffer pogoBuffer[RI_MAX_SWAPCHAIN_IMAGES];
+
 	struct r_frame_set_s frameSets[NUMBER_FRAMES_FLIGHT];
 
 	byte_vec4_t		customColors[NUM_CUSTOMCOLORS];
@@ -678,7 +662,7 @@ void		R_Set2DMode(struct FrameState_s* cmd, bool enable );
 void		R_RenderView(struct FrameState_s* frame, const refdef_t *fd );
 const msurface_t *R_GetDebugSurface( void );
 const char *R_WriteSpeedsMessage( char *out, size_t size );
-void		R_RenderDebugSurface( const refdef_t *fd );
+void		R_RenderDebugSurface( struct FrameState_s *frame, const refdef_t *fd );
 
 
 /**

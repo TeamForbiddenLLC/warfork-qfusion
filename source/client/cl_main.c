@@ -337,6 +337,11 @@ static void CL_CheckForResend( void )
 			CL_Disconnect( "Connection timed out" );
 			return;
 		}
+		// SDR sockets open asynchronously via EVT_P2P_CONNECTION_CHANGED;
+		// don't transmit until then. Retries aren't consumed so the user
+		// still gets the full window before the timeout above fires.
+		if( !cls.socket || !cls.socket->open )
+			return;
 		cls.connect_count++;
 		cls.connect_time = realtime; // for retransmit requests
 
@@ -395,6 +400,11 @@ static void CL_CheckForResend( void )
 	}
 }
 
+static void CL_RPC_cb_connect_p2p(void *self, struct steam_rpc_pkt_s *pkt)  {
+	assert(self);
+	socket_t* socket = self;	
+	socket->steam_handle = pkt->p2p_connect_recv.handle; 
+}
 /*
 * CL_Connect
 */
@@ -422,23 +432,22 @@ static void CL_Connect( const char *servername, socket_type_t type, netadr_t *ad
 		break;
 	case SOCKET_SDR:
 		{
-			struct p2p_connect_req_s req;
-			req.cmd = RPC_P2P_CONNECT;
-			req.steamID = address->address.steamid;
-			uint32_t sync;
-			STEAMSHIM_sendRPC(&req, sizeof req, NULL, NULL, &sync);
-			// do we need to wait for connection open?
-			// STEAMSHIM_waitDispatchSync(sync);
-
 			cls.socket = &cls.socket_sdr;
 			cls.socket->address = *address;
 			cls.socket->type = SOCKET_SDR;
-			cls.socket->open = true;
+			cls.socket->open = false;
 			cls.socket->remoteAddress = *address;
-			cls.socket->connected = true;
+			cls.socket->connected = false;
 			cls.socket->server = false;
-			cls.socket->handle = 0;
+			cls.socket->steam_handle = 0;
 			cls.reliable = false;
+			
+			uint32_t sync;
+			struct p2p_connect_req_s req;
+			req.cmd = RPC_P2P_CONNECT;
+			req.steamID = address->address.steamid;
+			STEAMSHIM_sendRPC(&req, sizeof req, cls.socket, &CL_RPC_cb_connect_p2p, &sync);
+			STEAMSHIM_waitDispatchSync(sync);
 		}
 		break;
 
@@ -2187,7 +2196,7 @@ static void CL_RPC_cb_persona( void *self, struct steam_rpc_pkt_s *rec )
 	cvar_t *name_cvar = self;
 	assert( rec->common.cmd == RPC_PERSONA_NAME );
 	char steamname[MAX_NAME_BYTES * 4], *steamnameIn = steamname, c;
-	strncpy( steamname, (char *)rec->persona_name.buf, sizeof( steamname ) );
+	strncpy( steamname, (char *)rec->persona_name.buf, sizeof( steamname ) - 1 );
 
 	bool steamnamePrintable = true;
 	while( ( c = *steamnameIn ) != '\0' ) {
@@ -2205,6 +2214,36 @@ static void CL_RPC_cb_persona( void *self, struct steam_rpc_pkt_s *rec )
 		Cvar_Set( name_cvar->name, steamname );
 	}
 }
+
+static void CL_EVT_cb_connection_changed(void *self, struct steam_evt_pkt_s *pkt) {
+	struct p2p_net_connection_changed_evt_s *evt = &pkt->p2p_net_connection_changed;
+	const bool matches = cls.socket && (cls.socket->steam_handle == evt->hConn);
+	if(matches) {
+		switch(evt->state) {
+			case STEAMSHIM_ESteamNetworkingConnectionState_Connected:
+				cls.socket->connected = true;
+				cls.socket->open = true;
+				break;
+			// Without this, a dropped SDR connection leaves cls.socket->open=true,
+			// so NET_GetPacket keeps polling a dead handle and the client gets stuck
+			// in CA_CONNECTING / CA_ACTIVE forever.
+			case STEAMSHIM_ESteamNetworkingConnectionState_None:
+			case STEAMSHIM_ESteamNetworkingConnectionState_ClosedByPeer:
+			case STEAMSHIM_ESteamNetworkingConnectionState_ProblemDetectedLocally:
+			case STEAMSHIM_ESteamNetworkingConnectionState_FinWait:
+			case STEAMSHIM_ESteamNetworkingConnectionState_Linger:
+			case STEAMSHIM_ESteamNetworkingConnectionState_Dead:
+				cls.socket->open = false;
+				cls.socket->connected = false;
+				break;
+			case STEAMSHIM_ESteamNetworkingConnectionState_Connecting:
+			case STEAMSHIM_ESteamNetworkingConnectionState_FindingRoute:
+				cls.socket->open = true;
+				break;
+		}
+	}
+}
+
 /*
 * CL_InitLocal
 */
@@ -2276,7 +2315,7 @@ static void CL_InitLocal( void )
 	cl_download_allow_modules = Cvar_Get( "cl_download_allow_modules", "1", CVAR_ARCHIVE );
 	cl_checkForUpdate =	Cvar_Get( "cl_checkForUpdate", "1", CVAR_ARCHIVE );
 
-	cl_enablevoice = Cvar_Get( "cl_enablevoice", "1", CVAR_ARCHIVE );
+	cl_enablevoice = Cvar_Get( "cl_enablevoice", "0", CVAR_ARCHIVE );
 
 	//
 	// userinfo
@@ -2291,7 +2330,7 @@ static void CL_InitLocal( void )
 	if ( !CL_IsNameValid(name->string) ){
 		if ( STEAMSHIM_active() ){
 			struct steam_rpc_shim_common_s request;
-			request.cmd = RPC_REQUEST_STEAM_ID;
+			request.cmd = RPC_PERSONA_NAME;
 			STEAMSHIM_sendRPC( &request, sizeof( struct steam_rpc_shim_common_s ), name, CL_RPC_cb_persona, &syncIndex );
 		} else {
 			Cvar_Set( name->name, CL_RandomName() );
@@ -2301,9 +2340,10 @@ static void CL_InitLocal( void )
 	if (STEAMSHIM_active()){
 		struct steam_rpc_shim_common_s request;
 		request.cmd = RPC_REQUEST_STEAM_ID;
-  	cvar_t *steam_id = Cvar_Get( "steam_id", "", CVAR_USERINFO | CVAR_READONLY );
+  		cvar_t *steam_id = Cvar_Get( "steam_id", "", CVAR_USERINFO | CVAR_READONLY );
 		STEAMSHIM_sendRPC(&request,sizeof(struct steam_rpc_shim_common_s), steam_id , CL_RPC_cb_steam_id, &syncIndex);
 	}
+	STEAMSHIM_subscribeEvent(EVT_P2P_CONNECTION_CHANGED, NULL, CL_EVT_cb_connection_changed);
 	STEAMSHIM_waitDispatchSync(syncIndex);
 
 	Cvar_Get( "clan", "", CVAR_USERINFO | CVAR_ARCHIVE );
@@ -2385,6 +2425,7 @@ static void CL_ShutdownLocal( void )
 	Cmd_RemoveCommand( "stop" );
 	Cmd_RemoveCommand( "quit" );
 	Cmd_RemoveCommand( "connect" );
+	STEAMSHIM_unsubscribeEvent(EVT_P2P_CONNECTION_CHANGED, CL_EVT_cb_connection_changed);
 #if defined(TCP_ALLOW_CONNECT)
 	Cmd_RemoveCommand( "tcpconnect" );
 #endif
@@ -2725,10 +2766,10 @@ static void CL_NetFrame( int realmsec, int gamemsec )
 	CL_ReadPackets(); // fetch results from server
 
 	// send packets to server
-	if( cls.netchan.unsentFragments )
-		Netchan_TransmitNextFragment( &cls.netchan );
-	else
-		CL_SendMessagesToServer( false );
+		if( cls.netchan.unsentFragments )
+			Netchan_TransmitNextFragment( &cls.netchan );
+		else
+			CL_SendMessagesToServer( false );
 
 	// resend a connection request if necessary
 	CL_CheckForResend();
