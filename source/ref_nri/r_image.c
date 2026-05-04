@@ -1358,6 +1358,7 @@ image_t *R_FindImage( const char *name, const char *suffix, int flags, int minmi
 					lastDot = resolvedPath.len - 1;
 					break;
 				case '/':
+				case '\\':
 					lastSlash = resolvedPath.len - 1;
 					break;
 			}
