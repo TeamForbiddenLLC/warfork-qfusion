@@ -57,7 +57,7 @@ bool Init_Crashpad( const char *dir )
 
 	// Path to the out-of-process handler executable
 #if defined(_WIN32)
-	base::FilePath handler = base::FilePath(FILE_PATH_LITERAL("crashpad_handler.exe"));
+	base::FilePath handler = base::FilePath(FILE_PATH_LITERAL("crashpad_handler_x64.exe"));
 #elif defined(__APPLE__)
 	char resourcesPath[MAXPATHLEN];
 	CFURLGetFileSystemRepresentation( CFBundleCopyResourcesDirectoryURL( CFBundleGetMainBundle() ), 1, (UInt8 *)resourcesPath, MAXPATHLEN );
