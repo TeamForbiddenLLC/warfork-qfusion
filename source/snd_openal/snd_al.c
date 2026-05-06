@@ -334,12 +334,19 @@ static void S_SetListener( const vec3_t origin, const vec3_t velocity, const mat
 {
 	float orientation[6];
 
-	orientation[0] = axis[AXIS_FORWARD+0];
-	orientation[1] = axis[AXIS_FORWARD+1];
-	orientation[2] = axis[AXIS_FORWARD+2];
-	orientation[3] = axis[AXIS_UP+0];
-	orientation[4] = axis[AXIS_UP+1];
-	orientation[5] = axis[AXIS_UP+2];
+	orientation[0] = axis[AXIS_FORWARD + 0];
+	orientation[1] = axis[AXIS_FORWARD + 1];
+	orientation[2] = axis[AXIS_FORWARD + 2];
+
+	if( s_flip->integer != 0) {
+		orientation[3] = -axis[AXIS_UP + 0];
+		orientation[4] = -axis[AXIS_UP + 1];
+		orientation[5] = -axis[AXIS_UP + 2];
+	} else {
+		orientation[3] = axis[AXIS_UP + 0];
+		orientation[4] = axis[AXIS_UP + 1];
+		orientation[5] = axis[AXIS_UP + 2];
+	}
 
 	qalListenerfv( AL_POSITION, origin );
 	qalListenerfv( AL_VELOCITY, velocity );
