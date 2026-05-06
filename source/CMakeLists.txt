@@ -64,6 +64,21 @@ if (USE_CRASHPAD)
     add_definitions(-DUSE_CRASHPAD=1)
 endif()
 
+# Capture the current git commit hash so it can be sent as a Crashpad
+# annotation (sentry[release] / sentry[tags][git_commit]). Falls back to
+# "unknown" for tarball builds without a .git directory.
+execute_process(
+    COMMAND git rev-parse HEAD
+    WORKING_DIRECTORY ${CMAKE_HOME_DIRECTORY}/..
+    OUTPUT_VARIABLE GIT_COMMIT_HASH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+if (NOT GIT_COMMIT_HASH)
+    set(GIT_COMMIT_HASH "unknown")
+endif()
+add_definitions(-DAPP_GIT_COMMIT="${GIT_COMMIT_HASH}")
+
 set(ANGELSCRIPT_DIR ${CMAKE_HOME_DIRECTORY}/../third-party/angelscript/sdk/angelscript)
 set(ANGELSCRIPT_INCLUDE_DIR ${ANGELSCRIPT_DIR}/include/)
 add_subdirectory(${ANGELSCRIPT_DIR}/projects/cmake ${ANGELSCRIPT_DIR}/lib/)

@@ -277,6 +277,7 @@
 			<a href="#" onclick="animOpenMenu('options_video.rml');">Video</a>
 			<a href="#" onclick="animOpenMenu('options_audio.rml');">Audio</a>
 			<a href="#" onclick="animOpenMenu('options_input.rml');">Input</a>
+			<a href="#" onclick="animOpenMenu('options_privacy.rml');">Privacy</a>
 		</div>
 	</div>
 	
