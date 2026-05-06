@@ -1,0 +1,20 @@
+body {
+	position: fixed;
+	bg-decorator: image;
+	bg-image: /gfx/ui/loadingbackground;
+	visibility: visible;
+}
+
+#logo {
+	position: fixed;
+	bg-decorator: image;
+	bg-image: /gfx/ui/loadinglogo;
+	visibility: visible;
+}
+
+#content {
+	text-align:center; 
+	position:fixed; 
+	top:60%;
+	background:rgba(0,0,0,0);
+}

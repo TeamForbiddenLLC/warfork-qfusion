@@ -393,6 +393,14 @@ size_t NavigationStack::getStackSize(void) const
 	return documentStack.size();
 }
 
+std::vector<std::string> NavigationStack::getStackDocumentNames() const
+{
+	std::vector<std::string> names;
+	for( DocumentStack::const_iterator it = documentStack.begin(); it != documentStack.end(); ++it )
+		names.push_back( ( *it )->getName() );
+	return names;
+}
+
 DocumentCache *NavigationStack::getCache(void)
 {
 	return &cache;

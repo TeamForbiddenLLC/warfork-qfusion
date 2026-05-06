@@ -57,6 +57,10 @@ ROCKETDEBUGGER_API void SetVisible(bool visibility);
 /// @return True if the debugger is visible, false if not.
 ROCKETDEBUGGER_API bool IsVisible();
 
+/// Sets a callback to be invoked when the "Reload UI" button is pressed.
+/// @param[in] callback The callback function to invoke.
+ROCKETDEBUGGER_API void SetReloadUICallback(void (*callback)(void));
+
 }
 }
 
