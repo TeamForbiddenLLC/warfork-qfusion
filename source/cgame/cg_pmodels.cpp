@@ -1033,66 +1033,47 @@ void CG_UpdatePlayerModelEnt( centity_t *cent )
 	// outline color
 	CG_SetOutlineColor( cent->outlineColor, cent->ent.shaderRGBA );
 
-if( cg_raceGhosts->integer && !ISVIEWERENTITY( cent->current.number ) && GS_RaceGametype() )
-	{
+	if( cg_raceGhosts->integer && !ISVIEWERENTITY( cent->current.number ) && GS_RaceGametype() ) {
 		cent->effects &= ~EF_OUTLINE;
 		cent->effects |= EF_RACEGHOST;
-	}
-	else if( cent->current.team == TEAM_SPECTATOR )
-	{
+	} else if( cent->current.team == TEAM_SPECTATOR ) {
 		if( cg_outlinePlayers->integer )
 			cent->effects |= EF_OUTLINE;
 		else
 			cent->effects &= ~EF_OUTLINE;
-	}
-	else
-	{
-		// check proximity to other players and apply ghost effect if overlapping
+	} else {
+		// check proximity to local player and apply ghost effect if overlapping
 		bool overlapping = false;
-		int j;
-		centity_t *other;
 
-		for( j = 1; j <= gs.maxclients; j++ )
-		{
-			if( j == cent->current.number )
-				continue;
+		int localEntNum = cg.view.POVent;
 
-			other = &cg_entities[j];
-			if( other->serverFrame != cg.frame.serverFrame )
-				continue;
-			if( other->current.type != ET_PLAYER )
-				continue;
-			if( other->current.team == TEAM_SPECTATOR )
-				continue;
-			if( other->current.solid == SOLID_NOT )
-				continue;
+		if( !ISVIEWERENTITY( cent->current.number ) && localEntNum > 0 ) {
+			centity_t *local = &cg_entities[localEntNum];
 
-			vec3_t diff;
-			VectorSubtract( cent->current.origin, other->current.origin, diff );
+			if( local->current.type == ET_PLAYER && local->current.team != TEAM_SPECTATOR && local->current.solid != SOLID_NOT ) {
+				vec3_t diff;
+				VectorSubtract( cent->current.origin, local->current.origin, diff );
 
-			float distXY = sqrtf( diff[0]*diff[0] + diff[1]*diff[1] );
-			float distZ = diff[2] < 0 ? -diff[2] : diff[2];
+				float distXY = sqrtf( diff[0] * diff[0] + diff[1] * diff[1] );
+				float distZ = diff[2] < 0 ? -diff[2] : diff[2];
 
-			if( distXY < 32.0f && distZ < 64.0f )
-			{
-				overlapping = true;
-				break;
+				if( distXY < 32.0f && distZ < 64.0f )
+					overlapping = true;
 			}
 		}
 
-		if( overlapping )
-		{
+		if( overlapping ) {
 			cent->effects &= ~EF_OUTLINE;
 			cent->effects |= EF_RACEGHOST;
-		}
-		else
-		{
+		} else {
 			if( cg_outlinePlayers->integer )
 				cent->effects |= EF_OUTLINE;
 			else
 				cent->effects &= ~EF_OUTLINE;
 		}
 	}
+
+	// fallback
 
 	// fallback
 	if( !pmodel->pmodelinfo || !pmodel->skin ) {
