@@ -336,7 +336,7 @@ int EnumerateRIAdapters( struct RIRenderer_s *renderer, struct RIPhysicalAdapter
 				physicalAdapter->bufferMaxSize = props13.maxBufferSize;
 
 				physicalAdapter->uploadBufferTextureRowAlignment = (uint32_t)limits->optimalBufferCopyRowPitchAlignment;
-				physicalAdapter->uploadBufferTextureSliceAlignment = (uint32_t)limits->optimalBufferCopyOffsetAlignment; // TODO: ?
+				physicalAdapter->uploadBufferOffsetAlignment = (uint32_t)limits->optimalBufferCopyOffsetAlignment;
 				physicalAdapter->bufferShaderResourceOffsetAlignment = (uint32_t)Q_MAX( limits->minTexelBufferOffsetAlignment, limits->minStorageBufferOffsetAlignment );
 				physicalAdapter->constantBufferOffsetAlignment = (uint32_t)limits->minUniformBufferOffsetAlignment;
 				// physicalAdapter->scratchBufferOffsetAlignment = accelerationStructureProps.minAccelerationStructureScratchOffsetAlignment;
@@ -1147,11 +1147,13 @@ int FreeRIDevice( struct RIDevice_s *dev )
 	return RI_SUCCESS;
 }
 
-void InitRICommandRingBuffer( struct RIDevice_s *dev, struct RIQueue_s *queue, struct RICommandRingBuffer_s *ring, bool syncPrimitives )
+void InitRICommandRingBuffer( struct RIDevice_s *dev, struct RIQueue_s *queue, struct RICommandRingBuffer_s *ring, uint32_t poolCount, uint32_t cmdPerPool, bool syncPrimitives )
 {
+	assert( poolCount > 0 && poolCount <= RI_COMMAND_RING_POOL_COUNT );
+	assert( cmdPerPool > 0 && cmdPerPool <= RI_COMMAND_RING_CMD_PER_POOL );
 	memset( ring, 0, sizeof( struct RICommandRingBuffer_s ) );
-	ring->poolCount = RI_COMMAND_RING_POOL_COUNT;
-	ring->cmdPerPool = RI_COMMAND_RING_CMD_PER_POOL;
+	ring->poolCount = poolCount;
+	ring->cmdPerPool = cmdPerPool;
 	ring->syncPrimitive = syncPrimitives;
 
 	ring->poolIndex = 0;

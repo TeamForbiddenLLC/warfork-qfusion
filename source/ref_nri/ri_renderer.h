@@ -42,7 +42,7 @@ void ResetRIPool( struct RIDevice_s *dev, struct RIPool_s *pool );
 void FreeRIPool( struct RIDevice_s *dev, struct RIPool_s *pool );
 
 // RICommandRingBuffer
-void InitRICommandRingBuffer( struct RIDevice_s *dev, struct RIQueue_s *queue, struct RICommandRingBuffer_s *ring, bool syncPrimitives );
+void InitRICommandRingBuffer( struct RIDevice_s *dev, struct RIQueue_s *queue, struct RICommandRingBuffer_s *ring, uint32_t poolCount, uint32_t cmdPerPool, bool syncPrimitives );
 void FreeRICommandRingBuffer( struct RIDevice_s *dev, struct RICommandRingBuffer_s *ring );
 void AdvanceRICommandRingBuffer( struct RICommandRingBuffer_s *ring );
 struct RICommandRingElement_s GetRICommandRingElement( struct RIDevice_s *dev, struct RICommandRingBuffer_s *ring, uint32_t numCmds );

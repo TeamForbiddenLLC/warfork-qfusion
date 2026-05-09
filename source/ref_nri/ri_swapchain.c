@@ -1,4 +1,5 @@
 #include "ri_swapchain.h"
+#include "qtypes.h"
 #include "ri_format.h"
 #include "ri_renderer.h"
 #include "ri_types.h"
@@ -34,7 +35,7 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 	assert( init->windowHandle );
 	assert( init );
 	assert( swapchain );
-	assert( init->imageCount <= Q_ARRAY_COUNT( swapchain->vk.images ) && init->imageCount > 0 );
+	assert( init->requestImageCount <= Q_ARRAY_COUNT( swapchain->vk.images ) && init->requestImageCount > 0 );
 	swapchain->width = init->width;
 	swapchain->height = init->height;
 	swapchain->presentQueue = init->queue;
@@ -87,6 +88,10 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 		}
 	}
 #endif
+	VkSurfaceCapabilitiesKHR surfaceCaps = { 0 };
+	result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR( dev->physicalAdapter.vk.physicalDevice, swapchain->vk.surface, &surfaceCaps );
+	VK_WrapResult( result );
+
 	uint32_t numSurfaceFormats = 0;
 	result = vkGetPhysicalDeviceSurfaceFormatsKHR( dev->physicalAdapter.vk.physicalDevice, swapchain->vk.surface, &numSurfaceFormats, NULL );
 	VK_WrapResult( result );
@@ -147,7 +152,13 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 		VkSwapchainCreateInfoKHR swapChainCreateInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
 		swapChainCreateInfo.flags = 0;
 		swapChainCreateInfo.surface = swapchain->vk.surface;
-		swapChainCreateInfo.minImageCount = init->imageCount;
+		// clamp the requested image count to the surface capabilities. A surfaceCaps value of 0 means "unspecified" — skip that side of the clamp.
+		uint32_t desiredImageCount = init->requestImageCount;
+		if( surfaceCaps.minImageCount > 0 && desiredImageCount < surfaceCaps.minImageCount )
+			desiredImageCount = surfaceCaps.minImageCount;
+		if( surfaceCaps.maxImageCount > 0 && desiredImageCount > surfaceCaps.maxImageCount )
+			desiredImageCount = surfaceCaps.maxImageCount;
+		swapChainCreateInfo.minImageCount = desiredImageCount;
 		swapChainCreateInfo.imageFormat = selectedSurf->format;
 		swapChainCreateInfo.imageColorSpace = selectedSurf->colorSpace;
 		swapChainCreateInfo.imageExtent.width = init->width;
@@ -211,6 +222,7 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 
 uint32_t RISwapchainAcquireNextTexture( struct RIDevice_s *dev, struct RISwapchain_s *swapchain )
 {
+	assert(swapchain->vk.imageCount > 0);
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		uint32_t image_index;
@@ -222,26 +234,6 @@ uint32_t RISwapchainAcquireNextTexture( struct RIDevice_s *dev, struct RISwapcha
 #endif
 	return 0;
 }
-
-// void RISwapchainPresent( struct RIDevice_s *dev, struct RISwapchain_s *swapchain )
-//{
-// #if ( DEVICE_IMPL_VULKAN )
-//	{
-//		VkSemaphore renderingFinishedSemaphore = swapchain->vk.renderFinished[swapchain->vk.signal_idx];
-//		{
-//			VkPresentInfoKHR presentInfo = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
-//			presentInfo.waitSemaphoreCount = 1;
-//			presentInfo.pWaitSemaphores = &renderingFinishedSemaphore;
-//			presentInfo.swapchainCount = 1;
-//			presentInfo.pSwapchains = &swapchain->vk.swapchain;
-//			presentInfo.pImageIndices = &swapchain->vk.textureIndex;
-//
-//			// TODO: need to add support for presentID
-//			VK_WrapResult( vkQueuePresentKHR( swapchain->presentQueue->vk.queue, &presentInfo ) );
-//		}
-//	}
-// #endif
-// }
 
 void FreeRISwapchain( struct RIDevice_s *dev, struct RISwapchain_s *swapchain )
 {
@@ -302,7 +294,7 @@ int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, 
 		swapChainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 		swapChainCreateInfo.presentMode = swapchain->vk.presentMode;
 		swapChainCreateInfo.clipped = VK_TRUE;
-		swapChainCreateInfo.oldSwapchain = oldSwapchain; // Zig: swapchain_create_info.old_swapchain = old_swapchain
+		swapChainCreateInfo.oldSwapchain = oldSwapchain; 
 
 		result = vkCreateSwapchainKHR( dev->vk.device, &swapChainCreateInfo, NULL, &swapchain->vk.swapchain );
 		VK_WrapResult( result );
