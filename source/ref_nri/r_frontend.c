@@ -218,8 +218,6 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 
 	R_InitDrawLists();
 
-	R_InitShaders();
-
 	return rserr_ok;
 }
 

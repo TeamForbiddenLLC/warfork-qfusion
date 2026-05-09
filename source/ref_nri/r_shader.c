@@ -2726,7 +2726,7 @@ static void Shader_Finish( shader_t *s )
 /*
 * R_UploadCinematicShader
 */
-void R_UploadCinematicShader( const shader_t *shader )
+void R_UploadCinematicShader( struct FrameState_s* cmd, const shader_t *shader )
 {
 	unsigned j;
 	const shaderpass_t *pass;
@@ -2735,7 +2735,7 @@ void R_UploadCinematicShader( const shader_t *shader )
 	for( j = 0, pass = shader->passes; j < shader->numpasses; j++, pass++ )
 	{
 		if( pass->cin )
-			R_UploadCinematic( pass->cin );
+			R_UploadCinematic( cmd, pass->cin );
 	}
 }
 

@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // r_poly.c - handles fragments and arbitrary polygons
 
 #include "r_local.h"
+#include <assert.h>
 
 /*
 * R_BatchPolySurf
@@ -79,10 +80,7 @@ void R_DrawStretchPoly(struct FrameState_s* cmd, const poly_t *poly, float x_off
 	vec4_t translated[256];
 
 	assert( sizeof( *poly->elems ) == sizeof( elem_t ) );
-
-	if( !poly || !poly->shader ) {
-		return;
-	}
+	assert(poly && poly->shader);
 
 	memset( &mesh, 0, sizeof( mesh ) );
 	mesh.numVerts = poly->numverts;
