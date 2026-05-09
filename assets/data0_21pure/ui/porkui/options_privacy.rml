@@ -1,0 +1,57 @@
+<rml>
+<head>
+	<title>options</title>
+	<link type="text/template" href="template.rml" />
+	<script>
+		ElementOptionsForm @form;
+
+		void onPrivacyShow( Element @body, Event @evt )
+		{
+			onTemplateShow( body, evt );
+
+			ElementOptionsForm @f = body.getElementById("options-form");
+			f.storeOptions();
+			@form = @f;
+
+			animationsOnShow();
+		}
+	</script>
+</head>
+<body template="porkui" onshow="$onPrivacyShow">
+	<!-- divide the screen to two vertical contexts -->
+	<div id="leftside">
+
+		<!-- privacy setup -->
+		<div id="privacy-options">
+			<optionsform id="options-form">
+				<div class="title">Send crash reports</div>
+				<input cvar="crashreport" type="checkbox" realtime="1"/>
+				<br/>
+				<p>
+					When enabled, minidumps captured by Crashpad after a crash are uploaded to Sentry to help fix bugs.
+					When disabled, dumps stay on this machine and nothing is sent.
+				</p>
+				<br/>
+
+				<br/>
+				<button onclick="form.restoreOptions();" class="button-cancel">Cancel</button>
+				<button onclick="form.applyOptions(); notificationPopup('Saved');" class="button-apply">Save changes</button>
+			</optionsform>
+		</div>
+
+	</div>
+
+	<div id="sidebar">
+		<div id="sidebar2">
+			<!-- options navigation -->
+			<a href="#" onclick="animOpenMenu('options_player.rml');">Player</a>
+			<a href="#" onclick="animOpenMenu('options_teams.rml');">Teams</a>
+			<a href="#" onclick="animOpenMenu('options_video.rml');">Video</a>
+			<a href="#" onclick="animOpenMenu('options_audio.rml');">Audio</a>
+			<a href="#" onclick="animOpenMenu('options_input.rml');">Input</a>
+			<a href="#" onclick="animOpenMenu('options_privacy.rml');">Privacy</a>
+		</div>
+	</div>
+
+</body>
+</rml>
