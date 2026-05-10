@@ -1289,7 +1289,7 @@ static void R_FinishMapConfig( const model_t *mod )
 */
 void R_RegisterWorldModel( const char *model, const dvis_t *pvsData )
 {
-	TracyCZone( ctx, 1 );
+	TracyCZoneN( ctx, "R_RegisterWorldModel", 1 );
 	r_prevworldmodel = rsh.worldModel;
 	rsh.worldModel = NULL;
 	rsh.worldBrushModel = NULL;
