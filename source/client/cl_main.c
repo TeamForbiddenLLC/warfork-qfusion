@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../qcommon/asyncstream.h"
 #include "../qalgo/hash.h"
 #include "../steamshim/src/parent/parent.h"
+#include "tracy/TracyC.h"
 #include <stdlib.h>
 
 cvar_t *cl_stereo_separation;
@@ -1456,6 +1457,7 @@ void CL_ReadPackets( void )
 	int socketind, ret;
 	socket_t *socket;
 	netadr_t address;
+	TracyCZoneN( ctx, "CL_ReadPackets", 1 );
 
 	socket_t* sockets [] =
 	{
@@ -1540,6 +1542,7 @@ void CL_ReadPackets( void )
 	}
 
 	if( cls.demo.playing ) {
+		TracyCZoneEnd( ctx );
 		return;
 	}
 
@@ -1556,12 +1559,15 @@ void CL_ReadPackets( void )
 			{
 				Com_Printf( "\nServer connection timed out.\n" );
 				CL_Disconnect( "Connection timed out" );
+				TracyCZoneEnd( ctx );
 				return;
 			}
 		}
 	}
 	else
 		cl.timeoutcount = 0;
+
+	TracyCZoneEnd( ctx );
 }
 
 //=============================================================================
@@ -2756,6 +2762,8 @@ static void CL_SendVoiceData() {
 */
 static void CL_NetFrame( int realmsec, int gamemsec )
 {
+	TracyCZoneN( ctx, "CL_NetFrame", 1 );
+
 	// read packets from server
 	if( realmsec > 5000 )  // if in the debugger last frame, don't timeout
 		cls.lastPacketReceivedTime = cls.realtime;
@@ -2776,6 +2784,8 @@ static void CL_NetFrame( int realmsec, int gamemsec )
 	CL_CheckDownloadTimeout();
 
 	CL_ServerListFrame();
+
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -2790,6 +2800,8 @@ void CL_Frame( int realmsec, int gamemsec )
 
 	if( dedicated->integer )
 		return;
+
+	TracyCZoneN( cl_frame_ctx, "CL_Frame_active", 1 );
 
 	cls.realtime += realmsec;
 
@@ -2841,7 +2853,8 @@ void CL_Frame( int realmsec, int gamemsec )
 
 	CL_UpdateSnapshot();
 	CL_AdjustServerTime( gamemsec );
-	CL_UserInputFrame();
+		CL_UserInputFrame();
+	
 	CL_NetFrame( realmsec, gamemsec );
 	if (STEAMSHIM_active()) {
 		STEAMSHIM_dispatch();
@@ -2889,7 +2902,7 @@ void CL_Frame( int realmsec, int gamemsec )
 
 	if( allRealMsec + extraMsec < minMsec )
 	{
-		// let CPU sleep while playing fullscreen video, while minimized 
+		// let CPU sleep while playing fullscreen video, while minimized
 		// or when cl_sleep is enabled
 		bool sleep = cl_sleep->integer != 0;
 
@@ -2898,6 +2911,7 @@ void CL_Frame( int realmsec, int gamemsec )
 
 		if( sleep && minMsec - extraMsec > 1 )
 			Sys_Sleep( 1 );
+		TracyCZoneEnd( cl_frame_ctx );
 		return;
 	}
 
@@ -2967,7 +2981,7 @@ void CL_Frame( int realmsec, int gamemsec )
 
     // update discord
     CL_UpdatePresence();
-    
+
 	// advance local effects for next frame
 	SCR_RunCinematic();
 	SCR_RunConsole( allRealMsec );
@@ -2976,6 +2990,8 @@ void CL_Frame( int realmsec, int gamemsec )
 	allGameMsec = 0;
 
 	cls.framecount++;
+
+	TracyCZoneEnd( cl_frame_ctx );
 }
 
 

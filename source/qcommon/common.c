@@ -34,6 +34,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "crashpad.h"
 
+#include "tracy/TracyC.h"
+
 #define MAX_NUM_ARGVS	50
 
 static bool	dynvars_initialized = false;
@@ -934,6 +936,8 @@ void Qcommon_Frame( unsigned int realmsec )
 	int time_before = 0, time_between = 0, time_after = 0;
 	static unsigned int gamemsec;
 
+	TracyCZoneN( zone_qcommon, "Qcommon_Frame", 1 );
+
 #ifdef USE_CRASHPAD
 	Crashpad_RefreshUploadState();
 #endif
@@ -941,8 +945,10 @@ void Qcommon_Frame( unsigned int realmsec )
 	if( com_quit )
 		Com_Quit();
 
-	if( setjmp( abortframe ) )
+	if( setjmp( abortframe ) ) {
+		TracyCZoneEnd( zone_qcommon );
 		return; // an ERR_DROP was thrown
+	}
 
 	if( logconsole && logconsole->modified )
 	{
@@ -1029,6 +1035,9 @@ void Qcommon_Frame( unsigned int realmsec )
 		frametick = Dynvar_Lookup( "frametick" );
 	Dynvar_CallListeners( frametick, &fc );
 	++fc;
+
+	TracyCZoneEnd( zone_qcommon );
+	TracyCFrameMark;
 }
 
 /*

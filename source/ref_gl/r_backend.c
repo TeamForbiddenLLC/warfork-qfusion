@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 #include "r_backend_local.h"
+#include "tracy/TracyC.h"
 
 // Smaller buffer for 2D polygons. Also a workaround for some instances of a hardly explainable bug on Adreno
 // that caused dynamic draws to slow everything down in some cases when normals are used with dynamic VBOs.
@@ -37,6 +38,7 @@ static void RB_SelectTextureUnit( int tmu );
 */
 void RB_Init( void )
 {
+	TracyCZoneN( ctx, "RB_Init", 1 );
 	memset( &rb, 0, sizeof( rb ) );
 
 	rb.mempool = R_AllocPool( NULL, "Rendering Backend" );
@@ -51,8 +53,9 @@ void RB_Init( void )
 
 	// create VBO's we're going to use for streamed data
 	RB_RegisterStreamVBOs();
-	
+
 	RP_PrecachePrograms();
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -60,9 +63,11 @@ void RB_Init( void )
 */
 void RB_Shutdown( void )
 {
+	TracyCZoneN( ctx, "RB_Shutdown", 1 );
 	RP_StorePrecacheList();
 
 	R_FreePool( &rb.mempool );
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -71,6 +76,7 @@ void RB_Shutdown( void )
 void RB_BeginRegistration( void )
 {
 	int i;
+	TracyCZoneN( ctx, "RB_BeginRegistration", 1 );
 
 	RB_RegisterStreamVBOs();
 	RB_BindVBO( 0, 0 );
@@ -88,6 +94,7 @@ void RB_BeginRegistration( void )
 	}
 
 	RB_FlushTextureCache();
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -95,7 +102,9 @@ void RB_BeginRegistration( void )
 */
 void RB_EndRegistration( void )
 {
+	TracyCZoneN( ctx, "RB_EndRegistration", 1 );
 	RB_BindVBO( 0, 0 );
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -112,6 +121,7 @@ void RB_SetTime( unsigned int time )
 */
 void RB_BeginFrame( void )
 {
+	TracyCZoneN( ctx, "RB_BeginFrame", 1 );
 	Vector4Set( rb.nullEnt.shaderRGBA, 1, 1, 1, 1 );
 	rb.nullEnt.scale = 1;
 	VectorClear( rb.nullEnt.origin );
@@ -123,6 +133,7 @@ void RB_BeginFrame( void )
 	RB_SetShaderStateMask( ~0, 0 );
 	RB_BindVBO( 0, 0 );
 	RB_FlushTextureCache();
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -741,6 +752,7 @@ void RB_AddDynamicMesh( const entity_t *entity, const shader_t *shader,
 	vattribmask_t vattribs;
 	int streamId = RB_VBO_NONE;
 	rbDynamicStream_t *stream;
+	TracyCZoneN( ctx, "RB_AddDynamicMesh", 1 );
 	int destVertOffset;
 	elem_t *destElems;
 
@@ -753,6 +765,7 @@ void RB_AddDynamicMesh( const entity_t *entity, const shader_t *shader,
 		trifan = true;
 	}
 	if( !numVerts || !numElems || ( numVerts > MAX_STREAM_VBO_VERTS ) || ( numElems > MAX_STREAM_VBO_ELEMENTS ) ) {
+		TracyCZoneEnd( ctx );
 		return;
 	}
 
@@ -854,6 +867,7 @@ void RB_AddDynamicMesh( const entity_t *entity, const shader_t *shader,
 
 	stream->drawElements.numVerts += numVerts;
 	stream->drawElements.numElems += numElems;
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -867,8 +881,10 @@ void RB_FlushDynamicMeshes( void )
 	int sx, sy, sw, sh;
 	float offsetx = 0.0f, offsety = 0.0f, transx, transy;
 	mat4_t m;
+	TracyCZoneN( ctx, "RB_FlushDynamicMeshes", 1 );
 
 	if( !numDraws ) {
+		TracyCZoneEnd( ctx );
 		return;
 	}
 
@@ -937,6 +953,7 @@ void RB_FlushDynamicMeshes( void )
 		m[13] = transy;
 		RB_LoadObjectMatrix( m );
 	}
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -1198,6 +1215,7 @@ static void RB_DrawElements_( void )
 void RB_DrawElements( int firstVert, int numVerts, int firstElem, int numElems,
 	int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems )
 {
+	TracyCZoneN( ctx, "RB_DrawElements", 1 );
 	rb.currentVAttribs &= ~VATTRIB_INSTANCES_BITS;
 
 	rb.drawElements.numVerts = numVerts;
@@ -1213,6 +1231,7 @@ void RB_DrawElements( int firstVert, int numVerts, int firstElem, int numElems,
 	rb.drawShadowElements.numInstances = 0;
 
 	RB_DrawElements_();
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -1224,7 +1243,9 @@ void RB_DrawElementsInstanced( int firstVert, int numVerts, int firstElem, int n
 	int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems,
 	int numInstances, instancePoint_t *instances )
 {
+	TracyCZoneN( ctx, "RB_DrawElementsInstanced", 1 );
 	if( !numInstances ) {
+		TracyCZoneEnd( ctx );
 		return;
 	}
 
@@ -1233,6 +1254,7 @@ void RB_DrawElementsInstanced( int firstVert, int numVerts, int firstElem, int n
 	// (dynamic geometry will need changes to rbDynamicDraw_t)
 	assert( rb.currentVBOId > RB_VBO_NONE );
 	if( rb.currentVBOId <= RB_VBO_NONE ) {
+		TracyCZoneEnd( ctx );
 		return;
 	}
 
@@ -1272,6 +1294,7 @@ void RB_DrawElementsInstanced( int firstVert, int numVerts, int firstElem, int n
 	rb.drawElements.numInstances = numInstances;
 	rb.drawShadowElements.numInstances = numInstances;
 	RB_DrawElements_();
+	TracyCZoneEnd( ctx );
 }
 
 /*

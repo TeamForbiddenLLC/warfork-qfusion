@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "snd_local.h"
 #include "snd_cmdque.h"
+#include "tracy/TracyC.h"
 
 ALCdevice *alDevice = NULL;
 ALCcontext *alContext = NULL;
@@ -358,8 +359,9 @@ static void S_SetListener( const vec3_t origin, const vec3_t velocity, const mat
 */
 static void S_Update( void )
 {
+	TracyCZoneN( ctx, "S_Update", 1 );
 	S_UpdateMusic();
-	
+
 	S_UpdateStreams();
 	
 	s_volume->modified = false; // Checked by src and stream
@@ -381,6 +383,7 @@ static void S_Update( void )
 			qalSpeedOfSound( s_sound_velocity->value > 0.0f ? s_sound_velocity->value : 0.0f );
 		s_sound_velocity->modified = false;
 	}
+	TracyCZoneEnd( ctx );
 }
 
 /*

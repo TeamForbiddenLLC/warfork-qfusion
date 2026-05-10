@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // cl.input.c  -- builds an intended movement command to send to the server
 
 #include "client.h"
+#include "tracy/TracyC.h"
 
 cvar_t *cl_ucmdMaxResend;
 
@@ -901,6 +902,7 @@ void CL_ShutdownInput( void )
 */
 void CL_UserInputFrame( void )
 {
+	TracyCZoneN( ctx, "CL_UserInputFrame", 1 );
 	// let the mouse activate or deactivate
 	IN_Frame();
 
@@ -912,6 +914,7 @@ void CL_UserInputFrame( void )
 
 	// process console commands
 	Cbuf_Execute();
+	TracyCZoneEnd( ctx );
 }
 
 /*
