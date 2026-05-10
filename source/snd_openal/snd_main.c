@@ -36,6 +36,8 @@ cvar_t *s_sound_velocity;
 cvar_t *s_stereo2mono;
 cvar_t *s_globalfocus;
 
+cvar_t *s_flip;
+
 static int s_registration_sequence = 1;
 static bool s_registering;
 
@@ -135,6 +137,7 @@ bool SF_Init( void *hwnd, int maxEntities, bool verbose )
 	s_sound_velocity = trap_Cvar_Get( "s_sound_velocity", "10976", CVAR_DEVELOPER );
 	s_stereo2mono = trap_Cvar_Get ( "s_stereo2mono", "0", CVAR_ARCHIVE );
 	s_globalfocus = trap_Cvar_Get( "s_globalfocus", "0", CVAR_ARCHIVE );
+	s_flip = trap_Cvar_Get( "cl_flip", "0", CVAR_ARCHIVE );
 
 #ifdef ENABLE_PLAY
 	trap_Cmd_AddCommand( "play", SF_Play_f );

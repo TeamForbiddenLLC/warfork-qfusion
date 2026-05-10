@@ -86,6 +86,8 @@ extern cvar_t *s_sound_velocity;
 
 extern cvar_t *s_globalfocus;
 
+extern cvar_t *s_flip;
+
 extern int s_attenuation_model;
 extern float s_attenuation_maxdistance;
 extern float s_attenuation_refdistance;
