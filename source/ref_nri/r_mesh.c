@@ -172,7 +172,7 @@ void *R_AddSurfToDrawList( drawList_t *list, const entity_t *e, const mfog_t *fo
 	renderFx = e->renderfx;
 
 	if( shader->cin ) {
-		R_UploadCinematicShader( shader );
+		R_UploadCinematicShader( &rsh.frame, shader );
 	}
 
 	// reallocate if numDrawSurfs

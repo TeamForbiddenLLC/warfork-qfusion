@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_local.h"
 #include "ri_types.h"
 #include "ri_conversion.h"
+#include <assert.h>
 
 r_globals_t rf;
 
@@ -517,14 +518,12 @@ void R_Set2DMode(struct FrameState_s* cmd, bool enable )
 void R_DrawRotatedStretchPic(struct FrameState_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, float angle, 
 	const vec4_t color, const shader_t *shader )
 {
+	assert(shader);
+	assert(cmd);
 	int bcolor;
-
-	if( !shader ) {
-		return;
-	}
-
+	
 	if( shader->cin ) {
-		R_UploadCinematicShader( shader );
+		R_UploadCinematicShader( cmd, shader );
 	}
 
 	// lower-left
@@ -642,7 +641,7 @@ void R_DrawStretchRaw(struct FrameState_s* cmd, int x, int y, int w, int h, floa
 * Set bit 0 in 'flip' to flip the image horizontally
 * Set bit 1 in 'flip' to flip the image vertically
 */
-void R_DrawStretchRawYUVBuiltin( int x, int y, int w, int h, 
+void R_DrawStretchRawYUVBuiltin( struct FrameState_s* cmd, int x, int y, int w, int h,
 	float s1, float t1, float s2, float t2, image_t **yuvTextures, int flip )
 {
 	static char *s_name = "$builtinyuv";
@@ -698,17 +697,17 @@ void R_DrawStretchRawYUVBuiltin( int x, int y, int w, int h,
 		t1 += v_ofs, t2 -= v_ofs;
 	}
 
-	R_DrawRotatedStretchPic( NULL, x, y, w, h, s1, t1, s2, t2, 0, colorWhite, &s );
+	R_DrawRotatedStretchPic( cmd, x, y, w, h, s1, t1, s2, t2, 0, colorWhite, &s );
 
-	RB_FlushDynamicMeshes(NULL);
+	RB_FlushDynamicMeshes( cmd );
 }
 
 /*
 * R_DrawStretchRawYUV
 */
-void R_DrawStretchRawYUV( int x, int y, int w, int h, float s1, float t1, float s2, float t2 )
+void R_DrawStretchRawYUV( struct FrameState_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2 )
 {
-	R_DrawStretchRawYUVBuiltin( x, y, w, h, s1, t1, s2, t2, rsh.rawYUVTextures, 0 );
+	R_DrawStretchRawYUVBuiltin( cmd, x, y, w, h, s1, t1, s2, t2, rsh.rawYUVTextures, 0 );
 }
 
 /*

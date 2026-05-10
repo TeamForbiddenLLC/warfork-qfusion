@@ -947,6 +947,10 @@ void FTLIB_TouchAllFonts( void )
 	qfontfamily_t *qfamily;
 	qfontface_t *qface;
 
+	if( shaderWhite ) {
+		shaderWhite = trap_R_RegisterPic( "$whiteimage" );
+	}
+
 	// touch all font families
 	for( qfamily = fontFamilies; qfamily; qfamily = qfamily->next ) {
 		// touch all faces for this family
