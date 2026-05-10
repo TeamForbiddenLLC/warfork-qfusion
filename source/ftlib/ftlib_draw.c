@@ -388,7 +388,8 @@ void FTLIB_DrawClampChar( int x, int y, wchar_t num, int xmin, int ymin, int xma
 void FTLIB_DrawClampString( int x, int y, const char *str, int xmin, int ymin, int xmax, int ymax, qfontface_t *font, vec4_t color, int flags )
 {
 	int xoffset = 0;
-	vec4_t scolor, bgcolor;
+	vec4_t scolor;
+	vec4_t bgcolor = { 0, 0, 0, 0 };
 	int colorindex, colorindexansi, colorindexansibg, rgbcolor;
 	wchar_t num, prev_num = 0;
 	const char *s = str, *olds;
@@ -473,7 +474,8 @@ void FTLIB_DrawClampString( int x, int y, const char *str, int xmin, int ymin, i
 size_t FTLIB_DrawRawString( int x, int y, const char *str, size_t maxwidth, int *width, qfontface_t *font, vec4_t color, int flags )
 {
 	unsigned int xoffset = 0;
-	vec4_t scolor, bgcolor;
+	vec4_t scolor;
+	vec4_t bgcolor = { 0, 0, 0, 0 };
 	const char *s, *olds;
 	int gc, colorindex;
 	int colorindexansi, colorindexansibg, rgbcolor;

@@ -215,9 +215,9 @@ static void __AllocateTemporaryBuffer( struct RIDevice_s *device, struct RITrans
  *
  * Try the staging buffer first; fall back to a temporary buffer.
  */
-static void __ResolveStageMemory( struct RIDevice_s *device, struct RITransferCommandGroup_s *group, size_t size, struct RIMappedMemoryRange *out )
+static void __ResolveStageMemory( struct RIDevice_s *device, struct RITransferCommandGroup_s *group, size_t size, size_t alignment, struct RIMappedMemoryRange *out )
 {
-	if( !__AllocateFromStageBuffer( device, group, size, 4, out ) )
+	if( !__AllocateFromStageBuffer( device, group, size, alignment, out ) )
 		__AllocateTemporaryBuffer( device, group, size, out );
 }
 
@@ -233,8 +233,6 @@ void RI_InitResourceUploader( struct RIDevice_s *device, struct RIResourceUpload
 	/* Upload group on the graphics queue (matches Zig: upload_resource) */
 	__InitTransferCommandGroup( device, &res->upload_resource, &device->queues[RI_QUEUE_GRAPHICS] );
 
-	/* Copy group on the dedicated transfer/copy queue (matches Zig: copy_resource).
-	 * Fall back to graphics queue if the copy queue is unavailable. */
 	struct RIQueue_s *copyQueue = &device->queues[RI_QUEUE_COPY];
 #if ( DEVICE_IMPL_VULKAN )
 	if( copyQueue->vk.queue == VK_NULL_HANDLE )
@@ -258,7 +256,7 @@ void RI_FreeResourceUploader( struct RIDevice_s *device, struct RIResourceUpload
 void RI_ResourceBeginCopyBuffer( struct RIDevice_s *device, struct RIResourceUploader_s *res, struct RIResourceBufferTransaction_s *trans )
 {
 	__AcquireCmd( device, &res->upload_resource );
-	__ResolveStageMemory( device, &res->upload_resource, trans->size, &trans->mapped );
+	__ResolveStageMemory( device, &res->upload_resource, trans->size, 4, &trans->mapped );
 }
 
 void RI_ResourceEndCopyBuffer( struct RIDevice_s *device, struct RIResourceUploader_s *res, struct RIResourceBufferTransaction_s *trans )
@@ -316,14 +314,23 @@ void RI_ResourceEndCopyBuffer( struct RIDevice_s *device, struct RIResourceUploa
 
 void RI_ResourceBeginCopyTexture( struct RIDevice_s *device, struct RIResourceUploader_s *res, struct RIResourceTextureTransaction_s *trans )
 {
+	const struct RIFormatProps_s *formatProps = GetRIFormatProps( trans->format );
 	const uint64_t alignedRowPitch = Q_ALIGN_TO( trans->rowPitch, device->physicalAdapter.uploadBufferTextureRowAlignment );
-	const uint64_t alignedSlicePitch = Q_ALIGN_TO( (uint64_t)trans->sliceNum * alignedRowPitch, device->physicalAdapter.uploadBufferTextureSliceAlignment );
+	const uint64_t alignedSlicePitch = (uint64_t)trans->sliceNum * alignedRowPitch;
 
 	trans->alignRowPitch = (uint32_t)alignedRowPitch;
 	trans->alignSlicePitch = (uint32_t)alignedSlicePitch;
 
+	// bufferOffset must be a multiple of the texel block size and the device's
+	// optimalBufferCopyOffsetAlignment (Vulkan spec, vkCmdCopyBufferToImage).
+	size_t offsetAlign = device->physicalAdapter.uploadBufferOffsetAlignment;
+	if( formatProps->stride > offsetAlign )
+		offsetAlign = formatProps->stride;
+	if( offsetAlign < 4 )
+		offsetAlign = 4;
+
 	__AcquireCmd( device, &res->upload_resource );
-	__ResolveStageMemory( device, &res->upload_resource, alignedSlicePitch, &trans->mapped );
+	__ResolveStageMemory( device, &res->upload_resource, alignedSlicePitch, offsetAlign, &trans->mapped );
 }
 
 void RI_ResourceEndCopyTexture( struct RIDevice_s *device, struct RIResourceUploader_s *res, struct RIResourceTextureTransaction_s *trans )
@@ -331,10 +338,15 @@ void RI_ResourceEndCopyTexture( struct RIDevice_s *device, struct RIResourceUplo
 #if ( DEVICE_IMPL_VULKAN )
 	const struct RIFormatProps_s *formatProps = GetRIFormatProps( trans->format );
 
-	const uint32_t rowBlockNum = trans->rowPitch / formatProps->stride;
+	// bufferRowLength / bufferImageHeight describe the layout of the staging
+	// buffer in texels, and must match the strides used to write it. The CPU
+	// writes rows at alignRowPitch (which equals rowPitch on AMD/Intel where
+	// optimalBufferCopyRowPitchAlignment == 1, but is 256-aligned on NVIDIA).
+	// Deriving from the unaligned rowPitch caused texture corruption on NVIDIA.
+	const uint32_t rowBlockNum = trans->alignRowPitch / formatProps->stride;
 	const uint32_t bufferRowLength = rowBlockNum * formatProps->blockWidth;
-	const uint32_t sliceRowNum = trans->alignSlicePitch / trans->rowPitch;
-	const uint32_t bufferImageHeight = sliceRowNum * formatProps->blockWidth;
+	const uint32_t sliceRowNum = trans->alignSlicePitch / trans->alignRowPitch;
+	const uint32_t bufferImageHeight = sliceRowNum * formatProps->blockHeight;
 
 	VkBufferImageCopy region = { 0 };
 	region.bufferOffset = trans->mapped.offset;
@@ -410,13 +422,13 @@ void RI_ResourceEndCopyTexture( struct RIDevice_s *device, struct RIResourceUplo
  * then advances to the next set.  No-ops if nothing was recorded.
  * ----------------------------------------------------------------------- */
 
-//void RI_ResourceSubmit( struct RIDevice_s *device, struct RIResourceUploader_s *res )
+// void RI_ResourceSubmit( struct RIDevice_s *device, struct RIResourceUploader_s *res )
 //{
 //	struct RITransferCommandGroup_s *group = &res->upload_resource;
 //	if( !group->is_recording )
 //		return;
 //
-//#if ( DEVICE_IMPL_VULKAN )
+// #if ( DEVICE_IMPL_VULKAN )
 //	const size_t set = group->active_set;
 //
 //	VK_WrapResult( vkEndCommandBuffer( group->cmd[set].vk.cmd ) );
@@ -444,8 +456,8 @@ void RI_ResourceEndCopyTexture( struct RIDevice_s *device, struct RIResourceUplo
 //	group->active_set = ( set + 1 ) % RI_RESOURCE_MAX_SETS;
 //	group->is_recording = false;
 //	group->staging_buffer_offset = 0;
-//#endif
-//}
+// #endif
+// }
 
 #if ( DEVICE_IMPL_VULKAN )
 struct RIResourceUploaderVKResult_s RI_VKFlushResourceUpdate( struct RIDevice_s *device, struct RIResourceUploader_s *res, size_t num_semaphores, VkSemaphoreSubmitInfo *wait_semaphore_info )

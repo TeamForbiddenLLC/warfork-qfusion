@@ -88,7 +88,7 @@ static void R_RunCin( r_cinhandle_t *h )
 /*
 * R_UploadCinematicFrame
 */
-static void R_UploadCinematicFrame( r_cinhandle_t *handle )
+static void R_UploadCinematicFrame( struct FrameState_s* cmd, r_cinhandle_t *handle )
 {
 	const int samples = 4;
 
@@ -123,7 +123,7 @@ static void R_UploadCinematicFrame( r_cinhandle_t *handle )
 			in2D = rf.in2D;	
 
 			if( !in2D ) {
-				R_PushRefInst(NULL);
+				R_PushRefInst( cmd );
 			}
 
 			//R_InitViewportTexture( &handle->image, handle->name, 0, 
@@ -132,7 +132,7 @@ static void R_UploadCinematicFrame( r_cinhandle_t *handle )
 
 //		R_BindFrameBufferObject( handle->image->fbo );
 
-			R_Set2DMode( NULL, true );
+			R_Set2DMode( cmd, true );
 
 			RB_Scissor( 0, 0, handle->image->width, handle->image->height );
 
@@ -141,8 +141,9 @@ static void R_UploadCinematicFrame( r_cinhandle_t *handle )
 			R_UploadRawYUVPic( handle->yuv_images, handle->cyuv->yuv );
 
 			// flip the image vertically because we're rendering to a FBO
-			R_DrawStretchRawYUVBuiltin( 
-				0, 0, 
+			R_DrawStretchRawYUVBuiltin(
+				cmd,
+				0, 0,
 				handle->image->width, handle->image->height,
 				(float)handle->cyuv->x_offset / handle->cyuv->image_width, 
 				(float)handle->cyuv->y_offset / handle->cyuv->image_height, 
@@ -151,9 +152,9 @@ static void R_UploadCinematicFrame( r_cinhandle_t *handle )
 				handle->yuv_images, 2 );
 
 			if( !in2D ) {
-				R_PopRefInst(NULL);
+				R_PopRefInst( cmd );
 			}
-			R_Set2DMode( NULL,in2D );
+			R_Set2DMode( cmd, in2D );
 
 			handle->new_frame = false;
 		}
@@ -289,13 +290,13 @@ image_t *R_GetCinematicImage( unsigned int id )
 /*
 * R_UploadCinematic
 */
-void R_UploadCinematic( unsigned int id )
+void R_UploadCinematic( struct FrameState_s* cmd, unsigned int id )
 {
 	r_cinhandle_t *handle;
-	
+
 	handle = R_GetCinematicHandleById( id );
 	if( handle ) {
-		R_UploadCinematicFrame( handle );
+		R_UploadCinematicFrame( cmd, handle );
 	}
 }
 
