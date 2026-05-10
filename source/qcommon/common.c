@@ -749,6 +749,7 @@ void Qcommon_InitCvarDescriptions( void )
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/vid" );
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/vsay" );
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/win" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/privacy" );
 }
 
 /*
@@ -829,9 +830,9 @@ void Qcommon_Init( int argc, char **argv )
 
 	FS_Init();
 
-#ifdef USE_CRASHPAD
+	#ifdef USE_CRASHPAD
 	Init_Crashpad( FS_WriteDirectory() );
-#endif
+	#endif
 	// init localization subsystem
 	L10n_Init();
 	Qcommon_InitCvarDescriptions();
@@ -919,6 +920,7 @@ void Qcommon_Init( int argc, char **argv )
 	Com_Printf( "\n====== %s Initialized ======\n", APPLICATION );
 
 	Cbuf_Execute();
+
 }
 
 /*
@@ -931,6 +933,10 @@ void Qcommon_Frame( unsigned int realmsec )
 	char *s;
 	int time_before = 0, time_between = 0, time_after = 0;
 	static unsigned int gamemsec;
+
+#ifdef USE_CRASHPAD
+	Crashpad_RefreshUploadState();
+#endif
 
 	if( com_quit )
 		Com_Quit();

@@ -92,6 +92,7 @@ static void __ConfigureLightCB( struct DynamicLightCB *cb, const vec3_t entOrigi
 		}
 		const size_t batchIndex = cb->numberLights / 4;
 		const size_t batchOffset = cb->numberLights % 4;
+		assert( cb->numberLights < Q_ARRAY_COUNT( cb->dynLights ) );
 		struct DynLight *dynLight = &cb->dynLights[cb->numberLights++];
 
 		VectorSubtract( dl->origin, entOrigin, dlorigin );
@@ -118,13 +119,14 @@ static void __ConfigureLightCB( struct DynamicLightCB *cb, const vec3_t entOrigi
 	while( ( cb->numberLights % 4 ) > 0 ) {
 		const size_t batchIndex = cb->numberLights / 4;
 		const size_t batchOffset = cb->numberLights % 4;
+		assert( cb->numberLights < Q_ARRAY_COUNT( cb->dynLights ) );
 		cb->numberLights++;
 		cb->dynLights[( batchIndex * 4 )].diffuseAndInvRadius.v[batchOffset] = 0;
 		cb->dynLights[( batchIndex * 4 ) + 1].diffuseAndInvRadius.v[batchOffset] = 0;
 		cb->dynLights[( batchIndex * 4 ) + 2].diffuseAndInvRadius.v[batchOffset] = 0;
 		cb->dynLights[( batchIndex * 4 ) + 3].diffuseAndInvRadius.v[batchOffset] = 1.0;
 	}
-	assert( cb->numberLights <= 32 );
+	assert( cb->numberLights <= Q_ARRAY_COUNT( cb->dynLights ) );
 }
 
 static inline hash_t __pseudoUniqueNoise( int a1, int a2, int a3, int a4 )
@@ -1073,6 +1075,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboSceneObject, .handle = Create_DescriptorHandle( "obj" ) };
 				// rsh.nri.coreI.CmdSetPipeline( cmd->cmd, pipeline->pipeline );
 				RP_BindPipeline( cmd, pipeline );
+				assert( descriptorCount <= Q_ARRAY_COUNT( descriptors ) );
 				RP_BindDescriptorSets( &rsh.device, cmd, program, descriptors, descriptorCount );
 
 				// rsh.nri.coreI.CmdSetPipelineLayout( cmd->cmd, program->layout );
@@ -1237,16 +1240,18 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *shaderPassImage->samplerBinding, .handle = Create_DescriptorHandle( "u_BaseSampler" ) };
 			}
 
-			if( mapConfig.lightmapArrays )
-				programFeatures |= GLSL_SHADER_Q3_LIGHTMAP_ARRAYS;
+			if( isLightmapped ) {
+				if( mapConfig.lightmapArrays )
+					programFeatures |= GLSL_SHADER_Q3_LIGHTMAP_ARRAYS;
 
-			for( size_t i = 0; i < rsh.worldBrushModel->numLightmapImages; i++ ) {
-				if( i == 0 ) {
+				for( size_t i = 0; i < rsh.worldBrushModel->numLightmapImages; i++ ) {
+					if( i == 0 ) {
+						descriptors[descriptorCount++] =
+							(struct glsl_descriptor_binding_s){ .descriptor = *rsh.worldBrushModel->lightmapImages[i]->samplerBinding, .handle = Create_DescriptorHandle( "lightmapTextureSample" ) };
+					}
 					descriptors[descriptorCount++] =
-						(struct glsl_descriptor_binding_s){ .descriptor = *rsh.worldBrushModel->lightmapImages[i]->samplerBinding, .handle = Create_DescriptorHandle( "lightmapTextureSample" ) };
+						(struct glsl_descriptor_binding_s){ .descriptor = rsh.worldBrushModel->lightmapImages[i]->binding, .registerOffset = i, .handle = Create_DescriptorHandle( "lightmapTexture" ) };
 				}
-				descriptors[descriptorCount++] =
-					(struct glsl_descriptor_binding_s){ .descriptor = rsh.worldBrushModel->lightmapImages[i]->binding, .registerOffset = i, .handle = Create_DescriptorHandle( "lightmapTexture" ) };
 			}
 
 			const int numLightMaps = isLightmapped ? __NumberLightMaps( lightStyle ) : 0;
@@ -1274,6 +1279,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			}
 
 			RP_BindPipeline( cmd, pipeline );
+			assert( descriptorCount <= Q_ARRAY_COUNT( descriptors ) );
 			RP_BindDescriptorSets( &rsh.device, cmd, program, descriptors, descriptorCount );
 			FR_CmdDrawElements( cmd, cmd->drawElements.numElems, cmd->drawElements.numInstances, cmd->drawElements.firstElem, cmd->drawElements.firstVert, 0 );
 			break;
@@ -1362,6 +1368,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			RP_BindPipeline( cmd, pipeline );
 			if( program->hasPushConstant )
 				RP_BindPushConstant( &rsh.device, cmd, program, &push, sizeof( struct distortion_push_constant_s ) );
+			assert( descriptorCount <= Q_ARRAY_COUNT( descriptors ) );
 			RP_BindDescriptorSets( &rsh.device, cmd, program, descriptors, descriptorCount );
 			FR_CmdDrawElements( cmd, cmd->drawElements.numElems, cmd->drawElements.numInstances, cmd->drawElements.firstElem, cmd->drawElements.firstVert, 0 );
 
@@ -1502,6 +1509,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 					struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline );
 
 					RP_BindPipeline( cmd, pipeline );
+					assert( descriptorCount <= Q_ARRAY_COUNT( descriptors ) );
 					RP_BindDescriptorSets( &rsh.device, cmd, program, descriptors, descriptorCount );
 
 					FR_CmdDrawElements( cmd, cmd->drawShadowElements.numElems, cmd->drawShadowElements.numInstances, cmd->drawShadowElements.firstElem, cmd->drawShadowElements.firstVert, 0 );
@@ -1548,6 +1556,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 				RP_BindPushConstant( &rsh.device, cmd, program, &constant, sizeof( struct DefaultOutlinePushConstant ) );
 			// rsh.nri.coreI.CmdSetRootConstants( cmd->cmd, 0, &constant, sizeof( struct DefaultOutlinePushConstant ) );
 
+			assert( descriptorCount <= Q_ARRAY_COUNT( descriptors ) );
 			RP_BindDescriptorSets( &rsh.device, cmd, program, descriptors, descriptorCount );
 
 			FR_CmdDrawElements( cmd, cmd->drawElements.numElems, cmd->drawElements.numInstances, cmd->drawElements.firstElem, cmd->drawElements.firstVert, 0 );
@@ -1689,6 +1698,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline );
 
 			RP_BindPipeline( cmd, pipeline );
+			assert( descriptorCount <= Q_ARRAY_COUNT( descriptors ) );
 			RP_BindDescriptorSets( &rsh.device, cmd, program, descriptors, descriptorCount );
 
 			FR_CmdDrawElements( cmd, cmd->drawElements.numElems, cmd->drawElements.numInstances, cmd->drawElements.firstElem, cmd->drawElements.firstVert, 0 );
@@ -1716,6 +1726,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline );
 
 			RP_BindPipeline( cmd, pipeline );
+			assert( descriptorCount <= Q_ARRAY_COUNT( descriptors ) );
 			RP_BindDescriptorSets( &rsh.device, cmd, program, descriptors, descriptorCount );
 
 			FR_CmdDrawElements( cmd, cmd->drawElements.numElems, cmd->drawElements.numInstances, cmd->drawElements.firstElem, cmd->drawElements.firstVert, 0 );
@@ -1723,7 +1734,6 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 		}
 		case GLSL_PROGRAM_TYPE_YUV: {
 			assert( false );
-			mat4_t texMatrix = { 0 };
 
 			// set shaderpass state (blending, depthwrite, etc)
 			RB_SetShaderpassState_2( cmd, pass->flags );

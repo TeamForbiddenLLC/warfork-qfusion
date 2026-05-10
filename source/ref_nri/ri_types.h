@@ -30,6 +30,7 @@
 static inline bool __vk_WrapResult( VkResult result, const char *sourceFilename, const char *functionName, int sourceLine )
 {
 	if( result != VK_SUCCESS ) {
+		
 		printf( "RI: VK %i, file %s:%i (%s)\n", result, sourceFilename, sourceLine, functionName );
 		return false;
 	}
@@ -370,8 +371,8 @@ struct RICmd_s {
 	};
 };
 
-#define RI_COMMAND_RING_POOL_COUNT RI_NUMBER_FRAMES_FLIGHT
-#define RI_COMMAND_RING_CMD_PER_POOL 8
+#define RI_COMMAND_RING_POOL_COUNT 8
+#define RI_COMMAND_RING_CMD_PER_POOL 32 
 
 struct RICommandRingElement_s {
 	struct RICmd_s *cmds;
@@ -524,7 +525,7 @@ struct RIPhysicalAdapter_s {
 
 	// Memory alignment
 	uint32_t uploadBufferTextureRowAlignment;
-	uint32_t uploadBufferTextureSliceAlignment;
+	uint32_t uploadBufferOffsetAlignment;
 	uint32_t bufferShaderResourceOffsetAlignment;
 	uint32_t constantBufferOffsetAlignment;
 	// uint32_t scratchBufferOffsetAlignment;

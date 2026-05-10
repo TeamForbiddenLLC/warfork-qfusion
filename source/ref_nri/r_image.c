@@ -1072,6 +1072,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 			uint32_t h = height;
 			for( size_t i = 0; i < info.mipLevels; i++ ) {
 				__R_CopyTextureDataTexture( image, index, i, 0, 0, w, h, srcFormat, buf );
+				R_MipMap( buf, w, h, samples, 1 );
 				w >>= 1;
 				h >>= 1;
 				if( w == 0 ) {
@@ -1080,7 +1081,6 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 				if( h == 0 ) {
 					h = 1;
 				}
-				R_MipMap( buf, w, h, samples, 1 );
 			}
 		}
 	}
@@ -1255,6 +1255,7 @@ void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, 
 	// R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
 	for( size_t i = 0; i < image->mipNum; i++ ) {
 		__R_CopyTextureDataTexture( image, layer, i, x, y, w, h, srcFormat, buf );
+		R_MipMap( buf, w, h, image->samples, 1 );
 		w >>= 1;
 		h >>= 1;
 		if( w == 0 ) {
@@ -1263,7 +1264,6 @@ void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, 
 		if( h == 0 ) {
 			h = 1;
 		}
-		R_MipMap( buf, w, h, image->samples, 1 );
 	}
 	arrfree( buf );
 
@@ -1302,7 +1302,8 @@ void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic )
 	uint32_t h = image->height;
 	// R_ResourceTransitionTexture(image->texture,(NriAccessLayoutStage){} );
 	for( size_t i = 0; i < image->mipNum; i++ ) {
-		__R_CopyTextureDataTexture( image, layer, i, 0, 0, image->width, image->height, srcFormat, buf );
+		__R_CopyTextureDataTexture( image, layer, i, 0, 0, w, h, srcFormat, buf );
+		R_MipMap( buf, w, h, image->samples, 1 );
 		w >>= 1;
 		h >>= 1;
 		if( w == 0 ) {
@@ -1311,7 +1312,6 @@ void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic )
 		if( h == 0 ) {
 			h = 1;
 		}
-		R_MipMap( buf, w, h, image->samples, 1 );
 	}
 	arrfree( buf );
 
@@ -1358,6 +1358,7 @@ image_t *R_FindImage( const char *name, const char *suffix, int flags, int minmi
 					lastDot = resolvedPath.len - 1;
 					break;
 				case '/':
+				case '\\':
 					lastSlash = resolvedPath.len - 1;
 					break;
 			}

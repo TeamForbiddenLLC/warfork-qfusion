@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_local.h"
 #include "ri_types.h"
 #include "ri_conversion.h"
+#include <assert.h>
 
 r_globals_t rf;
 
@@ -517,14 +518,12 @@ void R_Set2DMode(struct FrameState_s* cmd, bool enable )
 void R_DrawRotatedStretchPic(struct FrameState_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, float angle, 
 	const vec4_t color, const shader_t *shader )
 {
+	assert(shader);
+	assert(cmd);
 	int bcolor;
-
-	if( !shader ) {
-		return;
-	}
-
+	
 	if( shader->cin ) {
-		R_UploadCinematicShader( shader );
+		R_UploadCinematicShader( cmd, shader );
 	}
 
 	// lower-left
@@ -642,7 +641,7 @@ void R_DrawStretchRaw(struct FrameState_s* cmd, int x, int y, int w, int h, floa
 * Set bit 0 in 'flip' to flip the image horizontally
 * Set bit 1 in 'flip' to flip the image vertically
 */
-void R_DrawStretchRawYUVBuiltin( int x, int y, int w, int h, 
+void R_DrawStretchRawYUVBuiltin( struct FrameState_s* cmd, int x, int y, int w, int h,
 	float s1, float t1, float s2, float t2, image_t **yuvTextures, int flip )
 {
 	static char *s_name = "$builtinyuv";
@@ -698,17 +697,17 @@ void R_DrawStretchRawYUVBuiltin( int x, int y, int w, int h,
 		t1 += v_ofs, t2 -= v_ofs;
 	}
 
-	R_DrawRotatedStretchPic( NULL, x, y, w, h, s1, t1, s2, t2, 0, colorWhite, &s );
+	R_DrawRotatedStretchPic( cmd, x, y, w, h, s1, t1, s2, t2, 0, colorWhite, &s );
 
-	RB_FlushDynamicMeshes(NULL);
+	RB_FlushDynamicMeshes( cmd );
 }
 
 /*
 * R_DrawStretchRawYUV
 */
-void R_DrawStretchRawYUV( int x, int y, int w, int h, float s1, float t1, float s2, float t2 )
+void R_DrawStretchRawYUV( struct FrameState_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2 )
 {
-	R_DrawStretchRawYUVBuiltin( x, y, w, h, s1, t1, s2, t2, rsh.rawYUVTextures, 0 );
+	R_DrawStretchRawYUVBuiltin( cmd, x, y, w, h, s1, t1, s2, t2, rsh.rawYUVTextures, 0 );
 }
 
 /*
@@ -968,20 +967,27 @@ static void R_Clear(struct FrameState_s* frame, int bitMask  /* unused variable 
 		  if(frame->pipeline.numColorsAttachments > 0)
 			{
 				size_t numClear = 0;
-			  VkClearRect clearRect[2] = { 0 };
-			  VkClearAttachment clearAttach[2] = { 0 };
+			  VkClearRect clearRect[5] = { 0 };
+			  VkClearAttachment clearAttach[5] = { 0 };
 			  if( clearColor ) {
-				  clearRect[numClear].baseArrayLayer = 0;
-				  clearRect[numClear].rect = RIViewportToRect2D( &frame->viewport );
-				  clearRect[numClear].layerCount = frame->pipeline.numColorsAttachments;
-				  clearAttach[numClear].clearValue.color.float32[0] = envColor[0];
-				  clearAttach[numClear].clearValue.color.float32[1] = envColor[1];
-				  clearAttach[numClear].clearValue.color.float32[2] = envColor[2];
-				  clearAttach[numClear].clearValue.color.float32[3] = envColor[3];
-				  clearAttach[numClear].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-				  numClear++;
+				  for (size_t i = 0; i < frame->pipeline.numColorsAttachments; i++) {
+					  assert( numClear < Q_ARRAY_COUNT( clearRect ) );
+					  assert( numClear < Q_ARRAY_COUNT( clearAttach ) );
+					  clearRect[numClear].baseArrayLayer = 0;
+					  clearRect[numClear].rect = RIViewportToRect2D( &frame->viewport );
+					  clearRect[numClear].layerCount = 1;
+					  clearAttach[numClear].colorAttachment = i;
+					  clearAttach[numClear].clearValue.color.float32[0] = envColor[0];
+					  clearAttach[numClear].clearValue.color.float32[1] = envColor[1];
+					  clearAttach[numClear].clearValue.color.float32[2] = envColor[2];
+					  clearAttach[numClear].clearValue.color.float32[3] = envColor[3];
+					  clearAttach[numClear].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+					  numClear++;
+				  }
 			  }
 			  if( !depthPortal ) {
+				  assert( numClear < Q_ARRAY_COUNT( clearRect ) );
+				  assert( numClear < Q_ARRAY_COUNT( clearAttach ) );
 				  clearRect[numClear].baseArrayLayer = 0;
 				  clearRect[numClear].rect = RIViewportToRect2D( &frame->viewport );
 				  clearRect[numClear].layerCount = 1;

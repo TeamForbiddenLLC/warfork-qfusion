@@ -194,7 +194,7 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 
 	RI_InitResourceUploader( &rsh.device, &rsh.uploader );
 
-	InitRICommandRingBuffer( &rsh.device, &rsh.device.queues[RI_QUEUE_GRAPHICS], &rsh.graphicsCmdRing, true );
+	InitRICommandRingBuffer( &rsh.device, &rsh.device.queues[RI_QUEUE_GRAPHICS], &rsh.graphicsCmdRing, NUMBER_FRAMES_FLIGHT, NUMBER_SUBFRAMES_FLIGHT, true );
 
 	RP_Init();
 
@@ -217,8 +217,6 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	R_ClearRefInstStack();
 
 	R_InitDrawLists();
-
-	R_InitShaders();
 
 	return rserr_ok;
 }
@@ -267,7 +265,7 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 		__ShutdownSwapchainTexture();
 		struct RISwapchainDesc_s swapchainInit = { 0 };
 		swapchainInit.windowHandle = &windowHandle;
-		swapchainInit.imageCount = 3;
+		swapchainInit.requestImageCount = 3; 
 		swapchainInit.queue = &rsh.device.queues[RI_QUEUE_GRAPHICS];
 		swapchainInit.width = width;
 		swapchainInit.height = height;
@@ -312,13 +310,7 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 					createInfo.image = rsh.depthTextures[i].vk.image;
 					createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; //| VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
-					// rsh.depthAttachment.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-					// rsh.depthAttachment.texture = &rsh.depthTextures[i];
-					// rsh.depthAttachment.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-					// rsh.depthAttachment.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 					VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &rsh.depthView[i].vk.image) );
-					// UpdateRIDescriptor( &rsh.device, &rsh.depthAttachment[i] );
-					//RI_VK_InitImageView( &rsh.device, &createInfo, rsh.depthAttachment + i, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
 				}
 			}
 		}

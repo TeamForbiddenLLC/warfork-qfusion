@@ -581,7 +581,7 @@ void		R_RunAllCinematics( void );
 void		R_TouchCinematic( unsigned int id );
 void		R_FreeUnusedCinematics( void );
 //void		R_FinishLoadingImages( void );
-void		R_UploadCinematic( unsigned int id );
+void		R_UploadCinematic( struct FrameState_s* cmd, unsigned int id );
 image_t		*R_GetCinematicImage( unsigned int id );
 struct cinematics_s *R_GetCinematicById( unsigned int id );
 void		R_RestartCinematics( void );
@@ -693,10 +693,10 @@ void		R_DrawRotatedStretchPic(struct FrameState_s* cmd, int x, int y, int w, int
 	float angle, const vec4_t color, const shader_t *shader );
 void		R_UploadRawPic( image_t *texture, int cols, int rows, uint8_t *data );
 void		R_UploadRawYUVPic( image_t **yuvTextures, ref_img_plane_t *yuv );
-void		R_DrawStretchRawYUVBuiltin( int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
+void		R_DrawStretchRawYUVBuiltin( struct FrameState_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2,
 	image_t **yuvTextures, int flip );
 void		R_DrawStretchRaw(struct FrameState_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2 );
-void		R_DrawStretchRawYUV( int x, int y, int w, int h, float s1, float t1, float s2, float t2 );
+void		R_DrawStretchRawYUV(struct FrameState_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2 );
 void		R_DrawStretchQuick(struct FrameState_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
 	const vec4_t color, int program_type, image_t *image, int blendMask );
 
