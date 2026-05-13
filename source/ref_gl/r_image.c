@@ -21,15 +21,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_imagelib.h"
 #include "../qalgo/hash.h"
 
-#include "../qcore/qstr.h"
+#include "q_sds.h"
 
 #include "r_ktx_loader.h"
 #include "r_texture_buf.h"
 #include "r_texture_format.h"
 
 #include "stb_image.h"
-
-#include "r_texture_buffer_load.h"
 
 #define	MAX_GLIMAGES	    8192
 #define IMAGES_HASH_SIZE    64
@@ -414,7 +412,7 @@ static void __R_stbi_free_image(void* p) {
 	stbi_image_free(img);
 }
 
-// TODO: replace r_texture_buffer_load.h has a replacment 
+
 static bool __R_ReadImageFromDisk_stbi(char *filename, struct texture_buf_s* buffer ) {
 	uint8_t* data;
 	size_t size = R_LoadFile( filename, ( void ** ) &data );
@@ -865,9 +863,9 @@ static void R_TextureFormat( int flags, int samples, int *comp, int *format, int
 	{
 		*type = GL_UNSIGNED_BYTE;
 		if( samples == 4 )
-			*format = GL_RGBA;
+			*format = ( flags & IT_BGRA ? GL_BGRA_EXT : GL_RGBA );
 		else if( samples == 3 )
-			*format = GL_RGB;
+			*format = ( flags & IT_BGRA ? GL_BGR_EXT : GL_RGB );
 		else if( samples == 2 )
 			*format = GL_LUMINANCE_ALPHA;
 		else if( flags & IT_ALPHAMASK )
@@ -1414,9 +1412,10 @@ static bool R_LoadKTX( int ctx, image_t *image, const char *pathname )
 		  for( size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx ) {
 		  	struct texture_buf_s *tex = R_KTXResolveBuffer( &ktxContext, 0, faceIdx, 0 );
 				decompressed[faceIdx] = R_PrepareImageBuffer( ctx, TEXTURE_LOADING_BUF0 + faceIdx, ALIGN( tex->width * 3, 4 ) * tex->height);
-				DecompressETC1( tex->buffer, tex->width, tex->height, decompressed[faceIdx], false);
+				DecompressETC1( tex->buffer, tex->width, tex->height, decompressed[faceIdx], glConfig.ext.bgra ? true : false );
 		  }
-		  R_UploadMipmapped( ctx, decompressed, R_KTXWidth( &ktxContext ), R_KTXHeight( &ktxContext ), 1, image->flags, image->minmipsize, &image->upload_width, &image->upload_height, GL_RGB, GL_UNSIGNED_BYTE );
+		  R_UploadMipmapped( ctx, decompressed, R_KTXWidth( &ktxContext ), R_KTXHeight( &ktxContext ), 1, image->flags, image->minmipsize, &image->upload_width, &image->upload_height,
+		  				   glConfig.ext.bgra ? GL_BGR_EXT : GL_RGB, GL_UNSIGNED_BYTE );
 		}
 
 		image->samples = 3;
@@ -1429,6 +1428,7 @@ static bool R_LoadKTX( int ctx, image_t *image, const char *pathname )
 				RT_ExpectChannelsMatch( definition, expectBGR, Q_ARRAY_COUNT( expectBGR ) ) || 
 				RT_ExpectChannelsMatch( definition, expectBGRA, Q_ARRAY_COUNT( expectBGRA ) ); 
 		image->flags |= (
+			(isBGRTexture  ? IT_BGRA : 0 ) |
 			(RT_ExpectChannelsMatch( definition, expectA, Q_ARRAY_COUNT( expectA ) ) ? IT_ALPHAMASK : 0));
 		image->samples = RT_NumberChannels(definition);
 		const uint16_t numberOfMipLevels = ( image->flags & IT_NOMIPMAP ) ? 1 : R_KTXGetNumberMips(&ktxContext);
@@ -1439,7 +1439,7 @@ static bool R_LoadKTX( int ctx, image_t *image, const char *pathname )
 		for( uint16_t mipIndex = 0; mipIndex < numberOfMipLevels; mipIndex++ ) {
 			for( uint32_t faceIndex = 0; faceIndex < numberOfFaces; faceIndex++ ) {
 				struct texture_buf_s *texBuffer = R_KTXResolveBuffer( &ktxContext, mipIndex, faceIndex, 0 );
-				if( isBGRTexture ) {
+				if( !glConfig.ext.bgra && isBGRTexture ) {
 					const size_t numberChannels = RT_NumberChannels( definition );
 					assert( numberChannels >= 3 && numberChannels <= Q_ARRAY_COUNT( swizzleChannel ) );
 					memcpy( swizzleChannel, RT_Channels( definition ), numberChannels );
@@ -1474,14 +1474,14 @@ error: // must not be reached after actually starting uploading the texture
 */
 static bool R_LoadImageFromDisk( int ctx, image_t *image )
 {
-	struct QStr pathname = {0};
-	qStrAssign(&pathname, qCToStrRef(image->name));
-	const size_t baseLen = pathname.len;
+	sds pathname = sdsnew(image->name);
+	size_t baseLen = sdslen(pathname);
 	bool loaded = false;
 
-	qStrAppendSlice(&pathname, qCToStrRef(".ktx"));
-	if( R_LoadKTX( ctx, image, pathname.buf ) ) {
-		qStrFree(&pathname);
+
+	pathname = sdscat(pathname, ".ktx");
+	if( R_LoadKTX( ctx, image, pathname ) ) {
+		sdsfree(pathname);
 		return true;
 	}
 
@@ -1494,20 +1494,20 @@ static bool R_LoadImageFromDisk( int ctx, image_t *image )
 		{
 			char *suf; int flags;
 		} static const cubemapSides[2][6] = {
-			{
-				{ "px", 0 },
-				{ "nx", 0 },
+			{ 
+				{ "px", 0 }, 
+				{ "nx", 0 }, 
 				{ "py", 0 },
-				{ "ny", 0 },
-				{ "pz", 0 },
-				{ "nz", 0 }
+				{ "ny", 0 }, 
+				{ "pz", 0 }, 
+				{ "nz", 0 } 
 			},
 			{
-				{ "rt", IT_FLIPDIAGONAL },
-				{ "lf", IT_FLIPX|IT_FLIPY|IT_FLIPDIAGONAL },
+				{ "rt", IT_FLIPDIAGONAL }, 
+				{ "lf", IT_FLIPX|IT_FLIPY|IT_FLIPDIAGONAL }, 
 				{ "bk", IT_FLIPY },
-				{ "ft", IT_FLIPX },
-				{ "up", IT_FLIPDIAGONAL },
+				{ "ft", IT_FLIPX }, 
+				{ "up", IT_FLIPDIAGONAL }, 
 				{ "dn", IT_FLIPDIAGONAL }
 			}
 		};
@@ -1517,19 +1517,19 @@ static bool R_LoadImageFromDisk( int ctx, image_t *image )
 		{
 			for( j = 0; j < 6; j++ )
 			{
-				qStrSetLen(&pathname, baseLen);
-				qstrcatfmt(&pathname, "_%s", cubemapSides[i][j].suf);
-				const char* extension = FS_FirstExtension2( pathname.buf, IMAGE_EXTENSIONS, NUM_IMAGE_EXTENSIONS - 1 ); // last is KTX
-
+				sdssubstr(pathname, 0, baseLen);
+				pathname = sdscatfmt( pathname, "_%s", cubemapSides[i][j].suf );
+				const char* extension = FS_FirstExtension2( pathname, IMAGE_EXTENSIONS, NUM_IMAGE_EXTENSIONS - 1 ); // last is KTX
+				
 				if(extension != NULL) {
 					lastExtension = extension;
-					qStrAppendSlice(&pathname, qCToStrRef(extension));
+					pathname = sdscat(pathname, extension);
 				}
-				if(extension != NULL && __R_ReadImageFromDisk_stbi(pathname.buf, &pics[j]) )
+				if(extension != NULL && __R_ReadImageFromDisk_stbi(pathname, &pics[j]) )
 				{
 					if( T_PixelW(&pics[j]) != T_PixelH(&pics[j]))
 					{
-						ri.Com_DPrintf( S_COLOR_YELLOW "Not square cubemap image %s\n", pathname.buf );
+						ri.Com_DPrintf( S_COLOR_YELLOW "Not square cubemap image %s\n", pathname );
 						break;
 					}
 					if( !j )
@@ -1538,7 +1538,7 @@ static bool R_LoadImageFromDisk( int ctx, image_t *image )
 					}
 					else if( lastSize != T_PixelW(&pics[j]) )
 					{
-						ri.Com_DPrintf( S_COLOR_YELLOW "Different cubemap image size: %s\n", pathname.buf );
+						ri.Com_DPrintf( S_COLOR_YELLOW "Different cubemap image size: %s\n", pathname );
 						break;
 					}
 					if( cubemapSides[i][j].flags & ( IT_FLIPX|IT_FLIPY|IT_FLIPDIAGONAL ) )
@@ -1546,9 +1546,9 @@ static bool R_LoadImageFromDisk( int ctx, image_t *image )
 						int flags = cubemapSides[i][j].flags;
 						uint8_t *temp = R_PrepareImageBuffer( ctx,
 							TEXTURE_FLIPPING_BUF0+j, T_PixelW(&pics[j]) * T_PixelH(&pics[j]) * RT_NumberChannels(pics[j].def));
-						R_FlipTexture( pics[j].buffer, temp, T_PixelW(&pics[j]), T_PixelH(&pics[j]), RT_NumberChannels(pics[j].def),
-							(flags & IT_FLIPX) ? true : false,
-							(flags & IT_FLIPY) ? true : false,
+						R_FlipTexture( pics[j].buffer, temp, T_PixelW(&pics[j]), T_PixelH(&pics[j]), RT_NumberChannels(pics[j].def), 
+							(flags & IT_FLIPX) ? true : false, 
+							(flags & IT_FLIPY) ? true : false, 
 							(flags & IT_FLIPDIAGONAL) ? true : false );
 
 						struct texture_buf_desc_s desc = {
@@ -1576,7 +1576,7 @@ static bool R_LoadImageFromDisk( int ctx, image_t *image )
 
 			R_BindImage( image );
 
-			R_Upload32( ctx, buf, 0, 0, 0, image->width, image->height, image->flags, image->minmipsize, &image->upload_width,
+			R_Upload32( ctx, buf, 0, 0, 0, image->width, image->height, image->flags, image->minmipsize, &image->upload_width, 
 				&image->upload_height, image->samples, false, false );
 
 			Q_strncpyz( image->extension, lastExtension, sizeof( image->extension ) );
@@ -1593,56 +1593,37 @@ static bool R_LoadImageFromDisk( int ctx, image_t *image )
 	else
 	{
 		struct texture_buf_s pic = {0};
-		qStrSetLen(&pathname, baseLen);
-		qStrSetNullTerm(&pathname); // ensure we have an extension separator for FS_FirstExtension2
-
-		const char *extensions[] = {
-			extensionTGA,
-			extensionJPG,
-			extensionPNG,
-			extensionWAL
-		};
-
-		const char* ext = FS_FirstExtension2( pathname.buf, extensions, Q_ARRAY_COUNT(extensions)); // last is KTX
-		if(ext != NULL) {
-			qStrAppendSlice(&pathname, qCToStrRef(ext));
+		sdssubstr(pathname, 0, baseLen);
+		const char* extension = FS_FirstExtension2( pathname, IMAGE_EXTENSIONS, NUM_IMAGE_EXTENSIONS - 1 ); // last is KTX
+		if(extension != NULL) {
+			pathname = sdscat(pathname, extension);
 		}
-		if((ext == extensionPNG || ext == extensionJPG || ext == extensionTGA) && T_LoadImageSTBI(pathname.buf, &pic)) {
-			image->width = T_PixelW( &pic );
-			image->height = T_PixelH( &pic );
-			image->samples = RT_NumberChannels( pic.def );
+		if(extension != NULL && __R_ReadImageFromDisk_stbi(pathname, &pic) )
+		{
+			image->width = T_PixelW(&pic);
+			image->height = T_PixelH(&pic);
+			image->samples =  RT_NumberChannels(pic.def);
 
 			R_BindImage( image );
 
-			R_Upload32( ctx, &pic.buffer, 0, 0, 0, image->width, image->height, image->flags, image->minmipsize, &image->upload_width, &image->upload_height, image->samples, false, false );
+			R_Upload32( ctx, &pic.buffer, 0, 0, 0, image->width, image->height, image->flags, image->minmipsize, &image->upload_width, 
+				&image->upload_height, image->samples, false, false );
 
-			Q_strncpyz( image->extension, ext, sizeof( image->extension ) );
+			Q_strncpyz( image->extension, extension, sizeof( image->extension ) );
 			loaded = true;
-			T_FreeTextureBuf( &pic );
-		} else if(ext == extensionWAL && T_LoadImageWAL(pathname.buf, &pic)) {
-			image->width = T_PixelW( &pic );
-			image->height = T_PixelH( &pic );
-			image->samples = RT_NumberChannels( pic.def );
-
-			R_BindImage( image );
-
-			R_Upload32( ctx, &pic.buffer, 0, 0, 0, image->width, image->height, image->flags, image->minmipsize, &image->upload_width, &image->upload_height, image->samples, false, false );
-
-			Q_strncpyz( image->extension, ext, sizeof( image->extension ) );
-			loaded = true;
-			T_FreeTextureBuf( &pic );
-
-		} else {
+			T_FreeTextureBuf(&pic);
+		}
+		else
+		{
 			ri.Com_Printf( S_COLOR_YELLOW "Missing image: %s\n", image->name );
 		}
-
 	}
 
 	if( loaded )
 	{
 		R_DeferDataSync();
 	}
-	qStrFree(&pathname);
+	sdsfree(pathname);
 
 	return loaded;
 }
@@ -1892,57 +1873,58 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 	assert(name);
 	assert(name[0]);
 
-	struct QStr resolvedPath = {0};
+	const size_t reserveSize = strlen( name ) + ( suffix ? strlen( suffix ) : 0 ) + 15;
+	sds resolvedPath = sdsnewlen( 0, reserveSize );
+	sdsclear( resolvedPath );
 	{
-		size_t lastDot = (size_t)-1;
-		size_t lastSlash = (size_t)-1;
+		size_t lastDot = -1;
+		size_t lastSlash = -1;
 		for( size_t i = ( name[0] == '/' || name[0] == '\\' ); name[i]; i++ ) {
 			const char c = name[i];
 			if( c == '\\' ) {
-				qStrAppendChar( &resolvedPath, '/' );
+				resolvedPath = sdscat( resolvedPath, "/" );
 			} else {
-				qStrAppendChar( &resolvedPath, tolower( c ) );
+				resolvedPath = sdscatfmt( resolvedPath, "%c", tolower( c ) );
 			}
 			switch( c ) {
 				case '.':
-					lastDot = resolvedPath.len - 1;
+					lastDot = i;
 					break;
 				case '/':
-					lastSlash = resolvedPath.len - 1;
+					lastSlash = i;
 					break;
 			}
 		}
 		// don't confuse paths such as /ui/xyz.cache/123 with file extensions
-		if( lastDot != (size_t)-1 && lastDot >= lastSlash ) {
+		if( lastDot >= lastSlash ) {
 			// truncate string omitting the extension
-			qStrSetLen( &resolvedPath, lastDot );
-			qStrSetNullTerm( &resolvedPath );
+			sdssubstr( resolvedPath, 0, lastDot );
 		}
 	}
 	if( suffix ) {
 		for( size_t i = 0; suffix[i]; i++ ) {
-			qStrAppendChar( &resolvedPath, tolower( suffix[i] ) );
-		}
+			resolvedPath = sdscatfmt( resolvedPath, "%c", tolower( suffix[i] ) );
 	}
-	const size_t basePathLen = resolvedPath.len;
+	}
+	const uint32_t basePathLen = sdslen(resolvedPath);
+	sdssubstr(resolvedPath, 0, basePathLen);
 
 	image_t	*image;
-	const uint32_t key = COM_SuperFastHash( (uint8_t *)resolvedPath.buf, resolvedPath.len, resolvedPath.len ) % IMAGES_HASH_SIZE;
+	const uint32_t key = COM_SuperFastHash( (uint8_t *)resolvedPath, strlen(resolvedPath), strlen(resolvedPath) ) % IMAGES_HASH_SIZE;
 	const image_t* hnode = &images_hash_headnode[key];
 	const int searchFlags = flags & ~IT_LOADFLAGS;
 	for( image = hnode->prev; image != hnode; image = image->prev )
 	{
 		if( ( ( image->flags & ~IT_LOADFLAGS ) == searchFlags ) &&
-			!strcmp( image->name, resolvedPath.buf) && ( image->minmipsize == minmipsize ) ) {
+			!strcmp( image->name, resolvedPath) && ( image->minmipsize == minmipsize ) ) {
 			R_TouchImage( image, tags );
 			goto done;
 		}
 	}
-	qStrSetLen( &resolvedPath, basePathLen );
-	qStrSetNullTerm( &resolvedPath );
+	sdssubstr(resolvedPath, 0, basePathLen);
 
 	uint8_t *empty_data[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
-	image = R_LoadImage( resolvedPath.buf, empty_data, 1, 1, flags, minmipsize, tags, 1 );
+	image = R_LoadImage( resolvedPath, empty_data, 1, 1, flags, minmipsize, tags, 1 );
 
 	if( !( image->flags & IT_SYNC ) ) {
 		if( R_LoadAsyncImageFromDisk( image ) ) {
@@ -1965,7 +1947,7 @@ image_t	*R_FindImage( const char *name, const char *suffix, int flags, int minmi
 		image->loaded = true;
 	}
 done:
-	qStrFree(&resolvedPath);
+	sdsfree(resolvedPath);
 
 	return image;
 }

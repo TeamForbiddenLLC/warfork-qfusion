@@ -1,6 +1,6 @@
 uniform vec2 u_FogScaleAndEyeDist;
 uniform vec4 u_FogEyePlane, u_FogPlane;
-uniform vec3 u_FogColor;
+uniform myhalf3 u_FogColor;
 
 #define FOG_TEXCOORD_STEP 1.0/256.0
 

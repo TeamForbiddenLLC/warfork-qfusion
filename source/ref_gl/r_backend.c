@@ -815,7 +815,6 @@ void RB_AddDynamicMesh( const entity_t *entity, const shader_t *shader,
 		draw->drawElements.numElems += numElems;
 	}
 	else {
-		assert(rb.numDynamicDraws < MAX_DYNAMIC_DRAWS);
 		draw = &rb.dynamicDraws[rb.numDynamicDraws++];
 		draw->entity = entity;
 		draw->shader = shader;

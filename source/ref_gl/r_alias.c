@@ -97,8 +97,11 @@ static void Mod_AliasBuildMeshesForFrame0( model_t *mod )
 		}
 
 		R_BuildTangentVectors( mesh->numverts, mesh->xyzArray, mesh->normalsArray, mesh->stArray, mesh->numtris, mesh->elems, mesh->sVectorsArray );
-		// build a static vertex buffer object to be used for rendering simple models, such as items
-		Mod_AliasBuildStaticVBOForMesh( mesh );
+
+		if( glConfig.ext.vertex_buffer_object ) {
+			// build a static vertex buffer object to be used for rendering simple models, such as items
+			Mod_AliasBuildStaticVBOForMesh( mesh );
+		}
 	}
 }
 

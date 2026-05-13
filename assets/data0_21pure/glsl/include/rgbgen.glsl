@@ -1,25 +1,25 @@
-uniform vec4 u_ConstColor;
-uniform vec4 u_RGBGenFuncArgs, u_AlphaGenFuncArgs;
+uniform myhalf4 u_ConstColor;
+uniform myhalf4 u_RGBGenFuncArgs, u_AlphaGenFuncArgs;
 
-vec4 VertexRGBGen(in vec4 Position, in vec3 Normal, in vec4 VertexColor)
+myhalf4 VertexRGBGen(in vec4 Position, in vec3 Normal, in myhalf4 VertexColor)
 {
 #if defined(APPLY_RGB_DISTANCERAMP) || defined(APPLY_ALPHA_DISTANCERAMP)
-#define DISTANCERAMP(x1,x2,y1,y2) mix(y1, y2, smoothstep(x1, x2, float(dot(u_EntityDist - Position.xyz, Normal))))
+#define DISTANCERAMP(x1,x2,y1,y2) mix(y1, y2, smoothstep(x1, x2, myhalf(dot(u_EntityDist - Position.xyz, Normal))))
 #endif
 
 #if defined(APPLY_RGB_CONST) && defined(APPLY_ALPHA_CONST)
-	vec4 Color = u_ConstColor;
+	myhalf4 Color = u_ConstColor;
 #else
-	vec4 Color = vec4(1.0);
+	myhalf4 Color = myhalf4(1.0);
 
 #if defined(APPLY_RGB_CONST)
 	Color.rgb = u_ConstColor.rgb;
 #elif defined(APPLY_RGB_VERTEX)
 	Color.rgb = VertexColor.rgb;
 #elif defined(APPLY_RGB_ONE_MINUS_VERTEX)
-	Color.rgb = vec3(1.0) - VertexColor.rgb;
+	Color.rgb = myhalf3(1.0) - VertexColor.rgb;
 #elif defined(APPLY_RGB_GEN_DIFFUSELIGHT)
-	Color.rgb = vec3(u_LightAmbient + max(dot(u_LightDir, Normal), 0.0) * u_LightDiffuse);
+	Color.rgb = myhalf3(u_LightAmbient + max(dot(u_LightDir, Normal), 0.0) * u_LightDiffuse);
 #endif
 
 #if defined(APPLY_ALPHA_CONST)

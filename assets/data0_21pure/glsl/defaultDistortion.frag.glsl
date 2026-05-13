@@ -20,7 +20,7 @@ uniform sampler2D u_RefractionTexture;
 
 void main(void)
 {
-	vec3 color;
+	myhalf3 color;
 
 #ifdef APPLY_DUDV
 	vec3 displacement = vec3(qf_texture(u_DuDvMapTexture, vec2(v_TexCoord.pq) * vec2(0.25)));
@@ -39,14 +39,14 @@ void main(void)
 	projCoord.s = float (clamp (float(projCoord.s), inv2NW, 1.0 - inv2NW));
 	projCoord.t = float (clamp (float(projCoord.t), inv2NH, 1.0 - inv2NH));
 
-	vec3 refr = vec3(0.0);
-	vec3 refl = vec3(0.0);
+	myhalf3 refr = myhalf3(0.0);
+	myhalf3 refl = myhalf3(0.0);
 
 #ifdef APPLY_EYEDOT
 	// calculate dot product between the surface normal and eye vector
 	// great for simulating qf_varying water translucency based on the view angle
-	vec3 surfaceNormal = normalize(vec3(qf_texture(u_NormalmapTexture, coord)) - vec3 (0.5));
-	vec3 eyeNormal = normalize(vec3(v_EyeVector));
+	myhalf3 surfaceNormal = normalize(myhalf3(qf_texture(u_NormalmapTexture, coord)) - myhalf3 (0.5));
+	vec3 eyeNormal = normalize(myhalf3(v_EyeVector));
 
 	float refrdot = float(dot(surfaceNormal, eyeNormal));
 	//refrdot = float (clamp (refrdot, 0.0, 1.0));
@@ -54,28 +54,28 @@ void main(void)
 	// get refraction and reflection
 
 #ifdef APPLY_REFRACTION
-	refr = (vec3(qf_texture(u_RefractionTexture, projCoord))) * refrdot;
+	refr = (myhalf3(qf_texture(u_RefractionTexture, projCoord))) * refrdot;
 #endif
 #ifdef APPLY_REFLECTION
-	refl = (vec3(qf_texture(u_ReflectionTexture, projCoord))) * refldot;
+	refl = (myhalf3(qf_texture(u_ReflectionTexture, projCoord))) * refldot;
 #endif
 
 #else
 
 #ifdef APPLY_REFRACTION
-	refr = (vec3(qf_texture(u_RefractionTexture, projCoord)));
+	refr = (myhalf3(qf_texture(u_RefractionTexture, projCoord)));
 #endif
 #ifdef APPLY_REFLECTION
-	refl = (vec3(qf_texture(u_ReflectionTexture, projCoord)));
+	refl = (myhalf3(qf_texture(u_ReflectionTexture, projCoord)));
 #endif
 
 #endif // APPLY_EYEDOT
 
 	// add reflection and refraction
 #ifdef APPLY_DISTORTION_ALPHA
-	color = vec3(qf_FrontColor.rgb) + vec3(mix (refr, refl, float(qf_FrontColor.a)));
+	color = myhalf3(qf_FrontColor.rgb) + myhalf3(mix (refr, refl, myhalf(qf_FrontColor.a)));
 #else
-	color = vec3(qf_FrontColor.rgb) + refr + refl;
+	color = myhalf3(qf_FrontColor.rgb) + refr + refl;
 #endif
 
 #ifdef APPLY_GREYSCALE

@@ -17,11 +17,11 @@ void main(void)
 	vec4 Position = a_Position;
 	vec3 Normal = a_Normal.xyz;
 	vec2 TexCoord = a_TexCoord;
-	vec4 inColor = vec4(a_Color);
+	myhalf4 inColor = myhalf4(a_Color);
 
 	QF_TransformVerts(Position, Normal, TexCoord);
 
-	vec4 outColor = VertexRGBGen(Position, Normal, inColor);
+	myhalf4 outColor = VertexRGBGen(Position, Normal, inColor);
 
 #ifdef APPLY_FOG
 #if defined(APPLY_FOG_COLOR)

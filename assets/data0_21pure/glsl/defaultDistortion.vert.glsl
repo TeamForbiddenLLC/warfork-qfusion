@@ -20,7 +20,7 @@ void main(void)
 	vec2 TexCoord = a_TexCoord;
 	vec3 Tangent = a_SVector.xyz;
 	float TangentDir = a_SVector.w;
-	vec4 inColor = vec4(a_Color);
+	myhalf4 inColor = myhalf4(a_Color);
 
 	QF_TransformVerts(Position, Normal, TexCoord);
 

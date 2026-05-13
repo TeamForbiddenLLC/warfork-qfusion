@@ -30,6 +30,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define MEM_DEFINE_INTERFACE_IMPL 1
 #include "../qcommon/mod_mem.h"
 
+#define WIN_DEFINE_INTERFACE_IMPL 1
+#include "../qcommon/mod_win.h"
 
 #include "../ref_base/ref_mod.h"
 
@@ -63,14 +65,15 @@ QF_DLL_EXPORT ref_export_t *GetRefAPI( ref_import_t *import )
 {
 	static ref_export_t globals;
 	Q_ImportFsModule(import->fsImport);
-	Q_ImportMemModule(import->memImport);	
+	Q_ImportMemModule(import->memImport);
 	Q_ImportCmdModule(import->cmdImport);
 	Q_ImportCvarModule(import->cvarImport);
+	Q_ImportWinModule(import->winImport);
 
 	ri = *import;
 
 	globals.API = GetRefAPIVersion;
-	globals.refImport =  (struct ref_import_s)DECLARE_REF_STRUCT();
+	globals.refImport = (struct ref_import_s)DECLARE_REF_STRUCT();
 
 	return &globals;
 }

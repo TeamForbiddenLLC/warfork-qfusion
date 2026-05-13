@@ -1,5 +1,9 @@
 project(ref_gl)
 
+if (USE_SDL2)
+	include_directories(${SDL2_INCLUDE_DIR})
+endif()
+
 file(GLOB REF_GL_HEADERS
 	"*.h"
 	"../gameshared/q_*.h"
@@ -24,6 +28,12 @@ file(GLOB REF_GL_COMMON_SOURCES
 	"../qcommon/patch.c"
 	)
 
+# r_q1q2bsp.c is downstream Q1/Q2 BSP loader code that depends on
+# R_LoadShaderText, a function not present in the 2.15.1-backported
+# r_shader.c. Exclude it until either the function is ported or the
+# Q1/Q2 path is re-enabled.
+list(REMOVE_ITEM REF_GL_COMMON_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/r_q1q2bsp.c")
+
 file(GLOB STB_HEADERS
     "${STB_INCLUDE_DIR}/stb_image.h"
     "${STB_INCLUDE_DIR}/stb_image_write.h"
@@ -36,7 +46,7 @@ if (USE_SDL2)
 		"../sdl/sdl_qgl.c"
 		)
 
-	set(REF_GL_PLATFORM_LIBRARIES SDL2::SDL2)
+	set(REF_GL_PLATFORM_LIBRARIES ${SDL2_LIBRARY})
 else()
 	if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 		file(GLOB REF_GL_PLATFORM_SOURCES
@@ -58,10 +68,6 @@ else()
 	endif()
 endif()
 add_library(ref_gl SHARED ${REF_GL_HEADERS} ${REF_GL_COMMON_SOURCES} ${REF_GL_PLATFORM_SOURCES})
-target_include_directories(ref_gl PRIVATE ${STB_INCLUDE_DIR} "../ref_base" "../qcore")
-target_link_libraries(ref_gl PRIVATE qcore ${REF_GL_PLATFORM_LIBRARIES})
-
-
+target_include_directories(ref_gl PRIVATE ${STB_INCLUDE_DIR} "../ref_base")
+target_link_libraries(ref_gl PRIVATE ${REF_GL_PLATFORM_LIBRARIES})
 qf_set_output_dir(ref_gl libs)
-
-
