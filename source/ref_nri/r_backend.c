@@ -594,14 +594,16 @@ void RB_AddDynamicMesh( struct FrameState_s *cmd,
  */
 void RB_FlushDynamicMeshes( struct FrameState_s *cmd )
 {
+	TracyCZoneN( ctx, "RB_FlushDynamicMeshes", 1 );
 	float offsetx = 0.0f;
 	float offsety = 0.0f;
-	TracyCZoneN( ctx, "RB_FlushDynamicMeshes", 1 );
 	float transx;
 	float transy;
 	mat4_t m;
 
 	if( rb.numDynamicDraws == 0 ) {
+		
+		TracyCZoneEnd( ctx );
 		return;
 	}
 	// if(cmd->stackCmdBeingRendered == 0) {
