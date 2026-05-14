@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // r_main.c
 
 #include "r_local.h"
+#include "tracy/TracyC.h"
 
 r_globals_t rf;
 
@@ -1176,6 +1177,7 @@ void R_RenderView( const refdef_t *fd )
 {
 	int msec = 0;
 	bool shadowMap = rn.renderFlags & RF_SHADOWMAPVIEW ? true : false;
+	TracyCZoneN( ctx, "R_RenderView", 1 );
 
 	rn.refdef = *fd;
 	rn.numVisSurfaces = 0;
@@ -1212,8 +1214,10 @@ void R_RenderView( const refdef_t *fd )
 
 	R_ClearDrawList( rn.portalmasklist );
 
-	if( !rsh.worldModel && !( rn.refdef.rdflags & RDF_NOWORLDMODEL ) )
+	if( !rsh.worldModel && !( rn.refdef.rdflags & RDF_NOWORLDMODEL ) ) {
+		TracyCZoneEnd( ctx );
 		return;
+	}
 
 	R_SetupFrame();
 
@@ -1234,6 +1238,7 @@ void R_RenderView( const refdef_t *fd )
 
 			if( !rn.numVisSurfaces ) {
 				// no world surfaces visible
+				TracyCZoneEnd( ctx );
 				return;
 			}
 
@@ -1273,8 +1278,10 @@ void R_RenderView( const refdef_t *fd )
 
 	R_DrawPortals();
 
-	if( r_portalonly->integer && !( rn.renderFlags & ( RF_MIRRORVIEW|RF_PORTALVIEW ) ) )
+	if( r_portalonly->integer && !( rn.renderFlags & ( RF_MIRRORVIEW|RF_PORTALVIEW ) ) ) {
+		TracyCZoneEnd( ctx );
 		return;
+	}
 
 	R_Clear( ~0 );
 
@@ -1296,6 +1303,8 @@ void R_RenderView( const refdef_t *fd )
 	R_TransformForWorld();
 
 	R_EndGL();
+
+	TracyCZoneEnd( ctx );
 }
 
 #define REFINST_STACK_SIZE	64

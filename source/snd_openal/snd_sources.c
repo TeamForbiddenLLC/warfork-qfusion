@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "snd_local.h"
+#include "tracy/TracyC.h"
 
 #ifdef __MACOSX__
 #define MAX_SRC 64
@@ -298,6 +299,7 @@ void S_UpdateSources( void )
 {
 	int i, entNum;
 	ALint state;
+	TracyCZoneN( ctx, "S_UpdateSources", 1 );
 
 	for( i = 0; i < src_count; i++ )
 	{
@@ -338,6 +340,7 @@ void S_UpdateSources( void )
 
 		source_spatialize( &srclist[i] );
 	}
+	TracyCZoneEnd( ctx );
 }
 
 /*

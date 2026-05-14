@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // r_mesh.c: transformation and sorting
 
 #include "r_local.h"
+#include "tracy/TracyC.h"
 
 drawList_t r_worldlist;
 drawList_t r_shadowlist;
@@ -406,6 +407,7 @@ static const batchDrawSurf_cb r_batchDrawSurfCb[ST_MAX_TYPES] =
 */
 static void _R_DrawSurfaces(struct FrameState_s* frame, drawList_t *list )
 {
+	TracyCZoneN( ctx, "_R_DrawSurfaces", 1 );
 	unsigned int i;
 	unsigned int sortKey;
 	unsigned int shaderNum = 0, prevShaderNum = MAX_SHADERS;
@@ -430,6 +432,7 @@ static void _R_DrawSurfaces(struct FrameState_s* frame, drawList_t *list )
 	unsigned int shadowBits = 0;
 
 	if( !list->numDrawSurfs ) {
+		TracyCZoneEnd( ctx );
 		return;
 	}
 
@@ -589,6 +592,7 @@ static void _R_DrawSurfaces(struct FrameState_s* frame, drawList_t *list )
 	if( cullHack ) {
 		RB_FlipFrontFace(frame);
 	}
+	TracyCZoneEnd( ctx );
 }
 
 /*

@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "server.h"
 #include "../qcommon/steam.h"
 #include "../steamshim/src/mod_steam.h"
+#include "tracy/TracyC.h"
 static bool sv_initialized = false;
 
 mempool_t *sv_mempool;
@@ -109,6 +110,7 @@ static void SV_CalcPings( void )
 	unsigned int i, j;
 	client_t *cl;
 	unsigned int total, count, lat, best;
+	TracyCZoneN( ctx, "SV_CalcPings", 1 );
 
 	for( i = 0; i < (unsigned int)sv_maxclients->integer; i++ )
 	{
@@ -145,6 +147,7 @@ static void SV_CalcPings( void )
 		// let the game dll know about the ping
 		cl->edict->r.client->r.ping = cl->ping;
 	}
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -279,6 +282,7 @@ static void SV_ReadPackets( void )
 {
 	int i, socketind, ret;
 	client_t *cl;
+	TracyCZoneN( ctx, "SV_ReadPackets", 1 );
 #ifdef TCP_ALLOW_CONNECT
 	socket_t newsocket;
 #endif
@@ -486,6 +490,7 @@ static void SV_ReadPackets( void )
       }
   }
 
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -503,6 +508,7 @@ static void SV_CheckTimeouts( void )
 {
 	client_t *cl;
 	int i;
+	TracyCZoneN( ctx, "SV_CheckTimeouts", 1 );
 
 #ifdef TCP_ALLOW_CONNECT
 	// timeout incoming connections
@@ -553,6 +559,7 @@ static void SV_CheckTimeouts( void )
 			SV_ClientCloseDownload( cl );
 		}
 	}
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -567,6 +574,7 @@ static void SV_CheckLatchedUserinfoChanges( void )
 	client_t *cl;
 	int i;
 	unsigned int time = Sys_Milliseconds();
+	TracyCZoneN( ctx, "SV_CheckLatchedUserinfoChanges", 1 );
 
 	for( i = 0, cl = svs.clients; i < sv_maxclients->integer; i++, cl++ )
 	{
@@ -582,6 +590,7 @@ static void SV_CheckLatchedUserinfoChanges( void )
 			SV_UserinfoChanged( cl );
 		}
 	}
+	TracyCZoneEnd( ctx );
 }
 
 //#define WORLDFRAMETIME 25 // 40fps
@@ -596,6 +605,8 @@ static bool SV_RunGameFrame( int msec )
 	bool refreshSnapshot;
 	bool refreshGameModule;
 	bool sentFragments;
+
+	TracyCZoneN( ctx, "SV_RunGameFrame", 1 );
 
 	accTime += msec;
 
@@ -688,9 +699,11 @@ static bool SV_RunGameFrame( int msec )
 
 		sv.nextSnapTime = svs.gametime + ( svc.snapFrameTime - extraSnapTime );
 
+		TracyCZoneEnd( ctx );
 		return true;
 	}
 
+	TracyCZoneEnd( ctx );
 	return false;
 }
 
@@ -779,6 +792,8 @@ void SV_Frame( int realmsec, int gamemsec )
 		return;
 	}
 
+	TracyCZoneN( ctx, "SV_Frame_active", 1 );
+
 	svs.realtime += realmsec;
 	svs.gametime += gamemsec;
 
@@ -787,6 +802,7 @@ void SV_Frame( int realmsec, int gamemsec )
 	{
 		Cbuf_AddText( "wait; vstr nextmap\n" );
 		SV_ShutdownGame( "Restarting server due to time wrapping", true );
+		TracyCZoneEnd( ctx );
 		return;
 	}
 
@@ -828,6 +844,8 @@ void SV_Frame( int realmsec, int gamemsec )
 	SV_Web_GameFrame( ge->WebRequest );
 
 	SV_CheckPostUpdateRestart();
+
+	TracyCZoneEnd( ctx );
 }
 
 //============================================================================

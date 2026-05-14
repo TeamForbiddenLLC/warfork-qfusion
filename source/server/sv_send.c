@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // sv_main.c -- server main program
 
 #include "server.h"
+#include "tracy/TracyC.h"
 
 // shared message buffer to be used for occasional messages
 msg_t tmpMessage;
@@ -429,6 +430,8 @@ void SV_SendClientMessages( void )
 	int i;
 	client_t *client;
 
+	TracyCZoneN( ctx, "SV_SendClientMessages_loop", 1 );
+
 	// send a message to each connected client
 	for( i = 0, client = svs.clients; i < sv_maxclients->integer; i++, client++ )
 	{
@@ -475,4 +478,6 @@ void SV_SendClientMessages( void )
 			}
 		}
 	}
+
+	TracyCZoneEnd( ctx );
 }

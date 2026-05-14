@@ -55,6 +55,7 @@ file(GLOB parent_SRC
 )
 
 add_library(steamshim_parent STATIC ${parent_SRC})
+target_link_libraries(steamshim_parent PRIVATE Tracy::TracyClient)
 qf_set_output_dir(steamshim_parent libs)
 
 file(GLOB child_SRC

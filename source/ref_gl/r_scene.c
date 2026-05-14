@@ -19,6 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "r_local.h"
+#include "tracy/TracyC.h"
 
 static void R_ClearDebugBounds( void );
 static void R_RenderDebugBounds( void );
@@ -307,9 +308,13 @@ void R_RenderScene( const refdef_t *fd )
 	int fbFlags = 0;
 	int ppFrontBuffer = 0;
 	image_t *ppSource;
+	TracyCZoneN( ctx, "R_RenderScene", 1 );
 
-	if( r_norefresh->integer )
+	if( r_norefresh->integer ) {
+		TracyCZoneEnd( ctx );
 		return;
+	}
+
 
 	R_Set2DMode( false );
 
@@ -379,9 +384,9 @@ void R_RenderScene( const refdef_t *fd )
 
 	R_BindFrameBufferObject( 0 );
 
-	R_BuildShadowGroups();
+		R_BuildShadowGroups();
 
-	R_RenderView( fd );
+		R_RenderView( fd );
 
 	R_RenderDebugSurface( fd );
 
@@ -441,6 +446,8 @@ void R_RenderScene( const refdef_t *fd )
 			colorWhite, 0,
 			1, &( rn.refdef.colorCorrection->passes[0].images[0] ) );
 	}
+
+	TracyCZoneEnd( ctx );
 }
 
 /*

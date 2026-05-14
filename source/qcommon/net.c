@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "qcommon.h"
 
 #include "sys_net.h"
+#include "tracy/TracyC.h"
 #include "../steamshim/src/parent/parent.h"
 #include "../steamshim/src/mod_steam.h"
 #ifdef _WIN32
@@ -1067,32 +1068,44 @@ PUBLIC FUNCTIONS
 */
 int NET_GetPacket( const socket_t *socket, netadr_t *address, msg_t *message )
 {
+	int ret;
+	TracyCZoneN( ctx, "NET_GetPacket", 1 );
 	assert( socket->open );
 
-	if( !socket->open )
+	if( !socket->open ) {
+		TracyCZoneEnd( ctx );
 		return -1;
+	}
 
 	switch( socket->type )
 	{
 	case SOCKET_LOOPBACK:
-		return NET_Loopback_GetPacket( socket, address, message );
+		ret = NET_Loopback_GetPacket( socket, address, message );
+		break;
 
 	case SOCKET_UDP:
-		return NET_UDP_GetPacket( socket, address, message );
+		ret = NET_UDP_GetPacket( socket, address, message );
+		break;
 
 	case SOCKET_SDR:
-		return NET_SDR_GetPacket( socket, address, message );
+		ret = NET_SDR_GetPacket( socket, address, message );
+		break;
 
 #ifdef TCP_SUPPORT
 	case SOCKET_TCP:
-		return NET_TCP_GetPacket( socket, address, message );
+		ret = NET_TCP_GetPacket( socket, address, message );
+		break;
 #endif
 
 	default:
 		assert( false );
 		NET_SetErrorString( "Unknown socket type" );
-		return -1;
+		ret = -1;
+		break;
 	}
+
+	TracyCZoneEnd( ctx );
+	return ret;
 }
 
 /*
@@ -1908,8 +1921,12 @@ void NET_Sleep( int msec, socket_t *sockets[] )
 	fd_set fdset;
 	int i;
 
-	if( !sockets || !sockets[0] )
+	TracyCZoneN( ctx, "NET_Sleep", 1 );
+
+	if( !sockets || !sockets[0] ) {
+		TracyCZoneEnd( ctx );
 		return;
+	}
 
 	FD_ZERO( &fdset );
 
@@ -1938,6 +1955,7 @@ void NET_Sleep( int msec, socket_t *sockets[] )
 	timeout.tv_sec = msec / 1000;
 	timeout.tv_usec = ( msec % 1000 ) * 1000;
 	select( FD_SETSIZE, &fdset, NULL, NULL, &timeout );
+	TracyCZoneEnd( ctx );
 }
 
 /*
