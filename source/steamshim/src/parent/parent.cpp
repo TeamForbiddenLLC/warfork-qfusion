@@ -34,6 +34,8 @@ freely, subject to the following restrictions:
 
 #include "../mod_steam.h"
 
+#include "tracy/TracyC.h"
+
 int GArgc = 0;
 char **GArgv = NULL;
 
@@ -63,15 +65,19 @@ std::mutex writeGuard;
 
 int STEAMSHIM_dispatch()
 {
+	TracyCZoneN( ctx, "STEAMSHIM_dispatch", 1 );
 	// struct steam_packet_buf packet;
 	uint32_t syncIndex = 0;
 	// size_t cursor = 0;
 	struct steam_rpc_shim_common_s pkt;
 	pkt.cmd = RPC_PUMP;
 	if( STEAMSHIM_sendRPC( &pkt, sizeof( steam_rpc_shim_common_s ), NULL, NULL, &syncIndex ) < 0 ) {
+		TracyCZoneEnd( ctx );
 		return -1;
 	}
-	return STEAMSHIM_waitDispatchSync( syncIndex );
+	int result = STEAMSHIM_waitDispatchSync( syncIndex );
+	TracyCZoneEnd( ctx );
+	return result;
 }
 
 static bool setEnvironmentVars( PipeType pipeChildRead, PipeType pipeChildWrite )
@@ -177,20 +183,26 @@ void STEAMSHIM_deinit( void )
 
 bool STEAMSHIM_active()
 {
-	return ( ( GPipeRead != NULLPIPE ) && ( GPipeWrite != NULLPIPE ) );
+	TracyCZoneN( ctx, "STEAMSHIM_active", 1 );
+	bool result = ( ( GPipeRead != NULLPIPE ) && ( GPipeWrite != NULLPIPE ) );
+	TracyCZoneEnd( ctx );
+	return result;
 }
 
 int STEAMSHIM_sendEVT( void *packet, uint32_t size )
 {
+	TracyCZoneN( ctx, "STEAMSHIM_sendEVT", 1 );
 	writeGuard.lock();
 	writePipe( GPipeWrite, &size, sizeof( uint32_t ) );
 	writePipe( GPipeWrite, (uint8_t *)packet, size );
 	writeGuard.unlock();
+	TracyCZoneEnd( ctx );
 	return 0;
 }
 
 int STEAMSHIM_sendRPC( void *packet, uint32_t size, void *self, STEAMSHIM_rpc_handle rpc, uint32_t *sync )
 {
+	TracyCZoneN( ctx, "STEAMSHIM_sendRPC", 1 );
 	uint32_t syncIndex = ++SyncToken;
 	if( sync ) {
 		( *sync ) = syncIndex;
@@ -207,12 +219,15 @@ int STEAMSHIM_sendRPC( void *packet, uint32_t size, void *self, STEAMSHIM_rpc_ha
 	writePipe( GPipeWrite, &size, sizeof( uint32_t ) );
 	writePipe( GPipeWrite, (uint8_t *)packet, size );
 	writeGuard.unlock();
+	TracyCZoneEnd( ctx );
 	return 0;
 }
 
 int STEAMSHIM_waitDispatchSync( uint32_t syncIndex )
 {
+	TracyCZoneN( ctx, "STEAMSHIM_waitDispatchSync", 1 );
 	if( currentSync == syncIndex ) {
+		TracyCZoneEnd( ctx );
 		return 0; // can't wait on dispatch if there is no RPC's staged
 	}
 	static struct steam_packet_buf packet;
@@ -223,12 +238,14 @@ int STEAMSHIM_waitDispatchSync( uint32_t syncIndex )
 		if( bytesRead > 0 ) {
 			cursor += bytesRead;
 		} else {
+			TracyCZoneEnd( ctx );
 			return -1;
 		}
 	continue_processing:
 
 		if( packet.size > STEAM_PACKED_RESERVE_SIZE - sizeof( uint32_t ) ) {
 			// the packet is larger then the reserved size
+			TracyCZoneEnd( ctx );
 			return -1;
 		}
 
@@ -263,10 +280,12 @@ int STEAMSHIM_waitDispatchSync( uint32_t syncIndex )
 			break;
 		}
 	}
+	TracyCZoneEnd( ctx );
 	return 0;
 }
 void STEAMSHIM_subscribeEvent( uint32_t id, void *self, STEAMSHIM_evt_handle evt )
 {
+	TracyCZoneN( ctx, "STEAMSHIM_subscribeEvent", 1 );
 	assert( evt );
 	assert( id >= EVT_BEGIN && id < EVT_END );
 	struct event_subscriber_s *handle = evt_handles + ( id - EVT_BEGIN );
@@ -274,9 +293,11 @@ void STEAMSHIM_subscribeEvent( uint32_t id, void *self, STEAMSHIM_evt_handle evt
 	size_t subIndex = handle->numSubscribers++;
 	handle->handles[subIndex].self = self;
 	handle->handles[subIndex].cb = evt;
+	TracyCZoneEnd( ctx );
 }
 void STEAMSHIM_unsubscribeEvent( uint32_t id, STEAMSHIM_evt_handle cb )
 {
+	TracyCZoneN( ctx, "STEAMSHIM_unsubscribeEvent", 1 );
 	assert( id >= EVT_BEGIN && id < EVT_END );
 	struct event_subscriber_s *handle = evt_handles + ( id - EVT_BEGIN );
 	size_t ib = 0;
@@ -292,5 +313,6 @@ void STEAMSHIM_unsubscribeEvent( uint32_t id, STEAMSHIM_evt_handle cb )
 			continue;
 		handle->handles[ib] = handle->handles[ic];
 	}
+	TracyCZoneEnd( ctx );
 }
 }
