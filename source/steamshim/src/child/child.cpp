@@ -65,8 +65,47 @@ static ISteamUGC *GSteamUGC = NULL;
 ServerBrowser *GServerBrowser = NULL;
 static time_t time_since_last_pump = 0;
 
+// Tracked SDR connections. Populated when SteamNetConnectionStatusChangedCallback_t
+// reports Connected, removed on ClosedByPeer / ProblemDetectedLocally / None.
+// Drained every loop iteration to push messages as events to the parent.
+#define MAX_TRACKED_CONNS 256
+static HSteamNetConnection g_serverConns[MAX_TRACKED_CONNS];
+static int g_numServerConns = 0;
+static HSteamNetConnection g_clientConns[MAX_TRACKED_CONNS];
+static int g_numClientConns = 0;
+
 static void handleSteamConnectionStatusChanged( steam_cmd_s cmd, SteamNetConnectionStatusChangedCallback_t *pCallback )
 {
+	HSteamNetConnection *arr = ( cmd == EVT_SRV_P2P_CONNECTION_CHANGED ) ? g_serverConns : g_clientConns;
+	int *n                   = ( cmd == EVT_SRV_P2P_CONNECTION_CHANGED ) ? &g_numServerConns : &g_numClientConns;
+	const HSteamNetConnection h = pCallback->m_hConn;
+	switch( pCallback->m_info.m_eState ) {
+		case k_ESteamNetworkingConnectionState_Connected: {
+			bool found = false;
+			for( int i = 0; i < *n; i++ ) {
+				if( arr[i] == h ) {
+					found = true;
+					break;
+				}
+			}
+			if( !found && *n < MAX_TRACKED_CONNS )
+				arr[(*n)++] = h;
+			break;
+		}
+		case k_ESteamNetworkingConnectionState_ClosedByPeer:
+		case k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
+		case k_ESteamNetworkingConnectionState_None:
+			for( int i = 0; i < *n; i++ ) {
+				if( arr[i] == h ) {
+					arr[i] = arr[--(*n)];
+					break;
+				}
+			}
+			break;
+		default:
+			break;
+	}
+
 	struct p2p_net_connection_changed_evt_s evt;
 	evt.cmd = cmd;
 	evt.hConn = pCallback->m_hConn;
@@ -77,37 +116,50 @@ static void handleSteamConnectionStatusChanged( steam_cmd_s cmd, SteamNetConnect
 	write_packet( GPipeWrite, &evt, sizeof( p2p_net_connection_changed_evt_s ) );
 }
 
-static void handleRecvMessageRPC( const steam_rpc_shim_common_s *req, SteamNetworkingMessage_t **msgs, int num_messages, uint64_t steamID, uint32_t handle )
+static void _drainSocket( steam_cmd_s evtCmd, ISteamNetworkingSockets *sockets, HSteamNetConnection h )
 {
-	if(num_messages == -1) {
-		recv_messages_recv_s recv;
-		recv.steamID = steamID;
-		recv.handle = handle;
-		recv.count = 0;
-		prepared_rpc_packet( req, &recv );
-		write_packet( GPipeWrite, &recv, sizeof( struct recv_messages_recv_s ));
-		printf("invalid handle for req: %d\n", req->cmd);
+	SteamNetworkingMessage_t *msgs[SDR_MAX_REQUESTED_PACKETS];
+	const int n = sockets->ReceiveMessagesOnConnection( h, msgs, SDR_MAX_REQUESTED_PACKETS );
+	if( n <= 0 )
 		return;
-	}
+
+	SteamNetConnectionInfo_t info;
+	sockets->GetConnectionInfo( h, &info );
+	const uint64_t steamid = info.m_identityRemote.GetSteamID().ConvertToUint64();
 
 	size_t total = 0;
-	for( int i = 0; i < num_messages; i++ ) {
+	for( int i = 0; i < n; i++ )
 		total += msgs[i]->GetSize();
-	}
-	auto recv = (struct recv_messages_recv_s *)malloc( sizeof( struct recv_messages_recv_s ) + total );
-	recv->steamID = steamID;
-	recv->handle = handle;
-	recv->count = num_messages;
-	size_t offset = 0;
 
-	for( int i = 0; i < num_messages; i++ ) {
-		recv->messageinfo[i].count = msgs[i]->GetSize();
-		memcpy( recv->buffer + offset, msgs[i]->GetData(), msgs[i]->GetSize() );
-		offset += msgs[i]->GetSize();
+	auto evt = (struct recv_messages_evt_s *)malloc( sizeof( struct recv_messages_evt_s ) + total );
+	evt->cmd     = evtCmd;
+	evt->steamID = steamid;
+	evt->handle  = h;
+	evt->count   = n;
+	size_t offset = 0;
+	for( int i = 0; i < n; i++ ) {
+		const size_t sz = msgs[i]->GetSize();
+		evt->messageinfo[i].count = (int)sz;
+		memcpy( evt->buffer + offset, msgs[i]->GetData(), sz );
+		offset += sz;
+		msgs[i]->Release();
 	}
-	prepared_rpc_packet( req, recv );
-	write_packet( GPipeWrite, recv, sizeof( struct recv_messages_recv_s ) + total );
-	free( recv );
+	write_packet( GPipeWrite, evt, sizeof( struct recv_messages_evt_s ) + total );
+	free( evt );
+}
+
+static void drainAllConnections( void )
+{
+	if( GRunServer ) {
+		ISteamNetworkingSockets *s = SteamGameServerNetworkingSockets();
+		for( int i = 0; i < g_numServerConns; i++ )
+			_drainSocket( EVT_SRV_P2P_RECV_MESSAGES, s, g_serverConns[i] );
+	}
+	if( GRunClient ) {
+		ISteamNetworkingSockets *s = SteamNetworkingSockets();
+		for( int i = 0; i < g_numClientConns; i++ )
+			_drainSocket( EVT_P2P_RECV_MESSAGES, s, g_clientConns[i] );
+	}
 }
 
 static void processEVT( steam_evt_pkt_s *req, size_t size )
@@ -329,25 +381,6 @@ static void processRPC( steam_rpc_pkt_s *req, size_t size )
 			struct steam_rpc_shim_common_s recv;
 			prepared_rpc_packet( &req->common, &recv );
 			write_packet( GPipeWrite, &recv, sizeof( steam_rpc_shim_common_s ) );
-			break;
-		}
-		case RPC_SRV_P2P_RECV_MESSAGES: {
-			SteamNetworkingMessage_t *msgs[32];
-			SteamNetConnectionInfo_t info;
-			SteamGameServerNetworkingSockets()->GetConnectionInfo( req->recv_messages.handle, &info );
-			const uint64_t steamid = info.m_identityRemote.GetSteamID().ConvertToUint64();
-			const int n = SteamGameServerNetworkingSockets()->ReceiveMessagesOnConnection( req->recv_messages.handle, msgs, 1 );
-			handleRecvMessageRPC( &req->common, msgs, n, steamid, req->recv_messages.handle );
-			break;
-		}
-		case RPC_P2P_RECV_MESSAGES: {
-			SteamNetworkingMessage_t *msgs[32];
-			SteamNetConnectionInfo_t info;
-			SteamNetworkingSockets()->GetConnectionInfo( req->recv_messages.handle, &info );
-			const uint64_t steamid = info.m_identityRemote.GetSteamID().ConvertToUint64();
-
-			const int n = SteamNetworkingSockets()->ReceiveMessagesOnConnection( req->recv_messages.handle, msgs, 1 );
-			handleRecvMessageRPC( &req->common, msgs, n, steamid, req->recv_messages.handle );
 			break;
 		}
 		case RPC_GETVOICE: {
@@ -615,6 +648,7 @@ static void processCommands()
 
 		processSteamServerDispatch();
 		processSteamDispatch();
+		drainAllConnections();
 	continue_processing:
 
 		if( packet.size > STEAM_PACKED_RESERVE_SIZE - sizeof( uint32_t ) ) {

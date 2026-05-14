@@ -23,10 +23,12 @@ freely, subject to the following restrictions:
 
 #include "../../gameshared/q_arch.h"
 
+#define WAIT_SYNC_NONBLOCKING 0
 #define STEAM_AVATAR_SIZE ( 128 * 128 * 4 )
 #define PIPEMESSAGE_MAX ( STEAM_AVATAR_SIZE + 64 )
 #define AUTH_TICKET_MAXSIZE 1024
 #define SDR_MAX_MESSAGE_SIZE 32768
+#define SDR_MAX_REQUESTED_PACKETS 32
 typedef struct {
 	char pTicket[AUTH_TICKET_MAXSIZE];
 	long long pcbTicket;
@@ -211,14 +213,12 @@ enum steam_cmd_s {
 	RPC_SRV_P2P_ACCEPT_CONNECTION,
 	RPC_SRV_P2P_DISCONNECT,
 	RPC_SRV_P2P_SEND_MESSAGE,
-	RPC_SRV_P2P_RECV_MESSAGES,
 	RPC_SRV_P2P_CLOSE_LISTEN,
 
 	RPC_P2P_CONNECT,
 	RPC_P2P_DISCONNECT,
 
 	RPC_P2P_SEND_MESSAGE,
-	RPC_P2P_RECV_MESSAGES,
 
 	RPC_AUTHSESSION_TICKET,
 
@@ -236,6 +236,9 @@ enum steam_cmd_s {
 	EVT_P2P_CONNECTION_CHANGED,
 
 	EVT_SRV_P2P_CONNECTION_CHANGED,
+
+	EVT_P2P_RECV_MESSAGES,
+	EVT_SRV_P2P_RECV_MESSAGES,
 
 	EVT_END,
 	CMD_LEN
@@ -376,24 +379,6 @@ STEAM_RPC_REQ( send_message )
 	char buffer[];
 };
 
-STEAM_RPC_REQ( recv_messages )
-{
-	STEAM_RPC_SHIM_COMMON()
-	uint32_t handle;
-};
-
-STEAM_RPC_RECV( recv_messages )
-{
-	STEAM_RPC_SHIM_COMMON()
-	uint64_t steamID;
-	uint32_t handle; // -1 for the client->server handle
-	int count;
-	struct {
-		int count;
-	} messageinfo[32];
-	char buffer[];
-};
-
 STEAM_RPC_RECV( getvoice )
 {
 	STEAM_RPC_SHIM_COMMON()
@@ -438,8 +423,6 @@ struct steam_rpc_pkt_s {
 		struct p2p_listen_recv_s p2p_listen_recv;
 
 		struct send_message_req_s send_message;
-		struct recv_messages_req_s recv_messages;
-		struct recv_messages_recv_s recv_messages_recv;
 
 		struct getvoice_recv_s getvoice_recv;
 		struct decompress_voice_req_s decompress_voice;
@@ -517,6 +500,18 @@ STEAM_EVT( p2p_net_connection_changed )
 	uint32_t state;
 };
 
+STEAM_EVT( recv_messages )
+{
+	STEAM_SHIM_COMMON()
+	uint64_t steamID;
+	uint32_t handle;
+	int      count;
+	struct {
+		int count;
+	} messageinfo[SDR_MAX_REQUESTED_PACKETS];
+	char     buffer[];
+};
+
 struct steam_evt_pkt_s {
 	union {
 		struct steam_shim_common_s common;
@@ -526,7 +521,8 @@ struct steam_evt_pkt_s {
 		struct p2p_lost_connection_evt_s p2p_lost_connection;
 		struct p2p_connection_status_changed_evt_s p2p_connection_status_changed;
 		struct p2p_net_connection_changed_evt_s p2p_net_connection_changed;
-		struct policy_response_evt_s policy_response; 
+		struct recv_messages_evt_s recv_messages;
+		struct policy_response_evt_s policy_response;
 	};
 };
 

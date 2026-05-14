@@ -73,6 +73,77 @@ static bool	net_initialized = false;
 static int numIP;
 static uint8_t localIP[MAX_IPS][4];
 
+#define STEAM_SLOT_MAX 256
+
+struct steam_pkt_recieved_s {
+	struct steam_pkt_recieved_s *next;
+	uint32_t handle;           // HSteamNetConnection (peer connection)
+	uint64_t steam_handle;     // peer SteamID
+	size_t   recvSize;
+	uint8_t  buffered[];
+};
+
+struct steam_slot_s {
+	uint32_t handle;
+	struct steam_pkt_recieved_s *head;
+	struct steam_pkt_recieved_s *tail;
+};
+
+static struct steam_slot_s steam_slots[STEAM_SLOT_MAX];
+static size_t              num_steam_slots = 0;
+
+static void __SDR_DisconnectMessages( void *self, struct steam_rpc_pkt_s *pkt )
+{
+	struct p2p_disconnect_req_s *rpc = &pkt->p2p_disconnect;
+	for( size_t i = 0; i < num_steam_slots; i++ ) {
+		if( steam_slots[i].handle != rpc->handle)
+			continue;
+		struct steam_pkt_recieved_s *p = steam_slots[i].head;
+		while( p ) {
+			struct steam_pkt_recieved_s *next = p->next;
+			free( p );
+			p = next;
+		}
+		steam_slots[i] = steam_slots[--num_steam_slots];
+		return;
+	}	
+}
+
+static void __SDR_OnRecvMessages( void *self, struct steam_evt_pkt_s *pkt )
+{
+	struct recv_messages_evt_s *evt = &pkt->recv_messages;
+	struct steam_slot_s *slot = NULL; //__SDR_GetOrCreateSlot( evt->handle );
+	for( size_t i = 0; i < num_steam_slots; i++ ) {
+		if( steam_slots[i].handle == evt->handle ) {
+			slot = &steam_slots[i];
+		}
+	}
+	if( slot == NULL ) {
+		if( num_steam_slots >= STEAM_SLOT_MAX )
+			return;
+		slot = &steam_slots[num_steam_slots++];
+		slot->handle = evt->handle;
+		slot->head = NULL;
+		slot->tail = NULL;
+	}
+	size_t offset = 0;
+	for( int i = 0; i < evt->count; i++ ) {
+		size_t isz = (size_t)evt->messageinfo[i].count;
+		struct steam_pkt_recieved_s *p = malloc( sizeof( struct steam_pkt_recieved_s ) + isz );
+		p->next = NULL;
+		p->handle = evt->handle;
+		p->steam_handle = evt->steamID;
+		p->recvSize = isz;
+		memcpy( p->buffered, evt->buffer + offset, isz );
+		if( slot->tail )
+			slot->tail->next = p;
+		else
+			slot->head = p;
+		slot->tail = p;
+		offset += isz;
+	}
+}
+
 /*
 =============================================================================
 PRIVATE FUNCTIONS
@@ -339,48 +410,38 @@ static bool NET_SocketMakeNonBlocking( socket_handle_t handle )
 	return true;
 }
 
-struct SDR_GetPacket_Self {
-	msg_t* message;
-	netadr_t* addr;
-	int result;
-};
-static void NET_SDR_ConsumePacket(void* self, struct steam_rpc_pkt_s* rpc) {
-	struct SDR_GetPacket_Self* netRecieve = self;
-	msg_t* message = netRecieve->message;
-	netadr_t* address = netRecieve->addr;
-	struct recv_messages_recv_s *recv = &rpc->recv_messages_recv;
-	if(recv->count == 0) {
-		message->cursize = 0;
-		netRecieve->result = 0;
-		return;
+static int NET_SDR_GetPacket( const socket_t *socket, netadr_t *address, msg_t *message )
+{
+	assert( socket && socket->open && socket->type == SOCKET_SDR );
+
+	STEAMSHIM_dispatch();
+
+	struct steam_slot_s *slot = NULL;
+	for( size_t i = 0; i < num_steam_slots; i++ ) {
+		if( steam_slots[i].handle == socket->steam_handle ) {
+			slot = &steam_slots[i];
+			break;
+		}
 	}
+	if( !slot || !slot->head )
+		return 0;
 
-	int size = recv->messageinfo[0].count;
-	if (size > message->maxsize)
-		size = message->maxsize;
-	message->cursize = size;
+	struct steam_pkt_recieved_s *p = slot->head;
+	slot->head = p->next;
+	if( !slot->head )
+		slot->tail = NULL;
 
-	memcpy(message->data, recv->buffer, size);
-	NET_InitAddress(address, NA_SDR);
-	address->address.steamid = recv->steamID;
-	netRecieve->result = 1;
-}
+	size_t sz = p->recvSize;
+	if( sz > message->maxsize )
+		sz = message->maxsize;
+	memcpy( message->data, p->buffered, sz );
+	message->cursize   = sz;
+	message->readcount = 0;
+	NET_InitAddress( address, NA_SDR );
+	address->address.steamid = p->steam_handle;
 
-static int NET_SDR_GetPacket( const socket_t *socket, netadr_t *address, msg_t *message ) {
-  assert(socket && socket->open && socket->type == SOCKET_SDR);
-	struct recv_messages_req_s req;
-	if(socket->server) {
-		req.cmd = RPC_SRV_P2P_RECV_MESSAGES;
-	} else {
-		req.cmd = RPC_P2P_RECV_MESSAGES;
-	}
-	req.handle = socket->steam_handle;
-
-	uint32_t syncIndex;
-	struct SDR_GetPacket_Self self = {message, address, -1}; 
-	STEAMSHIM_sendRPC(&req, sizeof req, &self, NET_SDR_ConsumePacket, &syncIndex);
-	STEAMSHIM_waitDispatchSync(syncIndex);
-	return self.result;
+	free( p );
+	return 1;
 }
 
 /*
@@ -576,13 +637,10 @@ static void NET_SDR_CloseSocket( socket_t *socket ) {
 		return;
 
 	struct p2p_disconnect_req_s req;
-	if(socket->server) {
-		req.cmd = RPC_SRV_P2P_DISCONNECT;
-	} else {
-		req.cmd = RPC_P2P_DISCONNECT;
-	}
+	req.cmd = socket->server ? RPC_SRV_P2P_DISCONNECT : RPC_P2P_DISCONNECT;
 	req.handle = socket->handle;
-	STEAMSHIM_sendRPC(&req, sizeof req, NULL, NULL, NULL);
+	STEAMSHIM_sendRPC( &req, sizeof req, NULL, __SDR_DisconnectMessages, NULL );
+
 	socket->open = false;
 	socket->handle = 0;
 }
@@ -2094,6 +2152,10 @@ void NET_Init( void )
 
 	GetLocalAddress();
 
+	num_steam_slots = 0;
+	STEAMSHIM_subscribeEvent( EVT_P2P_RECV_MESSAGES, NULL, __SDR_OnRecvMessages );
+	STEAMSHIM_subscribeEvent( EVT_SRV_P2P_RECV_MESSAGES, NULL, __SDR_OnRecvMessages );
+
 	net_initialized = true;
 }
 
@@ -2108,6 +2170,18 @@ void NET_Shutdown( void )
 	errorstring[0] = '\0';
 
 	Sys_NET_Shutdown();
+
+	STEAMSHIM_unsubscribeEvent( EVT_P2P_RECV_MESSAGES, __SDR_OnRecvMessages );
+	STEAMSHIM_unsubscribeEvent( EVT_SRV_P2P_RECV_MESSAGES, __SDR_OnRecvMessages );
+	for( size_t i = 0; i < num_steam_slots; i++ ) {
+		struct steam_pkt_recieved_s *p = steam_slots[i].head;
+		while( p ) {
+			struct steam_pkt_recieved_s *next = p->next;
+			free( p );
+			p = next;
+		}
+	}
+	num_steam_slots = 0;
 
 	net_initialized = false;
 }
