@@ -116,6 +116,7 @@ static void __SDR_OnRecvMessages( void *self, struct steam_evt_pkt_s *pkt )
 	for( size_t i = 0; i < num_steam_slots; i++ ) {
 		if( steam_slots[i].handle == evt->handle ) {
 			slot = &steam_slots[i];
+			break;
 		}
 	}
 	if( slot == NULL ) {
