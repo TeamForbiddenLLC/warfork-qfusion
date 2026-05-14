@@ -25,6 +25,7 @@ freely, subject to the following restrictions:
 #include <mutex>
 #include <stdio.h>
 #include <thread>
+#include <vector>
 #define DEBUGPIPE 1
 #include "../os.h"
 #include "../steamshim.h"
@@ -35,6 +36,7 @@ freely, subject to the following restrictions:
 #include "../mod_steam.h"
 
 #include "tracy/TracyC.h"
+
 
 int GArgc = 0;
 char **GArgv = NULL;
@@ -56,26 +58,85 @@ struct event_subscriber_s {
 	} handles[NUM_EVT_HANDLE];
 };
 
-static std::atomic<size_t> SyncToken;
+static std::atomic<size_t> SyncToken = 1;
 static size_t currentSync;
 static struct steam_rpc_async_s rpc_handles[NUM_RPC_ASYNC_HANDLE];
 static struct event_subscriber_s evt_handles[STEAM_EVT_LEN];
 
+// Accumulation buffer shared by STEAMSHIM_dispatch (non-blocking drain) and
+// STEAMSHIM_waitDispatchSync (blocking wait). Grows to fit oversized packets.
+// Only the main thread reads from GPipeRead, so no synchronization is needed.
+static std::vector<uint8_t> dispatchBuf;
+static size_t dispatchCursor = 0;
+
 std::mutex writeGuard;
+
+static int processBufferedPackets( uint32_t waitSync )
+{
+	while( 1 ) {
+		// Drain every complete packet currently in the buffer.
+		while( dispatchCursor >= sizeof( uint32_t ) ) {
+			struct steam_packet_buf *packet = reinterpret_cast<struct steam_packet_buf *>( dispatchBuf.data() );
+			const size_t packetlen = (size_t)packet->size + sizeof( uint32_t );
+			if( packetlen < sizeof( uint32_t ) ) {
+				// overflow guard — reset and bail
+				dispatchCursor = 0;
+				return -1;
+			}
+			if( packetlen > dispatchBuf.size() ) {
+				dispatchBuf.resize( packetlen );
+				packet = reinterpret_cast<struct steam_packet_buf *>( dispatchBuf.data() );
+			}
+			if( dispatchCursor < packetlen ) {
+				break; // body still arriving — fall through to read more
+			}
+
+			const bool rpcPacket = packet->common.cmd >= RPC_BEGIN && packet->common.cmd < RPC_END;
+			if( rpcPacket ) {
+				struct steam_rpc_async_s *handle = rpc_handles + ( packet->rpc_payload.common.sync % NUM_RPC_ASYNC_HANDLE );
+				if( handle->cb ) {
+					handle->cb( handle->self, &packet->rpc_payload );
+				}
+				currentSync = packet->rpc_payload.common.sync;
+			} else if( packet->common.cmd >= EVT_BEGIN && packet->common.cmd < EVT_END ) {
+				struct event_subscriber_s *handle = evt_handles + ( packet->common.cmd - EVT_BEGIN );
+				for( size_t i = 0; i < handle->numSubscribers; i++ ) {
+					handle->handles[i].cb( handle->handles[i].self, &packet->evt_payload );
+				}
+			}
+
+			if( dispatchCursor > packetlen ) {
+				const size_t remainingLen = dispatchCursor - packetlen;
+				memmove( dispatchBuf.data(), dispatchBuf.data() + packetlen, remainingLen );
+				dispatchCursor = remainingLen;
+			} else {
+				dispatchCursor = 0;
+			}
+
+			if( waitSync != WAIT_SYNC_NONBLOCKING && currentSync == waitSync ) {
+				return 0;
+			}
+		}
+
+		// Buffer fully decoded; need more bytes from the pipe.
+		if( waitSync == WAIT_SYNC_NONBLOCKING && !pipeReady( GPipeRead ) ) {
+			return 0;
+		}
+		if( dispatchBuf.empty() ) {
+			dispatchBuf.resize( STEAM_PACKED_RESERVE_SIZE );
+		}
+		int bytesRead = readPipe( GPipeRead, dispatchBuf.data() + dispatchCursor, dispatchBuf.size() - dispatchCursor );
+		if( bytesRead <= 0 ) {
+			return -1;
+		}
+		dispatchCursor += bytesRead;
+	}
+}
 
 int STEAMSHIM_dispatch()
 {
 	TracyCZoneN( ctx, "STEAMSHIM_dispatch", 1 );
-	// struct steam_packet_buf packet;
-	uint32_t syncIndex = 0;
-	// size_t cursor = 0;
-	struct steam_rpc_shim_common_s pkt;
-	pkt.cmd = RPC_PUMP;
-	if( STEAMSHIM_sendRPC( &pkt, sizeof( steam_rpc_shim_common_s ), NULL, NULL, &syncIndex ) < 0 ) {
-		TracyCZoneEnd( ctx );
-		return -1;
-	}
-	int result = STEAMSHIM_waitDispatchSync( syncIndex );
+	int result = processBufferedPackets( WAIT_SYNC_NONBLOCKING );
 	TracyCZoneEnd( ctx );
 	return result;
 }
@@ -114,6 +175,9 @@ int STEAMSHIM_init( SteamshimOptions *options )
 	PipeType pipeChildRead = NULLPIPE;
 	PipeType pipeChildWrite = NULLPIPE;
 	ProcessType childPid;
+
+	dispatchBuf.resize( STEAM_PACKED_RESERVE_SIZE );
+	dispatchCursor = 0;
 
 	if( options->runclient )
 		setEnvVar( "STEAMSHIM_RUNCLIENT", "1" );
@@ -168,13 +232,16 @@ int STEAMSHIM_init( SteamshimOptions *options )
 void STEAMSHIM_deinit( void )
 {
 	dbgprintf( "Child deinit.\n" );
-	if( GPipeWrite != NULLPIPE ) 
+	if( GPipeWrite != NULLPIPE )
 		closePipe( GPipeWrite );
 
 	if( GPipeRead != NULLPIPE )
 		closePipe( GPipeRead );
 
 	GPipeRead = GPipeWrite = NULLPIPE;
+
+	dispatchBuf.clear();
+	dispatchCursor = 0;
 
 #ifndef _WIN32
 	signal( SIGPIPE, SIG_DFL );
@@ -230,58 +297,13 @@ int STEAMSHIM_waitDispatchSync( uint32_t syncIndex )
 		TracyCZoneEnd( ctx );
 		return 0; // can't wait on dispatch if there is no RPC's staged
 	}
-	static struct steam_packet_buf packet;
-	static size_t cursor = 0;
-	while( 1 ) {
-		assert( sizeof( struct steam_packet_buf ) == STEAM_PACKED_RESERVE_SIZE );
-		int bytesRead = readPipe( GPipeRead, packet.buffer + cursor, STEAM_PACKED_RESERVE_SIZE - cursor );
-		if( bytesRead > 0 ) {
-			cursor += bytesRead;
-		} else {
-			TracyCZoneEnd( ctx );
-			return -1;
-		}
-	continue_processing:
-
-		if( packet.size > STEAM_PACKED_RESERVE_SIZE - sizeof( uint32_t ) ) {
-			// the packet is larger then the reserved size
-			TracyCZoneEnd( ctx );
-			return -1;
-		}
-
-		if( cursor < packet.size + sizeof( uint32_t ) ) {
-			continue;
-		}
-		const bool rpcPacket = packet.common.cmd >= RPC_BEGIN && packet.common.cmd < RPC_END;
-		if( rpcPacket ) {
-			// assert(packet.rpc_payload.common.sync > currentSync); // rpc's are FIFO no out of order
-			struct steam_rpc_async_s *handle = rpc_handles + ( packet.rpc_payload.common.sync % NUM_RPC_ASYNC_HANDLE );
-			if( handle->cb ) {
-				handle->cb( handle->self, &packet.rpc_payload );
-			}
-			currentSync = packet.rpc_payload.common.sync;
-		} else if( packet.common.cmd >= EVT_BEGIN && packet.common.cmd < EVT_END ) {
-			struct event_subscriber_s *handle = evt_handles + ( packet.common.cmd - EVT_BEGIN );
-			for( size_t i = 0; i < handle->numSubscribers; i++ ) {
-				handle->handles[i].cb( handle->handles[i].self, &packet.evt_payload );
-			}
-		}
-
-		if( cursor > packet.size + sizeof( uint32_t ) ) {
-			const size_t packetlen = packet.size + sizeof( uint32_t );
-			const size_t remainingLen = cursor - packetlen;
-			memmove( packet.buffer, packet.buffer + packet.size + sizeof( uint32_t ), remainingLen );
-			cursor = remainingLen;
-			goto continue_processing;
-		} else {
-			cursor = 0;
-		}
-		if( rpcPacket && currentSync == syncIndex ) {
-			break;
-		}
-	}
+	int result = processBufferedPackets( syncIndex );
 	TracyCZoneEnd( ctx );
-	return 0;
+	return result;
+}
+uint32_t STEAMSHIM_currentSync()
+{
+	return (uint32_t)currentSync;
 }
 void STEAMSHIM_subscribeEvent( uint32_t id, void *self, STEAMSHIM_evt_handle evt )
 {
