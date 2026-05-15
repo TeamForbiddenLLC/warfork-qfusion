@@ -170,7 +170,7 @@ Defined in [`source/CMakeLists.txt`](source/CMakeLists.txt). Pass via `-D<NAME>=
 | `BUILD_STEAMLIB`      | OFF*    | Build the Steamworks integration module  |
 | `BUILD_UNIT_TEST`     | OFF     | Build cmocka/utest-based unit tests      |
 | `GAME_MODULES_ONLY`   | OFF     | Build only `cgame`/`game`/`ui` modules   |
-| `USE_GRAPHICS_NRI`    | OFF*    | Use the NVIDIA NRI renderer (Vulkan/D3D) |
+| `USE_GRAPHICS_NRI`    | OFF*    | Use the RI renderer (Vulkan)             |
 | `USE_CRASHPAD`        | OFF*    | Enable Crashpad crash reporting          |
 | `USE_GRAPHICS_X11`    | ON      | (Linux) X11 backend                      |
 | `USE_GRAPHICS_WAYLAND`| ON      | (Linux) Wayland backend                  |
@@ -181,5 +181,5 @@ Defined in [`source/CMakeLists.txt`](source/CMakeLists.txt). Pass via `-D<NAME>=
 | `USE_SYSTEM_FREETYPE` | OFF*    | Use system FreeType                      |
 | `USE_SYSTEM_OGG`      | OFF     | Use system Ogg                           |
 | `USE_SYSTEM_VORBIS`   | OFF     | Use system Vorbis                        |
-
+| `TRACY_ENABLE`        | OFF     | Compile in Tracy profiling instrumentation |
 \* The workflow presets override several of these defaults — check [`source/CMakePresets.json`](source/CMakePresets.json).

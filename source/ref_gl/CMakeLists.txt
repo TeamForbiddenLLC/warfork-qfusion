@@ -59,7 +59,7 @@ else()
 endif()
 add_library(ref_gl SHARED ${REF_GL_HEADERS} ${REF_GL_COMMON_SOURCES} ${REF_GL_PLATFORM_SOURCES})
 target_include_directories(ref_gl PRIVATE ${STB_INCLUDE_DIR} "../ref_base" "../qcore")
-target_link_libraries(ref_gl PRIVATE qcore ${REF_GL_PLATFORM_LIBRARIES})
+target_link_libraries(ref_gl PRIVATE qcore ${REF_GL_PLATFORM_LIBRARIES} Tracy::TracyClient)
 
 
 qf_set_output_dir(ref_gl libs)

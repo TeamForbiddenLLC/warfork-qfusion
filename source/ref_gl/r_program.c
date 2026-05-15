@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 #include "../qalgo/q_trie.h"
+#include "tracy/TracyC.h"
 
 #define MAX_GLSL_PROGRAMS			1024
 #define GLSL_PROGRAMS_HASH_SIZE		256
@@ -163,8 +164,10 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 void RP_Init( void )
 {
 	int program;
+	TracyCZoneN( ctx, "RP_Init", 1 );
 
 	if( r_glslprograms_initialized ) {
+		TracyCZoneEnd( ctx );
 		return;
 	}
 
@@ -195,6 +198,7 @@ void RP_Init( void )
 	}
 
 	r_glslprograms_initialized = true;
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -529,15 +533,18 @@ static void RF_DeleteProgram( glsl_program_t *program )
 /*
 * RF_CompileShader
 */
-static int RF_CompileShader( int program, const char *programName, const char *shaderName, 
+static int RF_CompileShader( int program, const char *programName, const char *shaderName,
 	int shaderType, const char **strings, int numStrings )
 {
 	GLhandleARB shader;
 	GLint compiled;
+	TracyCZoneN( ctx, "RF_CompileShader", 1 );
 
 	shader = qglCreateShader( (GLenum)shaderType );
-	if( !shader )
+	if( !shader ) {
+		TracyCZoneEnd( ctx );
 		return 0;
+	}
 
 	// if lengths is NULL, then each string is assumed to be null-terminated
 	qglShaderSourceARB( shader, numStrings, strings, NULL );
@@ -566,11 +573,13 @@ static int RF_CompileShader( int program, const char *programName, const char *s
 		}
 
 		qglDeleteShader( shader );
+		TracyCZoneEnd( ctx );
 		return 0;
 	}
 
 	qglAttachShader( program, shader );
 
+	TracyCZoneEnd( ctx );
 	return shader;
 }
 
@@ -1596,13 +1605,14 @@ static int R_Features2HashKey( r_glslfeat_t features )
 /*
 * RP_RegisterProgramBinary
 */
-static int RP_RegisterProgramBinary( int type, const char *name, const char *deformsKey, 
-	const deformv_t *deforms, int numDeforms, r_glslfeat_t features, 
+static int RP_RegisterProgramBinary( int type, const char *name, const char *deformsKey,
+	const deformv_t *deforms, int numDeforms, r_glslfeat_t features,
 	int binaryFormat, unsigned binaryLength, void *binary )
 {
 	unsigned int i;
 	int hash;
 	int linked, error = 0;
+	TracyCZoneN( ctx, "RP_RegisterProgramBinary", 1 );
 	int shaderTypeIdx, wavefuncsIdx, deformvIdx, dualQuatsIdx, instancedIdx, vTransformsIdx;
 	int enableTextureArrayIdx;
 #ifndef GL_ES_VERSION_2_0
@@ -1622,8 +1632,10 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	const char *deformv;
 	glslParser_t parser;
 
-	if( type <= GLSL_PROGRAM_TYPE_NONE || type >= GLSL_PROGRAM_TYPE_MAXTYPE )
+	if( type <= GLSL_PROGRAM_TYPE_NONE || type >= GLSL_PROGRAM_TYPE_MAXTYPE ) {
+		TracyCZoneEnd( ctx );
 		return 0;
+	}
 
 	assert( !deforms || deformsKey );
 
@@ -1635,6 +1647,7 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	for( program = r_glslprograms_hash[type][hash]; program; program = program->hash_next )
 	{
 		if( ( program->features == features ) && !strcmp( program->deformsKey, deformsKey ) ) {
+			TracyCZoneEnd( ctx );
 			return ( (program - r_glslprograms) + 1 );
 		}
 	}
@@ -1642,6 +1655,7 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	if( r_numglslprograms == MAX_GLSL_PROGRAMS )
 	{
 		Com_Printf( S_COLOR_YELLOW "RP_RegisterProgram: GLSL programs limit exceeded\n" );
+		TracyCZoneEnd( ctx );
 		return 0;
 	}
 
@@ -1667,6 +1681,7 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 		}
 		else {
 			Com_Printf( S_COLOR_YELLOW "RP_RegisterProgram: failed to find parent for program type %i\n", type );
+			TracyCZoneEnd( ctx );
 			return 0;
 		}
 	}
@@ -1923,17 +1938,22 @@ done:
 		RP_GetUniformLocations( program );
 	}
 
+	TracyCZoneEnd( ctx );
 	return ( program - r_glslprograms ) + 1;
 }
 
 /*
 * RP_RegisterProgram
 */
-int RP_RegisterProgram( int type, const char *name, const char *deformsKey, 
+int RP_RegisterProgram( int type, const char *name, const char *deformsKey,
 	const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
 {
-	return RP_RegisterProgramBinary( type, name, deformsKey, deforms, numDeforms, 
+	int ret;
+	TracyCZoneN( ctx, "RP_RegisterProgram", 1 );
+	ret = RP_RegisterProgramBinary( type, name, deformsKey, deforms, numDeforms,
 		features, 0, 0, NULL );
+	TracyCZoneEnd( ctx );
+	return ret;
 }
 
 /*
@@ -2018,14 +2038,15 @@ void RP_ProgramList_f( void )
 /*
 * RP_UpdateShaderUniforms
 */
-void RP_UpdateShaderUniforms( int elem, 
-	float shaderTime, 
-	const vec3_t entOrigin, const vec3_t entDist, const uint8_t *entityColor, 
+void RP_UpdateShaderUniforms( int elem,
+	float shaderTime,
+	const vec3_t entOrigin, const vec3_t entDist, const uint8_t *entityColor,
 	const uint8_t *constColor, const float *rgbGenFuncArgs, const float *alphaGenFuncArgs,
 	const mat4_t texMatrix )
 {
 	GLfloat m[9];
 	glsl_program_t *program = r_glslprograms + elem - 1;
+	TracyCZoneN( ctx, "RP_UpdateShaderUniforms", 1 );
 
 	if( entOrigin ) {
 		if( program->loc.EntityOrigin >= 0 )
@@ -2059,19 +2080,21 @@ void RP_UpdateShaderUniforms( int elem,
 
 		qglUniform4fvARB( program->loc.TextureMatrix, 2, m );
 	}
+	TracyCZoneEnd( ctx );
 }
 
 /*
 * RP_UpdateViewUniforms
 */
-void RP_UpdateViewUniforms( int elem, 
+void RP_UpdateViewUniforms( int elem,
 	const mat4_t modelviewMatrix, const mat4_t modelviewProjectionMatrix,
-	const vec3_t viewOrigin, const mat3_t viewAxis, 
-	const float mirrorSide, 
+	const vec3_t viewOrigin, const mat3_t viewAxis,
+	const float mirrorSide,
 	int viewport[4],
 	float zNear, float zFar )
 {
 	glsl_program_t *program = r_glslprograms + elem - 1;
+	TracyCZoneN( ctx, "RP_UpdateViewUniforms", 1 );
 
 	if( program->loc.ModelViewMatrix >= 0 ) {
 		qglUniformMatrix4fvARB( program->loc.ModelViewMatrix, 1, GL_FALSE, modelviewMatrix );
@@ -2104,6 +2127,7 @@ void RP_UpdateViewUniforms( int elem,
 
 	if( program->loc.builtin.MirrorSide >= 0 )
 		qglUniform1fARB( program->loc.builtin.MirrorSide, mirrorSide );
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -2713,16 +2737,18 @@ void RP_Shutdown( void )
 {
 	unsigned int i;
 	glsl_program_t *program;
+	TracyCZoneN( ctx, "RP_Shutdown", 1 );
 
 	qglUseProgram( 0 );
 
 	for( i = 0, program = r_glslprograms; i < r_numglslprograms; i++, program++ ) {
 		RF_DeleteProgram( program );
 	}
-	
+
 	Trie_Destroy( glsl_cache_trie );
 	glsl_cache_trie = NULL;
 
 	r_numglslprograms = 0;
 	r_glslprograms_initialized = false;
+	TracyCZoneEnd( ctx );
 }

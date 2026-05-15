@@ -12,7 +12,7 @@ static uint32_t pallet[256];
 
 bool T_LoadImagePCX(char *filename, struct texture_buf_s* buffer, uint8_t** pallet) {
 
-	TracyCZone(ctx, 1);
+	TracyCZoneN( ctx, "T_LoadImagePCX", 1 );
 	void* const raw;
 	size_t len = R_LoadFile( filename, (void **)&raw );
 	if(raw == NULL) {
@@ -117,7 +117,7 @@ static void __R_stbi_free_image(void* p) {
 }
 
 bool T_LoadImageSTBI(char *filename, struct texture_buf_s* buffer ) {
-	TracyCZone(ctx, 1);
+	TracyCZoneN( ctx, "T_LoadImageSTBI", 1 );
 	uint8_t* data;
 	size_t size = R_LoadFile( filename, ( void ** ) &data );
 	if(data == NULL) {
@@ -172,7 +172,7 @@ uint32_t* T_Pallet() {
 
 //https://developer.valvesoftware.com/wiki/WAL
 bool T_LoadImageWAL(char *filename, struct texture_buf_s* tex) {
-	TracyCZone(ctx, 1);
+	TracyCZoneN( ctx, "T_LoadImageWAL", 1 );
 	// load the file
 	uint8_t* const buf = NULL;
 	const size_t size = R_LoadFile( filename, (void **)&buf);

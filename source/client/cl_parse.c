@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // cl_parse.c  -- parse a message received from the server
 
 #include "client.h"
+#include "tracy/TracyC.h"
 
 void CL_StopServerDownload( void );
 
@@ -411,6 +412,7 @@ static void CL_ParseDownload( msg_t *msg )
 {
 	size_t size, offset;
 	char *svFilename;
+	TracyCZoneN( ctx, "CL_ParseDownload", 1 );
 
 	// read the data
 	svFilename = MSG_ReadString( msg );
@@ -420,6 +422,7 @@ static void CL_ParseDownload( msg_t *msg )
 	if( cls.demo.playing )
 	{
 		// ignore download commands coming from demo files
+		TracyCZoneEnd( ctx );
 		return;
 	}
 
@@ -427,6 +430,7 @@ static void CL_ParseDownload( msg_t *msg )
 	{
 		Com_Printf( "Error: Download message didn't have as much data as it promised\n" );
 		CL_RetryDownload();
+		TracyCZoneEnd( ctx );
 		return;
 	}
 
@@ -434,6 +438,7 @@ static void CL_ParseDownload( msg_t *msg )
 	{
 		Com_Printf( "Error: Download message while not dowloading\n" );
 		msg->readcount += size;
+		TracyCZoneEnd( ctx );
 		return;
 	}
 
@@ -441,6 +446,7 @@ static void CL_ParseDownload( msg_t *msg )
 	{
 		Com_Printf( "Error: Download message for wrong file\n" );
 		msg->readcount += size;
+		TracyCZoneEnd( ctx );
 		return;
 	}
 
@@ -449,6 +455,7 @@ static void CL_ParseDownload( msg_t *msg )
 		Com_Printf( "Error: Invalid download message\n" );
 		msg->readcount += size;
 		CL_RetryDownload();
+		TracyCZoneEnd( ctx );
 		return;
 	}
 
@@ -457,6 +464,7 @@ static void CL_ParseDownload( msg_t *msg )
 		Com_Printf( "Error: Download message for wrong position\n" );
 		msg->readcount += size;
 		CL_RetryDownload();
+		TracyCZoneEnd( ctx );
 		return;
 	}
 
@@ -486,6 +494,7 @@ static void CL_ParseDownload( msg_t *msg )
 
 		CL_DownloadDone();
 	}
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -505,6 +514,7 @@ static void CL_ParseServerData( msg_t *msg )
 	int i, sv_bitflags, numpure;
 	int http_portnum;
 	bool old_sv_pure;
+	TracyCZoneN( ctx, "CL_ParseServerData", 1 );
 
 	Com_DPrintf( "Serverdata packet received.\n" );
 
@@ -646,6 +656,7 @@ static void CL_ParseServerData( msg_t *msg )
 	Com_Printf( S_COLOR_WHITE "\n" "=====================================\n" );
 	Com_Printf( S_COLOR_WHITE "%s\n\n", cl.servermessage );
 
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -653,7 +664,9 @@ static void CL_ParseServerData( msg_t *msg )
 */
 static void CL_ParseBaseline( msg_t *msg )
 {
+	TracyCZoneN( ctx, "CL_ParseBaseline", 1 );
 	SNAP_ParseBaseline( msg, cl_baselines );
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -663,6 +676,7 @@ static void CL_ParseFrame( msg_t *msg )
 {
 	snapshot_t *snap, *oldSnap;
 	int delta;
+	TracyCZoneN( ctx, "CL_ParseFrame", 1 );
 
 	oldSnap = ( cl.receivedSnapNum > 0 ) ? &cl.snapShots[cl.receivedSnapNum & UPDATE_MASK] : NULL;
 
@@ -723,6 +737,7 @@ static void CL_ParseFrame( msg_t *msg )
 			cl.serverTimeDeltas[cl.receivedSnapNum & MASK_TIMEDELTAS_BACKUP] = delta;
 		}
 	}
+	TracyCZoneEnd( ctx );
 }
 
 //========= StringCommands================
@@ -826,9 +841,12 @@ static void CL_ParseConfigstringCommand( void )
 {
 	int i, argc, idx;
 	char *s;
+	TracyCZoneN( ctx, "CL_ParseConfigstringCommand", 1 );
 
-	if( Cmd_Argc() < 3 )
+	if( Cmd_Argc() < 3 ) {
+		TracyCZoneEnd( ctx );
 		return;
+	}
 
 	// ch : configstrings may come batched now, so lets loop through them
 	argc = Cmd_Argc();
@@ -840,6 +858,7 @@ static void CL_ParseConfigstringCommand( void )
 
 		CL_UpdateConfigString( idx, s );
 	}
+	TracyCZoneEnd( ctx );
 }
 
 static void CL_RPC_cb_steamAuth( void *self, struct steam_rpc_pkt_s *rec ){
@@ -908,6 +927,7 @@ static void CL_ParseServerCommand( msg_t *msg )
 	const char *s;
 	char *text;
 	svcmd_t *cmd;
+	TracyCZoneN( ctx, "CL_ParseServerCommand", 1 );
 
 	text = MSG_ReadString( msg );
 
@@ -923,11 +943,13 @@ static void CL_ParseServerCommand( msg_t *msg )
 		if( !strcmp( s, cmd->name ) )
 		{
 			cmd->func();
+			TracyCZoneEnd( ctx );
 			return;
 		}
 	}
 
 	Com_Printf( "Unknown server command: %s\n", s );
+	TracyCZoneEnd( ctx );
 }
 
 static void CB_RPC_DecompressVoice( void *self, struct steam_rpc_pkt_s *rec )
@@ -938,14 +960,19 @@ static void CB_RPC_DecompressVoice( void *self, struct steam_rpc_pkt_s *rec )
 
 static void CL_ParseVoiceData( msg_t *msg ) {
 	int client = MSG_ReadShort( msg );
+	TracyCZoneN( ctx, "CL_ParseVoiceData", 1 );
 
 	int size = MSG_ReadShort( msg );
 	if (cl_enablevoice->integer != 1) {
 		MSG_SkipData(msg, size);
+		TracyCZoneEnd( ctx );
 		return;
 	}
 
-	if (size > VOICE_BUFFER_MAX) return;
+	if (size > VOICE_BUFFER_MAX) {
+		TracyCZoneEnd( ctx );
+		return;
+	}
 
 	struct decompress_voice_req_s *req = (struct decompress_voice_req_s *)malloc(sizeof(struct decompress_voice_req_s) + size);
 
@@ -955,6 +982,7 @@ static void CL_ParseVoiceData( msg_t *msg ) {
 
 	// yes this is bad but i'm not making an allocation for a single int
 	STEAMSHIM_sendRPC(req, sizeof(struct decompress_voice_req_s) + size, (int*)client, CB_RPC_DecompressVoice, NULL);
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -971,6 +999,7 @@ ACTION MESSAGES
 void CL_ParseServerMessage( msg_t *msg )
 {
 	int cmd;
+	TracyCZoneN( ctx, "CL_ParseServerMessage", 1 );
 
 	if( cl_shownet->integer == 1 )
 	{
@@ -1054,6 +1083,7 @@ void CL_ParseServerMessage( msg_t *msg )
 			}
 			else
 			{
+				TracyCZoneEnd( ctx );
 				return; // ignore rest of the packet (serverdata is always sent alone)
 			}
 			break;
@@ -1148,4 +1178,6 @@ void CL_ParseServerMessage( msg_t *msg )
 	//
 	if( cls.demo.recording && !cls.demo.waiting )
 		CL_WriteDemoMessage( msg );
+
+	TracyCZoneEnd( ctx );
 }
