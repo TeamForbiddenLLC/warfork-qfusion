@@ -201,7 +201,6 @@ void R_BuildShadowGroups( void )
 		VectorSet( lightDir, -lightDir[0], -lightDir[1], -fabs( lightDir[2] ) );
 		VectorNormalize2( lightDir, group->lightDir );
 
-		VectorScale( group->lightDir, group->projDist, lightDir );
 		VectorScale( group->lightDir, group->projDist * 2.0f, lightDir );
 		VectorAdd( group->mins, lightDir, mins );
 		VectorAdd( group->maxs, lightDir, maxs );
