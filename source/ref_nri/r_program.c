@@ -1197,8 +1197,10 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd,
 	TracyCZoneN( ctx, "RP_BindDescriptorSets", 1 );
 #if ( DEVICE_IMPL_VULKAN )
 	{
-		size_t numWrites = 0;
-		VkWriteDescriptorSet descriptorWrite[32]; // write 32 descriptors at once
+		VkDescriptorSet setsToBind[R_DESCRIPTOR_SET_MAX] = { VK_NULL_HANDLE };
+		uint32_t firstSetToBind = 0;
+		uint32_t setsToBindCount = 0;
+
 		for( uint32_t setIndex = 0; setIndex < R_DESCRIPTOR_SET_MAX; setIndex++ ) {
 			hash_t hash = HASH_INITIAL_VALUE;
 			for( size_t i = 0; i < numDescriptorData; i++ ) {
@@ -1206,20 +1208,26 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd,
 				if( !refl || setIndex != refl->set || RI_IsEmptyDescriptor( &bindings[i].descriptor ) )
 					continue;
 				hash = hash_u64( hash, refl->hash );
-				assert(bindings[i].descriptor.cookie != 0); // the cookie can't be 0
+				hash = hash_u64(hash, bindings[i].registerOffset);
+				assert( bindings[i].descriptor.cookie != 0 );
 				hash = hash_u64( hash, bindings[i].descriptor.cookie );
 			}
-			if( hash == HASH_INITIAL_VALUE )
+			if( hash == HASH_INITIAL_VALUE ) 
 				continue;
 			struct glsl_program_descriptor_s *info = &program->programDescriptors[setIndex];
 			struct descriptor_set_result_s result = ResolveDescriptorSet( &rsh.device, &info->alloc, rsh.frameSetCount, hash );
 			if( !result.found ) {
+				size_t numWrites = 0;
+				VkWriteDescriptorSet descriptorWrite[32];
 				for( size_t i = 0; i < numDescriptorData; i++ ) {
 					const struct descriptor_reflection_s *refl = __ReflectDescriptorSet( program, &bindings[i].handle );
 					if( !refl || setIndex != refl->set || RI_IsEmptyDescriptor( &bindings[i].descriptor ) )
 						continue;
 
-					assert( numWrites < Q_ARRAY_COUNT( descriptorWrite ) );
+					if( numWrites == Q_ARRAY_COUNT( descriptorWrite ) ) {
+						vkUpdateDescriptorSets( device->vk.device, numWrites, descriptorWrite, 0, NULL );
+						numWrites = 0;
+					}
 					VkWriteDescriptorSet *vkDesc = descriptorWrite + ( numWrites++ );
 					memset( vkDesc, 0, sizeof( VkWriteDescriptorSet ) );
 					vkDesc->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1244,21 +1252,23 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd,
 							vkDesc->pImageInfo = &bindings[i].descriptor.vk.image;
 							break;
 						default:
-							assert( false ); // this is bad
+							assert( false );
 							break;
 					}
-
-					if( numWrites >= Q_ARRAY_COUNT( descriptorWrite ) ) {
-						vkUpdateDescriptorSets( device->vk.device, numWrites, descriptorWrite, 0, NULL );
-						numWrites = 0;
-					}
+				}
+				if( numWrites > 0 ) {
+					vkUpdateDescriptorSets( device->vk.device, numWrites, descriptorWrite, 0, NULL );
 				}
 			}
-			VkDescriptorSet vkDescriptorSet = result.set->vk.handle;
-			vkCmdBindDescriptorSets( cmd->handle.vk.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, program->vk.pipelineLayout, setIndex, 1, &vkDescriptorSet, 0, NULL );
+
+			if( setsToBindCount == 0 ) {
+				firstSetToBind = setIndex;
+			}
+			setsToBind[setsToBindCount++] = result.set->vk.handle;
 		}
-		if( numWrites > 0 ) {
-			vkUpdateDescriptorSets( device->vk.device, numWrites, descriptorWrite, 0, NULL );
+		if( setsToBindCount > 0 ) {
+			vkCmdBindDescriptorSets( cmd->handle.vk.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+				program->vk.pipelineLayout, firstSetToBind, setsToBindCount, setsToBind, 0, NULL );
 		}
 	}
 #endif
