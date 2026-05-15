@@ -28,8 +28,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 extern "C"
 {
 #endif
-void Exit_Crashpad(); 
+void Exit_Crashpad();
 bool Init_Crashpad(const char* dir);
+void Crashpad_RefreshUploadState(void);
 
 #ifdef __cplusplus
 }  /* end extern "C" */

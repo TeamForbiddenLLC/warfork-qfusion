@@ -1,0 +1,5 @@
+# (c) Team Forbidden LLC. All Rights Reserved.
+
+#. Console/logconsole
+msgid "crashreport"
+msgstr "<0/1> Determins if crashes are reported to the developer."

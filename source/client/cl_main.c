@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../qcommon/asyncstream.h"
 #include "../qalgo/hash.h"
 #include "../steamshim/src/parent/parent.h"
+#include "tracy/TracyC.h"
 #include <stdlib.h>
 
 cvar_t *cl_stereo_separation;
@@ -337,6 +338,11 @@ static void CL_CheckForResend( void )
 			CL_Disconnect( "Connection timed out" );
 			return;
 		}
+		// SDR sockets open asynchronously via EVT_P2P_CONNECTION_CHANGED;
+		// don't transmit until then. Retries aren't consumed so the user
+		// still gets the full window before the timeout above fires.
+		if( !cls.socket || !cls.socket->open )
+			return;
 		cls.connect_count++;
 		cls.connect_time = realtime; // for retransmit requests
 
@@ -1451,6 +1457,7 @@ void CL_ReadPackets( void )
 	int socketind, ret;
 	socket_t *socket;
 	netadr_t address;
+	TracyCZoneN( ctx, "CL_ReadPackets", 1 );
 
 	socket_t* sockets [] =
 	{
@@ -1535,6 +1542,7 @@ void CL_ReadPackets( void )
 	}
 
 	if( cls.demo.playing ) {
+		TracyCZoneEnd( ctx );
 		return;
 	}
 
@@ -1551,12 +1559,15 @@ void CL_ReadPackets( void )
 			{
 				Com_Printf( "\nServer connection timed out.\n" );
 				CL_Disconnect( "Connection timed out" );
+				TracyCZoneEnd( ctx );
 				return;
 			}
 		}
 	}
 	else
 		cl.timeoutcount = 0;
+
+	TracyCZoneEnd( ctx );
 }
 
 //=============================================================================
@@ -2212,14 +2223,31 @@ static void CL_RPC_cb_persona( void *self, struct steam_rpc_pkt_s *rec )
 
 static void CL_EVT_cb_connection_changed(void *self, struct steam_evt_pkt_s *pkt) {
 	struct p2p_net_connection_changed_evt_s *evt = &pkt->p2p_net_connection_changed;
-	if(cls.socket && cls.socket->steam_handle == evt->hConn) {
+	const bool matches = cls.socket && (cls.socket->steam_handle == evt->hConn);
+	if(matches) {
 		switch(evt->state) {
 			case STEAMSHIM_ESteamNetworkingConnectionState_Connected:
 				cls.socket->connected = true;
 				cls.socket->open = true;
 				break;
+			// Without this, a dropped SDR connection leaves cls.socket->open=true,
+			// so NET_GetPacket keeps polling a dead handle and the client gets stuck
+			// in CA_CONNECTING / CA_ACTIVE forever.
+			case STEAMSHIM_ESteamNetworkingConnectionState_None:
+			case STEAMSHIM_ESteamNetworkingConnectionState_ClosedByPeer:
+			case STEAMSHIM_ESteamNetworkingConnectionState_ProblemDetectedLocally:
+			case STEAMSHIM_ESteamNetworkingConnectionState_FinWait:
+			case STEAMSHIM_ESteamNetworkingConnectionState_Linger:
+			case STEAMSHIM_ESteamNetworkingConnectionState_Dead:
+				cls.socket->open = false;
+				cls.socket->connected = false;
+				break;
+			case STEAMSHIM_ESteamNetworkingConnectionState_Connecting:
+			case STEAMSHIM_ESteamNetworkingConnectionState_FindingRoute:
+				cls.socket->open = true;
+				break;
 		}
-	} 
+	}
 }
 
 /*
@@ -2268,7 +2296,7 @@ static void CL_InitLocal( void )
 	cl_masterservers =	Cvar_Get( "masterservers", DEFAULT_MASTER_SERVERS_IPS, 0 );
 	cl_masterservers_warfork =	Cvar_Get( "masterservers_warfork", DEFAULT_MASTER_SERVERS_WARFORK_IPS, 0 );
 
-	cl_prefer_steam_p2p = Cvar_Get( "cl_prefer_steam_p2p", "0", CVAR_ARCHIVE );
+	cl_prefer_steam_p2p = Cvar_Get( "cl_prefer_steam_p2p", "1", CVAR_ARCHIVE );
 	cl_shownet =		Cvar_Get( "cl_shownet", "0", 0 );
 	cl_timeout =		Cvar_Get( "cl_timeout", "120", 0 );
 	cl_timedemo =		Cvar_Get( "timedemo", "0", CVAR_CHEAT );
@@ -2308,7 +2336,7 @@ static void CL_InitLocal( void )
 	if ( !CL_IsNameValid(name->string) ){
 		if ( STEAMSHIM_active() ){
 			struct steam_rpc_shim_common_s request;
-			request.cmd = RPC_REQUEST_STEAM_ID;
+			request.cmd = RPC_PERSONA_NAME;
 			STEAMSHIM_sendRPC( &request, sizeof( struct steam_rpc_shim_common_s ), name, CL_RPC_cb_persona, &syncIndex );
 		} else {
 			Cvar_Set( name->name, CL_RandomName() );
@@ -2318,7 +2346,7 @@ static void CL_InitLocal( void )
 	if (STEAMSHIM_active()){
 		struct steam_rpc_shim_common_s request;
 		request.cmd = RPC_REQUEST_STEAM_ID;
-  	cvar_t *steam_id = Cvar_Get( "steam_id", "", CVAR_USERINFO | CVAR_READONLY );
+  		cvar_t *steam_id = Cvar_Get( "steam_id", "", CVAR_USERINFO | CVAR_READONLY );
 		STEAMSHIM_sendRPC(&request,sizeof(struct steam_rpc_shim_common_s), steam_id , CL_RPC_cb_steam_id, &syncIndex);
 	}
 	STEAMSHIM_subscribeEvent(EVT_P2P_CONNECTION_CHANGED, NULL, CL_EVT_cb_connection_changed);
@@ -2734,6 +2762,8 @@ static void CL_SendVoiceData() {
 */
 static void CL_NetFrame( int realmsec, int gamemsec )
 {
+	TracyCZoneN( ctx, "CL_NetFrame", 1 );
+
 	// read packets from server
 	if( realmsec > 5000 )  // if in the debugger last frame, don't timeout
 		cls.lastPacketReceivedTime = cls.realtime;
@@ -2744,16 +2774,18 @@ static void CL_NetFrame( int realmsec, int gamemsec )
 	CL_ReadPackets(); // fetch results from server
 
 	// send packets to server
-	if( cls.netchan.unsentFragments )
-		Netchan_TransmitNextFragment( &cls.netchan );
-	else
-		CL_SendMessagesToServer( false );
+		if( cls.netchan.unsentFragments )
+			Netchan_TransmitNextFragment( &cls.netchan );
+		else
+			CL_SendMessagesToServer( false );
 
 	// resend a connection request if necessary
 	CL_CheckForResend();
 	CL_CheckDownloadTimeout();
 
 	CL_ServerListFrame();
+
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -2768,6 +2800,8 @@ void CL_Frame( int realmsec, int gamemsec )
 
 	if( dedicated->integer )
 		return;
+
+	TracyCZoneN( cl_frame_ctx, "CL_Frame_active", 1 );
 
 	cls.realtime += realmsec;
 
@@ -2819,7 +2853,8 @@ void CL_Frame( int realmsec, int gamemsec )
 
 	CL_UpdateSnapshot();
 	CL_AdjustServerTime( gamemsec );
-	CL_UserInputFrame();
+		CL_UserInputFrame();
+	
 	CL_NetFrame( realmsec, gamemsec );
 	if (STEAMSHIM_active()) {
 		STEAMSHIM_dispatch();
@@ -2867,7 +2902,7 @@ void CL_Frame( int realmsec, int gamemsec )
 
 	if( allRealMsec + extraMsec < minMsec )
 	{
-		// let CPU sleep while playing fullscreen video, while minimized 
+		// let CPU sleep while playing fullscreen video, while minimized
 		// or when cl_sleep is enabled
 		bool sleep = cl_sleep->integer != 0;
 
@@ -2876,6 +2911,7 @@ void CL_Frame( int realmsec, int gamemsec )
 
 		if( sleep && minMsec - extraMsec > 1 )
 			Sys_Sleep( 1 );
+		TracyCZoneEnd( cl_frame_ctx );
 		return;
 	}
 
@@ -2945,7 +2981,7 @@ void CL_Frame( int realmsec, int gamemsec )
 
     // update discord
     CL_UpdatePresence();
-    
+
 	// advance local effects for next frame
 	SCR_RunCinematic();
 	SCR_RunConsole( allRealMsec );
@@ -2954,6 +2990,8 @@ void CL_Frame( int realmsec, int gamemsec )
 	allGameMsec = 0;
 
 	cls.framecount++;
+
+	TracyCZoneEnd( cl_frame_ctx );
 }
 
 

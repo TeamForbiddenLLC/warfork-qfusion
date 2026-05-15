@@ -31,6 +31,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <glslang/Public/resource_limits_c.h>
 
 #include "r_vattribs.h"
+#include "tracy/TracyC.h"
 
 #include "ri_conversion.h"
 #include "ri_renderer.h"
@@ -84,6 +85,7 @@ static glslang_stage_t __RP_GLStageToSlang( glsl_program_stage_t stage )
  */
 void RP_Init( void )
 {
+	TracyCZoneN( ctx, "RP_Init", 1 );
 	glslang_initialize_process();
 	memset( r_glslprograms, 0, sizeof( r_glslprograms ) );
 	memset( r_glslprograms_hash, 0, sizeof( r_glslprograms_hash ) );
@@ -104,6 +106,7 @@ void RP_Init( void )
 	RP_RegisterProgram( GLSL_PROGRAM_TYPE_COLORCORRECTION, DEFAULT_GLSL_COLORCORRECTION_PROGRAM, NULL, NULL, 0, 0 );
 	// check whether compilation of the shader with GPU skinning succeeds, if not, disable GPU bone transforms
 	RP_RegisterProgram( GLSL_PROGRAM_TYPE_MATERIAL, DEFAULT_GLSL_MATERIAL_PROGRAM, NULL, NULL, 0, GLSL_SHADER_COMMON_BONE_TRANSFORMS1 );
+	TracyCZoneEnd( ctx );
 }
 
 typedef struct {
@@ -135,7 +138,6 @@ static void __appendGLSLDeformv( struct QStr *str, const deformv_t *deformv, int
 	if( !numDeforms ) {
 		return;
 	}
-
 	const int funcType = deformv->func.type;
 	for( size_t i = 0; i < numDeforms; i++, deformv++ ) {
 		switch( deformv->type ) {
@@ -144,22 +146,38 @@ static void __appendGLSLDeformv( struct QStr *str, const deformv_t *deformv, int
 					break;
 				qStrAppendSlice( str, qCToStrRef( "#define DEFORMV_WAVE 1 \n" ) );
 				qstrcatfmt( str, "#define DEFORMV_WAVE_FUNC %s \n", funcs[funcType] );
-				qstrcatprintf( str, "#define DEFORMV_WAVE_CONSTANT vec4(%f,%f,%f,%f) \n", deformv->func.args[0], deformv->func.args[1], deformv->func.args[2], deformv->func.args[3] );
+				qstrcatprintf( str, "#define DEFORMV_WAVE_CONSTANT vec4(%f,%f,%f,%f) \n",
+							   deformv->func.args[0],	// base
+							   deformv->func.args[1],	// amplitude
+							   deformv->func.args[2],	// phase
+							   deformv->func.args[3] ); // frequency
+				qstrcatprintf( str, "#define DEFORMV_WAVE_DIVISOR %f \n",
+							   deformv->args[0] ); // spatial divisor (1.0 / wavelength)
 				break;
 			}
 			case DEFORMV_MOVE: {
 				if( funcType <= SHADER_FUNC_NONE || funcType > numSupportedFuncs || !funcs[funcType] )
 					break;
-
 				qStrAppendSlice( str, qCToStrRef( "#define DEFORMV_MOVE 1 \n" ) );
 				qstrcatfmt( str, "#define DEFORMV_MOVE_FUNC %s \n", funcs[funcType] );
-				qstrcatprintf( str, "#define DEFORMV_MOVE_CONSTANT vec4(%f,%f,%f,%f) \n", deformv->func.args[0], deformv->func.args[1], deformv->func.args[2], deformv->func.args[3] );
-
+				qstrcatprintf( str, "#define DEFORMV_MOVE_CONSTANT vec4(%f,%f,%f,%f) \n",
+							   deformv->func.args[0],	// base
+							   deformv->func.args[1],	// amplitude
+							   deformv->func.args[2],	// phase
+							   deformv->func.args[3] ); // frequency
+				qstrcatprintf( str, "#define DEFORMV_MOVE_DIRECTION vec3(%f,%f,%f) \n",
+							   deformv->args[0],   // move x
+							   deformv->args[1],   // move y
+							   deformv->args[2] ); // move z
 				break;
 			}
 			case DEFORMV_BULGE:
 				qStrAppendSlice( str, qCToStrRef( "#define DEFORMV_BULGE 1 \n" ) );
-				qstrcatprintf( str, "#define DEFORMV_BULGE_CONSTANT vec4(%f,%f,%f,%f) \n", deformv->func.args[0], deformv->func.args[1], deformv->func.args[2], deformv->func.args[3] );
+				qstrcatprintf( str, "#define DEFORMV_BULGE_CONSTANT vec4(%f,%f,%f,%f) \n",
+							   deformv->args[0],   // width
+							   deformv->args[1],   // height
+							   deformv->args[2],   // speed
+							   deformv->args[3] ); // phase
 				break;
 			case DEFORMV_AUTOSPRITE:
 				qStrAppendSlice( str, qCToStrRef( "#define DEFORMV_AUTOSPRITE 1 \n" ) );
@@ -204,6 +222,7 @@ void RP_StorePrecacheList( void ) {}
 static void RF_DeleteProgram( struct glsl_program_s *program )
 {
 	struct glsl_program_s *hash_next;
+	TracyCZoneN( ctx, "RF_DeleteProgram", 1 );
 
 	if( program->name )
 		R_Free( program->name );
@@ -233,6 +252,7 @@ static void RF_DeleteProgram( struct glsl_program_s *program )
 	hash_next = program->hash_next;
 	memset( program, 0, sizeof( struct glsl_program_s ) );
 	program->hash_next = hash_next;
+	TracyCZoneEnd( ctx );
 }
 
 #define MAX_DEFINES_FEATURES 255
@@ -932,9 +952,11 @@ static int __VK_SortVkVertexInputAttributeDescription( const void *a1, const voi
 
 void RP_BindPipeline( struct FrameState_s *cmd, struct pipeline_hash_s *pipeline )
 {
+	TracyCZoneN( ctx, "RP_BindPipeline", 1 );
 #if ( DEVICE_IMPL_VULKAN )
 	vkCmdBindPipeline( cmd->handle.vk.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->vk.handle );
 #endif
+	TracyCZoneEnd( ctx );
 }
 
 struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_desc_s *cmd )
@@ -951,8 +973,9 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	const bool useDepthBias = ( cmd->depthBiasConstant != 0 || cmd->depthBiasSlope != 0 );
 
 	//	uint32_t attribFlags = 0;
-	assert( cmd->numStreams < MAX_ATTRIBUTES );
-	assert( cmd->numStreams < MAX_STREAMS );
+	assert( cmd->numAttribs <= MAX_ATTRIBUTES );
+	assert( cmd->numStreams <= MAX_STREAMS );
+	assert( cmd->numColorsAttachments <= MAX_COLOR_ATTACHMENTS );
 	if( cmd->numStreams > 0 ) {
 		uint32_t numVertexAttribs = 0;
 		for( size_t i = 0; i < cmd->numAttribs; i++ ) {
@@ -990,19 +1013,19 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 		uint16_t colorDstFactor : 5; // RIBlendFactor_e
 		uint16_t topology : 4;		 // RITopology_e
 		uint16_t compareFunc : 4;	 // RICompareFunc_e
-	} encode = {
-		.depthBiasConstant = useDepthBias ? cmd->depthBiasConstant : 0,
-		.depthBiasClamp = useDepthBias ? cmd->depthBiasClamp : 0,
-		.depthBiasSlope = useDepthBias ? cmd->depthBiasSlope : 0,
-		.cullMode = cullMode,
-		.colorBlendEnabled = cmd->colorBlendEnabled,
-		.depthWrite = cmd->depthWrite,
-		.colorWriteMask = cmd->colorBlendEnabled ? cmd->colorWriteMask : 0,
-		.colorSrcFactor = cmd->colorBlendEnabled ? cmd->colorSrcFactor : 0,
-		.colorDstFactor = cmd->colorBlendEnabled ? cmd->colorDstFactor : 0,
-		.topology = cmd->topology,
-		.compareFunc = cmd->compareFunc,
-	};
+	} encode;
+	memset( &encode, 0, sizeof( encode ) );
+	encode.depthBiasConstant = useDepthBias ? cmd->depthBiasConstant : 0;
+	encode.depthBiasClamp = useDepthBias ? cmd->depthBiasClamp : 0;
+	encode.depthBiasSlope = useDepthBias ? cmd->depthBiasSlope : 0;
+	encode.cullMode = cullMode;
+	encode.colorBlendEnabled = cmd->colorBlendEnabled;
+	encode.depthWrite = cmd->depthWrite;
+	encode.colorWriteMask = cmd->colorBlendEnabled ? cmd->colorWriteMask : 0;
+	encode.colorSrcFactor = cmd->colorBlendEnabled ? cmd->colorSrcFactor : 0;
+	encode.colorDstFactor = cmd->colorBlendEnabled ? cmd->colorDstFactor : 0;
+	encode.topology = cmd->topology;
+	encode.compareFunc = cmd->compareFunc;
 	for( size_t i = 0; i < cmd->numColorsAttachments; i++ ) {
 		colorAttachmentsVK[i] = RIFormatToVK( cmd->colorAttachments[i] );
 	}
@@ -1083,8 +1106,8 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 		}
 
 		VkPipelineViewportStateCreateInfo viewportState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-		viewportState.viewportCount = Q_MAX( 1, cmd->numColorsAttachments );
-		viewportState.scissorCount = Q_MAX( 1, cmd->numColorsAttachments );
+		viewportState.viewportCount = 1;
+		viewportState.scissorCount = 1;
 		pipelineCreateInfo.pViewportState = &viewportState;
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
@@ -1159,16 +1182,19 @@ bool RP_ProgramHasUniform( const struct glsl_program_s *program, const struct gl
 
 void RP_BindPushConstant( struct RIDevice_s *device, struct FrameState_s *cmd, struct glsl_program_s *program, void *data, size_t len )
 {
+	TracyCZoneN( ctx, "RP_BindPushConstant", 1 );
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		assert( len <= program->vk.pushConstant.size );
 		vkCmdPushConstants( cmd->handle.vk.cmd, program->vk.pipelineLayout, program->vk.pushConstant.shaderStageFlags, 0, program->vk.pushConstant.size, data );
 	}
 #endif
+	TracyCZoneEnd( ctx );
 }
 
 void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd, struct glsl_program_s *program, struct glsl_descriptor_binding_s *bindings, size_t numDescriptorData )
 {
+	TracyCZoneN( ctx, "RP_BindDescriptorSets", 1 );
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		size_t numWrites = 0;
@@ -1193,6 +1219,7 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd,
 					if( !refl || setIndex != refl->set || RI_IsEmptyDescriptor( &bindings[i].descriptor ) )
 						continue;
 
+					assert( numWrites < Q_ARRAY_COUNT( descriptorWrite ) );
 					VkWriteDescriptorSet *vkDesc = descriptorWrite + ( numWrites++ );
 					memset( vkDesc, 0, sizeof( VkWriteDescriptorSet ) );
 					vkDesc->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1235,10 +1262,12 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd,
 		}
 	}
 #endif
+	TracyCZoneEnd( ctx );
 }
 
 struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
 {
+	TracyCZoneN( ctx, "RP_ResolveProgram", 1 );
 	assert( type > GLSL_PROGRAM_TYPE_NONE && type < GLSL_PROGRAM_TYPE_MAXTYPE );
 	assert( !deforms || deformsKey );
 
@@ -1248,12 +1277,14 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 	const uint64_t hashIndex = hash_u64( HASH_INITIAL_VALUE, features ) % GLSL_PROGRAMS_HASH_SIZE;
 	for( struct glsl_program_s *program = r_glslprograms_hash[type][hashIndex]; program; program = program->hash_next ) {
 		if( ( program->features == features ) && strcmp( program->deformsKey, deformsKey ) == 0 ) {
+			TracyCZoneEnd( ctx );
 			return program;
 		}
 	}
 
 	if( r_numglslprograms == MAX_GLSL_PROGRAMS ) {
 		Com_Printf( S_COLOR_YELLOW "RP_RegisterProgram: GLSL programs limit exceeded\n" );
+		TracyCZoneEnd( ctx );
 		return NULL;
 	}
 
@@ -1274,11 +1305,16 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 				name = parent->name;
 		} else {
 			Com_Printf( S_COLOR_YELLOW "RP_RegisterProgram: failed to find parent for program type %i\n", type );
+			TracyCZoneEnd( ctx );
 			return 0;
 		}
 	}
 
-	return RP_RegisterProgram( type, name, deformsKey, deforms, numDeforms, features );
+	{
+		struct glsl_program_s *ret = RP_RegisterProgram( type, name, deformsKey, deforms, numDeforms, features );
+		TracyCZoneEnd( ctx );
+		return ret;
+	}
 }
 
 #if ( DEVICE_IMPL_VULKAN )
@@ -1307,7 +1343,7 @@ void _vk__descriptorSetAlloc( struct RIDevice_s *device, struct DescriptorSetAll
 			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, programDescriptor->structuredBufferMaxNum * DESCRIPTOR_MAX_SIZE + programDescriptor->storageStructuredBufferMaxNum * DESCRIPTOR_MAX_SIZE };
 	if( programDescriptor->accelerationStructureMaxNum > 0 )
 		descriptorPoolSize[descriptorPoolLen++] = (VkDescriptorPoolSize){ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, programDescriptor->accelerationStructureMaxNum * DESCRIPTOR_MAX_SIZE };
-	assert( descriptorPoolLen < Q_ARRAY_COUNT( descriptorPoolSize ) );
+	assert( descriptorPoolLen <= Q_ARRAY_COUNT( descriptorPoolSize ) );
 	const VkDescriptorPoolCreateInfo info = {
 		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, NULL, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT, DESCRIPTOR_MAX_SIZE, descriptorPoolLen, descriptorPoolSize };
 	struct descriptor_pool_alloc_slot_s poolSlot = { 0 };
@@ -1331,6 +1367,7 @@ void _vk__descriptorSetAlloc( struct RIDevice_s *device, struct DescriptorSetAll
 
 struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
 {
+	TracyCZoneN( ctx, "RP_RegisterProgram", 1 );
 	const uint64_t hashIndex = hash_u64( HASH_INITIAL_VALUE, features ) % GLSL_PROGRAMS_HASH_SIZE;
 	struct glsl_program_s *program = r_glslprograms + r_numglslprograms++;
 	struct QStr featuresStr = { 0 };
@@ -1754,6 +1791,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 		r_glslprograms_hash[type][hashIndex] = program;
 	}
 
+	TracyCZoneEnd( ctx );
 	return program;
 }
 /*
@@ -1763,6 +1801,7 @@ void RP_Shutdown( void )
 {
 	unsigned int i;
 	struct glsl_program_s *program;
+	TracyCZoneN( ctx, "RP_Shutdown", 1 );
 
 	for( i = 0, program = r_glslprograms; i < r_numglslprograms; i++, program++ ) {
 		RF_DeleteProgram( program );
@@ -1772,4 +1811,5 @@ void RP_Shutdown( void )
 	glsl_cache_trie = NULL;
 
 	r_numglslprograms = 0;
+	TracyCZoneEnd( ctx );
 }

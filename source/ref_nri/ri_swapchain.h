@@ -25,7 +25,7 @@ struct RIWindowHandle_s {
 
 struct RISwapchainDesc_s {
 	uint8_t format; // RISwapchainFormat_e
-	uint16_t imageCount;
+	uint16_t requestImageCount;
 	struct RIWindowHandle_s* windowHandle; 
 	struct RIQueue_s* queue;
 	uint16_t width, height;

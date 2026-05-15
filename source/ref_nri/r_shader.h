@@ -289,7 +289,7 @@ typedef struct shader_s
 void		R_InitShaders( void );
 void		R_ShutdownShaders( void );
 
-void		R_UploadCinematicShader( const shader_t *shader );
+void		R_UploadCinematicShader( struct FrameState_s* cmd, const shader_t *shader );
 
 void		R_PrintShaderList( const char *mask, bool (*filter)( const char *filter, const char *value) );
 void		R_PrintShaderCache( const char *name );

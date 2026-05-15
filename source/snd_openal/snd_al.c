@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "snd_local.h"
 #include "snd_cmdque.h"
+#include "tracy/TracyC.h"
 
 ALCdevice *alDevice = NULL;
 ALCcontext *alContext = NULL;
@@ -334,12 +335,19 @@ static void S_SetListener( const vec3_t origin, const vec3_t velocity, const mat
 {
 	float orientation[6];
 
-	orientation[0] = axis[AXIS_FORWARD+0];
-	orientation[1] = axis[AXIS_FORWARD+1];
-	orientation[2] = axis[AXIS_FORWARD+2];
-	orientation[3] = axis[AXIS_UP+0];
-	orientation[4] = axis[AXIS_UP+1];
-	orientation[5] = axis[AXIS_UP+2];
+	orientation[0] = axis[AXIS_FORWARD + 0];
+	orientation[1] = axis[AXIS_FORWARD + 1];
+	orientation[2] = axis[AXIS_FORWARD + 2];
+
+	if( s_flip->integer != 0) {
+		orientation[3] = -axis[AXIS_UP + 0];
+		orientation[4] = -axis[AXIS_UP + 1];
+		orientation[5] = -axis[AXIS_UP + 2];
+	} else {
+		orientation[3] = axis[AXIS_UP + 0];
+		orientation[4] = axis[AXIS_UP + 1];
+		orientation[5] = axis[AXIS_UP + 2];
+	}
 
 	qalListenerfv( AL_POSITION, origin );
 	qalListenerfv( AL_VELOCITY, velocity );
@@ -351,8 +359,9 @@ static void S_SetListener( const vec3_t origin, const vec3_t velocity, const mat
 */
 static void S_Update( void )
 {
+	TracyCZoneN( ctx, "S_Update", 1 );
 	S_UpdateMusic();
-	
+
 	S_UpdateStreams();
 	
 	s_volume->modified = false; // Checked by src and stream
@@ -374,6 +383,7 @@ static void S_Update( void )
 			qalSpeedOfSound( s_sound_velocity->value > 0.0f ? s_sound_velocity->value : 0.0f );
 		s_sound_velocity->modified = false;
 	}
+	TracyCZoneEnd( ctx );
 }
 
 /*

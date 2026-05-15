@@ -19,6 +19,7 @@ DECLARE_TYPEDEF_METHOD( int, STEAMSHIM_dispatch );
 DECLARE_TYPEDEF_METHOD( int, STEAMSHIM_sendRPC, void *req, uint32_t size, void *self, STEAMSHIM_rpc_handle rpc, uint32_t *syncIndex );
 DECLARE_TYPEDEF_METHOD( int, STEAMSHIM_sendEVT, void *packet, uint32_t size );
 DECLARE_TYPEDEF_METHOD( int, STEAMSHIM_waitDispatchSync, uint32_t syncIndex ); // wait on the dispatch loop does not trigger steam callbacks
+DECLARE_TYPEDEF_METHOD( uint32_t, STEAMSHIM_currentSync ); // sync index of the most recently processed RPC
 DECLARE_TYPEDEF_METHOD( void, STEAMSHIM_subscribeEvent, uint32_t id, void *self, STEAMSHIM_evt_handle evt );
 DECLARE_TYPEDEF_METHOD( void, STEAMSHIM_unsubscribeEvent, uint32_t id, STEAMSHIM_evt_handle evt );
 DECLARE_TYPEDEF_METHOD( bool, STEAMSHIM_active );
@@ -30,6 +31,7 @@ struct steam_import_s {
 	STEAMSHIM_sendRPCFn STEAMSHIM_sendRPC;
 	STEAMSHIM_sendEVTFn STEAMSHIM_sendEVT;
 	STEAMSHIM_waitDispatchSyncFn STEAMSHIM_waitDispatchSync;
+	STEAMSHIM_currentSyncFn STEAMSHIM_currentSync;
 	STEAMSHIM_subscribeEventFn STEAMSHIM_subscribeEvent;
 	STEAMSHIM_unsubscribeEventFn STEAMSHIM_unsubscribeEvent;
 	STEAMSHIM_activeFn STEAMSHIM_active;
@@ -39,6 +41,7 @@ struct steam_import_s {
 	STEAMSHIM_sendRPC, \
 	STEAMSHIM_sendEVT, \
 	STEAMSHIM_waitDispatchSync, \
+	STEAMSHIM_currentSync, \
 	STEAMSHIM_subscribeEvent, \
 	STEAMSHIM_unsubscribeEvent, \
 	STEAMSHIM_active \
@@ -54,6 +57,7 @@ int STEAMSHIM_dispatch() { return steam_import.STEAMSHIM_dispatch();}
 int STEAMSHIM_sendRPC( void *req, uint32_t size, void *self, STEAMSHIM_rpc_handle rpc, uint32_t *syncIndex ) { return steam_import.STEAMSHIM_sendRPC(req, size, self, rpc, syncIndex);}
 int STEAMSHIM_sendEVT( void *packet, uint32_t size) { return steam_import.STEAMSHIM_sendEVT(packet, size);}
 int STEAMSHIM_waitDispatchSync( uint32_t syncIndex ){ return steam_import.STEAMSHIM_waitDispatchSync(syncIndex);} // wait on the dispatch loop
+uint32_t STEAMSHIM_currentSync(){ return steam_import.STEAMSHIM_currentSync();}
 void STEAMSHIM_subscribeEvent( uint32_t id, void *self, STEAMSHIM_evt_handle evt ){ return steam_import.STEAMSHIM_subscribeEvent(id, self, evt);} // wait on the dispatch loop
 void STEAMSHIM_unsubscribeEvent( uint32_t id, STEAMSHIM_evt_handle evt){ return steam_import.STEAMSHIM_unsubscribeEvent(id, evt);} // wait on the dispatch loop
 bool STEAMSHIM_active(){ return steam_import.STEAMSHIM_active();} // wait on the dispatch loop

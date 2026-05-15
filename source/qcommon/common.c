@@ -34,6 +34,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "crashpad.h"
 
+#include "tracy/TracyC.h"
+
 #define MAX_NUM_ARGVS	50
 
 static bool	dynvars_initialized = false;
@@ -749,6 +751,7 @@ void Qcommon_InitCvarDescriptions( void )
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/vid" );
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/vsay" );
     L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/win" );
+    L10n_LoadLangPOFile( "descriptions", "l10n/console/descriptions/privacy" );
 }
 
 /*
@@ -829,9 +832,9 @@ void Qcommon_Init( int argc, char **argv )
 
 	FS_Init();
 
-#ifdef USE_CRASHPAD
+	#ifdef USE_CRASHPAD
 	Init_Crashpad( FS_WriteDirectory() );
-#endif
+	#endif
 	// init localization subsystem
 	L10n_Init();
 	Qcommon_InitCvarDescriptions();
@@ -919,6 +922,7 @@ void Qcommon_Init( int argc, char **argv )
 	Com_Printf( "\n====== %s Initialized ======\n", APPLICATION );
 
 	Cbuf_Execute();
+
 }
 
 /*
@@ -932,11 +936,19 @@ void Qcommon_Frame( unsigned int realmsec )
 	int time_before = 0, time_between = 0, time_after = 0;
 	static unsigned int gamemsec;
 
+	TracyCZoneN( zone_qcommon, "Qcommon_Frame", 1 );
+
+#ifdef USE_CRASHPAD
+	Crashpad_RefreshUploadState();
+#endif
+
 	if( com_quit )
 		Com_Quit();
 
-	if( setjmp( abortframe ) )
+	if( setjmp( abortframe ) ) {
+		TracyCZoneEnd( zone_qcommon );
 		return; // an ERR_DROP was thrown
+	}
 
 	if( logconsole && logconsole->modified )
 	{
@@ -1023,6 +1035,9 @@ void Qcommon_Frame( unsigned int realmsec )
 		frametick = Dynvar_Lookup( "frametick" );
 	Dynvar_CallListeners( frametick, &fc );
 	++fc;
+
+	TracyCZoneEnd( zone_qcommon );
+	TracyCFrameMark;
 }
 
 /*

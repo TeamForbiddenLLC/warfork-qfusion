@@ -171,6 +171,7 @@ void R_ShutdownPortals()
 
 static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int width, int height, bool filtered) {
 	assert( Q_ARRAY_COUNT( rsh.portalFBs ) >= MAX_PORTAL_TEXTURES );
+	assert(cmd->parent != NULL);
 	struct portal_fb_s *bestFB = NULL;
 	for( size_t i = 0; i < MAX_PORTAL_TEXTURES; i++ ) {
 		struct portal_fb_s *portalFB = &rsh.portalFBs[i];
@@ -334,6 +335,7 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 */
 static void R_DrawPortalSurface( struct FrameState_s *cmd, portalSurface_t *portalSurface )
 {
+	assert(cmd->parent != NULL);
 	unsigned int i;
 	float dist, d, best_d;
 	vec3_t viewerOrigin;
