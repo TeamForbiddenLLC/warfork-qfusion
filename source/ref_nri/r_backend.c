@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ri_types.h"
 
 #include "stb_ds.h"
+#include "tracy/TracyC.h"
 // Smaller buffer for 2D polygons. Also a workaround for some instances of a hardly explainable bug on Adreno
 // that caused dynamic draws to slow everything down in some cases when normals are used with dynamic VBOs.
 #define COMPACT_STREAM_VATTRIBS ( VATTRIB_POSITION_BIT | VATTRIB_COLOR0_BIT | VATTRIB_TEXCOORDS_BIT )
@@ -32,6 +33,7 @@ rbackend_t rb;
 
 void RB_Init( void )
 {
+	TracyCZoneN( ctx, "RB_Init", 1 );
 	memset( &rb, 0, sizeof( rb ) );
 
 	rb.mempool = R_AllocPool( NULL, "Rendering Backend" );
@@ -68,6 +70,7 @@ void RB_Init( void )
 	RB_InitShading();
 
 	RP_PrecachePrograms();
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -75,6 +78,7 @@ void RB_Init( void )
  */
 void RB_Shutdown( void )
 {
+	TracyCZoneN( ctx, "RB_Shutdown", 1 );
 	for( size_t i = 0; i < RB_DYN_STREAM_NUM; i++ ) {
 #if ( DEVICE_IMPL_VULKAN )
 		if( rb.dynamicStreams[i].vk.vertexBuffer ) {
@@ -91,6 +95,7 @@ void RB_Shutdown( void )
 	memset( rb.dynamicStreams, 0, sizeof( struct dynamic_vertex_stream_s ) * RB_DYN_STREAM_NUM );
 	RP_StorePrecacheList();
 	R_FreePool( &rb.mempool );
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -98,7 +103,9 @@ void RB_Shutdown( void )
  */
 void RB_BeginRegistration( void )
 {
+	TracyCZoneN( ctx, "RB_BeginRegistration", 1 );
 	RB_BindVBO( 0, RI_TOPOLOGY_TRIANGLE_LIST );
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -106,7 +113,9 @@ void RB_BeginRegistration( void )
  */
 void RB_EndRegistration( void )
 {
+	TracyCZoneN( ctx, "RB_EndRegistration", 1 );
 	RB_BindVBO( 0, RI_TOPOLOGY_TRIANGLE_LIST );
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -123,6 +132,7 @@ void RB_SetTime( unsigned int time )
  */
 void RB_BeginFrame( void )
 {
+	TracyCZoneN( ctx, "RB_BeginFrame", 1 );
 	Vector4Set( rb.nullEnt.shaderRGBA, 1, 1, 1, 1 );
 	rb.nullEnt.scale = 1;
 	VectorClear( rb.nullEnt.origin );
@@ -131,6 +141,7 @@ void RB_BeginFrame( void )
 	// start fresh each frame
 	RB_SetShaderStateMask( ~0, 0 );
 	RB_BindVBO( 0, RI_TOPOLOGY_TRIANGLE_LIST );
+	TracyCZoneEnd( ctx );
 }
 
 void RB_EndFrame( void ) {}
@@ -390,6 +401,7 @@ void RB_AddDynamicMesh( struct FrameState_s *cmd,
 	rbDynamicDraw_t *prev = NULL, *draw;
 	bool merge = false;
 	vattribmask_t vattribs;
+	TracyCZoneN( ctx, "RB_AddDynamicMesh", 1 );
 
 	// can't (and shouldn't because that would break batching) merge strip draw calls
 	// (consider simply disabling merge later in this case if models with tristrips are added in the future, but that's slow)
@@ -400,6 +412,7 @@ void RB_AddDynamicMesh( struct FrameState_s *cmd,
 		trifan = true;
 	}
 	if( !numVerts || !numElems || ( numVerts > MAX_STREAM_VBO_VERTS ) || ( numElems > MAX_STREAM_VBO_ELEMENTS ) ) {
+		TracyCZoneEnd( ctx );
 		return;
 	}
 
@@ -573,6 +586,7 @@ void RB_AddDynamicMesh( struct FrameState_s *cmd,
 	}
 	// rsh.nri.coreI.UnmapBuffer( vboReq.buffer );
 	// rsh.nri.coreI.UnmapBuffer( eleReq.buffer );
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -580,6 +594,7 @@ void RB_AddDynamicMesh( struct FrameState_s *cmd,
  */
 void RB_FlushDynamicMeshes( struct FrameState_s *cmd )
 {
+	TracyCZoneN( ctx, "RB_FlushDynamicMeshes", 1 );
 	float offsetx = 0.0f;
 	float offsety = 0.0f;
 	float transx;
@@ -587,6 +602,8 @@ void RB_FlushDynamicMeshes( struct FrameState_s *cmd )
 	mat4_t m;
 
 	if( rb.numDynamicDraws == 0 ) {
+		
+		TracyCZoneEnd( ctx );
 		return;
 	}
 	// if(cmd->stackCmdBeingRendered == 0) {
@@ -642,6 +659,7 @@ void RB_FlushDynamicMeshes( struct FrameState_s *cmd )
 		m[13] = transy;
 		RB_LoadObjectMatrix( m );
 	}
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -654,6 +672,7 @@ vattribmask_t RB_GetVertexAttribs( void )
 
 void RB_DrawElements( struct FrameState_s *cmd, int firstVert, int numVerts, int firstElem, int numElems, int firstShadowVert, int numShadowVerts, int firstShadowElem, int numShadowElems )
 {
+	TracyCZoneN( ctx, "RB_DrawElements", 1 );
 	rb.currentVAttribs &= ~VATTRIB_INSTANCES_BITS;
 
 	rb.drawElements.numVerts = numVerts;
@@ -670,6 +689,7 @@ void RB_DrawElements( struct FrameState_s *cmd, int firstVert, int numVerts, int
 
 	// RB_DrawElements_();
 	assert( false );
+	TracyCZoneEnd( ctx );
 }
 
 /*

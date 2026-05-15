@@ -29,6 +29,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ri_vk.h"
 #include "ri_swapchain.h"
 
+#include "tracy/TracyC.h"
+
 static void R_RenderDebugBounds(  struct FrameState_s* frame);
 
 /*
@@ -297,6 +299,8 @@ void R_RenderScene(const refdef_t *fd )
 	if( r_norefresh->integer )
 		return;
 
+	TracyCZoneN( ctx, "R_RenderScene", 1 );
+
 	R_Set2DMode(&rsh.frame,  false );
 
 	RB_SetTime( fd->time );
@@ -397,9 +401,9 @@ void R_RenderScene(const refdef_t *fd )
 		.height = fd->scissor_height
 	} );
 
-	R_BuildShadowGroups();
+		R_BuildShadowGroups();
 
-	R_RenderView(&rsh.frame, fd );
+		R_RenderView(&rsh.frame, fd );
 
 	R_RenderDebugSurface( &rsh.frame, fd );
 
@@ -476,6 +480,8 @@ void R_RenderScene(const refdef_t *fd )
 	FR_CmdSetScissor(&rsh.frame, prevScissor);
 
 	R_Set2DMode( &rsh.frame, true );
+
+	TracyCZoneEnd( ctx );
 }
 
 void R_AddDebugBounds( const vec3_t mins, const vec3_t maxs, const byte_vec4_t color )

@@ -26,6 +26,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ri_conversion.h"
 #include <assert.h>
 
+#include "tracy/TracyC.h"
+
 r_globals_t rf;
 
 mapconfig_t mapConfig;
@@ -1137,6 +1139,7 @@ void R_RenderView(struct FrameState_s* frame, const refdef_t *fd )
 {
 	int msec = 0;
 	bool shadowMap = rn.renderFlags & RF_SHADOWMAPVIEW ? true : false;
+	TracyCZoneN( ctx, "R_RenderView", 1 );
 
 	rn.refdef = *fd;
 	rn.numVisSurfaces = 0;
@@ -1173,8 +1176,10 @@ void R_RenderView(struct FrameState_s* frame, const refdef_t *fd )
 
 	R_ClearDrawList( rn.portalmasklist );
 
-	if( !rsh.worldModel && !( rn.refdef.rdflags & RDF_NOWORLDMODEL ) )
+	if( !rsh.worldModel && !( rn.refdef.rdflags & RDF_NOWORLDMODEL ) ) {
+		TracyCZoneEnd( ctx );
 		return;
+	}
 
 	R_SetupFrame();
 
@@ -1186,15 +1191,16 @@ void R_RenderView(struct FrameState_s* frame, const refdef_t *fd )
 	if( !shadowMap ) {
 		if( r_speeds->integer )
 			msec = ri.Sys_Milliseconds();
-		R_MarkLeaves();
+			R_MarkLeaves();
 		if( r_speeds->integer )
 			rf.stats.t_mark_leaves += ( ri.Sys_Milliseconds() - msec );
 
 		if( ! ( rn.refdef.rdflags & RDF_NOWORLDMODEL ) ) {
-			R_DrawWorld();
+				R_DrawWorld();
 
 			if( !rn.numVisSurfaces ) {
 				// no world surfaces visible
+				TracyCZoneEnd( ctx );
 				return;
 			}
 
@@ -1205,14 +1211,14 @@ void R_RenderView(struct FrameState_s* frame, const refdef_t *fd )
 
 		if( r_speeds->integer )
 			msec = ri.Sys_Milliseconds();
-		R_DrawPolys();
+			R_DrawPolys();
 		if( r_speeds->integer )
 			rf.stats.t_add_polys += ( ri.Sys_Milliseconds() - msec );
 	}
 
 	if( r_speeds->integer )
 		msec = ri.Sys_Milliseconds();
-	R_DrawEntities();
+		R_DrawEntities();
 	if( r_speeds->integer )
 		rf.stats.t_add_entities += ( ri.Sys_Milliseconds() - msec );
 
@@ -1224,24 +1230,26 @@ void R_RenderView(struct FrameState_s* frame, const refdef_t *fd )
 		R_SetupViewMatrices();
 
 		// render to depth textures, mark shadowed entities and surfaces
-		R_DrawShadowmaps(frame);
+			R_DrawShadowmaps(frame);
 	}
 
-	R_SortDrawList( rn.meshlist );
+		R_SortDrawList( rn.meshlist );
 
 	R_SetupGL(frame);
 
-	R_DrawPortals(frame);
+		R_DrawPortals(frame);
 
-	if( r_portalonly->integer && !( rn.renderFlags & ( RF_MIRRORVIEW|RF_PORTALVIEW ) ) )
+	if( r_portalonly->integer && !( rn.renderFlags & ( RF_MIRRORVIEW|RF_PORTALVIEW ) ) ) {
+		TracyCZoneEnd( ctx );
 		return;
+	}
 
 	R_Clear(frame, ~0 );
 
 	if( r_speeds->integer )
 		msec = ri.Sys_Milliseconds();
-	
-	R_DrawSurfaces(frame, rn.meshlist );
+
+		R_DrawSurfaces(frame, rn.meshlist );
 
 	if( r_speeds->integer )
 		rf.stats.t_draw_meshes += ( ri.Sys_Milliseconds() - msec );
@@ -1258,6 +1266,8 @@ void R_RenderView(struct FrameState_s* frame, const refdef_t *fd )
 	R_TransformForWorld();
 
 	R_EndGL(frame);
+
+	TracyCZoneEnd( ctx );
 }
 
 #define REFINST_STACK_SIZE	64

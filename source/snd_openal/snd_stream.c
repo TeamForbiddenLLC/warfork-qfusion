@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "snd_local.h"
+#include "tracy/TracyC.h"
 
 typedef struct
 {
@@ -161,6 +162,7 @@ void S_UpdateStreams( void )
 {
 	int i;
 	rawsrc_t *rs;
+	TracyCZoneN( ctx, "S_UpdateStreams", 1 );
 
 	for( i = 0; i < MAX_RAW_SOUNDS; i++ )
 	{
@@ -168,13 +170,14 @@ void S_UpdateStreams( void )
 		if( !rs->src ) {
 			continue;
 		}
-		
+
 		update_rawsound( rs );
 
 		if( !rs->src->isActive ) {
 			memset( rs, 0, sizeof( *rs ) );
 		}
 	}
+	TracyCZoneEnd( ctx );
 }
 
 void S_StopStreams( void )

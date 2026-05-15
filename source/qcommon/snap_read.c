@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "qcommon.h"
 
 #include "snap_read.h"
+#include "tracy/TracyC.h"
 
 /*
 =========================================================================
@@ -325,6 +326,8 @@ static void SNAP_ParsePacketEntities( msg_t *msg, snapshot_t *oldframe, snapshot
 	entity_state_t *oldstate = NULL;
 	int oldindex, oldnum;
 
+	TracyCZoneN( ctx, "SNAP_ParsePacketEntities", 1 );
+
 	newframe->numEntities = 0;
 
 	// delta from the entities present in oldframe
@@ -453,6 +456,7 @@ static void SNAP_ParsePacketEntities( msg_t *msg, snapshot_t *oldframe, snapshot
 			oldnum = oldstate->number;
 		}
 	}
+	TracyCZoneEnd( ctx );
 }
 
 /*
@@ -573,6 +577,8 @@ snapshot_t *SNAP_ParseFrame( msg_t *msg, snapshot_t *lastFrame, int *suppressCou
 	gcommand_t *gcmd;
 	snapshot_t	*newframe;
 
+	TracyCZoneN( ctx, "SNAP_ParseFrame", 1 );
+
 	// read header
 	newframe = SNAP_ParseFrameHeader( msg, NULL, suppressCount, backup, false );
 	deltaframe = NULL;
@@ -674,5 +680,6 @@ snapshot_t *SNAP_ParseFrame( msg_t *msg, snapshot_t *lastFrame, int *suppressCou
 		Com_Error( ERR_DROP, "SNAP_ParseFrame: not packetentities" );
 	SNAP_ParsePacketEntities( msg, deltaframe, newframe, baselines, showNet );
 
+	TracyCZoneEnd( ctx );
 	return newframe;
 }

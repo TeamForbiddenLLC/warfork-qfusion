@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_cmdque.h"
 
 #include "../ref_base/ref_mod.h"
+#include "tracy/TracyC.h"
 
 static ref_frontend_t rrf;
 static ref_cmdbuf_t *RF_GetNextAdapterFrame( ref_frontendAdapter_t *adapter );
@@ -353,6 +354,7 @@ static void RF_CheckCvars( void )
 
 void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 {
+	TracyCZoneN( ctx, "RF_BeginFrame", 1 );
 	RF_CheckCvars();
 
 	// run cinematic passes on shaders
@@ -380,121 +382,156 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 	R_DataSync();
 
 	rrf.frame->BeginFrame( rrf.frame, cameraSeparation, forceClear, forceVsync );
+	TracyCZoneEnd( ctx );
 }
 
 void RF_EndFrame( void )
 {
+	TracyCZoneN( ctx, "RF_EndFrame", 1 );
 	R_DataSync();
 
 	rrf.frame->EndFrame( rrf.frame );
-	
+
 	if( glConfig.multithreading ) {
 		ri.Mutex_Lock( rrf.adapter.frameLock );
 		rrf.lastFrameNum = rrf.frameNum;
 		rrf.frameId++;
 		ri.Mutex_Unlock( rrf.adapter.frameLock );
 	}
+	TracyCZoneEnd( ctx );
 }
 
 void RF_BeginRegistration( void )
 {
+	TracyCZoneN( ctx, "RF_BeginRegistration", 1 );
 	// sync to the backend thread to ensure it's not using old assets for drawing
 	RF_AdapterWait( &rrf.adapter );
 	R_BeginRegistration();
 	rrf.adapter.cmdPipe->BeginRegistration( rrf.adapter.cmdPipe );
 	RF_AdapterWait( &rrf.adapter );
+	TracyCZoneEnd( ctx );
 }
 
 void RF_EndRegistration( void )
 {
+	TracyCZoneN( ctx, "RF_EndRegistration", 1 );
 	// sync to the backend thread to ensure it's not using old assets for drawing
 	RF_AdapterWait( &rrf.adapter );
 	R_EndRegistration();
 	rrf.adapter.cmdPipe->EndRegistration( rrf.adapter.cmdPipe );
 	RF_AdapterWait( &rrf.adapter );
-	
+
 	// reset the cache of custom colors, otherwise RF_SetCustomColor might fail to do anything
 	memset( rrf.customColors, 0, sizeof( rrf.customColors ) );
+	TracyCZoneEnd( ctx );
 }
 
 void RF_RegisterWorldModel( const char *model, const dvis_t *pvsData )
 {
+	TracyCZoneN( ctx, "RF_RegisterWorldModel", 1 );
 	RF_AdapterWait( &rrf.adapter );
 	R_RegisterWorldModel( model, pvsData );
+	TracyCZoneEnd( ctx );
 }
 
 void RF_ClearScene( void )
 {
+	TracyCZoneN( ctx, "RF_ClearScene", 1 );
 	rrf.frame->ClearScene( rrf.frame );
+	TracyCZoneEnd( ctx );
 }
 
 void RF_AddEntityToScene( const entity_t *ent )
 {
+	TracyCZoneN( ctx, "RF_AddEntityToScene", 1 );
 	rrf.frame->AddEntityToScene( rrf.frame, ent );
+	TracyCZoneEnd( ctx );
 }
 
 void RF_AddLightToScene( const vec3_t org, float intensity, float r, float g, float b )
 {
+	TracyCZoneN( ctx, "RF_AddLightToScene", 1 );
 	rrf.frame->AddLightToScene( rrf.frame, org, intensity, r, g, b );
+	TracyCZoneEnd( ctx );
 }
 
 void RF_AddPolyToScene( const poly_t *poly )
 {
+	TracyCZoneN( ctx, "RF_AddPolyToScene", 1 );
 	rrf.frame->AddPolyToScene( rrf.frame, poly );
+	TracyCZoneEnd( ctx );
 }
 
 void RF_AddLightStyleToScene( int style, float r, float g, float b )
 {
+	TracyCZoneN( ctx, "RF_AddLightStyleToScene", 1 );
 	rrf.frame->AddLightStyleToScene( rrf.frame, style, r, g, b );
+	TracyCZoneEnd( ctx );
 }
 
 void RF_RenderScene( const refdef_t *fd )
 {
+	TracyCZoneN( ctx, "RF_RenderScene", 1 );
 	rrf.frame->RenderScene( rrf.frame, fd );
+	TracyCZoneEnd( ctx );
 }
 
-void RF_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, 
+void RF_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2,
 	const vec4_t color, const shader_t *shader )
 {
+	TracyCZoneN( ctx, "RF_DrawStretchPic", 1 );
 	rrf.frame->DrawRotatedStretchPic( rrf.frame, x, y, w, h, s1, t1, s2, t2, 0, color, shader );
+	TracyCZoneEnd( ctx );
 }
 
-void RF_DrawRotatedStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, float angle, 
+void RF_DrawRotatedStretchPic( int x, int y, int w, int h, float s1, float t1, float s2, float t2, float angle,
 	const vec4_t color, const shader_t *shader )
 {
+	TracyCZoneN( ctx, "RF_DrawRotatedStretchPic", 1 );
 	rrf.frame->DrawRotatedStretchPic( rrf.frame, x, y, w, h, s1, t1, s2, t2, angle, color, shader );
+	TracyCZoneEnd( ctx );
 }
 
-void RF_DrawStretchRaw( int x, int y, int w, int h, int cols, int rows, 
+void RF_DrawStretchRaw( int x, int y, int w, int h, int cols, int rows,
 	float s1, float t1, float s2, float t2, uint8_t *data )
 {
-	if( !cols || !rows )
+	TracyCZoneN( ctx, "RF_DrawStretchRaw", 1 );
+	if( !cols || !rows ) {
+		TracyCZoneEnd( ctx );
 		return;
+	}
 
 	if( data )
 		R_UploadRawPic( rsh.rawTexture, cols, rows, data );
 
 	rrf.frame->DrawStretchRaw( rrf.frame, x, y, w, h, s1, t1, s2, t2 );
+	TracyCZoneEnd( ctx );
 }
 
-void RF_DrawStretchRawYUV( int x, int y, int w, int h, 
+void RF_DrawStretchRawYUV( int x, int y, int w, int h,
 	float s1, float t1, float s2, float t2, ref_img_plane_t *yuv )
 {
+	TracyCZoneN( ctx, "RF_DrawStretchRawYUV", 1 );
 	if( yuv )
 		R_UploadRawYUVPic( rsh.rawYUVTextures, yuv );
 
 	rrf.frame->DrawStretchRawYUV( rrf.frame, x, y, w, h, s1, t1, s2, t2 );
+	TracyCZoneEnd( ctx );
 }
 
 void RF_DrawStretchPoly( const poly_t *poly, float x_offset, float y_offset )
 {
+	TracyCZoneN( ctx, "RF_DrawStretchPoly", 1 );
 	rrf.frame->DrawStretchPoly( rrf.frame, poly, x_offset, y_offset );
+	TracyCZoneEnd( ctx );
 }
 
 void RF_SetScissor( int x, int y, int w, int h )
 {
+	TracyCZoneN( ctx, "RF_SetScissor", 1 );
 	rrf.frame->SetScissor( rrf.frame, x, y, w, h );
 	Vector4Set( rrf.scissor, x, y, w, h );
+	TracyCZoneEnd( ctx );
 }
 
 void RF_GetScissor( int *x, int *y, int *w, int *h )
@@ -511,8 +548,10 @@ void RF_GetScissor( int *x, int *y, int *w, int *h )
 
 void RF_ResetScissor( void )
 {
+	TracyCZoneN( ctx, "RF_ResetScissor", 1 );
 	rrf.frame->ResetScissor( rrf.frame );
 	Vector4Set( rrf.scissor, 0, 0, glConfig.width, glConfig.height );
+	TracyCZoneEnd( ctx );
 }
 
 void RF_SetCustomColor( int num, int r, int g, int b )
@@ -614,9 +653,12 @@ void RF_TransformVectorToScreen( const refdef_t *rd, const vec3_t in, vec2_t out
 {
 	mat4_t p, m;
 	vec4_t temp, temp2;
- 	
-	if( !rd || !in || !out )
+	TracyCZoneN( ctx, "RF_TransformVectorToScreen", 1 );
+
+	if( !rd || !in || !out ) {
+		TracyCZoneEnd( ctx );
 		return;
+	}
  	
 	temp[0] = in[0];
 	temp[1] = in[1];
@@ -640,34 +682,50 @@ void RF_TransformVectorToScreen( const refdef_t *rd, const vec3_t in, vec2_t out
  	
 	Matrix4_Multiply_Vector( m, temp, temp2 );
 	Matrix4_Multiply_Vector( p, temp2, temp );
- 	
-	if( !temp[3] )
- 		return;
- 	
+
+	if( !temp[3] ) {
+		TracyCZoneEnd( ctx );
+		return;
+	}
+
 	out[0] = rd->x + ( temp[0] / temp[3] + 1.0f ) * rd->width * 0.5f;
 	out[1] = glConfig.height - (rd->y + ( temp[1] / temp[3] + 1.0f ) * rd->height * 0.5f);
+	TracyCZoneEnd( ctx );
 }
 
 bool RF_LerpTag( orientation_t *orient, const model_t *mod, int oldframe, int frame, float lerpfrac, const char *name )
 {
-	if( !orient )
+	bool ret;
+	TracyCZoneN( ctx, "RF_LerpTag", 1 );
+
+	if( !orient ) {
+		TracyCZoneEnd( ctx );
 		return false;
- 	
+	}
+
 	VectorClear( orient->origin );
 	Matrix3_Identity( orient->axis );
- 	
-	if( !name )
+
+	if( !name ) {
+		TracyCZoneEnd( ctx );
 		return false;
- 	
-	if( mod->type == mod_alias )
-		return R_AliasModelLerpTag( orient, (const maliasmodel_t *)mod->extradata, oldframe, frame, lerpfrac, name );
- 	
+	}
+
+	if( mod->type == mod_alias ) {
+		ret = R_AliasModelLerpTag( orient, (const maliasmodel_t *)mod->extradata, oldframe, frame, lerpfrac, name );
+		TracyCZoneEnd( ctx );
+		return ret;
+	}
+
+	TracyCZoneEnd( ctx );
 	return false;
 }
 
 void RF_LightForOrigin( const vec3_t origin, vec3_t dir, vec4_t ambient, vec4_t diffuse, float radius )
 {
+	TracyCZoneN( ctx, "RF_LightForOrigin", 1 );
 	R_LightForOrigin( origin, dir, ambient, diffuse, radius, false );
+	TracyCZoneEnd( ctx );
 }
 
 /*

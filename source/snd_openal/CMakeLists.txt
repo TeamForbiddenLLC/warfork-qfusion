@@ -25,5 +25,5 @@ else ()
 endif()
 
 add_library(snd_openal SHARED ${SND_OPENAL_HEADERS} ${SND_OPENAL_SOURCES})
-target_link_libraries(snd_openal PRIVATE ogg vorbis vorbisfile OpenAL::OpenAL ${SND_OPENAL_PLATFORM_LIBRARIES})
+target_link_libraries(snd_openal PRIVATE ogg vorbis vorbisfile OpenAL::OpenAL ${SND_OPENAL_PLATFORM_LIBRARIES} Tracy::TracyClient)
 qf_set_output_dir(snd_openal libs)

@@ -662,7 +662,7 @@ static bool R_IsKTXFormatValid( int format, int type )
 // TODO: move ktx loader to a seperate file
 static bool __R_LoadKTX( image_t *image, const char *pathname )
 {
-	TracyCZone( ctx, 1 );
+	TracyCZoneN( ctx, "__R_LoadKTX", 1 );
 	const uint_fast16_t numFaces = ( ( image->flags & IT_CUBEMAP ) ? 6 : 1 );
 	if( image->flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) )
 		return false;
@@ -976,7 +976,7 @@ static uint16_t __R_calculateMipMapLevel( int flags, int width, int height, uint
 
 struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int height, int flags, int minmipsize, int tags, int samples )
 {
-	TracyCZone( ctx, 1 );
+	TracyCZoneN( ctx, "R_LoadImage", 1 );
 	struct image_s *image = __R_AllocImage( qCToStrRef( name ) );
 
 	image->width = width;
@@ -1113,7 +1113,7 @@ image_t *R_CreateImage( const char *name, int width, int height, int layers, int
 
 static void __FreeImage( struct image_s *image )
 {
-	TracyCZone( ctx, 1 );
+	TracyCZoneN( ctx, "__FreeImage", 1 );
 	{
 		__FreeGPUImageData( image );
 		// R_ReleaseNriTexture(image);
@@ -1148,7 +1148,7 @@ static void __FreeImage( struct image_s *image )
 
 void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int flags, int minmipsize, int samples )
 {
-	TracyCZone( ctx, 1 );
+	TracyCZoneN( ctx, "R_ReplaceImage", 1 );
 	assert( image );
 	// const NriTextureDesc *textureDesc = rsh.nri.coreI.GetTextureDesc( image->texture );
 	uint32_t mipNum = __R_calculateMipMapLevel( flags, width, height, minmipsize );
@@ -1232,7 +1232,7 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
  */
 void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, int width, int height )
 {
-	TracyCZone( ctx, 1 );
+	TracyCZoneN( ctx, "R_ReplaceSubImage", 1 );
 	assert( image );
 
 	const size_t reservedSize = width * height * image->samples;
@@ -1279,7 +1279,7 @@ void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, 
  */
 void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic )
 {
-	TracyCZone( ctx, 1 );
+	TracyCZoneN( ctx, "R_ReplaceImageLayer", 1 );
 	assert( image );
 	// assert( image->texture );
 
@@ -1330,7 +1330,7 @@ void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic )
  */
 image_t *R_FindImage( const char *name, const char *suffix, int flags, int minmipsize, int tags )
 {
-	TracyCZone( ctx, 1 );
+	TracyCZoneN( ctx, "R_FindImage", 1 );
 	assert( name );
 	assert( name[0] );
 	struct UploadImgBuffer {
@@ -1905,7 +1905,7 @@ void R_TouchImage( image_t *image, int tags )
  */
 void R_FreeUnusedImagesByTags( int tags )
 {
-	TracyCZone( ctx, 1 );
+	TracyCZoneN( ctx, "R_FreeUnusedImagesByTags", 1 );
 	int i;
 	image_t *image;
 	int keeptags = ~tags;
@@ -1944,7 +1944,7 @@ void R_FreeUnusedImages( void )
  */
 void R_ShutdownImages( void )
 {
-	TracyCZone( ctx, 1 );
+	TracyCZoneN( ctx, "R_ShutdownImages", 1 );
 	int i;
 	image_t *image;
 

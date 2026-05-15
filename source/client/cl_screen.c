@@ -676,7 +676,6 @@ static void SCR_RenderView( float stereo_separation )
 */
 void SCR_UpdateScreen( void )
 {
-	TracyCFrameMark
 	static dynvar_t *updatescreen = NULL;
 	int numframes;
 	int i;
