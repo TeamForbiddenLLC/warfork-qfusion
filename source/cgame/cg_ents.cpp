@@ -654,7 +654,7 @@ void CG_AddCentityOutLineEffect( centity_t *cent )
 {
 	if( cg_outlinePlayers->integer >= 2 ) {
 		CG_AddColoredOutLineEffect( &cent->ent, cent->effects, cent->outlineColor[0], cent->outlineColor[1], cent->outlineColor[2], cent->outlineColor[3] );
-	} else if( cg_outlinePlayers->integer == 1 ) {
+	} else if( cg_outlineModels->integer == 1 ) {
 		CG_AddColoredOutLineEffect( &cent->ent, cent->effects, 0, 0, 0, cent->outlineColor[3] );
 	}
 }
@@ -900,14 +900,19 @@ static void CG_AddGenericEnt( centity_t *cent )
 		}
 
 		// add shadows for items (do it before offseting for weapons)
-		if( !( cent->renderfx & RF_NOSHADOW ) && cg_shadows->integer )
-		{
-			CG_AllocShadeBox( cent->current.number, cent->ent.origin, item_box_mins, item_box_maxs, NULL );
-			cent->ent.renderfx |= RF_NOSHADOW;
-		}
-		else
-		{
-			cent->ent.renderfx |= RF_NOSHADOW;
+		if( cent->item ) {
+			if( !( cent->renderfx & RF_NOSHADOW ) && cg_shadows->integer ) {
+				if( cg_shadows->integer == 1 ) {
+					CG_AllocShadeBox( cent->current.number, cent->ent.origin, item_box_mins, item_box_maxs, NULL );
+					cent->ent.renderfx |= RF_NOSHADOW;
+				}
+				// cg_shadows >= 2: leave RF_NOSHADOW cleared, shadowmap system handles it
+			} else {
+				cent->ent.renderfx |= RF_NOSHADOW;
+			}
+		} else {
+			if( cg_shadows->integer < 2 )
+				cent->ent.renderfx |= RF_NOSHADOW;
 		}
 
 		cent->ent.renderfx |= RF_MINLIGHT;
@@ -1940,6 +1945,7 @@ void CG_AddEntities( void )
 			CG_EntityLoopSound( state, ATTN_STATIC );
 			CG_ProjectileTrail( cent );
 			canLight = true;
+			if( cg_outlineModels->integer ) cent->effects |= EF_OUTLINE;
 			CG_AddLightToScene(cent->ent.origin, 250, 0.2f, 0.2f, 1.0f);
 			break;
 		case ET_PLASMA:

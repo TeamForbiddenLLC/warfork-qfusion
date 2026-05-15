@@ -1522,7 +1522,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 		case GLSL_PROGRAM_TYPE_OUTLINE: {
 			const enum RICullMode_e prevCullMode = cmd->pipeline.cullMode;
 			cmd->pipeline.cullMode = RI_CULL_MODE_BACK;
-
+			RB_SetState_2( cmd, GLSTATE_DEPTHWRITE );
 			mat4_t texMatrix = { 0 };
 			Matrix4_Identity( texMatrix );
 			if( pass->numtcmods ) {

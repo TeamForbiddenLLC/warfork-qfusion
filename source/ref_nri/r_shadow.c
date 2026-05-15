@@ -201,7 +201,6 @@ void R_BuildShadowGroups( void )
 		VectorSet( lightDir, -lightDir[0], -lightDir[1], -fabs( lightDir[2] ) );
 		VectorNormalize2( lightDir, group->lightDir );
 
-		VectorScale( group->lightDir, group->projDist, lightDir );
 		VectorScale( group->lightDir, group->projDist * 2.0f, lightDir );
 		VectorAdd( group->mins, lightDir, mins );
 		VectorAdd( group->maxs, lightDir, maxs );
@@ -409,7 +408,7 @@ static struct shadow_fb_s *__ResolveShadowSurface(size_t i, int width, int heigh
 		};
 
 		VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
-		usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+		usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
 		VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 		createInfo.pNext = &usageInfo;
@@ -462,7 +461,6 @@ void R_DrawShadowmaps(struct FrameState_s* cmd)
 		return;
 	}
 	R_InitSubpass( cmd, &sub );
-	BeginRICmd(&rsh.device, &sub.handle);
 
 	lodScale = rn.lod_dist_scale_for_fov;
 	VectorCopy( rn.lodOrigin, lodOrigin );

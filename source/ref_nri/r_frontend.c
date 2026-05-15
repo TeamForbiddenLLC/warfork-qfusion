@@ -715,10 +715,10 @@ void RF_EndFrame( void )
 			}
 
 			for (size_t i = 0; i < arrlen(rsh.secondary); i++) {
-				wait_semaphore_info[num_wait_semaphores++] = (VkSemaphoreSubmitInfo){ 
+				wait_semaphore_info[num_wait_semaphores++] = (VkSemaphoreSubmitInfo){
 					.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-					.semaphore = rsh.secondary[i].vk.semaphore, 
-					.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT 
+					.semaphore = rsh.secondary[i].vk.semaphore,
+					.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
 				};
 			}
 		}
