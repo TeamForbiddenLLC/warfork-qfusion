@@ -32,7 +32,14 @@ jobs:
   prepare-steam-build:
     needs: [linux, macos, windows]
     runs-on: ubuntu-latest
+    outputs:
+      sentry_release: ${{ steps.sentry-release.outputs.version }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Download all artifacts
         uses: actions/download-artifact@v5
         with:
@@ -65,10 +72,15 @@ jobs:
         run: | # find then remove steam_appid.txt files from all depots 
           find steam-build -type f -name steam_appid.txt -exec rm -v {} \;
 
-      - name: Sentry Upload
+      - name: Sentry release & debug files
+        id: sentry-release
         run: |
           curl -sL https://sentry.io/get-cli/ | bash
           sentry-cli --version
+          VERSION=$(sentry-cli releases propose-version)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          sentry-cli releases new "$VERSION"
+          sentry-cli releases set-commits "$VERSION" --auto
           sentry-cli debug-files upload steam-build/
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -130,3 +142,19 @@ jobs:
           depot8Path: ${{ matrix.steam_app.depot8 }}
           releaseBranch: ${{ inputs.release_branch }}
           debugBranch: true
+
+  # Finalize the Sentry release once the Steam deploy succeeds
+  finalize-sentry:
+    needs: [prepare-steam-build, deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Finalize Sentry release
+        run: |
+          curl -sL https://sentry.io/get-cli/ | bash
+          sentry-cli releases finalize "$VERSION"
+          sentry-cli releases deploys "$VERSION" new -e "${{ inputs.release_branch }}"
+        env:
+          VERSION: ${{ needs.prepare-steam-build.outputs.sentry_release }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: team-forbidden-llc
+          SENTRY_PROJECT: warfork
