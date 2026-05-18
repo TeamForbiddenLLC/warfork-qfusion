@@ -284,13 +284,11 @@
 				<input cvar="cg_chatBeep" type="checkbox" realtime="1"/>
 				<br/>
 				
-				<!--
 				<div class="title">Enable voice chat</div>
 				<input cvar="cl_enablevoice" type="checkbox" realtime="1"/>
 				<br/>
 				(To change microphone settings, press shift-tab to activate the steam overlay, and open "in-game voice" in settings)
 				<br/>
-				-->
 				<br/>
 
 				<button onclick="form.restoreOptions(); soundReset();" class="button-cancel">Cancel</button>	
