@@ -1,0 +1,209 @@
+<!--
+Copyright (C) 2011 Cervesato Andrea ("koochi")
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
+-->
+
+<rml>
+<head>
+	<title>home</title>
+	<link type="text/template" href="template_ingame.rml" />
+	<link rel="stylesheet" type="text/css" href="css/demoplay.rcss" />
+	<script>
+		Element @bar;
+		Element @txt;
+		Element @playButton;
+		Element @pauseButton;
+		Element @jumpForwardButton;
+		Element @jumpBackwardButton;
+
+		bool durationUpdate = false;
+
+		void onDemoplayLoad( Element @elem, Event @evt )
+		{
+			onTemplateLoad( elem, evt );
+
+			// time bar
+			@bar = elem.getElementById( 'timer-bar' );
+			@txt = elem.getElementById( 'timer-text' );
+
+			@playButton  = elem.getElementById( 'play-button' );
+			@pauseButton = elem.getElementById( 'pause-button' );
+			@jumpForwardButton = elem.getElementById( 'jumpforward-button' );
+			@jumpBackwardButton = elem.getElementById( 'jumpbackward-button' );
+
+			// setup scheduler
+			window.setInterval( demoplayTimerCallabck, 100 );		
+		}
+
+		void onDemoplayShow( Element @elem, Event @evt )
+		{
+			String matchName = '';
+			
+			matchName = '<field formatter="datetime" value="' + game.demo.getMeta( 'localtime' ) + '"/> - ';
+			if( !game.demo.getMeta( 'matchname' ).empty() ) {
+				matchName += '<field formatter="colorcode" value="' + game.demo.getMeta( 'matchname' ) + '"/>';
+				matchName += ' (' + game.demo.getMeta( 'matchscore' ) + ')';
+			}
+
+			window.document.body.getElementById( 'demo-header' ).setInnerRML( matchName );
+
+			if( @bar == null || @txt == null ) {
+				return;
+			}
+
+			// initialize play and pause buttons
+			if( game.demo.isPaused )
+				showPlayButton( @elem );
+			else
+				showPauseButton( @elem );
+
+			updateDurationFields();
+
+			animationsOnShow();
+		}
+
+		// used by scheduler
+		bool demoplayTimerCallabck( void )
+		{
+			if( @bar == null || @txt == null ) {
+				return false;
+			}
+			if( !game.demo.isPlaying ) {
+				return true;
+			}
+			if( game.demo.isPaused ) {
+				return true;
+			}
+			updateDurationFields();
+			return true;
+		}
+
+		void updateDurationFields()
+		{
+			if( @bar == null || @txt == null ) {
+				return;
+			}
+
+			String demoduration = game.demo.getMeta( 'duration' );
+			String timeSeconds = String( game.demo.time );
+
+			bar.setAttr( 'max', demoduration );
+
+			// tell onTimerBarChange this update doesn't come from user input event
+			durationUpdate = true;
+			cast<ElementFormControl>(bar).value = timeSeconds;
+			durationUpdate = false;
+
+			demoduration = '<field formatter="duration" value="' + timeSeconds + '"/>' 
+				 + ' / ' + '<field formatter="duration" value="' + demoduration + '"/>';
+			
+			window.document.body.getElementById( 'timer-text' ).setInnerRML( demoduration );	
+		}
+
+		void onTimerBarChange( Element @elem, Event @event )
+		{
+			if( @bar == null ) {
+				return;
+			}
+			if( durationUpdate ) {
+				return;
+			}
+
+			uint timeSeconds = uint( cast<ElementFormControl>(bar).value );
+			if( timeSeconds == game.demo.time ) {
+				return;
+			}
+
+			// jump at that second
+			game.demo.jump( timeSeconds );
+		}
+
+		void showPlayButton( Element @elem )
+		{
+			if( @playButton == null || @pauseButton == null ) {
+				return;
+			}
+				
+			playButton.setProp( 'display', 'block' );
+			pauseButton.setProp( 'display', 'none' );
+		}
+
+		void showPauseButton( Element @elem )
+		{
+			if( @playButton == null || @pauseButton == null ) {
+				return;
+			}
+
+			playButton.setProp( 'display', 'none' );
+			pauseButton.setProp( 'display', 'block' );					
+		}
+
+		void onPauseClick( Element @elem, Event @event )
+		{	
+			showPlayButton( @elem );
+			game.demo.pause();
+		}
+
+		void onPlayClick( Element @elem, Event @event )
+		{
+			showPauseButton( @elem );
+			game.demo.pause();
+		}
+
+		void onJumpBackwardClick( Element @elem, Event @event )
+		{
+			int backwardSeconds = int( cast<ElementFormControl>(bar).value) - 15;
+
+			if ( backwardSeconds <= 0 ) {
+				backwardSeconds = 0;
+			}
+			
+			game.demo.jump( backwardSeconds );
+		}
+
+		void onJumpForwardClick( Element @elem, Event @event )
+		{
+			int forwardSeconds = int( cast<ElementFormControl>(bar).value) + 15;
+			game.demo.jump( forwardSeconds );
+		}
+	
+		void onMenuClick( Element @elem, Event @event )
+		{
+			window.location='index.rml';
+		}
+	</script>
+</head>
+<body template="porkui_ingame" onload="$onDemoplayLoad" onshow="$onDemoplayShow">
+	<div id="menu-ingame">
+		<div id="demo-header" />
+
+		<!-- current demo time / demo duration -->
+		<div id="timer-text" />
+
+		<!-- time bar -->
+		<input id="timer-bar" type="range" min="0" max="10" step="1" value="0" onchange="$onTimerBarChange"></input>
+
+		<div id="stop-button"  onclick="game.demo.stop();"/>
+		<div id="jumpbackward-button" onclick="$onJumpBackwardClick"/>
+		<div id="play-button"  onclick="$onPlayClick"/>
+		<div id="pause-button" onclick="$onPauseClick"/>
+		<div id="jumpforward-button" onclick="$onJumpForwardClick"/>
+		<button id="menu-button" onclick="$onMenuClick">Main menu</button>
+	</div>
+</body>
+</rml>

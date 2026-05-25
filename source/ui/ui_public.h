@@ -110,6 +110,7 @@ typedef struct
 	void ( *CL_ResetServerCount )( void );
 	char *( *CL_GetClipboardData )( bool primary );
 	void ( *CL_FreeClipboardData )( char *data );
+	bool ( *CL_SetClipboardData )( const char *data );
 	bool ( *CL_IsBrowserAvailable )( void );
 	void ( *CL_OpenURLInBrowser )( const char *url );
 	size_t ( *CL_ReadDemoMetaData )( const char *demopath, char *meta_data, size_t meta_data_size );

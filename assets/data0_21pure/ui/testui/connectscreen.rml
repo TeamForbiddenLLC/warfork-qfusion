@@ -1,0 +1,107 @@
+<!--
+Copyright (C) 2012 Jannik Kolodziej ("drahtmaul")
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
+-->
+
+<rml>
+	<head>
+		<title></title>
+		<link rel="stylesheet" type="text/css" href="css/html4.rcss" />
+		<link rel="stylesheet" type="text/css" href="css/common.rcss" />
+		<link rel="stylesheet" type="text/css" href="css/base.rcss" />
+		<link rel="stylesheet" type="text/css" href="css/controls.rcss" />
+		<link rel="stylesheet" type="text/css" href="css/connectscreen.rcss" />
+		<script src="as/base.as" />
+		<script>
+			int timerId;
+			Element @logo;
+			Element @content;
+			
+			void onConnectScreenLoad( Element @body, Event @evt )
+			{
+				timerId = -1;
+				@logo = body.getElementById( 'logo' );
+				@content = body.getElementById( 'content' );
+
+				float scale = float( window.height ) / 1080.0f;
+				logo.css( 'left', String( window.width / 2 - int( 256.0f * scale ) ) );
+				logo.css( 'top', String( window.height / 2 - int( 64.0f * scale ) ) );
+				logo.css( 'width', String( int( 512.0f * scale ) ) );
+				logo.css( 'height', String( int( 128.0f * scale ) ) );
+			}
+
+			void onConnectScreenShow( Element @body, Event @evt )
+			{
+				if( timerId == -1 ) {
+					timerId = window.setInterval( __updateDataCallback, 20 );
+				}
+				updateDownloadInfo();
+			}
+			
+			void onConnectScreenHide( Element @body, Event @evt )
+			{
+				if( timerId != -1 ) {
+					window.clearInterval( timerId );
+					timerId = -1;
+				}
+			}
+
+			void updateDownloadInfo()
+			{
+				logo.css( 'visibility', window.drawBackground ? 'visible' : 'hidden' );
+				
+				if( @content == null ) {
+					return;
+				}
+
+				String message = game.rejectMessage;
+				if( !message.empty() ) {
+					message = StringUtils::Format( _T( "Refused: %s" ), _T( message ) );
+				}
+
+				content.getElementById( 'message' ).setInnerRML( message );
+
+				if( game.download.type != DOWNLOADTYPE_NONE )
+				{
+					// we are downloading stuff
+					String title = StringUtils::Format( 
+						_T( "Downloading %s from " + ( game.download.type == DOWNLOADTYPE_SERVER ? "server" : "the web" ) + " at %s k/s" ), 
+						game.download.name, String( game.download.speed ) );
+					title += " (" + StringUtils::FormatFloat( game.download.percent, "0", 1, 1 ) + "%)";
+
+					content.getElementById( 'downloadinfo' ).css( 'visibility', 'visible' ).setInnerRML( title );
+				}
+				else
+					content.getElementById( 'downloadinfo' ).css( 'visibility', 'hidden' );
+			}
+
+			bool __updateDataCallback()
+			{
+				updateDownloadInfo();
+				return true;
+			}
+		</script>
+	</head>
+	<body onload="$onConnectScreenLoad" onshow="$onConnectScreenShow" onhide="$onConnectScreenHide">
+		<div id="logo" />
+		<div id="content">
+			<div id="message" />
+			<div id="downloadinfo" />
+		</div>
+	</body>
+</rml>

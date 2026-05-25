@@ -512,7 +512,7 @@ void ServerBrowserDataSource::GetRow( StringList &row, const String &table, int 
 		else if( *it == "password" )
 			row.push_back( info.password ? "yes" : "no" );
 		else if( *it == "steam" )
-			row.push_back( info.steam ? "yes" : "no" );
+			row.push_back( info.steam ? "\xE2\x9C\x93" : "\xE2\x9C\x97" );
 		else if ( *it == "steamid" )
 			row.push_back( va( "%llu", info.steamid ) );
 		else if( *it == "ping" )

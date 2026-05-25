@@ -1,0 +1,23 @@
+/* friends */
+#friends_container { padding-left: 8dp; padding-bottom: 8dp; margin: 0dp; white-space: nowrap; overflow-x: hidden; }
+#friends_container h1, #friends_container h2 { text-align: center; }
+
+/* raise content closer to the tabs */
+#wmm-friends { text-align: left; }
+
+.wmm-friend { height: 44dp; }
+
+.alt { background: #1c1923a1; }
+.offline .nickline { color: silver; }
+.online .nickline { color: lime; }
+
+.nickline, .connect { padding-left: 46dp; }
+.connect { font-size: 13dp; }
+
+.avatar { float: left; width: 36dp; height: 36dp; display: inline-block; margin-left: 2dp; margin-top: 2dp; }
+.avatar img { width: 40dp; height: 40dp; }
+
+.offline .avatar img { border-top: 2dp grey; border-right: 2dp grey; border-bottom: 2dp grey; border-left: 2dp grey; }
+.online .avatar img { border-top: 2dp green; border-right: 2dp green; border-bottom: 2dp green; border-left: 2dp green; }
+
+.wmm-friend:hover { background: #1f2034b2; }

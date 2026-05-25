@@ -28,6 +28,7 @@
 #ifndef ROCKETDEBUGGERSYSTEMINTERFACE_H
 #define ROCKETDEBUGGERSYSTEMINTERFACE_H
 
+#include "../../Include/Rocket/Core/WString.h"
 #include "../../Include/Rocket/Core/SystemInterface.h"
 
 namespace Rocket {

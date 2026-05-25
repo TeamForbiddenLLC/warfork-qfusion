@@ -1,0 +1,142 @@
+<!--
+Copyright (C) 2012 Jannik Kolodziej ("drahtmaul")
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
+-->
+
+<rml>
+<head>
+	<title>game</title>
+	<link rel="stylesheet" type="text/css" href="css/html4.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/common.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/base.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/controls.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/quick.rcss" />
+	<script src="as/base.as" />
+	<script>
+		void onQuickMenuButtonClick( Element @self, Event @evt )
+		{
+			if( @self == null ) {
+				return;
+			}
+
+			String command = self.getAttr( 'command', '' );
+			if( !command.empty() ) {
+				game.execAppend( command + '\n' );
+			}
+		}
+		
+		void onQuickMenuKeydown( Element @self, Event @evt )
+		{
+			int phase = evt.getPhase();
+			eInputKey key = eInputKey( evt.getParameter( "key_identifier", 0 ) );
+
+			if( phase == EVENT_PHASE_TARGET || phase == EVENT_PHASE_BUBBLE ) {
+				int id;
+				if( key >= KI_1 && key <= KI_9 ) {
+					id = key - KI_1 + 1;
+				} else if( key == KI_0 ) {
+					id = 10;
+				} else {
+					return;
+				}
+				
+				onQuickMenuButtonClick( self.getElementById( 'cmd' + id ), @evt );
+			}
+		}
+		
+		void setupQuickMenu( Element @body )
+		{
+			Element @meqk = @body.getElementById( 'menu-quick' );
+			if ( @meqk == null )
+				return;
+
+			const Dictionary @dict = body.ownerDocument.URL.getParameters();
+			if ( dict.empty() )
+				return;
+
+			String @tempName;
+			String @tempCmd;
+
+			// display gametype title
+			String gametypeTitle = game.cs( CS_GAMETYPETITLE );
+			meqk.getElementById( 'menu-header' ).setInnerRML( gametypeTitle );
+
+			String menuRml = "";
+			
+			int i;
+			for( i = 1; ; i++ )
+			{
+				@tempName = null;
+				@tempCmd = null;
+
+				dict.get( "btn" + i, @tempName );
+				dict.get( "cmd" + i, @tempCmd );
+
+				if( @tempName == null || @tempCmd == null )
+					break;
+
+				if( !tempCmd.empty() )
+					menuRml += '<button id="cmd' + i + '" command="' + tempCmd + '" onclick="$onQuickMenuButtonClick"><span class="number">' + (i % 10) + '.</span>&nbsp;<t>' + tempName + '</t></button>';
+				menuRml += '<br/>';
+			}
+
+			meqk.getElementById( 'menu-commands' ).setInnerRML( menuRml );
+
+			float bodyHeight = body.clientHeight();
+			float meqkAbsTop = bodyHeight * 0.5f;
+			float meqkHeight = meqk.clientHeight() - 14.0f * window.pixelRatio;
+			if( meqkAbsTop + meqkHeight > bodyHeight )
+				meqkAbsTop -= meqkAbsTop + meqkHeight - bodyHeight;
+
+			Element @meqkAbs = body.getElementById( 'menu-quick-abs' );
+			meqkAbs.css( 'top', String( int( meqkAbsTop ) ) + 'px' );
+
+			String leftSideParam;
+			bool leftSide = false;
+			if( dict.get( 'left', leftSideParam ) )
+				leftSide = ( leftSideParam.toInt() != 0 );
+			Element @meqkRel = body.getElementById( 'menu-quick-rel' );
+			if( leftSide )
+			{
+				meqkAbs.css( 'left', '0' );
+				meqkRel.css( 'left', '0' );
+			}
+			else
+			{
+				meqkAbs.css( 'left', '100%' );
+				meqkRel.css( 'left', '-250dp' );
+			}
+		}
+		
+		void onQuickMenuShow( Element @body, Event @evt )
+		{
+			setupQuickMenu( body );
+		}
+	</script>
+</head>
+<body onshow="$onQuickMenuShow" onkeydown="$onQuickMenuKeydown">
+	<div id="menu-quick-abs">
+		<div id="menu-quick-rel">
+			<div id="menu-quick">
+				<div id="menu-header" />
+				<div id="menu-commands" />
+			</div>
+		</div>
+	</div>
+</body>
+</rml>

@@ -16,6 +16,7 @@
 
 #include <Rocket/Core/FontEffectInstancer.h>
 #include <Rocket/Controls.h>
+#include <Rocket/Debugger.h>
 
 namespace WSWUI
 {
@@ -153,6 +154,23 @@ void RocketModule::keyEvent( int contextId, int key, bool pressed )
 	Element *element = context->GetFocusElement();
 
 	int mod = KeyConverter::getModifiers();
+
+	// toggle the Rocket debugger on Shift+F12
+	if( key == K_F12 && pressed && ( mod & Rocket::Core::Input::KM_SHIFT ) )
+	{
+		static bool debuggerInitialized = false;
+		if( !debuggerInitialized )
+		{
+			if( !Rocket::Debugger::Initialise( contextMain ) )
+				return;
+			Rocket::Debugger::SetReloadUICallback( []() {
+				trap::Cmd_ExecuteText( EXEC_APPEND, "ui_reload\n" );
+			} );
+			debuggerInitialized = true;
+		}
+		Rocket::Debugger::SetVisible( !Rocket::Debugger::IsVisible() );
+		return;
+	}
 
 	// send the blur event, to the current focused element, when ESC key is pressed
 	if( ( key == K_ESCAPE ) && element )

@@ -139,6 +139,10 @@ namespace trap
 			UI_IMPORT.CL_FreeClipboardData( data );
 		}
 
+		inline bool CL_SetClipboardData( const char *data ) {
+			return UI_IMPORT.CL_SetClipboardData( data );
+		}
+
 		inline bool CL_IsBrowserAvailable( void ) {
 			return UI_IMPORT.CL_IsBrowserAvailable();
 		}

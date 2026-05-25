@@ -1,0 +1,27 @@
+<template name="options" content="leftside">
+	<head>
+		<title>options</title>
+		<link type="text/template" href="template.rml" />
+	</head>
+
+	<body template="porkui" onshow="window.location = 'options_player.rml';">
+		<!-- divide the screen to two vertical contexts -->
+		<div id="leftside">
+			
+		</div>
+
+		<div id="sidebar">
+			<div id="sidebar2">
+				<!-- options navigation -->
+				<a href="#" onclick="animOpenMenu('options_player.rml');">Player</a>
+				<a href="#" onclick="animOpenMenu('options_teams.rml');">Teams</a>
+				<a href="#" onclick="animOpenMenu('options_video.rml');">Video</a>
+				<a href="#" onclick="animOpenMenu('options_audio.rml');">Audio</a>
+				<a href="#" onclick="animOpenMenu('options_input.rml');">Input</a>
+				<hr class="w100p nicehr" />
+				<a href="#" onclick="animOpenMenu('options_troubleshoot.rml');">Troubleshooting</a>
+			</div>
+		</div>
+
+	</body>
+</template>

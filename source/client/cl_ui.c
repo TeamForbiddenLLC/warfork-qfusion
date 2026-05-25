@@ -215,6 +215,7 @@ void CL_UIModule_Init( void )
 	import.CL_ResetServerCount = CL_ResetServerCount;
 	import.CL_GetClipboardData = CL_GetClipboardData;
 	import.CL_FreeClipboardData = CL_FreeClipboardData;
+	import.CL_SetClipboardData = CL_SetClipboardData;
 	import.CL_IsBrowserAvailable = CL_IsBrowserAvailable;
 	import.CL_OpenURLInBrowser = CL_OpenURLInBrowser;
 	import.CL_ReadDemoMetaData = CL_ReadDemoMetaData;

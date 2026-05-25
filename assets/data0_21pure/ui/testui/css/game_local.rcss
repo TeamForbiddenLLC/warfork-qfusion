@@ -1,0 +1,39 @@
+.map-container {
+	margin-left: 15%;
+	margin-right: 15%;
+}
+
+.search-bar {
+	margin-bottom: 16dp;
+}
+
+#map-search-input, h3 {
+	width: 90%;
+	max-width: 100%;
+}
+
+.search-bar .search-icon {
+	width: 20dp;
+	height: 20dp;
+	vertical-align: middle;
+	margin-right: 8dp;
+	opacity: 0.6;
+}
+
+#maps-datagrid { 
+	height: 250dp;
+	overflow-y: auto;
+}
+
+#maps-datagrid datagridrow:hover, #maps-datagrid datagridrow:active, #maps-datagrid datagridrow:selected { 
+	background: #3f3c49; 
+}
+
+#mapinfo {
+	margin-top: 8dp;
+}
+
+#mapinfo levelshot {
+	width: 200dp;
+	height: 150dp;
+}

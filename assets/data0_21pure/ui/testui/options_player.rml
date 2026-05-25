@@ -1,0 +1,577 @@
+<rml>
+<head>
+	<title>options</title>
+	<link type="text/template" href="template.rml" />
+	<link rel="stylesheet" type="text/css" href="css/modelview.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/options/player.rcss" />
+	<script src="as/modelview.as"></script>
+	<script src="as/model_setup.as"></script>
+	<script>
+		ModelSetup mSetup;
+
+		ElementOptionsForm @playerform;
+
+		ElementFormControl @hudClient;
+		ElementFormControl @hudSpec;
+		Element @hudNoTouch;
+		Element @crosshair;
+		Element @crosshairWhite;
+		Element @crosshairStrong;
+		Element @crosshairStrongWhite;
+		Cvar cg_crosshair( "cg_crosshair", "1", ::CVAR_ARCHIVE );
+		Cvar cg_crosshair_strong( "cg_crosshair_strong", "0", ::CVAR_ARCHIVE );
+		Cvar cg_clientHUD( "cg_clientHUD", "", ::CVAR_ARCHIVE );
+		Cvar cg_specHUD( "cg_specHUD", "", ::CVAR_ARCHIVE );
+		bool allowVidRestart = false;
+
+		void onPlayerLoad( Element @body, Event @evt )
+		{
+			onTemplateLoad( body, evt );
+
+			@hudClient = body.getElementById( "hud-client" );
+			@hudSpec = body.getElementById( "hud-spec" );
+			@hudNoTouch = body.getElementById( "hud-notouch" );
+			@crosshair = body.getElementById( "crosshair" );
+			@crosshairWhite = body.getElementById( "crosshair-white" );
+			@crosshairStrong = body.getElementById( "crosshair-strong" );
+			@crosshairStrongWhite = body.getElementById( "crosshair-strong-white" );
+
+			// get the 'servers' query string parameter value
+			String tab = '';
+			const Dictionary @dict = body.ownerDocument.URL.getParameters();
+			if( dict.get( 'tab', tab ) ) {
+				cast<ElementTabSet>(body.getElementById( 'options-set' )).setActiveTab( int(tab) );
+			}
+
+			Cvar( 'ui_autobrowse_manual', '0', ::CVAR_ARCHIVE );
+
+			uint devices = window.supportedInputDevices;
+
+			bool touchscreen = ( ( devices & IN_DEVICE_TOUCHSCREEN ) != 0 );
+			String defaultHUD = ( touchscreen ? 'default_touch' : 'default' );
+			if( cg_clientHUD.string.empty() ) {
+				cg_clientHUD.set( defaultHUD );
+				if( @hudClient != null ) {
+					hudClient.value = defaultHUD;
+				}
+			}
+			if( cg_specHUD.string.empty() ) {
+				cg_specHUD.set( defaultHUD );
+				if( @hudSpec != null ) {
+					hudSpec.value = defaultHUD;
+				}
+			}
+
+			if( touchscreen ) {
+				Element @touchElem = body.getElementById( 'hud-teamlocations' );
+				if( @touchElem != null ) {
+					touchElem.css( 'display', 'none' );
+				}
+			} else {
+				if( @hudNoTouch != null ) {
+					hudNoTouch.css( 'display', 'none' );
+				}
+
+				Element @touchElem = body.getElementById( 'hud-touchmovedir' );
+				if( @touchElem != null ) {
+					touchElem.css( 'display', 'none' );
+				}
+			}
+
+			bool softKeyboard = ( ( devices & IN_DEVICE_SOFTKEYBOARD ) != 0 );
+			Element @nameclan = body.getElementById( softKeyboard ? 'nameclan-softkeyboard' : 'nameclan' );
+			if( @nameclan != null ) {
+				String rml = '';
+				if( !softKeyboard ) {
+					rml += '<br/><hr class="nicehr"/><br/>';
+				}
+				rml += '<div class="title">Name</div><input cvar="name" type="text" value="Player"/><br/>';
+				rml += '<div class="title">Clan</div><input cvar="clan" type="text" value=""/><br/>';
+							
+				if( softKeyboard ) {
+					rml += '<br/><hr class="nicehr"/>'; // no br in the end intentionally
+				}
+				nameclan.setInnerRML( rml );
+			}
+		}
+
+		void onPlayerShow( Element @body, Event @evt )
+		{
+			onTemplateShow( body, evt );
+
+			//==== form ====
+			ElementOptionsForm @f = body.getElementById("player-options-form");
+			f.storeOptions();
+			@playerform = @f;
+
+			@f = body.getElementById("hud-options-form");
+			f.storeOptions();
+
+			@f = body.getElementById("misc-options-form");
+			f.storeOptions();
+			
+			@f = body.getElementById("matchbrowser-options-form");
+			f.storeOptions();
+
+			//==== model ====
+			ModelSetup setup( "model-view", "model-skin", "model-color", "model", "skin", "color", false );
+			setup.InitializeModelSetup( @body );
+
+			mSetup = setup;	
+
+			//==== HUD ====
+			checkHUDTouchSupport();
+
+			//==== crosshairs ====
+			updateCrosshair( cg_crosshair, crosshair, crosshairWhite );
+			updateCrosshair( cg_crosshair_strong, crosshairStrong, crosshairStrongWhite );
+
+			animationsOnShow();
+		}
+
+		void checkHUDTouchSupport()
+		{
+			if( ( @hudNoTouch == null ) || ( ( window.supportedInputDevices & IN_DEVICE_TOUCHSCREEN ) == 0 ) ) {
+				return;
+			}
+
+			bool show = false;
+
+			if( @hudClient != null ) {
+				const String @value = hudClient.value;
+				if( value.substr( value.length() - 6 ) != '_touch' ) {
+					show = true;
+				}
+			}
+
+			if( !show && ( @hudSpec != null ) ) {
+				const String @value = hudSpec.value;
+				if( value.substr( value.length() - 6 ) != '_touch' ) {
+					show = true;
+				}
+			}
+
+			hudNoTouch.css( 'display', show ? 'inline-block' : 'none' );
+		}
+
+		void updateCrosshair( Cvar cvar, Element @black, Element @white )
+		{
+			if( @black != null ) {
+				if( ( cvar.integer > 0 ) && ( cvar.integer <= 26 ) ) {
+					black.setInnerRML( StringUtils::FromCharCode( 64 + cvar.integer ) );
+				} else {
+					black.setInnerRML( "?" );
+				}
+			}
+
+			if( @white != null ) {
+				if( ( cvar.integer > 0 ) && ( cvar.integer <= 26 ) ) {
+					white.setInnerRML( StringUtils::FromCharCode( 96 + cvar.integer ) );
+					white.css( 'color', 'white' );
+				} else {
+					white.setInnerRML( "!" );
+					white.css( 'color', 'grey' );
+				}
+			}
+		}
+
+		void nextCrosshair( Cvar cvar, Element @black, Element @white )
+		{
+			if( cvar.integer < 13 ) {
+				cvar.set( cvar.integer + 1 );
+			} else {
+				cvar.set( 0 );
+			}
+			updateCrosshair( cvar, black, white );
+		}
+		
+		void allowRestart()
+		{	
+			allowVidRestart = true;
+		}
+		
+		void vidRestart() {	
+			if( allowVidRestart ) {
+			game.execAppend ( "vid_restart\n" );
+			}
+			allowVidRestart = false;
+		}
+
+      
+        void damageNumbersSize( Element @elem, Event @ev )
+        {
+          ElementFormControl @select = elem;
+          int damageNumbersChoice = select.value.toInt();
+        
+          switch ( damageNumbersChoice )
+          {
+            case 1:
+              game.execAppend( "cg_damageNumbersSize 1; cg_damageNumbersOffset 1; cg_damageNumbersDistance 48\n" );
+              break;
+            case 2:
+              game.execAppend( "cg_damageNumbersSize 2; cg_damageNumbersOffset 1; cg_damageNumbersDistance 52\n" );
+              break;
+            case 3:
+              game.execAppend( "cg_damageNumbersSize 3; cg_damageNumbersOffset 1; cg_damageNumbersDistance 56\n" );
+              break;
+            case 4:
+              game.execAppend( "cg_damageNumbersSize 4; cg_damageNumbersOffset 2; cg_damageNumbersDistance 60\n" );
+              break;
+          }
+        }
+           
+           
+	</script>
+</head>
+<body template="porkui" onload="$onPlayerLoad" onshow="$onPlayerShow">
+
+	<!-- divide the screen to two vertical contexts -->	
+	<div id="leftside">
+	
+		<!-- player setup -->
+		<div id="player-setup">
+			<tabset id="options-set">	
+				<tab class="side-tab">Model</tab>
+				<panel class="dropshadow">
+					<optionsform id="player-options-form" onsubmit="$OptionsForm_OnSubmit">
+						<div id="nameclan-softkeyboard"/>
+
+						<div class="model-view-content">
+							<div class="left-arrow" onclick="mSetup.SelectPrevModel(self);"/>
+							<div class="right-arrow" onclick="mSetup.SelectNextModel(self);"/>
+							<modelview id="model-view" class="model-view">
+								<!-- magic modelview is magic -->
+							</modelview>
+						</div>
+
+						<colorselector id="model-color" cvar="color" onclick="mSetup.SetColor(self);">
+							<color rgb="#910000" /> <color rgb="#ff462d" />
+							<color rgb="#963f00" /> <color rgb="#ff6a00" />
+							<color rgb="#ffff00" /> <color rgb="#00ff46" />
+							<color rgb="#008000" /> <color rgb="#00ffff" />
+							<color rgb="#0050a6" /> <color rgb="#0000ff" />
+							<color rgb="#5b00b5" /> <color rgb="#ff00ff" />
+							<color rgb="#ff87f7" /> <color rgb="#5e5e5e" />
+							<color rgb="#ffffff" /> <color />
+						</colorselector>
+						<br/>
+
+						<div id="nameclan"/>
+						
+						<br/><br/>
+						
+						<div class="table">
+						   <div class="caption">Color Codes</div>
+						   <p>Color codes can be used in nick, clan and chat!</p>
+						   <br/>
+						   <div class="row">
+							  <div class="cell header">Code</div>
+							  <div class="cell header">Color</div>
+							  <div class="cell"> </div>
+							  <div class="cell"> </div>
+							  <div class="cell header">Code</div>
+							  <div class="cell header">Color</div>
+							</div>
+						   <div class="row">
+							  <div class="cell">^0</div>
+							  <div class="cell"><span style="color:black; background-color: white;">Black</span></div>
+							  <div class="cell"> </div>
+							  <div class="cell"> </div>
+							  <div class="cell">^5</div>
+							  <div class="cell"><span style="color:#00FEFF;">Cyan</span></div>
+						   </div>
+						   <div class="row">
+							  <div class="cell">^1</div>
+							  <div class="cell"><span style="color:red;">Red</span></div>
+							  <div class="cell"> </div>
+							  <div class="cell"> </div>
+							  <div class="cell">^6</div>
+							  <div class="cell"><span style="color:#FF03FF;">Magenta</span></div>
+						   </div>
+						   <div class="row">
+							  <div class="cell">^2</div>
+							  <div class="cell"><span style="color:lime;">Green</span></div>
+							  <div class="cell"> </div>
+							  <div class="cell"> </div>
+							  <div class="cell">^7</div>
+							  <div class="cell"><span style="color:white;">White</span></div>
+						   </div>
+						   <div class="row">
+							  <div class="cell">^3</div>
+							  <div class="cell"><span style="color:yellow;">Yellow</span></div>
+							  <div class="cell"> </div>
+							  <div class="cell"> </div>
+							  <div class="cell">^8</div>
+							  <div class="cell"><span style="color:orange;">Orange</span></div>
+						   </div>
+						   <div class="row">
+							  <div class="cell">^4</div>
+							  <div class="cell"><span style="color:blue;">Blue</span></div>
+							  <div class="cell"> </div>
+							  <div class="cell"> </div>
+							  <div class="cell">^9</div>
+							  <div class="cell"><span style="color:gray;">Gray</span></div>
+						   </div>
+						</div>
+
+
+						<br/>
+						<button onclick="playerform.restoreOptions();mSetup.Reset(self);" class="button-cancel">Cancel</button>
+						<button onclick="playerform.applyOptions();mSetup.Fix(self);notificationPopup('Saved');" class="button-apply">Save changes</button>
+					</optionsform>
+
+				</panel>
+
+				<tab class="side-tab">HUD</tab>		
+				<panel class="dropshadow">
+					<optionsform id="hud-options-form" onsubmit="$OptionsForm_OnSubmit">
+						<div class="title">Player HUD</div>
+						<dataselect id="hud-client" cvar="cg_clientHUD" source="huds.list" fields="name" valuefield="name" realtime="1" onchange="checkHUDTouchSupport();"/>
+						<br/>
+
+						<div class="title">Spectator HUD</div>
+						<dataselect id="hud-spec" cvar="cg_specHUD" source="huds.list" fields="name" valuefield="name" realtime="1" onchange="checkHUDTouchSupport();"/>
+						<br/>
+
+						<div id="hud-notouch">
+							<div class="optionstext">The selected HUD may not be optimized for touchscreen input.</div>
+							<br/>
+						</div>
+
+						<div class="title">Match timer</div>
+						<select cvar="cg_showTimer" realtime="1">
+							<option value="1" selected>count down</option>
+							<option value="3">count up</option>
+						</select>
+
+						<div class="title">Crosshair</div>
+						<div id="crosshairs">
+							<div id="crosshair" class="crosshair"/>
+							<div id="crosshair-white" class="crosshair crosshairwhite" onclick="nextCrosshair(cg_crosshair,crosshair,crosshairWhite);"/>
+							<div id="crosshair-strong" class="crosshair"/>
+							<div id="crosshair-strong-white" class="crosshair crosshairwhite" onclick="nextCrosshair(cg_crosshair_strong,crosshairStrong,crosshairStrongWhite);"/>
+						</div>
+						<br/>
+						
+						<div class="title">FOV</div>
+						<input cvar="fov" type="text" class="short text" value="100" realtime="1"/>
+						<br/>
+					
+						<div class="title">FOV while using zoom</div>
+						<input cvar="zoomfov" type="text" class="short text" value="30" realtime="1"/>
+						<br/>
+
+						<div class="title">Weapon position</div>
+						<select cvar="hand" realtime="1">
+							<option value="0" selected>right</option>
+							<option value="1">left</option>
+							<option value="2">center</option>
+						</select>
+						<br/>
+						
+						<div class="title">Show weapon model</div>
+						<input cvar="cg_gun" type="checkbox" realtime="1"/>
+						<br/>
+						
+						<div class="title">Enable weapon animation</div>
+						<input cvar="cg_gunbob" type="checkbox" realtime="1"/>
+						<br/>
+						
+						<div class="title">Weapon opacity</div>
+						<input cvar="cg_gun_alpha" class="slider" type="range" min="0" max="1" step="0.1" value="0" realtime="1"/>
+						<br/>
+
+						<br/>
+						<hr class="nicehr" />
+						<br/>
+						
+						<div class="title">Frag message location</div>
+						<select cvar="cg_showObituaries" realtime="1">
+							<option value="0" selected>off</option>
+							<option value="1">icons</option>
+							<option value="2">center</option>
+							<option value="3" selected>center + icons</option>
+							<option value="4">chat</option>
+							<option value="5">chat + icons</option>
+							<option value="6">chat + center</option>
+							<option value="7">chat + center + icons</option>
+						</select>
+						<br/>
+						
+						<div class="title">Show teammates' indicators</div>
+						<input cvar="cg_showTeamMates" type="checkbox" realtime="1"/>
+
+						<div class="title">Show help</div>
+						<input cvar="cg_showHelp" type="checkbox" realtime="1"/>
+						<br/>
+						
+						<div class="title">Show minimap</div>
+						<input cvar="cg_showMinimap" type="checkbox" realtime="1"/>
+						<br/>	
+						
+						<div id="hud-teamlocations">
+							<div class="title">Show team locations</div>
+							<input cvar="cg_showTeamLocations" type="checkbox" realtime="1"/>
+							<br/>
+						</div>
+						
+						<div class="title">Show FPS counter</div>
+						<input cvar="cg_showFps" type="checkbox" realtime="1"/>
+						<br/>				
+						
+						<div class="title">Show speed meter</div>
+						<input cvar="cg_showSpeed" type="checkbox" realtime="1"/>
+						<br/>				
+						
+						<div class="title">Show damage indicator</div>
+						<input cvar="cg_damage_indicator" type="checkbox" realtime="1"/>
+						<br/>
+												
+						<div class="title">Show pressed keys</div>
+						<input cvar="cg_showPressedKeys" type="checkbox" realtime="1"/>
+						<br/>
+						
+						<div class="title">Show awards</div>
+						<input cvar="cg_showAwards" type="checkbox" realtime="1"/>
+						<br/>
+						
+						<div class="title">Show zoom effect</div>
+						<input cvar="cg_showZoomEffect" type="checkbox" realtime="1"/>
+						<br/>
+
+						<div id="hud-touchmovedir">
+							<div class="title">Show touch movement direction</div>
+							<input cvar="cg_touch_showMoveDir" type="checkbox" realtime="1"/>
+							<br/>
+						</div>
+					</optionsform>
+				</panel>
+
+				<tab class="side-tab">Misc</tab>
+				<panel class="dropshadow">
+					<optionsform id="misc-options-form" onsubmit="$OptionsForm_OnSubmit">
+					
+						<div class="title">Language</div>
+						<select style="width:32%;" id="lang-selector" cvar="lang" realtime="1" onfocus="allowRestart();" onchange="vidRestart();">
+							<option value="en">[en] English</option>
+							<option value="be">[be] Беларуская</option>
+							<option value="bg">[bg] Български</option>
+							<!-- <option value="cs">[cs] Čeština</option> unfinished -->
+							<option value="de">[de] Deutsch</option>
+							<!-- <option value="el">[el] Ελληνικά</option> unfinished -->
+							<option value="es">[es] Español</option>
+							<option value="es_419">[es_419] Español-Latinoamérica</option>
+							<option value="fi">[fi] Suomi</option>
+							<option value="fr">[fr] Français</option>
+							<option value="hu">[hu] Magyar</option>
+							<option value="it">[it] Italiano</option>
+							<option value="ja">[ja] 日本語</option>
+							<option value="lt">[lt] Lietuvių</option>
+							<option value="nl">[nl] Nederlands</option>
+							<option value="pl">[pl] Polski</option>
+							<option value="pt">[pt] Português</option>
+							<option value="pt_BR">[pt_BR] Português-Brasil</option>
+							<option value="ro">[ro] Română</option>
+							<option value="ru">[ru] Русский</option>
+							<option value="sv">[sv] Svenska</option>
+							<option value="tr">[tr] Türkçe</option>
+							<option value="uk">[uk] Українська</option>
+							<option value="vi">[vi] Tiếng Việt</option>
+							<option value="zh_CN">[zh_CN] 简体中文</option>
+						</select>
+						<br/>
+						
+						<br/>
+						<hr class="nicehr" />
+						<br/>
+					
+						<div class="title">Automatically record demos</div>
+						<input cvar="cg_autoaction_demo" type="checkbox" realtime="1"/>
+						<br/>
+					
+						<div class="title">Endmatch screenshot</div>
+						<input cvar="cg_autoaction_screenshot" type="checkbox" realtime="1"/>
+						<br/>	
+					
+						<div class="title">Save match stats</div>
+						<input cvar="cg_autoaction_stats" type="checkbox" realtime="1"/>
+						<br/>
+						
+						<br/>
+						<hr class="nicehr" />
+						<br/>
+						
+						<div class="title">Acceleration on forward jumping</div>
+						<input cvar="cg_movementStyle" type="checkbox" realtime="1"/>
+						<br/>
+						
+						<div class="title">Disable autohop</div>
+						<input cvar="cg_noAutohop" type="checkbox" realtime="1"/>
+						<br/>
+						
+						<br/>
+						<hr class="nicehr" />
+						<br/>
+						
+						<div class="title">Simple items</div>
+						<input cvar="cg_simpleItems" type="checkbox" realtime="1"/>
+						<br/>
+
+						<div class="title">Enable view animation</div>
+						<input cvar="cg_viewBob" type="checkbox" realtime="1"/>
+						<br/>
+
+						<div class="title">Show critical hit effect</div>
+						<input cvar="cg_cartoonHitEffect" type="checkbox" realtime="1"/>
+						<br/>
+                        
+                        <div class="title">Show damage numbers</div>
+						<input cvar="cg_damageNumbers" type="checkbox" realtime="1"/>
+						<br/>
+                        
+                        <div class="title">Damage numbers size</div>
+                        <select realtime="1" onchange="$damageNumbersSize">
+                        <option value="1">Tiny</option>
+                        <option value="2">Small</option>
+                        <option value="3">Medium</option>
+                        <option value="4">Large</option>
+                        </select>
+                        <br/>
+
+                      	<div class="title">Damage numbers color</div>
+						<select cvar="cg_damageNumbersColor" realtime="1">
+							<option value="1">Black</option>
+                 	        <option value="4">Blue</option>
+                           	<option value="8">Cyan</option>
+                            <option value="11">Dark Grey</option>  
+                          	<option value="3">Green</option>
+                        	<option value="9">Light Grey</option>
+                         	<option value="7">Magenta</option>
+                        	<option value="10">Medium Grey</option>
+                           	<option value="6" selected>Orange</option>
+							<option value="0">White</option>
+ 							<option value="5">Yellow</option>
+							<option value="2">Red</option>
+							<option value="12">Light Blue</option> 							
+						</select>
+						<br/>                    
+                                                                     
+					</optionsform>
+				</panel>
+
+				<tab class="side-tab">Server browser</tab>
+				<panel class="dropshadow">
+					<optionsform id="matchbrowser-options-form" onsubmit="$OptionsForm_OnSubmit">
+						<div class="title">Don't suggest servers</div>
+						<input type="checkbox" cvar="ui_autobrowse_manual" realtime="1" />
+						<br />
+					</optionsform>
+				</panel>
+			</tabset>
+		</div>
+	</div>
+
+	<template src="options-sidebar" />
+
+</body>
+</rml>

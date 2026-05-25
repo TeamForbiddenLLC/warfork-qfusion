@@ -1,0 +1,35 @@
+<template name="porkui_modal_remote" content="content">
+<head>
+	<title>modal</title>
+	<link type="text/template" href="template_modal.rml" />
+	<script>
+		Element @remote_content;
+		
+		void onModalRemoteShow( Element @body, Event @evt )
+		{
+			Element @remote_content = body.getElementById( 'remote_content' );
+		
+			URL url( body.ownerDocument.URL );
+			const Dictionary @dict = url.getParameters();
+
+			String expires = '';
+			if( dict.get( 'expires', expires ) ) {
+				remote_content.setAttr( 'expires', expires );
+				remote_content.removeAttr( 'nocache' );
+			} else {
+				remote_content.removeAttr( 'expires' );
+				remote_content.setAttr( 'nocache', '1' );
+			}
+
+			String remote_url = '';
+			dict.get( 'url', remote_url );
+			remote_content.setAttr( 'src', remote_url );
+
+			onModalShow( body, evt );
+		}
+	</script>
+</head>
+<body template="porkui_modal" onload="$onModalLoad" onshow="$onModalRemoteShow">
+	<idiv id="remote_content" />
+</body>
+</template>

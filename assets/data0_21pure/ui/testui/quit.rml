@@ -1,0 +1,18 @@
+<rml>
+<head>
+	<title>friends</title>
+	<link rel="stylesheet" type="text/css" href="css/html4.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/base.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/common.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/controls.rcss" />
+	<link rel="stylesheet" type="text/css" href="css/friends.rcss" />
+	<script src="as/base.as" />
+	<script>
+	void onQuitShow( Element @body, Event @ev )
+	{
+		OpenQuitDialog();
+	}
+	</script>
+</head>
+<body onshow="$onQuitShow" />
+</rml>

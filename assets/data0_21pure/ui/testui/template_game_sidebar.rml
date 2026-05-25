@@ -1,0 +1,17 @@
+<template name="game-sidebar" content="game-sidebar-slot">
+<head></head>
+<body>
+	<div id="sidebar">
+		<div id="sidebar2">
+			<a href="#" onclick="animOpenMenu('game_join.rml');">Server browser</a>
+			<a href="#" onclick="animOpenMenu('game_local.rml');">Host game</a>
+			<a href="#" onclick="animOpenMenu('game_demos.rml');">Demo browser</a>
+			<a href="#" onclick="Tutorial::OpenModal2();">Gameplay tutorial</a>
+
+			<hr class="nicehr" />
+
+			<div id="game-sidebar-slot"></div>
+		</div>
+	</div>
+</body>
+</template>

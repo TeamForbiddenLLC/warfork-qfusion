@@ -141,6 +141,7 @@ void BindEvent( ASInterface *as )
 
 	ASBind::Enum( as->getEngine(), "eInputKey" )
 		( "KI_ESCAPE", Input::KI_ESCAPE )
+		( "KI_RETURN", Input::KI_RETURN )
 		( "KI_0", Input::KI_0 )
 		( "KI_1", Input::KI_1 )
 		( "KI_2", Input::KI_2 )

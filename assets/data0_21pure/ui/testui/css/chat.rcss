@@ -1,0 +1,56 @@
+#chat-container {
+	height: 100%;
+	text-align: center;
+}
+
+#chat-connect {
+	padding-left: 16dp;
+	padding-right: 16dp;
+}
+
+#irchat-container {
+	overflow-y: hidden;
+	text-align: left;
+}
+
+#irchat-log {
+	height: 100%;
+	font-size: 12dp;
+	text-align: left;
+}
+
+#irchat-channels-container {
+	height: 24dp;
+	margin: 0dp;
+	padding: 0dp;
+	margin-top: 12dp;
+}
+
+#irchat-say-container {
+	height: 40dp;
+	margin: 0dp;
+	padding: 0dp;
+	margin-bottom: 8dp;	
+}
+
+#input-irc-message {
+	margin: 0dp;
+	padding: 0dp;
+	height: 26dp;
+}
+
+#irc-connect-submit {
+	width: 140dp;
+}
+
+#input-irc-send-btn {
+	width: 100dp;
+	margin: 8dp;
+	height: 26dp;
+	display: inline-block;
+}
+
+tabset tab  { width: 15%; z-index: 2; }
+panel { margin-top: 0dp; padding: 0dp; z-index: 999; text-align: left; } /* content always at top */
+
+.intro { padding-left: 15%; }

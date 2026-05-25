@@ -1,0 +1,24 @@
+#team {
+	text-align: center;
+	width: 100%;
+}
+
+tabset tab {
+	width: 15%;
+}
+
+.team-model { 
+	text-align: left; 
+}
+
+.color-sel { 
+	text-align: center;
+}
+
+#options-form checkbox { 
+	margin-bottom: 16dp;
+}
+
+#team h4 { 
+	margin-left: 15%;
+}

@@ -12,6 +12,7 @@
 #include "kernel/ui_documentloader.h"
 #include "kernel/ui_navigationstack.h"
 #include "kernel/ui_streamcache.h"
+#include "kernel/ui_filereloader.h"
 #include "kernel/ui_demoinfo.h"
 #include "kernel/ui_downloadinfo.h"
 #include "as/asmodule.h"
@@ -108,7 +109,6 @@ public:
 	void showUI( bool show );
 	void showQuickMenu( bool show );
 	bool haveQuickMenu( void );
-
 	ASUI::ASInterface *getAS( void ) { return asmodule; };
 	RocketModule *getRocket( void ) { return rocketModule; }
 	//NavigationStack *getNavigator( void ) { return navigator; }
@@ -133,6 +133,7 @@ public:
 	unsigned int getConnectCount( void ) const { return connectCount; }
 
 	NavigationStack *createStack( int contextId );
+	UI_Navigation &getNavigation( int contextId ) { return navigations[contextId]; }
 
 private:
 	UI_Main( int vidWidth, int vidHeight, float pixelRatio,
@@ -213,6 +214,7 @@ private:
 	Rocket::Core::String quickMenuURL;
 
 	StreamCache *streamCache;
+	UI_FileReloader *fileReloader;
 
 	RefreshState refreshState;
 

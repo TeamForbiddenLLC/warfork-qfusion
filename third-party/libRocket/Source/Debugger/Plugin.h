@@ -100,6 +100,10 @@ public:
 	/// @return NULL or an instance of the plugin
 	static Plugin* GetInstance();
 
+	/// Sets a callback to be invoked when the "Reload UI" button is pressed.
+	typedef void (*ReloadUICallback)(void);
+	static void SetReloadUICallback(ReloadUICallback callback);
+
 private:
 	bool LoadFont();
 	bool LoadMenuElement();
@@ -130,6 +134,7 @@ private:
 
 	// Singleton instance
 	static Plugin* instance;
+	static ReloadUICallback reload_ui_callback;
 };
 
 }

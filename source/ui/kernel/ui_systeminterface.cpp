@@ -83,4 +83,20 @@ int UI_SystemInterface::TranslateString(Rocket::Core::String& translated, const 
 	return 0;
 }
 
+void UI_SystemInterface::GetClipboardText(Rocket::Core::WString &text)
+{
+	char *raw = trap::CL_GetClipboardData(false);
+	if( raw ) {
+		text = raw;
+		trap::CL_FreeClipboardData(raw);
+	}
+}
+
+void UI_SystemInterface::SetClipboardText(const Rocket::Core::WString &text)
+{
+	Rocket::Core::String utf8;
+	text.ToUTF8(utf8);
+	trap::CL_SetClipboardData(utf8.CString());
+}
+
 }

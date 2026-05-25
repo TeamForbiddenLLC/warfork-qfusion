@@ -99,6 +99,8 @@ UI_Main::UI_Main( int vidWidth, int vidHeight, float pixelRatio,
 
 	streamCache->Init();
 
+	fileReloader = __new__( UI_FileReloader )();
+
 	if( !initAS() )
 		throw std::runtime_error( "UI: Failed to initialize AngelScript" );
 
@@ -148,6 +150,8 @@ UI_Main::~UI_Main()
 	shutdownAS();
 
 	shutdownRocket();
+
+	__delete__( fileReloader );
 
 	streamCache->Shutdown();
 
@@ -273,6 +277,8 @@ void UI_Main::reloadUI( void )
 	createDataSources();
 
 	preloadUI();
+
+	fileReloader->clearTrackedFiles();
 
 	showUI( true );
 }
@@ -789,6 +795,7 @@ void UI_Main::refreshScreen( unsigned int time, int clientState, int serverState
 	}
 
 	// rocket update+render
+	fileReloader->checkForChanges( time );
 	rocketModule->update();
 
 	if( quickMenuVisible ) {

@@ -218,6 +218,21 @@
               break;
           }
         }
+
+        void newUiModal(void)
+		{
+			window.modal('modal_basic.rml?text=Warning%3A%20Experemental%20UI%20is%20still%20under%20development%20and%20may%20contain%20bugs%20or%20incomplete%20features.%20You%20will%20have%20an%20option%20to%20switch%20back%20to%20legacy%20(this)%20version.%20Please%20use%20it%20at%20your%20own%20risk%20and%20report%20any%20issues%20you%20encounter%20on%20our%20GitHub%20or%20in%20Discord.%20Thank%20you%20for%20your%20understanding%20and%20support&ypos=0.25');
+			if(window.getModalValue() == 0) 
+			{
+				switchToNewUi();
+			}
+		}
+		
+
+        void switchToNewUi(void)
+        {
+              game.execAppend( "ui_basepath ui/testui; ui_reload\n" );
+        }
            
            
 	</script>
@@ -493,7 +508,11 @@
 							<option value="12">Light Blue</option> 							
 						</select>
 						<br/>                    
-                                                                     
+						<br/>                    
+						<br/>
+
+                        <button onclick="newUiModal();">Switch to new experemental UI</button> 
+                                   
 					</optionsform>
 				</panel>
 

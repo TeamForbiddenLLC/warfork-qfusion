@@ -1,0 +1,147 @@
+<!--
+Copyright (C) 2012 Jannik Kolodziej ("drahtmaul")
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
+-->
+
+<rml>
+<head>
+	<title>failed</title>
+	<link type="text/template" href="template_ingame.rml" />
+	<script>
+		ElementOptionsForm @pwform;
+
+		void setupConnfailedMenu()
+		{
+			Element @mf = @window.document.body.getElementById( 'menu-ingame' );
+			
+			if( @mf == null )
+				return;
+
+			const Dictionary @dict = window.document.URL.getParameters();
+			if( dict.empty() )
+				return;
+
+			int dropreason, droptype;
+			String @temp;
+			String @servername;
+			String @rejectmessage;
+			
+			dict.get( 'dropreason', @temp );
+			if( @temp == null )
+				return;
+
+			dropreason = temp.toInt();
+
+			dict.get( 'droptype', @temp );
+			if( @temp == null )
+				return;
+
+			droptype = temp.toInt();
+
+			dict.get( 'servername', @servername );
+			if( @servername == null )
+				return;
+
+			dict.get( 'rejectmessage', @rejectmessage );
+			if( @rejectmessage == null )
+				return;
+
+			String title = '';
+			if( dropreason == DROP_REASON_CONNFAILED )
+				title = "Connection failed";
+			else if( dropreason == DROP_REASON_CONNTERMINATED )
+				title = "Connection terminated";
+			else 
+				title = "Connection error";
+			mf.getElementById( 'menu-header' ).setInnerRML( title );
+
+			String text = '';
+
+			if( dropreason == DROP_REASON_CONNFAILED )
+				text = "Couldn't connect to %s";
+			else if( dropreason == DROP_REASON_CONNTERMINATED )
+				text = "Connection was terminated by %s";
+			else 
+				text = "Error connecting to %s";		
+			text = StringUtils::Format( _T( text ), servername );
+			mf.getElementById( 'mfailed-text' ).setInnerRML( text );
+
+			text = StringUtils::Format( _T( 'Reason: %s' ), _T( rejectmessage ) );
+			mf.getElementById( 'mfailed-reason' ).setInnerRML( text );	
+
+			if( droptype == DROP_TYPE_PASSWORD )
+			{
+				Cvar password( 'password', '', CVAR_ARCHIVE );				
+				mf.getElementById( 'mfailed-password' ).setAttr( 'value', password.string );
+			}
+			else
+			{
+				mf.getElementById( 'mfailed-pwblock' ).css( 'display', 'none' );
+				if( droptype == DROP_TYPE_NORECONNECT )
+					mf.getElementById( 'btn-reconnect' ).css( 'display', 'none' );
+			}
+
+			setModalY( 0.5f );
+		}
+
+		void onConnfailedLoad( Element @body, Event @evt )
+		{
+			@pwform = body.getElementById( 'password-form' );
+		}
+
+		void onConnfailedShow( Element @body, Event @evt )
+		{
+			pwform.storeOptions();
+			setupConnfailedMenu();
+		}
+		
+		void onPasswordFormSubmit( Element @body, Event @evt )
+		{
+			pwform.applyOptions();
+			game.execAppend( 'reconnect\n' );
+		}
+		
+		void onCancelBtnClick( Element @body, Event @evt )
+		{
+			pwform.restoreOptions();
+			window.location='index.rml';
+		}
+	</script>
+	</head>
+<body template="porkui_ingame" onload="$onConnfailedLoad" onshow="$onConnfailedShow" style="background-color: #16141c;">
+	<div id="menu-ingame">
+		<div id="menu-header">Connection failed</div>
+
+		<div id="menu-commands">
+			<div id="mfailed-text">Couldn't connect to SERVER</div>
+			<div id="mfailed-reason">Reason: REASON</div>
+
+			<optionsform id="password-form" onsubmit="$onPasswordFormSubmit">
+				<!-- This will be rml-output if server is passworded -->
+				<div id="mfailed-pwblock">
+						<span id="mfailed-pwlabel"><t>Password</t>:</span>&nbsp;
+						<input id="mfailed-password" type="password" value="" cvar="password" />
+				</div>
+				<br/>
+				<input type="submit" id="btn-reconnect">Reconnect</input>
+				<button onclick="$onCancelBtnClick">Cancel</button>
+			</optionsform>
+		</div>
+	</div>
+</body>
+</rml>
