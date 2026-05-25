@@ -284,8 +284,8 @@ std::string StreamCache::CacheFileForUrl( const std::string url, bool noCache )
 
 	// compute hash key for the URL and convert to hex
 	hashkey = md5_digest32( ( const uint8_t * )url.c_str(), url.size() );
-	std::stringstream outstream;
-	outstream << std::hex << hashkey;	// to hex
+	char hashstr[16];
+	Q_snprintfz( hashstr, sizeof( hashstr ), "%x", hashkey );	// to hex
 
 	// strip path and query string from the target file name
 	fileName = std::string( COM_FileBase( url.c_str() ) );
@@ -294,7 +294,7 @@ std::string StreamCache::CacheFileForUrl( const std::string url, bool noCache )
 		fileName = fileName.substr( 0, delim );
 	}
 
-	std::string cacheName = std::string( WSW_UI_STREAMCACHE_DIR ) + "/" + outstream.str() + 
+	std::string cacheName = std::string( WSW_UI_STREAMCACHE_DIR ) + "/" + hashstr +
 		(noCache ? "_0" : "_1") + "_" + fileName;
 	std::transform(cacheName.begin(), cacheName.end(), cacheName.begin(), ::tolower);
 

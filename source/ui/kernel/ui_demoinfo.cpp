@@ -107,7 +107,7 @@ void DemoInfo::Stop( void ) const
 
 void DemoInfo::Jump( unsigned int time ) const
 {
-	std::string jumpcmd = std::string( "demojump \"" ) + WSWUI::toString( time ) + "\"";
+	std::string jumpcmd = std::string( "demojump \"" ) + std::to_string( time ) + "\"";
 	trap::Cmd_ExecuteText( EXEC_NOW, jumpcmd.c_str() );
 }
 
