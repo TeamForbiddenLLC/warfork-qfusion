@@ -90,7 +90,7 @@ public:
 			{
 				ElementDataGridRow *row = static_cast<ElementDataGridRow*>( elem );
 				int index = row->GetTableRelativeIndex();
-				Rocket::Core::String indexStr(toString( index ).c_str());
+				Rocket::Core::String indexStr(std::to_string( index ).c_str());
 					
 				// this should never happen
 				if( index >= this->GetNumRows() )
@@ -139,7 +139,7 @@ public:
 			int firstRowAdded = evt.GetParameter< int >( "first_row_added", 0 );
 			if( lastSelectedRowIndex >= firstRowAdded ) {
 				lastSelectedRowIndex += numRowsAdded;
-				Rocket::Core::String indexStr( toString( lastSelectedRowIndex ).c_str() );
+				Rocket::Core::String indexStr( std::to_string( lastSelectedRowIndex ).c_str() );
 				this->SetProperty( "selected-row", indexStr );
 			}
 		}
