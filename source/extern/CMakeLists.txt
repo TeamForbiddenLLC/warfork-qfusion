@@ -96,7 +96,11 @@ endif()
 if (USE_SYSTEM_OPENAL)
   find_package(OpenAL REQUIRED GLOBAL)
 else()
-  set(LIBTYPE STATIC)
+  # Build OpenAL Soft as a shared library so it can be loaded at runtime.
+  # snd_openal is compiled with OPENAL_RUNTIME (see gameshared/q_arch.h) and resolves
+  # the al*/alc* entry points via dlopen/LoadLibrary of ALDRIVER ("soft_oal.dll" on
+  # Windows, "libopenal.so.1" on Linux) in QAL_Init, so a loadable library must exist.
+  set(LIBTYPE SHARED)
   option(FORCE_STATIC_VCRT "" ON)
   option(ALSOFT_UTILS "" OFF)
   option(ALSOFT_EXAMPLES "" OFF)
@@ -111,7 +115,6 @@ else()
   set_target_properties(OpenAL PROPERTIES FOLDER extern/openal-soft)
   set_target_properties(common PROPERTIES FOLDER extern/openal-soft)
   set_target_properties(ex-common PROPERTIES FOLDER extern/openal-soft)
-  target_compile_definitions(OpenAL PUBLIC AL_LIBTYPE_STATIC)
 endif()
 
 if(USE_SYSTEM_CURL)

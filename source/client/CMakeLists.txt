@@ -250,6 +250,12 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/warfork-qfusion/commit.txt ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/)
     add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/warfork-qfusion/steam_appid.txt ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/)
+    if (NOT USE_SYSTEM_OPENAL)
+        # OpenAL is loaded at runtime; QAL_Init does LoadLibrary("soft_oal.dll") (ALDRIVER),
+        # so deploy the bundled OpenAL Soft DLL next to the executable under that name.
+        add_dependencies(${QFUSION_CLIENT_NAME} OpenAL)
+        add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:OpenAL> ${CMAKE_BINARY_DIR}/warfork-qfusion/$(CONFIGURATION)/soft_oal.dll)
+    endif()
 endif()
 
 target_link_libraries(${QFUSION_CLIENT_NAME} PRIVATE qcore CURL::libcurl ${CLIENT_PLATFORM_LIBRARIES} ${DISCORD_LIBRARY} ${STEAMSHIMPARENT_LIBRARY} Tracy::TracyClient)
