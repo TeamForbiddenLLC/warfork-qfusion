@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "qtypes.h"
 #include "r_descriptor_pool.h"
 #include "r_local.h"
+#include "ri_vk.h"
 
 #include "spirv_reflect.h"
 #include <glslang/Include/glslang_c_interface.h>

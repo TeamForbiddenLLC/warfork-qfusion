@@ -1,5 +1,6 @@
 #include "ri_pogoBuffer.h"
 #include "ri_vk.h"
+#include "ri_renderer.h"
 
 #if ( DEVICE_IMPL_VULKAN )
 VkImageMemoryBarrier2 VK_RI_PogoShaderMemoryBarrier2(VkImage image, bool initial) {
