@@ -114,7 +114,7 @@ namespace WSWUI {
 			CompareFunction function;
 			InvertCompareFunction(CompareFunction _function) : function(_function) {}
 			bool operator()( const ServerInfo &lhs, const ServerInfo &rhs ) {
-				return !function(lhs, rhs);
+				return function(rhs, lhs);
 			}
 		};
 
@@ -122,7 +122,8 @@ namespace WSWUI {
 			ComparePtrFunction function;
 			InvertComparePtrFunction(ComparePtrFunction _function) : function(_function) {}
 			bool operator()( const ServerInfo *lhs, const ServerInfo *rhs ) {
-				return !function(lhs, rhs);
+				// reverse the order by swapping the arguments; see InvertCompareFunction.
+				return function(rhs, lhs);
 			}
 		};
 

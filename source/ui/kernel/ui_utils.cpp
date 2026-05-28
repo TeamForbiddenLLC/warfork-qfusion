@@ -29,24 +29,21 @@ namespace WSWUI
 // HexString2RgbString.. no thx.
 std::string rgb2hex( const char *rgbstr )
 {
-	int rgb;
-	int r, g, b;
-	std::stringstream instream( rgbstr );
-	std::stringstream outstream;
-	instream >> r >> g >> b;	// to int
-	rgb = ( b | (g << 8) | (r << 16) );
-	outstream << "#" << std::hex << std::setw(6) << std::setfill('0') << rgb;	// to hex string
-	return outstream.str();
+	int r = 0, g = 0, b = 0;
+	sscanf( rgbstr, "%d %d %d", &r, &g, &b );	// to int
+	int rgb = ( b | (g << 8) | (r << 16) );
+	char hex[16];
+	Q_snprintfz( hex, sizeof( hex ), "#%06x", rgb );	// to hex string
+	return std::string( hex );
 }
 
 std::string hex2rgb( const char *hexstr )
 {
-	std::stringstream instream( hexstr + 1 );	// bypass '#'
-	std::stringstream outstream;
-	unsigned int rgb;
-	instream >> std::hex >> rgb;	// to int
-	outstream << ((rgb>>16)&0xff) << " " << ((rgb>>8)&0xff) << " " << (rgb&0xff);	// to rgb string
-	return outstream.str();
+	unsigned int rgb = 0;
+	sscanf( hexstr + 1, "%x", &rgb );	// bypass '#', to int
+	char buf[32];
+	Q_snprintfz( buf, sizeof( buf ), "%u %u %u", (rgb>>16)&0xff, (rgb>>8)&0xff, rgb&0xff );	// to rgb string
+	return std::string( buf );
 }
 
 //==============================================================

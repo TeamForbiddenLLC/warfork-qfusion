@@ -569,22 +569,44 @@
 			int selectedRow = prop.toInt();
 			if( selectedRow >= 0 )
 			{
-				String steamid = browserDataSource.getField( browserTableName, selectedRow, 'steamid' );
-				String address = browserDataSource.getField( browserTableName, selectedRow, 'address' );
+				String steamid   = browserDataSource.getField( browserTableName, selectedRow, 'steamid' );
+				String address   = browserDataSource.getField( browserTableName, selectedRow, 'address' );
+				String steamAuth = browserDataSource.getField( browserTableName, selectedRow, 'steam' ); // 'yes'/'no'
 
+				// A Steam P2P target only exists when the server actually uses Steam auth
+				// (sv_useSteamAuth != 0, advertised as the 'steam' flag + a steam id).
+				String steamTarget = '';
+				if ( steamid != 0 && steamAuth == 'yes' )
+					steamTarget = 'steam:' + steamid;
+				String udpTarget = address; // may be empty for P2P-only listings
 
-				bool usep2p = (preferp2p.integer == 1) || address.empty();
-				if ( steamid != 0 && usep2p ) {
-					game.exec( 'connect "steam:' + steamid + '"\n' );
-					return;
+				// Order the two transports by cl_prefer_steam_p2p; the second becomes the
+				// automatic fallback (the engine retries it via the connect chain if the
+				// first fails). Steamless servers simply have no steam target and connect
+				// over UDP without the user having to toggle cl_prefer_steam_p2p.
+				String primary;
+				String fallback;
+				if ( preferp2p.integer == 1 ) {
+					primary  = steamTarget;
+					fallback = udpTarget;
+				} else {
+					primary  = udpTarget;
+					fallback = steamTarget;
 				}
 
-				if( address.empty() ) {
-					return;
+				// Drop an unavailable primary so the fallback is tried directly.
+				if ( primary.empty() ) {
+					primary  = fallback;
+					fallback = '';
 				}
 
-				// connect to server
-				game.exec( 'connect "' + address + '"\n' );
+				if ( primary.empty() )
+					return; // nothing reachable
+
+				if ( fallback.empty() )
+					game.exec( 'connect "' + primary + '"\n' );
+				else
+					game.exec( 'connect "' + primary + '" "' + fallback + '"\n' );
 			}
 		}	
 	}

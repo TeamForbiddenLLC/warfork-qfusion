@@ -193,7 +193,7 @@ static void processRPC( steam_rpc_pkt_s *req, size_t size )
 		case RPC_AUTHSESSION_TICKET: {
 			struct auth_session_ticket_recv_s recv;
 			prepared_rpc_packet( &req->common, &recv );
-			GSteamUser->GetAuthSessionTicket( recv.ticket, AUTH_TICKET_MAXSIZE, &recv.pcbTicket );
+			GSteamUser->GetAuthSessionTicket( recv.ticket, AUTH_TICKET_MAXSIZE, &recv.pcbTicket, NULL);
 			write_packet( GPipeWrite, &recv, sizeof( struct auth_session_ticket_recv_s ) );
 			break;
 		}

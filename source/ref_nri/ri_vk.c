@@ -1,4 +1,5 @@
 #include "ri_vk.h"
+#include "../qcommon/qcommon.h"
 
 #if DEVICE_IMPL_VULKAN
 

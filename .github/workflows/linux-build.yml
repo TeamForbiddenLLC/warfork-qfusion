@@ -38,7 +38,7 @@ jobs:
 
       - name: Download steamworks sdk
         run: |
-          curl -L https://github.com/Warfork/sdk_internal/raw/refs/heads/main/sdk.zip --output third-party/steamworks/sdk.zip
+          curl -L https://github.com/Warfork/sdk_internal/raw/refs/heads/main/sdk164.zip --output third-party/steamworks/sdk.zip
           unzip -P "$SDK_PASSWORD" third-party/steamworks/sdk.zip -d third-party/steamworks
         env:
           SDK_PASSWORD: ${{ secrets.SDK_PASSWORD }}

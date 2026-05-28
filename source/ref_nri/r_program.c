@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "qtypes.h"
 #include "r_descriptor_pool.h"
 #include "r_local.h"
+#include "ri_vk.h"
 
 #include "spirv_reflect.h"
 #include <glslang/Include/glslang_c_interface.h>
@@ -1219,6 +1220,11 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd,
 					if( !refl || setIndex != refl->set || RI_IsEmptyDescriptor( &bindings[i].descriptor ) )
 						continue;
 
+					if( numWrites == Q_ARRAY_COUNT( descriptorWrite ) ) {
+						vkUpdateDescriptorSets( device->vk.device, numWrites, descriptorWrite, 0, NULL );
+						numWrites = 0;
+					}
+
 					assert( numWrites < Q_ARRAY_COUNT( descriptorWrite ) );
 					VkWriteDescriptorSet *vkDesc = descriptorWrite + ( numWrites++ );
 					memset( vkDesc, 0, sizeof( VkWriteDescriptorSet ) );
@@ -1248,17 +1254,14 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd,
 							break;
 					}
 
-					if( numWrites >= Q_ARRAY_COUNT( descriptorWrite ) ) {
-						vkUpdateDescriptorSets( device->vk.device, numWrites, descriptorWrite, 0, NULL );
-						numWrites = 0;
-					}
 				}
+			}
+			if( numWrites > 0 ) {
+				vkUpdateDescriptorSets( device->vk.device, numWrites, descriptorWrite, 0, NULL );
+				numWrites = 0;
 			}
 			VkDescriptorSet vkDescriptorSet = result.set->vk.handle;
 			vkCmdBindDescriptorSets( cmd->handle.vk.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, program->vk.pipelineLayout, setIndex, 1, &vkDescriptorSet, 0, NULL );
-		}
-		if( numWrites > 0 ) {
-			vkUpdateDescriptorSets( device->vk.device, numWrites, descriptorWrite, 0, NULL );
 		}
 	}
 #endif
