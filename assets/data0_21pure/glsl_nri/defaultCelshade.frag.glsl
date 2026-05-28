@@ -45,7 +45,7 @@ void main(void)
 #endif // APPLY_ENTITY_DECAL
 
 #ifdef APPLY_DIFFUSE
-	outColor.rgb *= vec3(texture(u_DiffuseTexture, v_TexCoord));
+	outColor.rgb *= vec3(texture(sampler2D(u_DiffuseTexture, u_DiffuseSampler), v_TexCoord));
 #endif
 
 	outColor.rgb *= vec3(texture(samplerCube(u_CelShadeTexture, u_CelShadeSampler), v_TexCoordCube));
