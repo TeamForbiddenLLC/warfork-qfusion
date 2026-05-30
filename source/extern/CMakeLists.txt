@@ -145,13 +145,16 @@ option(TRACY_STATIC "" OFF )
 SET(TRACY_ENABLE OFF CACHE BOOL "Enable profiling")
 add_compile_definitions(TRACY_IMPORTS)
 add_subdirectory(tracy)
-if(WIN32)
+
+if(TRACY_ENABLE)
+  if(WIN32)
     # Windows has no RPATH equivalent; the loader only searches the exe
     # directory for statically-imported DLLs. warfork/wf_server/wftv_server
     # link Tracy at load time, so the DLL must sit beside them.
     qf_set_output_dir(TracyClient "")
-else()
+  else()
     qf_set_output_dir(TracyClient libs)
+  endif()
 endif()
 
 set(STB_INCLUDE_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/stb PARENT_SCOPE)
