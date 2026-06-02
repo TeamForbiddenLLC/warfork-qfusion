@@ -49,6 +49,24 @@ void VID_UpdateWindowPosAndSize( int x, int y )
 }
 
 /*
+ * VID_GetActualWindowSize
+ *
+ * Returns the real OS window size (in the same logical units as relative mouse deltas),
+ * which can differ from viddef when the game renders at a mode resolution and is
+ * letterboxed into a larger window.
+ */
+void VID_GetActualWindowSize( int *width, int *height )
+{
+	int w = 0, h = 0;
+	if( sdl_window )
+		SDL_GetWindowSize( sdl_window, &w, &h );
+	if( width )
+		*width = w;
+	if( height )
+		*height = h;
+}
+
+/*
  * VID_EnableAltTab
  */
 void VID_EnableAltTab( bool enable )

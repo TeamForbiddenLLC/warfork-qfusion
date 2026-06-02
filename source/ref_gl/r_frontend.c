@@ -208,9 +208,13 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	return rserr_ok;
 }
 
-rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, bool fullScreen, bool stereo )
+rserr_t RF_SetMode( int x, int y, int width, int height, int renderWidth, int renderHeight, int displayFrequency, bool fullScreen, bool stereo )
 {
 	rserr_t err;
+
+	// GL renders directly to the window; the decoupled render resolution is unused here.
+	(void)renderWidth;
+	(void)renderHeight;
 
 	if( glConfig.width == width && glConfig.height == height && glConfig.fullScreen != fullScreen ) {
 		return GLimp_SetFullscreen( fullScreen, x, y );
@@ -350,6 +354,11 @@ static void RF_CheckCvars( void )
 		}
 		r_outlines_scale->modified = false;
 	}
+}
+
+ref_backend_t RF_Backend( void )
+{
+	return REF_BACKEND_GL;
 }
 
 void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )

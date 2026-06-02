@@ -72,7 +72,7 @@ static void __R_CaptureAbortScreenshot( void )
 	rsh.screenshot.state = CAPTURE_STATE_NONE;
 }
 
-bool R_CaptureRecordScreenshot( struct RICmd_s *cmd )
+bool R_CaptureRecordScreenshot( struct RICmd_s *cmd, const struct RITexture_s *src, uint32_t width, uint32_t height )
 {
 	if( rsh.screenshot.state != CAPTURE_STATE_RECORD_SCREENSHOT )
 		return false;
@@ -91,8 +91,6 @@ bool R_CaptureRecordScreenshot( struct RICmd_s *cmd )
 		return false;
 	}
 
-	const uint32_t width = rsh.swapchain.width;
-	const uint32_t height = rsh.swapchain.height;
 	const size_t size = (size_t)width * (size_t)height * RT_BlockSize( def );
 	struct RIBuffer_s *readback = &rsh.screenshot.single.readback;
 
@@ -121,22 +119,11 @@ bool R_CaptureRecordScreenshot( struct RICmd_s *cmd )
 		.def = def,
 	};
 
-	const struct RITexture_s backbuffer = RISwapchainGetTexture( &rsh.swapchain, rsh.swapchainIndex );
-
-	// The frame just finished rendering into the backbuffer, so take it COLOR_ATTACHMENT -> COPY_SRC,
-	// pull it into the readback buffer, then hand it to the presenter. This replaces the frame's usual
-	// RENDER_TARGET -> PRESENT transition, which RF_EndFrame skips when we return true.
-	RICmdImageBarrier( &rsh.device, cmd,
-					   &( struct RIImageBarrier_s ){
-						   .texture = &backbuffer,
-						   .before = RI_RESOURCE_STATE_RENDER_TARGET,
-						   .after = RI_RESOURCE_STATE_COPY_SRC,
-						   .aspect = RI_BARRIER_ASPECT_COLOR,
-					   } );
-
+	// The caller hands the back buffer over already in COPY_SRC (it is about to be blitted into the
+	// swapchain from that same state), so the copy needs no layout transitions of its own.
 	RICmdCopyTextureToBuffer( &rsh.device, cmd,
 							  &( struct RICopyTextureToBufferDesc_s ){
-								  .src = &backbuffer,
+								  .src = src,
 								  .dst = readback,
 								  .aspect = RI_BARRIER_ASPECT_COLOR,
 								  .width = width,
@@ -151,14 +138,6 @@ bool R_CaptureRecordScreenshot( struct RICmd_s *cmd )
 							.before = RI_RESOURCE_STATE_COPY_DST,
 							.after = RI_RESOURCE_STATE_HOST_READ,
 						} );
-
-	RICmdImageBarrier( &rsh.device, cmd,
-					   &( struct RIImageBarrier_s ){
-						   .texture = &backbuffer,
-						   .before = RI_RESOURCE_STATE_COPY_SRC,
-						   .after = RI_RESOURCE_STATE_PRESENT,
-						   .aspect = RI_BARRIER_ASPECT_COLOR,
-					   } );
 
 	return true;
 #else

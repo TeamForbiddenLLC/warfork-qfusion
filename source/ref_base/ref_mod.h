@@ -17,7 +17,7 @@ typedef struct skinfile_s skinfile_t;
 
 // public API
 DECLARE_TYPEDEF_METHOD( rserr_t, RF_Init, const char *applicationName, const char *screenshotPrefix, int startupColor, int iconResource, const int *iconXPM, void *hinstance, void *wndproc, void *parenthWnd, bool verbose );
-DECLARE_TYPEDEF_METHOD( rserr_t, RF_SetMode, int x, int y, int width, int height, int displayFrequency, bool fullScreen, bool stereo );
+DECLARE_TYPEDEF_METHOD( rserr_t, RF_SetMode, int x, int y, int width, int height, int renderWidth, int renderHeight, int displayFrequency, bool fullScreen, bool stereo );
 DECLARE_TYPEDEF_METHOD( void, RF_AppActivate, bool active, bool destroy );
 DECLARE_TYPEDEF_METHOD( rserr_t, RF_SetWindow, void *hinstance, void *wndproc, void *parenthWnd );
 DECLARE_TYPEDEF_METHOD( void, RF_Shutdown, bool verbose );
@@ -55,6 +55,7 @@ DECLARE_TYPEDEF_METHOD( bool, RF_LerpTag, orientation_t *orient, const model_t *
 DECLARE_TYPEDEF_METHOD( void, RF_LightForOrigin, const vec3_t origin, vec3_t dir, vec4_t ambient, vec4_t diffuse, float radius );
 DECLARE_TYPEDEF_METHOD( shader_t *, RF_GetShaderForOrigin, const vec3_t origin );
 DECLARE_TYPEDEF_METHOD( struct cinematics_s *, RF_GetShaderCinematic, shader_t *shader );
+DECLARE_TYPEDEF_METHOD( ref_backend_t, RF_Backend, void );
 
 // r_poly.c
 DECLARE_TYPEDEF_METHOD( int, R_GetClippedFragments, const vec3_t origin, float radius, vec3_t axis[3], int maxfverts, vec4_t *fverts, int maxfragments, fragment_t *fragments );
@@ -140,6 +141,7 @@ struct ref_import_s {
 	R_SkeletalGetBonePoseFn R_SkeletalGetBonePose;
 	R_GetClippedFragmentsFn R_GetClippedFragments;
   R_RegisterRawAlphaMaskFn R_RegisterRawAlphaMask;
+  RF_BackendFn RF_Backend;
 };
 
 #define DECLARE_REF_STRUCT() { \
@@ -197,6 +199,7 @@ struct ref_import_s {
 	R_SkeletalGetBonePose, \
 	R_GetClippedFragments, \
 	R_RegisterRawAlphaMask, \
+	RF_Backend, \
 }
 
 struct ref_import_s RF_Forward_Mod();
@@ -207,7 +210,7 @@ struct ref_import_s RF_Forward_Mod() {
 	return ref_import;
 }
 rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int startupColor,int iconResource, const int *iconXPM, void *hinstance, void *wndproc, void *parenthWnd,  bool verbose ) { return ref_import.RF_Init(applicationName, screenshotPrefix, startupColor, iconResource, iconXPM, hinstance, wndproc, parenthWnd, verbose ); }
-rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, bool fullScreen, bool stereo ) { return ref_import.RF_SetMode(x,y,width, height, displayFrequency, fullScreen, stereo); }
+rserr_t RF_SetMode( int x, int y, int width, int height, int renderWidth, int renderHeight, int displayFrequency, bool fullScreen, bool stereo ) { return ref_import.RF_SetMode(x,y,width, height, renderWidth, renderHeight, displayFrequency, fullScreen, stereo); }
 void RF_AppActivate( bool active, bool destroy ) { ref_import.RF_AppActivate(active, destroy); }
 rserr_t	RF_SetWindow( void *hinstance, void *wndproc, void *parenthWnd ) { return ref_import.RF_SetWindow(hinstance, wndproc, parenthWnd); }
 void RF_Shutdown( bool verbose ) { ref_import.RF_Shutdown( verbose ); }
@@ -260,6 +263,7 @@ int R_SkeletalGetBoneInfo( const model_t *mod, int bone, char *name, size_t name
 void R_SkeletalGetBonePose( const model_t *mod, int bone, int frame, bonepose_t *bonepose ){return ref_import.R_SkeletalGetBonePose( mod, bone, frame, bonepose );}
 int R_GetClippedFragments(const vec3_t origin, float radius, vec3_t axis[3], int maxfverts, vec4_t *fverts, int maxfragments, fragment_t *fragments ) { return ref_import.R_GetClippedFragments(origin, radius, axis, maxfverts, fverts, maxfragments, fragments ); }
 shader_t* R_RegisterRawAlphaMask( const char *name, int width, int height, uint8_t *data ) { return ref_import.R_RegisterRawAlphaMask(name, width, height, data);  }
+ref_backend_t RF_Backend( void ) { return ref_import.RF_Backend(); }
 
 static inline void Q_ImportRefModule(const struct ref_import_s* ref) {
 	ref_import = *ref;
