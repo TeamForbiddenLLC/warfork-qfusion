@@ -53,7 +53,7 @@ include_directories(${ANGELSCRIPT_INCLUDE_DIR} ${LIBROCKET_INCLUDE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}) # for ui_precompiled.h
 
 add_library(ui SHARED ${ROCKET_ROOT_HEADERS} ${ROCKET_CORE_HEADERS} ${ROCKET_CONTROLS_HEADERS} ${ROCKET_CORE_SOURCES} ${ROCKET_CONTROLS_SOURCES} ${UI_SOURCES} ${UI_HEADERS})
-target_link_libraries(ui PRIVATE)
+target_link_libraries(ui PRIVATE qcore)
 add_dependencies(ui angelwrap)
 set_target_properties(ui PROPERTIES COMPILE_DEFINITIONS "ROCKET_STATIC_LIB;_SECURE_SCL=0")
 qf_set_output_dir(ui libs)
