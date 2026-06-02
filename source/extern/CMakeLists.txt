@@ -45,19 +45,23 @@ else()
   qf_set_output_dir(zlib libs)
 endif()
 
-if (USE_SDL2)
-  if (USE_SYSTEM_SDL2)
-    find_package(SDL2 REQUIRED GLOBAL)
+if (USE_SDL3)
+  if (USE_SYSTEM_SDL3)
+    find_package(SDL3 REQUIRED GLOBAL)
   else()
     option(SDL_RPATH "" OFF)
     option(SDL_SHARED "" ON)
     option(SDL_STATIC "" OFF)
-    option(SDL_SHARED_ENABLED_BY_DEFAULT"" OFF)
-    option(SDL_TEST "" OFF)
-    option(SDL2_DISABLE_INSTALL "" ON)
-    
+    option(SDL_TEST_LIBRARY "" OFF)
+    option(SDL_INSTALL "" OFF)
+    # KMSDRM (display-server-less) backend needs a newer libdrm than the Steam sniper image
+    # provides (drmModeGetConnectorTypeName, libdrm >= 2.4.112). The client uses X11/Wayland,
+    # so disable it to keep building against the sniper SDK. FORCE so it overrides any value
+    # already cached in a persisted build dir.
+    set(SDL_KMSDRM OFF CACHE BOOL "" FORCE)
+
     add_subdirectory(SDL)
-    qf_set_output_dir (SDL2 libs)
+    qf_set_output_dir (SDL3-shared libs)
   endif()
 endif()
 
