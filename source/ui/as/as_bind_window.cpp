@@ -249,6 +249,20 @@ public:
 		return state.height;
 	}
 
+	int getDesktopWidth( void ) const
+	{
+		int w = 0, h = 0;
+		trap::VID_GetDefaultMode( &w, &h );
+		return w;
+	}
+
+	int getDesktopHeight( void ) const
+	{
+		int w = 0, h = 0;
+		trap::VID_GetDefaultMode( &w, &h );
+		return h;
+	}
+
 	float getPixelRatio( void ) const
 	{
 		const RefreshState &state = UI_Main::Get()->getRefreshState();
@@ -490,6 +504,8 @@ void BindWindow( ASInterface *as )
 		.method( &ASWindow::getDrawBackground, "get_drawBackground" )
 		.method( &ASWindow::getWidth, "get_width" )
 		.method( &ASWindow::getHeight, "get_height" )
+		.method( &ASWindow::getDesktopWidth, "get_desktopWidth" )
+		.method( &ASWindow::getDesktopHeight, "get_desktopHeight" )
 		.method( &ASWindow::getPixelRatio, "get_pixelRatio" )
 
 		.method( &ASWindow::historySize, "history_size" )

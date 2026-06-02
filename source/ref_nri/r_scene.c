@@ -431,7 +431,7 @@ void R_RenderScene(const refdef_t *fd )
 
 					VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
 					renderingInfo.flags = 0;
-					renderingInfo.renderArea = (VkRect2D){ { 0, 0 }, { rsh.swapchain.width, rsh.swapchain.height } };
+					renderingInfo.renderArea = (VkRect2D){ { 0, 0 }, { rsh.renderWidth, rsh.renderHeight } };
 					renderingInfo.layerCount = 1;
 					renderingInfo.viewMask = 0;
 					renderingInfo.colorAttachmentCount = 1;
@@ -450,10 +450,10 @@ void R_RenderScene(const refdef_t *fd )
 
 			RI_PogoBufferToggle( &rsh.device, rsh.pogoBuffer + rsh.swapchainIndex, &rsh.frame.handle );
 			FR_CmdResetCommandState( &rsh.frame, CMD_RESET_DEFAULT_PIPELINE_LAYOUT | CMD_RESET_VERTEX_BUFFER );
-			// reset back to back buffer
+			// reset back to the mode-res back buffer (composited into 1:1; letterbox-blit happens at present)
 			{
 				VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-				RI_VK_FillColorAttachment( &colorAttachment, RISwapchainGetTextureView(&rsh.swapchain, rsh.swapchainIndex), false );
+				RI_VK_FillColorAttachment( &colorAttachment, rsh.backBufferView[rsh.swapchainIndex], false );
 
 				VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 				RI_VK_FillDepthAttachment( &depthStencil, rsh.depthView[rsh.swapchainIndex], false );
