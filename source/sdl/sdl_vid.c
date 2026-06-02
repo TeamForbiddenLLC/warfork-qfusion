@@ -18,7 +18,7 @@
 
  */
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "../client/client.h"
 #include "../ref_base/ref_mod.h"
 
@@ -90,37 +90,38 @@ unsigned int VID_GetSysModes( vidmode_t *modes )
 		VID_GetDefaultMode( &modes[0].width, &modes[0].height );
 	return 1;
 #else
-	int num;
-	SDL_DisplayMode mode;
+	int count = 0, i;
 	int prevwidth = 0, prevheight = 0;
 	unsigned int ret = 0;
 
-	num = SDL_GetNumDisplayModes( 0 );
-	if( num < 1 )
+	// SDL3 enumerates fullscreen modes per-display, returning an owned array of mode pointers.
+	SDL_DisplayMode **sdlModes = SDL_GetFullscreenDisplayModes( SDL_GetPrimaryDisplay(), &count );
+	if( !sdlModes || count < 1 )
 		return 0;
 
-	while( num-- ) // reverse to help the sorting a little
+	for( i = count - 1; i >= 0; i-- ) // reverse to help the sorting a little
 	{
-		if( SDL_GetDisplayMode( 0, num, &mode ) )
+		const SDL_DisplayMode *mode = sdlModes[i];
+
+		if( SDL_BITSPERPIXEL( mode->format ) < 15 )
 			continue;
 
-		if( SDL_BITSPERPIXEL( mode.format ) < 15 )
-			continue;
-
-		if( ( mode.w == prevwidth ) && ( mode.h == prevheight ) )
+		if( ( mode->w == prevwidth ) && ( mode->h == prevheight ) )
 			continue;
 
 		if( modes )
 		{
-			modes[ret].width = mode.w;
-			modes[ret].height = mode.h;
+			modes[ret].width = mode->w;
+			modes[ret].height = mode->h;
 		}
 
-		prevwidth = mode.w;
-		prevheight = mode.h;
+		prevwidth = mode->w;
+		prevheight = mode->h;
 
 		ret++;
 	}
+
+	SDL_free( sdlModes );
 
 	return ret;
 #endif
@@ -131,11 +132,16 @@ unsigned int VID_GetSysModes( vidmode_t *modes )
  */
 bool VID_GetDefaultMode( int *width, int *height )
 {
-	SDL_DisplayMode mode;
-	SDL_GetDesktopDisplayMode( 0, &mode );
+	// SDL3 returns a borrowed pointer to the desktop mode for a display id.
+	const SDL_DisplayMode *mode = SDL_GetDesktopDisplayMode( SDL_GetPrimaryDisplay() );
+	if( !mode ) {
+		*width = 0;
+		*height = 0;
+		return false;
+	}
 
-	*width = mode.w;
-	*height = mode.h;
+	*width = mode->w;
+	*height = mode->h;
 
 	return true;
 }

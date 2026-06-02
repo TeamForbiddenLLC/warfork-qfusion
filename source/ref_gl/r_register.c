@@ -387,7 +387,7 @@ static const gl_extension_func_t gl_ext_texture_3D_OES_funcs[] =
 
 #endif // GL_ES_VERSION_2_0
 
-#ifndef USE_SDL2
+#ifndef USE_SDL3
 
 #ifdef _WIN32
 
@@ -413,7 +413,7 @@ static const gl_extension_func_t glx_ext_swap_control_SGI_funcs[] =
 
 #endif
 
-#endif // USE_SDL2
+#endif // USE_SDL3
 
 
 static void R_RegisterFatalExt(const char* ext) {
@@ -625,7 +625,7 @@ static bool R_RegisterGLExtensions( void )
 	glConfig.ext.shadow = 1;
 	glConfig.ext.texture_non_power_of_two = 1;
 
-#ifndef USE_SDL2
+#ifndef USE_SDL3
 #ifdef GLX_VERSION
 	if( R_TryLoadGLProcAddress( glx_ext_swap_control_SGI_funcs ) ) {
 		glConfig.ext.swap_control = 1;
@@ -965,7 +965,7 @@ static void R_Register( const char *screenshotsPrefix )
 	r_screenshot_fmtstr = ri.Cvar_Get( "r_screenshot_fmtstr", va_r( tmp, sizeof( tmp ), "%s%y%%m%%d_%H%M%%S", screenshotsPrefix ), CVAR_ARCHIVE );
 	r_screenshot_format = ri.Cvar_Get( "r_screenshot_format", "1", CVAR_ARCHIVE );
 
-#if defined(GLX_VERSION) && !defined(USE_SDL2)
+#if defined(GLX_VERSION) && !defined(USE_SDL3)
 	r_swapinterval = ri.Cvar_Get( "r_swapinterval", "0", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 #else
 	r_swapinterval = ri.Cvar_Get( "r_swapinterval", "0", CVAR_ARCHIVE );

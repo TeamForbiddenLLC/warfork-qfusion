@@ -1,4 +1,4 @@
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "../client/client.h"
 #include "sdl_input_joy.h"
 
@@ -17,8 +17,6 @@ static bool input_focus = false;
 static bool mouse_relative = false;
 
 static int mx = 0, my = 0;
-
-static bool bugged_rawXevents = false;
 
 #if defined( __APPLE__ )
 void IN_SetMouseScalingEnabled( bool isRestore );
@@ -43,26 +41,9 @@ static void mouse_motion_event( SDL_MouseMotionEvent *event )
 		return;
 	}
 
-	// See:
-	// https://bugzilla.libsdl.org/show_bug.cgi?id=2963
-	// https://bugs.freedesktop.org/show_bug.cgi?id=71609
-	if( mouse_relative && bugged_rawXevents ) {
-		static Uint32 last_timestamp;
-		static Uint32 last_which;
-		static Sint32 last_xrel, last_yrel;
-
-		if (last_timestamp == event->timestamp && last_which == event->which 
-			&& last_xrel == event->xrel && last_yrel == event->yrel)
-			return;
-
-		last_timestamp = event->timestamp;
-		last_which = event->which;
-		last_xrel = event->xrel;
-		last_yrel = event->yrel;
-	}
-
-	mx += event->xrel;
-	my += event->yrel;
+	// SDL3 relative motion is reported as float deltas.
+	mx += (int)event->xrel;
+	my += (int)event->yrel;
 }
 
 /**
@@ -252,7 +233,7 @@ static wchar_t TranslateSDLScancode(SDL_Scancode scancode)
  */
 static void key_event( const SDL_KeyboardEvent *event, const bool state )
 {
-	wchar_t charkey = TranslateSDLScancode( event->keysym.scancode );
+	wchar_t charkey = TranslateSDLScancode( event->scancode );
 
 	if( charkey >= 0 && charkey <= 255 ) {
 		Key_Event( charkey, state, Sys_Milliseconds() );
@@ -261,8 +242,8 @@ static void key_event( const SDL_KeyboardEvent *event, const bool state )
 	if( Key_IsToggleConsole( charkey ) )
 	{
 		// clear the sdl input buffer. prevents accents etc from modifying the first character written.
-		SDL_StopTextInput();
-		SDL_StartTextInput();
+		SDL_StopTextInput( sdl_window );
+		SDL_StartTextInput( sdl_window );
 	}
 }
 
@@ -283,34 +264,34 @@ static void IN_HandleEvents( void )
 
 	while( SDL_PollEvent( &event ) ) {
 		switch( event.type ) {
-			case SDL_KEYDOWN:
+			case SDL_EVENT_KEY_DOWN:
 				key_event( &event.key, true );
 
 				// Emulate copy/paste
 				#if defined( __APPLE__ )
-					#define KEYBOARD_COPY_PASTE_MODIFIER KMOD_GUI
+					#define KEYBOARD_COPY_PASTE_MODIFIER SDL_KMOD_GUI
 				#else
-					#define KEYBOARD_COPY_PASTE_MODIFIER KMOD_CTRL
+					#define KEYBOARD_COPY_PASTE_MODIFIER SDL_KMOD_CTRL
 				#endif
-				
-				if( event.key.keysym.sym == SDLK_c ) {
-					if( event.key.keysym.mod & KEYBOARD_COPY_PASTE_MODIFIER ) {
+
+				if( event.key.key == SDLK_C ) {
+					if( event.key.mod & KEYBOARD_COPY_PASTE_MODIFIER ) {
 						Key_CharEvent( KC_CTRLC, KC_CTRLC );
 					}
 				}
-				else if( event.key.keysym.sym == SDLK_v ) {
-					if( event.key.keysym.mod & KEYBOARD_COPY_PASTE_MODIFIER ) {
+				else if( event.key.key == SDLK_V ) {
+					if( event.key.mod & KEYBOARD_COPY_PASTE_MODIFIER ) {
 						Key_CharEvent( KC_CTRLV, KC_CTRLV );
 					}
 				}
 
 				break;
 
-			case SDL_KEYUP:
+			case SDL_EVENT_KEY_UP:
 				key_event( &event.key, false );
 				break;
 
-			case SDL_TEXTINPUT:
+			case SDL_EVENT_TEXT_INPUT:
 				// SDL_iconv_utf8_ucs2 uses "UCS-2-INTERNAL" as tocode and fails to convert text on Linux
 				// where SDL_iconv uses system iconv. So we force needed encoding directly
 
@@ -329,50 +310,47 @@ static void IN_HandleEvents( void )
 				}
 				break;
 
-			case SDL_MOUSEMOTION:
+			case SDL_EVENT_MOUSE_MOTION:
 				mouse_motion_event( &event.motion );
 				break;
 
-			case SDL_MOUSEBUTTONDOWN:
+			case SDL_EVENT_MOUSE_BUTTON_DOWN:
 				mouse_button_event( &event.button, true );
 				break;
 
-			case SDL_MOUSEBUTTONUP:
+			case SDL_EVENT_MOUSE_BUTTON_UP:
 				mouse_button_event( &event.button, false );
 				break;
 
-			case SDL_MOUSEWHEEL:
+			case SDL_EVENT_MOUSE_WHEEL:
 				mouse_wheel_event( &event.wheel );
 				break;
 
-			case SDL_QUIT:
+			case SDL_EVENT_QUIT:
 				Cbuf_ExecuteText( EXEC_NOW, "quit" );
 				break;
 
-			case SDL_WINDOWEVENT:
-				switch( event.window.event ) {
-					case SDL_WINDOWEVENT_SHOWN:
-						AppActivate( true );
-						break;
-					case SDL_WINDOWEVENT_HIDDEN:
-						AppActivate( false );
-						break;
-					case SDL_WINDOWEVENT_CLOSE:
-						break;
-					case SDL_WINDOWEVENT_FOCUS_GAINED:
-						input_focus = true;
-						break;
-					case SDL_WINDOWEVENT_FOCUS_LOST:
-						input_focus = false;
-						break;
-					case SDL_WINDOWEVENT_MOVED:
-						// FIXME: move this somewhere else
-						Cvar_SetValue( "vid_xpos", event.window.data1 );
-						Cvar_SetValue( "vid_ypos", event.window.data2 );
-						vid_xpos->modified = false;
-						vid_ypos->modified = false;
-						break;
-				}
+			// SDL3 split SDL_WINDOWEVENT into individual top-level window event types.
+			case SDL_EVENT_WINDOW_SHOWN:
+				AppActivate( true );
+				break;
+			case SDL_EVENT_WINDOW_HIDDEN:
+				AppActivate( false );
+				break;
+			case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+				break;
+			case SDL_EVENT_WINDOW_FOCUS_GAINED:
+				input_focus = true;
+				break;
+			case SDL_EVENT_WINDOW_FOCUS_LOST:
+				input_focus = false;
+				break;
+			case SDL_EVENT_WINDOW_MOVED:
+				// FIXME: move this somewhere else
+				Cvar_SetValue( "vid_xpos", event.window.data1 );
+				Cvar_SetValue( "vid_ypos", event.window.data2 );
+				vid_xpos->modified = false;
+				vid_ypos->modified = false;
 				break;
 		}
 	}
@@ -386,7 +364,8 @@ static void IN_HandleEvents( void )
 static void IN_SkipRelativeMouseMove( void )
 {
 	if( mouse_relative ) {
-		SDL_GetRelativeMouseState( &mx, &my );
+		float fx, fy;
+		SDL_GetRelativeMouseState( &fx, &fy );
 		mx = my = 0;
 	}
 }
@@ -400,7 +379,7 @@ static void IN_WarpMouseToCenter( int *pcenter_x, int *pcenter_y )
 	center_x /= 2;
 	center_y /= 2;
 
-	SDL_WarpMouseInWindow( sdl_window, center_x, center_y );
+	SDL_WarpMouseInWindow( sdl_window, (float)center_x, (float)center_y );
 
 	if( pcenter_x ) {
 		*pcenter_x = center_x;
@@ -416,8 +395,11 @@ void IN_MouseMove( usercmd_t *cmd )
 		if( !mouse_relative ) {
 			if( mx || my ) {
 				int center_x, center_y;
+				float fx, fy;
 
-				SDL_GetMouseState( &mx, &my );
+				SDL_GetMouseState( &fx, &fy );
+				mx = (int)fx;
+				my = (int)fy;
 
 				IN_WarpMouseToCenter( &center_x, &center_y );
 
@@ -436,27 +418,15 @@ void IN_MouseMove( usercmd_t *cmd )
 
 void IN_Init()
 {
-	SDL_version linked;
-
 	if( input_inited )
 		return;
 
 	in_grabinconsole = Cvar_Get( "in_grabinconsole", "0", CVAR_ARCHIVE );
 	in_disablemacosxmouseaccel = Cvar_Get( "in_disablemacosxmouseaccel", "1", CVAR_ARCHIVE );
 
-	SDL_GetVersion( &linked );
+	SDL_HideCursor();
 
-	SDL_ShowCursor( SDL_DISABLE );
-
-#if SDL_VERSION_ATLEAST(2, 0, 2)
-	
-	{
-		cvar_t *m_raw = Cvar_Get( "m_raw", "1", CVAR_ARCHIVE );
-		SDL_SetHint( SDL_HINT_MOUSE_RELATIVE_MODE_WARP, m_raw->integer ? "0" : "1" );
-	}
-#endif
-
-	mouse_relative = SDL_SetRelativeMouseMode( SDL_TRUE ) == 0;
+	mouse_relative = SDL_SetWindowRelativeMouseMode( sdl_window, true );
 	if( mouse_relative ) {
 		IN_SetMouseScalingEnabled( false );
 	}
@@ -470,7 +440,6 @@ void IN_Init()
 	input_inited = true;
 	input_active = true; // will be activated by IN_Frame if necessary
 	mouse_active = true;
-	bugged_rawXevents = linked.major == 2 && linked.minor == 0 && linked.patch < 4;
 
 	IN_SkipRelativeMouseMove();
 }
@@ -484,7 +453,7 @@ void IN_Shutdown()
 		return;
 
 	input_inited = false;
-	SDL_SetRelativeMouseMode( SDL_FALSE );
+	SDL_SetWindowRelativeMouseMode( sdl_window, false );
 	IN_SetMouseScalingEnabled( true );
 	IN_SDL_JoyShutdown();
 }
@@ -510,20 +479,20 @@ void IN_Frame()
 	if( !input_focus || ( !Cvar_Value( "vid_fullscreen" ) && cls.key_dest == key_console && !in_grabinconsole->integer ) ) {
 		if( mouse_active ) {
 			if( mouse_relative ) {
-				mouse_relative = !(SDL_SetRelativeMouseMode( SDL_FALSE ) == 0);
+				mouse_relative = !SDL_SetWindowRelativeMouseMode( sdl_window, false );
 				if( !mouse_relative ) {
 					IN_SetMouseScalingEnabled( true );
 				}
 			}
-			SDL_ShowCursor( SDL_ENABLE );
+			SDL_ShowCursor();
 		}
 		mouse_active = false;
 		input_active = true;
 	} else {
 		if( !mouse_active ) {
-			SDL_ShowCursor( SDL_DISABLE );
+			SDL_HideCursor();
 
-			mouse_relative = SDL_SetRelativeMouseMode( SDL_TRUE ) == 0;
+			mouse_relative = SDL_SetWindowRelativeMouseMode( sdl_window, true );
 			if( mouse_relative ) {
 				IN_SetMouseScalingEnabled( false );
 			}

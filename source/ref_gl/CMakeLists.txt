@@ -29,14 +29,14 @@ file(GLOB STB_HEADERS
     "${STB_INCLUDE_DIR}/stb_image_write.h"
 )
 
-if (USE_SDL2)
+if (USE_SDL3)
 	file(GLOB REF_GL_PLATFORM_SOURCES
 		"../sdl/sdl_glw.c"
 		"../sdl/sdl_glw_icon.c"
 		"../sdl/sdl_qgl.c"
 		)
 
-	set(REF_GL_PLATFORM_LIBRARIES SDL2::SDL2)
+	set(REF_GL_PLATFORM_LIBRARIES SDL3::SDL3)
 else()
 	if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 		file(GLOB REF_GL_PLATFORM_SOURCES

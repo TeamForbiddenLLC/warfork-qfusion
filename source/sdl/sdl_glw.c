@@ -18,7 +18,7 @@
 
  */
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 #include "../ref_gl/r_local.h"
 #include "sdl_glw.h"
@@ -37,34 +37,22 @@ void GLimp_SetWindowIcon( void )
 	{
 		SDL_Surface *surface;
 
-		surface = SDL_CreateRGBSurfaceFrom( (void *)(xpm_icon+2), xpm_icon[0], xpm_icon[1], 32, xpm_icon[0]*4,
-#ifdef ENDIAN_LITTLE
-			0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000 );
-#else
-			0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000 );
-#endif 
+		// XPM payload is packed 0xAARRGGBB ints == SDL_PIXELFORMAT_ARGB8888 (endian-independent in SDL).
+		surface = SDL_CreateSurfaceFrom( xpm_icon[0], xpm_icon[1], SDL_PIXELFORMAT_ARGB8888,
+			(void *)(xpm_icon+2), xpm_icon[0]*4 );
 
 		SDL_SetWindowIcon( glw_state.sdl_window, surface );
 
-		SDL_FreeSurface( surface );
+		SDL_DestroySurface( surface );
 	}
 #endif
 }
 
 rserr_t GLimp_SetFullscreenMode( int displayFrequency, bool fullscreen )
 {
-	Uint32 flags = 0;
-
-	if( fullscreen ) {
-#ifdef __APPLE__
-		// we need to use SDL_WINDOW_FULLSCREEN_DESKTOP to support Alt+Tab from fullscreen on OS X
-		flags = SDL_WINDOW_FULLSCREEN_DESKTOP;
-#else
-		flags = SDL_WINDOW_FULLSCREEN;
-#endif
-	}
-
-    if( SDL_SetWindowFullscreen( glw_state.sdl_window, flags ) == 0 ) {
+	// SDL3 dropped SDL_WINDOW_FULLSCREEN_DESKTOP; SDL_SetWindowFullscreen toggles borderless-desktop
+	// fullscreen via a bool and returns true on success.
+	if( SDL_SetWindowFullscreen( glw_state.sdl_window, fullscreen ) ) {
         glConfig.fullScreen = fullscreen;
         return rserr_ok;
     }
@@ -74,8 +62,8 @@ rserr_t GLimp_SetFullscreenMode( int displayFrequency, bool fullscreen )
 
 static void GLimp_CreateWindow( int x, int y, int width, int height )
 {
-	glw_state.sdl_window = SDL_CreateWindow( glw_state.applicationName, 
-		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL );
+	// SDL3 SDL_CreateWindow no longer takes a position; set it afterwards.
+	glw_state.sdl_window = SDL_CreateWindow( glw_state.applicationName, width, height, SDL_WINDOW_OPENGL );
 
 	if( !glw_state.sdl_window )
 		Sys_Error( "Couldn't create window: \"%s\"", SDL_GetError() );
@@ -178,12 +166,13 @@ static int GLimp_InitGL( int stencilbits, bool stereo )
 	}
 
 	glw_state.sdl_glcontext = SDL_GL_CreateContext( glw_state.sdl_window );
-	if( glw_state.sdl_glcontext == 0 ) {
+	if( glw_state.sdl_glcontext == NULL ) {
 		ri.Com_Printf( "GLimp_Init() - SDL_GL_CreateContext failed: \"%s\"\n", SDL_GetError() );
 		goto fail;
 	}
 
-	if( SDL_GL_MakeCurrent( glw_state.sdl_window, glw_state.sdl_glcontext ) ) {
+	// SDL3 returns true on success.
+	if( !SDL_GL_MakeCurrent( glw_state.sdl_window, glw_state.sdl_glcontext ) ) {
 		ri.Com_Printf( "GLimp_Init() - SDL_GL_MakeCurrent failed: \"%s\"\n", SDL_GetError() );
 		goto fail;
 	}
@@ -228,20 +217,9 @@ void GLimp_EndFrame( void )
  */
 bool GLimp_GetGammaRamp( size_t stride, unsigned short *psize, unsigned short *ramp )
 {
-	unsigned short ramp256[3 * 256];
-
-	if( stride < 256 ) {
-		// SDL only supports gamma ramps with 256 mappings per channel
-		return false;
-	}
-
-	if( SDL_GetWindowGammaRamp( glw_state.sdl_window, ramp256, ramp256 + 256, ramp256 + ( 256 << 1 ) ) != -1 ) {
-		*psize = 256;
-		memcpy( ramp, ramp256, 256 * sizeof( *ramp ) );
-		memcpy( ramp + stride, ramp256 + 256, 256 * sizeof( *ramp ) );
-		memcpy( ramp + 2 * stride, ramp256 + 2 * 256, 256 * sizeof( *ramp ) );
-		return true;
-	}
+	// SDL3 removed per-window gamma ramp APIs (SDL_GetWindowGammaRamp). Hardware gamma is
+	// unavailable; report failure so the renderer falls back to its software/shader path.
+	(void)stride; (void)psize; (void)ramp;
 	return false;
 }
 
@@ -250,17 +228,8 @@ bool GLimp_GetGammaRamp( size_t stride, unsigned short *psize, unsigned short *r
  */
 void GLimp_SetGammaRamp( size_t stride, unsigned short size, unsigned short *ramp )
 {
-	unsigned short ramp256[3 * 256];
-
-	if( size != 256 )
-		return;
-
-	memcpy( ramp256, ramp, size * sizeof( *ramp ) );
-	memcpy( ramp256 + 256, ramp + stride, size * sizeof( *ramp ) );
-	memcpy( ramp256 + 2 * 256, ramp + 2 * stride, size * sizeof( *ramp ) );
-	if( SDL_SetWindowGammaRamp( glw_state.sdl_window, ramp256, ramp256 + 256, ramp256 + ( 256 << 1 ) ) == -1 ) {
-		Com_Printf( "SDL_SetWindowGammaRamp(...) failed: ", SDL_GetError() );
-	}
+	// SDL3 removed per-window gamma ramp APIs (SDL_SetWindowGammaRamp) — no-op.
+	(void)stride; (void)size; (void)ramp;
 }
 
 /**
@@ -302,7 +271,7 @@ void GLimp_SetSwapInterval( int swapInterval )
 */
 bool GLimp_MakeCurrent( void *context, void *surface )
 {
-	return SDL_GL_MakeCurrent( glw_state.sdl_window, (SDL_GLContext)context ) == 0;
+	return SDL_GL_MakeCurrent( glw_state.sdl_window, (SDL_GLContext)context );
 }
 
 /*
@@ -339,10 +308,10 @@ bool GLimp_SharedContext_Create( void **context, void **surface )
 	*context = (void*)SDL_GL_CreateContext( glw_state.sdl_window );
 	if( surface )
 		*surface = NULL;
-	
+
 	// SDL_GL_CreateContext makes the newly created context current
 	// we don't want that, so revert to our main context
-	return SDL_GL_MakeCurrent( glw_state.sdl_window, glw_state.sdl_glcontext ) == 0;
+	return SDL_GL_MakeCurrent( glw_state.sdl_window, glw_state.sdl_glcontext );
 }
 
 /*
@@ -350,5 +319,5 @@ bool GLimp_SharedContext_Create( void **context, void **surface )
 */
 void GLimp_SharedContext_Destroy( void *context, void *surface )
 {
-	SDL_GL_DeleteContext( (SDL_GLContext)context );
+	SDL_GL_DestroyContext( (SDL_GLContext)context );
 }
