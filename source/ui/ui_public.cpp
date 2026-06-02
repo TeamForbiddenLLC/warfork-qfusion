@@ -25,6 +25,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define REF_DEFINE_INTERFACE_IMPL 1
 #include "../qcommon/mod_fs.h"
 
+#define MEM_DEFINE_INTERFACE_IMPL 1
+#include "../qcommon/mod_mem.h"
+
 #include "ui_precompiled.h"
 #include "kernel/ui_common.h"
 #include "kernel/ui_main.h"
@@ -210,6 +213,7 @@ ui_export_t *GetUIAPI( ui_import_t *import )
 	WSWUI::UI_IMPORT = *import;
 	Q_ImportSteamModule(&import->steam_import);
 	Q_ImportRefModule(&import->refImport);
+	Q_ImportMemModule(import->memImport);
 
 	fs_import = *(import->fsImport);
 	globals.API = WSWUI::API;

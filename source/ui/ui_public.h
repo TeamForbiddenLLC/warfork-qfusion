@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "./../steamshim/src/mod_steam.h"
 #include "../ref_base/ref_mod.h"
+#include "../qcommon/mod_mem.h"
 
 #define	UI_API_VERSION	    62
 
@@ -47,6 +48,7 @@ enum {
 typedef struct
 {
 	const struct fs_import_s* fsImport;
+	const struct mem_import_s* memImport;
 
 	// halts the application
 	void ( *Error )( const char *str );
