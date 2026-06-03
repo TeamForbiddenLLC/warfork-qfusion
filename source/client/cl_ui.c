@@ -179,9 +179,12 @@ void CL_UIModule_Init( void )
 
 	ui_mempool = _Mem_AllocPool( NULL, "User Interface", MEMPOOL_USERINTERFACE, __FILE__, __LINE__ );
 
+	struct mem_import_s memImport = DECLARE_MEM_STRUCT( ui_mempool );
+
 	import.Error = CL_UIModule_Error;
 	import.Print = CL_UIModule_Print;
 	import.fsImport = &default_fs_imports_s;
+	import.memImport = &memImport;
 	import.refImport = RF_Forward_Mod();
 
 	import.Dynvar_Create = Dynvar_Create;

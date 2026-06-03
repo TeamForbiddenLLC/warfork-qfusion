@@ -224,7 +224,7 @@
 					<div class="title">Graphics Driver</div>
 					<select cvar="vid_ref" id="vid-module" onchange="video.Changed();">
 						<option value="ref_gl" selected>OpenGL</option>
-						<option value="ref_nri" selected>Vulkan/Metal</option>
+						<option value="ref_nri" selected>Vulkan</option>
 					</select>
 					<br/>
 				</div>

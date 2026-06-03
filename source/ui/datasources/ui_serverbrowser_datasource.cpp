@@ -3,8 +3,8 @@
 #include "kernel/ui_main.h"
 #include "kernel/ui_utils.h"
 
-#include <sstream>
 #include <iterator>
+#include "qstr.h"
 #include "datasources/ui_serverbrowser_datasource.h"
 
 namespace WSWUI {
@@ -27,6 +27,7 @@ static uint16_t be16toh(uint16_t x) {
 		return x;
 	return (x & 0xFF) << 8 | (x >> 8);
 }
+
 
 namespace {
 
@@ -133,75 +134,66 @@ void ServerInfo::fromInfo( const char *info )
 			}
 		}
 		else if( cmd == "m" ) {	// MAP NAME
-			std::string tmpmap;
-			std::stringstream trim( value );
-			trim >> tmpmap;
+			struct QStrSpan v = qStrTrim( qCToStrRef( value.c_str() ) );
+			std::string tmpmap( v.buf, v.len );
 			if( tmpmap != map ) {
 				has_changed = true;
 				map = tmpmap;
 			}
 		}
 		else if( cmd == "u" ) {	// USERS / MAXUSERS
-			int tmpcur, tmpmax;
-			char dummy;
-			std::stringstream parser( value );
-			parser >> tmpcur >> dummy >> tmpmax;
-			if( !parser.fail() && (tmpcur != curuser || tmpmax != maxuser) ) {
+			struct QStrSpan v = qCToStrRef( value.c_str() );
+			int slash = qStrIndexOf( v, qCToStrRef( "/" ) );
+			long long tmpcur, tmpmax;
+			if( slash != -1 &&
+				qStrReadll( qStrTrim( qSubStrSpan( v, 0, (size_t)slash ) ), &tmpcur ) &&
+				qStrReadll( qStrTrim( qSubStrSpan( v, (size_t)slash + 1, v.len ) ), &tmpmax ) &&
+				((int)tmpcur != curuser || (int)tmpmax != maxuser) ) {
 				has_changed = true;
-				curuser = tmpcur;
-				maxuser = tmpmax;
+				curuser = (int)tmpcur;
+				maxuser = (int)tmpmax;
 			}
 		}
 		else if( cmd == "b" ) {	// BOT COUNT
-			int tmpbots;
-			std::stringstream toint( value );
-			toint >> tmpbots;
-			if( !toint.fail() && tmpbots != bots ) {
+			long long tmp;
+			if( qStrReadll( qStrTrim( qCToStrRef( value.c_str() ) ), &tmp ) && (int)tmp != bots ) {
 				has_changed = true;
-				bots = tmpbots;
+				bots = (int)tmp;
 			}
 		}
 		else if( cmd == "g" ) {	// GAMETYPE
-			std::string tmpgame;
-			std::stringstream trim( value );
-			trim >> tmpgame;
-			if( !trim.fail() && tmpgame != gametype ) {
+			struct QStrSpan v = qStrTrim( qCToStrRef( value.c_str() ) );
+			std::string tmpgame( v.buf, v.len );
+			if( !tmpgame.empty() && tmpgame != gametype ) {
 				has_changed = true;
 				gametype = tmpgame;
 			}
 		}
 		else if( cmd == "ig" ) { // INSTAGIB
-			int tmpinsta;
-			std::stringstream toint( value );
-			toint >> tmpinsta;
-			if( !toint.fail() && (tmpinsta != 0) != instagib ) {
+			long long tmp;
+			if( qStrReadll( qStrTrim( qCToStrRef( value.c_str() ) ), &tmp ) && (tmp != 0) != instagib ) {
 				has_changed = true;
-				instagib = tmpinsta != 0;
+				instagib = tmp != 0;
 			}
 		}
 		else if( cmd == "s" ) { // SKILL LEVEL
-			int tmpskill;
-			std::stringstream toint( value );
-			toint >> tmpskill;
-			if( !toint.fail() && tmpskill != skilllevel ) {
+			long long tmp;
+			if( qStrReadll( qStrTrim( qCToStrRef( value.c_str() ) ), &tmp ) && (int)tmp != skilllevel ) {
 				has_changed = true;
-				skilllevel = tmpskill;
+				skilllevel = (int)tmp;
 			}
 		}
 		else if( cmd == "p" ) { // PASSWORD
-			int tmppass;
-			std::stringstream toint( value );
-			toint >> tmppass;
-			if( !toint.fail() && (tmppass != 0) != password ) {
+			long long tmp;
+			if( qStrReadll( qStrTrim( qCToStrRef( value.c_str() ) ), &tmp ) && (tmp != 0) != password ) {
 				has_changed = true;
-				password = tmppass != 0;
+				password = tmp != 0;
 			}
 		}
 		else if( cmd == "ping" ) { // PING.. doh
-			unsigned int tmpping;
-			std::stringstream toint( value );
-			toint >> tmpping;
-			if( !toint.fail() ) {
+			unsigned long long tmp;
+			if( qStrReadull( qStrTrim( qCToStrRef( value.c_str() ) ), &tmp ) ) {
+				unsigned int tmpping = (unsigned int)tmp;
 				if ( tmpping != ping || ping_retries == 0 ) {
 					has_ping = true;
 					has_changed = true;
@@ -222,47 +214,38 @@ void ServerInfo::fromInfo( const char *info )
 		// 	}
 		// }
 		else if( cmd == "stm" ) { // STEAM AUTHENTICATED
-			int tmpstm;
-			std::stringstream toint( value );
-			toint >> tmpstm;
-			if( !toint.fail() && (tmpstm != 0) != steam) {
+			long long tmp;
+			if( qStrReadll( qStrTrim( qCToStrRef( value.c_str() ) ), &tmp ) && (tmp != 0) != steam ) {
 				has_changed = true;
-				steam = tmpstm != 0;
+				steam = tmp != 0;
 			}
 		} else if ( cmd == "sid") {
-			long long tmpsid;
-			std::stringstream toint( value );
-			toint >> tmpsid;
-			if( !toint.fail() && tmpsid != steamid) {
+			long long tmp;
+			if( qStrReadll( qStrTrim( qCToStrRef( value.c_str() ) ), &tmp ) && tmp != steamid ) {
 				has_changed = true;
-				steamid = tmpsid;
+				steamid = tmp;
 			}
 		}
 		else if( cmd == "mo" ) { // MOD NAME
-			std::string tmpmod;
-			std::stringstream trim( value );
-			trim >> tmpmod;
-			if( !trim.fail() && tmpmod != modname ) {
+			struct QStrSpan v = qStrTrim( qCToStrRef( value.c_str() ) );
+			std::string tmpmod( v.buf, v.len );
+			if( !tmpmod.empty() && tmpmod != modname ) {
 				has_changed = true;
 				modname = tmpmod;
 			}
 		}
 		else if( cmd == "tv" ) { // TV SERVER
-			int tmptv;
-			std::stringstream toint( value );
-			toint >> tmptv;
-			if( !toint.fail() && (tmptv != 0) != tv ) {
+			long long tmp;
+			if( qStrReadll( qStrTrim( qCToStrRef( value.c_str() ) ), &tmp ) && (tmp != 0) != tv ) {
 				has_changed = true;
-				tv = tmptv != 0;
+				tv = tmp != 0;
 			}
 		}
 		else if( cmd == "r" ) { // RACE
-			int tmprace;
-			std::stringstream toint( value );
-			toint >> tmprace;
-			if( !toint.fail() && (tmprace != 0) != race ) {
+			long long tmp;
+			if( qStrReadll( qStrTrim( qCToStrRef( value.c_str() ) ), &tmp ) && (tmp != 0) != race ) {
 				has_changed = true;
-				race = tmprace != 0;
+				race = tmp != 0;
 			}
 		}
 		else {
