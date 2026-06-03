@@ -520,11 +520,14 @@ void R_Set2DMode(struct FrameState_s* cmd, bool enable )
 void R_DrawRotatedStretchPic(struct FrameState_s* cmd, int x, int y, int w, int h, float s1, float t1, float s2, float t2, float angle, 
 	const vec4_t color, const shader_t *shader )
 {
+	assert(shader);
 	assert(cmd);
 	int bcolor;
 
-	if( !shader )
+	if( !shader ) {
+		ri.Com_Printf( "^3WARNING: R_DrawRotatedStretchPic: null shader\n" );
 		return;
+	}
 
 	if( shader->cin ) {
 		R_UploadCinematicShader( cmd, shader );

@@ -497,7 +497,10 @@ void R_DrawRotatedStretchPic( int x, int y, int w, int h, float s1, float t1, fl
 {
 	int bcolor;
 
+	assert( shader );
+
 	if( !shader ) {
+		ri.Com_Printf( "^3WARNING: R_DrawRotatedStretchPic: null shader\n" );
 		return;
 	}
 
