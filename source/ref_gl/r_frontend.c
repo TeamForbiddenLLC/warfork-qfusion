@@ -213,7 +213,7 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 	rserr_t err;
 
 	if( glConfig.width == width && glConfig.height == height && glConfig.fullScreen != fullScreen ) {
-		return GLimp_SetFullscreenMode( displayFrequency, fullScreen );
+		return GLimp_SetFullscreen( fullScreen, x, y );
 	}
 
 	RF_AdapterShutdown( &rrf.adapter );

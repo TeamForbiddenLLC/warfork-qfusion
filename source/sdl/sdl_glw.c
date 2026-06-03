@@ -51,11 +51,12 @@ void GLimp_SetWindowIcon( void )
 #endif
 }
 
-rserr_t GLimp_SetFullscreenMode( int displayFrequency, bool fullscreen )
+rserr_t GLimp_SetFullscreen( bool fullscreen, int xpos, int ypos )
 {
 	Uint32 flags = 0;
 
 	if( fullscreen ) {
+		xpos = ypos = 0;
 #ifdef __APPLE__
 		// we need to use SDL_WINDOW_FULLSCREEN_DESKTOP to support Alt+Tab from fullscreen on OS X
 		flags = SDL_WINDOW_FULLSCREEN_DESKTOP;
@@ -65,6 +66,7 @@ rserr_t GLimp_SetFullscreenMode( int displayFrequency, bool fullscreen )
 	}
 
     if( SDL_SetWindowFullscreen( glw_state.sdl_window, flags ) == 0 ) {
+        SDL_SetWindowPosition( glw_state.sdl_window, xpos, ypos );
         glConfig.fullScreen = fullscreen;
         return rserr_ok;
     }
@@ -116,7 +118,7 @@ rserr_t GLimp_SetMode( int x, int y, int width, int height, int displayFrequency
 		return rserr_invalid_mode;
 	}
 
-    glConfig.fullScreen = fullscreen ? GLimp_SetFullscreenMode( displayFrequency, fullscreen ) == rserr_ok : false;
+    glConfig.fullScreen = fullscreen ? GLimp_SetFullscreen( fullscreen, x, y ) == rserr_ok : false;
 	glConfig.width = width;
 	glConfig.height = height;
 
@@ -128,6 +130,7 @@ rserr_t GLimp_SetMode( int x, int y, int width, int height, int displayFrequency
  */
 void GLimp_Shutdown()
 {
+	SDL_GL_DeleteContext( glw_state.sdl_glcontext );
 	SDL_DestroyWindow( glw_state.sdl_window );
 
 	free( glw_state.applicationName );
@@ -166,6 +169,7 @@ int GLimp_Init( const char *applicationName, void *hinstance, void *wndproc, voi
 static int GLimp_InitGL( int stencilbits, bool stereo )
 {
 	int colorBits, depthBits, stencilBits, stereo_;
+	SDL_GLContext sdl_glcontext = 0;
 
 	SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, max( 0, stencilbits ) );
 #ifndef NDEBUG
@@ -177,13 +181,13 @@ static int GLimp_InitGL( int stencilbits, bool stereo )
 		SDL_GL_SetAttribute( SDL_GL_STEREO, 1 );
 	}
 
-	glw_state.sdl_glcontext = SDL_GL_CreateContext( glw_state.sdl_window );
-	if( glw_state.sdl_glcontext == 0 ) {
+	sdl_glcontext = SDL_GL_CreateContext( glw_state.sdl_window );
+	if( sdl_glcontext == 0 ) {
 		ri.Com_Printf( "GLimp_Init() - SDL_GL_CreateContext failed: \"%s\"\n", SDL_GetError() );
 		goto fail;
 	}
 
-	if( SDL_GL_MakeCurrent( glw_state.sdl_window, glw_state.sdl_glcontext ) ) {
+	if( SDL_GL_MakeCurrent( glw_state.sdl_window, sdl_glcontext ) ) {
 		ri.Com_Printf( "GLimp_Init() - SDL_GL_MakeCurrent failed: \"%s\"\n", SDL_GetError() );
 		goto fail;
 	}
@@ -201,9 +205,15 @@ static int GLimp_InitGL( int stencilbits, bool stereo )
 
 	ri.Com_Printf( "GL PFD: color(%d-bits) Z(%d-bit) stencil(%d-bits)\n", colorBits, depthBits, stencilBits );
 
+	glw_state.sdl_glcontext = sdl_glcontext;
 	return true;
 
 fail:
+	if( sdl_glcontext ) {
+		SDL_GL_DeleteContext( sdl_glcontext );
+		sdl_glcontext = 0;
+	}
+
 	return false;
 }
 
