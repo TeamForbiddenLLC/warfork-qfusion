@@ -3,6 +3,10 @@
 
 #include "../gameshared/q_arch.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct mempool_s;
 typedef struct mempool_s mempool_t;
 
@@ -108,6 +112,10 @@ mempool_t *Q_CreatePool( mempool_t *parent, const char *name ) { return NULL;}
 void Q_LinkToPool( void *ptr, mempool_t *pool ) { }
 void Q_FreePool( mempool_t *pool ) {}
 void Q_EmptyPool( mempool_t *pool ) {}
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif
