@@ -641,6 +641,9 @@ void SCR_RegisterConsoleMedia()
 */
 void SCR_ShutDownConsoleMedia( void )
 {
+	cls.consoleShader = NULL;
+	cls.whiteShader = NULL;
+
 	SCR_ShutdownFonts();
 }
 

@@ -523,7 +523,12 @@ void R_DrawRotatedStretchPic(struct FrameState_s* cmd, int x, int y, int w, int 
 	assert(shader);
 	assert(cmd);
 	int bcolor;
-	
+
+	if( !shader ) {
+		ri.Com_Printf( "^3WARNING: R_DrawRotatedStretchPic: null shader\n" );
+		return;
+	}
+
 	if( shader->cin ) {
 		R_UploadCinematicShader( cmd, shader );
 	}
