@@ -9,3 +9,5 @@ generic/bots.as;
 generic/awards.as;
 
 rekt.as;
+
+legacy/quake1.as;
