@@ -199,6 +199,7 @@ void QBufPipe_Destroy( qbufPipe_t **ppipe )
 	}
 
 	pipe = *ppipe;
+	assert( pipe != NULL );
 	*ppipe = NULL;
 
 	QMutex_Destroy( &pipe->cmdbuf_mutex );
@@ -225,6 +226,7 @@ static void QBufPipe_Wake( qbufPipe_t *pipe )
 */
 void QBufPipe_Finish( qbufPipe_t *pipe )
 {
+	assert( pipe != NULL );
 	while( Sys_Atomic_CAS( &pipe->cmdbuf_len, 0, 0, pipe->cmdbuf_mutex ) == false && !pipe->terminated ) {
 		QMutex_Lock( pipe->nonempty_mutex );
 		QBufPipe_Wake( pipe );
