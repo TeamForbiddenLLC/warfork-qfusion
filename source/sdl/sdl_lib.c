@@ -1,4 +1,4 @@
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 #include "../qcommon/qcommon.h"
 #include "../qcommon/sys_library.h"
@@ -44,7 +44,8 @@ void *Sys_Library_Open( const char *name )
 */
 void *Sys_Library_ProcAddress( void *lib, const char *apifuncname )
 {
-	return SDL_LoadFunction( lib, apifuncname );
+	// SDL3 SDL_LoadFunction returns SDL_FunctionPointer.
+	return (void *)SDL_LoadFunction( lib, apifuncname );
 }
 
 /*
