@@ -225,7 +225,8 @@ static void CG_NewPacketEntityState( entity_state_t *state )
 				// if it's a player and new in PVS, remove the old power time
 				// This is way far from being the right thing. But will make it less bad for now
 				cg_entPModels[state->number].flash_time = cg.time;
-				cg_entPModels[state->number].barrel_time = cg.time;
+				cg_entPModels[state->number].barrel.time = cg.time;
+				cg_entPModels[state->number].barrel2.time = cg.time;
 			}
 		}
 		else // shuffle the last state to previous
@@ -634,6 +635,8 @@ static void CG_AddLinkedModel( centity_t *cent )
 	{
 		if( CG_GrabTag( &tag, &cent->ent, "tag_barrel" ) )
 			CG_PlaceModelOnTag( &ent, &cent->ent, &tag );
+		if( CG_GrabTag( &tag, &cent->ent, "tag_barrel2" ) )
+			CG_PlaceModelOnTag( &ent, &cent->ent, &tag );
 	}
 	else
 	{
@@ -918,11 +921,100 @@ static void CG_AddGenericEnt( centity_t *cent )
 		cent->ent.renderfx |= RF_MINLIGHT;
 
 		// offset weapon items by their special tag
-		if( cent->item->type & IT_WEAPON )
-		{
+		if( cent->item->type & IT_WEAPON ) {
+			orientation_t tag;
+			const char *weaponModelName;
+			char barrelPath[MAX_QPATH];
+			char barrel2Path[MAX_QPATH];
+			char *ext;
+
 			CG_PlaceModelOnTag( &cent->ent, &cent->ent, &cgs.weaponItemTag );
+
+			// Get the weapon model name from the item definition
+			weaponModelName = cent->item->world_model[0];
+
+			if( weaponModelName && weaponModelName[0] ) {
+				// Add barrel model if tag_barrel exists
+				if( CG_GrabTag( &tag, &cent->ent, "tag_barrel" ) ) {
+					static entity_t barrel;
+					struct model_s *barrelModel;
+
+					// Construct barrel model path (e.g., "models/weapons/glauncher/glauncher.md3" -> "models/weapons/glauncher/glauncher_barrel.md3")
+					Q_strncpyz( barrelPath, weaponModelName, sizeof( barrelPath ) );
+					ext = strstr( barrelPath, ".md3" );
+					if( ext ) {
+						*ext = '\0';
+						Q_strncatz( barrelPath, "_barrel.md3", sizeof( barrelPath ) );
+					}
+
+					// Register the barrel model
+					barrelModel = R_RegisterModel( barrelPath );
+
+					if( barrelModel ) {
+						memset( &barrel, 0, sizeof( entity_t ) );
+						barrel.rtype = RT_MODEL;
+						barrel.scale = cent->ent.scale;
+						barrel.renderfx = cent->ent.renderfx;
+						barrel.shaderTime = cent->ent.shaderTime;
+						Vector4Copy( cent->ent.shaderRGBA, barrel.shaderRGBA );
+						barrel.model = barrelModel;
+						barrel.customShader = NULL;
+						barrel.customSkin = NULL;
+						VectorCopy( cent->ent.origin, barrel.origin );
+						VectorCopy( cent->ent.origin, barrel.origin2 );
+						VectorCopy( cent->ent.lightingOrigin, barrel.lightingOrigin );
+						Matrix3_Copy( cent->ent.axis, barrel.axis );
+
+						CG_PlaceModelOnTag( &barrel, &cent->ent, &tag );
+
+						if( cent->effects & EF_OUTLINE ) {
+							CG_AddColoredOutLineEffect( &barrel, cent->effects, cent->outlineColor[0], cent->outlineColor[1], cent->outlineColor[2], cent->outlineColor[3] );
+						}
+
+						CG_AddEntityToScene( &barrel );
+					}
+				}
+
+				if( CG_GrabTag( &tag, &cent->ent, "tag_barrel2" ) ) {
+					static entity_t barrel2;
+					struct model_s *barrel2Model;
+
+					Q_strncpyz( barrel2Path, weaponModelName, sizeof( barrel2Path ) );
+					ext = strstr( barrel2Path, ".md3" );
+					if( ext ) {
+						*ext = '\0';
+						Q_strncatz( barrel2Path, "_barrel2.md3", sizeof( barrel2Path ) );
+					}
+
+					barrel2Model = R_RegisterModel( barrel2Path );
+
+					if( barrel2Model ) {
+						memset( &barrel2, 0, sizeof( entity_t ) );
+						barrel2.rtype = RT_MODEL;
+						barrel2.scale = cent->ent.scale;
+						barrel2.renderfx = cent->ent.renderfx;
+						barrel2.shaderTime = cent->ent.shaderTime;
+						Vector4Copy( cent->ent.shaderRGBA, barrel2.shaderRGBA );
+						barrel2.model = barrel2Model;
+						barrel2.customShader = NULL;
+						barrel2.customSkin = NULL;
+						VectorCopy( cent->ent.origin, barrel2.origin );
+						VectorCopy( cent->ent.origin, barrel2.origin2 );
+						VectorCopy( cent->ent.lightingOrigin, barrel2.lightingOrigin );
+						Matrix3_Copy( cent->ent.axis, barrel2.axis );
+
+						CG_PlaceModelOnTag( &barrel2, &cent->ent, &tag );
+
+						if( cent->effects & EF_OUTLINE ) {
+							CG_AddColoredOutLineEffect( &barrel2, cent->effects, cent->outlineColor[0], cent->outlineColor[1], cent->outlineColor[2], cent->outlineColor[3] );
+						}
+
+						CG_AddEntityToScene( &barrel2 );
+					}
+				}
+			}
 		}
-	}
+	} 
 	else
 	{
 		cent->ent.renderfx |= RF_NOSHADOW;
