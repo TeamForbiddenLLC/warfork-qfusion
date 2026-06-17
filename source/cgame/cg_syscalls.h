@@ -107,36 +107,6 @@ static inline const char *trap_Cvar_String( const char *name )
 	return CGAME_IMPORT.Cvar_String( name );
 }
 
-static inline void trap_Cmd_TokenizeString( const char *text )
-{
-	CGAME_IMPORT.Cmd_TokenizeString( text );
-}
-
-static inline int trap_Cmd_Argc( void )
-{
-	return CGAME_IMPORT.Cmd_Argc();
-}
-
-static inline char *trap_Cmd_Argv( int arg )
-{
-	return CGAME_IMPORT.Cmd_Argv( arg );
-}
-
-static inline char *trap_Cmd_Args( void )
-{
-	return CGAME_IMPORT.Cmd_Args();
-}
-
-static inline void trap_Cmd_AddCommand( const char *name, void ( *cmd )(void) )
-{
-	CGAME_IMPORT.Cmd_AddCommand( name, cmd );
-}
-
-static inline void trap_Cmd_RemoveCommand( const char *cmd_name )
-{
-	CGAME_IMPORT.Cmd_RemoveCommand( cmd_name );
-}
-
 static inline void trap_Cmd_ExecuteText( int exec_when, const char *text )
 {
 	CGAME_IMPORT.Cmd_ExecuteText( exec_when, text );
@@ -145,11 +115,6 @@ static inline void trap_Cmd_ExecuteText( int exec_when, const char *text )
 static inline void trap_Cmd_Execute( void )
 {
 	CGAME_IMPORT.Cmd_Execute();
-}
-
-static inline void trap_Cmd_SetCompletionFunc( const char *cmd_name, char **( *completion_func )( const char *partial ) )
-{
-	CGAME_IMPORT.Cmd_SetCompletionFunc( cmd_name, completion_func );
 }
 
 static inline const char *trap_Key_GetBindingBuf( int binding )
