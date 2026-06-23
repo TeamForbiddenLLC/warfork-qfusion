@@ -510,7 +510,8 @@ static void SV_Begin_f( client_t *client )
 	}
 	// wsw : r1q2[end]
 
-	if (Cvar_Integer("sv_useSteamAuth") != 0 && !client->authenticated && !client->tvclient)
+	if (Cvar_Integer("sv_useSteamAuth") != 0 && !client->authenticated && !client->tvclient
+		&& !NET_IsLocalAddress( &client->netchan.remoteAddress ))
 	{
 		SV_DropClient( client, DROP_TYPE_GENERAL, "Steam authentication timed out. Please ensure Steam is running and restart Warfork." );
 		return;
