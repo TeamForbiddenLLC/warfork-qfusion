@@ -116,7 +116,8 @@ static void Mod_CheckDeluxemaps( const lump_t *l, uint8_t *lmData )
 	// check if the deluxemap is actually empty (q3map2, yay!)
 	if( loadmodel_numlightmaps == 2 )
 	{
-		int lW = mod_bspFormat->lightmapWidth, lH = mod_bspFormat->lightmapHeight;
+		int lmSize = mapConfig.lightmapImageSize ? mapConfig.lightmapImageSize : mod_bspFormat->lightmapWidth;
+		int lW = lmSize, lH = lmSize;
 
 		lmData += lW * lH * LIGHTMAP_BYTES;
 		for( i = lW * lH; i > 0; i--, lmData += LIGHTMAP_BYTES )
@@ -181,7 +182,16 @@ static void Mod_LoadLighting( const lump_t *l, const lump_t *faces )
 
 	if( !l->filelen )
 		return;
-	size = mod_bspFormat->lightmapWidth * mod_bspFormat->lightmapHeight * LIGHTMAP_BYTES;
+
+	int lmSize = mapConfig.lightmapImageSize ? mapConfig.lightmapImageSize : mod_bspFormat->lightmapWidth;
+
+	if( lmSize > r_lighting_maxlmblocksize->integer )
+		ri.Com_Error( ERR_DROP, "Map lightmap size %i exceeds \"%s\" (%i). "
+			"Increase the cvar to at least %i to load this map",
+			lmSize, r_lighting_maxlmblocksize->name,
+			r_lighting_maxlmblocksize->integer, lmSize );
+
+	size = lmSize * lmSize * LIGHTMAP_BYTES;
 	if( l->filelen % size )
 		ri.Com_Error( ERR_DROP, "Mod_LoadLighting: funny lump size in %s", loadmodel->name );
 
@@ -190,7 +200,7 @@ static void Mod_LoadLighting( const lump_t *l, const lump_t *faces )
 	Q_LinkToPool(loadmodel_lightmapRects, loadmodel->mempool);
 
 	Mod_CheckDeluxemaps( faces, mod_base + l->fileofs );
-	R_BuildLightmaps( loadmodel, loadmodel_numlightmaps, mod_bspFormat->lightmapWidth, mod_bspFormat->lightmapHeight, mod_base + l->fileofs, loadmodel_lightmapRects );
+	R_BuildLightmaps( loadmodel, loadmodel_numlightmaps, lmSize, lmSize, mod_base + l->fileofs, loadmodel_lightmapRects );
 }
 
 /*
@@ -1663,6 +1673,16 @@ static void Mod_LoadEntities( const lump_t *l, vec3_t gridSize, vec3_t ambient, 
 					sscanf( value, "%3i %3i %3i", &celcolori[0], &celcolori[1], &celcolori[2] );
 					VectorCopy( celcolori, celcolorf );
 				}
+			}
+			else if( !strcmp( key, "_lightmapimagesize" ) )
+			{
+				int lmSize = atoi( value );
+				if( lmSize > 0 && ( lmSize & ( lmSize - 1 ) ) == 0 )
+				{
+					mapConfig.lightmapImageSize = lmSize;
+				}
+				else
+					ri.Com_Printf( S_COLOR_YELLOW "WARNING: _lightmapimagesize must be a power of two, ignoring\n" );
 			}
 		}
 
