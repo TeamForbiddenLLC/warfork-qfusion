@@ -848,6 +848,8 @@ typedef struct
 	bool		forceClear;
 
 	bool		forceWorldOutlines;
+
+	int				lightmapImageSize;			// 0 = use format default
 } mapconfig_t;
 
 extern mapconfig_t	mapConfig;
