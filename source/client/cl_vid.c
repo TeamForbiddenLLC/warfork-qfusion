@@ -660,6 +660,12 @@ load_refresh:
 	*/
 	if( vid_xpos->modified || vid_ypos->modified )
 	{
+		// make sure the titlebar is not completely hidden away
+		if( vid_xpos->integer < 8 )
+			Cvar_ForceSet( vid_xpos->name, "8" );
+		if( vid_ypos->integer < 8 )
+			Cvar_ForceSet( vid_ypos->name, "8" );
+
 		if( !vid_fullscreen->integer )
 			VID_UpdateWindowPosAndSize( vid_xpos->integer, vid_ypos->integer );
 		vid_xpos->modified = false;
@@ -735,6 +741,16 @@ void VID_Init( void )
 	/* Add some console commands that we want to handle */
 	Cmd_AddCommand( "vid_restart", VID_Restart_f );
 	Cmd_AddCommand( "vid_modelist", VID_ModeList_f );
+
+	// make sure the titlebar is not completely hidden away
+	if( vid_xpos->integer < 8 ) {
+		Cvar_ForceSet( vid_xpos->name, "8" );
+		vid_xpos->modified = false;
+	}
+	if( vid_ypos->integer < 8 ) {
+		Cvar_ForceSet( vid_ypos->name, "8" );
+		vid_ypos->modified = false;
+	}
 
 	/* Start the graphics mode and load refresh DLL */
 	vid_ref_modified = true;

@@ -178,9 +178,9 @@ static void GLimp_CreateWindow( void )
 }
 
 /*
-** GLimp_SetFullscreenMode
+** GLimp_SetFullscreen
 */
-rserr_t GLimp_SetFullscreenMode( int displayFrequency, bool fullscreen )
+rserr_t GLimp_SetFullscreen( bool fullscreen, int xpos, int ypos )
 {
 	glConfig.fullScreen = false;
 
@@ -200,13 +200,6 @@ rserr_t GLimp_SetFullscreenMode( int displayFrequency, bool fullscreen )
 		dm.dmPelsHeight = glConfig.height;
 		dm.dmFields     = DM_PELSWIDTH | DM_PELSHEIGHT;
 
-		if( displayFrequency > 0 )
-		{
-			dm.dmFields |= DM_DISPLAYFREQUENCY;
-			dm.dmDisplayFrequency = displayFrequency;
-			ri.Com_Printf( "...using display frequency %i\n", dm.dmDisplayFrequency );
-		}
-
 		ri.Com_Printf( "...calling CDS: " );
 		a = ChangeDisplaySettings( &dm, CDS_FULLSCREEN );
 		if( a == DISP_CHANGE_SUCCESSFUL )
@@ -222,6 +215,8 @@ rserr_t GLimp_SetFullscreenMode( int displayFrequency, bool fullscreen )
 	}
 
 	ChangeDisplaySettings( 0, 0 );
+	glw_state.win_x = xpos;
+	glw_state.win_y = ypos;
 	GLimp_SetWindowSize( false );
 
 	return rserr_ok;
@@ -260,7 +255,7 @@ rserr_t GLimp_SetMode( int x, int y, int width, int height, int displayFrequency
 
 	glConfig.width = width;
 	glConfig.height = height;
-	glConfig.fullScreen = ( fullscreen ? GLimp_SetFullscreenMode( displayFrequency, fullscreen ) == rserr_ok : false );
+	glConfig.fullScreen = ( fullscreen ? GLimp_SetFullscreen( fullscreen, x, y ) == rserr_ok : false );
 	glConfig.stereoEnabled = stereo;
 
 	GLimp_CreateWindow();

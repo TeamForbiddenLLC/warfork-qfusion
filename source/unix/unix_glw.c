@@ -842,10 +842,10 @@ rserr_t GLimp_SetMode( int x, int y, int width, int height, int displayFrequency
 }
 
 /*
-** GLimp_SetFullscreenMode
+** GLimp_SetFullscreen
 */
-rserr_t GLimp_SetFullscreenMode( int displayFrequency, bool fullscreen ) {
-	return GLimp_SetMode_Real(0, 0, displayFrequency, fullscreen, false, false);
+rserr_t GLimp_SetFullscreen( bool fullscreen, int xpos, int ypos ) {
+	return GLimp_SetMode_Real(0, 0, 0, fullscreen, false, false);
 }
 
 /*

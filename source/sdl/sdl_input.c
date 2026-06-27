@@ -413,6 +413,28 @@ static void IN_WarpMouseToCenter( int *pcenter_x, int *pcenter_y )
 void IN_MouseMove( usercmd_t *cmd )
 {
 	if( mouse_active ) {
+		if( cls.key_dest == key_menu ) {
+			// The menu cursor is driven by the absolute pointer position (relative
+			// mode is off in menus). Map window pixels into viddef (UI) space so the
+			// cursor tracks 1:1 even when the backend stretches the rendered image to
+			// the window; absolute positioning avoids the diagonal stair-stepping that
+			// accumulating scaled relative deltas would cause.
+			int ax = 0, ay = 0, winW = 0, winH = 0;
+
+			SDL_GetMouseState( &ax, &ay );
+			SDL_GetWindowSize( sdl_window, &winW, &winH );
+
+			int ux = ax, uy = ay;
+			if( winW > 0 && winH > 0 ) {
+				ux = (int)( (float)ax * (float)viddef.width / (float)winW );
+				uy = (int)( (float)ay * (float)viddef.height / (float)winH );
+			}
+
+			CL_MouseSet( ux, uy, true );
+			mx = my = 0;
+			return;
+		}
+
 		if( !mouse_relative ) {
 			if( mx || my ) {
 				int center_x, center_y;
@@ -507,34 +529,37 @@ void IN_Frame()
 	if( !input_inited )
 		return;
 
-	if( !input_focus || ( !Cvar_Value( "vid_fullscreen" ) && cls.key_dest == key_console && !in_grabinconsole->integer ) ) {
-		if( mouse_active ) {
-			if( mouse_relative ) {
-				mouse_relative = !(SDL_SetRelativeMouseMode( SDL_FALSE ) == 0);
-				if( !mouse_relative ) {
-					IN_SetMouseScalingEnabled( true );
-				}
-			}
-			SDL_ShowCursor( SDL_ENABLE );
-		}
-		mouse_active = false;
-		input_active = true;
-	} else {
-		if( !mouse_active ) {
-			SDL_ShowCursor( SDL_DISABLE );
+	// Evaluate the desired mouse state every frame (not just on activate/deactivate
+	// transitions) so switching between game/menu/console updates relative mode.
+	// Relative mode (FPS look) is only used in gameplay; menus use the absolute
+	// pointer position (see IN_MouseMove), matching upstream qfusion.
+	bool want_active = input_focus &&
+		!( !Cvar_Value( "vid_fullscreen" ) && cls.key_dest == key_console && !in_grabinconsole->integer );
+	bool want_relative = want_active && cls.key_dest != key_menu;
 
-			mouse_relative = SDL_SetRelativeMouseMode( SDL_TRUE ) == 0;
+	if( want_relative != mouse_relative ) {
+		if( SDL_SetRelativeMouseMode( want_relative ? SDL_TRUE : SDL_FALSE ) == 0 ) {
+			mouse_relative = want_relative;
+			IN_SetMouseScalingEnabled( !mouse_relative );
 			if( mouse_relative ) {
-				IN_SetMouseScalingEnabled( false );
+				IN_SkipRelativeMouseMove();
 			}
-			else {
-				IN_WarpMouseToCenter( NULL, NULL );
-			}
-			IN_SkipRelativeMouseMove();
 		}
-		mouse_active = true;
-		input_active = true;
 	}
+
+	if( want_active != mouse_active ) {
+		// OS cursor stays hidden while active (the UI draws its own cursor) and is
+		// shown when input is released to the desktop.
+		SDL_ShowCursor( want_active ? SDL_DISABLE : SDL_ENABLE );
+		mouse_active = want_active;
+	}
+
+	// Confine the (hidden) pointer to the window while in the absolute-cursor menu so
+	// clicks don't escape; relative mode already confines, and losing focus clears
+	// want_active which releases the grab.
+	SDL_SetWindowGrab( sdl_window, ( want_active && !mouse_relative ) ? SDL_TRUE : SDL_FALSE );
+
+	input_active = true;
 
 	IN_HandleEvents();
 }
