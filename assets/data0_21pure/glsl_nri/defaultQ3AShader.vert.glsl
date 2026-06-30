@@ -8,6 +8,10 @@ layout(location = 1) out vec3 v_Normal;
 layout(location = 2) out vec2 v_TexCoord;  
 layout(location = 3) out vec4 frontColor; 
 
+#if defined(APPLY_TC_GEN_PROJECTION)
+layout(location = 8) out vec4 v_TexCoordProj;
+#endif
+
 layout(location = 4) out vec4 v_LightmapTexCoord01;
 layout(location = 5) out vec4 v_LightmapTexCoord23;
 layout(location = 6) flat out uvec4 v_LightmapLayer0123;
@@ -52,7 +56,7 @@ frontColor = vec4(outColor);
 	#elif defined(APPLY_TC_GEN_VECTOR)
 			v_TexCoord = vec2(Position * pass.genTexMatrix); // account for u_VectorTexMatrix being transposed
 	#elif defined(APPLY_TC_GEN_PROJECTION)
-			v_TexCoord = vec2(normalize(obj.mvp * Position) * 0.5 + vec4(0.5));
+			v_TexCoordProj = obj.mvp * Position;
 	#elif defined(APPLY_TC_MOD)
 			v_TexCoord = TextureMatrix2x3Mul(obj.textureMatrix, TexCoord);
 	#else
