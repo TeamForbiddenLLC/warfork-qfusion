@@ -16,6 +16,8 @@ qf_varying vec3 v_Normal;
 
 #if defined(APPLY_CUBEMAP_VERTEX)
 qf_varying vec3 v_TexCoord;
+#elif defined(APPLY_TC_GEN_PROJECTION)
+qf_varying vec4 v_TexCoordProj;
 #elif !defined(APPLY_CUBEMAP) && !defined(APPLY_SURROUNDMAP)
 qf_varying vec2 v_TexCoord;
 #endif

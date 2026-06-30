@@ -72,6 +72,8 @@ void main(void)
 	diffuse = vec4(qf_textureCube(u_BaseTexture, v_TexCoord));
 #elif defined(APPLY_SURROUNDMAP)
 	diffuse = vec4(qf_textureCube(u_BaseTexture, v_Position - u_EntityDist));
+#elif defined(APPLY_TC_GEN_PROJECTION)
+	diffuse = vec4(qf_texture(u_BaseTexture, v_TexCoordProj.xy / v_TexCoordProj.w * 0.5 + 0.5));
 #else
 	diffuse = vec4(qf_texture(u_BaseTexture, v_TexCoord));
 #endif

@@ -317,7 +317,6 @@ static inline image_t *RB_ShaderpassTex( const shaderpass_t *pass )
 
 	if( pass->flags & SHADERPASS_PORTALMAP ) {
 		return rsh.blackTexture;
-		// return rb.currentPortalSurface && rb.currentPortalSurface->texures[0] ? rb.currentPortalSurface->texures[0] : rsh.blackTexture;
 	}
 
 	if( ( pass->flags & SHADERPASS_SKYBOXSIDE ) && rb.skyboxShader && rb.skyboxSide >= 0 ) {
