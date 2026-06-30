@@ -237,7 +237,7 @@ static void R_DrawPortalSurface( portalSurface_t *portalSurface )
 			continue;
 
 		d = PlaneDiff( ent->origin, untransformed_plane );
-		if( ( d >= -64 ) && ( d <= 64 ) )
+		if( ( d >= -64 ) && ( d <= 64 ) && DotProduct( &ent->axis[AXIS_FORWARD], untransformed_plane->normal ) > 0.9f )
 		{
 			d = Distance( ent->origin, portal_centre );
 			if( d < best_d )
@@ -375,7 +375,7 @@ setup_and_render:
 	{
 		int texFlags = shader->flags & SHADER_NO_TEX_FILTERING ? IT_NOFILTERING : 0;
 
-		captureTexture = R_GetPortalTexture( rsc.refdef.width, rsc.refdef.height, texFlags,
+		captureTexture = R_GetPortalTexture( w, h, texFlags,
 			rsc.frameCount );
 		portalTexures[captureTextureId] = captureTexture;
 
@@ -387,8 +387,6 @@ setup_and_render:
 		x = y = 0;
 		w = captureTexture->upload_width;
 		h = captureTexture->upload_height;
-		rn.refdef.width = w;
-		rn.refdef.height = h;
 		rn.refdef.x = 0;
 		rn.refdef.y = 0;
 		rn.fbColorAttachment = captureTexture;
@@ -398,6 +396,7 @@ setup_and_render:
 		rn.fbDepthAttachment = NULL;
 		Vector4Set( rn.viewport, rn.refdef.x + x, rn.refdef.y + y, w, h );
 		Vector4Set( rn.scissor, rn.refdef.x + x, rn.refdef.y + y, w, h );
+
 	}
 	else {
 		// no point in capturing the depth buffer due to oblique frustum messing up

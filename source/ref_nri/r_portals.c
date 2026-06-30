@@ -29,6 +29,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 static void R_DrawSkyportal(struct FrameState_s* frame, const entity_t *e, skyportal_t *skyportal );
 static const enum RI_Format_e PortalTextureFormat = RI_FORMAT_RGBA8_UNORM;
 static const enum RI_Format_e PortalTextureDepthFormat = RI_FORMAT_D32_SFLOAT;
+
 /*
  * R_AddPortalSurface
  */
@@ -406,7 +407,7 @@ static void R_DrawPortalSurface( struct FrameState_s *cmd, portalSurface_t *port
 			continue;
 
 		d = PlaneDiff( ent->origin, untransformed_plane );
-		if( ( d >= -64 ) && ( d <= 64 ) )
+		if( ( d >= -64 ) && ( d <= 64 ) && DotProduct( &ent->axis[AXIS_FORWARD], untransformed_plane->normal ) > 0.9f )
 		{
 			d = Distance( ent->origin, portal_centre );
 			if( d < best_d )
@@ -558,8 +559,6 @@ setup_and_render:
 		}
 		rn.refdef.x = 0;
 		rn.refdef.y = 0;
-		rn.refdef.width = rsc.refdef.width;
-		rn.refdef.height = rsc.refdef.height;
 		
 		Vector4Set( rn.viewport, rn.refdef.x, rn.refdef.y, rsc.refdef.width, rsc.refdef.height );
 		Vector4Set( rn.scissor, rn.refdef.x, rn.refdef.y, rsc.refdef.width, rsc.refdef.height );
