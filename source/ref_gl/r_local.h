@@ -137,6 +137,7 @@ typedef struct portalSurface_s
 	vec3_t			mins, maxs, centre;
 	image_t			*texures[2];			// front and back portalmaps
 	skyportal_t		*skyPortal;
+	int				portalmip;				// 0 = full res (memset clears to 0)
 } portalSurface_t;
 
 typedef struct

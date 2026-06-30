@@ -20,6 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 
+#define PORTALMIP_MIN_SIZE 64
+
 static void R_DrawSkyportal( const entity_t *e, skyportal_t *skyportal );
 
 /*
@@ -136,6 +138,7 @@ portalSurface_t *R_AddPortalSurface( const entity_t *ent, const mesh_t *mesh,
 	portalSurface->skyPortal = NULL;
 	ClearBounds( portalSurface->mins, portalSurface->maxs );
 	memset( portalSurface->texures, 0, sizeof( portalSurface->texures ) );
+	portalSurface->portalmip = shader->portalmip;
 
 	if( depthPortal ) {
 		rn.numDepthPortalSurfaces++;
@@ -206,6 +209,12 @@ static void R_DrawPortalSurface( portalSurface_t *portalSurface )
 	x = y = 0;
 	w = rn.refdef.width;
 	h = rn.refdef.height;
+
+	if( portalSurface->portalmip > 0 ) {
+		int shift = min( portalSurface->portalmip, 8 );
+		w = max( PORTALMIP_MIN_SIZE, w >> shift );
+		h = max( PORTALMIP_MIN_SIZE, h >> shift );
+	}
 
 	dist = PlaneDiff( rn.viewOrigin, portal_plane );
 	if( dist <= BACKFACE_EPSILON || !doReflection )

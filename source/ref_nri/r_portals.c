@@ -30,6 +30,8 @@ static void R_DrawSkyportal(struct FrameState_s* frame, const entity_t *e, skypo
 static const enum RI_Format_e PortalTextureFormat = RI_FORMAT_RGBA8_UNORM;
 static const enum RI_Format_e PortalTextureDepthFormat = RI_FORMAT_D32_SFLOAT;
 
+#define PORTALMIP_MIN_SIZE 64
+
 /*
  * R_AddPortalSurface
  */
@@ -134,6 +136,7 @@ portalSurface_t *R_AddPortalSurface( const entity_t *ent, const mesh_t *mesh, co
 	portalSurface->skyPortal = NULL;
 	ClearBounds( portalSurface->mins, portalSurface->maxs );
 	memset( portalSurface->portalfbs, 0, sizeof( portalSurface->portalfbs ) );
+	portalSurface->portalmip = shader->portalmip;
 
 	if( depthPortal ) {
 		rn.numDepthPortalSurfaces++;
@@ -550,7 +553,16 @@ setup_and_render:
 	// but do not try to render to it more than once
 	if( useCaptureTexture )
 	{
-		struct portal_fb_s *const fb = __ResolvePortalSurface( &sub, rsc.refdef.width, rsc.refdef.height, ( shader->flags & SHADER_NO_TEX_FILTERING ) );
+		int capW = rsc.refdef.width;
+		int capH = rsc.refdef.height;
+
+		if( portalSurface->portalmip > 0 ) {
+			int shift = min( portalSurface->portalmip, 8 );
+			capW = max( PORTALMIP_MIN_SIZE, capW >> shift );
+			capH = max( PORTALMIP_MIN_SIZE, capH >> shift );
+		}
+
+		struct portal_fb_s *const fb = __ResolvePortalSurface( &sub, capW, capH, ( shader->flags & SHADER_NO_TEX_FILTERING ) );
 		portalTexures[captureTextureId] = fb;
 
 		if(fb == NULL) {
@@ -560,8 +572,8 @@ setup_and_render:
 		rn.refdef.x = 0;
 		rn.refdef.y = 0;
 		
-		Vector4Set( rn.viewport, rn.refdef.x, rn.refdef.y, rsc.refdef.width, rsc.refdef.height );
-		Vector4Set( rn.scissor, rn.refdef.x, rn.refdef.y, rsc.refdef.width, rsc.refdef.height );
+		Vector4Set( rn.viewport, rn.refdef.x, rn.refdef.y, capW, capH );
+		Vector4Set( rn.scissor, rn.refdef.x, rn.refdef.y, capW, capH );
 
 		struct RIViewport_s viewport = { 0 };
 		viewport.x = rn.viewport[0];
