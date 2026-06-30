@@ -828,6 +828,11 @@ static void Shader_Portal( shader_t *shader, shaderpass_t *pass, const char **pt
 	shader->sort = SHADER_SORT_PORTAL;
 }
 
+static void Shader_PortalMip( shader_t *shader, shaderpass_t *pass, const char **ptr )
+{
+	shader->portalmip = abs( (int)Shader_ParseFloat( ptr ) );
+}
+
 static void Shader_PolygonOffset( shader_t *shader, shaderpass_t *pass, const char **ptr )
 {
 	shader->flags |= SHADER_POLYGONOFFSET;
@@ -1045,6 +1050,7 @@ static const shaderkey_t shaderkeys[] =
 	{ "skip", Shader_Skip },
 	{ "softparticle", Shader_SoftParticle },
 	{ "forceworldoutlines", Shader_ForceWorldOutlines },
+	{ "portalmip", Shader_PortalMip },
 
 	{ NULL,	NULL }
 };
