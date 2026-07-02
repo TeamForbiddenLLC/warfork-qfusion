@@ -20,6 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 
+#define PORTALMIP_MIN_SIZE 64
+
 static void R_DrawSkyportal( const entity_t *e, skyportal_t *skyportal );
 
 /*
@@ -136,6 +138,7 @@ portalSurface_t *R_AddPortalSurface( const entity_t *ent, const mesh_t *mesh,
 	portalSurface->skyPortal = NULL;
 	ClearBounds( portalSurface->mins, portalSurface->maxs );
 	memset( portalSurface->texures, 0, sizeof( portalSurface->texures ) );
+	portalSurface->portalmip = shader->portalmip;
 
 	if( depthPortal ) {
 		rn.numDepthPortalSurfaces++;
@@ -207,6 +210,12 @@ static void R_DrawPortalSurface( portalSurface_t *portalSurface )
 	w = rn.refdef.width;
 	h = rn.refdef.height;
 
+	if( portalSurface->portalmip > 0 ) {
+		int shift = min( portalSurface->portalmip, 8 );
+		w = max( PORTALMIP_MIN_SIZE, w >> shift );
+		h = max( PORTALMIP_MIN_SIZE, h >> shift );
+	}
+
 	dist = PlaneDiff( rn.viewOrigin, portal_plane );
 	if( dist <= BACKFACE_EPSILON || !doReflection )
 	{
@@ -237,7 +246,7 @@ static void R_DrawPortalSurface( portalSurface_t *portalSurface )
 			continue;
 
 		d = PlaneDiff( ent->origin, untransformed_plane );
-		if( ( d >= -64 ) && ( d <= 64 ) )
+		if( ( d >= -64 ) && ( d <= 64 ) && DotProduct( &ent->axis[AXIS_FORWARD], untransformed_plane->normal ) > 0.9f )
 		{
 			d = Distance( ent->origin, portal_centre );
 			if( d < best_d )
@@ -375,7 +384,7 @@ setup_and_render:
 	{
 		int texFlags = shader->flags & SHADER_NO_TEX_FILTERING ? IT_NOFILTERING : 0;
 
-		captureTexture = R_GetPortalTexture( rsc.refdef.width, rsc.refdef.height, texFlags,
+		captureTexture = R_GetPortalTexture( w, h, texFlags,
 			rsc.frameCount );
 		portalTexures[captureTextureId] = captureTexture;
 
@@ -387,8 +396,6 @@ setup_and_render:
 		x = y = 0;
 		w = captureTexture->upload_width;
 		h = captureTexture->upload_height;
-		rn.refdef.width = w;
-		rn.refdef.height = h;
 		rn.refdef.x = 0;
 		rn.refdef.y = 0;
 		rn.fbColorAttachment = captureTexture;
@@ -398,6 +405,7 @@ setup_and_render:
 		rn.fbDepthAttachment = NULL;
 		Vector4Set( rn.viewport, rn.refdef.x + x, rn.refdef.y + y, w, h );
 		Vector4Set( rn.scissor, rn.refdef.x + x, rn.refdef.y + y, w, h );
+
 	}
 	else {
 		// no point in capturing the depth buffer due to oblique frustum messing up
