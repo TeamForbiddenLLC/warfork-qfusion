@@ -840,7 +840,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 				normalmap = rsh.blankBumpTexture;
 			}
 
-			if( !( ( rb.currentModelType == mod_brush && !mapConfig.deluxeMappingEnabled ) || ( normalmap == rsh.blankBumpTexture && !glossmap && !decalmap && !entdecalmap ) ) ) {
+			if( !( rb.currentModelType == mod_brush && !mapConfig.deluxeMappingEnabled ) ) {
 				float offsetmappingScale = ( normalmap->samples == 4 ) ? ( r_offsetmapping_scale->value * rb.currentShader->offsetmappingScale ) : 0;
 
 				if( normalmap->samples == 4 )

@@ -1323,6 +1323,8 @@ static void Shaderpass_Material( shader_t *shader, shaderpass_t *pass, const cha
 	pass->program_type = GLSL_PROGRAM_TYPE_MATERIAL;
 	Shaderpass_LoadMaterial( &pass->images[1], &pass->images[2], &pass->images[3],
 		pass->images[0]->name.buf, flags, shader->imagetags );
+	if( !pass->images[1] )
+		pass->images[1] = rsh.blankBumpTexture;
 }
 
 static void Shaderpass_Distortion( shader_t *shader, shaderpass_t *pass, const char **ptr )
@@ -3044,7 +3046,7 @@ unsigned R_PackShaderOrder( const shader_t *shader )
 
 	if( program_type == GLSL_PROGRAM_TYPE_MATERIAL ) {
 		// this is not a material shader in case all images are missing except for the defuse
-		if( ( !pass->images[1] || pass->images[1]->missing || pass->images[1] == rsh.blankBumpTexture ) &&
+		if( ( !pass->images[1] || pass->images[1]->missing ) &&
 			( !pass->images[2] || pass->images[2]->missing ) &&
 			( !pass->images[3] || pass->images[3]->missing ) &&
 			( !pass->images[4] || pass->images[4]->missing ) )
