@@ -19,6 +19,9 @@ layout(location = 0) in vec3 v_Position;
 layout(location = 1) in vec3 v_Normal;
 layout(location = 2) in vec2 v_TexCoord;  
 layout(location = 3) in vec4 frontColor; 
+#if defined(APPLY_TC_GEN_PROJECTION)
+layout(location = 8) in vec4 v_TexCoordProj;
+#endif
 
 layout(location = 4) in vec4 v_LightmapTexCoord01;
 layout(location = 5) in vec4 v_LightmapTexCoord23;
@@ -122,6 +125,8 @@ void main(void)
 	diffuse = texture(samplerCube(u_BaseTexture,u_BaseSampler), v_TexCoord);
 #elif defined(APPLY_SURROUNDMAP)
 	diffuse = texture(samplerCube(u_BaseTexture,u_BaseSampler), v_Position - obj.entityDist);
+#elif defined(APPLY_TC_GEN_PROJECTION)
+	diffuse = texture(sampler2D(u_BaseTexture,u_BaseSampler), v_TexCoordProj.xy / v_TexCoordProj.w * 0.5 + 0.5);
 #else
 	diffuse = texture(sampler2D(u_BaseTexture,u_BaseSampler), v_TexCoord);
 #endif

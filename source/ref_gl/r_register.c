@@ -741,20 +741,8 @@ static bool R_RegisterGLExtensions( void )
 			glConfig.maxGLSLBones = 0;
 		}
 
-		if( glConfig.ext.texture_non_power_of_two ) {
-			// blacklist this extension on Radeon X1600-X1950 hardware (they support it only with certain filtering/repeat modes)
-			int val = 0;
-
-			// LadyHavoc: this is blocked on Mac OS X because the drivers claim support but often can't accelerate it or crash when used.
-#ifndef __APPLE__
-			if( glConfig.ext.vertex_shader )
-				qglGetIntegerv( GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS_ARB, &val );
-#endif
-
-			if( val <= 0 )
-				glConfig.ext.texture_non_power_of_two = false;
-		}
-
+		// The NPOT blacklist for Radeon X1600 was broken because glConfig.ext.vertex_shader 
+		// was never set, forcing NPOT off on all platforms. We just remove it.
 		if( glConfig.ext.depth24 ) {
 			glConfig.depthEpsilon = 1.0 / ( 1 << 22 );
 		} else {
