@@ -45,9 +45,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define MAX_GLIMAGES 8192
 #define IMAGES_HASH_SIZE 64
-#define IMAGE_SAMPLER_HASH_SIZE 1024
+// The sampler-affecting IT_ flags collapse to a small, enumerable set of configurations, so the
+// cache is a dense array indexed directly by that category (R_SamplerCategory) instead of a probing
+// hash table. 4 filter branches x IT_CLAMP x (IT_DEPTH && IT_DEPTHCOMPARE) = 16 categories.
+#define IMAGE_SAMPLER_CACHE_SIZE 16
 
-static struct RIDescriptor_s samplerDescriptors[IMAGE_SAMPLER_HASH_SIZE] = { 0 };
+static struct RISampler_s samplerCache[IMAGE_SAMPLER_CACHE_SIZE] = { 0 };
 
 typedef struct {
 	int ctx;
@@ -93,78 +96,114 @@ static void __FreeGPUImageData( struct image_s *image )
 		arrpush( activeset->freeList, freeSlot );
 
 		freeSlot.type = RI_FREE_VK_IMAGEVIEW;
-		freeSlot.vkImageView = image->binding.vk.image.imageView;
+		freeSlot.vkImageView = image->view.vk.image;
 		arrpush( activeset->freeList, freeSlot );
+		memset( &image->view, 0, sizeof( struct RITextureView_s ) );
 		memset( &image->binding, 0, sizeof( struct RIDescriptor_s ) );
 		image->vk.vmaAlloc = VK_NULL_HANDLE;
 	}
 #endif
 }
 
-struct RIDescriptor_s *R_ResolveSamplerDescriptor( int flags )
-{
 #if ( DEVICE_IMPL_VULKAN )
-	{
-		VkSamplerCreateInfo info = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
-		if( flags & IT_NOFILTERING ) {
+// Collapse the sampler-affecting IT_ flags to a dense category in [0, IMAGE_SAMPLER_CACHE_SIZE).
+// The filter branch (2 bits) is mutually exclusive; IT_CLAMP and the depth-compare pair add a bit each.
+static unsigned R_SamplerCategory( int flags )
+{
+	unsigned filter; // 0 = IT_NOFILTERING, 1 = IT_DEPTH, 2 = mipmapped, 3 = IT_NOMIPMAP
+	if( flags & IT_NOFILTERING )
+		filter = 0;
+	else if( flags & IT_DEPTH )
+		filter = 1;
+	else if( !( flags & IT_NOMIPMAP ) )
+		filter = 2;
+	else
+		filter = 3;
+	const unsigned clamp = ( flags & IT_CLAMP ) ? 1u : 0u;
+	const unsigned compare = ( ( flags & IT_DEPTH ) && ( flags & IT_DEPTHCOMPARE ) ) ? 1u : 0u;
+	return filter | ( clamp << 2 ) | ( compare << 3 );
+}
+
+// Rebuild the exact VkSamplerCreateInfo a category maps to, from the current global filter/aniso
+// state. Byte-for-byte equivalent of the old per-flag branch chain.
+static VkSamplerCreateInfo R_BuildSamplerInfo( unsigned cat )
+{
+	const unsigned filter = cat & 0x3u;
+	const bool clamp = ( cat >> 2 ) & 0x1u;
+	const bool compare = ( cat >> 3 ) & 0x1u;
+
+	VkSamplerCreateInfo info = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+	switch( filter ) {
+		case 0: // IT_NOFILTERING
 			info.minFilter = VK_FILTER_LINEAR;
 			info.magFilter = VK_FILTER_LINEAR;
 			info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-		} else if( flags & IT_DEPTH ) {
+			break;
+		case 1: // IT_DEPTH
 			info.minFilter = VK_FILTER_LINEAR;
 			info.magFilter = VK_FILTER_LINEAR;
 			info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 			info.maxAnisotropy = defaultAnisotropicFilter;
 			info.anisotropyEnable = defaultAnisotropicFilter > 1.0f;
-		} else if( !( flags & IT_NOMIPMAP ) ) {
-			VkFilter filterMapping[] = { [IMAGE_FILTER_LINEAR] = VK_FILTER_LINEAR, [IMAGE_FILTER_NEAREST] = VK_FILTER_NEAREST };
-			VkSamplerMipmapMode mapMapFilterMapping[] = { [IMAGE_FILTER_LINEAR] = VK_SAMPLER_MIPMAP_MODE_LINEAR, [IMAGE_FILTER_NEAREST] = VK_SAMPLER_MIPMAP_MODE_NEAREST };
+			break;
+		case 2: { // mipmapped, uses the default filter preset
+			const VkFilter filterMapping[] = { [IMAGE_FILTER_LINEAR] = VK_FILTER_LINEAR, [IMAGE_FILTER_NEAREST] = VK_FILTER_NEAREST };
+			const VkSamplerMipmapMode mapMapFilterMapping[] = { [IMAGE_FILTER_LINEAR] = VK_SAMPLER_MIPMAP_MODE_LINEAR, [IMAGE_FILTER_NEAREST] = VK_SAMPLER_MIPMAP_MODE_NEAREST };
 			info.minFilter = filterMapping[defaultFilterMin];
 			info.magFilter = filterMapping[defaultFilterMag];
 			info.mipmapMode = mapMapFilterMapping[defaultFilterMipMap];
 			info.maxLod = 16;
 			info.maxAnisotropy = defaultAnisotropicFilter;
 			info.anisotropyEnable = defaultAnisotropicFilter > 1.0f;
-		} else {
+			break;
+		}
+		default: // 3: IT_NOMIPMAP
 			info.minFilter = VK_FILTER_LINEAR;
 			info.magFilter = VK_FILTER_LINEAR;
 			info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 			info.maxAnisotropy = defaultAnisotropicFilter;
 			info.anisotropyEnable = defaultAnisotropicFilter > 1.0f;
-		}
-
-		if( flags & IT_CLAMP ) {
-			info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-			info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-			info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-		}
-		if( ( flags & IT_DEPTH ) && ( flags & IT_DEPTHCOMPARE ) ) {
-			info.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-			info.compareEnable = 1;
-		}
-		const hash_t hash = hash_data( HASH_INITIAL_VALUE, &info, sizeof( VkSamplerCreateInfo ) );
-		const size_t startIndex = ( hash % IMAGE_SAMPLER_HASH_SIZE );
-		size_t index = startIndex;
-		do {
-			if( samplerDescriptors[index].cookie == hash ) {
-				return &samplerDescriptors[index];
-			} else if( RI_IsEmptyDescriptor( &samplerDescriptors[index] ) ) {
-				samplerDescriptors[index].cookie = hash;
-				samplerDescriptors[index].vk.type = VK_DESCRIPTOR_TYPE_SAMPLER;
-				samplerDescriptors[index].vk.image.imageView = VK_NULL_HANDLE;
-				samplerDescriptors[index].vk.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-				samplerDescriptors[index].flags = RI_VK_DESC_OWN_SAMPLER;
-				VK_WrapResult( vkCreateSampler( rsh.device.vk.device, &info, NULL, &samplerDescriptors[index].vk.image.sampler ) );
-				return &samplerDescriptors[index];
-			}
-			index = ( index + 1 ) % IMAGE_SAMPLER_HASH_SIZE;
-		} while( index != startIndex );
+			break;
 	}
+
+	if( clamp ) {
+		info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	}
+	if( compare ) {
+		info.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+		info.compareEnable = 1;
+	}
+	return info;
+}
+#endif
+
+struct RISampler_s *R_ResolveSamplerDescriptor( int flags )
+{
+#if ( DEVICE_IMPL_VULKAN )
+	const unsigned cat = R_SamplerCategory( flags );
+	struct RISampler_s *slot = &samplerCache[cat];
+	const VkSamplerCreateInfo info = R_BuildSamplerInfo( cat );
+
+	// The sampler-config hash is the sampler's stable identity cookie (folded into any descriptor
+	// built from it). Nudge off 0 so cookie 0 unambiguously marks an uninstantiated slot.
+	hash_t cookie = hash_data( HASH_INITIAL_VALUE, &info, sizeof( VkSamplerCreateInfo ) );
+	if( !cookie )
+		cookie = 1;
+
+	if( slot->cookie != cookie ) {
+		// First use of this category, or the global filter/anisotropy state changed since it was last
+		// built. Create a fresh sampler. The previous handle (if any) is intentionally left alive: the
+		// descriptor snapshots that reference it (some resolved only once, e.g. rsh.shadowSamplerDescriptor)
+		// are not all re-resolved, so destroying it here could dangle them. Settings changes are rare.
+		VK_WrapResult( vkCreateSampler( rsh.device.vk.device, &info, NULL, &slot->vk.sampler ) );
+		slot->cookie = cookie;
+	}
+	return slot;
 #endif
 	return NULL;
 }
-
-#undef __SAMPLER_HASH_SIZE
 
 static void __RefreshSamplerDescriptors()
 {
@@ -174,10 +213,9 @@ static void __RefreshSamplerDescriptors()
 		if( RI_IsEmptyDescriptor( &glt->binding ) ) {
 			continue;
 		}
-		if( ( glt->flags & ( IT_NOFILTERING | IT_NOMIPMAP ) ) ) {
-			continue;
-		}
-		glt->samplerBinding = R_ResolveSamplerDescriptor( glt->flags );
+		// Re-resolve every live image so anisotropy changes reach IT_NOMIPMAP samplers too (they bake
+		// anisotropy); IT_NOFILTERING re-resolves are a cheap no-op (its category never changes).
+		glt->samplerBinding = RIDescriptorSampler( &rsh.device, R_ResolveSamplerDescriptor( glt->flags ) );
 	}
 }
 
@@ -782,14 +820,12 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		createInfo.subresourceRange = subresource;
 		createInfo.image = image->handle.vk.image;
 
-		image->binding.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-		// image->binding.texture = image->handle;
-		image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-		image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
-		UpdateRIDescriptor( &rsh.device, &image->binding );
-		image->samplerBinding = R_ResolveSamplerDescriptor( image->flags );
-		assert( image->samplerBinding );
+		image->handle.cookie = hash_random();
+		image->view.cookie = hash_random();
+		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->view.vk.image ) );
+		image->binding = RIDescriptorSampledImage( &rsh.device, &image->view, RI_RESOURCE_STATE_SHADER_RESOURCE );
+		image->samplerBinding = RIDescriptorSampler( &rsh.device, R_ResolveSamplerDescriptor( image->flags ) );
+		assert( !RI_IsEmptyDescriptor( &image->samplerBinding ) );
 	}
 #endif
 
@@ -1044,13 +1080,11 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	createInfo.subresourceRange = subresource;
 	createInfo.image = image->handle.vk.image;
 
-	image->binding.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-	// image->binding.texture = image->handle;
-	image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
-	UpdateRIDescriptor( &rsh.device, &image->binding );
-	image->samplerBinding = R_ResolveSamplerDescriptor( image->flags );
+	image->handle.cookie = hash_random();
+	image->view.cookie = hash_random();
+	VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->view.vk.image ) );
+	image->binding = RIDescriptorSampledImage( &rsh.device, &image->view, RI_RESOURCE_STATE_SHADER_RESOURCE );
+	image->samplerBinding = RIDescriptorSampler( &rsh.device, R_ResolveSamplerDescriptor( image->flags ) );
 
 	// RI_VK_InitImageView(&rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
@@ -1125,7 +1159,7 @@ static void __FreeImage( struct image_s *image )
 		image->loaded = false;
 		image->tags = 0;
 		image->registrationSequence = 0;
-		image->samplerBinding = NULL;
+		memset( &image->samplerBinding, 0, sizeof( image->samplerBinding ) );
 		// image->texture = NULL;
 		// image->descriptor = (struct nri_descriptor_s){0};
 		// image->samplerDescriptor= (struct nri_descriptor_s){0};
@@ -1203,14 +1237,12 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 		createInfo.subresourceRange = subresource;
 		createInfo.image = image->handle.vk.image;
 
-		image->binding.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-		// image->binding.texture = image->handle;
-		image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-		image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
-		UpdateRIDescriptor( &rsh.device, &image->binding );
-		image->samplerBinding = R_ResolveSamplerDescriptor( image->flags );
-		assert( image->samplerBinding && !RI_IsEmptyDescriptor( image->samplerBinding ) );
+		image->handle.cookie = hash_random();
+		image->view.cookie = hash_random();
+		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->view.vk.image ) );
+		image->binding = RIDescriptorSampledImage( &rsh.device, &image->view, RI_RESOURCE_STATE_SHADER_RESOURCE );
+		image->samplerBinding = RIDescriptorSampler( &rsh.device, R_ResolveSamplerDescriptor( image->flags ) );
+		assert( !RI_IsEmptyDescriptor( &image->samplerBinding ) );
 
 		// RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
 #else
@@ -1538,14 +1570,12 @@ image_t *R_FindImage( const char *name, const char *suffix, int flags, int minmi
 		createInfo.subresourceRange = subresource;
 		createInfo.image = image->handle.vk.image;
 
-		image->binding.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-		// image->binding.texture = image->handle;
-		image->binding.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-		image->binding.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->binding.vk.image.imageView ) );
-		UpdateRIDescriptor( &rsh.device, &image->binding );
-		image->samplerBinding = R_ResolveSamplerDescriptor( image->flags );
-		assert( image->samplerBinding && !RI_IsEmptyDescriptor( image->samplerBinding ) );
+		image->handle.cookie = hash_random();
+		image->view.cookie = hash_random();
+		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->view.vk.image ) );
+		image->binding = RIDescriptorSampledImage( &rsh.device, &image->view, RI_RESOURCE_STATE_SHADER_RESOURCE );
+		image->samplerBinding = RIDescriptorSampler( &rsh.device, R_ResolveSamplerDescriptor( image->flags ) );
+		assert( !RI_IsEmptyDescriptor( &image->samplerBinding ) );
 
 		// RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
 	}
@@ -1951,10 +1981,10 @@ void R_ShutdownImages( void )
 	if( !r_imagesPool )
 		return;
 
-	for( size_t i = 0; i < IMAGE_SAMPLER_HASH_SIZE; i++ ) {
-		FreeRIDescriptor( &rsh.device, &samplerDescriptors[i] );
+	for( size_t i = 0; i < IMAGE_SAMPLER_CACHE_SIZE; i++ ) {
+		FreeRISampler( &rsh.device, &samplerCache[i] );
 	}
-	memset( samplerDescriptors, 0, sizeof( samplerDescriptors ) );
+	memset( samplerCache, 0, sizeof( samplerCache ) );
 
 	R_ReleaseBuiltinImages();
 

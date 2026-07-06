@@ -17,15 +17,8 @@ void WaitRIQueueIdle( struct RIDevice_s *device, struct RIQueue_s *queue );
 int FreeRIDevice( struct RIDevice_s *dev );
 void FreeRIFree( struct RIDevice_s *dev, struct RIFree_s *mem );
 
-// RIDescriptor
-void UpdateRIDescriptor( struct RIDevice_s *dev, struct RIDescriptor_s *desc ); // after configure an RIDescriptor call update to configure it
-void FreeRIDescriptor( struct RIDevice_s *dev, struct RIDescriptor_s *desc );
-struct RITextureView_s TextureviewRIDescriptor(struct RIDescriptor_s* desc); 
-static inline bool RI_IsEmptyDescriptor( struct RIDescriptor_s *desc )
-{
-	return desc->cookie == 0;
-}
-
+// RIDescriptor value builders, RI_IsEmptyDescriptor and FreeRISampler are declared in ri_descriptor.h
+// (reached via ri_types.h) so every consumer sees the sret-returning prototype.
 
 // RITexture
 void FreeRITexture( struct RIDevice_s *dev, struct RITexture_s *tex );

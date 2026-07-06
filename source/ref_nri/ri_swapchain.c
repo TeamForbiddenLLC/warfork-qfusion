@@ -2,6 +2,7 @@
 #include "qtypes.h"
 #include "ri_format.h"
 #include "ri_renderer.h"
+#include "ri_timeline.h"
 #include "ri_types.h"
 #include "ri_vk.h"
 #if ( DEVICE_IMPL_VULKAN )
@@ -225,10 +226,28 @@ uint32_t RISwapchainAcquireNextTexture( struct RIDevice_s *dev, struct RISwapcha
 	assert(swapchain->vk.imageCount > 0);
 #if ( DEVICE_IMPL_VULKAN )
 	{
-		uint32_t image_index;
+		uint32_t image_index = 0;
 		swapchain->vk.signal_idx = ( swapchain->vk.signal_idx + 1 ) % swapchain->vk.imageCount;
 		VkSemaphore imageAcquiredSemaphore = swapchain->vk.signaled[swapchain->vk.signal_idx];
-		VK_WrapResult( vkAcquireNextImageKHR( dev->vk.device, swapchain->vk.swapchain, UINT64_MAX, imageAcquiredSemaphore, VK_NULL_HANDLE, &image_index ) );
+		VkResult result = vkAcquireNextImageKHR( dev->vk.device, swapchain->vk.swapchain, UINT64_MAX, imageAcquiredSemaphore, VK_NULL_HANDLE, &image_index );
+		switch( result ) {
+			case VK_SUCCESS:
+				break;
+			case VK_SUBOPTIMAL_KHR:
+				// The acquire still succeeded and the semaphore was signalled; flag the swapchain for
+				// rebuild but render this frame normally.
+				swapchain->vk.outOfDate = 1;
+				break;
+			case VK_ERROR_OUT_OF_DATE_KHR:
+				// No image was acquired and the semaphore was not signalled. Mark the frame's acquire
+				// as failed so the submit skips the acquire wait / present, and flag for rebuild.
+				swapchain->vk.outOfDate = 1;
+				swapchain->vk.acquireFailed = 1;
+				break;
+			default:
+				VK_WrapResult( result );
+				break;
+		}
 		return image_index;
 	}
 #endif
@@ -256,7 +275,7 @@ void FreeRISwapchain( struct RIDevice_s *dev, struct RISwapchain_s *swapchain )
 #endif
 }
 
-void RISwapchainPresent_vk( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, uint32_t index, size_t num_wait_semaphores, VkSemaphore *wait_semaphores )
+VkResult RISwapchainPresent_vk( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, uint32_t index, size_t num_wait_semaphores, VkSemaphore *wait_semaphores )
 {
 #if ( DEVICE_IMPL_VULKAN )
 	{
@@ -266,14 +285,90 @@ void RISwapchainPresent_vk( struct RIDevice_s *dev, struct RISwapchain_s *swapch
 		presentInfo.swapchainCount = 1;
 		presentInfo.pSwapchains = &swapchain->vk.swapchain;
 		presentInfo.pImageIndices = &index;
-		VK_WrapResult( vkQueuePresentKHR( swapchain->presentQueue->vk.queue, &presentInfo ) );
+		return vkQueuePresentKHR( swapchain->presentQueue->vk.queue, &presentInfo );
 	}
 #endif
+	return VK_SUCCESS;
+}
+
+int RISwapchainFrameSubmit( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, struct RIQueue_s *queue, struct RISwapchainFrameSubmitDesc_s *desc )
+{
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		// When the last acquire failed (OUT_OF_DATE), no acquire semaphore was signalled and there is
+		// no valid image to present. Still submit the recorded work (fenced) so frame pacing holds,
+		// but skip the acquire wait, the present-semaphore signal, and the present itself. The frame
+		// loop rebuilds the swapchain before the next acquire.
+		const bool acquireFailed = swapchain->vk.acquireFailed;
+
+		VkCommandBufferSubmitInfo cmdSubmitInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO };
+		cmdSubmitInfo.commandBuffer = desc->cmd->vk.cmd;
+
+		// wait array: swapchain acquire semaphore first (unless acquire failed), then caller extras
+		const size_t numWait = 1 + desc->vk.numWaitSemaphores;
+		VkSemaphoreSubmitInfo *waitInfos = alloca( sizeof( VkSemaphoreSubmitInfo ) * numWait );
+		size_t waitCount = 0;
+		if( !acquireFailed ) {
+			waitInfos[waitCount++] = ( VkSemaphoreSubmitInfo ){
+				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+				.semaphore = swapchain->vk.signaled[swapchain->vk.signal_idx],
+				.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
+			};
+		}
+		for( size_t i = 0; i < desc->vk.numWaitSemaphores; i++ )
+			waitInfos[waitCount++] = desc->vk.waitSemaphores[i];
+
+		VkSemaphoreSubmitInfo signalInfos[2];
+		uint32_t signalCount = 0;
+		if( !acquireFailed ) {
+			signalInfos[signalCount++] = ( VkSemaphoreSubmitInfo ){
+				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+				.semaphore = desc->ringElement->vk.semaphore,
+				.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
+			};
+		}
+		// Signal the frame timeline regardless of acquire success: it paces resource reclaim and GPU
+		// query readback against the submit, not the present. (value is ignored for binary semaphores.)
+		if( desc->timeline ) {
+			signalInfos[signalCount++] = ( VkSemaphoreSubmitInfo ){
+				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+				.semaphore = desc->timeline->vk.semaphore,
+				.value = RITimelineNext( desc->timeline ),
+				.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
+			};
+		}
+
+		VkSubmitInfo2 submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO_2 };
+		submitInfo.pCommandBufferInfos = &cmdSubmitInfo;
+		submitInfo.commandBufferInfoCount = 1;
+		submitInfo.pWaitSemaphoreInfos = waitInfos;
+		submitInfo.waitSemaphoreInfoCount = waitCount;
+		submitInfo.pSignalSemaphoreInfos = signalInfos;
+		submitInfo.signalSemaphoreInfoCount = signalCount;
+
+		assert( vkGetFenceStatus( dev->vk.device, desc->ringElement->vk.fence ) == VK_SUCCESS );
+		VK_WrapResult( vkResetFences( dev->vk.device, 1, &desc->ringElement->vk.fence ) );
+		VK_WrapResult( vkQueueSubmit2( queue->vk.queue, 1, &submitInfo, desc->ringElement->vk.fence ) );
+
+		if( !acquireFailed ) {
+			VkSemaphore presentWait[] = { desc->ringElement->vk.semaphore };
+			VkResult presentResult = RISwapchainPresent_vk( dev, swapchain, desc->imageIndex, 1, presentWait );
+			if( presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR )
+				swapchain->vk.outOfDate = 1;
+			else if( presentResult != VK_SUCCESS )
+				VK_WrapResult( presentResult );
+		}
+		swapchain->vk.acquireFailed = 0;
+	}
+#endif
+	return RI_SUCCESS;
 }
 
 int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, uint16_t width, uint16_t height )
 {
-	if( width == swapchain->width && height == swapchain->height )
+	// Nothing to do when the size is unchanged and the swapchain is still valid. An OUT_OF_DATE
+	// swapchain must be rebuilt even at the same size, so honor that flag here.
+	if( width == swapchain->width && height == swapchain->height && !swapchain->vk.outOfDate )
 		return 0;
 #if ( DEVICE_IMPL_VULKAN )
 	{
@@ -294,10 +389,17 @@ int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, 
 		swapChainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 		swapChainCreateInfo.presentMode = swapchain->vk.presentMode;
 		swapChainCreateInfo.clipped = VK_TRUE;
-		swapChainCreateInfo.oldSwapchain = oldSwapchain; 
+		swapChainCreateInfo.oldSwapchain = oldSwapchain;
 
-		result = vkCreateSwapchainKHR( dev->vk.device, &swapChainCreateInfo, NULL, &swapchain->vk.swapchain );
-		VK_WrapResult( result );
+		// Create the replacement into a temporary handle first so that, on failure, all existing
+		// handles remain intact and the caller can fall back to a full teardown + re-init.
+		VkSwapchainKHR newSwapchain = VK_NULL_HANDLE;
+		result = vkCreateSwapchainKHR( dev->vk.device, &swapChainCreateInfo, NULL, &newSwapchain );
+		if( result != VK_SUCCESS ) {
+			VK_WrapResult( result );
+			return RI_FAIL;
+		}
+		swapchain->vk.swapchain = newSwapchain;
 
 		vkDestroySwapchainKHR( dev->vk.device, oldSwapchain, NULL );
 
@@ -311,7 +413,6 @@ int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, 
 		vkGetSwapchainImagesKHR( dev->vk.device, swapchain->vk.swapchain, &imageNum, NULL );
 		assert( imageNum <= RI_MAX_SWAPCHAIN_IMAGES );
 		vkGetSwapchainImagesKHR( dev->vk.device, swapchain->vk.swapchain, &imageNum, swapchain->vk.images );
-		swapchain->vk.imageCount = imageNum;
 
 		for( size_t i = 0; i < imageNum; i++ ) {
 			VkImageViewCreateInfo viewCreateInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
@@ -331,6 +432,28 @@ int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, 
 			VK_WrapResult( result );
 		}
 
+		// The per-image acquire semaphores must be recreated: imageCount can change across a resize,
+		// and a semaphore left pending by an acquire on the retired swapchain is unusable. Reset the
+		// round-robin index so it stays in range. (rhi-zig's swapchain.zig resize omits this — a bug.)
+		for( size_t i = 0; i < RI_MAX_SWAPCHAIN_IMAGES; i++ ) {
+			if( swapchain->vk.signaled[i] ) {
+				vkDestroySemaphore( dev->vk.device, swapchain->vk.signaled[i], NULL );
+				swapchain->vk.signaled[i] = VK_NULL_HANDLE;
+			}
+		}
+		for( size_t i = 0; i < imageNum; i++ ) {
+			VkSemaphoreCreateInfo createInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+			VkSemaphoreTypeCreateInfo binaryCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO };
+			binaryCreateInfo.semaphoreType = VK_SEMAPHORE_TYPE_BINARY;
+			R_VK_ADD_STRUCT( &createInfo, &binaryCreateInfo );
+			result = vkCreateSemaphore( dev->vk.device, &createInfo, NULL, &swapchain->vk.signaled[i] );
+			VK_WrapResult( result );
+		}
+
+		swapchain->vk.imageCount = imageNum;
+		swapchain->vk.signal_idx = 0;
+		swapchain->vk.outOfDate = 0;
+		swapchain->vk.acquireFailed = 0;
 		swapchain->width = width;
 		swapchain->height = height;
 	}
@@ -347,32 +470,6 @@ struct RITextureView_s RISwapchainGetTextureView(struct RISwapchain_s *swapchain
 	return view;
 }
 
-
-//struct RIDescriptor_s RISwapchainDescriptor( struct RISwapchain_s *swapchain, uint32_t index )
-//{
-//	struct RIDescriptor_s desc = { .texture = { .vk =
-//													{
-//														.image = swapchain->vk.images[index],
-//													} },
-//								   .vk = {
-//									   .image =
-//										   {
-//											   .imageView = swapchain->vk.views[index],
-//										   },
-//								   } };
-//	return desc;
-//}
-
-// struct RITexture_s RISwapchainGetTexture( struct RISwapchain_s *swapchain, uint32_t index )
-//{
-//	struct RITexture_s tex;
-//	memset( &tex, 0, sizeof( tex ) );
-// #if ( DEVICE_IMPL_VULKAN )
-//	tex.vk.image = swapchain->vk.images[index];
-// #endif
-//	return tex;
-// }
-
 uint32_t RISwapchainGetImageCount( struct RISwapchain_s *swapchain )
 {
 #if ( DEVICE_IMPL_VULKAN )
@@ -380,11 +477,3 @@ uint32_t RISwapchainGetImageCount( struct RISwapchain_s *swapchain )
 #endif
 	return 0;
 }
-
-// uint32_t RISwapchainGetFormat( struct RISwapchain_s *swapchain )
-//{
-// #if ( DEVICE_IMPL_VULKAN )
-//	return VKToRIFormat( swapchain->vk.imageFormat );
-// #endif
-//	return 0;
-// }

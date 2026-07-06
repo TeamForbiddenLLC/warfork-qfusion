@@ -223,18 +223,14 @@ void __FXAA_PostProcessing(const refdef_t* ref,struct FrameState_s* cmd, struct 
 	size_t descriptorIndex = 0;
 	struct glsl_descriptor_binding_s descriptors[8] = { 0 };
 	
-	struct RIDescriptor_s srcDesc = { 0 };
-	srcDesc.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	srcDesc.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	srcDesc.vk.image.imageView = src->vk.image;
-	UpdateRIDescriptor(&rsh.device, &srcDesc);
+	struct RIDescriptor_s srcDesc = RIDescriptorSampledImage( &rsh.device, src, RI_RESOURCE_STATE_SHADER_RESOURCE );
 
 	descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
 		.descriptor = srcDesc, 
 		.handle = Create_DescriptorHandle( "u_BaseTexture" ) 
 	};
 	descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
-		.descriptor = *rsh.postProcessingSampler, 
+		.descriptor = rsh.postProcessingSampler, 
 		.handle = Create_DescriptorHandle( "u_BaseSampler" ) 
 	};
 	struct FxaaPushConstant {
@@ -258,18 +254,14 @@ void __ColorCorrection_PostProcessing(const refdef_t* ref,struct FrameState_s* c
 	size_t descriptorIndex = 0;
 	struct glsl_descriptor_binding_s descriptors[8] = { 0 };
 	
-	struct RIDescriptor_s srcDesc = { 0 };
-	srcDesc.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	srcDesc.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	srcDesc.vk.image.imageView = src->vk.image;
-	UpdateRIDescriptor(&rsh.device, &srcDesc);
+	struct RIDescriptor_s srcDesc = RIDescriptorSampledImage( &rsh.device, src, RI_RESOURCE_STATE_SHADER_RESOURCE );
 
 	descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
 		.descriptor = srcDesc, 
 		.handle = Create_DescriptorHandle( "u_BaseTexture" ) 
 	};
 	descriptors[descriptorIndex++] = ( struct glsl_descriptor_binding_s ){
-		.descriptor = *rsh.postProcessingSampler,//R_CreateDescriptorWrapper(&rsh.nri, cmd->textureBuffers.postProcessingSampler), 
+		.descriptor = rsh.postProcessingSampler,//R_CreateDescriptorWrapper(&rsh.nri, cmd->textureBuffers.postProcessingSampler), 
 		.handle = Create_DescriptorHandle( "u_BaseSampler" ) 
 	};
 	

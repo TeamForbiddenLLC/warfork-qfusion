@@ -83,8 +83,9 @@ typedef struct image_s
     #endif
 	};
 	uint8_t mipNum;
-	struct RIDescriptor_s binding;
-	struct RIDescriptor_s* samplerBinding;
+	struct RITextureView_s view;         // first-class view (carries the cookie folded into `binding`)
+	struct RIDescriptor_s binding;       // sampled-image descriptor built from `view`
+	struct RIDescriptor_s samplerBinding; // sampler descriptor built (once) from the shared sampler cache
 
 	struct QStr name;// game path, not including extension 
 	int				registrationSequence;
@@ -124,6 +125,6 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 void R_ReplaceSubImage( image_t *image, int layer, int x, int y, uint8_t **pic, int width, int height );
 void R_ReplaceImageLayer( image_t *image, int layer, uint8_t **pic );
 
-struct RIDescriptor_s* R_ResolveSamplerDescriptor( int flags );
+struct RISampler_s* R_ResolveSamplerDescriptor( int flags );
 
 #endif // R_IMAGE_H

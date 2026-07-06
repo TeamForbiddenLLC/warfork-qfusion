@@ -5,8 +5,30 @@
 #include "ri_format.h"
 
 #if DEVICE_IMPL_VULKAN
-// VkResult RI_VK_InitImageView( struct RIDevice_s *dev, VkImageViewCreateInfo *info, struct RIDescriptor_s *desc, VkDescriptorType type );
-#define RI_VK_DESCRIPTOR_IS_IMAGE( desc ) ( desc.vk.type == VK_DESCRIPTOR_TYPE_SAMPLER || desc.vk.type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE || desc.vk.type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE )
+#define RI_VK_DESCRIPTOR_IS_IMAGE( desc ) ( ( desc ).type == RI_DESCRIPTOR_TYPE_SAMPLER || ( desc ).type == RI_DESCRIPTOR_TYPE_STORAGE_IMAGE || ( desc ).type == RI_DESCRIPTOR_TYPE_SAMPLED_IMAGE )
+
+// Backend-neutral RIDescriptorType_e -> VkDescriptorType, applied only at descriptor-set write time.
+static inline VkDescriptorType RI_VK_BindlessDescriptorType( uint8_t type )
+{
+	switch( (enum RIDescriptorType_e)type ) {
+		case RI_DESCRIPTOR_TYPE_SAMPLED_IMAGE: return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		case RI_DESCRIPTOR_TYPE_STORAGE_IMAGE: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+		case RI_DESCRIPTOR_TYPE_SAMPLER: return VK_DESCRIPTOR_TYPE_SAMPLER;
+		case RI_DESCRIPTOR_TYPE_UNIFORM_BUFFER: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		case RI_DESCRIPTOR_TYPE_STORAGE_BUFFER: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		case RI_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE: return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+	}
+	return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+}
+
+static inline VkImageLayout RI_VK_ResourceStateToImageLayout( enum RIResourceState_e state )
+{
+	switch( state ) {
+		case RI_RESOURCE_STATE_SHADER_RESOURCE: return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		case RI_RESOURCE_STATE_UNORDERED_ACCESS: return VK_IMAGE_LAYOUT_GENERAL;
+	}
+	return VK_IMAGE_LAYOUT_UNDEFINED;
+}
 
 static inline void RI_VK_FillColorAttachment( VkRenderingAttachmentInfo *info, struct RITextureView_s view, bool attachAndClear )
 {

@@ -1200,6 +1200,9 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd,
 	{
 		size_t numWrites = 0;
 		VkWriteDescriptorSet descriptorWrite[32]; // write 32 descriptors at once
+		// Parallel storage for acceleration-structure writes: the VkWriteDescriptorSetAccelerationStructureKHR
+		// chained via pNext must outlive the batch, so it is kept at the same index as its descriptorWrite entry.
+		VkWriteDescriptorSetAccelerationStructureKHR accelWrites[32];
 		for( uint32_t setIndex = 0; setIndex < R_DESCRIPTOR_SET_MAX; setIndex++ ) {
 			hash_t hash = HASH_INITIAL_VALUE;
 			for( size_t i = 0; i < numDescriptorData; i++ ) {
@@ -1209,6 +1212,9 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd,
 				hash = hash_u64( hash, refl->hash );
 				assert(bindings[i].descriptor.cookie != 0); // the cookie can't be 0
 				hash = hash_u64( hash, bindings[i].descriptor.cookie );
+				// Fold in the array element: the same descriptor bound at a different dstArrayElement
+				// is a distinct set contents, so it must not hash to (and reuse) the same cached set.
+				hash = hash_u64( hash, bindings[i].registerOffset );
 			}
 			if( hash == HASH_INITIAL_VALUE )
 				continue;
@@ -1226,6 +1232,7 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd,
 					}
 
 					assert( numWrites < Q_ARRAY_COUNT( descriptorWrite ) );
+					const size_t writeIdx = numWrites;
 					VkWriteDescriptorSet *vkDesc = descriptorWrite + ( numWrites++ );
 					memset( vkDesc, 0, sizeof( VkWriteDescriptorSet ) );
 					vkDesc->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1238,17 +1245,26 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd,
 						vkDesc->dstArrayElement = 0;
 					}
 					vkDesc->descriptorCount = 1;
-					vkDesc->descriptorType = bindings[i].descriptor.vk.type;
-					switch( bindings[i].descriptor.vk.type ) {
-						case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-						case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+					vkDesc->descriptorType = RI_VK_BindlessDescriptorType( bindings[i].descriptor.type );
+					switch( (enum RIDescriptorType_e)bindings[i].descriptor.type ) {
+						case RI_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+						case RI_DESCRIPTOR_TYPE_STORAGE_BUFFER:
 							vkDesc->pBufferInfo = &bindings[i].descriptor.vk.buffer;
 							break;
-						case VK_DESCRIPTOR_TYPE_SAMPLER:
-						case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-						case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+						case RI_DESCRIPTOR_TYPE_SAMPLER:
+						case RI_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+						case RI_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 							vkDesc->pImageInfo = &bindings[i].descriptor.vk.image;
 							break;
+						case RI_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE: {
+							VkWriteDescriptorSetAccelerationStructureKHR *accel = &accelWrites[writeIdx];
+							memset( accel, 0, sizeof( *accel ) );
+							accel->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+							accel->accelerationStructureCount = 1;
+							accel->pAccelerationStructures = &bindings[i].descriptor.vk.accelStructure;
+							vkDesc->pNext = accel;
+							break;
+						}
 						default:
 							assert( false ); // this is bad
 							break;

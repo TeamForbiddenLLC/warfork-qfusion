@@ -153,14 +153,14 @@ void R_ShutdownPortals()
 		struct portal_fb_s *portalFB = &rsh.portalFBs[i];
 		if( IsRITextureValid( &rsh.renderer, &portalFB->colorTexture ) ) {
 			FreeRITexture( &rsh.device, &portalFB->colorTexture );
-			FreeRIDescriptor( &rsh.device, &portalFB->colorDescriptor );
+			FreeRITextureView( &rsh.device, &portalFB->colorView );
 #if ( DEVICE_IMPL_VULKAN )
 			vmaFreeMemory( rsh.device.vk.vmaAllocator, portalFB->vk.vmaColorAlloc );
 #endif
 		}
 		if( IsRITextureValid( &rsh.renderer, &portalFB->depthTexture ) ) {
 			FreeRITexture( &rsh.device, &portalFB->depthTexture );
-			FreeRIDescriptor( &rsh.device, &portalFB->depthDescriptor );
+			FreeRITextureView( &rsh.device, &portalFB->depthView );
 #if ( DEVICE_IMPL_VULKAN )
 			vmaFreeMemory( rsh.device.vk.vmaAllocator, portalFB->vk.vmaDepthAlloc );
 #endif
@@ -180,8 +180,8 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 		}
 		if( IsRITextureValid( &rsh.renderer, &portalFB->colorTexture ) ) {
 			if( portalFB->width == width && portalFB->height == height ) {
-				portalFB->samplerDescriptor = R_ResolveSamplerDescriptor( filtered ? 0 : IT_NOFILTERING );
-				assert(portalFB->samplerDescriptor);
+				portalFB->samplerDescriptor = RIDescriptorSampler( &rsh.device, R_ResolveSamplerDescriptor( filtered ? 0 : IT_NOFILTERING ) );
+				assert( !RI_IsEmptyDescriptor( &portalFB->samplerDescriptor ) );
 				portalFB->frameNum = rsh.frameSetCount;
 				return portalFB;
 			}
@@ -189,22 +189,22 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 		bestFB = portalFB;
   }
   if( bestFB ) {
-	  bestFB->samplerDescriptor = R_ResolveSamplerDescriptor( filtered ? 0 : IT_NOFILTERING );
-	  assert(bestFB->samplerDescriptor);
+	  bestFB->samplerDescriptor = RIDescriptorSampler( &rsh.device, R_ResolveSamplerDescriptor( filtered ? 0 : IT_NOFILTERING ) );
+	  assert( !RI_IsEmptyDescriptor( &bestFB->samplerDescriptor ) );
 	  bestFB->frameNum = rsh.frameSetCount;
 	  bestFB->width = width;
 	  bestFB->height = height;
 #if ( DEVICE_IMPL_VULKAN )
 	  struct RIFree_s freeSlot = { 0 };
 	  struct r_frame_set_s *activeset = R_GetActiveFrameSet();
-	  if( bestFB->colorDescriptor.vk.image.imageView ) {
+	  if( bestFB->colorView.vk.image ) {
 		  freeSlot.type = RI_FREE_VK_IMAGEVIEW;
-		  freeSlot.vkImageView = bestFB->colorDescriptor.vk.image.imageView;
+		  freeSlot.vkImageView = bestFB->colorView.vk.image;
 		  arrpush( activeset->freeList, freeSlot );
 	  }
-	  if( bestFB->depthDescriptor.vk.image.imageView ) {
+	  if( bestFB->depthView.vk.image ) {
 		  freeSlot.type = RI_FREE_VK_IMAGEVIEW;
-		  freeSlot.vkImageView = bestFB->depthDescriptor.vk.image.imageView;
+		  freeSlot.vkImageView = bestFB->depthView.vk.image;
 		  arrpush( activeset->freeList, freeSlot );
 	  }
 	  if( bestFB->colorTexture.vk.image ) {
@@ -266,12 +266,10 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 		  createInfo.subresourceRange = subresource;
 		  createInfo.image = bestFB->colorTexture.vk.image;
 			
-			bestFB->colorDescriptor.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-			//bestFB->colorDescriptor.texture = bestFB->colorTexture;
-			bestFB->colorDescriptor.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-			bestFB->colorDescriptor.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->colorDescriptor.vk.image.imageView ) );
-			UpdateRIDescriptor( &rsh.device, &bestFB->colorDescriptor);
+			bestFB->colorTexture.cookie = hash_random();
+			bestFB->colorView.cookie = hash_random();
+			VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->colorView.vk.image ) );
+			bestFB->colorDescriptor = RIDescriptorSampledImage( &rsh.device, &bestFB->colorView, RI_RESOURCE_STATE_SHADER_RESOURCE );
 	  }
 	  {
 		  uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
@@ -311,12 +309,10 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 		  createInfo.subresourceRange = subresource;
 		  createInfo.image = bestFB->depthTexture.vk.image;
 
-		  bestFB->depthDescriptor.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-		  //bestFB->depthDescriptor.texture = bestFB->depthTexture;
-		  bestFB->depthDescriptor.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-		  bestFB->depthDescriptor.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		  VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->depthDescriptor.vk.image.imageView ) );
-		  UpdateRIDescriptor( &rsh.device, &bestFB->depthDescriptor);
+		  bestFB->depthTexture.cookie = hash_random();
+		  bestFB->depthView.cookie = hash_random();
+		  VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->depthView.vk.image ) );
+		  bestFB->depthDescriptor = RIDescriptorSampledImage( &rsh.device, &bestFB->depthView, RI_RESOURCE_STATE_SHADER_RESOURCE );
 
 		  //RI_VK_InitImageView( &rsh.device, &createInfo, &bestFB->depthDescriptor, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
 	  }
@@ -620,10 +616,10 @@ setup_and_render:
 		}
 		{
 			VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-			RI_VK_FillColorAttachment( &colorAttachment, TextureviewRIDescriptor(&fb->colorDescriptor), true );
+			RI_VK_FillColorAttachment( &colorAttachment, fb->colorView, true );
 
 			VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-			RI_VK_FillDepthAttachment( &depthStencil, TextureviewRIDescriptor(&fb->depthDescriptor), true );
+			RI_VK_FillDepthAttachment( &depthStencil, fb->depthView, true );
 			enum RI_Format_e attachments[] = {PortalTextureFormat };
 			FR_ConfigurePipelineAttachment(& sub.pipeline, attachments, Q_ARRAY_COUNT(attachments), PortalTextureDepthFormat );
 			
