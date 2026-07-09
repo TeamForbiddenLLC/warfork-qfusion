@@ -32,11 +32,12 @@ typedef struct {
 // public API
 rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int startupColor,
 	int iconResource, const int *iconXPM, void *hinstance, void *wndproc, void *parenthWnd,  bool verbose );
-rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, bool fullScreen, bool stereo );
+rserr_t RF_SetMode( int x, int y, int width, int height, int renderWidth, int renderHeight, int displayFrequency, bool fullScreen, bool stereo );
 void RF_AppActivate( bool active, bool destroy );
 rserr_t	RF_SetWindow( void *hinstance, void *wndproc, void *parenthWnd );
 void RF_Shutdown( bool verbose );
 void RF_SurfaceChangePending( void );
+ref_backend_t RF_Backend( void );
 void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync );
 void RF_EndFrame( void );
 void RF_BeginRegistration( void );

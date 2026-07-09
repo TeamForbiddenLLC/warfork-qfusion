@@ -215,6 +215,29 @@ void CL_MouseMove( usercmd_t *cmd, int mx, int my )
 
 	if( cls.key_dest == key_menu )
 	{
+		// The UI cursor lives in viddef (mode) space, but the mouse deltas arrive in
+		// actual-window units. The ref_nri backend renders at the mode resolution and
+		// letterboxes into the (possibly larger) window, scaling by presentScale =
+		// min(winW/viddef, winH/viddef); divide the deltas by that so the cursor tracks the
+		// mouse 1:1. Other backends (ref_gl) render at the window size, so this is skipped.
+		static float curx_rem = 0.0f, cury_rem = 0.0f;
+		int winW = 0, winH = 0;
+		if( RF_Backend() == REF_BACKEND_NRI )
+			VID_GetActualWindowSize( &winW, &winH );
+		if( winW > 0 && winH > 0 ) {
+			float presentScale = (float)winW / (float)viddef.width;
+			float scaleY = (float)winH / (float)viddef.height;
+			if( scaleY < presentScale )
+				presentScale = scaleY;
+			if( presentScale > 0.0f && presentScale != 1.0f ) {
+				float sx = (float)mx / presentScale + curx_rem;
+				float sy = (float)my / presentScale + cury_rem;
+				mx = (int)sx;
+				my = (int)sy;
+				curx_rem = sx - (float)mx;
+				cury_rem = sy - (float)my;
+			}
+		}
 		CL_UIModule_MouseMove( mx, my );
 		return;
 	}

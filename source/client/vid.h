@@ -50,6 +50,8 @@ bool VID_RefreshIsActive( void );
 bool VID_AppIsActive( void );
 int	VID_GetWindowWidth( void );
 int	VID_GetWindowHeight( void );
+// actual OS window size (may differ from viddef, which is the game/mode resolution)
+void VID_GetActualWindowSize( int *width, int *height );
 float VID_GetPixelRatio( void );
 
 #endif

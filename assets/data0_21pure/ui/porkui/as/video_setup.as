@@ -19,9 +19,51 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 /*
-	This class provides to manage some cvars into the 
+	This class provides to manage some cvars into the
 	Graphics section.
  */
+
+// Formats a width/height pair as a human-friendly aspect ratio.
+// Near-standard ratios snap to a friendly label (with '~' when not exact);
+// anything else falls back to the GCD-reduced integer ratio.
+String formatAspectRatio( int w, int h )
+{
+	if( w <= 0 || h <= 0 )
+		return "";
+
+	array<int> ratioNum = { 16, 16, 4, 5, 3, 21, 32 };
+	array<int> ratioDen = {  9, 10, 3, 4, 2,  9,  9 };
+
+	float r = float(w) / float(h);
+	const float tolerance = 0.02f;
+
+	for( uint i = 0; i < ratioNum.length(); i++ )
+	{
+		float cr = float(ratioNum[i]) / float(ratioDen[i]);
+		float d = r - cr;
+		if( d < 0 )
+			d = -d;
+		if( d <= tolerance )
+		{
+			String label = "" + ratioNum[i] + ":" + ratioDen[i];
+			if( w * ratioDen[i] == h * ratioNum[i] )
+				return label;        // exact
+			return "~" + label;      // close but not exact
+		}
+	}
+
+	// fallback: reduce w:h by greatest common divisor
+	int a = w, b = h;
+	while( b != 0 )
+	{
+		int t = b;
+		b = a % b;
+		a = t;
+	}
+	if( a == 0 )
+		a = 1;
+	return "" + ( w / a ) + ":" + ( h / a );
+}
 
 class VideoSetup
 {
@@ -90,7 +132,7 @@ class VideoSetup
 				const String &idPicmip, const String &idPicmipFrame,
 				const String &idFiltering,
 				const String &idFilteringFrame,
-				const String &idLighting, 
+				const String &idLighting,
 				const String &idSoftParticlesFrame )
 	{
 		this.idProfile = idProfile;
@@ -164,11 +206,26 @@ class VideoSetup
 		String selected = vid_width.string + ' x ' + vid_height.string;
 		String mode;
 
+		// the display's native resolution, so the matching row can be marked
+		int dw = window.desktopWidth;
+		int dh = window.desktopHeight;
+
 		String rml = '';
 		for( int i = 0; i < numberOfModes; i++ )
 		{
 			mode = data.getField( 'list', i, 'resolution' );
-			rml += '<option value="' + mode + '"' + ( ( mode == selected ) ? ' selected' : '' ) + '>' + mode + '</option>';
+			// the option value must stay "W x H" (SetMode parses it back); the aspect
+			// ratio and native marker are added to the visible label only.
+			String label = mode;
+			array<String @> wh = StringUtils::Split( mode, ' x ' );
+			if( wh.size() >= 2 )
+			{
+				int w = wh[0].toInt(), h = wh[1].toInt();
+				label = mode + ' (' + formatAspectRatio( w, h ) + ')';
+				if( w == dw && h == dh )
+					label += ' Native';
+			}
+			rml += '<option value="' + mode + '"' + ( ( mode == selected ) ? ' selected' : '' ) + '>' + label + '</option>';
 		}
 		selector.setInnerRML( rml );
 

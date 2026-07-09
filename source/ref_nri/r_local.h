@@ -340,6 +340,15 @@ typedef struct
 	
 	uint32_t swapchainIndex;
 	uint64_t frameSetCount;
+	// game (mode) render resolution; the scene + depth + pogo buffers are sized to this.
+	// the swapchain is sized to the actual surface/screen, which may be larger, and the
+	// mode-res result is upscaled into it with a full-screen draw.
+	uint16_t renderWidth;
+	uint16_t renderHeight;
+	// the whole frame renders into backBuffer at mode (renderWidth/Height) resolution; at
+	// present it is letterbox-blitted into the screen-res swapchain (aspect preserved).
+	struct RITexture_s backBuffer[RI_MAX_SWAPCHAIN_IMAGES];
+	struct RITextureView_s backBufferView[RI_MAX_SWAPCHAIN_IMAGES];
 	struct RITexture_s depthTextures[RI_MAX_SWAPCHAIN_IMAGES];
 	struct RITextureView_s depthView[RI_MAX_SWAPCHAIN_IMAGES];
 	struct RI_PogoBuffer pogoBuffer[RI_MAX_SWAPCHAIN_IMAGES];

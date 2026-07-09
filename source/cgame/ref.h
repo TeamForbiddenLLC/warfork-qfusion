@@ -113,6 +113,15 @@ typedef enum
 	NUM_RTYPES
 } refEntityType_t;
 
+// identifies the active refresh backend (returned by RF_Backend). Behaviour that depends
+// on backend specifics — e.g. ref_nri renders at the mode resolution and letterboxes into
+// the window, so the UI cursor must be scaled — branches on this.
+typedef enum
+{
+	REF_BACKEND_GL,
+	REF_BACKEND_NRI
+} ref_backend_t;
+
 typedef struct entity_s
 {
 	refEntityType_t	rtype;

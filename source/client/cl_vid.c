@@ -185,10 +185,26 @@ int VID_GetWindowHeight( void )
 }
 
 /*
+** VID_NativeResolution
+*
+* The native (window/swapchain) resolution the scene's render resolution is presented into.
+* In fullscreen this is the desktop resolution so the monitor never rescales (the renderer
+* letterboxes the render-res image into it); windowed renders 1:1 into the window.
+*/
+static void VID_NativeResolution( int renderWidth, int renderHeight, bool fullScreen, int *nativeWidth, int *nativeHeight )
+{
+	if( fullScreen && VID_GetDefaultMode( nativeWidth, nativeHeight ) )
+		return;
+	*nativeWidth = renderWidth;
+	*nativeHeight = renderHeight;
+}
+
+/*
 ** VID_ChangeMode
 */
 static rserr_t VID_ChangeMode( void )
 {
+	int nw, nh;
 	int x, y;
 	int w, h;
 	int disp_freq;
@@ -206,7 +222,8 @@ static rserr_t VID_ChangeMode( void )
 	disp_freq = vid_displayfrequency->integer;
 	stereo = Cvar_Value( "cl_stereo" ) != 0;
 
-	err = RF_SetMode( x, y, w, h, disp_freq, fs, stereo );
+	VID_NativeResolution( w, h, fs, &nw, &nh );
+	err = RF_SetMode( x, y, nw, nh, w, h, disp_freq, fs, stereo );
 
 	if( err == rserr_ok ) {
 		// store fallback mode
@@ -235,7 +252,8 @@ static rserr_t VID_ChangeMode( void )
 			vid_fullscreen->modified = false;
 			fs = false;
 
-			err = RF_SetMode( x, y, w, h, disp_freq, false, stereo );
+			VID_NativeResolution( w, h, false, &nw, &nh );
+			err = RF_SetMode( x, y, nw, nh, w, h, disp_freq, false, stereo );
 		}
 
 		if( err == rserr_invalid_mode ) {
@@ -247,7 +265,8 @@ static rserr_t VID_ChangeMode( void )
 			Cvar_ForceSet( vid_height->name, va( "%i", h ) );
 
 			// try setting it back to something safe
-			err = RF_SetMode( x, y, w, h, disp_freq, fs, stereo );
+			VID_NativeResolution( w, h, fs, &nw, &nh );
+			err = RF_SetMode( x, y, nw, nh, w, h, disp_freq, fs, stereo );
 			if( err == rserr_invalid_fullscreen ) {
 				Com_Printf( "VID_ChangeMode() - could not revert to safe fullscreen mode\n" );
 
@@ -255,7 +274,8 @@ static rserr_t VID_ChangeMode( void )
 				vid_fullscreen->modified = false;
 				fs = false;
 
-				err = RF_SetMode( x, y, w, h, disp_freq, false, stereo );
+				VID_NativeResolution( w, h, false, &nw, &nh );
+				err = RF_SetMode( x, y, nw, nh, w, h, disp_freq, false, stereo );
 			}
 			if( err != rserr_ok ) {
 				Com_Printf( "VID_ChangeMode() - could not revert to safe mode\n" );

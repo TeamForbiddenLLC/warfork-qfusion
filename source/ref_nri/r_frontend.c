@@ -70,6 +70,8 @@ static void __ShutdownSwapchainTexture()
 	if( IsRISwapchainValid( &rsh.swapchain ) ) {
 		for( uint32_t i = 0; i < RISwapchainGetImageCount( &rsh.swapchain ); i++ ) {
 			RI_PogoBufferDestroy( &rsh.device, &rsh.pogoBuffer[i] );
+			FreeRITextureView(&rsh.device, &rsh.backBufferView[i]);
+			FreeRITexture( &rsh.device, &rsh.backBuffer[i] );
 			FreeRITextureView(&rsh.device, &rsh.depthView[i]);
 			FreeRITexture( &rsh.device, &rsh.depthTextures[i] );
 		}
@@ -221,7 +223,7 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	return rserr_ok;
 }
 
-rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, bool fullScreen, bool stereo )
+rserr_t RF_SetMode( int x, int y, int width, int height, int renderWidth, int renderHeight, int displayFrequency, bool fullScreen, bool stereo )
 {
 	WaitRIQueueIdle( &rsh.device, &rsh.device.queues[RI_QUEUE_GRAPHICS] );
 	TracyCZoneN( ctx, "RF_SetMode", 1 );
@@ -273,20 +275,54 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 		InitRISwapchain( &rsh.device, &swapchainInit, &rsh.swapchain );
 		rsh.postProcessingSampler = R_ResolveSamplerDescriptor( IT_NOFILTERING );
 
+		// the whole frame renders at the render resolution into backBuffer; the swapchain is
+		// the native (window) size and may differ, so backBuffer is letterbox-blitted into it
+		// at present (RF_EndFrame), preserving aspect ratio.
+		rsh.renderWidth = renderWidth;
+		rsh.renderHeight = renderHeight;
+
 #if ( DEVICE_IMPL_VULKAN )
 		{
 			uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
 
 			assert( RISwapchainGetImageCount( &rsh.swapchain ) > 0 );
 			for( uint32_t i = 0; i < RISwapchainGetImageCount( &rsh.swapchain ); i++ ) {
-				RI_PogoBufferInit( &rsh.device, &rsh.pogoBuffer[i], rsh.swapchain.width, rsh.swapchain.height, POGO_BUFFER_TEXTURE_FORMAT );
+				RI_PogoBufferInit( &rsh.device, &rsh.pogoBuffer[i], rsh.renderWidth, rsh.renderHeight, POGO_BUFFER_TEXTURE_FORMAT );
+
+				// mode-res back buffer (the whole frame target); blitted to the swapchain at present
+				{
+					VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+					info.imageType = VK_IMAGE_TYPE_2D;
+					info.extent.width = rsh.renderWidth;
+					info.extent.height = rsh.renderHeight;
+					info.extent.depth = 1;
+					info.mipLevels = 1;
+					info.arrayLayers = 1;
+					info.samples = 1;
+					info.tiling = VK_IMAGE_TILING_OPTIMAL;
+					info.pQueueFamilyIndices = queueFamilies;
+					VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+					info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+					info.format = RIFormatToVK( rsh.swapchain.format );
+					info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					VmaAllocationCreateInfo mem_reqs = { 0 };
+					mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+					VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &rsh.backBuffer[i].vk.image, &rsh.backBuffer[i].vk.allocation, NULL ) );
+
+					VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+					createInfo.format = RIFormatToVK( rsh.swapchain.format );
+					createInfo.subresourceRange = (VkImageSubresourceRange){ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+					createInfo.image = rsh.backBuffer[i].vk.image;
+					createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+					VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &rsh.backBufferView[i].vk.image ) );
+				}
 
 				{
 					VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 					info.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
 					info.imageType = VK_IMAGE_TYPE_2D;
-					info.extent.width = rsh.swapchain.width;
-					info.extent.height = rsh.swapchain.height;
+					info.extent.width = rsh.renderWidth;
+					info.extent.height = rsh.renderHeight;
 					info.extent.depth = 1;
 					info.mipLevels = 1;
 					info.arrayLayers = 1;
@@ -458,6 +494,11 @@ static void RF_CheckCvars( void )
 	TracyCZoneEnd( ctx );
 }
 
+ref_backend_t RF_Backend( void )
+{
+	return REF_BACKEND_NRI;
+}
+
 void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 {
 	TracyCZoneN( ctx, "RF_BeginFrame", 1 );
@@ -497,7 +538,8 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 			imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			imageBarriers[0].image = rsh.swapchain.vk.images[rsh.swapchainIndex];
+			// the frame renders into the mode-res back buffer, not the swapchain directly
+			imageBarriers[0].image = rsh.backBuffer[rsh.swapchainIndex].vk.image;
 			imageBarriers[0].subresourceRange = (VkImageSubresourceRange){
 				VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
 			};
@@ -527,9 +569,9 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 		}
 		{
 
-			VkRenderingAttachmentInfo colorAttachment = { 
+			VkRenderingAttachmentInfo colorAttachment = {
 				.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-				.imageView = rsh.swapchain.vk.views[rsh.swapchainIndex],
+				.imageView = rsh.backBufferView[rsh.swapchainIndex].vk.image,
 				.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 				.resolveMode = VK_RESOLVE_MODE_NONE,
 				.resolveImageView = VK_NULL_HANDLE,
@@ -537,7 +579,7 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 				.loadOp =  VK_ATTACHMENT_LOAD_OP_CLEAR,
 				.storeOp = VK_ATTACHMENT_STORE_OP_STORE
 			};
-			VkRenderingAttachmentInfo depthStencil = { 
+			VkRenderingAttachmentInfo depthStencil = {
 				.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
 				.imageView = rsh.depthView[rsh.swapchainIndex].vk.image,
 				.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
@@ -548,14 +590,15 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 				.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
 				.clearValue.depthStencil.depth = 1.0f
 			};
+			// the back buffer and depth are both at mode resolution
 			enum RI_Format_e attachments[] = { rsh.swapchain.format };
 			FR_ConfigurePipelineAttachment( &rsh.frame.pipeline, attachments, Q_ARRAY_COUNT( attachments ), RI_FORMAT_D32_SFLOAT );
 
 			struct RIViewport_s viewport = { 0 };
 			viewport.x = 0;
 			viewport.y = 0;
-			viewport.width = rsh.swapchain.width;
-			viewport.height = rsh.swapchain.height;
+			viewport.width = rsh.renderWidth;
+			viewport.height = rsh.renderHeight;
 			viewport.depthMax = 1.0f;
 			viewport.originBottomLeft = true;
 			FR_CmdSetViewport( &rsh.frame, viewport );
@@ -606,9 +649,10 @@ static inline void __R_PolyBlendPostPass(struct FrameState_s* frame) {
 		return;
 
 	R_Set2DMode( frame, true );
-	R_DrawStretchPic(frame, 0, 0, 
-									rsh.swapchain.width, 
-									rsh.swapchain.height, 0, 0, 1, 1, rsc.refdef.blend, rsh.whiteShader );
+	// full-screen 2D blend: coordinates are in virtual (mode) space, not the swapchain size
+	R_DrawStretchPic(frame, 0, 0,
+									rsh.renderWidth,
+									rsh.renderHeight, 0, 0, 1, 1, rsc.refdef.blend, rsh.whiteShader );
 	RB_FlushDynamicMeshes( frame );
 }
 
@@ -626,7 +670,8 @@ static inline void __R_ApplyBrightnessBlend(struct FrameState_s* frame) {
 
 
 	R_Set2DMode( frame, true );
-	R_DrawStretchQuick(frame, 0, 0, rsh.swapchain.width, rsh.swapchain.height, 0, 0, 1, 1,
+	// full-screen 2D blend: coordinates are in virtual (mode) space, not the swapchain size
+	R_DrawStretchQuick(frame, 0, 0, rsh.renderWidth, rsh.renderHeight, 0, 0, 1, 1,
 		color, GLSL_PROGRAM_TYPE_NONE, rsh.whiteTexture, GLSTATE_SRCBLEND_ONE|GLSTATE_DSTBLEND_ONE );
 }
 
@@ -644,25 +689,102 @@ void RF_EndFrame( void )
 	{
 		vkCmdEndRendering( rsh.frame.handle.vk.cmd );
 
+		VkImage backImage = rsh.backBuffer[rsh.swapchainIndex].vk.image;
+		VkImage swapImage = rsh.swapchain.vk.images[rsh.swapchainIndex];
+		const VkImageSubresourceRange colorRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS };
+
+		// Letterbox-blit the mode-res back buffer into the screen-res swapchain, preserving
+		// aspect ratio. The image is centred and the surrounding bars are cleared to black.
 		{
-			VkImageMemoryBarrier2 imageBarriers[1] = { 0 };
-			imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-			imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-			imageBarriers[0].srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-			imageBarriers[0].dstStageMask = VK_PIPELINE_STAGE_2_NONE;
-			imageBarriers[0].dstAccessMask = VK_ACCESS_2_NONE;
-			imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-			imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			imageBarriers[0].image = rsh.swapchain.vk.images[rsh.swapchainIndex];//rsh.colorAttachment[rsh.vk.swapchainIndex].texture->vk.image;
-			imageBarriers[0].subresourceRange = (VkImageSubresourceRange){
-				VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
-			};
-			VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
-			dependencyInfo.imageMemoryBarrierCount = 1;
-			dependencyInfo.pImageMemoryBarriers = imageBarriers;
-			vkCmdPipelineBarrier2( rsh.primary.cmds[0].vk.cmd, &dependencyInfo );
+			VkImageMemoryBarrier2 toTransfer[2] = { 0 };
+			// back buffer: color attachment -> transfer source
+			toTransfer[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+			toTransfer[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+			toTransfer[0].srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+			toTransfer[0].dstStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
+			toTransfer[0].dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+			toTransfer[0].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			toTransfer[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			toTransfer[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			toTransfer[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			toTransfer[0].image = backImage;
+			toTransfer[0].subresourceRange = colorRange;
+			// swapchain: undefined -> transfer destination
+			toTransfer[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+			toTransfer[1].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+			toTransfer[1].srcAccessMask = VK_ACCESS_2_NONE;
+			toTransfer[1].dstStageMask = VK_PIPELINE_STAGE_2_CLEAR_BIT | VK_PIPELINE_STAGE_2_BLIT_BIT;
+			toTransfer[1].dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+			toTransfer[1].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			toTransfer[1].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			toTransfer[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			toTransfer[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			toTransfer[1].image = swapImage;
+			toTransfer[1].subresourceRange = colorRange;
+
+			VkDependencyInfo dep = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+			dep.imageMemoryBarrierCount = 2;
+			dep.pImageMemoryBarriers = toTransfer;
+			vkCmdPipelineBarrier2( rsh.frame.handle.vk.cmd, &dep );
+		}
+
+		// clear the whole swapchain to black so the letterbox/pillarbox bars are filled
+		{
+			VkClearColorValue black = { { 0.0f, 0.0f, 0.0f, 1.0f } };
+			vkCmdClearColorImage( rsh.frame.handle.vk.cmd, swapImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &black, 1, &colorRange );
+
+			// order the clear before the blit (both write the swapchain as transfer dst)
+			VkMemoryBarrier2 mem = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+			mem.srcStageMask = VK_PIPELINE_STAGE_2_CLEAR_BIT;
+			mem.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+			mem.dstStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
+			mem.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+			VkDependencyInfo dep = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+			dep.memoryBarrierCount = 1;
+			dep.pMemoryBarriers = &mem;
+			vkCmdPipelineBarrier2( rsh.frame.handle.vk.cmd, &dep );
+		}
+
+		// aspect-preserving fit of the mode-res image into the screen-res swapchain
+		{
+			const float sw = (float)rsh.swapchain.width, sh = (float)rsh.swapchain.height;
+			const float rw = (float)rsh.renderWidth, rh = (float)rsh.renderHeight;
+			float scale = sw / rw;
+			if( sh / rh < scale )
+				scale = sh / rh;
+			const int32_t dw = (int32_t)( rw * scale + 0.5f );
+			const int32_t dh = (int32_t)( rh * scale + 0.5f );
+			const int32_t ox = ( rsh.swapchain.width - dw ) / 2;
+			const int32_t oy = ( rsh.swapchain.height - dh ) / 2;
+
+			VkImageBlit region = { 0 };
+			region.srcSubresource = (VkImageSubresourceLayers){ VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+			region.srcOffsets[0] = (VkOffset3D){ 0, 0, 0 };
+			region.srcOffsets[1] = (VkOffset3D){ rsh.renderWidth, rsh.renderHeight, 1 };
+			region.dstSubresource = (VkImageSubresourceLayers){ VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+			region.dstOffsets[0] = (VkOffset3D){ ox, oy, 0 };
+			region.dstOffsets[1] = (VkOffset3D){ ox + dw, oy + dh, 1 };
+			vkCmdBlitImage( rsh.frame.handle.vk.cmd, backImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				swapImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, VK_FILTER_LINEAR );
+		}
+
+		// swapchain: transfer destination -> present
+		{
+			VkImageMemoryBarrier2 toPresent = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
+			toPresent.srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
+			toPresent.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+			toPresent.dstStageMask = VK_PIPELINE_STAGE_2_NONE;
+			toPresent.dstAccessMask = VK_ACCESS_2_NONE;
+			toPresent.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			toPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			toPresent.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			toPresent.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			toPresent.image = swapImage;
+			toPresent.subresourceRange = colorRange;
+			VkDependencyInfo dep = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+			dep.imageMemoryBarrierCount = 1;
+			dep.pImageMemoryBarriers = &toPresent;
+			vkCmdPipelineBarrier2( rsh.frame.handle.vk.cmd, &dep );
 		}
 		EndRICmd( &rsh.device, &rsh.primary.cmds[0]);
 		rsh.frameActive = false;
@@ -701,10 +823,11 @@ void RF_EndFrame( void )
 		{
 			struct RIResourceUploaderVKResult_s flush = RI_VKFlushResourceUpdate( &rsh.device, &rsh.uploader, 0, NULL );
 			wait_semaphore_info[num_wait_semaphores++] =
-				(VkSemaphoreSubmitInfo){ 
+				(VkSemaphoreSubmitInfo){
 					.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-					.semaphore = rsh.swapchain.vk.signaled[rsh.swapchain.vk.signal_idx], 
-					.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT 
+					.semaphore = rsh.swapchain.vk.signaled[rsh.swapchain.vk.signal_idx],
+					// the swapchain image is now first written by the letterbox blit (transfer), not a color pass
+					.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
 				};
 			if( flush.signaled ) {
 				wait_semaphore_info[num_wait_semaphores++] = (VkSemaphoreSubmitInfo){ 
@@ -932,10 +1055,10 @@ void RF_ResetScissor( void )
 	TracyCZoneN( ctx, "RF_ResetScissor", 1 );
 	rect.x = 0;
 	rect.y = 0;
-	rect.width = rsh.swapchain.width;
-	rect.height = rsh.swapchain.height;
+	rect.width = rsh.renderWidth;
+	rect.height = rsh.renderHeight;
 	FR_CmdSetScissor( &rsh.frame, rect );
-	Vector4Set( rrf.scissor, 0, 0, rsh.swapchain.width, rsh.swapchain.height );
+	Vector4Set( rrf.scissor, 0, 0, rsh.renderWidth, rsh.renderHeight );
 	TracyCZoneEnd( ctx );
 }
 
@@ -1114,14 +1237,14 @@ void RF_WriteAviFrame( int frame, bool scissor )
 	if( scissor ) {
 		x = rsc.refdef.x;
 
-		y = rsh.swapchain.height - rsc.refdef.height - rsc.refdef.y;
+		y = rsh.renderHeight - rsc.refdef.height - rsc.refdef.y;
 		w = rsc.refdef.width;
 		h = rsc.refdef.height;
 	} else {
 		x = 0;
 		y = 0;
-		w = rsh.swapchain.width;
-		h = rsh.swapchain.height;
+		w = rsh.renderWidth;
+		h = rsh.renderHeight;
 	}
 
 	writedir = FS_WriteDirectory();
@@ -1180,8 +1303,9 @@ void RF_TransformVectorToScreen( const refdef_t *rd, const vec3_t in, vec2_t out
 		return;
 	}
 
+	// output is in virtual (mode) 2D coords (viddef space), so flip Y about the mode height
 	out[0] = rd->x + ( temp[0] / temp[3] + 1.0f ) * rd->width * 0.5f;
-	out[1] = rsh.swapchain.height - ( rd->y + ( temp[1] / temp[3] + 1.0f ) * rd->height * 0.5f );
+	out[1] = rsh.renderHeight - ( rd->y + ( temp[1] / temp[3] + 1.0f ) * rd->height * 0.5f );
 	TracyCZoneEnd( ctx );
 }
 
