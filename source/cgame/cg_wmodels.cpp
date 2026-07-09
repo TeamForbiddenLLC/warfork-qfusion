@@ -39,7 +39,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 weaponinfo_t cg_pWeaponModelInfos[WEAP_TOTAL];
 
-static const char *wmPartSufix[] = { "", "_expansion", "_barrel", "_flash", "_hand", NULL };
+static const char *wmPartSufix[] = { "", "_expansion", "_barrel", "_barrel2", "_flash", "_hand", NULL };
 
 /*
 * CG_vWeap_ParseAnimationScript
@@ -67,7 +67,8 @@ static bool CG_vWeap_ParseAnimationScript( weaponinfo_t *weaponinfo, const char 
 	counter = 1; // reserve 0 for 'no animation'
 
 	// set some defaults
-	weaponinfo->barrelSpeed = 0;
+	weaponinfo->barrelInfo.speed = 0;
+	weaponinfo->barrel2Info.speed = 0;
 	weaponinfo->flashFade = true;
 
 	if( !cg_debugWeaponModels->integer )
@@ -113,15 +114,44 @@ static bool CG_vWeap_ParseAnimationScript( weaponinfo_t *weaponinfo, const char 
 				if( debug )
 					CG_Printf( "%sScript: barrel:%s", S_COLOR_BLUE, S_COLOR_WHITE );
 
-				// time
+				//time
 				i = atoi( COM_ParseExt( &ptr, false ) );
-				weaponinfo->barrelTime = (unsigned int)( i > 0 ? i : 0 );
-
+				weaponinfo->barrelInfo.time = (unsigned int)( i > 0 ? i : 0 );
 				// speed
-				weaponinfo->barrelSpeed = atof( COM_ParseExt( &ptr, false ) );
+				weaponinfo->barrelInfo.speed = atof( COM_ParseExt( &ptr, false ) );
+				
+				// initial delay	
+				i = atoi( COM_ParseExt( &ptr, false ) );
+				weaponinfo->barrelInfo.initialDelay = (unsigned int)( i > 0 ? i : 0 );
+
+				// recoil delay	
+				i = atoi( COM_ParseExt( &ptr, false ) );
+				weaponinfo->barrelInfo.recoilDelay = (unsigned int)( i > 0 ? i : 0 );
 
 				if( debug )
-					CG_Printf( "%s time:%i, speed:%.2f\n", S_COLOR_BLUE, (int)weaponinfo->barrelTime, weaponinfo->barrelSpeed, S_COLOR_WHITE );
+					CG_Printf( "%s time:%i, speed:%.2f\n", S_COLOR_BLUE, (int)weaponinfo->barrelInfo.time, weaponinfo->barrelInfo.speed, S_COLOR_WHITE );
+			}
+			else if( !Q_stricmp( token, "barrel2" ) ) {
+				if( debug )
+					CG_Printf( "%sScript: barrel2:%s", S_COLOR_BLUE, S_COLOR_WHITE );
+
+				// time
+				i = atoi( COM_ParseExt( &ptr, false ) );
+				weaponinfo->barrel2Info.time = (unsigned int)( i > 0 ? i : 0 );
+
+				// speed
+				weaponinfo->barrel2Info.speed = atof( COM_ParseExt( &ptr, false ) );
+
+				// initial delay
+				i = atoi( COM_ParseExt( &ptr, false ) );
+				weaponinfo->barrel2Info.initialDelay = (unsigned int)( i > 0 ? i : 0 );
+
+				// recoil delay
+				i = atoi( COM_ParseExt( &ptr, false ) );
+				weaponinfo->barrel2Info.recoilDelay = (unsigned int)( i > 0 ? i : 0 );
+
+				if( debug )
+					CG_Printf( "%s time:%i, speed:%.2f\n", S_COLOR_BLUE, (int)weaponinfo->barrel2Info.time, weaponinfo->barrel2Info.speed, S_COLOR_WHITE );
 			}
 			else if( !Q_stricmp( token, "flash" ) )
 			{
@@ -277,7 +307,8 @@ static void CG_CreateHandDefaultAnimations( weaponinfo_t *weaponinfo )
 {
 	float defaultfps = 15.0f;
 
-	weaponinfo->barrelSpeed = 0; // default
+	weaponinfo->barrelInfo.speed = 0; // default
+	weaponinfo->barrel2Info.speed = 0;
 
 	// default wsw hand
 	weaponinfo->firstframe[WEAPMODEL_STANDBY] = 0;
@@ -318,7 +349,7 @@ static void CG_CreateHandDefaultAnimations( weaponinfo_t *weaponinfo )
 */
 static void CG_BuildProjectionOrigin( weaponinfo_t *weaponinfo )
 {
-	orientation_t tag, tag_barrel;
+	orientation_t tag, tag_barrel, tag_barrel2;
 	static entity_t	ent;
 
 	if( !weaponinfo )
@@ -357,8 +388,16 @@ static void CG_BuildProjectionOrigin( weaponinfo_t *weaponinfo )
 					tag_barrel.axis,
 					tag.origin,
 					tag.axis );
-				return; // succesfully
+				return; // successfully
 			}
+		}
+		if( CG_GrabTag( &tag_barrel2, &ent, "tag_barrel2" ) && weaponinfo->model[BARREL2] ) {
+			// assign the model to an entity_t, so we can build boneposes
+			memset( &ent, 0, sizeof( ent ) );
+			ent.rtype = RT_MODEL;
+			ent.scale = 1.0f;
+			ent.model = weaponinfo->model[BARREL2];
+			CG_SetBoneposesForTemporaryEntity( &ent );
 		}
 	}
 
@@ -554,7 +593,7 @@ struct weaponinfo_s *CG_GetWeaponInfo( int weapon )
 *
 * Add weapon model(s) positioned at the tag
 */
-void CG_AddWeaponOnTag( entity_t *ent, orientation_t *tag, int weaponid, int effects, orientation_t *projectionSource, unsigned int flash_time, unsigned int barrel_time )
+void CG_AddWeaponOnTag( entity_t *ent, orientation_t *tag, int weaponid, int effects, orientation_t *projectionSource, unsigned int flash_time, cg_barrelstate_t barrel, cg_barrelstate_t barrel2 )
 {
 	entity_t weapon;
 	weaponinfo_t *weaponInfo;
@@ -632,45 +671,116 @@ void CG_AddWeaponOnTag( entity_t *ent, orientation_t *tag, int weaponid, int eff
 		}
 	}
 
-	// barrel
-	if( weaponInfo->model[BARREL] )
-	{
-		if( CG_GrabTag( tag, &weapon, "tag_barrel" ) )
-		{
+// barrel
+	if( weaponInfo->model[BARREL] ) {
+		if( CG_GrabTag( tag, &weapon, "tag_barrel" ) ) {
 			orientation_t barrel_recoiled;
 			vec3_t rotangles = { 0, 0, 0 };
+			vec3_t placementOrigin;
+			entity_t barrelEnt;
+			memset( &barrelEnt, 0, sizeof( barrelEnt ) );
+			Vector4Set( barrelEnt.shaderRGBA, 255, 255, 255, ent->shaderRGBA[3] );
+			barrelEnt.model = weaponInfo->model[BARREL];
+			barrelEnt.scale = ent->scale;
+			barrelEnt.renderfx = ent->renderfx;
+			barrelEnt.frame = 0;
+			barrelEnt.oldframe = 0;
 
-			entity_t barrel;
-			memset( &barrel, 0, sizeof( barrel ) );
-			Vector4Set( barrel.shaderRGBA, 255, 255, 255, ent->shaderRGBA[3] );
-			barrel.model = weaponInfo->model[BARREL];
-			barrel.scale = ent->scale;
-			barrel.renderfx = ent->renderfx;
-			barrel.frame = 0;
-			barrel.oldframe = 0;
+			VectorCopy( tag->origin, placementOrigin );
 
-			// rotation
-			if( barrel_time > cg.time )
-			{
-				intensity =  (float)( barrel_time - cg.time ) / (float)weaponInfo->barrelTime;
-				rotangles[2] = anglemod( 360.0f * weaponInfo->barrelSpeed * intensity * intensity );
+			if( barrel.time > cg.time ) {
+				unsigned int elapsed = cg.time - barrel.startTime;
+				unsigned int timeRemaining = barrel.time - cg.time;
 
-				// Check for tag_recoil
-				if( CG_GrabTag( &barrel_recoiled, &weapon, "tag_recoil" ) )
-					VectorLerp( tag->origin, intensity, barrel_recoiled.origin, tag->origin );
+				if( elapsed < weaponInfo->barrelInfo.initialDelay ) {
+					intensity = 0.0f;
+				} else {
+					unsigned int activeElapsed = elapsed - weaponInfo->barrelInfo.initialDelay;
+					unsigned int activeDuration = weaponInfo->barrelInfo.time - weaponInfo->barrelInfo.initialDelay;
+
+					intensity = (float)timeRemaining / (float)weaponInfo->barrelInfo.time;
+					rotangles[2] = anglemod( 360.0f * weaponInfo->barrelInfo.speed * intensity * intensity );
+
+					if( CG_GrabTag( &barrel_recoiled, &weapon, "tag_recoil" ) ) {
+						float recoilIntensity;
+
+						if( activeElapsed < weaponInfo->barrelInfo.recoilDelay ) {
+							recoilIntensity = 1.0f;
+						} else {
+							unsigned int recoilElapsed = activeElapsed - weaponInfo->barrelInfo.recoilDelay;
+							unsigned int recoilDuration = activeDuration - weaponInfo->barrelInfo.recoilDelay;
+							recoilIntensity = recoilDuration > 0 ? 1.0f - (float)recoilElapsed / (float)recoilDuration : 0.0f;
+						}
+
+						clamp( recoilIntensity, 0.0f, 1.0f );
+						VectorLerp( tag->origin, recoilIntensity, barrel_recoiled.origin, placementOrigin );
+					}
+				}
 			}
 
-			AnglesToAxis( rotangles, barrel.axis );
-
-			// barrel requires special tagging
-			CG_PlaceRotatedModelOnTag( &barrel, &weapon, tag );
-
-			CG_AddColoredOutLineEffect( &barrel, effects, 0, 0, 0, ent->shaderRGBA[3] );
-
+			VectorCopy( placementOrigin, tag->origin );
+			AnglesToAxis( rotangles, barrelEnt.axis );
+			CG_PlaceRotatedModelOnTag( &barrelEnt, &weapon, tag );
+			CG_AddColoredOutLineEffect( &barrelEnt, effects, 0, 0, 0, ent->shaderRGBA[3] );
 			if( !( effects & EF_RACEGHOST ) )
-				CG_AddEntityToScene( &barrel ); // skelmod
+				CG_AddEntityToScene( &barrelEnt );
+			CG_AddShellEffects( &barrelEnt, effects );
+		}
+	}
 
-			CG_AddShellEffects( &barrel, effects );
+	// barrel 2 Added for additional rotating detail (eg: double chaingun)
+	if( weaponInfo->model[BARREL2] ) {
+		if( CG_GrabTag( tag, &weapon, "tag_barrel2" ) ) {
+			orientation_t barrel_recoiled;
+			vec3_t rotangles = { 0, 0, 0 };
+			vec3_t placementOrigin;
+			entity_t barrel2Ent;
+			memset( &barrel2Ent, 0, sizeof( barrel2Ent ) );
+			Vector4Set( barrel2Ent.shaderRGBA, 255, 255, 255, ent->shaderRGBA[3] );
+			barrel2Ent.model = weaponInfo->model[BARREL2];
+			barrel2Ent.scale = ent->scale;
+			barrel2Ent.renderfx = ent->renderfx;
+			barrel2Ent.frame = 0;
+			barrel2Ent.oldframe = 0;
+
+			VectorCopy( tag->origin, placementOrigin );
+
+			if( barrel2.time > cg.time ) {
+				unsigned int elapsed = cg.time - barrel2.startTime;
+				unsigned int timeRemaining = barrel2.time - cg.time;
+
+				if( elapsed < weaponInfo->barrel2Info.initialDelay ) {
+					intensity = 0.0f;
+				} else {
+					unsigned int activeElapsed = elapsed - weaponInfo->barrel2Info.initialDelay;
+					unsigned int activeDuration = weaponInfo->barrel2Info.time - weaponInfo->barrel2Info.initialDelay;
+					intensity = (float)timeRemaining / (float)weaponInfo->barrel2Info.time;
+					rotangles[2] = anglemod( 360.0f * weaponInfo->barrel2Info.speed * intensity * intensity );
+
+					if( CG_GrabTag( &barrel_recoiled, &weapon, "tag_recoil2" ) ) {
+						float recoilIntensity;
+
+						if( activeElapsed < weaponInfo->barrel2Info.recoilDelay ) {
+							recoilIntensity = 1.0f;
+						} else {
+							unsigned int recoilElapsed = activeElapsed - weaponInfo->barrel2Info.recoilDelay;
+							unsigned int recoilDuration = activeDuration - weaponInfo->barrel2Info.recoilDelay;
+							recoilIntensity = recoilDuration > 0 ? 1.0f - (float)recoilElapsed / (float)recoilDuration : 0.0f;
+						}
+
+						clamp( recoilIntensity, 0.0f, 1.0f );
+						VectorLerp( tag->origin, recoilIntensity, barrel_recoiled.origin, placementOrigin );
+					}
+				}
+			}
+
+			VectorCopy( placementOrigin, tag->origin );
+			AnglesToAxis( rotangles, barrel2Ent.axis );
+			CG_PlaceRotatedModelOnTag( &barrel2Ent, &weapon, tag );
+			CG_AddColoredOutLineEffect( &barrel2Ent, effects, 0, 0, 0, ent->shaderRGBA[3] );
+			if( !( effects & EF_RACEGHOST ) )
+				CG_AddEntityToScene( &barrel2Ent );
+			CG_AddShellEffects( &barrel2Ent, effects );
 		}
 	}
 
