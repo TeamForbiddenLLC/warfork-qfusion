@@ -171,5 +171,20 @@ static inline hash_t hash_data_hsieh( hash_t hash, const void *buf, size_t len )
 	return hash;
 }
 
+// Unique-per-run 64-bit identity, decoupled from any backend handle. Used to stamp resource
+// cookies (RIBuffer/RITexture/RITextureView/RISampler) so a destroyed+recreated Vulkan handle
+// never aliases in the descriptor-set cache. Never returns 0 (0 marks an empty descriptor).
+// splitmix64 over a monotonic seed; the seed's address mixes in per-translation-unit entropy so
+// the header-local counter cannot collide across TUs.
+static inline hash_t hash_random( void )
+{
+	static uint64_t state = 0;
+	uint64_t z = ( state += 0x9E3779B97F4A7C15ull ) ^ (uint64_t)(size_t)&state;
+	z = ( z ^ ( z >> 30 ) ) * 0xBF58476D1CE4E5B9ull;
+	z = ( z ^ ( z >> 27 ) ) * 0x94D049BB133111EBull;
+	z = z ^ ( z >> 31 );
+	return z ? z : 1;
+}
+
 #endif
 

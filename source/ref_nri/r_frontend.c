@@ -65,14 +65,67 @@ static void __R_InitVolatileAssets( void )
 	}
 }
 
+// Destroy the per-swapchain-image attachments (pogo buffers + depth image/view). Kept separate from
+// the swapchain teardown so the resize path can rebuild attachments without recreating the surface.
+static void __R_ShutdownSwapchainAttachments()
+{
+	for( uint32_t i = 0; i < RISwapchainGetImageCount( &rsh.swapchain ); i++ ) {
+		RI_PogoBufferDestroy( &rsh.device, &rsh.pogoBuffer[i] );
+		FreeRITextureView( &rsh.device, &rsh.depthView[i] );
+		FreeRITexture( &rsh.device, &rsh.depthTextures[i] );
+	}
+}
+
+// Create the per-swapchain-image attachments (pogo buffers + depth image/view), sized to the current
+// swapchain dimensions and count.
+static void __R_CreateSwapchainAttachments()
+{
+#if ( DEVICE_IMPL_VULKAN )
+	uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+
+	assert( RISwapchainGetImageCount( &rsh.swapchain ) > 0 );
+	for( uint32_t i = 0; i < RISwapchainGetImageCount( &rsh.swapchain ); i++ ) {
+		RI_PogoBufferInit( &rsh.device, &rsh.pogoBuffer[i], rsh.swapchain.width, rsh.swapchain.height, POGO_BUFFER_TEXTURE_FORMAT );
+
+		{
+			VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+			info.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+			info.imageType = VK_IMAGE_TYPE_2D;
+			info.extent.width = rsh.swapchain.width;
+			info.extent.height = rsh.swapchain.height;
+			info.extent.depth = 1;
+			info.mipLevels = 1;
+			info.arrayLayers = 1;
+			info.samples = 1;
+			info.tiling = VK_IMAGE_TILING_OPTIMAL;
+			info.pQueueFamilyIndices = queueFamilies;
+			VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+			info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			info.format = RIFormatToVK( RI_FORMAT_D32_SFLOAT );
+			info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+			VmaAllocationCreateInfo mem_reqs = { 0 };
+			mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+			VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &rsh.depthTextures[i].vk.image, &rsh.depthTextures[i].vk.allocation, NULL ) );
+		}
+		{
+			VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+			createInfo.format = RIFormatToVK( RI_FORMAT_D32_SFLOAT );
+			createInfo.subresourceRange = (VkImageSubresourceRange){
+				VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1,
+			};
+			createInfo.image = rsh.depthTextures[i].vk.image;
+			createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+
+			VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &rsh.depthView[i].vk.image ) );
+		}
+	}
+#endif
+}
+
 static void __ShutdownSwapchainTexture()
 {
 	if( IsRISwapchainValid( &rsh.swapchain ) ) {
-		for( uint32_t i = 0; i < RISwapchainGetImageCount( &rsh.swapchain ); i++ ) {
-			RI_PogoBufferDestroy( &rsh.device, &rsh.pogoBuffer[i] );
-			FreeRITextureView(&rsh.device, &rsh.depthView[i]);
-			FreeRITexture( &rsh.device, &rsh.depthTextures[i] );
-		}
+		__R_ShutdownSwapchainAttachments();
 		FreeRISwapchain( &rsh.device, &rsh.swapchain );
 	}
 }
@@ -181,7 +234,7 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 		return rserr_unknown;
 	}
 
-	rsh.shadowSamplerDescriptor = R_ResolveSamplerDescriptor( IT_DEPTHCOMPARE | IT_SPECIAL | IT_DEPTH );
+	rsh.shadowSamplerDescriptor = RIDescriptorSampler( &rsh.device, R_ResolveSamplerDescriptor( IT_DEPTHCOMPARE | IT_SPECIAL | IT_DEPTH ) );
 
 	struct RIScratchAllocDesc_s scratchDesc = { .blockSize = UBOBlockerBufferSize, .alignmentReq = UBOBlockerBufferAlignmentReq, .alloc = RIUniformScratchAllocHandler };
 	for( size_t i = 0; i < NUMBER_FRAMES_FLIGHT; i++ ) {
@@ -195,7 +248,8 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	RI_InitResourceUploader( &rsh.device, &rsh.uploader );
 
 	InitRICommandRingBuffer( &rsh.device, &rsh.device.queues[RI_QUEUE_GRAPHICS], &rsh.graphicsCmdRing, NUMBER_FRAMES_FLIGHT, NUMBER_SUBFRAMES_FLIGHT, true );
-
+	InitRITimeline( &rsh.device, &rsh.frameTimeline );
+	
 	RP_Init();
 
 	R_InitVBO();
@@ -265,56 +319,15 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 		__ShutdownSwapchainTexture();
 		struct RISwapchainDesc_s swapchainInit = { 0 };
 		swapchainInit.windowHandle = &windowHandle;
-		swapchainInit.requestImageCount = 3; 
+		swapchainInit.requestImageCount = 3;
 		swapchainInit.queue = &rsh.device.queues[RI_QUEUE_GRAPHICS];
 		swapchainInit.width = width;
 		swapchainInit.height = height;
 		swapchainInit.format = RI_SWAPCHAIN_BT709_G22_8BIT;
 		InitRISwapchain( &rsh.device, &swapchainInit, &rsh.swapchain );
-		rsh.postProcessingSampler = R_ResolveSamplerDescriptor( IT_NOFILTERING );
+		rsh.postProcessingSampler = RIDescriptorSampler( &rsh.device, R_ResolveSamplerDescriptor( IT_NOFILTERING ) );
 
-#if ( DEVICE_IMPL_VULKAN )
-		{
-			uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
-
-			assert( RISwapchainGetImageCount( &rsh.swapchain ) > 0 );
-			for( uint32_t i = 0; i < RISwapchainGetImageCount( &rsh.swapchain ); i++ ) {
-				RI_PogoBufferInit( &rsh.device, &rsh.pogoBuffer[i], rsh.swapchain.width, rsh.swapchain.height, POGO_BUFFER_TEXTURE_FORMAT );
-
-				{
-					VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-					info.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
-					info.imageType = VK_IMAGE_TYPE_2D;
-					info.extent.width = rsh.swapchain.width;
-					info.extent.height = rsh.swapchain.height;
-					info.extent.depth = 1;
-					info.mipLevels = 1;
-					info.arrayLayers = 1;
-					info.samples = 1;
-					info.tiling = VK_IMAGE_TILING_OPTIMAL;
-					info.pQueueFamilyIndices = queueFamilies;
-					VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
-					info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-					info.format = RIFormatToVK( RI_FORMAT_D32_SFLOAT );
-					info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-					VmaAllocationCreateInfo mem_reqs = { 0 };
-					mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-					VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &rsh.depthTextures[i].vk.image, &rsh.depthTextures[i].vk.allocation, NULL ) );
-				}
-				{
-					VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-					createInfo.format = RIFormatToVK( RI_FORMAT_D32_SFLOAT );
-					createInfo.subresourceRange = (VkImageSubresourceRange){
-						VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1,
-					};
-					createInfo.image = rsh.depthTextures[i].vk.image;
-					createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; //| VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-
-					VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &rsh.depthView[i].vk.image) );
-				}
-			}
-		}
-#endif
+		__R_CreateSwapchainAttachments();
 	}
 
 	memset( rrf.customColors, 0, sizeof( rrf.customColors ) );
@@ -354,6 +367,9 @@ void RF_Shutdown( bool verbose )
 	// kill volatile data
 	RI_FreeResourceUploader( &rsh.device, &rsh.uploader );
 
+	// drain any in-flight frame work before tearing the timeline down
+	RITimelineWait( &rsh.device, &rsh.frameTimeline, RITimelinePending( &rsh.frameTimeline ) );
+	FreeRITimeline( &rsh.device, &rsh.frameTimeline );
 	FreeRICommandRingBuffer( &rsh.device, &rsh.graphicsCmdRing );
 
 	R_DestroyVolatileAssets();
@@ -462,6 +478,26 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 {
 	TracyCZoneN( ctx, "RF_BeginFrame", 1 );
 	RF_CheckCvars();
+
+	// A screenshot recorded in an earlier frame is saved once the GPU has actually run the copy. Polling
+	// here keeps the capture off the frame's critical path.
+	if( rsh.screenshot.state == CAPTURE_STATE_FINISH_SCREENSHOT &&
+		RITimelineCompleted( &rsh.device, &rsh.frameTimeline ) >= rsh.screenshot.single.frameCnt ) {
+		R_CaptureFinishScreenshot();
+	}
+
+#if ( DEVICE_IMPL_VULKAN )
+	// A prior acquire/present reported the swapchain out of date (e.g. a compositor/DPI change that
+	// bypassed RF_SetMode). Rebuild it in place before starting the frame. WaitRIQueueIdle guarantees
+	// the GPU is done with the retiring images/views; attachments are rebuilt to match the new count.
+	if( rsh.swapchain.vk.outOfDate && IsRISwapchainValid( &rsh.swapchain ) ) {
+		WaitRIQueueIdle( &rsh.device, &rsh.device.queues[RI_QUEUE_GRAPHICS] );
+		__R_ShutdownSwapchainAttachments();
+		RISwapchainResize( &rsh.device, &rsh.swapchain, rsh.swapchain.width, rsh.swapchain.height );
+		__R_CreateSwapchainAttachments();
+	}
+#endif
+
 	AdvanceRICommandRingBuffer(&rsh.graphicsCmdRing);
 
 	// run cinematic passes on shaders
@@ -639,12 +675,15 @@ void RF_EndFrame( void )
 	__R_PolyBlendPostPass( &rsh.frame );
 
 	__R_ApplyBrightnessBlend( &rsh.frame );
-	
+
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		vkCmdEndRendering( rsh.frame.handle.vk.cmd );
 
-		{
+		// A pending screenshot copies the backbuffer out on its way to present and transitions the image
+		// to PRESENT_SRC itself; the plain transition below is for ordinary frames.
+		const bool captured = R_CaptureRecordScreenshot( &rsh.frame.handle );
+		if( !captured ) {
 			VkImageMemoryBarrier2 imageBarriers[1] = { 0 };
 			imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 			imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -692,66 +731,43 @@ void RF_EndFrame( void )
 			VK_WrapResult(vkQueueSubmit2(graphicsQueue->vk.queue, 1, &submitInfo, rsh.secondary[i].vk.fence));
 		}
 
-		VkCommandBufferSubmitInfo cmdSubmitInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO };
-		cmdSubmitInfo.commandBuffer = rsh.primary.cmds[0].vk.cmd;
+		// Assemble the extra submit waits (resource-upload flush + secondary cmd semaphores). The
+		// swapchain acquire semaphore is prepended, and the present semaphore signalled, inside
+		// RISwapchainFrameSubmit.
+		VkSemaphoreSubmitInfo *extraWaits = alloca( sizeof( VkSemaphoreSubmitInfo ) * ( 1 + arrlen( rsh.secondary ) ) );
+		size_t numExtraWaits = 0;
 
-		VkSemaphoreSubmitInfo *wait_semaphore_info = malloc(sizeof(VkSemaphoreSubmitInfo) * (2 + arrlen(rsh.secondary)));
-		size_t num_wait_semaphores = 0;
-
-		{
-			struct RIResourceUploaderVKResult_s flush = RI_VKFlushResourceUpdate( &rsh.device, &rsh.uploader, 0, NULL );
-			wait_semaphore_info[num_wait_semaphores++] =
-				(VkSemaphoreSubmitInfo){ 
-					.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-					.semaphore = rsh.swapchain.vk.signaled[rsh.swapchain.vk.signal_idx], 
-					.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT 
-				};
-			if( flush.signaled ) {
-				wait_semaphore_info[num_wait_semaphores++] = (VkSemaphoreSubmitInfo){ 
-					.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-					.semaphore = flush.vk.semaphore, 
-					.stageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT 
-				};
-			}
-
-			for (size_t i = 0; i < arrlen(rsh.secondary); i++) {
-				wait_semaphore_info[num_wait_semaphores++] = (VkSemaphoreSubmitInfo){
-					.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-					.semaphore = rsh.secondary[i].vk.semaphore,
-					.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
-				};
-			}
+		struct RIResourceUploaderVKResult_s flush = RI_VKFlushResourceUpdate( &rsh.device, &rsh.uploader, 0, NULL );
+		if( flush.signaled ) {
+			extraWaits[numExtraWaits++] = (VkSemaphoreSubmitInfo){
+				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+				.semaphore = flush.vk.semaphore,
+				.stageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT
+			};
+		}
+		for( size_t i = 0; i < arrlen( rsh.secondary ); i++ ) {
+			extraWaits[numExtraWaits++] = (VkSemaphoreSubmitInfo){
+				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+				.semaphore = rsh.secondary[i].vk.semaphore,
+				.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
+			};
 		}
 
-		VkSemaphoreSubmitInfo signal_semaphore[1] = {
-			{
-				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-				.semaphore = rsh.primary.vk.semaphore,
-				.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
-			}
+		struct RISwapchainFrameSubmitDesc_s submitDesc = {
+			.imageIndex = rsh.swapchainIndex,
+			.cmd = &rsh.primary.cmds[0],
+			.ringElement = &rsh.primary,
+			.timeline = &rsh.frameTimeline,
+			.vk = { .numWaitSemaphores = numExtraWaits, .waitSemaphores = extraWaits },
 		};
+		RISwapchainFrameSubmit( &rsh.device, &rsh.swapchain, graphicsQueue, &submitDesc );
 
-		VkSubmitInfo2 submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO_2 };
-		submitInfo.pCommandBufferInfos = &cmdSubmitInfo;
-		submitInfo.commandBufferInfoCount = 1;
-
-		submitInfo.pWaitSemaphoreInfos = wait_semaphore_info;
-		submitInfo.waitSemaphoreInfoCount = num_wait_semaphores;
-		submitInfo.pSignalSemaphoreInfos = signal_semaphore;
-		submitInfo.signalSemaphoreInfoCount = 1;
-
-		assert(vkGetFenceStatus(rsh.device.vk.device, rsh.primary.vk.fence) == VK_SUCCESS);
-		VkFence reset_fence[] = {
-			rsh.primary.vk.fence
-		};
-		VK_WrapResult(vkResetFences( rsh.device.vk.device, 1, reset_fence ));
-		VK_WrapResult(vkQueueSubmit2( graphicsQueue->vk.queue, 1, &submitInfo, rsh.primary.vk.fence ) );
-		free(wait_semaphore_info);
-
-		VkSemaphore wait_semaphores[] = {
-			rsh.primary.vk.semaphore
-		};
-		RISwapchainPresent_vk(&rsh.device, &rsh.swapchain, rsh.swapchainIndex, 1, wait_semaphores);
+		// RISwapchainFrameSubmit reserves the timeline value it signals, so this has to be read after it.
+		// The save is picked up by RF_BeginFrame once the GPU reaches that value.
+		if( captured ) {
+			rsh.screenshot.single.frameCnt = RITimelinePending( &rsh.frameTimeline );
+			rsh.screenshot.state = CAPTURE_STATE_FINISH_SCREENSHOT;
+		}
 	}
 #endif
 	rsh.frameSetCount++;
@@ -971,6 +987,11 @@ static struct tm *__Localtime( const time_t time, struct tm* _tm )
 
 void RF_ScreenShot( const char *path, const char *name, const char *fmtstring, bool silent )
 {
+	if( !R_IsRenderingToScreen() ) {
+		return;
+	}
+
+	// a capture is already in flight; the readback buffer and path are single-slot
 	if(rsh.screenshot.state != CAPTURE_STATE_NONE) {
 		return;
 	}
@@ -1059,6 +1080,7 @@ void RF_ScreenShot( const char *path, const char *name, const char *fmtstring, b
 	}
 
 	qStrAssign( &rsh.screenshot.single.path, qCToStrRef( checkname ) );
+	rsh.screenshot.single.silent = silent;
 	rsh.screenshot.state = CAPTURE_STATE_RECORD_SCREENSHOT;
 }
 

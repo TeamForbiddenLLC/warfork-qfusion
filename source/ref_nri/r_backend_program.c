@@ -906,10 +906,10 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 						(struct glsl_descriptor_binding_s){ .descriptor = rb.currentPortalSurface->portalfbs[0]->colorDescriptor, .handle = Create_DescriptorHandle( "u_BaseTexture" ) };
 
 					descriptors[descriptorCount++] =
-						(struct glsl_descriptor_binding_s){ .descriptor = *rb.currentPortalSurface->portalfbs[0]->samplerDescriptor, .handle = Create_DescriptorHandle( "u_BaseSampler" ) };
+						(struct glsl_descriptor_binding_s){ .descriptor = rb.currentPortalSurface->portalfbs[0]->samplerDescriptor, .handle = Create_DescriptorHandle( "u_BaseSampler" ) };
 				} else {
 					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = base->binding, .handle = Create_DescriptorHandle( "u_BaseTexture" ) };
-					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *base->samplerBinding, .handle = Create_DescriptorHandle( "u_BaseSampler" ) };
+					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = base->samplerBinding, .handle = Create_DescriptorHandle( "u_BaseSampler" ) };
 				}
 
 				// convert rgbgen and alphagen to GLSL feature defines
@@ -918,12 +918,12 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 
 				// we only send S-vectors to GPU and recalc T-vectors as cross product
 				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = normalmap->binding, .handle = Create_DescriptorHandle( "u_NormalTexture" ) };
-				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *normalmap->samplerBinding, .handle = Create_DescriptorHandle( "u_NormalSampler" ) };
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = normalmap->samplerBinding, .handle = Create_DescriptorHandle( "u_NormalSampler" ) };
 
 				if( glossmap && glossIntensity ) {
 					programFeatures |= GLSL_SHADER_MATERIAL_SPECULAR;
 					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = glossmap->binding, .handle = Create_DescriptorHandle( "u_GlossTexture" ) };
-					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *glossmap->samplerBinding, .handle = Create_DescriptorHandle( "u_GlossSampler" ) };
+					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = glossmap->samplerBinding, .handle = Create_DescriptorHandle( "u_GlossSampler" ) };
 				}
 
 				if( applyDecal ) {
@@ -939,7 +939,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 					}
 
 					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = decalmap->binding, .handle = Create_DescriptorHandle( "u_DecalTexture" ) };
-					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *decalmap->samplerBinding, .handle = Create_DescriptorHandle( "u_DecalSampler" ) };
+					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = decalmap->samplerBinding, .handle = Create_DescriptorHandle( "u_DecalSampler" ) };
 				}
 
 				if( entdecalmap ) {
@@ -952,7 +952,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 					// RB_BindImage( 4, entdecalmap ); // decal
 					// DescSimple_WriteImage( &materialDesc, 4, entdecalmap );
 					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = entdecalmap->binding, .handle = Create_DescriptorHandle( "u_EntityDecalTexture" ) };
-					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *entdecalmap->samplerBinding, .handle = Create_DescriptorHandle( "u_EntityDecalSampler" ) };
+					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = entdecalmap->samplerBinding, .handle = Create_DescriptorHandle( "u_EntityDecalSampler" ) };
 				}
 
 				if( offsetmappingScale > 0 )
@@ -967,7 +967,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 
 						for( size_t i = 0; i < rsh.worldBrushModel->numLightmapImages; i++ ) {
 							if( i == 0 ) {
-								descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *rsh.worldBrushModel->lightmapImages[i]->samplerBinding,
+								descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = rsh.worldBrushModel->lightmapImages[i]->samplerBinding,
 																									 .handle = Create_DescriptorHandle( "lightmapTextureSample" ) };
 							}
 							descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){
@@ -1232,12 +1232,12 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 					(struct glsl_descriptor_binding_s){ .descriptor = rb.currentPortalSurface->portalfbs[0]->colorDescriptor, .handle = Create_DescriptorHandle( "u_BaseTexture" ) };
 
 				descriptors[descriptorCount++] =
-					(struct glsl_descriptor_binding_s){ .descriptor = *rb.currentPortalSurface->portalfbs[0]->samplerDescriptor, .handle = Create_DescriptorHandle( "u_BaseSampler" ) };
+					(struct glsl_descriptor_binding_s){ .descriptor = rb.currentPortalSurface->portalfbs[0]->samplerDescriptor, .handle = Create_DescriptorHandle( "u_BaseSampler" ) };
 
 			} else if( shaderPassImage ) {
 				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = shaderPassImage->binding, .handle = Create_DescriptorHandle( "u_BaseTexture" ) };
 
-				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *shaderPassImage->samplerBinding, .handle = Create_DescriptorHandle( "u_BaseSampler" ) };
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = shaderPassImage->samplerBinding, .handle = Create_DescriptorHandle( "u_BaseSampler" ) };
 			}
 
 			if( isLightmapped ) {
@@ -1247,7 +1247,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 				for( size_t i = 0; i < rsh.worldBrushModel->numLightmapImages; i++ ) {
 					if( i == 0 ) {
 						descriptors[descriptorCount++] =
-							(struct glsl_descriptor_binding_s){ .descriptor = *rsh.worldBrushModel->lightmapImages[i]->samplerBinding, .handle = Create_DescriptorHandle( "lightmapTextureSample" ) };
+							(struct glsl_descriptor_binding_s){ .descriptor = rsh.worldBrushModel->lightmapImages[i]->samplerBinding, .handle = Create_DescriptorHandle( "lightmapTextureSample" ) };
 					}
 					descriptors[descriptorCount++] =
 						(struct glsl_descriptor_binding_s){ .descriptor = rsh.worldBrushModel->lightmapImages[i]->binding, .registerOffset = i, .handle = Create_DescriptorHandle( "lightmapTexture" ) };
@@ -1306,21 +1306,21 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 				push.width = reflectionFB->width;
 				push.height = reflectionFB->height;
 				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = reflectionFB->colorDescriptor, .handle = Create_DescriptorHandle( "u_ReflectionTexture" ) };
-				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *reflectionFB->samplerDescriptor, .handle = Create_DescriptorHandle( "u_ReflectionSampler" ) };
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = reflectionFB->samplerDescriptor, .handle = Create_DescriptorHandle( "u_ReflectionSampler" ) };
 				programFeatures |= GLSL_SHADER_DISTORTION_REFLECTION;
 			} else {
 				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = rsh.blackTexture->binding, .handle = Create_DescriptorHandle( "u_ReflectionTexture" ) };
-				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *rsh.blackTexture->samplerBinding, .handle = Create_DescriptorHandle( "u_ReflectionSampler" ) };
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = rsh.blackTexture->samplerBinding, .handle = Create_DescriptorHandle( "u_ReflectionSampler" ) };
 			}
 			if( refractionFB ) {
 				push.width = refractionFB->width;
 				push.height = refractionFB->height;
 				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = refractionFB->colorDescriptor, .handle = Create_DescriptorHandle( "u_RefractionTexture" ) };
-				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *refractionFB->samplerDescriptor, .handle = Create_DescriptorHandle( "u_RefractionSampler" ) };
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = refractionFB->samplerDescriptor, .handle = Create_DescriptorHandle( "u_RefractionSampler" ) };
 				programFeatures |= GLSL_SHADER_DISTORTION_REFRACTION;
 			} else {
 				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = rsh.blackTexture->binding, .handle = Create_DescriptorHandle( "u_RefractionTexture" ) };
-				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *rsh.blackTexture->samplerBinding, .handle = Create_DescriptorHandle( "u_RefractionSampler" ) };
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = rsh.blackTexture->samplerBinding, .handle = Create_DescriptorHandle( "u_RefractionSampler" ) };
 			}
 
 			const image_t *dudvmap = pass->images[0] && !pass->images[0]->missing ? pass->images[0] : rsh.blankBumpTexture;
@@ -1338,7 +1338,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			push.frontPlane = frontPlane ? 1.0f : -1.0f;
 
 			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = dudvmap->binding, .handle = Create_DescriptorHandle( "u_DuDvMapTexture" ) };
-			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *dudvmap->samplerBinding, .handle = Create_DescriptorHandle( "u_DuDvMapSampler" ) };
+			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = dudvmap->samplerBinding, .handle = Create_DescriptorHandle( "u_DuDvMapSampler" ) };
 
 			// convert rgbgen and alphagen to GLSL feature defines
 			programFeatures |= RB_RGBAlphaGenToProgramFeatures( &pass->rgbgen, &pass->alphagen );
@@ -1351,7 +1351,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 				// eyeDot
 				programFeatures |= GLSL_SHADER_DISTORTION_EYEDOT;
 				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = normalmap->binding, .handle = Create_DescriptorHandle( "u_NormalmapTexture" ) };
-				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *normalmap->samplerBinding, .handle = Create_DescriptorHandle( "u_NormalmapSampler" ) };
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = normalmap->samplerBinding, .handle = Create_DescriptorHandle( "u_NormalmapSampler" ) };
 
 				// RB_BindImage( 1, normalmap );
 			}
@@ -1468,7 +1468,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 					}
 					programFeatures |= GLSL_SHADER_SHADOWMAP_SAMPLERS;
 
-					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *rsh.shadowSamplerDescriptor, .handle = Create_DescriptorHandle( "shadowmapSampler" ) };
+					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = rsh.shadowSamplerDescriptor, .handle = Create_DescriptorHandle( "shadowmapSampler" ) };
 
 					struct DefaultShadowCB shadowCB = { 0 };
 					for( size_t i = 0; i < numShadows; i++ ) {
@@ -1595,7 +1595,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			{
 				image_t *baseImage = base->loaded ? base : rsh.blackTexture;
 				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = baseImage->binding, .handle = Create_DescriptorHandle( "u_BaseTexture" ) };
-				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *baseImage->samplerBinding, .handle = Create_DescriptorHandle( "u_BaseSampler" ) };
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = baseImage->samplerBinding, .handle = Create_DescriptorHandle( "u_BaseSampler" ) };
 			}
 
 			// possibly apply the "texture" fog inline
@@ -1677,7 +1677,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 					if( btex ) {
 						descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = btex->binding, .handle = imageBinding[i].handle };
 
-						descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = *btex->samplerBinding, .handle = imageBinding[i].samplerHandle };
+						descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = btex->samplerBinding, .handle = imageBinding[i].samplerHandle };
 					}
 				}
 			}

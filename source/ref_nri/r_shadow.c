@@ -40,7 +40,7 @@ void R_ShutdownShadows() {
 			struct shadow_fb_s *fb = &rsh.shadowFBs[frameIdx][portalIdx];
 			if(IsRITextureValid(&rsh.renderer, &fb->texture )) {
 				FreeRITexture(&rsh.device, &fb->texture);
-				FreeRIDescriptor(&rsh.device, &fb->descriptor);
+				FreeRITextureView(&rsh.device, &fb->view);
 #if ( DEVICE_IMPL_VULKAN )
 				vmaFreeMemory( rsh.device.vk.vmaAllocator, fb->vk.vmaAlloc);
 #endif
@@ -363,9 +363,9 @@ static struct shadow_fb_s *__ResolveShadowSurface(size_t i, int width, int heigh
 		struct r_frame_set_s *activeset = R_GetActiveFrameSet();
 
 		struct RIFree_s freeSlot = { 0 };
-		if(bestFB->descriptor.vk.image.imageView) {
+		if(bestFB->view.vk.image) {
 			freeSlot.type = RI_FREE_VK_IMAGEVIEW;
-			freeSlot.vkImageView = bestFB->descriptor.vk.image.imageView;
+			freeSlot.vkImageView = bestFB->view.vk.image;
 			arrpush( activeset->freeList, freeSlot );
 		}
 		if( bestFB->vk.vmaAlloc ) {
@@ -419,12 +419,10 @@ static struct shadow_fb_s *__ResolveShadowSurface(size_t i, int width, int heigh
 	
 		bestFB->width = width;
 		bestFB->height = height;
-		bestFB->descriptor.flags |= RI_VK_DESC_OWN_IMAGE_VIEW;
-		//bestFB->descriptor.texture = bestFB->texture;
-		bestFB->descriptor.vk.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-		bestFB->descriptor.vk.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->descriptor.vk.image.imageView ) );
-		UpdateRIDescriptor( &rsh.device, &bestFB->descriptor );
+		bestFB->texture.cookie = hash_random();
+		bestFB->view.cookie = hash_random();
+		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->view.vk.image ) );
+		bestFB->descriptor = RIDescriptorSampledImage( &rsh.device, &bestFB->view, RI_RESOURCE_STATE_SHADER_RESOURCE );
 
 		return bestFB;
 	}
@@ -557,7 +555,7 @@ void R_DrawShadowmaps(struct FrameState_s* cmd)
 		}
 
 		VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-		RI_VK_FillDepthAttachment( &depthStencil, TextureviewRIDescriptor(&fb->descriptor), true );
+		RI_VK_FillDepthAttachment( &depthStencil, fb->view, true );
 		VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
 		renderingInfo.flags = 0;
 		renderingInfo.renderArea.extent.width = fb->width;

@@ -6,6 +6,7 @@
 
 #include "ri_conversion.h"
 #include "ri_gpu_preset.h"
+#include "ri_vk.h"
 
 #include "ri_types.h"
 
@@ -701,6 +702,15 @@ int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, st
 
 		vkGetPhysicalDeviceFeatures2( physicalAdapter->vk.physicalDevice, &features );
 
+		// Timeline semaphores are mandatory on any Vulkan 1.2+ device (and are enabled wholesale via
+		// the feature chain above); the frame timeline + GPU profiler now depend on them. Guard
+		// defensively so an unexpected driver reports cleanly instead of failing later at submit.
+		if( !features12.timelineSemaphore ) {
+			Com_Printf( "VK ERROR: device lacks timelineSemaphore (Vulkan 1.2 feature)\n" );
+			riResult = RI_INCOMPLETE_DEVICE;
+			goto vk_done;
+		}
+
 		deviceCreateInfo.pNext = &features;
 		deviceCreateInfo.pQueueCreateInfos = deviceQueueCreateInfo;
 		deviceCreateInfo.enabledExtensionCount = (uint32_t)arrlen( enabledExtensionNames );
@@ -904,68 +914,105 @@ int InitRIRenderer( const struct RIBackendInit_s *init, struct RIRenderer_s *ren
 	return RI_SUCCESS;
 }
 
-void UpdateRIDescriptor( struct RIDevice_s *dev, struct RIDescriptor_s *desc )
+// Non-owning descriptor builders. Each resolves the referenced resource's backend handle inline and
+// derives the set-cache cookie by folding the resource's own (handle-independent) cookie with the
+// binding params. A resource cookie of 0 yields an empty descriptor (cookie 0), so RI_IsEmptyDescriptor
+// still holds for uncreated resources. `dev` is currently unused but kept for call-site stability.
+struct RIDescriptor_s RIDescriptorUniformBuffer( struct RIDevice_s *dev, struct RIBuffer_s *buffer, uint64_t offset, uint64_t range )
 {
+	(void)dev;
+	struct RIDescriptor_s desc = { 0 };
+	desc.type = RI_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 #if ( DEVICE_IMPL_VULKAN )
-	{
-		switch( desc->vk.type ) {
-			case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-			case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-			case VK_DESCRIPTOR_TYPE_SAMPLER:
-				// test some assumptions
-			 // assert( desc->vk.type == VK_DESCRIPTOR_TYPE_SAMPLER ||
-			 // 		( desc->texture.vk.image && ( desc->vk.type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE || desc->vk.type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ) ) );
-				desc->cookie = hash_data( hash_u64( HASH_INITIAL_VALUE, desc->vk.type ), &desc->vk.image, sizeof( desc->vk.image ) );
-				break;
-			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-			//	assert( desc->buffer.vk.buffer );
-				//desc->vk.buffer.buffer = desc->buffer.vk.buffer;
-				desc->cookie = hash_data( hash_u64( HASH_INITIAL_VALUE, desc->vk.type ), &desc->vk.buffer, sizeof( desc->vk.buffer ) );
-				break;
-			default:
-				assert( false );
-				break;
-		}
-	}
+	desc.vk.buffer.buffer = buffer ? buffer->vk.buffer : VK_NULL_HANDLE;
+	desc.vk.buffer.offset = offset;
+	desc.vk.buffer.range = range;
 #endif
+	if( buffer && buffer->cookie )
+		desc.cookie = hash_u64( hash_u64( hash_u64( buffer->cookie, desc.type ), offset ), range );
+	return desc;
 }
 
-struct RITextureView_s TextureviewRIDescriptor(struct RIDescriptor_s* desc) {
-struct RITextureView_s res = {};
+struct RIDescriptor_s RIDescriptorStorageBuffer( struct RIDevice_s *dev, struct RIBuffer_s *buffer, uint64_t offset, uint64_t range )
+{
+	(void)dev;
+	struct RIDescriptor_s desc = { 0 };
+	desc.type = RI_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 #if ( DEVICE_IMPL_VULKAN )
-	if(desc->vk.type == VK_DESCRIPTOR_TYPE_SAMPLER ||
-		desc->vk.type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE || 
-		desc->vk.type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE  
-			) {
-		res.vk.image = desc->vk.image.imageView; 
-	}	
-
+	desc.vk.buffer.buffer = buffer ? buffer->vk.buffer : VK_NULL_HANDLE;
+	desc.vk.buffer.offset = offset;
+	desc.vk.buffer.range = range;
 #endif
-return res;
-} 
+	if( buffer && buffer->cookie )
+		desc.cookie = hash_u64( hash_u64( hash_u64( buffer->cookie, desc.type ), offset ), range );
+	return desc;
+}
 
-void FreeRIDescriptor( struct RIDevice_s *dev, struct RIDescriptor_s *desc )
+struct RIDescriptor_s RIDescriptorSampledImage( struct RIDevice_s *dev, struct RITextureView_s *view, uint32_t state )
+{
+	(void)dev;
+	struct RIDescriptor_s desc = { 0 };
+	desc.type = RI_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+#if ( DEVICE_IMPL_VULKAN )
+	desc.vk.image.sampler = VK_NULL_HANDLE;
+	desc.vk.image.imageView = view ? view->vk.image : VK_NULL_HANDLE;
+	desc.vk.image.imageLayout = RI_VK_ResourceStateToImageLayout( state );
+#endif
+	if( view && view->cookie )
+		desc.cookie = hash_u64( hash_u64( view->cookie, desc.type ), (uint64_t)state );
+	return desc;
+}
+
+struct RIDescriptor_s RIDescriptorStorageImage( struct RIDevice_s *dev, struct RITextureView_s *view )
+{
+	(void)dev;
+	struct RIDescriptor_s desc = { 0 };
+	desc.type = RI_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+#if ( DEVICE_IMPL_VULKAN )
+	desc.vk.image.sampler = VK_NULL_HANDLE;
+	desc.vk.image.imageView = view ? view->vk.image : VK_NULL_HANDLE;
+	desc.vk.image.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+#endif
+	if( view && view->cookie )
+		desc.cookie = hash_u64( view->cookie, desc.type );
+	return desc;
+}
+
+struct RIDescriptor_s RIDescriptorSampler( struct RIDevice_s *dev, struct RISampler_s *sampler )
+{
+	(void)dev;
+	struct RIDescriptor_s desc = { 0 };
+	desc.type = RI_DESCRIPTOR_TYPE_SAMPLER;
+#if ( DEVICE_IMPL_VULKAN )
+	desc.vk.image.sampler = sampler ? sampler->vk.sampler : VK_NULL_HANDLE;
+	desc.vk.image.imageView = VK_NULL_HANDLE;
+	desc.vk.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+#endif
+	if( sampler && sampler->cookie )
+		desc.cookie = hash_u64( sampler->cookie, desc.type );
+	return desc;
+}
+
+struct RIDescriptor_s RIDescriptorAccelerationStructure( struct RIDevice_s *dev, struct RIAccelStructure_s *as )
+{
+	(void)dev;
+	struct RIDescriptor_s desc = { 0 };
+	desc.type = RI_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE;
+#if ( DEVICE_IMPL_VULKAN )
+	desc.vk.accelStructure = as ? as->vk.handle : VK_NULL_HANDLE;
+#endif
+	if( as && as->cookie )
+		desc.cookie = hash_u64( as->cookie, desc.type );
+	return desc;
+}
+
+void FreeRISampler( struct RIDevice_s *dev, struct RISampler_s *sampler )
 {
 #if ( DEVICE_IMPL_VULKAN )
-	switch( desc->vk.type ) {
-		case VK_DESCRIPTOR_TYPE_SAMPLER:
-		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-			if( desc->vk.image.sampler && ( desc->flags & RI_VK_DESC_OWN_SAMPLER ) )
-				vkDestroySampler( dev->vk.device, desc->vk.image.sampler, NULL );
-			if( desc->vk.image.imageView && ( desc->flags & RI_VK_DESC_OWN_IMAGE_VIEW ) )
-				vkDestroyImageView( dev->vk.device, desc->vk.image.imageView, NULL );
-			break;
-		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-			break;
-		default:
-			break;
-	}
+	if( sampler->vk.sampler )
+		vkDestroySampler( dev->vk.device, sampler->vk.sampler, NULL );
 #endif
-
-	memset( desc, 0, sizeof( struct RIDescriptor_s ) );
+	memset( sampler, 0, sizeof( struct RISampler_s ) );
 }
 
 void FreeRIFree( struct RIDevice_s *dev, struct RIFree_s *mem )
@@ -1095,6 +1142,117 @@ void EndRICmd( struct RIDevice_s *dev, struct RICmd_s *cmd )
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		VK_WrapResult( vkEndCommandBuffer( cmd->vk.cmd ) );
+		return;
+	}
+#endif
+}
+
+void RICmdBarrier( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RIBarrierGroupDesc_s *desc )
+{
+	(void)dev;
+	const size_t total = desc->numMemoryBarriers + desc->numBufferBarriers + desc->numImageBarriers;
+	if( total == 0 )
+		return;
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		VkMemoryBarrier2 *vkMemory = desc->numMemoryBarriers ? alloca( sizeof( VkMemoryBarrier2 ) * desc->numMemoryBarriers ) : NULL;
+		VkBufferMemoryBarrier2 *vkBuffer = desc->numBufferBarriers ? alloca( sizeof( VkBufferMemoryBarrier2 ) * desc->numBufferBarriers ) : NULL;
+		VkImageMemoryBarrier2 *vkImage = desc->numImageBarriers ? alloca( sizeof( VkImageMemoryBarrier2 ) * desc->numImageBarriers ) : NULL;
+
+		for( size_t i = 0; i < desc->numMemoryBarriers; i++ ) {
+			const struct RIMemoryBarrier_s *b = &desc->memoryBarriers[i];
+			vkMemory[i] = (VkMemoryBarrier2){
+				.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+				.srcStageMask = RI_VK_BarrierStages( b->beforeStages, b->before ),
+				.srcAccessMask = RI_VK_ResourceStateToAccess( b->before ),
+				.dstStageMask = RI_VK_BarrierStages( b->afterStages, b->after ),
+				.dstAccessMask = RI_VK_ResourceStateToAccess( b->after ),
+			};
+		}
+
+		for( size_t i = 0; i < desc->numBufferBarriers; i++ ) {
+			const struct RIBufferBarrier_s *b = &desc->bufferBarriers[i];
+			vkBuffer[i] = (VkBufferMemoryBarrier2){
+				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+				.srcStageMask = RI_VK_BarrierStages( b->beforeStages, b->before ),
+				.srcAccessMask = RI_VK_ResourceStateToAccess( b->before ),
+				.dstStageMask = RI_VK_BarrierStages( b->afterStages, b->after ),
+				.dstAccessMask = RI_VK_ResourceStateToAccess( b->after ),
+				.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+				.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+				.buffer = b->buffer->vk.buffer,
+				.offset = b->offset,
+				.size = b->size ? b->size : VK_WHOLE_SIZE,
+			};
+		}
+
+		for( size_t i = 0; i < desc->numImageBarriers; i++ ) {
+			const struct RIImageBarrier_s *b = &desc->imageBarriers[i];
+			vkImage[i] = (VkImageMemoryBarrier2){
+				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = RI_VK_BarrierStages( b->beforeStages, b->before ),
+				.srcAccessMask = RI_VK_ResourceStateToAccess( b->before ),
+				.dstStageMask = RI_VK_BarrierStages( b->afterStages, b->after ),
+				.dstAccessMask = RI_VK_ResourceStateToAccess( b->after ),
+				.oldLayout = RI_VK_ResourceStateToImageLayout( b->before ),
+				.newLayout = RI_VK_ResourceStateToImageLayout( b->after ),
+				.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+				.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+				.image = b->texture->vk.image,
+				.subresourceRange = {
+					.aspectMask = RI_VK_BarrierAspect( b->aspect ),
+					.baseMipLevel = b->baseMip,
+					.levelCount = b->mipCount ? b->mipCount : VK_REMAINING_MIP_LEVELS,
+					.baseArrayLayer = b->baseLayer,
+					.layerCount = b->layerCount ? b->layerCount : VK_REMAINING_ARRAY_LAYERS,
+				},
+			};
+		}
+
+		VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+		dependencyInfo.memoryBarrierCount = desc->numMemoryBarriers;
+		dependencyInfo.pMemoryBarriers = vkMemory;
+		dependencyInfo.bufferMemoryBarrierCount = desc->numBufferBarriers;
+		dependencyInfo.pBufferMemoryBarriers = vkBuffer;
+		dependencyInfo.imageMemoryBarrierCount = desc->numImageBarriers;
+		dependencyInfo.pImageMemoryBarriers = vkImage;
+		vkCmdPipelineBarrier2( cmd->vk.cmd, &dependencyInfo );
+		return;
+	}
+#endif
+}
+
+void RICmdImageBarrier( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RIImageBarrier_s *barrier )
+{
+	const struct RIBarrierGroupDesc_s desc = { .imageBarriers = barrier, .numImageBarriers = 1 };
+	RICmdBarrier( dev, cmd, &desc );
+}
+
+void RICmdBufferBarrier( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RIBufferBarrier_s *barrier )
+{
+	const struct RIBarrierGroupDesc_s desc = { .bufferBarriers = barrier, .numBufferBarriers = 1 };
+	RICmdBarrier( dev, cmd, &desc );
+}
+
+void RICmdCopyTextureToBuffer( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RICopyTextureToBufferDesc_s *desc )
+{
+	(void)dev;
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		const VkBufferImageCopy region = {
+			.bufferOffset = desc->bufferOffset,
+			.bufferRowLength = desc->bufferRowLength,
+			.bufferImageHeight = desc->bufferImageHeight,
+			.imageSubresource = {
+				.aspectMask = RI_VK_BarrierAspect( desc->aspect ),
+				.mipLevel = desc->mipLevel,
+				.baseArrayLayer = desc->baseArrayLayer,
+				.layerCount = desc->layerCount ? desc->layerCount : 1,
+			},
+			.imageOffset = { desc->x, desc->y, desc->z },
+			.imageExtent = { desc->width, desc->height, desc->depth ? desc->depth : 1 },
+		};
+		vkCmdCopyImageToBuffer( cmd->vk.cmd, desc->src->vk.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, desc->dst->vk.buffer, 1, &region );
 		return;
 	}
 #endif

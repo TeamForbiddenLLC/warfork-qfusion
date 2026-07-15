@@ -321,9 +321,7 @@ void RB_SetState_2( struct FrameState_s *cmd, int state )
 
 void RB_FlipFrontFace( struct FrameState_s *cmd )
 {
-	if( cmd->pipeline.cullMode == RI_CULL_MODE_BOTH )
-		return;
-	cmd->pipeline.cullMode = ~cmd->pipeline.cullMode;
+	cmd->pipeline.cullMode = RI_FlipCullMode( cmd->pipeline.cullMode );
 }
 
 /*

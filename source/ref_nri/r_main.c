@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_local.h"
 #include "ri_types.h"
 #include "ri_conversion.h"
+#include "stb_ds.h"
 #include <assert.h>
 
 #include "tracy/TracyC.h"
@@ -1348,7 +1349,6 @@ bool R_IsRenderingToScreen( void )
 */
 const char *R_WriteSpeedsMessage(char *out, size_t size)
 {
-	char backend_msg[1024];
 
 	if (!out || !size) {
 		return out;
@@ -1363,13 +1363,10 @@ const char *R_WriteSpeedsMessage(char *out, size_t size)
 				Q_snprintfz(out, size,
 					"%u fps\n"
 					"%4u wpoly %4u leafs\n"
-					"%5u\\%5u sverts %5u\\%5u stris\n"
-					"%s",
+					"%5u\\%5u sverts %5u\\%5u stris\n",
 					rf.fps.average,
 					rf.stats.c_brush_polys, rf.stats.c_world_leafs,
-					rf.stats.c_slices_verts, rf.stats.c_slices_verts_real, rf.stats.c_slices_elems / 3, rf.stats.c_slices_elems_real / 3,
-					backend_msg
-				);
+					rf.stats.c_slices_verts, rf.stats.c_slices_verts_real, rf.stats.c_slices_elems / 3, rf.stats.c_slices_elems_real / 3);
 				break;
 			case 2:
 			case 3:

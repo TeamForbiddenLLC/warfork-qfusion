@@ -41,6 +41,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ri_resource_upload.h"
 #include "ri_scratch_alloc.h"
 #include "ri_pogoBuffer.h"
+#include "ri_timeline.h"
+#include "ri_gpu_profiler.h"
 
 
 typedef struct { char *name; void **funcPointer; } dllfunc_t;
@@ -145,8 +147,9 @@ typedef struct superLightStyle_s
 #define DEPTH_EPSILON (1.0 / ( 1 << 14 ))
 
 struct shadow_fb_s {
-	struct RIDescriptor_s descriptor;
-	struct RITexture_s texture; 
+	struct RIDescriptor_s descriptor; // sampled-image descriptor built from `view`
+	struct RITexture_s texture;
+	struct RITextureView_s view;
 	uint16_t width, height;
 	union {
     #if(DEVICE_IMPL_VULKAN)
@@ -161,12 +164,14 @@ struct portal_fb_s {
 	uint16_t width, height;
 	size_t frameNum;
 
-	struct RIDescriptor_s colorDescriptor;
-	struct RIDescriptor_s depthDescriptor;
-	struct RIDescriptor_s* samplerDescriptor;
+	struct RIDescriptor_s colorDescriptor; // built from colorView
+	struct RIDescriptor_s depthDescriptor; // built from depthView
+	struct RIDescriptor_s samplerDescriptor; // sampler descriptor built from the shared sampler cache
 
-	struct RITexture_s colorTexture; 
-	struct RITexture_s depthTexture; 
+	struct RITexture_s colorTexture;
+	struct RITexture_s depthTexture;
+	struct RITextureView_s colorView;
+	struct RITextureView_s depthView;
 
 	union {
     #if(DEVICE_IMPL_VULKAN)
@@ -282,7 +287,7 @@ typedef struct
 	model_t			*worldModel;
 	mbrushmodel_t	*worldBrushModel;
 
-	struct RIDescriptor_s* postProcessingSampler;
+	struct RIDescriptor_s postProcessingSampler;
 
 	struct mesh_vbo_s *nullVBO;
 	struct mesh_vbo_s *postProcessingVBO;
@@ -313,10 +318,13 @@ typedef struct
 		enum capture_state_e state;
 		union {
 			struct {
+				// frameTimeline value the readback copy is signalled by; the save is deferred until
+				// RITimelineCompleted reaches it, so the capture never stalls the frame.
 				uint64_t frameCnt;
 				struct QStr path;
-				void *memory; //TODO: fix
-				void *buffer; //TODO: fix
+				bool silent;
+				struct RIBuffer_s readback;
+				size_t readbackSize;
 				struct texture_buf_desc_s textureBuferDesc;
 			} single;
 		};
@@ -324,11 +332,12 @@ typedef struct
 
 	struct RISwapchain_s swapchain;
 	struct RIResourceUploader_s uploader;
-	struct RICommandRingBuffer_s graphicsCmdRing; 
+	struct RICommandRingBuffer_s graphicsCmdRing;
+	struct RITimeline_s frameTimeline; // monotonic per-frame timeline, signalled by the frame submit
 
 	struct shadow_fb_s shadowFBs[NUMBER_FRAMES_FLIGHT][MAX_SHADOWGROUPS];
 	struct portal_fb_s portalFBs[MAX_PORTAL_TEXTURES];
-	struct RIDescriptor_s *shadowSamplerDescriptor;
+	struct RIDescriptor_s shadowSamplerDescriptor;
 
 	struct RIRenderer_s renderer;
  	struct RIDevice_s device;
@@ -590,7 +599,6 @@ void		R_CinList_f( void );
 //
 // r_cmds.c
 //
-void 		R_TakeScreenShot( const char *path, const char *name, const char *fmtString, int x, int y, int w, int h, bool silent, bool media );
 void		R_ScreenShot_f( void );
 void 		R_TakeEnvShot(struct FrameState_s* cmd, const char *path, const char *name, unsigned maxPixels );
 void		R_EnvShot_f( void );

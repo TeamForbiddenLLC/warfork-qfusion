@@ -17,15 +17,8 @@ void WaitRIQueueIdle( struct RIDevice_s *device, struct RIQueue_s *queue );
 int FreeRIDevice( struct RIDevice_s *dev );
 void FreeRIFree( struct RIDevice_s *dev, struct RIFree_s *mem );
 
-// RIDescriptor
-void UpdateRIDescriptor( struct RIDevice_s *dev, struct RIDescriptor_s *desc ); // after configure an RIDescriptor call update to configure it
-void FreeRIDescriptor( struct RIDevice_s *dev, struct RIDescriptor_s *desc );
-struct RITextureView_s TextureviewRIDescriptor(struct RIDescriptor_s* desc); 
-static inline bool RI_IsEmptyDescriptor( struct RIDescriptor_s *desc )
-{
-	return desc->cookie == 0;
-}
-
+// RIDescriptor value builders, RI_IsEmptyDescriptor and FreeRISampler are declared in ri_descriptor.h
+// (reached via ri_types.h) so every consumer sees the sret-returning prototype.
 
 // RITexture
 void FreeRITexture( struct RIDevice_s *dev, struct RITexture_s *tex );
@@ -36,6 +29,15 @@ void FreeRICmd( struct RIDevice_s *dev, struct RICmd_s *cmd, struct RIPool_s *po
 void BeginRICmd( struct RIDevice_s *dev, struct RICmd_s *cmd );
 void EndRICmd( struct RIDevice_s *dev, struct RICmd_s *cmd );
 void InitRICmd( struct RIDevice_s *dev, struct RIPool_s * pool, struct RICmd_s *cmd  );
+
+// Record resource-state transitions. Every group is batched into a single backend barrier command; any
+// group may be empty, and an entirely empty desc records nothing.
+void RICmdBarrier( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RIBarrierGroupDesc_s *desc );
+// Single-barrier conveniences over RICmdBarrier.
+void RICmdImageBarrier( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RIImageBarrier_s *barrier );
+void RICmdBufferBarrier( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RIBufferBarrier_s *barrier );
+
+void RICmdCopyTextureToBuffer( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RICopyTextureToBufferDesc_s *desc );
 
 void InitRIPool( struct RIDevice_s *dev, struct RIPool_s *pool, struct RIQueue_s *queue );
 void ResetRIPool( struct RIDevice_s *dev, struct RIPool_s *pool );

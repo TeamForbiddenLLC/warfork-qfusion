@@ -80,6 +80,8 @@ void RI_PogoBufferInit( struct RIDevice_s *device, struct RI_PogoBuffer *pogo, u
 		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 
 		VK_WrapResult( vkCreateImageView( device->vk.device, &createInfo, NULL, &pogo->vk.views[p].vk.image ) );
+		pogo->vk.textures[p].cookie = hash_random();
+		pogo->vk.views[p].cookie = hash_random();
 	}
 #endif
 }

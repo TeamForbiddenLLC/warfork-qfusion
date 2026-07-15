@@ -1,12 +1,26 @@
 #include "r_capture.h"
 #include "r_texture_buf.h"
+#include "ri_renderer.h"
+#include "ri_swapchain.h"
+#include "ri_vk.h"
 #include "stb_image_write.h"
+
+// The readback aliases the mapped buffer through a texture_buf_s described by the swapchain's format.
+// RI_Format_e and texture_format_e are separately declared but value-identical enums, so the cast in
+// __ScreenshotFormatDef is only sound while they stay in lockstep.
+Q_COMPILE_ASSERT_MSG( (int)RI_FORMAT_BGRA8_UNORM == (int)R_FORMAT_BGRA8_UNORM, "RI_Format_e and texture_format_e have diverged" );
+Q_COMPILE_ASSERT_MSG( (int)RI_FORMAT_RGBA8_UNORM == (int)R_FORMAT_RGBA8_UNORM, "RI_Format_e and texture_format_e have diverged" );
+
+static const struct base_format_def_s *__ScreenshotFormatDef( void )
+{
+	return R_BaseFormatDef( (enum texture_format_e)rsh.swapchain.format );
+}
 
 void R_SaveScreenshotBuffer(struct texture_buf_s *pic, const char* path, int image_type )
 {
 	const enum texture_logical_channel_e expectBGR[] = { R_LOGICAL_C_BLUE, R_LOGICAL_C_GREEN, R_LOGICAL_C_RED };
 	const enum texture_logical_channel_e expectBGRA[] = { R_LOGICAL_C_BLUE, R_LOGICAL_C_GREEN, R_LOGICAL_C_RED, R_LOGICAL_C_ALPHA };
-	const bool isBGRTexture = RT_ExpectChannelsMatch( pic->def, expectBGR, Q_ARRAY_COUNT( expectBGR ) ) || 
+	const bool isBGRTexture = RT_ExpectChannelsMatch( pic->def, expectBGR, Q_ARRAY_COUNT( expectBGR ) ) ||
 	                          RT_ExpectChannelsMatch( pic->def, expectBGRA, Q_ARRAY_COUNT( expectBGRA ) );
 	enum texture_logical_channel_e swizzleChannel[R_LOGICAL_C_MAX] = { 0 };
 	if( isBGRTexture ) {
@@ -52,256 +66,133 @@ void R_SaveScreenshotBuffer(struct texture_buf_s *pic, const char* path, int ima
 	}
 }
 
-//static struct tm *R_Localtime( const time_t time, struct tm* _tm )
-//{
-//#ifdef _WIN32
-//	struct tm* __tm = localtime( &time );
-//	*_tm = *__tm;
-//#else
-//	localtime_r( &time, _tm );
-//#endif
-//	return _tm;
-//}
-//
-//
-//struct screenshot_cb_handler {
-//  NriMemory* memory;
-//  NriBuffer* buffer;
-//  const NriTextureDesc* textureDesc;
-//  NriTextureDataLayoutDesc dstLayoutDesc;
-//  const char* path;
-//};
-//
-//static void __RF_Screensot_CB(void* self,struct frame_cmd_buffer_s* cmd) {
-//  struct screenshot_cb_handler* handler = (struct screenshot_cb_handler*) self;
-//  void* buffer = rsh.nri.coreI.MapBuffer(handler->buffer, 0, handler->dstLayoutDesc.rowPitch * handler->dstLayoutDesc.slicePitch);
-//	
-//	struct texture_buf_desc_s desc = {
-//		.alignment = 1,
-//		.width = handler->textureDesc->width,
-//		.height = handler->textureDesc->height,
-//    .def = R_BaseFormatDef(R_FromNRIFormat(handler->textureDesc->format))
-//  };
-//	struct texture_buf_s pic = {0};
-//	T_AliasTextureBuf(&pic, &desc, buffer, handler->dstLayoutDesc.slicePitch * handler->dstLayoutDesc.rowPitch);
-//
-//		
-//	const enum texture_logical_channel_e expectBGR[] = { R_LOGICAL_C_BLUE, R_LOGICAL_C_GREEN, R_LOGICAL_C_RED };
-//	const enum texture_logical_channel_e expectBGRA[] = { R_LOGICAL_C_BLUE, R_LOGICAL_C_GREEN, R_LOGICAL_C_RED, R_LOGICAL_C_ALPHA };
-//	const bool isBGRTexture = RT_ExpectChannelsMatch( pic.def, expectBGR, Q_ARRAY_COUNT( expectBGR ) ) || RT_ExpectChannelsMatch( pic.def, expectBGRA, Q_ARRAY_COUNT( expectBGRA ) );
-//	enum texture_logical_channel_e swizzleChannel[R_LOGICAL_C_MAX] = { 0 };
-//	if( isBGRTexture ) {
-//		const size_t numberChannels = RT_NumberChannels( pic.def);
-//		assert( numberChannels >= 3 && numberChannels <= Q_ARRAY_COUNT( swizzleChannel ) );
-//		memcpy( swizzleChannel, RT_Channels( pic.def ), numberChannels );
-//		swizzleChannel[0] = R_LOGICAL_C_RED;
-//		swizzleChannel[1] = R_LOGICAL_C_GREEN;
-//		swizzleChannel[2] = R_LOGICAL_C_BLUE;
-//		T_SwizzleInplace( &pic, swizzleChannel );
-//	}
-//
-//	
-//	int file;
-//	if( FS_FOpenAbsoluteFile( handler->path, &file, FS_WRITE ) == -1 ) {
-//		Com_Printf( "WriteScreenShot: Couldn't create %s\n", handler->path);
-//	  goto cleanup;
-//	}
-//	FS_FCloseFile( file );
-//
-//  int res = 0;
-//  switch(r_screenshot_format->integer) {
-//		case 2:
-//		  res = stbi_write_jpg(handler->path, pic.width, pic.height, RT_NumberChannels(pic.def), pic.buffer, 100);	
-//			break;
-//		case 3:
-//			res = stbi_write_tga( handler->path, pic.width, pic.height, RT_NumberChannels(pic.def), pic.buffer );
-//			break;
-//		default:
-//			res = stbi_write_png( handler->path, pic.width, pic.height, RT_NumberChannels(pic.def), pic.buffer , 0 ) ;
-//			break;
-//
-//  }
-//  if(res == 0) {
-//		Com_Printf( "WriteScreenShot: Couldn't create %s\n", handler->path);
-//  }
-//
-//cleanup:
-//	rsh.nri.coreI.DestroyBuffer(handler->buffer);
-//	rsh.nri.coreI.FreeMemory(handler->memory);
-//  free(handler);
-//}
-//
-//
-//void R_ScreenShot_2(struct frame_cmd_buffer_s *cmd,const char *path, const char *name, const char *fmtstring, bool silent) {
-//
-//	const char *extension;
-//	char *checkname = NULL;
-//	size_t checkname_size = 0;
-//	
-//	switch(r_screenshot_format->integer) 
-//	{
-//		case 2:
-//			extension = ".jpg";
-//			break;
-//		case 3:
-//			extension = ".tga";
-//			break;
-//		default:
-//			extension = ".png";
-//			break;
-//	}
-//
-//	if( name && name[0] && Q_stricmp(name, "*") )
-//	{
-//		if( !COM_ValidateRelativeFilename( name) )
-//		{
-//			Com_Printf( "Invalid filename\n" );
-//			return;
-//		}
-//		
-//		const size_t checkname_size =  strlen(path) + strlen( name) + strlen( extension ) + 1;
-//		checkname = alloca( checkname_size );
-//		Q_snprintfz( checkname, checkname_size, "%s%s", path, name);
-//		COM_DefaultExtension( checkname, extension, checkname_size );
-//	}
-//
-//  if( !checkname )
-//	{
-//		const int maxFiles = 100000;
-//		static int lastIndex = 0;
-//		bool addIndex = false;
-//		char timestampString[MAX_QPATH];
-//		static char lastFmtString[MAX_QPATH];
-//		struct tm newtime;
-//		
-//		R_Localtime( time( NULL ), &newtime );
-//		strftime( timestampString, sizeof( timestampString ), fmtstring, &newtime );
-//
-//		checkname_size = strlen(path) + strlen( timestampString ) + 5 + 1 + strlen( extension );
-//		checkname = alloca( checkname_size );
-//		
-//		// if the string format is a constant or file already exists then iterate
-//		if( !*fmtstring || !strcmp( timestampString, fmtstring  ) )
-//		{
-//			addIndex = true;
-//			
-//			// force a rescan in case some vars have changed..
-//			if( strcmp( lastFmtString, fmtstring) )
-//			{
-//				lastIndex = 0;
-//				Q_strncpyz( lastFmtString, fmtstring, sizeof( lastFmtString ) );
-//				r_screenshot_fmtstr->modified = false;
-//			}
-//	
-//		}
-//		else
-//		{
-//			Q_snprintfz( checkname, checkname_size, "%s%s%s", path, timestampString, extension );
-//			if( FS_FOpenAbsoluteFile( checkname, NULL, FS_READ ) != -1 )
-//			{
-//				lastIndex = 0;
-//				addIndex = true;
-//			}
-//		}
-//		
-//		for( ; addIndex && lastIndex < maxFiles; lastIndex++ )
-//		{
-//			Q_snprintfz( checkname, checkname_size, "%s%s%05i%s",path, timestampString, lastIndex, extension );
-//			if( FS_FOpenAbsoluteFile( checkname, NULL, FS_READ ) == -1 )
-//				break; // file doesn't exist
-//		}
-//		
-//		if( lastIndex == maxFiles )
-//		{
-//			Com_Printf( "Couldn't create a file\n" );
-//			return;
-//		}
-//		lastIndex++;
-//	}
-//
-//  struct screenshot_cb_handler* handler = malloc(sizeof(struct screenshot_cb_handler) + strlen(checkname) + 1);
-//  char* cb_path = (char*)(((uint8_t*)handler) + sizeof(struct screenshot_cb_handler));
-//  handler->path = path;
-//  strcpy(cb_path , checkname);
-//
-//	NriMemoryDesc memoryDesc = {0};
-//	const NriTextureDesc* textureDesc = rsh.nri.coreI.GetTextureDesc(cmd->textureBuffers.colorTexture);
-//	rsh.nri.coreI.GetTextureMemoryDesc(rsh.nri.device, textureDesc, NriMemoryLocation_HOST_READBACK, &memoryDesc);
-//
-//  const struct base_format_def_s* formatDef = R_BaseFormatDef(R_FromNRIFormat(textureDesc->format));
-//	struct post_frame_handler_s* frameHandler = &cmd->postFrameHandlers[cmd->numPostFrameHandlers++];
-//	NriBufferDesc bufferDesc = { .size = memoryDesc.size };
-//	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.CreateBuffer( rsh.nri.device, &bufferDesc, &handler->buffer) );
-//	
-//	NriAllocateMemoryDesc allocateMemoryDesc = {0};
-//	allocateMemoryDesc.size = memoryDesc.size;
-//	allocateMemoryDesc.type = memoryDesc.type;
-//	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.AllocateMemory( rsh.nri.device, &allocateMemoryDesc, &handler->memory) );
-//	NriBufferMemoryBindingDesc bindBufferDesc = {
-//		.memory = handler->memory,
-//		.buffer = handler->buffer,
-//	};
-//	frameHandler->handler = __RF_Screensot_CB;
-//	frameHandler->self = handler;
-//
-//	NRI_ABORT_ON_FAILURE( rsh.nri.coreI.BindBufferMemory( rsh.nri.device, &bindBufferDesc, 1 ) );
-//
-//	const uint64_t rowPitch = textureDesc->width * RT_BlockSize(formatDef);
-//	const NriTextureDataLayoutDesc dstLayoutDesc = {
-//		.offset = 0,
-//		.rowPitch = rowPitch,
-//		.slicePitch = rowPitch * textureDesc->height 
-//	};
-//	handler->dstLayoutDesc = dstLayoutDesc;
-//	handler->textureDesc = textureDesc;
-//	const NriTextureRegionDesc textureRegionDesc = {
-//		.x = 0,
-//		.y = 0,
-//		.z = 0,
-//		.width = textureDesc->width,
-//		.height = textureDesc->height,
-//		.depth = textureDesc->depth,
-//		.mipOffset = 0,
-//		.layerOffset = 0
-//	};
-//	{	
-//		NriTextureBarrierDesc transitionBarriers = { 0 };
-//		transitionBarriers.texture = cmd->textureBuffers.colorTexture;
-//		transitionBarriers.before = (NriAccessLayoutStage){	
-//			NriAccessBits_COLOR_ATTACHMENT, 
-//			NriLayout_COLOR_ATTACHMENT 
-//		};
-//		transitionBarriers.after = (NriAccessLayoutStage){	
-//			.layout = NriLayout_COPY_SOURCE, 
-//			.access = NriAccessBits_COPY_SOURCE, 
-//			.stages = NriStageBits_COPY 
-//		};
-//
-//		NriBarrierGroupDesc barrierGroupDesc = { 0 };
-//		barrierGroupDesc.textureNum = 1;
-//		barrierGroupDesc.textures = &transitionBarriers;
-//		rsh.nri.coreI.CmdBarrier( cmd->cmd, &barrierGroupDesc );
-//	}
-//	rsh.nri.coreI.CmdReadbackTextureToBuffer(cmd->cmd, handler->buffer, &dstLayoutDesc, cmd->textureBuffers.colorTexture, &textureRegionDesc);
-//	{	
-//		NriTextureBarrierDesc transitionBarriers = { 0 };
-//		transitionBarriers.texture = cmd->textureBuffers.colorTexture;
-//		transitionBarriers.before = (NriAccessLayoutStage){	
-//			.layout = NriLayout_COPY_SOURCE, 
-//			.access = NriAccessBits_COPY_SOURCE, 
-//			.stages = NriStageBits_COPY 
-//		};
-//		transitionBarriers.after = (NriAccessLayoutStage){	
-//			NriAccessBits_COLOR_ATTACHMENT, 
-//			NriLayout_COLOR_ATTACHMENT 
-//		};
-//
-//		NriBarrierGroupDesc barrierGroupDesc = { 0 };
-//		barrierGroupDesc.textureNum = 1;
-//		barrierGroupDesc.textures = &transitionBarriers;
-//		rsh.nri.coreI.CmdBarrier( cmd->cmd, &barrierGroupDesc );
-//	}
-//
-//}
-//
-//#endif 
+static void __R_CaptureAbortScreenshot( void )
+{
+	qStrFree( &rsh.screenshot.single.path );
+	rsh.screenshot.state = CAPTURE_STATE_NONE;
+}
+
+bool R_CaptureRecordScreenshot( struct RICmd_s *cmd )
+{
+	if( rsh.screenshot.state != CAPTURE_STATE_RECORD_SCREENSHOT )
+		return false;
+
+#if ( DEVICE_IMPL_VULKAN )
+	// the acquire failed, so this frame's image was never rendered and won't be presented
+	if( rsh.swapchain.vk.acquireFailed ) {
+		__R_CaptureAbortScreenshot();
+		return false;
+	}
+
+	const struct base_format_def_s *def = __ScreenshotFormatDef();
+	if( !def ) {
+		Com_Printf( "screenshot: unsupported swapchain format %u\n", rsh.swapchain.format );
+		__R_CaptureAbortScreenshot();
+		return false;
+	}
+
+	const uint32_t width = rsh.swapchain.width;
+	const uint32_t height = rsh.swapchain.height;
+	const size_t size = (size_t)width * (size_t)height * RT_BlockSize( def );
+	struct RIBuffer_s *readback = &rsh.screenshot.single.readback;
+
+	VkBufferCreateInfo bufInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+	bufInfo.size = size;
+	bufInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	bufInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	VmaAllocationCreateInfo allocInfo = { 0 };
+	allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+	// HOST_ACCESS_RANDOM asks for HOST_CACHED memory. The upload paths use SEQUENTIAL_WRITE, which lands
+	// in write-combined memory that is correct but pathologically slow to read back on the CPU.
+	allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+
+	if( vmaCreateBuffer( rsh.device.vk.vmaAllocator, &bufInfo, &allocInfo, &readback->vk.buffer, &readback->vk.allocation, NULL ) != VK_SUCCESS ) {
+		Com_Printf( "screenshot: failed to allocate a %zu byte readback buffer\n", size );
+		__R_CaptureAbortScreenshot();
+		return false;
+	}
+	rsh.screenshot.single.readbackSize = size;
+	rsh.screenshot.single.textureBuferDesc = ( struct texture_buf_desc_s ){
+		.width = width,
+		.height = height,
+		// tightly packed, matching the copy below
+		.alignment = 1,
+		.def = def,
+	};
+
+	const struct RITexture_s backbuffer = RISwapchainGetTexture( &rsh.swapchain, rsh.swapchainIndex );
+
+	// The frame just finished rendering into the backbuffer, so take it COLOR_ATTACHMENT -> COPY_SRC,
+	// pull it into the readback buffer, then hand it to the presenter. This replaces the frame's usual
+	// RENDER_TARGET -> PRESENT transition, which RF_EndFrame skips when we return true.
+	RICmdImageBarrier( &rsh.device, cmd,
+					   &( struct RIImageBarrier_s ){
+						   .texture = &backbuffer,
+						   .before = RI_RESOURCE_STATE_RENDER_TARGET,
+						   .after = RI_RESOURCE_STATE_COPY_SRC,
+						   .aspect = RI_BARRIER_ASPECT_COLOR,
+					   } );
+
+	RICmdCopyTextureToBuffer( &rsh.device, cmd,
+							  &( struct RICopyTextureToBufferDesc_s ){
+								  .src = &backbuffer,
+								  .dst = readback,
+								  .aspect = RI_BARRIER_ASPECT_COLOR,
+								  .width = width,
+								  .height = height,
+							  } );
+
+	// Make the copy visible to the host. The frame fence alone would order it, but spelling it as a
+	// barrier is what keeps the map in R_CaptureFinishScreenshot correct under validation.
+	RICmdBufferBarrier( &rsh.device, cmd,
+						&( struct RIBufferBarrier_s ){
+							.buffer = readback,
+							.before = RI_RESOURCE_STATE_COPY_DST,
+							.after = RI_RESOURCE_STATE_HOST_READ,
+						} );
+
+	RICmdImageBarrier( &rsh.device, cmd,
+					   &( struct RIImageBarrier_s ){
+						   .texture = &backbuffer,
+						   .before = RI_RESOURCE_STATE_COPY_SRC,
+						   .after = RI_RESOURCE_STATE_PRESENT,
+						   .aspect = RI_BARRIER_ASPECT_COLOR,
+					   } );
+
+	return true;
+#else
+	__R_CaptureAbortScreenshot();
+	return false;
+#endif
+}
+
+void R_CaptureFinishScreenshot( void )
+{
+#if ( DEVICE_IMPL_VULKAN )
+	struct RIBuffer_s *readback = &rsh.screenshot.single.readback;
+	const char *path = rsh.screenshot.single.path.buf;
+
+	// the copy is only visible to the host after an invalidate on non-coherent (HOST_CACHED) memory
+	VK_WrapResult( vmaInvalidateAllocation( rsh.device.vk.vmaAllocator, readback->vk.allocation, 0, rsh.screenshot.single.readbackSize ) );
+
+	void *mapped = NULL;
+	if( vmaMapMemory( rsh.device.vk.vmaAllocator, readback->vk.allocation, &mapped ) == VK_SUCCESS ) {
+		struct texture_buf_s pic = { 0 };
+		T_AliasTextureBuf( &pic, &rsh.screenshot.single.textureBuferDesc, mapped, rsh.screenshot.single.readbackSize );
+		R_SaveScreenshotBuffer( &pic, path, r_screenshot_format->integer );
+		vmaUnmapMemory( rsh.device.vk.vmaAllocator, readback->vk.allocation );
+
+		FS_AddFileToMedia( path );
+		if( !rsh.screenshot.single.silent )
+			Com_Printf( "Wrote %s\n", path );
+	} else {
+		Com_Printf( "screenshot: failed to map the readback buffer\n" );
+	}
+
+	// the frame timeline has passed the copy, so the buffer is free to release immediately
+	vmaDestroyBuffer( rsh.device.vk.vmaAllocator, readback->vk.buffer, readback->vk.allocation );
+	memset( readback, 0, sizeof( *readback ) );
+#endif
+	__R_CaptureAbortScreenshot();
+}
