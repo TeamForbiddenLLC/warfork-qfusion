@@ -479,6 +479,13 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 	TracyCZoneN( ctx, "RF_BeginFrame", 1 );
 	RF_CheckCvars();
 
+	// A screenshot recorded in an earlier frame is saved once the GPU has actually run the copy. Polling
+	// here keeps the capture off the frame's critical path.
+	if( rsh.screenshot.state == CAPTURE_STATE_FINISH_SCREENSHOT &&
+		RITimelineCompleted( &rsh.device, &rsh.frameTimeline ) >= rsh.screenshot.single.frameCnt ) {
+		R_CaptureFinishScreenshot();
+	}
+
 #if ( DEVICE_IMPL_VULKAN )
 	// A prior acquire/present reported the swapchain out of date (e.g. a compositor/DPI change that
 	// bypassed RF_SetMode). Rebuild it in place before starting the frame. WaitRIQueueIdle guarantees
@@ -673,7 +680,10 @@ void RF_EndFrame( void )
 	{
 		vkCmdEndRendering( rsh.frame.handle.vk.cmd );
 
-		{
+		// A pending screenshot copies the backbuffer out on its way to present and transitions the image
+		// to PRESENT_SRC itself; the plain transition below is for ordinary frames.
+		const bool captured = R_CaptureRecordScreenshot( &rsh.frame.handle );
+		if( !captured ) {
 			VkImageMemoryBarrier2 imageBarriers[1] = { 0 };
 			imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 			imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -751,6 +761,13 @@ void RF_EndFrame( void )
 			.vk = { .numWaitSemaphores = numExtraWaits, .waitSemaphores = extraWaits },
 		};
 		RISwapchainFrameSubmit( &rsh.device, &rsh.swapchain, graphicsQueue, &submitDesc );
+
+		// RISwapchainFrameSubmit reserves the timeline value it signals, so this has to be read after it.
+		// The save is picked up by RF_BeginFrame once the GPU reaches that value.
+		if( captured ) {
+			rsh.screenshot.single.frameCnt = RITimelinePending( &rsh.frameTimeline );
+			rsh.screenshot.state = CAPTURE_STATE_FINISH_SCREENSHOT;
+		}
 	}
 #endif
 	rsh.frameSetCount++;
@@ -970,6 +987,11 @@ static struct tm *__Localtime( const time_t time, struct tm* _tm )
 
 void RF_ScreenShot( const char *path, const char *name, const char *fmtstring, bool silent )
 {
+	if( !R_IsRenderingToScreen() ) {
+		return;
+	}
+
+	// a capture is already in flight; the readback buffer and path are single-slot
 	if(rsh.screenshot.state != CAPTURE_STATE_NONE) {
 		return;
 	}
@@ -1058,6 +1080,7 @@ void RF_ScreenShot( const char *path, const char *name, const char *fmtstring, b
 	}
 
 	qStrAssign( &rsh.screenshot.single.path, qCToStrRef( checkname ) );
+	rsh.screenshot.single.silent = silent;
 	rsh.screenshot.state = CAPTURE_STATE_RECORD_SCREENSHOT;
 }
 

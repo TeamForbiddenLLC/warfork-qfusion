@@ -318,10 +318,13 @@ typedef struct
 		enum capture_state_e state;
 		union {
 			struct {
+				// frameTimeline value the readback copy is signalled by; the save is deferred until
+				// RITimelineCompleted reaches it, so the capture never stalls the frame.
 				uint64_t frameCnt;
 				struct QStr path;
-				void *memory; //TODO: fix
-				void *buffer; //TODO: fix
+				bool silent;
+				struct RIBuffer_s readback;
+				size_t readbackSize;
 				struct texture_buf_desc_s textureBuferDesc;
 			} single;
 		};
@@ -596,7 +599,6 @@ void		R_CinList_f( void );
 //
 // r_cmds.c
 //
-void 		R_TakeScreenShot( const char *path, const char *name, const char *fmtString, int x, int y, int w, int h, bool silent, bool media );
 void		R_ScreenShot_f( void );
 void 		R_TakeEnvShot(struct FrameState_s* cmd, const char *path, const char *name, unsigned maxPixels );
 void		R_EnvShot_f( void );

@@ -35,6 +35,18 @@ enum RICompareFunc_e {
 
 enum RICullMode_e { RI_CULL_MODE_NONE = 0, RI_CULL_MODE_FRONT = 0x1, RI_CULL_MODE_BACK = 0x2, RI_CULL_MODE_BOTH = RI_CULL_MODE_FRONT | RI_CULL_MODE_BACK };
 
+// Reversed winding swaps which face is front, so the cull mode has to swap FRONT<->BACK with it. NONE and
+// BOTH are winding-independent and must pass through untouched -- note this is NOT a bitwise NOT: the enum
+// is consumed as a mask, so ~NONE would set both bits (culling everything) and ~BOTH would clear them.
+static inline enum RICullMode_e RI_FlipCullMode( enum RICullMode_e mode )
+{
+	if( mode == RI_CULL_MODE_FRONT )
+		return RI_CULL_MODE_BACK;
+	if( mode == RI_CULL_MODE_BACK )
+		return RI_CULL_MODE_FRONT;
+	return mode;
+}
+
 enum RIIndexType_e { RI_INDEX_TYPE_16, RI_INDEX_TYPE_32 };
 
 enum RIColorWriteMask_e {

@@ -256,8 +256,11 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 			  VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1,
 		  };
 
+		  // The image is created with EXTENDED_USAGE, so this chain does not add to the image's usage -- it
+		  // replaces it for this view. This view is both rendered into (vkCmdBeginRendering below) and sampled
+		  // through $portalmap, so it has to carry both bits; SAMPLED alone makes it illegal as an attachment.
 		  VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
-		  usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+		  usageInfo.usage = info.usage;
 
 		  VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 		  createInfo.pNext = &usageInfo;
@@ -299,8 +302,10 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 			  VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1,
 		  };
 
+		  // Same as the colour view above: EXTENDED_USAGE means this replaces the image's usage, and this view
+		  // is used as the depth attachment, so DEPTH_STENCIL_ATTACHMENT has to survive alongside SAMPLED.
 		  VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
-		  usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+		  usageInfo.usage = info.usage;
 
 		  VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 		  createInfo.pNext = &usageInfo;
@@ -331,7 +336,6 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 */
 static void R_DrawPortalSurface( struct FrameState_s *cmd, portalSurface_t *portalSurface )
 {
-	assert(cmd->parent != NULL);
 	unsigned int i;
 	float dist, d, best_d;
 	vec3_t viewerOrigin;

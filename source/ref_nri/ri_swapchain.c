@@ -194,7 +194,9 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 			timelineCreateInfo.semaphoreType = VK_SEMAPHORE_TYPE_BINARY;
 			R_VK_ADD_STRUCT( &createInfo, &timelineCreateInfo );
 
-			result = vkCreateSemaphore( dev->vk.device, &createInfo, NULL, &swapchain->vk.signaled[i] );
+			result = vkCreateSemaphore( dev->vk.device, &createInfo, NULL, &swapchain->vk.acquireSemaphores[i] );
+			VK_WrapResult( result );
+			result = vkCreateSemaphore( dev->vk.device, &createInfo, NULL, &swapchain->vk.presentSemaphores[i] );
 			VK_WrapResult( result );
 		}
 
@@ -227,8 +229,8 @@ uint32_t RISwapchainAcquireNextTexture( struct RIDevice_s *dev, struct RISwapcha
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		uint32_t image_index = 0;
-		swapchain->vk.signal_idx = ( swapchain->vk.signal_idx + 1 ) % swapchain->vk.imageCount;
-		VkSemaphore imageAcquiredSemaphore = swapchain->vk.signaled[swapchain->vk.signal_idx];
+		swapchain->vk.acquireIdx = ( swapchain->vk.acquireIdx + 1 ) % swapchain->vk.imageCount;
+		VkSemaphore imageAcquiredSemaphore = swapchain->vk.acquireSemaphores[swapchain->vk.acquireIdx];
 		VkResult result = vkAcquireNextImageKHR( dev->vk.device, swapchain->vk.swapchain, UINT64_MAX, imageAcquiredSemaphore, VK_NULL_HANDLE, &image_index );
 		switch( result ) {
 			case VK_SUCCESS:
@@ -259,8 +261,10 @@ void FreeRISwapchain( struct RIDevice_s *dev, struct RISwapchain_s *swapchain )
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		for( size_t p = 0; p < RI_MAX_SWAPCHAIN_IMAGES; p++ ) {
-			if( swapchain->vk.signaled[p] )
-				vkDestroySemaphore( dev->vk.device, swapchain->vk.signaled[p], NULL );
+			if( swapchain->vk.acquireSemaphores[p] )
+				vkDestroySemaphore( dev->vk.device, swapchain->vk.acquireSemaphores[p], NULL );
+			if( swapchain->vk.presentSemaphores[p] )
+				vkDestroySemaphore( dev->vk.device, swapchain->vk.presentSemaphores[p], NULL );
 		}
 		for( size_t p = 0; p < RI_MAX_SWAPCHAIN_IMAGES; p++ ) {
 			if( swapchain->vk.views[p] )
@@ -311,7 +315,7 @@ int RISwapchainFrameSubmit( struct RIDevice_s *dev, struct RISwapchain_s *swapch
 		if( !acquireFailed ) {
 			waitInfos[waitCount++] = ( VkSemaphoreSubmitInfo ){
 				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-				.semaphore = swapchain->vk.signaled[swapchain->vk.signal_idx],
+				.semaphore = swapchain->vk.acquireSemaphores[swapchain->vk.acquireIdx],
 				.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
 			};
 		}
@@ -321,9 +325,10 @@ int RISwapchainFrameSubmit( struct RIDevice_s *dev, struct RISwapchain_s *swapch
 		VkSemaphoreSubmitInfo signalInfos[2];
 		uint32_t signalCount = 0;
 		if( !acquireFailed ) {
+			// Keyed to the image being presented, not to the ring element: see presentSemaphores.
 			signalInfos[signalCount++] = ( VkSemaphoreSubmitInfo ){
 				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-				.semaphore = desc->ringElement->vk.semaphore,
+				.semaphore = swapchain->vk.presentSemaphores[desc->imageIndex],
 				.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
 			};
 		}
@@ -351,7 +356,7 @@ int RISwapchainFrameSubmit( struct RIDevice_s *dev, struct RISwapchain_s *swapch
 		VK_WrapResult( vkQueueSubmit2( queue->vk.queue, 1, &submitInfo, desc->ringElement->vk.fence ) );
 
 		if( !acquireFailed ) {
-			VkSemaphore presentWait[] = { desc->ringElement->vk.semaphore };
+			VkSemaphore presentWait[] = { swapchain->vk.presentSemaphores[desc->imageIndex] };
 			VkResult presentResult = RISwapchainPresent_vk( dev, swapchain, desc->imageIndex, 1, presentWait );
 			if( presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR )
 				swapchain->vk.outOfDate = 1;
@@ -432,13 +437,19 @@ int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, 
 			VK_WrapResult( result );
 		}
 
-		// The per-image acquire semaphores must be recreated: imageCount can change across a resize,
-		// and a semaphore left pending by an acquire on the retired swapchain is unusable. Reset the
-		// round-robin index so it stays in range. (rhi-zig's swapchain.zig resize omits this — a bug.)
+		// The per-image semaphores must be recreated: imageCount can change across a resize, and a
+		// semaphore left pending by an acquire or a present on the retired swapchain is unusable.
+		// Reset the round-robin index so it stays in range. (rhi-zig's swapchain.zig resize omits
+		// this — a bug.) This runs after vkDestroySwapchainKHR( oldSwapchain ) above, which aborts
+		// any presents still holding a wait on the present semaphores.
 		for( size_t i = 0; i < RI_MAX_SWAPCHAIN_IMAGES; i++ ) {
-			if( swapchain->vk.signaled[i] ) {
-				vkDestroySemaphore( dev->vk.device, swapchain->vk.signaled[i], NULL );
-				swapchain->vk.signaled[i] = VK_NULL_HANDLE;
+			if( swapchain->vk.acquireSemaphores[i] ) {
+				vkDestroySemaphore( dev->vk.device, swapchain->vk.acquireSemaphores[i], NULL );
+				swapchain->vk.acquireSemaphores[i] = VK_NULL_HANDLE;
+			}
+			if( swapchain->vk.presentSemaphores[i] ) {
+				vkDestroySemaphore( dev->vk.device, swapchain->vk.presentSemaphores[i], NULL );
+				swapchain->vk.presentSemaphores[i] = VK_NULL_HANDLE;
 			}
 		}
 		for( size_t i = 0; i < imageNum; i++ ) {
@@ -446,12 +457,14 @@ int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, 
 			VkSemaphoreTypeCreateInfo binaryCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO };
 			binaryCreateInfo.semaphoreType = VK_SEMAPHORE_TYPE_BINARY;
 			R_VK_ADD_STRUCT( &createInfo, &binaryCreateInfo );
-			result = vkCreateSemaphore( dev->vk.device, &createInfo, NULL, &swapchain->vk.signaled[i] );
+			result = vkCreateSemaphore( dev->vk.device, &createInfo, NULL, &swapchain->vk.acquireSemaphores[i] );
+			VK_WrapResult( result );
+			result = vkCreateSemaphore( dev->vk.device, &createInfo, NULL, &swapchain->vk.presentSemaphores[i] );
 			VK_WrapResult( result );
 		}
 
 		swapchain->vk.imageCount = imageNum;
-		swapchain->vk.signal_idx = 0;
+		swapchain->vk.acquireIdx = 0;
 		swapchain->vk.outOfDate = 0;
 		swapchain->vk.acquireFailed = 0;
 		swapchain->width = width;
@@ -468,6 +481,16 @@ struct RITextureView_s RISwapchainGetTextureView(struct RISwapchain_s *swapchain
 		}
 	};
 	return view;
+}
+
+struct RITexture_s RISwapchainGetTexture(struct RISwapchain_s *swapchain, uint32_t index) {
+	struct RITexture_s texture = {
+		.vk = {
+			.image = swapchain->vk.images[index],
+			.allocation = NULL // swapchain-owned; not a VMA allocation
+		}
+	};
+	return texture;
 }
 
 uint32_t RISwapchainGetImageCount( struct RISwapchain_s *swapchain )

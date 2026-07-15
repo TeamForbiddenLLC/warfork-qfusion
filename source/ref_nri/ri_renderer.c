@@ -6,6 +6,7 @@
 
 #include "ri_conversion.h"
 #include "ri_gpu_preset.h"
+#include "ri_vk.h"
 
 #include "ri_types.h"
 
@@ -947,7 +948,7 @@ struct RIDescriptor_s RIDescriptorStorageBuffer( struct RIDevice_s *dev, struct 
 	return desc;
 }
 
-struct RIDescriptor_s RIDescriptorSampledImage( struct RIDevice_s *dev, struct RITextureView_s *view, enum RIResourceState_e state )
+struct RIDescriptor_s RIDescriptorSampledImage( struct RIDevice_s *dev, struct RITextureView_s *view, uint32_t state )
 {
 	(void)dev;
 	struct RIDescriptor_s desc = { 0 };
@@ -955,7 +956,7 @@ struct RIDescriptor_s RIDescriptorSampledImage( struct RIDevice_s *dev, struct R
 #if ( DEVICE_IMPL_VULKAN )
 	desc.vk.image.sampler = VK_NULL_HANDLE;
 	desc.vk.image.imageView = view ? view->vk.image : VK_NULL_HANDLE;
-	desc.vk.image.imageLayout = ( state == RI_RESOURCE_STATE_UNORDERED_ACCESS ) ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	desc.vk.image.imageLayout = RI_VK_ResourceStateToImageLayout( state );
 #endif
 	if( view && view->cookie )
 		desc.cookie = hash_u64( hash_u64( view->cookie, desc.type ), (uint64_t)state );
@@ -1141,6 +1142,117 @@ void EndRICmd( struct RIDevice_s *dev, struct RICmd_s *cmd )
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		VK_WrapResult( vkEndCommandBuffer( cmd->vk.cmd ) );
+		return;
+	}
+#endif
+}
+
+void RICmdBarrier( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RIBarrierGroupDesc_s *desc )
+{
+	(void)dev;
+	const size_t total = desc->numMemoryBarriers + desc->numBufferBarriers + desc->numImageBarriers;
+	if( total == 0 )
+		return;
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		VkMemoryBarrier2 *vkMemory = desc->numMemoryBarriers ? alloca( sizeof( VkMemoryBarrier2 ) * desc->numMemoryBarriers ) : NULL;
+		VkBufferMemoryBarrier2 *vkBuffer = desc->numBufferBarriers ? alloca( sizeof( VkBufferMemoryBarrier2 ) * desc->numBufferBarriers ) : NULL;
+		VkImageMemoryBarrier2 *vkImage = desc->numImageBarriers ? alloca( sizeof( VkImageMemoryBarrier2 ) * desc->numImageBarriers ) : NULL;
+
+		for( size_t i = 0; i < desc->numMemoryBarriers; i++ ) {
+			const struct RIMemoryBarrier_s *b = &desc->memoryBarriers[i];
+			vkMemory[i] = (VkMemoryBarrier2){
+				.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+				.srcStageMask = RI_VK_BarrierStages( b->beforeStages, b->before ),
+				.srcAccessMask = RI_VK_ResourceStateToAccess( b->before ),
+				.dstStageMask = RI_VK_BarrierStages( b->afterStages, b->after ),
+				.dstAccessMask = RI_VK_ResourceStateToAccess( b->after ),
+			};
+		}
+
+		for( size_t i = 0; i < desc->numBufferBarriers; i++ ) {
+			const struct RIBufferBarrier_s *b = &desc->bufferBarriers[i];
+			vkBuffer[i] = (VkBufferMemoryBarrier2){
+				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+				.srcStageMask = RI_VK_BarrierStages( b->beforeStages, b->before ),
+				.srcAccessMask = RI_VK_ResourceStateToAccess( b->before ),
+				.dstStageMask = RI_VK_BarrierStages( b->afterStages, b->after ),
+				.dstAccessMask = RI_VK_ResourceStateToAccess( b->after ),
+				.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+				.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+				.buffer = b->buffer->vk.buffer,
+				.offset = b->offset,
+				.size = b->size ? b->size : VK_WHOLE_SIZE,
+			};
+		}
+
+		for( size_t i = 0; i < desc->numImageBarriers; i++ ) {
+			const struct RIImageBarrier_s *b = &desc->imageBarriers[i];
+			vkImage[i] = (VkImageMemoryBarrier2){
+				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = RI_VK_BarrierStages( b->beforeStages, b->before ),
+				.srcAccessMask = RI_VK_ResourceStateToAccess( b->before ),
+				.dstStageMask = RI_VK_BarrierStages( b->afterStages, b->after ),
+				.dstAccessMask = RI_VK_ResourceStateToAccess( b->after ),
+				.oldLayout = RI_VK_ResourceStateToImageLayout( b->before ),
+				.newLayout = RI_VK_ResourceStateToImageLayout( b->after ),
+				.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+				.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+				.image = b->texture->vk.image,
+				.subresourceRange = {
+					.aspectMask = RI_VK_BarrierAspect( b->aspect ),
+					.baseMipLevel = b->baseMip,
+					.levelCount = b->mipCount ? b->mipCount : VK_REMAINING_MIP_LEVELS,
+					.baseArrayLayer = b->baseLayer,
+					.layerCount = b->layerCount ? b->layerCount : VK_REMAINING_ARRAY_LAYERS,
+				},
+			};
+		}
+
+		VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+		dependencyInfo.memoryBarrierCount = desc->numMemoryBarriers;
+		dependencyInfo.pMemoryBarriers = vkMemory;
+		dependencyInfo.bufferMemoryBarrierCount = desc->numBufferBarriers;
+		dependencyInfo.pBufferMemoryBarriers = vkBuffer;
+		dependencyInfo.imageMemoryBarrierCount = desc->numImageBarriers;
+		dependencyInfo.pImageMemoryBarriers = vkImage;
+		vkCmdPipelineBarrier2( cmd->vk.cmd, &dependencyInfo );
+		return;
+	}
+#endif
+}
+
+void RICmdImageBarrier( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RIImageBarrier_s *barrier )
+{
+	const struct RIBarrierGroupDesc_s desc = { .imageBarriers = barrier, .numImageBarriers = 1 };
+	RICmdBarrier( dev, cmd, &desc );
+}
+
+void RICmdBufferBarrier( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RIBufferBarrier_s *barrier )
+{
+	const struct RIBarrierGroupDesc_s desc = { .bufferBarriers = barrier, .numBufferBarriers = 1 };
+	RICmdBarrier( dev, cmd, &desc );
+}
+
+void RICmdCopyTextureToBuffer( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RICopyTextureToBufferDesc_s *desc )
+{
+	(void)dev;
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		const VkBufferImageCopy region = {
+			.bufferOffset = desc->bufferOffset,
+			.bufferRowLength = desc->bufferRowLength,
+			.bufferImageHeight = desc->bufferImageHeight,
+			.imageSubresource = {
+				.aspectMask = RI_VK_BarrierAspect( desc->aspect ),
+				.mipLevel = desc->mipLevel,
+				.baseArrayLayer = desc->baseArrayLayer,
+				.layerCount = desc->layerCount ? desc->layerCount : 1,
+			},
+			.imageOffset = { desc->x, desc->y, desc->z },
+			.imageExtent = { desc->width, desc->height, desc->depth ? desc->depth : 1 },
+		};
+		vkCmdCopyImageToBuffer( cmd->vk.cmd, desc->src->vk.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, desc->dst->vk.buffer, 1, &region );
 		return;
 	}
 #endif

@@ -23,13 +23,6 @@ enum RIDescriptorType_e {
 	RI_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE,
 };
 
-// Minimal backend-neutral resource state, only what the image descriptor builders need to select a
-// VK image layout (RI_VK_ResourceStateToImageLayout in ri_vk.h).
-enum RIResourceState_e {
-	RI_RESOURCE_STATE_SHADER_RESOURCE,  // sampled image -> SHADER_READ_ONLY_OPTIMAL
-	RI_RESOURCE_STATE_UNORDERED_ACCESS, // storage image -> GENERAL
-};
-
 // A flags-free, non-owning value: the builders (RIDescriptor*() in ri_renderer.h) resolve the
 // backend handle inline and derive `cookie` from the referenced resource's own cookie folded with
 // the binding params. cookie == 0 means empty (RI_IsEmptyDescriptor). Ownership lives on the
@@ -82,7 +75,8 @@ struct RIAccelStructure_s {
 // beyond a handle read) but kept for call-site stability.
 struct RIDescriptor_s RIDescriptorUniformBuffer( struct RIDevice_s *dev, struct RIBuffer_s *buffer, uint64_t offset, uint64_t range );
 struct RIDescriptor_s RIDescriptorStorageBuffer( struct RIDevice_s *dev, struct RIBuffer_s *buffer, uint64_t offset, uint64_t range );
-struct RIDescriptor_s RIDescriptorSampledImage( struct RIDevice_s *dev, struct RITextureView_s *view, enum RIResourceState_e state );
+// state: RIResourceState_e bits; selects the descriptor's image layout via RI_VK_ResourceStateToImageLayout.
+struct RIDescriptor_s RIDescriptorSampledImage( struct RIDevice_s *dev, struct RITextureView_s *view, uint32_t state );
 struct RIDescriptor_s RIDescriptorStorageImage( struct RIDevice_s *dev, struct RITextureView_s *view );
 struct RIDescriptor_s RIDescriptorSampler( struct RIDevice_s *dev, struct RISampler_s *sampler );
 struct RIDescriptor_s RIDescriptorAccelerationStructure( struct RIDevice_s *dev, struct RIAccelStructure_s *as );

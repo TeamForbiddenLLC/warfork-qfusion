@@ -30,6 +30,15 @@ void BeginRICmd( struct RIDevice_s *dev, struct RICmd_s *cmd );
 void EndRICmd( struct RIDevice_s *dev, struct RICmd_s *cmd );
 void InitRICmd( struct RIDevice_s *dev, struct RIPool_s * pool, struct RICmd_s *cmd  );
 
+// Record resource-state transitions. Every group is batched into a single backend barrier command; any
+// group may be empty, and an entirely empty desc records nothing.
+void RICmdBarrier( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RIBarrierGroupDesc_s *desc );
+// Single-barrier conveniences over RICmdBarrier.
+void RICmdImageBarrier( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RIImageBarrier_s *barrier );
+void RICmdBufferBarrier( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RIBufferBarrier_s *barrier );
+
+void RICmdCopyTextureToBuffer( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RICopyTextureToBufferDesc_s *desc );
+
 void InitRIPool( struct RIDevice_s *dev, struct RIPool_s *pool, struct RIQueue_s *queue );
 void ResetRIPool( struct RIDevice_s *dev, struct RIPool_s *pool );
 void FreeRIPool( struct RIDevice_s *dev, struct RIPool_s *pool );

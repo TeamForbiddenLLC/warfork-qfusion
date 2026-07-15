@@ -2,9 +2,11 @@
 #define RI_COMMAND_H
 
 // Command submission + scheduling types: queues, command pools/buffers, the command ring, the
-// deferred-free list, the timeline semaphore, and the viewport/scissor geometry used at record time.
+// deferred-free list, the timeline semaphore, the viewport/scissor geometry used at record time, and
+// the barrier/copy descriptors recorded into a command buffer.
 
 #include "ri_prelude.h"
+#include "ri_resource.h" // RIResourceState_e / RIBarrierStages_e, RIBuffer_s / RITexture_s
 
 enum RIQueueType_e {
 	RI_QUEUE_GRAPHICS,
@@ -55,6 +57,61 @@ struct RIViewport_s {
 	float depthMin;
 	float depthMax;
 	bool originBottomLeft; // expects "isViewportOriginBottomLeftSupported"
+};
+
+// Barrier descriptors. `before`/`after` are RIResourceState_e bit sets; the layout, access mask and
+// pipeline stages are derived from them, so a transition is spelled as intent rather than masks.
+// `beforeStages`/`afterStages` are RIBarrierStages_e bit sets that narrow the derived stage mask;
+// RI_BARRIER_STAGE_NONE (0) means "derive conservatively from the state".
+
+struct RIImageBarrier_s {
+	const struct RITexture_s *texture;
+	uint32_t before, after;             // RIResourceState_e bits
+	uint32_t beforeStages, afterStages; // RIBarrierStages_e bits; 0 => derive from state
+	uint8_t aspect;                     // RIBarrierAspect_e
+	uint16_t baseMip, mipCount;         // mipCount 0 => remaining mips
+	uint16_t baseLayer, layerCount;     // layerCount 0 => remaining layers
+};
+
+struct RIBufferBarrier_s {
+	const struct RIBuffer_s *buffer;
+	uint32_t before, after;             // RIResourceState_e bits
+	uint32_t beforeStages, afterStages; // RIBarrierStages_e bits; 0 => derive from state
+	uint64_t offset;
+	uint64_t size; // 0 => whole buffer
+};
+
+// Global execution + memory barrier, carrying no resource handle.
+struct RIMemoryBarrier_s {
+	uint32_t before, after;             // RIResourceState_e bits
+	uint32_t beforeStages, afterStages; // RIBarrierStages_e bits; 0 => derive from state
+};
+
+struct RIBarrierGroupDesc_s {
+	const struct RIMemoryBarrier_s *memoryBarriers;
+	size_t numMemoryBarriers;
+	const struct RIBufferBarrier_s *bufferBarriers;
+	size_t numBufferBarriers;
+	const struct RIImageBarrier_s *imageBarriers;
+	size_t numImageBarriers;
+};
+
+// Copy one texture subresource into a buffer region. `src` must already be in RI_RESOURCE_STATE_COPY_SRC;
+// the caller owns the surrounding barriers. bufferRowLength/bufferImageHeight are in texels, 0 = tightly
+// packed.
+struct RICopyTextureToBufferDesc_s {
+	const struct RITexture_s *src;
+	const struct RIBuffer_s *dst;
+	uint64_t bufferOffset;
+	uint32_t bufferRowLength;
+	uint32_t bufferImageHeight;
+	uint32_t mipLevel;
+	uint32_t baseArrayLayer;
+	uint32_t layerCount; // 0 => 1
+	uint8_t aspect;      // RIBarrierAspect_e
+	int32_t x, y, z;
+	uint32_t width, height;
+	uint32_t depth; // 0 => 1
 };
 
 struct RIPool_s {

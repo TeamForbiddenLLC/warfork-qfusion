@@ -964,7 +964,7 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 {
 	enum RICullMode_e cullMode = cmd->cullMode;
 	if( cmd->flippedViewport ) {
-		cullMode = ~cullMode;
+		cullMode = RI_FlipCullMode( cullMode );
 	}
 	VkVertexInputAttributeDescription vertextbindingDesc[MAX_ATTRIBUTES];
 	VkVertexInputBindingDescription vertexInputStreamsDesc[MAX_STREAMS];

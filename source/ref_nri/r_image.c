@@ -338,9 +338,6 @@ enum {
 	NUM_IMAGE_BUFFERS
 };
 
-static uint8_t *r_screenShotBuffer;
-static size_t r_screenShotBufferSize;
-
 static uint8_t *r_imageBuffers[NUM_QGL_CONTEXTS][NUM_IMAGE_BUFFERS];
 static size_t r_imageBufSize[NUM_QGL_CONTEXTS][NUM_IMAGE_BUFFERS];
 
@@ -1621,66 +1618,6 @@ done:
 	return image;
 }
 
-/*
- * R_ScreenShot
- */
-void R_ScreenShot( const char *filename, int x, int y, int width, int height, bool flipx, bool flipy, bool flipdiagonal, bool silent )
-{
-	size_t size, buf_size;
-	uint8_t *buffer, *flipped, *rgb, *rgba;
-	r_imginfo_t imginfo;
-	const char *extension;
-
-	extension = COM_FileExtension( filename );
-	if( !extension ) {
-		Com_Printf( "R_ScreenShot: Invalid filename\n" );
-		return;
-	}
-
-	size = width * height * 3;
-	// add extra space incase we need to flip the screenshot
-	buf_size = width * height * 4 + size;
-	if( buf_size > r_screenShotBufferSize ) {
-		if( r_screenShotBuffer ) {
-			Q_Free( r_screenShotBuffer );
-		}
-		r_screenShotBuffer = Q_Malloc( buf_size );
-		Q_LinkToPool( r_screenShotBuffer, r_imagesPool );
-		r_screenShotBufferSize = buf_size;
-	}
-
-	buffer = r_screenShotBuffer;
-	if( flipx || flipy || flipdiagonal ) {
-		flipped = buffer + size;
-	} else {
-		flipped = NULL;
-	}
-
-	imginfo.width = width;
-	imginfo.height = height;
-	imginfo.samples = 3;
-	imginfo.pixels = flipped ? flipped : buffer;
-
-	assert(false);
-	//qglReadPixels( 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer );
-
-	rgb = rgba = buffer;
-	while( (size_t)( rgb - buffer ) < size ) {
-		*( rgb++ ) = *( rgba++ );
-		*( rgb++ ) = *( rgba++ );
-		*( rgb++ ) = *( rgba++ );
-		rgba++;
-	}
-
-	if( flipped ) {
-		R_FlipTexture( buffer, flipped, width, height, 3, flipx, flipy, flipdiagonal );
-	}
-
-	if( WriteScreenShot( filename, &imginfo, r_screenshot_format->integer ) && !silent ) {
-		Com_Printf( "Wrote %s\n", filename );
-	}
-}
-
 //=======================================================
 
 /*
@@ -2002,7 +1939,5 @@ void R_ShutdownImages( void )
 
 	Q_FreePool( r_imagesPool );
 	r_imagesPool = NULL;
-	r_screenShotBuffer = NULL;
-	r_screenShotBufferSize = 0;
 	TracyCZoneEnd( ctx );
 }
