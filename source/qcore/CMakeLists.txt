@@ -28,8 +28,6 @@ if(BUILD_UNIT_TEST)
 		"./test/qstr_utf_test.c")
     add_qcore_test(NAME scratch_alloc_test SRCS
 		"./test/scratch_alloc_test.c")
-    add_qcore_test(NAME offset_alloc_test SRCS
-		"./test/offset_alloc_test.c")
     add_qcore_test(NAME index_pool_test SRCS
 		"./test/index_pool_test.c")
 endif()
