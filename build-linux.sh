@@ -59,7 +59,7 @@ if [[ "$USE_DOCKER" == "1" ]]; then
         docker build -t warfork-builder .
     fi
     echo "==> Building Linux ($CONFIG) via Docker"
-    docker run --rm -v "$ROOT:/root/warfork" warfork-builder "$CONFIG" "${EXTRA_ARGS[@]}"
+    docker run --rm -e "DEPLOY=$DEPLOY" -v "$ROOT:/root/warfork" warfork-builder "$CONFIG" "${EXTRA_ARGS[@]}"
     echo "==> Build complete: source/build/warfork-qfusion/"
     exit 0
 fi

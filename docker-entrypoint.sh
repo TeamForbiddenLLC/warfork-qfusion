@@ -15,4 +15,7 @@ cmake -B ./build --preset "workflow-linux-${CONFIG}" ${CMAKE_ARGS}
 
 cd build
 make -j$(nproc)
-make deploy -j$(nproc)
+# DEPLOY defaults to 1; set DEPLOY=0 (e.g. build-linux.sh --no-deploy) to skip asset staging
+if [[ "${DEPLOY:-1}" == "1" ]]; then
+    make deploy -j$(nproc)
+fi
