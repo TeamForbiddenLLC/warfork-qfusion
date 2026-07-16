@@ -81,6 +81,5 @@ neon
 dev_legacy
 etrtex
 scifi_interior
-legacy
 solidfake
 
