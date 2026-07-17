@@ -496,6 +496,11 @@ extern cvar_t *r_showtris;
 extern cvar_t *r_draworder;
 extern cvar_t *r_leafvis;
 
+extern cvar_t *r_shaderCache;
+extern cvar_t *r_shaderDebug;
+extern cvar_t *r_shaderValidate;
+extern cvar_t *r_shaderOptimize;
+
 extern cvar_t *r_fastsky;
 extern cvar_t *r_portalonly;
 extern cvar_t *r_portalmaps;
