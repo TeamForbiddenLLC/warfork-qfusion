@@ -275,6 +275,8 @@ typedef struct shader_s
 
 	float				portalDistance;
 
+	int					portalmip;				// 0 = full res, 1 = half, 2 = quarter...
+
 	float				skyHeight;
 	image_t				*skyboxImages[6];
 

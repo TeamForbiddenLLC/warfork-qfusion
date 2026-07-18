@@ -190,6 +190,7 @@ typedef struct portalSurface_s
 	const shader_t	*shader;
 	vec3_t			mins, maxs, centre;
 	skyportal_t		*skyPortal;
+	int				portalmip;				// 0 = full res (memset clears to 0)
 	struct portal_fb_s* portalfbs[2];
 } portalSurface_t;
 

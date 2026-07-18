@@ -317,7 +317,6 @@ static inline image_t *RB_ShaderpassTex( const shaderpass_t *pass )
 
 	if( pass->flags & SHADERPASS_PORTALMAP ) {
 		return rsh.blackTexture;
-		// return rb.currentPortalSurface && rb.currentPortalSurface->texures[0] ? rb.currentPortalSurface->texures[0] : rsh.blackTexture;
 	}
 
 	if( ( pass->flags & SHADERPASS_SKYBOXSIDE ) && rb.skyboxShader && rb.skyboxSide >= 0 ) {
@@ -841,7 +840,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 				normalmap = rsh.blankBumpTexture;
 			}
 
-			if( !( ( rb.currentModelType == mod_brush && !mapConfig.deluxeMappingEnabled ) || ( normalmap == rsh.blankBumpTexture && !glossmap && !decalmap && !entdecalmap ) ) ) {
+			if( !( rb.currentModelType == mod_brush && !mapConfig.deluxeMappingEnabled ) ) {
 				float offsetmappingScale = ( normalmap->samples == 4 ) ? ( r_offsetmapping_scale->value * rb.currentShader->offsetmappingScale ) : 0;
 
 				if( normalmap->samples == 4 )
