@@ -240,7 +240,7 @@ void RP_UpdateBonesUniforms( int elem, unsigned int numBones, dualquat_t *animDu
 
 void RP_UpdateDrawFlatUniforms( int elem, const vec3_t wallColor, const vec3_t floorColor );
 
-void RP_UpdateShadowsUniforms( int elem, int numShadows, const shadowGroup_t **groups, const mat4_t objectMatrix,
+void RP_UpdateShadowsUniforms( int elem, int numShadows, shadowGroup_t *const *groups, const mat4_t objectMatrix,
 	const vec3_t objectOrigin, const mat3_t objectAxis );
 
 void RP_UpdateInstancesUniforms( int elem, unsigned int numInstances, instancePoint_t *instances );
