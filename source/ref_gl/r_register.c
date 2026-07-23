@@ -612,12 +612,18 @@ static bool R_RegisterGLExtensions( void )
 	}
 
 	glConfig.ext.texture_filter_anisotropic = 1;
-	glConfig.ext.meminfo = 1;
-	glConfig.ext.gpu_memory_info = 1;
-	glConfig.ext.gpu_shader5 = 1;
+	// enum-only extensions: querying their GL_* enums without driver support
+	// yields GL_INVALID_ENUM, so gate them on the extensions string
+	glConfig.ext.meminfo = strstr( glConfig.extensionsString, "GL_ATI_meminfo" ) != NULL;
+	glConfig.ext.gpu_memory_info = strstr( glConfig.extensionsString, "GL_NVX_gpu_memory_info" ) != NULL;
+	// gpu_shader5 injects textureGather into GLSL (e.g. FXAA); compiling those
+	// shaders on drivers without the extension fails and blanks the post-process chain
+	glConfig.ext.gpu_shader5 = strstr( glConfig.extensionsString, "GL_ARB_gpu_shader5" ) != NULL;
 	glConfig.ext.texture_lod = 1;
 	glConfig.ext.packed_depth_stencil = 1;
-	glConfig.ext.ES3_compatibility = 1;
+	// ES3_compatibility switches compressed uploads to ETC2, which desktop GL
+	// drivers without the extension reject
+	glConfig.ext.ES3_compatibility = strstr( glConfig.extensionsString, "GL_ARB_ES3_compatibility" ) != NULL;
 	glConfig.ext.half_float_vertex = 1;
 	glConfig.ext.texture_edge_clamp = 1;
 	glConfig.ext.texture_cube_map = 1;
