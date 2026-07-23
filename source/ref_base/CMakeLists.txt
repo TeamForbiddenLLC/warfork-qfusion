@@ -1,5 +1,4 @@
 
-
 function(add_ref_base_test) 
 	cmake_parse_arguments(
 	   P_ARGS
