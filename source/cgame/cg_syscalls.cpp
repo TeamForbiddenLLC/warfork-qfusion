@@ -24,7 +24,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../ref_base/ref_mod.h"
 #define FS_DEFINE_INTERFACE_IMPL 1
 #include "../qcommon/mod_fs.h"
-
+#define CMD_DEFINE_INTERFACE_IMPL 1
+#include "../qcommon/mod_cmd.h"
 #include "cg_local.h"
 
 
@@ -43,6 +44,7 @@ extern "C" QF_DLL_EXPORT cgame_export_t *GetCGameAPI( cgame_import_t *import )
 	Q_ImportRefModule(&import->ref_import);
 	CGAME_IMPORT = *import;
 	Q_ImportSteamModule( &import->steam_import );
+	Q_ImportCmdModule(&import->cmdImport);
 
 	fs_import = *import->fsImport;
 	globals.API = CG_API;

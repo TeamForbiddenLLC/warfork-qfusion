@@ -360,13 +360,13 @@ void CG_ScreenInit( void )
 	//
 	// register our commands
 	//
-	trap_Cmd_AddCommand( "sizeup", CG_SizeUp_f );
-	trap_Cmd_AddCommand( "sizedown", CG_SizeDown_f );
-	trap_Cmd_AddCommand( "help_hud", Cmd_CG_PrintHudHelp_f );
-	trap_Cmd_AddCommand( "gamemenu", CG_GameMenu_f );
+	Cmd_AddCommand( "sizeup", CG_SizeUp_f );
+	Cmd_AddCommand( "sizedown", CG_SizeDown_f );
+	Cmd_AddCommand( "help_hud", Cmd_CG_PrintHudHelp_f );
+	Cmd_AddCommand( "gamemenu", CG_GameMenu_f );
 
-	trap_Cmd_AddCommand( "+quickmenu", &CG_QuickMenuOn_f );
-	trap_Cmd_AddCommand( "-quickmenu", &CG_QuickMenuOff_f );
+	Cmd_AddCommand( "+quickmenu", &CG_QuickMenuOn_f );
+	Cmd_AddCommand( "-quickmenu", &CG_QuickMenuOff_f );
 
 	int i;
 	for( i = 0; i < TOUCHPAD_COUNT; ++i )
@@ -378,13 +378,13 @@ void CG_ScreenInit( void )
 */
 void CG_ScreenShutdown( void )
 {
-	trap_Cmd_RemoveCommand( "gamemenu" );
-	trap_Cmd_RemoveCommand( "sizeup" );
-	trap_Cmd_RemoveCommand( "sizedown" );
-	trap_Cmd_RemoveCommand( "help_hud" );
+	Cmd_RemoveCommand( "gamemenu" );
+	Cmd_RemoveCommand( "sizeup" );
+	Cmd_RemoveCommand( "sizedown" );
+	Cmd_RemoveCommand( "help_hud" );
 
-	trap_Cmd_RemoveCommand( "+quickmenu" );
-	trap_Cmd_RemoveCommand( "-quickmenu" );
+	Cmd_RemoveCommand( "+quickmenu" );
+	Cmd_RemoveCommand( "-quickmenu" );
 }
 
 
