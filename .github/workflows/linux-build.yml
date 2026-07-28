@@ -12,6 +12,11 @@ on:
         type: string
         default: ''
         required: false
+      package_assets:
+        description: 'Package shared game assets into the build artifact'
+        type: boolean
+        default: true
+        required: false
     secrets:
       SDK_PASSWORD:
         required: true
@@ -52,6 +57,7 @@ jobs:
           make -j8
 
       - name: Package Assets
+        if: inputs.package_assets
         working-directory: ./source/build
         run: make deploy -j8
           

@@ -12,6 +12,11 @@ on:
         type: string
         default: ''
         required: false
+      package_assets:
+        description: 'Package shared game assets into the build artifact'
+        type: boolean
+        default: true
+        required: false
     secrets:
       SDK_PASSWORD:
         required: true
@@ -45,6 +50,7 @@ jobs:
           msbuild qfusion.sln /p:configuration=${{ env.BUILD_FOLDER }} /maxcpucount:8
 
       - name: Package Assets
+        if: inputs.package_assets
         working-directory: .\source\build
         run: cmake --build . --target deploy --config ${{ env.BUILD_FOLDER }}
           

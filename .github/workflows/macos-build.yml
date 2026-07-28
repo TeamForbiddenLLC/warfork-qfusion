@@ -16,6 +16,11 @@ on:
         type: string
         default: ''
         required: false
+      package_assets:
+        description: 'Package shared game assets into the build artifact'
+        type: boolean
+        default: true
+        required: false
     secrets:
       SDK_PASSWORD:
         required: true
@@ -55,6 +60,7 @@ jobs:
           cmake --build . --config ${{ env.BUILD_FOLDER }}
 
       - name: Package Assets
+        if: inputs.package_assets
         working-directory: ./source
         run: cmake --build ./build --target deploy --config ${{ env.BUILD_FOLDER }}
           

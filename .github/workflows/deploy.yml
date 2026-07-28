@@ -13,6 +13,7 @@ jobs:
     uses: ./.github/workflows/linux-build.yml
     with:
       config: 'release'
+      package_assets: false
     secrets: inherit
 
   macos:
@@ -20,12 +21,14 @@ jobs:
     with:
       config: 'release'
       arch: 'x86_64'
+      package_assets: false
     secrets: inherit
 
   windows:
     uses: ./.github/workflows/windows-build.yml
     with:
       config: 'release'
+      package_assets: false
     secrets: inherit
 
   # Prepare builds for Steam deployment
@@ -33,6 +36,9 @@ jobs:
     needs: [linux, macos, windows]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download all artifacts
         uses: actions/download-artifact@v5
         with:
@@ -61,9 +67,17 @@ jobs:
           # List structure for debugging
           find steam-build -type f | head -20
 
-      - name: Assemble cross-platform modules_21.pk3
+      - name: Packaging
         run: |
           set -euo pipefail
+
+          # Package shared game data once so every depot receives identical pk3s
+          mkdir -p package-stage
+          cmake \
+            -DCMAKE_SYSTEM_NAME=Linux \
+            -DBIN_DIR="${PWD}/package-stage" \
+            -DASSET_ROOT="${PWD}/assets" \
+            -P source/package_assets.cmake
 
           # Stage every platform's game modules in one flat dir
           mkdir -p modules-stage
@@ -75,13 +89,13 @@ jobs:
           cp steam-build/macos/Warfork.app/Contents/Resources/basewf/libgame_mac.dylib   modules-stage/
 
           # Build ONE pk3 (zip) so the checksum is identical on every platform
-          ( cd modules-stage && zip -r -X ../modules_21.pk3 . )
-          unzip -l modules_21.pk3   # sanity log: expect 6 entries
+          ( cd modules-stage && zip -r -X ../package-stage/basewf/modules_21.pk3 . )
+          unzip -l package-stage/basewf/modules_21.pk3   # sanity log: expect 6 entries
 
-          # Distribute the same file into every platform's basewf
-          cp modules_21.pk3 steam-build/windows/basewf/
-          cp modules_21.pk3 steam-build/linux/basewf/
-          cp modules_21.pk3 steam-build/macos/Warfork.app/Contents/Resources/basewf/
+          # Distribute the same game data into every platform's basewf
+          cp -a package-stage/basewf/. steam-build/windows/basewf/
+          cp -a package-stage/basewf/. steam-build/linux/basewf/
+          cp -a package-stage/basewf/. steam-build/macos/Warfork.app/Contents/Resources/basewf/
 
           # Remove loose modules so the pk3 is the single authoritative source
           rm -f steam-build/windows/basewf/cgame_x64.dll \
