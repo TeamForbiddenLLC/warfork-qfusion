@@ -1673,6 +1673,7 @@ void CL_RequestNextDownload( void )
 		{
 			bool failed = false;
 			char message[MAX_STRING_CHARS];
+			char localpath[MAX_STRING_CHARS];
 
 			Q_snprintfz( message, sizeof( message ), "Pure check failed:" );
 
@@ -1682,6 +1683,27 @@ void CL_RequestNextDownload( void )
 				Com_DPrintf( "Adding pure file: %s\n", purefile->filename );
 				if( !FS_AddPurePak( purefile->checksum ) )
 				{
+					unsigned localchecksum;
+
+					// report what we actually have locally, so a checksum mismatch can be
+					// told apart from a missing or unloaded pak
+					Com_Printf( S_COLOR_YELLOW "Pure check failed: %s (server checksum %u)\n",
+						purefile->filename, purefile->checksum );
+
+					if( FS_PakPathForName( purefile->filename, localpath, sizeof( localpath ), &localchecksum ) )
+					{
+						Com_Printf( S_COLOR_YELLOW "  loaded from: %s (checksum %u)\n", localpath, localchecksum );
+					}
+					else
+					{
+						const char *absolutename = FS_AbsoluteNameForBaseFile( purefile->filename );
+
+						if( absolutename )
+							Com_Printf( S_COLOR_YELLOW "  not loaded, but present on disk: %s\n", absolutename );
+						else
+							Com_Printf( S_COLOR_YELLOW "  not found in any base path\n" );
+					}
+
 					failed = true;
 					Q_strncatz( message, " ", sizeof( message ) );
 					Q_strncatz( message, purefile->filename, sizeof( message ) );
@@ -1691,7 +1713,8 @@ void CL_RequestNextDownload( void )
 
 			if( failed )
 			{
-				Com_Error( ERR_DROP, message );
+				Com_Printf( S_COLOR_YELLOW "Use \"fs_path\" to list every loaded pak with its full path.\n" );
+				Com_Error( ERR_DROP, "%s", message );
 				return;
 			}
 		}

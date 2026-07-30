@@ -2069,6 +2069,47 @@ static unsigned FS_PakChecksum( const char *filename )
 }
 
 /*
+* FS_PakPathForName
+*
+* Full path and checksum of the loaded pak matching the given basename.
+* false if no loaded pak matches.
+*/
+bool FS_PakPathForName( const char *pakname, char *path, size_t path_size, unsigned *checksum )
+{
+	int diff;
+	searchpath_t *search;
+	bool found = false;
+
+	if( path && path_size )
+		path[0] = '\0';
+	if( checksum )
+		*checksum = 0;
+
+	QMutex_Lock( fs_searchpaths_mutex );
+
+	for( search = fs_searchpaths; search; search = search->next )
+	{
+		if( search->pack )
+		{
+			// pakname is a basename, so we only compare the end of the names
+			diff = strlen( search->pack->filename ) - strlen( pakname );
+			if( diff >= 0 && !strcmp( search->pack->filename+diff, pakname ) ) {
+				if( path && path_size )
+					Q_strncpyz( path, search->pack->filename, path_size );
+				if( checksum )
+					*checksum = search->pack->checksum;
+				found = true;
+				break;
+			}
+		}
+	}
+
+	QMutex_Unlock( fs_searchpaths_mutex );
+
+	return found;
+}
+
+/*
 * FS_ChecksumBaseFile
 *
 * ignorePakChecksum - if true, returns md5 digest of file contents as found on the filesystem

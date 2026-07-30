@@ -768,6 +768,7 @@ static const struct fs_import_s default_fs_imports_s = {
 	.FS_GetFileList = FS_GetFileList,
 	.FS_GetFileListExt = FS_GetFileListExt,
 	.FS_IsPakValid = FS_IsPakValid,
+	.FS_PakPathForName = FS_PakPathForName,
 	.FS_AddPurePak = FS_AddPurePak,
 	.FS_RemovePurePaks = FS_RemovePurePaks,
 	.FS_AddFileToMedia = FS_AddFileToMedia,

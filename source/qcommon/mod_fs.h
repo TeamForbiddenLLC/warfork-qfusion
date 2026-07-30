@@ -89,6 +89,7 @@ DECLARE_TYPEDEF_METHOD( int, FS_GetFileListExt, const char *dir, const char *ext
 
 // // only for base files
 DECLARE_TYPEDEF_METHOD( bool, FS_IsPakValid, const char *filename, unsigned *checksum );
+DECLARE_TYPEDEF_METHOD( bool, FS_PakPathForName, const char *pakname, char *path, size_t path_size, unsigned *checksum );
 DECLARE_TYPEDEF_METHOD( bool, FS_AddPurePak, unsigned checksum );
 DECLARE_TYPEDEF_METHOD( void, FS_RemovePurePaks, void );
 
@@ -155,6 +156,7 @@ struct fs_import_s {
 	FS_GetFileListFn FS_GetFileList;
 	FS_GetFileListExtFn FS_GetFileListExt;
 	FS_IsPakValidFn FS_IsPakValid;
+	FS_PakPathForNameFn FS_PakPathForName;
 	FS_AddPurePakFn FS_AddPurePak;
 	FS_RemovePurePaksFn FS_RemovePurePaks;
 	FS_AddFileToMediaFn FS_AddFileToMedia;
@@ -234,6 +236,7 @@ const char * FS_BaseNameForFile(const char *filename ){ return fs_import.FS_Base
 int FS_GetFileList(const char *dir, const char *extension, char *buf, size_t bufsize, int start, int end ){ return fs_import.FS_GetFileList(dir, extension, buf, bufsize, start, end);}
 int FS_GetFileListExt(const char *dir, const char *extension, char *buf, size_t *bufsize, int start, int end ){ return fs_import.FS_GetFileListExt(dir, extension, buf, bufsize, start, end);}
 bool FS_IsPakValid(const char *filename, unsigned *checksum ){ return fs_import.FS_IsPakValid(filename, checksum);}
+bool FS_PakPathForName(const char *pakname, char *path, size_t path_size, unsigned *checksum ){ return fs_import.FS_PakPathForName(pakname, path, path_size, checksum);}
 bool FS_AddPurePak(unsigned checksum ){ return fs_import.FS_AddPurePak(checksum);}
 void FS_RemovePurePaks(void ){ fs_import.FS_RemovePurePaks();}
 void FS_AddFileToMedia(const char *filename ){ fs_import.FS_AddFileToMedia(filename);}
