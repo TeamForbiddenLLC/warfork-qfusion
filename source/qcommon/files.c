@@ -2069,47 +2069,6 @@ static unsigned FS_PakChecksum( const char *filename )
 }
 
 /*
-* FS_PakPathForName
-*
-* Full path and checksum of the loaded pak matching the given basename.
-* false if no loaded pak matches.
-*/
-bool FS_PakPathForName( const char *pakname, char *path, size_t path_size, unsigned *checksum )
-{
-	int diff;
-	searchpath_t *search;
-	bool found = false;
-
-	if( path && path_size )
-		path[0] = '\0';
-	if( checksum )
-		*checksum = 0;
-
-	QMutex_Lock( fs_searchpaths_mutex );
-
-	for( search = fs_searchpaths; search; search = search->next )
-	{
-		if( search->pack )
-		{
-			// pakname is a basename, so we only compare the end of the names
-			diff = strlen( search->pack->filename ) - strlen( pakname );
-			if( diff >= 0 && !strcmp( search->pack->filename+diff, pakname ) ) {
-				if( path && path_size )
-					Q_strncpyz( path, search->pack->filename, path_size );
-				if( checksum )
-					*checksum = search->pack->checksum;
-				found = true;
-				break;
-			}
-		}
-	}
-
-	QMutex_Unlock( fs_searchpaths_mutex );
-
-	return found;
-}
-
-/*
 * FS_ChecksumBaseFile
 *
 * ignorePakChecksum - if true, returns md5 digest of file contents as found on the filesystem
@@ -3767,6 +3726,7 @@ static int FS_TouchGamePath( searchpath_t *basepath, const char *gamedir, bool i
 		for( i = 0; i < totalpaks; i++ )
 		{
 			// ignore already loaded pk3 files if updating
+			const char *shadowedby = NULL;
 			searchpath_t *compare = fs_searchpaths;
 			while( compare )
 			{
@@ -3777,6 +3737,9 @@ static int FS_TouchGamePath( searchpath_t *basepath, const char *gamedir, bool i
 					{
 						if( !Q_stricmp( compare->pack->filename, paknames[i] ) )
 							goto freename;
+						// same basename in another base path: whichever was added first wins
+						if( !shadowedby )
+							shadowedby = compare->pack->filename;
 					}
 				}
 				compare = compare->next;
@@ -3786,7 +3749,9 @@ static int FS_TouchGamePath( searchpath_t *basepath, const char *gamedir, bool i
 			{
 				// well, we couldn't find a suitable position for this pak file, probably because
 				// it's going to be overriden by a similarly named file elsewhere
-				continue;
+				Com_Printf( "Ignoring pk3 file %s (shadowed by %s)\n", paknames[i],
+					shadowedby ? shadowedby : "a pak with the same name" );
+				goto freename;
 			}
 
 			// deferred loading
@@ -3867,6 +3832,8 @@ static void FS_ReplaceDeferredPaks( void )
 			else {
 				// update prev pointers
 				search->pack = pak->deferred_pack;
+				Com_Printf( "Loaded pk3 file %s (checksum %u%s)\n", search->pack->filename,
+					search->pack->checksum, search->pack->pure ? ", pure" : "" );
 				FS_FreePakFile( pak );
 			}
 		}
