@@ -4429,14 +4429,17 @@ void FS_Init( void )
 	if( fs_cdpath->string[0] )
 		FS_AddBasePath( fs_cdpath->string, true );
 
-	FS_AddBasePath( fs_basepath->string, true );
-	fs_root_searchpath = fs_basepaths;
-	fs_write_searchpath = fs_basepaths;
-
+	// Keep user data writable, but prefer installed files when both paths contain the same file.
 	if( homedir != NULL && fs_usehomedir->integer ) {
 		FS_AddBasePath( homedir, true );
 		fs_write_searchpath = fs_basepaths;
 	}
+
+	FS_AddBasePath( fs_basepath->string, true );
+	fs_root_searchpath = fs_basepaths;
+
+	if( homedir == NULL || !fs_usehomedir->integer )
+		fs_write_searchpath = fs_root_searchpath;
 
 	cachedir = Sys_FS_GetCacheDirectory();
 	if( cachedir )
