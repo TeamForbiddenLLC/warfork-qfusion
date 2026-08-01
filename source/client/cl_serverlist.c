@@ -446,7 +446,11 @@ static void CL_ParseGetServersResponseMessage( msg_t *msg, bool extended )
 		switch( prefix )
 		{
 		case '\\':
-			MSG_ReadData( msg, addr, 4 );
+			if( !MSG_ReadData( msg, addr, sizeof( addr ), 4 ) )
+			{
+				Com_Printf( "Invalid master packet ( truncated IPv4 address )\n" );
+				return;
+			}
 			port = ShortSwap( MSG_ReadShort( msg ) ); // both endians need this swapped.
 			Q_snprintfz( adrString, sizeof( adrString ), "%u.%u.%u.%u:%u", addr[0], addr[1], addr[2], addr[3], port );
 			break;
@@ -454,7 +458,12 @@ static void CL_ParseGetServersResponseMessage( msg_t *msg, bool extended )
 		case '/':
 			if( extended )
 			{
-				MSG_ReadData( msg, addr, 16 );
+				// the loop guard only reserves 7 bytes; this branch needs 19
+				if( !MSG_ReadData( msg, addr, sizeof( addr ), 16 ) )
+				{
+					Com_Printf( "Invalid master packet ( truncated IPv6 address )\n" );
+					return;
+				}
 				port = ShortSwap( MSG_ReadShort( msg ) ); // both endians need this swapped.
 				Q_snprintfz( adrString, sizeof( adrString ), "[%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x]:%hu",
 								addr[ 0], addr[ 1], addr[ 2], addr[ 3], addr[ 4], addr[ 5], addr[ 6], addr[ 7],

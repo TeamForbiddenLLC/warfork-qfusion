@@ -411,13 +411,14 @@ void CL_DownloadCancel_f( void )
 static void CL_ParseDownload( msg_t *msg )
 {
 	size_t size, offset;
+	int rawOffset, rawSize;
 	char *svFilename;
 	TracyCZoneN( ctx, "CL_ParseDownload", 1 );
 
 	// read the data
 	svFilename = MSG_ReadString( msg );
-	offset = MSG_ReadLong( msg );
-	size = MSG_ReadLong( msg );
+	rawOffset = MSG_ReadLong( msg );
+	rawSize = MSG_ReadLong( msg );
 
 	if( cls.demo.playing )
 	{
@@ -426,7 +427,19 @@ static void CL_ParseDownload( msg_t *msg )
 		return;
 	}
 
-	if( msg->readcount + size > msg->cursize )
+	// reject before the size_t conversion: negatives would become huge offsets
+	if( rawOffset < 0 || rawSize < 0 )
+	{
+		Com_Printf( "Error: Invalid download message\n" );
+		CL_RetryDownload();
+		TracyCZoneEnd( ctx );
+		return;
+	}
+	offset = (size_t)rawOffset;
+	size = (size_t)rawSize;
+
+	// non-wrapping form of "readcount + size > cursize"
+	if( msg->readcount > msg->cursize || size > msg->cursize - msg->readcount )
 	{
 		Com_Printf( "Error: Download message didn't have as much data as it promised\n" );
 		CL_RetryDownload();
@@ -450,7 +463,8 @@ static void CL_ParseDownload( msg_t *msg )
 		return;
 	}
 
-	if( offset+size > cls.download.size )
+	// non-wrapping form of "offset + size > cls.download.size"
+	if( offset > cls.download.size || size > cls.download.size - offset )
 	{
 		Com_Printf( "Error: Invalid download message\n" );
 		msg->readcount += size;
@@ -569,7 +583,10 @@ static void CL_ParseServerData( msg_t *msg )
 	}
 
 	// parse player entity number
+	// this becomes cgs.playerNum and is used as a clientInfo[] subscript
 	cl.playernum = MSG_ReadShort( msg );
+	if( cl.playernum < 0 || cl.playernum >= MAX_CLIENTS )
+		Com_Error( ERR_DROP, "CL_ParseServerData: bad player number %i", cl.playernum );
 
 	// get the full level name
 	Q_strncpyz( cl.servermessage, MSG_ReadString( msg ), sizeof( cl.servermessage ) );
@@ -959,26 +976,46 @@ static void CB_RPC_DecompressVoice( void *self, struct steam_rpc_pkt_s *rec )
 }
 
 static void CL_ParseVoiceData( msg_t *msg ) {
-	int client = MSG_ReadShort( msg );
+	// unsigned reads: sign-extended values would slip past the range checks below
+	int client = MSG_ReadUShort( msg );
 	TracyCZoneN( ctx, "CL_ParseVoiceData", 1 );
 
-	int size = MSG_ReadShort( msg );
-	if (cl_enablevoice->integer != 1) {
-		MSG_SkipData(msg, size);
+	int size = MSG_ReadUShort( msg );
+
+	if( size < 0 || size > VOICE_BUFFER_MAX ) {
+		Com_Printf( "CL_ParseVoiceData: bad voice data size\n" );
+		msg->readcount = msg->cursize + 1; // poison: the stream is no longer in sync
 		TracyCZoneEnd( ctx );
 		return;
 	}
 
-	if (size > VOICE_BUFFER_MAX) {
+	if (cl_enablevoice->integer != 1) {
+		MSG_SkipData(msg, (size_t)size);
+		TracyCZoneEnd( ctx );
+		return;
+	}
+
+	if( client < 0 || client >= MAX_CLIENTS ) {
+		Com_Printf( "CL_ParseVoiceData: bad client number %i\n", client );
+		MSG_SkipData( msg, (size_t)size );
 		TracyCZoneEnd( ctx );
 		return;
 	}
 
 	struct decompress_voice_req_s *req = (struct decompress_voice_req_s *)malloc(sizeof(struct decompress_voice_req_s) + size);
+	if( !req ) {
+		MSG_SkipData( msg, (size_t)size );
+		TracyCZoneEnd( ctx );
+		return;
+	}
 
 	req->cmd = RPC_DECOMPRESS_VOICE;
 	req->count = size;
-	MSG_ReadData( msg, req->buffer, size );
+	if( !MSG_ReadData( msg, req->buffer, (size_t)size, (size_t)size ) ) {
+		free( req );
+		TracyCZoneEnd( ctx );
+		return;
+	}
 
 	// yes this is bad but i'm not making an allocation for a single int
 	STEAMSHIM_sendRPC(req, sizeof(struct decompress_voice_req_s) + size, (int*)client, CB_RPC_DecompressVoice, NULL);
@@ -1025,7 +1062,7 @@ void CL_ParseServerMessage( msg_t *msg )
 			if( cmd == -1 )
 				Com_Printf( "%3i:CMD %i %s\n", msg->readcount-1, cmd, "EOF" );
 			else
-				Com_Printf( "%3i:CMD %i %s\n", msg->readcount-1, cmd, !svc_strings[cmd] ? "bad" : svc_strings[cmd] );
+				Com_Printf( "%3i:CMD %i %s\n", msg->readcount-1, cmd, SVC_NameForCmd( cmd ) );
 		}
 
 		if( cmd == -1 )
@@ -1036,7 +1073,7 @@ void CL_ParseServerMessage( msg_t *msg )
 
 		if( cl_shownet->integer >= 2 )
 		{
-			if( !svc_strings[cmd] )
+			if( cmd >= (int)( sizeof( svc_strings ) / sizeof( svc_strings[0] ) ) || !svc_strings[cmd] )
 				Com_Printf( "%3i:BAD CMD %i\n", msg->readcount-1, cmd );
 			else
 				SHOWNET( msg, svc_strings[cmd] );
@@ -1113,14 +1150,25 @@ void CL_ParseServerMessage( msg_t *msg )
 			break;
 
 		case svc_demoinfo:
-			assert( cls.demo.playing );
 			{
 				size_t meta_data_maxsize;
+				int realsize, maxsize;
+
+				// assert() compiles out in release, so this needs a real check: a live
+				// server must not be able to drive the demo metadata path
+				if( !cls.demo.playing )
+					Com_Error( ERR_DROP, "svc_demoinfo outside of demo playback" );
 
 				MSG_ReadLong( msg );
 				MSG_ReadLong( msg );
-				cls.demo.meta_data_realsize = (size_t)MSG_ReadLong( msg );
-				meta_data_maxsize = (size_t)MSG_ReadLong( msg );
+				realsize = MSG_ReadLong( msg );
+				maxsize = MSG_ReadLong( msg );
+
+				if( realsize < 0 || maxsize < 0 )
+					Com_Error( ERR_DROP, "svc_demoinfo: bad metadata size" );
+
+				cls.demo.meta_data_realsize = (size_t)realsize;
+				meta_data_maxsize = (size_t)maxsize;
 
 				// sanity check
 				if( cls.demo.meta_data_realsize > meta_data_maxsize ) {
@@ -1130,8 +1178,11 @@ void CL_ParseServerMessage( msg_t *msg )
 					cls.demo.meta_data_realsize = sizeof( cls.demo.meta_data );
 				}
 
-				MSG_ReadData( msg, cls.demo.meta_data, cls.demo.meta_data_realsize );
-				MSG_SkipData( msg, meta_data_maxsize - cls.demo.meta_data_realsize );
+				if( !MSG_ReadData( msg, cls.demo.meta_data, sizeof( cls.demo.meta_data ), cls.demo.meta_data_realsize ) )
+					Com_Error( ERR_DROP, "svc_demoinfo: truncated metadata" );
+				// realsize was clamped above, so this subtraction cannot wrap
+				if( !MSG_SkipData( msg, meta_data_maxsize - cls.demo.meta_data_realsize ) )
+					Com_Error( ERR_DROP, "svc_demoinfo: truncated metadata" );
 			}
 			break;
 
@@ -1148,13 +1199,17 @@ void CL_ParseServerMessage( msg_t *msg )
 
 				ext = MSG_ReadByte( msg );		// extension id
 				MSG_ReadByte( msg );			// version number
-				len = MSG_ReadShort( msg );		// command length
+				len = MSG_ReadUShort( msg );	// command length
+
+				if( len < 0 )
+					Com_Error( ERR_DROP, "CL_ParseServerMessage: bad extension length" );
 
 				switch( ext )
 				{
 				default:
 					// unsupported
-					MSG_SkipData( msg, len );
+					if( !MSG_SkipData( msg, (size_t)len ) )
+						Com_Error( ERR_DROP, "CL_ParseServerMessage: bad extension length" );
 					break;
 				}
 			}

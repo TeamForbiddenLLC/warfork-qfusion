@@ -1240,13 +1240,23 @@ void SV_ParseClientMessage( client_t *client, msg_t *msg )
 
 				ext = MSG_ReadByte( msg );		// extension id
 				MSG_ReadByte( msg );			// version number
-				len = MSG_ReadShort( msg );		// command length
+				len = MSG_ReadUShort( msg );	// command length
+
+				if( len < 0 )
+				{
+					SV_DropClient( client, DROP_TYPE_GENERAL, "%s", "Error: Bad extension length" );
+					return;
+				}
 
 				switch( ext )
 				{
 				default:
 					// unsupported
-					MSG_SkipData( msg, len );
+					if( !MSG_SkipData( msg, (size_t)len ) )
+					{
+						SV_DropClient( client, DROP_TYPE_GENERAL, "%s", "Error: Bad extension length" );
+						return;
+					}
 					break;
 				}
 			}
@@ -1254,14 +1264,50 @@ void SV_ParseClientMessage( client_t *client, msg_t *msg )
 		case clc_steamauth:
 			{
 				SteamAuthTicket_t ticket;
-				ticket.pcbTicket = MSG_ReadLong(msg);
-				MSG_ReadData(msg, ticket.pTicket, ticket.pcbTicket);
+				int ticketLength;
+
+				// SV_Begin_f requires authenticated, so a legitimate ticket always
+				// arrives before the client spawns. A spawned client sending one is
+				// trying to re-key its identity mid-game.
+				//
+				// Note this is not once-per-connection: a map change resets clients to
+				// CS_CONNECTING and SV_New_f asks for the ticket again, so an already
+				// authenticated client legitimately re-sends it. Repeats are cheap
+				// because the Steam RPC is skipped below when nothing has changed.
+				if( client->state >= CS_SPAWNED )
+				{
+					SV_DropClient( client, DROP_TYPE_GENERAL, "%s", "Error: Unexpected steam auth" );
+					return;
+				}
+
+				ticketLength = MSG_ReadLong(msg);
+				if( ticketLength < 0 || ticketLength > AUTH_TICKET_MAXSIZE )
+				{
+					Com_Printf( "SV_ParseClientMessage: bad steam auth ticket size %i\n", ticketLength );
+					SV_DropClient( client, DROP_TYPE_GENERAL, "%s", "Error: Bad steam auth ticket size" );
+					return;
+				}
+
+				ticket.pcbTicket = ticketLength;
+				if( !MSG_ReadData( msg, ticket.pTicket, sizeof( ticket.pTicket ), (size_t)ticketLength ) )
+				{
+					SV_DropClient( client, DROP_TYPE_GENERAL, "%s", "Error: Truncated steam auth ticket" );
+					return;
+				}
 
 				char *steamid = Info_ValueForKey(client->userinfo, "steam_id");
 				if (!steamid || !steamid[0]){
 					SV_DropClient(client, DROP_TYPE_GENERAL, "steam authentication required and no steam id present");
 					break;
 				}
+
+				// Skip the (blocking, synchronous) Steam RPC when this client is
+				// already authenticated as this same account - the normal case after a
+				// map change. Without this, a client could also spam clc_steamauth to
+				// stall the server one RPC at a time.
+				if( client->authenticated && client->steamid == (uint64_t)atoll( steamid ) )
+					break;
+
 				client->steamid = atoll(steamid);
 				client->authenticated = true;
 
@@ -1302,15 +1348,29 @@ void SV_ParseClientMessage( client_t *client, msg_t *msg )
 			break;
 			case clc_voice:
 			{
-				int voiceDataSize = MSG_ReadShort(msg);
+				// unsigned read: a sign-extended length would slip past the size check
+				int voiceDataSize = MSG_ReadUShort(msg);
 				uint8_t voiceData[VOICE_BUFFER_MAX];
-				if (voiceDataSize > VOICE_BUFFER_MAX)
+
+				if (voiceDataSize < 0 || voiceDataSize > VOICE_BUFFER_MAX)
 				{
 					Com_Printf("SV_ParseClientMessage: voice data too large\n");
 					SV_DropClient(client, DROP_TYPE_GENERAL, "%s", "Error: Voice data too large");
 					return;
 				}
-				MSG_ReadData(msg, voiceData, voiceDataSize);
+				if( !MSG_ReadData(msg, voiceData, sizeof( voiceData ), (size_t)voiceDataSize) )
+				{
+					SV_DropClient(client, DROP_TYPE_GENERAL, "%s", "Error: Truncated voice data");
+					return;
+				}
+
+				// client->edict below is only valid once the client is in game. This is
+				// reachable without misbehaviour - a map change resets clients to
+				// CS_CONNECTING while voice packets are still in flight - so drop the
+				// audio rather than the client. The data was consumed above, so the rest
+				// of the message still parses.
+				if( client->state < CS_SPAWNED )
+					break;
 
 				for (int i = 0; i < sv_maxclients->integer; i++)
 				{
@@ -1327,6 +1387,15 @@ void SV_ParseClientMessage( client_t *client, msg_t *msg )
 				}
 				break;
 			}
+		}
+
+		// catch a handler that ran past the end of the message in this same
+		// iteration, rather than letting the next opcode be read from garbage
+		if( msg->readcount > msg->cursize )
+		{
+			Com_Printf( "SV_ParseClientMessage: badread\n" );
+			SV_DropClient( client, DROP_TYPE_GENERAL, "%s", "Error: Bad message" );
+			return;
 		}
 	}
 }

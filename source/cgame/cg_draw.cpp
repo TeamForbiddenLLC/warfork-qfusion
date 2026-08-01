@@ -380,7 +380,8 @@ void CG_DrawMiniMap( int x, int y, int iw, int ih, bool draw_playernames, bool d
 			}
 
 			// do we want names too?
-			if( draw_playernames == true )
+			// entity numbers run to MAX_EDICTS, clientInfo only holds MAX_CLIENTS
+			if( draw_playernames == true && cent->current.number >= 1 && cent->current.number <= MAX_CLIENTS )
 				trap_SCR_DrawString( x + (int)coords[0] + 8 * nameDir * cgs.vidHeight / 600, y + (int)coords[1] - 4 * cgs.vidHeight / 600,
 					nameAlign, COM_RemoveColorTokensExt( cgs.clientInfo[cent->current.number-1].name, true ),
 					cgs.fontSystemSmall, tmp_yellow_alpha );

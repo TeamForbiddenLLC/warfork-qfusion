@@ -228,7 +228,7 @@ static void Cmd_God_f( edict_t *ent )
 	else
 		msg = "godmode ON\n";
 
-	G_PrintMsg( ent, msg );
+	G_PrintMsg( ent, "%s", msg );
 }
 
 /*
@@ -257,7 +257,7 @@ static void Cmd_Noclip_f( edict_t *ent )
 		msg = "noclip ON\n";
 	}
 
-	G_PrintMsg( ent, msg );
+	G_PrintMsg( ent, "%s", msg );
 }
 
 /*
@@ -452,7 +452,7 @@ static void Cmd_Position_f( edict_t *ent )
 		Q_strncatz( msg, "position set <x> <y> <z> <pitch> <yaw> - Teleport to specified position\n", sizeof( msg ) );
 		Q_strncatz( msg, va( "Current position: %.4f %.4f %.4f %.4f %.4f\n", ent->s.origin[0], ent->s.origin[1],
 			ent->s.origin[2], ent->s.angles[0], ent->s.angles[1] ), sizeof( msg ) );
-		G_PrintMsg( ent, msg );
+		G_PrintMsg( ent, "%s", msg );
 	}
 }
 
@@ -945,7 +945,9 @@ static void G_vsay_f( edict_t *ent, bool team )
 			}
 		}
 		Q_strncatz( string, "\n", sizeof( string ) );
-		G_PrintMsg( ent, string );
+		// "%s": string embeds the client-supplied token, so it must never be
+		// used as the format itself
+		G_PrintMsg( ent, "%s", string );
 	}
 }
 
@@ -1085,7 +1087,7 @@ static void Cmd_Awards_f ( edict_t *ent )
 			ga = ( gameaward_t * )LA_Pointer( client->level.stats.awardAllocator, i );
 			Q_strncatz( entry, va( "\t%dx %s\n", ga->count, ga->name ), sizeof( entry ) );
 		}
-		G_PrintMsg( ent, entry );
+		G_PrintMsg( ent, "%s", entry );
 	}
 }
 
