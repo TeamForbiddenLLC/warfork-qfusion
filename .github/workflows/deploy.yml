@@ -44,6 +44,9 @@ jobs:
         with:
           path: artifacts
 
+      - name: Install strip-nondeterminism
+        run: apt-get install strip-nondeterminism
+
       - name: Prepare Steam depot structure
         run: |
           mkdir -p steam-build/windows steam-build/linux steam-build/macos

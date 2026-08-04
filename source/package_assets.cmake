@@ -30,12 +30,21 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     message(WARNING "OpenAL DLL not found: ${OPENAL_DLL_SRC}")
   endif()
 else()
-  execute_process (COMMAND mkdir -p ${BIN_DIR}/basewf)
-  execute_process (COMMAND bash -c "cd ${ASSET_ROOT}/data0_000_21/ && zip -r ${BIN_DIR}/basewf/data0_000_21.pk3 *")
-  execute_process (COMMAND bash -c "cd ${ASSET_ROOT}/data0_000_21pure/ && zip -r ${BIN_DIR}/basewf/data0_000_21pure.pk3 *")
-  execute_process (COMMAND bash -c "cd ${ASSET_ROOT}/data0_21/ && zip -r ${BIN_DIR}/basewf/data0_21.pk3 *")
-  execute_process (COMMAND bash -c "cd ${ASSET_ROOT}/data0_21pure/ && zip -r ${BIN_DIR}/basewf/data0_21pure.pk3 *")
-  execute_process (COMMAND bash -c "cd ${ASSET_ROOT}/data1_21pure/ && zip -r ${BIN_DIR}/basewf/data1_21pure.pk3 *")
+  execute_process (COMMAND bash -c "
+    mkdir -p ${BIN_DIR}/basewf
+    files=(
+      data0_000_21
+      data0_000_21pure
+      data0_21
+      data0_21pure
+      data1_21pure
+    )
+    for p in \"\${files[@]}\"; do
+      cd \"${ASSET_ROOT}/$p\"
+      zip -r \"${BIN_DIR}/basewf/$p.pk3\" *
+      strip-nondeterminism -T 1 \"${BIN_DIR}/basewf/$p.pk3\"
+    done
+  ")
 endif()
 
 file(COPY ${ASSET_ROOT}/profiles  DESTINATION ${BIN_DIR}/basewf)
