@@ -31,9 +31,9 @@ static cvar_t *cm_noAreas;
 cvar_t *cm_noCurves;
 int c_pointcontents, c_traces, c_brush_traces;
 
-void CM_LoadQ2BrushModel( cmodel_state_t *cms, void *parent, void *buf, bspFormatDesc_t *format );
-void CM_LoadQ1BrushModel( cmodel_state_t *cms, void *parent, void *buffer, bspFormatDesc_t *format );
-void CM_LoadQ3BrushModel( cmodel_state_t *cms, void *parent, void *buffer, bspFormatDesc_t *format );
+void CM_LoadQ2BrushModel( cmodel_state_t *cms, void *parent, void *buf, size_t bufferLen, bspFormatDesc_t *format );
+void CM_LoadQ1BrushModel( cmodel_state_t *cms, void *parent, void *buffer, size_t bufferLen, bspFormatDesc_t *format );
+void CM_LoadQ3BrushModel( cmodel_state_t *cms, void *parent, void *buffer, size_t bufferLen, bspFormatDesc_t *format );
 
 static const modelFormatDescr_t cm_supportedformats[] =
 {
@@ -239,7 +239,7 @@ cmodel_t *CM_LoadMap( cmodel_state_t *cms, const char *name, bool clientload, un
 	*checksum = cms->checksum;
 
 	// call the apropriate loader
-	descr = Q_FindFormatDescriptor( cm_supportedformats, ( const uint8_t * )buf, (const bspFormatDesc_t **)&bspFormat );
+	descr = Q_FindFormatDescriptor( cm_supportedformats, ( const uint8_t * )buf, (size_t)length, (const bspFormatDesc_t **)&bspFormat );
 	if( !descr )
 		Com_Error( ERR_DROP, "CM_LoadMap: unknown fileid for %s", name );
 
@@ -257,7 +257,7 @@ cmodel_t *CM_LoadMap( cmodel_state_t *cms, const char *name, bool clientload, un
 
 	Mem_TempFree( header );
 
-	descr->loader( cms, NULL, buf, bspFormat );
+	descr->loader( cms, NULL, buf, (size_t)length, bspFormat );
 
 	CM_InitBoxHull( cms );
 	CM_InitOctagonHull( cms );
@@ -296,7 +296,7 @@ char *CM_LoadMapMessage( char *name, char *message, int size )
 	*message = '\0';
 
 	len = FS_FOpenFile( name, &file, FS_READ );
-	if( !file || len < 1 )
+	if( !file || len < (int)sizeof( h_v ) )
 	{
 		if( file )
 			FS_FCloseFile( file );
@@ -304,7 +304,7 @@ char *CM_LoadMapMessage( char *name, char *message, int size )
 	}
 
 	FS_Read( h_v, sizeof( h_v ), file );
-	descr = Q_FindFormatDescriptor( cm_supportedformats, h_v, &bspFormat );
+	descr = Q_FindFormatDescriptor( cm_supportedformats, h_v, sizeof( h_v ), &bspFormat );
 	if( !descr )
 	{
 		Com_Printf( "CM_LoadMapMessage: %s: unknown bsp format\n", name );

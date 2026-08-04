@@ -1980,7 +1980,7 @@ static void Mod_Q2LoadVisibility( lump_t *l )
 /*
  * Mod_LoadQ2BrushModel
  */
-void Mod_LoadQ2BrushModel( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *format )
+void Mod_LoadQ2BrushModel( model_t *mod, model_t *parent, void *buffer, size_t bufferLen, bspFormatDesc_t *format )
 {
 	int i;
 	q2dheader_t *header;
@@ -2942,7 +2942,7 @@ void Mod_FixupQ1MipTex( model_t *mod )
 /*
  * Mod_LoadQ1BrushModel
  */
-void Mod_LoadQ1BrushModel( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *format )
+void Mod_LoadQ1BrushModel( model_t *mod, model_t *parent, void *buffer, size_t bufferLen, bspFormatDesc_t *format )
 {
 	int i;
 	int numvisleafs;
