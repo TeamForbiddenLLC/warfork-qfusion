@@ -22,6 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "client.h"
 #include "tracy/TracyC.h"
 
+static void CL_InitServerDownload( const char *filename, int size, unsigned checksum, bool allow_localhttpdownload,
+							const char *url, bool initial );
 void CL_StopServerDownload( void );
 
 //=============================================================================
@@ -271,8 +273,350 @@ void CL_DownloadDone( void )
 		CL_RequestNextDownload();
 }
 
+/*
+* CL_WebDownloadDoneCb
+*/
+static void CL_WebDownloadDoneCb( int status, const char *contentType, void *privatep )
+{
+	download_t download = cls.download;
+	bool disconnect = download.disconnect;
+	bool cancelled = download.cancelled;
+	bool success = (download.offset == download.size) && (status > -1);
 
+	Com_Printf( "Web download %s: %s (%i)\n", success ? "successful" : "failed", download.tempname, status );
 
+	if( success ) {
+		CL_DownloadComplete();
+	}
+	if( cancelled ) {
+		cls.download.requestnext = false;
+	}
+
+	// check if user pressed escape to stop the download
+	if( disconnect ) {
+		CL_Disconnect( NULL ); // this also calls CL_DownloadDone()
+		return;
+	}
+
+	CL_DownloadDone();
+}
+
+/*
+* CL_WebDownloadReadCb
+*/
+static size_t CL_WebDownloadReadCb( const void *buf, size_t numb, float percentage, int status,
+	const char *contentType, void *privatep )
+{
+	bool stop = cls.download.disconnect || cls.download.cancelled || status < 0 || status >= 300;
+	size_t write = 0;
+
+	if( !stop ) {
+		write = FS_Write( buf, numb, cls.download.filenum );
+	}
+
+	// ignore percentage passed by the downloader as it doesn't account for total file size
+	// of resumed downloads
+	cls.download.offset += write;
+	cls.download.percent = (double)cls.download.offset / (double)cls.download.size;
+	clamp( cls.download.percent, 0, 1 );
+
+	Cvar_ForceSet( "cl_download_percent", va( "%.1f", cls.download.percent * 100 ) );
+
+	cls.download.timeout = 0;
+
+	// abort if disconnected, canclled or writing failed
+	return stop ? !numb : write;
+}
+
+/*
+* CL_InitServerDownload
+*
+* Handles server's initdownload message, starts web or server download if possible
+*/
+static void CL_InitServerDownload( const char *filename, int size, unsigned checksum, bool allow_localhttpdownload,
+							  const char *url, bool initial )
+{
+	int alloc_size;
+	const char *baseurl;
+	download_list_t *dl;
+
+	// ignore download commands coming from demo files
+	if( cls.demo.playing )
+		return;
+
+	if( !cls.download.requestname )
+	{
+		Com_Printf( "Got init download message without request\n" );
+		return;
+	}
+
+	if( cls.download.filenum || cls.download.web )
+	{
+		Com_Printf( "Got init download message while already downloading\n" );
+		return;
+	}
+
+	if( size == -1 )
+	{
+		// means that download was refused
+		Com_Printf( "Server refused download request: %s\n", url ); // if it's refused, url field holds the reason
+		CL_DownloadDone();
+		return;
+	}
+
+	if( size <= 0 )
+	{
+		Com_Printf( "Server gave invalid size, not downloading\n" );
+		CL_DownloadDone();
+		return;
+	}
+
+	if( checksum == 0 )
+	{
+		Com_Printf( "Server didn't provide checksum, not downloading\n" );
+		CL_DownloadDone();
+		return;
+	}
+
+	if( !COM_ValidateRelativeFilename( filename ) )
+	{
+		Com_Printf( "Not downloading, invalid filename: %s\n", filename );
+		CL_DownloadDone();
+		return;
+	}
+
+	if( FS_CheckPakExtension( filename ) != cls.download.requestpak )
+	{
+		const char *requested = cls.download.requestpak ? "pak" : "normal";
+		const char *got = cls.download.requestpak ? "normal" : "pak";
+		Com_Printf( "Got a %s file when requesting a %s file, not downloading\n", got, requested );
+		CL_DownloadDone();
+		return;
+	}
+
+	if( !strchr( filename, '/' ) )
+	{
+		Com_Printf( "Refusing to download file with no gamedir: %s\n", filename );
+		CL_DownloadDone();
+		return;
+	}
+
+	// check that it is in game or basegame dir
+	if( strlen( filename ) < strlen( FS_GameDirectory() )+1 ||
+		strncmp( filename, FS_GameDirectory(), strlen( FS_GameDirectory() ) ) ||
+		filename[strlen( FS_GameDirectory() )] != '/' )
+	{
+		if( strlen( filename ) < strlen( FS_BaseGameDirectory() )+1 ||
+			strncmp( filename, FS_BaseGameDirectory(), strlen( FS_BaseGameDirectory() ) ) ||
+			filename[strlen( FS_BaseGameDirectory() )] != '/' )
+		{
+			Com_Printf( "Can't download, invalid game directory: %s\n", filename );
+			CL_DownloadDone();
+			return;
+		}
+	}
+
+	if( FS_CheckPakExtension( filename ) )
+	{
+		if( strchr( strchr( filename, '/' ) + 1, '/' ) )
+		{
+			Com_Printf( "Refusing to download pack file to subdirectory: %s\n", filename );
+			CL_DownloadDone();
+			return;
+		}
+
+		// game modules and explicitly pure paks were only ever fetched from the official
+		// update host. That host is gone, so there is no trusted source for them and they
+		// must never be taken from a server-supplied mirror.
+		if( !Q_strnicmp( COM_FileBase( filename ), "modules", strlen( "modules" ) ) )
+		{
+			Com_Printf( "Refusing to download game modules: %s\n", filename );
+			CL_DownloadDone();
+			return;
+		}
+
+		if( FS_IsExplicitPurePak( filename, NULL ) )
+		{
+			Com_Printf( "Refusing to download pure pack file: %s\n", filename );
+			CL_DownloadDone();
+			return;
+		}
+
+		if( FS_PakFileExists( filename ) )
+		{
+			Com_Printf( "Can't download, file already exists: %s\n", filename );
+			CL_DownloadDone();
+			return;
+		}
+	}
+	else
+	{
+		if( strcmp( cls.download.requestname, strchr( filename, '/' ) + 1 ) )
+		{
+			Com_Printf( "Can't download, got different file than requested: %s\n", filename );
+			CL_DownloadDone();
+			return;
+		}
+	}
+
+	if( initial )
+	{
+		if( cls.download.requestnext )
+		{
+			dl = cls.download.list;
+			while( dl != NULL )
+			{
+				if( !Q_stricmp( dl->filename, filename ) )
+				{
+					Com_Printf( "Skipping, already tried downloading: %s\n", filename );
+					CL_DownloadDone();
+					return;
+				}
+				dl = dl->next;
+			}
+		}
+	}
+
+	alloc_size = strlen( "downloads" ) + 1 /* '/' */ + strlen( filename ) + 1;
+	cls.download.name = Mem_ZoneMalloc( alloc_size );
+	if( !cls.download.requestpak ) {
+		// if we're not downloading a pak, this must be a demo so drop it into the gamedir
+		Q_snprintfz( cls.download.name, alloc_size, "%s", filename );
+	}
+	else {
+		if( FS_DownloadsDirectory() == NULL ) {
+			Com_Printf( "Can't download, downloads directory is disabled\n" );
+			CL_DownloadDone();
+			return;
+		}
+		Q_snprintfz( cls.download.name, alloc_size, "%s/%s", "downloads", filename );
+	}
+
+	alloc_size = strlen( cls.download.name ) + strlen( ".tmp" ) + 1;
+	cls.download.tempname = Mem_ZoneMalloc( alloc_size );
+	Q_snprintfz( cls.download.tempname, alloc_size, "%s.tmp", cls.download.name );
+
+	cls.download.origname = ZoneCopyString( filename );
+	cls.download.web = false;
+	cls.download.web_url = ZoneCopyString( url );
+	cls.download.web_local_http = allow_localhttpdownload;
+	cls.download.cancelled = false;
+	cls.download.disconnect = false;
+	cls.download.size = size;
+	cls.download.checksum = checksum;
+	cls.download.percent = 0;
+	cls.download.timeout = 0;
+	cls.download.retries = 0;
+	cls.download.timestart = Sys_Milliseconds();
+	cls.download.offset = 0;
+	cls.download.baseoffset = 0;
+	cls.download.pending_reconnect = false;
+
+	Cvar_ForceSet( "cl_download_name", COM_FileBase( filename ) );
+	Cvar_ForceSet( "cl_download_percent", "0" );
+
+	if( initial )
+	{
+		if( cls.download.requestnext )
+		{
+			dl = Mem_ZoneMalloc( sizeof( download_list_t ) );
+			dl->filename = ZoneCopyString( filename );
+			dl->next = cls.download.list;
+			cls.download.list = dl;
+		}
+	}
+
+	baseurl = cls.httpbaseurl;
+
+	if( cl_downloads_from_web->integer && allow_localhttpdownload && url && url[0] != 0 ) {
+		cls.download.web = true;
+		Com_Printf( "Web download: %s from %s/%s\n", cls.download.tempname, baseurl, url );
+	}
+	else if( cl_downloads_from_web->integer && url && url[0] != 0 ) {
+		cls.download.web = true;
+		Com_Printf( "Web download: %s from %s\n", cls.download.tempname, url );
+	}
+	else {
+		Com_Printf( "Server download: %s\n", cls.download.tempname );
+	}
+
+	cls.download.baseoffset = cls.download.offset = FS_FOpenBaseFile( cls.download.tempname, &cls.download.filenum, FS_APPEND );
+	if( !cls.download.filenum )
+	{
+		Com_Printf( "Can't download, couldn't open %s for writing\n", cls.download.tempname );
+		CL_DownloadDone();
+		return;
+	}
+
+	if( cls.download.web ) {
+		char *referer, *fullurl;
+		const char *headers[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+
+		if( cls.download.offset == cls.download.size ) {
+			// special case for completed downloads to avoid passing empty HTTP range
+			CL_WebDownloadDoneCb( 200, "", NULL );
+			return;
+		}
+
+		alloc_size = strlen( APP_URI_SCHEME ) + strlen( NET_AddressToString( &cls.serveraddress ) ) + 1;
+		referer = alloca( alloc_size );
+		Q_snprintfz( referer, alloc_size, APP_URI_SCHEME "%s", NET_AddressToString( &cls.serveraddress ) );
+		Q_strlwr( referer );
+
+		if( allow_localhttpdownload ) {
+			alloc_size = strlen( baseurl ) + 1 + strlen( url ) + 1;
+			fullurl = alloca( alloc_size );
+			Q_snprintfz( fullurl, alloc_size, "%s/%s", baseurl, url );
+		}
+		else {
+			size_t url_len = strlen( url );
+			alloc_size = url_len + 1 + strlen( filename ) * 3 + 1;
+			fullurl = alloca( alloc_size );
+			Q_snprintfz( fullurl, alloc_size, "%s/", url );
+			Q_urlencode_unsafechars( filename, fullurl + url_len + 1, alloc_size - url_len - 1 );
+		}
+
+		headers[0] = "Referer";
+		headers[1] = referer;
+
+		CL_AddSessionHttpRequestHeaders( fullurl, &headers[2] );
+
+		CL_AsyncStreamRequest( fullurl, headers, cl_downloads_from_web_timeout->integer / 100, cls.download.offset,
+			CL_WebDownloadReadCb, CL_WebDownloadDoneCb, NULL, NULL, false );
+
+		return;
+	}
+
+	cls.download.timeout = Sys_Milliseconds() + 3000;
+	cls.download.retries = 0;
+
+	CL_AddReliableCommand( va( "nextdl \"%s\" %i", cls.download.name, cls.download.offset ) );
+}
+
+/*
+* CL_InitDownload_f
+*/
+static void CL_InitDownload_f( void )
+{
+	const char *filename;
+	const char *url;
+	int size;
+	unsigned checksum;
+	bool allow_localhttpdownload;
+
+	// ignore download commands coming from demo files
+	if( cls.demo.playing )
+		return;
+
+	// read the data
+	filename = Cmd_Argv( 1 );
+	size = atoi( Cmd_Argv( 2 ) );
+	checksum = strtoul( Cmd_Argv( 3 ), NULL, 10 );
+	allow_localhttpdownload = ( atoi( Cmd_Argv( 4 ) ) != 0 ) && cls.httpbaseurl != NULL;
+	url = Cmd_Argv( 5 );
+
+	CL_InitServerDownload( filename, size, checksum, allow_localhttpdownload, url, true );
+}
 
 
 /*
@@ -908,6 +1252,7 @@ svcmd_t svcmds[] =
 	{ "precache", CL_Precache_f },
 	{ "cmd", CL_ForwardToServer_f },
 	{ "cs", CL_ParseConfigstringCommand },
+	{ "initdownload", CL_InitDownload_f },
 	{ "disc", CL_ServerDisconnect_f },
 	{ "disconnect", CL_ServerDisconnect_f },
 	{ "multiview", CL_Multiview_f },

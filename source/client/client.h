@@ -166,8 +166,6 @@ typedef struct
 
 	// web download
 	bool web;
-	bool web_official;
-	bool web_official_only;
 	char *web_url;					// download URL, passed by the server
 	bool web_local_http;
 
