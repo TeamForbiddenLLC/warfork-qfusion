@@ -24,13 +24,28 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 /*
 * Patch_FlatnessTest
+*
+* Returns the subdivision level needed to make the curve flat enough. Callers
+* turn it into a step count of 1 << level, so anything past PATCH_MAX_FLATNESS
+* is unusable anyway.
+*
+* The depth limit is load-bearing, not cosmetic: control points come straight
+* out of an attacker-controlled .bsp, and for degenerate or extreme-magnitude
+* input the midpoint subdivision below does not converge - every comparison
+* against a NaN is false, and huge coordinates take enormous numbers of halvings
+* to fall under maxflat2. Without the cap this recurses until the stack dies.
 */
-static int Patch_FlatnessTest( float maxflat2, const float *point0, const float *point1, const float *point2 )
+#define PATCH_MAX_FLATNESS	10
+
+static int Patch_FlatnessTest_r( float maxflat2, const float *point0, const float *point1, const float *point2, int depth )
 {
 	float d;
 	int ft0, ft1;
 	vec3_t t, n;
 	vec3_t v1, v2, v3;
+
+	if( depth >= PATCH_MAX_FLATNESS )
+		return 0;
 
 	VectorSubtract( point2, point0, n );
 	if( !VectorNormalize( n ) )
@@ -46,10 +61,15 @@ static int Patch_FlatnessTest( float maxflat2, const float *point0, const float 
 	VectorAvg( point2, point1, v2 );
 	VectorAvg( v1, v2, v3 );
 
-	ft0 = Patch_FlatnessTest( maxflat2, point0, v1, v3 );
-	ft1 = Patch_FlatnessTest( maxflat2, v3, v2, point2 );
+	ft0 = Patch_FlatnessTest_r( maxflat2, point0, v1, v3, depth + 1 );
+	ft1 = Patch_FlatnessTest_r( maxflat2, v3, v2, point2, depth + 1 );
 
 	return 1 + max( ft0, ft1 );
+}
+
+static int Patch_FlatnessTest( float maxflat2, const float *point0, const float *point1, const float *point2 )
+{
+	return Patch_FlatnessTest_r( maxflat2, point0, point1, point2, 0 );
 }
 
 /*

@@ -98,7 +98,7 @@ const bspFormatDesc_t *Q_FindBSPFormat( const bspFormatDesc_t *formats, const ch
 /*
 * Com_FindFormatDescriptor
 */
-const modelFormatDescr_t *Q_FindFormatDescriptor( const modelFormatDescr_t *formats, const uint8_t *buf, const bspFormatDesc_t **bspFormat )
+const modelFormatDescr_t *Q_FindFormatDescriptor( const modelFormatDescr_t *formats, const uint8_t *buf, size_t bufLen, const bspFormatDesc_t **bspFormat )
 {
 	int i;
 	const modelFormatDescr_t *descr;
@@ -106,10 +106,17 @@ const modelFormatDescr_t *Q_FindFormatDescriptor( const modelFormatDescr_t *form
 	// search for a matching header
 	for( i = 0, descr = formats; descr->header; i++, descr++ )
 	{
+		if( descr->headerLen < 0 )
+			continue;
+
 		if( descr->header[0] == '*' )
 		{
 			const char *header;
 			int version;
+
+			// the ident is headerLen bytes, immediately followed by a 4-byte version
+			if( bufLen < (size_t)descr->headerLen + 4 )
+				continue;
 
 			header = ( const char * )buf;
 			version = LittleLong( *((int *)((uint8_t *)buf + descr->headerLen)) );
@@ -121,6 +128,8 @@ const modelFormatDescr_t *Q_FindFormatDescriptor( const modelFormatDescr_t *form
 		}
 		else
 		{
+			if( bufLen < (size_t)descr->headerLen )
+				continue;
 			if( !strncmp( (const char *)buf, descr->header, descr->headerLen ) )
 				return descr;
 		}

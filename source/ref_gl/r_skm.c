@@ -154,7 +154,7 @@ static int Mod_SkeletalModel_AddBlend( mskmodel_t *model, const mskblend_t *newb
 /*
 * Mod_LoadSkeletalModel
 */
-void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, bspFormatDesc_t *unused )
+void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, size_t bufferLen, bspFormatDesc_t *unused )
 {
 	unsigned int i, j, k;
 	size_t filesize;

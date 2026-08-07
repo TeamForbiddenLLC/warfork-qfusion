@@ -153,7 +153,7 @@ MD3 MODELS
 /*
 * Mod_LoadAliasMD3Model
 */
-void Mod_LoadAliasMD3Model( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *unused )
+void Mod_LoadAliasMD3Model( model_t *mod, model_t *parent, void *buffer, size_t bufferLen, bspFormatDesc_t *unused )
 {
 	int version, i, j, l;
 	int bufsize, numverts;

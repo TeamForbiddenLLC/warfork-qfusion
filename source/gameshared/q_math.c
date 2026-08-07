@@ -784,6 +784,12 @@ void SnapPlane( vec3_t normal, vec_t *dist )
 {
 	SnapVector( normal );
 
+	// Q_rint casts to int, which is undefined outside int range. Plane
+	// distances are derived from map geometry, so the magnitude is not ours to
+	// assume; anything that large is not near-integral in any useful sense.
+	if( !( *dist > (vec_t)INT_MIN && *dist < (vec_t)INT_MAX ) )
+		return;
+
 	if( fabs( *dist - Q_rint( *dist ) ) < PLANE_DIST_EPSILON )
 	{
 		*dist = Q_rint( *dist );

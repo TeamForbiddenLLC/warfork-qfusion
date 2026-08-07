@@ -24,11 +24,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_local.h"
 #include "iqm.h"
 
-void Mod_LoadAliasMD3Model( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *unused );
-void Mod_LoadSkeletalModel( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *unused );
-void Mod_LoadQ3BrushModel( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *format );
-void Mod_LoadQ2BrushModel( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *format ); 
-void Mod_LoadQ1BrushModel( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *format ); 
+void Mod_LoadAliasMD3Model( model_t *mod, model_t *parent, void *buffer, size_t bufferLen, bspFormatDesc_t *unused );
+void Mod_LoadSkeletalModel( model_t *mod, model_t *parent, void *buffer, size_t bufferLen, bspFormatDesc_t *unused );
+void Mod_LoadQ3BrushModel( model_t *mod, model_t *parent, void *buffer, size_t bufferLen, bspFormatDesc_t *format );
+void Mod_LoadQ2BrushModel( model_t *mod, model_t *parent, void *buffer, size_t bufferLen, bspFormatDesc_t *format ); 
+void Mod_LoadQ1BrushModel( model_t *mod, model_t *parent, void *buffer, size_t bufferLen, bspFormatDesc_t *format ); 
 
 model_t *Mod_LoadModel( model_t *mod, bool crash );
 
@@ -1034,6 +1034,7 @@ model_t *Mod_ForHandle( unsigned int elem )
 model_t *Mod_ForName( const char *name, bool crash )
 {
 	int i;
+	int lodfilelen = 0;
 	model_t	*mod, *lod;
 	unsigned *buf;
 	char shortname[MAX_QPATH], lodname[MAX_QPATH];
@@ -1090,7 +1091,7 @@ model_t *Mod_ForName( const char *name, bool crash )
 		return NULL;
 
 	// call the apropriate loader
-	descr = Q_FindFormatDescriptor( mod_supportedformats, ( const uint8_t * )buf, (const bspFormatDesc_t **)&bspFormat );
+	descr = Q_FindFormatDescriptor( mod_supportedformats, ( const uint8_t * )buf, (size_t)modfilelen, (const bspFormatDesc_t **)&bspFormat );
 	if( !descr )
 	{
 		ri.Com_DPrintf( S_COLOR_YELLOW "Mod_NumForName: unknown fileid for %s", mod->name );
@@ -1102,7 +1103,7 @@ model_t *Mod_ForName( const char *name, bool crash )
 		R_InitMapConfig( name );
 	}
 
-	descr->loader( mod, NULL, buf, bspFormat );
+	descr->loader( mod, NULL, buf, (size_t)modfilelen, bspFormat );
 	R_FreeFile( buf );
 
 	if( mod->type == mod_bad ) {
@@ -1131,8 +1132,8 @@ model_t *Mod_ForName( const char *name, bool crash )
 	for( i = 0; i < descr->maxLods; i++ )
 	{
 		Q_snprintfz( lodname, sizeof( lodname ), "%s_%i.%s", shortname, i+1, extension );
-		R_LoadFileGroup(lodname, &group, (void **)&buf );
-		if( !buf || strncmp( (const char *)buf, descr->header, descr->headerLen ) )
+		lodfilelen = R_LoadFileGroup(lodname, &group, (void **)&buf );
+		if( !buf || lodfilelen < descr->headerLen || strncmp( (const char *)buf, descr->header, descr->headerLen ) )
 			break;
 
 		lod = mod->lods[i] = Mod_FindSlot( lodname );
@@ -1147,7 +1148,7 @@ model_t *Mod_ForName( const char *name, bool crash )
 
 		mod_numknown++;
 
-		descr->loader( lod, mod, buf, bspFormat );
+		descr->loader( lod, mod, buf, (size_t)lodfilelen, bspFormat );
 		R_FreeFile( buf );
 
 		mod->numlods++;
