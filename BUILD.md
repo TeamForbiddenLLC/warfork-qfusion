@@ -125,6 +125,43 @@ cmake --build ./build -j"$(nproc)"
 cmake --build ./build --target deploy -j"$(nproc)"
 ```
 
+#### NixOS
+
+##### Build via flake
+
+Run `nix build .#warfork-no-steam` to build the application immediately.
+
+Steam support:
+
+Download the steam SDK then run `nix-store --add-fixed sha256 path/to/steamworks_sdk_<version>.zip`
+
+Then you can build with `nix build .#warfork` or `nix build .`. Make sure to allow unfree license.
+
+##### Build manually via devShell
+
+Run `nix develop`.
+
+The shell provides `NIX_SDL_RPATH` variable to manually patch the SDL library.
+We configure CMake to use libraries from the system in order to use libraries provided by Nix.
+
+```bash
+cd source
+cmake \
+  -B build \
+  --preset workflow-linux-release \
+  -DSDL_RPATH=1 \
+  -DUSE_SYSTEM_ZLIB=1 \
+  -DUSE_SYSTEM_OPENAL=1 \
+  -DUSE_SYSTEM_CURL=1 \
+  -DUSE_SYSTEM_OGG=1 \
+  -DUSE_SYSTEM_FREETYPE=1 \
+  -DUSE_SYSTEM_VORBIS=1
+cmake --build ./build -j"$(nproc)"
+cmake --build ./build --target deploy -j"$(nproc)"
+
+nix-shell -p patchelf --run "patchelf --add-rpath $NIX_SDL_RPATH build/warfork-qfusion/libs/libSDL2-2.0_x86_64.so.0"
+```
+
 ### Windows
 
 From a *Developer Command Prompt for VS 2022*:
