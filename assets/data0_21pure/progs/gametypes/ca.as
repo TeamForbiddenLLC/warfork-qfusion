@@ -253,6 +253,16 @@ class cCARound
             int soundIndex = G_SoundIndex( "sounds/announcer/countdown/fight0" + (1 + (rand() & 1)) );
             G_AnnouncerSound( null, soundIndex, GS_MAX_TEAMS, false, null );
             G_CenterPrintMsg( null, 'Fight!');
+			
+			for ( int i = 0; i < maxClients; i++ )
+			{
+			Client @client = @G_GetClient( i );
+			if ( client.state() < CS_SPAWNED )
+				continue;
+			if ( client.getEnt().isGhosting() )
+				continue;
+			client.pmoveFeatures = client.pmoveFeatures & ~PMFEAT_GHOSTMOVE;
+			}
         }
         break;
 
@@ -869,6 +879,21 @@ void GT_PlayerRespawn( Entity @ent, int old_team, int new_team )
         return;
 	}
 
+    if ( caRound.state == CA_ROUNDSTATE_PREROUND )
+	{
+        ent.client.pmoveFeatures = ent.client.pmoveFeatures | PMFEAT_GHOSTMOVE;
+		//if ( dist < 32.0f )
+		//{
+		//	ent1.effects = ent1.effects | EF_GHOST;
+		//	ent2.effects = ent2.effects | EF_GHOST;
+		//}
+		//else
+		//{
+		//	ent1.effects = ent1.effects & ~EF_GHOST;
+		//	ent2.effects = ent2.effects & ~EF_GHOST;
+		//}
+	}
+
     if ( gametype.isInstagib )
     {
         ent.client.inventoryGiveItem( WEAP_INSTAGUN );
@@ -931,9 +956,7 @@ void GT_ThinkRules()
     if ( match.scoreLimitHit() || match.timeLimitHit() || match.suddenDeathFinished() )
         match.launchState( match.getState() + 1 );
 
-	GENERIC_Think();
-
-    // print count of players alive and show class icon in the HUD
+    GENERIC_Think();
 
     Team @team;
     int[] alive( GS_MAX_TEAMS );
@@ -972,8 +995,7 @@ void GT_ThinkRules()
             client.setHUDStat( STAT_MESSAGE_BETA, CS_GENERAL + 1 );
         }
 
-        if ( client.getEnt().isGhosting()
-                || match.getState() >= MATCH_STATE_POSTMATCH )
+        if ( client.getEnt().isGhosting() || match.getState() >= MATCH_STATE_POSTMATCH )
         {
             client.setHUDStat( STAT_IMAGE_BETA, 0 );
         }
@@ -981,6 +1003,47 @@ void GT_ThinkRules()
 
     if ( match.getState() >= MATCH_STATE_POSTMATCH )
         return;
+		
+    if ( match.getState() == MATCH_STATE_PLAYTIME && caRound.state == CA_ROUNDSTATE_ROUND )
+    {
+        for ( int i = 0; i < maxClients; i++ )
+        {
+            Client @client1 = @G_GetClient( i );
+            if ( client1.state() < CS_SPAWNED || client1.getEnt().isGhosting() )
+                continue;
+
+            Entity @ent1 = @client1.getEnt();
+
+            for ( int j = i + 1; j < maxClients; j++ )
+            {
+                Client @client2 = @G_GetClient( j );
+                if ( client2.state() < CS_SPAWNED || client2.getEnt().isGhosting() )
+                    continue;
+
+                Entity @ent2 = @client2.getEnt();
+
+                int iterations = 0;
+                while ( iterations < 10 )
+                {
+                    Vec3 diff = ent1.origin - ent2.origin;
+                    float distXY = Vec3( diff.x, diff.y, 0.0f ).length();
+                    float distZ = diff.z;
+                    if ( distZ < 0.0f )
+                        distZ = -distZ;
+
+                    if ( distXY >= 32.0f || distZ >= 64.0f )
+                        break;
+
+                    ent1.origin = ent1.origin + Vec3( 8.0f, 8.0f, 0.0f );
+                    ent2.origin = ent2.origin - Vec3( 8.0f, 8.0f, 0.0f );
+                    ent1.linkEntity();
+                    ent2.linkEntity();
+
+                    iterations++;
+                }
+            }
+        }
+    }
 
     caRound.think();
 }
