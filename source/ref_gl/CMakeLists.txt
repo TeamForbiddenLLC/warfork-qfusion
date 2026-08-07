@@ -10,7 +10,7 @@ file(GLOB REF_GL_HEADERS
 	"../qcommon/iqm.h"
 	"../qcommon/qfiles.h"
 	"../qalgo/*.h"
-	"${REF_BASE_DIR}/*.h"
+	"../ref_base/*.h"
 	)
 
 file(GLOB REF_GL_COMMON_SOURCES
@@ -58,7 +58,8 @@ else()
 	endif()
 endif()
 add_library(ref_gl SHARED ${REF_GL_HEADERS} ${REF_GL_COMMON_SOURCES} ${REF_GL_PLATFORM_SOURCES})
-target_include_directories(ref_gl PRIVATE ${STB_INCLUDE_DIR} "../ref_base" "../qcore")
+# "." last so shared ref_base/*.c sources can resolve this renderer's own r_local.h
+target_include_directories(ref_gl PRIVATE ${STB_INCLUDE_DIR} "../ref_base" "../qcore" ".")
 target_link_libraries(ref_gl PRIVATE qcore ${REF_GL_PLATFORM_LIBRARIES} Tracy::TracyClient)
 
 

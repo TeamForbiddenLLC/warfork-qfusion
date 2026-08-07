@@ -1,8 +1,10 @@
 #ifndef QGL_TYPES_H
 #define QGL_TYPES_H
 
-/* GL primitive type aliases — stable C types, no GL headers needed. */
-#ifndef GL_TYPEDEFS_DEFINED
+/* GL primitive type aliases — stable C types, no GL headers needed.
+ * Skipped when a real GL header is already in scope (ref_gl pulls <GL/gl.h>
+ * via qgl.h), so we never redefine its typedefs. */
+#if !defined( GL_TYPEDEFS_DEFINED ) && !defined( GL_VERSION_1_1 )
 #define GL_TYPEDEFS_DEFINED
 typedef float          GLfloat;
 typedef int            GLint;
