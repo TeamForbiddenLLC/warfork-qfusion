@@ -1168,7 +1168,9 @@ void G_PrintChasersf( edict_t *self, const char *format, ... )
 	for( ent = game.edicts + 1; PLAYERNUM( ent ) < gs.maxclients; ent++ )
 	{
 		if( ent->r.client->resp.chase.active && ent->r.client->resp.chase.target == ENTNUM( self ) )
-			G_PrintMsg( ent, msg );
+			// msg is already-expanded text and can contain player names, so it must
+			// not be re-interpreted as a format string
+			G_PrintMsg( ent, "%s", msg );
 	}
 }
 

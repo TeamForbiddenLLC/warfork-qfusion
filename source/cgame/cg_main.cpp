@@ -1101,6 +1101,10 @@ void CG_StartBackgroundTrack( void )
 void CG_PlayVoice(void *buffer, size_t size, int clientnum) {
 	int bytes_per_sample = 2;
 
+	// clientnum comes from svc_voice; it indexes clientInfo[] and cg_entities[]
+	if( clientnum < 0 || clientnum >= MAX_CLIENTS )
+		return;
+
 	double sum = 0;
 	double max = 0;
 	int nsamples = size / bytes_per_sample;

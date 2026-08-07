@@ -647,6 +647,50 @@ extern cg_state_t cg;
 extern centity_t cg_entities[MAX_EDICTS];
 
 //
+// Bounds-checked precache lookups.
+//
+// Several entity_state_t index fields share storage with unrelated members
+// (modelindex2/bodyOwner, frame/ownerNum, skinnum/colorRGBA), so they cannot be
+// validated when the delta is parsed - their legal range depends on the entity
+// type, which only the cgame knows. Use these wherever a wire-supplied value is
+// turned into a subscript.
+//
+static inline struct model_s *CG_ModelForIndex( int index )
+{
+	if( index <= 0 || index >= MAX_MODELS )
+		return NULL;
+	return cgs.modelDraw[index];
+}
+
+static inline struct shader_s *CG_ImageForIndex( int index )
+{
+	if( index <= 0 || index >= MAX_IMAGES )
+		return NULL;
+	return cgs.imagePrecache[index];
+}
+
+static inline struct skinfile_s *CG_SkinForIndex( int index )
+{
+	if( index <= 0 || index >= MAX_SKINFILES )
+		return NULL;
+	return cgs.skinPrecache[index];
+}
+
+static inline struct pmodelinfo_s *CG_PModelForIndex( int index )
+{
+	if( index <= 0 || index >= MAX_MODELS )
+		return NULL;
+	return cgs.pModelsIndex[index];
+}
+
+static inline centity_t *CG_EntityForNum( int entNum )
+{
+	if( entNum < 0 || entNum >= MAX_EDICTS )
+		return NULL;
+	return &cg_entities[entNum];
+}
+
+//
 // cg_ents.c
 //
 extern cvar_t *cg_gun;

@@ -44,6 +44,8 @@ endif()
 
 option(USE_SDL2 "Build using SDL2" OFF)
 option(BUILD_UNIT_TEST "Build with unit test" OFF)
+option(BUILD_FUZZERS "Build the libFuzzer network parser targets (requires clang)" OFF)
+option(USE_ASAN "Build with AddressSanitizer and UBSan" OFF)
 option(GAME_MODULES_ONLY "Only build game modules" OFF)
 option(BUILD_STEAMLIB "Include the steamlib module (requires Steamworks SDK)" OFF)
 option(USE_GRAPHICS_NRI "Build using Nvidia NRI" OFF)
@@ -223,7 +225,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR MINGW)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
 
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -D_POSIX_C_SOURCE=200112L -D_XOPEN_SOURCE=500 ")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu17 -D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=700 ")
 
     # default to sdl2 build on non-windows platforms
     set(USE_SDL2 1)
@@ -329,9 +331,23 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
     capitalize(QFUSION_CLIENT_NAME)
 endif()
+if (USE_ASAN)
+    if (MSVC)
+        message(FATAL_ERROR "USE_ASAN is only wired up for GCC/Clang")
+    endif()
+    # ASan is what actually detects the network overrun class; the fuzzers only
+    # generate input. -fno-omit-frame-pointer keeps the reports readable.
+    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -g)
+    add_link_options(-fsanitize=address,undefined)
+endif()
+
 add_subdirectory(extern)
 
 add_subdirectory(qcore)
+
+if (BUILD_UNIT_TEST OR BUILD_FUZZERS)
+    add_subdirectory(qcommon/test)
+endif()
 
 add_subdirectory(ref_base)
 add_subdirectory(angelwrap)

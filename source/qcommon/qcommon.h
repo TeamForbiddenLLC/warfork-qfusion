@@ -97,6 +97,8 @@ void MSG_BeginReading( msg_t *sb );
 int MSG_ReadChar( msg_t *msg );
 int MSG_ReadByte( msg_t *msg );
 int MSG_ReadShort( msg_t *sb );
+// unsigned variant of MSG_ReadShort, for lengths and indices; -1 only at end of message
+int MSG_ReadUShort( msg_t *sb );
 int MSG_ReadInt3( msg_t *sb );
 int MSG_ReadLong( msg_t *sb );
 float MSG_ReadFloat( msg_t *sb );
@@ -112,7 +114,9 @@ int MSG_ReadEntityBits( msg_t *msg, unsigned *bits );
 void MSG_ReadDeltaEntity( msg_t *msg, entity_state_t *from, entity_state_t *to, int number, unsigned bits );
 
 void MSG_ReadDir( msg_t *sb, vec3_t vector );
-void MSG_ReadData( msg_t *sb, void *buffer, size_t length );
+// copies nothing and returns false unless 'length' fits both 'buffer' and the rest of
+// the message; on failure the message is poisoned so the caller's bad-read guard trips
+bool MSG_ReadData( msg_t *sb, void *buffer, size_t destSize, size_t length );
 int MSG_SkipData( msg_t *sb, size_t length );
 
 //============================================================================
@@ -226,6 +230,8 @@ PROTOCOL
 // the svc_strings[] array in snapshot.c should mirror this
 //==================
 extern const char * const svc_strings[256];
+// bounds-checked lookup into svc_strings; use this for command bytes read off the wire
+const char *SVC_NameForCmd( int cmd );
 void _SHOWNET( msg_t *msg, const char *s, int shownet );
 
 //

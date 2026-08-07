@@ -259,11 +259,16 @@ int Netchan_DecompressMessage( msg_t *msg )
 	if( msg->compressed == false )
 		return 0;
 
+	// a runt packet leaves readcount past cursize, and the subtraction below would
+	// then wrap into an enormous sourceLen
+	if( msg->readcount > msg->cursize || msg->readcount > sizeof( msg_process_data ) )
+		return -1;
+
 	length = Netchan_ZLibDecompressChunk( msg->data + msg->readcount, msg->cursize - msg->readcount, msg_process_data, ( sizeof( msg_process_data ) - msg->readcount ), -MAX_WBITS );
 	if( length < 0 )
 		return length;
 
-	if( ( msg->readcount + length ) >= msg->maxsize )
+	if( (size_t)length >= msg->maxsize - msg->readcount )
 	{
 		Com_Printf( "Netchan_DecompressMessage: Packet too big\n" );
 		return -1;
@@ -606,13 +611,6 @@ bool Netchan_Process( netchan_t *chan, msg_t *msg )
 			return false;
 		}
 
-		if( chan->fragmentLength > msg->maxsize )
-		{
-			Com_Printf( "%s:fragmentLength %i > msg->maxsize\n", NET_AddressToString( &chan->remoteAddress ),
-				chan->fragmentLength );
-			return false;
-		}
-
 		// wsw : jal : reconstruct the message
 
 		MSG_Clear( msg );
@@ -624,6 +622,18 @@ bool Netchan_Process( netchan_t *chan, msg_t *msg )
 		msg->compressed = compressed;
 
 		headerlength = msg->cursize;
+
+		// the header just written also has to fit, otherwise MSG_CopyData below
+		// takes the Com_Error( ERR_FATAL ) path on a purely remote input
+		if( chan->fragmentLength > msg->maxsize - headerlength )
+		{
+			Com_Printf( "%s:fragmentLength %i > msg->maxsize\n", NET_AddressToString( &chan->remoteAddress ),
+				chan->fragmentLength );
+			MSG_Clear( msg );
+			chan->fragmentLength = 0;
+			return false;
+		}
+
 		MSG_CopyData( msg, chan->fragmentBuffer, chan->fragmentLength );
 		msg->readcount = headerlength; // put read pointer after header again
 		chan->fragmentLength = 0;

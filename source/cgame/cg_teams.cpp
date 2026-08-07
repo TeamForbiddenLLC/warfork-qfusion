@@ -148,7 +148,12 @@ bool CG_PModelForCentity( centity_t *cent, pmodelinfo_t **pmodelinfo, struct ski
 
 	owner = cent;
 	if( cent->current.type == ET_CORPSE && cent->current.bodyOwner )  // it's a body
-		owner = &cg_entities[cent->current.bodyOwner];
+	{
+		// bodyOwner shares storage with modelindex2, so it is not bounded at parse
+		centity_t *body = CG_EntityForNum( cent->current.bodyOwner );
+		if( body )
+			owner = body;
+	}
 	ownerNum = owner->current.number;
 
 	team = CG_ForceTeam( owner->current.number, owner->current.team );
@@ -158,18 +163,17 @@ bool CG_PModelForCentity( centity_t *cent, pmodelinfo_t **pmodelinfo, struct ski
 	// use the player defined one if not forcings
 	if( pmodelinfo ) {
 		if( cent->current.modelindex )
-			*pmodelinfo = cgs.pModelsIndex[cent->current.modelindex];
-		else
+			*pmodelinfo = CG_PModelForIndex( cent->current.modelindex );
+		// clientInfo is MAX_CLIENTS, but entity numbers run to MAX_EDICTS
+		else if( ownerNum >= 1 && ownerNum <= MAX_CLIENTS )
 		{
 			fallbackModelIndex = cgs.clientInfo[ownerNum - 1].modelindex;
-			if( fallbackModelIndex >= 0 && fallbackModelIndex < MAX_MODELS )
-			{
-				*pmodelinfo = cgs.pModelsIndex[fallbackModelIndex];
-			}
+			*pmodelinfo = CG_PModelForIndex( fallbackModelIndex );
 		}
 	}
+	// skinnum shares storage with colorRGBA/damage/range, so it is not bounded at parse
 	if( skin )
-		*skin = cgs.skinPrecache[cent->current.skinnum];
+		*skin = CG_SkinForIndex( cent->current.skinnum );
 
 	if( GS_CanForceModels() && ( ownerNum < ( unsigned )( gs.maxclients + 1 ) ) )
 	{
@@ -324,7 +328,12 @@ uint8_t *_ColorForEntity( int entNum, byte_vec4_t color, bool player )
 
 	owner = cent = &cg_entities[entNum];
 	if( cent->current.type == ET_CORPSE && cent->current.bodyOwner ) // it's a body
-		owner = &cg_entities[cent->current.bodyOwner];
+	{
+		// bodyOwner shares storage with modelindex2, so it is not bounded at parse
+		centity_t *body = CG_EntityForNum( cent->current.bodyOwner );
+		if( body )
+			owner = body;
+	}
 
 	team = CG_ForceTeam( owner->current.number, owner->current.team );
 
