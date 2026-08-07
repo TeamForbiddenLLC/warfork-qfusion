@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../ref_base/ref_mod.h"
 #include "../steamshim/src/mod_steam.h"
 #include "../qcommon/mod_fs.h"
+#include "../qcommon/mod_cmd.h"
 
 struct orientation_s;
 struct bonepose_s;
@@ -85,7 +86,6 @@ typedef struct snapshot_s
 //
 typedef struct
 {
-	const struct fs_import_s* fsImport;
 
 	// drops to console a client game error
 	void ( *Error )( const char *msg );
@@ -94,7 +94,6 @@ typedef struct
 	void ( *Print )( const char *msg );
 	void ( *PrintToLog )( const char *msg );
 
-	struct ref_import_s ref_import;
 
 	// dynvars
 	dynvar_t *( *Dynvar_Create )( const char *name, bool console, dynvar_getter_f getter, dynvar_setter_f setter );
@@ -113,18 +112,10 @@ typedef struct
 	cvar_t *( *Cvar_ForceSet )( const char *name, const char *value );      // will return 0 0 if not found
 	float ( *Cvar_Value )( const char *name );
 	const char *( *Cvar_String )( const char *name );
-
-	void ( *Cmd_TokenizeString )( const char *text );
-	int ( *Cmd_Argc )( void );
-	char *( *Cmd_Argv )( int arg );
-	char *( *Cmd_Args )( void );        // concatenation of all argv >= 1
-
-	void ( *Cmd_AddCommand )( const char *name, void ( *cmd )( void ) );
-	void ( *Cmd_RemoveCommand )( const char *cmd_name );
 	void ( *Cmd_ExecuteText )( int exec_when, const char *text );
 	void ( *Cmd_Execute )( void );
-	void ( *Cmd_SetCompletionFunc )( const char *cmd_name, char **( *completion_func )( const char *partial ) );
 
+	
 	// key bindings
 	const char *( *Key_GetBindingBuf )( int binding );
 	const char *( *Key_KeynumToString )( int keynum );
@@ -222,7 +213,10 @@ typedef struct
 		int *selected, int *firstKey );
 	unsigned int ( *IN_SupportedDevices )( void );
 
+	struct cmd_import_s cmdImport;
 	struct steam_import_s steam_import;
+	const struct fs_import_s* fsImport;
+	struct ref_import_s ref_import;
 } cgame_import_t;
 
 //
