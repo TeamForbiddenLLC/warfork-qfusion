@@ -162,6 +162,8 @@ cmake --build ./build --target deploy -j"$(nproc)"
 nix-shell -p patchelf --run "patchelf --add-rpath $NIX_SDL_RPATH build/warfork-qfusion/libs/libSDL2-2.0_x86_64.so.0"
 ```
 
+Note that the executable built this way is not yet self-contained. See the derivation for full details.
+
 ### Windows
 
 From a *Developer Command Prompt for VS 2022*:
