@@ -35,6 +35,34 @@
 }:
 let
   fs = lib.fileset;
+  libsForSDL = [
+    libglvnd
+    (libvorbis.overrideAttrs (prev: {
+      nativeBuildInputs = prev.nativeBuildInputs ++ [
+        cmake
+      ];
+      cmakeFlags = [
+        "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
+        "-DBUILD_SHARED_LIBS=1"
+      ];
+      outputs = [
+        "out"
+        "dev"
+      ];
+    }))
+
+    libx11
+    libxcb
+    libxext
+    libxrandr
+    libXinerama
+
+    wayland
+    wayland-scanner
+    libffi
+    libxkbcommon
+    libdecor
+  ];
   warfork-no-assets = gcc13Stdenv.mkDerivation {
     name = "warfork-no-assets";
     src = fs.toSource {
@@ -57,36 +85,11 @@ let
       vulkan-headers
       curl
       zlib
-      libglvnd
       alsa-lib
       pipewire
       libogg
-      (libvorbis.overrideAttrs (prev: {
-        nativeBuildInputs = prev.nativeBuildInputs ++ [
-          cmake
-        ];
-        cmakeFlags = [
-          "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
-          "-DBUILD_SHARED_LIBS=1"
-        ];
-        outputs = [
-          "out"
-          "dev"
-        ];
-      }))
-
-      libx11
-      libxcb
-      libxext
-      libxrandr
-      libXinerama
-
-      wayland
-      wayland-scanner
-      libffi
-      libxkbcommon
-      libdecor
-    ];
+    ]
+    ++ libsForSDL;
     unpackPhase = ''
       cp -r $src/{source,third-party} .
       chmod -R +w source third-party
@@ -145,24 +148,7 @@ let
     '';
     postFixup = ''
       patchelf \
-        --add-rpath ${
-          lib.makeLibraryPath [
-            libglvnd
-            libvorbis
-
-            libx11
-            libxcb
-            libxext
-            libxrandr
-            libXinerama
-
-            wayland
-            wayland-scanner
-            libffi
-            libxkbcommon
-            libdecor
-          ]
-        } \
+        --add-rpath ${lib.makeLibraryPath libsForSDL} \
         $out/libs/libSDL2-2.0_x86_64.so
     '';
   };
@@ -179,7 +165,7 @@ symlinkJoin {
   ];
   passthru = {
     # Allow us to mkShell's inputsFrom
-    inherit joinDerivations;
+    inherit joinDerivations libsForSDL;
   };
   postBuild = ''
     wrapProgram $out/warfork.x86_64 \

@@ -16,14 +16,19 @@
     in
     {
       devShells = eachSystemWithPkgs (
-        system: pkgs: {
+        system: pkgs:
+        let
+          warfork = self.packages.${system}.warfork-no-steam;
+        in
+        {
           default =
             pkgs.mkShell.override
               {
                 stdenv = pkgs.gcc13Stdenv;
               }
               {
-                inputsFrom = self.packages.${system}.warfork-no-steam.joinDerivations;
+                inputsFrom = warfork.joinDerivations;
+                NIX_SDL_RPATH = pkgs.lib.makeLibraryPath warfork.libsForSDL;
               };
         }
       );
