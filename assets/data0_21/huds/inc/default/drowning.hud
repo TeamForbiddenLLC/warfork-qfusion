@@ -1,0 +1,24 @@
+setCursor 0, 0
+
+if %drowning < 120
+if %drowning > 0
+	moveCursor 35 * 1.333 * %VIDHEIGHT / %VIDWIDTH, 520
+	setSize 218 * 1.333 * %VIDHEIGHT / %VIDWIDTH, 22.5
+	setColor 0 0 0 0.5
+	drawPicByName gfx/2d/progressbar
+
+	moveCursor -29 * 1.333 * %VIDHEIGHT / %VIDWIDTH, 0
+	
+	moveCursor 29 * 1.333 * %VIDHEIGHT / %VIDWIDTH, 0
+	setSize 218 * 1.333 * %VIDHEIGHT / %VIDWIDTH, 22.5
+    setColor 0 0.4 1 1
+	if %drowning <= 120
+		drawPicBar %drowning, 120, gfx/2d/progressbar
+	endif
+
+	moveCursor 5 * 1.333 * %VIDHEIGHT / %VIDWIDTH, 0
+	setSize 24 * 1.333 * %VIDHEIGHT / %VIDWIDTH, 24
+	drawNum %drowning / 10
+	moveCursor -34 * 1.333 * %VIDHEIGHT / %VIDWIDTH, 0
+endif
+endif
