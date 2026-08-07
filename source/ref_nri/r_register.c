@@ -61,6 +61,11 @@ cvar_t *r_showtris;
 cvar_t *r_draworder;
 cvar_t *r_leafvis;
 
+cvar_t *r_shaderCache;
+cvar_t *r_shaderDebug;
+cvar_t *r_shaderValidate;
+cvar_t *r_shaderOptimize;
+
 cvar_t *r_fastsky;
 cvar_t *r_portalonly;
 cvar_t *r_portalmaps;
@@ -158,6 +163,19 @@ static void R_Register( const char *screenshotsPrefix )
 	r_picmip = Cvar_Get( "r_picmip", "0", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 	r_skymip = Cvar_Get( "r_skymip", "0", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 	r_polyblend = Cvar_Get( "r_polyblend", "1", 0 );
+
+	// Set r_shaderCache to 0 when iterating on glsl_nri/*.glsl without bumping GLSL_BITS_VERSION,
+	// otherwise the on-disk SPIR-V cache keeps serving the shader you just edited away.
+	r_shaderCache = Cvar_Get( "r_shaderCache", "1", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
+	r_shaderDebug = Cvar_Get( "r_shaderDebug", "0", 0 );
+#ifdef NDEBUG
+	r_shaderValidate = Cvar_Get( "r_shaderValidate", "0", 0 );
+#else
+	r_shaderValidate = Cvar_Get( "r_shaderValidate", "1", 0 );
+#endif
+	// Changing this changes the generated SPIR-V, so it needs a GLSL_BITS_VERSION bump to take
+	// effect on an already-populated cache.
+	r_shaderOptimize = Cvar_Get( "r_shaderOptimize", "1", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 
 	r_mapoverbrightbits = Cvar_Get( "r_mapoverbrightbits", "2", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 	r_brightness = Cvar_Get( "r_brightness", "0", CVAR_ARCHIVE );

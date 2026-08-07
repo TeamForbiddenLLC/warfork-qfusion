@@ -69,7 +69,9 @@ void RB_Init( void )
 	// initialize shading
 	RB_InitShading();
 
-	RP_PrecachePrograms();
+	// RP_PrecachePrograms() is driven by RP_Init(), not from here: RB_Init/RB_Shutdown re-enter on
+	// every RF_SetMode with the program table still live, which would replay the precache list once
+	// per video mode change.
 	TracyCZoneEnd( ctx );
 }
 
@@ -93,7 +95,9 @@ void RB_Shutdown( void )
 #endif
 	}
 	memset( rb.dynamicStreams, 0, sizeof( struct dynamic_vertex_stream_s ) * RB_DYN_STREAM_NUM );
-	RP_StorePrecacheList();
+	// RP_StorePrecacheList() is driven by RP_Shutdown(), not from here: RF_Shutdown calls
+	// RP_Shutdown() before RB_Shutdown(), so by this point every program has already been destroyed
+	// and the store would write an empty cache.
 	R_FreePool( &rb.mempool );
 	TracyCZoneEnd( ctx );
 }
