@@ -21,7 +21,7 @@
 #ifndef __SDL_WIN_H_
 #define __SDL_WIN_H_
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "../gameshared/q_cvar.h"
 
 
@@ -31,6 +31,7 @@ typedef struct {
 	char *applicationName;
 	int *applicationIcon;
 	SDL_Window *sdl_window;
+	SDL_MetalView metal_view;
 	wndproc_t wndproc;
 } winstate_t;
 

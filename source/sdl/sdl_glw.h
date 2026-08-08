@@ -21,7 +21,7 @@
 #ifndef __SDL_GLW_H_
 #define __SDL_GLW_H_
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 typedef int (* wndproc_t)(void *, int, int, int);
 

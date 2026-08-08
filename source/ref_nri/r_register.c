@@ -224,7 +224,7 @@ static void R_Register( const char *screenshotsPrefix )
 	r_screenshot_fmtstr = Cvar_Get( "r_screenshot_fmtstr", va_r( tmp, sizeof( tmp ), "%s%y%%m%%d_%H%M%%S", screenshotsPrefix ), CVAR_ARCHIVE );
 	r_screenshot_format = Cvar_Get( "r_screenshot_format", "1", CVAR_ARCHIVE );
 
-#if defined(GLX_VERSION) && !defined(USE_SDL2)
+#if defined(GLX_VERSION) && !defined(USE_SDL3)
 	r_swapinterval = Cvar_Get( "r_swapinterval", "0", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 #else
 	r_swapinterval = Cvar_Get( "r_swapinterval", "0", CVAR_ARCHIVE );

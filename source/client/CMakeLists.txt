@@ -53,7 +53,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 		"../win32/win_input.h"
 	)
 
-    if (USE_SDL2)
+    if (USE_SDL3)
         file(GLOB CLIENT_PLATFORM_SOURCES
             "../win32/win_fs.c"
             "../win32/win_net.c"
@@ -77,7 +77,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
             "${DISCORD_INCLUDE_DIR}/discord_register_win.cpp"
         )
 
-        set(CLIENT_PLATFORM_LIBRARIES SDL2::SDL2 $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>  "ws2_32.lib" "winmm.lib")
+        set(CLIENT_PLATFORM_LIBRARIES SDL3::SDL3 "ws2_32.lib" "winmm.lib")
     else()
         file(GLOB CLIENT_PLATFORM_SOURCES
             "../win32/win_fs.c"
@@ -141,7 +141,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         "${QFUSION_MAC_INFO_PLIST}"
     )
 
-    set(CLIENT_PLATFORM_LIBRARIES SDL2::SDL2 "-framework IOKit" "-framework Cocoa")
+    set(CLIENT_PLATFORM_LIBRARIES SDL3::SDL3 "-framework IOKit" "-framework Cocoa")
     set(CLIENT_BINARY_TYPE MACOSX_BUNDLE)
 
     set(BUNDLE_RESOURCES
@@ -158,7 +158,7 @@ endif()
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	set(CLIENT_PLATFORM_HEADERS "")
 
-    if (USE_SDL2)
+    if (USE_SDL3)
         file(GLOB CLIENT_PLATFORM_SOURCES
             "../unix/unix_fs.c"
             "../unix/unix_net.c"
@@ -182,7 +182,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
             "${DISCORD_INCLUDE_DIR}/discord_register_linux.cpp"	
         )
 
-        set(CLIENT_PLATFORM_LIBRARIES SDL2::SDL2 "pthread" "m" "dl" "rt" "mvec")
+        set(CLIENT_PLATFORM_LIBRARIES SDL3::SDL3 "pthread" "m" "dl" "rt" "mvec")
     else()
         file(GLOB CLIENT_PLATFORM_SOURCES
             "../unix/unix_fs.c"
@@ -206,7 +206,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	        "${DISCORD_INCLUDE_DIR}/discord_register_linux.cpp"	
         )
     
-        set(CLIENT_PLATFORM_LIBRARIES SDL2::SDL2 "pthread" "dl" "m" "X11" "Xi" "Xext" "Xrandr" "rt" "mvec")
+        set(CLIENT_PLATFORM_LIBRARIES SDL3::SDL3 "pthread" "dl" "m" "X11" "Xi" "Xext" "Xrandr" "rt" "mvec")
     endif()
     set(CLIENT_BINARY_TYPE "")
 

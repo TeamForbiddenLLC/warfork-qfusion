@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "../qcommon/qcommon.h"
 #include "../qcommon/sys_threads.h"
 
@@ -27,11 +27,11 @@ struct qthread_s {
 };
 
 struct qmutex_s {
-	SDL_mutex *m;
+	SDL_Mutex *m;
 };
 
 struct qcondvar_s {
-	SDL_cond *c;
+	SDL_Condition *c;
 };
 
 /*
@@ -135,7 +135,7 @@ void Sys_Thread_Yield( void )
 */
 int Sys_Atomic_Add( volatile int *value, int add, qmutex_t *mutex )
 {
-	return SDL_AtomicAdd( ( SDL_atomic_t * )value, add ) + add;
+	return SDL_AddAtomicInt( ( SDL_AtomicInt * )value, add ) + add;
 }
 
 /*
@@ -143,7 +143,7 @@ int Sys_Atomic_Add( volatile int *value, int add, qmutex_t *mutex )
 */
 bool Sys_Atomic_CAS( volatile int *value, int oldval, int newval, qmutex_t *mutex )
 {
-	return SDL_AtomicCAS( ( SDL_atomic_t * )value, newval, oldval ) == SDL_TRUE;
+	return SDL_CompareAndSwapAtomicInt( ( SDL_AtomicInt * )value, newval, oldval );
 }
 
 /*
@@ -158,7 +158,7 @@ int Sys_CondVar_Create( qcondvar_t **pcond )
 	qcondvar_t *const cond = (qcondvar_t *)malloc( sizeof( *cond ) );
 	if(!cond)
 		return -1;
-	cond->c = SDL_CreateCond();
+	cond->c = SDL_CreateCondition();
 	if( !cond->c ) {
 		free( cond );
 		return -1;
@@ -177,7 +177,7 @@ void Sys_CondVar_Destroy( qcondvar_t *cond )
 		return;
 	}
 
-	SDL_DestroyCond( cond->c );
+	SDL_DestroyCondition( cond->c );
 	free( cond );
 }
 
@@ -190,7 +190,7 @@ bool Sys_CondVar_Wait( qcondvar_t *cond, qmutex_t *mutex, unsigned int timeout_m
 		return false;
 	}
 
-	return SDL_CondWaitTimeout( cond->c, mutex->m, timeout_msec ) == 0;
+	return SDL_WaitConditionTimeout( cond->c, mutex->m, timeout_msec );
 }
 
 /*
@@ -202,5 +202,5 @@ void Sys_CondVar_Wake( qcondvar_t *cond )
 		return;
 	}
 
-	SDL_CondSignal( cond->c );
+	SDL_SignalCondition( cond->c );
 }

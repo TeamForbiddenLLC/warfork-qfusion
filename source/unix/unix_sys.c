@@ -22,7 +22,7 @@ which defines HAVE_STRCASECMP if SDL.h isn't called first, causing a bunch of wa
 FIXME:  This will be remidied once a native Mac port is complete
 */
 #if defined ( __APPLE__ ) && !defined ( DEDICATED_ONLY )
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <sys/param.h>
 #endif
@@ -50,7 +50,7 @@ FIXME:  This will be remidied once a native Mac port is complete
 #include "../qcommon/qcommon.h"
 #include "glob.h"
 
-#if !defined(USE_SDL2) || defined(DEDICATED_ONLY)
+#if !defined(USE_SDL3) || defined(DEDICATED_ONLY)
 
 cvar_t *nostdout;
 bool nostdout_backup_val = false;
@@ -224,7 +224,7 @@ void Sys_SendKeyEvents( void )
 	sys_frame_time = Sys_Milliseconds();
 }
 
-#endif // !defined(USE_SDL2) || defined(DEDICATED_ONLY)
+#endif // !defined(USE_SDL3) || defined(DEDICATED_ONLY)
 
 #ifndef __APPLE__
 /*
@@ -287,7 +287,7 @@ const char *Sys_GetPreferredLanguage( void )
 	return Q_strlwr( lang );
 }
 
-#if !defined(USE_SDL2) || defined(DEDICATED_ONLY)
+#if !defined(USE_SDL3) || defined(DEDICATED_ONLY)
 
 /*
 * Sys_AcquireWakeLock
@@ -354,4 +354,4 @@ int main( int argc, char **argv )
 #endif
 }
 
-#endif // !defined(USE_SDL2) || defined(DEDICATED_ONLY)
+#endif // !defined(USE_SDL3) || defined(DEDICATED_ONLY)
