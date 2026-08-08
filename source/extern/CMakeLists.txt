@@ -153,10 +153,10 @@ endif()
 
 option(TRACY_STATIC "" OFF )
 SET(TRACY_ENABLE OFF CACHE BOOL "Enable profiling")
-add_compile_definitions(TRACY_IMPORTS)
-add_subdirectory(tracy)
 
 if(TRACY_ENABLE)
+  add_subdirectory(tracy)
+
   if(WIN32)
     # Windows has no RPATH equivalent; the loader only searches the exe
     # directory for statically-imported DLLs. warfork/wf_server/wftv_server
@@ -165,6 +165,15 @@ if(TRACY_ENABLE)
   else()
     qf_set_output_dir(TracyClient libs)
   endif()
+else()
+  # Tracy's instrumentation macros compile to no-ops without TRACY_ENABLE.
+  # Keep its public headers available to instrumented sources without building
+  # or linking TracyClient into non-profiling builds.
+  add_library(TracyClient INTERFACE)
+  target_include_directories(TracyClient SYSTEM INTERFACE
+    "${CMAKE_CURRENT_SOURCE_DIR}/tracy/public"
+  )
+  add_library(Tracy::TracyClient ALIAS TracyClient)
 endif()
 
 set(STB_INCLUDE_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/stb PARENT_SCOPE)
