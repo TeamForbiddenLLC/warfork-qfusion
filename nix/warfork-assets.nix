@@ -4,6 +4,7 @@
 
   cmake,
   zip,
+  strip-nondeterminism,
 }:
 let
   fs = lib.fileset;
@@ -20,10 +21,12 @@ gcc13Stdenv.mkDerivation {
   nativeBuildInputs = [
     cmake
     zip
+    strip-nondeterminism
   ];
   dontUnpack = true;
   dontConfigure = true;
   dontInstall = true;
+  dontFixup = true;
   buildPhase = ''
     cmake \
       -DCMAKE_SYSTEM_NAME=Linux \
