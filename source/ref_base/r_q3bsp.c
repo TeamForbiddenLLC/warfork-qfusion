@@ -65,8 +65,125 @@ BRUSHMODEL LOADING
 ===============================================================================
 */
 
+// per-axis cap on the light grid. gridBounds[3] is gridBounds[0]*gridBounds[1],
+// so this has to stay well under sqrt(INT_MAX)
+#define MAX_LIGHTGRID_BOUNDS	8192
+
 static uint8_t *mod_base;
+static size_t mod_bufferLen;
 static mbrushmodel_t *loadbmodel;
+
+/*
+* Mod_LumpCount
+*
+* Validates a lump against the size of the file it came from and returns the
+* number of elemSize-sized records it holds. BSP files are attacker-controlled
+* (a client downloads the map from whatever server it joins), so every lump
+* offset/length pair has to be range-checked before it is turned into a pointer.
+*/
+static int Mod_LumpCount( const lump_t *l, size_t elemSize, const char *lumpName )
+{
+	if( elemSize == 0 )
+		ri.Com_Error( ERR_DROP, "Mod_LumpCount: zero-sized %s record in %s", lumpName, loadmodel->name );
+
+	if( l->fileofs < 0 || l->filelen < 0 )
+		ri.Com_Error( ERR_DROP, "Mod_LumpCount: negative %s lump (ofs %i, len %i) in %s",
+			lumpName, l->fileofs, l->filelen, loadmodel->name );
+
+	// written as a subtraction so that fileofs + filelen cannot itself overflow
+	if( (size_t)l->fileofs > mod_bufferLen || (size_t)l->filelen > mod_bufferLen - (size_t)l->fileofs )
+		ri.Com_Error( ERR_DROP, "Mod_LumpCount: %s lump out of bounds (ofs %i, len %i, file %u) in %s",
+			lumpName, l->fileofs, l->filelen, (unsigned)mod_bufferLen, loadmodel->name );
+
+	// every record in these lumps is built from 4-byte ints and floats, and the
+	// loader reads them by casting mod_base+fileofs straight to a struct
+	// pointer. q3map2 always aligns its lumps; a hostile file need not, and an
+	// unaligned cast is undefined behaviour (and a fault on strict-alignment
+	// targets).
+	if( elemSize > 1 )
+	{
+		size_t align = elemSize >= 4 ? 4 : elemSize;
+		if( (size_t)l->fileofs & ( align - 1 ) )
+			ri.Com_Error( ERR_DROP, "Mod_LumpCount: %s lump offset %i is misaligned in %s",
+				lumpName, l->fileofs, loadmodel->name );
+	}
+
+	if( l->filelen % elemSize )
+		ri.Com_Error( ERR_DROP, "Mod_LumpCount: funny %s lump size in %s", lumpName, loadmodel->name );
+
+	return l->filelen / (int)elemSize;
+}
+
+/*
+* Mod_LumpCountMax
+*
+* As Mod_LumpCount, but also rejects counts beyond the format's hard limit so a
+* tiny file cannot ask for a huge allocation.
+*/
+static int Mod_LumpCountMax( const lump_t *l, size_t elemSize, const char *lumpName, int maxCount )
+{
+	int count = Mod_LumpCount( l, elemSize, lumpName );
+	if( count > maxCount )
+		ri.Com_Error( ERR_DROP, "Mod_LumpCount: too many %s (%i > %i) in %s",
+			lumpName, count, maxCount, loadmodel->name );
+	return count;
+}
+
+/*
+* Mod_LumpData
+*
+* Base pointer of a lump that has already been validated by Mod_LumpCount.
+*/
+static inline void *Mod_LumpData( const lump_t *l )
+{
+	return mod_base + l->fileofs;
+}
+
+/*
+* Mod_IsFiniteFloat
+*
+* Rejects NaN and +-infinity. Written against the bit pattern rather than
+* isfinite() because release builds are compiled with -ffast-math, which lets
+* the compiler assume no NaNs exist and fold the usual predicates away.
+*
+* Non-finite vertex coordinates are not merely ugly: Patch_FlatnessTest
+* recurses until a segment is flat enough, and every comparison against a NaN
+* is false, so a single NaN control point recurses until the stack runs out.
+*/
+static inline bool Mod_IsFiniteFloat( float f )
+{
+	uint32_t u;
+	memcpy( &u, &f, sizeof( u ) );
+	return ( u & 0x7f800000u ) != 0x7f800000u;
+}
+
+/*
+* Mod_CheckFloat
+*/
+static inline float Mod_CheckFloat( float f, const char *what )
+{
+	if( !Mod_IsFiniteFloat( f ) )
+		ri.Com_Error( ERR_DROP, "Mod_LoadQ3BrushModel: non-finite %s in %s", what, loadmodel->name );
+	return f;
+}
+
+/*
+* Mod_ColorToByte
+*
+* Converts a normalized colour component to 8 bits. The scale it comes through
+* is derived from the entity string ("_lightingIntensity") and the overbright
+* cvars, so the value reaching here is not guaranteed to be in [0,1] - and
+* casting a float outside unsigned char range is undefined.
+*/
+static inline uint8_t Mod_ColorToByte( float c )
+{
+	// written so that NaN falls through to 0 rather than to 255
+	if( !( c > 0.0f ) )
+		return 0;
+	if( c >= 1.0f )
+		return 255;
+	return (uint8_t)( c * 255.0f );
+}
 
 /*
 * Mod_CheckDeluxemaps
@@ -83,9 +200,10 @@ static void Mod_CheckDeluxemaps( const lump_t *l, uint8_t *lmData )
 
 	if( mod_bspFormat->flags & BSP_RAVEN )
 	{
-		rdface_t *in = ( void * )( mod_base + l->fileofs );
+		rdface_t *in;
 
-		surfaces = l->filelen / sizeof( *in );
+		surfaces = Mod_LumpCountMax( l, sizeof( *in ), "faces", MAX_MAP_FACES );
+		in = Mod_LumpData( l );
 		for( i = 0; i < surfaces; i++, in++ )
 		{
 			for( j = 0; j < MAX_LIGHTMAPS; j++ )
@@ -100,9 +218,10 @@ static void Mod_CheckDeluxemaps( const lump_t *l, uint8_t *lmData )
 	}
 	else
 	{
-		dface_t	*in = ( void * )( mod_base + l->fileofs );
+		dface_t	*in;
 
-		surfaces = l->filelen / sizeof( *in );
+		surfaces = Mod_LumpCountMax( l, sizeof( *in ), "faces", MAX_MAP_FACES );
+		in = Mod_LumpData( l );
 		for( i = 0; i < surfaces; i++, in++ )
 		{
 			lightmap = LittleLong( in->lm_texnum );
@@ -192,15 +311,15 @@ static void Mod_LoadLighting( const lump_t *l, const lump_t *faces )
 			r_lighting_maxlmblocksize->integer, lmSize );
 
 	size = lmSize * lmSize * LIGHTMAP_BYTES;
-	if( l->filelen % size )
-		ri.Com_Error( ERR_DROP, "Mod_LoadLighting: funny lump size in %s", loadmodel->name );
 
-	loadmodel_numlightmaps = l->filelen / size;
+	// bounds the lump against the file and guarantees filelen == numlightmaps * size,
+	// which is what R_BuildLightmaps and Mod_CheckDeluxemaps then read
+	loadmodel_numlightmaps = Mod_LumpCount( l, size, "lighting" );
 	loadmodel_lightmapRects = Q_CallocAligned(  loadmodel_numlightmaps, 16, sizeof( *loadmodel_lightmapRects ) );
 	Q_LinkToPool(loadmodel_lightmapRects, loadmodel->mempool);
 
-	Mod_CheckDeluxemaps( faces, mod_base + l->fileofs );
-	R_BuildLightmaps( loadmodel, loadmodel_numlightmaps, lmSize, lmSize, mod_base + l->fileofs, loadmodel_lightmapRects );
+	Mod_CheckDeluxemaps( faces, Mod_LumpData( l ) );
+	R_BuildLightmaps( loadmodel, loadmodel_numlightmaps, lmSize, lmSize, Mod_LumpData( l ), loadmodel_lightmapRects );
 }
 
 /*
@@ -254,11 +373,8 @@ static void Mod_PreloadFaces( const lump_t *l )
 
 	if( mod_bspFormat->flags & BSP_RAVEN )
 	{
-		in = ( void * )( mod_base + l->fileofs );
-		if( l->filelen % sizeof( *in ) )
-			ri.Com_Error( ERR_DROP, "Mod_LoadFaces: funny lump size in %s", loadmodel->name );
-
-		loadmodel_numsurfaces = l->filelen / sizeof( *in );
+		loadmodel_numsurfaces = Mod_LumpCountMax( l, sizeof( *in ), "faces", MAX_MAP_FACES );
+		in = Mod_LumpData( l );
 		loadmodel_dsurfaces = in;
 
 		// verify lighting data
@@ -281,11 +397,8 @@ static void Mod_PreloadFaces( const lump_t *l )
 	{
 		dface_t	*din;
 
-		din = ( void * )( mod_base + l->fileofs );
-		if( l->filelen % sizeof( *din ) )
-			ri.Com_Error( ERR_DROP, "Mod_LoadFaces: funny lump size in %s", loadmodel->name );
-
-		loadmodel_numsurfaces = l->filelen / sizeof( *din );
+		loadmodel_numsurfaces = Mod_LumpCountMax( l, sizeof( *din ), "faces", MAX_MAP_FACES );
+		din = Mod_LumpData( l );
 		loadmodel_dsurfaces = in = Q_CallocAligned(loadmodel_numsurfaces, 16, sizeof( *in ) );
 		Q_LinkToPool(in, loadmodel->mempool);
 
@@ -360,7 +473,7 @@ static void Mod_LoadFaces( const lump_t *l )
 			lightmapStyles[j] = in->lightmapStyles[j];
 			vertexStyles[j] = in->vertexStyles[j];
 
-			if( in->lightmapStyles[j] == 255 || lightmaps[j] >= loadmodel_numlightmaps )
+			if( in->lightmapStyles[j] == 255 || lightmaps[j] < 0 || lightmaps[j] >= loadmodel_numlightmaps )
 			{
 				lmRects[j] = NULL;
 				lightmaps[j] = -1;
@@ -376,8 +489,15 @@ static void Mod_LoadFaces( const lump_t *l )
 		// add this super style
 		out->superLightStyle = R_AddSuperLightStyle( loadmodel, lightmaps, lightmapStyles, vertexStyles, lmRects );
 
-		// load shader
-		shaderRef = loadmodel_shaderrefs + LittleLong( in->shadernum );
+		// load shader. Mod_PreloadFaces has already range-checked this, but it
+		// is cheap to not depend on the two staying in that order
+		{
+			int shaderNum = LittleLong( in->shadernum );
+
+			if( shaderNum < 0 || shaderNum >= loadmodel_numshaderrefs )
+				ri.Com_Error( ERR_DROP, "Mod_LoadFaces: face %i has bad shader %i in %s", i, shaderNum, loadmodel->name );
+			shaderRef = loadmodel_shaderrefs + shaderNum;
+		}
 		if( lightmapStyles[0] == 255 ) {
 			shaderType = SHADER_TYPE_VERTEX;
 		} else {
@@ -410,10 +530,8 @@ static void Mod_LoadVertexes( const lump_t *l )
 	vec3_t color;
 	float div = (float)( 1 << mapConfig.overbrightBits ) * mapConfig.lightingIntensity / 255.0f;
 
-	in = ( void * )( mod_base + l->fileofs );
-	if( l->filelen % sizeof( *in ) )
-		ri.Com_Error( ERR_DROP, "Mod_LoadVertexes: funny lump size in %s", loadmodel->name );
-	count = l->filelen / sizeof( *in );
+	count = Mod_LumpCountMax( l, sizeof( *in ), "vertexes", MAX_MAP_VERTEXES );
+	in = Mod_LumpData( l );
 
 	bufSize = 0;
 	bufSize += count * ( sizeof( vec3_t ) + sizeof( vec3_t ) + sizeof( vec2_t )*2 + sizeof( byte_vec4_t ) );
@@ -442,12 +560,14 @@ static void Mod_LoadVertexes( const lump_t *l )
 	{
 		for( j = 0; j < 3; j++ )
 		{
-			out_xyz[j] = LittleFloat( in->point[j] );
-			out_normals[j] = LittleFloat( in->normal[j] );
+			out_xyz[j] = Mod_CheckFloat( LittleFloat( in->point[j] ), "vertex position" );
+			out_normals[j] = Mod_CheckFloat( LittleFloat( in->normal[j] ), "vertex normal" );
 		}
 
 		for( j = 0; j < 2; j++ )
 		{
+			// texcoords only ever flow into float math, so a NaN there is ugly
+			// but harmless; positions are what drive Patch_FlatnessTest
 			out_st[j] = LittleFloat( in->tex_st[j] );
 			out_lmst[j] = LittleFloat( in->lm_st[j] );
 		}
@@ -472,9 +592,9 @@ static void Mod_LoadVertexes( const lump_t *l )
 				color[0] = color[1] = color[2] = bound( 0, grey, 1 );
 			}
 
-			out_colors[0] = ( uint8_t )( color[0] * 255 );
-			out_colors[1] = ( uint8_t )( color[1] * 255 );
-			out_colors[2] = ( uint8_t )( color[2] * 255 );
+			out_colors[0] = Mod_ColorToByte( color[0] );
+			out_colors[1] = Mod_ColorToByte( color[1] );
+			out_colors[2] = Mod_ColorToByte( color[2] );
 			out_colors[3] = in->color[3];
 		}
 	}
@@ -493,10 +613,8 @@ static void Mod_LoadVertexes_RBSP( const lump_t *l )
 	vec3_t color;
 	float div = (float)( 1 << mapConfig.overbrightBits ) * mapConfig.lightingIntensity / 255.0f;
 
-	in = ( void * )( mod_base + l->fileofs );
-	if( l->filelen % sizeof( *in ) )
-		ri.Com_Error( ERR_DROP, "Mod_LoadVertexes: funny lump size in %s", loadmodel->name );
-	count = l->filelen / sizeof( *in );
+	count = Mod_LumpCountMax( l, sizeof( *in ), "vertexes", MAX_MAP_VERTEXES );
+	in = Mod_LumpData( l );
 
 	bufSize = 0;
 	bufSize += count * ( sizeof( vec3_t ) + sizeof( vec3_t ) + sizeof( vec2_t ) + ( sizeof( vec2_t ) + sizeof( byte_vec4_t ) )*MAX_LIGHTMAPS );
@@ -527,8 +645,8 @@ static void Mod_LoadVertexes_RBSP( const lump_t *l )
 	{
 		for( j = 0; j < 3; j++ )
 		{
-			out_xyz[j] = LittleFloat( in->point[j] );
-			out_normals[j] = LittleFloat( in->normal[j] );
+			out_xyz[j] = Mod_CheckFloat( LittleFloat( in->point[j] ), "vertex position" );
+			out_normals[j] = Mod_CheckFloat( LittleFloat( in->normal[j] ), "vertex normal" );
 		}
 
 		for( j = 0; j < 2; j++ )
@@ -559,9 +677,9 @@ static void Mod_LoadVertexes_RBSP( const lump_t *l )
 					color[0] = color[1] = color[2] = bound( 0, grey, 1 );
 				}
 
-				out_colors[j][0] = ( uint8_t )( color[0] * 255 );
-				out_colors[j][1] = ( uint8_t )( color[1] * 255 );
-				out_colors[j][2] = ( uint8_t )( color[2] * 255 );
+				out_colors[j][0] = Mod_ColorToByte( color[0] );
+				out_colors[j][1] = Mod_ColorToByte( color[1] );
+				out_colors[j][2] = Mod_ColorToByte( color[2] );
 				out_colors[j][3] = in->color[j][3];
 			}
 		}
@@ -579,10 +697,10 @@ static void Mod_LoadSubmodels( const lump_t *l )
 	mbrushmodel_t *bmodel;
 	model_t *mod_inline;
 
-	in = ( void * )( mod_base + l->fileofs );
-	if( l->filelen % sizeof( *in ) )
-		ri.Com_Error( ERR_DROP, "Mod_LoadSubmodels: funny lump size in %s", loadmodel->name );
-	count = l->filelen / sizeof( *in );
+	count = Mod_LumpCountMax( l, sizeof( *in ), "submodels", MAX_MAP_SUBMODELS );
+	if( count < 1 )
+		ri.Com_Error( ERR_DROP, "Mod_LoadSubmodels: map with no models in %s", loadmodel->name );
+	in = Mod_LumpData( l );
 	out = Q_CallocAligned(count, 16, sizeof( *out ));
 	Q_LinkToPool(out, loadmodel->mempool);
 
@@ -603,8 +721,8 @@ static void Mod_LoadSubmodels( const lump_t *l )
 		for( j = 0; j < 3; j++ )
 		{
 			// spread the mins / maxs by a pixel
-			out->mins[j] = LittleFloat( in->mins[j] ) - 1;
-			out->maxs[j] = LittleFloat( in->maxs[j] ) + 1;
+			out->mins[j] = Mod_CheckFloat( LittleFloat( in->mins[j] ), "submodel bounds" ) - 1;
+			out->maxs[j] = Mod_CheckFloat( LittleFloat( in->maxs[j] ), "submodel bounds" ) + 1;
 		}
 
 		out->radius = RadiusFromBounds( out->mins, out->maxs );
@@ -623,10 +741,8 @@ static void Mod_LoadShaderrefs( const lump_t *l )
 	mshaderref_t *out;
 	bool newMap;
 
-	in = ( void * )( mod_base + l->fileofs );
-	if( l->filelen % sizeof( *in ) )
-		ri.Com_Error( ERR_DROP, "Mod_LoadShaderrefs: funny lump size in %s", loadmodel->name );
-	count = l->filelen / sizeof( *in );
+	count = Mod_LumpCountMax( l, sizeof( *in ), "shaderrefs", MAX_MAP_FACES );
+	in = Mod_LumpData( l );
 	out = Q_CallocAligned( count, 16, sizeof( *out ) );
 	Q_LinkToPool(out, loadmodel->mempool);
 	
@@ -758,6 +874,12 @@ static mesh_t *Mod_CreateMeshForSurface( const rdface_t *in, msurface_t *out, in
 			size[1] = ( patch_cp[1] >> 1 ) * step[1] + 1;
 			numVerts = size[0] * size[1];
 			numElems = ( size[0] - 1 ) * ( size[1] - 1 ) * 6;
+
+			// mesh_t stores both counts in an unsigned short; anything above that
+			// would allocate from the untruncated value and index with the truncated one
+			if( numVerts > USHRT_MAX || numElems > USHRT_MAX )
+				ri.Com_Error( ERR_DROP, "Mod_CreateMeshForSurface: patch tesselates to %i verts / %i elems in %s",
+					numVerts, numElems, loadmodel->name );
 
 			bufSize = MESH_T_SIZE_ALIGNED;
 			bufSize += numVerts * ( sizeof( vec4_t ) + sizeof( vec4_t ) + sizeof( vec4_t ) + sizeof( vec2_t ) );
@@ -979,6 +1101,12 @@ static mesh_t *Mod_CreateMeshForSurface( const rdface_t *in, msurface_t *out, in
 			numElems = LittleLong( in->numelems );
 			firstElem = LittleLong( in->firstelem );
 
+			// Mod_ValidateFaces has already bounded these against the vertex and
+			// element lumps; this is the mesh_t unsigned short limit
+			if( numVerts > USHRT_MAX || numElems > USHRT_MAX )
+				ri.Com_Error( ERR_DROP, "Mod_CreateMeshForSurface: face has %i verts / %i elems in %s",
+					numVerts, numElems, loadmodel->name );
+
 			bufSize = MESH_T_SIZE_ALIGNED;
 			bufSize += numVerts * ( sizeof( vec4_t ) + sizeof( vec4_t ) + sizeof( vec4_t ) + sizeof( vec2_t ) );
 			for( j = 0; j < MAX_LIGHTMAPS; j++ )
@@ -1171,10 +1299,8 @@ static void Mod_LoadNodes( const lump_t *l )
 	mnode_t	*out;
 	bool badBounds;
 
-	in = ( void * )( mod_base + l->fileofs );
-	if( l->filelen % sizeof( *in ) )
-		ri.Com_Error( ERR_DROP, "Mod_LoadNodes: funny lump size in %s", loadmodel->name );
-	count = l->filelen / sizeof( *in );
+	count = Mod_LumpCountMax( l, sizeof( *in ), "nodes", MAX_MAP_NODES );
+	in = Mod_LumpData( l );
 	out = Q_CallocAligned(count,16,sizeof( *out ) );
 	Q_LinkToPool(out, loadmodel->mempool);
 							
@@ -1183,15 +1309,27 @@ static void Mod_LoadNodes( const lump_t *l )
 
 	for( i = 0; i < count; i++, in++, out++ )
 	{
-		out->plane = loadbmodel->planes + LittleLong( in->planenum );
+		p = LittleLong( in->planenum );
+		if( p < 0 || (unsigned)p >= loadbmodel->numplanes )
+			ri.Com_Error( ERR_DROP, "Mod_LoadNodes: node %i has bad plane %i in %s", i, p, loadmodel->name );
+		out->plane = loadbmodel->planes + p;
 
 		for( j = 0; j < 2; j++ )
 		{
 			p = LittleLong( in->children[j] );
 			if( p >= 0 )
+			{
+				if( (unsigned)p >= loadbmodel->numnodes )
+					ri.Com_Error( ERR_DROP, "Mod_LoadNodes: node %i has bad child node %i in %s", i, p, loadmodel->name );
 				out->children[j] = loadbmodel->nodes + p;
+			}
 			else
+			{
+				// negative numbers are -(leafs+1)
+				if( p == INT_MIN || (unsigned)( -1 - p ) >= loadbmodel->numleafs )
+					ri.Com_Error( ERR_DROP, "Mod_LoadNodes: node %i has bad child leaf %i in %s", i, -1 - p, loadmodel->name );
 				out->children[j] = ( mnode_t * )( loadbmodel->leafs + ( -1 - p ) );
+			}
 		}
 
 		badBounds = false;
@@ -1218,6 +1356,7 @@ static void Mod_LoadNodes( const lump_t *l )
 static void Mod_LoadFogs( const lump_t *l, const lump_t *brLump, const lump_t *brSidesLump )
 {
 	int i, j, count, p;
+	int numbrushes, numbrushsides, numsides, firstside, visibleside;
 	dfog_t *in;
 	mfog_t *out;
 	dbrush_t *inbrushes, *brush;
@@ -1225,28 +1364,23 @@ static void Mod_LoadFogs( const lump_t *l, const lump_t *brLump, const lump_t *b
 	dbrushside_t *inbrushsides = NULL, *brushside = NULL;
 	rdbrushside_t *inrbrushsides = NULL, *rbrushside = NULL;
 
-	inbrushes = ( void * )( mod_base + brLump->fileofs );
-	if( brLump->filelen % sizeof( *inbrushes ) )
-		ri.Com_Error( ERR_DROP, "Mod_LoadBrushes: funny lump size in %s", loadmodel->name );
+	numbrushes = Mod_LumpCount( brLump, sizeof( *inbrushes ), "brushes" );
+	inbrushes = Mod_LumpData( brLump );
 
 	if( mod_bspFormat->flags & BSP_RAVEN )
 	{
-		inrbrushsides = ( void * )( mod_base + brSidesLump->fileofs );
-		if( brSidesLump->filelen % sizeof( *inrbrushsides ) )
-			ri.Com_Error( ERR_DROP, "Mod_LoadBrushsides: funny lump size in %s", loadmodel->name );
+		numbrushsides = Mod_LumpCountMax( brSidesLump, sizeof( *inrbrushsides ), "brushsides", MAX_MAP_BRUSHSIDES );
+		inrbrushsides = Mod_LumpData( brSidesLump );
 	}
 	else
 	{
-		inbrushsides = ( void * )( mod_base + brSidesLump->fileofs );
-		if( brSidesLump->filelen % sizeof( *inbrushsides ) )
-			ri.Com_Error( ERR_DROP, "Mod_LoadBrushsides: funny lump size in %s", loadmodel->name );
+		numbrushsides = Mod_LumpCountMax( brSidesLump, sizeof( *inbrushsides ), "brushsides", MAX_MAP_BRUSHSIDES );
+		inbrushsides = Mod_LumpData( brSidesLump );
 	}
 
-	in = ( void * )( mod_base + l->fileofs );
-	if( l->filelen % sizeof( *in ) )
-		ri.Com_Error( ERR_DROP, "Mod_LoadFogs: funny lump size in %s", loadmodel->name );
-	count = l->filelen / sizeof( *in );
-	out = Q_CallocAligned( 16, count, sizeof( *out ) );
+	count = Mod_LumpCountMax( l, sizeof( *in ), "fogs", MAX_MAP_FOGS );
+	in = Mod_LumpData( l );
+	out = Q_CallocAligned( count, 16, sizeof( *out ) );
 	Q_LinkToPool( out, loadmodel->mempool );
 
 	loadbmodel->fogs = out;
@@ -1258,47 +1392,81 @@ static void Mod_LoadFogs( const lump_t *l, const lump_t *brLump, const lump_t *b
 		p = LittleLong( in->brushnum );
 		if( p == -1 )
 			continue;
+		if( p < 0 || p >= numbrushes ) {
+			out->shader = NULL;
+			ri.Com_DPrintf( S_COLOR_YELLOW "WARNING: fog %i references bad brush %i\n", i, p );
+			continue;
+		}
 
 		brush = inbrushes + p;
 
-		p = LittleLong( brush->numsides );
-		if( p < 6 ) {
+		numsides = LittleLong( brush->numsides );
+		if( numsides < 6 ) {
 			out->shader = NULL;
 			ri.Com_DPrintf( S_COLOR_YELLOW "WARNING: missing fog brush sides\n" );
 			continue;
 		}
 
-		p = LittleLong( brush->firstside );
-		if( p == -1 ) {
+		firstside = LittleLong( brush->firstside );
+		if( firstside == -1 ) {
 			out->shader = NULL;
 			ri.Com_DPrintf( S_COLOR_YELLOW "WARNING: bad fog brush side\n" );
 			continue;
 		}
 
-		if( mod_bspFormat->flags & BSP_RAVEN )
-			rbrushside = inrbrushsides + p;
-		else
-			brushside = inbrushsides + p;
+		// the loop below reads sides [firstside, firstside+6) unconditionally,
+		// and visibleside indexes the same brush's side range
+		if( firstside < 0 || numsides > numbrushsides - firstside ) {
+			out->shader = NULL;
+			ri.Com_DPrintf( S_COLOR_YELLOW "WARNING: fog %i brush sides out of range\n", i );
+			continue;
+		}
 
-		p = LittleLong( in->visibleside );
+		if( mod_bspFormat->flags & BSP_RAVEN )
+			rbrushside = inrbrushsides + firstside;
+		else
+			brushside = inbrushsides + firstside;
+
+		visibleside = LittleLong( in->visibleside );
+		if( visibleside < -1 || visibleside >= numsides ) {
+			ri.Com_DPrintf( S_COLOR_YELLOW "WARNING: fog %i has bad visibleside %i\n", i, visibleside );
+			visibleside = -1;
+		}
+
+		p = -1;
 		if( mod_bspFormat->flags & BSP_RAVEN )
 		{
-			if( p != -1 )
-				out->visibleplane = loadbmodel->planes + LittleLong( rbrushside[p].planenum );
+			if( visibleside != -1 )
+				p = LittleLong( rbrushside[visibleside].planenum );
 			for( j = 0; j < 6; j++ )
 				brushplanes[j] = LittleLong( rbrushside[j].planenum );
 		}
 		else
 		{
-			if( p != -1 )
-				out->visibleplane = loadbmodel->planes + LittleLong( brushside[p].planenum );
+			if( visibleside != -1 )
+				p = LittleLong( brushside[visibleside].planenum );
 			for( j = 0; j < 6; j++ )
 				brushplanes[j] = LittleLong( brushside[j].planenum );
 		}
 
+		if( p >= 0 && (unsigned)p < loadbmodel->numplanes )
+			out->visibleplane = loadbmodel->planes + p;
+
+		for( j = 0; j < 6; j++ )
+		{
+			if( brushplanes[j] < 0 || (unsigned)brushplanes[j] >= loadbmodel->numplanes ) {
+				out->shader = NULL;
+				out->visibleplane = NULL;
+				ri.Com_DPrintf( S_COLOR_YELLOW "WARNING: fog %i brush side %i has bad plane %i\n", i, j, brushplanes[j] );
+				break;
+			}
+		}
+		if( j != 6 )
+			continue;
+
 		// brushes are always sorted with the axial sides first
 
-		VectorSet( out->mins, 
+		VectorSet( out->mins,
 			-loadbmodel->planes[brushplanes[0]].dist,
 			-loadbmodel->planes[brushplanes[2]].dist,
 			-loadbmodel->planes[brushplanes[4]].dist
@@ -1326,15 +1494,11 @@ static void Mod_LoadLeafs( const lump_t *l, const lump_t *msLump )
 	int numMarkSurfaces, firstMarkSurface;
 	int numVisSurfaces, numFragmentSurfaces;
 
-	inMarkSurfaces = ( void * )( mod_base + msLump->fileofs );
-	if( msLump->filelen % sizeof( *inMarkSurfaces ) )
-		ri.Com_Error( ERR_DROP, "Mod_LoadMarksurfaces: funny lump size in %s", loadmodel->name );
-	countMarkSurfaces = msLump->filelen / sizeof( *inMarkSurfaces );
+	countMarkSurfaces = Mod_LumpCountMax( msLump, sizeof( *inMarkSurfaces ), "leaffaces", MAX_MAP_LEAFFACES );
+	inMarkSurfaces = Mod_LumpData( msLump );
 
-	in = ( void * )( mod_base + l->fileofs );
-	if( l->filelen % sizeof( *in ) )
-		ri.Com_Error( ERR_DROP, "Mod_LoadLeafs: funny lump size in %s", loadmodel->name );
-	count = l->filelen / sizeof( *in );
+	count = Mod_LumpCountMax( l, sizeof( *in ), "leafs", MAX_MAP_LEAFS );
+	in = Mod_LumpData( l );
 	out = Q_CallocAligned( count, 16, sizeof( *out ) );
 	Q_LinkToPool( out, loadmodel->mempool );
 
@@ -1359,6 +1523,9 @@ static void Mod_LoadLeafs( const lump_t *l, const lump_t *msLump )
 			out->cluster = -1;
 		}
 
+		// NOTE: loadbmodel->pvs is only assigned by Mod_FinalizeBrushModel, i.e. after
+		// the whole file has been parsed, so this never fires at load time. The cluster
+		// is re-validated against the vis data there; here we only keep it sane.
 		if( loadbmodel->pvs && ( out->cluster >= loadbmodel->pvs->numclusters ) )
 		{
 			Com_Printf( S_COLOR_YELLOW "WARNING: leaf cluster > numclusters" );
@@ -1367,6 +1534,10 @@ static void Mod_LoadLeafs( const lump_t *l, const lump_t *msLump )
 
 		out->plane = NULL;
 		out->area = LittleLong( in->area );
+		// -1 means "no area"; only the upper bound matters, since it sizes
+		// loadbmodel->numareas
+		if( out->area >= MAX_MAP_AREAS )
+			ri.Com_Error( ERR_DROP, "Mod_LoadLeafs: leaf %i has bad area %i in %s", i, out->area, loadmodel->name );
 		if( out->area >= loadbmodel->numareas )
 			loadbmodel->numareas = out->area + 1;
 
@@ -1379,7 +1550,7 @@ static void Mod_LoadLeafs( const lump_t *l, const lump_t *msLump )
 		}
 
 		firstMarkSurface = LittleLong( in->firstleafface );
-		if( firstMarkSurface < 0 || numMarkSurfaces + firstMarkSurface > countMarkSurfaces )
+		if( numMarkSurfaces < 0 || firstMarkSurface < 0 || numMarkSurfaces > countMarkSurfaces - firstMarkSurface )
 			ri.Com_Error( ERR_DROP, "MOD_LoadBmodel: bad marksurfaces in leaf %i", i );
 
 		numVisSurfaces = numMarkSurfaces;
@@ -1399,6 +1570,8 @@ static void Mod_LoadLeafs( const lump_t *l, const lump_t *msLump )
 		for( j = 0; j < numMarkSurfaces; j++ )
 		{
 			k = LittleLong( inMarkSurfaces[firstMarkSurface + j] );
+			if( k < 0 || (unsigned)k >= loadbmodel->numsurfaces )
+				ri.Com_Error( ERR_DROP, "MOD_LoadBmodel: bad surface number %i in leaf %i", k, i );
 
 			out->firstVisSurface[numVisSurfaces++] = loadbmodel->surfaces + k;
 			out->firstFragmentSurface[numFragmentSurfaces++] = loadbmodel->surfaces + k;
@@ -1415,10 +1588,8 @@ static void Mod_LoadElems( const lump_t *l )
 	int *in;
 	elem_t	*out;
 
-	in = ( void * )( mod_base + l->fileofs );
-	if( l->filelen % sizeof( *in ) )
-		ri.Com_Error( ERR_DROP, "Mod_LoadElems: funny lump size in %s", loadmodel->name );
-	count = l->filelen / sizeof( *in );
+	count = Mod_LumpCountMax( l, sizeof( *in ), "elements", MAX_MAP_INDICES );
+	in = Mod_LumpData( l );
 	out = Q_CallocAligned( count, 16, sizeof( *out ) );
 	Q_LinkToPool(out, loadmodel->mempool);
 
@@ -1426,7 +1597,130 @@ static void Mod_LoadElems( const lump_t *l )
 	loadmodel_numsurfelems = count;
 
 	for( i = 0; i < count; i++ )
-		out[i] = LittleLong( in[i] );
+	{
+		int e = LittleLong( in[i] );
+
+		// element values end up indexing mesh->xyzArray, and elem_t is only 16 bits
+		// wide, so an out-of-range value silently truncates into a bogus vertex
+		if( e < 0 || e >= loadmodel_numverts )
+			ri.Com_Error( ERR_DROP, "Mod_LoadElems: element %i out of range (%i of %i) in %s",
+				i, e, loadmodel_numverts, loadmodel->name );
+
+		out[i] = e;
+	}
+}
+
+/*
+* Mod_ValidateFaces
+*
+* Faces are parsed before the vertex and element lumps, but every face indexes
+* into both. This runs once the counts are known and before anything walks a
+* face: Mod_LoadPatchGroups -> Mod_AddUpdatePatchGroup reads control points
+* straight out of loadmodel_xyz_array, and Mod_Finish -> Mod_CreateMeshForSurface
+* copies whole vertex/element ranges. Everything they can reach is bounded here,
+* so those two stay free of scattered per-field checks.
+*
+* Also validates the submodel face ranges, which the surface count is only
+* known well enough to check at this point.
+*/
+static void Mod_ValidateFaces( void )
+{
+	int i;
+	rdface_t *in;
+
+	in = loadmodel_dsurfaces;
+	for( i = 0; i < loadmodel_numsurfaces; i++, in++ )
+	{
+		int facetype = LittleLong( in->facetype );
+		int firstvert = LittleLong( in->firstvert );
+		int numverts = LittleLong( in->numverts );
+		int firstelem = LittleLong( in->firstelem );
+		int numelems = LittleLong( in->numelems );
+		int patch_cp[2];
+
+		patch_cp[0] = LittleLong( in->patch_cp[0] );
+		patch_cp[1] = LittleLong( in->patch_cp[1] );
+
+		switch( facetype )
+		{
+		case FACETYPE_PATCH:
+			// a patch with a zero-sized control grid is dropped by
+			// Mod_AddUpdatePatchGroup and never produces a mesh
+			if( !patch_cp[0] || !patch_cp[1] )
+				continue;
+
+			// Bezier control grids are 2n+1 on each axis. Patch_GetFlatness and
+			// Patch_Evaluate walk them in steps of two and read p+2*cp[0]+2,
+			// which lands exactly on the last control point when both
+			// dimensions are odd - and a full row past the end when they are
+			// not. So "odd" is a memory-safety requirement, not a nicety.
+			if( patch_cp[0] < 3 || patch_cp[1] < 3 ||
+				!( patch_cp[0] & 1 ) || !( patch_cp[1] & 1 ) ||
+				patch_cp[0] > MAX_PATCH_CP || patch_cp[1] > MAX_PATCH_CP )
+				ri.Com_Error( ERR_DROP, "Mod_ValidateFaces: face %i has bad control grid %ix%i in %s",
+					i, patch_cp[0], patch_cp[1], loadmodel->name );
+
+			// Patch_GetFlatness and Patch_Evaluate read the whole control grid
+			numverts = patch_cp[0] * patch_cp[1];
+			numelems = 0;
+			break;
+
+		case FACETYPE_FOLIAGE:
+			// foliage reuses patch_cp for the instance and vertex counts, and
+			// reads one instance origin per instance from the vertex array
+			if( patch_cp[0] < 0 || patch_cp[1] < 0 )
+				ri.Com_Error( ERR_DROP, "Mod_ValidateFaces: foliage face %i has negative counts in %s",
+					i, loadmodel->name );
+			numverts = max( patch_cp[0], patch_cp[1] );
+			break;
+
+		default:
+			break;
+		}
+
+		if( numverts < 0 || firstvert < 0 || numverts > loadmodel_numverts - firstvert )
+			ri.Com_Error( ERR_DROP, "Mod_ValidateFaces: face %i vertex range (first %i, count %i, of %i) in %s",
+				i, firstvert, numverts, loadmodel_numverts, loadmodel->name );
+
+		if( numelems < 0 || firstelem < 0 || numelems > loadmodel_numsurfelems - firstelem )
+			ri.Com_Error( ERR_DROP, "Mod_ValidateFaces: face %i element range (first %i, count %i, of %i) in %s",
+				i, firstelem, numelems, loadmodel_numsurfelems, loadmodel->name );
+
+		// Mod_CreateMeshForSurface recomputes the surface plane from elems[0..2]
+		if( facetype == FACETYPE_PLANAR && numelems < 3 )
+			ri.Com_Error( ERR_DROP, "Mod_ValidateFaces: planar face %i has only %i elements in %s",
+				i, numelems, loadmodel->name );
+
+		// Element values are relative to the face's own vertex run, not to the
+		// vertex lump: Mod_CreateMeshForSurface copies the face's slice of the
+		// element lump verbatim and then indexes mesh->xyzArray, which only has
+		// this face's numverts entries. So each value has to be bounded by the
+		// face, not by loadmodel_numverts.
+		{
+			int e;
+
+			for( e = 0; e < numelems; e++ )
+			{
+				elem_t elem = loadmodel_surfelems[firstelem + e];
+
+				if( elem >= (elem_t)numverts )
+					ri.Com_Error( ERR_DROP, "Mod_ValidateFaces: face %i element %i is %u, past its %i verts in %s",
+						i, e, (unsigned)elem, numverts, loadmodel->name );
+			}
+		}
+	}
+
+	for( i = 0; i < (int)loadbmodel->numsubmodels; i++ )
+	{
+		const mmodel_t *sub = loadbmodel->submodels + i;
+
+		// firstface/numfaces are unsigned, so a negative value in the file has
+		// already wrapped to something huge and is caught by the same comparison
+		if( sub->firstface > (unsigned)loadmodel_numsurfaces ||
+			sub->numfaces > (unsigned)loadmodel_numsurfaces - sub->firstface )
+			ri.Com_Error( ERR_DROP, "Mod_ValidateFaces: submodel %i face range (first %u, count %u, of %i) in %s",
+				i, sub->firstface, sub->numfaces, loadmodel_numsurfaces, loadmodel->name );
+	}
 }
 
 /*
@@ -1439,10 +1733,8 @@ static void Mod_LoadPlanes( const lump_t *l )
 	dplane_t *in;
 	int count;
 
-	in = ( void * )( mod_base + l->fileofs );
-	if( l->filelen % sizeof( *in ) )
-		ri.Com_Error( ERR_DROP, "Mod_LoadPlanes: funny lump size in %s", loadmodel->name );
-	count = l->filelen / sizeof( *in );
+	count = Mod_LumpCountMax( l, sizeof( *in ), "planes", MAX_MAP_PLANES );
+	in = Mod_LumpData( l );
 	
 	out = Q_CallocAligned( count, 16, sizeof( *out ) );
 	Q_LinkToPool(out, loadmodel->mempool);
@@ -1457,13 +1749,13 @@ static void Mod_LoadPlanes( const lump_t *l )
 
 		for( j = 0; j < 3; j++ )
 		{
-			out->normal[j] = LittleFloat( in->normal[j] );
+			out->normal[j] = Mod_CheckFloat( LittleFloat( in->normal[j] ), "plane normal" );
 			if( out->normal[j] < 0 )
 				out->signbits |= 1<<j;
 			if( out->normal[j] == 1.0f )
 				out->type = j;
 		}
-		out->dist = LittleFloat( in->dist );
+		out->dist = Mod_CheckFloat( LittleFloat( in->dist ), "plane distance" );
 	}
 }
 
@@ -1476,10 +1768,8 @@ static void Mod_LoadLightgrid( const lump_t *l )
 	dgridlight_t *in;
 	mgridlight_t *out;
 
-	in = ( void * )( mod_base + l->fileofs );
-	if( l->filelen % sizeof( *in ) )
-		ri.Com_Error( ERR_DROP, "Mod_LoadLightgrid: funny lump size in %s", loadmodel->name );
-	count = l->filelen / sizeof( *in );
+	count = Mod_LumpCount( l, sizeof( *in ), "lightgrid" );
+	in = Mod_LumpData( l );
 	out = Q_CallocAligned( count, 16, sizeof( *out ) );
 	Q_LinkToPool(out, loadmodel->mempool);
 
@@ -1511,10 +1801,13 @@ static void Mod_LoadLightgrid_RBSP( const lump_t *l )
 	rdgridlight_t *in;
 	mgridlight_t *out;
 
-	in = ( void * )( mod_base + l->fileofs );
-	if( l->filelen % sizeof( *in ) )
-		ri.Com_Error( ERR_DROP, "Mod_LoadLightgrid: funny lump size in %s", loadmodel->name );
-	count = l->filelen / sizeof( *in );
+	// the bulk copy below reads count*sizeof( *out ) from a lump sized in sizeof( *in )
+	// units, so the two layouts have to stay identical
+	if( sizeof( *in ) != sizeof( *out ) )
+		ri.Com_Error( ERR_DROP, "Mod_LoadLightgrid_RBSP: lightgrid layout mismatch" );
+
+	count = Mod_LumpCount( l, sizeof( *in ), "lightgrid" );
+	in = Mod_LumpData( l );
 	out = Q_CallocAligned( count, 16, sizeof( *out ) );
 	Q_LinkToPool(out, loadmodel->mempool);
 
@@ -1554,10 +1847,8 @@ static void Mod_LoadLightArray_RBSP( const lump_t *l )
 	unsigned short *in;
 	mgridlight_t **out;
 
-	in = ( void * )( mod_base + l->fileofs );
-	if( l->filelen % sizeof( *in ) )
-		ri.Com_Error( ERR_DROP, "Mod_LoadLightArray: funny lump size in %s", loadmodel->name );
-	count = l->filelen / sizeof( *in );
+	count = Mod_LumpCount( l, sizeof( *in ), "lightarray" );
+	in = Mod_LumpData( l );
 	out = Q_CallocAligned( count, 16, sizeof( *out ) );
 	Q_LinkToPool( out, loadmodel->mempool );
 
@@ -1580,7 +1871,8 @@ static void Mod_LoadLightArray_RBSP( const lump_t *l )
 static void Mod_LoadEntities( const lump_t *l, vec3_t gridSize, vec3_t ambient, vec3_t outline )
 {
 	int n;
-	char *data;
+	int entLen;
+	char *data, *entities;
 	bool isworld;
 	float gridsizef[3] = { 0, 0, 0 }, colorf[3] = { 0, 0, 0 }, ambientf = 0;
 	char key[MAX_KEY], value[MAX_VALUE], *token;
@@ -1594,9 +1886,22 @@ static void Mod_LoadEntities( const lump_t *l, vec3_t gridSize, vec3_t ambient, 
 	VectorClear( ambient );
 	VectorClear( outline );
 
-	data = (char *)mod_base + l->fileofs;
-	if( !data || !data[0] )
+	// the entity lump is a NUL-terminated string in a well-formed file, but
+	// nothing guarantees the terminator, so parse a bounded copy
+	entLen = Mod_LumpCount( l, 1, "entities" );
+	if( !entLen )
 		return;
+
+	entities = Q_Malloc( entLen + 1 );
+	memcpy( entities, Mod_LumpData( l ), entLen );
+	entities[entLen] = '\0';
+
+	data = entities;
+	if( !data[0] )
+	{
+		Q_Free( entities );
+		return;
+	}
 
 	for(; ( token = COM_Parse( &data ) ) && token[0] == '{'; )
 	{
@@ -1661,7 +1966,13 @@ static void Mod_LoadEntities( const lump_t *l, vec3_t gridSize, vec3_t ambient, 
 				if( !r_fullbright->integer )
 				{
 					// non power of two intensity scale for lighting
-					sscanf( value, "%8f", &mapConfig.lightingIntensity );
+					float intensity = 0;
+
+					if( sscanf( value, "%8f", &intensity ) == 1 &&
+						Mod_IsFiniteFloat( intensity ) && intensity > 0.0f )
+						mapConfig.lightingIntensity = intensity;
+					else
+						ri.Com_DPrintf( S_COLOR_YELLOW "WARNING: ignoring bad _lightingIntensity \"%s\"\n", value );
 				}
 			}
 			else if( !strcmp( key, "_outlinecolor" ) )
@@ -1700,6 +2011,8 @@ static void Mod_LoadEntities( const lump_t *l, vec3_t gridSize, vec3_t ambient, 
 			break;
 		}
 	}
+
+	Q_Free( entities );
 }
 
 /*
@@ -1719,7 +2032,7 @@ static void Mod_ApplySuperStylesToFace( const rdface_t *in, msurface_t *out )
 	{
 		lightmaps[j] = LittleLong( in->lm_texnum[j] );
 
-		if( in->lightmapStyles[j] == 255 || lightmaps[j] >= loadmodel_numlightmaps || !mesh )
+		if( in->lightmapStyles[j] == 255 || lightmaps[j] < 0 || lightmaps[j] >= loadmodel_numlightmaps || !mesh )
 		{
 			lmRects[j] = NULL;
 			lightmaps[j] = -1;
@@ -1779,8 +2092,20 @@ static void Mod_Finish( const lump_t *faces, const lump_t *light, vec3_t gridSiz
 
 		loadbmodel->gridMins[j] = loadbmodel->gridSize[j] * ceil( ( loadbmodel->submodels[0].mins[j] + 1 ) / loadbmodel->gridSize[j] );
 		maxs[j] = loadbmodel->gridSize[j] *floor( ( loadbmodel->submodels[0].maxs[j] - 1 ) / loadbmodel->gridSize[j] );
-		loadbmodel->gridBounds[j] = ( maxs[j] - loadbmodel->gridMins[j] )/loadbmodel->gridSize[j];
-		loadbmodel->gridBounds[j] = max( loadbmodel->gridBounds[j], 0 ) + 1;
+		// submodel[0]'s bounds and gridSize both come from the file, so the
+		// quotient is unbounded. Converting a float outside int range is
+		// undefined, and gridBounds[3] below is a product of two of these, so
+		// the per-axis cap has to leave room for that multiply as well.
+		{
+			float bounds = ( maxs[j] - loadbmodel->gridMins[j] ) / loadbmodel->gridSize[j];
+
+			if( !( bounds >= 0.0f ) )
+				bounds = 0.0f;                  // the negated test also catches NaN
+			else if( bounds > (float)MAX_LIGHTGRID_BOUNDS )
+				bounds = (float)MAX_LIGHTGRID_BOUNDS;
+
+			loadbmodel->gridBounds[j] = (int)bounds + 1;
+		}
 	}
 	loadbmodel->gridBounds[3] = loadbmodel->gridBounds[1] * loadbmodel->gridBounds[0];
 
@@ -1879,9 +2204,58 @@ static void Mod_Finish( const lump_t *faces, const lump_t *light, vec3_t gridSiz
 }
 
 /*
+* Mod_ResetLoaderState
+*
+* The loader keeps its scratch arrays in file-scope statics and only clears
+* them in Mod_Finish. Any ri.Com_Error along the way longjmps past that, so a
+* map that fails validation leaves every one of these pointing into the mempool
+* that Mod_ForName is about to release - and the next map to be loaded reads
+* through them. Mod_LoadLighting in particular returns early (vertex lighting,
+* or an empty lighting lump) without reassigning loadmodel_lightmapRects or
+* loadmodel_numlightmaps, so the stale pair is what Mod_LoadFaces indexes.
+*
+* Nothing is freed here: the previous model's pool already owns it.
+*/
+static void Mod_ResetLoaderState( void )
+{
+	int i;
+
+	loadmodel_numverts = 0;
+	loadmodel_xyz_array = NULL;
+	loadmodel_normals_array = NULL;
+	loadmodel_st_array = NULL;
+	for( i = 0; i < MAX_LIGHTMAPS; i++ )
+	{
+		loadmodel_lmst_array[i] = NULL;
+		loadmodel_colors_array[i] = NULL;
+	}
+
+	loadmodel_numsurfelems = 0;
+	loadmodel_surfelems = NULL;
+
+	loadmodel_numlightmaps = 0;
+	loadmodel_lightmapRects = NULL;
+
+	loadmodel_numshaderrefs = 0;
+	loadmodel_shaderrefs = NULL;
+
+	loadmodel_numsurfaces = 0;
+	loadmodel_dsurfaces = NULL;
+
+	loadmodel_numpatchgroups = 0;
+	loadmodel_maxpatchgroups = 0;
+	loadmodel_patchgroups = NULL;
+	loadmodel_patchgrouprefs = NULL;
+
+	loadbmodel = NULL;
+	mod_base = NULL;
+	mod_bufferLen = 0;
+}
+
+/*
 * Mod_LoadQ3BrushModel
 */
-void Mod_LoadQ3BrushModel( model_t *mod, model_t *parent, void *buffer, bspFormatDesc_t *format )
+void Mod_LoadQ3BrushModel( model_t *mod, model_t *parent, void *buffer, size_t bufferLen, bspFormatDesc_t *format )
 {
 	int i;
 	dheader_t *header;
@@ -1894,10 +2268,19 @@ void Mod_LoadQ3BrushModel( model_t *mod, model_t *parent, void *buffer, bspForma
 
 	loadmodel = mod;
 
+	Mod_ResetLoaderState();
+
 	mod_bspFormat = format;
 
 	header = (dheader_t *)buffer;
 	mod_base = (uint8_t *)header;
+	mod_bufferLen = bufferLen;
+
+	// the swap below rewrites the whole header in place, so the file has to be
+	// at least that big before we touch it
+	if( bufferLen < sizeof( dheader_t ) )
+		ri.Com_Error( ERR_DROP, "Mod_LoadQ3BrushModel: %s is truncated (%u bytes, header needs %u)",
+			mod->name, (unsigned)bufferLen, (unsigned)sizeof( dheader_t ) );
 
 	// swap all the lumps
 	for( i = 0; i < sizeof( dheader_t )/4; i++ )
@@ -1917,6 +2300,10 @@ void Mod_LoadQ3BrushModel( model_t *mod, model_t *parent, void *buffer, bspForma
 	else
 		Mod_LoadVertexes( &header->lumps[LUMP_VERTEXES] );
 	Mod_LoadElems( &header->lumps[LUMP_ELEMENTS] );
+
+	// faces index the vertex and element lumps, which only exist as of here
+	Mod_ValidateFaces();
+
 	if( mod_bspFormat->flags & BSP_RAVEN )
 		Mod_LoadLightgrid_RBSP( &header->lumps[LUMP_LIGHTGRID] );
 	else

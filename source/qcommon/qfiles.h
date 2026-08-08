@@ -162,6 +162,11 @@ typedef struct
 #define	MAX_MAP_INDICES	    0x80000
 #define	MAX_MAP_LIGHTING    0x800000
 #define	MAX_MAP_VISIBILITY  0x200000
+#define	MAX_MAP_SUBMODELS   0x1000
+
+// upper bound on a patch's Bezier control grid. q3map2 emits at most 33x33;
+// this only has to stop the tessellated vertex count from exploding
+#define	MAX_PATCH_CP	    64
 
 // lightmaps
 #define MAX_LIGHTMAPS		4

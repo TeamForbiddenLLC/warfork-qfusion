@@ -21,6 +21,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef __BSP_H__
 #define __BSP_H__
 
+#include <stddef.h>
+#include <stdint.h>
+
 /*
 ==============================================================
 
@@ -29,7 +32,9 @@ BSP FORMATS
 ==============================================================
 */
 
-typedef void ( *modelLoader_t )( void *param0, void *param1, void *param2, void *param3 );
+// param2 is the raw file buffer, bufferLen its length in bytes. Loaders parse
+// attacker-controlled data and must not read outside [param2, param2+bufferLen).
+typedef void ( *modelLoader_t )( void *param0, void *param1, void *param2, size_t bufferLen, void *param3 );
 
 #define BSP_NONE		0
 #define BSP_RAVEN		1
@@ -59,6 +64,6 @@ extern const bspFormatDesc_t q2BSPFormats[];
 extern const bspFormatDesc_t q1BSPFormats[];
 
 const bspFormatDesc_t *Q_FindBSPFormat( const bspFormatDesc_t *formats, const char *header, int version );
-const modelFormatDescr_t *Q_FindFormatDescriptor( const modelFormatDescr_t *formats, const uint8_t *buf, const bspFormatDesc_t **bspFormat );
+const modelFormatDescr_t *Q_FindFormatDescriptor( const modelFormatDescr_t *formats, const uint8_t *buf, size_t bufLen, const bspFormatDesc_t **bspFormat );
 
 #endif // __BSP_H__

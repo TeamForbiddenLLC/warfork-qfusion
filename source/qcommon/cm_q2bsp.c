@@ -476,7 +476,7 @@ static void CMod_LoadEntityString( cmodel_state_t *cms, lump_t *l ) {
 /*
 * CM_LoadQ2BrushModel
 */
-void CM_LoadQ2BrushModel( cmodel_state_t *cms, void *parent, void *buf, bspFormatDesc_t *format ) {
+void CM_LoadQ2BrushModel( cmodel_state_t *cms, void *parent, void *buf, size_t bufferLen, bspFormatDesc_t *format ) {
 	int i;
 	q2dheader_t header;
 

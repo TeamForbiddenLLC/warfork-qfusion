@@ -44,6 +44,8 @@ endif()
 
 option(USE_SDL2 "Build using SDL2" OFF)
 option(BUILD_UNIT_TEST "Build with unit test" OFF)
+option(BUILD_FUZZ_TEST "Build libFuzzer fuzz targets (requires clang)" OFF)
+option(ENABLE_SANITIZERS "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(GAME_MODULES_ONLY "Only build game modules" OFF)
 option(BUILD_STEAMLIB "Include the steamlib module (requires Steamworks SDK)" OFF)
 option(USE_GRAPHICS_NRI "Build using Nvidia NRI" OFF)
@@ -329,9 +331,33 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
     capitalize(QFUSION_CLIENT_NAME)
 endif()
+# NOTE: must come after the platform blocks above, which overwrite CMAKE_C_FLAGS
+# wholesale (see the -std=gnu99 assignment) rather than appending to it.
+if (ENABLE_SANITIZERS)
+    if (MSVC)
+        set(QF_SANITIZER_FLAGS "/fsanitize=address")
+    else()
+        set(QF_SANITIZER_FLAGS "-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=undefined")
+    endif()
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${QF_SANITIZER_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${QF_SANITIZER_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${QF_SANITIZER_FLAGS}")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${QF_SANITIZER_FLAGS}")
+    message(STATUS "Sanitizers enabled: ${QF_SANITIZER_FLAGS}")
+endif()
+
+if (BUILD_FUZZ_TEST AND NOT CMAKE_C_COMPILER_ID MATCHES "Clang")
+    message(FATAL_ERROR "BUILD_FUZZ_TEST needs libFuzzer; configure with CC=clang CXX=clang++")
+endif()
+
 add_subdirectory(extern)
 
 add_subdirectory(qcore)
+
+# qcommon builds no library of its own, only the collision-model fuzz targets
+if (BUILD_UNIT_TEST OR BUILD_FUZZ_TEST)
+    add_subdirectory(qcommon)
+endif()
 
 add_subdirectory(ref_base)
 add_subdirectory(angelwrap)

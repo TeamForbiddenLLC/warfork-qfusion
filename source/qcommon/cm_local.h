@@ -172,6 +172,7 @@ struct cmodel_state_s
 	int floodvalid;
 
 	uint8_t *cmod_base;
+	size_t cmod_length;             // size of the buffer cmod_base points at
 
 	// cm_trace.c
 	cplane_t box_planes[6];
