@@ -115,7 +115,7 @@ The container runs [`docker-entrypoint.sh`](docker-entrypoint.sh), which configu
 
 ### Linux
 
-Dependencies: `gcc-12`/`g++-12`, CMake >= 3.20, GNU Make, plus `libsdl2-dev`, `libopenal-dev`, `libcurl4-openssl-dev`, `zlib1g-dev`, `libfreetype-dev`, `libvulkan-dev`, X11/Wayland headers., `strip-nondeterminism`
+Dependencies: `gcc-12`/`g++-12`, CMake >= 3.20, GNU Make, plus `libsdl2-dev`, `libopenal-dev`, `libcurl4-openssl-dev`, `zlib1g-dev`, `libfreetype-dev`, `libvulkan-dev`, `strip-nondeterminism`, X11/Wayland headers.
 
 ```bash
 cd source
