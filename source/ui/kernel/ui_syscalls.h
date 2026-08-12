@@ -191,6 +191,10 @@ namespace trap
 			return UI_IMPORT.VID_GetModeInfo( width, height, mode );
 		}
 
+		inline bool VID_GetDefaultMode( int *width, int *height ) {
+			return UI_IMPORT.VID_GetDefaultMode( width, height );
+		}
+
 		inline void VID_FlashWindow( int count ) {
 			UI_IMPORT.VID_FlashWindow( count );
 		}

@@ -264,6 +264,7 @@ void CL_UIModule_Init( void )
 	import.GetBaseServerURL = CL_GetBaseServerURL;
 
 	import.VID_GetModeInfo = VID_GetModeInfo;
+	import.VID_GetDefaultMode = VID_GetDefaultMode;
 	import.VID_FlashWindow = VID_FlashWindow;
 
 	import.Mem_Alloc = CL_UIModule_MemAlloc;
