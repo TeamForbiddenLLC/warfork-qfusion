@@ -1317,11 +1317,11 @@ bool CG_DemoCam_IsFree( void )
 */
 static void CG_DemoFreeFly_Cmd_f( void )
 {
-	if( trap_Cmd_Argc() > 1 )
+	if( Cmd_Argc() > 1 )
 	{
-		if( !Q_stricmp( trap_Cmd_Argv( 1 ), "on" ) )
+		if( !Q_stricmp( Cmd_Argv( 1 ), "on" ) )
 			CamIsFree = true;
-		else if( !Q_stricmp( trap_Cmd_Argv( 1 ), "off" ) )
+		else if( !Q_stricmp( Cmd_Argv( 1 ), "off" ) )
 			CamIsFree = false;
 	}
 	else
@@ -1353,16 +1353,16 @@ static void CG_AddSub_Cmd_f( void )
 		return;
 	}
 
-	if( trap_Cmd_Argc() > 1 )
+	if( Cmd_Argc() > 1 )
 	{
 		char str[MAX_STRING_CHARS]; // one line of the console can't handle more than this
 		int i;
 
 		str[0] = 0;
-		for( i = 1; i < trap_Cmd_Argc(); i++ )
+		for( i = 1; i < Cmd_Argc(); i++ )
 		{
-			Q_strncatz( str, trap_Cmd_Argv( i ), sizeof( str ) );
-			if( i < trap_Cmd_Argc() - 1 )
+			Q_strncatz( str, Cmd_Argv( i ), sizeof( str ) );
+			if( i < Cmd_Argc() - 1 )
 				Q_strncatz( str, " ", sizeof( str ) );
 		}
 
@@ -1386,16 +1386,16 @@ static void CG_AddPrint_Cmd_f( void )
 		return;
 	}
 
-	if( trap_Cmd_Argc() > 1 )
+	if( Cmd_Argc() > 1 )
 	{
 		char str[MAX_STRING_CHARS]; // one line of the console can't handle more than this
 		int i;
 
 		str[0] = 0;
-		for( i = 1; i < trap_Cmd_Argc(); i++ )
+		for( i = 1; i < Cmd_Argc(); i++ )
 		{
-			Q_strncatz( str, trap_Cmd_Argv( i ), sizeof( str ) );
-			if( i < trap_Cmd_Argc() - 1 )
+			Q_strncatz( str, Cmd_Argv( i ), sizeof( str ) );
+			if( i < Cmd_Argc() - 1 )
 				Q_strncatz( str, " ", sizeof( str ) );
 		}
 
@@ -1416,13 +1416,13 @@ static void CG_AddCam_Cmd_f( void )
 
 	CG_DemoCam_UpdateDemoTime();
 
-	if( trap_Cmd_Argc() == 2 )
+	if( Cmd_Argc() == 2 )
 	{
 		// type
 		type = -1;
 		for( i = 0; cam_TypeNames[i] != NULL; i++ )
 		{
-			if( !Q_stricmp( cam_TypeNames[i], trap_Cmd_Argv( 1 ) ) )
+			if( !Q_stricmp( cam_TypeNames[i], Cmd_Argv( 1 ) ) )
 			{
 				type = i;
 				break;
@@ -1489,12 +1489,12 @@ static void CG_EditCam_Cmd_f( void )
 		return;
 	}
 
-	if( trap_Cmd_Argc() >= 2 && Q_stricmp( trap_Cmd_Argv( 1 ), "help" ) )
+	if( Cmd_Argc() >= 2 && Q_stricmp( Cmd_Argv( 1 ), "help" ) )
 	{
-		if( !Q_stricmp( trap_Cmd_Argv( 1 ), "type" ) )
+		if( !Q_stricmp( Cmd_Argv( 1 ), "type" ) )
 		{
 			int type, i;
-			if( trap_Cmd_Argc() < 3 )
+			if( Cmd_Argc() < 3 )
 			{   // not enough parameters, print help
 				CG_Printf( "Usage: EditCam type <type name>\n" );
 				return;
@@ -1503,7 +1503,7 @@ static void CG_EditCam_Cmd_f( void )
 			type = -1;
 			for( i = 0; cam_TypeNames[i] != NULL; i++ )
 			{
-				if( !Q_stricmp( cam_TypeNames[i], trap_Cmd_Argv( 2 ) ) )
+				if( !Q_stricmp( cam_TypeNames[i], Cmd_Argv( 2 ) ) )
 				{
 					type = i;
 					break;
@@ -1523,42 +1523,42 @@ static void CG_EditCam_Cmd_f( void )
 				CG_Printf( "invalid type name\n" );
 			}
 		}
-		if( !Q_stricmp( trap_Cmd_Argv( 1 ), "track" ) )
+		if( !Q_stricmp( Cmd_Argv( 1 ), "track" ) )
 		{
-			if( trap_Cmd_Argc() < 3 )
+			if( Cmd_Argc() < 3 )
 			{
 				// not enough parameters, print help
 				CG_Printf( "Usage: EditCam track <entity number> ( 0 for no tracking )\n" );
 				return;
 			}
-			currentcam->trackEnt = atoi( trap_Cmd_Argv( 2 ) );
+			currentcam->trackEnt = atoi( Cmd_Argv( 2 ) );
 			CG_Printf( "cam edited\n" );
 			CG_Democam_ExecutePathAnalysis();
 			return;
 		}
-		else if( !Q_stricmp( trap_Cmd_Argv( 1 ), "fov" ) )
+		else if( !Q_stricmp( Cmd_Argv( 1 ), "fov" ) )
 		{
-			if( trap_Cmd_Argc() < 3 )
+			if( Cmd_Argc() < 3 )
 			{
 				// not enough parameters, print help
 				CG_Printf( "Usage: EditCam fov <value>\n" );
 				return;
 			}
-			currentcam->fov = atoi( trap_Cmd_Argv( 2 ) );
+			currentcam->fov = atoi( Cmd_Argv( 2 ) );
 			CG_Printf( "cam edited\n" );
 			CG_Democam_ExecutePathAnalysis();
 			return;
 		}
-		else if( !Q_stricmp( trap_Cmd_Argv( 1 ), "timeOffset" ) )
+		else if( !Q_stricmp( Cmd_Argv( 1 ), "timeOffset" ) )
 		{
 			unsigned int newtimestamp;
-			if( trap_Cmd_Argc() < 3 )
+			if( Cmd_Argc() < 3 )
 			{
 				// not enough parameters, print help
 				CG_Printf( "Usage: EditCam timeOffset <value>\n" );
 				return;
 			}
-			newtimestamp = currentcam->timeStamp += atoi( trap_Cmd_Argv( 2 ) );
+			newtimestamp = currentcam->timeStamp += atoi( Cmd_Argv( 2 ) );
 			if( newtimestamp + cg.time <= demo_initial_timestamp )
 				newtimestamp = 1;
 			currentcam->timeStamp = newtimestamp;
@@ -1568,7 +1568,7 @@ static void CG_EditCam_Cmd_f( void )
 			CG_Democam_ExecutePathAnalysis();
 			return;
 		}
-		else if( !Q_stricmp( trap_Cmd_Argv( 1 ), "origin" ) )
+		else if( !Q_stricmp( Cmd_Argv( 1 ), "origin" ) )
 		{
 			VectorCopy( cg.view.origin, currentcam->origin );
 			cam_orbital_radius = 0;
@@ -1576,48 +1576,48 @@ static void CG_EditCam_Cmd_f( void )
 			CG_Democam_ExecutePathAnalysis();
 			return;
 		}
-		else if( !Q_stricmp( trap_Cmd_Argv( 1 ), "angles" ) )
+		else if( !Q_stricmp( Cmd_Argv( 1 ), "angles" ) )
 		{
 			VectorCopy( cg.view.angles, currentcam->angles );
 			CG_Printf( "cam edited\n" );
 			CG_Democam_ExecutePathAnalysis();
 			return;
 		}
-		else if( !Q_stricmp( trap_Cmd_Argv( 1 ), "pitch" ) )
+		else if( !Q_stricmp( Cmd_Argv( 1 ), "pitch" ) )
 		{
-			if( trap_Cmd_Argc() < 3 )
+			if( Cmd_Argc() < 3 )
 			{
 				// not enough parameters, print help
 				CG_Printf( "Usage: EditCam pitch <value>\n" );
 				return;
 			}
-			currentcam->angles[PITCH] = atof( trap_Cmd_Argv( 2 ) );
+			currentcam->angles[PITCH] = atof( Cmd_Argv( 2 ) );
 			CG_Printf( "cam edited\n" );
 			CG_Democam_ExecutePathAnalysis();
 			return;
 		}
-		else if( !Q_stricmp( trap_Cmd_Argv( 1 ), "yaw" ) )
+		else if( !Q_stricmp( Cmd_Argv( 1 ), "yaw" ) )
 		{
-			if( trap_Cmd_Argc() < 3 )
+			if( Cmd_Argc() < 3 )
 			{
 				// not enough parameters, print help
 				CG_Printf( "Usage: EditCam yaw <value>\n" );
 				return;
 			}
-			currentcam->angles[YAW] = atof( trap_Cmd_Argv( 2 ) );
+			currentcam->angles[YAW] = atof( Cmd_Argv( 2 ) );
 			CG_Printf( "cam edited\n" );
 			CG_Democam_ExecutePathAnalysis();
 			return;
 		}
-		else if( !Q_stricmp( trap_Cmd_Argv( 1 ), "roll" ) )
+		else if( !Q_stricmp( Cmd_Argv( 1 ), "roll" ) )
 		{
-			if( trap_Cmd_Argc() < 3 )
+			if( Cmd_Argc() < 3 )
 			{
 				// not enough parameters, print help
 				CG_Printf( "Usage: EditCam roll <value>\n" );
 				return;
 			}
-			currentcam->angles[ROLL] = atof( trap_Cmd_Argv( 2 ) );
+			currentcam->angles[ROLL] = atof( Cmd_Argv( 2 ) );
 			CG_Printf( "cam edited\n" );
 			CG_Democam_ExecutePathAnalysis();
 			return;
@@ -1645,14 +1645,14 @@ void CG_SaveCam_Cmd_f( void )
 {
 	if( !cgs.demoPlaying )
 		return;
-	if( trap_Cmd_Argc() > 1 )
+	if( Cmd_Argc() > 1 )
 	{
 		char *customName;
 		int custom_name_size;
 
-		custom_name_size = sizeof( char ) * ( strlen( "demos/" ) + strlen( trap_Cmd_Argv( 1 ) ) + strlen( ".cam" ) + 1 );
+		custom_name_size = sizeof( char ) * ( strlen( "demos/" ) + strlen( Cmd_Argv( 1 ) ) + strlen( ".cam" ) + 1 );
 		customName = ( char * )CG_Malloc( custom_name_size );
-		Q_snprintfz( customName, custom_name_size, "demos/%s", trap_Cmd_Argv( 1 ) );
+		Q_snprintfz( customName, custom_name_size, "demos/%s", Cmd_Argv( 1 ) );
 		COM_ReplaceExtension( customName, ".cam", custom_name_size );
 		CG_SaveRecamScriptFile( customName );
 		CG_Free( customName );
@@ -1670,16 +1670,16 @@ void CG_Democam_ImportCams_f( void )
 	int name_size;
 	char *customName;
 
-	if( trap_Cmd_Argc() < 2 )
+	if( Cmd_Argc() < 2 )
 	{
 		CG_Printf( "Usage: importcams <filename> (relative to demos directory)\n" );
 		return;
 	}
 
 	// see if there is any script for this demo, and load it
-	name_size = sizeof( char ) * ( strlen( "demos/" ) + strlen( trap_Cmd_Argv( 1 ) ) + strlen( ".cam" ) + 1 );
+	name_size = sizeof( char ) * ( strlen( "demos/" ) + strlen( Cmd_Argv( 1 ) ) + strlen( ".cam" ) + 1 );
 	customName = ( char * )CG_Malloc( name_size );
-	Q_snprintfz( customName, name_size, "demos/%s", trap_Cmd_Argv( 1 ) );
+	Q_snprintfz( customName, name_size, "demos/%s", Cmd_Argv( 1 ) );
 	COM_ReplaceExtension( customName, ".cam", name_size );
 	if( CG_LoadRecamScriptFile( customName ) )
 	{
@@ -1696,14 +1696,14 @@ void CG_Democam_ImportCams_f( void )
 */
 void CG_DemoEditMode_RemoveCmds( void )
 {
-	trap_Cmd_RemoveCommand( "addcam" );
-	trap_Cmd_RemoveCommand( "deletecam" );
-	trap_Cmd_RemoveCommand( "editcam" );
-	trap_Cmd_RemoveCommand( "saverecam" );
-	trap_Cmd_RemoveCommand( "clearcams" );
-	trap_Cmd_RemoveCommand( "importcams" );
-	trap_Cmd_RemoveCommand( "subtitle" );
-	trap_Cmd_RemoveCommand( "addprint" );
+	Cmd_RemoveCommand( "addcam" );
+	Cmd_RemoveCommand( "deletecam" );
+	Cmd_RemoveCommand( "editcam" );
+	Cmd_RemoveCommand( "saverecam" );
+	Cmd_RemoveCommand( "clearcams" );
+	Cmd_RemoveCommand( "importcams" );
+	Cmd_RemoveCommand( "subtitle" );
+	Cmd_RemoveCommand( "addprint" );
 }
 
 /*
@@ -1714,11 +1714,11 @@ static void CG_DemoEditMode_Cmd_f( void )
 	if( !cgs.demoPlaying )
 		return;
 
-	if( trap_Cmd_Argc() > 1 )
+	if( Cmd_Argc() > 1 )
 	{
-		if( !Q_stricmp( trap_Cmd_Argv( 1 ), "on" ) )
+		if( !Q_stricmp( Cmd_Argv( 1 ), "on" ) )
 			democam_editing_mode = true;
-		else if( !Q_stricmp( trap_Cmd_Argv( 1 ), "off" ) )
+		else if( !Q_stricmp( Cmd_Argv( 1 ), "off" ) )
 			democam_editing_mode = false;
 	}
 	else
@@ -1727,14 +1727,14 @@ static void CG_DemoEditMode_Cmd_f( void )
 	CG_Printf( "demo cam editing mode %s\n", democam_editing_mode ? "on" : "off" );
 	if( democam_editing_mode )
 	{
-		trap_Cmd_AddCommand( "addcam", CG_AddCam_Cmd_f );
-		trap_Cmd_AddCommand( "deletecam", CG_DeleteCam_Cmd_f );
-		trap_Cmd_AddCommand( "editcam", CG_EditCam_Cmd_f );
-		trap_Cmd_AddCommand( "saverecam", CG_SaveCam_Cmd_f );
-		trap_Cmd_AddCommand( "clearcams", CG_Democam_FreeCams );
-		trap_Cmd_AddCommand( "importcams", CG_Democam_ImportCams_f );
-		trap_Cmd_AddCommand( "subtitle", CG_AddSub_Cmd_f );
-		trap_Cmd_AddCommand( "addprint", CG_AddPrint_Cmd_f );
+		Cmd_AddCommand( "addcam", CG_AddCam_Cmd_f );
+		Cmd_AddCommand( "deletecam", CG_DeleteCam_Cmd_f );
+		Cmd_AddCommand( "editcam", CG_EditCam_Cmd_f );
+		Cmd_AddCommand( "saverecam", CG_SaveCam_Cmd_f );
+		Cmd_AddCommand( "clearcams", CG_Democam_FreeCams );
+		Cmd_AddCommand( "importcams", CG_Democam_ImportCams_f );
+		Cmd_AddCommand( "subtitle", CG_AddSub_Cmd_f );
+		Cmd_AddCommand( "addprint", CG_AddPrint_Cmd_f );
 	}
 	else
 	{
@@ -1769,9 +1769,9 @@ void CG_DemocamInit( void )
 	CG_Printf( "cam: %s\n", demoscriptname );
 
 	// add console commands
-	trap_Cmd_AddCommand( "demoEditMode", CG_DemoEditMode_Cmd_f );
-	trap_Cmd_AddCommand( "demoFreeFly", CG_DemoFreeFly_Cmd_f );
-	trap_Cmd_AddCommand( "camswitch", CG_CamSwitch_Cmd_f );
+	Cmd_AddCommand( "demoEditMode", CG_DemoEditMode_Cmd_f );
+	Cmd_AddCommand( "demoFreeFly", CG_DemoFreeFly_Cmd_f );
+	Cmd_AddCommand( "camswitch", CG_CamSwitch_Cmd_f );
 
 	if( CG_LoadRecamScriptFile( demoscriptname ) )
 	{
@@ -1811,9 +1811,9 @@ void CG_DemocamShutdown( void )
 		return;
 
 	// remove console commands
-	trap_Cmd_RemoveCommand( "demoEditMode" );
-	trap_Cmd_RemoveCommand( "demoFreeFly" );
-	trap_Cmd_RemoveCommand( "camswitch" );
+	Cmd_RemoveCommand( "demoEditMode" );
+	Cmd_RemoveCommand( "demoFreeFly" );
+	Cmd_RemoveCommand( "camswitch" );
 	if( democam_editing_mode )
 	{
 		CG_DemoEditMode_RemoveCmds();
