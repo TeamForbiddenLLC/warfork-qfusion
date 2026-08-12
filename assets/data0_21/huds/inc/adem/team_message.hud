@@ -1,3 +1,45 @@
+if %MESSAGE_SELF
+	setColor 1 1 1 1
+	setCursor #WIDTH / 2, 420
+	setAlign 2 1
+	setFontFamily "Droid Sans"
+	setFontStyle "Bold"
+	setFontSize %VIDHEIGHT / 45
+	setColor 0 0 0 1
+	drawCleanStatString %MESSAGE_SELF
+	moveCursor 0, -1
+	drawCleanStatString %MESSAGE_SELF
+	moveCursor 1, 0
+	drawCleanStatString %MESSAGE_SELF
+	moveCursor 0, 1
+	drawCleanStatString %MESSAGE_SELF
+	moveCursor -0.5, -0.5
+	setColor 1 1 1 1
+	drawStatString %MESSAGE_SELF
+	setFontStyle Normal
+endif
+
+if %MESSAGE_OTHER
+	setColor 1 1 1 1
+	setCursor #WIDTH / 2, 400
+	setAlign 2 1
+	setFontFamily "Droid Sans"
+	setFontStyle "Bold"
+	setFontSize %VIDHEIGHT / 45
+	setColor 0 0 0 1
+	drawCleanStatString %MESSAGE_OTHER
+	moveCursor 0, -1
+	drawCleanStatString %MESSAGE_OTHER
+	moveCursor 1, 0
+	drawCleanStatString %MESSAGE_OTHER
+	moveCursor 0, 1
+	drawCleanStatString %MESSAGE_OTHER
+	moveCursor -0.5, -0.5
+	setColor 1 1 1 1
+	drawStatString %MESSAGE_OTHER
+	setFontStyle Normal
+endif
+
 //shows value of alive players as "fat" numbers
 //setSize 14 * 1.333 * %VIDHEIGHT / %VIDWIDTH, 14
 setFontFamily Virtue
