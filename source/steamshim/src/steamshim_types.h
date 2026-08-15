@@ -301,6 +301,7 @@ STEAM_RPC_REQ( steam_avatar )
 STEAM_RPC_RECV( steam_avatar )
 {
 	STEAM_RPC_SHIM_COMMON()
+	uint64_t steamID;
 	uint32_t width;
 	uint32_t height;
 	uint8_t buf[];
@@ -463,10 +464,10 @@ STEAM_EVT( persona_changes )
 {
 	STEAM_SHIM_COMMON()
 	uint64_t steamID;
-	uint32_t avatar_changed : 1;
-	// uint32_t name_change : 1;
-	// uint32_t status_change: 1;
-	// uint32_t online_status_change: 1;
+	uint32_t avatar_changed;
+	uint32_t name_changed;
+	// uint32_t status_change;
+	// uint32_t online_status_change;
 };
 
 STEAM_EVT( join_request )

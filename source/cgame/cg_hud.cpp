@@ -1212,8 +1212,9 @@ static void CG_DrawVoices( int x, int y, int align, struct qfontface_s *font, ve
 		// bg rect
 		RF_DrawStretchPic( x + xoffset, y + yoffset, maxnamewidth + icon_size * 2 + xspacing*4, line_height, 0, 0, 1, 1, teamcolor, cgs.shaderWhite );
 
-		// pfp
-		RF_DrawStretchPic( x + xoffset, y + yoffset, icon_size, icon_size, 0, 0, 1, 1, colorWhite, client->avatar );
+		// pfp - keep the slot reserved even when the avatar isn't available
+		if( client->avatar )
+			RF_DrawStretchPic( x + xoffset, y + yoffset, icon_size, icon_size, 0, 0, 1, 1, colorWhite, client->avatar );
 		xoffset += icon_size + xspacing;
 
 		// name

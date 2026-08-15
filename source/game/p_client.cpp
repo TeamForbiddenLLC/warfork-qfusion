@@ -800,6 +800,8 @@ void ClientBegin( edict_t *ent )
 	G_Gametype_ScoreEvent( client, "enterGame", NULL );
 }
 
+static void G_UpdatePlayerInfoString( int playerNum );
+
 void ClientAuth ( edict_t *ent, uint64_t steamid )
 {
 	gclient_t *client = ent->r.client;
@@ -833,6 +835,10 @@ void ClientAuth ( edict_t *ent, uint64_t steamid )
 		}
 		free(operators);
 	}
+
+	// auth completes asynchronously - push the steamid out to the other clients now
+	// instead of waiting for this player's next incidental userinfo change
+	G_UpdatePlayerInfoString( PLAYERNUM( ent ) );
 }
 
 /*
