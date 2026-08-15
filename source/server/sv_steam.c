@@ -13,10 +13,17 @@ static void BeginAuthSessionCB(struct authsessioncb_self *self, struct steam_res
 
 int Steam_BeginAuthSession(uint64_t steamid, SteamAuthTicket_t *ticket){
 	struct begin_auth_session_req_s s;
+
+	// pcbTicket originates from the network; the caller bounds it, but this struct is
+	// also fed from the shim, so validate here too rather than trusting the field
+	if( ticket->pcbTicket < 0 || ticket->pcbTicket > (long long)sizeof( s.authTicket ) ||
+		ticket->pcbTicket > (long long)sizeof( ticket->pTicket ) )
+		return -1;
+
 	s.steamID = steamid;
 	s.cmd = RPC_BEGIN_AUTH_SESSION;
 	s.cbAuthTicket = ticket->pcbTicket;
-	memcpy(s.authTicket, ticket->pTicket, ticket->pcbTicket);
+	memcpy(s.authTicket, ticket->pTicket, (size_t)ticket->pcbTicket);
 
 	uint32_t sync;
 	struct authsessioncb_self self;

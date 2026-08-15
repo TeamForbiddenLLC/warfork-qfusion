@@ -49,8 +49,9 @@ void *MSG_GetSpace( msg_t *msg, size_t length )
 {
 	void *ptr;
 
-	assert( msg->cursize + length <= msg->maxsize );
-	if( msg->cursize + length > msg->maxsize )
+	// written in non-wrapping form: cursize + length can overflow size_t
+	assert( length <= msg->maxsize - msg->cursize );
+	if( length > msg->maxsize - msg->cursize )
 		Com_Error( ERR_FATAL, "MSG_GetSpace: overflowed" );
 
 	ptr = msg->data + msg->cursize;
@@ -174,10 +175,11 @@ void MSG_BeginReading( msg_t *msg )
 
 int MSG_ReadChar( msg_t *msg )
 {
-	int i = (signed char)msg->data[msg->readcount++];
+	msg->readcount++;
 	if( msg->readcount > msg->cursize )
-		i = -1;
-	return i;
+		return -1;
+
+	return (signed char)msg->data[msg->readcount - 1];
 }
 
 
@@ -197,6 +199,22 @@ int MSG_ReadShort( msg_t *msg )
 		return -1;
 
 	return ( short )( msg->data[msg->readcount - 2] | ( msg->data[msg->readcount - 1] << 8 ) );
+}
+
+/*
+* MSG_ReadUShort
+*
+* Same wire format as MSG_ReadShort but without sign extension, so the result can
+* be range-checked as a length or an index. Returns -1 at end of message, which is
+* the only negative value it can produce.
+*/
+int MSG_ReadUShort( msg_t *msg )
+{
+	msg->readcount += 2;
+	if( msg->readcount > msg->cursize )
+		return -1;
+
+	return (int)( (uint16_t)( msg->data[msg->readcount - 2] | ( msg->data[msg->readcount - 1] << 8 ) ) );
 }
 
 int MSG_ReadInt3( msg_t *msg )
@@ -243,18 +261,31 @@ void MSG_ReadDir( msg_t *msg, vec3_t dir )
 	ByteToDir( MSG_ReadByte( msg ), dir );
 }
 
-void MSG_ReadData( msg_t *msg, void *data, size_t length )
+/*
+* MSG_ReadData
+*
+* Fails closed: nothing is copied unless the read fits both the destination buffer
+* and the remaining message. On failure readcount is pushed past cursize so the
+* caller's "readcount > cursize" loop guard trips and the peer gets dropped.
+*/
+bool MSG_ReadData( msg_t *msg, void *data, size_t destSize, size_t length )
 {
-	unsigned int i;
+	if( msg->readcount > msg->cursize || length > destSize ||
+		length > msg->cursize - msg->readcount )
+	{
+		msg->readcount = msg->cursize + 1;
+		return false;
+	}
 
-	for( i = 0; i < length; i++ )
-		( (uint8_t *)data )[i] = MSG_ReadByte( msg );
-
+	memcpy( data, msg->data + msg->readcount, length );
+	msg->readcount += length;
+	return true;
 }
 
 int MSG_SkipData( msg_t *msg, size_t length )
 {
-	if( msg->readcount + length <= msg->cursize )
+	// non-wrapping form: readcount + length can overflow size_t
+	if( msg->readcount <= msg->cursize && length <= msg->cursize - msg->readcount )
 	{
 		msg->readcount += length;
 		return 1;
@@ -771,6 +802,16 @@ void MSG_ReadDeltaEntity( msg_t *msg, entity_state_t *from, entity_state_t *to, 
 
 	if( bits & U_TEAM )
 		to->team = (uint8_t)MSG_ReadByte( msg );
+
+	// Range-check the fields the client uses directly as array subscripts. Only
+	// modelindex and sound can be validated here: the other index-like fields share
+	// storage with unrelated members (skinnum/colorRGBA, frame/ownerNum,
+	// modelindex2/bodyOwner) whose legal range depends on the entity type, so those
+	// have to be checked where they are used.
+	if( to->modelindex >= MAX_MODELS )
+		to->modelindex = 0;
+	if( to->sound < 0 || to->sound >= MAX_SOUNDS )
+		to->sound = 0;
 }
 
 

@@ -359,7 +359,7 @@ static void SV_ReadPackets( void )
 			}
 			else if( ret == 1 )
 			{
-				if( *(int *)msg.data != -1 )
+				if( msg.cursize < 4 || *(int *)msg.data != -1 )
 				{
 					Com_Printf( "Sequence packet without connection\n" );
 					NET_CloseSocket( &svs.incoming[i].socket );
@@ -389,6 +389,10 @@ static void SV_ReadPackets( void )
 				Com_Printf( "NET_GetPacket: Error: %s\n", NET_ErrorString() );
 				continue;
 			}
+
+			// a packet too short to hold the marker can't be either kind
+			if( msg.cursize < 4 )
+				continue;
 
 			// check for connectionless packet (0xffffffff) first
 			if( *(int *)msg.data == -1 )
@@ -479,7 +483,7 @@ static void SV_ReadPackets( void )
           NET_CloseSocket( &svs.incomingp2p[i].socket );
           svs.incomingp2p[i].active = false;
       } else if( ret == 1 ) {
-          if( *(int *)msg.data != -1 ) {
+          if( msg.cursize < 4 || *(int *)msg.data != -1 ) {
               Com_Printf( "Sequence packet without connection\n" );
               NET_CloseSocket( &svs.incomingp2p[i].socket );
               svs.incomingp2p[i].active = false;

@@ -609,7 +609,8 @@ static void CG_AddLinkedModel( centity_t *cent )
 	if( cent->current.linearMovement )
 		return;
 
-	model = cgs.modelDraw[cent->current.modelindex2];
+	// modelindex2 shares storage with bodyOwner/channel, so it is not bounded at parse
+	model = CG_ModelForIndex( cent->current.modelindex2 );
 	if( !model )
 		return;
 
@@ -1228,7 +1229,7 @@ static void CG_UpdateSpriteEnt( centity_t *cent )
 	// set up the model
 	cent->ent.rtype = RT_SPRITE;
 	cent->ent.model = NULL;
-	cent->ent.customShader = cgs.imagePrecache[ cent->current.modelindex ];
+	cent->ent.customShader = CG_ImageForIndex( cent->current.modelindex );
 	cent->ent.radius = cent->prev.frame;
 	VectorCopy( cent->prev.origin, cent->ent.origin );
 	VectorCopy( cent->prev.origin, cent->ent.origin2 );
@@ -1287,7 +1288,7 @@ static void CG_UpdateDecalEnt( centity_t *cent )
 
 	// set up the null model, may be potentially needed for linked model
 	cent->ent.model = NULL;
-	cent->ent.customShader = cgs.imagePrecache[ cent->current.modelindex ];
+	cent->ent.customShader = CG_ImageForIndex( cent->current.modelindex );
 	cent->ent.radius = cent->prev.frame;
 	cent->ent.rotation = cent->prev.modelindex2 / 255.0 * 360;
 	VectorCopy( cent->prev.origin, cent->ent.origin );
@@ -1530,6 +1531,13 @@ static void CG_UpdateLaserbeamEnt( centity_t *cent )
 {
 	centity_t *owner;
 
+	// ownerNum shares storage with 'frame', so it cannot be bounded when parsed
+	if( cent->current.ownerNum < 0 || cent->current.ownerNum >= MAX_EDICTS )
+	{
+		CG_Printf( "CG_UpdateLaserbeamEnt: bad owner number %i\n", cent->current.ownerNum );
+		return;
+	}
+
 	if( cg.view.playerPrediction && cg_predictLaserBeam->integer
 		&& ISVIEWERENTITY( cent->current.ownerNum ) )
 		return;
@@ -1556,7 +1564,13 @@ static void CG_UpdateLaserbeamEnt( centity_t *cent )
 */
 static void CG_LerpLaserbeamEnt( centity_t *cent )
 {
-	centity_t *owner = &cg_entities[cent->current.ownerNum];
+	centity_t *owner;
+
+	// ownerNum shares storage with 'frame', so it cannot be bounded when parsed
+	if( cent->current.ownerNum < 0 || cent->current.ownerNum >= MAX_EDICTS )
+		return;
+
+	owner = &cg_entities[cent->current.ownerNum];
 
 	if( cg.view.playerPrediction && cg_predictLaserBeam->integer
 		&& ISVIEWERENTITY( cent->current.ownerNum ) )
@@ -1802,7 +1816,7 @@ void CG_UpdateParticlesEnt( centity_t *cent )
 
 	// set up the data in the old position
 	cent->ent.model = NULL;
-	cent->ent.customShader = cgs.imagePrecache[ cent->current.modelindex ];
+	cent->ent.customShader = CG_ImageForIndex( cent->current.modelindex );
 	VectorCopy( cent->prev.origin, cent->ent.origin );
 	VectorCopy( cent->prev.origin2, cent->ent.origin2 );
 }
@@ -2233,7 +2247,7 @@ void CG_UpdateEntities( void )
 			{
 				CG_TeamColorForEntity( cent->current.number, cent->ent.shaderRGBA );
 				if( cent->current.modelindex > 0 && cent->current.modelindex < MAX_IMAGES )
-					cent->ent.customShader = cgs.imagePrecache[ cent->current.modelindex ];
+					cent->ent.customShader = CG_ImageForIndex( cent->current.modelindex );
 				else
 					cent->ent.customShader = NULL;
 			}

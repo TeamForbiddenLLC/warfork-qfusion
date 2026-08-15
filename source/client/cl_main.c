@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../steamshim/src/parent/parent.h"
 #include "tracy/TracyC.h"
 #include <stdlib.h>
+#include <string.h>
 
 cvar_t *cl_stereo_separation;
 cvar_t *cl_stereo;
@@ -1308,11 +1309,17 @@ static void CL_ConnectionlessPacket( const socket_t *socket, const netadr_t *add
 		rejectflag = atoi( MSG_ReadStringLine( msg ) );
 
 		Q_strncpyz( cls.rejectmessage, MSG_ReadStringLine( msg ), sizeof( cls.rejectmessage ) );
-		if( strlen( cls.rejectmessage ) > sizeof( cls.rejectmessage )-2 )
 		{
-			cls.rejectmessage[strlen( cls.rejectmessage )-2] = '.';
-			cls.rejectmessage[strlen( cls.rejectmessage )-1] = '.';
-			cls.rejectmessage[strlen( cls.rejectmessage )] = '.';
+			// mark truncation with an ellipsis, keeping room for the terminator.
+			// strlen must be taken once: writing '.' does not shorten the string, so
+			// re-evaluating it walked the last '.' onto the NUL.
+			size_t rejectlen = strnlen( cls.rejectmessage, sizeof( cls.rejectmessage) - 1);
+			if( rejectlen >= sizeof( cls.rejectmessage )-1 )
+			{
+				cls.rejectmessage[rejectlen-3] = '.';
+				cls.rejectmessage[rejectlen-2] = '.';
+				cls.rejectmessage[rejectlen-1] = '.';
+			}
 		}
 
 		Com_Printf( "Connection refused: %s\n", cls.rejectmessage );
@@ -1489,6 +1496,13 @@ void CL_ReadPackets( void )
 				if( cls.reliable && cls.socket == socket )
 					CL_Disconnect( va( "Error receiving packet: %s\n", NET_ErrorString() ) );
 
+				continue;
+			}
+
+			// a packet too short to hold the marker can't be either kind
+			if( msg.cursize < 4 )
+			{
+				Com_DPrintf( "%s: Runt packet\n", NET_AddressToString( &address ) );
 				continue;
 			}
 

@@ -994,6 +994,12 @@ static int NET_Loopback_GetPacket( const socket_t *socket, netadr_t *address, ms
 	i = loop->get & ( MAX_LOOPBACK-1 );
 	loop->get++;
 
+	if( (size_t)loop->msgs[i].datalen > net_message->maxsize )
+	{
+		NET_SetErrorString( "Oversized packet" );
+		return -1;
+	}
+
 	memcpy( net_message->data, loop->msgs[i].data, loop->msgs[i].datalen );
 	net_message->cursize = loop->msgs[i].datalen;
 	memset( address, 0, sizeof( *address ) );
@@ -1025,6 +1031,13 @@ static bool NET_Loopback_SendPacket( const socket_t *socket, const void *data, s
 	loop = &loopbacks[socket->handle^1];
 
 	i = loop->send & ( MAX_LOOPBACK - 1 );
+
+	if( length > sizeof( loop->msgs[i].data ) )
+	{
+		NET_SetErrorString( "Oversized packet" );
+		return false;
+	}
+
 	loop->send++;
 
 	memcpy( loop->msgs[i].data, data, length );

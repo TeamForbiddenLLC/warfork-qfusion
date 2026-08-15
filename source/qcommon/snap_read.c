@@ -50,6 +50,19 @@ const char * const svc_strings[256] =
 	"svc_extension"
 };
 
+/*
+* SVC_NameForCmd
+*
+* Safe accessor for svc_strings. Callers pass a raw byte from the wire, and
+* MSG_ReadByte returns -1 at end of message, so the index must be validated.
+*/
+const char *SVC_NameForCmd( int cmd )
+{
+	if( cmd < 0 || cmd >= (int)( sizeof( svc_strings ) / sizeof( svc_strings[0] ) ) || !svc_strings[cmd] )
+		return "bad";
+	return svc_strings[cmd];
+}
+
 void _SHOWNET( msg_t *msg, const char *s, int shownet )
 {
 	if( shownet >= 2 )
@@ -291,6 +304,11 @@ static void SNAP_DeltaEntity( msg_t *msg, snapshot_t *frame, int newnum, entity_
 {
 	entity_state_t *state;
 
+	// numEntities is later used as an iteration count, so it must not run past the
+	// array even though the subscript itself is masked
+	if( frame->numEntities >= MAX_PARSE_ENTITIES )
+		Com_Error( ERR_DROP, "SNAP_DeltaEntity: too many entities in snapshot" );
+
 	state = &frame->parsedEntities[frame->numEntities & ( MAX_PARSE_ENTITIES-1 )];
 	frame->numEntities++;
 	MSG_ReadDeltaEntity( msg, old, state, newnum, bits );
@@ -308,6 +326,10 @@ void SNAP_ParseBaseline( msg_t *msg, entity_state_t *baselines )
 
 	memset( &nullstate, 0, sizeof( nullstate ) );
 	newnum = MSG_ReadEntityBits( msg, &bits );
+
+	// newnum is a raw wire value; MSG_ReadEntityBits sign-extends when U_NUMBER16 is set
+	if( newnum < 0 || newnum >= MAX_EDICTS )
+		Com_Error( ERR_DROP, "SNAP_ParseBaseline: bad entity number: %i", newnum );
 
 	es = (baselines ? &baselines[newnum] : &tmp);
 	MSG_ReadDeltaEntity( msg, &nullstate, es, newnum, bits );
@@ -347,7 +369,8 @@ static void SNAP_ParsePacketEntities( msg_t *msg, snapshot_t *oldframe, snapshot
 	while( true )
 	{
 		newnum = SNAP_ParseEntityBits( msg, &bits );
-		if( newnum >= MAX_EDICTS )
+		// lower bound matters too: U_NUMBER16 reads a sign-extended short
+		if( newnum < 0 || newnum >= MAX_EDICTS )
 			Com_Error( ERR_DROP, "CL_ParsePacketEntities: bad number:%i", newnum );
 		if( msg->readcount > msg->cursize )
 			Com_Error( ERR_DROP, "CL_ParsePacketEntities: end of message" );
@@ -626,33 +649,39 @@ snapshot_t *SNAP_ParseFrame( msg_t *msg, snapshot_t *lastFrame, int *suppressCou
 			if( newframe->multipov )
 			{
 				numtargets = MSG_ReadByte( msg );
-				if( numtargets )
+				if( numtargets > 0 )
 				{
-					if( numtargets > sizeof( gcmd->targets ) ) {
+					if( (size_t)numtargets > sizeof( gcmd->targets ) ) {
 						Com_Error( ERR_DROP, "SNAP_ParseFrame: too many gamecommand targets" );
 					}
 					gcmd->all = false;
-					MSG_ReadData( msg, gcmd->targets, numtargets );
+					if( !MSG_ReadData( msg, gcmd->targets, sizeof( gcmd->targets ), (size_t)numtargets ) )
+						Com_Error( ERR_DROP, "SNAP_ParseFrame: truncated gamecommand targets" );
 				}
 			}
 		}
 		else if( newframe->multipov ) // otherwise, ignore it
 		{
 			numtargets = MSG_ReadByte( msg );
-			MSG_SkipData( msg, numtargets );
+			if( numtargets < 0 || !MSG_SkipData( msg, (size_t)numtargets ) )
+				Com_Error( ERR_DROP, "SNAP_ParseFrame: truncated gamecommand targets" );
 		}
 	}
 
 	// read areabits
-	len = (size_t)MSG_ReadByte( msg );
+	cmd = MSG_ReadByte( msg );
+	if( cmd < 0 )
+		Com_Error( ERR_DROP, "SNAP_ParseFrame: end of message reading areabits" );
+	len = (size_t)cmd;
 	if( len > newframe->areabytes )
 		Com_Error( ERR_DROP, "Invalid areabits size: %u > %u", len, newframe->areabytes );
 	memset( newframe->areabits, 0, newframe->areabytes );
-	MSG_ReadData( msg, newframe->areabits, len );
+	if( !MSG_ReadData( msg, newframe->areabits, newframe->areabytes, len ) )
+		Com_Error( ERR_DROP, "SNAP_ParseFrame: truncated areabits" );
 
 	// read match info
 	cmd = MSG_ReadByte( msg );
-	_SHOWNET( msg, svc_strings[cmd], showNet );
+	_SHOWNET( msg, SVC_NameForCmd( cmd ), showNet );
 	if( cmd != svc_match )
 		Com_Error( ERR_DROP, "SNAP_ParseFrame: not match info" );
 	SNAP_ParseDeltaGameState( msg, deltaframe, newframe );
@@ -661,10 +690,13 @@ snapshot_t *SNAP_ParseFrame( msg_t *msg, snapshot_t *lastFrame, int *suppressCou
 	numplayers = 0;
 	while( ( cmd = MSG_ReadByte( msg ) ) )
 	{
-		_SHOWNET( msg, svc_strings[cmd], showNet );
+		_SHOWNET( msg, SVC_NameForCmd( cmd ), showNet );
 		if( cmd != svc_playerinfo )
 			Com_Error( ERR_DROP, "SNAP_ParseFrame: not playerinfo" );
-		if( deltaframe && deltaframe->numplayers >= numplayers )
+		if( numplayers >= MAX_CLIENTS )
+			Com_Error( ERR_DROP, "SNAP_ParseFrame: too many playerinfos" );
+		// the delta source must also be in range, hence > and not >=
+		if( deltaframe && deltaframe->numplayers > numplayers )
 			SNAP_ParsePlayerstate( msg, &deltaframe->playerStates[numplayers], &newframe->playerStates[numplayers] );
 		else
 			SNAP_ParsePlayerstate( msg, NULL, &newframe->playerStates[numplayers] );
@@ -675,7 +707,7 @@ snapshot_t *SNAP_ParseFrame( msg_t *msg, snapshot_t *lastFrame, int *suppressCou
 
 	// read packet entities
 	cmd = MSG_ReadByte( msg );
-	_SHOWNET( msg, svc_strings[cmd], showNet );
+	_SHOWNET( msg, SVC_NameForCmd( cmd ), showNet );
 	if( cmd != svc_packetentities )
 		Com_Error( ERR_DROP, "SNAP_ParseFrame: not packetentities" );
 	SNAP_ParsePacketEntities( msg, deltaframe, newframe, baselines, showNet );
