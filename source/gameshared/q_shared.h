@@ -136,6 +136,11 @@ int COM_ReadColorRGBString( const char *in );
 int COM_ValidatePlayerColor( int rgbcolor );
 bool COM_ValidateConfigstring( const char *string );
 
+// false when the name is still one of the placeholders handed out before the player has
+// configured one ("Player" and the pre-steam fallback pool). prefix match, so G_SetName's
+// dedup suffix ("Player(2)") is covered
+bool COM_IsNameValid( const char *name );
+
 //==============================================================
 //
 // STRINGLIB

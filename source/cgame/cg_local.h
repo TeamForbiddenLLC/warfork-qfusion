@@ -364,10 +364,19 @@ typedef struct cg_sexedSfx_s
 	struct cg_sexedSfx_s *next;
 } cg_sexedSfx_t;
 
+typedef enum
+{
+	CG_NAME_SOURCE_NET,   // the name the server knows this client by
+	CG_NAME_SOURCE_STEAM, // steam persona nickname, preferred whenever the client has a steamid
+} cg_nameSource_e;
+
 typedef struct
 {
 	char name[MAX_QPATH];
 	char cleanname[MAX_QPATH];
+	// where name came from. the server side name isn't stored - CS_PLAYERINFOS already
+	// holds it, CG_ClientNetName reads it back out for the few callers that need it
+	cg_nameSource_e nameSource;
 	int hand;
 	byte_vec4_t color;
 	struct shader_s *icon;
@@ -708,6 +717,7 @@ extern cvar_t *cg_hand;
 void CG_initPlayer();
 void CG_deinitPlayer(); 
 void CG_LoadClientInfo( cg_clientInfo_t *ci, const char *s, int client );
+void CG_ClientNetName( int client, char *out, size_t outSize );
 void CG_UpdateSexedSoundsRegistration( pmodelinfo_t *pmodelinfo );
 void CG_SexedSound( int entnum, int entchannel, const char *name, float fvol, float attn );
 void CG_SexedVSay( int entnum, int vsay, float fvol );

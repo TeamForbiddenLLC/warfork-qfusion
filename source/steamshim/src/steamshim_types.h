@@ -38,8 +38,15 @@ typedef struct {
 #define VOICE_BUFFER_MAX 22000
 #define STEAM_MAX_AVATAR_SIZE ( 128 * 128 * 4 )
 #define STEAM_AUTH_TICKET_MAXSIZE 1024
+// matches k_cchPersonaNameMax from the steamworks sdk
+#define STEAM_PERSONA_NAME_MAX 128
 
 enum steam_avatar_size_e { STEAM_AVATAR_LARGE, STEAM_AVATAR_MED, STEAM_AVATAR_SMALL };
+
+// which parts of a user's information RPC_REQUEST_USER_INFORMATION should fill in. asking
+// for the name alone is a cheaper request to steam, not just a smaller reply
+#define STEAM_USER_INFO_NAME ( 1 << 0 )
+#define STEAM_USER_INFO_AVATAR ( 1 << 1 )
 
 enum steam_result_e {
 	STEAMSHIM_EResultNone = 0,					 // no result
@@ -185,7 +192,7 @@ enum steam_cmd_s {
 	RPC_BEGIN,
 	RPC_PUMP = RPC_BEGIN,
 	RPC_REQUEST_STEAM_ID,
-	RPC_REQUEST_AVATAR,
+	RPC_REQUEST_USER_INFORMATION,
 	RPC_BEGIN_AUTH_SESSION,
 	RPC_END_AUTH_SESSION,
 	RPC_PERSONA_NAME,
@@ -230,6 +237,7 @@ enum steam_cmd_s {
 	RPC_END,
 	EVT_BEGIN = RPC_END,
 	EVT_PERSONA_CHANGED = EVT_BEGIN,
+	EVT_AVATAR_LOADED,
 	EVT_SRV_P2P_POLICY_RESPONSE,
 	EVT_HEART_BEAT,
 	EVT_GAME_JOIN,
@@ -291,17 +299,29 @@ STEAM_RPC_REQ( steam_auth )
 	char ticket[STEAM_AUTH_TICKET_MAXSIZE];
 };
 
-STEAM_RPC_REQ( steam_avatar )
+STEAM_RPC_REQ( user_information )
 {
 	STEAM_RPC_SHIM_COMMON()
 	uint64_t steamID;
+	// STEAM_USER_INFO_*
+	uint32_t flags;
+	// ignored unless STEAM_USER_INFO_AVATAR is set
 	enum steam_avatar_size_e size;
 };
 
-STEAM_RPC_RECV( steam_avatar )
+STEAM_RPC_RECV( user_information )
 {
 	STEAM_RPC_SHIM_COMMON()
+	// the reply carries the steamid back so the caller can match it against the
+	// right client slot - the slot may have been recycled while this was in flight
 	uint64_t steamID;
+	// echoed back so the callback can tell a field that wasn't asked for apart from
+	// one that was asked for but steam hasn't cached yet
+	uint32_t flags;
+	// empty when steam hasn't cached the name yet, an EVT_PERSONA_CHANGED with
+	// name_changed set follows once it has
+	char name[STEAM_PERSONA_NAME_MAX];
+	// zero when the avatar image is still downloading, an EVT_AVATAR_LOADED follows
 	uint32_t width;
 	uint32_t height;
 	uint8_t buf[];
@@ -404,8 +424,8 @@ struct steam_rpc_pkt_s {
 	union {
 		struct steam_rpc_shim_common_s common;
 		struct steam_auth_req_s steam_auth;
-		struct steam_avatar_req_s avatar_req;
-		struct steam_avatar_recv_s avatar_recv;
+		struct user_information_req_s user_info_req;
+		struct user_information_recv_s user_info_recv;
 		struct steam_rpc_shim_common_s pump;
 		struct begin_auth_session_req_s begin_auth_session;
 		struct steam_id_rpc_s end_auth_session;
@@ -464,10 +484,18 @@ STEAM_EVT( persona_changes )
 {
 	STEAM_SHIM_COMMON()
 	uint64_t steamID;
-	uint32_t avatar_changed;
-	uint32_t name_changed;
+	uint32_t avatar_changed: 1;
+	uint32_t name_changed: 1;
 	// uint32_t status_change;
 	// uint32_t online_status_change;
+};
+
+// steam finished downloading an avatar image that GetXFriendAvatar previously reported as
+// still loading. PersonaStateChange isn't guaranteed to cover a first-time download
+STEAM_EVT( avatar_loaded )
+{
+	STEAM_SHIM_COMMON()
+	uint64_t steamID;
 };
 
 STEAM_EVT( join_request )
@@ -518,6 +546,7 @@ struct steam_evt_pkt_s {
 		struct steam_shim_common_s common;
 		struct join_request_evt_s join_request;
 		struct persona_changes_evt_s persona_changed;
+		struct avatar_loaded_evt_s avatar_loaded;
 		struct p2p_new_connection_evt_s p2p_new_connection;
 		struct p2p_lost_connection_evt_s p2p_lost_connection;
 		struct p2p_connection_status_changed_evt_s p2p_connection_status_changed;

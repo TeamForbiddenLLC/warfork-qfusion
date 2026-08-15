@@ -369,8 +369,13 @@ static const char *CG_SC_AutoRecordName( void )
 	}
 	else
 	{
+		// the netname rather than the display name: it's guaranteed ascii, a utf-8 steam
+		// nickname would end up mangled by COM_RemoveJunkChars in a filename
+		char netname[MAX_QPATH];
+		CG_ClientNetName( cg.view.POVent - 1, netname, sizeof( netname ) );
+
 		// remove color tokens from player names (doh)
-		cleanplayername = COM_RemoveColorTokens( cgs.clientInfo[cg.view.POVent-1].name );
+		cleanplayername = COM_RemoveColorTokens( netname );
 
 		// remove junk chars from player names for files
 		cleanplayername2 = COM_RemoveJunkChars( cleanplayername );
@@ -1298,20 +1303,32 @@ static char **CG_PlayerNamesCompletionExt_f( const char *partial, bool teamOnly 
 	char **matches = NULL;
 	int num_matches = 0;
 
+	// the returned strings have to outlive this call and the caller never frees them,
+	// so they're backed by storage that survives it. a completion list is consumed
+	// before the next invocation
+	static char names[MAX_CLIENTS][MAX_QPATH];
+
 	if( partial ) {
 		size_t partial_len = strlen( partial );
 
 		matches = (char **) CG_Malloc( sizeof( char * ) * ( gs.maxclients + 1 ) );
 		for( i = 0; i < gs.maxclients; i++ ) {
-			cg_clientInfo_t *info = cgs.clientInfo + i;
-			if( !info->cleanname[0] ) {
+			// an unoccupied slot has no name at all
+			if( !cgs.clientInfo[i].name[0] ) {
 				continue;
 			}
 			if( teamOnly && ( cg_entities[i+1].current.team != team ) ) {
 				continue;
 			}
-			if( !Q_strnicmp( info->cleanname, partial, partial_len )) {
-				matches[num_matches++] = info->cleanname;
+
+			// complete against the name the server knows, not the displayed steam
+			// nickname - say/stats/whois are resolved server-side against the netname
+			char netname[MAX_QPATH];
+			CG_ClientNetName( i, netname, sizeof( netname ) );
+			Q_strncpyz( names[i], COM_RemoveColorTokens( netname ), sizeof( names[i] ) );
+
+			if( !Q_strnicmp( names[i], partial, partial_len )) {
+				matches[num_matches++] = names[i];
 			}
 		}
 		matches[num_matches] = NULL;

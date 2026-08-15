@@ -103,41 +103,6 @@ static bool	cl_initialized = false;
 static async_stream_module_t *cl_async_stream;
 
 
-static const char* const DisallowedNames[] =
-{
-	"Player",
-
-	"Dyllan",
-	"Wallie",
-	"Clara",
-	"Pogo",
-	"Maddie",
-
-	"Missy",
-	"Brownie",
-	"Oscar",
-	"Scruffy",
-	"Tootsie",
-
-	"Fraggle",
-	"Marzipan",
-	"Butter",
-	"Biscuit",
-	"Cora",
-
-	"Fred",
-	"Dino",
-	"Rocky",
-	"Fluffy",
-	"Luke",
-
-	"Nico",
-	"Maggie",
-	"Bridgette",
-	"Angus",
-	"Clover",
-};
-
 static const char* const NonSteamPlayerNames[] =
 {
 	"Amber",
@@ -2169,14 +2134,6 @@ static void CL_ShowServerIP_f( void )
 	Com_Printf( "Address: %s\n", NET_AddressToString( &cls.serveraddress ) );
 }
 
-static bool CL_IsNameValid(const char* name){
-	if ( !name[0] ) return false;
-	for ( int i = 0; i < sizeof(DisallowedNames)/sizeof(*DisallowedNames); i++ ){
-		if ( !strncmp(name, DisallowedNames[i], strlen(DisallowedNames[i])) ) return false;
-	}
-	return true;
-}
-
 static char* CL_RandomName(){
 	srand(time(NULL));
 
@@ -2214,7 +2171,7 @@ static void CL_RPC_cb_persona( void *self, struct steam_rpc_pkt_s *rec )
 	COM_RemoveColorTokens( steamname );
 
 	// if even a single character isn't printable in the username, drop it and use a random one
-	if( !steamnamePrintable || !steamname[0] || !CL_IsNameValid( steamname ) ) {
+	if( !steamnamePrintable || !steamname[0] || !COM_IsNameValid( steamname ) ) {
 		Cvar_Set( name_cvar->name, CL_RandomName() );
 	} else {
 		Cvar_Set( name_cvar->name, steamname );
@@ -2333,7 +2290,7 @@ static void CL_InitLocal( void )
 	name = Cvar_Get( "name", "", CVAR_USERINFO | CVAR_ARCHIVE );
 	uint32_t syncIndex = 0;
 
-	if ( !CL_IsNameValid(name->string) ){
+	if ( !COM_IsNameValid(name->string) ){
 		if ( STEAMSHIM_active() ){
 			struct steam_rpc_shim_common_s request;
 			request.cmd = RPC_PERSONA_NAME;

@@ -1698,6 +1698,56 @@ size_t Q_urldecode( const char *src, char *dst, size_t dst_size )
 //=====================================================================
 
 
+// names the client hands out before the player has configured one of their own. a name
+// still matching one of these means "unconfigured", which is what lets the local user's
+// steam persona name be written into the name cvar at startup
+static const char *const DisallowedNames[] =
+{
+	"Player",
+
+	"Dyllan",
+	"Wallie",
+	"Clara",
+	"Pogo",
+	"Maddie",
+
+	"Missy",
+	"Brownie",
+	"Oscar",
+	"Scruffy",
+	"Tootsie",
+
+	"Fraggle",
+	"Marzipan",
+	"Butter",
+	"Biscuit",
+	"Cora",
+
+	"Fred",
+	"Dino",
+	"Rocky",
+	"Fluffy",
+	"Luke",
+
+	"Nico",
+	"Maggie",
+	"Bridgette",
+	"Angus",
+	"Clover",
+};
+
+/*
+* COM_IsNameValid
+*/
+bool COM_IsNameValid( const char *name )
+{
+	if( !name || !name[0] ) return false;
+	for( size_t i = 0; i < sizeof( DisallowedNames ) / sizeof( *DisallowedNames ); i++ ){
+		if( !strncmp( name, DisallowedNames[i], strlen( DisallowedNames[i] ) ) ) return false;
+	}
+	return true;
+}
+
 /*
 * COM_ValidateConfigstring
 */

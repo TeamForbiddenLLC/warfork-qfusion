@@ -443,44 +443,65 @@ static void processRPC( steam_rpc_pkt_s *req, size_t size )
 			write_packet( GPipeWrite, &recv, sizeof( steam_id_rpc_s ) );
 			break;
 		}
-		case RPC_REQUEST_AVATAR: {
-			uint8_t buffer[sizeof( struct steam_avatar_recv_s ) + STEAM_MAX_AVATAR_SIZE];
-			struct steam_avatar_recv_s *recv = (struct steam_avatar_recv_s *)buffer;
+		case RPC_REQUEST_USER_INFORMATION: {
+			const uint64 steamID = (uint64)req->user_info_req.steamID;
+			const uint32_t flags = req->user_info_req.flags;
+
+			uint8_t buffer[sizeof( struct user_information_recv_s ) + STEAM_MAX_AVATAR_SIZE];
+			struct user_information_recv_s *recv = (struct user_information_recv_s *)buffer;
 			prepared_rpc_packet( &req->common, recv );
-			recv->steamID = req->avatar_req.steamID;
+			recv->steamID = req->user_info_req.steamID;
+			recv->flags = flags;
+			recv->name[0] = '\0';
 			recv->width = 0;
 			recv->height = 0;
 
-			// returns true when steam has to go fetch the data - the avatar isn't
-			// available yet, a PersonaStateChange callback follows once it is
-			if( !SteamFriends()->RequestUserInformation( (uint64)req->avatar_req.steamID, false ) ) {
-				int handle = 0;
-				switch( req->avatar_req.size ) {
-					case STEAM_AVATAR_SMALL:
-						handle = SteamFriends()->GetSmallFriendAvatar( (uint64)req->avatar_req.steamID );
-						break;
-					case STEAM_AVATAR_MED:
-						handle = SteamFriends()->GetMediumFriendAvatar( (uint64)req->avatar_req.steamID );
-						break;
-					case STEAM_AVATAR_LARGE:
-						handle = SteamFriends()->GetLargeFriendAvatar( (uint64)req->avatar_req.steamID );
-						break;
-					default:
-						break;
+			// asking for the name alone lets steam skip the avatar fetch entirely
+			const bool nameOnly = ( flags & STEAM_USER_INFO_AVATAR ) == 0;
+
+			// a dedicated server child has no ISteamFriends at all.
+			// returns true when steam has to go fetch the data - it isn't available
+			// yet, a PersonaStateChange callback follows once it is
+			if( SteamFriends() && !SteamFriends()->RequestUserInformation( steamID, nameOnly ) ) {
+				if( flags & STEAM_USER_INFO_NAME ) {
+					const char *name = SteamFriends()->GetFriendPersonaName( steamID );
+					// steam hands back the literal "[unknown]" for a user it has no name for
+					if( name && strcmp( name, "[unknown]" ) != 0 ) {
+						strncpy( recv->name, name, sizeof( recv->name ) - 1 );
+						recv->name[sizeof( recv->name ) - 1] = '\0';
+					}
 				}
-				// 0 - the user has no avatar, -1 - the image is still loading
-				if( handle > 0 ) {
-					uint32 width = 0, height = 0;
-					if( SteamUtils()->GetImageSize( handle, &width, &height ) && width > 0 && height > 0 &&
-						( width * height * 4 ) <= STEAM_MAX_AVATAR_SIZE &&
-						SteamUtils()->GetImageRGBA( handle, recv->buf, width * height * 4 ) ) {
-						recv->width = width;
-						recv->height = height;
+
+				if( flags & STEAM_USER_INFO_AVATAR ) {
+					int handle = 0;
+					switch( req->user_info_req.size ) {
+						case STEAM_AVATAR_SMALL:
+							handle = SteamFriends()->GetSmallFriendAvatar( steamID );
+							break;
+						case STEAM_AVATAR_MED:
+							handle = SteamFriends()->GetMediumFriendAvatar( steamID );
+							break;
+						case STEAM_AVATAR_LARGE:
+							handle = SteamFriends()->GetLargeFriendAvatar( steamID );
+							break;
+						default:
+							break;
+					}
+					// 0 - the user has no avatar, -1 - the image is still loading and
+					// steam has started downloading it, an AvatarImageLoaded callback follows
+					if( handle > 0 && SteamUtils() ) {
+						uint32 width = 0, height = 0;
+						if( SteamUtils()->GetImageSize( handle, &width, &height ) && width > 0 && height > 0 &&
+							( width * height * 4 ) <= STEAM_MAX_AVATAR_SIZE &&
+							SteamUtils()->GetImageRGBA( handle, recv->buf, width * height * 4 ) ) {
+							recv->width = width;
+							recv->height = height;
+						}
 					}
 				}
 			}
 
-			write_packet( GPipeWrite, buffer, ( recv->width * recv->height * 4 ) + sizeof( struct steam_avatar_recv_s ) );
+			write_packet( GPipeWrite, buffer, ( recv->width * recv->height * 4 ) + sizeof( struct user_information_recv_s ) );
 			break;
 		}
 		default:
@@ -618,6 +639,17 @@ static void processSteamDispatch()
 					evt.name_changed = ( pCallback->m_nChangeFlags & k_EPersonaChangeName ) ? 1 : 0;
 					evt.steamID = pCallback->m_ulSteamID;
 					write_packet( GPipeWrite, &evt, sizeof( struct persona_changes_evt_s ) );
+					break;
+				}
+				case AvatarImageLoaded_t::k_iCallback: {
+					// the avatar getters return -1 while the image is downloading and this
+					// is what says it landed - PersonaStateChange isn't guaranteed to fire
+					// for a first time download of a non friend's avatar
+					AvatarImageLoaded_t *pCallback = (AvatarImageLoaded_t *)data;
+					avatar_loaded_evt_s evt;
+					evt.cmd = EVT_AVATAR_LOADED;
+					evt.steamID = pCallback->m_steamID.ConvertToUint64();
+					write_packet( GPipeWrite, &evt, sizeof( struct avatar_loaded_evt_s ) );
 					break;
 				}
 			}

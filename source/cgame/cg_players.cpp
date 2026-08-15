@@ -235,46 +235,189 @@ void CG_SexedVSay( int entnum, int vsay, float fvol )
 	CG_SexedSound( entnum, CHAN_AUTO, cg_vsaySexedSounds[vsay], fvol, ATTN_NONE);
 }
 
-static void CG_RPC_cb_requestAvatar( void *self, struct steam_rpc_pkt_s *rec )
+/*
+* CG_SetClientName
+*/
+static void CG_SetClientName( cg_clientInfo_t *ci, const char *src, cg_nameSource_e source )
 {
-	assert(rec->common.cmd == RPC_REQUEST_AVATAR);
-	if(rec->avatar_recv.width == 0 || rec->avatar_recv.height == 0) {
-		return;
+	Q_strncpyz( ci->name, src, sizeof( ci->name ) );
+	Q_strncpyz( ci->cleanname, COM_RemoveColorTokens( ci->name ), sizeof( ci->cleanname ) );
+	ci->nameSource = source;
+}
+
+/*
+* CG_ClientNetName
+*
+* The name the server knows this client by. Server commands (stats, whois, ...) resolve
+* against this rather than the displayed name, which may be a steam nickname.
+*/
+void CG_ClientNetName( int client, char *out, size_t outSize )
+{
+	const char *s = Info_ValueForKey( cgs.configStrings[CS_PLAYERINFOS + client], "name" );
+	Q_strncpyz( out, s && s[0] ? s : "badname", outSize );
+}
+
+/*
+* CG_SanitizeSteamName
+*
+* Steam nicknames are arbitrary UTF-8 and never went through the server's name
+* validation, so they get cleaned up here before anything renders them.
+*/
+static void CG_SanitizeSteamName( const char *in, char *out, size_t outSize )
+{
+	char escaped[STEAM_PERSONA_NAME_MAX * 2 + 1];
+	char sanitized[sizeof( escaped ) + 1];
+	size_t len = 0;
+
+	out[0] = '\0';
+
+	// strip control characters and escape every color token so a nickname containing
+	// "^1" recolors nothing and "^0" can't render itself invisible. high bytes are
+	// left alone - unlike server-side names, these may legitimately be UTF-8
+	for( const char *p = in; *p && len + 2 < sizeof( escaped ); p++ ) {
+		if( (unsigned char)*p < 32 )
+			continue;
+		if( *p == Q_COLOR_ESCAPE )
+			escaped[len++] = Q_COLOR_ESCAPE;
+		escaped[len++] = *p;
+	}
+	escaped[len] = '\0';
+
+	// -1 for maxprintablechars: it counts bytes rather than codepoints, so using it
+	// to clamp would cut UTF-8 sequences in half
+	COM_SanitizeColorString( escaped, sanitized, sizeof( sanitized ), -1, COLOR_WHITE );
+
+	// clamp on a codepoint boundary. downstream consumers assume a name fits
+	// MAX_NAME_BYTES and truncate by bytes (CG_SC_Obituary's center print), which was
+	// safe only while names were ascii-only - clamping here keeps all of them correct
+	len = strlen( sanitized );
+	if( len >= outSize ) {
+		len = Q_Utf8SyncPos( sanitized, outSize - 1, UTF8SYNC_LEFT );
+		sanitized[len] = '\0';
 	}
 
+	Q_trim( sanitized );
+
+	// COM_SanitizeColorString doubles a trailing '^' so it renders literally, but the
+	// clamp above can cut that pair back apart. a lone trailing '^' would swallow the
+	// S_COLOR_WHITE that call sites append after the name, so drop it
+	len = strlen( sanitized );
+	size_t carets = 0;
+	while( carets < len && sanitized[len - 1 - carets] == Q_COLOR_ESCAPE )
+		carets++;
+	if( carets & 1 )
+		sanitized[len - 1] = '\0';
+
+	const char *colorless = COM_RemoveColorTokens( sanitized );
+
+	// a nickname that sanitizes down to nothing falls back to the configured name
+	if( !colorless[0] )
+		return;
+
+	// the server rejects these prefixes on netnames (G_SetName) because chat prints
+	// "console: ..." for server messages and "[TEAM]name: ..." for team chat. a steam
+	// nickname must not be able to walk around that
+	static const char *invalid_prefixes[] = { "console", "[team]", "[spec]", "[bot]", "[coach]", "[tv]", NULL };
+	for( int i = 0; invalid_prefixes[i]; i++ ) {
+		if( !Q_strnicmp( colorless, invalid_prefixes[i], strlen( invalid_prefixes[i] ) ) )
+			return;
+	}
+
+	Q_strncpyz( out, sanitized, outSize );
+}
+
+static void CG_RPC_cb_userInformation( void *self, struct steam_rpc_pkt_s *rec )
+{
+	assert( rec->common.cmd == RPC_REQUEST_USER_INFORMATION );
+
+	// either half of the reply can come back empty - steam hasn't cached the name yet, or
+	// the avatar image is still downloading. an EVT_PERSONA_CHANGED / EVT_AVATAR_LOADED
+	// tells us when to ask again, so apply whichever half did arrive and drop the rest
+	const bool hasName = ( rec->user_info_recv.flags & STEAM_USER_INFO_NAME ) && rec->user_info_recv.name[0];
+	const bool hasAvatar = ( rec->user_info_recv.flags & STEAM_USER_INFO_AVATAR ) && rec->user_info_recv.width > 0 &&
+						   rec->user_info_recv.height > 0;
+	if( !hasName && !hasAvatar )
+		return;
+
 	// match on the steamid the reply carries - the slot this request was made for
-	// may have been handed to a different player while the RPC was in flight
+	// may have been handed to a different player while the RPC was in flight.
+	// update every match rather than the first: two slots can briefly carry the same
+	// steamid across a reconnect
 	for( int i = 0; i < gs.maxclients; i++ ) {
 		cg_clientInfo_t *ci = &cgs.clientInfo[i];
-		if( ci->steamid == rec->avatar_recv.steamID ) {
-			ci->avatar = R_RegisterRawPic( va( "avatar-%llu", ci->steamid ), rec->avatar_recv.width, rec->avatar_recv.height, rec->avatar_recv.buf, 4 );
-			return;
+		if( ci->steamid != rec->user_info_recv.steamID )
+			continue;
+
+		// the steam nickname outranks the netname whenever one comes back - the netname is
+		// only what stands in for a player steam has nothing cached for
+		if( hasName ) {
+			char steamname[MAX_NAME_BYTES];
+			CG_SanitizeSteamName( rec->user_info_recv.name, steamname, sizeof( steamname ) );
+			if( steamname[0] )
+				CG_SetClientName( ci, steamname, CG_NAME_SOURCE_STEAM );
+		}
+		if( hasAvatar ) {
+			ci->avatar = R_RegisterRawPic( va( "avatar-%llu", ci->steamid ), rec->user_info_recv.width,
+										   rec->user_info_recv.height, rec->user_info_recv.buf, 4 );
 		}
 	}
 }
 
+static void CG_RequestUserInfo( uint64_t steamid, uint32_t flags )
+{
+	if( !steamid || !flags || !STEAMSHIM_active() )
+		return;
+
+	struct user_information_req_s req;
+	req.cmd = RPC_REQUEST_USER_INFORMATION;
+	req.steamID = steamid;
+	req.flags = flags;
+	req.size = STEAM_AVATAR_SMALL;
+	STEAMSHIM_sendRPC( &req, sizeof( struct user_information_req_s ), NULL, CG_RPC_cb_userInformation, NULL );
+}
+
 static void CG_EVT_cb_personaChanged(void* self, struct steam_evt_pkt_s* pkt) {
 	assert( pkt->common.cmd == EVT_PERSONA_CHANGED );
-	if( pkt->persona_changed.avatar_changed > 0 ) {
-		for( int i = 0; i < gs.maxclients; i++ ) {
-			cg_clientInfo_t *ci = &cgs.clientInfo[i];
-			if( ci->steamid == pkt->persona_changed.steamID ) {
-				struct steam_avatar_req_s req;
-				req.cmd = RPC_REQUEST_AVATAR;
-				req.size = STEAM_AVATAR_SMALL;
-				req.steamID = ci->steamid;
-				STEAMSHIM_sendRPC( &req, sizeof( struct steam_avatar_req_s ), NULL, CG_RPC_cb_requestAvatar, NULL );
-			}
+
+	// only ask for what actually changed - a name change shouldn't drag the avatar
+	// pixels back across the pipe
+	uint32_t flags = 0;
+	if( pkt->persona_changed.name_changed > 0 )
+		flags |= STEAM_USER_INFO_NAME;
+	if( pkt->persona_changed.avatar_changed > 0 )
+		flags |= STEAM_USER_INFO_AVATAR;
+	if( !flags )
+		return;
+
+	for( int i = 0; i < gs.maxclients; i++ ) {
+		cg_clientInfo_t *ci = &cgs.clientInfo[i];
+		if( ci->steamid == pkt->persona_changed.steamID ) {
+			CG_RequestUserInfo( ci->steamid, flags );
+		}
+	}
+}
+
+static void CG_EVT_cb_avatarLoaded( void *self, struct steam_evt_pkt_s *pkt )
+{
+	assert( pkt->common.cmd == EVT_AVATAR_LOADED );
+
+	// the earlier request came back empty because the image was still downloading
+	for( int i = 0; i < gs.maxclients; i++ ) {
+		cg_clientInfo_t *ci = &cgs.clientInfo[i];
+		if( ci->steamid == pkt->avatar_loaded.steamID ) {
+			CG_RequestUserInfo( ci->steamid, STEAM_USER_INFO_AVATAR );
 		}
 	}
 }
 
 void CG_initPlayer() {
 	STEAMSHIM_subscribeEvent(EVT_PERSONA_CHANGED, NULL, CG_EVT_cb_personaChanged);
+	STEAMSHIM_subscribeEvent(EVT_AVATAR_LOADED, NULL, CG_EVT_cb_avatarLoaded);
 }
 
 void CG_deinitPlayer() {
 	STEAMSHIM_unsubscribeEvent(EVT_PERSONA_CHANGED, CG_EVT_cb_personaChanged);
+	STEAMSHIM_unsubscribeEvent(EVT_AVATAR_LOADED, CG_EVT_cb_avatarLoaded);
 }
 /*
 * CG_LoadClientInfo
@@ -291,11 +434,28 @@ void CG_LoadClientInfo( cg_clientInfo_t *ci, const char *info, int client )
 	if( !Info_Validate( info ) )
 		CG_Error( "Invalid client info" );
 
-	s = Info_ValueForKey( info, "name" );
-	Q_strncpyz( ci->name, s && s[0] ? s : "badname", sizeof( ci->name ) );
+	// before the name: a recycled slot must not keep the previous player's steam nickname
+	s = Info_ValueForKey( info, "steam_id" );
+	uint64_t steamid = ( s && s[0] ) ? strtoull( s, NULL, 10 ) : 0;
+	const bool steamidChanged = ( steamid != ci->steamid );
+	if( steamidChanged ) {
+		ci->steamid = steamid;
+		ci->avatar = NULL;
+		ci->nameSource = CG_NAME_SOURCE_NET;
+	}
 
-	// name with color tokes stripped
-	Q_strncpyz( ci->cleanname, COM_RemoveColorTokens( ci->name ), sizeof( ci->cleanname ) );
+	s = Info_ValueForKey( info, "name" );
+	const char *netname = s && s[0] ? s : "badname";
+
+	// hold on to a steam nickname - it outranks the netname, and this runs on every
+	// playerinfo update
+	if( ci->nameSource != CG_NAME_SOURCE_STEAM )
+		CG_SetClientName( ci, netname, CG_NAME_SOURCE_NET );
+
+	// only on a transition - this runs on every playerinfo update. a steamid of 0 is
+	// dropped by CG_RequestUserInfo, so a player without steam keeps the netname
+	uint32_t userInfoFlags = steamidChanged ? ( STEAM_USER_INFO_NAME | STEAM_USER_INFO_AVATAR ) : 0;
+	CG_RequestUserInfo( ci->steamid, userInfoFlags );
 
 	s = Info_ValueForKey( info, "hand" );
 	ci->hand = s && s[0] ? atoi( s ) : 2;
@@ -310,19 +470,4 @@ void CG_LoadClientInfo( cg_clientInfo_t *ci, const char *info, int client )
 
 	s = Info_ValueForKey( info, "m" );
 	ci->modelindex = s && s[0] ? atoi( s ) : 0;
-
-
-	s = Info_ValueForKey( info, "steam_id" );
-	uint64_t steamid = ( s && s[0] ) ? strtoull( s, NULL, 10 ) : 0;
-	if( steamid != ci->steamid ) {
-		ci->steamid = steamid;
-		ci->avatar = NULL; // the slot may have been recycled, never inherit the previous player's avatar
-		if( steamid ) {
-			struct steam_avatar_req_s req;
-			req.cmd = RPC_REQUEST_AVATAR;
-			req.size = STEAM_AVATAR_SMALL;
-			req.steamID = steamid;
-			STEAMSHIM_sendRPC( &req, sizeof( struct steam_avatar_req_s ), NULL, CG_RPC_cb_requestAvatar, NULL );
-		}
-	}
 }
