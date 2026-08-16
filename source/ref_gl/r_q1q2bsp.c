@@ -1937,7 +1937,7 @@ static void Mod_Q2LoadEntities( const lump_t *l )
 						 "	template quake2/skybox_Template %s\n"
 						 "}",
 						 sky );
-			loadmodel_skyshader = R_LoadShaderText( sky, SHADER_SKY, false, shadertext );
+			loadmodel_skyshader = R_LoadShaderText( sky, SHADER_TYPE_SKYBOX, false, shadertext );
 
 			break;
 		}
