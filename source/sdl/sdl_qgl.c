@@ -45,7 +45,7 @@ and Zephaniah E. Hull. Adapted by Victor Luchits for qfusion project.
 ** QGL_Shutdown() - unloads libraries, NULLs function pointers
 */
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 #include "../qcommon/qcommon.h"
 #include "sdl_glw.h"
@@ -123,20 +123,19 @@ void QGL_Shutdown( void )
 */
 qgl_initerr_t QGL_Init( const char *dllname )
 {
-	int result = -1;
-
 	glw_state.OpenGLLib = (void *)0;
-	if( SDL_InitSubSystem( SDL_INIT_VIDEO ) < 0 ) {
+	// SDL3 SDL_InitSubSystem / SDL_GL_LoadLibrary return true on success.
+	if( !SDL_InitSubSystem( SDL_INIT_VIDEO ) ) {
 		Com_Printf( "SDL_InitSubSystem(SDL_INIT_VIDEO) failed: %s", SDL_GetError() );
 		return qgl_initerr_unknown;
 	}
 
 	// try the system default first
-	result = SDL_GL_LoadLibrary( NULL );
-	if( result == -1 )
-		result = SDL_GL_LoadLibrary( dllname );
+	bool loaded = SDL_GL_LoadLibrary( NULL );
+	if( !loaded )
+		loaded = SDL_GL_LoadLibrary( dllname );
 
-	if( result == -1 ) {
+	if( !loaded ) {
 		Com_Printf( "Error loading %s: %s\n", dllname ? dllname : "OpenGL dlib", SDL_GetError() );
 		return qgl_initerr_invalid_driver;
 	} else {

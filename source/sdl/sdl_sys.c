@@ -1,4 +1,4 @@
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "../client/client.h"
 
 #if defined( _WIN32 )
@@ -112,7 +112,7 @@ int main( int argc, char **argv )
 
 #if defined( __WIN32__ )
 #if defined( _DEBUG )
-	SDL_SetHint( SDL_HINT_ALLOW_TOPMOST, "0" );
+	SDL_SetHint( SDL_HINT_WINDOW_ALLOW_TOPMOST, "0" );
 #endif
 #endif
 
