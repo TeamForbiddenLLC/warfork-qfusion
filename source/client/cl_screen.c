@@ -737,6 +737,10 @@ void SCR_UpdateScreen( void )
 	for( i = 0; i < numframes; i++ )
 	{
 		static const char* const cl_frame = "Render Frame"; 	
+		// NOTE: an ERR_DROP thrown from anything below longjmps straight to
+		// Qcommon_Frame's abortframe and skips the matching TracyCFrameMarkEnd.
+		// That recovery path emits an "ERR_DROP unwind" message so the capture
+		// flags itself rather than silently reporting a bogus frame.
 		TracyCFrameMarkStart(cl_frame);
 		RF_BeginFrame( separation[i], forceclear, forcevsync );
 
@@ -744,41 +748,59 @@ void SCR_UpdateScreen( void )
 		{ 
 			// loading plaque over APP_STARTUP_COLOR screen
 			scr_draw_loading = 0;
+			TracyCZoneN( loadingPlaque_z, "CL_UIModule_UpdateConnectScreen", 1 );
 			CL_UIModule_UpdateConnectScreen( true );
+			TracyCZoneEnd( loadingPlaque_z );
 		}
 		// if a cinematic is supposed to be running, handle menus
 		// and console specially
 		else if( cinematic )
 		{
+			TracyCZoneN( cinematic_z, "SCR_DrawCinematic", 1 );
 			SCR_DrawCinematic();
+			TracyCZoneEnd( cinematic_z );
 			SCR_DrawConsole();
 		}
 		else if( cls.state == CA_DISCONNECTED )
 		{
+			TracyCZoneN( uiRefresh_z, "CL_UIModule_Refresh", 1 );
 			CL_UIModule_Refresh( true, true );
+			TracyCZoneEnd( uiRefresh_z );
 			SCR_DrawConsole();
 		}
 		else if( cls.state == CA_GETTING_TICKET || cls.state == CA_CONNECTING  || cls.state == CA_HANDSHAKE )
 		{
+			TracyCZoneN( connectScreen_z, "CL_UIModule_UpdateConnectScreen", 1 );
 			CL_UIModule_UpdateConnectScreen( true );
+			TracyCZoneEnd( connectScreen_z );
 		}
 		else if( cls.state == CA_CONNECTED )
 		{
 			if( cls.cgameActive )
 			{
+				TracyCZoneN( connectOverlay_z, "CL_UIModule_UpdateConnectScreen", 1 );
 				CL_UIModule_UpdateConnectScreen( false );
+				TracyCZoneEnd( connectOverlay_z );
+				TracyCZoneN( renderView_z, "SCR_RenderView", 1 );
 				SCR_RenderView( separation[i] );
+				TracyCZoneEnd( renderView_z );
 			}
 			else
 			{
+				TracyCZoneN( connectScreen2_z, "CL_UIModule_UpdateConnectScreen", 1 );
 				CL_UIModule_UpdateConnectScreen( true );
+				TracyCZoneEnd( connectScreen2_z );
 			}
 		}
 		else if( cls.state == CA_ACTIVE )
 		{
+			TracyCZoneN( renderViewActive_z, "SCR_RenderView", 1 );
 			SCR_RenderView( separation[i] );
+			TracyCZoneEnd( renderViewActive_z );
 
+			TracyCZoneN( uiRefreshActive_z, "CL_UIModule_Refresh", 1 );
 			CL_UIModule_Refresh( false, true );
+			TracyCZoneEnd( uiRefreshActive_z );
 
 			if( scr_timegraph->integer )
 				SCR_DebugGraph( cls.frametime*300, 1, 1, 1 );
@@ -791,7 +813,11 @@ void SCR_UpdateScreen( void )
 		}
 
 		// wsw : aiwa : call any listeners so they can draw their stuff
-		Dynvar_CallListeners( updatescreen, NULL );
+		{
+			TracyCZoneN( updateScreenListeners_z, "updatescreen listeners", 1 );
+			Dynvar_CallListeners( updatescreen, NULL );
+			TracyCZoneEnd( updateScreenListeners_z );
+		}
 
 		RF_EndFrame();
 		TracyCFrameMarkEnd(cl_frame);

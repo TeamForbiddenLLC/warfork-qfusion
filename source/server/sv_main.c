@@ -969,12 +969,15 @@ void SV_Frame( int realmsec, int gamemsec )
 {
 	const unsigned int wrappingPoint = 0x70000000;
 
+	TracyCZoneN( zone_svframe, "SV_Frame", 1 );
+
 	time_before_game = time_after_game = 0;
 
 	// if server is not active, do nothing
 	if( !svs.initialized )
 	{
 		SV_CheckDefaultMap();
+		TracyCZoneEnd( zone_svframe );
 		return;
 	}
 
@@ -989,6 +992,7 @@ void SV_Frame( int realmsec, int gamemsec )
 		Cbuf_AddText( "wait; vstr nextmap\n" );
 		SV_ShutdownGame( "Restarting server due to time wrapping", true );
 		TracyCZoneEnd( ctx );
+		TracyCZoneEnd( zone_svframe );
 		return;
 	}
 
@@ -1032,6 +1036,7 @@ void SV_Frame( int realmsec, int gamemsec )
 	SV_CheckPostUpdateRestart();
 
 	TracyCZoneEnd( ctx );
+	TracyCZoneEnd( zone_svframe );
 }
 
 //============================================================================

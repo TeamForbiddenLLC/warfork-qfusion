@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 // sv_web.c -- builtin HTTP server
 #include "server.h"
+#include "tracy/TracyC.h"
 #include "../qalgo/q_trie.h"
 
 #ifdef HTTP_SUPPORT
@@ -1626,6 +1627,8 @@ void SV_Web_GameFrame( http_game_query_cb cb )
 */
 static void *SV_Web_ThreadProc( void *param )
 {
+	TracyCSetThreadName( "sv_http" );
+
 	while( sv_http_running ) {
 		SV_Web_Frame();
 	}
