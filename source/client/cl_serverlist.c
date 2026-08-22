@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // cl_serverlist.c  -- interactuates with the master server
 
 #include "client.h"
+#include "tracy/TracyC.h"
 
 //#define UNSAFE_EXIT
 #define MAX_MASTER_SERVERS					8
@@ -527,6 +528,8 @@ void CL_ParseGetServersResponse( const socket_t *socket, const netadr_t *address
 */
 static void *CL_MasterResolverThreadFunc( void *param )
 {
+	TracyCSetThreadName( "cl_resolver" );
+
 	masterserver_t *master = param;
 
 	NET_StringToAddress( master->addressString, &master->address );

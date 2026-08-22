@@ -2860,15 +2860,33 @@ void CL_Frame( int realmsec, int gamemsec )
 	allRealMsec += realmsec;
 	allGameMsec += gamemsec;
 
-	CL_UpdateSnapshot();
-	CL_AdjustServerTime( gamemsec );
+	// These run on every tick, including ticks the cl_maxfps limiter rejects below.
+	{
+		TracyCZoneN( updateSnapshot_z, "CL_UpdateSnapshot", 1 );
+		CL_UpdateSnapshot();
+		TracyCZoneEnd( updateSnapshot_z );
+	}
+	{
+		TracyCZoneN( adjustServerTime_z, "CL_AdjustServerTime", 1 );
+		CL_AdjustServerTime( gamemsec );
+		TracyCZoneEnd( adjustServerTime_z );
+	}
+	{
+		TracyCZoneN( userInputFrame_z, "CL_UserInputFrame", 1 );
 		CL_UserInputFrame();
-	
+		TracyCZoneEnd( userInputFrame_z );
+	}
 	CL_NetFrame( realmsec, gamemsec );
 	if (STEAMSHIM_active()) {
+		TracyCZoneN( steamshim_z, "STEAMSHIM_dispatch", 1 );
 		STEAMSHIM_dispatch();
+		TracyCZoneEnd( steamshim_z );
 	}
-	CL_MM_Frame();
+	{
+		TracyCZoneN( mM_Frame_z, "CL_MM_Frame", 1 );
+		CL_MM_Frame();
+		TracyCZoneEnd( mM_Frame_z );
+	}
 	
 	if( cls.state == CA_CINEMATIC )
 	{
@@ -2918,8 +2936,14 @@ void CL_Frame( int realmsec, int gamemsec )
 		sleep = sleep || (cls.state == CA_CINEMATIC || cls.state == CA_DISCONNECTED);
 		sleep = sleep || !VID_AppIsActive(); // FIXME: not sure about listen server here..
 
-		if( sleep && minMsec - extraMsec > 1 )
+		if( sleep && minMsec - extraMsec > 1 ) {
+			TracyCZoneN( limiterSleep_z, "CL_LimiterSleep", 1 );
 			Sys_Sleep( 1 );
+			TracyCZoneEnd( limiterSleep_z );
+		}
+		// tick rejected by the cl_maxfps limiter - no render this pass
+		TracyCZoneName( cl_frame_ctx, "CL_Frame_skipped", 16 );
+		TracyCPlotI( "cl_skipped_ticks", 1 );
 		TracyCZoneEnd( cl_frame_ctx );
 		return;
 	}
@@ -2942,30 +2966,55 @@ void CL_Frame( int realmsec, int gamemsec )
 	clamp( extraMsec, 0, minMsec );
 #endif
 
+	TracyCPlotI( "cl_skipped_ticks", 0 );
+	TracyCPlotI( "allRealMsec", allRealMsec );
+	TracyCPlotI( "minMsec", minMsec );
+	TracyCPlotI( "extraMsec", extraMsec );
+
 	CL_TimedemoStats();
 
 	// allow rendering DLL change
-	VID_CheckChanges();
+	{
+		TracyCZoneN( checkChanges_z, "VID_CheckChanges", 1 );
+		VID_CheckChanges();
+		TracyCZoneEnd( checkChanges_z );
+	}
 
 	// refresh input in cgame
 	if( cls.key_dest == key_game )
+	{
+		TracyCZoneN( gameModule_UpdateInput_z, "CL_GameModule_UpdateInput", 1 );
 		CL_GameModule_UpdateInput( cls.realframetime );
+		TracyCZoneEnd( gameModule_UpdateInput_z );
+	}
 
 	cl.inputRefreshed = false;
 	if( cls.state != CA_ACTIVE )
 		CL_UpdateCommandInput();
 
-	CL_NewUserCommand( allRealMsec );
+	{
+		TracyCZoneN( newUserCommand_z, "CL_NewUserCommand", 1 );
+		CL_NewUserCommand( allRealMsec );
+		TracyCZoneEnd( newUserCommand_z );
+	}
 
 	// update the screen
 	if( host_speeds->integer )
 		time_before_ref = Sys_Milliseconds();
-	SCR_UpdateScreen();
+	{
+		TracyCZoneN( updateScreen_z, "SCR_UpdateScreen", 1 );
+		SCR_UpdateScreen();
+		TracyCZoneEnd( updateScreen_z );
+	}
 	if( host_speeds->integer )
 		time_after_ref = Sys_Milliseconds();
 
 	// 0.50 doesn't refresh input from cgame if prediction is disabled.
-	CL_UpdateCommandInput();
+	{
+		TracyCZoneN( updateCommandInput_z, "CL_UpdateCommandInput", 1 );
+		CL_UpdateCommandInput();
+		TracyCZoneEnd( updateCommandInput_z );
+	}
 
 	if( CL_WriteAvi() )
 	{
@@ -2975,25 +3024,43 @@ void CL_Frame( int realmsec, int gamemsec )
 	}
 
 	if (cls.state == CA_ACTIVE)
+	{
+		TracyCZoneN( sendVoiceData_z, "CL_SendVoiceData", 1 );
 		CL_SendVoiceData();
+		TracyCZoneEnd( sendVoiceData_z );
+	}
 
 	// update audio
 	if( cls.state != CA_ACTIVE )
 	{
 		// if the loading plaque is up, clear everything out to make sure we aren't looping a dirty
 		// dma buffer while loading
+		TracyCZoneN( sound_z, "CL_SoundModule_Update", 1 );
 		if( cls.disable_screen )
 			CL_SoundModule_Clear();
 		else
 			CL_SoundModule_Update( vec3_origin, vec3_origin, axis_identity, NULL, false );
+		TracyCZoneEnd( sound_z );
 	}
 
-    // update discord
-    CL_UpdatePresence();
+	// update discord
+	{
+		TracyCZoneN( updatePresence_z, "CL_UpdatePresence", 1 );
+		CL_UpdatePresence();
+		TracyCZoneEnd( updatePresence_z );
+	}
 
 	// advance local effects for next frame
-	SCR_RunCinematic();
-	SCR_RunConsole( allRealMsec );
+	{
+		TracyCZoneN( runCinematic_z, "SCR_RunCinematic", 1 );
+		SCR_RunCinematic();
+		TracyCZoneEnd( runCinematic_z );
+	}
+	{
+		TracyCZoneN( runConsole_z, "SCR_RunConsole", 1 );
+		SCR_RunConsole( allRealMsec );
+		TracyCZoneEnd( runConsole_z );
+	}
 
 	allRealMsec = 0;
 	allGameMsec = 0;

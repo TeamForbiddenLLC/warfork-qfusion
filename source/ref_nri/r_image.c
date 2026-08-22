@@ -699,13 +699,17 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 {
 	TracyCZoneN( ctx, "__R_LoadKTX", 1 );
 	const uint_fast16_t numFaces = ( ( image->flags & IT_CUBEMAP ) ? 6 : 1 );
-	if( image->flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) )
+	if( image->flags & ( IT_FLIPX | IT_FLIPY | IT_FLIPDIAGONAL ) ) {
+		TracyCZoneEnd( ctx );
 		return false;
+	}
 
 	uint8_t *buffer = NULL;
 	const size_t bufferSize = R_LoadFile( pathname, (void **)&buffer );
-	if( !buffer )
+	if( !buffer ) {
+		TracyCZoneEnd( ctx );
 		return false;
+	}
 
 	struct ktx_context_s ktxContext = { 0 };
 	struct ktx_context_err_s err = { 0 };
@@ -1055,6 +1059,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 		ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name.buf );
 		__FreeImage( image );
 		image = NULL;
+		TracyCZoneEnd( ctx );
 		return NULL;
 	}
 	if( vkSetDebugUtilsObjectNameEXT ) {
@@ -1216,6 +1221,7 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 			ri.Com_Printf( S_COLOR_YELLOW "Failed to Create Image: %s\n", image->name.buf );
 			__FreeImage( image );
 			image = NULL;
+			TracyCZoneEnd( ctx );
 			return;
 		}
 
@@ -1915,8 +1921,10 @@ void R_ShutdownImages( void )
 	int i;
 	image_t *image;
 
-	if( !r_imagesPool )
+	if( !r_imagesPool ) {
+		TracyCZoneEnd( ctx );
 		return;
+	}
 
 	for( size_t i = 0; i < IMAGE_SAMPLER_CACHE_SIZE; i++ ) {
 		FreeRISampler( &rsh.device, &samplerCache[i] );

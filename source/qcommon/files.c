@@ -19,6 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "qcommon.h"
+#include "tracy/TracyC.h"
 
 #include "sys_fs.h"
 #include "sys_threads.h"
@@ -3859,6 +3860,8 @@ typedef struct
 
 static void *FS_LoadDeferredPaks_Job( void *parg )
 {
+	TracyCSetThreadName( "fs_pak_load" );
+
 	int i;
 	pack_t *pack;
 	deferred_pack_arg_t *arg = parg;

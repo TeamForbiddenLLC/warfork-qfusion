@@ -178,6 +178,7 @@ bool T_LoadImageWAL(char *filename, struct texture_buf_s* tex) {
 	const size_t size = R_LoadFile( filename, (void **)&buf);
 	if(buf == NULL) {
 		ri.Com_Printf(S_COLOR_YELLOW "can't resolve file: %s", filename);
+		TracyCZoneEnd( ctx );
 		return false;
 	}
 	assert(buf);
