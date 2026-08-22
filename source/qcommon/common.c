@@ -768,6 +768,8 @@ void Qcommon_ShutdownCvarDescriptions( void )
 */
 void Qcommon_Init( int argc, char **argv )
 {
+	TracyCSetThreadName( "main" );
+
 	if( setjmp( abortframe ) )
 		Sys_Error( "Error during initialization: %s", com_errormsg );
 
@@ -937,6 +939,9 @@ void Qcommon_Frame( unsigned int realmsec )
 	static unsigned int gamemsec;
 
 	TracyCZoneN( zone_qcommon, "Qcommon_Frame", 1 );
+	// realmsec is whole milliseconds: the platform loop spins until Sys_Milliseconds ticks over,
+	// so this plot shows the pacing quantization independent of any renderer cost.
+	TracyCPlotI( "realmsec", realmsec );
 
 #ifdef USE_CRASHPAD
 	Crashpad_RefreshUploadState();
@@ -946,6 +951,10 @@ void Qcommon_Frame( unsigned int realmsec )
 		Com_Quit();
 
 	if( setjmp( abortframe ) ) {
+		// the longjmp skipped every TracyCZoneEnd between the throw site and here,
+		// so the main thread's zone stack is left unbalanced for the rest of the
+		// capture. Mark it so a corrupted trace identifies itself.
+		TracyCMessageL( "ERR_DROP unwind - Tracy zone stack suspect from here on" );
 		TracyCZoneEnd( zone_qcommon );
 		return; // an ERR_DROP was thrown
 	}

@@ -777,6 +777,8 @@ static int S_EnqueuedCmdsWaiter( sndCmdPipe_t *queue, pipeCmdHandler_t *cmdHandl
 */
 void *S_BackgroundUpdateProc( void *param )
 {
+	TracyCSetThreadName( "snd_backend" );
+
 	sndCmdPipe_t *s_cmdQueue = param;
 
 	S_WaitEnqueuedCmds( s_cmdQueue, S_EnqueuedCmdsWaiter, sndCmdHandlers, UPDATE_MSEC );

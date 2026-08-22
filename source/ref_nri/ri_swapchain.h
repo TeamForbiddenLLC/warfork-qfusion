@@ -48,8 +48,14 @@ struct RISwapchain_s {
 			VkColorSpaceKHR imageColorSpace;
 			VkPresentModeKHR presentMode;
 
-			uint32_t outOfDate : 1;      // acquire/present reported OUT_OF_DATE/SUBOPTIMAL; swapchain needs rebuild
-			uint32_t acquireFailed : 1;  // last acquire failed (OUT_OF_DATE); skip acquire-wait/present this frame
+			// Deliberately full-width and not bitfields. These are written from two threads -- the present
+			// thread raises them from the acquire/present results, the main thread raises outOfDate when
+			// r_swapinterval changes -- and two 1-bit fields sharing a storage unit are one memory
+			// location, so each write would be a read-modify-write that can clobber the other flag.
+			// Separate words make the only remaining race "both threads store 1", which is benign; a
+			// stale read on the main thread just defers the rebuild by a frame.
+			volatile uint32_t outOfDate;      // acquire/present reported OUT_OF_DATE/SUBOPTIMAL; swapchain needs rebuild
+			volatile uint32_t acquireFailed;  // last acquire failed (OUT_OF_DATE); skip acquire-wait/present this frame
 		} vk;
 #endif
 	};
@@ -75,8 +81,16 @@ struct RIWindowHandle_s {
 	};
 };
 
+// Present-mode preference. The concrete VkPresentModeKHR is picked from the surface's supported
+// list; FIFO is guaranteed by spec and is the fallback for both.
+enum RISwapchainPresentPreference_e {
+	RI_PRESENT_PREFER_LOW_LATENCY = 0, // IMMEDIATE, then FIFO_RELAXED, then FIFO
+	RI_PRESENT_PREFER_VSYNC = 1,       // FIFO_RELAXED, then FIFO
+};
+
 struct RISwapchainDesc_s {
 	uint8_t format; // RISwapchainFormat_e
+	uint8_t presentPreference; // RISwapchainPresentPreference_e
 	uint16_t requestImageCount;
 	struct RIWindowHandle_s* windowHandle; 
 	struct RIQueue_s* queue;
@@ -94,25 +108,30 @@ struct RITextureView_s RISwapchainGetTextureView(struct RISwapchain_s* swapchain
 struct RITexture_s RISwapchainGetTexture(struct RISwapchain_s* swapchain, uint32_t index);
 
 int RISwapchainResize(struct RIDevice_s* dev, struct RISwapchain_s* swapchain, uint16_t width, uint16_t height);
+// Re-pick the present mode for a live swapchain from a RISwapchainPresentPreference_e. Returns true
+// when the mode actually changed, in which case the swapchain is flagged out-of-date and the caller
+// must run its rebuild path (shutdown attachments / RISwapchainResize / recreate attachments).
+bool RISwapchainSetPresentPreference(struct RIDevice_s* dev, struct RISwapchain_s* swapchain, uint8_t preference);
 VkResult RISwapchainPresent_vk(struct RIDevice_s* dev, struct RISwapchain_s* swapchain, uint32_t index, size_t num_wait_semaphores, VkSemaphore* wait_semaphores );
 
-// Swapchain-owned frame submit: submits the primary command buffer waiting on the swapchain's
-// current acquire semaphore (plus any caller-supplied waits), signals the present semaphore for
-// imageIndex (and optional timeline), fences on the ring element, then presents. Replaces the
-// hand-built submit/present block that used to live in the frontend.
-struct RISwapchainFrameSubmitDesc_s {
-	uint32_t imageIndex;                        // acquired swapchain image index to present; also selects the present semaphore
+// Frame submit: submits the primary command buffer with the caller's waits and signals, fenced on the
+// ring element. It does not touch the swapchain -- the frame renders into an offscreen backbuffer and
+// the acquire, the blit into the acquired image and the present all happen on the present thread (see
+// r_present_thread.h), which waits on one of the signal semaphores handed in here.
+struct RIQueueFrameSubmitDesc_s {
 	struct RICmd_s* cmd;                        // primary cmd; caller has already called EndRICmd
 	struct RICommandRingElement_s* ringElement; // provides the pacing fence (its semaphore is unused here)
 	struct RITimeline_s* timeline;              // optional (may be NULL); additionally signalled on submit
 #if ( DEVICE_IMPL_VULKAN )
 	struct {
-		size_t numWaitSemaphores;               // extra waits beyond the acquire semaphore
-		VkSemaphoreSubmitInfo* waitSemaphores;  // e.g. resource-upload flush + secondary cmd semaphores
+		size_t numWaitSemaphores;                 // e.g. resource-upload flush + secondary cmd semaphores
+		VkSemaphoreSubmitInfo* waitSemaphores;
+		size_t numSignalSemaphores;               // e.g. the present thread's per-slot frame-done semaphore
+		VkSemaphoreSubmitInfo* signalSemaphores;
 	} vk;
 #endif
 };
-int RISwapchainFrameSubmit(struct RIDevice_s* dev, struct RISwapchain_s* swapchain, struct RIQueue_s* queue, struct RISwapchainFrameSubmitDesc_s* desc);
+int RIQueueFrameSubmit(struct RIDevice_s* dev, struct RIQueue_s* queue, struct RIQueueFrameSubmitDesc_s* desc);
 
 
 static inline bool IsRISwapchainValid( struct RISwapchain_s *swapchain )

@@ -11,8 +11,6 @@
 #include "qtypes.h"
 
 #define RI_MAX_SWAPCHAIN_IMAGES 8
-#define RI_NUMBER_FRAMES_FLIGHT 3
-
 #include "ri_defines.h"
 
 #ifdef DEVICE_SUPPORT_VULKAN

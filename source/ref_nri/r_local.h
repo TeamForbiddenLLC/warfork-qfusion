@@ -350,11 +350,19 @@ typedef struct
 	struct FrameState_s frame;
 	bool frameActive;
 	
-	uint32_t swapchainIndex;
+	// Frame-in-flight slot, frameSetCount % NUMBER_FRAMES_FLIGHT. Everything the frame renders into is
+	// keyed by this, not by the swapchain image, so recording can start before an image is acquired.
+	uint32_t frameIndex;
 	uint64_t frameSetCount;
-	struct RITexture_s depthTextures[RI_MAX_SWAPCHAIN_IMAGES];
-	struct RITextureView_s depthView[RI_MAX_SWAPCHAIN_IMAGES];
-	struct RI_PogoBuffer pogoBuffer[RI_MAX_SWAPCHAIN_IMAGES];
+
+	// Offscreen colour target the frame renders into; blitted to the acquired swapchain image at the
+	// end of RF_EndFrame. Same format as the swapchain so the blit is a straight copy and every
+	// pipeline's attachment format is unchanged.
+	struct RITexture_s backbuffer[NUMBER_FRAMES_FLIGHT];
+	struct RITextureView_s backbufferView[NUMBER_FRAMES_FLIGHT];
+	struct RITexture_s depthTextures[NUMBER_FRAMES_FLIGHT];
+	struct RITextureView_s depthView[NUMBER_FRAMES_FLIGHT];
+	struct RI_PogoBuffer pogoBuffer[NUMBER_FRAMES_FLIGHT];
 
 	struct r_frame_set_s frameSets[NUMBER_FRAMES_FLIGHT];
 
@@ -441,6 +449,10 @@ typedef struct
 		unsigned 		time, oldTime;
 		unsigned 		count, oldCount;
 	} fps;
+
+	// Consecutive ticks RF_BeginFrame declined because the command ring or the present thread was
+	// still busy with that slot. Reset on every rendered frame; see R_MAX_SKIPPED_FRAMES.
+	unsigned		skippedFrames;
 
 	volatile bool 	dataSync; // call R_Finish
 

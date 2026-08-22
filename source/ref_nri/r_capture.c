@@ -78,12 +78,6 @@ bool R_CaptureRecordScreenshot( struct RICmd_s *cmd )
 		return false;
 
 #if ( DEVICE_IMPL_VULKAN )
-	// the acquire failed, so this frame's image was never rendered and won't be presented
-	if( rsh.swapchain.vk.acquireFailed ) {
-		__R_CaptureAbortScreenshot();
-		return false;
-	}
-
 	const struct base_format_def_s *def = __ScreenshotFormatDef();
 	if( !def ) {
 		Com_Printf( "screenshot: unsupported swapchain format %u\n", rsh.swapchain.format );
@@ -121,11 +115,12 @@ bool R_CaptureRecordScreenshot( struct RICmd_s *cmd )
 		.def = def,
 	};
 
-	const struct RITexture_s backbuffer = RISwapchainGetTexture( &rsh.swapchain, rsh.swapchainIndex );
+	const struct RITexture_s backbuffer = rsh.backbuffer[rsh.frameIndex];
 
-	// The frame just finished rendering into the backbuffer, so take it COLOR_ATTACHMENT -> COPY_SRC,
-	// pull it into the readback buffer, then hand it to the presenter. This replaces the frame's usual
-	// RENDER_TARGET -> PRESENT transition, which RF_EndFrame skips when we return true.
+	// The frame just finished rendering into the offscreen backbuffer, so take it
+	// COLOR_ATTACHMENT -> COPY_SRC and pull it into the readback buffer. COPY_SRC is also where
+	// RF_EndFrame's blit into the swapchain image needs it, so the frame's usual
+	// RENDER_TARGET -> COPY_SRC transition is skipped when we return true and nothing else changes.
 	RICmdImageBarrier( &rsh.device, cmd,
 					   &( struct RIImageBarrier_s ){
 						   .texture = &backbuffer,
@@ -152,13 +147,7 @@ bool R_CaptureRecordScreenshot( struct RICmd_s *cmd )
 							.after = RI_RESOURCE_STATE_HOST_READ,
 						} );
 
-	RICmdImageBarrier( &rsh.device, cmd,
-					   &( struct RIImageBarrier_s ){
-						   .texture = &backbuffer,
-						   .before = RI_RESOURCE_STATE_COPY_SRC,
-						   .after = RI_RESOURCE_STATE_PRESENT,
-						   .aspect = RI_BARRIER_ASPECT_COLOR,
-					   } );
+	// left in COPY_SRC on purpose: RF_EndFrame blits out of it next.
 
 	return true;
 #else
