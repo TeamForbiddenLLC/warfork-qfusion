@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ri_types.h"
 #include "ri_conversion.h"
 #include "ri_swapchain.h"
+#include "r_present_thread.h"
 #include "ri_renderer.h"
 #include "ri_vk.h"
 
@@ -65,27 +66,89 @@ static void __R_InitVolatileAssets( void )
 	}
 }
 
-// Destroy the per-swapchain-image attachments (pogo buffers + depth image/view). Kept separate from
-// the swapchain teardown so the resize path can rebuild attachments without recreating the surface.
-static void __R_ShutdownSwapchainAttachments()
+// Destroy the per-frame attachments (offscreen backbuffer, pogo buffers, depth image/view). Kept
+// separate from the swapchain teardown so the resize path can rebuild attachments without recreating
+// the surface.
+// Idle every queue that can still have work referencing swapchain images, backbuffers or the present
+// thread's command pools. Duplicate VkQueue handles are skipped so the shared-queue fallback does not
+// wait twice on the same queue. Always run RF_PresentThreadDrain() first: this covers work already on
+// a queue, not jobs still sitting in the present thread's pipe.
+static void __R_WaitAllQueuesIdle( void )
 {
-	for( uint32_t i = 0; i < RISwapchainGetImageCount( &rsh.swapchain ); i++ ) {
-		RI_PogoBufferDestroy( &rsh.device, &rsh.pogoBuffer[i] );
-		FreeRITextureView( &rsh.device, &rsh.depthView[i] );
-		FreeRITexture( &rsh.device, &rsh.depthTextures[i] );
+	static const uint8_t order[] = { RI_QUEUE_GRAPHICS, RI_QUEUE_COPY, RI_QUEUE_PRESENT };
+	for( size_t i = 0; i < Q_ARRAY_COUNT( order ); i++ ) {
+		struct RIQueue_s *queue = &rsh.device.queues[order[i]];
+#if ( DEVICE_IMPL_VULKAN )
+		if( !queue->vk.queue )
+			continue;
+		bool seen = false;
+		for( size_t j = 0; j < i; j++ )
+			seen = seen || ( rsh.device.queues[order[j]].vk.queue == queue->vk.queue );
+		if( seen )
+			continue;
+#endif
+		WaitRIQueueIdle( &rsh.device, queue );
 	}
 }
 
-// Create the per-swapchain-image attachments (pogo buffers + depth image/view), sized to the current
-// swapchain dimensions and count.
+static void __R_ShutdownSwapchainAttachments()
+{
+	// Keyed by frame-in-flight slot, not by swapchain image: the frame renders into these before any
+	// image has been acquired.
+	for( uint32_t i = 0; i < NUMBER_FRAMES_FLIGHT; i++ ) {
+		RI_PogoBufferDestroy( &rsh.device, &rsh.pogoBuffer[i] );
+		FreeRITextureView( &rsh.device, &rsh.depthView[i] );
+		FreeRITexture( &rsh.device, &rsh.depthTextures[i] );
+		FreeRITextureView( &rsh.device, &rsh.backbufferView[i] );
+		FreeRITexture( &rsh.device, &rsh.backbuffer[i] );
+	}
+}
+
+// Create the per-frame attachments (offscreen backbuffer, pogo buffers, depth image/view), sized to
+// the current swapchain dimensions. One set per frame in flight, not per swapchain image.
 static void __R_CreateSwapchainAttachments()
 {
 #if ( DEVICE_IMPL_VULKAN )
 	uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
 
 	assert( RISwapchainGetImageCount( &rsh.swapchain ) > 0 );
-	for( uint32_t i = 0; i < RISwapchainGetImageCount( &rsh.swapchain ); i++ ) {
+	for( uint32_t i = 0; i < NUMBER_FRAMES_FLIGHT; i++ ) {
 		RI_PogoBufferInit( &rsh.device, &rsh.pogoBuffer[i], rsh.swapchain.width, rsh.swapchain.height, POGO_BUFFER_TEXTURE_FORMAT );
+
+		{
+			// Offscreen colour target. TRANSFER_SRC so RF_EndFrame can copy it into the acquired
+			// swapchain image, and so a screenshot can read it back.
+			VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+			info.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+			info.imageType = VK_IMAGE_TYPE_2D;
+			info.extent.width = rsh.swapchain.width;
+			info.extent.height = rsh.swapchain.height;
+			info.extent.depth = 1;
+			info.mipLevels = 1;
+			info.arrayLayers = 1;
+			info.samples = 1;
+			info.tiling = VK_IMAGE_TILING_OPTIMAL;
+			info.pQueueFamilyIndices = queueFamilies;
+			VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+			info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			info.format = RIFormatToVK( rsh.swapchain.format );
+			info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+			VmaAllocationCreateInfo mem_reqs = { 0 };
+			mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+			VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &rsh.backbuffer[i].vk.image, &rsh.backbuffer[i].vk.allocation, NULL ) );
+			rsh.backbuffer[i].cookie = hash_random();
+		}
+		{
+			VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+			createInfo.format = RIFormatToVK( rsh.swapchain.format );
+			createInfo.subresourceRange = (VkImageSubresourceRange){
+				VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1,
+			};
+			createInfo.image = rsh.backbuffer[i].vk.image;
+			createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+			VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &rsh.backbufferView[i].vk.image ) );
+			rsh.backbufferView[i].cookie = hash_random();
+		}
 
 		{
 			VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
@@ -249,6 +312,7 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 
 	InitRICommandRingBuffer( &rsh.device, &rsh.device.queues[RI_QUEUE_GRAPHICS], &rsh.graphicsCmdRing, NUMBER_FRAMES_FLIGHT, NUMBER_SUBFRAMES_FLIGHT, true );
 	InitRITimeline( &rsh.device, &rsh.frameTimeline );
+	RF_PresentThreadInit();
 	
 	RP_Init();
 
@@ -277,7 +341,9 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 
 rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, bool fullScreen, bool stereo )
 {
-	WaitRIQueueIdle( &rsh.device, &rsh.device.queues[RI_QUEUE_GRAPHICS] );
+	// the present thread is still holding acquired images and reading the backbuffers
+	RF_PresentThreadDrain();
+	__R_WaitAllQueuesIdle();
 	TracyCZoneN( ctx, "RF_SetMode", 1 );
 
 	if( fullScreen ) {
@@ -290,6 +356,7 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 
 	win_handle_t handle = { 0 };
 	if( !R_WIN_GetWindowHandle( &handle ) ) {
+		TracyCZoneEnd( ctx );
 		ri.Com_Error( ERR_DROP, "failed to resolve window handle" );
 		return rserr_unknown;
 	}
@@ -320,11 +387,16 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 		struct RISwapchainDesc_s swapchainInit = { 0 };
 		swapchainInit.windowHandle = &windowHandle;
 		swapchainInit.requestImageCount = 3;
-		swapchainInit.queue = &rsh.device.queues[RI_QUEUE_GRAPHICS];
+		swapchainInit.queue = &rsh.device.queues[RI_QUEUE_PRESENT];
 		swapchainInit.width = width;
 		swapchainInit.height = height;
 		swapchainInit.format = RI_SWAPCHAIN_BT709_G22_8BIT;
+		swapchainInit.presentPreference = r_swapinterval->integer ? RI_PRESENT_PREFER_VSYNC : RI_PRESENT_PREFER_LOW_LATENCY;
+		r_swapinterval->modified = false;
 		InitRISwapchain( &rsh.device, &swapchainInit, &rsh.swapchain );
+		// InitRISwapchain is where the present queue is finally resolved (it may have fallen back to
+		// graphics), so the present thread can only bind its command pools to a family now.
+		RF_PresentThreadBindQueue( rsh.swapchain.presentQueue );
 		rsh.postProcessingSampler = RIDescriptorSampler( &rsh.device, R_ResolveSamplerDescriptor( IT_NOFILTERING ) );
 
 		__R_CreateSwapchainAttachments();
@@ -351,8 +423,11 @@ void RF_Shutdown( bool verbose )
 {
 	// RF_AdapterShutdown( &rrf.adapter );
 	memset( &rrf, 0, sizeof( rrf ) );
-	WaitRIQueueIdle( &rsh.device, &rsh.device.queues[RI_QUEUE_GRAPHICS] );
-	WaitRIQueueIdle( &rsh.device, &rsh.device.queues[RI_QUEUE_COPY] );
+	// Drain the pipe before idling, or a job still queued would put fresh work on a queue we just
+	// waited on; idle before the shutdown, which frees the command pools those queues are reading.
+	RF_PresentThreadDrain();
+	__R_WaitAllQueuesIdle();
+	RF_PresentThreadShutdown();
 
 	Cmd_RemoveCommand( "modellist" );
 	Cmd_RemoveCommand( "screenshot" );
@@ -462,6 +537,16 @@ static void RF_CheckCvars( void )
 		R_TextureMode( r_texturemode->string );
 	}
 
+	// The present mode is baked into the VkSwapchainKHR, so a change here has to rebuild it.
+	// RF_BeginFrame runs its outOfDate path immediately after this function returns.
+	if( r_swapinterval->modified ) {
+		r_swapinterval->modified = false;
+		if( IsRISwapchainValid( &rsh.swapchain ) ) {
+			RISwapchainSetPresentPreference( &rsh.device, &rsh.swapchain,
+											 r_swapinterval->integer ? RI_PRESENT_PREFER_VSYNC : RI_PRESENT_PREFER_LOW_LATENCY );
+		}
+	}
+
 	// keep r_outlines_cutoff value in sane bounds to prevent wallhacking
 	if( r_outlines_scale->modified ) {
 		if( r_outlines_scale->value < 0 ) {
@@ -491,22 +576,41 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 	// bypassed RF_SetMode). Rebuild it in place before starting the frame. WaitRIQueueIdle guarantees
 	// the GPU is done with the retiring images/views; attachments are rebuilt to match the new count.
 	if( rsh.swapchain.vk.outOfDate && IsRISwapchainValid( &rsh.swapchain ) ) {
-		WaitRIQueueIdle( &rsh.device, &rsh.device.queues[RI_QUEUE_GRAPHICS] );
+		TracyCZoneN( rebuild, "RF_SwapchainRebuild", 1 );
+		// outOfDate is raised by the present thread; it must be idle before the images/views go away.
+		RF_PresentThreadDrain();
+		__R_WaitAllQueuesIdle();
 		__R_ShutdownSwapchainAttachments();
 		RISwapchainResize( &rsh.device, &rsh.swapchain, rsh.swapchain.width, rsh.swapchain.height );
 		__R_CreateSwapchainAttachments();
+		TracyCZoneEnd( rebuild );
 	}
 #endif
 
 	AdvanceRICommandRingBuffer(&rsh.graphicsCmdRing);
 
 	// run cinematic passes on shaders
-	R_RunAllCinematics();
+	{
+		TracyCZoneN( cine, "R_RunAllCinematics", 1 );
+		R_RunAllCinematics();
+		TracyCZoneEnd( cine );
+	}
 	struct r_frame_set_s *activeSet = R_GetActiveFrameSet();
+	// Everything the frame renders into is keyed by this, so it has to match R_GetActiveFrameSet.
+	rsh.frameIndex = (uint32_t)( rsh.frameSetCount % NUMBER_FRAMES_FLIGHT );
+	// No-op on the gated path (the probe already said this slot is free); the real wait only happens on
+	// the starvation-valve path, where the gate was skipped.
+	RF_PresentSlotWait( rsh.frameIndex );
 
 	arrsetlen( rsh.secondary, 0 );
 	rsh.primary = GetRICommandRingElement(&rsh.device, &rsh.graphicsCmdRing, 1);
-	WaitRICommandRingElement(&rsh.device, &rsh.primary);
+	{
+		// Normally a no-op: the frame gate already probed this exact fence. It still runs for the
+		// starvation-valve path and for backends without the probe.
+		TracyCZoneN( ringWait, "RF_RingFenceWait", 1 );
+		WaitRICommandRingElement(&rsh.device, &rsh.primary);
+		TracyCZoneEnd( ringWait );
+	}
 	ResetRIPool(&rsh.device, rsh.primary.pool);
 	BeginRICmd(&rsh.device, &rsh.primary.cmds[0]);
 	rsh.frameActive = true;
@@ -520,7 +624,6 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 		}
 		arrsetlen( activeSet->freeList, 0 );
 		RIResetScratchAlloc( &rsh.device, &activeSet->uboScratchAlloc );
-		rsh.swapchainIndex = RISwapchainAcquireNextTexture( &rsh.device, &rsh.swapchain );
 
 		{
 			VkImageMemoryBarrier2 imageBarriers[4] = { 0 };
@@ -533,7 +636,7 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 			imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			imageBarriers[0].image = rsh.swapchain.vk.images[rsh.swapchainIndex];
+			imageBarriers[0].image = rsh.backbuffer[rsh.frameIndex].vk.image;
 			imageBarriers[0].subresourceRange = (VkImageSubresourceRange){
 				VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
 			};
@@ -547,12 +650,12 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 			imageBarriers[1].newLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
 			imageBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			imageBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			imageBarriers[1].image = rsh.depthTextures[rsh.swapchainIndex].vk.image;
+			imageBarriers[1].image = rsh.depthTextures[rsh.frameIndex].vk.image;
 			imageBarriers[1].subresourceRange = (VkImageSubresourceRange){
 				VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
 			};
 
-			struct RI_PogoBuffer *pogoBuffer = rsh.pogoBuffer + rsh.swapchainIndex;
+			struct RI_PogoBuffer *pogoBuffer = rsh.pogoBuffer + rsh.frameIndex;
 			imageBarriers[2] = VK_RI_PogoAttachmentMemoryBarrier2( pogoBuffer->vk.textures[pogoBuffer->attachmentIndex].vk.image, true );
 			imageBarriers[3] = VK_RI_PogoShaderMemoryBarrier2( pogoBuffer->vk.textures[( pogoBuffer->attachmentIndex + 1 ) % 2].vk.image, true );
 
@@ -565,7 +668,7 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 
 			VkRenderingAttachmentInfo colorAttachment = { 
 				.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-				.imageView = rsh.swapchain.vk.views[rsh.swapchainIndex],
+				.imageView = rsh.backbufferView[rsh.frameIndex].vk.image,
 				.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 				.resolveMode = VK_RESOLVE_MODE_NONE,
 				.resolveImageView = VK_NULL_HANDLE,
@@ -575,7 +678,7 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 			};
 			VkRenderingAttachmentInfo depthStencil = { 
 				.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-				.imageView = rsh.depthView[rsh.swapchainIndex].vk.image,
+				.imageView = rsh.depthView[rsh.frameIndex].vk.image,
 				.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
 				.resolveMode = VK_RESOLVE_MODE_NONE,
 				.resolveImageView = VK_NULL_HANDLE,
@@ -670,7 +773,11 @@ void RF_EndFrame( void )
 {
 	TracyCZoneN( ctx, "RF_EndFrame", 1 );
 	// render previously batched 2D geometry, if any
-	RB_FlushDynamicMeshes( &rsh.frame );
+	{
+		TracyCZoneN( flush2D, "RB_FlushDynamicMeshes", 1 );
+		RB_FlushDynamicMeshes( &rsh.frame );
+		TracyCZoneEnd( flush2D );
+	}
 
 	__R_PolyBlendPostPass( &rsh.frame );
 
@@ -680,21 +787,21 @@ void RF_EndFrame( void )
 	{
 		vkCmdEndRendering( rsh.frame.handle.vk.cmd );
 
-		// A pending screenshot copies the backbuffer out on its way to present and transitions the image
-		// to PRESENT_SRC itself; the plain transition below is for ordinary frames.
+		// A pending screenshot reads the backbuffer back and leaves it in TRANSFER_SRC, which is exactly
+		// where the blit below needs it; ordinary frames make the same transition here.
 		const bool captured = R_CaptureRecordScreenshot( &rsh.frame.handle );
 		if( !captured ) {
 			VkImageMemoryBarrier2 imageBarriers[1] = { 0 };
 			imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 			imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 			imageBarriers[0].srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-			imageBarriers[0].dstStageMask = VK_PIPELINE_STAGE_2_NONE;
-			imageBarriers[0].dstAccessMask = VK_ACCESS_2_NONE;
+			imageBarriers[0].dstStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
+			imageBarriers[0].dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
 			imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 			imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			imageBarriers[0].image = rsh.swapchain.vk.images[rsh.swapchainIndex];//rsh.colorAttachment[rsh.vk.swapchainIndex].texture->vk.image;
+			imageBarriers[0].image = rsh.backbuffer[rsh.frameIndex].vk.image;
 			imageBarriers[0].subresourceRange = (VkImageSubresourceRange){
 				VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
 			};
@@ -703,11 +810,14 @@ void RF_EndFrame( void )
 			dependencyInfo.pImageMemoryBarriers = imageBarriers;
 			vkCmdPipelineBarrier2( rsh.primary.cmds[0].vk.cmd, &dependencyInfo );
 		}
+
 		EndRICmd( &rsh.device, &rsh.primary.cmds[0]);
 		rsh.frameActive = false;
 
 		struct RIQueue_s *graphicsQueue = &rsh.device.queues[RI_QUEUE_GRAPHICS];
 
+		TracyCZoneN( secondarySubmit, "RF_SecondarySubmit", 1 );
+		TracyCZoneValue( secondarySubmit, arrlen( rsh.secondary ) );
 		for (size_t i = 0; i < arrlen(rsh.secondary); i++) {
 
 			VkCommandBufferSubmitInfo secondarySubmitInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO };
@@ -728,16 +838,25 @@ void RF_EndFrame( void )
 			assert(vkGetFenceStatus(rsh.device.vk.device, rsh.secondary[i].vk.fence) == VK_SUCCESS);
 			VkFence reset_fence[] = { rsh.secondary[i].vk.fence };
 			VK_WrapResult(vkResetFences(rsh.device.vk.device, 1, reset_fence));
+			RF_QueueLock();
 			VK_WrapResult(vkQueueSubmit2(graphicsQueue->vk.queue, 1, &submitInfo, rsh.secondary[i].vk.fence));
+			RF_QueueUnlock();
 		}
+		TracyCZoneEnd( secondarySubmit );
 
-		// Assemble the extra submit waits (resource-upload flush + secondary cmd semaphores). The
-		// swapchain acquire semaphore is prepended, and the present semaphore signalled, inside
-		// RISwapchainFrameSubmit.
+		// Assemble the submit waits (resource-upload flush + secondary cmd semaphores). Nothing here
+		// waits on the swapchain: the acquire belongs to the present thread, which waits on the
+		// frame-done semaphore signalled below.
 		VkSemaphoreSubmitInfo *extraWaits = alloca( sizeof( VkSemaphoreSubmitInfo ) * ( 1 + arrlen( rsh.secondary ) ) );
 		size_t numExtraWaits = 0;
 
+		// This submits on the graphics queue from the main thread, so it needs the same guard the
+		// primary submit has whenever the present thread shares that queue.
+		TracyCZoneN( uploadFlush, "RI_VKFlushResourceUpdate", 1 );
+		RF_QueueLock();
 		struct RIResourceUploaderVKResult_s flush = RI_VKFlushResourceUpdate( &rsh.device, &rsh.uploader, 0, NULL );
+		RF_QueueUnlock();
+		TracyCZoneEnd( uploadFlush );
 		if( flush.signaled ) {
 			extraWaits[numExtraWaits++] = (VkSemaphoreSubmitInfo){
 				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
@@ -753,19 +872,31 @@ void RF_EndFrame( void )
 			};
 		}
 
-		struct RISwapchainFrameSubmitDesc_s submitDesc = {
-			.imageIndex = rsh.swapchainIndex,
+		// No extra frame-done semaphore: the submit already signals rsh.frameTimeline, and the present
+		// thread waits on that value. One signal, and a timeline rather than a binary semaphore.
+		struct RIQueueFrameSubmitDesc_s submitDesc = {
 			.cmd = &rsh.primary.cmds[0],
 			.ringElement = &rsh.primary,
 			.timeline = &rsh.frameTimeline,
 			.vk = { .numWaitSemaphores = numExtraWaits, .waitSemaphores = extraWaits },
 		};
-		RISwapchainFrameSubmit( &rsh.device, &rsh.swapchain, graphicsQueue, &submitDesc );
+		{
+			TracyCZoneN( frameSubmit, "RIQueueFrameSubmit", 1 );
+			RF_QueueLock();
+			RIQueueFrameSubmit( &rsh.device, graphicsQueue, &submitDesc );
+			RF_QueueUnlock();
+			TracyCZoneEnd( frameSubmit );
+		}
 
-		// RISwapchainFrameSubmit reserves the timeline value it signals, so this has to be read after it.
+		// RIQueueFrameSubmit reserves the timeline value it signals, so this has to be read after it.
+		const uint64_t frameValue = RITimelinePending( &rsh.frameTimeline );
+
+		// Acquire, blit into the acquired image and present all happen over there; this returns at once.
+		RF_PresentThreadSubmit( rsh.frameIndex, frameValue );
+
 		// The save is picked up by RF_BeginFrame once the GPU reaches that value.
 		if( captured ) {
-			rsh.screenshot.single.frameCnt = RITimelinePending( &rsh.frameTimeline );
+			rsh.screenshot.single.frameCnt = frameValue;
 			rsh.screenshot.state = CAPTURE_STATE_FINISH_SCREENSHOT;
 		}
 	}
@@ -923,7 +1054,11 @@ void R_InitSubpass( struct FrameState_s *parent, struct FrameState_s *child )
 	child->parent = parent;
 
 	struct RICommandRingElement_s cmdElem = GetRICommandRingElement(&rsh.device, &rsh.graphicsCmdRing, 1);
-	WaitRICommandRingElement(&rsh.device, &cmdElem);
+	{
+		TracyCZoneN( subpassWait, "R_InitSubpass_Wait", 1 );
+		WaitRICommandRingElement(&rsh.device, &cmdElem);
+		TracyCZoneEnd( subpassWait );
+	}
 	BeginRICmd(&rsh.device, &cmdElem.cmds[0]);
 	child->handle = cmdElem.cmds[0];
 	arrpush( rsh.secondary, cmdElem);
@@ -1086,7 +1221,9 @@ void RF_ScreenShot( const char *path, const char *name, const char *fmtstring, b
 
 void RF_EnvShot( const char *path, const char *name, unsigned pixels )
 {
-	if( RF_RenderingEnabled() ) {
+	// deliberately not RF_RenderingEnabled(): that now also answers "is a frame slot free this tick",
+	// which has nothing to do with whether the renderer is up.
+	if( IsRISwapchainValid( &rsh.swapchain ) ) {
 		R_TakeEnvShot( &rsh.frame, path, name, pixels );
 	}
 	// rrf.adapter.cmdPipe->EnvShot( rrf.adapter.cmdPipe, path, name, pixels );
@@ -1094,8 +1231,34 @@ void RF_EnvShot( const char *path, const char *name, unsigned pixels )
 
 bool RF_RenderingEnabled( void )
 {
+	// Frame gate. SCR_UpdateScreen asks this once per tick and skips the whole frame when it is false,
+	// which makes it the place to decline a tick without touching the renderer ABI.
+	//
+	// Both back-pressure points -- the command ring fence and the present thread's hold on the next
+	// slot's backbuffer -- are probed without blocking. Declining returns the client to input, network
+	// and sound work at the cl_maxfps cadence instead of parking the main thread on the vblank, which
+	// is where the whole client used to sit while vkAcquireNextImageKHR waited.
+	if( rf.skippedFrames >= R_MAX_SKIPPED_FRAMES ) {
+		// Starvation valve: let the frame through and take the blocking waits in RF_BeginFrame, so a
+		// driver or compositor that never releases a slot through a status probe cannot leave the
+		// client rendering nothing at all.
+		rf.skippedFrames = 0;
+		return true;
+	}
+
+	TracyCZoneN( gate, "RF_FrameGate", 1 );
+	const uint32_t nextFrameIndex = (uint32_t)( rsh.frameSetCount % NUMBER_FRAMES_FLIGHT );
+	const bool ready = IsRICommandRingNextReady( &rsh.device, &rsh.graphicsCmdRing ) && RF_PresentSlotReady( nextFrameIndex );
+	TracyCZoneEnd( gate );
+
+	if( !ready ) {
+		rf.skippedFrames++;
+		TracyCPlotI( "r_frame_skipped", 1 );
+		return false;
+	}
+	rf.skippedFrames = 0;
+	TracyCPlotI( "r_frame_skipped", 0 );
 	return true;
-	// return GLimp_RenderingEnabled();
 }
 
 const char *RF_GetSpeedsMessage( char *out, size_t size )

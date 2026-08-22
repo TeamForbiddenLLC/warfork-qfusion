@@ -49,6 +49,10 @@ void FreeRICommandRingBuffer( struct RIDevice_s *dev, struct RICommandRingBuffer
 void AdvanceRICommandRingBuffer( struct RICommandRingBuffer_s *ring );
 struct RICommandRingElement_s GetRICommandRingElement( struct RIDevice_s *dev, struct RICommandRingBuffer_s *ring, uint32_t numCmds );
 void WaitRICommandRingElement( struct RIDevice_s *dev, struct RICommandRingElement_s *element );
+// Non-blocking probe of the element AdvanceRICommandRingBuffer + GetRICommandRingElement would hand
+// out next. Neither of those can be used to peek -- both mutate the ring -- so this reaches for the
+// same fence directly. True means the following WaitRICommandRingElement returns immediately.
+bool IsRICommandRingNextReady( struct RIDevice_s *dev, struct RICommandRingBuffer_s *ring );
 #if DEVICE_IMPL_VULKAN
 void VK_ConfigureBufferQueueFamilies( VkBufferCreateInfo *info, struct RIQueue_s *queues, size_t numQueues, uint32_t *queueFamiliesIdx, size_t reservedLen );
 void VK_ConfigureImageQueueFamilies( VkImageCreateInfo *info, struct RIQueue_s *queues, size_t numQueues, uint32_t *queueFamiliesIdx, size_t reservedLen );

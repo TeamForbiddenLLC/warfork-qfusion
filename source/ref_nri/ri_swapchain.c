@@ -5,7 +5,13 @@
 #include "ri_timeline.h"
 #include "ri_types.h"
 #include "ri_vk.h"
+#include "tracy/TracyC.h"
 #if ( DEVICE_IMPL_VULKAN )
+
+// TRANSFER_DST is what lets the present thread copy the offscreen backbuffer in. InitRISwapchain and
+// RISwapchainResize both create images, and the resize path silently lacked TRANSFER_DST -- every
+// present after an in-place rebuild was then an invalid vkCmdCopyImage. One definition, no drift.
+#define RI_SWAPCHAIN_IMAGE_USAGE ( VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT )
 
 static uint32_t __priority_BT709_G22_16BIT( const VkSurfaceFormatKHR *surface )
 {
@@ -30,6 +36,28 @@ static uint32_t __priority_BT2020_G2084_10BIT( const VkSurfaceFormatKHR *surface
 }
 
 #endif
+
+// Pick a concrete present mode from the surface's supported list. VK_PRESENT_MODE_FIFO_KHR must
+// always be supported per spec, so it is the guaranteed fallback for both preferences. The vsync
+// list omits IMMEDIATE so the caller can actually get blank-synced presentation; the low-latency
+// list keeps the historical preference order.
+static VkPresentModeKHR __RI_SelectPresentMode( uint8_t preference, const VkPresentModeKHR *supported, uint32_t supportedCount )
+{
+	static const VkPresentModeKHR lowLatencyModeList[] = { VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_FIFO_RELAXED_KHR, VK_PRESENT_MODE_FIFO_KHR };
+	static const VkPresentModeKHR vsyncModeList[] = { VK_PRESENT_MODE_FIFO_RELAXED_KHR, VK_PRESENT_MODE_FIFO_KHR };
+
+	const bool preferVsync = ( preference == RI_PRESENT_PREFER_VSYNC );
+	const VkPresentModeKHR *preferredModeList = preferVsync ? vsyncModeList : lowLatencyModeList;
+	const size_t preferredModeCount = preferVsync ? Q_ARRAY_COUNT( vsyncModeList ) : Q_ARRAY_COUNT( lowLatencyModeList );
+
+	for( size_t j = 0; j < preferredModeCount; j++ ) {
+		for( uint32_t i = 0; i < supportedCount; i++ ) {
+			if( supported[i] == preferredModeList[j] )
+				return preferredModeList[j];
+		}
+	}
+	return VK_PRESENT_MODE_FIFO_KHR;
+}
 
 int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, struct RISwapchain_s *swapchain )
 {
@@ -89,6 +117,24 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 		}
 	}
 #endif
+	{
+		// Queue selection happens at device creation, before any surface exists, so this is the first
+		// point at which the requested present queue's family can actually be checked against the
+		// surface. Fall back to graphics rather than fail: a shared queue still presents correctly, it
+		// just puts RF_QueueLock back in the path.
+		VkBool32 presentSupported = VK_FALSE;
+		VK_WrapResult( vkGetPhysicalDeviceSurfaceSupportKHR( dev->physicalAdapter.vk.physicalDevice, swapchain->presentQueue->vk.queueFamilyIdx,
+															 swapchain->vk.surface, &presentSupported ) );
+		if( !presentSupported ) {
+			Com_Printf( "VK swapchain: queue family %u cannot present to this surface, falling back to the graphics queue",
+						swapchain->presentQueue->vk.queueFamilyIdx );
+			swapchain->presentQueue = &dev->queues[RI_QUEUE_GRAPHICS];
+		}
+		Com_Printf( "VK swapchain: presenting on queue family %u slot %u%s", swapchain->presentQueue->vk.queueFamilyIdx,
+					swapchain->presentQueue->vk.slotIdx,
+					( swapchain->presentQueue->vk.queue == dev->queues[RI_QUEUE_GRAPHICS].vk.queue ) ? " (shared with graphics)" : " (dedicated)" );
+	}
+
 	VkSurfaceCapabilitiesKHR surfaceCaps = { 0 };
 	result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR( dev->physicalAdapter.vk.physicalDevice, swapchain->vk.surface, &surfaceCaps );
 	VK_WrapResult( result );
@@ -131,24 +177,7 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 	result = vkGetPhysicalDeviceSurfacePresentModesKHR( dev->physicalAdapter.vk.physicalDevice, swapchain->vk.surface, &presentModeCount, supportedPresentMode );
 	VK_WrapResult( result );
 
-	// The VK_PRESENT_MODE_FIFO_KHR mode must always be present as per spec
-	// This mode waits for the vertical blank ("v-sync")
-	VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
-
-	VkPresentModeKHR preferredModeList[] = { VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_FIFO_RELAXED_KHR, VK_PRESENT_MODE_FIFO_KHR };
-	for( size_t j = 0; j < Q_ARRAY_COUNT( preferredModeList ); j++ ) {
-		VkPresentModeKHR mode = preferredModeList[j];
-		uint32_t i = 0;
-		for( ; i < presentModeCount; ++i ) {
-			if( supportedPresentMode[i] == mode ) {
-				break;
-			}
-		}
-		if( i < presentModeCount ) {
-			presentMode = mode;
-			break;
-		}
-	}
+	const VkPresentModeKHR presentMode = __RI_SelectPresentMode( init->presentPreference, supportedPresentMode, presentModeCount );
 	{
 		VkSwapchainCreateInfoKHR swapChainCreateInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
 		swapChainCreateInfo.flags = 0;
@@ -165,7 +194,7 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 		swapChainCreateInfo.imageExtent.width = init->width;
 		swapChainCreateInfo.imageExtent.height = init->height;
 		swapChainCreateInfo.imageArrayLayers = 1;
-		swapChainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		swapChainCreateInfo.imageUsage = RI_SWAPCHAIN_IMAGE_USAGE;
 		swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		swapChainCreateInfo.queueFamilyIndexCount = 0;
 		swapChainCreateInfo.pQueueFamilyIndices = NULL;
@@ -247,7 +276,13 @@ uint32_t RISwapchainAcquireNextTexture( struct RIDevice_s *dev, struct RISwapcha
 				swapchain->vk.acquireFailed = 1;
 				break;
 			default:
+				// Nothing was acquired and no semaphore was signalled (SURFACE_LOST, DEVICE_LOST,
+				// TIMEOUT, NOT_READY...). Falling through without acquireFailed would leave the blit
+				// submit waiting on a semaphore nobody signals, which deadlocks the present thread and
+				// then the main thread behind the slot fence.
 				VK_WrapResult( result );
+				swapchain->vk.outOfDate = 1;
+				swapchain->vk.acquireFailed = 1;
 				break;
 		}
 		return image_index;
@@ -289,51 +324,33 @@ VkResult RISwapchainPresent_vk( struct RIDevice_s *dev, struct RISwapchain_s *sw
 		presentInfo.swapchainCount = 1;
 		presentInfo.pSwapchains = &swapchain->vk.swapchain;
 		presentInfo.pImageIndices = &index;
-		return vkQueuePresentKHR( swapchain->presentQueue->vk.queue, &presentInfo );
+		{
+			// CPU back-pressure point: the WSI can block here when every image is still queued.
+			TracyCZoneN( present, "vkQueuePresentKHR", 1 );
+			const VkResult presentResult = vkQueuePresentKHR( swapchain->presentQueue->vk.queue, &presentInfo );
+			TracyCZoneEnd( present );
+			return presentResult;
+		}
 	}
 #endif
 	return VK_SUCCESS;
 }
 
-int RISwapchainFrameSubmit( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, struct RIQueue_s *queue, struct RISwapchainFrameSubmitDesc_s *desc )
+int RIQueueFrameSubmit( struct RIDevice_s *dev, struct RIQueue_s *queue, struct RIQueueFrameSubmitDesc_s *desc )
 {
 #if ( DEVICE_IMPL_VULKAN )
 	{
-		// When the last acquire failed (OUT_OF_DATE), no acquire semaphore was signalled and there is
-		// no valid image to present. Still submit the recorded work (fenced) so frame pacing holds,
-		// but skip the acquire wait, the present-semaphore signal, and the present itself. The frame
-		// loop rebuilds the swapchain before the next acquire.
-		const bool acquireFailed = swapchain->vk.acquireFailed;
-
 		VkCommandBufferSubmitInfo cmdSubmitInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO };
 		cmdSubmitInfo.commandBuffer = desc->cmd->vk.cmd;
 
-		// wait array: swapchain acquire semaphore first (unless acquire failed), then caller extras
-		const size_t numWait = 1 + desc->vk.numWaitSemaphores;
-		VkSemaphoreSubmitInfo *waitInfos = alloca( sizeof( VkSemaphoreSubmitInfo ) * numWait );
-		size_t waitCount = 0;
-		if( !acquireFailed ) {
-			waitInfos[waitCount++] = ( VkSemaphoreSubmitInfo ){
-				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-				.semaphore = swapchain->vk.acquireSemaphores[swapchain->vk.acquireIdx],
-				.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
-			};
-		}
-		for( size_t i = 0; i < desc->vk.numWaitSemaphores; i++ )
-			waitInfos[waitCount++] = desc->vk.waitSemaphores[i];
+		const size_t numSignal = desc->vk.numSignalSemaphores + ( desc->timeline ? 1 : 0 );
+		VkSemaphoreSubmitInfo *signalInfos = alloca( sizeof( VkSemaphoreSubmitInfo ) * ( numSignal > 0 ? numSignal : 1 ) );
+		size_t signalCount = 0;
+		for( size_t i = 0; i < desc->vk.numSignalSemaphores; i++ )
+			signalInfos[signalCount++] = desc->vk.signalSemaphores[i];
 
-		VkSemaphoreSubmitInfo signalInfos[2];
-		uint32_t signalCount = 0;
-		if( !acquireFailed ) {
-			// Keyed to the image being presented, not to the ring element: see presentSemaphores.
-			signalInfos[signalCount++] = ( VkSemaphoreSubmitInfo ){
-				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-				.semaphore = swapchain->vk.presentSemaphores[desc->imageIndex],
-				.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
-			};
-		}
-		// Signal the frame timeline regardless of acquire success: it paces resource reclaim and GPU
-		// query readback against the submit, not the present. (value is ignored for binary semaphores.)
+		// The frame timeline paces resource reclaim and GPU query readback against the submit, not the
+		// present. (value is ignored for binary semaphores.)
 		if( desc->timeline ) {
 			signalInfos[signalCount++] = ( VkSemaphoreSubmitInfo ){
 				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
@@ -346,27 +363,48 @@ int RISwapchainFrameSubmit( struct RIDevice_s *dev, struct RISwapchain_s *swapch
 		VkSubmitInfo2 submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO_2 };
 		submitInfo.pCommandBufferInfos = &cmdSubmitInfo;
 		submitInfo.commandBufferInfoCount = 1;
-		submitInfo.pWaitSemaphoreInfos = waitInfos;
-		submitInfo.waitSemaphoreInfoCount = waitCount;
+		submitInfo.pWaitSemaphoreInfos = desc->vk.waitSemaphores;
+		submitInfo.waitSemaphoreInfoCount = desc->vk.numWaitSemaphores;
 		submitInfo.pSignalSemaphoreInfos = signalInfos;
 		submitInfo.signalSemaphoreInfoCount = signalCount;
 
 		assert( vkGetFenceStatus( dev->vk.device, desc->ringElement->vk.fence ) == VK_SUCCESS );
 		VK_WrapResult( vkResetFences( dev->vk.device, 1, &desc->ringElement->vk.fence ) );
-		VK_WrapResult( vkQueueSubmit2( queue->vk.queue, 1, &submitInfo, desc->ringElement->vk.fence ) );
-
-		if( !acquireFailed ) {
-			VkSemaphore presentWait[] = { swapchain->vk.presentSemaphores[desc->imageIndex] };
-			VkResult presentResult = RISwapchainPresent_vk( dev, swapchain, desc->imageIndex, 1, presentWait );
-			if( presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR )
-				swapchain->vk.outOfDate = 1;
-			else if( presentResult != VK_SUCCESS )
-				VK_WrapResult( presentResult );
+		{
+			TracyCZoneN( primarySubmit, "vkQueueSubmit2", 1 );
+			VK_WrapResult( vkQueueSubmit2( queue->vk.queue, 1, &submitInfo, desc->ringElement->vk.fence ) );
+			TracyCZoneEnd( primarySubmit );
 		}
-		swapchain->vk.acquireFailed = 0;
 	}
 #endif
 	return RI_SUCCESS;
+}
+
+bool RISwapchainSetPresentPreference( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, uint8_t preference )
+{
+#if ( DEVICE_IMPL_VULKAN )
+	uint32_t presentModeCount = 0;
+	VK_WrapResult( vkGetPhysicalDeviceSurfacePresentModesKHR( dev->physicalAdapter.vk.physicalDevice, swapchain->vk.surface, &presentModeCount, NULL ) );
+	if( presentModeCount == 0 )
+		return false;
+
+	VkPresentModeKHR *supportedPresentMode = malloc( presentModeCount * sizeof( VkPresentModeKHR ) );
+	VK_WrapResult( vkGetPhysicalDeviceSurfacePresentModesKHR( dev->physicalAdapter.vk.physicalDevice, swapchain->vk.surface, &presentModeCount, supportedPresentMode ) );
+
+	const VkPresentModeKHR mode = __RI_SelectPresentMode( preference, supportedPresentMode, presentModeCount );
+	free( supportedPresentMode );
+
+	if( mode == swapchain->vk.presentMode )
+		return false;
+
+	// The mode is baked into the VkSwapchainKHR, so flag a rebuild. RISwapchainResize reads
+	// swapchain->vk.presentMode and honors outOfDate even when the extent is unchanged.
+	swapchain->vk.presentMode = mode;
+	swapchain->vk.outOfDate = 1;
+	return true;
+#else
+	return false;
+#endif
 }
 
 int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, uint16_t width, uint16_t height )
@@ -388,7 +426,7 @@ int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, 
 		swapChainCreateInfo.imageExtent.width = width;
 		swapChainCreateInfo.imageExtent.height = height;
 		swapChainCreateInfo.imageArrayLayers = 1;
-		swapChainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		swapChainCreateInfo.imageUsage = RI_SWAPCHAIN_IMAGE_USAGE;
 		swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		swapChainCreateInfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 		swapChainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;

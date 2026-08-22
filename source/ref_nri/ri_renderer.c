@@ -596,6 +596,12 @@ int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, st
 			{ VK_QUEUE_GRAPHICS_BIT, RI_QUEUE_GRAPHICS },
 			{ VK_QUEUE_COMPUTE_BIT, RI_QUEUE_COMPUTE },
 			{ VK_QUEUE_TRANSFER_BIT, RI_QUEUE_COPY },
+			// Present last: it only wants a queue the present thread can own outright, so it takes
+			// whatever spare slot is left rather than displacing the three above. COMPUTE_BIT because
+			// the present thread's only recorded work is a vkCmdCopyImage, and compute families are
+			// where spare slots usually live. Surface support is verified later, in InitRISwapchain --
+			// there is no surface yet at device creation.
+			{ VK_QUEUE_COMPUTE_BIT, RI_QUEUE_PRESENT },
 		};
 		for( uint32_t configureIdx = 0; configureIdx < Q_ARRAY_COUNT( configureQueue ); configureIdx++ ) {
 			// bool found = false;
@@ -641,7 +647,13 @@ int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, st
 			createInfo->sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 
 			struct RIQueue_s *queue = &device->queues[configureQueue[configureIdx].queueType];
-			if( createInfo->queueCount >= queueFamilyProps[createInfo->queueFamilyIndex].queueCount ) {
+			if( configureQueue[configureIdx].queueType == RI_QUEUE_PRESENT && createInfo->queueCount >= queueFamilyProps[createInfo->queueFamilyIndex].queueCount ) {
+				// No spare slot. The generic alias scan below would pick the least-capable transfer-capable
+				// queue, which is the copy queue -- and the main thread submits uploads on that one, so
+				// present would still be contending, just somewhere harder to see. Degrade to exactly the
+				// graphics queue instead: then "present shares a queue" is a single handle comparison.
+				device->queues[RI_QUEUE_PRESENT] = device->queues[RI_QUEUE_GRAPHICS];
+			} else if( createInfo->queueCount >= queueFamilyProps[createInfo->queueFamilyIndex].queueCount ) {
 				struct RIQueue_s *dupQueue = NULL;
 				minQueueFlag = UINT32_MAX;
 				for( size_t i = 0; i < Q_ARRAY_COUNT( device->queues ); i++ ) {
@@ -728,6 +740,21 @@ int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, st
 			if( device->queues[q].vk.queueFlags == 0 )
 				continue;
 			vkGetDeviceQueue( device->vk.device, device->queues[q].vk.queueFamilyIdx, device->queues[q].vk.slotIdx, &device->queues[q].vk.queue );
+		}
+
+		{
+			// Whether RI_QUEUE_PRESENT ended up as its own VkQueue decides whether the present thread
+			// contends with the main thread's submits, so say it out loud.
+			static const char *const queueNames[RI_QUEUE_LEN] = { "graphics", "compute", "copy", "present" };
+			for( size_t q = 0; q < Q_ARRAY_COUNT( device->queues ); q++ ) {
+				if( !device->queues[q].vk.queue )
+					continue;
+				bool shared = false;
+				for( size_t o = 0; o < q; o++ )
+					shared = shared || ( device->queues[o].vk.queue == device->queues[q].vk.queue );
+				Com_Printf( "VK Queue %s: family %u slot %u%s", queueNames[q], device->queues[q].vk.queueFamilyIdx, device->queues[q].vk.slotIdx,
+							shared ? " (shared)" : "" );
+			}
 		}
 
 		{
@@ -1388,5 +1415,26 @@ void WaitRICommandRingElement( struct RIDevice_s *dev, struct RICommandRingEleme
 	if( element->vk.fence ) {
 		VK_WrapResult( vkWaitForFences( dev->vk.device, 1, &element->vk.fence, VK_TRUE, UINT64_MAX ) );
 	}
+#endif
+}
+
+bool IsRICommandRingNextReady( struct RIDevice_s *dev, struct RICommandRingBuffer_s *ring )
+{
+#if ( DEVICE_IMPL_VULKAN )
+	if( !ring->syncPrimitive )
+		return true;
+	// mirrors AdvanceRICommandRingBuffer (poolIndex + 1) followed by GetRICommandRingElement at a
+	// reset fenceIndex of 0.
+	const uint32_t nextPool = ( ring->poolIndex + 1 ) % ring->poolCount;
+	VkFence fence = ring->vk.fences[nextPool][0];
+	if( !fence )
+		return true;
+	const VkResult status = vkGetFenceStatus( dev->vk.device, fence );
+	if( status == VK_NOT_READY )
+		return false;
+	VK_WrapResult( status );
+	return status == VK_SUCCESS;
+#else
+	return true;
 #endif
 }

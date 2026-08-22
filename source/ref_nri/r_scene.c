@@ -354,10 +354,10 @@ void R_RenderScene(const refdef_t *fd )
 		if( numPostProcessing > 0 ) {
 			vkCmdEndRendering( rsh.frame.handle.vk.cmd ); // end back buffer and swap to pogo attachment
 			VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-			RI_VK_FillColorAttachment( &colorAttachment, *RI_PogoBufferAttachment( rsh.pogoBuffer + rsh.swapchainIndex ), true);
+			RI_VK_FillColorAttachment( &colorAttachment, *RI_PogoBufferAttachment( rsh.pogoBuffer + rsh.frameIndex ), true);
 
 			VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-			RI_VK_FillDepthAttachment( &depthStencil, rsh.depthView[rsh.swapchainIndex], false);
+			RI_VK_FillDepthAttachment( &depthStencil, rsh.depthView[rsh.frameIndex], false);
 
 			VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
 			renderingInfo.flags = 0;
@@ -413,13 +413,13 @@ void R_RenderScene(const refdef_t *fd )
 			vkCmdEndRendering( rsh.frame.handle.vk.cmd ); // end back buffer and swap to pogo attachment
 
 			for( size_t i = 0; i < numPostProcessing - 1; i++ ) {
-				RI_PogoBufferToggle( &rsh.device, rsh.pogoBuffer + rsh.swapchainIndex, &rsh.frame.handle );
+				RI_PogoBufferToggle( &rsh.device, rsh.pogoBuffer + rsh.frameIndex, &rsh.frame.handle );
 				{
 					VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-					RI_VK_FillColorAttachment( &colorAttachment, *RI_PogoBufferAttachment( rsh.pogoBuffer + rsh.swapchainIndex ), true );
+					RI_VK_FillColorAttachment( &colorAttachment, *RI_PogoBufferAttachment( rsh.pogoBuffer + rsh.frameIndex ), true );
 
 					VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-					RI_VK_FillDepthAttachment( &depthStencil, rsh.depthView[rsh.swapchainIndex], false );
+					RI_VK_FillDepthAttachment( &depthStencil, rsh.depthView[rsh.frameIndex], false );
 
 					VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
 					renderingInfo.flags = 0;
@@ -436,19 +436,19 @@ void R_RenderScene(const refdef_t *fd )
 					FR_ConfigurePipelineAttachment( &rsh.frame.pipeline, attachments, Q_ARRAY_COUNT( attachments ), RI_FORMAT_D32_SFLOAT );
 				}
 				FR_CmdResetCommandState( &rsh.frame, CMD_RESET_DEFAULT_PIPELINE_LAYOUT );
-				postProcessingHandlers[i]( fd, &rsh.frame, RI_PogoBufferShaderResource( rsh.pogoBuffer + rsh.swapchainIndex ) );
+				postProcessingHandlers[i]( fd, &rsh.frame, RI_PogoBufferShaderResource( rsh.pogoBuffer + rsh.frameIndex ) );
 				vkCmdEndRendering( rsh.frame.handle.vk.cmd ); // end back buffer and swap to pogo attachment
 			}
 
-			RI_PogoBufferToggle( &rsh.device, rsh.pogoBuffer + rsh.swapchainIndex, &rsh.frame.handle );
+			RI_PogoBufferToggle( &rsh.device, rsh.pogoBuffer + rsh.frameIndex, &rsh.frame.handle );
 			FR_CmdResetCommandState( &rsh.frame, CMD_RESET_DEFAULT_PIPELINE_LAYOUT | CMD_RESET_VERTEX_BUFFER );
 			// reset back to back buffer
 			{
 				VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-				RI_VK_FillColorAttachment( &colorAttachment, RISwapchainGetTextureView(&rsh.swapchain, rsh.swapchainIndex), false );
+				RI_VK_FillColorAttachment( &colorAttachment, rsh.backbufferView[rsh.frameIndex], false );
 
 				VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-				RI_VK_FillDepthAttachment( &depthStencil, rsh.depthView[rsh.swapchainIndex], false );
+				RI_VK_FillDepthAttachment( &depthStencil, rsh.depthView[rsh.frameIndex], false );
 
 				VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
 				renderingInfo.flags = 0;
@@ -464,7 +464,7 @@ void R_RenderScene(const refdef_t *fd )
 				enum RI_Format_e attachments[] = { rsh.swapchain.format };
 				FR_ConfigurePipelineAttachment( &rsh.frame.pipeline, attachments, Q_ARRAY_COUNT( attachments ), RI_FORMAT_D32_SFLOAT );
 			}
-			postProcessingHandlers[numPostProcessing - 1]( fd, &rsh.frame, RI_PogoBufferShaderResource( rsh.pogoBuffer + rsh.swapchainIndex ) );
+			postProcessingHandlers[numPostProcessing - 1]( fd, &rsh.frame, RI_PogoBufferShaderResource( rsh.pogoBuffer + rsh.frameIndex ) );
 		}
 #endif
 	}

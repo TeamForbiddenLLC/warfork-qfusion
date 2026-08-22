@@ -12,6 +12,10 @@ enum RIQueueType_e {
 	RI_QUEUE_GRAPHICS,
 	RI_QUEUE_COMPUTE,
 	RI_QUEUE_COPY,
+	// Presentation. Requested last so the three above keep their families/slots; it lands on a spare
+	// slot of an already-used family where one exists, and degrades to a duplicate of an existing
+	// queue otherwise. Whether it is genuinely distinct is what decides if RF_QueueLock does anything.
+	RI_QUEUE_PRESENT,
 	RI_QUEUE_LEN
 };
 
