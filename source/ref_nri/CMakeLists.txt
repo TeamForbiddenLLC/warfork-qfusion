@@ -10,7 +10,7 @@ file(GLOB REF_NRI_HEADERS
 	"../qcommon/iqm.h"
 	"../qcommon/qfiles.h"
 	"../qalgo/*.h"
-	"${REF_BASE_DIR}/*.h"
+	"../ref_base/*.h"
 	)
 
 file(GLOB REF_NRI_COMMON_SOURCES
@@ -30,7 +30,8 @@ file(GLOB STB_HEADERS
 )
 
 add_library(ref_nri SHARED ${REF_NRI_HEADERS} ${REF_NRI_COMMON_SOURCES} ${REF_NRI_PLATFORM_SOURCES})
-target_include_directories(ref_nri PRIVATE ${STB_INCLUDE_DIR} "../ref_base" "${NRI_DIR}/External/vulkan/include")
+# "." last so shared ref_base/*.c sources can resolve this renderer's own r_local.h
+target_include_directories(ref_nri PRIVATE ${STB_INCLUDE_DIR} "../ref_base" "${NRI_DIR}/External/vulkan/include" ".")
 target_link_libraries(ref_nri PRIVATE volk)
 target_link_libraries(ref_nri PRIVATE VulkanMemoryAllocator)
 target_link_libraries(ref_nri PRIVATE glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV glslang::SPVRemapper qcore volk Tracy::TracyClient)

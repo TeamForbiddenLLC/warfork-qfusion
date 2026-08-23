@@ -27,7 +27,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_texture_buf.h"
 #include "r_texture_buffer_load.h"
 #include "r_texture_format.h"
-#include "../ref_base/r_math_util.h"
+#include "r_math_util.h"
 
 #define LIGHTGRID_HASH_SIZE 8192
 

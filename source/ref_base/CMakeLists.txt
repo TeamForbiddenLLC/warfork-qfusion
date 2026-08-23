@@ -15,6 +15,12 @@ function(add_ref_base_test)
 endfunction()
 
 
+# NOTE: this "*.c" glob now also sweeps up shared renderer sources that only
+# compile against a consuming renderer's r_local.h:
+#   r_q3bsp.c, r_q1q2bsp.c, r_skin.c, r_trace.c, r_cull.c, r_texture_buffer_load.c
+# Whoever re-enables the test block below must exclude them. The backend-neutral
+# sources the test actually wants (r_texture_buf.c, r_texture_decode.c,
+# r_texture_format.c) are already listed explicitly there.
 file(GLOB REF_GL_COMMON_SOURCES
 	"*.c"
 	"../gameshared/q_*.c"
