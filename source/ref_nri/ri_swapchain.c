@@ -5,6 +5,8 @@
 #include "ri_timeline.h"
 #include "ri_types.h"
 #include "ri_vk.h"
+#include "ri_mtl.h"
+
 #if ( DEVICE_IMPL_VULKAN )
 
 static uint32_t __priority_BT709_G22_16BIT( const VkSurfaceFormatKHR *surface )
@@ -36,12 +38,13 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 	assert( init->windowHandle );
 	assert( init );
 	assert( swapchain );
-	assert( init->requestImageCount <= Q_ARRAY_COUNT( swapchain->vk.images ) && init->requestImageCount > 0 );
+	assert( init->requestImageCount > 0 );
 	swapchain->width = init->width;
 	swapchain->height = init->height;
 	swapchain->presentQueue = init->queue;
-	VkResult result = VK_SUCCESS;
 #if ( DEVICE_IMPL_VULKAN )
+	assert( init->requestImageCount <= Q_ARRAY_COUNT( swapchain->vk.images ) );
+	VkResult result = VK_SUCCESS;
 	{
 		switch( init->windowHandle->type ) {
 #ifdef VK_USE_PLATFORM_XLIB_KHR
@@ -88,7 +91,6 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 				break;
 		}
 	}
-#endif
 	VkSurfaceCapabilitiesKHR surfaceCaps = { 0 };
 	result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR( dev->physicalAdapter.vk.physicalDevice, swapchain->vk.surface, &surfaceCaps );
 	VK_WrapResult( result );
@@ -220,13 +222,35 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 	}
 	free( supportedPresentMode );
 	free( surfaceFormats );
+#endif // DEVICE_IMPL_VULKAN
+#if ( DEVICE_IMPL_MTL )
+	{
+		// Bind the caller's CAMetalLayer (owned by the windowing layer) to our device. Unlike VK there is
+		// no surface/format enumeration or explicit image ring -- the layer vends drawables on demand.
+		struct ca_metal_layer layer = ca_metal_layer_from_id( init->windowHandle->metal.caMetalLayer );
+		swapchain->format = RI_FORMAT_BGRA8_UNORM; // CAMetalLayer's default renderable format
+		ca_metal_layer_set_device( layer, dev->mtl.device );
+		ca_metal_layer_set_pixel_format( layer, RIFormatToMTL( swapchain->format ) );
+		ca_metal_layer_set_drawable_size( layer, ( struct cg_size ){ .width = init->width, .height = init->height } );
+		// Present synchronously on the CPU thread via a CATransaction (see RISwapchainFrameSubmit). This
+		// engine runs its own frame loop and never returns to the Cocoa run loop, so the GPU-scheduled
+		// presentDrawable path never recycles drawables (nextDrawable then blocks once the pool drains).
+		// presentsWithTransaction + an explicit CATransaction flushes the flip on this thread instead.
+		ca_metal_layer_set_presents_with_transaction( layer, true );
+		swapchain->mtl.layer = layer;
+		swapchain->mtl.currentDrawable = ca_metal_drawable_from_id( NULL );
+		swapchain->mtl.currentTexture = mtlc_texture_from_id( NULL );
+		swapchain->mtl.outOfDate = 0;
+		swapchain->mtl.acquireFailed = 0;
+	}
+#endif
 	return RI_SUCCESS;
 }
 
 uint32_t RISwapchainAcquireNextTexture( struct RIDevice_s *dev, struct RISwapchain_s *swapchain )
 {
-	assert(swapchain->vk.imageCount > 0);
 #if ( DEVICE_IMPL_VULKAN )
+	assert(swapchain->vk.imageCount > 0);
 	{
 		uint32_t image_index = 0;
 		swapchain->vk.acquireIdx = ( swapchain->vk.acquireIdx + 1 ) % swapchain->vk.imageCount;
@@ -253,6 +277,21 @@ uint32_t RISwapchainAcquireNextTexture( struct RIDevice_s *dev, struct RISwapcha
 		return image_index;
 	}
 #endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		// CAMetalLayer vends one drawable at a time; there is no image index. Cache the drawable and its
+		// texture for GetTexture(View)/FrameSubmit and return 0. A nil drawable mirrors VK OUT_OF_DATE.
+		struct ca_metal_drawable drawable = ca_metal_layer_next_drawable( swapchain->mtl.layer );
+		if( ca_metal_drawable_is_nil( drawable ) ) {
+			swapchain->mtl.outOfDate = 1;
+			swapchain->mtl.acquireFailed = 1;
+			return 0;
+		}
+		swapchain->mtl.currentDrawable = drawable;
+		swapchain->mtl.currentTexture = ca_metal_drawable_texture( drawable );
+		return 0;
+	}
+#endif
 	return 0;
 }
 
@@ -277,11 +316,15 @@ void FreeRISwapchain( struct RIDevice_s *dev, struct RISwapchain_s *swapchain )
 	}
 	memset( swapchain, 0, sizeof( struct RISwapchain_s ) );
 #endif
+#if ( DEVICE_IMPL_MTL )
+	// The CAMetalLayer and its drawables are owned by the window / autorelease pool; just drop our refs.
+	memset( swapchain, 0, sizeof( struct RISwapchain_s ) );
+#endif
 }
 
+#if ( DEVICE_IMPL_VULKAN )
 VkResult RISwapchainPresent_vk( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, uint32_t index, size_t num_wait_semaphores, VkSemaphore *wait_semaphores )
 {
-#if ( DEVICE_IMPL_VULKAN )
 	{
 		VkPresentInfoKHR presentInfo = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
 		presentInfo.waitSemaphoreCount = num_wait_semaphores;
@@ -291,9 +334,8 @@ VkResult RISwapchainPresent_vk( struct RIDevice_s *dev, struct RISwapchain_s *sw
 		presentInfo.pImageIndices = &index;
 		return vkQueuePresentKHR( swapchain->presentQueue->vk.queue, &presentInfo );
 	}
-#endif
-	return VK_SUCCESS;
 }
+#endif
 
 int RISwapchainFrameSubmit( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, struct RIQueue_s *queue, struct RISwapchainFrameSubmitDesc_s *desc )
 {
@@ -366,6 +408,25 @@ int RISwapchainFrameSubmit( struct RIDevice_s *dev, struct RISwapchain_s *swapch
 		swapchain->vk.acquireFailed = 0;
 	}
 #endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		// Synchronous, run-loop-independent present. With presentsWithTransaction set, commit the render
+		// work, wait until it is scheduled, then present the drawable inside an explicit CATransaction: that
+		// flushes the flip on this thread and returns the drawable to the layer's pool. A GPU-scheduled
+		// presentDrawable does NOT recycle here (the engine never services the Cocoa run loop), so this
+		// stays synchronous — ~vsync paced, one frame in flight. (Async pacing was tried and hangs.)
+		mtlc_command_buffer_commit( desc->cmd->mtl.cmd );
+		mtlc_command_buffer_wait_until_scheduled( desc->cmd->mtl.cmd );
+		if( !swapchain->mtl.acquireFailed && !ca_metal_drawable_is_nil( swapchain->mtl.currentDrawable ) ) {
+			mtlc_transaction_begin();
+			ca_metal_drawable_present( swapchain->mtl.currentDrawable );
+			mtlc_transaction_commit();
+		}
+		swapchain->mtl.currentDrawable = ca_metal_drawable_from_id( NULL );
+		swapchain->mtl.currentTexture = mtlc_texture_from_id( NULL );
+		swapchain->mtl.acquireFailed = 0;
+	}
+#endif
 	return RI_SUCCESS;
 }
 
@@ -373,7 +434,14 @@ int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, 
 {
 	// Nothing to do when the size is unchanged and the swapchain is still valid. An OUT_OF_DATE
 	// swapchain must be rebuilt even at the same size, so honor that flag here.
-	if( width == swapchain->width && height == swapchain->height && !swapchain->vk.outOfDate )
+	bool outOfDate = false;
+#if ( DEVICE_IMPL_VULKAN )
+	outOfDate = swapchain->vk.outOfDate;
+#endif
+#if ( DEVICE_IMPL_MTL )
+	outOfDate = swapchain->mtl.outOfDate;
+#endif
+	if( width == swapchain->width && height == swapchain->height && !outOfDate )
 		return 0;
 #if ( DEVICE_IMPL_VULKAN )
 	{
@@ -471,24 +539,48 @@ int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, 
 		swapchain->height = height;
 	}
 #endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		// A Metal resize is just a new drawable size; the layer re-vends drawables at the new extent.
+		ca_metal_layer_set_drawable_size( swapchain->mtl.layer, ( struct cg_size ){ .width = width, .height = height } );
+		swapchain->mtl.outOfDate = 0;
+		swapchain->mtl.acquireFailed = 0;
+		swapchain->width = width;
+		swapchain->height = height;
+	}
+#endif
 	return 1;
 }
 
 struct RITextureView_s RISwapchainGetTextureView(struct RISwapchain_s *swapchain, uint32_t index) {
 	struct RITextureView_s view = {
+#if ( DEVICE_IMPL_VULKAN )
 		.vk = {
 			.image = swapchain->vk.views[index]
-		}
+		},
+#endif
+#if ( DEVICE_IMPL_MTL )
+		.mtl = {
+			.texture = swapchain->mtl.currentTexture // the acquired drawable's texture serves as its view
+		},
+#endif
 	};
 	return view;
 }
 
 struct RITexture_s RISwapchainGetTexture(struct RISwapchain_s *swapchain, uint32_t index) {
 	struct RITexture_s texture = {
+#if ( DEVICE_IMPL_VULKAN )
 		.vk = {
 			.image = swapchain->vk.images[index],
 			.allocation = NULL // swapchain-owned; not a VMA allocation
-		}
+		},
+#endif
+#if ( DEVICE_IMPL_MTL )
+		.mtl = {
+			.texture = swapchain->mtl.currentTexture // swapchain-owned drawable texture
+		},
+#endif
 	};
 	return texture;
 }
@@ -497,6 +589,9 @@ uint32_t RISwapchainGetImageCount( struct RISwapchain_s *swapchain )
 {
 #if ( DEVICE_IMPL_VULKAN )
 	return swapchain->vk.imageCount;
+#endif
+#if ( DEVICE_IMPL_MTL )
+	return 1; // one logical drawable in flight; enough for IsRISwapchainValid and frame pacing
 #endif
 	return 0;
 }

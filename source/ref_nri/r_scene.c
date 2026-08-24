@@ -354,7 +354,7 @@ void R_RenderScene(const refdef_t *fd )
 		if( numPostProcessing > 0 ) {
 			vkCmdEndRendering( rsh.frame.handle.vk.cmd ); // end back buffer and swap to pogo attachment
 			VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-			RI_VK_FillColorAttachment( &colorAttachment, *RI_PogoBufferAttachment( rsh.pogoBuffer + rsh.swapchainIndex ), true);
+			RI_VK_FillColorAttachment( &colorAttachment, *RI_PogoBufferAttachment( rsh.pogoBuffer + rsh.swapchainIndex ), true, NULL );
 
 			VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 			RI_VK_FillDepthAttachment( &depthStencil, rsh.depthView[rsh.swapchainIndex], false);
@@ -416,7 +416,7 @@ void R_RenderScene(const refdef_t *fd )
 				RI_PogoBufferToggle( &rsh.device, rsh.pogoBuffer + rsh.swapchainIndex, &rsh.frame.handle );
 				{
 					VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-					RI_VK_FillColorAttachment( &colorAttachment, *RI_PogoBufferAttachment( rsh.pogoBuffer + rsh.swapchainIndex ), true );
+					RI_VK_FillColorAttachment( &colorAttachment, *RI_PogoBufferAttachment( rsh.pogoBuffer + rsh.swapchainIndex ), true, NULL );
 
 					VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 					RI_VK_FillDepthAttachment( &depthStencil, rsh.depthView[rsh.swapchainIndex], false );
@@ -445,7 +445,7 @@ void R_RenderScene(const refdef_t *fd )
 			// reset back to back buffer
 			{
 				VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-				RI_VK_FillColorAttachment( &colorAttachment, RISwapchainGetTextureView(&rsh.swapchain, rsh.swapchainIndex), false );
+				RI_VK_FillColorAttachment( &colorAttachment, RISwapchainGetTextureView(&rsh.swapchain, rsh.swapchainIndex), false, NULL );
 
 				VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 				RI_VK_FillDepthAttachment( &depthStencil, rsh.depthView[rsh.swapchainIndex], false );

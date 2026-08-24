@@ -49,6 +49,7 @@
             "generator": "Xcode",
             "cacheVariables": {
                 "USE_SYSTEM_CURL": "1",
+                "USE_GRAPHICS_NRI": "1",
                 "CMAKE_POLICY_VERSION_MINIMUM": "3.5"
             }
         },

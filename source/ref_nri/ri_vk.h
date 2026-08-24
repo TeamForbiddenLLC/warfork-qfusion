@@ -160,7 +160,8 @@ static inline VkImageAspectFlags RI_VK_BarrierAspect( uint8_t aspect )
 	return VK_IMAGE_ASPECT_COLOR_BIT;
 }
 
-static inline void RI_VK_FillColorAttachment( VkRenderingAttachmentInfo *info, struct RITextureView_s view, bool attachAndClear )
+// clearColor may be NULL for transparent black
+static inline void RI_VK_FillColorAttachment( VkRenderingAttachmentInfo *info, struct RITextureView_s view, bool attachAndClear, const float clearColor[4] )
 {
 	info->imageView = view.vk.image;
 	info->imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -169,6 +170,8 @@ static inline void RI_VK_FillColorAttachment( VkRenderingAttachmentInfo *info, s
 	info->resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	info->loadOp = attachAndClear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
 	info->storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	for( size_t i = 0; i < 4; i++ )
+		info->clearValue.color.float32[i] = clearColor ? clearColor[i] : 0.0f;
 }
 
 static inline void RI_VK_FillDepthAttachment( VkRenderingAttachmentInfo *info, struct RITextureView_s view, bool attachAndClear )

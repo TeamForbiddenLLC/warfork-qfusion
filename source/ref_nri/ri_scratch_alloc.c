@@ -30,6 +30,17 @@ struct RIBlockMem_s RIUniformScratchAllocHandler( struct RIDevice_s *device, str
 		mem.pMappedAddress = allocationInfo.pMappedData;
 	}
 #endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		// A Shared, mapped uniform scratch block. On Apple Silicon this is directly GPU-visible, so the
+		// UBO data the frontend writes here is usable by draws once the draw/bind path lands (Milestone C).
+		struct RIBufferDesc_s desc = { .size = scratch->blockSize, .usage = RI_BUFFER_USAGE_CONSTANT_BUFFER, .memoryLocation = RI_MEMORY_HOST_UPLOAD };
+		struct RIBuffer_s buf = { 0 };
+		InitRIBuffer( device, &desc, &buf );
+		mem.mtl.buffer = buf.mtl.buffer;
+		mem.pMappedAddress = RIBufferMappedData( device, &buf );
+	}
+#endif
 	return mem;
 }
 
@@ -47,6 +58,9 @@ static inline bool __isPoolSlotEmpty( struct RIDevice_s *device, struct RIBlockM
 		return block->vk.buffer == NULL;
 	}
 #endif
+#if ( DEVICE_IMPL_MTL )
+	return mtlc_buffer_is_nil( block->mtl.buffer );
+#endif
 	return false;
 }
 
@@ -59,11 +73,18 @@ static inline void __FreeRIBlockMem(struct RIDevice_s *device,struct RIBlockMem_
 		vmaFreeMemory( device->vk.vmaAllocator, block->vk.allocator );
 	}
 #endif
+#if ( DEVICE_IMPL_MTL )
+	if( !mtlc_buffer_is_nil( block->mtl.buffer ) ) {
+		mtlc_buffer_release( block->mtl.buffer );
+		block->mtl.buffer = mtlc_buffer_from_id( NULL );
+	}
+#endif
 }
 
 void FreeRIScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s *pool ) {
-#if ( DEVICE_IMPL_VULKAN )
-	if( pool->current.vk.buffer ) {
+	// Backend-neutral: __FreeRIBlockMem has an arm per backend. This used to sit behind the Vulkan
+	// guard, which leaked every scratch block on Metal across vid_restart.
+	if( !__isPoolSlotEmpty( device, &pool->current ) ) {
 		__FreeRIBlockMem( device, &pool->current );
 	}
 
@@ -74,7 +95,6 @@ void FreeRIScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s *poo
 	for( size_t i = 0; i < arrlen( pool->pool ); i++ ) {
 		__FreeRIBlockMem( device, &pool->pool[i] );
 	}
-#endif
 	arrfree( pool->recycle );
 	arrfree( pool->pool );
 }
@@ -138,5 +158,12 @@ void RIFinishScrachReq( struct RIDevice_s *device, struct RIBufferScratchAllocRe
 {
 #if ( DEVICE_IMPL_VULKAN )
 	VK_WrapResult( vmaFlushAllocation( device->vk.vmaAllocator, req->block.vk.allocator, req->bufferOffset, req->bufferSize ) );
+#endif
+#if ( DEVICE_IMPL_MTL )
+	// The Metal counterpart of the flush above. InitRIBuffer gives a host-upload block Shared storage on
+	// unified memory (nothing to publish) but Managed storage on a discrete GPU, where a CPU write is
+	// invisible to the GPU until didModifyRange: -- without this every UBO on an Intel/AMD Mac is stale.
+	if( !device->physicalAdapter.mtl.hasUnifiedMemory && !mtlc_buffer_is_nil( req->block.mtl.buffer ) )
+		mtlc_buffer_did_modify_range( req->block.mtl.buffer, (struct ns_range){ req->bufferOffset, req->bufferSize } );
 #endif
 }

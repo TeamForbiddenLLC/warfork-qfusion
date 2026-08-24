@@ -1,4 +1,13 @@
-#define DEVICE_SUPPORT_VULKAN
+// Backend selection is compile-time and mutually exclusive (see the #error below). Pick a platform
+// default only when the consumer has not forced one on the command line (e.g. -DDEVICE_SUPPORT_VULKAN
+// to run MoltenVK on macOS for A/B testing). macOS renders natively on Metal; everything else Vulkan.
+#if !defined( DEVICE_SUPPORT_VULKAN ) && !defined( DEVICE_SUPPORT_MTL ) && !defined( DEVICE_SUPPORT_D3D11 ) && !defined( DEVICE_SUPPORT_D3D12 )
+	#if defined( __APPLE__ )
+		#define DEVICE_SUPPORT_MTL
+	#else
+		#define DEVICE_SUPPORT_VULKAN
+	#endif
+#endif
 
 #ifdef DEVICE_SUPPORT_VULKAN
 #define VK_NO_PROPERTIES

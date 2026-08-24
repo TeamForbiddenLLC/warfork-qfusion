@@ -80,17 +80,8 @@ void RB_Shutdown( void )
 {
 	TracyCZoneN( ctx, "RB_Shutdown", 1 );
 	for( size_t i = 0; i < RB_DYN_STREAM_NUM; i++ ) {
-#if ( DEVICE_IMPL_VULKAN )
-		if( rb.dynamicStreams[i].vk.vertexBuffer ) {
-			vkDestroyBuffer( rsh.device.vk.device, rb.dynamicStreams[i].vk.vertexBuffer, NULL );
-			vmaFreeMemory( rsh.device.vk.vmaAllocator, rb.dynamicStreams[i].vk.vertexAlloc );
-		}
-		if( rb.dynamicStreams[i].vk.indexBuffer ) {
-			vkDestroyBuffer( rsh.device.vk.device, rb.dynamicStreams[i].vk.indexBuffer, NULL );
-			vmaFreeMemory( rsh.device.vk.vmaAllocator, rb.dynamicStreams[i].vk.indexAlloc );
-		}
-
-#endif
+		FreeRIBuffer( &rsh.device, &rb.dynamicStreams[i].vertexBuffer );
+		FreeRIBuffer( &rsh.device, &rb.dynamicStreams[i].indexBuffer );
 	}
 	memset( rb.dynamicStreams, 0, sizeof( struct dynamic_vertex_stream_s ) * RB_DYN_STREAM_NUM );
 	RP_StorePrecacheList();
@@ -101,6 +92,28 @@ void RB_Shutdown( void )
 /*
  * RB_BeginRegistration
  */
+// Defer destruction of a dynamic-stream buffer to the active frame set: it may still be in flight this
+// frame. No-op for an uncreated buffer. Backend-neutral (mirrors R_ReleaseMeshVBO's deferred free).
+static void __RB_DeferFreeStreamBuffer( struct r_frame_set_s *active, struct RIBuffer_s *buffer )
+{
+	if( !IsRIBufferValid( &rsh.renderer, buffer ) )
+		return;
+	struct RIFree_s freeEntry = { 0 };
+#if ( DEVICE_IMPL_VULKAN )
+	freeEntry.type = RI_FREE_VK_BUFFER;
+	freeEntry.vkBuffer = buffer->vk.buffer;
+	arrpush( active->freeList, freeEntry );
+	freeEntry.type = RI_FREE_VK_VMA_AllOC;
+	freeEntry.vmaAlloc = buffer->vk.allocation;
+	arrpush( active->freeList, freeEntry );
+#endif
+#if ( DEVICE_IMPL_MTL )
+	freeEntry.type = RI_FREE_MTL_BUFFER;
+	freeEntry.mtlBuffer = buffer->mtl.buffer;
+	arrpush( active->freeList, freeEntry );
+#endif
+}
+
 void RB_BeginRegistration( void )
 {
 	TracyCZoneN( ctx, "RB_BeginRegistration", 1 );
@@ -450,9 +463,8 @@ void RB_AddDynamicMesh( struct FrameState_s *cmd,
 	struct dynamic_vertex_stream_s *const selectedStream = &( rb.dynamicStreams[streamId] );
 	struct r_frame_set_s *active = R_GetActiveFrameSet();
 
-#if ( DEVICE_IMPL_VULKAN )
 	{
-		if( selectedStream->vk.vertexAlloc == NULL || !RISegmentAlloc( rsh.frameSetCount, &selectedStream->vertexAllocator, numVerts, &vertexReq ) ) {
+		if( !IsRIBufferValid( &rsh.renderer, &selectedStream->vertexBuffer ) || !RISegmentAlloc( rsh.frameSetCount, &selectedStream->vertexAllocator, numVerts, &vertexReq ) ) {
 			struct RISegmentAllocDesc_s segmentAllocDesc = { 0 };
 			segmentAllocDesc.numSegments = NUMBER_FRAMES_FLIGHT;
 			segmentAllocDesc.elementStride = selectedStream->layout.vertexStride;
@@ -463,32 +475,16 @@ void RB_AddDynamicMesh( struct FrameState_s *cmd,
 			InitRISegmentAlloc( &selectedStream->vertexAllocator, &segmentAllocDesc );
 			RISegmentAlloc( rsh.frameSetCount, &selectedStream->vertexAllocator, numVerts, &vertexReq );
 
-			uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
-			VkBufferCreateInfo vertexBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-			VK_ConfigureBufferQueueFamilies( &vertexBufferCreateInfo, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
-			vertexBufferCreateInfo.pNext = NULL;
-			vertexBufferCreateInfo.flags = 0;
-			vertexBufferCreateInfo.size = segmentAllocDesc.maxElements * segmentAllocDesc.elementStride;
-			vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-
-			VmaAllocationInfo allocationInfo = { 0 };
-			VmaAllocationCreateInfo allocInfo = { 0 };
-			allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-			allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-			if( selectedStream->vk.vertexBuffer ) {
-				struct RIFree_s freeEntry;
-				freeEntry.type = RI_FREE_VK_BUFFER;
-				freeEntry.vkBuffer = selectedStream->vk.vertexBuffer;
-				arrpush( active->freeList, freeEntry );
-				freeEntry.type = RI_FREE_VK_VMA_AllOC;
-				freeEntry.vmaAlloc = selectedStream->vk.vertexAlloc;
-				arrpush( active->freeList, freeEntry );
-			}
-
-			VK_WrapResult( vmaCreateBuffer( rsh.device.vk.vmaAllocator, &vertexBufferCreateInfo, &allocInfo, &selectedStream->vk.vertexBuffer, &selectedStream->vk.vertexAlloc, &allocationInfo ) );
-			rb.dynamicStreams[streamId].pVtxMappedAddress = allocationInfo.pMappedData;
+			__RB_DeferFreeStreamBuffer( active, &selectedStream->vertexBuffer );
+			struct RIBufferDesc_s vertexBufferDesc = {
+				.size = segmentAllocDesc.maxElements * segmentAllocDesc.elementStride,
+				.usage = RI_BUFFER_USAGE_VERTEX_BUFFER,
+				.memoryLocation = RI_MEMORY_HOST_UPLOAD,
+			};
+			InitRIBuffer( &rsh.device, &vertexBufferDesc, &selectedStream->vertexBuffer );
+			selectedStream->pVtxMappedAddress = RIBufferMappedData( &rsh.device, &selectedStream->vertexBuffer );
 		}
-		if( rb.dynamicStreams[streamId].vk.indexAlloc == NULL || !RISegmentAlloc( rsh.frameSetCount, &selectedStream->indexAllocator, numElems, &eleReq ) ) {
+		if( !IsRIBufferValid( &rsh.renderer, &selectedStream->indexBuffer ) || !RISegmentAlloc( rsh.frameSetCount, &selectedStream->indexAllocator, numElems, &eleReq ) ) {
 			struct RISegmentAllocDesc_s segmentAllocDesc = { 0 };
 			segmentAllocDesc.numSegments = NUMBER_FRAMES_FLIGHT;
 			segmentAllocDesc.elementStride = sizeof( uint16_t );
@@ -499,32 +495,16 @@ void RB_AddDynamicMesh( struct FrameState_s *cmd,
 			InitRISegmentAlloc( &selectedStream->indexAllocator, &segmentAllocDesc );
 			RISegmentAlloc( rsh.frameSetCount, &selectedStream->indexAllocator, numElems, &eleReq );
 
-			uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
-			VkBufferCreateInfo indexBufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-			VK_ConfigureBufferQueueFamilies( &indexBufferCreateInfo, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
-			indexBufferCreateInfo.pNext = NULL;
-			indexBufferCreateInfo.flags = 0;
-			indexBufferCreateInfo.size = segmentAllocDesc.maxElements * segmentAllocDesc.elementStride;
-			indexBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-
-			VmaAllocationInfo allocationInfo = { 0 };
-			VmaAllocationCreateInfo allocInfo = { 0 };
-			allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-			allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-			if( selectedStream->vk.indexBuffer ) {
-				struct RIFree_s freeEntry;
-				freeEntry.type = RI_FREE_VK_BUFFER;
-				freeEntry.vkBuffer = selectedStream->vk.indexBuffer;
-				arrpush( active->freeList, freeEntry );
-				freeEntry.type = RI_FREE_VK_VMA_AllOC;
-				freeEntry.vmaAlloc = selectedStream->vk.indexAlloc;
-				arrpush( active->freeList, freeEntry );
-			}
-			VK_WrapResult( vmaCreateBuffer( rsh.device.vk.vmaAllocator, &indexBufferCreateInfo, &allocInfo, &selectedStream->vk.indexBuffer, &selectedStream->vk.indexAlloc, &allocationInfo ) );
-			rb.dynamicStreams[streamId].pIdxMappedAddress = allocationInfo.pMappedData;
+			__RB_DeferFreeStreamBuffer( active, &selectedStream->indexBuffer );
+			struct RIBufferDesc_s indexBufferDesc = {
+				.size = segmentAllocDesc.maxElements * segmentAllocDesc.elementStride,
+				.usage = RI_BUFFER_USAGE_INDEX_BUFFER,
+				.memoryLocation = RI_MEMORY_HOST_UPLOAD,
+			};
+			InitRIBuffer( &rsh.device, &indexBufferDesc, &selectedStream->indexBuffer );
+			selectedStream->pIdxMappedAddress = RIBufferMappedData( &rsh.device, &selectedStream->indexBuffer );
 		}
 	}
-#endif
 
 	if( !merge || ( rb.numDynamicDraws + 1 ) >= MAX_DYNAMIC_DRAWS ) {
 		// wrap if overflows
@@ -534,7 +514,7 @@ void RB_AddDynamicMesh( struct FrameState_s *cmd,
 
 	uint32_t vertexStartIdx = 0;
 	// we can only merge if the request from the buffer is continuous
-	if( merge && selectedStream->vk.vertexBuffer == prev->vertexBuffer.vk.buffer && selectedStream->vk.indexBuffer == prev->indexBuffer.vk.buffer &&
+	if( merge && selectedStream->vertexBuffer.cookie == prev->vertexBuffer.cookie && selectedStream->indexBuffer.cookie == prev->indexBuffer.cookie &&
 		IsRISegmentBufferContinous( prev->bufferIndexEleOffset, prev->numElems, eleReq.elementOffset ) &&
 		IsRISegmentBufferContinous( prev->bufferVertEleOffset, prev->numVerts, vertexReq.elementOffset ) ) {
 		// merge continuous draw calls
@@ -557,8 +537,8 @@ void RB_AddDynamicMesh( struct FrameState_s *cmd,
 		draw->offset[0] = x_offset;
 		draw->offset[1] = y_offset;
 		memcpy( draw->scissor, scissor, sizeof( scissor ) );
-		draw->vertexBuffer.vk.buffer = selectedStream->vk.vertexBuffer;
-		draw->indexBuffer.vk.buffer = selectedStream->vk.indexBuffer;
+		draw->vertexBuffer = selectedStream->vertexBuffer;
+		draw->indexBuffer = selectedStream->indexBuffer;
 
 		draw->bufferIndexEleOffset = eleReq.elementOffset;
 		draw->numVerts = numVerts;
@@ -600,7 +580,7 @@ void RB_FlushDynamicMeshes( struct FrameState_s *cmd )
 	mat4_t m;
 
 	if( rb.numDynamicDraws == 0 ) {
-		
+
 		TracyCZoneEnd( ctx );
 		return;
 	}
