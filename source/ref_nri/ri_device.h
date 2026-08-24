@@ -52,6 +52,13 @@ struct RIRenderer_s {
 			VkDebugUtilsMessengerEXT debugMessageUtils;
 		} vk;
 #endif
+#if ( DEVICE_IMPL_MTL )
+		struct {
+			// Metal has no instance object; the renderer carries nothing global. Keep a field so the
+			// union is never empty and adapters can be enumerated straight from the system device.
+			uint32_t reserved;
+		} mtl;
+#endif
 	};
 };
 
@@ -67,6 +74,9 @@ struct RIBackendInit_s {
 		} vk;
 #endif
 #if ( DEVICE_IMPL_MTL )
+		struct {
+			uint32_t enableValidationLayer : 1; // maps to Metal API validation (env-driven; advisory)
+		} mtl;
 #endif
 	};
 };
@@ -322,6 +332,8 @@ struct RIPhysicalAdapter_s {
 #endif
 #if ( DEVICE_IMPL_MTL )
 		struct {
+			struct mtlc_device device;
+			uint32_t hasUnifiedMemory : 1; // Apple Silicon: prefer Shared storage; Intel discrete uses Managed
 		} mtl;
 #endif
 	};
@@ -343,6 +355,10 @@ struct RIDevice_s {
 		} vk;
 #endif
 #if ( DEVICE_IMPL_MTL )
+		struct {
+			struct mtlc_device device;
+			struct mtlc_command_queue queues[RI_QUEUE_LEN]; // one MTLCommandQueue per RIQueueType_e slot
+		} mtl;
 #endif
 	};
 };
@@ -360,6 +376,9 @@ static inline bool IsRIBufferValid( struct RIRenderer_s *renderer, const struct 
 #if ( DEVICE_IMPL_VULKAN )
 	return handle && handle->vk.buffer != NULL;
 #endif
+#if ( DEVICE_IMPL_MTL )
+	return handle && !mtlc_buffer_is_nil( handle->mtl.buffer );
+#endif
 	return false;
 }
 
@@ -367,6 +386,9 @@ static inline bool IsRITextureValid( struct RIRenderer_s *renderer, const struct
 {
 #if ( DEVICE_IMPL_VULKAN )
 	return handle && handle->vk.image != NULL;
+#endif
+#if ( DEVICE_IMPL_MTL )
+	return handle && !mtlc_texture_is_nil( handle->mtl.texture );
 #endif
 	return false;
 }

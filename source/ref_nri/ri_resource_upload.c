@@ -14,7 +14,9 @@
  * resets the staging offset, frees temporary buffers, resets the pool, and
  * begins the command buffer.  Returns the active VkCommandBuffer.
  */
-static VkCommandBuffer __AcquireCmd( struct RIDevice_s *device, struct RITransferCommandGroup_s *group )
+// Returns the active recording command buffer (backend-neutral RICmd), or NULL on backends where the
+// upload machinery is not yet implemented. VK callers read ->vk.cmd; the Metal copy path is Phase 3.
+static struct RICmd_s *__AcquireCmd( struct RIDevice_s *device, struct RITransferCommandGroup_s *group )
 {
 #if ( DEVICE_IMPL_VULKAN )
 	if( !group->is_recording ) {
@@ -37,9 +39,9 @@ static VkCommandBuffer __AcquireCmd( struct RIDevice_s *device, struct RITransfe
 
 		group->is_recording = true;
 	}
-	return group->cmd[group->active_set].vk.cmd;
+	return &group->cmd[group->active_set];
 #else
-	return VK_NULL_HANDLE;
+	return NULL;
 #endif
 }
 
@@ -208,6 +210,15 @@ static void __AllocateTemporaryBuffer( struct RIDevice_s *device, struct RITrans
 	out->buffer = tmp.vk.buffer;
 	out->alloc = tmp.vk.allocation;
 #endif
+#if ( DEVICE_IMPL_MTL )
+	// Metal uploads copy synchronously in RI_ResourceEndCopy* (CPU memcpy for buffers, replaceRegion for
+	// textures), so the staging only needs plain CPU memory — no MTLBuffer. It is freed at End, so nothing
+	// accumulates. (The VK staging-ring / temporary-buffer bookkeeping does not apply here.)
+	(void)group;
+	out->offset = 0;
+	out->size = size;
+	out->data = malloc( size );
+#endif
 }
 
 /*
@@ -267,7 +278,7 @@ void RI_ResourceEndCopyBuffer( struct RIDevice_s *device, struct RIResourceUploa
 	region.dstOffset = trans->offset;
 	region.size = trans->size;
 
-	VkCommandBuffer cmd = __AcquireCmd( device, &res->upload_resource );
+	VkCommandBuffer cmd = __AcquireCmd( device, &res->upload_resource )->vk.cmd;
 
 	if( trans->vk.current_stage != VK_PIPELINE_STAGE_2_COPY_BIT || trans->vk.current_access != VK_ACCESS_2_TRANSFER_WRITE_BIT ) {
 		VkBufferMemoryBarrier2 pre_barrier = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 };
@@ -304,6 +315,18 @@ void RI_ResourceEndCopyBuffer( struct RIDevice_s *device, struct RIResourceUploa
 			post_dependency_info.pBufferMemoryBarriers = &post_barrier;
 			vkCmdPipelineBarrier2( cmd, &post_dependency_info );
 		}
+	}
+#endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		// Unified memory: the target buffer is Shared (CPU-visible), so upload is a plain memcpy from the
+		// staging pointer — no blit encoder / transfer command buffer needed. (Discrete Private targets,
+		// which would need a blit, are deferred; hasUnifiedMemory forces Shared in InitRIBuffer.)
+		void *dst = RIBufferMappedData( device, &trans->target );
+		if( dst && trans->mapped.data )
+			memcpy( (uint8_t *)dst + trans->offset, trans->mapped.data, trans->size );
+		free( trans->mapped.data );
+		trans->mapped.data = NULL;
 	}
 #endif
 }
@@ -363,7 +386,7 @@ void RI_ResourceEndCopyTexture( struct RIDevice_s *device, struct RIResourceUplo
 	region.imageSubresource.layerCount = 1;
 	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-	VkCommandBuffer cmd = __AcquireCmd( device, &res->upload_resource );
+	VkCommandBuffer cmd = __AcquireCmd( device, &res->upload_resource )->vk.cmd;
 
 	if( trans->vk.current_stage != VK_PIPELINE_STAGE_2_COPY_BIT || trans->vk.current_access != VK_ACCESS_2_TRANSFER_WRITE_BIT ) {
 		VkImageMemoryBarrier2 pre_barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
@@ -410,6 +433,21 @@ void RI_ResourceEndCopyTexture( struct RIDevice_s *device, struct RIResourceUplo
 			post_dependency_info.pImageMemoryBarriers = &post_barrier;
 			vkCmdPipelineBarrier2( cmd, &post_dependency_info );
 		}
+	}
+#endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		// Direct CPU upload into the (Shared/Managed) texture from the staging pointer the caller filled.
+		// No blit encoder / command buffer: Metal's replaceRegion handles the copy (and Managed sync).
+		// The caller wrote rows at alignRowPitch (RI_ResourceBeginCopyTexture), so that is bytesPerRow.
+		struct mtlc_region region = {
+			.origin = { .x = trans->x, .y = trans->y, .z = trans->z },
+			.size = { .width = trans->width, .height = trans->height, .depth = trans->depth },
+		};
+		mtlc_texture_replace_region( trans->target.mtl.texture, region, trans->mipOffset, trans->arrayOffset,
+									 trans->mapped.data, trans->alignRowPitch, ( trans->depth > 1 ) ? trans->alignSlicePitch : 0 );
+		free( trans->mapped.data );
+		trans->mapped.data = NULL;
 	}
 #endif
 }

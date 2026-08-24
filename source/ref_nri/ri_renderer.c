@@ -7,6 +7,7 @@
 #include "ri_conversion.h"
 #include "ri_gpu_preset.h"
 #include "ri_vk.h"
+#include "ri_mtl.h"
 
 #include "ri_types.h"
 
@@ -503,9 +504,52 @@ int EnumerateRIAdapters( struct RIRenderer_s *renderer, struct RIPhysicalAdapter
 		}
 	}
 #endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		// Metal exposes a single logical device (the system default). Report one adapter; when queried
+		// for capacity only (adapters == NULL) just hand back the count.
+		if( adapters == NULL ) {
+			*numAdapters = 1;
+			return RI_SUCCESS;
+		}
+		assert( *numAdapters >= 1 );
+		struct RIPhysicalAdapter_s *physicalAdapter = &adapters[0];
+		memset( physicalAdapter, 0, sizeof( struct RIPhysicalAdapter_s ) );
+
+		struct mtlc_device device = mtlc_create_system_default_device();
+		if( mtlc_device_is_nil( device ) ) {
+			Com_Printf( "RI: no Metal system default device\n" );
+			return RI_FAIL;
+		}
+		physicalAdapter->mtl.device = device;
+		// Not cosmetic: this decides whether InitRIBuffer allocates Shared or Managed, and therefore
+		// whether a CPU write has to be published with didModifyRange:. Metal asserts if that is called on
+		// a Shared buffer, and silently drops the write if it is skipped on a Managed one, so both
+		// directions of getting this wrong are real.
+		physicalAdapter->mtl.hasUnifiedMemory = mtlc_device_has_unified_memory( device ) ? 1 : 0;
+
+		// Copy alignments. Metal's direct upload (replaceRegion / CPU memcpy) has no staging row/offset
+		// requirement, so 1. Buffer offsets bound via setBuffer:offset: must be aligned; 256 is safe across
+		// Apple GPUs. Leaving these 0 (memset default) collapses Q_ALIGN_TO to 0 -> zero-sized staging.
+		physicalAdapter->uploadBufferTextureRowAlignment = 1;
+		physicalAdapter->uploadBufferOffsetAlignment = 1;
+		physicalAdapter->bufferShaderResourceOffsetAlignment = 256;
+		physicalAdapter->constantBufferOffsetAlignment = 256;
+
+		const char *name = ns_string_utf8( mtlc_device_name( device ) );
+		if( name )
+			Q_strncpyz( physicalAdapter->name, name, sizeof( physicalAdapter->name ) );
+		physicalAdapter->type = mtlc_device_is_low_power( device ) ? RI_ADAPTER_TYPE_INTEGRATED_GPU : RI_ADAPTER_TYPE_DISCRETE_GPU;
+		physicalAdapter->vendor = RI_UNKNOWN;
+		physicalAdapter->presetLevel = RI_GPU_PRESET_HIGH;
+
+		*numAdapters = 1;
+	}
+#endif
 	return RI_SUCCESS;
 }
 
+#if ( DEVICE_IMPL_VULKAN )
 static inline VkDeviceQueueCreateInfo *__VK_findQueueCreateInfo( VkDeviceQueueCreateInfo *queues, size_t numQueues, uint32_t queueIndex )
 {
 	for( size_t i = 0; i < numQueues; i++ ) {
@@ -515,6 +559,7 @@ static inline VkDeviceQueueCreateInfo *__VK_findQueueCreateInfo( VkDeviceQueueCr
 	}
 	return NULL;
 }
+#endif
 
 int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, struct RIDevice_s *device )
 {
@@ -796,6 +841,25 @@ int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, st
 		arrfree( enabledExtensionNames );
 	}
 #endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		// The logical device is the adapter's system device (already copied into device->physicalAdapter).
+		struct mtlc_device mtlDevice = device->physicalAdapter.mtl.device;
+		if( mtlc_device_is_nil( mtlDevice ) ) {
+			riResult = RI_FAIL;
+		} else {
+			device->mtl.device = mtlDevice;
+			// Metal command queues carry no type; create one per RI queue slot so queue selection stays
+			// uniform with the VK backend. All draw/compute/copy work can go on any of them.
+			for( uint32_t i = 0; i < RI_QUEUE_LEN; i++ ) {
+				struct mtlc_command_queue queue = mtlc_device_new_command_queue( mtlDevice );
+				device->mtl.queues[i] = queue;
+				device->queues[i].mtl.queue = queue;
+				device->queues[i].mtl.queueType = (uint8_t)i;
+			}
+		}
+	}
+#endif
 	return riResult;
 }
 
@@ -911,6 +975,11 @@ int InitRIRenderer( const struct RIBackendInit_s *init, struct RIRenderer_s *ren
 		}
 	}
 #endif
+#if ( DEVICE_IMPL_MTL )
+	// Metal has no instance/loader object to create; the system default device is queried per adapter in
+	// EnumerateRIAdapters. API validation is enabled out-of-band via the MTL_DEBUG_LAYER env var.
+	(void)init;
+#endif
 	return RI_SUCCESS;
 }
 
@@ -928,6 +997,11 @@ struct RIDescriptor_s RIDescriptorUniformBuffer( struct RIDevice_s *dev, struct 
 	desc.vk.buffer.offset = offset;
 	desc.vk.buffer.range = range;
 #endif
+#if ( DEVICE_IMPL_MTL )
+	desc.mtl.buffer = buffer ? buffer->mtl.buffer : mtlc_buffer_from_id( NULL );
+	desc.mtl.offset = offset;
+	desc.mtl.range = range;
+#endif
 	if( buffer && buffer->cookie )
 		desc.cookie = hash_u64( hash_u64( hash_u64( buffer->cookie, desc.type ), offset ), range );
 	return desc;
@@ -942,6 +1016,11 @@ struct RIDescriptor_s RIDescriptorStorageBuffer( struct RIDevice_s *dev, struct 
 	desc.vk.buffer.buffer = buffer ? buffer->vk.buffer : VK_NULL_HANDLE;
 	desc.vk.buffer.offset = offset;
 	desc.vk.buffer.range = range;
+#endif
+#if ( DEVICE_IMPL_MTL )
+	desc.mtl.buffer = buffer ? buffer->mtl.buffer : mtlc_buffer_from_id( NULL );
+	desc.mtl.offset = offset;
+	desc.mtl.range = range;
 #endif
 	if( buffer && buffer->cookie )
 		desc.cookie = hash_u64( hash_u64( hash_u64( buffer->cookie, desc.type ), offset ), range );
@@ -958,6 +1037,9 @@ struct RIDescriptor_s RIDescriptorSampledImage( struct RIDevice_s *dev, struct R
 	desc.vk.image.imageView = view ? view->vk.image : VK_NULL_HANDLE;
 	desc.vk.image.imageLayout = RI_VK_ResourceStateToImageLayout( state );
 #endif
+#if ( DEVICE_IMPL_MTL )
+	desc.mtl.texture = view ? view->mtl.texture : mtlc_texture_from_id( NULL );
+#endif
 	if( view && view->cookie )
 		desc.cookie = hash_u64( hash_u64( view->cookie, desc.type ), (uint64_t)state );
 	return desc;
@@ -973,6 +1055,9 @@ struct RIDescriptor_s RIDescriptorStorageImage( struct RIDevice_s *dev, struct R
 	desc.vk.image.imageView = view ? view->vk.image : VK_NULL_HANDLE;
 	desc.vk.image.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 #endif
+#if ( DEVICE_IMPL_MTL )
+	desc.mtl.texture = view ? view->mtl.texture : mtlc_texture_from_id( NULL );
+#endif
 	if( view && view->cookie )
 		desc.cookie = hash_u64( view->cookie, desc.type );
 	return desc;
@@ -987,6 +1072,9 @@ struct RIDescriptor_s RIDescriptorSampler( struct RIDevice_s *dev, struct RISamp
 	desc.vk.image.sampler = sampler ? sampler->vk.sampler : VK_NULL_HANDLE;
 	desc.vk.image.imageView = VK_NULL_HANDLE;
 	desc.vk.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+#endif
+#if ( DEVICE_IMPL_MTL )
+	desc.mtl.sampler = sampler ? sampler->mtl.sampler : NULL;
 #endif
 	if( sampler && sampler->cookie )
 		desc.cookie = hash_u64( sampler->cookie, desc.type );
@@ -1015,8 +1103,18 @@ void FreeRISampler( struct RIDevice_s *dev, struct RISampler_s *sampler )
 	memset( sampler, 0, sizeof( struct RISampler_s ) );
 }
 
+// See RIResourceEpoch in ri_renderer.h. Bumped from every destruction path below; a plain counter is
+// enough because the renderer records on one thread.
+static uint64_t s_riResourceEpoch = 1;
+
+uint64_t RIResourceEpoch( void )
+{
+	return s_riResourceEpoch;
+}
+
 void FreeRIFree( struct RIDevice_s *dev, struct RIFree_s *mem )
 {
+	s_riResourceEpoch++;
 	assert( free );
 	switch( mem->type ) {
 #if ( DEVICE_IMPL_VULKAN )
@@ -1039,14 +1137,137 @@ void FreeRIFree( struct RIDevice_s *dev, struct RIFree_s *mem )
 			vkDestroyBufferView( dev->vk.device, mem->vkBufferView, NULL );
 			break;
 #endif
+#if ( DEVICE_IMPL_MTL )
+		case RI_FREE_MTL_BUFFER:
+			mtlc_buffer_release( mem->mtlBuffer );
+			break;
+		case RI_FREE_MTL_TEXTURE:
+			mtlc_texture_release( mem->mtlTexture );
+			break;
+#endif
 		default:
 			assert( false ); // invalid type to free
 			break;
 	}
 }
 
+#if ( DEVICE_IMPL_VULKAN )
+static VkBufferUsageFlags RI_VK_BufferUsage( uint32_t usage )
+{
+	// Every RI buffer is a valid copy source/target so the staging uploader can fill and read it back.
+	VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	if( usage & RI_BUFFER_USAGE_VERTEX_BUFFER )
+		flags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	if( usage & RI_BUFFER_USAGE_INDEX_BUFFER )
+		flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+	if( usage & RI_BUFFER_USAGE_CONSTANT_BUFFER )
+		flags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	if( usage & ( RI_BUFFER_USAGE_SHADER_RESOURCE | RI_BUFFER_USAGE_SHADER_RESOURCE_STORAGE ) )
+		flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	if( usage & RI_BUFFER_USAGE_ARGUMENT_BUFFER )
+		flags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+	return flags;
+}
+#endif
+
+int InitRIBuffer( struct RIDevice_s *dev, const struct RIBufferDesc_s *desc, struct RIBuffer_s *buffer )
+{
+	memset( buffer, 0, sizeof( *buffer ) );
+	buffer->cookie = hash_random();
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+		VkBufferCreateInfo bufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+		bufferCreateInfo.size = desc->size;
+		bufferCreateInfo.usage = RI_VK_BufferUsage( desc->usage );
+		VK_ConfigureBufferQueueFamilies( &bufferCreateInfo, dev->queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+
+		VmaAllocationCreateInfo allocInfo = { 0 };
+		switch( desc->memoryLocation ) {
+			case RI_MEMORY_HOST_UPLOAD:
+				allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+				allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+				break;
+			case RI_MEMORY_HOST_READBACK:
+				allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+				allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+				break;
+			default: // RI_MEMORY_DEVICE
+				allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+				break;
+		}
+		if( !VK_WrapResult( vmaCreateBuffer( dev->vk.vmaAllocator, &bufferCreateInfo, &allocInfo, &buffer->vk.buffer, &buffer->vk.allocation, NULL ) ) )
+			return RI_FAIL;
+	}
+#endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		// On unified memory (Apple Silicon) every buffer is CPU-visible, so even device-local buffers use
+		// Shared: the uploader fills them with a plain CPU copy (no staging blit / transfer command buffer).
+		// Only discrete GPUs keep device-local as Private (blit upload, deferred) and host as Managed.
+		enum mtlc_storage_mode storage;
+		mtlc_uinteger options;
+		if( dev->physicalAdapter.mtl.hasUnifiedMemory ) {
+			storage = MTLC_STORAGE_MODE_SHARED;
+			options = MTLC_RESOURCE_STORAGE_MODE_SHARED;
+		} else if( desc->memoryLocation == RI_MEMORY_DEVICE ) {
+			storage = MTLC_STORAGE_MODE_PRIVATE;
+			options = MTLC_RESOURCE_STORAGE_MODE_PRIVATE;
+		} else {
+			storage = MTLC_STORAGE_MODE_MANAGED;
+			options = MTLC_RESOURCE_STORAGE_MODE_MANAGED;
+		}
+		struct mtlc_buffer mtlBuffer = mtlc_device_new_buffer( dev->mtl.device, (mtlc_uinteger)desc->size, options );
+		if( mtlc_buffer_is_nil( mtlBuffer ) )
+			return RI_FAIL;
+		buffer->mtl.buffer = mtlBuffer;
+		buffer->mtl.storageMode = (uint8_t)storage;
+	}
+#endif
+	return RI_SUCCESS;
+}
+
+void FreeRIBuffer( struct RIDevice_s *dev, struct RIBuffer_s *buffer )
+{
+	s_riResourceEpoch++;
+#if ( DEVICE_IMPL_VULKAN )
+	if( buffer->vk.buffer ) {
+		if( buffer->vk.allocation )
+			vmaDestroyBuffer( dev->vk.vmaAllocator, buffer->vk.buffer, buffer->vk.allocation );
+		else
+			vkDestroyBuffer( dev->vk.device, buffer->vk.buffer, NULL );
+		buffer->vk.buffer = NULL;
+		buffer->vk.allocation = NULL;
+	}
+#endif
+#if ( DEVICE_IMPL_MTL )
+	if( !mtlc_buffer_is_nil( buffer->mtl.buffer ) ) {
+		mtlc_buffer_release( buffer->mtl.buffer );
+		buffer->mtl.buffer = mtlc_buffer_from_id( NULL );
+	}
+#endif
+}
+
+void *RIBufferMappedData( struct RIDevice_s *dev, struct RIBuffer_s *buffer )
+{
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		VmaAllocationInfo info = { 0 };
+		vmaGetAllocationInfo( dev->vk.vmaAllocator, buffer->vk.allocation, &info );
+		return info.pMappedData; // NULL unless allocated with VMA_ALLOCATION_CREATE_MAPPED_BIT
+	}
+#endif
+#if ( DEVICE_IMPL_MTL )
+	if( buffer->mtl.storageMode != MTLC_STORAGE_MODE_PRIVATE && !mtlc_buffer_is_nil( buffer->mtl.buffer ) )
+		return mtlc_buffer_contents( buffer->mtl.buffer );
+	return NULL;
+#endif
+	return NULL;
+}
+
 void FreeRITexture( struct RIDevice_s *dev, struct RITexture_s *tex )
 {
+	s_riResourceEpoch++;
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		if( tex->vk.image ) {
@@ -1060,10 +1281,17 @@ void FreeRITexture( struct RIDevice_s *dev, struct RITexture_s *tex )
 		}
 	}
 #endif
+#if ( DEVICE_IMPL_MTL )
+	if( !mtlc_texture_is_nil( tex->mtl.texture ) ) {
+		mtlc_texture_release( tex->mtl.texture );
+		tex->mtl.texture = mtlc_texture_from_id( NULL );
+	}
+#endif
 }
 
 void FreeRITextureView( struct RIDevice_s *dev, struct RITextureView_s *view )
 {
+	s_riResourceEpoch++;
 #if ( DEVICE_IMPL_VULKAN )
 	{
 		if( view->vk.image ) {
@@ -1072,7 +1300,153 @@ void FreeRITextureView( struct RIDevice_s *dev, struct RITextureView_s *view )
 		}
 	}
 #endif
+	// Metal: every view this renderer makes aliases its texture's handle (InitRITextureView, the swapchain
+	// depth attachment, r_image.c), so there is no separate reference to drop -- the texture's own
+	// FreeRITexture releases it. A derived newTextureView would need its own release here.
 	memset( view, 0, sizeof( struct RITextureView_s ) );
+}
+
+#if ( DEVICE_IMPL_VULKAN )
+static VkImageUsageFlags RI_VK_TextureUsage( uint32_t usage )
+{
+	VkImageUsageFlags flags = 0;
+	if( usage & RI_USAGE_SHADER_RESOURCE )
+		flags |= VK_IMAGE_USAGE_SAMPLED_BIT;
+	if( usage & RI_USAGE_SHADER_RESOURCE_STORAGE )
+		flags |= VK_IMAGE_USAGE_STORAGE_BIT;
+	if( usage & RI_USAGE_COLOR_ATTACHMENT )
+		flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	if( usage & RI_USAGE_DEPTH_STENCIL_ATTACHMENT )
+		flags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	return flags;
+}
+#endif
+
+int InitRITexture( struct RIDevice_s *dev, const struct RITextureDesc_s *desc, struct RITexture_s *tex )
+{
+	memset( tex, 0, sizeof( *tex ) );
+	tex->cookie = hash_random();
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+		VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+		info.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless, like every other image here
+		info.imageType = VK_IMAGE_TYPE_2D;
+		info.format = RIFormatToVK( desc->format );
+		info.extent.width = desc->width;
+		info.extent.height = desc->height;
+		info.extent.depth = 1;
+		info.mipLevels = 1;
+		info.arrayLayers = 1;
+		info.samples = VK_SAMPLE_COUNT_1_BIT;
+		info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		info.usage = RI_VK_TextureUsage( desc->usage );
+		info.pQueueFamilyIndices = queueFamilies;
+		VK_ConfigureImageQueueFamilies( &info, dev->queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+		VmaAllocationCreateInfo allocInfo = { 0 };
+		allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+		if( !VK_WrapResult( vmaCreateImage( dev->vk.vmaAllocator, &info, &allocInfo, &tex->vk.image, &tex->vk.allocation, NULL ) ) )
+			return RI_FAIL;
+	}
+#endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		const enum mtlc_pixel_format fmt = RIFormatToMTL( desc->format );
+		if( fmt == MTLC_PIXEL_FORMAT_INVALID )
+			return RI_FAIL; // RIFormatToMTL has already printed which format is unmapped
+		// texture2DDescriptorWithPixelFormat:... is autoreleased; nothing to release here.
+		struct mtlc_texture_descriptor td = mtlc_texture_descriptor_texture_2d( fmt, desc->width, desc->height, false );
+		mtlc_uinteger usage = MTLC_TEXTURE_USAGE_UNKNOWN;
+		if( desc->usage & RI_USAGE_SHADER_RESOURCE )
+			usage |= MTLC_TEXTURE_USAGE_SHADER_READ;
+		if( desc->usage & RI_USAGE_SHADER_RESOURCE_STORAGE )
+			usage |= MTLC_TEXTURE_USAGE_SHADER_READ | MTLC_TEXTURE_USAGE_SHADER_WRITE;
+		if( desc->usage & ( RI_USAGE_COLOR_ATTACHMENT | RI_USAGE_DEPTH_STENCIL_ATTACHMENT ) )
+			usage |= MTLC_TEXTURE_USAGE_RENDER_TARGET;
+		mtlc_texture_descriptor_set_usage( td, usage );
+		// GPU-only: attachments are neither uploaded from nor read back to the CPU.
+		mtlc_texture_descriptor_set_storage_mode( td, MTLC_STORAGE_MODE_PRIVATE );
+		struct mtlc_texture texture = mtlc_device_new_texture( dev->mtl.device, td );
+		if( mtlc_texture_is_nil( texture ) )
+			return RI_FAIL;
+		tex->mtl.texture = texture;
+		tex->mtl.fmt = (uint32_t)fmt;
+	}
+#endif
+	return RI_SUCCESS;
+}
+
+int InitRITextureView( struct RIDevice_s *dev, const struct RITextureDesc_s *desc, const struct RITexture_s *tex, struct RITextureView_s *view )
+{
+	memset( view, 0, sizeof( *view ) );
+	view->cookie = hash_random();
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		const struct RIFormatProps_s *props = GetRIFormatProps( desc->format );
+		VkImageSubresourceRange range = { 0 };
+		// One aspect per view: a depth view is what both the attachment and the shadow sampler want, and
+		// nothing here creates a stencil-bearing format yet.
+		range.aspectMask = props->isDepth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+		range.levelCount = 1;
+		range.layerCount = 1;
+
+		// The image is created with EXTENDED_USAGE, so this chain *replaces* the usage for the view rather
+		// than adding to it: a view that is both rendered into and sampled has to carry both bits, or it is
+		// illegal as an attachment.
+		VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
+		usageInfo.usage = RI_VK_TextureUsage( desc->usage );
+
+		VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+		createInfo.pNext = &usageInfo;
+		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		createInfo.format = RIFormatToVK( desc->format );
+		createInfo.subresourceRange = range;
+		createInfo.image = tex->vk.image;
+		if( !VK_WrapResult( vkCreateImageView( dev->vk.device, &createInfo, NULL, &view->vk.image ) ) )
+			return RI_FAIL;
+	}
+#endif
+#if ( DEVICE_IMPL_MTL )
+	// A whole-texture, same-format view needs no MTLTexture view object; alias the handle (non-owning).
+	view->mtl.texture = tex->mtl.texture;
+#endif
+	return RI_SUCCESS;
+}
+
+void RIDeferFreeTexture( struct RIFree_s **freeList, struct RITexture_s *tex, struct RITextureView_s *view )
+{
+	struct RIFree_s entry = { 0 };
+#if ( DEVICE_IMPL_VULKAN )
+	if( view && view->vk.image ) {
+		entry.type = RI_FREE_VK_IMAGEVIEW;
+		entry.vkImageView = view->vk.image;
+		arrpush( *freeList, entry );
+	}
+	// Image before its memory: FreeRIFree walks the list in order.
+	if( tex->vk.image ) {
+		entry.type = RI_FREE_VK_IMAGE;
+		entry.vkImage = tex->vk.image;
+		arrpush( *freeList, entry );
+	}
+	if( tex->vk.allocation ) {
+		entry.type = RI_FREE_VK_VMA_AllOC;
+		entry.vmaAlloc = tex->vk.allocation;
+		arrpush( *freeList, entry );
+	}
+#endif
+#if ( DEVICE_IMPL_MTL )
+	// The view aliases the texture (see FreeRITextureView), so there is exactly one reference to drop.
+	if( !mtlc_texture_is_nil( tex->mtl.texture ) ) {
+		entry.type = RI_FREE_MTL_TEXTURE;
+		entry.mtlTexture = tex->mtl.texture;
+		arrpush( *freeList, entry );
+	}
+#endif
+	memset( tex, 0, sizeof( *tex ) );
+	if( view )
+		memset( view, 0, sizeof( *view ) );
 }
 
 
@@ -1087,6 +1461,14 @@ void InitRIPool( struct RIDevice_s *dev, struct RIPool_s *pool, struct RIQueue_s
 		return;
 	}
 #endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		// Metal has no command-pool object; the pool just remembers the queue that command buffers are
+		// vended from (see BeginRICmd). Nothing to allocate.
+		pool->mtl.queue = queue->mtl.queue;
+		return;
+	}
+#endif
 	assert( false );
 }
 
@@ -1097,6 +1479,9 @@ void FreeRIPool( struct RIDevice_s *dev, struct RIPool_s *pool )
 		vkDestroyCommandPool( dev->vk.device, pool->vk.pool, NULL );
 		return;
 	}
+#endif
+#if ( DEVICE_IMPL_MTL )
+	return; // no pool object to destroy
 #endif
 	assert( false );
 }
@@ -1132,6 +1517,15 @@ void BeginRICmd( struct RIDevice_s *dev, struct RICmd_s *cmd )
 	{
 		VkCommandBufferBeginInfo info = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT };
 		VK_WrapResult( vkBeginCommandBuffer( cmd->vk.cmd, &info ) );
+		return;
+	}
+#endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		// Metal command buffers are single-use and autoreleased, so a fresh one is vended from the queue
+		// each time recording begins (there is no separate pool allocation as in InitRICmd for VK).
+		cmd->mtl.cmd = mtlc_command_queue_command_buffer( dev->mtl.queues[RI_QUEUE_GRAPHICS] );
+		cmd->mtl.encoder = mtlc_render_command_encoder_from_id( NULL );
 		return;
 	}
 #endif
@@ -1220,6 +1614,14 @@ void RICmdBarrier( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RIB
 		return;
 	}
 #endif
+#if ( DEVICE_IMPL_MTL )
+	// Deliberately a no-op. Metal tracks hazards automatically for resources created with the default
+	// MTLHazardTrackingModeTracked, which is every resource this renderer allocates, and it inserts the
+	// dependencies between encoders on a command buffer itself. The RI barriers exist so the frontend
+	// can spell out its intent portably; on Metal that intent is already satisfied. This would need
+	// real work only if untracked heaps or cross-queue sharing were introduced.
+	(void)cmd;
+#endif
 }
 
 void RICmdImageBarrier( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RIImageBarrier_s *barrier )
@@ -1232,6 +1634,69 @@ void RICmdBufferBarrier( struct RIDevice_s *dev, struct RICmd_s *cmd, const stru
 {
 	const struct RIBarrierGroupDesc_s desc = { .bufferBarriers = barrier, .numBufferBarriers = 1 };
 	RICmdBarrier( dev, cmd, &desc );
+}
+
+void RICmdBeginRendering( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RIRenderingDesc_s *desc )
+{
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		VkRenderingAttachmentInfo colorAttachments[Q_ARRAY_COUNT( desc->colors )];
+		for( uint32_t i = 0; i < desc->colorNum; i++ )
+			RI_VK_FillColorAttachment( &colorAttachments[i], desc->colors[i].view, desc->colors[i].clear, desc->colors[i].clearColor );
+
+		VkRenderingAttachmentInfo depthAttachment;
+		if( desc->hasDepth )
+			RI_VK_FillDepthAttachment( &depthAttachment, desc->depth.view, desc->depth.clear );
+
+		VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
+		renderingInfo.renderArea.extent.width = desc->width;
+		renderingInfo.renderArea.extent.height = desc->height;
+		renderingInfo.layerCount = 1;
+		renderingInfo.colorAttachmentCount = desc->colorNum;
+		renderingInfo.pColorAttachments = desc->colorNum ? colorAttachments : NULL;
+		renderingInfo.pDepthAttachment = desc->hasDepth ? &depthAttachment : NULL;
+		vkCmdBeginRendering( cmd->vk.cmd, &renderingInfo );
+	}
+#endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		struct mtlc_render_pass_descriptor rp = mtlc_render_pass_descriptor_new();
+		struct mtlc_render_pass_color_attachment_descriptor_array colorArray = mtlc_render_pass_descriptor_color_attachments( rp );
+		for( uint32_t i = 0; i < desc->colorNum; i++ ) {
+			struct mtlc_render_pass_color_attachment_descriptor att = mtlc_render_pass_color_attachment_descriptor_array_object( colorArray, i );
+			mtlc_render_pass_color_attachment_descriptor_set_texture( att, desc->colors[i].view.mtl.texture );
+			mtlc_render_pass_color_attachment_descriptor_set_load_action( att, desc->colors[i].clear ? MTLC_LOAD_ACTION_CLEAR : MTLC_LOAD_ACTION_LOAD );
+			mtlc_render_pass_color_attachment_descriptor_set_store_action( att, MTLC_STORE_ACTION_STORE );
+			if( desc->colors[i].clear )
+				mtlc_render_pass_color_attachment_descriptor_set_clear_color( att, ( struct mtlc_clear_color ){
+					desc->colors[i].clearColor[0], desc->colors[i].clearColor[1], desc->colors[i].clearColor[2], desc->colors[i].clearColor[3] } );
+		}
+		if( desc->hasDepth ) {
+			struct mtlc_render_pass_depth_attachment_descriptor depthAtt = mtlc_render_pass_descriptor_depth_attachment( rp );
+			mtlc_render_pass_depth_attachment_descriptor_set_texture( depthAtt, desc->depth.view.mtl.texture );
+			mtlc_render_pass_depth_attachment_descriptor_set_load_action( depthAtt, desc->depth.clear ? MTLC_LOAD_ACTION_CLEAR : MTLC_LOAD_ACTION_LOAD );
+			mtlc_render_pass_depth_attachment_descriptor_set_store_action( depthAtt, MTLC_STORE_ACTION_STORE );
+			if( desc->depth.clear )
+				mtlc_render_pass_depth_attachment_descriptor_set_clear_depth( depthAtt, 1.0 );
+		}
+		cmd->mtl.encoder = mtlc_command_buffer_render_command_encoder( cmd->mtl.cmd, rp );
+		// A fresh encoder starts with no residency declared, so anything that cached "already resident"
+		// against the previous one has to miss. See RICmd_s.mtl.encoderEpoch.
+		static uint64_t s_encoderEpoch = 0;
+		cmd->mtl.encoderEpoch = ++s_encoderEpoch;
+	}
+#endif
+}
+
+void RICmdEndRendering( struct RIDevice_s *dev, struct RICmd_s *cmd )
+{
+#if ( DEVICE_IMPL_VULKAN )
+	vkCmdEndRendering( cmd->vk.cmd );
+#endif
+#if ( DEVICE_IMPL_MTL )
+	mtlc_render_command_encoder_end_encoding( cmd->mtl.encoder );
+	cmd->mtl.encoder = mtlc_render_command_encoder_from_id( NULL );
+#endif
 }
 
 void RICmdCopyTextureToBuffer( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RICopyTextureToBufferDesc_s *desc )
@@ -1260,8 +1725,8 @@ void RICmdCopyTextureToBuffer( struct RIDevice_s *dev, struct RICmd_s *cmd, cons
 
 void FreeRICmd( struct RIDevice_s *dev, struct RICmd_s *cmd, struct RIPool_s *pool )
 {
-	assert( cmd->vk.cmd );
 #if ( DEVICE_IMPL_VULKAN )
+	assert( cmd->vk.cmd );
 	{
 		if( cmd->vk.cmd ) {
 			vkFreeCommandBuffers( dev->vk.device, pool->vk.pool, 1, &cmd->vk.cmd );

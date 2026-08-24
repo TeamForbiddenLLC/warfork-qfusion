@@ -22,6 +22,25 @@
 #include "vk_mem_alloc.h"
 #endif
 
+#ifdef DEVICE_SUPPORT_MTL
+#include "metal-c/metal-c.h"
+
+// metal-c reports failures through an out `struct ns_error` whose `obj` is nil on success. Mirror
+// VK_WrapResult: log the localized description on failure and return whether the call succeeded.
+#define MTL_WrapError( err ) __mtl_WrapError( err, __FILE__, __FUNCTION__, __LINE__ )
+
+static inline bool __mtl_WrapError( struct ns_error err, const char *sourceFilename, const char *functionName, int sourceLine )
+{
+	if( !ns_error_is_nil( err ) ) {
+		const char *desc = ns_string_utf8( ns_error_localized_description( err ) );
+		printf( "RI: MTL %ld %s, file %s:%i (%s)\n", (long)ns_error_code( err ), desc ? desc : "", sourceFilename, sourceLine, functionName );
+		return false;
+	}
+	return true;
+}
+#endif
+
+#ifdef DEVICE_SUPPORT_VULKAN
 #define R_VK_ADD_STRUCT( current, next )                \
 	{                                                   \
 		void *__pNext = (void *)( ( current )->pNext ); \
@@ -39,6 +58,7 @@ static inline bool __vk_WrapResult( VkResult result, const char *sourceFilename,
 	}
 	return true;
 }
+#endif
 
 #define RI_QUEUE_GRAPHICS_BIT 0x1
 #define RI_QUEUE_COMPUTE_BIT 0x2

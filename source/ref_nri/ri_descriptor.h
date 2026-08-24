@@ -40,6 +40,19 @@ struct RIDescriptor_s {
 			};
 		} vk;
 #endif
+#if ( DEVICE_IMPL_MTL )
+		struct {
+			// Resolved backend handle for the referenced resource; encoded into a per-set argument buffer
+			// (or bound directly) at bind time. `offset`/`range` apply to the buffer arm only.
+			union {
+				struct mtlc_texture texture; // sampled/storage image view
+				struct mtlc_buffer buffer;   // uniform/storage buffer
+				void *sampler;               // MTLSamplerState (metal-c binding added later)
+			};
+			uint64_t offset;
+			uint64_t range;
+		} mtl;
+#endif
 	};
 };
 
@@ -53,6 +66,11 @@ struct RISampler_s {
 			VkSampler sampler;
 		} vk;
 #endif
+#if ( DEVICE_IMPL_MTL )
+		struct {
+			void *sampler; // MTLSamplerState (metal-c sampler binding added in the descriptor phase)
+		} mtl;
+#endif
 	};
 };
 
@@ -65,6 +83,11 @@ struct RIAccelStructure_s {
 		struct {
 			VkAccelerationStructureKHR handle;
 		} vk;
+#endif
+#if ( DEVICE_IMPL_MTL )
+		struct {
+			void *handle; // MTLAccelerationStructure (plumbing only; no create path yet)
+		} mtl;
 #endif
 	};
 };

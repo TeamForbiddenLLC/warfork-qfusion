@@ -59,8 +59,10 @@ fi
 
 echo "==> Configuring ($PRESET)"
 cd source
-cmake -B ./build --preset "$PRESET" "${EXTRA_ARGS[@]}"
+cmake -B ./build --preset "$PRESET" ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}
 cmake --build ./build --config "$CFG_NAME"
-[[ "$DEPLOY" == "1" ]] && cmake --build ./build --target deploy --config "$CFG_NAME"
+if [[ "$DEPLOY" == "1" ]]; then
+    cmake --build ./build --target deploy --config "$CFG_NAME"
+fi
 
 echo "==> Build complete: source/build/warfork-qfusion/$CFG_NAME/"

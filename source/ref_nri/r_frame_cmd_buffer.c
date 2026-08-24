@@ -6,6 +6,8 @@
 #include "r_model.h"
 
 #include "ri_conversion.h"
+#include "ri_renderer.h"
+#include "ri_conversion_mtl.h"
 #include "ri_types.h"
 #include "stb_ds.h"
 #include "qhash.h"
@@ -90,9 +92,16 @@ void UpdateFrameUBO( struct FrameState_s *cmd, struct RIDescriptor_s *req, void 
 		// handle is not a stable identity; the content hash above IS the cookie (set directly, not via a
 		// builder — RIDescriptorUniformBuffer needs an RIBuffer_s, which the scratch allocator doesn't expose).
 		req->type = RI_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+#if ( DEVICE_IMPL_VULKAN )
 		req->vk.buffer.buffer = scratchReq.block.vk.buffer;
 		req->vk.buffer.offset = scratchReq.bufferOffset;
 		req->vk.buffer.range = size;
+#endif
+#if ( DEVICE_IMPL_MTL )
+		req->mtl.buffer = scratchReq.block.mtl.buffer;
+		req->mtl.offset = scratchReq.bufferOffset;
+		req->mtl.range = size;
+#endif
 		memcpy( (uint8_t*)scratchReq.pMappedAddress + scratchReq.bufferOffset, data, size );
 		RIFinishScrachReq( &rsh.device, &scratchReq );
 	}
@@ -106,6 +115,78 @@ void FR_ConfigurePipelineAttachment( struct pipeline_desc_s *desc, enum RI_Forma
 		desc->colorAttachments[i] = formats[i];
 	}
 	desc->depthFormat = depthFormat;
+}
+
+void FR_CmdBeginRendering( struct RIDevice_s *device, struct FrameState_s *cmd, const struct RIRenderingDesc_s *desc )
+{
+	assert( cmd );
+	cmd->activeRendering = *desc;
+	RICmdBeginRendering( device, &cmd->handle, desc );
+
+	// Re-dirty everything the draw path flushes lazily. Only slots holding a live buffer are marked:
+	// re-binding an empty slot would hand Metal a nil buffer. Redundant but harmless on Vulkan, which
+	// keeps both backends on one code path rather than making Metal a special case at the call sites.
+	cmd->dirty |= CMD_DIRT_VIEWPORT | CMD_DIRT_SCISSOR;
+	if( IsRIBufferValid( rsh.device.renderer, &cmd->indexBuffer ) )
+		cmd->dirty |= CMD_DIRT_INDEX_BUFFER;
+	for( uint32_t slot = 0; slot < MAX_VERTEX_BINDINGS; slot++ ) {
+		if( IsRIBufferValid( rsh.device.renderer, &cmd->vertexBuffers[slot] ) )
+			cmd->dirtyVertexBuffers |= ( 0x1u << slot );
+	}
+}
+
+void FR_CmdClearAttachments( struct FrameState_s *cmd, bool clearColors, const float clearColor[4], bool clearDepth )
+{
+	assert( cmd );
+#if ( DEVICE_IMPL_VULKAN )
+	{
+		if( cmd->pipeline.numColorsAttachments == 0 )
+			return;
+		size_t numClear = 0;
+		VkClearRect clearRect[MAX_COLOR_ATTACHMENTS + 1] = { 0 };
+		VkClearAttachment clearAttach[MAX_COLOR_ATTACHMENTS + 1] = { 0 };
+		if( clearColors ) {
+			for( size_t i = 0; i < cmd->pipeline.numColorsAttachments; i++ ) {
+				assert( numClear < Q_ARRAY_COUNT( clearAttach ) );
+				clearRect[numClear].baseArrayLayer = 0;
+				clearRect[numClear].rect = RIViewportToRect2D( &cmd->viewport );
+				clearRect[numClear].layerCount = 1;
+				clearAttach[numClear].colorAttachment = i;
+				for( size_t c = 0; c < 4; c++ )
+					clearAttach[numClear].clearValue.color.float32[c] = clearColor ? clearColor[c] : 0.0f;
+				clearAttach[numClear].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				numClear++;
+			}
+		}
+		if( clearDepth ) {
+			assert( numClear < Q_ARRAY_COUNT( clearAttach ) );
+			clearRect[numClear].baseArrayLayer = 0;
+			clearRect[numClear].rect = RIViewportToRect2D( &cmd->viewport );
+			clearRect[numClear].layerCount = 1;
+			clearAttach[numClear].clearValue.depthStencil.depth = 1.0f;
+			clearAttach[numClear].aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+			numClear++;
+		}
+		if( numClear > 0 )
+			vkCmdClearAttachments( cmd->handle.vk.cmd, numClear, clearAttach, numClear, clearRect );
+	}
+#endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		// Metal has no mid-pass clear; end the encoder and re-begin the same pass with the requested
+		// attachments cleared. FR_CmdBeginRendering re-dirties the lazily-flushed state and the fresh
+		// encoderEpoch invalidates residency caching, so the restart is transparent to the draw path.
+		struct RIRenderingDesc_s desc = cmd->activeRendering;
+		for( uint32_t i = 0; i < desc.colorNum; i++ ) {
+			desc.colors[i].clear = clearColors;
+			for( size_t c = 0; c < 4; c++ )
+				desc.colors[i].clearColor[c] = clearColor ? clearColor[c] : 0.0f;
+		}
+		desc.depth.clear = clearDepth && desc.hasDepth;
+		RICmdEndRendering( &rsh.device, &cmd->handle );
+		FR_CmdBeginRendering( &rsh.device, cmd, &desc );
+	}
+#endif
 }
 
 void FR_CmdDraw( struct FrameState_s *cmd, uint32_t vertexNum, uint32_t instanceNum, uint32_t baseVertex, uint32_t baseInstance )
@@ -124,6 +205,25 @@ void FR_CmdDraw( struct FrameState_s *cmd, uint32_t vertexNum, uint32_t instance
 			cmd->dirty &= ~CMD_DIRT_SCISSOR;
 		}
 		vkCmdDraw( cmd->handle.vk.cmd, vertexNum, Q_MAX( 1, instanceNum ), baseVertex, baseInstance );
+	}
+#endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		struct mtlc_render_command_encoder enc = cmd->handle.mtl.encoder;
+		if( cmd->dirty & CMD_DIRT_VIEWPORT ) {
+			mtlc_render_command_encoder_set_viewport( enc, RIToMTLViewport( &cmd->viewport ) );
+			cmd->dirty &= ~CMD_DIRT_VIEWPORT;
+		}
+		if( cmd->dirty & CMD_DIRT_SCISSOR ) {
+			mtlc_render_command_encoder_set_scissor_rect( enc, RIToMTLScissorRect( &cmd->scissor ) );
+			cmd->dirty &= ~CMD_DIRT_SCISSOR;
+		}
+		// vkCmdDraw with vertexCount 0 is a legal no-op; Metal validation rejects it. The frontend does
+		// issue empty draws (surfaces whose element list came out empty), so match Vulkan and skip.
+		if( vertexNum == 0 )
+			return;
+		mtlc_render_command_encoder_draw_primitives( enc, RITopologyToMTL( cmd->pipeline.topology ), baseVertex, vertexNum,
+													 Q_MAX( 1, instanceNum ), baseInstance );
 	}
 #endif
 }
@@ -159,6 +259,43 @@ void FR_CmdDrawElements( struct FrameState_s *cmd, uint32_t indexNum, uint32_t i
 			cmd->dirty &= ~CMD_DIRT_SCISSOR;
 		}
 		vkCmdDrawIndexed( cmd->handle.vk.cmd, indexNum, Q_MAX( 1, instanceNum ), baseIndex, baseVertex, baseInstance );
+	}
+#endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		struct mtlc_render_command_encoder enc = cmd->handle.mtl.encoder;
+		uint32_t vertexSlot = 0;
+		for( uint32_t attr = cmd->dirtyVertexBuffers; attr > 0; attr = ( attr >> 1 ), vertexSlot++ ) {
+			if( cmd->dirtyVertexBuffers & ( 1 << vertexSlot ) ) {
+				// Vertex buffers live at Metal buffer slots R_MTL_VERTEX_BUFFER_BASE+ so they never collide
+				// with the low descriptor/UBO slots SPIRV-Cross assigns (see RP_ResolvePipeline).
+				mtlc_render_command_encoder_set_vertex_buffer( enc, cmd->vertexBuffers[vertexSlot].mtl.buffer,
+															   cmd->offsets[vertexSlot], R_MTL_VERTEX_BUFFER_BASE + vertexSlot );
+			}
+		}
+		cmd->dirtyVertexBuffers = 0;
+
+		if( cmd->dirty & CMD_DIRT_VIEWPORT ) {
+			mtlc_render_command_encoder_set_viewport( enc, RIToMTLViewport( &cmd->viewport ) );
+			cmd->dirty &= ~CMD_DIRT_VIEWPORT;
+		}
+		if( cmd->dirty & CMD_DIRT_SCISSOR ) {
+			mtlc_render_command_encoder_set_scissor_rect( enc, RIToMTLScissorRect( &cmd->scissor ) );
+			cmd->dirty &= ~CMD_DIRT_SCISSOR;
+		}
+		cmd->dirty &= ~CMD_DIRT_INDEX_BUFFER;
+
+		// vkCmdDrawIndexed with indexCount 0 is a legal no-op; Metal validation rejects it
+		// ("indexCount(0) must be non-zero"), and the frontend does issue such draws at map start.
+		if( indexNum == 0 )
+			return;
+
+		// Metal's drawIndexedPrimitives has no firstIndex parameter; fold baseIndex into the byte offset.
+		const uint64_t indexSize = ( cmd->indexType == RI_INDEX_TYPE_16 ) ? 2 : 4;
+		const uint64_t indexOffset = cmd->indexBufferOffset + (uint64_t)baseIndex * indexSize;
+		mtlc_render_command_encoder_draw_indexed_primitives( enc, RITopologyToMTL( cmd->pipeline.topology ), indexNum,
+															 RIIndexTypeToMTL( cmd->indexType ), cmd->indexBuffer.mtl.buffer, indexOffset,
+															 Q_MAX( 1, instanceNum ), (mtlc_integer)baseVertex, baseInstance );
 	}
 #endif
 }

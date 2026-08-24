@@ -921,7 +921,7 @@ static void R_SetupFrame( void )
 /*
 * R_SetupViewMatrices
 */
-static void R_SetupViewMatrices( void )
+static void R_SetupViewMatrices( bool flippedViewport )
 {
 	refdef_t *rd = &rn.refdef;
 
@@ -941,6 +941,30 @@ static void R_SetupViewMatrices( void )
 		rn.projectionMatrix[0] = -rn.projectionMatrix[0];
 		rn.renderFlags |= RF_FLIPFRONTFACE;
 	}
+
+#if ( DEVICE_IMPL_MTL )
+	// Vulkan and Metal have opposite NDC-Y. Vulkan expresses the origin choice with a negative-height
+	// viewport (RIToVKViewport), which for originBottomLeft == false lands it on Metal's native
+	// convention -- so the main scene already matches and needs nothing. The case Vulkan does *not*
+	// flip (originBottomLeft, i.e. flippedViewport: portals and shadow maps) is the one Metal has to
+	// mirror itself, and a Metal viewport cannot take a negative height, so it goes in the projection.
+	//
+	// Applying it here rather than at RB_LoadProjectionMatrix is deliberate: cameraProjectionMatrix is
+	// derived below, and everything camera-related has to sit in one convention. Note the flip only
+	// compensates the rasterizer's NDC-Y direction -- paths that *sample* a rendered texture instead of
+	// rasterizing through it must undo it (r_shadow.c un-flips the shadow lookup matrix it stores).
+	//
+	// Mirroring in NDC also inverts triangle winding -- which is exactly what FR_PipelineCullMode
+	// already compensates for on the same flippedViewport condition, so the cull mode stays correct.
+	if( flippedViewport ) {
+		rn.projectionMatrix[1] = -rn.projectionMatrix[1];
+		rn.projectionMatrix[5] = -rn.projectionMatrix[5];
+		rn.projectionMatrix[9] = -rn.projectionMatrix[9];
+		rn.projectionMatrix[13] = -rn.projectionMatrix[13];
+	}
+#else
+	(void)flippedViewport;
+#endif
 
 	Matrix4_Multiply( rn.projectionMatrix, rn.cameraMatrix, rn.cameraProjectionMatrix );
 }
@@ -968,46 +992,10 @@ static void R_Clear(struct FrameState_s* frame, int bitMask  /* unused variable 
 	}
 
 	const bool hasClearOperation = !depthPortal || clearColor;
-	if(!hasClearOperation) 
+	if(!hasClearOperation)
 		return;
 
-#if ( DEVICE_IMPL_VULKAN )
-		  if(frame->pipeline.numColorsAttachments > 0)
-			{
-				size_t numClear = 0;
-			  VkClearRect clearRect[5] = { 0 };
-			  VkClearAttachment clearAttach[5] = { 0 };
-			  if( clearColor ) {
-				  for (size_t i = 0; i < frame->pipeline.numColorsAttachments; i++) {
-					  assert( numClear < Q_ARRAY_COUNT( clearRect ) );
-					  assert( numClear < Q_ARRAY_COUNT( clearAttach ) );
-					  clearRect[numClear].baseArrayLayer = 0;
-					  clearRect[numClear].rect = RIViewportToRect2D( &frame->viewport );
-					  clearRect[numClear].layerCount = 1;
-					  clearAttach[numClear].colorAttachment = i;
-					  clearAttach[numClear].clearValue.color.float32[0] = envColor[0];
-					  clearAttach[numClear].clearValue.color.float32[1] = envColor[1];
-					  clearAttach[numClear].clearValue.color.float32[2] = envColor[2];
-					  clearAttach[numClear].clearValue.color.float32[3] = envColor[3];
-					  clearAttach[numClear].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-					  numClear++;
-				  }
-			  }
-			  if( !depthPortal ) {
-				  assert( numClear < Q_ARRAY_COUNT( clearRect ) );
-				  assert( numClear < Q_ARRAY_COUNT( clearAttach ) );
-				  clearRect[numClear].baseArrayLayer = 0;
-				  clearRect[numClear].rect = RIViewportToRect2D( &frame->viewport );
-				  clearRect[numClear].layerCount = 1;
-				  clearAttach[numClear].clearValue.depthStencil.depth = 1.0f;
-				  clearAttach[numClear].aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-				  numClear++;
-			  }
-			  vkCmdClearAttachments( frame->handle.vk.cmd, numClear, clearAttach, numClear, clearRect );
-		  }
-#else
-			#error Unsupported 
-#endif
+	FR_CmdClearAttachments( frame, clearColor, envColor, !depthPortal );
 }
 
 /*
@@ -1151,7 +1139,7 @@ void R_RenderView(struct FrameState_s* frame, const refdef_t *fd )
 	rn.numVisSurfaces = 0;
 
 	// load view matrices with default far clip value
-	R_SetupViewMatrices();
+	R_SetupViewMatrices( frame->pipeline.flippedViewport );
 
 	rn.fog_eye = NULL;
 
@@ -1233,7 +1221,7 @@ void R_RenderView(struct FrameState_s* frame, const refdef_t *fd )
 		// now set  the real far clip value and reload view matrices
 		R_SetFarClip();
 
-		R_SetupViewMatrices();
+		R_SetupViewMatrices( frame->pipeline.flippedViewport );
 
 		// render to depth textures, mark shadowed entities and surfaces
 			R_DrawShadowmaps(frame);

@@ -964,7 +964,13 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 
 						// bind lightmap textures and set program's features for lightstyles
 
-						for( size_t i = 0; i < rsh.worldBrushModel->numLightmapImages; i++ ) {
+						// The shader addresses lightmapTexture[GLSL_LIGHTMAP_LIMIT]; a map may upload more images
+						// than that, and binding past the declared range walks into the next descriptor's
+						// register -- on Metal one belonging to a different set entirely.
+						// One slot of headroom is reserved for the shared sampler pushed alongside the first image.
+						const size_t lightmapRoom = ( descriptorCount + 1 < Q_ARRAY_COUNT( descriptors ) ) ? ( Q_ARRAY_COUNT( descriptors ) - descriptorCount - 1 ) : 0;
+						const size_t numLightmapImages = Q_MIN( Q_MIN( rsh.worldBrushModel->numLightmapImages, (size_t)GLSL_LIGHTMAP_LIMIT ), lightmapRoom );
+						for( size_t i = 0; i < numLightmapImages; i++ ) {
 							if( i == 0 ) {
 								descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = rsh.worldBrushModel->lightmapImages[i]->samplerBinding,
 																									 .handle = Create_DescriptorHandle( "lightmapTextureSample" ) };
@@ -1115,7 +1121,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 					struct DynamicLightCB lightData = { 0 }; //= lightCB.address;
 					__ConfigureLightCB( &lightData, e->origin, rb.currentEntity->axis, rb.currentDlightBits );
 					if( lightData.numberLights > 0 ) {
-						UpdateFrameUBO( cmd, &cmd->uboLight, &lightData, DynamicLightCB_Size( lightData.numberLights ) );
+						UpdateFrameUBO( cmd, &cmd->uboLight, &lightData, sizeof( struct DynamicLightCB ) );
 						descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboLight, .handle = Create_DescriptorHandle( "lights" ) };
 						programFeatures |= GLSL_SHADER_COMMON_DLIGHTS_16;
 					}
@@ -1126,7 +1132,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 				struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline );
 
 				if( RP_ProgramHasUniform( program, Create_DescriptorHandle( "pass" ) ) ) {
-					UpdateFrameUBO( cmd, &cmd->uboPassObject, &passCB, sizeof( struct DefaultQ3ShaderCB ) );
+					UpdateFrameUBO( cmd, &cmd->uboPassObject, &passCB, sizeof( struct DefaultMaterialCB ) );
 					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboPassObject, .handle = Create_DescriptorHandle( "pass" ) };
 				}
 
@@ -1214,7 +1220,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 					struct DynamicLightCB lightData = { 0 }; //= lightCB.address;
 					__ConfigureLightCB( &lightData, e->origin, rb.currentEntity->axis, rb.currentDlightBits );
 					if( lightData.numberLights > 0 ) {
-						UpdateFrameUBO( cmd, &cmd->uboLight, &lightData, DynamicLightCB_Size( lightData.numberLights ) );
+						UpdateFrameUBO( cmd, &cmd->uboLight, &lightData, sizeof( struct DynamicLightCB ) );
 						descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboLight, .handle = Create_DescriptorHandle( "lights" ) };
 						programFeatures |= GLSL_SHADER_COMMON_DLIGHTS_16;
 					}
@@ -1287,6 +1293,10 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 
 			if( programFeatures & GLSL_SHADER_COMMON_SOFT_PARTICLE ) {
 				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = rsh.screenDepthTextureCopy->binding, .handle = Create_DescriptorHandle( "u_DepthTexture" ) };
+				// The shader samples through sampler2D(u_DepthTexture, u_DepthSampler); leaving the sampler
+				// unbound reads an undefined descriptor on Vulkan and, on Metal, whatever sampler the previous
+				// draw left in that slot.
+				descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = rsh.screenDepthTextureCopy->samplerBinding, .handle = Create_DescriptorHandle( "u_DepthSampler" ) };
 			}
 			if( pass->flags & SHADERPASS_PORTALMAP && rb.currentPortalSurface && rb.currentPortalSurface->portalfbs[0] ) {
 				descriptors[descriptorCount++] =
@@ -1305,7 +1315,13 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 				if( mapConfig.lightmapArrays )
 					programFeatures |= GLSL_SHADER_Q3_LIGHTMAP_ARRAYS;
 
-				for( size_t i = 0; i < rsh.worldBrushModel->numLightmapImages; i++ ) {
+				// The shader addresses lightmapTexture[GLSL_LIGHTMAP_LIMIT]; a map may upload more images
+				// than that, and binding past the declared range walks into the next descriptor's
+				// register -- on Metal one belonging to a different set entirely.
+				// One slot of headroom is reserved for the shared sampler pushed alongside the first image.
+				const size_t lightmapRoom = ( descriptorCount + 1 < Q_ARRAY_COUNT( descriptors ) ) ? ( Q_ARRAY_COUNT( descriptors ) - descriptorCount - 1 ) : 0;
+				const size_t numLightmapImages = Q_MIN( Q_MIN( rsh.worldBrushModel->numLightmapImages, (size_t)GLSL_LIGHTMAP_LIMIT ), lightmapRoom );
+				for( size_t i = 0; i < numLightmapImages; i++ ) {
 					if( i == 0 ) {
 						descriptors[descriptorCount++] =
 							(struct glsl_descriptor_binding_s){ .descriptor = rsh.worldBrushModel->lightmapImages[i]->samplerBinding, .handle = Create_DescriptorHandle( "lightmapTextureSample" ) };

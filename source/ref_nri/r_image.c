@@ -34,6 +34,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ri_renderer.h"
 #include "ri_types.h"
 #include "ri_vk.h"
+#include "ri_mtl.h"
 
 #include "../qalgo/hash.h"
 #include "stb_ds.h"
@@ -78,6 +79,9 @@ static void __FreeImage( struct image_s *image );
 static void __R_CopyTextureDataTexture( struct image_s *image, int layer, int mipOffset, int x, int y, int w, int h, enum RI_Format_e srcFormat, uint8_t *data );
 static enum RI_Format_e __R_GetImageFormat( struct image_s *image );
 static uint16_t __R_calculateMipMapLevel( int flags, int width, int height, uint32_t minMipSize );
+#if ( DEVICE_IMPL_MTL )
+static void __R_CreateMTLTexture( struct image_s *image, enum RI_Format_e destFormat, uint32_t mipLevels, int width, int height );
+#endif
 
 // image data is attached to the buffer
 static void __FreeGPUImageData( struct image_s *image )
@@ -103,11 +107,20 @@ static void __FreeGPUImageData( struct image_s *image )
 		image->vk.vmaAlloc = VK_NULL_HANDLE;
 	}
 #endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		// Defer the release like the Vulkan arm: in-flight frames may still reference the texture.
+		// RIDeferFreeTexture drops the single texture/view reference and zeroes handle + view.
+		struct r_frame_set_s *activeset = RI_ACTIVE_FRAMESET();
+		RIDeferFreeTexture( &activeset->freeList, &image->handle, &image->view );
+		memset( &image->binding, 0, sizeof( struct RIDescriptor_s ) );
+	}
+#endif
 }
 
-#if ( DEVICE_IMPL_VULKAN )
 // Collapse the sampler-affecting IT_ flags to a dense category in [0, IMAGE_SAMPLER_CACHE_SIZE).
 // The filter branch (2 bits) is mutually exclusive; IT_CLAMP and the depth-compare pair add a bit each.
+// Backend-neutral: both the VK and Metal sampler caches key on this.
 static unsigned R_SamplerCategory( int flags )
 {
 	unsigned filter; // 0 = IT_NOFILTERING, 1 = IT_DEPTH, 2 = mipmapped, 3 = IT_NOMIPMAP
@@ -124,6 +137,7 @@ static unsigned R_SamplerCategory( int flags )
 	return filter | ( clamp << 2 ) | ( compare << 3 );
 }
 
+#if ( DEVICE_IMPL_VULKAN )
 // Rebuild the exact VkSamplerCreateInfo a category maps to, from the current global filter/aniso
 // state. Byte-for-byte equivalent of the old per-flag branch chain.
 static VkSamplerCreateInfo R_BuildSamplerInfo( unsigned cat )
@@ -201,6 +215,59 @@ struct RISampler_s *R_ResolveSamplerDescriptor( int flags )
 		slot->cookie = cookie;
 	}
 	return slot;
+#endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		const unsigned cat = R_SamplerCategory( flags );
+		struct RISampler_s *slot = &samplerCache[cat];
+		const unsigned filter = cat & 0x3u;
+		const bool clamp = ( cat >> 2 ) & 0x1u;
+		const bool compare = ( cat >> 3 ) & 0x1u;
+
+		// Fold the category with the global filter/anisotropy state so a settings change rebuilds.
+		struct { unsigned cat; int fmin, fmag, fmip, aniso; } key = { cat, defaultFilterMin, defaultFilterMag, defaultFilterMipMap, defaultAnisotropicFilter };
+		hash_t cookie = hash_data( HASH_INITIAL_VALUE, &key, sizeof( key ) );
+		if( !cookie )
+			cookie = 1;
+
+		if( slot->cookie != cookie ) {
+			struct mtlc_sampler_descriptor sd = mtlc_sampler_descriptor_init();
+			// Every sampler here can end up encoded into a descriptor set's argument buffer, and one
+			// created without this has no handle to encode -- Metal validation rejects the encode.
+			mtlc_sampler_descriptor_set_support_argument_buffers( sd, true );
+			enum mtlc_sampler_min_mag_filter minF = MTLC_SAMPLER_MIN_MAG_FILTER_LINEAR;
+			enum mtlc_sampler_min_mag_filter magF = MTLC_SAMPLER_MIN_MAG_FILTER_LINEAR;
+			enum mtlc_sampler_mip_filter mipF = MTLC_SAMPLER_MIP_FILTER_LINEAR;
+			if( filter == 2 ) { // mipmapped: honour the user's GL_* filter preset
+				minF = ( defaultFilterMin == IMAGE_FILTER_NEAREST ) ? MTLC_SAMPLER_MIN_MAG_FILTER_NEAREST : MTLC_SAMPLER_MIN_MAG_FILTER_LINEAR;
+				magF = ( defaultFilterMag == IMAGE_FILTER_NEAREST ) ? MTLC_SAMPLER_MIN_MAG_FILTER_NEAREST : MTLC_SAMPLER_MIN_MAG_FILTER_LINEAR;
+				mipF = ( defaultFilterMipMap == IMAGE_FILTER_NEAREST ) ? MTLC_SAMPLER_MIP_FILTER_NEAREST : MTLC_SAMPLER_MIP_FILTER_LINEAR;
+			}
+			mtlc_sampler_descriptor_set_min_filter( sd, minF );
+			mtlc_sampler_descriptor_set_mag_filter( sd, magF );
+			mtlc_sampler_descriptor_set_mip_filter( sd, mipF );
+			const enum mtlc_sampler_address_mode addr = clamp ? MTLC_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE : MTLC_SAMPLER_ADDRESS_MODE_REPEAT;
+			mtlc_sampler_descriptor_set_address_mode_s( sd, addr );
+			mtlc_sampler_descriptor_set_address_mode_t( sd, addr );
+			mtlc_sampler_descriptor_set_address_mode_r( sd, addr );
+			if( filter != 0 ) {
+				mtlc_uinteger aniso = (mtlc_uinteger)defaultAnisotropicFilter;
+				mtlc_sampler_descriptor_set_max_anisotropy( sd, aniso < 1 ? 1 : aniso );
+			}
+			if( filter == 2 )
+				mtlc_sampler_descriptor_set_lod_max_clamp( sd, 16.0f );
+			if( compare )
+				mtlc_sampler_descriptor_set_compare_function( sd, MTLC_COMPARE_FUNCTION_LESS_EQUAL );
+
+			struct mtlc_sampler_state st = mtlc_device_new_sampler_state( rsh.device.mtl.device, sd );
+			mtlc_sampler_descriptor_release( sd );
+			// Like the VK path, the previous handle is intentionally left alive: some descriptor snapshots
+			// are resolved only once and would dangle. Settings changes are rare.
+			slot->mtl.sampler = st.obj;
+			slot->cookie = cookie;
+		}
+		return slot;
+	}
 #endif
 	return NULL;
 }
@@ -825,6 +892,14 @@ static bool __R_LoadKTX( image_t *image, const char *pathname )
 		assert( !RI_IsEmptyDescriptor( &image->samplerBinding ) );
 	}
 #endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		__R_CreateMTLTexture( image, dstFormat, numberOfMipLevels, image->width, image->height );
+		image->binding = RIDescriptorSampledImage( &rsh.device, &image->view, RI_RESOURCE_STATE_SHADER_RESOURCE );
+		image->samplerBinding = RIDescriptorSampler( &rsh.device, R_ResolveSamplerDescriptor( image->flags ) );
+		assert( !RI_IsEmptyDescriptor( &image->samplerBinding ) );
+	}
+#endif
 
 	if( R_KTXIsCompressed( &ktxContext ) ) {
 		struct texture_buf_s uncomp = { 0 };
@@ -935,6 +1010,37 @@ static enum RI_Format_e __R_GetImageFormat( struct image_s *image )
 	return RI_FORMAT_RGBA8_UNORM;
 }
 
+#if ( DEVICE_IMPL_MTL )
+// Shared Metal texture creation for every sampled-image path (R_LoadImage, R_ReplaceImage,
+// R_FindImage, __R_LoadKTX) — the Metal counterpart of the per-site Vulkan vmaCreateImage blocks.
+// TODO(metal): usage beyond sampled and 2D-array textures are deferred. Upload is a direct
+// replaceRegion (Milestone D), which requires non-Private storage: Shared on unified memory,
+// Managed on discrete.
+static void __R_CreateMTLTexture( struct image_s *image, enum RI_Format_e destFormat, uint32_t mipLevels, int width, int height )
+{
+	image->handle.cookie = hash_random();
+	image->view.cookie = hash_random();
+	struct mtlc_texture_descriptor td = mtlc_texture_descriptor_texture_2d( RIFormatToMTL( destFormat ), width, height, mipLevels > 1 );
+	// A cubemap is the same square 2D descriptor retyped to Cube; its 6 faces are addressed as slices
+	// 0..5 by the per-face replaceRegion upload loop (mirrors the Vulkan CUBE view/arrayLayers=6).
+	if( image->flags & IT_CUBEMAP )
+		mtlc_texture_descriptor_set_texture_type( td, MTLC_TEXTURE_TYPE_CUBE );
+	// Allocate exactly the levels we upload (mirrors the Vulkan info.mipLevels). The mipmapped: flag above
+	// would otherwise allocate a full floor(log2(max))+1 chain, leaving the smallest levels uninitialized.
+	mtlc_texture_descriptor_set_mipmap_level_count( td, mipLevels );
+	mtlc_texture_descriptor_set_usage( td, MTLC_TEXTURE_USAGE_SHADER_READ );
+	// Managed is the canonical replaceRegion target on macOS (Apple Silicon + discrete). Shared textures
+	// do not reliably reflect CPU replaceRegion writes here, so use Managed for all CPU-uploaded textures.
+	mtlc_texture_descriptor_set_storage_mode( td, MTLC_STORAGE_MODE_MANAGED );
+	struct mtlc_texture tex = mtlc_device_new_texture( rsh.device.mtl.device, td );
+	if( mtlc_texture_is_nil( tex ) )
+		ri.Com_Printf( S_COLOR_YELLOW "Metal: texture create failed '%s' (%dx%d fmt=%d)\n", image->name.buf, width, height, (int)RIFormatToMTL( destFormat ) );
+	image->handle.mtl.texture = tex;
+	image->handle.mtl.fmt = RIFormatToMTL( destFormat );
+	image->view.mtl.texture = tex; // view == texture for the basic 2D case
+}
+#endif
+
 static void __R_CopyTextureDataTexture( struct image_s *image, int layer, int mipOffset, int x, int y, int w, int h, enum RI_Format_e srcFormat, uint8_t *data )
 {
 	const struct RIFormatProps_s *srcDef = GetRIFormatProps( srcFormat );
@@ -1026,6 +1132,11 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	enum RI_Format_e srcFormat = __R_ResolveDataFormat( flags, samples );
 	enum RI_Format_e destFormat = __R_GetImageFormat( image );
 
+	const uint32_t arrayLayers = ( image->flags & IT_CUBEMAP ) ? 6 : 1;
+	const uint32_t mipLevels = image->mipNum;
+	image->handle.cookie = hash_random();
+	image->view.cookie = hash_random();
+#if ( DEVICE_IMPL_VULKAN )
 	uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
 	VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 	info.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
@@ -1077,9 +1188,11 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	createInfo.subresourceRange = subresource;
 	createInfo.image = image->handle.vk.image;
 
-	image->handle.cookie = hash_random();
-	image->view.cookie = hash_random();
 	VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &image->view.vk.image ) );
+#endif
+#if ( DEVICE_IMPL_MTL )
+	__R_CreateMTLTexture( image, destFormat, mipLevels, image->width, image->height );
+#endif
 	image->binding = RIDescriptorSampledImage( &rsh.device, &image->view, RI_RESOURCE_STATE_SHADER_RESOURCE );
 	image->samplerBinding = RIDescriptorSampler( &rsh.device, R_ResolveSamplerDescriptor( image->flags ) );
 
@@ -1088,7 +1201,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	const size_t reservedSize = width * height * samples;
 	uint8_t *tmpBuffer = NULL;
 	if( pic ) {
-		for( size_t index = 0; index < info.arrayLayers; index++ ) {
+		for( size_t index = 0; index < arrayLayers; index++ ) {
 			if( !pic[index] ) {
 				continue;
 			}
@@ -1101,7 +1214,7 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 
 			uint32_t w = width;
 			uint32_t h = height;
-			for( size_t i = 0; i < info.mipLevels; i++ ) {
+			for( size_t i = 0; i < mipLevels; i++ ) {
 				__R_CopyTextureDataTexture( image, index, i, 0, 0, w, h, srcFormat, buf );
 				R_MipMap( buf, w, h, samples, 1 );
 				w >>= 1;
@@ -1116,6 +1229,19 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 		}
 	}
 	arrfree( tmpBuffer );
+
+	// Confirm the full GPU upload landed: valid backend handle + the mip/face counts we intended to fill.
+	// Gated on `developer` (Com_DPrintf) so it is silent in normal play. Enable with `developer 1`.
+#if ( DEVICE_IMPL_MTL )
+	const bool __handleValid = !mtlc_texture_is_nil( image->handle.mtl.texture );
+#elif ( DEVICE_IMPL_VULKAN )
+	const bool __handleValid = ( image->handle.vk.image != VK_NULL_HANDLE );
+#else
+	const bool __handleValid = true;
+#endif
+	ri.Com_DPrintf( "image load: %s %dx%d mips=%d faces=%d%s handle=%s\n", image->name.buf, image->width, image->height, (int)mipLevels,
+					(int)arrayLayers, ( flags & IT_CUBEMAP ) ? " cube" : "", __handleValid ? "ok" : S_COLOR_RED "NIL" );
+
 	TracyCZoneEnd( ctx );
 	return image;
 }
@@ -1242,8 +1368,14 @@ void R_ReplaceImage( image_t *image, uint8_t **pic, int width, int height, int f
 		assert( !RI_IsEmptyDescriptor( &image->samplerBinding ) );
 
 		// RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
-#else
-#error unhandled
+#endif
+#if ( DEVICE_IMPL_MTL )
+		// The IT_CUBEMAP retype inside the helper keys off image->flags, which is only assigned below —
+		// sync it first so a flat->cube (or reverse) replace creates the right texture type.
+		image->flags = flags;
+		__R_CreateMTLTexture( image, destFormat, mipNum, width, height );
+		image->binding = RIDescriptorSampledImage( &rsh.device, &image->view, RI_RESOURCE_STATE_SHADER_RESOURCE );
+		image->samplerBinding = RIDescriptorSampler( &rsh.device, R_ResolveSamplerDescriptor( image->flags ) );
 #endif
 	}
 	image->flags = flags;
@@ -1575,6 +1707,14 @@ image_t *R_FindImage( const char *name, const char *suffix, int flags, int minmi
 		assert( !RI_IsEmptyDescriptor( &image->samplerBinding ) );
 
 		// RI_VK_InitImageView( &rsh.device, &createInfo, &image->binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
+	}
+#endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		__R_CreateMTLTexture( image, destFormat, mipSize, image->width, image->height );
+		image->binding = RIDescriptorSampledImage( &rsh.device, &image->view, RI_RESOURCE_STATE_SHADER_RESOURCE );
+		image->samplerBinding = RIDescriptorSampler( &rsh.device, R_ResolveSamplerDescriptor( image->flags ) );
+		assert( !RI_IsEmptyDescriptor( &image->samplerBinding ) );
 	}
 #endif
 

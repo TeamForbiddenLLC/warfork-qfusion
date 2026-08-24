@@ -157,18 +157,12 @@ void R_ShutdownPortals()
 	for( size_t i = 0; i < MAX_PORTAL_TEXTURES; i++ ) {
 		struct portal_fb_s *portalFB = &rsh.portalFBs[i];
 		if( IsRITextureValid( &rsh.renderer, &portalFB->colorTexture ) ) {
-			FreeRITexture( &rsh.device, &portalFB->colorTexture );
 			FreeRITextureView( &rsh.device, &portalFB->colorView );
-#if ( DEVICE_IMPL_VULKAN )
-			vmaFreeMemory( rsh.device.vk.vmaAllocator, portalFB->vk.vmaColorAlloc );
-#endif
+			FreeRITexture( &rsh.device, &portalFB->colorTexture );
 		}
 		if( IsRITextureValid( &rsh.renderer, &portalFB->depthTexture ) ) {
-			FreeRITexture( &rsh.device, &portalFB->depthTexture );
 			FreeRITextureView( &rsh.device, &portalFB->depthView );
-#if ( DEVICE_IMPL_VULKAN )
-			vmaFreeMemory( rsh.device.vk.vmaAllocator, portalFB->vk.vmaDepthAlloc );
-#endif
+			FreeRITexture( &rsh.device, &portalFB->depthTexture );
 		}
 		memset( portalFB, 0, sizeof( struct portal_fb_s ) );
 	}
@@ -199,134 +193,30 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 	  bestFB->frameNum = rsh.frameSetCount;
 	  bestFB->width = width;
 	  bestFB->height = height;
-#if ( DEVICE_IMPL_VULKAN )
-	  struct RIFree_s freeSlot = { 0 };
+	  // Retire the outgoing pair through the frame set: the GPU may still be sampling them this frame.
 	  struct r_frame_set_s *activeset = R_GetActiveFrameSet();
-	  if( bestFB->colorView.vk.image ) {
-		  freeSlot.type = RI_FREE_VK_IMAGEVIEW;
-		  freeSlot.vkImageView = bestFB->colorView.vk.image;
-		  arrpush( activeset->freeList, freeSlot );
+	  RIDeferFreeTexture( &activeset->freeList, &bestFB->colorTexture, &bestFB->colorView );
+	  RIDeferFreeTexture( &activeset->freeList, &bestFB->depthTexture, &bestFB->depthView );
+
+	  // Both are rendered into (FR_CmdBeginRendering below) and sampled afterwards -- the colour through
+	  // $portalmap, the depth by whatever wants it -- so each carries attachment + shader-resource usage.
+	  const struct RITextureDesc_s colorDesc = {
+		  .width = width, .height = height, .format = PortalTextureFormat, .usage = RI_USAGE_COLOR_ATTACHMENT | RI_USAGE_SHADER_RESOURCE };
+	  const struct RITextureDesc_s depthDesc = {
+		  .width = width, .height = height, .format = PortalTextureDepthFormat, .usage = RI_USAGE_DEPTH_STENCIL_ATTACHMENT | RI_USAGE_SHADER_RESOURCE };
+	  if( InitRITexture( &rsh.device, &colorDesc, &bestFB->colorTexture ) != RI_SUCCESS ||
+		  InitRITextureView( &rsh.device, &colorDesc, &bestFB->colorTexture, &bestFB->colorView ) != RI_SUCCESS ||
+		  InitRITexture( &rsh.device, &depthDesc, &bestFB->depthTexture ) != RI_SUCCESS ||
+		  InitRITextureView( &rsh.device, &depthDesc, &bestFB->depthTexture, &bestFB->depthView ) != RI_SUCCESS ) {
+		  // Leave no half-built slot behind: a valid colour texture with no view would pass the reuse check above.
+		  FreeRITextureView( &rsh.device, &bestFB->colorView );
+		  FreeRITexture( &rsh.device, &bestFB->colorTexture );
+		  FreeRITextureView( &rsh.device, &bestFB->depthView );
+		  FreeRITexture( &rsh.device, &bestFB->depthTexture );
+		  return NULL;
 	  }
-	  if( bestFB->depthView.vk.image ) {
-		  freeSlot.type = RI_FREE_VK_IMAGEVIEW;
-		  freeSlot.vkImageView = bestFB->depthView.vk.image;
-		  arrpush( activeset->freeList, freeSlot );
-	  }
-	  if( bestFB->colorTexture.vk.image ) {
-		  freeSlot.type = RI_FREE_VK_IMAGE;
-		  freeSlot.vkImage = bestFB->colorTexture.vk.image;
-		  arrpush( activeset->freeList, freeSlot );
-	  }
-	  if( bestFB->depthTexture.vk.image ) {
-		  freeSlot.type = RI_FREE_VK_IMAGE;
-		  freeSlot.vkImage = bestFB->depthTexture.vk.image;
-		  arrpush( activeset->freeList, freeSlot );
-	  }
-	  if( bestFB->vk.vmaColorAlloc ) {
-		  freeSlot.type = RI_FREE_VK_VMA_AllOC;
-		  freeSlot.vmaAlloc = bestFB->vk.vmaColorAlloc;
-		  arrpush( activeset->freeList, freeSlot );
-	  }
-	  if( bestFB->vk.vmaDepthAlloc ) {
-		  freeSlot.type = RI_FREE_VK_VMA_AllOC;
-		  freeSlot.vmaAlloc = bestFB->vk.vmaDepthAlloc;
-		  arrpush( activeset->freeList, freeSlot );
-	  }
-
-	  {
-		  uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
-		  VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-		  VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
-		  info.flags = flags;
-		  info.imageType = VK_IMAGE_TYPE_2D;
-		  info.format = RIFormatToVK( PortalTextureFormat );
-		  info.extent.width = width;
-		  info.extent.height = height;
-		  info.extent.depth = 1;
-		  info.mipLevels = 1;
-		  info.arrayLayers = 1;
-		  info.samples = 1;
-		  info.tiling = VK_IMAGE_TILING_OPTIMAL;
-		  info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-		  info.pQueueFamilyIndices = queueFamilies;
-		  VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
-		  info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		  VmaAllocationCreateInfo mem_reqs = { 0 };
-		  mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-		  if( !VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &bestFB->colorTexture.vk.image, &bestFB->vk.vmaColorAlloc, NULL ) ) ) {
-			  return NULL;
-		  }
-
-		  VkImageSubresourceRange subresource = {
-			  VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1,
-		  };
-
-		  // The image is created with EXTENDED_USAGE, so this chain does not add to the image's usage -- it
-		  // replaces it for this view. This view is both rendered into (vkCmdBeginRendering below) and sampled
-		  // through $portalmap, so it has to carry both bits; SAMPLED alone makes it illegal as an attachment.
-		  VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
-		  usageInfo.usage = info.usage;
-
-		  VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-		  createInfo.pNext = &usageInfo;
-		  createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		  createInfo.format = info.format;
-		  createInfo.subresourceRange = subresource;
-		  createInfo.image = bestFB->colorTexture.vk.image;
-			
-			bestFB->colorTexture.cookie = hash_random();
-			bestFB->colorView.cookie = hash_random();
-			VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->colorView.vk.image ) );
-			bestFB->colorDescriptor = RIDescriptorSampledImage( &rsh.device, &bestFB->colorView, RI_RESOURCE_STATE_SHADER_RESOURCE );
-	  }
-	  {
-		  uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
-		  VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-		  VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
-		  info.flags = flags;
-		  info.imageType = VK_IMAGE_TYPE_2D;
-		  info.format = RIFormatToVK( PortalTextureDepthFormat );
-		  info.extent.width = width;
-		  info.extent.height = height;
-		  info.extent.depth = 1;
-		  info.mipLevels = 1;
-		  info.arrayLayers = 1;
-		  info.samples = 1;
-		  info.tiling = VK_IMAGE_TILING_OPTIMAL;
-		  info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-		  info.pQueueFamilyIndices = queueFamilies;
-		  VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
-		  info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		  VmaAllocationCreateInfo mem_reqs = { 0 };
-		  mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-		  if( !VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &bestFB->depthTexture.vk.image, &bestFB->vk.vmaDepthAlloc, NULL ) ) ) {
-			  return NULL;
-		  }
-
-		  VkImageSubresourceRange subresource = {
-			  VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1,
-		  };
-
-		  // Same as the colour view above: EXTENDED_USAGE means this replaces the image's usage, and this view
-		  // is used as the depth attachment, so DEPTH_STENCIL_ATTACHMENT has to survive alongside SAMPLED.
-		  VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
-		  usageInfo.usage = info.usage;
-
-		  VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-		  createInfo.pNext = &usageInfo;
-		  createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		  createInfo.format = info.format;
-		  createInfo.subresourceRange = subresource;
-		  createInfo.image = bestFB->depthTexture.vk.image;
-
-		  bestFB->depthTexture.cookie = hash_random();
-		  bestFB->depthView.cookie = hash_random();
-		  VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->depthView.vk.image ) );
-		  bestFB->depthDescriptor = RIDescriptorSampledImage( &rsh.device, &bestFB->depthView, RI_RESOURCE_STATE_SHADER_RESOURCE );
-
-		  //RI_VK_InitImageView( &rsh.device, &createInfo, &bestFB->depthDescriptor, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE );
-	  }
-#endif
+	  bestFB->colorDescriptor = RIDescriptorSampledImage( &rsh.device, &bestFB->colorView, RI_RESOURCE_STATE_SHADER_RESOURCE );
+	  bestFB->depthDescriptor = RIDescriptorSampledImage( &rsh.device, &bestFB->depthView, RI_RESOURCE_STATE_SHADER_RESOURCE );
   }
   return bestFB;
 }
@@ -598,62 +488,30 @@ setup_and_render:
 		enum RI_Format_e attachments[] = { PortalTextureFormat };
 		FR_ConfigurePipelineAttachment( &sub.pipeline, attachments, Q_ARRAY_COUNT( attachments ), PortalTextureDepthFormat );
 
+		// Transition the portal framebuffer's depth + color into write attachments before rendering.
+		RICmdImageBarrier( &rsh.device, &sub.handle, &( struct RIImageBarrier_s ){
+			.texture = &fb->depthTexture,
+			.before = RI_RESOURCE_STATE_UNDEFINED,
+			.after = RI_RESOURCE_STATE_DEPTH_WRITE,
+			.aspect = RI_BARRIER_ASPECT_DEPTH,
+		} );
+		RICmdImageBarrier( &rsh.device, &sub.handle, &( struct RIImageBarrier_s ){
+			.texture = &fb->colorTexture,
+			.before = RI_RESOURCE_STATE_UNDEFINED,
+			.after = RI_RESOURCE_STATE_RENDER_TARGET,
+			.aspect = RI_BARRIER_ASPECT_COLOR,
+		} );
 		{
-			VkImageMemoryBarrier2 imageBarriers[2] = { 0 };
-			imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-			imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
-			imageBarriers[0].srcAccessMask = VK_ACCESS_2_NONE;
-			imageBarriers[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-			imageBarriers[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-			imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-			imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			imageBarriers[0].image = fb->depthTexture.vk.image;
-			imageBarriers[0].subresourceRange = (VkImageSubresourceRange){
-				VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
-			};
-
-			imageBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-			imageBarriers[1].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			imageBarriers[1].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
-			imageBarriers[1].srcAccessMask = VK_ACCESS_2_NONE;
-			imageBarriers[1].dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-			imageBarriers[1].dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-			imageBarriers[1].newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			imageBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			imageBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			imageBarriers[1].image = fb->colorTexture.vk.image;
-			imageBarriers[1].subresourceRange = (VkImageSubresourceRange){
-				VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
-			};
-
-			VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
-			dependencyInfo.imageMemoryBarrierCount = Q_ARRAY_COUNT(imageBarriers);
-			dependencyInfo.pImageMemoryBarriers = imageBarriers;
-			vkCmdPipelineBarrier2( sub.handle.vk.cmd, &dependencyInfo );
-		}
-		{
-			VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-			RI_VK_FillColorAttachment( &colorAttachment, fb->colorView, true );
-
-			VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-			RI_VK_FillDepthAttachment( &depthStencil, fb->depthView, true );
-			enum RI_Format_e attachments[] = {PortalTextureFormat };
-			FR_ConfigurePipelineAttachment(& sub.pipeline, attachments, Q_ARRAY_COUNT(attachments), PortalTextureDepthFormat );
-			
-			VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
-			renderingInfo.flags = 0;
-			renderingInfo.renderArea.extent.width = fb->width;
-			renderingInfo.renderArea.extent.height = fb->height;
-			renderingInfo.layerCount = 1;
-			renderingInfo.viewMask = 0;
-			renderingInfo.colorAttachmentCount = 1;
-			renderingInfo.pColorAttachments = &colorAttachment;
-			renderingInfo.pDepthAttachment = &depthStencil;
-			renderingInfo.pStencilAttachment = NULL;
-			vkCmdBeginRendering( sub.handle.vk.cmd, &renderingInfo );
-
+			enum RI_Format_e attachments[] = { PortalTextureFormat };
+			FR_ConfigurePipelineAttachment( &sub.pipeline, attachments, Q_ARRAY_COUNT( attachments ), PortalTextureDepthFormat );
+			FR_CmdBeginRendering( &rsh.device, &sub, &( struct RIRenderingDesc_s ){
+				.width = fb->width,
+				.height = fb->height,
+				.colorNum = 1,
+				.colors = { { .view = fb->colorView, .clear = true } },
+				.hasDepth = true,
+				.depth = { .view = fb->depthView, .clear = true },
+			} );
 		}
 
 		rn.renderFlags |= RF_PORTAL_CAPTURE;
@@ -668,28 +526,14 @@ setup_and_render:
 	R_RenderView( captureTextureId >= 0 ? &sub : cmd, &rn.refdef );
 
 	if( useCaptureTexture && portalTexures[captureTextureId] ) {
-#if ( DEVICE_IMPL_VULKAN )
-		vkCmdEndRendering( sub.handle.vk.cmd );
-#endif
-		VkImageMemoryBarrier2 imageBarriers[1] = { 0 };
-		imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-		imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-		imageBarriers[0].srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-		imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		imageBarriers[0].dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-		imageBarriers[0].dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-		imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		imageBarriers[0].image = portalTexures[captureTextureId]->colorTexture.vk.image;
-		imageBarriers[0].subresourceRange = (VkImageSubresourceRange){
-			VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
-		};
-
-		VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
-		dependencyInfo.imageMemoryBarrierCount = Q_ARRAY_COUNT( imageBarriers );
-		dependencyInfo.pImageMemoryBarriers = imageBarriers;
-		vkCmdPipelineBarrier2( sub.handle.vk.cmd, &dependencyInfo );
+		RICmdEndRendering( &rsh.device, &sub.handle );
+		// The captured portal color becomes a shader resource sampled by the portal surface material.
+		RICmdImageBarrier( &rsh.device, &sub.handle, &( struct RIImageBarrier_s ){
+			.texture = &portalTexures[captureTextureId]->colorTexture,
+			.before = RI_RESOURCE_STATE_RENDER_TARGET,
+			.after = RI_RESOURCE_STATE_SHADER_RESOURCE,
+			.aspect = RI_BARRIER_ASPECT_COLOR,
+		} );
 	}
 
 	if( doRefraction && !refraction && ( shader->flags & SHADER_PORTAL_CAPTURE2 ) )
@@ -702,7 +546,7 @@ setup_and_render:
 
 done:
 	if(useCaptureTexture) {
-		vkEndCommandBuffer(sub.handle.vk.cmd);
+		EndRICmd( &rsh.device, &sub.handle );
 	}
 	portalSurface->portalfbs[0] = portalTexures[0];
 	portalSurface->portalfbs[1] = portalTexures[1];
@@ -720,22 +564,7 @@ void R_DrawPortals(struct FrameState_s *cmd)
   if( !( rn.renderFlags & ( RF_MIRRORVIEW | RF_PORTALVIEW | RF_SHADOWMAPVIEW ) ) ) {
 	  // render skyportal
 	  if( rn.skyportalSurface ) {
-#if ( DEVICE_IMPL_VULKAN )
-		  {
-			  VkClearRect clearRect[1] = { 0 };
-			  VkClearAttachment clearAttach[1] = { 0 };
-			  clearRect[0].baseArrayLayer = 0;
-			  clearRect[0].rect = RIViewportToRect2D( &rsh.frame.viewport );
-			  clearRect[0].layerCount = 1;
-
-			  clearAttach[0].colorAttachment = 0;
-			  clearAttach[0].clearValue.depthStencil.depth = 1.0f;
-			  clearAttach[0].aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-			  vkCmdClearAttachments( cmd->handle.vk.cmd, 1, clearAttach, 1, clearRect );
-		  }
-#else
-			#error Unsupported 
-#endif
+		  FR_CmdClearAttachments( cmd, false, NULL, true );
 		  portalSurface_t *ps = rn.skyportalSurface;
 		  R_DrawSkyportal( cmd, ps->entity, ps->skyPortal );
 	  }

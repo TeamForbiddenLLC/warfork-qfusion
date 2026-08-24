@@ -7,9 +7,35 @@ if (NOT GAME_MODULES_ONLY)
     option(ENABLE_PCH OFF)
     option(ENABLE_CTEST OFF)
 
+    # glslang stays on every platform: it is the GLSL->SPIR-V front, still used on macOS where the
+    # SPIR-V is then cross-compiled to MSL (SPIRV-Cross) for the Metal backend.
     add_subdirectory(glslang)
+
+    if(APPLE)
+      # SPIRV-Cross turns the SPIR-V glslang emits into MSL for the Metal backend. Only the MSL target
+      # and the C API are needed (r_program.c is C); everything else is switched off to keep the build
+      # small. MSL depends on the GLSL backend, so SPIRV_CROSS_ENABLE_GLSL must stay ON.
+      # The top-level cmake_minimum_required caps policies at 3.5, so CMP0077 is OLD and a plain set()
+      # would be clobbered by SPIRV-Cross's own option() calls -- force the cache entries instead.
+      set(SPIRV_CROSS_SHARED         OFF CACHE BOOL "" FORCE)
+      set(SPIRV_CROSS_STATIC         ON  CACHE BOOL "" FORCE)
+      set(SPIRV_CROSS_CLI            OFF CACHE BOOL "" FORCE)
+      set(SPIRV_CROSS_ENABLE_TESTS   OFF CACHE BOOL "" FORCE)
+      set(SPIRV_CROSS_ENABLE_GLSL    ON  CACHE BOOL "" FORCE)
+      set(SPIRV_CROSS_ENABLE_MSL     ON  CACHE BOOL "" FORCE)
+      set(SPIRV_CROSS_ENABLE_C_API   ON  CACHE BOOL "" FORCE)
+      set(SPIRV_CROSS_ENABLE_HLSL    OFF CACHE BOOL "" FORCE)
+      set(SPIRV_CROSS_ENABLE_CPP     OFF CACHE BOOL "" FORCE)
+      set(SPIRV_CROSS_ENABLE_REFLECT OFF CACHE BOOL "" FORCE)
+      set(SPIRV_CROSS_ENABLE_UTIL    OFF CACHE BOOL "" FORCE)
+      add_subdirectory(SPIRV-Cross)
+    endif()
+
+    # Vulkan-only externals. macOS renders natively on Metal (see ri_defines.h), so it neither needs
+    # nor builds the Vulkan memory allocator or the volk loader.
+    if(NOT APPLE)
     add_subdirectory(VulkanMemoryAllocator)
-   
+
     set(VOLK_STATIC_DEFINES "")
     if(CMAKE_SYSTEM_NAME STREQUAL Linux)
         if (USE_GRAPHICS_X11)
@@ -32,7 +58,8 @@ if (NOT GAME_MODULES_ONLY)
 
     set(VULKAN_HEADERS_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Vulkan-Headers" )
     option(VOLK_INSTALL "" OFF)
-    add_subdirectory(volk) 
+    add_subdirectory(volk)
+    endif() # NOT APPLE
   endif()
 
 if(USE_SYSTEM_ZLIB)

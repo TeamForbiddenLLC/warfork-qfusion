@@ -30,6 +30,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ri_swapchain.h"
 #include "ri_renderer.h"
 #include "ri_vk.h"
+#include "ri_mtl.h"
+
+#if ( DEVICE_IMPL_MTL )
+// The game drives its own main loop (no Cocoa run loop), so nothing drains the thread's autorelease pool.
+// Each frame is wrapped in an explicit pool: CAMetalDrawables from nextDrawable are autoreleased, and
+// without draining they are never returned to the layer's drawable pool, so nextDrawable eventually blocks
+// forever (the classic CAMetalLayer starvation hang). Push at frame begin, pop at frame end.
+extern void *objc_autoreleasePoolPush( void );
+extern void objc_autoreleasePoolPop( void * );
+static void *s_mtlFramePool = NULL;
+#endif
 
 #include "stb_ds.h"
 #include "tracy/TracyC.h"
@@ -120,6 +131,21 @@ static void __R_CreateSwapchainAttachments()
 		}
 	}
 #endif
+#if ( DEVICE_IMPL_MTL )
+	assert( RISwapchainGetImageCount( &rsh.swapchain ) > 0 );
+	for( uint32_t i = 0; i < RISwapchainGetImageCount( &rsh.swapchain ); i++ ) {
+		RI_PogoBufferInit( &rsh.device, &rsh.pogoBuffer[i], rsh.swapchain.width, rsh.swapchain.height, POGO_BUFFER_TEXTURE_FORMAT );
+
+		// Private depth attachment (GPU-only). The "view" is the texture itself for a plain 2D depth target.
+		struct mtlc_texture_descriptor td = mtlc_texture_descriptor_texture_2d( RIFormatToMTL( RI_FORMAT_D32_SFLOAT ), rsh.swapchain.width, rsh.swapchain.height, false );
+		mtlc_texture_descriptor_set_usage( td, MTLC_TEXTURE_USAGE_RENDER_TARGET );
+		mtlc_texture_descriptor_set_storage_mode( td, MTLC_STORAGE_MODE_PRIVATE );
+		struct mtlc_texture depth = mtlc_device_new_texture( rsh.device.mtl.device, td );
+		rsh.depthTextures[i].mtl.texture = depth;
+		rsh.depthTextures[i].mtl.fmt = RIFormatToMTL( RI_FORMAT_D32_SFLOAT );
+		rsh.depthView[i].mtl.texture = depth;
+	}
+#endif
 }
 
 static void __ShutdownSwapchainTexture()
@@ -176,13 +202,19 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 
 	R_WIN_Init(applicationName, hinstance, wndproc, parenthWnd, iconResource, iconXPM);
 
-	struct RIBackendInit_s backendInit = { 0 };
-	backendInit.api = RI_DEVICE_API_VK;
-	backendInit.applicationName = applicationName;
 #ifndef NDEBUG
-	backendInit.vk.enableValidationLayer = 1;
+	const uint32_t enableValidation = 1;
 #else
-	backendInit.vk.enableValidationLayer = 0;
+	const uint32_t enableValidation = 0;
+#endif
+	struct RIBackendInit_s backendInit = { 0 };
+	backendInit.applicationName = applicationName;
+#if ( DEVICE_IMPL_MTL )
+	backendInit.api = RI_DEVICE_API_MTL;
+	backendInit.mtl.enableValidationLayer = enableValidation;
+#else
+	backendInit.api = RI_DEVICE_API_VK;
+	backendInit.vk.enableValidationLayer = enableValidation;
 #endif
 
 	if(InitRIRenderer(&backendInit, &rsh.renderer) != RI_SUCCESS) {
@@ -221,9 +253,13 @@ rserr_t RF_Init( const char *applicationName, const char *screenshotPrefix, int 
 	rf.screenshotPrefix = R_CopyString( screenshotPrefix );
 	rf.startupColor = startupColor;
 
-	// create vulkan window
+	// create the render window with a surface matching the compiled backend
 	win_init_t winInit = {
+#if ( DEVICE_IMPL_MTL )
+		.backend = VID_WINDOW_METAL,
+#else
 		.backend = VID_WINDOW_VULKAN,
+#endif
 		.x = vid_xpos->integer,
 		.y = vid_ypos->integer,
 		.width = vid_width->integer,
@@ -310,6 +346,10 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 			case VID_WINDOW_WIN32:
 				windowHandle.type = RI_WINDOW_WIN32;
 				windowHandle.windows.hwnd = handle.window.win.hwnd;
+				break;
+			case VID_WINDOW_OSX:
+				windowHandle.type = RI_WINDOW_METAL;
+				windowHandle.metal.caMetalLayer = handle.window.osx.metalLayer;
 				break;
 			default:
 				assert( false );
@@ -614,6 +654,44 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 		}
 	}
 #endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		// Balances objc_autoreleasePoolPop in RF_EndFrame; must wrap nextDrawable (see s_mtlFramePool note).
+		s_mtlFramePool = objc_autoreleasePoolPush();
+		for( size_t i = 0; i < arrlen( activeSet->freeList ); i++ ) {
+			FreeRIFree( &rsh.device, &activeSet->freeList[i] );
+		}
+		arrsetlen( activeSet->freeList, 0 );
+		RIResetScratchAlloc( &rsh.device, &activeSet->uboScratchAlloc );
+		rsh.swapchainIndex = RISwapchainAcquireNextTexture( &rsh.device, &rsh.swapchain );
+
+		enum RI_Format_e attachments[] = { rsh.swapchain.format };
+		FR_ConfigurePipelineAttachment( &rsh.frame.pipeline, attachments, Q_ARRAY_COUNT( attachments ), RI_FORMAT_D32_SFLOAT );
+
+		struct RIViewport_s viewport = { 0 };
+		viewport.width = rsh.swapchain.width;
+		viewport.height = rsh.swapchain.height;
+		viewport.depthMax = 1.0f;
+		viewport.originBottomLeft = true;
+		FR_CmdSetViewport( &rsh.frame, viewport );
+
+		struct RIRect_s rect = { 0 };
+		rect.width = viewport.width;
+		rect.height = viewport.height;
+		FR_CmdSetScissor( &rsh.frame, rect );
+
+		// Metal barriers are implicit (automatic hazard tracking); the color/depth attachments are cleared
+		// via the render pass loadAction. The pogo-buffer transitions the VK path does are deferred.
+		FR_CmdBeginRendering( &rsh.device, &rsh.frame, &( struct RIRenderingDesc_s ){
+			.width = rsh.swapchain.width,
+			.height = rsh.swapchain.height,
+			.colorNum = 1,
+			.colors = { { .view = RISwapchainGetTextureView( &rsh.swapchain, rsh.swapchainIndex ), .clear = true } },
+			.hasDepth = true,
+			.depth = { .view = rsh.depthView[rsh.swapchainIndex], .clear = true },
+		} );
+	}
+#endif
 	rrf.cameraSeparation = cameraSeparation;
 
 	memset( &rf.stats, 0, sizeof( rf.stats ) );
@@ -767,6 +845,41 @@ void RF_EndFrame( void )
 		if( captured ) {
 			rsh.screenshot.single.frameCnt = RITimelinePending( &rsh.frameTimeline );
 			rsh.screenshot.state = CAPTURE_STATE_FINISH_SCREENSHOT;
+		}
+	}
+#endif
+#if ( DEVICE_IMPL_MTL )
+	{
+		RICmdEndRendering( &rsh.device, &rsh.frame.handle );
+		EndRICmd( &rsh.device, &rsh.primary.cmds[0] );
+		rsh.frameActive = false;
+
+		// Commit the recorded secondary command buffers (shadowmap and portal sub-passes) BEFORE the
+		// primary: Metal executes command buffers in commit order on a queue, and automatic hazard
+		// tracking makes the primary's sampling of their render targets wait on the writes. This is the
+		// Metal counterpart of the Vulkan arm's secondary submits + wait semaphores above -- without it
+		// the sub-passes never reach the GPU and the primary samples uninitialized attachments (shadows
+		// rendered as full-frustum dark blobs, portal surfaces showing garbage).
+		for( size_t i = 0; i < arrlen( rsh.secondary ); i++ ) {
+			mtlc_command_buffer_commit( rsh.secondary[i].cmds[0].mtl.cmd );
+		}
+
+		// present the drawable + commit the command buffer (no explicit color->present barrier: Metal's
+		// present handles the transition). Frame pacing via MTLSharedEvent is Milestone E.
+		struct RIQueue_s *graphicsQueue = &rsh.device.queues[RI_QUEUE_GRAPHICS];
+		struct RISwapchainFrameSubmitDesc_s submitDesc = {
+			.imageIndex = rsh.swapchainIndex,
+			.cmd = &rsh.primary.cmds[0],
+			.ringElement = &rsh.primary,
+			.timeline = &rsh.frameTimeline,
+		};
+		RISwapchainFrameSubmit( &rsh.device, &rsh.swapchain, graphicsQueue, &submitDesc );
+
+		// Drain the frame's autorelease pool. The presented drawable is still retained by the committed
+		// command buffer until the GPU finishes, so it returns to the layer's pool on completion, not here.
+		if( s_mtlFramePool ) {
+			objc_autoreleasePoolPop( s_mtlFramePool );
+			s_mtlFramePool = NULL;
 		}
 	}
 #endif
