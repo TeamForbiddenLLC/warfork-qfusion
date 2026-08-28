@@ -44,7 +44,7 @@ void main(void)
 #ifdef APPLY_EYEDOT
 	// calculate dot product between the surface normal and eye vector
 	// great for simulating qf_varying water translucency based on the view angle
-	vec3 surfaceNormal = normalize(texture(Sampler2D(u_NormalmapTexture,u_NormalmapSampler), coord).rgb - vec3(0.5));
+	vec3 surfaceNormal = normalize(texture(sampler2D(u_NormalmapTexture,u_NormalmapSampler), coord).rgb - vec3(0.5));
 	vec3 eyeNormal = normalize(vec3(v_EyeVector));
 
 	float refrdot = float(dot(surfaceNormal, eyeNormal));
