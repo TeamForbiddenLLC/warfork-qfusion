@@ -67,7 +67,15 @@ bool R_WIN_SetFullscreen(int displayFrequency, uint16_t width, uint16_t height )
 
 	const int a = ChangeDisplaySettings( &dm, CDS_FULLSCREEN );
 	if( a == DISP_CHANGE_SUCCESSFUL ) {
-			return true;
+		// make the window borderless, topmost and covering the whole screen
+		SetWindowLong( glw_state.hWnd, GWL_EXSTYLE, WS_EX_TOPMOST );
+		SetWindowLong( glw_state.hWnd, GWL_STYLE, WS_POPUP | WS_VISIBLE );
+		SetWindowPos( glw_state.hWnd, HWND_TOP, 0, 0, width, height, SWP_FRAMECHANGED );
+		ShowWindow( glw_state.hWnd, SW_SHOW );
+		UpdateWindow( glw_state.hWnd );
+		SetForegroundWindow( glw_state.hWnd );
+		SetFocus( glw_state.hWnd );
+		return true;
 	}
 	ChangeDisplaySettings( 0, 0 );
 	return false;
