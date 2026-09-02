@@ -80,6 +80,15 @@ int KeyConverter::toRocketKey( int key )
 	case K_F13:		return KI_F13;
 	case K_F14:		return KI_F14;
 	case K_F15:		return KI_F15;
+	case K_F16:		return KI_F16;
+	case K_F17:		return KI_F17;
+	case K_F18:		return KI_F18;
+	case K_F19:		return KI_F19;
+	case K_F20:		return KI_F20;
+	case K_F21:		return KI_F21;
+	case K_F22:		return KI_F22;
+	case K_F23:		return KI_F23;
+	case K_F24:		return KI_F24;
 	case K_INS:		return KI_INSERT;
 	case K_DEL:		return KI_DELETE;
 	case K_PGDN:	return KI_PRIOR;
