@@ -1,3 +1,15 @@
+
+textures/metal/aluminiumwrap
+{	// from Boqu
+	qer_editorimage textures/boqu/bright_metal
+	
+	{
+		material textures/boqu/bright_metal
+		tcmod scale 3 3
+	}
+}
+
+
 textures/metal/treadplate0015
 {	
 	qer_editorimage textures/metal/treadplate0015.png

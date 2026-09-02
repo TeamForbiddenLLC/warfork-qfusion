@@ -1,3 +1,14 @@
+
+textures/boqu/bright_metal
+{
+	qer_editorimage textures/boqu/bright_metal
+	{
+		material textures/boqu/bright_metal
+		tcmod scale 3 3
+	}
+}
+
+
 textures/boqu/hexx
 {	
 	qer_trans 0.5

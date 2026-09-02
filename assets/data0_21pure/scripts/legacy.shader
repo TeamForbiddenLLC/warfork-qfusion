@@ -127,15 +127,14 @@ textures/cha0s_ws/cement_2_yellow
 	}
 }
 
-textures/cha0s_ws/cement_3_stripes
+textures/cha0s_ws/cement_2
 {
-	qer_editorimage textures/concrete/concreteclean
-	
+	qer_editorimage textures/concrete/concrete2.png
+
 	{
-		material textures/concrete/concreteclean textures/factory/factory_wall_norm
+		material textures/concrete/concrete2.png
 	}
 }
-
 
 textures/cha0s_ws/concrete-4
 {

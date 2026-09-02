@@ -9,6 +9,26 @@ textures/cha0s_ws/cement_2_yellow_flat
 	}
 }
 
+textures/cha0s_ws/trim19
+{
+	qer_editorimage textures/cha0s_ws/trim19.png
+
+	{
+		material textures/cha0s_ws/trim19 textures/cha0s_ws/trim19_norm textures/cha0s_ws/trim19_gloss
+	}
+}
+
+
+
+textures/cha0s_ws/trim19_black
+{
+	qer_editorimage textures/cha0s_ws/trim19_black.png
+
+	{
+		material textures/cha0s_ws/trim19_black textures/cha0s_ws/trim19_norm textures/cha0s_ws/trim19_gloss
+	}
+}
+
 
 //=======================================
 // LIGHTS ETC
