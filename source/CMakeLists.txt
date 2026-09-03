@@ -42,7 +42,7 @@ if (QFUSION_APPLICATION_VERSION_HEADER)
     add_definitions(-DAPPLICATION_VERSION_HEADER=${QFUSION_APPLICATION_VERSION_HEADER})
 endif()
 
-option(USE_SDL2 "Build using SDL2" OFF)
+option(USE_SDL3 "Build using SDL3" OFF)
 option(BUILD_UNIT_TEST "Build with unit test" OFF)
 option(GAME_MODULES_ONLY "Only build game modules" OFF)
 option(BUILD_STEAMLIB "Include the steamlib module (requires Steamworks SDK)" OFF)
@@ -55,7 +55,7 @@ option(USE_GRAPHICS_WAYLAND "Build using wayland" ON)
 OPTION(USE_SYSTEM_ZLIB "Prefer system ZLIB instead of the bundled one" OFF)
 OPTION(USE_SYSTEM_OPENAL "Prefer system OpenAL Soft instead of the bundled one" OFF)
 OPTION(USE_SYSTEM_CURL "Prefer system cURL instead of the bundled one" OFF)
-OPTION(USE_SYSTEM_SDL2 "Prefer system SDL2 instead of the bundled one" OFF)
+OPTION(USE_SYSTEM_SDL3 "Prefer system SDL3 instead of the bundled one" OFF)
 OPTION(USE_SYSTEM_OGG "Prefer system OGG instead of the bundled one" OFF)
 OPTION(USE_SYSTEM_FREETYPE "Prefer system freetype instead of the bundled one" OFF)
 OPTION(USE_SYSTEM_VORBIS "Prefer system vorbis instead of the bundled one" OFF)
@@ -140,7 +140,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD "c++11") # Use C++11 standart for compiling C++ files
     set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LIBRARY "libc++")          # Use modern libc++ instead of libstdc++
     set(CMAKE_MACOSX_RPATH 1)
-    set(USE_SDL2 1)
+    set(USE_SDL3 1)
 
     # The workaround for try_compile failing with code signing
     # since cmake-3.18.2, not required
@@ -226,7 +226,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR MINGW)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -D_POSIX_C_SOURCE=200112L -D_XOPEN_SOURCE=500 ")
 
     # default to sdl2 build on non-windows platforms
-    set(USE_SDL2 1)
+    set(USE_SDL3 1)
     
 
     # linking flags can't be used for static libs
@@ -268,8 +268,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 endif()
 
 if (NOT GAME_MODULES_ONLY)
-    if (USE_SDL2)
-        add_definitions(-DUSE_SDL2)
+    if (USE_SDL3)
+        add_definitions(-DUSE_SDL3)
     endif()
 endif()
 
@@ -302,7 +302,7 @@ if (NOT GAME_MODULES_ONLY)
         find_windows_release_libs(OPENAL_LIBRARIES)
         find_windows_release_libs(CURL_LIBRARY)
         find_windows_release_libs(ANGELSCRIPT_LIBRARY)
-        find_windows_release_libs(SDL2_LIBRARIES)
+        find_windows_release_libs(SDL3_LIBRARIES)
     endif()
 endif()
 

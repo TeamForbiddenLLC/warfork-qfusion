@@ -18,12 +18,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "../client/client.h"
 #include "sdl_input_joy.h"
 
+// Number of standard gamepad buttons we map (matches the keys[] table below: the 15 buttons
+// SOUTH..DPAD_RIGHT). SDL3's SDL_GAMEPAD_BUTTON_COUNT (21) includes paddles/touchpad we don't map,
+// and the two trigger pseudo-buttons are packed at bit positions COUNT and COUNT+1.
+#define GAMEPAD_NUM_MAPPED_BUTTONS ( SDL_GAMEPAD_BUTTON_DPAD_RIGHT + 1 )
+
 static bool in_sdl_joyInitialized, in_sdl_joyActive;
-static SDL_GameController *in_sdl_joyController;
+static SDL_Gamepad *in_sdl_joyController;
 
 /*
 * IN_SDL_JoyInit
@@ -34,7 +39,7 @@ void IN_SDL_JoyInit( bool active )
 {
 	in_sdl_joyActive = active;
 
-	if( SDL_InitSubSystem( SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER ) )
+	if( !SDL_InitSubSystem( SDL_INIT_JOYSTICK | SDL_INIT_GAMEPAD ) )
 		return;
 
 	in_sdl_joyInitialized = true;
@@ -67,44 +72,48 @@ void IN_SDL_JoyCommands( void )
 
 	if( in_sdl_joyInitialized )
 	{
-		SDL_GameControllerUpdate();
+		SDL_UpdateGamepads();
 
-		if( in_sdl_joyController && !SDL_GameControllerGetAttached( in_sdl_joyController ) )
+		if( in_sdl_joyController && !SDL_GamepadConnected( in_sdl_joyController ) )
 		{
-			SDL_GameControllerClose( in_sdl_joyController );
+			SDL_CloseGamepad( in_sdl_joyController );
 			in_sdl_joyController = NULL;
 		}
 
 		if( !in_sdl_joyController )
 		{
-			int num = SDL_NumJoysticks();
-
-			for( i = 0; i < num; i++ )
+			int count = 0;
+			SDL_JoystickID *ids = SDL_GetGamepads( &count );
+			if( ids )
 			{
-				in_sdl_joyController = SDL_GameControllerOpen( i );
-				if( in_sdl_joyController )	
-					break;
+				for( i = 0; i < count; i++ )
+				{
+					in_sdl_joyController = SDL_OpenGamepad( ids[i] );
+					if( in_sdl_joyController )
+						break;
+				}
+				SDL_free( ids );
 			}
 		}
 	}
 
 	if( in_sdl_joyActive )
 	{
-		SDL_GameController *controller = in_sdl_joyController;
+		SDL_Gamepad *controller = in_sdl_joyController;
 		if( controller )
 		{
-			for( i = 0; i < SDL_CONTROLLER_BUTTON_MAX; i++ )
+			for( i = 0; i < GAMEPAD_NUM_MAPPED_BUTTONS; i++ )
 			{
-				if( keys[i] && SDL_GameControllerGetButton( controller, i ) )
+				if( keys[i] && SDL_GetGamepadButton( controller, i ) )
 					buttons |= 1 << i;
 			}
 
-			if( SDL_GameControllerGetButton( controller, SDL_CONTROLLER_BUTTON_START ) )
-				buttons |= 1 << SDL_CONTROLLER_BUTTON_BACK;
-			if( SDL_GameControllerGetAxis( controller, SDL_CONTROLLER_AXIS_TRIGGERLEFT ) > ( 30 * 128 ) )
-				buttons |= 1 << SDL_CONTROLLER_BUTTON_MAX;
-			if( SDL_GameControllerGetAxis( controller, SDL_CONTROLLER_AXIS_TRIGGERRIGHT ) > ( 30 * 128 ) )
-				buttons |= 1 << ( SDL_CONTROLLER_BUTTON_MAX + 1 );
+			if( SDL_GetGamepadButton( controller, SDL_GAMEPAD_BUTTON_START ) )
+				buttons |= 1 << SDL_GAMEPAD_BUTTON_BACK;
+			if( SDL_GetGamepadAxis( controller, SDL_GAMEPAD_AXIS_LEFT_TRIGGER ) > ( 30 * 128 ) )
+				buttons |= 1 << GAMEPAD_NUM_MAPPED_BUTTONS;
+			if( SDL_GetGamepadAxis( controller, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER ) > ( 30 * 128 ) )
+				buttons |= 1 << ( GAMEPAD_NUM_MAPPED_BUTTONS + 1 );
 		}
 	}
 
@@ -136,7 +145,7 @@ static float IN_SDL_JoyThumbstickValue( int value )
 */
 void IN_GetThumbsticks( vec4_t sticks )
 {
-	SDL_GameController *controller = in_sdl_joyController;
+	SDL_Gamepad *controller = in_sdl_joyController;
 
 	if( !controller || !in_sdl_joyActive )
 	{
@@ -144,10 +153,10 @@ void IN_GetThumbsticks( vec4_t sticks )
 		return;
 	}
 
-	sticks[0] = IN_SDL_JoyThumbstickValue( SDL_GameControllerGetAxis( controller, SDL_CONTROLLER_AXIS_LEFTX ) );
-	sticks[1] = IN_SDL_JoyThumbstickValue( SDL_GameControllerGetAxis( controller, SDL_CONTROLLER_AXIS_LEFTY ) );
-	sticks[2] = IN_SDL_JoyThumbstickValue( SDL_GameControllerGetAxis( controller, SDL_CONTROLLER_AXIS_RIGHTX ) );
-	sticks[3] = IN_SDL_JoyThumbstickValue( SDL_GameControllerGetAxis( controller, SDL_CONTROLLER_AXIS_RIGHTY ) );
+	sticks[0] = IN_SDL_JoyThumbstickValue( SDL_GetGamepadAxis( controller, SDL_GAMEPAD_AXIS_LEFTX ) );
+	sticks[1] = IN_SDL_JoyThumbstickValue( SDL_GetGamepadAxis( controller, SDL_GAMEPAD_AXIS_LEFTY ) );
+	sticks[2] = IN_SDL_JoyThumbstickValue( SDL_GetGamepadAxis( controller, SDL_GAMEPAD_AXIS_RIGHTX ) );
+	sticks[3] = IN_SDL_JoyThumbstickValue( SDL_GetGamepadAxis( controller, SDL_GAMEPAD_AXIS_RIGHTY ) );
 }
 
 /*
@@ -161,6 +170,6 @@ void IN_SDL_JoyShutdown( void )
 		return;
 
 	in_sdl_joyController = NULL;
-	SDL_QuitSubSystem( SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER );
+	SDL_QuitSubSystem( SDL_INIT_JOYSTICK | SDL_INIT_GAMEPAD );
 	in_sdl_joyInitialized = false;
 }

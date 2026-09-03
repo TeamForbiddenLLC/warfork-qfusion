@@ -18,7 +18,8 @@
 	url = https://github.com/TeamForbiddenLLC/openal-soft.git
 [submodule "source/extern/SDL"]
 	path = source/extern/SDL
-	url = https://github.com/TeamForbiddenLLC/SDL.git
+	url = https://github.com/libsdl-org/SDL.git
+	branch = release-3.2.8
 [submodule "source/extern/vorbis"]
 	path = source/extern/vorbis
 	url = https://github.com/TeamForbiddenLLC/vorbis.git
