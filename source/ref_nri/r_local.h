@@ -147,18 +147,13 @@ typedef struct superLightStyle_s
 
 #define DEPTH_EPSILON (1.0 / ( 1 << 14 ))
 
+// Both framebuffer structs are backend-neutral: the textures come from InitRITexture, which keeps the
+// VMA allocation on RITexture_s itself, so there is no per-backend side data here.
 struct shadow_fb_s {
 	struct RIDescriptor_s descriptor; // sampled-image descriptor built from `view`
 	struct RITexture_s texture;
 	struct RITextureView_s view;
 	uint16_t width, height;
-	union {
-    #if(DEVICE_IMPL_VULKAN)
-    struct {
-    	struct VmaAllocation_T* vmaAlloc;
-    } vk;
-    #endif
-	};
 };
 
 struct portal_fb_s {
@@ -173,15 +168,6 @@ struct portal_fb_s {
 	struct RITexture_s depthTexture;
 	struct RITextureView_s colorView;
 	struct RITextureView_s depthView;
-
-	union {
-    #if(DEVICE_IMPL_VULKAN)
-    struct {
-    	struct VmaAllocation_T* vmaColorAlloc;
-    	struct VmaAllocation_T* vmaDepthAlloc;
-    } vk;
-    #endif
-	};
 };
 
 typedef struct portalSurface_s
@@ -878,19 +864,10 @@ typedef struct mesh_vbo_s {
 	uint32_t hasVertexBuffer: 1;
 	uint32_t hasIndexBuffer: 1;
 
-	struct RIBuffer_s vertexBuffer; 
-	struct RIBuffer_s indexBuffer; 
-	struct RIBuffer_s instanceBuffer; 
-	union {
-#if ( DEVICE_IMPL_VULKAN )
-		struct {
-
-			struct VmaAllocation_T *vertexBufferAlloc;
-			struct VmaAllocation_T *indexBufferAlloc;
-			struct VmaAllocation_T *instanceBufferAlloc;
-		} vk;
-#endif
-	};
+	// Backend allocations live on the RIBuffer_s themselves (see InitRIBuffer); no side-band handles here.
+	struct RIBuffer_s vertexBuffer;
+	struct RIBuffer_s indexBuffer;
+	struct RIBuffer_s instanceBuffer;
 
 	unsigned int		index;
 	int					registrationSequence;

@@ -39,11 +39,8 @@ void R_ShutdownShadows() {
 		for(size_t portalIdx = 0; portalIdx < MAX_PORTAL_TEXTURES; portalIdx++) {
 			struct shadow_fb_s *fb = &rsh.shadowFBs[frameIdx][portalIdx];
 			if(IsRITextureValid(&rsh.renderer, &fb->texture )) {
-				FreeRITexture(&rsh.device, &fb->texture);
 				FreeRITextureView(&rsh.device, &fb->view);
-#if ( DEVICE_IMPL_VULKAN )
-				vmaFreeMemory( rsh.device.vk.vmaAllocator, fb->vk.vmaAlloc);
-#endif
+				FreeRITexture(&rsh.device, &fb->texture);
 			}
 			memset(fb, 0, sizeof(struct shadow_fb_s));
 		}
@@ -357,77 +354,26 @@ static struct shadow_fb_s *__ResolveShadowSurface(size_t i, int width, int heigh
 	if( IsRITextureValid( &rsh.renderer, &bestFB->texture ) && bestFB->width == width && bestFB->height == height ) {
 		return bestFB;
 	}
-#if ( DEVICE_IMPL_VULKAN )
-	{
-		assert( RI_VK_DESCRIPTOR_IS_IMAGE( bestFB->descriptor ) );
-		struct r_frame_set_s *activeset = R_GetActiveFrameSet();
+	// Retire the outgoing texture through the frame set: the GPU may still be sampling it this frame.
+	RIDeferFreeTexture( &R_GetActiveFrameSet()->freeList, &bestFB->texture, &bestFB->view );
+	memset( bestFB, 0, sizeof( struct shadow_fb_s ) );
 
-		struct RIFree_s freeSlot = { 0 };
-		if(bestFB->view.vk.image) {
-			freeSlot.type = RI_FREE_VK_IMAGEVIEW;
-			freeSlot.vkImageView = bestFB->view.vk.image;
-			arrpush( activeset->freeList, freeSlot );
-		}
-		if( bestFB->vk.vmaAlloc ) {
-			freeSlot.type = RI_FREE_VK_VMA_AllOC;
-			freeSlot.vmaAlloc = bestFB->vk.vmaAlloc;
-			arrpush( activeset->freeList, freeSlot );
-		}
-		if( bestFB->texture.vk.image ) {
-			freeSlot.type = RI_FREE_VK_IMAGE;
-			freeSlot.vkImage = bestFB->texture.vk.image;
-			arrpush( activeset->freeList, freeSlot );
-		}
-		memset(bestFB, 0, sizeof(struct shadow_fb_s));
-		
-		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
-		VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-		VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless
-		info.flags = flags;
-		info.imageType = VK_IMAGE_TYPE_2D;
-		info.format = RIFormatToVK( ShadowDepthFormat );
-		info.extent.width = width;
-		info.extent.height = height;
-		info.extent.depth = 1;
-		info.mipLevels = 1;
-		info.arrayLayers =  1;
-		info.samples = 1;
-		info.tiling = VK_IMAGE_TILING_OPTIMAL;
-		info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-		info.pQueueFamilyIndices = queueFamilies;
-		VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
-		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		VmaAllocationCreateInfo mem_reqs = { 0 };
-		mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-
-		if( !VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &bestFB->texture.vk.image, &bestFB->vk.vmaAlloc, NULL ) ) ) {
-			return NULL;
-		}
-		VkImageSubresourceRange subresource = {
-			VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1,
-		};
-
-		VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
-		usageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-
-		VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-		createInfo.pNext = &usageInfo;
-		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		createInfo.format = RIFormatToVK( ShadowDepthFormat );
-		createInfo.subresourceRange = subresource;
-		createInfo.image = bestFB->texture.vk.image;
-	
-		bestFB->width = width;
-		bestFB->height = height;
-		bestFB->texture.cookie = hash_random();
-		bestFB->view.cookie = hash_random();
-		VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &createInfo, NULL, &bestFB->view.vk.image ) );
-		bestFB->descriptor = RIDescriptorSampledImage( &rsh.device, &bestFB->view, RI_RESOURCE_STATE_SHADER_RESOURCE );
-
-		return bestFB;
+	const struct RITextureDesc_s desc = {
+		.width = width,
+		.height = height,
+		.format = ShadowDepthFormat,
+		.usage = RI_USAGE_DEPTH_STENCIL_ATTACHMENT | RI_USAGE_SHADER_RESOURCE, // rendered by the shadow pass, sampled by the lighting pass
+	};
+	if( InitRITexture( &rsh.device, &desc, &bestFB->texture ) != RI_SUCCESS )
+		return NULL;
+	if( InitRITextureView( &rsh.device, &desc, &bestFB->texture, &bestFB->view ) != RI_SUCCESS ) {
+		FreeRITexture( &rsh.device, &bestFB->texture );
+		return NULL;
 	}
-#endif
-	return NULL;
+	bestFB->width = width;
+	bestFB->height = height;
+	bestFB->descriptor = RIDescriptorSampledImage( &rsh.device, &bestFB->view, RI_RESOURCE_STATE_SHADER_RESOURCE );
+	return bestFB;
 }
 
 /*
@@ -533,67 +479,47 @@ void R_DrawShadowmaps(struct FrameState_s* cmd)
 		scissor.height = rn.scissor[3];
 		FR_CmdSetScissor( &sub, scissor );
 
-		{
-			VkImageMemoryBarrier2 imageBarriers[1] = { 0 };
-			imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-			imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
-			imageBarriers[0].srcAccessMask = VK_ACCESS_2_NONE;
-			imageBarriers[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-			imageBarriers[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-			imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-			imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			imageBarriers[0].image = fb->texture.vk.image;
-			imageBarriers[0].subresourceRange = (VkImageSubresourceRange){
-				VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
-			};
-			VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
-			dependencyInfo.imageMemoryBarrierCount = 1;
-			dependencyInfo.pImageMemoryBarriers = imageBarriers;
-			vkCmdPipelineBarrier2( sub.handle.vk.cmd, &dependencyInfo );
-		}
+		// Transition the shadow depth texture into a depth-write attachment (from undefined) before the
+		// render pass. Backend-neutral: the layout/access/stage masks are derived from the states.
+		RICmdImageBarrier( &rsh.device, &sub.handle, &( struct RIImageBarrier_s ){
+			.texture = &fb->texture,
+			.before = RI_RESOURCE_STATE_UNDEFINED,
+			.after = RI_RESOURCE_STATE_DEPTH_WRITE,
+			.aspect = RI_BARRIER_ASPECT_DEPTH,
+		} );
 
-		VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-		RI_VK_FillDepthAttachment( &depthStencil, fb->view, true );
-		VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
-		renderingInfo.flags = 0;
-		renderingInfo.renderArea.extent.width = fb->width;
-		renderingInfo.renderArea.extent.height = fb->height;
-		renderingInfo.layerCount = 1;
-		renderingInfo.viewMask = 0;
-		renderingInfo.colorAttachmentCount = 0;
-		renderingInfo.pDepthAttachment = &depthStencil;
-		renderingInfo.pStencilAttachment = NULL;
-		vkCmdBeginRendering( sub.handle.vk.cmd, &renderingInfo );
+		FR_CmdBeginRendering( &rsh.device, &sub, &( struct RIRenderingDesc_s ){
+			.width = fb->width,
+			.height = fb->height,
+			.hasDepth = true,
+			.depth = { .view = fb->view, .clear = true },
+		} );
 		FR_ConfigurePipelineAttachment( &sub.pipeline, NULL, 0, ShadowDepthFormat );
 
 		sub.pipeline.flippedViewport = true;
 		R_RenderView( &sub, &refdef );
-		vkCmdEndRendering( sub.handle.vk.cmd );
+		RICmdEndRendering( &rsh.device, &sub.handle );
 
-		{
-			VkImageMemoryBarrier2 imageBarriers[1] = { 0 };
-			imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-			imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-			imageBarriers[0].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-			imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-			imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageBarriers[0].dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-			imageBarriers[0].dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-			imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			imageBarriers[0].image = fb->texture.vk.image;
-			imageBarriers[0].subresourceRange = (VkImageSubresourceRange){
-				VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
-			};
-			VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
-			dependencyInfo.imageMemoryBarrierCount = 1;
-			dependencyInfo.pImageMemoryBarriers = imageBarriers;
-			vkCmdPipelineBarrier2( sub.handle.vk.cmd, &dependencyInfo );
-		}
+		// After rendering, transition the depth texture to a shader-readable resource for the lighting pass.
+		RICmdImageBarrier( &rsh.device, &sub.handle, &( struct RIImageBarrier_s ){
+			.texture = &fb->texture,
+			.before = RI_RESOURCE_STATE_DEPTH_WRITE,
+			.after = RI_RESOURCE_STATE_SHADER_RESOURCE,
+			.aspect = RI_BARRIER_ASPECT_DEPTH,
+		} );
 
 		Matrix4_Copy( rn.cameraProjectionMatrix, group->cameraProjectionMatrix );
+#if ( DEVICE_IMPL_MTL )
+		// R_SetupViewMatrices negated the projection's Y row (flippedViewport) purely to compensate the
+		// rasterizer's NDC-Y direction so the rendered depth texture matches Vulkan's texel layout. The
+		// lighting pass samples that texture directly -- no rasterizer in the path -- so the lookup matrix
+		// must be the unflipped one Vulkan uses, or v = (y+w)/2w mirrors vertically against the texture.
+		// The flip is a left-multiplied diag(1,-1,1,1); negating the Y row again reverses it exactly.
+		group->cameraProjectionMatrix[1] = -group->cameraProjectionMatrix[1];
+		group->cameraProjectionMatrix[5] = -group->cameraProjectionMatrix[5];
+		group->cameraProjectionMatrix[9] = -group->cameraProjectionMatrix[9];
+		group->cameraProjectionMatrix[13] = -group->cameraProjectionMatrix[13];
+#endif
 
 		rsc.renderedShadowBits |= group->bit;
 	}

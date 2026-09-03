@@ -77,6 +77,16 @@ struct pipeline_desc_s {
 	struct frame_cmd_vertex_attrib_s attribs[MAX_ATTRIBUTES];
 };
 
+// The cull mode actually handed to the rasterizer. A flipped viewport mirrors the image, which swaps
+// which winding faces the camera, so the mode has to swap with it. Shared by RP_ResolvePipeline (which
+// bakes it into the VkPipeline) and RP_BindPipeline (which sets it as Metal encoder state) so the two
+// backends can never drift.
+static inline enum RICullMode_e FR_PipelineCullMode( const struct pipeline_desc_s *desc )
+{
+	const enum RICullMode_e mode = (enum RICullMode_e)desc->cullMode;
+	return desc->flippedViewport ? RI_FlipCullMode( mode ) : mode;
+}
+
 struct FrameState_s {
 	struct FrameState_s *parent;
 	struct RIDevice_s *device;
@@ -95,7 +105,6 @@ struct FrameState_s {
 
 	// cmd buffer state
 	uint32_t dirty;
-	uint64_t pipelineBound;
 
 	struct RIRect_s scissor;
 	struct RIViewport_s viewport;
@@ -108,6 +117,10 @@ struct FrameState_s {
 
 	uint64_t indexBufferOffset;
 	uint16_t indexType; // RIIndexType_e
+
+	// The desc the current render pass was begun with (stashed by FR_CmdBeginRendering). Metal's
+	// FR_CmdClearAttachments re-begins the pass from it with the load actions swapped to CLEAR.
+	struct RIRenderingDesc_s activeRendering;
 
 	struct pipeline_desc_s pipeline;
 };
@@ -126,6 +139,20 @@ void FR_CmdSetDepthRangeAll( struct FrameState_s *cmd, float depthMin, float dep
 
 void FR_CmdSetViewport( struct FrameState_s *cmd, const struct RIViewport_s scissors );
 void FR_ConfigurePipelineAttachment( struct pipeline_desc_s *desc, enum RI_Format_e *formats, size_t numAttachment, enum RI_Format_e depthFormat );
+
+// Begin a dynamic render pass and re-prime the lazily-flushed command state. Vulkan's dynamic state
+// and bound buffers survive vkCmdBeginRendering within a command buffer, but Metal state is scoped to
+// the MTLRenderCommandEncoder and is gone the moment a new one starts -- so without this the first draw
+// of a portal or shadow pass would inherit the default full-drawable viewport and no bound geometry.
+// Always use this instead of calling RICmdBeginRendering directly.
+void FR_CmdBeginRendering( struct RIDevice_s *device, struct FrameState_s *cmd, const struct RIRenderingDesc_s *desc );
+
+// Clear attachments of the render pass in flight, scoped to the current viewport. Vulkan records a
+// vkCmdClearAttachments; Metal has no mid-pass clear, so the pass is ended and re-begun from
+// activeRendering with the requested attachments set to loadAction CLEAR (full-attachment -- fine for
+// the current callers, which clear the whole main-view viewport). clearColor may be NULL when
+// clearColors is false. Only valid between FR_CmdBeginRendering and RICmdEndRendering.
+void FR_CmdClearAttachments( struct FrameState_s *cmd, bool clearColors, const float clearColor[4], bool clearDepth );
 
 void FR_CmdDraw( struct FrameState_s *cmd, uint32_t vertexNum, uint32_t instanceNum, uint32_t baseVertex, uint32_t baseInstance );
 void FR_CmdDrawElements( struct FrameState_s *cmd, uint32_t indexNum, uint32_t instanceNum, uint32_t baseIndex, uint32_t baseVertex, uint32_t baseInstance );

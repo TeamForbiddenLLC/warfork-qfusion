@@ -10,10 +10,15 @@ struct RIBlockMem_s {
 	union {
 #if ( DEVICE_IMPL_VULKAN )
 		struct {
-			//VkBufferView blockView;	
+			//VkBufferView blockView;
 		  VkBuffer buffer;
 		  struct VmaAllocation_T * allocator;
 		} vk;
+#endif
+#if ( DEVICE_IMPL_MTL )
+		struct {
+			struct mtlc_buffer buffer; // Shared-storage scratch buffer; its contents pointer is pMappedAddress
+		} mtl;
 #endif
 	};
 	uint8_t* pMappedAddress;

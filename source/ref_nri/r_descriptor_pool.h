@@ -31,6 +31,21 @@ struct descriptor_set_slot_s {
 			VkDescriptorSet handle;
 		} vk;
 #endif
+#if ( DEVICE_IMPL_MTL )
+		struct {
+			// One slot is one encoded argument buffer: a byte range inside a pool buffer, holding this
+			// set's resource table for every stage that uses it (the stage sub-ranges are described by
+			// glsl_program_descriptor_s.mtl, since the layout is per-program, not per-slot).
+			struct mtlc_buffer buffer;
+			uint32_t offset;
+			// Resources reached *through* an argument buffer are invisible to Metal's automatic residency
+			// tracking and must be declared with useResource: on every encoder that draws with them. The
+			// list is fixed once the slot is encoded, so it is built there and replayed here; `residentEpoch`
+			// is the encoder generation it was last declared to, so a repeat draw costs one compare.
+			void **residentResources; // stb array of id<MTLResource>
+			uint64_t residentEpoch;
+		} mtl;
+#endif
 	};
 };
 
@@ -40,6 +55,13 @@ struct descriptor_pool_alloc_slot_s {
 			struct {
 				VkDescriptorPool handle;
 			} vk;
+#endif
+#if ( DEVICE_IMPL_MTL )
+			struct {
+				// Metal has no descriptor pool object; the "pool" is one buffer carved into
+				// DESCRIPTOR_MAX_SIZE argument-buffer slots.
+				struct mtlc_buffer buffer;
+			} mtl;
 #endif
 		};
 

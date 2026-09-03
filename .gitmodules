@@ -40,3 +40,6 @@
 [submodule "source/extern/crashpad"]
 	path = source/extern/crashpad
 	url = https://github.com/TeamForbiddenLLC/crashpad.git
+[submodule "source/extern/SPIRV-Cross"]
+	path = source/extern/SPIRV-Cross
+	url = https://github.com/KhronosGroup/SPIRV-Cross.git

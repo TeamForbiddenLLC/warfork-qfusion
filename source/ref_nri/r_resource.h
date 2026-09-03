@@ -116,15 +116,16 @@ struct DynLight {
     struct vec4 diffuseAndInvRadius;
 };
 
+// Always uploaded whole (sizeof, never a numberLights-derived prefix): a partial upload cuts off the
+// pad3 bytes plus the tail of the last light batch -- the zero diffuse / 1.0 intensity padding the
+// shader's stride-4 dlight loop reads. Vulkan hid that behind robustBufferAccess zeros; Metal has no
+// robust access and read stale scratch memory, blowing out the lighting. Metal's debug layer also
+// requires the full declared UBO size to fit at the bound offset.
 struct DynamicLightCB {
     int numberLights;
     int pad3[3];
     struct DynLight dynLights[32];
 };
-
-static inline size_t DynamicLightCB_Size(int numLights) {
-    return sizeof(int) + numLights * sizeof(struct DynLight);
-}
 
 struct ObjectCB {
    struct vec4 fogEyePlane;
