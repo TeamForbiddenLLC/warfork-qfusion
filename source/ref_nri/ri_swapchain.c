@@ -162,10 +162,31 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 		swapChainCreateInfo.minImageCount = desiredImageCount;
 		swapChainCreateInfo.imageFormat = selectedSurf->format;
 		swapChainCreateInfo.imageColorSpace = selectedSurf->colorSpace;
-		swapChainCreateInfo.imageExtent.width = init->width;
-		swapChainCreateInfo.imageExtent.height = init->height;
+		// The swapchain must match the surface. When currentExtent is valid the surface
+		// dictates the size (e.g. a Wayland compositor forcing the screen resolution) and
+		// the requested mode size is ignored; the scene is rendered at the mode size and
+		// upscaled into this swapchain elsewhere. When currentExtent is the special
+		// 0xFFFFFFFF sentinel we may choose, clamped to the surface's min/max extent.
+		VkExtent2D surfaceExtent = surfaceCaps.currentExtent;
+		if( surfaceExtent.width == 0xFFFFFFFF ) {
+			surfaceExtent.width = init->width;
+			surfaceExtent.height = init->height;
+			if( surfaceExtent.width < surfaceCaps.minImageExtent.width )
+				surfaceExtent.width = surfaceCaps.minImageExtent.width;
+			if( surfaceExtent.height < surfaceCaps.minImageExtent.height )
+				surfaceExtent.height = surfaceCaps.minImageExtent.height;
+			if( surfaceCaps.maxImageExtent.width > 0 && surfaceExtent.width > surfaceCaps.maxImageExtent.width )
+				surfaceExtent.width = surfaceCaps.maxImageExtent.width;
+			if( surfaceCaps.maxImageExtent.height > 0 && surfaceExtent.height > surfaceCaps.maxImageExtent.height )
+				surfaceExtent.height = surfaceCaps.maxImageExtent.height;
+		}
+		swapchain->width = surfaceExtent.width;
+		swapchain->height = surfaceExtent.height;
+		swapChainCreateInfo.imageExtent.width = surfaceExtent.width;
+		swapChainCreateInfo.imageExtent.height = surfaceExtent.height;
 		swapChainCreateInfo.imageArrayLayers = 1;
-		swapChainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		// TRANSFER_DST: the mode-res back buffer is letterbox-blitted into the swapchain at present
+		swapChainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 		swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		swapChainCreateInfo.queueFamilyIndexCount = 0;
 		swapChainCreateInfo.pQueueFamilyIndices = NULL;
@@ -316,7 +337,8 @@ int RISwapchainFrameSubmit( struct RIDevice_s *dev, struct RISwapchain_s *swapch
 			waitInfos[waitCount++] = ( VkSemaphoreSubmitInfo ){
 				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
 				.semaphore = swapchain->vk.acquireSemaphores[swapchain->vk.acquireIdx],
-				.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
+				// the swapchain image's first write may be a transfer (the letterbox blit), not a color pass
+				.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
 			};
 		}
 		for( size_t i = 0; i < desc->vk.numWaitSemaphores; i++ )
@@ -388,7 +410,8 @@ int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, 
 		swapChainCreateInfo.imageExtent.width = width;
 		swapChainCreateInfo.imageExtent.height = height;
 		swapChainCreateInfo.imageArrayLayers = 1;
-		swapChainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		// TRANSFER_DST: the mode-res back buffer is letterbox-blitted into the swapchain at present
+		swapChainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 		swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		swapChainCreateInfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 		swapChainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
