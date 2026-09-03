@@ -928,14 +928,45 @@ qfontface_t *FTLIB_RegisterFont( const char *family, const char *fallback, int s
 }
 
 /*
-* FTLIB_TouchFont
-*/
+ * FTLIB_TouchFont
+ */
 void FTLIB_TouchFont( qfontface_t *qfont )
 {
-	unsigned int i;
+	unsigned int i, b, g;
+	shader_t *oldShaders[64];
+	unsigned int numOld = qfont->numShaders > 64 ? 64 : qfont->numShaders;
+
+	for( i = 0; i < numOld; i++ ) {
+		oldShaders[i] = qfont->shaders[i];
+	}
 
 	for( i = 0; i < qfont->numShaders; i++ ) {
-		trap_R_RegisterPic( FTLIB_FontShaderName( qfont, i ) ); 
+		qfont->shaders[i] = trap_R_RegisterPic( FTLIB_FontShaderName( qfont, i ) );
+	}
+
+	// repoint cached glyphs that still reference the old (now freed) shader pointers
+	for( b = 0; b < 256; b++ ) {
+		void *block = qfont->glyphs[b];
+		if( !block ) {
+			continue;
+		}
+		for( g = 0; g < 256; g++ ) {
+			qftglyph_t *qftglyph = &( (qftglyph_t *)block )[g];
+			qglyph_t *glyph = &qftglyph->qglyph;
+			if( !glyph->shader ) {
+				continue;
+			}
+			for( i = 0; i < numOld; i++ ) {
+				if( glyph->shader == oldShaders[i] ) {
+					glyph->shader = qfont->shaders[i];
+					break;
+				}
+			}
+			// if glyph referenced a shader that no longer exists, force re-render
+			if( i == numOld ) {
+				glyph->shader = NULL;
+			}
+		}
 	}
 }
 
