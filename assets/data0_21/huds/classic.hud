@@ -58,6 +58,7 @@ include download
 include chat
 include strafe
 include stunned
+include drowning
 
 //adds transparent dark background if scoreboard is shown
 if %SCOREBOARD == 1
