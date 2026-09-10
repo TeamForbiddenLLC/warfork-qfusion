@@ -133,13 +133,15 @@ static void SCR_InitFonts( void )
 }
 
 /*
-* SCR_ShutdownFonts
-*/
+ * SCR_ShutdownFonts
+ */
 static void SCR_ShutdownFonts( void )
 {
 	cls.consoleFont = NULL;
 
 	con_fontSystemFamily = NULL;
+	con_fontSystemMonoFamily = NULL;
+	con_fontSystemFallbackFamily = NULL;
 	con_fontSystemConsoleSize = NULL;
 }
 
