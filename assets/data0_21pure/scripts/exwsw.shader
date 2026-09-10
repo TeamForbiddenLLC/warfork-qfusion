@@ -70,9 +70,28 @@ textures/exwsw/matte_eX_surf_metaldarkgrey
 	}
 }
 
+textures/exwsw/eX_mtl_bigplate_04
+{
+	qer_editorimage textures/exwsw/eX_mtl_bigplate_04.png
+
+	{
+		material textures/exwsw/eX_mtl_bigplate_04.png textures/exwsw/eX_mtl_bigplate_04_norm.png textures/exwsw/eX_mtl_bigplate_04_gloss.png
+	}
+}
+
+textures/exwsw/eX_mtl_bigplate_04b
+{
+	qer_editorimage textures/exwsw/eX_mtl_bigplate_04b.png
+
+	{
+		material textures/exwsw/eX_mtl_bigplate_04b.png textures/exwsw/eX_mtl_bigplate_04b_norm.png textures/exwsw/eX_mtl_bigplate_04b_gloss.png
+	}
+}
+
+
 textures/exwsw/eX_mtl_bigplate_04b_daze
 {
-	qer_editorimage textures/exwsw/eX_mtl_bigplate_04b
+	qer_editorimage textures/exwsw/eX_mtl_bigplate_04b.png
 
 	{
 		material textures/exwsw/eX_mtl_bigplate_04b.png textures/exwsw/eX_mtl_bigplate_04b_norm.png textures/exwsw/eX_mtl_bigplate_04b_gloss.png
@@ -196,6 +215,14 @@ textures/exwsw/eX_rplates_01_daze
 	}
 }
 
+textures/exwsw/eX_trim_01
+{
+	qer_editorimage textures/exwsw/eX_trim_01.png
+
+	{
+		material textures/exwsw/eX_trim_01.png textures/exwsw/eX_trim_01_norm.png textures/exwsw/eX_trim_01_gloss.png
+	}
+}
 
 textures/exwsw/eX_trim_simple03_brown
 {
