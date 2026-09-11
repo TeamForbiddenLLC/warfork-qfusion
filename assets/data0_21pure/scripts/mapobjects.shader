@@ -497,7 +497,7 @@ mapobjects_wdm4_ice_grated
 	}
 
 	{
-		map textures/HazelH/grate.png
+		map textures/hazelh/grate.png
 		blendfunc blend
 		alphafunc GT0
 	}
