@@ -43,6 +43,7 @@ bricks
 grates
 grates_vertex
 tiles
+pipes
 decals
 nature
 cleansurface

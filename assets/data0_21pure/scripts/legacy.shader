@@ -250,9 +250,28 @@ textures/refly_bricks/bricks4
 	}
 }
 
+//////////////////////
+// WSW_CITY
 
+textures/wsw_city1/tubes1_bulge
+{
+	qer_editorimage textures/pipes/tubes1.png
+	deformVertexes bulge 4 7 -1.5 1
 
+	{
+		material textures/pipes/tubes1.png
+	}
+}
 
+textures/wsw_city1/tubes1
+{
+	qer_editorimage textures/pipes/tubes1.png
+	deformVertexes bulge 4 7 -1.5 1
+
+	{
+		material textures/pipes/tubes1.png
+	}
+}
 
 
 

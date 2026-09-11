@@ -518,16 +518,6 @@ textures/wsw_city1/grate_nosolid
 	}
 }
 
-textures/wsw_city1/tubes1_bulge
-{
-	qer_editorimage textures/wsw_city1/tubes1.png
-	deformVertexes bulge 4 7 -1.5 1
-
-	{
-		material textures/wsw_city1/tubes1.png
-	}
-}
-
 textures/wsw_city1/townsign01
 {
 	qer_editorimage textures/wsw_city1/townsign01.png
