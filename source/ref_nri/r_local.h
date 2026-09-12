@@ -328,7 +328,6 @@ typedef struct
 	struct portal_fb_s portalFBs[MAX_PORTAL_TEXTURES];
 	struct RIDescriptor_s shadowSamplerDescriptor;
 
-	struct RIRenderer_s renderer;
  	struct RIDevice_s device;
 
 	struct RICommandRingElement_s primary;

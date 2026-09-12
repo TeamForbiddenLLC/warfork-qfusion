@@ -96,21 +96,25 @@ void RB_Shutdown( void )
 // frame. No-op for an uncreated buffer. Backend-neutral (mirrors R_ReleaseMeshVBO's deferred free).
 static void __RB_DeferFreeStreamBuffer( struct r_frame_set_s *active, struct RIBuffer_s *buffer )
 {
-	if( !IsRIBufferValid( &rsh.renderer, buffer ) )
+	if( !IsRIBufferValid( buffer ) )
 		return;
 	struct RIFree_s freeEntry = { 0 };
 #if ( DEVICE_IMPL_VULKAN )
-	freeEntry.type = RI_FREE_VK_BUFFER;
-	freeEntry.vkBuffer = buffer->vk.buffer;
-	arrpush( active->freeList, freeEntry );
-	freeEntry.type = RI_FREE_VK_VMA_AllOC;
-	freeEntry.vmaAlloc = buffer->vk.allocation;
-	arrpush( active->freeList, freeEntry );
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		freeEntry.type = RI_FREE_VK_BUFFER;
+		freeEntry.vkBuffer = buffer->vk.buffer;
+		arrpush( active->freeList, freeEntry );
+		freeEntry.type = RI_FREE_VK_VMA_AllOC;
+		freeEntry.vmaAlloc = buffer->vk.allocation;
+		arrpush( active->freeList, freeEntry );
+	}
 #endif
 #if ( DEVICE_IMPL_MTL )
-	freeEntry.type = RI_FREE_MTL_BUFFER;
-	freeEntry.mtlBuffer = buffer->mtl.buffer;
-	arrpush( active->freeList, freeEntry );
+	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
+		freeEntry.type = RI_FREE_MTL_BUFFER;
+		freeEntry.mtlBuffer = buffer->mtl.buffer;
+		arrpush( active->freeList, freeEntry );
+	}
 #endif
 }
 
@@ -464,7 +468,7 @@ void RB_AddDynamicMesh( struct FrameState_s *cmd,
 	struct r_frame_set_s *active = R_GetActiveFrameSet();
 
 	{
-		if( !IsRIBufferValid( &rsh.renderer, &selectedStream->vertexBuffer ) || !RISegmentAlloc( rsh.frameSetCount, &selectedStream->vertexAllocator, numVerts, &vertexReq ) ) {
+		if( !IsRIBufferValid( &selectedStream->vertexBuffer ) || !RISegmentAlloc( rsh.frameSetCount, &selectedStream->vertexAllocator, numVerts, &vertexReq ) ) {
 			struct RISegmentAllocDesc_s segmentAllocDesc = { 0 };
 			segmentAllocDesc.numSegments = NUMBER_FRAMES_FLIGHT;
 			segmentAllocDesc.elementStride = selectedStream->layout.vertexStride;
@@ -484,7 +488,7 @@ void RB_AddDynamicMesh( struct FrameState_s *cmd,
 			InitRIBuffer( &rsh.device, &vertexBufferDesc, &selectedStream->vertexBuffer );
 			selectedStream->pVtxMappedAddress = RIBufferMappedData( &rsh.device, &selectedStream->vertexBuffer );
 		}
-		if( !IsRIBufferValid( &rsh.renderer, &selectedStream->indexBuffer ) || !RISegmentAlloc( rsh.frameSetCount, &selectedStream->indexAllocator, numElems, &eleReq ) ) {
+		if( !IsRIBufferValid( &selectedStream->indexBuffer ) || !RISegmentAlloc( rsh.frameSetCount, &selectedStream->indexAllocator, numElems, &eleReq ) ) {
 			struct RISegmentAllocDesc_s segmentAllocDesc = { 0 };
 			segmentAllocDesc.numSegments = NUMBER_FRAMES_FLIGHT;
 			segmentAllocDesc.elementStride = sizeof( uint16_t );

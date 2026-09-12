@@ -11,7 +11,7 @@ if (NOT GAME_MODULES_ONLY)
     # SPIR-V is then cross-compiled to MSL (SPIRV-Cross) for the Metal backend.
     add_subdirectory(glslang)
 
-    if(APPLE)
+    if(RI_BACKEND STREQUAL "MTL")
       # SPIRV-Cross turns the SPIR-V glslang emits into MSL for the Metal backend. Only the MSL target
       # and the C API are needed (r_program.c is C); everything else is switched off to keep the build
       # small. MSL depends on the GLSL backend, so SPIRV_CROSS_ENABLE_GLSL must stay ON.
@@ -31,9 +31,9 @@ if (NOT GAME_MODULES_ONLY)
       add_subdirectory(SPIRV-Cross)
     endif()
 
-    # Vulkan-only externals. macOS renders natively on Metal (see ri_defines.h), so it neither needs
+    # Vulkan-only externals. The Metal backend (RI_BACKEND=MTL, the macOS default) neither needs
     # nor builds the Vulkan memory allocator or the volk loader.
-    if(NOT APPLE)
+    if(RI_BACKEND STREQUAL "VULKAN")
     add_subdirectory(VulkanMemoryAllocator)
 
     set(VOLK_STATIC_DEFINES "")

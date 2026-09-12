@@ -943,28 +943,29 @@ static void R_SetupViewMatrices( bool flippedViewport )
 	}
 
 #if ( DEVICE_IMPL_MTL )
-	// Vulkan and Metal have opposite NDC-Y. Vulkan expresses the origin choice with a negative-height
-	// viewport (RIToVKViewport), which for originBottomLeft == false lands it on Metal's native
-	// convention -- so the main scene already matches and needs nothing. The case Vulkan does *not*
-	// flip (originBottomLeft, i.e. flippedViewport: portals and shadow maps) is the one Metal has to
-	// mirror itself, and a Metal viewport cannot take a negative height, so it goes in the projection.
-	//
-	// Applying it here rather than at RB_LoadProjectionMatrix is deliberate: cameraProjectionMatrix is
-	// derived below, and everything camera-related has to sit in one convention. Note the flip only
-	// compensates the rasterizer's NDC-Y direction -- paths that *sample* a rendered texture instead of
-	// rasterizing through it must undo it (r_shadow.c un-flips the shadow lookup matrix it stores).
-	//
-	// Mirroring in NDC also inverts triangle winding -- which is exactly what FR_PipelineCullMode
-	// already compensates for on the same flippedViewport condition, so the cull mode stays correct.
-	if( flippedViewport ) {
-		rn.projectionMatrix[1] = -rn.projectionMatrix[1];
-		rn.projectionMatrix[5] = -rn.projectionMatrix[5];
-		rn.projectionMatrix[9] = -rn.projectionMatrix[9];
-		rn.projectionMatrix[13] = -rn.projectionMatrix[13];
+	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
+		// Vulkan and Metal have opposite NDC-Y. Vulkan expresses the origin choice with a negative-height
+		// viewport (RIToVKViewport), which for originBottomLeft == false lands it on Metal's native
+		// convention -- so the main scene already matches and needs nothing. The case Vulkan does *not*
+		// flip (originBottomLeft, i.e. flippedViewport: portals and shadow maps) is the one Metal has to
+		// mirror itself, and a Metal viewport cannot take a negative height, so it goes in the projection.
+		//
+		// Applying it here rather than at RB_LoadProjectionMatrix is deliberate: cameraProjectionMatrix is
+		// derived below, and everything camera-related has to sit in one convention. Note the flip only
+		// compensates the rasterizer's NDC-Y direction -- paths that *sample* a rendered texture instead of
+		// rasterizing through it must undo it (r_shadow.c un-flips the shadow lookup matrix it stores).
+		//
+		// Mirroring in NDC also inverts triangle winding -- which is exactly what FR_PipelineCullMode
+		// already compensates for on the same flippedViewport condition, so the cull mode stays correct.
+		if( flippedViewport ) {
+			rn.projectionMatrix[1] = -rn.projectionMatrix[1];
+			rn.projectionMatrix[5] = -rn.projectionMatrix[5];
+			rn.projectionMatrix[9] = -rn.projectionMatrix[9];
+			rn.projectionMatrix[13] = -rn.projectionMatrix[13];
+		}
 	}
-#else
-	(void)flippedViewport;
 #endif
+	(void)flippedViewport;
 
 	Matrix4_Multiply( rn.projectionMatrix, rn.cameraMatrix, rn.cameraProjectionMatrix );
 }

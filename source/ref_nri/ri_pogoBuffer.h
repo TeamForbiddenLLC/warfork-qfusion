@@ -35,23 +35,31 @@ VkImageMemoryBarrier2 VK_RI_PogoAttachmentMemoryBarrier2( VkImage image, bool in
 static inline struct RITextureView_s *RI_PogoBufferAttachment( struct RI_PogoBuffer *pogo )
 {
 #if ( DEVICE_IMPL_VULKAN )
-	return &pogo->vk.views[pogo->attachmentIndex];
-#elif ( DEVICE_IMPL_MTL )
-	return &pogo->mtl.views[pogo->attachmentIndex];
-#else
-	return NULL;
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		return &pogo->vk.views[pogo->attachmentIndex];
+	}
 #endif
+#if ( DEVICE_IMPL_MTL )
+	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
+		return &pogo->mtl.views[pogo->attachmentIndex];
+	}
+#endif
+	return NULL;
 }
 
 static inline struct RITextureView_s *RI_PogoBufferShaderResource( struct RI_PogoBuffer *pogo )
 {
 #if ( DEVICE_IMPL_VULKAN )
-	return &pogo->vk.views[( pogo->attachmentIndex + 1 ) % 2];
-#elif ( DEVICE_IMPL_MTL )
-	return &pogo->mtl.views[( pogo->attachmentIndex + 1 ) % 2];
-#else
-	return NULL;
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		return &pogo->vk.views[( pogo->attachmentIndex + 1 ) % 2];
+	}
 #endif
+#if ( DEVICE_IMPL_MTL )
+	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
+		return &pogo->mtl.views[( pogo->attachmentIndex + 1 ) % 2];
+	}
+#endif
+	return NULL;
 }
 
 #endif

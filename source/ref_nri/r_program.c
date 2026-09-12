@@ -236,48 +236,52 @@ static void RF_DeleteProgram( struct glsl_program_s *program )
 		R_Free( program->deformsKey );
 
 #if ( DEVICE_IMPL_VULKAN )
-	if( program->vk.pipelineLayout ) {
-		vkDestroyPipelineLayout( rsh.device.vk.device, program->vk.pipelineLayout, NULL );
-	}
-	for( size_t i = 0; i < PIPELINE_LAYOUT_HASH_SIZE; i++ ) {
-		if( program->pipelines[i].vk.handle )
-			vkDestroyPipeline( rsh.device.vk.device, program->pipelines[i].vk.handle, NULL );
-	}
-	for( size_t i = 0; i < R_DESCRIPTOR_SET_MAX; i++ ) {
-		if( program->programDescriptors[i].vk.setLayout ) {
-			vkDestroyDescriptorSetLayout( rsh.device.vk.device, program->programDescriptors[i].vk.setLayout, NULL );
-			FreeDescriptorSetAlloc( &rsh.device, &program->programDescriptors[i].alloc );
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		if( program->vk.pipelineLayout ) {
+			vkDestroyPipelineLayout( rsh.device.vk.device, program->vk.pipelineLayout, NULL );
+		}
+		for( size_t i = 0; i < PIPELINE_LAYOUT_HASH_SIZE; i++ ) {
+			if( program->pipelines[i].vk.handle )
+				vkDestroyPipeline( rsh.device.vk.device, program->pipelines[i].vk.handle, NULL );
+		}
+		for( size_t i = 0; i < R_DESCRIPTOR_SET_MAX; i++ ) {
+			if( program->programDescriptors[i].vk.setLayout ) {
+				vkDestroyDescriptorSetLayout( rsh.device.vk.device, program->programDescriptors[i].vk.setLayout, NULL );
+				FreeDescriptorSetAlloc( &rsh.device, &program->programDescriptors[i].alloc );
+			}
 		}
 	}
 #endif
 #if ( DEVICE_IMPL_MTL )
-	// Everything below came from a metal-c *_new_* call and is caller-owned; without this a vid_restart
-	// leaks the whole pipeline cache plus one MTLLibrary/MTLFunction pair per stage.
-	for( size_t i = 0; i < PIPELINE_LAYOUT_HASH_SIZE; i++ ) {
-		if( program->pipelines[i].mtl.state )
-			mtlc_render_pipeline_state_release( mtlc_render_pipeline_state_from_id( program->pipelines[i].mtl.state ) );
-	}
-	for( size_t i = 0; i < R_DESCRIPTOR_SET_MAX; i++ ) {
-		if( program->programDescriptors[i].mtl.argBufferIndex != R_MTL_SLOT_UNUSED )
-			FreeDescriptorSetAlloc( &rsh.device, &program->programDescriptors[i].alloc );
-	}
-	for( size_t i = 0; i < GLSL_STAGE_MAX; i++ ) {
-		for( size_t set = 0; set < R_DESCRIPTOR_SET_MAX; set++ ) {
-			if( !mtlc_argument_encoder_is_nil( program->mtlStage[i].argEncoder[set] ) )
-				mtlc_argument_encoder_release( program->mtlStage[i].argEncoder[set] );
+	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
+		// Everything below came from a metal-c *_new_* call and is caller-owned; without this a vid_restart
+		// leaks the whole pipeline cache plus one MTLLibrary/MTLFunction pair per stage.
+		for( size_t i = 0; i < PIPELINE_LAYOUT_HASH_SIZE; i++ ) {
+			if( program->pipelines[i].mtl.state )
+				mtlc_render_pipeline_state_release( mtlc_render_pipeline_state_from_id( program->pipelines[i].mtl.state ) );
 		}
-		if( !mtlc_function_is_nil( program->mtlStage[i].fn ) )
-			mtlc_function_release( program->mtlStage[i].fn );
-		if( !mtlc_library_is_nil( program->mtlStage[i].lib ) )
-			mtlc_library_release( program->mtlStage[i].lib );
-		if( program->mtlStage[i].msl )
-			R_Free( program->mtlStage[i].msl );
-		if( !mtlc_function_is_nil( program->mtlStage[i].depthOnlyFn ) )
-			mtlc_function_release( program->mtlStage[i].depthOnlyFn );
-		if( !mtlc_library_is_nil( program->mtlStage[i].depthOnlyLib ) )
-			mtlc_library_release( program->mtlStage[i].depthOnlyLib );
-		if( program->mtlStage[i].depthOnlyMsl )
-			R_Free( program->mtlStage[i].depthOnlyMsl );
+		for( size_t i = 0; i < R_DESCRIPTOR_SET_MAX; i++ ) {
+			if( program->programDescriptors[i].mtl.argBufferIndex != R_MTL_SLOT_UNUSED )
+				FreeDescriptorSetAlloc( &rsh.device, &program->programDescriptors[i].alloc );
+		}
+		for( size_t i = 0; i < GLSL_STAGE_MAX; i++ ) {
+			for( size_t set = 0; set < R_DESCRIPTOR_SET_MAX; set++ ) {
+				if( !mtlc_argument_encoder_is_nil( program->mtlStage[i].argEncoder[set] ) )
+					mtlc_argument_encoder_release( program->mtlStage[i].argEncoder[set] );
+			}
+			if( !mtlc_function_is_nil( program->mtlStage[i].fn ) )
+				mtlc_function_release( program->mtlStage[i].fn );
+			if( !mtlc_library_is_nil( program->mtlStage[i].lib ) )
+				mtlc_library_release( program->mtlStage[i].lib );
+			if( program->mtlStage[i].msl )
+				R_Free( program->mtlStage[i].msl );
+			if( !mtlc_function_is_nil( program->mtlStage[i].depthOnlyFn ) )
+				mtlc_function_release( program->mtlStage[i].depthOnlyFn );
+			if( !mtlc_library_is_nil( program->mtlStage[i].depthOnlyLib ) )
+				mtlc_library_release( program->mtlStage[i].depthOnlyLib );
+			if( program->mtlStage[i].depthOnlyMsl )
+				R_Free( program->mtlStage[i].depthOnlyMsl );
+		}
 	}
 #endif
 	for( size_t i = 0; i < GLSL_STAGE_MAX; i++ ) {
@@ -1031,39 +1035,43 @@ void RP_BindPipeline( struct FrameState_s *cmd, struct pipeline_hash_s *pipeline
 {
 	TracyCZoneN( ctx, "RP_BindPipeline", 1 );
 #if ( DEVICE_IMPL_VULKAN )
-	vkCmdBindPipeline( cmd->handle.vk.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->vk.handle );
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		vkCmdBindPipeline( cmd->handle.vk.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->vk.handle );
+	}
 #endif
 #if ( DEVICE_IMPL_MTL )
-	if( !mtlc_render_command_encoder_is_nil( cmd->handle.mtl.encoder ) ) {
-		const struct mtlc_render_command_encoder enc = cmd->handle.mtl.encoder;
-		const struct pipeline_desc_s *desc = &cmd->pipeline;
+	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
+		if( !mtlc_render_command_encoder_is_nil( cmd->handle.mtl.encoder ) ) {
+			const struct mtlc_render_command_encoder enc = cmd->handle.mtl.encoder;
+			const struct pipeline_desc_s *desc = &cmd->pipeline;
 
-		// A nil state means the program failed to build; skip the bind rather than assert so one bad
-		// shader does not take the frame down.
-		if( pipeline->mtl.state )
-			mtlc_render_command_encoder_set_render_pipeline_state( enc, mtlc_render_pipeline_state_from_id( pipeline->mtl.state ) );
+			// A nil state means the program failed to build; skip the bind rather than assert so one bad
+			// shader does not take the frame down.
+			if( pipeline->mtl.state )
+				mtlc_render_command_encoder_set_render_pipeline_state( enc, mtlc_render_pipeline_state_from_id( pipeline->mtl.state ) );
 
-		// Everything below is baked into VkGraphicsPipelineCreateInfo on Vulkan (see RP_ResolvePipeline)
-		// but is encoder state on Metal, which is why it is applied per bind and is deliberately not part
-		// of the Metal pipeline cache key. Encoder state does not survive a new encoder, so this must run
-		// on every bind rather than only when the pipeline object changes.
+			// Everything below is baked into VkGraphicsPipelineCreateInfo on Vulkan (see RP_ResolvePipeline)
+			// but is encoder state on Metal, which is why it is applied per bind and is deliberately not part
+			// of the Metal pipeline cache key. Encoder state does not survive a new encoder, so this must run
+			// on every bind rather than only when the pipeline object changes.
 
-		// Vulkan disables depth writes whenever depthTestEnable is false, and Metal raises a validation
-		// error for a depth write with no depth attachment. RICompareOpToMTL maps NONE -> ALWAYS (Metal
-		// has no separate enable), so both conditions have to gate the write flag here instead.
-		const bool hasDepth = ( desc->depthFormat != RI_FORMAT_UNKNOWN );
-		const bool depthWrite = desc->depthWrite && hasDepth && ( desc->compareFunc != RI_COMPARE_NONE );
-		mtlc_render_command_encoder_set_depth_stencil_state( enc, __RP_MTLResolveDepthState( (enum RICompareFunc_e)desc->compareFunc, depthWrite ) );
+			// Vulkan disables depth writes whenever depthTestEnable is false, and Metal raises a validation
+			// error for a depth write with no depth attachment. RICompareOpToMTL maps NONE -> ALWAYS (Metal
+			// has no separate enable), so both conditions have to gate the write flag here instead.
+			const bool hasDepth = ( desc->depthFormat != RI_FORMAT_UNKNOWN );
+			const bool depthWrite = desc->depthWrite && hasDepth && ( desc->compareFunc != RI_COMPARE_NONE );
+			mtlc_render_command_encoder_set_depth_stencil_state( enc, __RP_MTLResolveDepthState( (enum RICompareFunc_e)desc->compareFunc, depthWrite ) );
 
-		mtlc_render_command_encoder_set_cull_mode( enc, RICullModeToMTL( FR_PipelineCullMode( desc ) ) );
-		// Matches the VK arm's VK_FRONT_FACE_COUNTER_CLOCKWISE; Metal defaults to clockwise.
-		mtlc_render_command_encoder_set_front_facing_winding( enc, MTLC_WINDING_COUNTER_CLOCKWISE );
+			mtlc_render_command_encoder_set_cull_mode( enc, RICullModeToMTL( FR_PipelineCullMode( desc ) ) );
+			// Matches the VK arm's VK_FRONT_FACE_COUNTER_CLOCKWISE; Metal defaults to clockwise.
+			mtlc_render_command_encoder_set_front_facing_winding( enc, MTLC_WINDING_COUNTER_CLOCKWISE );
 
-		// Same enable predicate the VK arm uses -- Metal has no depthBiasEnable, so "off" is all zeroes.
-		const bool useDepthBias = ( desc->depthBiasConstant != 0 || desc->depthBiasSlope != 0 );
-		mtlc_render_command_encoder_set_depth_bias( enc, useDepthBias ? desc->depthBiasConstant : 0.0f,
-													useDepthBias ? desc->depthBiasSlope : 0.0f,
-													useDepthBias ? desc->depthBiasClamp : 0.0f );
+			// Same enable predicate the VK arm uses -- Metal has no depthBiasEnable, so "off" is all zeroes.
+			const bool useDepthBias = ( desc->depthBiasConstant != 0 || desc->depthBiasSlope != 0 );
+			mtlc_render_command_encoder_set_depth_bias( enc, useDepthBias ? desc->depthBiasConstant : 0.0f,
+														useDepthBias ? desc->depthBiasSlope : 0.0f,
+														useDepthBias ? desc->depthBiasClamp : 0.0f );
+		}
 	}
 #endif
 	TracyCZoneEnd( ctx );
@@ -1080,322 +1088,329 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	VkFormat colorAttachmentsVK[MAX_COLOR_ATTACHMENTS];
 
 	const bool useDepthBias = ( cmd->depthBiasConstant != 0 || cmd->depthBiasSlope != 0 );
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
 
-	//	uint32_t attribFlags = 0;
-	assert( cmd->numAttribs <= MAX_ATTRIBUTES );
-	assert( cmd->numStreams <= MAX_STREAMS );
-	assert( cmd->numColorsAttachments <= MAX_COLOR_ATTACHMENTS );
-	if( cmd->numStreams > 0 ) {
-		uint32_t numVertexAttribs = 0;
-		for( size_t i = 0; i < cmd->numAttribs; i++ ) {
-			if( !( ( 1 << cmd->attribs[i].vk.location ) & program->vertexInputMask ) ) {
-				continue;
+		//	uint32_t attribFlags = 0;
+		assert( cmd->numAttribs <= MAX_ATTRIBUTES );
+		assert( cmd->numStreams <= MAX_STREAMS );
+		assert( cmd->numColorsAttachments <= MAX_COLOR_ATTACHMENTS );
+		if( cmd->numStreams > 0 ) {
+			uint32_t numVertexAttribs = 0;
+			for( size_t i = 0; i < cmd->numAttribs; i++ ) {
+				if( !( ( 1 << cmd->attribs[i].vk.location ) & program->vertexInputMask ) ) {
+					continue;
+				}
+				vertextbindingDesc[numVertexAttribs].offset = cmd->attribs[i].offset;
+				vertextbindingDesc[numVertexAttribs].binding = cmd->attribs[i].streamIndex;
+				vertextbindingDesc[numVertexAttribs].format = RIFormatToVK( cmd->attribs[i].format );
+				vertextbindingDesc[numVertexAttribs].location = cmd->attribs[i].vk.location;
+				numVertexAttribs++;
 			}
-			vertextbindingDesc[numVertexAttribs].offset = cmd->attribs[i].offset;
-			vertextbindingDesc[numVertexAttribs].binding = cmd->attribs[i].streamIndex;
-			vertextbindingDesc[numVertexAttribs].format = RIFormatToVK( cmd->attribs[i].format );
-			vertextbindingDesc[numVertexAttribs].location = cmd->attribs[i].vk.location;
-			numVertexAttribs++;
+
+			for( size_t i = 0; i < cmd->numStreams; i++ ) {
+				vertexInputStreamsDesc[i].binding = cmd->streams[i].bindingSlot;
+				vertexInputStreamsDesc[i].stride = cmd->streams[i].stride;
+				vertexInputStreamsDesc[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+			}
+			vertexInputState.pVertexAttributeDescriptions = vertextbindingDesc;
+			vertexInputState.vertexAttributeDescriptionCount = numVertexAttribs;
+			vertexInputState.pVertexBindingDescriptions = vertexInputStreamsDesc;
+			vertexInputState.vertexBindingDescriptionCount = cmd->numStreams;
+		}
+		qsort( vertextbindingDesc, vertexInputState.vertexAttributeDescriptionCount, sizeof( VkVertexInputAttributeDescription ), __VK_SortVkVertexInputAttributeDescription );
+
+		struct {
+			float depthBiasConstant;
+			float depthBiasClamp;
+			float depthBiasSlope;
+			uint16_t cullMode : 3; // RICullMode_e
+			uint16_t colorBlendEnabled : 1;
+			uint16_t depthWrite : 1;
+			uint16_t colorWriteMask : 4; // RIColorWriteMask_e
+			uint16_t colorSrcFactor : 5; // RIBlendFactor_e
+			uint16_t colorDstFactor : 5; // RIBlendFactor_e
+			uint16_t topology : 4;		 // RITopology_e
+			uint16_t compareFunc : 4;	 // RICompareFunc_e
+		} encode;
+		memset( &encode, 0, sizeof( encode ) );
+		encode.depthBiasConstant = useDepthBias ? cmd->depthBiasConstant : 0;
+		encode.depthBiasClamp = useDepthBias ? cmd->depthBiasClamp : 0;
+		encode.depthBiasSlope = useDepthBias ? cmd->depthBiasSlope : 0;
+		encode.cullMode = cullMode;
+		encode.colorBlendEnabled = cmd->colorBlendEnabled;
+		encode.depthWrite = cmd->depthWrite;
+		// The write mask is baked into the pipeline whether or not blending is on (see colorAttachmentDesc
+		// below), so it must be keyed unconditionally: masking it with colorBlendEnabled made a non-blended
+		// GLSTATE_NO_COLORWRITE draw and a normal opaque draw share one slot, and whichever was built first
+		// won. The blend factors, by contrast, are ignored by the GPU when blending is off, so collapsing
+		// them there is correct and keeps the pipeline count down.
+		encode.colorWriteMask = cmd->colorWriteMask;
+		encode.colorSrcFactor = cmd->colorBlendEnabled ? cmd->colorSrcFactor : 0;
+		encode.colorDstFactor = cmd->colorBlendEnabled ? cmd->colorDstFactor : 0;
+		encode.topology = cmd->topology;
+		encode.compareFunc = cmd->compareFunc;
+		for( size_t i = 0; i < cmd->numColorsAttachments; i++ ) {
+			colorAttachmentsVK[i] = RIFormatToVK( cmd->colorAttachments[i] );
 		}
 
-		for( size_t i = 0; i < cmd->numStreams; i++ ) {
-			vertexInputStreamsDesc[i].binding = cmd->streams[i].bindingSlot;
-			vertexInputStreamsDesc[i].stride = cmd->streams[i].stride;
-			vertexInputStreamsDesc[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-		}
-		vertexInputState.pVertexAttributeDescriptions = vertextbindingDesc;
-		vertexInputState.vertexAttributeDescriptionCount = numVertexAttribs;
-		vertexInputState.pVertexBindingDescriptions = vertexInputStreamsDesc;
-		vertexInputState.vertexBindingDescriptionCount = cmd->numStreams;
-	}
-	qsort( vertextbindingDesc, vertexInputState.vertexAttributeDescriptionCount, sizeof( VkVertexInputAttributeDescription ), __VK_SortVkVertexInputAttributeDescription );
-
-	struct {
-		float depthBiasConstant;
-		float depthBiasClamp;
-		float depthBiasSlope;
-		uint16_t cullMode : 3; // RICullMode_e
-		uint16_t colorBlendEnabled : 1;
-		uint16_t depthWrite : 1;
-		uint16_t colorWriteMask : 4; // RIColorWriteMask_e
-		uint16_t colorSrcFactor : 5; // RIBlendFactor_e
-		uint16_t colorDstFactor : 5; // RIBlendFactor_e
-		uint16_t topology : 4;		 // RITopology_e
-		uint16_t compareFunc : 4;	 // RICompareFunc_e
-	} encode;
-	memset( &encode, 0, sizeof( encode ) );
-	encode.depthBiasConstant = useDepthBias ? cmd->depthBiasConstant : 0;
-	encode.depthBiasClamp = useDepthBias ? cmd->depthBiasClamp : 0;
-	encode.depthBiasSlope = useDepthBias ? cmd->depthBiasSlope : 0;
-	encode.cullMode = cullMode;
-	encode.colorBlendEnabled = cmd->colorBlendEnabled;
-	encode.depthWrite = cmd->depthWrite;
-	// The write mask is baked into the pipeline whether or not blending is on (see colorAttachmentDesc
-	// below), so it must be keyed unconditionally: masking it with colorBlendEnabled made a non-blended
-	// GLSTATE_NO_COLORWRITE draw and a normal opaque draw share one slot, and whichever was built first
-	// won. The blend factors, by contrast, are ignored by the GPU when blending is off, so collapsing
-	// them there is correct and keeps the pipeline count down.
-	encode.colorWriteMask = cmd->colorWriteMask;
-	encode.colorSrcFactor = cmd->colorBlendEnabled ? cmd->colorSrcFactor : 0;
-	encode.colorDstFactor = cmd->colorBlendEnabled ? cmd->colorDstFactor : 0;
-	encode.topology = cmd->topology;
-	encode.compareFunc = cmd->compareFunc;
-	for( size_t i = 0; i < cmd->numColorsAttachments; i++ ) {
-		colorAttachmentsVK[i] = RIFormatToVK( cmd->colorAttachments[i] );
-	}
-
-	hash_t hash = HASH_INITIAL_VALUE;
-	hash = hash_data_hsieh( hash, vertextbindingDesc, sizeof( VkVertexInputAttributeDescription ) * vertexInputState.vertexAttributeDescriptionCount );
-	hash = hash_data_hsieh( hash, vertexInputStreamsDesc, sizeof( VkVertexInputBindingDescription ) * vertexInputState.vertexBindingDescriptionCount );
-	hash = hash_data_hsieh( hash, &encode, sizeof( encode ) );
-	hash = hash_data_hsieh( hash, colorAttachmentsVK, sizeof( VkFormat ) * cmd->numColorsAttachments );
-	if( cmd->depthFormat != RI_FORMAT_UNKNOWN )
-		hash = hash_u32( hash, cmd->depthFormat );
-
-	pipeline = __resolvePipeline( program, hash );
-	assert( pipeline );
-	if( pipeline->vk.handle ) {
-		return pipeline; // pipeline is present in slot
-	}
-#elif ( DEVICE_IMPL_MTL )
-	{
-		(void)cullMode; // encoder state on Metal, applied in RP_BindPipeline
-		// Metal folds blend state, colour write mask and attachment formats into the pipeline object, so
-		// they are all part of the cache key. Cull mode, depth bias and the depth test/write flags are
-		// encoder state on Metal (applied on every RP_BindPipeline) and deliberately are NOT hashed here:
-		// keying them would only multiply identical MTLRenderPipelineStates.
 		hash_t hash = HASH_INITIAL_VALUE;
-		for( size_t i = 0; i < cmd->numAttribs; i++ ) {
-			hash = hash_u32( hash, cmd->attribs[i].vk.location );
-			hash = hash_u32( hash, cmd->attribs[i].offset );
-			hash = hash_u32( hash, cmd->attribs[i].format );
-			hash = hash_u32( hash, cmd->attribs[i].streamIndex );
-		}
-		for( size_t i = 0; i < cmd->numStreams; i++ ) {
-			hash = hash_u32( hash, cmd->streams[i].stride );
-			hash = hash_u32( hash, cmd->streams[i].bindingSlot );
-		}
-		for( size_t i = 0; i < cmd->numColorsAttachments; i++ )
-			hash = hash_u32( hash, cmd->colorAttachments[i] );
-		hash = hash_u32( hash, cmd->depthFormat );
-		hash = hash_u32( hash, cmd->colorBlendEnabled );
-		hash = hash_u32( hash, cmd->colorWriteMask );
-		hash = hash_u32( hash, cmd->colorSrcFactor );
-		hash = hash_u32( hash, cmd->colorDstFactor );
-		hash = hash_u32( hash, cmd->topology );
+		hash = hash_data_hsieh( hash, vertextbindingDesc, sizeof( VkVertexInputAttributeDescription ) * vertexInputState.vertexAttributeDescriptionCount );
+		hash = hash_data_hsieh( hash, vertexInputStreamsDesc, sizeof( VkVertexInputBindingDescription ) * vertexInputState.vertexBindingDescriptionCount );
+		hash = hash_data_hsieh( hash, &encode, sizeof( encode ) );
+		hash = hash_data_hsieh( hash, colorAttachmentsVK, sizeof( VkFormat ) * cmd->numColorsAttachments );
+		if( cmd->depthFormat != RI_FORMAT_UNKNOWN )
+			hash = hash_u32( hash, cmd->depthFormat );
 
 		pipeline = __resolvePipeline( program, hash );
 		assert( pipeline );
-		if( pipeline->mtl.state )
+		if( pipeline->vk.handle ) {
 			return pipeline; // pipeline is present in slot
-
-		if( mtlc_function_is_nil( program->mtlStage[GLSL_STAGE_VERTEX].fn ) ) {
-			// The program failed to cross-compile; the empty slot keeps callers from retrying every draw.
-			return pipeline;
 		}
-
-		struct mtlc_vertex_descriptor vertexDesc = mtlc_vertex_descriptor_new();
-		struct mtlc_vertex_attribute_descriptor_array attrArray = mtlc_vertex_descriptor_attributes( vertexDesc );
-		struct mtlc_vertex_buffer_layout_descriptor_array layoutArray = mtlc_vertex_descriptor_layouts( vertexDesc );
-		for( size_t i = 0; i < cmd->numAttribs; i++ ) {
-			// Attributes the shader does not consume must be left out: MSL only declares the inputs it
-			// uses, and describing a stage_in attribute with no matching shader input is a pipeline error.
-			if( !( ( 1u << cmd->attribs[i].vk.location ) & program->vertexInputMask ) )
-				continue;
-			struct mtlc_vertex_attribute_descriptor attr = mtlc_vertex_attribute_descriptor_array_object( attrArray, cmd->attribs[i].vk.location );
-			mtlc_vertex_attribute_descriptor_set_format( attr, RIFormatToMTLVertex( cmd->attribs[i].format ) );
-			mtlc_vertex_attribute_descriptor_set_offset( attr, cmd->attribs[i].offset );
-			mtlc_vertex_attribute_descriptor_set_buffer_index( attr, R_MTL_VERTEX_BUFFER_BASE + cmd->attribs[i].streamIndex );
-		}
-		for( size_t i = 0; i < cmd->numStreams; i++ ) {
-			struct mtlc_vertex_buffer_layout_descriptor layout =
-				mtlc_vertex_buffer_layout_descriptor_array_object( layoutArray, R_MTL_VERTEX_BUFFER_BASE + cmd->streams[i].bindingSlot );
-			mtlc_vertex_buffer_layout_descriptor_set_stride( layout, cmd->streams[i].stride );
-			mtlc_vertex_buffer_layout_descriptor_set_step_function( layout, MTLC_VERTEX_STEP_FUNCTION_PER_VERTEX );
-			mtlc_vertex_buffer_layout_descriptor_set_step_rate( layout, 1 );
-		}
-
-		struct mtlc_render_pipeline_descriptor desc = mtlc_render_pipeline_descriptor_init();
-		mtlc_render_pipeline_descriptor_set_vertex_function( desc, program->mtlStage[GLSL_STAGE_VERTEX].fn );
-		// A pass with no colour attachment (shadow maps) must use the fragment variant with the colour
-		// outputs stripped: Metal rejects a fragment function that writes color(0) into an Invalid
-		// attachment format, where Vulkan just discards the write. Fall back to the full function only
-		// when the variant could not be built, so the failure is reported once at pipeline creation
-		// rather than hidden.
-		const bool depthOnly = ( cmd->numColorsAttachments == 0 );
-		bool usedDepthOnlyVariant = false;
+	}
+#endif
+#if ( DEVICE_IMPL_MTL )
+	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
 		{
-			const struct shader_mtl_stage_s *frag = &program->mtlStage[GLSL_STAGE_FRAGMENT];
-			struct mtlc_function fragFn = frag->fn;
-			if( depthOnly && !mtlc_function_is_nil( frag->depthOnlyFn ) ) {
-				fragFn = frag->depthOnlyFn;
-				usedDepthOnlyVariant = true;
+			(void)cullMode; // encoder state on Metal, applied in RP_BindPipeline
+			// Metal folds blend state, colour write mask and attachment formats into the pipeline object, so
+			// they are all part of the cache key. Cull mode, depth bias and the depth test/write flags are
+			// encoder state on Metal (applied on every RP_BindPipeline) and deliberately are NOT hashed here:
+			// keying them would only multiply identical MTLRenderPipelineStates.
+			hash_t hash = HASH_INITIAL_VALUE;
+			for( size_t i = 0; i < cmd->numAttribs; i++ ) {
+				hash = hash_u32( hash, cmd->attribs[i].vk.location );
+				hash = hash_u32( hash, cmd->attribs[i].offset );
+				hash = hash_u32( hash, cmd->attribs[i].format );
+				hash = hash_u32( hash, cmd->attribs[i].streamIndex );
 			}
-			if( !mtlc_function_is_nil( fragFn ) )
-				mtlc_render_pipeline_descriptor_set_fragment_function( desc, fragFn );
-		}
-		mtlc_render_pipeline_descriptor_set_vertex_descriptor( desc, vertexDesc );
-
-		struct mtlc_render_pipeline_color_attachment_descriptor_array colorArray = mtlc_render_pipeline_descriptor_color_attachments( desc );
-		for( size_t i = 0; i < cmd->numColorsAttachments; i++ ) {
-			struct mtlc_render_pipeline_color_attachment_descriptor att = mtlc_render_pipeline_color_attachment_descriptor_array_object( colorArray, i );
-			mtlc_render_pipeline_color_attachment_descriptor_set_pixel_format( att, RIFormatToMTL( cmd->colorAttachments[i] ) );
-			mtlc_render_pipeline_color_attachment_descriptor_set_write_mask( att, RIColorWriteMaskToMTL( cmd->colorWriteMask ) );
-			mtlc_render_pipeline_color_attachment_descriptor_set_blending_enabled( att, cmd->colorBlendEnabled );
-			if( cmd->colorBlendEnabled ) {
-				const enum mtlc_blend_factor src = RIBlendFactorToMTL( cmd->colorSrcFactor );
-				const enum mtlc_blend_factor dst = RIBlendFactorToMTL( cmd->colorDstFactor );
-				mtlc_render_pipeline_color_attachment_descriptor_set_rgb_blend_factors( att, src, dst );
-				mtlc_render_pipeline_color_attachment_descriptor_set_alpha_blend_factors( att, src, dst );
-				mtlc_render_pipeline_color_attachment_descriptor_set_blend_operations( att, MTLC_BLEND_OPERATION_ADD, MTLC_BLEND_OPERATION_ADD );
+			for( size_t i = 0; i < cmd->numStreams; i++ ) {
+				hash = hash_u32( hash, cmd->streams[i].stride );
+				hash = hash_u32( hash, cmd->streams[i].bindingSlot );
 			}
-		}
-		if( cmd->depthFormat != RI_FORMAT_UNKNOWN )
-			mtlc_render_pipeline_descriptor_set_depth_attachment_pixel_format( desc, RIFormatToMTL( cmd->depthFormat ) );
+			for( size_t i = 0; i < cmd->numColorsAttachments; i++ )
+				hash = hash_u32( hash, cmd->colorAttachments[i] );
+			hash = hash_u32( hash, cmd->depthFormat );
+			hash = hash_u32( hash, cmd->colorBlendEnabled );
+			hash = hash_u32( hash, cmd->colorWriteMask );
+			hash = hash_u32( hash, cmd->colorSrcFactor );
+			hash = hash_u32( hash, cmd->colorDstFactor );
+			hash = hash_u32( hash, cmd->topology );
 
-		// Mirrors the vkSetDebugUtilsObjectNameEXT call in the VK arm; without it every pipeline shows up
-		// unnamed in an Xcode GPU capture.
-		if( program->name )
-			mtlc_render_pipeline_descriptor_set_label( desc, ns_string_from_utf8( program->name ) );
+			pipeline = __resolvePipeline( program, hash );
+			assert( pipeline );
+			if( pipeline->mtl.state )
+				return pipeline; // pipeline is present in slot
 
-		struct ns_error err = ns_error_from_id( NULL );
-		struct mtlc_render_pipeline_state state = mtlc_device_new_render_pipeline_state( rsh.device.mtl.device, desc, &err );
-		// `desc` came from _init, so it is caller-owned and has to go back on both paths. The vertex
-		// descriptor does not: mtlc_vertex_descriptor_new returns an autoreleased object.
-		mtlc_render_pipeline_descriptor_release( desc );
-		if( mtlc_render_pipeline_state_is_nil( state ) ) {
-			Com_Printf( S_COLOR_YELLOW "MTLRenderPipelineState failed (%s): %s\n", program->name ? program->name : "<unnamed>",
-						ns_error_is_nil( err ) ? "unknown" : ns_string_utf8( ns_error_localized_description( err ) ) );
+			if( mtlc_function_is_nil( program->mtlStage[GLSL_STAGE_VERTEX].fn ) ) {
+				// The program failed to cross-compile; the empty slot keeps callers from retrying every draw.
+				return pipeline;
+			}
+
+			struct mtlc_vertex_descriptor vertexDesc = mtlc_vertex_descriptor_new();
+			struct mtlc_vertex_attribute_descriptor_array attrArray = mtlc_vertex_descriptor_attributes( vertexDesc );
+			struct mtlc_vertex_buffer_layout_descriptor_array layoutArray = mtlc_vertex_descriptor_layouts( vertexDesc );
+			for( size_t i = 0; i < cmd->numAttribs; i++ ) {
+				// Attributes the shader does not consume must be left out: MSL only declares the inputs it
+				// uses, and describing a stage_in attribute with no matching shader input is a pipeline error.
+				if( !( ( 1u << cmd->attribs[i].vk.location ) & program->vertexInputMask ) )
+					continue;
+				struct mtlc_vertex_attribute_descriptor attr = mtlc_vertex_attribute_descriptor_array_object( attrArray, cmd->attribs[i].vk.location );
+				mtlc_vertex_attribute_descriptor_set_format( attr, RIFormatToMTLVertex( cmd->attribs[i].format ) );
+				mtlc_vertex_attribute_descriptor_set_offset( attr, cmd->attribs[i].offset );
+				mtlc_vertex_attribute_descriptor_set_buffer_index( attr, R_MTL_VERTEX_BUFFER_BASE + cmd->attribs[i].streamIndex );
+			}
+			for( size_t i = 0; i < cmd->numStreams; i++ ) {
+				struct mtlc_vertex_buffer_layout_descriptor layout =
+					mtlc_vertex_buffer_layout_descriptor_array_object( layoutArray, R_MTL_VERTEX_BUFFER_BASE + cmd->streams[i].bindingSlot );
+				mtlc_vertex_buffer_layout_descriptor_set_stride( layout, cmd->streams[i].stride );
+				mtlc_vertex_buffer_layout_descriptor_set_step_function( layout, MTLC_VERTEX_STEP_FUNCTION_PER_VERTEX );
+				mtlc_vertex_buffer_layout_descriptor_set_step_rate( layout, 1 );
+			}
+
+			struct mtlc_render_pipeline_descriptor desc = mtlc_render_pipeline_descriptor_init();
+			mtlc_render_pipeline_descriptor_set_vertex_function( desc, program->mtlStage[GLSL_STAGE_VERTEX].fn );
+			// A pass with no colour attachment (shadow maps) must use the fragment variant with the colour
+			// outputs stripped: Metal rejects a fragment function that writes color(0) into an Invalid
+			// attachment format, where Vulkan just discards the write. Fall back to the full function only
+			// when the variant could not be built, so the failure is reported once at pipeline creation
+			// rather than hidden.
+			const bool depthOnly = ( cmd->numColorsAttachments == 0 );
+			bool usedDepthOnlyVariant = false;
+			{
+				const struct shader_mtl_stage_s *frag = &program->mtlStage[GLSL_STAGE_FRAGMENT];
+				struct mtlc_function fragFn = frag->fn;
+				if( depthOnly && !mtlc_function_is_nil( frag->depthOnlyFn ) ) {
+					fragFn = frag->depthOnlyFn;
+					usedDepthOnlyVariant = true;
+				}
+				if( !mtlc_function_is_nil( fragFn ) )
+					mtlc_render_pipeline_descriptor_set_fragment_function( desc, fragFn );
+			}
+			mtlc_render_pipeline_descriptor_set_vertex_descriptor( desc, vertexDesc );
+
+			struct mtlc_render_pipeline_color_attachment_descriptor_array colorArray = mtlc_render_pipeline_descriptor_color_attachments( desc );
+			for( size_t i = 0; i < cmd->numColorsAttachments; i++ ) {
+				struct mtlc_render_pipeline_color_attachment_descriptor att = mtlc_render_pipeline_color_attachment_descriptor_array_object( colorArray, i );
+				mtlc_render_pipeline_color_attachment_descriptor_set_pixel_format( att, RIFormatToMTL( cmd->colorAttachments[i] ) );
+				mtlc_render_pipeline_color_attachment_descriptor_set_write_mask( att, RIColorWriteMaskToMTL( cmd->colorWriteMask ) );
+				mtlc_render_pipeline_color_attachment_descriptor_set_blending_enabled( att, cmd->colorBlendEnabled );
+				if( cmd->colorBlendEnabled ) {
+					const enum mtlc_blend_factor src = RIBlendFactorToMTL( cmd->colorSrcFactor );
+					const enum mtlc_blend_factor dst = RIBlendFactorToMTL( cmd->colorDstFactor );
+					mtlc_render_pipeline_color_attachment_descriptor_set_rgb_blend_factors( att, src, dst );
+					mtlc_render_pipeline_color_attachment_descriptor_set_alpha_blend_factors( att, src, dst );
+					mtlc_render_pipeline_color_attachment_descriptor_set_blend_operations( att, MTLC_BLEND_OPERATION_ADD, MTLC_BLEND_OPERATION_ADD );
+				}
+			}
+			if( cmd->depthFormat != RI_FORMAT_UNKNOWN )
+				mtlc_render_pipeline_descriptor_set_depth_attachment_pixel_format( desc, RIFormatToMTL( cmd->depthFormat ) );
+
+			// Mirrors the vkSetDebugUtilsObjectNameEXT call in the VK arm; without it every pipeline shows up
+			// unnamed in an Xcode GPU capture.
+			if( program->name )
+				mtlc_render_pipeline_descriptor_set_label( desc, ns_string_from_utf8( program->name ) );
+
+			struct ns_error err = ns_error_from_id( NULL );
+			struct mtlc_render_pipeline_state state = mtlc_device_new_render_pipeline_state( rsh.device.mtl.device, desc, &err );
+			// `desc` came from _init, so it is caller-owned and has to go back on both paths. The vertex
+			// descriptor does not: mtlc_vertex_descriptor_new returns an autoreleased object.
+			mtlc_render_pipeline_descriptor_release( desc );
+			if( mtlc_render_pipeline_state_is_nil( state ) ) {
+				Com_Printf( S_COLOR_YELLOW "MTLRenderPipelineState failed (%s): %s\n", program->name ? program->name : "<unnamed>",
+							ns_error_is_nil( err ) ? "unknown" : ns_string_utf8( ns_error_localized_description( err ) ) );
+				return pipeline;
+			}
+			pipeline->mtl.state = state.obj;
+			if( depthOnly )
+				ri.Com_DPrintf( "Metal: depth-only pipeline for %s uses %s\n", program->name ? program->name : "<unnamed>",
+								usedDepthOnlyVariant ? "the stripped-output fragment variant" : "the FULL fragment function (variant unavailable)" );
+			// compareFunc/depthWrite are not part of this slot's key (see the comment above), so the depth-stencil
+			// object cannot live on the pipeline -- a later draw reusing this slot with different depth state
+			// would inherit the first draw's. It is resolved from a shared cache in RP_BindPipeline instead.
 			return pipeline;
 		}
-		pipeline->mtl.state = state.obj;
-		if( depthOnly )
-			ri.Com_DPrintf( "Metal: depth-only pipeline for %s uses %s\n", program->name ? program->name : "<unnamed>",
-							usedDepthOnlyVariant ? "the stripped-output fragment variant" : "the FULL fragment function (variant unavailable)" );
-		// compareFunc/depthWrite are not part of this slot's key (see the comment above), so the depth-stencil
-		// object cannot live on the pipeline -- a later draw reusing this slot with different depth state
-		// would inherit the first draw's. It is resolved from a shared cache in RP_BindPipeline instead.
-		return pipeline;
 	}
 #endif
 #if ( DEVICE_IMPL_VULKAN )
-	{
-		uint32_t numModules = 0;
-		VkShaderModule modules[4] = { 0 };
-		VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
-		pipelineRenderingCreateInfo.colorAttachmentCount = cmd->numColorsAttachments;
-		pipelineRenderingCreateInfo.pColorAttachmentFormats = colorAttachmentsVK;
-		pipelineRenderingCreateInfo.depthAttachmentFormat = RIFormatToVK( cmd->depthFormat );
-		pipelineRenderingCreateInfo.stencilAttachmentFormat = GetRIFormatProps( cmd->depthFormat )->isStencil ? RIFormatToVK( cmd->depthFormat ) : VK_FORMAT_UNDEFINED;
-		VkPipelineShaderStageCreateInfo stageCreateInfo[4] = { 0 };
-		VkGraphicsPipelineCreateInfo pipelineCreateInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
-		pipelineCreateInfo.pNext = &pipelineRenderingCreateInfo;
-		pipelineCreateInfo.pStages = stageCreateInfo;
-		pipelineCreateInfo.basePipelineIndex = -1;
-		pipelineCreateInfo.layout = program->vk.pipelineLayout;
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		{
+			uint32_t numModules = 0;
+			VkShaderModule modules[4] = { 0 };
+			VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
+			pipelineRenderingCreateInfo.colorAttachmentCount = cmd->numColorsAttachments;
+			pipelineRenderingCreateInfo.pColorAttachmentFormats = colorAttachmentsVK;
+			pipelineRenderingCreateInfo.depthAttachmentFormat = RIFormatToVK( cmd->depthFormat );
+			pipelineRenderingCreateInfo.stencilAttachmentFormat = GetRIFormatProps( cmd->depthFormat )->isStencil ? RIFormatToVK( cmd->depthFormat ) : VK_FORMAT_UNDEFINED;
+			VkPipelineShaderStageCreateInfo stageCreateInfo[4] = { 0 };
+			VkGraphicsPipelineCreateInfo pipelineCreateInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
+			pipelineCreateInfo.pNext = &pipelineRenderingCreateInfo;
+			pipelineCreateInfo.pStages = stageCreateInfo;
+			pipelineCreateInfo.basePipelineIndex = -1;
+			pipelineCreateInfo.layout = program->vk.pipelineLayout;
 
-		if( program->shaderBin[GLSL_STAGE_VERTEX].bin && program->shaderBin[GLSL_STAGE_FRAGMENT].bin ) {
-			pipelineCreateInfo.stageCount = 2;
-			const VkShaderModuleCreateInfo vertModuleCreateInfo = {
-				VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-				NULL,
-				(VkShaderModuleCreateFlags)0,
-				(size_t)program->shaderBin[GLSL_STAGE_VERTEX].size,
-				(const uint32_t *)program->shaderBin[GLSL_STAGE_VERTEX].bin,
-			};
-			vkCreateShaderModule( rsh.device.vk.device, &vertModuleCreateInfo, NULL, &modules[numModules] );
-			stageCreateInfo[0] =
-				(VkPipelineShaderStageCreateInfo){ .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .stage = VK_SHADER_STAGE_VERTEX_BIT, .module = modules[numModules], .pName = "main" };
-			numModules++;
+			if( program->shaderBin[GLSL_STAGE_VERTEX].bin && program->shaderBin[GLSL_STAGE_FRAGMENT].bin ) {
+				pipelineCreateInfo.stageCount = 2;
+				const VkShaderModuleCreateInfo vertModuleCreateInfo = {
+					VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+					NULL,
+					(VkShaderModuleCreateFlags)0,
+					(size_t)program->shaderBin[GLSL_STAGE_VERTEX].size,
+					(const uint32_t *)program->shaderBin[GLSL_STAGE_VERTEX].bin,
+				};
+				vkCreateShaderModule( rsh.device.vk.device, &vertModuleCreateInfo, NULL, &modules[numModules] );
+				stageCreateInfo[0] =
+					(VkPipelineShaderStageCreateInfo){ .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .stage = VK_SHADER_STAGE_VERTEX_BIT, .module = modules[numModules], .pName = "main" };
+				numModules++;
 
-			const VkShaderModuleCreateInfo fragModuleCreateInfo = {
-				VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-				NULL,
-				(VkShaderModuleCreateFlags)0,
-				(size_t)program->shaderBin[GLSL_STAGE_FRAGMENT].size,
-				(const uint32_t *)program->shaderBin[GLSL_STAGE_FRAGMENT].bin,
-			};
-			vkCreateShaderModule( rsh.device.vk.device, &fragModuleCreateInfo, NULL, &modules[numModules] );
-			stageCreateInfo[1] = (VkPipelineShaderStageCreateInfo){
-				.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .stage = VK_SHADER_STAGE_FRAGMENT_BIT, .module = modules[numModules], .pName = "main" };
-			numModules++;
-		} else {
-			assert( false && "failed to resolve bin" );
-		}
-		pipelineCreateInfo.pVertexInputState = &vertexInputState;
+				const VkShaderModuleCreateInfo fragModuleCreateInfo = {
+					VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+					NULL,
+					(VkShaderModuleCreateFlags)0,
+					(size_t)program->shaderBin[GLSL_STAGE_FRAGMENT].size,
+					(const uint32_t *)program->shaderBin[GLSL_STAGE_FRAGMENT].bin,
+				};
+				vkCreateShaderModule( rsh.device.vk.device, &fragModuleCreateInfo, NULL, &modules[numModules] );
+				stageCreateInfo[1] = (VkPipelineShaderStageCreateInfo){
+					.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .stage = VK_SHADER_STAGE_FRAGMENT_BIT, .module = modules[numModules], .pName = "main" };
+				numModules++;
+			} else {
+				assert( false && "failed to resolve bin" );
+			}
+			pipelineCreateInfo.pVertexInputState = &vertexInputState;
 
-		VkPipelineColorBlendAttachmentState colorAttachmentDesc[MAX_COLOR_ATTACHMENTS] = { 0 };
-		for( size_t i = 0; i < cmd->numColorsAttachments; i++ ) {
-			colorAttachmentDesc[i].blendEnable = cmd->colorBlendEnabled;
-			colorAttachmentDesc[i].srcColorBlendFactor = ri_vk_RIBlendFactorToVK( cmd->colorSrcFactor );
-			colorAttachmentDesc[i].dstColorBlendFactor = ri_vk_RIBlendFactorToVK( cmd->colorDstFactor );
-			colorAttachmentDesc[i].colorBlendOp = VK_BLEND_OP_ADD;
-			// GLSTATE blend modes come from glBlendFunc, which applies the same factor pair to alpha as to
-			// RGB; leaving these zero-initialised (VK_BLEND_FACTOR_ZERO) wrote alpha = 0 on every blended
-			// draw with GLSTATE_ALPHAWRITE. The Metal arm sets alpha = colour factors for the same reason.
-			colorAttachmentDesc[i].srcAlphaBlendFactor = colorAttachmentDesc[i].srcColorBlendFactor;
-			colorAttachmentDesc[i].dstAlphaBlendFactor = colorAttachmentDesc[i].dstColorBlendFactor;
-			colorAttachmentDesc[i].alphaBlendOp = VK_BLEND_OP_ADD;
-			colorAttachmentDesc[i].colorWriteMask = ri_vk_RIColorWriteMaskToVK( cmd->colorWriteMask );
-		}
+			VkPipelineColorBlendAttachmentState colorAttachmentDesc[MAX_COLOR_ATTACHMENTS] = { 0 };
+			for( size_t i = 0; i < cmd->numColorsAttachments; i++ ) {
+				colorAttachmentDesc[i].blendEnable = cmd->colorBlendEnabled;
+				colorAttachmentDesc[i].srcColorBlendFactor = ri_vk_RIBlendFactorToVK( cmd->colorSrcFactor );
+				colorAttachmentDesc[i].dstColorBlendFactor = ri_vk_RIBlendFactorToVK( cmd->colorDstFactor );
+				colorAttachmentDesc[i].colorBlendOp = VK_BLEND_OP_ADD;
+				// GLSTATE blend modes come from glBlendFunc, which applies the same factor pair to alpha as to
+				// RGB; leaving these zero-initialised (VK_BLEND_FACTOR_ZERO) wrote alpha = 0 on every blended
+				// draw with GLSTATE_ALPHAWRITE. The Metal arm sets alpha = colour factors for the same reason.
+				colorAttachmentDesc[i].srcAlphaBlendFactor = colorAttachmentDesc[i].srcColorBlendFactor;
+				colorAttachmentDesc[i].dstAlphaBlendFactor = colorAttachmentDesc[i].dstColorBlendFactor;
+				colorAttachmentDesc[i].alphaBlendOp = VK_BLEND_OP_ADD;
+				colorAttachmentDesc[i].colorWriteMask = ri_vk_RIColorWriteMaskToVK( cmd->colorWriteMask );
+			}
 
-		VkPipelineColorBlendStateCreateInfo colorBlendState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-		if( cmd->numColorsAttachments > 0 ) {
-			colorBlendState.attachmentCount = cmd->numColorsAttachments;
-			colorBlendState.pAttachments = colorAttachmentDesc;
-			pipelineCreateInfo.pColorBlendState = &colorBlendState;
-		}
+			VkPipelineColorBlendStateCreateInfo colorBlendState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+			if( cmd->numColorsAttachments > 0 ) {
+				colorBlendState.attachmentCount = cmd->numColorsAttachments;
+				colorBlendState.pAttachments = colorAttachmentDesc;
+				pipelineCreateInfo.pColorBlendState = &colorBlendState;
+			}
 
-		VkPipelineViewportStateCreateInfo viewportState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-		viewportState.viewportCount = 1;
-		viewportState.scissorCount = 1;
-		pipelineCreateInfo.pViewportState = &viewportState;
+			VkPipelineViewportStateCreateInfo viewportState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
+			viewportState.viewportCount = 1;
+			viewportState.scissorCount = 1;
+			pipelineCreateInfo.pViewportState = &viewportState;
 
-		VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
-		inputAssemblyState.topology = ri_vk_RITopologyToVK( cmd->topology );
-		pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
+			VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+			inputAssemblyState.topology = ri_vk_RITopologyToVK( cmd->topology );
+			pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
 
-		uint32_t dynamicStateNum = 0;
-		VkDynamicState dynamicStates[16];
-		dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_VIEWPORT;
-		dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_SCISSOR;
-		VkPipelineDynamicStateCreateInfo dynamicState = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
-		dynamicState.dynamicStateCount = dynamicStateNum;
-		dynamicState.pDynamicStates = dynamicStates;
-		pipelineCreateInfo.pDynamicState = &dynamicState;
+			uint32_t dynamicStateNum = 0;
+			VkDynamicState dynamicStates[16];
+			dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_VIEWPORT;
+			dynamicStates[dynamicStateNum++] = VK_DYNAMIC_STATE_SCISSOR;
+			VkPipelineDynamicStateCreateInfo dynamicState = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+			dynamicState.dynamicStateCount = dynamicStateNum;
+			dynamicState.pDynamicStates = dynamicStates;
+			pipelineCreateInfo.pDynamicState = &dynamicState;
 
-		VkPipelineMultisampleStateCreateInfo multisampleState = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-		multisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-		pipelineCreateInfo.pMultisampleState = &multisampleState;
+			VkPipelineMultisampleStateCreateInfo multisampleState = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+			multisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+			pipelineCreateInfo.pMultisampleState = &multisampleState;
 
-		VkPipelineRasterizationStateCreateInfo rasterizationState = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
-		rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
-		rasterizationState.cullMode = ri_vk_RICullModeToVK( cullMode );
-		rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-		rasterizationState.depthBiasEnable = useDepthBias ? VK_TRUE : VK_FALSE;
-		rasterizationState.depthBiasConstantFactor = cmd->depthBiasConstant;
-		rasterizationState.depthBiasClamp = cmd->depthBiasClamp;
-		rasterizationState.depthBiasSlopeFactor = cmd->depthBiasSlope;
-		rasterizationState.lineWidth = 1.0f;
-		pipelineCreateInfo.pRasterizationState = &rasterizationState;
+			VkPipelineRasterizationStateCreateInfo rasterizationState = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+			rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
+			rasterizationState.cullMode = ri_vk_RICullModeToVK( cullMode );
+			rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+			rasterizationState.depthBiasEnable = useDepthBias ? VK_TRUE : VK_FALSE;
+			rasterizationState.depthBiasConstantFactor = cmd->depthBiasConstant;
+			rasterizationState.depthBiasClamp = cmd->depthBiasClamp;
+			rasterizationState.depthBiasSlopeFactor = cmd->depthBiasSlope;
+			rasterizationState.lineWidth = 1.0f;
+			pipelineCreateInfo.pRasterizationState = &rasterizationState;
 
-		VkPipelineDepthStencilStateCreateInfo depthStencilState = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
-		depthStencilState.depthTestEnable = cmd->compareFunc != RI_COMPARE_NONE;
-		depthStencilState.depthWriteEnable = cmd->depthWrite;
-		depthStencilState.depthCompareOp = ri_vk_RICompareOpToVK( cmd->compareFunc );
-		depthStencilState.minDepthBounds = 0.0f;
-		depthStencilState.maxDepthBounds = 1.0f;
-		pipelineCreateInfo.pDepthStencilState = &depthStencilState;
+			VkPipelineDepthStencilStateCreateInfo depthStencilState = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+			depthStencilState.depthTestEnable = cmd->compareFunc != RI_COMPARE_NONE;
+			depthStencilState.depthWriteEnable = cmd->depthWrite;
+			depthStencilState.depthCompareOp = ri_vk_RICompareOpToVK( cmd->compareFunc );
+			depthStencilState.minDepthBounds = 0.0f;
+			depthStencilState.maxDepthBounds = 1.0f;
+			pipelineCreateInfo.pDepthStencilState = &depthStencilState;
 
-		VK_WrapResult( vkCreateGraphicsPipelines( rsh.device.vk.device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &pipeline->vk.handle ) );
-		//assert( ( attribFlags & program->vertexInputMask ) == program->vertexInputMask );
-		if( vkSetDebugUtilsObjectNameEXT ) {
-			VkDebugUtilsObjectNameInfoEXT debugName = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, NULL, VK_OBJECT_TYPE_PIPELINE, (uint64_t)pipeline->vk.handle, program->name };
-			VK_WrapResult( vkSetDebugUtilsObjectNameEXT( rsh.device.vk.device, &debugName ) );
-		}
+			VK_WrapResult( vkCreateGraphicsPipelines( rsh.device.vk.device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &pipeline->vk.handle ) );
+			//assert( ( attribFlags & program->vertexInputMask ) == program->vertexInputMask );
+			if( vkSetDebugUtilsObjectNameEXT ) {
+				VkDebugUtilsObjectNameInfoEXT debugName = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, NULL, VK_OBJECT_TYPE_PIPELINE, (uint64_t)pipeline->vk.handle, program->name };
+				VK_WrapResult( vkSetDebugUtilsObjectNameEXT( rsh.device.vk.device, &debugName ) );
+			}
 
-		for( size_t i = 0; i < numModules; i++ ) {
-			vkDestroyShaderModule( rsh.device.vk.device, modules[i], NULL );
+			for( size_t i = 0; i < numModules; i++ ) {
+				vkDestroyShaderModule( rsh.device.vk.device, modules[i], NULL );
+			}
 		}
 	}
 #endif
@@ -1425,25 +1440,29 @@ void RP_BindPushConstant( struct RIDevice_s *device, struct FrameState_s *cmd, s
 {
 	TracyCZoneN( ctx, "RP_BindPushConstant", 1 );
 #if ( DEVICE_IMPL_VULKAN )
-	{
-		assert( len <= program->vk.pushConstant.size );
-		vkCmdPushConstants( cmd->handle.vk.cmd, program->vk.pipelineLayout, program->vk.pushConstant.shaderStageFlags, 0, program->vk.pushConstant.size, data );
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		{
+			assert( len <= program->vk.pushConstant.size );
+			vkCmdPushConstants( cmd->handle.vk.cmd, program->vk.pipelineLayout, program->vk.pushConstant.shaderStageFlags, 0, program->vk.pushConstant.size, data );
+		}
 	}
 #endif
 #if ( DEVICE_IMPL_MTL )
-	// Metal has no push-constant concept; the equivalent is inline constant data uploaded straight into
-	// a buffer slot with setVertex/FragmentBytes, which avoids a scratch allocation for these few bytes.
-	if( !mtlc_render_command_encoder_is_nil( cmd->handle.mtl.encoder ) && program->mtl.pushConstantSize > 0 ) {
-		const struct mtlc_render_command_encoder enc = cmd->handle.mtl.encoder;
-		// Upload exactly what the caller owns. The VK arm above pushes the reflected block size instead,
-		// which reads past `data` whenever the caller's struct is smaller -- not a habit worth copying.
-		// The assert catches the reverse (a block bigger than the struct) in debug.
-		assert( len <= program->mtl.pushConstantSize );
-		const mtlc_uinteger size = (mtlc_uinteger)len;
-		if( program->mtl.pushConstantSlot[GLSL_STAGE_VERTEX] != R_MTL_SLOT_UNUSED )
-			mtlc_render_command_encoder_set_vertex_bytes( enc, data, size, program->mtl.pushConstantSlot[GLSL_STAGE_VERTEX] );
-		if( program->mtl.pushConstantSlot[GLSL_STAGE_FRAGMENT] != R_MTL_SLOT_UNUSED )
-			mtlc_render_command_encoder_set_fragment_bytes( enc, data, size, program->mtl.pushConstantSlot[GLSL_STAGE_FRAGMENT] );
+	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
+		// Metal has no push-constant concept; the equivalent is inline constant data uploaded straight into
+		// a buffer slot with setVertex/FragmentBytes, which avoids a scratch allocation for these few bytes.
+		if( !mtlc_render_command_encoder_is_nil( cmd->handle.mtl.encoder ) && program->mtl.pushConstantSize > 0 ) {
+			const struct mtlc_render_command_encoder enc = cmd->handle.mtl.encoder;
+			// Upload exactly what the caller owns. The VK arm above pushes the reflected block size instead,
+			// which reads past `data` whenever the caller's struct is smaller -- not a habit worth copying.
+			// The assert catches the reverse (a block bigger than the struct) in debug.
+			assert( len <= program->mtl.pushConstantSize );
+			const mtlc_uinteger size = (mtlc_uinteger)len;
+			if( program->mtl.pushConstantSlot[GLSL_STAGE_VERTEX] != R_MTL_SLOT_UNUSED )
+				mtlc_render_command_encoder_set_vertex_bytes( enc, data, size, program->mtl.pushConstantSlot[GLSL_STAGE_VERTEX] );
+			if( program->mtl.pushConstantSlot[GLSL_STAGE_FRAGMENT] != R_MTL_SLOT_UNUSED )
+				mtlc_render_command_encoder_set_fragment_bytes( enc, data, size, program->mtl.pushConstantSlot[GLSL_STAGE_FRAGMENT] );
+		}
 	}
 #endif
 	TracyCZoneEnd( ctx );
@@ -1568,260 +1587,264 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd,
 {
 	TracyCZoneN( ctx, "RP_BindDescriptorSets", 1 );
 #if ( DEVICE_IMPL_VULKAN )
-	{
-		size_t numWrites = 0;
-		VkWriteDescriptorSet descriptorWrite[32]; // write 32 descriptors at once
-		// Parallel storage for acceleration-structure writes: the VkWriteDescriptorSetAccelerationStructureKHR
-		// chained via pNext must outlive the batch, so it is kept at the same index as its descriptorWrite entry.
-		VkWriteDescriptorSetAccelerationStructureKHR accelWrites[32];
-		for( uint32_t setIndex = 0; setIndex < R_DESCRIPTOR_SET_MAX; setIndex++ ) {
-			hash_t hash = HASH_INITIAL_VALUE;
-			for( size_t i = 0; i < numDescriptorData; i++ ) {
-				const struct descriptor_reflection_s *refl = __ReflectDescriptorSet( program, &bindings[i].handle );
-				if( !refl || setIndex != refl->set || RI_IsEmptyDescriptor( &bindings[i].descriptor ) ||
-					__DescriptorOffsetOutOfRange( program, refl, &bindings[i] ) )
-					continue;
-				hash = hash_u64( hash, refl->hash );
-				assert(bindings[i].descriptor.cookie != 0); // the cookie can't be 0
-				hash = hash_u64( hash, bindings[i].descriptor.cookie );
-				// Fold in the array element: the same descriptor bound at a different dstArrayElement
-				// is a distinct set contents, so it must not hash to (and reuse) the same cached set.
-				hash = hash_u64( hash, bindings[i].registerOffset );
-			}
-			if( hash == HASH_INITIAL_VALUE )
-				continue;
-			struct glsl_program_descriptor_s *info = &program->programDescriptors[setIndex];
-			struct descriptor_set_result_s result = ResolveDescriptorSet( &rsh.device, &info->alloc, rsh.frameSetCount, hash );
-			if( !result.found ) {
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		{
+			size_t numWrites = 0;
+			VkWriteDescriptorSet descriptorWrite[32]; // write 32 descriptors at once
+			// Parallel storage for acceleration-structure writes: the VkWriteDescriptorSetAccelerationStructureKHR
+			// chained via pNext must outlive the batch, so it is kept at the same index as its descriptorWrite entry.
+			VkWriteDescriptorSetAccelerationStructureKHR accelWrites[32];
+			for( uint32_t setIndex = 0; setIndex < R_DESCRIPTOR_SET_MAX; setIndex++ ) {
+				hash_t hash = HASH_INITIAL_VALUE;
 				for( size_t i = 0; i < numDescriptorData; i++ ) {
 					const struct descriptor_reflection_s *refl = __ReflectDescriptorSet( program, &bindings[i].handle );
 					if( !refl || setIndex != refl->set || RI_IsEmptyDescriptor( &bindings[i].descriptor ) ||
-					__DescriptorOffsetOutOfRange( program, refl, &bindings[i] ) )
+						__DescriptorOffsetOutOfRange( program, refl, &bindings[i] ) )
 						continue;
-
-					if( numWrites == Q_ARRAY_COUNT( descriptorWrite ) ) {
-						vkUpdateDescriptorSets( device->vk.device, numWrites, descriptorWrite, 0, NULL );
-						numWrites = 0;
-					}
-
-					assert( numWrites < Q_ARRAY_COUNT( descriptorWrite ) );
-					const size_t writeIdx = numWrites;
-					VkWriteDescriptorSet *vkDesc = descriptorWrite + ( numWrites++ );
-					memset( vkDesc, 0, sizeof( VkWriteDescriptorSet ) );
-					vkDesc->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-					vkDesc->dstSet = result.set->vk.handle;
-					if( refl->isArray ) {
-						vkDesc->dstBinding = refl->baseRegisterIndex;
-						vkDesc->dstArrayElement = bindings[i].registerOffset;
-					} else {
-						vkDesc->dstBinding = refl->baseRegisterIndex + bindings[i].registerOffset;
-						vkDesc->dstArrayElement = 0;
-					}
-					vkDesc->descriptorCount = 1;
-					vkDesc->descriptorType = RI_VK_BindlessDescriptorType( bindings[i].descriptor.type );
-					switch( (enum RIDescriptorType_e)bindings[i].descriptor.type ) {
-						case RI_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-						case RI_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-							vkDesc->pBufferInfo = &bindings[i].descriptor.vk.buffer;
-							break;
-						case RI_DESCRIPTOR_TYPE_SAMPLER:
-						case RI_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-						case RI_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-							vkDesc->pImageInfo = &bindings[i].descriptor.vk.image;
-							break;
-						case RI_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE: {
-							VkWriteDescriptorSetAccelerationStructureKHR *accel = &accelWrites[writeIdx];
-							memset( accel, 0, sizeof( *accel ) );
-							accel->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
-							accel->accelerationStructureCount = 1;
-							accel->pAccelerationStructures = &bindings[i].descriptor.vk.accelStructure;
-							vkDesc->pNext = accel;
-							break;
-						}
-						default:
-							assert( false ); // this is bad
-							break;
-					}
-
+					hash = hash_u64( hash, refl->hash );
+					assert(bindings[i].descriptor.cookie != 0); // the cookie can't be 0
+					hash = hash_u64( hash, bindings[i].descriptor.cookie );
+					// Fold in the array element: the same descriptor bound at a different dstArrayElement
+					// is a distinct set contents, so it must not hash to (and reuse) the same cached set.
+					hash = hash_u64( hash, bindings[i].registerOffset );
 				}
+				if( hash == HASH_INITIAL_VALUE )
+					continue;
+				struct glsl_program_descriptor_s *info = &program->programDescriptors[setIndex];
+				struct descriptor_set_result_s result = ResolveDescriptorSet( &rsh.device, &info->alloc, rsh.frameSetCount, hash );
+				if( !result.found ) {
+					for( size_t i = 0; i < numDescriptorData; i++ ) {
+						const struct descriptor_reflection_s *refl = __ReflectDescriptorSet( program, &bindings[i].handle );
+						if( !refl || setIndex != refl->set || RI_IsEmptyDescriptor( &bindings[i].descriptor ) ||
+						__DescriptorOffsetOutOfRange( program, refl, &bindings[i] ) )
+							continue;
+
+						if( numWrites == Q_ARRAY_COUNT( descriptorWrite ) ) {
+							vkUpdateDescriptorSets( device->vk.device, numWrites, descriptorWrite, 0, NULL );
+							numWrites = 0;
+						}
+
+						assert( numWrites < Q_ARRAY_COUNT( descriptorWrite ) );
+						const size_t writeIdx = numWrites;
+						VkWriteDescriptorSet *vkDesc = descriptorWrite + ( numWrites++ );
+						memset( vkDesc, 0, sizeof( VkWriteDescriptorSet ) );
+						vkDesc->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+						vkDesc->dstSet = result.set->vk.handle;
+						if( refl->isArray ) {
+							vkDesc->dstBinding = refl->baseRegisterIndex;
+							vkDesc->dstArrayElement = bindings[i].registerOffset;
+						} else {
+							vkDesc->dstBinding = refl->baseRegisterIndex + bindings[i].registerOffset;
+							vkDesc->dstArrayElement = 0;
+						}
+						vkDesc->descriptorCount = 1;
+						vkDesc->descriptorType = RI_VK_BindlessDescriptorType( bindings[i].descriptor.type );
+						switch( (enum RIDescriptorType_e)bindings[i].descriptor.type ) {
+							case RI_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+							case RI_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+								vkDesc->pBufferInfo = &bindings[i].descriptor.vk.buffer;
+								break;
+							case RI_DESCRIPTOR_TYPE_SAMPLER:
+							case RI_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+							case RI_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+								vkDesc->pImageInfo = &bindings[i].descriptor.vk.image;
+								break;
+							case RI_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE: {
+								VkWriteDescriptorSetAccelerationStructureKHR *accel = &accelWrites[writeIdx];
+								memset( accel, 0, sizeof( *accel ) );
+								accel->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+								accel->accelerationStructureCount = 1;
+								accel->pAccelerationStructures = &bindings[i].descriptor.vk.accelStructure;
+								vkDesc->pNext = accel;
+								break;
+							}
+							default:
+								assert( false ); // this is bad
+								break;
+						}
+
+					}
+				}
+				if( numWrites > 0 ) {
+					vkUpdateDescriptorSets( device->vk.device, numWrites, descriptorWrite, 0, NULL );
+					numWrites = 0;
+				}
+				VkDescriptorSet vkDescriptorSet = result.set->vk.handle;
+				vkCmdBindDescriptorSets( cmd->handle.vk.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, program->vk.pipelineLayout, setIndex, 1, &vkDescriptorSet, 0, NULL );
 			}
-			if( numWrites > 0 ) {
-				vkUpdateDescriptorSets( device->vk.device, numWrites, descriptorWrite, 0, NULL );
-				numWrites = 0;
-			}
-			VkDescriptorSet vkDescriptorSet = result.set->vk.handle;
-			vkCmdBindDescriptorSets( cmd->handle.vk.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, program->vk.pipelineLayout, setIndex, 1, &vkDescriptorSet, 0, NULL );
 		}
 	}
 #endif
 #if ( DEVICE_IMPL_MTL )
-	{
-		struct mtlc_render_command_encoder enc = cmd->handle.mtl.encoder;
-		if( mtlc_render_command_encoder_is_nil( enc ) ) {
-			TracyCZoneEnd( ctx );
-			return;
-		}
-		for( uint32_t setIndex = 0; setIndex < R_DESCRIPTOR_SET_MAX; setIndex++ ) {
-			struct glsl_program_descriptor_s *programDesc = &program->programDescriptors[setIndex];
-
-			// -- Discrete set: bind each supplied resource straight onto the encoder ------------------
-			// These sets (see R_MTL_SET_IS_ARGUMENT_BUFFER) are per-draw scratch UBOs, so there is nothing
-			// to cache and one setBuffer per descriptor is already the cheapest thing available.
-			if( programDesc->mtl.argBufferIndex == R_MTL_SLOT_UNUSED ) {
-				for( size_t i = 0; i < numDescriptorData; i++ ) {
-					const struct descriptor_reflection_s *refl = __ReflectDescriptorSet( program, &bindings[i].handle );
-					if( !refl || refl->set != setIndex || RI_IsEmptyDescriptor( &bindings[i].descriptor ) ||
-						__DescriptorOffsetOutOfRange( program, refl, &bindings[i] ) )
-						continue;
-					const struct RIDescriptor_s *d = &bindings[i].descriptor;
-					for( glsl_program_stage_t stage = 0; stage < GLSL_STAGE_MAX; stage++ ) {
-						if( refl->mtlSlot[stage] == R_MTL_SLOT_UNUSED )
-							continue;
-						const uint8_t slot = (uint8_t)( refl->mtlSlot[stage] + bindings[i].registerOffset );
-						switch( (enum RIDescriptorType_e)d->type ) {
-							case RI_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-							case RI_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-								if( stage == GLSL_STAGE_VERTEX )
-									mtlc_render_command_encoder_set_vertex_buffer( enc, d->mtl.buffer, d->mtl.offset, slot );
-								else if( stage == GLSL_STAGE_FRAGMENT )
-									mtlc_render_command_encoder_set_fragment_buffer( enc, d->mtl.buffer, d->mtl.offset, slot );
-								break;
-							case RI_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-							case RI_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-								if( stage == GLSL_STAGE_VERTEX )
-									mtlc_render_command_encoder_set_vertex_texture( enc, d->mtl.texture, slot );
-								else if( stage == GLSL_STAGE_FRAGMENT )
-									mtlc_render_command_encoder_set_fragment_texture( enc, d->mtl.texture, slot );
-								break;
-							case RI_DESCRIPTOR_TYPE_SAMPLER:
-								if( stage == GLSL_STAGE_VERTEX )
-									mtlc_render_command_encoder_set_vertex_sampler_state( enc, mtlc_sampler_state_from_id( d->mtl.sampler ), slot );
-								else if( stage == GLSL_STAGE_FRAGMENT )
-									mtlc_render_command_encoder_set_fragment_sampler_state( enc, mtlc_sampler_state_from_id( d->mtl.sampler ), slot );
-								break;
-							default:
-								break;
-						}
-					}
-				}
-				continue;
+	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
+		{
+			struct mtlc_render_command_encoder enc = cmd->handle.mtl.encoder;
+			if( mtlc_render_command_encoder_is_nil( enc ) ) {
+				TracyCZoneEnd( ctx );
+				return;
 			}
+			for( uint32_t setIndex = 0; setIndex < R_DESCRIPTOR_SET_MAX; setIndex++ ) {
+				struct glsl_program_descriptor_s *programDesc = &program->programDescriptors[setIndex];
 
-			// -- Argument-buffer set ------------------------------------------------------------------
-			// One encoded table, resolved from the same content-hash cache the Vulkan arm uses, bound with
-			// a single setBuffer. Note this set is bound unconditionally: the program declares it, so the
-			// shader reads it, and skipping the bind would leave whatever the previously bound program left
-			// at this buffer index.
-			hash_t hash = hash_u64( HASH_INITIAL_VALUE, RIResourceEpoch() );
-			for( size_t i = 0; i < numDescriptorData; i++ ) {
-				const struct descriptor_reflection_s *refl = __ReflectDescriptorSet( program, &bindings[i].handle );
-				if( !refl || refl->set != setIndex || RI_IsEmptyDescriptor( &bindings[i].descriptor ) ||
-					__DescriptorOffsetOutOfRange( program, refl, &bindings[i] ) )
-					continue;
-				hash = hash_u64( hash, refl->hash );
-				assert( bindings[i].descriptor.cookie != 0 ); // the cookie can't be 0
-				hash = hash_u64( hash, bindings[i].descriptor.cookie );
-				hash = hash_u64( hash, bindings[i].registerOffset );
-			}
-
-			struct descriptor_set_result_s result = ResolveDescriptorSet( &rsh.device, &programDesc->alloc, rsh.frameSetCount, hash );
-			if( !result.set || mtlc_buffer_is_nil( result.set->mtl.buffer ) )
-				continue; // pool allocation failed; already reported
-
-			uint32_t stageMask = 0;
-			if( !result.found ) {
-				// A recycled slot still holds the previous tenant's table, so every reflected entry is
-				// rewritten -- supplied or defaulted -- not just the ones this draw provided.
-				if( result.set->mtl.residentResources )
-					arrsetlen( result.set->mtl.residentResources, 0 );
-				for( glsl_program_stage_t stage = 0; stage < GLSL_STAGE_MAX; stage++ ) {
-					if( programDesc->mtl.stageLength[stage] == 0 )
-						continue;
-					struct mtlc_argument_encoder argEncoder = program->mtlStage[stage].argEncoder[setIndex];
-					mtlc_argument_encoder_set_argument_buffer( argEncoder, result.set->mtl.buffer,
-															   result.set->mtl.offset + programDesc->mtl.stageOffset[stage] );
-					for( size_t r = 0; r < program->numDescriptorReflections; r++ ) {
-						const struct descriptor_reflection_s *refl = &program->descriptorReflection[r];
-						if( refl->set != setIndex || refl->mtlSlot[stage] == R_MTL_SLOT_UNUSED )
+				// -- Discrete set: bind each supplied resource straight onto the encoder ------------------
+				// These sets (see R_MTL_SET_IS_ARGUMENT_BUFFER) are per-draw scratch UBOs, so there is nothing
+				// to cache and one setBuffer per descriptor is already the cheapest thing available.
+				if( programDesc->mtl.argBufferIndex == R_MTL_SLOT_UNUSED ) {
+					for( size_t i = 0; i < numDescriptorData; i++ ) {
+						const struct descriptor_reflection_s *refl = __ReflectDescriptorSet( program, &bindings[i].handle );
+						if( !refl || refl->set != setIndex || RI_IsEmptyDescriptor( &bindings[i].descriptor ) ||
+							__DescriptorOffsetOutOfRange( program, refl, &bindings[i] ) )
 							continue;
-						const uint32_t count = refl->dimCount ? refl->dimCount : 1;
-						// An unfilled element of an arrayed binding borrows whichever element the caller did
-						// supply. That is guaranteed to be the type the shader declares -- shadowmapTexture[4]
-						// is a depth2d array that a draw fills only up to its shadow count, and the white RGBA
-						// texture the generic default hands out is the wrong texture type for those slots --
-						// and the shader never reads past the elements it was given. Only a binding with no
-						// element at all falls back to the generic default.
-						const struct RIDescriptor_s *anySupplied = NULL;
-						for( uint32_t element = 0; element < count && !anySupplied; element++ )
-							anySupplied = __RP_MTLFindSupplied( program, refl, bindings, numDescriptorData, element );
-						for( uint32_t element = 0; element < count; element++ ) {
-							const struct RIDescriptor_s *supplied = __RP_MTLFindSupplied( program, refl, bindings, numDescriptorData, element );
-							if( !supplied )
-								supplied = anySupplied;
-							const struct RIDescriptor_s fallback = supplied ? (struct RIDescriptor_s){ 0 } : __RP_MTLDefaultDescriptor( refl );
-							const struct RIDescriptor_s *d = supplied ? supplied : &fallback;
-							if( RI_IsEmptyDescriptor( d ) )
-								continue; // no default available yet (pre-registration); leave the slot alone
-							// SPIRV-Cross reserved dimCount consecutive ids for an arrayed resource, so an
-							// element lands at (base id + its index) -- verified against the encoded bytes.
-							const mtlc_uinteger id = (mtlc_uinteger)( refl->mtlSlot[stage] + element );
-							// The id comes from what the *shader* declared but the payload from what the
-							// caller passed. RIDescriptor_s is a union, so a mismatch would encode e.g. a
-							// sampler pointer into a texture slot with no complaint from anyone. Skip rather
-							// than write nonsense; the assert catches the call site in a debug build.
-							assert( refl->mtlClass == (uint8_t)__RP_MTLBindClassFromRIType( (enum RIDescriptorType_e)d->type ) );
-							if( refl->mtlClass != (uint8_t)__RP_MTLBindClassFromRIType( (enum RIDescriptorType_e)d->type ) )
+						const struct RIDescriptor_s *d = &bindings[i].descriptor;
+						for( glsl_program_stage_t stage = 0; stage < GLSL_STAGE_MAX; stage++ ) {
+							if( refl->mtlSlot[stage] == R_MTL_SLOT_UNUSED )
 								continue;
-							switch( (enum r_mtl_bind_class_e)refl->mtlClass ) {
-								case R_MTL_BIND_TEXTURE:
-									mtlc_argument_encoder_set_texture( argEncoder, d->mtl.texture, id );
-									__RP_MTLTrackResident( result.set, d->mtl.texture.obj );
+							const uint8_t slot = (uint8_t)( refl->mtlSlot[stage] + bindings[i].registerOffset );
+							switch( (enum RIDescriptorType_e)d->type ) {
+								case RI_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+								case RI_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+									if( stage == GLSL_STAGE_VERTEX )
+										mtlc_render_command_encoder_set_vertex_buffer( enc, d->mtl.buffer, d->mtl.offset, slot );
+									else if( stage == GLSL_STAGE_FRAGMENT )
+										mtlc_render_command_encoder_set_fragment_buffer( enc, d->mtl.buffer, d->mtl.offset, slot );
 									break;
-								case R_MTL_BIND_SAMPLER:
-									mtlc_argument_encoder_set_sampler_state( argEncoder, mtlc_sampler_state_from_id( d->mtl.sampler ), id );
-									break; // a sampler state is not an MTLResource; nothing to make resident
-								case R_MTL_BIND_BUFFER:
-									mtlc_argument_encoder_set_buffer( argEncoder, d->mtl.buffer, d->mtl.offset, id );
-									__RP_MTLTrackResident( result.set, d->mtl.buffer.obj );
+								case RI_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+								case RI_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+									if( stage == GLSL_STAGE_VERTEX )
+										mtlc_render_command_encoder_set_vertex_texture( enc, d->mtl.texture, slot );
+									else if( stage == GLSL_STAGE_FRAGMENT )
+										mtlc_render_command_encoder_set_fragment_texture( enc, d->mtl.texture, slot );
+									break;
+								case RI_DESCRIPTOR_TYPE_SAMPLER:
+									if( stage == GLSL_STAGE_VERTEX )
+										mtlc_render_command_encoder_set_vertex_sampler_state( enc, mtlc_sampler_state_from_id( d->mtl.sampler ), slot );
+									else if( stage == GLSL_STAGE_FRAGMENT )
+										mtlc_render_command_encoder_set_fragment_sampler_state( enc, mtlc_sampler_state_from_id( d->mtl.sampler ), slot );
 									break;
 								default:
 									break;
 							}
 						}
 					}
+					continue;
 				}
-				// On a discrete GPU the pool buffer is Managed, so the encoded bytes have to be published.
-				if( !rsh.device.physicalAdapter.mtl.hasUnifiedMemory )
-					mtlc_buffer_did_modify_range( result.set->mtl.buffer,
-												  (struct ns_range){ result.set->mtl.offset, programDesc->mtl.stride } );
-				result.set->mtl.residentEpoch = 0; // force the residency declaration below
-			}
 
-			for( glsl_program_stage_t stage = 0; stage < GLSL_STAGE_MAX; stage++ ) {
-				if( programDesc->mtl.stageLength[stage] == 0 )
-					continue;
-				stageMask |= ( stage == GLSL_STAGE_VERTEX ) ? MTLC_RENDER_STAGE_VERTEX : MTLC_RENDER_STAGE_FRAGMENT;
-			}
+				// -- Argument-buffer set ------------------------------------------------------------------
+				// One encoded table, resolved from the same content-hash cache the Vulkan arm uses, bound with
+				// a single setBuffer. Note this set is bound unconditionally: the program declares it, so the
+				// shader reads it, and skipping the bind would leave whatever the previously bound program left
+				// at this buffer index.
+				hash_t hash = hash_u64( HASH_INITIAL_VALUE, RIResourceEpoch() );
+				for( size_t i = 0; i < numDescriptorData; i++ ) {
+					const struct descriptor_reflection_s *refl = __ReflectDescriptorSet( program, &bindings[i].handle );
+					if( !refl || refl->set != setIndex || RI_IsEmptyDescriptor( &bindings[i].descriptor ) ||
+						__DescriptorOffsetOutOfRange( program, refl, &bindings[i] ) )
+						continue;
+					hash = hash_u64( hash, refl->hash );
+					assert( bindings[i].descriptor.cookie != 0 ); // the cookie can't be 0
+					hash = hash_u64( hash, bindings[i].descriptor.cookie );
+					hash = hash_u64( hash, bindings[i].registerOffset );
+				}
 
-			// Resources reached through an argument buffer are outside Metal's automatic residency
-			// tracking. Declaring them is per-encoder state, so this is skipped for a slot already declared
-			// to this encoder -- which, once the cache is warm, is the common case.
-			if( result.set->mtl.residentEpoch != cmd->handle.mtl.encoderEpoch ) {
-				const size_t numResident = (size_t)arrlen( result.set->mtl.residentResources );
-				if( numResident > 0 )
-					mtlc_render_command_encoder_use_resources( enc, result.set->mtl.residentResources, (mtlc_uinteger)numResident,
-															   MTLC_RESOURCE_USAGE_READ, stageMask );
-				result.set->mtl.residentEpoch = cmd->handle.mtl.encoderEpoch;
-			}
+				struct descriptor_set_result_s result = ResolveDescriptorSet( &rsh.device, &programDesc->alloc, rsh.frameSetCount, hash );
+				if( !result.set || mtlc_buffer_is_nil( result.set->mtl.buffer ) )
+					continue; // pool allocation failed; already reported
 
-			for( glsl_program_stage_t stage = 0; stage < GLSL_STAGE_MAX; stage++ ) {
-				if( programDesc->mtl.stageLength[stage] == 0 )
-					continue;
-				const mtlc_uinteger offset = result.set->mtl.offset + programDesc->mtl.stageOffset[stage];
-				if( stage == GLSL_STAGE_VERTEX )
-					mtlc_render_command_encoder_set_vertex_buffer( enc, result.set->mtl.buffer, offset, programDesc->mtl.argBufferIndex );
-				else if( stage == GLSL_STAGE_FRAGMENT )
-					mtlc_render_command_encoder_set_fragment_buffer( enc, result.set->mtl.buffer, offset, programDesc->mtl.argBufferIndex );
+				uint32_t stageMask = 0;
+				if( !result.found ) {
+					// A recycled slot still holds the previous tenant's table, so every reflected entry is
+					// rewritten -- supplied or defaulted -- not just the ones this draw provided.
+					if( result.set->mtl.residentResources )
+						arrsetlen( result.set->mtl.residentResources, 0 );
+					for( glsl_program_stage_t stage = 0; stage < GLSL_STAGE_MAX; stage++ ) {
+						if( programDesc->mtl.stageLength[stage] == 0 )
+							continue;
+						struct mtlc_argument_encoder argEncoder = program->mtlStage[stage].argEncoder[setIndex];
+						mtlc_argument_encoder_set_argument_buffer( argEncoder, result.set->mtl.buffer,
+																   result.set->mtl.offset + programDesc->mtl.stageOffset[stage] );
+						for( size_t r = 0; r < program->numDescriptorReflections; r++ ) {
+							const struct descriptor_reflection_s *refl = &program->descriptorReflection[r];
+							if( refl->set != setIndex || refl->mtlSlot[stage] == R_MTL_SLOT_UNUSED )
+								continue;
+							const uint32_t count = refl->dimCount ? refl->dimCount : 1;
+							// An unfilled element of an arrayed binding borrows whichever element the caller did
+							// supply. That is guaranteed to be the type the shader declares -- shadowmapTexture[4]
+							// is a depth2d array that a draw fills only up to its shadow count, and the white RGBA
+							// texture the generic default hands out is the wrong texture type for those slots --
+							// and the shader never reads past the elements it was given. Only a binding with no
+							// element at all falls back to the generic default.
+							const struct RIDescriptor_s *anySupplied = NULL;
+							for( uint32_t element = 0; element < count && !anySupplied; element++ )
+								anySupplied = __RP_MTLFindSupplied( program, refl, bindings, numDescriptorData, element );
+							for( uint32_t element = 0; element < count; element++ ) {
+								const struct RIDescriptor_s *supplied = __RP_MTLFindSupplied( program, refl, bindings, numDescriptorData, element );
+								if( !supplied )
+									supplied = anySupplied;
+								const struct RIDescriptor_s fallback = supplied ? (struct RIDescriptor_s){ 0 } : __RP_MTLDefaultDescriptor( refl );
+								const struct RIDescriptor_s *d = supplied ? supplied : &fallback;
+								if( RI_IsEmptyDescriptor( d ) )
+									continue; // no default available yet (pre-registration); leave the slot alone
+								// SPIRV-Cross reserved dimCount consecutive ids for an arrayed resource, so an
+								// element lands at (base id + its index) -- verified against the encoded bytes.
+								const mtlc_uinteger id = (mtlc_uinteger)( refl->mtlSlot[stage] + element );
+								// The id comes from what the *shader* declared but the payload from what the
+								// caller passed. RIDescriptor_s is a union, so a mismatch would encode e.g. a
+								// sampler pointer into a texture slot with no complaint from anyone. Skip rather
+								// than write nonsense; the assert catches the call site in a debug build.
+								assert( refl->mtlClass == (uint8_t)__RP_MTLBindClassFromRIType( (enum RIDescriptorType_e)d->type ) );
+								if( refl->mtlClass != (uint8_t)__RP_MTLBindClassFromRIType( (enum RIDescriptorType_e)d->type ) )
+									continue;
+								switch( (enum r_mtl_bind_class_e)refl->mtlClass ) {
+									case R_MTL_BIND_TEXTURE:
+										mtlc_argument_encoder_set_texture( argEncoder, d->mtl.texture, id );
+										__RP_MTLTrackResident( result.set, d->mtl.texture.obj );
+										break;
+									case R_MTL_BIND_SAMPLER:
+										mtlc_argument_encoder_set_sampler_state( argEncoder, mtlc_sampler_state_from_id( d->mtl.sampler ), id );
+										break; // a sampler state is not an MTLResource; nothing to make resident
+									case R_MTL_BIND_BUFFER:
+										mtlc_argument_encoder_set_buffer( argEncoder, d->mtl.buffer, d->mtl.offset, id );
+										__RP_MTLTrackResident( result.set, d->mtl.buffer.obj );
+										break;
+									default:
+										break;
+								}
+							}
+						}
+					}
+					// On a discrete GPU the pool buffer is Managed, so the encoded bytes have to be published.
+					if( !rsh.device.physicalAdapter.mtl.hasUnifiedMemory )
+						mtlc_buffer_did_modify_range( result.set->mtl.buffer,
+													  (struct ns_range){ result.set->mtl.offset, programDesc->mtl.stride } );
+					result.set->mtl.residentEpoch = 0; // force the residency declaration below
+				}
+
+				for( glsl_program_stage_t stage = 0; stage < GLSL_STAGE_MAX; stage++ ) {
+					if( programDesc->mtl.stageLength[stage] == 0 )
+						continue;
+					stageMask |= ( stage == GLSL_STAGE_VERTEX ) ? MTLC_RENDER_STAGE_VERTEX : MTLC_RENDER_STAGE_FRAGMENT;
+				}
+
+				// Resources reached through an argument buffer are outside Metal's automatic residency
+				// tracking. Declaring them is per-encoder state, so this is skipped for a slot already declared
+				// to this encoder -- which, once the cache is warm, is the common case.
+				if( result.set->mtl.residentEpoch != cmd->handle.mtl.encoderEpoch ) {
+					const size_t numResident = (size_t)arrlen( result.set->mtl.residentResources );
+					if( numResident > 0 )
+						mtlc_render_command_encoder_use_resources( enc, result.set->mtl.residentResources, (mtlc_uinteger)numResident,
+																   MTLC_RESOURCE_USAGE_READ, stageMask );
+					result.set->mtl.residentEpoch = cmd->handle.mtl.encoderEpoch;
+				}
+
+				for( glsl_program_stage_t stage = 0; stage < GLSL_STAGE_MAX; stage++ ) {
+					if( programDesc->mtl.stageLength[stage] == 0 )
+						continue;
+					const mtlc_uinteger offset = result.set->mtl.offset + programDesc->mtl.stageOffset[stage];
+					if( stage == GLSL_STAGE_VERTEX )
+						mtlc_render_command_encoder_set_vertex_buffer( enc, result.set->mtl.buffer, offset, programDesc->mtl.argBufferIndex );
+					else if( stage == GLSL_STAGE_FRAGMENT )
+						mtlc_render_command_encoder_set_fragment_buffer( enc, result.set->mtl.buffer, offset, programDesc->mtl.argBufferIndex );
+				}
 			}
 		}
 	}
@@ -1884,7 +1907,7 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 #if ( DEVICE_IMPL_VULKAN )
 void _vk__descriptorSetAlloc( struct RIDevice_s *device, struct DescriptorSetAllocator *alloc )
 {
-	assert( device->renderer->api == RI_DEVICE_API_VK );
+	assert( RIIsTargetSelected( RI_DEVICE_API_VK ) );
 	struct glsl_program_descriptor_s *programDescriptor = Q_CONTAINER_OF( alloc, struct glsl_program_descriptor_s, alloc );
 	VkDescriptorPoolSize descriptorPoolSize[16] = { 0 };
 	size_t descriptorPoolLen = 0;
@@ -2736,204 +2759,208 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 	SpvReflectDescriptorSet **reflectionDescSets = NULL;
 
 #if ( DEVICE_IMPL_MTL )
-	// Metal counterpart to the Vulkan reflection block below. It fills the same backend-neutral fields
-	// (push constants, vertexInputMask, per-set counts, descriptorReflection) but skips the descriptor
-	// set / pipeline layout objects, which Metal has no equivalent of, then cross-compiles to MSL.
-	if( !error ) {
-		if( !__RP_MTLReflectProgram( program, (const glsl_program_stage_t[]){ GLSL_STAGE_VERTEX, GLSL_STAGE_FRAGMENT }, 2 ) )
-			error = true;
-		else if( !__RP_MTLBuildLibraries( program, (const glsl_program_stage_t[]){ GLSL_STAGE_VERTEX, GLSL_STAGE_FRAGMENT }, 2 ) )
-			error = true;
+	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
+		// Metal counterpart to the Vulkan reflection block below. It fills the same backend-neutral fields
+		// (push constants, vertexInputMask, per-set counts, descriptorReflection) but skips the descriptor
+		// set / pipeline layout objects, which Metal has no equivalent of, then cross-compiles to MSL.
+		if( !error ) {
+			if( !__RP_MTLReflectProgram( program, (const glsl_program_stage_t[]){ GLSL_STAGE_VERTEX, GLSL_STAGE_FRAGMENT }, 2 ) )
+				error = true;
+			else if( !__RP_MTLBuildLibraries( program, (const glsl_program_stage_t[]){ GLSL_STAGE_VERTEX, GLSL_STAGE_FRAGMENT }, 2 ) )
+				error = true;
+		}
 	}
 #endif
 
 #if ( DEVICE_IMPL_VULKAN )
-	{
-		SpvReflectBlockVariable *reflectionBlockVariables[1] = { 0 };
-		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-		VkDescriptorSetLayoutBinding *descriptorSetLayoutBindings[R_DESCRIPTOR_SET_MAX] = { 0 };
-		VkDescriptorBindingFlags *descriptorBindingFlags[R_DESCRIPTOR_SET_MAX] = { 0 };
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		{
+			SpvReflectBlockVariable *reflectionBlockVariables[1] = { 0 };
+			VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+			VkDescriptorSetLayoutBinding *descriptorSetLayoutBindings[R_DESCRIPTOR_SET_MAX] = { 0 };
+			VkDescriptorBindingFlags *descriptorBindingFlags[R_DESCRIPTOR_SET_MAX] = { 0 };
 
-		VkDescriptorSetLayout setLayouts[R_DESCRIPTOR_SET_MAX] = { 0 };
-		VkPushConstantRange pushConstantRange = { 0 };
-		for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
-			SpvReflectShaderModule module = { 0 };
-			SpvReflectResult result = spvReflectCreateShaderModule( program->shaderBin[stages[i].stage].size, program->shaderBin[stages[i].stage].bin, &module );
-			assert( result == SPV_REFLECT_RESULT_SUCCESS );
-			{
-				uint32_t pushConstantCount = 0;
-				result = spvReflectEnumeratePushConstantBlocks( &module, &pushConstantCount, NULL );
+			VkDescriptorSetLayout setLayouts[R_DESCRIPTOR_SET_MAX] = { 0 };
+			VkPushConstantRange pushConstantRange = { 0 };
+			for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
+				SpvReflectShaderModule module = { 0 };
+				SpvReflectResult result = spvReflectCreateShaderModule( program->shaderBin[stages[i].stage].size, program->shaderBin[stages[i].stage].bin, &module );
 				assert( result == SPV_REFLECT_RESULT_SUCCESS );
-				program->hasPushConstant |= ( pushConstantCount > 0 );
-				if( pushConstantCount > 0 ) {
-					if( pushConstantCount > 1 ) {
-						Com_Printf( S_COLOR_YELLOW "Push constant count is greater than 1, only supporting 1 push constant\n" );
-						error = true;
-						break;
-					}
-					pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
-
-					result = spvReflectEnumeratePushConstantBlocks( &module, &pushConstantCount, reflectionBlockVariables );
+				{
+					uint32_t pushConstantCount = 0;
+					result = spvReflectEnumeratePushConstantBlocks( &module, &pushConstantCount, NULL );
 					assert( result == SPV_REFLECT_RESULT_SUCCESS );
-					pushConstantRange.size = reflectionBlockVariables[0]->size;
-					program->vk.pushConstant.size = reflectionBlockVariables[0]->size;
-					switch( stages[i].stage ) {
-						case GLSL_STAGE_VERTEX:
-							pushConstantRange.stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
-							program->vk.pushConstant.shaderStageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
+					program->hasPushConstant |= ( pushConstantCount > 0 );
+					if( pushConstantCount > 0 ) {
+						if( pushConstantCount > 1 ) {
+							Com_Printf( S_COLOR_YELLOW "Push constant count is greater than 1, only supporting 1 push constant\n" );
+							error = true;
 							break;
-						case GLSL_STAGE_FRAGMENT:
-							pushConstantRange.stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
-							program->vk.pushConstant.shaderStageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
-							break;
-						default:
-							assert( false );
-							break;
-					}
-				}
-
-				if( stages[i].stage == GLSL_STAGE_VERTEX ) {
-					for( size_t i = 0; i < module.input_variable_count; i++ ) {
-						program->vertexInputMask |= ( 1 << module.input_variables[i]->location );
-					}
-				}
-
-				uint32_t reflectionDescriptorCount = 0;
-				result = spvReflectEnumerateDescriptorSets( &module, &reflectionDescriptorCount, NULL );
-				assert( result == SPV_REFLECT_RESULT_SUCCESS );
-
-				arrsetlen( reflectionDescSets, reflectionDescriptorCount );
-				result = spvReflectEnumerateDescriptorSets( &module, &reflectionDescriptorCount, reflectionDescSets );
-				assert( result == SPV_REFLECT_RESULT_SUCCESS );
-				for( size_t i_set = 0; i_set < reflectionDescriptorCount; i_set++ ) {
-					const SpvReflectDescriptorSet *reflection = reflectionDescSets[i_set];
-					assert( reflection->set < Q_ARRAY_COUNT( program->programDescriptors ) );
-					struct glsl_program_descriptor_s *programDesc = &program->programDescriptors[reflection->set];
-					programDesc->alloc.descriptorAllocator = _vk__descriptorSetAlloc;
-					programDesc->alloc.framesInFlight = NUMBER_FRAMES_FLIGHT;
-					for( size_t i_binding = 0; i_binding < reflection->binding_count; i_binding++ ) {
-						const SpvReflectDescriptorBinding *reflectionBinding = reflection->bindings[i_binding];
-						assert( reflection->set < R_DESCRIPTOR_SET_MAX );
-						assert( reflectionBinding->array.dims_count <= 1 ); // not going to handle multi-dim arrays
-						struct descriptor_reflection_s reflc = { 0 };
-						reflc.hash = Create_DescriptorHandle( reflectionBinding->name ).hash;
-						reflc.set = reflectionBinding->set;
-						reflc.baseRegisterIndex = reflectionBinding->binding;
-						reflc.isArray = reflectionBinding->count > 1;
-						reflc.dimCount = max( 1, reflectionBinding->count );
-
-						VkDescriptorSetLayoutBinding *layoutBinding = NULL;
-						VkDescriptorBindingFlags *bindingFlags = NULL;
-						for( size_t i = 0; i < arrlen( descriptorSetLayoutBindings[reflection->set] ); i++ ) {
-							if( descriptorSetLayoutBindings[reflection->set][i].binding == reflectionBinding->binding ) {
-								layoutBinding = descriptorSetLayoutBindings[reflection->set] + i;
-								bindingFlags = descriptorBindingFlags[reflection->set] + i;
-							}
 						}
+						pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
 
-						if( !layoutBinding ) {
-							VkDescriptorSetLayoutBinding bindings = { 0 };
-							VkDescriptorBindingFlags flags = 0;
-							arrpush( descriptorSetLayoutBindings[reflection->set], bindings );
-							arrpush( descriptorBindingFlags[reflection->set], flags );
-							layoutBinding = descriptorSetLayoutBindings[reflection->set] + arrlen( descriptorSetLayoutBindings[reflection->set] ) - 1;
-							bindingFlags = descriptorBindingFlags[reflection->set] + arrlen( descriptorBindingFlags[reflection->set] ) - 1;
-						}
-
-						if( reflc.isArray ) {
-							( *bindingFlags ) = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
-						}
-
-						const uint32_t bindingCount = max( reflectionBinding->count, 1 );
-						layoutBinding->binding = reflectionBinding->binding;
-						layoutBinding->descriptorCount = bindingCount;
+						result = spvReflectEnumeratePushConstantBlocks( &module, &pushConstantCount, reflectionBlockVariables );
+						assert( result == SPV_REFLECT_RESULT_SUCCESS );
+						pushConstantRange.size = reflectionBlockVariables[0]->size;
+						program->vk.pushConstant.size = reflectionBlockVariables[0]->size;
 						switch( stages[i].stage ) {
 							case GLSL_STAGE_VERTEX:
-								layoutBinding->stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
+								pushConstantRange.stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
+								program->vk.pushConstant.shaderStageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
 								break;
 							case GLSL_STAGE_FRAGMENT:
-								layoutBinding->stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+								pushConstantRange.stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+								program->vk.pushConstant.shaderStageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
 								break;
 							default:
 								assert( false );
 								break;
 						}
-						switch( reflectionBinding->descriptor_type ) {
-							case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER:
-								layoutBinding->descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-								programDesc->samplerMaxNum += bindingCount;
-								break;
-							case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-								layoutBinding->descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-								programDesc->textureMaxNum += bindingCount;
-								break;
-							case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-								layoutBinding->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-								programDesc->bufferMaxNum += bindingCount;
-								break;
-							case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-								layoutBinding->descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-								programDesc->storageTextureMaxNum += bindingCount;
-								break;
-							case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-								layoutBinding->descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-								programDesc->storageBufferMaxNum += bindingCount;
-								break;
-							case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-								layoutBinding->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-								programDesc->constantBufferMaxNum += bindingCount;
-								break;
-							case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-							case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-								layoutBinding->descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-								programDesc->structuredBufferMaxNum += bindingCount;
-								break;
-							case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-							case SPV_REFLECT_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-							case SPV_REFLECT_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
-							case SPV_REFLECT_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-								assert( false );
-								break;
+					}
+
+					if( stages[i].stage == GLSL_STAGE_VERTEX ) {
+						for( size_t i = 0; i < module.input_variable_count; i++ ) {
+							program->vertexInputMask |= ( 1 << module.input_variables[i]->location );
 						}
-						assert( program->numDescriptorReflections < PIPELINE_REFLECTION_HASH_SIZE );
-						program->descriptorReflection[program->numDescriptorReflections++] = reflc;
+					}
+
+					uint32_t reflectionDescriptorCount = 0;
+					result = spvReflectEnumerateDescriptorSets( &module, &reflectionDescriptorCount, NULL );
+					assert( result == SPV_REFLECT_RESULT_SUCCESS );
+
+					arrsetlen( reflectionDescSets, reflectionDescriptorCount );
+					result = spvReflectEnumerateDescriptorSets( &module, &reflectionDescriptorCount, reflectionDescSets );
+					assert( result == SPV_REFLECT_RESULT_SUCCESS );
+					for( size_t i_set = 0; i_set < reflectionDescriptorCount; i_set++ ) {
+						const SpvReflectDescriptorSet *reflection = reflectionDescSets[i_set];
+						assert( reflection->set < Q_ARRAY_COUNT( program->programDescriptors ) );
+						struct glsl_program_descriptor_s *programDesc = &program->programDescriptors[reflection->set];
+						programDesc->alloc.descriptorAllocator = _vk__descriptorSetAlloc;
+						programDesc->alloc.framesInFlight = NUMBER_FRAMES_FLIGHT;
+						for( size_t i_binding = 0; i_binding < reflection->binding_count; i_binding++ ) {
+							const SpvReflectDescriptorBinding *reflectionBinding = reflection->bindings[i_binding];
+							assert( reflection->set < R_DESCRIPTOR_SET_MAX );
+							assert( reflectionBinding->array.dims_count <= 1 ); // not going to handle multi-dim arrays
+							struct descriptor_reflection_s reflc = { 0 };
+							reflc.hash = Create_DescriptorHandle( reflectionBinding->name ).hash;
+							reflc.set = reflectionBinding->set;
+							reflc.baseRegisterIndex = reflectionBinding->binding;
+							reflc.isArray = reflectionBinding->count > 1;
+							reflc.dimCount = max( 1, reflectionBinding->count );
+
+							VkDescriptorSetLayoutBinding *layoutBinding = NULL;
+							VkDescriptorBindingFlags *bindingFlags = NULL;
+							for( size_t i = 0; i < arrlen( descriptorSetLayoutBindings[reflection->set] ); i++ ) {
+								if( descriptorSetLayoutBindings[reflection->set][i].binding == reflectionBinding->binding ) {
+									layoutBinding = descriptorSetLayoutBindings[reflection->set] + i;
+									bindingFlags = descriptorBindingFlags[reflection->set] + i;
+								}
+							}
+
+							if( !layoutBinding ) {
+								VkDescriptorSetLayoutBinding bindings = { 0 };
+								VkDescriptorBindingFlags flags = 0;
+								arrpush( descriptorSetLayoutBindings[reflection->set], bindings );
+								arrpush( descriptorBindingFlags[reflection->set], flags );
+								layoutBinding = descriptorSetLayoutBindings[reflection->set] + arrlen( descriptorSetLayoutBindings[reflection->set] ) - 1;
+								bindingFlags = descriptorBindingFlags[reflection->set] + arrlen( descriptorBindingFlags[reflection->set] ) - 1;
+							}
+
+							if( reflc.isArray ) {
+								( *bindingFlags ) = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+							}
+
+							const uint32_t bindingCount = max( reflectionBinding->count, 1 );
+							layoutBinding->binding = reflectionBinding->binding;
+							layoutBinding->descriptorCount = bindingCount;
+							switch( stages[i].stage ) {
+								case GLSL_STAGE_VERTEX:
+									layoutBinding->stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
+									break;
+								case GLSL_STAGE_FRAGMENT:
+									layoutBinding->stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+									break;
+								default:
+									assert( false );
+									break;
+							}
+							switch( reflectionBinding->descriptor_type ) {
+								case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER:
+									layoutBinding->descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+									programDesc->samplerMaxNum += bindingCount;
+									break;
+								case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+									layoutBinding->descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+									programDesc->textureMaxNum += bindingCount;
+									break;
+								case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+									layoutBinding->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+									programDesc->bufferMaxNum += bindingCount;
+									break;
+								case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+									layoutBinding->descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+									programDesc->storageTextureMaxNum += bindingCount;
+									break;
+								case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+									layoutBinding->descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+									programDesc->storageBufferMaxNum += bindingCount;
+									break;
+								case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+									layoutBinding->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+									programDesc->constantBufferMaxNum += bindingCount;
+									break;
+								case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+								case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+									layoutBinding->descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+									programDesc->structuredBufferMaxNum += bindingCount;
+									break;
+								case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+								case SPV_REFLECT_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+								case SPV_REFLECT_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+								case SPV_REFLECT_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+									assert( false );
+									break;
+							}
+							assert( program->numDescriptorReflections < PIPELINE_REFLECTION_HASH_SIZE );
+							program->descriptorReflection[program->numDescriptorReflections++] = reflc;
+						}
 					}
 				}
 			}
-		}
 
-		uint32_t numLayoutCount = 0;
-		for( size_t bindingIdx = 0; bindingIdx < R_DESCRIPTOR_SET_MAX; bindingIdx++ ) {
-			if( descriptorSetLayoutBindings[bindingIdx] ) {
-				numLayoutCount = bindingIdx + 1;
+			uint32_t numLayoutCount = 0;
+			for( size_t bindingIdx = 0; bindingIdx < R_DESCRIPTOR_SET_MAX; bindingIdx++ ) {
+				if( descriptorSetLayoutBindings[bindingIdx] ) {
+					numLayoutCount = bindingIdx + 1;
+				}
 			}
-		}
 
-		for( size_t bindingIdx = 0; bindingIdx < numLayoutCount; bindingIdx++ ) {
-			if( descriptorSetLayoutBindings[bindingIdx] ) {
-				VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO };
-				bindingFlagsInfo.bindingCount = arrlen( descriptorBindingFlags[bindingIdx] );
-				bindingFlagsInfo.pBindingFlags = descriptorBindingFlags[bindingIdx];
+			for( size_t bindingIdx = 0; bindingIdx < numLayoutCount; bindingIdx++ ) {
+				if( descriptorSetLayoutBindings[bindingIdx] ) {
+					VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO };
+					bindingFlagsInfo.bindingCount = arrlen( descriptorBindingFlags[bindingIdx] );
+					bindingFlagsInfo.pBindingFlags = descriptorBindingFlags[bindingIdx];
 
-				VkDescriptorSetLayoutCreateInfo createSetLayoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-				createSetLayoutInfo.bindingCount = arrlen( descriptorSetLayoutBindings[bindingIdx] );
-				createSetLayoutInfo.pBindings = descriptorSetLayoutBindings[bindingIdx];
-				R_VK_ADD_STRUCT( &createSetLayoutInfo, &bindingFlagsInfo );
+					VkDescriptorSetLayoutCreateInfo createSetLayoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+					createSetLayoutInfo.bindingCount = arrlen( descriptorSetLayoutBindings[bindingIdx] );
+					createSetLayoutInfo.pBindings = descriptorSetLayoutBindings[bindingIdx];
+					R_VK_ADD_STRUCT( &createSetLayoutInfo, &bindingFlagsInfo );
 
-				VK_WrapResult( vkCreateDescriptorSetLayout( rsh.device.vk.device, &createSetLayoutInfo, NULL, setLayouts + bindingIdx ) );
-				arrfree( descriptorSetLayoutBindings[bindingIdx] );
-				arrfree( descriptorBindingFlags[bindingIdx] );
-			} else {
-				VkDescriptorSetLayoutCreateInfo createSetLayoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-				VK_WrapResult( vkCreateDescriptorSetLayout( rsh.device.vk.device, &createSetLayoutInfo, NULL, setLayouts + bindingIdx ) );
+					VK_WrapResult( vkCreateDescriptorSetLayout( rsh.device.vk.device, &createSetLayoutInfo, NULL, setLayouts + bindingIdx ) );
+					arrfree( descriptorSetLayoutBindings[bindingIdx] );
+					arrfree( descriptorBindingFlags[bindingIdx] );
+				} else {
+					VkDescriptorSetLayoutCreateInfo createSetLayoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+					VK_WrapResult( vkCreateDescriptorSetLayout( rsh.device.vk.device, &createSetLayoutInfo, NULL, setLayouts + bindingIdx ) );
+				}
+				program->programDescriptors[bindingIdx].vk.setLayout = setLayouts[bindingIdx];
 			}
-			program->programDescriptors[bindingIdx].vk.setLayout = setLayouts[bindingIdx];
+			pipelineLayoutCreateInfo.pSetLayouts = setLayouts;
+			pipelineLayoutCreateInfo.setLayoutCount = numLayoutCount;
+			if( pushConstantRange.stageFlags > 0 )
+				pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
+			VK_WrapResult( vkCreatePipelineLayout( rsh.device.vk.device, &pipelineLayoutCreateInfo, NULL, &program->vk.pipelineLayout ) );
 		}
-		pipelineLayoutCreateInfo.pSetLayouts = setLayouts;
-		pipelineLayoutCreateInfo.setLayoutCount = numLayoutCount;
-		if( pushConstantRange.stageFlags > 0 )
-			pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
-		VK_WrapResult( vkCreatePipelineLayout( rsh.device.vk.device, &pipelineLayoutCreateInfo, NULL, &program->vk.pipelineLayout ) );
 	}
 #endif
 	arrfree( reflectionDescSets );
@@ -2998,8 +3025,10 @@ void RP_Shutdown( void )
 	}
 
 #if ( DEVICE_IMPL_MTL )
-	// The depth-stencil cache is process-wide rather than per-program, so it is released here.
-	__RP_MTLReleaseDepthStates();
+	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
+		// The depth-stencil cache is process-wide rather than per-program, so it is released here.
+		__RP_MTLReleaseDepthStates();
+	}
 #endif
 
 	Trie_Destroy( glsl_cache_trie );

@@ -38,7 +38,7 @@ void R_ShutdownShadows() {
 	for(size_t frameIdx = 0; frameIdx < NUMBER_FRAMES_FLIGHT; frameIdx++) {
 		for(size_t portalIdx = 0; portalIdx < MAX_PORTAL_TEXTURES; portalIdx++) {
 			struct shadow_fb_s *fb = &rsh.shadowFBs[frameIdx][portalIdx];
-			if(IsRITextureValid(&rsh.renderer, &fb->texture )) {
+			if(IsRITextureValid( &fb->texture )) {
 				FreeRITextureView(&rsh.device, &fb->view);
 				FreeRITexture(&rsh.device, &fb->texture);
 			}
@@ -351,7 +351,7 @@ static struct shadow_fb_s *__ResolveShadowSurface(size_t i, int width, int heigh
 {
 	struct shadow_fb_s *bestFB = &rsh.shadowFBs[rsh.frameSetCount % NUMBER_FRAMES_FLIGHT][i];
 
-	if( IsRITextureValid( &rsh.renderer, &bestFB->texture ) && bestFB->width == width && bestFB->height == height ) {
+	if( IsRITextureValid( &bestFB->texture ) && bestFB->width == width && bestFB->height == height ) {
 		return bestFB;
 	}
 	// Retire the outgoing texture through the frame set: the GPU may still be sampling it this frame.
@@ -510,15 +510,17 @@ void R_DrawShadowmaps(struct FrameState_s* cmd)
 
 		Matrix4_Copy( rn.cameraProjectionMatrix, group->cameraProjectionMatrix );
 #if ( DEVICE_IMPL_MTL )
-		// R_SetupViewMatrices negated the projection's Y row (flippedViewport) purely to compensate the
-		// rasterizer's NDC-Y direction so the rendered depth texture matches Vulkan's texel layout. The
-		// lighting pass samples that texture directly -- no rasterizer in the path -- so the lookup matrix
-		// must be the unflipped one Vulkan uses, or v = (y+w)/2w mirrors vertically against the texture.
-		// The flip is a left-multiplied diag(1,-1,1,1); negating the Y row again reverses it exactly.
-		group->cameraProjectionMatrix[1] = -group->cameraProjectionMatrix[1];
-		group->cameraProjectionMatrix[5] = -group->cameraProjectionMatrix[5];
-		group->cameraProjectionMatrix[9] = -group->cameraProjectionMatrix[9];
-		group->cameraProjectionMatrix[13] = -group->cameraProjectionMatrix[13];
+		if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
+			// R_SetupViewMatrices negated the projection's Y row (flippedViewport) purely to compensate the
+			// rasterizer's NDC-Y direction so the rendered depth texture matches Vulkan's texel layout. The
+			// lighting pass samples that texture directly -- no rasterizer in the path -- so the lookup matrix
+			// must be the unflipped one Vulkan uses, or v = (y+w)/2w mirrors vertically against the texture.
+			// The flip is a left-multiplied diag(1,-1,1,1); negating the Y row again reverses it exactly.
+			group->cameraProjectionMatrix[1] = -group->cameraProjectionMatrix[1];
+			group->cameraProjectionMatrix[5] = -group->cameraProjectionMatrix[5];
+			group->cameraProjectionMatrix[9] = -group->cameraProjectionMatrix[9];
+			group->cameraProjectionMatrix[13] = -group->cameraProjectionMatrix[13];
+		}
 #endif
 
 		rsc.renderedShadowBits |= group->bit;

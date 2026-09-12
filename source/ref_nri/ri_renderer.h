@@ -6,19 +6,23 @@
 struct RIDeviceDesc_s {
 	struct RIPhysicalAdapter_s *physicalAdapter;
 };
-int InitRIRenderer( const struct RIBackendInit_s *init, struct RIRenderer_s *renderer );
-void ShutdownRIRenderer( struct RIRenderer_s *renderer );
+// There is only ever one renderer per process and exactly one backend compiled in (ri_defines.h). The
+// instance lives at file scope in ri_renderer.c and is reached only through these top-level functions.
+int InitRIRenderer( const struct RIBackendInit_s *init );
+void ShutdownRIRenderer( void );
 
-int EnumerateRIAdapters( struct RIRenderer_s *renderer, struct RIPhysicalAdapter_s *adapters, uint32_t *numAdapters );
-int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, struct RIDevice_s *device );
+int EnumerateRIAdapters( struct RIPhysicalAdapter_s *adapters, uint32_t *numAdapters );
+int InitRIDevice( struct RIDeviceDesc_s *init, struct RIDevice_s *device );
+
+// RIActiveBackendApi / RIIsTargetSelected are declared in ri_device.h next to RIDeviceAPI_e.
+#if ( DEVICE_IMPL_VULKAN )
+VkInstance RIGetVkInstance( void );
+#endif
 
 void WaitRIQueueIdle( struct RIDevice_s *device, struct RIQueue_s *queue );
 
 int FreeRIDevice( struct RIDevice_s *dev );
 void FreeRIFree( struct RIDevice_s *dev, struct RIFree_s *mem );
-
-// RIDescriptor value builders, RI_IsEmptyDescriptor and FreeRISampler are declared in ri_descriptor.h
-// (reached via ri_types.h) so every consumer sees the sret-returning prototype.
 
 // RITexture
 // Monotonic counter bumped whenever a texture, view, or buffer is destroyed. Anything that caches a

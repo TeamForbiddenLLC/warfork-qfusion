@@ -274,13 +274,13 @@ void R_UploadVBOVertexRawData( mesh_vbo_t *vbo, int vertsOffset, int numVerts, c
 		.target = vbo->vertexBuffer,
 		.size = numVerts * vbo->vertexSize,
 		.offset = vertsOffset * vbo->vertexSize,
-#if ( DEVICE_IMPL_VULKAN )
-		.vk = {
-			.post_stage = VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT, 
-			.post_access = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT,         		
-		}
-#endif
 	};
+#if ( DEVICE_IMPL_VULKAN )
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		uploadDesc.vk.post_stage = VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT;
+		uploadDesc.vk.post_access = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+	}
+#endif
 
 	RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
 	memcpy( uploadDesc.mapped.data, data, uploadDesc.size );
@@ -314,20 +314,24 @@ void R_ReleaseMeshVBO(struct FrameState_s *cmd, mesh_vbo_t *vbo )
 	struct r_frame_set_s *active = R_GetActiveFrameSet();
 	struct RIBuffer_s *buffers[] = { &vbo->vertexBuffer, &vbo->indexBuffer, &vbo->instanceBuffer };
 	for( size_t i = 0; i < Q_ARRAY_COUNT( buffers ); i++ ) {
-		if( !IsRIBufferValid( &rsh.renderer, buffers[i] ) )
+		if( !IsRIBufferValid( buffers[i] ) )
 			continue;
 #if ( DEVICE_IMPL_VULKAN )
-		freeEntry.type = RI_FREE_VK_BUFFER;
-		freeEntry.vkBuffer = buffers[i]->vk.buffer;
-		arrpush( active->freeList, freeEntry );
-		freeEntry.type = RI_FREE_VK_VMA_AllOC;
-		freeEntry.vmaAlloc = buffers[i]->vk.allocation;
-		arrpush( active->freeList, freeEntry );
+		if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+			freeEntry.type = RI_FREE_VK_BUFFER;
+			freeEntry.vkBuffer = buffers[i]->vk.buffer;
+			arrpush( active->freeList, freeEntry );
+			freeEntry.type = RI_FREE_VK_VMA_AllOC;
+			freeEntry.vmaAlloc = buffers[i]->vk.allocation;
+			arrpush( active->freeList, freeEntry );
+		}
 #endif
 #if ( DEVICE_IMPL_MTL )
-		freeEntry.type = RI_FREE_MTL_BUFFER;
-		freeEntry.mtlBuffer = buffers[i]->mtl.buffer;
-		arrpush( active->freeList, freeEntry );
+		if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
+			freeEntry.type = RI_FREE_MTL_BUFFER;
+			freeEntry.mtlBuffer = buffers[i]->mtl.buffer;
+			arrpush( active->freeList, freeEntry );
+		}
 #endif
 	}
 	if( vbo->index >= 1 && vbo->index <= MAX_MESH_VERTEX_BUFFER_OBJECTS ) {
@@ -1279,11 +1283,13 @@ void R_UploadVBOElemData( mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, con
 		.target = vbo->indexBuffer,
 		.size = mesh->numElems * sizeof( elem_t ),
 		.offset = elemsOffset * sizeof( elem_t ),
-#if ( DEVICE_IMPL_VULKAN )
-		.vk.post_stage = VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT,
-		.vk.post_access = VK_ACCESS_2_INDEX_READ_BIT,
-#endif
 	};
+#if ( DEVICE_IMPL_VULKAN )
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		uploadDesc.vk.post_stage = VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
+		uploadDesc.vk.post_access = VK_ACCESS_2_INDEX_READ_BIT;
+	}
+#endif
 
 	RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
 	elem_t *dest = (elem_t *)uploadDesc.mapped.data;
@@ -1320,11 +1326,13 @@ vattribmask_t R_UploadVBOInstancesData( mesh_vbo_t *vbo, int instOffset, int num
 			.target = vbo->instanceBuffer,
 			.size = numInstances * sizeof( instancePoint_t ),
 			.offset = instOffset * sizeof( instancePoint_t ),
-#if ( DEVICE_IMPL_VULKAN )
-			.vk.post_stage = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
-			.vk.post_access = VK_ACCESS_2_UNIFORM_READ_BIT,
-#endif
 		};
+#if ( DEVICE_IMPL_VULKAN )
+		if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+			uploadDesc.vk.post_stage = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
+			uploadDesc.vk.post_access = VK_ACCESS_2_UNIFORM_READ_BIT;
+		}
+#endif
 
 		RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
 		instancePoint_t *dest = (instancePoint_t *)uploadDesc.mapped.data;

@@ -18,33 +18,35 @@ void InitRIGpuProfiler( struct RIDevice_s *dev, uint32_t numSlots, struct RIGpuP
 		profiler->slots[i].scopes = NULL;
 	}
 #if ( DEVICE_IMPL_VULKAN )
-	{
-		uint32_t familyCount = 0;
-		vkGetPhysicalDeviceQueueFamilyProperties( dev->physicalAdapter.vk.physicalDevice, &familyCount, NULL );
-		VkQueueFamilyProperties *familyProps = malloc( sizeof( VkQueueFamilyProperties ) * familyCount );
-		vkGetPhysicalDeviceQueueFamilyProperties( dev->physicalAdapter.vk.physicalDevice, &familyCount, familyProps );
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		{
+			uint32_t familyCount = 0;
+			vkGetPhysicalDeviceQueueFamilyProperties( dev->physicalAdapter.vk.physicalDevice, &familyCount, NULL );
+			VkQueueFamilyProperties *familyProps = malloc( sizeof( VkQueueFamilyProperties ) * familyCount );
+			vkGetPhysicalDeviceQueueFamilyProperties( dev->physicalAdapter.vk.physicalDevice, &familyCount, familyProps );
 
-		const uint32_t gfxFamily = dev->queues[RI_QUEUE_GRAPHICS].vk.queueFamilyIdx;
-		const uint32_t validBits = ( gfxFamily < familyCount ) ? familyProps[gfxFamily].timestampValidBits : 0;
-		free( familyProps );
+			const uint32_t gfxFamily = dev->queues[RI_QUEUE_GRAPHICS].vk.queueFamilyIdx;
+			const uint32_t validBits = ( gfxFamily < familyCount ) ? familyProps[gfxFamily].timestampValidBits : 0;
+			free( familyProps );
 
-		profiler->validBitsMask = ( validBits >= 64 ) ? ~(uint64_t)0 : ( ( (uint64_t)1 << validBits ) - 1 );
+			profiler->validBitsMask = ( validBits >= 64 ) ? ~(uint64_t)0 : ( ( (uint64_t)1 << validBits ) - 1 );
 
-		// A timestampValidBits of 0 means the graphics queue does not support timestamp queries.
-		if( validBits == 0 || dev->physicalAdapter.timestampFrequencyHz == 0 ) {
-			profiler->enabled = false;
-			return;
-		}
-		profiler->ticksToMs = 1000.0 / (double)dev->physicalAdapter.timestampFrequencyHz;
-
-		VkQueryPoolCreateInfo createInfo = { VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO };
-		createInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
-		createInfo.queryCount = RI_GPU_PROFILER_MAX_QUERIES;
-		for( uint32_t i = 0; i < numSlots; i++ ) {
-			if( !VK_WrapResult( vkCreateQueryPool( dev->vk.device, &createInfo, NULL, &profiler->slots[i].vk.pool ) ) )
+			// A timestampValidBits of 0 means the graphics queue does not support timestamp queries.
+			if( validBits == 0 || dev->physicalAdapter.timestampFrequencyHz == 0 ) {
+				profiler->enabled = false;
 				return;
+			}
+			profiler->ticksToMs = 1000.0 / (double)dev->physicalAdapter.timestampFrequencyHz;
+
+			VkQueryPoolCreateInfo createInfo = { VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO };
+			createInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+			createInfo.queryCount = RI_GPU_PROFILER_MAX_QUERIES;
+			for( uint32_t i = 0; i < numSlots; i++ ) {
+				if( !VK_WrapResult( vkCreateQueryPool( dev->vk.device, &createInfo, NULL, &profiler->slots[i].vk.pool ) ) )
+					return;
+			}
+			profiler->enabled = true;
 		}
-		profiler->enabled = true;
 	}
 #endif
 }
@@ -53,8 +55,10 @@ void FreeRIGpuProfiler( struct RIDevice_s *dev, struct RIGpuProfiler_s *profiler
 {
 	for( uint32_t i = 0; i < profiler->numSlots; i++ ) {
 #if ( DEVICE_IMPL_VULKAN )
-		if( profiler->slots[i].vk.pool )
-			vkDestroyQueryPool( dev->vk.device, profiler->slots[i].vk.pool, NULL );
+		if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+			if( profiler->slots[i].vk.pool )
+				vkDestroyQueryPool( dev->vk.device, profiler->slots[i].vk.pool, NULL );
+		}
 #endif
 		arrfree( profiler->slots[i].scopes );
 	}
@@ -78,7 +82,9 @@ void RIGpuProfilerBeginFrame( struct RIDevice_s *dev, struct RIGpuProfiler_s *p,
 	arrsetlen( p->openStack, 0 );
 
 #if ( DEVICE_IMPL_VULKAN )
-	vkCmdResetQueryPool( cmd->vk.cmd, s->vk.pool, 0, RI_GPU_PROFILER_MAX_QUERIES );
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		vkCmdResetQueryPool( cmd->vk.cmd, s->vk.pool, 0, RI_GPU_PROFILER_MAX_QUERIES );
+	}
 #endif
 }
 
@@ -101,7 +107,9 @@ void RIGpuProfilerBeginScope( struct RIDevice_s *dev, struct RIGpuProfiler_s *p,
 		endIdx = s->queryCount + 1;
 		s->queryCount += 2;
 #if ( DEVICE_IMPL_VULKAN )
-		vkCmdWriteTimestamp2( cmd->vk.cmd, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, s->vk.pool, beginIdx );
+		if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+			vkCmdWriteTimestamp2( cmd->vk.cmd, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, s->vk.pool, beginIdx );
+		}
 #endif
 	}
 
@@ -123,7 +131,9 @@ void RIGpuProfilerEndScope( struct RIDevice_s *dev, struct RIGpuProfiler_s *p, s
 
 	if( scope->endIdx != RI_GPU_PROFILER_INVALID_QUERY ) {
 #if ( DEVICE_IMPL_VULKAN )
-		vkCmdWriteTimestamp2( cmd->vk.cmd, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, s->vk.pool, scope->endIdx );
+		if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+			vkCmdWriteTimestamp2( cmd->vk.cmd, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, s->vk.pool, scope->endIdx );
+		}
 #endif
 	}
 }
@@ -137,39 +147,41 @@ void RIGpuProfilerResolve( struct RIDevice_s *dev, struct RIGpuProfiler_s *p, ui
 	p->totalMs = 0;
 
 #if ( DEVICE_IMPL_VULKAN )
-	for( uint32_t i = 0; i < p->numSlots; i++ ) {
-		struct RIGpuProfilerSlot_s *s = &p->slots[i];
-		if( s->resolved || s->timelineValue > completedTimeline || s->queryCount == 0 )
-			continue;
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		for( uint32_t i = 0; i < p->numSlots; i++ ) {
+			struct RIGpuProfilerSlot_s *s = &p->slots[i];
+			if( s->resolved || s->timelineValue > completedTimeline || s->queryCount == 0 )
+				continue;
 
-		uint64_t timestamps[RI_GPU_PROFILER_MAX_QUERIES];
-		VkResult vkResult = vkGetQueryPoolResults( dev->vk.device, s->vk.pool, 0, s->queryCount, s->queryCount * sizeof( uint64_t ), timestamps, sizeof( uint64_t ),
-												   VK_QUERY_RESULT_64_BIT );
-		if( vkResult == VK_NOT_READY )
-			continue;
-		if( vkResult != VK_SUCCESS ) {
-			VK_WrapResult( vkResult );
-			continue;
-		}
-
-		double depth0Total = 0;
-		for( size_t j = 0; j < arrlen( s->scopes ); j++ ) {
-			const struct RIGpuProfilerScope_s *scope = &s->scopes[j];
-			if( scope->beginIdx == RI_GPU_PROFILER_INVALID_QUERY ) {
-				struct RIGpuPassTiming_s timing = { .name = scope->name, .ms = 0, .depth = scope->depth };
-				arrpush( p->results, timing );
+			uint64_t timestamps[RI_GPU_PROFILER_MAX_QUERIES];
+			VkResult vkResult = vkGetQueryPoolResults( dev->vk.device, s->vk.pool, 0, s->queryCount, s->queryCount * sizeof( uint64_t ), timestamps, sizeof( uint64_t ),
+													   VK_QUERY_RESULT_64_BIT );
+			if( vkResult == VK_NOT_READY )
+				continue;
+			if( vkResult != VK_SUCCESS ) {
+				VK_WrapResult( vkResult );
 				continue;
 			}
-			const uint64_t ticks = ( timestamps[scope->endIdx] - timestamps[scope->beginIdx] ) & p->validBitsMask;
-			const double ms = (double)ticks * p->ticksToMs;
-			struct RIGpuPassTiming_s timing = { .name = scope->name, .ms = (float)ms, .depth = scope->depth };
-			arrpush( p->results, timing );
-			if( scope->depth == 0 )
-				depth0Total += ms;
+
+			double depth0Total = 0;
+			for( size_t j = 0; j < arrlen( s->scopes ); j++ ) {
+				const struct RIGpuProfilerScope_s *scope = &s->scopes[j];
+				if( scope->beginIdx == RI_GPU_PROFILER_INVALID_QUERY ) {
+					struct RIGpuPassTiming_s timing = { .name = scope->name, .ms = 0, .depth = scope->depth };
+					arrpush( p->results, timing );
+					continue;
+				}
+				const uint64_t ticks = ( timestamps[scope->endIdx] - timestamps[scope->beginIdx] ) & p->validBitsMask;
+				const double ms = (double)ticks * p->ticksToMs;
+				struct RIGpuPassTiming_s timing = { .name = scope->name, .ms = (float)ms, .depth = scope->depth };
+				arrpush( p->results, timing );
+				if( scope->depth == 0 )
+					depth0Total += ms;
+			}
+			p->totalMs = (float)depth0Total;
+			s->resolved = true;
+			break; // resolve at most one slot per call
 		}
-		p->totalMs = (float)depth0Total;
-		s->resolved = true;
-		break; // resolve at most one slot per call
 	}
 #endif
 }

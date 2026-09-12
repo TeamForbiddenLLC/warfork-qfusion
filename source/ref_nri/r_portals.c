@@ -156,11 +156,11 @@ void R_ShutdownPortals()
 {
 	for( size_t i = 0; i < MAX_PORTAL_TEXTURES; i++ ) {
 		struct portal_fb_s *portalFB = &rsh.portalFBs[i];
-		if( IsRITextureValid( &rsh.renderer, &portalFB->colorTexture ) ) {
+		if( IsRITextureValid( &portalFB->colorTexture ) ) {
 			FreeRITextureView( &rsh.device, &portalFB->colorView );
 			FreeRITexture( &rsh.device, &portalFB->colorTexture );
 		}
-		if( IsRITextureValid( &rsh.renderer, &portalFB->depthTexture ) ) {
+		if( IsRITextureValid( &portalFB->depthTexture ) ) {
 			FreeRITextureView( &rsh.device, &portalFB->depthView );
 			FreeRITexture( &rsh.device, &portalFB->depthTexture );
 		}
@@ -177,7 +177,7 @@ static struct portal_fb_s* __ResolvePortalSurface(struct FrameState_s *cmd, int 
 		if( ( portalFB->frameNum + NUMBER_FRAMES_FLIGHT ) >= rsh.frameSetCount ) {
 			continue;
 		}
-		if( IsRITextureValid( &rsh.renderer, &portalFB->colorTexture ) ) {
+		if( IsRITextureValid( &portalFB->colorTexture ) ) {
 			if( portalFB->width == width && portalFB->height == height ) {
 				portalFB->samplerDescriptor = RIDescriptorSampler( &rsh.device, R_ResolveSamplerDescriptor( filtered ? 0 : IT_NOFILTERING ) );
 				assert( !RI_IsEmptyDescriptor( &portalFB->samplerDescriptor ) );
