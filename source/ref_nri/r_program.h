@@ -52,6 +52,40 @@ typedef uint64_t r_glslfeat_t;
 #define DEFAULT_GLSL_YUV_PROGRAM				"defaultYUV"
 #define DEFAULT_GLSL_COLORCORRECTION_PROGRAM	"defaultColorCorrection"
 
+#if ( DEVICE_IMPL_MTL )
+// Which MSL index space a descriptor lands in. Metal keeps buffers, textures and samplers in three
+// separate per-stage argument tables, so a descriptor's slot number is only meaningful with its class.
+enum r_mtl_bind_class_e {
+	R_MTL_BIND_BUFFER,
+	R_MTL_BIND_TEXTURE,
+	R_MTL_BIND_SAMPLER,
+	R_MTL_BIND_NONE = 0xFF,
+};
+#define R_MTL_SLOT_UNUSED 0xFF
+
+// A slot the frontend does not fill still has to be written with *something* type-compatible: Metal
+// rejects a texture2d encoded into a texturecube argument. Only the shapes the shaders actually declare
+// are distinguished; anything else falls back to 2D and is caught by validation if it ever appears.
+enum r_mtl_tex_dim_e {
+	R_MTL_TEX_2D,
+	R_MTL_TEX_CUBE,
+};
+
+// Vertex streams live at the top of the MSL buffer index space so they can never collide with the
+// descriptor buffers assigned from 0 upwards. Metal guarantees 31 buffer bind points per stage, and
+// MAX_STREAMS is 8, so 16..23 is comfortably inside the guarantee with room for descriptors below.
+#define R_MTL_VERTEX_BUFFER_BASE 16
+
+// Sets that become argument buffers are pinned to MSL buffer indices from 0 upward, densely, in set
+// order. This has to be *low*: SPIRV-Cross emits the argument-buffer arguments first and then does
+// next_metal_resource_index_buffer = max(next, ab_index + 1) before auto-assigning every remaining
+// buffer (the discrete sets' UBOs and the push-constant block). Pinning high would push those up into
+// the vertex range above and past Metal's 31-slot guarantee. SPIRV-Cross says the same in spirv_msl.hpp
+// ("should be kept as small as possible").
+#define R_MTL_ARG_BUFFER_BASE 0
+
+#endif
+
 typedef enum glsl_program_type_s
 {
 	GLSL_PROGRAM_TYPE_NONE,
@@ -175,6 +209,12 @@ typedef enum glsl_program_type_s
 
 // shadowmaps
 #define GLSL_SHADOWMAP_LIMIT					4 // shadowmaps per program limit
+
+// Matches `uniform texture2D lightmapTexture[16]` in defaultQ3AShader.frag.glsl and
+// defaultMaterial.frag.glsl. Callers binding lightmaps by registerOffset must clamp to this;
+// RP_BindDescriptorSets enforces the shader's reflected count as a backstop either way.
+#define GLSL_LIGHTMAP_LIMIT					16
+
 #define GLSL_SHADER_SHADOWMAP_DITHER			GLSL_BIT(32)
 #define GLSL_SHADER_SHADOWMAP_PCF				GLSL_BIT(33)
 #define GLSL_SHADER_SHADOWMAP_SHADOW2			GLSL_BIT(34)
@@ -215,8 +255,22 @@ struct glsl_program_descriptor_s {
 				VkDescriptorSetLayout setLayout;
 			} vk;
 #endif
+#if ( DEVICE_IMPL_MTL )
+			struct {
+				// Metal argument-buffer sets have no layout object; what a set needs instead is where its
+				// encoded table lives. `stride` is one slot (every stage's table back to back, each
+				// aligned); stageOffset/stageLength carve it up. stageLength 0 means that stage does not
+				// use this set -- and that is the only safe liveness test, because
+				// newArgumentEncoderWithBufferIndex: aborts rather than returning nil for an index the
+				// function does not declare.
+				uint32_t stride;
+				uint32_t stageOffset[GLSL_STAGE_MAX];
+				uint32_t stageLength[GLSL_STAGE_MAX];
+				uint8_t argBufferIndex; // MSL buffer index the table binds at; R_MTL_SLOT_UNUSED == discrete
+			} mtl;
+#endif
 		};
-		struct DescriptorSetAllocator alloc; 
+		struct DescriptorSetAllocator alloc;
 		uint16_t samplerMaxNum;
 		uint16_t constantBufferMaxNum;
 		uint16_t dynamicConstantBufferMaxNum;
@@ -237,9 +291,19 @@ struct glsl_program_s {
 				VkShaderStageFlags shaderStageFlags;
 				uint32_t size;
 			} pushConstant;
-			VkPipelineLayout pipelineLayout;	
+			VkPipelineLayout pipelineLayout;
 #endif
+			uint32_t reserved; // keeps the arm non-empty on backends without a pipeline-layout object
 		} vk;
+#if ( DEVICE_IMPL_MTL )
+		struct {
+			// Metal binds resources directly; there is no pipeline-layout object. The push-constant block
+			// is uploaded inline with setVertex/FragmentBytes, so all that is needed here is its size and
+			// the MSL buffer index SPIRV-Cross gave it in each stage (R_MTL_SLOT_UNUSED = not declared).
+			uint32_t pushConstantSize;
+			uint8_t pushConstantSlot[GLSL_STAGE_MAX];
+		} mtl;
+#endif
 	};
 
 	char *name;
@@ -255,14 +319,42 @@ struct glsl_program_s {
 		size_t size;
 		glsl_program_stage_t stage;
 	} shaderBin[GLSL_STAGE_MAX];
+
+#if ( DEVICE_IMPL_MTL )
+	// SPIR-V is cross-compiled to MSL (SPIRV-Cross) once at registration; the resulting MTLLibrary and
+	// its "main0" entry point are kept per stage and referenced by every pipeline built from this program.
+	// `msl` is retained purely for diagnostics (r_shaderdump) and is not needed after the library is built.
+	struct shader_mtl_stage_s {
+		struct mtlc_library lib;
+		struct mtlc_function fn;
+		char *msl;
+		// Fragment stage only. The same SPIR-V cross-compiled with SPIRV-Cross's enable_frag_output_mask
+		// = 0, so main0 declares no [[color(n)]] outputs. Vulkan silently discards writes to an attachment
+		// the render pass does not have; Metal refuses to build a pipeline whose fragment function writes
+		// color(0) while colorAttachments[0].pixelFormat is Invalid, which is exactly what every depth-only
+		// pass (shadow maps) asks for. Nil when the stage has no colour outputs to strip.
+		struct mtlc_library depthOnlyLib;
+		struct mtlc_function depthOnlyFn;
+		char *depthOnlyMsl; // diagnostics only, like `msl`
+		// One MTLArgumentEncoder per (stage, set). Each stage is a separate cross-compile, so the same
+		// descriptor set can be laid out differently in the vertex and fragment modules and needs its own
+		// encoder. Vended from the function, hence caller-owned -- released alongside fn/lib.
+		struct mtlc_argument_encoder argEncoder[R_DESCRIPTOR_SET_MAX];
+	} mtlStage[GLSL_STAGE_MAX];
+#endif
 	
 	struct pipeline_hash_s {
 		uint64_t hash;
 		union {
 #if ( DEVICE_IMPL_VULKAN )
 			struct {
-				VkPipeline handle;	
+				VkPipeline handle;
 			} vk;
+#endif
+#if ( DEVICE_IMPL_MTL )
+			struct {
+				void *state; // MTLRenderPipelineState (built from SPIRV-Cross MSL)
+			} mtl;
 #endif
 		};
 	} pipelines[PIPELINE_LAYOUT_HASH_SIZE];
@@ -276,6 +368,15 @@ struct glsl_program_s {
 		uint16_t dimCount : 8;
 		uint16_t set : 3;
 		uint16_t baseRegisterIndex;
+#if ( DEVICE_IMPL_MTL )
+		// Direct-binding model: MSL gives each stage its own buffer/texture/sampler index space, so a
+		// Vulkan (set, binding) pair resolves to one slot per stage per resource class. The slots are
+		// pinned at cross-compile time via spvc_compiler_msl_add_resource_binding_2, so these indices
+		// are exactly what the encoder must bind to. 0xFF means "not used by that stage".
+		uint8_t mtlSlot[GLSL_STAGE_MAX];   // MSL index within the class below
+		uint8_t mtlClass;                  // enum r_mtl_bind_class_e
+		uint8_t mtlTexDim;                 // enum r_mtl_tex_dim_e; only meaningful for R_MTL_BIND_TEXTURE
+#endif
 	} descriptorReflection[PIPELINE_REFLECTION_HASH_SIZE];
 };
 
@@ -284,10 +385,14 @@ struct glsl_descriptor_handle_s {
 	hash_t hash;
 };
 
+// SPIRV-Reflect can report a NULL binding name (it guards for that itself), so strlen() here would
+// crash on an anonymous uniform block. A nameless descriptor gets hash 0, which callers can never
+// produce for a real handle and which the reflection builders treat as "not addressable by name".
 static inline struct glsl_descriptor_handle_s Create_DescriptorHandle(const char* name) {
+	const size_t len = name ? strlen(name) : 0;
 	return (struct glsl_descriptor_handle_s){
 		.name = name,
-		.hash = hash_data(HASH_INITIAL_VALUE, name, strlen(name))
+		.hash = len ? hash_data(HASH_INITIAL_VALUE, name, len) : 0
 	};
 }
 

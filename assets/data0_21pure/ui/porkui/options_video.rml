@@ -23,7 +23,8 @@
 				"picmip", "picmip-frame",
 				"filtering", "filtering-frame",
 				"lighting",
-				"softparticles-frame" );
+				"softparticles-frame",
+				"vid-module" );
 			video = setup;
 
 			@form = body.getElementById( "options-form" );
@@ -223,8 +224,9 @@
 				<div id="module-frame">
 					<div class="title">Graphics Driver</div>
 					<select cvar="vid_ref" id="vid-module" onchange="video.Changed();">
-						<option value="ref_gl" selected>OpenGL</option>
-						<option value="ref_nri" selected>Vulkan</option>
+						<!-- repopulated by video.PopulateDriverSelector: ref_nri is Metal on macOS, Vulkan elsewhere -->
+						<option value="ref_gl">OpenGL</option>
+						<option value="ref_nri">Vulkan</option>
 					</select>
 					<br/>
 				</div>

@@ -48,6 +48,19 @@ option(GAME_MODULES_ONLY "Only build game modules" OFF)
 option(BUILD_STEAMLIB "Include the steamlib module (requires Steamworks SDK)" OFF)
 option(USE_GRAPHICS_NRI "Build using Nvidia NRI" OFF)
 
+# ref_nri GPU backend. Single source of truth: ri_defines.h no longer picks a platform default.
+# Override on the command line, e.g. -DRI_BACKEND=VULKAN on macOS to A/B MoltenVK against Metal.
+if (APPLE)
+    set(RI_BACKEND_DEFAULT "MTL")
+else ()
+    set(RI_BACKEND_DEFAULT "VULKAN")
+endif ()
+set(RI_BACKEND "${RI_BACKEND_DEFAULT}" CACHE STRING "ref_nri GPU backend: VULKAN, MTL, D3D11, D3D12")
+set_property(CACHE RI_BACKEND PROPERTY STRINGS VULKAN MTL D3D11 D3D12)
+if (NOT RI_BACKEND MATCHES "^(VULKAN|MTL|D3D11|D3D12)$")
+    message(FATAL_ERROR "RI_BACKEND must be one of VULKAN, MTL, D3D11, D3D12 (got '${RI_BACKEND}')")
+endif ()
+
 OPTION(USE_CRASHPAD "Prefer system vorbis instead of the bundled one" OFF)
 option(USE_GRAPHICS_X11 "Build using X11" ON)
 option(USE_GRAPHICS_WAYLAND "Build using wayland" ON)

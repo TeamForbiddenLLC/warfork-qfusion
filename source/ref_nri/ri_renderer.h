@@ -6,23 +6,51 @@
 struct RIDeviceDesc_s {
 	struct RIPhysicalAdapter_s *physicalAdapter;
 };
-int InitRIRenderer( const struct RIBackendInit_s *init, struct RIRenderer_s *renderer );
-void ShutdownRIRenderer( struct RIRenderer_s *renderer );
+// There is only ever one renderer per process and exactly one backend compiled in (ri_defines.h). The
+// instance lives at file scope in ri_renderer.c and is reached only through these top-level functions.
+int InitRIRenderer( const struct RIBackendInit_s *init );
+void ShutdownRIRenderer( void );
 
-int EnumerateRIAdapters( struct RIRenderer_s *renderer, struct RIPhysicalAdapter_s *adapters, uint32_t *numAdapters );
-int InitRIDevice( struct RIRenderer_s *renderer, struct RIDeviceDesc_s *init, struct RIDevice_s *device );
+int EnumerateRIAdapters( struct RIPhysicalAdapter_s *adapters, uint32_t *numAdapters );
+int InitRIDevice( struct RIDeviceDesc_s *init, struct RIDevice_s *device );
+
+// RIActiveBackendApi / RIIsTargetSelected are declared in ri_device.h next to RIDeviceAPI_e.
+#if ( DEVICE_IMPL_VULKAN )
+VkInstance RIGetVkInstance( void );
+#endif
 
 void WaitRIQueueIdle( struct RIDevice_s *device, struct RIQueue_s *queue );
 
 int FreeRIDevice( struct RIDevice_s *dev );
 void FreeRIFree( struct RIDevice_s *dev, struct RIFree_s *mem );
 
-// RIDescriptor value builders, RI_IsEmptyDescriptor and FreeRISampler are declared in ri_descriptor.h
-// (reached via ri_types.h) so every consumer sees the sret-returning prototype.
-
 // RITexture
+// Monotonic counter bumped whenever a texture, view, or buffer is destroyed. Anything that caches a
+// resolved backend handle past the call that produced it -- a Metal argument buffer holds raw MTLTexture
+// references, and declaring a released one resident is a use-after-free -- folds this into its cache key
+// so every entry built before a destruction misses.
+uint64_t RIResourceEpoch( void );
+
 void FreeRITexture( struct RIDevice_s *dev, struct RITexture_s *tex );
 void FreeRITextureView( struct RIDevice_s *dev, struct RITextureView_s *view );
+
+// Backend-neutral render-target creation (see RITextureDesc_s), the texture counterpart of InitRIBuffer.
+// The view spans the whole texture in the texture's own format: a VkImageView carrying the texture's
+// usage on Vulkan, and on Metal the texture handle itself (non-owning; FreeRITextureView only clears it).
+int InitRITexture( struct RIDevice_s *dev, const struct RITextureDesc_s *desc, struct RITexture_s *tex );
+int InitRITextureView( struct RIDevice_s *dev, const struct RITextureDesc_s *desc, const struct RITexture_s *tex, struct RITextureView_s *view );
+
+// Queue a texture and its view for destruction once the frames that may still reference them have
+// retired. `freeList` is an stb_ds array of RIFree_s (r_frame_set_s.freeList); both handles are cleared.
+// No-op for an uncreated texture, so a fresh slot can be passed unconditionally.
+void RIDeferFreeTexture( struct RIFree_s **freeList, struct RITexture_s *tex, struct RITextureView_s *view );
+
+// RIBuffer. Backend-neutral buffer creation used by the frontend (VBOs, uniform/scratch buffers) so it
+// no longer creates VkBuffers directly. RIBufferMappedData returns the persistently-mapped CPU pointer
+// for host-visible buffers (NULL for RI_MEMORY_DEVICE).
+int InitRIBuffer( struct RIDevice_s *dev, const struct RIBufferDesc_s *desc, struct RIBuffer_s *buffer );
+void FreeRIBuffer( struct RIDevice_s *dev, struct RIBuffer_s *buffer );
+void *RIBufferMappedData( struct RIDevice_s *dev, struct RIBuffer_s *buffer );
 
 // RICmd
 void FreeRICmd( struct RIDevice_s *dev, struct RICmd_s *cmd, struct RIPool_s *pool );
@@ -38,6 +66,11 @@ void RICmdImageBarrier( struct RIDevice_s *dev, struct RICmd_s *cmd, const struc
 void RICmdBufferBarrier( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RIBufferBarrier_s *barrier );
 
 void RICmdCopyTextureToBuffer( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RICopyTextureToBufferDesc_s *desc );
+
+// Dynamic render pass. Backend-neutral replacement for the frontend's inline vkCmdBeginRendering/
+// vkCmdEndRendering: VK uses dynamic rendering, Metal opens/closes a render command encoder on cmd.
+void RICmdBeginRendering( struct RIDevice_s *dev, struct RICmd_s *cmd, const struct RIRenderingDesc_s *desc );
+void RICmdEndRendering( struct RIDevice_s *dev, struct RICmd_s *cmd );
 
 void InitRIPool( struct RIDevice_s *dev, struct RIPool_s *pool, struct RIQueue_s *queue );
 void ResetRIPool( struct RIDevice_s *dev, struct RIPool_s *pool );

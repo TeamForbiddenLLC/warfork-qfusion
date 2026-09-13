@@ -66,6 +66,30 @@ enum RITextureType_e {
 	RI_TEXTURE_3D
 };
 
+// Where a resource's memory lives, and thus how it is written. Backend-neutral: VK derives a VMA usage
+// + flags, Metal derives a storage mode (Shared/Managed/Private) from it. Device-local resources are
+// populated through the staging uploader; host resources are persistently mapped (RIBufferMappedData).
+enum RIMemoryLocation_e {
+	RI_MEMORY_DEVICE = 0,    // GPU-local, not CPU-mappable (VK DEVICE_LOCAL / Metal Private)
+	RI_MEMORY_HOST_UPLOAD,   // CPU-write -> GPU-read, mapped (VK HOST_VISIBLE / Metal Shared|Managed)
+	RI_MEMORY_HOST_READBACK, // GPU-write -> CPU-read, mapped
+};
+
+struct RIBufferDesc_s {
+	uint64_t size;
+	uint32_t usage;         // RIBufferUsage_e bits
+	uint8_t memoryLocation; // RIMemoryLocation_e
+};
+
+// A single-mip, single-layer, GPU-only 2D texture: the shape of every render target the frontend
+// allocates itself (shadow maps, portal captures, post-processing pogo buffers). Images loaded from
+// disk keep their own upload path in r_image.c. Created with InitRITexture / InitRITextureView.
+struct RITextureDesc_s {
+	uint16_t width, height;
+	uint8_t format; // RI_Format_e
+	uint32_t usage; // RITextureUsageBits_e bits
+};
+
 struct RIBuffer_s {
 	// Stable identity (hash_random) decoupled from the reusable Vulkan handle; folded into any
 	// descriptor built from this buffer so a freed+recreated handle never aliases in the set cache.
@@ -76,6 +100,12 @@ struct RIBuffer_s {
 			VkBuffer buffer;
 			struct VmaAllocation_T *allocation;
 		} vk;
+#endif
+#if ( DEVICE_IMPL_MTL )
+		struct {
+			struct mtlc_buffer buffer;
+			uint8_t storageMode; // enum mtlc_storage_mode chosen at create from usage (Shared/Managed/Private)
+		} mtl;
 #endif
 	};
 };
@@ -152,6 +182,12 @@ struct RITexture_s {
 			struct VmaAllocation_T *allocation;
 		} vk;
 #endif
+#if ( DEVICE_IMPL_MTL )
+		struct {
+			struct mtlc_texture texture;
+			uint32_t fmt; // enum mtlc_pixel_format; cached so views/attachments don't re-query
+		} mtl;
+#endif
 	};
 };
 
@@ -163,6 +199,13 @@ struct RITextureView_s {
 		struct {
 			VkImageView image;
 		} vk;
+#endif
+#if ( DEVICE_IMPL_MTL )
+		struct {
+			// Metal has no standalone image-view object; a "view" is either the texture itself or a
+			// newTextureView derived from it. Store the (possibly derived) texture handle.
+			struct mtlc_texture texture;
+		} mtl;
 #endif
 	};
 };

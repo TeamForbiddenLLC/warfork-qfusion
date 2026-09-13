@@ -126,17 +126,10 @@ typedef struct r_backend_s
 
 		void* pVtxMappedAddress;
 		void* pIdxMappedAddress;
-		union {
-#if ( DEVICE_IMPL_VULKAN )
-			struct {
-				struct VmaAllocation_T *vertexAlloc;
-				VkBuffer vertexBuffer;
-				
-				struct VmaAllocation_T *indexAlloc;
-				VkBuffer indexBuffer;
-			} vk;
-#endif
-		};
+		// Host-visible, persistently-mapped dynamic streams (see InitRIBuffer / RIBufferMappedData). The
+		// backend allocation lives on the RIBuffer itself, so no side-band handles are needed.
+		struct RIBuffer_s vertexBuffer;
+		struct RIBuffer_s indexBuffer;
 	} dynamicStreams[RB_DYN_STREAM_NUM];
 	rbDynamicDraw_t dynamicDraws[MAX_DYNAMIC_DRAWS];
 	unsigned int numDynamicDraws;

@@ -79,6 +79,7 @@ class VideoSetup
 	String idFilteringFrame;
 	String idLighting;
 	String idSoftParticlesFrame;
+	String idDriver;
 
 	VideoSetup( Element @elem, 
 				const String &idProfile,
@@ -91,7 +92,8 @@ class VideoSetup
 				const String &idFiltering,
 				const String &idFilteringFrame,
 				const String &idLighting, 
-				const String &idSoftParticlesFrame )
+				const String &idSoftParticlesFrame,
+				const String &idDriver )
 	{
 		this.idProfile = idProfile;
 		this.idVideoFrame = idVideoFrame;
@@ -108,6 +110,7 @@ class VideoSetup
 		this.idFilteringFrame = idFilteringFrame;
 		this.idLighting = idLighting;
 		this.idSoftParticlesFrame = idSoftParticlesFrame;
+		this.idDriver = idDriver;
 
 		// We only have 3 choices in lightning listbox:
 		// vertex lighting: lighting_vertexlight = 1, lighting_deluxemapping = 0
@@ -134,6 +137,7 @@ class VideoSetup
 		showVideoFrame = false;
 
 		PopulateModeSelector( @elem );
+		PopulateDriverSelector( @elem );
 		PopulateFilteringSelector( @elem );
 		CheckFullscreenAvailability( @elem );
 		CheckVsyncAvailability( @elem );
@@ -151,6 +155,20 @@ class VideoSetup
 		// reset elements
 		SelectGraphicsProfile( @elem, true );
 		Reset( @elem );
+	}
+
+	// The ref_nri module is Vulkan everywhere except macOS, where it renders natively on Metal
+	// (RI_BACKEND in CMake). Label the option after the API the user actually gets.
+	void PopulateDriverSelector( Element @elem )
+	{
+		Element @selector = elem.getElementById( idDriver );
+		if( @selector == null )
+			return;
+
+		String nriLabel = ( window.osName == 'MacOSX' ) ? 'Metal' : 'Vulkan';
+		String rml = '<option value="ref_gl">OpenGL</option>';
+		rml += '<option value="ref_nri">' + nriLabel + '</option>';
+		selector.setInnerRML( rml );
 	}
 
 	void PopulateModeSelector( Element @elem )

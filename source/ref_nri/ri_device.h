@@ -27,6 +27,35 @@ enum RIDeviceAPI_e {
 	RI_DEVICE_API_MTL
 };
 
+// Active backend (RIDeviceAPI_e) of the process-wide renderer; defined in ri_renderer.c.
+uint8_t RIActiveBackendApi( void );
+
+#if !DEVICE_IMPL_MUTLI
+// Single backend compiled in: known at compile time, so anything keyed on it folds to a constant.
+#if ( DEVICE_IMPL_VULKAN )
+#define RI_ACTIVE_BACKEND_API RI_DEVICE_API_VK
+#elif ( DEVICE_IMPL_MTL )
+#define RI_ACTIVE_BACKEND_API RI_DEVICE_API_MTL
+#elif ( DEVICE_IMPL_D3D12 )
+#define RI_ACTIVE_BACKEND_API RI_DEVICE_API_D3D12
+#elif ( DEVICE_IMPL_D3D11 )
+#define RI_ACTIVE_BACKEND_API RI_DEVICE_API_D3D11
+#endif
+#endif
+
+// True when `targetApi` (RIDeviceAPI_e) is the active backend. Single-backend builds compare against a
+// compile-time constant, so `if( RIIsTargetSelected( RI_DEVICE_API_VK ) )` lets the optimizer drop the
+// other backend's branch at every call site; multi-backend builds read the runtime backend. The branch
+// body must still be #if-guarded when it names backend-specific types absent from the other build.
+static inline bool RIIsTargetSelected( uint8_t targetApi )
+{
+#if DEVICE_IMPL_MUTLI
+	return targetApi == RIActiveBackendApi();
+#else
+	return targetApi == RI_ACTIVE_BACKEND_API;
+#endif
+}
+
 enum RIAdapterType_e {
 	RI_ADAPTER_TYPE_OTHER,
 	RI_ADAPTER_TYPE_CPU,
@@ -52,6 +81,13 @@ struct RIRenderer_s {
 			VkDebugUtilsMessengerEXT debugMessageUtils;
 		} vk;
 #endif
+#if ( DEVICE_IMPL_MTL )
+		struct {
+			// Metal has no instance object; the renderer carries nothing global. Keep a field so the
+			// union is never empty and adapters can be enumerated straight from the system device.
+			uint32_t reserved;
+		} mtl;
+#endif
 	};
 };
 
@@ -67,6 +103,9 @@ struct RIBackendInit_s {
 		} vk;
 #endif
 #if ( DEVICE_IMPL_MTL )
+		struct {
+			uint32_t enableValidationLayer : 1; // maps to Metal API validation (env-driven; advisory)
+		} mtl;
 #endif
 	};
 };
@@ -322,6 +361,8 @@ struct RIPhysicalAdapter_s {
 #endif
 #if ( DEVICE_IMPL_MTL )
 		struct {
+			struct mtlc_device device;
+			uint32_t hasUnifiedMemory : 1; // Apple Silicon: prefer Shared storage; Intel discrete uses Managed
 		} mtl;
 #endif
 	};
@@ -329,7 +370,6 @@ struct RIPhysicalAdapter_s {
 
 struct RIDevice_s {
 	struct RIPhysicalAdapter_s physicalAdapter;
-	struct RIRenderer_s *renderer;
 	struct RIQueue_s queues[RI_QUEUE_LEN];
 	union {
 #if ( DEVICE_IMPL_VULKAN )
@@ -343,30 +383,40 @@ struct RIDevice_s {
 		} vk;
 #endif
 #if ( DEVICE_IMPL_MTL )
+		struct {
+			struct mtlc_device device;
+			struct mtlc_command_queue queues[RI_QUEUE_LEN]; // one MTLCommandQueue per RIQueueType_e slot
+		} mtl;
 #endif
 	};
 };
 
-// static inline bool IsRICmdValid( struct RIRenderer_s *renderer, struct RICmd_s *cmd )
-//{
-// #if ( DEVICE_IMPL_VULKAN )
-//	return cmd->vk.pool && cmd->vk.cmd;
-// #endif
-//	return false;
-// }
-
-static inline bool IsRIBufferValid( struct RIRenderer_s *renderer, const struct RIBuffer_s *handle )
+static inline bool IsRIBufferValid( const struct RIBuffer_s *handle )
 {
 #if ( DEVICE_IMPL_VULKAN )
-	return handle && handle->vk.buffer != NULL;
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		return handle && handle->vk.buffer != NULL;
+	}
+#endif
+#if ( DEVICE_IMPL_MTL )
+	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
+		return handle && !mtlc_buffer_is_nil( handle->mtl.buffer );
+	}
 #endif
 	return false;
 }
 
-static inline bool IsRITextureValid( struct RIRenderer_s *renderer, const struct RITexture_s *handle )
+static inline bool IsRITextureValid( const struct RITexture_s *handle )
 {
 #if ( DEVICE_IMPL_VULKAN )
-	return handle && handle->vk.image != NULL;
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		return handle && handle->vk.image != NULL;
+	}
+#endif
+#if ( DEVICE_IMPL_MTL )
+	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
+		return handle && !mtlc_texture_is_nil( handle->mtl.texture );
+	}
 #endif
 	return false;
 }

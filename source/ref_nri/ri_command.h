@@ -25,6 +25,13 @@ enum RIFreeType_e {
 	RI_FREE_VK_BUFFER,
 	RI_FREE_VK_BUFFER_VIEW,
 	RI_FREE_VK_END,
+
+	// Metal deferred-free kinds. A Metal free is just a release of the wrapped object; the type selects
+	// which union arm below carries the handle.
+	RI_FREE_MTL_START,
+	RI_FREE_MTL_TEXTURE,
+	RI_FREE_MTL_BUFFER,
+	RI_FREE_MTL_END,
 };
 
 struct RIFree_s {
@@ -38,6 +45,10 @@ struct RIFree_s {
 		VkSampler vkSampler;
 		VkBufferView vkBufferView;
 		struct VmaAllocation_T *vmaAlloc;
+#endif
+#if ( DEVICE_IMPL_MTL )
+		struct mtlc_buffer mtlBuffer;
+		struct mtlc_texture mtlTexture;
 #endif
 	};
 };
@@ -114,6 +125,24 @@ struct RICopyTextureToBufferDesc_s {
 	uint32_t depth; // 0 => 1
 };
 
+// Dynamic-rendering attachment: a view plus whether to clear it on load. Color clears to clearColor
+// (zero-initialized => transparent black), depth always clears to 1.0.
+struct RIAttachmentDesc_s {
+	struct RITextureView_s view;
+	bool clear; // true => loadAction CLEAR, false => LOAD
+	float clearColor[4]; // color attachments only
+};
+
+// A dynamic render pass (VK dynamic rendering / Metal MTLRenderPassDescriptor + encoder). Recorded with
+// RICmdBeginRendering .. draws .. RICmdEndRendering.
+struct RIRenderingDesc_s {
+	uint16_t width, height;
+	uint8_t colorNum;
+	struct RIAttachmentDesc_s colors[8];
+	bool hasDepth;
+	struct RIAttachmentDesc_s depth;
+};
+
 struct RIPool_s {
 	union {
 #if ( DEVICE_IMPL_VULKAN )
@@ -121,6 +150,13 @@ struct RIPool_s {
 			VkQueue queue;
 			VkCommandPool pool;
 		} vk;
+#endif
+#if ( DEVICE_IMPL_MTL )
+		struct {
+			// Metal has no command-pool object; command buffers come straight from the queue. Keep the
+			// owning queue so InitRICmd can vend a command buffer, mirroring the VK pool's queue field.
+			struct mtlc_command_queue queue;
+		} mtl;
 #endif
 	};
 };
@@ -131,6 +167,16 @@ struct RICmd_s {
 		struct {
 			VkCommandBuffer cmd;
 		} vk;
+#endif
+#if ( DEVICE_IMPL_MTL )
+		struct {
+			struct mtlc_command_buffer cmd;
+			struct mtlc_render_command_encoder encoder; // active encoder between Begin/End rendering; nil otherwise
+			// Bumped every time a new encoder starts. Residency declared with useResource: is scoped to one
+			// encoder, so anything caching "already made resident" has to key on this rather than on the
+			// frame or the command buffer.
+			uint64_t encoderEpoch;
+		} mtl;
 #endif
 	};
 };
@@ -148,6 +194,15 @@ struct RICommandRingElement_s {
 			VkSemaphore semaphore;
 			VkFence fence;
 		} vk;
+#endif
+#if ( DEVICE_IMPL_MTL )
+		struct {
+			// Pacing is done with the command buffer's completion status / a shared-event value rather
+			// than a fence+semaphore pair. `cmd` is the submitted buffer whose completion this element
+			// waits on; `submitValue` is its shared-event signal value.
+			struct mtlc_command_buffer cmd;
+			uint64_t submitValue;
+		} mtl;
 #endif
 	};
 };
@@ -171,6 +226,14 @@ struct RICommandRingBuffer_s {
 			VkSemaphore semaphores[RI_COMMAND_RING_POOL_COUNT][RI_COMMAND_RING_CMD_PER_POOL];
 		} vk;
 #endif
+#if ( DEVICE_IMPL_MTL )
+		struct {
+			// Metal paces on command-buffer completion + a single shared event instead of per-element
+			// fence/semaphore grids. sharedEvent is an MTLSharedEvent (metal-c binding added later).
+			void *sharedEvent;
+			uint64_t submitValues[RI_COMMAND_RING_POOL_COUNT][RI_COMMAND_RING_CMD_PER_POOL];
+		} mtl;
+#endif
 	};
 };
 
@@ -184,6 +247,12 @@ struct RIQueue_s {
 			VkQueue queue;
 		} vk;
 #endif
+#if ( DEVICE_IMPL_MTL )
+		struct {
+			struct mtlc_command_queue queue;
+			uint8_t queueType; // RIQueueType_e this slot fronts (Metal queues are not typed)
+		} mtl;
+#endif
 	};
 };
 
@@ -194,6 +263,11 @@ struct RITimeline_s {
 		struct {
 			VkSemaphore semaphore;
 		} vk;
+#endif
+#if ( DEVICE_IMPL_MTL )
+		struct {
+			void *sharedEvent; // MTLSharedEvent; signaledValue mirrors the VK timeline (binding added later)
+		} mtl;
 #endif
 	};
 };

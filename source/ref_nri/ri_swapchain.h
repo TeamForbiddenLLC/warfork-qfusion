@@ -52,6 +52,15 @@ struct RISwapchain_s {
 			uint32_t acquireFailed : 1;  // last acquire failed (OUT_OF_DATE); skip acquire-wait/present this frame
 		} vk;
 #endif
+#if ( DEVICE_IMPL_MTL )
+		struct {
+			struct ca_metal_layer layer;             // CAMetalLayer bound to the window (from RIWindowHandle_s.metal)
+			struct ca_metal_drawable currentDrawable; // drawable from the most recent acquire; nil between frames
+			struct mtlc_texture currentTexture;       // currentDrawable's texture, cached for GetTexture/GetTextureView
+			uint32_t outOfDate : 1;                   // nextDrawable returned nil; treat like VK OUT_OF_DATE
+			uint32_t acquireFailed : 1;               // last acquire produced no drawable; skip present this frame
+		} mtl;
+#endif
 	};
 };
 
@@ -94,7 +103,9 @@ struct RITextureView_s RISwapchainGetTextureView(struct RISwapchain_s* swapchain
 struct RITexture_s RISwapchainGetTexture(struct RISwapchain_s* swapchain, uint32_t index);
 
 int RISwapchainResize(struct RIDevice_s* dev, struct RISwapchain_s* swapchain, uint16_t width, uint16_t height);
+#if ( DEVICE_IMPL_VULKAN )
 VkResult RISwapchainPresent_vk(struct RIDevice_s* dev, struct RISwapchain_s* swapchain, uint32_t index, size_t num_wait_semaphores, VkSemaphore* wait_semaphores );
+#endif
 
 // Swapchain-owned frame submit: submits the primary command buffer waiting on the swapchain's
 // current acquire semaphore (plus any caller-supplied waits), signals the present semaphore for

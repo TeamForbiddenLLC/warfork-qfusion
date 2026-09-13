@@ -147,7 +147,18 @@ struct descriptor_set_result_s ResolveDescriptorSet( struct RIDevice_s *device, 
 
 void FreeDescriptorSetAlloc( struct RIDevice_s *device, struct DescriptorSetAllocator *alloc )
 {
-#if ( DEVICE_IMPL_VULKAN )
+#if ( DEVICE_IMPL_MTL )
+	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
+		// Per-slot residency lists are owned by the slot, so they have to go before the blocks holding the
+		// slots do. Walk the blocks rather than the LRU: reserved (never-attached) slots are in neither list.
+		for( size_t i = 0; i < arrlen( alloc->blocks ); i++ ) {
+			for( size_t j = 0; j < RESERVE_BLOCK_SIZE; j++ )
+				arrfree( alloc->blocks[i][j].mtl.residentResources );
+		}
+	}
+#endif
+	// Backend-neutral bookkeeping. This used to sit inside the Vulkan guard, which leaked every block and
+	// every stb array on any other backend.
 	for( size_t i = 0; i < arrlen( alloc->blocks ); i++ ) {
 		// Individual descriptor sets do not need to be freed separately;
 		// vkDestroyDescriptorPool implicitly reclaims all sets allocated from the pool.
@@ -156,8 +167,16 @@ void FreeDescriptorSetAlloc( struct RIDevice_s *device, struct DescriptorSetAllo
 	arrfree( alloc->blocks );
 	arrfree( alloc->reservedSlots );
 	for( size_t i = 0; i < arrlen( alloc->pools ); i++ ) {
-		vkDestroyDescriptorPool( device->vk.device, alloc->pools[i].vk.handle, NULL );
+#if ( DEVICE_IMPL_VULKAN )
+		if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+			vkDestroyDescriptorPool( device->vk.device, alloc->pools[i].vk.handle, NULL );
+		}
+#endif
+#if ( DEVICE_IMPL_MTL )
+		if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
+			mtlc_buffer_release( alloc->pools[i].mtl.buffer );
+		}
+#endif
 	}
 	arrfree( alloc->pools );
-#endif
 }

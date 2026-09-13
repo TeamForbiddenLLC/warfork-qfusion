@@ -3,6 +3,9 @@
 #include "SDL_video.h"
 #include <SDL_syswm.h>
 #include <SDL.h>
+#ifdef __APPLE__
+#include <SDL_metal.h>
+#endif
 
 
 typedef int (* wndproc_t)(void *, int, int, int);
@@ -12,6 +15,9 @@ typedef struct {
 	int *applicationIcon;
 	SDL_Window *sdl_window;
 	wndproc_t wndproc;
+#ifdef __APPLE__
+	SDL_MetalView sdl_metal_view; // CAMetalLayer-backed view for the native Metal renderer
+#endif
 } winstate_t;
 
 static winstate_t r_winState;
@@ -82,6 +88,13 @@ bool R_WIN_GetWindowHandle(win_handle_t* handle) {
 				// init.window.win.surface = wmi.info.wl.surface;
 				break;
 #endif
+#if defined( SDL_VIDEO_DRIVER_COCOA ) && defined( __APPLE__ )
+			case SDL_SYSWM_COCOA:
+				// The native Metal renderer needs the CAMetalLayer; the GL renderer never reaches here.
+				handle->winType = VID_WINDOW_OSX;
+				handle->window.osx.metalLayer = SDL_Metal_GetLayer( r_winState.sdl_metal_view );
+				break;
+#endif
 			default:
 				assert( false );
 				break;
@@ -112,18 +125,33 @@ bool R_WIN_InitWindow(win_init_t* init) {
     case VID_WINDOW_VULKAN:
       winFlags = SDL_WINDOW_VULKAN;
       break;
+#ifdef __APPLE__
+    case VID_WINDOW_METAL:
+      winFlags = SDL_WINDOW_METAL;
+      break;
+#endif
     default:
     	assert(0);
     	break;
   }
-	r_winState.sdl_window= SDL_CreateWindow( r_winState.applicationName, 
+	r_winState.sdl_window= SDL_CreateWindow( r_winState.applicationName,
 		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, init->width, init->height, winFlags);
 	// Check that the window was successfully created
 	if (r_winState.sdl_window == NULL) {
 		// In the case that the window could not be made...
 		SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Could not create window: %s\n", SDL_GetError());
 		return false;
-	}	
+	}
+#ifdef __APPLE__
+	// A CAMetalLayer-backed view for the native Metal renderer; its layer is handed to the swapchain.
+	if( init->backend == VID_WINDOW_METAL ) {
+		r_winState.sdl_metal_view = SDL_Metal_CreateView( r_winState.sdl_window );
+		if( r_winState.sdl_metal_view == NULL ) {
+			SDL_LogError( SDL_LOG_CATEGORY_ERROR, "Could not create Metal view: %s\n", SDL_GetError() );
+			return false;
+		}
+	}
+#endif
 
 	SDL_SetWindowPosition( r_winState.sdl_window, init->x, init->y );
 
