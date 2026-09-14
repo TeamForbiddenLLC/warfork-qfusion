@@ -1,8 +1,8 @@
 
 textures/metal/aluminiumwrap
-{	// from Boqu
+{	
 	qer_editorimage textures/boqu/bright_metal
-	
+	// from Boqu
 	{
 		material textures/boqu/bright_metal
 		tcmod scale 3 3
@@ -77,9 +77,21 @@ textures/metal/metalbaseyellow0033
 {	
 	qer_editorimage textures/metal/metalbaseyellow0033.png
 	glossExponent 256
+	glossIntensity 0.85
 
 	{
 		material textures/metal/metalbaseyellow0033.png $blankbumpimage textures/metal/metalbaseyellow0033_gloss.png
+	}
+}
+
+textures/metal/metalbaseyellow0033dirt
+{	
+	qer_editorimage textures/metal/metalbaseyellow0033dirt.png
+	glossExponent 256
+	glossIntensity 0.85
+
+	{
+		material textures/metal/metalbaseyellow0033dirt.png $blankbumpimage textures/metal/metalbaseyellow0033dirt_gloss.png
 	}
 }
 

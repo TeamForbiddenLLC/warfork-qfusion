@@ -6,6 +6,7 @@ textures/plastic/pvc_grey
 
 	{
 		material textures/plastic/pvc_grey.png $blankbumpimage textures/plastic/pvc_grey_gloss.png
+		tcMod scale 4 4
 	}
 }
 

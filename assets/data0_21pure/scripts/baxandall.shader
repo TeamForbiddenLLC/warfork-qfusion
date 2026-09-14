@@ -1,13 +1,14 @@
 textures/baxandall/teleglow_01
 {
+	qer_editorimage textures/baxandall/teleglow_01.png
 	qer_trans 0.50
 	deformVertexes autosprite
-     	surfaceparm trans
+    surfaceparm trans
 	surfaceparm nonsolid
 	surfaceparm nomarks
 	surfaceparm noimpact
 	surfaceparm nolightmap
-     	nomipmaps
+    nomipmaps
 	nopicmip
 	{
 		clampmap textures/baxandall/teleglow_01.png
@@ -27,14 +28,15 @@ textures/baxandall/teleglow_01
 
 textures/baxandall/teleglow_02
 {
+	qer_editorimage textures/baxandall/teleglow_01.png
 	qer_trans 0.50
 	deformVertexes autosprite
-     	surfaceparm trans
+    surfaceparm trans
 	surfaceparm nonsolid
 	surfaceparm nomarks
 	surfaceparm noimpact
 	surfaceparm nolightmap
-     	nomipmaps
+    nomipmaps
 	nopicmip
 	{
 		clampmap textures/baxandall/teleglow_01.png
@@ -54,14 +56,15 @@ textures/baxandall/teleglow_02
 
 textures/baxandall/teleglow_03
 {
+	qer_editorimage textures/baxandall/teleglow_02.png
 	qer_trans 0.50
 	deformVertexes autosprite
-     	surfaceparm trans
+    surfaceparm trans
 	surfaceparm nonsolid
 	surfaceparm nomarks
 	surfaceparm noimpact
 	surfaceparm nolightmap
-     	nomipmaps
+    nomipmaps
 	nopicmip
 	{
 		clampmap textures/baxandall/teleglow_02.png
