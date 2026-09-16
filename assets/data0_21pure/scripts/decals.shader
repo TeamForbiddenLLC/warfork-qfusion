@@ -52,9 +52,7 @@ textures/decals/graffityTEAMZISSOU32
 	nopicmip
 
 	{
-		detail
-		map textures/decals/graffityTEAMZISSOU32.png
-		//blendFunc filter
+		clampmap textures/decals/graffityTEAMZISSOU32.png
 		rgbgen const 0.15 0.15 0.15
 		blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 	}
@@ -73,14 +71,10 @@ textures/decals/graffityTEAMZISSOU32_darken
 	nopicmip
 
 	{
-		detail
-		map textures/decals/graffityTEAMZISSOU32.png
+		clampmap map textures/decals/graffityTEAMZISSOU32.png
 		blendFunc filter
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 	}
 }
-
 textures/decals/graffiti_01
 {	
 	qer_editorimage textures/decals/graffiti_01.png
@@ -306,7 +300,6 @@ textures/decals/sign_warning01
 {	
 	qer_editorimage textures/decals/sign_warning01.png
 	qer_trans 0.6
-	surfaceparm nolightmap
 	surfaceparm nomarks
 	surfaceparm nodlight
 	surfaceparm nonsolid
@@ -316,8 +309,7 @@ textures/decals/sign_warning01
 
 	{
 		detail
-		map textures/decals/sign_warning01.png
-		rgbgen vertex
+		material textures/decals/sign_warning01.png
 		blendFunc blend
 	}
 }
@@ -326,7 +318,6 @@ textures/decals/sign_up01
 {	
 	qer_editorimage textures/decals/sign_up01.png
 	qer_trans 0.6
-	surfaceparm nolightmap
 	surfaceparm nomarks
 	surfaceparm nodlight
 	surfaceparm nonsolid
@@ -336,11 +327,11 @@ textures/decals/sign_up01
 
 	{
 		detail
-		map textures/decals/sign_up01.png
-		rgbgen vertex
+		material textures/decals/sign_up01.png
 		blendFunc blend
 	}
 }
+
 
 textures/decals/poster01
 {	
@@ -1639,3 +1630,433 @@ textures/decals/xmarksthespot_decal
 	}
 }
 
+
+
+
+
+//--------------------------------------------------
+//
+// INFOCIRCLE: For marking spots. Taken from baxandall jumpads
+//
+//
+
+textures/decals/infocircle_vc
+{
+	qer_editorimage textures/decals/infocircle_parts/infocircle.png
+	qer_trans 0.5
+	surfaceparm nonsolid
+	surfaceparm trans
+	surfaceparm nolightmap
+	surfaceparm nomarks
+	surfaceparm nodlight
+	q3map_vertexcolor #4e696b
+	nopicmip
+	polygonOffset
+	
+	{
+		detail
+		clampmap textures/decals/infocircle_parts/infocircle.png
+		rgbgen vertex
+		blendfunc add
+	}
+	{
+		detail
+		clampmap textures/decals/infocircle_parts/infocircle_3.png
+		blendfunc add
+		tcmod rotate 150
+	}
+	{
+		detail
+		clampmap textures/decals/infocircle_parts/infocircle_4.png
+		blendfunc add
+		tcmod rotate -150
+	}
+}
+
+textures/decals/infocirclespin_vc
+{
+	qer_editorimage textures/decals/infocircle_parts/infocircle_2.png
+	qer_trans 0.5
+	surfaceparm nonsolid
+	surfaceparm trans
+	surfaceparm nolightmap
+	surfaceparm nomarks
+	surfaceparm nodlight
+	q3map_vertexcolor #4e696b
+	nopicmip
+	polygonOffset
+	
+	{
+		detail
+		clampmap textures/decals/infocircle_parts/infocircle_2.png
+		rgbgen vertex
+		blendfunc add
+		tcmod rotate 250
+	}
+	{
+		detail
+		clampmap textures/decals/infocircle_parts/infocircle_3.png
+		blendfunc add
+		tcmod rotate 150
+	}
+	{
+		detail
+		clampmap textures/decals/infocircle_parts/infocircle_4.png
+		blendfunc add
+		tcmod rotate -150
+	}
+}
+
+textures/decals/infocircle_blend_vc
+{
+	qer_editorimage textures/decals/infocircle_parts/infocircle.png
+	qer_trans 0.5
+	surfaceparm nonsolid
+	surfaceparm trans
+	surfaceparm nolightmap
+	surfaceparm nomarks
+	surfaceparm nodlight
+	q3map_vertexcolor #4e696b
+	nopicmip
+	polygonOffset
+	
+	{
+		detail
+		clampmap textures/decals/infocircle_parts/infocircle.png
+		rgbgen vertex
+		blendFunc blend
+	}
+	{
+		detail
+		clampmap textures/decals/infocircle_parts/infocircle_3.png
+		blendFunc GL_SRC_ALPHA GL_ONE
+		tcmod rotate 150
+	}
+	{
+		detail
+		clampmap textures/decals/infocircle_parts/infocircle_4.png
+		blendFunc GL_SRC_ALPHA GL_ONE
+		tcmod rotate -150
+	}
+}
+
+textures/decals/infocirclespin_blend_vc
+{
+	qer_editorimage textures/decals/infocircle_parts/infocircle_2.png
+	qer_trans 0.5
+	surfaceparm nonsolid
+	surfaceparm trans
+	surfaceparm nolightmap
+	surfaceparm nomarks
+	surfaceparm nodlight
+	q3map_vertexcolor #4e696b
+	nopicmip
+	polygonOffset
+	
+	{
+		detail
+		clampmap textures/decals/infocircle_parts/infocircle_2.png
+		rgbgen vertex
+		blendFunc blend
+		tcmod rotate 250
+	}
+	{
+		detail
+		clampmap textures/decals/infocircle_parts/infocircle_3.png
+		blendFunc GL_SRC_ALPHA GL_ONE
+		tcmod rotate 150
+	}
+	{
+		detail
+		clampmap textures/decals/infocircle_parts/infocircle_4.png
+		blendFunc GL_SRC_ALPHA GL_ONE
+		tcmod rotate -150
+	}
+}
+
+
+
+
+//--------------------------------------------------
+//
+// OLD ONES MOVED INTO DECALS
+//
+//
+
+textures/decals/01
+{	
+	qer_editorimage textures/scifi_interior/01.png
+	qer_trans 0.6
+	q3map vertexcolor 1.0 1.0 1.0
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/scifi_interior/01.png textures/flatnorm.png
+		alphagen const 0.5
+		rgbgen vertex
+		blendFunc GL_SRC_ALPHA GL_ONE
+	}
+}
+
+textures/decals/02
+{	
+	qer_editorimage textures/scifi_interior/02.png
+	qer_trans 0.6
+	q3map vertexcolor 1.0 1.0 1.0
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/scifi_interior/02.png textures/flatnorm.png
+		alphagen const 0.5
+		rgbgen vertex
+		blendFunc GL_SRC_ALPHA GL_ONE
+	}
+}
+
+textures/decals/03
+{	
+	qer_editorimage textures/scifi_interior/03.png
+	qer_trans 0.6
+	q3map vertexcolor 1.0 1.0 1.0
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/scifi_interior/03.png textures/flatnorm.png
+		rgbgen vertex
+		alphagen const 0.5
+		blendFunc GL_SRC_ALPHA GL_ONE
+	}
+}
+
+
+textures/decals/covenant1
+{	
+	qer_editorimage textures/scifi_interior/covenant1.png
+	qer_trans 0.6
+	surfaceparm nomarks
+	//surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/scifi_interior/covenant1.png textures/flatnorm.png
+		blendfunc blend
+	}
+}
+
+textures/decals/covenant2
+{	
+	qer_editorimage textures/scifi_interior/covenant2.png
+	qer_trans 0.6
+	surfaceparm nomarks
+	//surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/scifi_interior/covenant2.png textures/flatnorm.png
+		blendfunc blend
+	}
+}
+
+textures/decals/decal_arrow_orange
+{	
+	qer_editorimage textures/scifi_interior/decal_arrow_orange.png
+	qer_trans 0.6
+	surfaceparm nomarks
+	//surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/scifi_interior/decal_arrow_orange.png textures/flatnorm.png
+		blendfunc blend
+	}
+}
+
+textures/decals/decal_comptext1
+{	
+	qer_editorimage textures/scifi_interior/decal_comptext1.png
+	qer_trans 0.6
+	surfaceparm nomarks
+	//surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/scifi_interior/decal_comptext1.png textures/flatnorm.png
+		blendfunc blend
+	}
+}
+
+textures/decals/decal_comptext2
+{	
+	qer_editorimage textures/scifi_interior/decal_comptext2.png
+	qer_trans 0.6
+	surfaceparm nomarks
+	//surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/scifi_interior/decal_comptext2.png textures/flatnorm.png
+		blendfunc blend
+	}
+}
+
+textures/decals/decal_comptext3
+{	
+	qer_editorimage textures/scifi_interior/decal_comptext3.png
+	qer_trans 0.6
+	surfaceparm nomarks
+	//surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/scifi_interior/decal_comptext3.png textures/flatnorm.png
+		blendfunc blend
+	}
+}
+
+textures/decals/decal_up_grey
+{	
+	qer_editorimage textures/scifi_interior/decal_up_grey.png
+	qer_trans 0.6
+	surfaceparm nomarks
+	//surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/scifi_interior/decal_up_grey.png textures/flatnorm.png
+		blendfunc blend
+	}
+}
+
+textures/decals/decal_up_orange
+{	
+	qer_editorimage textures/scifi_interior/decal_up_orange.png
+	qer_trans 0.6
+	surfaceparm nomarks
+	//surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/scifi_interior/decal_up_orange.png textures/flatnorm.png
+		blendfunc blend
+	}
+}
+
+
+textures/decals/out_of_service
+{	
+	qer_editorimage textures/factory/out_of_service.png
+	qer_trans 0.8
+	surfaceparm nomarks
+	//surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/factory/out_of_service.png textures/flatnorm.png
+		blendfunc blend
+	}
+}
+
+
+
+//--------------------------------------------------
+//
+//    FONTS
+//	Notice: These fonts are for makebsp to genate
+//		decals directly from text.
+//
+
+textures/decals/fonts/PixelTwist
+{
+	qer_editorimage textures/decals/fonts/PixelTwist
+	qer_trans 0.5
+	q3map_vertexcolor 255 255 255
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/decals/fonts/PixelTwist.png textures/flatnorm.tga
+		rgbgen vertex
+		alphagen vertex
+		blendfunc blend
+	}
+}
+
+textures/decals/fonts/Symtext
+{
+	qer_editorimage textures/decals/fonts/Symtext
+	qer_trans 0.5
+	q3map_vertexcolor 255 255 255
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/decals/fonts/Symtext.png textures/flatnorm.tga
+		rgbgen vertex
+		alphagen vertex
+		blendfunc blend
+	}
+}
