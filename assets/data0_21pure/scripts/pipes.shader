@@ -7,6 +7,18 @@ textures/pipes/o2pipe_boqu2
 	}
 }
 
+
+textures/pipes/tubes1bulge
+{
+	qer_editorimage textures/pipes/tubes1
+	glossIntensity 0.95
+	deformVertexes bulge 4 7 -1.5 1
+
+	{
+		material textures/pipes/tubes1 textures/pipes/tubes1_norm textures/pipes/tubes1_gloss
+	}
+}
+
 textures/pipes/tubes1long
 {
 	qer_editorimage textures/pipes/tubes1long
