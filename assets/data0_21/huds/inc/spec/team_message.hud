@@ -1,3 +1,25 @@
+if %MESSAGE_SELF
+	setAlign #CENTER #MIDDLE
+	setCursor #WIDTH / 2, #HEIGHT - 56
+	setColor 1 1 1 1
+	setFontFamily "Droid Sans"
+	setFontStyle "Bold"
+	setFontSize %VIDWIDTH / 64
+	drawStatString %MESSAGE_SELF
+	setFontStyle "normal"
+endif
+
+if %MESSAGE_OTHER
+	setAlign #CENTER #MIDDLE
+	setCursor #WIDTH / 2, #HEIGHT - 56 + 24
+	setColor 1 1 1 1
+	setFontFamily "Droid Sans"
+	setFontStyle "Bold"
+	setFontSize %VIDWIDTH / 64
+	drawStatString %MESSAGE_OTHER
+	setFontStyle "normal"
+endif
+
 //shows value of alive players
 
 setFontFamily "Virtue"
