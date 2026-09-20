@@ -1,4 +1,15 @@
 
+textures/bricks/bricks2
+{	
+	qer_editorimage textures/bricks/bricks2
+	q3map_chamfer_convexwidth 2
+	q3map_chamfer_concavewidth 1.5
+	{
+		material textures/bricks/bricks2
+	}
+}
+
+
 textures/bricks/bricks_05_black
 {	
 	qer_editorimage textures/bricks/bricks_05_black
