@@ -146,6 +146,8 @@ models/mapobjects/house4/house4
 	}
 }
 
+//==================================================
+
 models/mapobjects/jumppad/flame
 {
 	cull none
@@ -191,13 +193,16 @@ models/mapobjects/jumppad/jumppad1
 models/mapobjects/jumppad1/diffuse
 {
 	qer_editorimage models/mapobjects/jumppad1/diffuse.png
+	q3map_maxsamplesize 4
+	q3map_minsmooth 2.0
+	q3map_vertexcolor #fcc614
+	surfaceparm nonsolid
 	surfaceparm nomarks
-	surfaceparm nolightmap
 	nopicmip
+	glossExponent 75
 
 	{
-		rgbgen vertex
-		material models/mapobjects/jumppad1/diffuse.png models/mapobjects/jumppad1/normal.png
+		material models/mapobjects/jumppad1/diffuse.png models/mapobjects/jumppad1/normal.png models/mapobjects/jumppad1/diffuse_gloss
 	}
 
 	{
@@ -209,13 +214,16 @@ models/mapobjects/jumppad1/diffuse
 models/mapobjects/jumppad1/diffuse_a
 {
 	qer_editorimage models/mapobjects/jumppad1/diffuse_a.png
+	q3map_maxsamplesize 4
+	q3map_minsmooth 1.0
+	q3map_vertexcolor #fcc614
+	surfaceparm nonsolid
 	surfaceparm nomarks
-	surfaceparm nolightmap
 	nopicmip
+	glossExponent 75
 
 	{
-		rgbgen vertex
-		material models/mapobjects/jumppad1/diffuse_a.png models/mapobjects/jumppad1/normal_a.png
+		material models/mapobjects/jumppad1/diffuse_a.png models/mapobjects/jumppad1/normal_a.png models/mapobjects/jumppad1/diffuse_a_gloss
 	}
 
 	{
@@ -252,341 +260,110 @@ models/mapobjects/jumppad/l_ring
 }
 
 
-mapobjects_wdm4_tubes_aluminium
+models/mapobjects/teleporter/teleporter_01
 {
-	qer_editorimage textures/blxbis/aluminium.png
-	q3map_lightmapSampleOffset 8
-	q3map_nonplanar
-
-	{
-		material textures/blxbis/aluminium.png
-	}
-}
-
-mapobjects_wdm4_tubes_aluminium_detail
-{
-	qer_editorimage textures/blxbis/aluminium.png
-	surfaceparm nolightmap
-
-	{
-		rgbgen vertex
-		material textures/blxbis/aluminium.png
-	}
-}
-
-mapobjects_wdm4_tubes_aluminium_flat
-{
-	qer_editorimage textures/blxbis/aluminium.png
-	q3map_shadeangle 0.001
-
-	{
-		material textures/blxbis/aluminium.png
-	}
-}
-
-mapobjects_wdm4_tubes_trim
-{
-	qer_editorimage textures/factory/trim_02.png
-
-	{
-		material textures/factory/trim_02.png
-	}
-}
-
-mapobjects_wdm4_tubes_trim_scroll
-{
-	qer_editorimage textures/factory/trim_02.png
-
-	{
-		material textures/factory/trim_02.png
-		tcMod scroll 0.2 0
-	}
-}
-
-mapobjects_wdm4_tubes_metalgreen
-{
-	qer_editorimage textures/exwsw/eX_surf_metaldarkgrey.png
-
-	{
-		material textures/exwsw/eX_surf_metaldarkgrey.png textures/exwsw/eX_surf_norm.png textures/exwsw/eX_surf_metaldarkgrey_gloss.png
-	}
-}
-
-mapobjects_wdm4_tubes_blueline
-{
-	qer_editorimage textures/factory/trim_03.png
+	qer_editorimage models/mapobjects/teleporter/teleporter_01.png
+	q3map_maxsamplesize 4
+	q3map_minsmooth 1.0
+	surfaceparm nonsolid
 	surfaceparm nomarks
-
-if ! deluxe
-	{
-		map $lightmap
-	}
-
-	{
-		map textures/factory/trim_03.png
-		blendFunc filter
-	}
-
-	{
-		map textures/factory/trim_03_blend.png
-		blendFunc blend
-	}
-endif
-
-if deluxe
-	{
-		material textures/factory/trim_03.png textures/factory/trim_03_norm.png textures/factory/trim_02_verygloss.png textures/factory/trim_03_blend.png
-	}
-endif
-}
-
-mapobjects_wdm4_trim05_blueline
-{
-	qer_editorimage textures/factory/trim_05.png
-	surfaceparm nomarks
-	q3map_lightimage textures/factory/trim_05_blend.png
-	q3map_surfacelight 150
-	q3map_lightsubdivide 72
-	q3map_forceMeta
-
-if ! deluxe
-	{
-		map $lightmap
-	}
-
-	{
-		map textures/factory/trim_05.png
-		blendFunc filter
-	}
-
-	{
-		map textures/factory/trim_05_blend.png
-		blendFunc blend
-	}
-endif
-
-if deluxe
-	{
-		material textures/factory/trim_05.png textures/factory/trim_05_norm.png textures/factory/trim_05_gloss.png textures/factory/trim_05_blend.png
-	}
-endif
-}
-
-mapobjects_wdm4_trim05
-{
-	qer_editorimage textures/factory/trim_05.png
-	surfaceparm nomarks
-
-	{
-		material textures/factory/trim_05.png textures/factory/trim_05_norm.png textures/factory/trim_05_gloss.png
-	}
-}
-
-mapobjects_wdm4_trim05_scroll
-{
-	qer_editorimage textures/factory/trim_05.png
-	surfaceparm nomarks
-
-	{
-		material textures/factory/trim_05.png textures/factory/trim_05_norm.png textures/factory/trim_05_gloss.png
-		tcMod scroll 0 0.75
-	}
-}
-
-mapobjects_wdm4_trim2chaos
-{
-	qer_editorimage textures\cha0s_ws\trim2.png
-	surfaceparm nomarks
-
-	{
-		material textures\cha0s_ws\trim2.png
-		tcMod scroll 0 1
-	}
-}
-
-mapobjects_wdm4_trim2chaos_slow
-{
-	qer_editorimage textures\cha0s_ws\trim2.png
-	surfaceparm nomarks
-
-	{
-		material textures\cha0s_ws\trim2.png
-		tcMod scroll 0 0.1
-	}
-}
-
-mapobjects_wdm4_tubes_blueglow
-{
-	qer_editorimage textures/wsw_flareshalos/trim_glow_blue.png
-	surfaceparm	nolightmap
-	surfaceparm	nomarks
-	surfaceparm	trans
-	surfaceparm	nonsolid
 	nopicmip
+	glossExponent 75
 
 	{
-		detail
-		clampmap textures/wsw_flareshalos/trim_glow_blue.png
-		rgbgen const 0.5 0.5 0.5
-		blendfunc add
-		tcmod scroll 0.002 0
+		material models/mapobjects/teleporter/teleporter_01.png
+	}
+	{
+		map models/mapobjects/teleporter/teleporter_01_shine.png
+		blendFunc GL_ONE GL_ONE
+		rgbGen wave sin .5 .4 0 .3
 	}
 }
 
-mapobjects_wdm4_ice_axisz
+models/mapobjects/teleporter/teleporter_01_a
 {
-	qer_editorimage textures/blxbis/ice_01.png
-	q3map_lightimage textures/blxbis/ice_01.png
-	surfaceparm slick
+	qer_editorimage models/mapobjects/teleporter/teleporter_01_a.png
+	q3map_maxsamplesize 4
+	q3map_minsmooth 1.0
+	surfaceparm nonsolid
 	surfaceparm nomarks
-	q3map_surfacelight 400
-	q3map_lightsubdivide 72
-	q3map_lightmapaxis z
-	q3map_forceMeta
-	q3map_nonplanar
-	q3map_bounceScale 0.1
+	nopicmip
+	glossExponent 75
 
 	{
-		map $lightmap
+		material models/mapobjects/teleporter/teleporter_01_a.png
 	}
 	{
-		map textures/blxbis/ice_02.png
-		blendFunc filter
-	}
-	{
-		map textures/blxbis/ice_01.png
-		blendfunc blend
-		rgbGen const ( 0.756863 1 0.756863 )
-		tcMod scroll 0.01 0.02
-	}
-	{
-		map textures/blxbis/ice_01_alpha.png
-		blendfunc blend
-		alphaFunc GT0
+		map models/mapobjects/teleporter/teleporter_01_a_shine.png
+		blendFunc GL_ONE GL_ONE
+		rgbGen wave sin .5 .4 0 .3
 	}
 }
 
-mapobjects_wdm4_ice_grated
+models/mapobjects/teleporter/teleporter_01_b
 {
-	qer_editorimage textures/blxbis/ice_01.png
-	q3map_lightimage textures/blxbis/ice_01.png
-	surfaceparm slick
+	qer_editorimage models/mapobjects/teleporter/teleporter_01_b.png
+	q3map_maxsamplesize 4
+	q3map_minsmooth 1.0
+	surfaceparm nonsolid
 	surfaceparm nomarks
-	q3map_surfacelight 50
-	q3map_lightsubdivide 72
-	q3map_forceMeta
+	nopicmip
+	glossExponent 75
+
+	if textureCubeMap
+	{
+		surroundmap env/televoid/void
+		rgbgen identity
+	}
+	endif
+
+	if ! textureCubeMap
+	{
+		map env/televoid/void_env
+		tcGen environment
+		rgbgen identity
+	}
+	endif
 
 	{
-		map $lightmap
-	}
-	{
-		map textures/blxbis/ice_02.png
-		blendFunc filter
-	}
-	{
-		map textures/blxbis/ice_01.png
+		material models/mapmodels2026/teleporter01/teleporter_01_b.png
 		blendfunc blend
-		rgbGen const ( 0.756863 1 0.756863 )
-		tcMod scroll 0.02 0.04
-	}
-	{
-		map textures/blxbis/ice_01_alpha.png
-		blendfunc blend
-		alphaFunc GT0
-		tcMod scroll 0.01 0.02
 	}
 
 	{
-		map textures/hazelh/grate.png
-		blendfunc blend
-		alphafunc GT0
+		map models/mapmodels2026/teleporter01/teleporter_01_b_shine.png
+		blendFunc GL_ONE GL_ONE
+		rgbGen wave sin .5 .4 0 5
 	}
 }
 
-mapobjects_wdm4_ra_spot
+models/mapobjects/teleporter/teleporter_01_glow
 {
-	qer_editorimage textures/blxbis/ratowerskin1_spot.png
+	qer_editorimage models/mapobjects/teleporter/teleporter_01_glow.png
+	qer_trans 0.5
+	surfaceparm trans
+	surfaceparm nonsolid
 	surfaceparm nomarks
-
-if ! deluxe
-	{
-		map $lightmap
-	}
-
-	{
-		map textures/blxbis/ratowerskin1_spot.png
-		blendFunc filter
-	}
-endif
-
-if deluxe
-	{
-		material textures/blxbis/ratowerskin1_spot.png
-	}
-endif
-
-	{
-		clampmap textures/baxandall/item_indi_1.png
-		blendfunc add
-	}
-	{
-		clampmap textures/baxandall/item_indi_2_green.png
-		blendfunc add
-		tcmod rotate 270
-	}
-	{
-		clampmap textures/baxandall/item_indi_3.png
-		blendfunc add
-		tcmod rotate 180
-		tcmod scale 1 1
-	}
-	{
-		clampmap textures/baxandall/item_indi_4.png
-		blendfunc add
-		tcmod rotate -180
-		tcmod scale 1 1
-	}
-}
-
-mapobjects_wdm4_towerskin1
-{
-	qer_editorimage textures/blxbis/towerskin1.png
-	surfaceparm nomarks
-
-	{
-		material textures/blxbis/towerskin1.png
-	}
-}
-
-mapobjects_wdm4_towerskin2
-{
-	qer_editorimage textures/blxbis/towerskin2.png
-	surfaceparm nomarks
-
-	{
-		material textures/blxbis/towerskin2.png
-	}
-}
-
-mapobjects_wdm4_scratches
-{
-	qer_editorimage textures/blxbis/scratches0002_tiled.png
-
-	{
-		material textures/blxbis/scratches0002_tiled.png
-	}
-}
-
-mapobjects_wdm4_wt3_pillar3
-{
-	qer_editorimage textures/blx_wtest3/blx_wt3_pillar3.png
 	surfaceparm nolightmap
-
+	nopicmip
+	cull front
+	
 	{
-		rgbgen vertex
-		material textures/blx_wtest3/blx_wt3_pillar3.png
+		map models/mapmodels2026/teleporter01/teleporter_01_glow.png
+		blendFunc GL_ONE GL_ONE
+		rgbGen wave sin .5 .5 0 .3
+		tcmod scroll 0.02 0
+	}
+	{
+		map models/mapmodels2026/teleporter01/teleporter_01_glow.png
+		blendFunc GL_ONE GL_ONE
+		rgbGen wave sin .5 .5 .3 .3
+		tcmod scroll -0.02 0
 	}
 }
+
+//==================================================
+
 
 mapobjects_leds_iron_frame
 {
@@ -983,98 +760,7 @@ models/mapobjects/lights/coldlight_01a_glass
 }
 
 //==================================================
-models/mapobjects/teleporter/teleporter_01
-{
-	qer_editorimage models/mapobjects/teleporter/teleporter_01.png
-	surfaceparm nomarks
-	surfaceparm nolightmap
-	nopicmip
 
-	{
-		rgbgen vertex
-		material models/mapobjects/teleporter/teleporter_01.png models/mapobjects/teleporter/teleporter_01_norm.png
-	}
-	{
-		map models/mapobjects/teleporter/teleporter_01_shine.png
-		blendFunc GL_ONE GL_ONE
-		rgbGen wave sin .5 .4 0 .3
-	}
-}
-
-models/mapobjects/teleporter/teleporter_01_a
-{
-	qer_editorimage models/mapobjects/teleporter/teleporter_01_a.png
-	surfaceparm nomarks
-	surfaceparm nolightmap
-	nopicmip
-
-	{
-		rgbgen vertex
-		material models/mapobjects/teleporter/teleporter_01_a.png models/mapobjects/teleporter/teleporter_01_a_norm.png
-	}
-	{
-		map models/mapobjects/teleporter/teleporter_01_a_shine.png
-		blendFunc GL_ONE GL_ONE
-		rgbGen wave sin .5 .4 0 .3
-	}
-}
-
-models/mapobjects/teleporter/teleporter_01_b
-{
-	qer_editorimage models/mapobjects/teleporter/teleporter_01_b.png
-	surfaceparm nomarks
-	surfaceparm nolightmap
-	nopicmip
-
-	if textureCubeMap
-	{
-		surroundmap env/televoid/void
-		rgbgen identity
-	}
-	endif
-
-	if ! textureCubeMap
-	{
-		map env/televoid/void_env
-		tcGen environment
-		rgbgen identity
-	}
-	endif
-
-	{
-		rgbgen vertex
-		material models/mapobjects/teleporter/teleporter_01_b.png models/mapobjects/teleporter/teleporter_01_b_norm.png
-		blendfunc blend
-	}
-
-	{
-		map models/mapobjects/teleporter/teleporter_01_b_shine.png
-		blendFunc GL_ONE GL_ONE
-		rgbGen wave sin .5 .4 0 5
-	}
-}
-
-models/mapobjects/teleporter/teleporter_01_glow
-{
-	qer_editorimage models/mapobjects/teleporter/teleporter_01_glow.png
-	qer_trans 0.5
-	surfaceparm trans
-	nopicmip
-	cull front
-	{
-		map models/mapobjects/teleporter/teleporter_01_glow.png
-		blendFunc GL_ONE GL_ONE
-		rgbGen wave sin .5 .5 0 .3
-		tcmod scroll 0.02 0
-	}
-	{
-		map models/mapobjects/teleporter/teleporter_01_glow.png
-		blendFunc GL_ONE GL_ONE
-		rgbGen wave sin .5 .5 .3 .3
-		tcmod scroll -0.02 0
-	}
-}
-//==================================================
 
 models/mapobjects/vehicles/forklift
 {
