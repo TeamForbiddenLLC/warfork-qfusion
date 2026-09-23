@@ -17,6 +17,7 @@ textures/decals/dashed_line_vcolor
 		detail
 		material textures/decals/dashed_line.png textures/decals/paint_line_norm.tga
 		rgbgen vertex
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -36,6 +37,7 @@ textures/decals/trafficline04
 		detail
 		material textures/decals/trafficline04.png textures/decals/paint_line_norm.tga
 		rgbgen vertex
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -55,6 +57,7 @@ textures/decals/trafficline04stripes
 		detail
 		material textures/decals/trafficline04stripes.png textures/decals/paint_line_norm.tga
 		rgbgen vertex
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -74,6 +77,7 @@ textures/decals/trafficline04stripes2
 		detail
 		material textures/decals/trafficline04stripes2.png textures/decals/paint_line_norm.tga
 		rgbgen vertex
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -95,6 +99,7 @@ textures/decals/paint_line
 		detail
 		material textures/decals/paint_line.png textures/decals/paint_line_norm.tga
 		rgbgen vertex
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -115,6 +120,7 @@ textures/decals/paint_line_corner
 		detail
 		material textures/decals/paint_line_corner.png textures/decals/paint_line_norm.tga
 		rgbgen vertex
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -135,6 +141,7 @@ textures/decals/paint_line_stripes
 		detail
 		material textures/decals/paint_line_stripes.png textures/decals/paint_line_norm.tga
 		rgbgen vertex
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -155,6 +162,7 @@ textures/decals/paint_line_smallstripes
 		detail
 		material textures/decals/paint_line_smallstripes.png textures/decals/paint_line_norm.tga
 		rgbgen vertex
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -173,6 +181,7 @@ textures/decals/trafficline04redandwhitestripes2
 	{
 		detail
 		material textures/decals/trafficline04redandwhitestripes2.png
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -196,6 +205,7 @@ textures/decals/plasterbroken01
 	{
 		detail
 		material textures/decals/plasterbroken01.png
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -216,6 +226,7 @@ textures/decals/plasterworn0030
 	{
 		detail
 		map textures/decals/plasterworn0030.png
+		alphagen vertex
 		blendFunc filter
 	}
 }
@@ -234,6 +245,7 @@ textures/decals/leavedead01
 	{
 		detail
 		material textures/decals/leavedead01.png
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -252,6 +264,7 @@ textures/decals/leavesdead01
 	{
 		detail
 		material textures/decals/leavesdead01.png
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -274,6 +287,7 @@ textures/decals/sign_warning01
 	{
 		detail
 		material textures/decals/sign_warning01.png
+		alphagen vertex
 		blendFunc blend
 	}
 }
@@ -292,6 +306,7 @@ textures/decals/sign_up01
 	{
 		detail
 		material textures/decals/sign_up01.png
+		alphagen vertex
 		blendFunc blend
 	}
 }
@@ -332,6 +347,7 @@ textures/decals/b
 	{
 		detail
 		material textures/decals/b.png
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -351,6 +367,7 @@ textures/decals/a
 	{
 		detail
 		material textures/decals/a.png
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -389,6 +406,7 @@ textures/decals/0080
 	{
 		detail
 		map textures/decals/0080.png
+		alphagen vertex
 		blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 	}
 }
@@ -408,6 +426,7 @@ textures/decals/orangearrows
 
 	{
 		map textures/decals/orangearrows.png
+		alphagen vertex
 		blendFunc blend
 	}
 }
@@ -426,6 +445,7 @@ textures/decals/orangearrows_outlined
 
 	{
 		map textures/decals/orangearrows_outlined.png
+		alphagen vertex
 		blendFunc blend
 	}
 }
@@ -487,8 +507,6 @@ textures/decals/kiki
 		detail
 		map textures/decals/kiki.png
 		blendFunc filter
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 	}
 }
 
@@ -510,8 +528,8 @@ textures/decals/graffityPERON32
 	{
 		detail
 		map textures/decals/graffityPERON32.png
-		//blendFunc filter
 		rgbgen const 0.12 0.12 0.12
+		alphagen vertex
 		blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 	}
 }
@@ -550,6 +568,7 @@ textures/decals/graffityTEAMZISSOU32
 	{
 		clampmap textures/decals/graffityTEAMZISSOU32.png
 		rgbgen const 0.15 0.15 0.15
+		alphagen vertex
 		blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 	}
 }
@@ -587,8 +606,6 @@ textures/decals/graffiti_01
 		detail
 		map textures/decals/graffiti_01.png
 		blendFunc filter
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 	}
 }
 
@@ -608,8 +625,6 @@ textures/decals/graffiti_02
 		detail
 		map textures/decals/graffiti_02.png
 		blendFunc filter
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 	}
 }
 
@@ -629,8 +644,6 @@ textures/decals/graffiti_03
 		detail
 		map textures/decals/graffiti_03.png
 		blendFunc filter
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 	}
 }
 
@@ -644,6 +657,7 @@ template_Dirt
 		detail
 		material textures/decals/dirt_$1.png
 		blendfunc blend
+		alphagen vertex
 	}
 }
 
@@ -719,6 +733,7 @@ textures/decals/poster01
 		detail
 		material textures/decals/poster01.png
 		blendfunc blend
+		alphagen vertex
 	}
 }
 
@@ -737,6 +752,7 @@ textures/decals/poster_bobot
 		detail
 		material textures/decals/poster_bobot.png
 		blendfunc blend
+		alphagen vertex
 	}
 }
 
@@ -755,6 +771,7 @@ textures/decals/poster_monada
 		detail
 		material textures/decals/poster_monada.png
 		blendfunc blend
+		alphagen vertex
 	}
 }
 
@@ -774,6 +791,7 @@ textures/decals/poster_padpork
 		detail
 		material textures/decals/poster_padpork.png
 		blendfunc blend
+		alphagen vertex
 	}
 }
 
@@ -792,6 +810,7 @@ textures/decals/poster_smallbunch
 		detail
 		material textures/decals/poster_smallbunch.png
 		blendfunc blend
+		alphagen vertex
 	}
 }
 
@@ -810,6 +829,7 @@ textures/decals/poster_weapons
 		detail
 		material textures/decals/poster_weapons.png
 		blendfunc blend
+		alphagen vertex
 	}
 }
 
@@ -829,6 +849,7 @@ textures/decals/posterbigbobot
 		detail
 		material textures/decals/posterbigbobot.png
 		blendfunc blend
+		alphagen vertex
 	}
 }
 
@@ -847,6 +868,7 @@ textures/decals/posterbigpadpork
 		detail
 		material textures/decals/posterbigpadpork.png
 		blendfunc blend
+		alphagen vertex
 	}
 }
 
@@ -865,6 +887,7 @@ textures/decals/posterbigmonada
 		detail
 		material textures/decals/posterbigmonada.png
 		blendfunc blend
+		alphagen vertex
 	}
 }
 
@@ -883,6 +906,7 @@ textures/decals/posterbigwarsow
 		detail
 		material textures/decals/posterbigwarsow.png
 		blendfunc blend
+		alphagen vertex
 	}
 }
 
@@ -947,9 +971,6 @@ textures/decals/stain001
 		detail
 		map textures/decals/stain001.png
 		blendFunc filter
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
-
 	}
 }
 
@@ -969,9 +990,6 @@ textures/decals/stain002
 		detail
 		map textures/decals/stain002.png
 		blendFunc filter
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
-
 	}
 }
 
@@ -991,9 +1009,6 @@ textures/decals/stain003
 		detail
 		map textures/decals/stain003.png
 		blendFunc filter
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
-
 	}
 }
 
@@ -1013,9 +1028,6 @@ textures/decals/stain004
 		detail
 		map textures/decals/stain004.png
 		blendFunc filter
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
-
 	}
 }
 
@@ -1035,9 +1047,6 @@ textures/decals/stain005
 		detail
 		map textures/decals/stain005.png
 		blendFunc filter
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
-
 	}
 }
 
@@ -1059,8 +1068,6 @@ textures/decals/team_alpha_stain001
 		detail
 		map textures/decals/team_alpha_stain001.png
 		blendFunc add
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 		rgbgen teamcolor 2
 		rgbgen teamColorWave 2 sin 0.25 0 0 0
 
@@ -1083,11 +1090,8 @@ textures/decals/team_alpha_stain002
 		detail
 		map textures/decals/team_alpha_stain002.png
 		blendFunc add
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 		rgbgen teamcolor 2
 		rgbgen teamColorWave 2 sin 0.25 0 0 0
-
 	}
 }
 
@@ -1107,11 +1111,8 @@ textures/decals/team_alpha_stain003
 		detail
 		map textures/decals/team_alpha_stain003.png
 		blendFunc add
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 		rgbgen teamcolor 2
 		rgbgen teamColorWave 2 sin 0.25 0 0 0
-
 	}
 }
 
@@ -1131,11 +1132,8 @@ textures/decals/team_alpha_stain004
 		detail
 		map textures/decals/team_alpha_stain004.png
 		blendFunc add
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 		rgbgen teamcolor 2
 		rgbgen teamColorWave 2 sin 0.25 0 0 0
-
 	}
 }
 
@@ -1155,11 +1153,8 @@ textures/decals/team_alpha_stain005
 		detail
 		map textures/decals/team_alpha_stain005.png
 		blendFunc add
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 		rgbgen teamcolor 2
 		rgbgen teamColorWave 2 sin 0.25 0 0 0
-
 	}
 }
 
@@ -1179,11 +1174,8 @@ textures/decals/team_alpha_stain006
 		detail
 		map textures/decals/team_alpha_stain006.png
 		blendFunc add
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 		rgbgen teamcolor 2
 		rgbgen teamColorWave 2 sin 0.25 0 0 0
-
 	}
 }
 
@@ -1207,11 +1199,8 @@ textures/decals/team_beta_stain001
 		detail
 		map textures/decals/team_beta_stain001.png
 		blendFunc add
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 		rgbgen teamcolor 3
 		rgbgen teamColorWave 3 sin 0.25 0 0 0
-
 	}
 }
 
@@ -1232,11 +1221,8 @@ textures/decals/team_beta_stain002
 		detail
 		map textures/decals/team_beta_stain002.png
 		blendFunc add
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 		rgbgen teamcolor 3
 		rgbgen teamColorWave 3 sin 0.25 0 0 0
-
 	}
 }
 
@@ -1257,11 +1243,8 @@ textures/decals/team_beta_stain003
 		detail
 		map textures/decals/team_beta_stain003.png
 		blendFunc add
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 		rgbgen teamcolor 3
 		rgbgen teamColorWave 3 sin 0.25 0 0 0
-
 	}
 }
 
@@ -1282,11 +1265,8 @@ textures/decals/team_beta_stain004
 		detail
 		map textures/decals/team_beta_stain004.png
 		blendFunc add
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 		rgbgen teamcolor 3
 		rgbgen teamColorWave 3 sin 0.25 0 0 0
-
 	}
 }
 
@@ -1307,11 +1287,8 @@ textures/decals/team_beta_stain005
 		detail
 		map textures/decals/team_beta_stain005.png
 		blendFunc add
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 		rgbgen teamcolor 3
 		rgbgen teamColorWave 3 sin 0.25 0 0 0
-
 	}
 }
 
@@ -1332,11 +1309,8 @@ textures/decals/team_beta_stain006
 		detail
 		map textures/decals/team_beta_stain006.png
 		blendFunc add
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 		rgbgen teamcolor 3
 		rgbgen teamColorWave 3 sin 0.25 0 0 0
-
 	}
 }
 
@@ -1408,6 +1382,7 @@ textures/decals/decal_danger
 	{
 		detail
 		material textures/decals/decal_danger.png
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -1426,6 +1401,7 @@ textures/decals/decal_dirt1
 	{
 		detail
 		material textures/decals/decal_dirt1.png
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -1444,6 +1420,7 @@ textures/decals/decal_dirt2
 	{
 		detail
 		material textures/decals/decal_dirt2.png
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -1463,6 +1440,7 @@ textures/decals/decal_health
 	{
 		detail
 		material textures/decals/decal_health.png
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -1483,7 +1461,7 @@ textures/decals/decal_telesign_left
 		detail
 		material textures/decals/decal_telesign_left.png
 		blendFunc blend // INTENTIONAL: It's opaque but the blendfun disabled depthwritting
-		alphaGen const 1.0
+		alphagen vertex
 	}
 }
 
@@ -1502,7 +1480,7 @@ textures/decals/decal_telesign_right
 		detail
 		material textures/decals/decal_telesign_right.png
 		blendFunc blend // INTENTIONAL: It's opaque but the blendfun disabled depthwritting
-		alphaGen const 1.0
+		alphagen vertex
 	}
 }
 
@@ -1522,6 +1500,7 @@ textures/decals/decal_telesign_boqu
 	{
 		map textures/boqu/decals/tele_decal1.png 
 		rgbgen const 0.9 0.9 0.9
+		alphagen vertex
 		blendFunc blend
 		alphaFunc GE128
 	}
@@ -1542,7 +1521,7 @@ textures/decals/decal_telesign_boqu2_left
 		detail
 		material textures/boqu2/tele_decal2_blue
 		blendFunc blend // INTENTIONAL: It's opaque but the blendfun disabled depthwritting
-		alphaGen const 1.0
+		alphagen vertex
 	}
 }
 
@@ -1561,7 +1540,7 @@ textures/decals/decal_telesign_boqu2_right
 		detail
 		material textures/boqu2/tele_decal1_blue
 		blendFunc blend // INTENTIONAL: It's opaque but the blendfun disabled depthwritting
-		alphaGen const 1.0
+		alphagen vertex
 	}
 }
 
@@ -1579,6 +1558,7 @@ textures/decals/decal_drop
 	{
 		detail
 		material textures/decals/decal_drop.png
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -1616,7 +1596,6 @@ textures/decals/xmarksthespot_decal
 	{
 		detail
 		map textures/decals/xmarksthespot_decal.png
-		//blendFunc filter
 		rgbgen const 0.4 0.4 0.4
 		blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
 	}
@@ -1716,18 +1695,21 @@ textures/decals/infocircle_blend_vc
 		detail
 		clampmap textures/decals/infocircle_parts/infocircle.png
 		rgbgen vertex
+		alphagen vertex
 		blendFunc blend
 	}
 	{
 		detail
 		clampmap textures/decals/infocircle_parts/infocircle_3.png
 		blendFunc GL_SRC_ALPHA GL_ONE
+		alphagen vertex
 		tcmod rotate 150
 	}
 	{
 		detail
 		clampmap textures/decals/infocircle_parts/infocircle_4.png
 		blendFunc GL_SRC_ALPHA GL_ONE
+		alphagen vertex
 		tcmod rotate -150
 	}
 }
@@ -1749,18 +1731,21 @@ textures/decals/infocirclespin_blend_vc
 		detail
 		clampmap textures/decals/infocircle_parts/infocircle_2.png
 		rgbgen vertex
+		alphagen vertex
 		blendFunc blend
 		tcmod rotate 250
 	}
 	{
 		detail
 		clampmap textures/decals/infocircle_parts/infocircle_3.png
+		alphagen vertex
 		blendFunc GL_SRC_ALPHA GL_ONE
 		tcmod rotate 150
 	}
 	{
 		detail
 		clampmap textures/decals/infocircle_parts/infocircle_4.png
+		alphagen vertex
 		blendFunc GL_SRC_ALPHA GL_ONE
 		tcmod rotate -150
 	}
@@ -1790,7 +1775,7 @@ textures/decals/01
 	{
 		detail
 		material textures/scifi_interior/01.png textures/flatnorm.png
-		alphagen const 0.5
+		alphagen vertex
 		rgbgen vertex
 		blendFunc GL_SRC_ALPHA GL_ONE
 	}
@@ -1811,7 +1796,7 @@ textures/decals/02
 	{
 		detail
 		material textures/scifi_interior/02.png textures/flatnorm.png
-		alphagen const 0.5
+		alphagen vertex
 		rgbgen vertex
 		blendFunc GL_SRC_ALPHA GL_ONE
 	}
@@ -1833,7 +1818,7 @@ textures/decals/03
 		detail
 		material textures/scifi_interior/03.png textures/flatnorm.png
 		rgbgen vertex
-		alphagen const 0.5
+		alphagen vertex
 		blendFunc GL_SRC_ALPHA GL_ONE
 	}
 }
@@ -1853,6 +1838,7 @@ textures/decals/covenant1
 	{
 		detail
 		material textures/scifi_interior/covenant1.png textures/flatnorm.png
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -1871,6 +1857,7 @@ textures/decals/covenant2
 	{
 		detail
 		material textures/scifi_interior/covenant2.png textures/flatnorm.png
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -1889,6 +1876,7 @@ textures/decals/decal_arrow_orange
 	{
 		detail
 		material textures/scifi_interior/decal_arrow_orange.png textures/flatnorm.png
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -1907,6 +1895,7 @@ textures/decals/decal_comptext1
 	{
 		detail
 		material textures/scifi_interior/decal_comptext1.png textures/flatnorm.png
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -1925,6 +1914,7 @@ textures/decals/decal_comptext2
 	{
 		detail
 		material textures/scifi_interior/decal_comptext2.png textures/flatnorm.png
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -1943,6 +1933,7 @@ textures/decals/decal_comptext3
 	{
 		detail
 		material textures/scifi_interior/decal_comptext3.png textures/flatnorm.png
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -1961,6 +1952,7 @@ textures/decals/decal_up_grey
 	{
 		detail
 		material textures/scifi_interior/decal_up_grey.png textures/flatnorm.png
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -1979,6 +1971,7 @@ textures/decals/decal_up_orange
 	{
 		detail
 		material textures/scifi_interior/decal_up_orange.png textures/flatnorm.png
+		alphagen vertex
 		blendfunc blend
 	}
 }
@@ -1999,7 +1992,7 @@ textures/decals/out_of_service
 		detail
 		material textures/factory/out_of_service.png textures/flatnorm.png
 		blendFunc blend // INTENTIONAL: It's opaque but the blendfun disabled depthwritting
-		alphaGen const 1.0
+		alphagen vertex
 	}
 }
 

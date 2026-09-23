@@ -790,6 +790,42 @@ models/mapobjects/industrial/barrels/albedo
 	}
 }
 
+
+models/mapobjects/industrial/crates/albedo
+{
+	qer_editorimage models/mapobjects/industrial/crates/albedo
+	//q3map_maxsamplesize 4
+	//q3map_minsmooth 1.5
+	glossExponent 80
+	//glossIntensity 0.75
+
+	{
+		material models/mapobjects/industrial/crates/albedo
+	}
+}
+
+
+models/mapobjects/industrial/crates/albedovc
+{
+	qer_editorimage models/mapobjects/industrial/crates/albedovc
+	//q3map_maxsamplesize 4
+	//q3map_minsmooth 1.5
+	glossExponent 100
+	glossIntensity 0.5
+	q3map_vertexcolor 0.858824 0.619608 0.203922
+
+	{
+		material models/mapobjects/industrial/crates/albedo models/mapobjects/industrial/crates/albedo_norm  models/mapobjects/industrial/crates/albedo_gloss 
+	}
+	{
+		material models/mapobjects/industrial/crates/albedo_color models/mapobjects/industrial/crates/albedo_norm  models/mapobjects/industrial/crates/albedo_gloss 
+		rgbgen vertex
+		blendfunc blend
+	}
+}
+
+
+
 //==================================================
 
 

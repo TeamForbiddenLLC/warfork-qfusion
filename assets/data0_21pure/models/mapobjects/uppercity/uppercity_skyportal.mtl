@@ -1,0 +1,81 @@
+# Exported by Gskelview
+
+newmtl MD3_[default][Ground]
+Ka 1.0 1.0 1.0
+Kd 1 1 1
+Ks 0.0 0.0 0.0
+Ns 10.0
+illum 2
+map_Kd Ground Roads
+
+newmtl MD3_[default][Background]
+Ka 1.0 1.0 1.0
+Kd 1 1 1
+Ks 0.0 0.0 0.0
+Ns 10.0
+illum 2
+map_Kd BG_Lighting.jpg
+
+newmtl MD3_[default][B2]
+Ka 1.0 1.0 1.0
+Kd 1 1 1
+Ks 0.0 0.0 0.0
+Ns 10.0
+illum 2
+map_Kd B4_01.png
+
+newmtl MD3_[default][B1]
+Ka 1.0 1.0 1.0
+Kd 1 1 1
+Ks 0.0 0.0 0.0
+Ns 10.0
+illum 2
+map_Kd B3_01.png
+
+newmtl MD3_[default][Towers]
+Ka 1.0 1.0 1.0
+Kd 1 1 1
+Ks 0.0 0.0 0.0
+Ns 10.0
+illum 2
+map_Kd B10-11_01.jpg
+
+newmtl MD3_[default][B3]
+Ka 1.0 1.0 1.0
+Kd 1 1 1
+Ks 0.0 0.0 0.0
+Ns 10.0
+illum 2
+map_Kd B5_01.jpg
+
+newmtl MD3_[default][B5]
+Ka 1.0 1.0 1.0
+Kd 1 1 1
+Ks 0.0 0.0 0.0
+Ns 10.0
+illum 2
+map_Kd B9_01
+
+newmtl MD3_[default][B4]
+Ka 1.0 1.0 1.0
+Kd 1 1 1
+Ks 0.0 0.0 0.0
+Ns 10.0
+illum 2
+map_Kd B7-8_01
+
+newmtl MD3_[default][City Spots]
+Ka 1.0 1.0 1.0
+Kd 1 1 1
+Ks 0.0 0.0 0.0
+Ns 10.0
+illum 2
+map_Kd Gradient
+
+newmtl MD3_[default][Ground Roads Layer01]
+Ka 1.0 1.0 1.0
+Kd 1 1 1
+Ks 0.0 0.0 0.0
+Ns 10.0
+illum 2
+map_Kd Ground Roads
