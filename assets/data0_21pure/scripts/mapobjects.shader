@@ -195,18 +195,19 @@ models/mapobjects/jumppad1/diffuse
 	qer_editorimage models/mapobjects/jumppad1/diffuse.png
 	q3map_maxsamplesize 4
 	q3map_minsmooth 2.0
-	q3map_vertexcolor #fcc614
+	q3map_vertexcolor 0.988235 0.945098 0.482353
 	surfaceparm nonsolid
 	surfaceparm nomarks
 	nopicmip
 	glossExponent 75
 
 	{
-		material models/mapobjects/jumppad1/diffuse.png models/mapobjects/jumppad1/normal.png models/mapobjects/jumppad1/diffuse_gloss
+		material models/mapobjects/jumppad1/diffuse
 	}
 
 	{
 		animmap 8 models/mapobjects/jumppad1/glow_01.png models/mapobjects/jumppad1/glow_02.png  models/mapobjects/jumppad1/glow_03.png 
+		rgbgen vertex
 		blendfunc add
 	}
 }
@@ -215,15 +216,15 @@ models/mapobjects/jumppad1/diffuse_a
 {
 	qer_editorimage models/mapobjects/jumppad1/diffuse_a.png
 	q3map_maxsamplesize 4
-	q3map_minsmooth 1.0
-	q3map_vertexcolor #fcc614
+	q3map_minsmooth 2.0
+	q3map_vertexcolor 0.988235 0.945098 0.482353
 	surfaceparm nonsolid
 	surfaceparm nomarks
 	nopicmip
 	glossExponent 75
 
 	{
-		material models/mapobjects/jumppad1/diffuse_a.png models/mapobjects/jumppad1/normal_a.png models/mapobjects/jumppad1/diffuse_a_gloss
+		material models/mapobjects/jumppad1/diffuse_a
 	}
 
 	{
@@ -759,6 +760,36 @@ models/mapobjects/lights/coldlight_01a_glass
 	}
 }
 
+
+//============= INDUSTRIAL ========================
+
+models/mapobjects/industrial/barrel_1/albedo
+{
+	qer_editorimage models/mapobjects/industrial/barrel_1/albedo
+	//q3map_maxsamplesize 4
+	//q3map_minsmooth 1.5
+	glossExponent 80
+	//glossIntensity 2
+
+	{
+		material models/mapobjects/industrial/barrel_1/albedo
+	}
+}
+
+
+models/mapobjects/industrial/barrels/albedo
+{
+	qer_editorimage models/mapobjects/industrial/barrels/albedo
+	//q3map_maxsamplesize 4
+	//q3map_minsmooth 1.5
+	glossExponent 90
+	glossIntensity 2
+
+	{
+		material models/mapobjects/industrial/barrels/albedo
+	}
+}
+
 //==================================================
 
 
@@ -789,3 +820,6 @@ models/mapobjects/orb/orb
 		rgbgen vertex
 	}
 }
+
+
+

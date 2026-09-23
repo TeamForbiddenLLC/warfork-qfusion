@@ -117,16 +117,48 @@ textures/concrete/roadbarrier_concrete
 	}
 }
 
-textures/concrete/concretebunker0068_nobump
+textures/concrete/concretebunker0068
 {
 	qer_editorimage textures/concrete/concretebunker0068
+	//q3map_chamfer_concavewidth 0.5
+	q3map_deluxe_minangle 24
 
 	{
-		map $lightmap
-		rgbGen identity
-	}
-	{
-		map textures/concrete/concretebunker0068
-		blendFunc filter
+		material textures/concrete/concretebunker0068
 	}
 }
+
+textures/concrete/concret7
+{
+	qer_editorimage textures/concrete/concret7
+	//q3map_chamfer_concavewidth 0.5
+	q3map_deluxe_minangle 24
+
+	{
+		material textures/concrete/concret7
+	}
+}
+
+textures/concrete/baseblue0060
+{
+	qer_editorimage textures/concrete/concretecold01
+	q3map_chamfer_concavewidth 0.5
+
+	{
+		material textures/concrete/concretecold01 textures/concrete/concretecold01_norm
+		tcMod scale 3 3
+	}
+}
+
+textures/concrete/concrete2
+{
+	// this is the grainy one
+	qer_editorimage textures/concrete/concrete2
+	q3map_chamfer_concavewidth 0.5
+
+	{
+		material textures/concrete/concrete2
+		tcMod scale 2 2
+	}
+}
+

@@ -1,4 +1,500 @@
 
+
+// LINES
+
+textures/decals/dashed_line_vcolor
+{
+	qer_editorimage textures/decals/dashed_line.png
+	qer_trans 0.5
+	surfaceparm nomarks
+	surfaceparm nodlight
+	q3map_vertexcolor 255 255 255
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+
+	{
+		detail
+		material textures/decals/dashed_line.png textures/decals/paint_line_norm.tga
+		rgbgen vertex
+		blendfunc blend
+	}
+}
+
+textures/decals/trafficline04
+{
+	qer_editorimage textures/decals/trafficline04.png
+	qer_trans 0.5
+	surfaceparm nomarks
+	surfaceparm nodlight
+	q3map_vertexcolor 255 255 255
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+
+	{
+		detail
+		material textures/decals/trafficline04.png textures/decals/paint_line_norm.tga
+		rgbgen vertex
+		blendfunc blend
+	}
+}
+
+textures/decals/trafficline04stripes
+{
+	qer_editorimage textures/decals/trafficline04stripes.png
+	qer_trans 0.5
+	q3map_vertexcolor 255 255 255
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+
+	{
+		detail
+		material textures/decals/trafficline04stripes.png textures/decals/paint_line_norm.tga
+		rgbgen vertex
+		blendfunc blend
+	}
+}
+
+textures/decals/trafficline04stripes2
+{
+	qer_editorimage textures/decals/trafficline04stripes2.png
+	qer_trans 0.5
+	q3map_vertexcolor 255 255 255
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+
+	{
+		detail
+		material textures/decals/trafficline04stripes2.png textures/decals/paint_line_norm.tga
+		rgbgen vertex
+		blendfunc blend
+	}
+}
+
+
+textures/decals/paint_line
+{
+	qer_editorimage textures/decals/paint_line.png
+	qer_trans 0.5
+	surfaceparm nomarks
+	surfaceparm nodlight
+	q3map_vertexcolor 255 255 255
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/decals/paint_line.png textures/decals/paint_line_norm.tga
+		rgbgen vertex
+		blendfunc blend
+	}
+}
+
+textures/decals/paint_line_corner
+{
+	qer_editorimage textures/decals/paint_line_corner.png
+	qer_trans 0.5
+	surfaceparm nomarks
+	surfaceparm nodlight
+	q3map_vertexcolor 255 255 255
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/decals/paint_line_corner.png textures/decals/paint_line_norm.tga
+		rgbgen vertex
+		blendfunc blend
+	}
+}
+
+textures/decals/paint_line_stripes
+{
+	qer_editorimage textures/decals/paint_line_stripes.png
+	qer_trans 0.5
+	q3map_vertexcolor 255 255 255
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/decals/paint_line_stripes.png textures/decals/paint_line_norm.tga
+		rgbgen vertex
+		blendfunc blend
+	}
+}
+
+textures/decals/paint_line_smallstripes
+{
+	qer_editorimage textures/decals/paint_line_smallstripes.png
+	qer_trans 0.5
+	q3map_vertexcolor 255 255 255
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/decals/paint_line_smallstripes.png textures/decals/paint_line_norm.tga
+		rgbgen vertex
+		blendfunc blend
+	}
+}
+
+textures/decals/trafficline04redandwhitestripes2
+{
+	qer_editorimage textures/decals/trafficline04redandwhitestripes2.png
+	qer_trans 0.8
+	surfaceparm nomarks
+	//surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/decals/trafficline04redandwhitestripes2.png
+		blendfunc blend
+	}
+}
+
+
+// OLDTOWN DECONATION
+
+
+textures/decals/plasterbroken01
+{	
+	qer_editorimage textures/decals/plasterbroken01.png
+	qer_trans 0.6
+	surfaceparm nomarks
+	//surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+	offsetMappingScale 1
+
+	{
+		detail
+		material textures/decals/plasterbroken01.png
+		blendfunc blend
+	}
+}
+
+textures/decals/plasterworn0030
+{	
+	qer_editorimage textures/decals/plasterworn0030.png
+	qer_trans 0.3
+	surfaceparm nolightmap
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+	q3map_bounceScale 0
+
+	{
+		detail
+		map textures/decals/plasterworn0030.png
+		blendFunc filter
+	}
+}
+
+textures/decals/leavedead01
+{	
+	qer_editorimage textures/decals/leavedead01.png
+	qer_trans 0.6
+	surfaceparm nomarks
+	//surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/decals/leavedead01.png
+		blendfunc blend
+	}
+}
+
+textures/decals/leavesdead01
+{	
+	qer_editorimage textures/decals/leavesdead01.png
+	qer_trans 0.6
+	surfaceparm nomarks
+	//surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/decals/leavesdead01.png
+		blendfunc blend
+	}
+}
+
+
+// MISC
+
+
+textures/decals/sign_warning01
+{	
+	qer_editorimage textures/decals/sign_warning01.png
+	qer_trans 0.6
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/decals/sign_warning01.png
+		blendFunc blend
+	}
+}
+
+textures/decals/sign_up01
+{	
+	qer_editorimage textures/decals/sign_up01.png
+	qer_trans 0.6
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/decals/sign_up01.png
+		blendFunc blend
+	}
+}
+
+
+
+textures/decals/evilface_stamp
+{
+	qer_editorimage textures/decals/evilface_stamp.png
+	nopicmip
+	surfaceparm trans
+	surfaceparm nonsolid
+	surfaceparm nolightmap
+	polygonOffset
+	qer_trans 1
+
+	{
+		detail
+		map textures/decals/evilface_stamp.png
+		rgbGen identity
+		blendfunc add
+		rgbgen teamcolor 2
+	}
+}
+
+
+textures/decals/b
+{
+	qer_editorimage textures/decals/b.png
+	qer_trans 0.8
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/decals/b.png
+		blendfunc blend
+	}
+}
+
+
+textures/decals/a
+{
+	qer_editorimage textures/decals/a.png
+	qer_trans 0.8
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/decals/a.png
+		blendfunc blend
+	}
+}
+
+textures/decals/thewall
+{	
+	qer_editorimage textures/decals/thewall.png
+	qer_trans 0.8
+	surfaceparm nolightmap
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		map textures/decals/thewall.png
+		blendFunc filter
+	}
+}
+
+textures/decals/0080
+{	
+	qer_editorimage textures/decals/0080.png
+	qer_trans 0.3
+	surfaceparm nolightmap
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		map textures/decals/0080.png
+		blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
+	}
+}
+
+
+textures/decals/orangearrows
+{	
+	qer_editorimage textures/decals/orangearrows.png
+	qer_trans 0.6
+	surfaceparm nolightmap
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		map textures/decals/orangearrows.png
+		blendFunc blend
+	}
+}
+
+textures/decals/orangearrows_outlined
+{	
+	qer_editorimage textures/decals/orangearrows_outlined.png
+	qer_trans 0.6
+	surfaceparm nolightmap
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		map textures/decals/orangearrows_outlined.png
+		blendFunc blend
+	}
+}
+
+textures/decals/sign_circuit01
+{
+	qer_editorimage textures/decals/sign_circuit01.png
+	qer_trans 0.3
+	surfaceparm nolightmap
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		map textures/decals/sign_circuit01.png
+		rgbgen const 0.85 0.85 0.85
+		blendFunc add
+	}
+}
+
+textures/decals/sign_circuit02
+{
+	qer_editorimage textures/decals/sign_circuit02.png
+	qer_trans 0.3
+	surfaceparm nolightmap
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		map textures/decals/sign_circuit02.png
+		rgbgen const 0.85 0.85 0.85
+		blendFunc add
+	}
+}
+
+
+textures/decals/kiki
+{	
+	qer_editorimage textures/decals/kiki.png
+	qer_trans 0.3
+	surfaceparm nolightmap
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		map textures/decals/kiki.png
+		blendFunc filter
+		//rgbgen const 0.1 0.1 0.1
+		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
+	}
+}
+
+
+// GRAFFITI
+
 textures/decals/graffityPERON32
 {	
 	qer_editorimage textures/decals/graffityPERON32.png
@@ -138,102 +634,9 @@ textures/decals/graffiti_03
 	}
 }
 
-textures/decals/kiki
-{	
-	qer_editorimage textures/decals/kiki.png
-	qer_trans 0.3
-	surfaceparm nolightmap
-	surfaceparm nomarks
-	surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
 
-	{
-		detail
-		map textures/decals/kiki.png
-		blendFunc filter
-		//rgbgen const 0.1 0.1 0.1
-		//blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
-	}
-}
+// DIRT
 
-textures/decals/orangearrows
-{	
-	qer_editorimage textures/decals/orangearrows.png
-	qer_trans 0.6
-	surfaceparm nolightmap
-	surfaceparm nomarks
-	surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		map textures/decals/orangearrows.png
-		blendFunc blend
-	}
-}
-
-textures/decals/orangearrows_outlined
-{	
-	qer_editorimage textures/decals/orangearrows_outlined.png
-	qer_trans 0.6
-	surfaceparm nolightmap
-	surfaceparm nomarks
-	surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		map textures/decals/orangearrows_outlined.png
-		blendFunc blend
-	}
-}
-
-textures/decals/sign_circuit01
-{
-	qer_editorimage textures/decals/sign_circuit01.png
-	qer_trans 0.3
-	surfaceparm nolightmap
-	surfaceparm nomarks
-	surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		map textures/decals/sign_circuit01.png
-		rgbgen const 0.85 0.85 0.85
-		blendFunc add
-	}
-}
-
-textures/decals/sign_circuit02
-{
-	qer_editorimage textures/decals/sign_circuit02.png
-	qer_trans 0.3
-	surfaceparm nolightmap
-	surfaceparm nomarks
-	surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		map textures/decals/sign_circuit02.png
-		rgbgen const 0.85 0.85 0.85
-		blendFunc add
-	}
-}
 
 template_Dirt
 {
@@ -296,41 +699,9 @@ textures/decals/dirt_scratch_02
 	template template_Dirt scratch_02
 }
 
-textures/decals/sign_warning01
-{	
-	qer_editorimage textures/decals/sign_warning01.png
-	qer_trans 0.6
-	surfaceparm nomarks
-	surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
 
-	{
-		detail
-		material textures/decals/sign_warning01.png
-		blendFunc blend
-	}
-}
 
-textures/decals/sign_up01
-{	
-	qer_editorimage textures/decals/sign_up01.png
-	qer_trans 0.6
-	surfaceparm nomarks
-	surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/sign_up01.png
-		blendFunc blend
-	}
-}
+// POSTERS
 
 
 textures/decals/poster01
@@ -515,449 +886,7 @@ textures/decals/posterbigwarsow
 	}
 }
 
-
-textures/decals/plasterbroken01
-{	
-	qer_editorimage textures/decals/plasterbroken01.png
-	qer_trans 0.6
-	surfaceparm nomarks
-	//surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-	offsetMappingScale 4
-
-	{
-		detail
-		material textures/decals/plasterbroken01.png
-		blendfunc blend
-	}
-}
-
-textures/decals/plasterworn0030
-{	
-	qer_editorimage textures/decals/plasterworn0030.png
-	qer_trans 0.3
-	surfaceparm nolightmap
-	surfaceparm nomarks
-	surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-	q3map_bounceScale 0
-
-	{
-		detail
-		map textures/decals/plasterworn0030.png
-		blendFunc filter
-	}
-}
-
-textures/decals/leavedead01
-{	
-	qer_editorimage textures/decals/leavedead01.png
-	qer_trans 0.6
-	surfaceparm nomarks
-	//surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/leavedead01.png
-		blendfunc blend
-	}
-}
-
-textures/decals/leavesdead01
-{	
-	qer_editorimage textures/decals/leavesdead01.png
-	qer_trans 0.6
-	surfaceparm nomarks
-	//surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/leavesdead01.png
-		blendfunc blend
-	}
-}
-
-textures/decals/trafficline04
-{
-	qer_editorimage textures/decals/trafficline04.png
-	qer_trans 0.8
-	surfaceparm nomarks
-	//surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/trafficline04.png
-		blendfunc blend
-	}
-}
-
-textures/decals/trafficline04b
-{
-	qer_editorimage textures/decals/trafficline04b.png
-	qer_trans 0.8
-	surfaceparm nomarks
-	//surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/trafficline04b.png
-		blendfunc blend
-	}
-}
-
-textures/decals/trafficline04stripes
-{
-	qer_editorimage textures/decals/trafficline04stripes.png
-	qer_trans 0.8
-	surfaceparm nomarks
-	//surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/trafficline04stripes.png
-		blendfunc blend
-	}
-}
-
-textures/decals/trafficline04stripes2
-{
-	qer_editorimage textures/decals/trafficline04stripes2.png
-	qer_trans 0.8
-	surfaceparm nomarks
-	//surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/trafficline04stripes2.png
-		blendfunc blend
-	}
-}
-
-textures/decals/trafficline04yellow
-{
-	qer_editorimage textures/decals/trafficline04yellow.png
-	qer_trans 0.8
-	surfaceparm nomarks
-	//surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/trafficline04yellow.png
-		blendfunc blend
-	}
-}
-
-textures/decals/trafficline04byellow
-{
-	qer_editorimage textures/decals/trafficline04byellow.png
-	qer_trans 0.8
-	surfaceparm nomarks
-	//surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/trafficline04byellow.png
-		blendfunc blend
-	}
-}
-
-textures/decals/trafficline04yellowstripes
-{
-	qer_editorimage textures/decals/trafficline04yellowstripes.png
-	qer_trans 0.8
-	surfaceparm nomarks
-	//surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/trafficline04yellowstripes.png
-		blendfunc blend
-	}
-}
-
-textures/decals/trafficline04yellowstripes2
-{
-	qer_editorimage textures/decals/trafficline04yellowstripes2.png
-	qer_trans 0.8
-	surfaceparm nomarks
-	//surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/trafficline04yellowstripes2.png
-		blendfunc blend
-	}
-}
-
-textures/decals/trafficline04red
-{
-	qer_editorimage textures/decals/trafficline04red.png
-	qer_trans 0.8
-	surfaceparm nomarks
-	//surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/trafficline04red.png
-		blendfunc blend
-	}
-}
-
-textures/decals/trafficline04redstripes
-{
-	qer_editorimage textures/decals/trafficline04redstripes.png
-	qer_trans 0.8
-	surfaceparm nomarks
-	//surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/trafficline04redstripes.png
-		blendfunc blend
-	}
-}
-
-textures/decals/trafficline04redstripes2
-{
-	qer_editorimage textures/decals/trafficline04redstripes2.png
-	qer_trans 0.8
-	surfaceparm nomarks
-	//surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/trafficline04redstripes2.png
-		blendfunc blend
-	}
-}
-
-textures/decals/trafficline04redandwhitestripes2
-{
-	qer_editorimage textures/decals/trafficline04redandwhitestripes2.png
-	qer_trans 0.8
-	surfaceparm nomarks
-	//surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/trafficline04redandwhitestripes2.png
-		blendfunc blend
-	}
-}
-
-
-textures/decals/trafficline04orange
-{
-	qer_editorimage textures/decals/trafficline04orange.png
-	qer_trans 0.8
-	surfaceparm nomarks
-	//surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/trafficline04orange.png
-		blendfunc blend
-	}
-}
-
-textures/decals/trafficline04orangestripes
-{
-	qer_editorimage textures/decals/trafficline04orangestripes.png
-	qer_trans 0.8
-	surfaceparm nomarks
-	//surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/trafficline04orangestripes.png
-		blendfunc blend
-	}
-}
-
-textures/decals/trafficline04orangestripes2
-{
-	qer_editorimage textures/decals/trafficline04orangestripes2.png
-	qer_trans 0.8
-	surfaceparm nomarks
-	//surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/trafficline04orangestripes2.png
-		blendfunc blend
-	}
-}
-
-textures/decals/evilface_stamp
-{
-	qer_editorimage textures/decals/evilface_stamp.png
-	nopicmip
-	surfaceparm trans
-	surfaceparm nonsolid
-	surfaceparm nolightmap
-	polygonOffset
-	qer_trans 1
-
-	{
-		detail
-		map textures/decals/evilface_stamp.png
-		rgbGen identity
-		blendfunc add
-		rgbgen teamcolor 2
-	}
-}
-
-
-textures/decals/b
-{
-	qer_editorimage textures/decals/b.png
-	qer_trans 0.8
-	surfaceparm nomarks
-	surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/b.png
-		blendfunc blend
-	}
-}
-
-
-textures/decals/a
-{
-	qer_editorimage textures/decals/a.png
-	qer_trans 0.8
-	surfaceparm nomarks
-	surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/a.png
-		blendfunc blend
-	}
-}
-
-textures/decals/thewall
-{	
-	qer_editorimage textures/decals/thewall.png
-	qer_trans 0.8
-	surfaceparm nolightmap
-	surfaceparm nomarks
-	surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		map textures/decals/thewall.png
-		blendFunc filter
-	}
-}
-
-textures/decals/0080
-{	
-	qer_editorimage textures/decals/0080.png
-	qer_trans 0.3
-	surfaceparm nolightmap
-	surfaceparm nomarks
-	surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		map textures/decals/0080.png
-		blendFunc GL_SRC_ALPHA GL_ONE // blendfunc add the alphamasked part only
-	}
-}
-
-
+// TEAM BASED
 
 
 textures/decals/alpha
@@ -1544,7 +1473,7 @@ textures/decals/decal_telesign_left
 	qer_editorimage textures/decals/decal_telesign_left.png
 	qer_trans 0.6
 	surfaceparm nomarks
-	//surfaceparm nodlight
+	surfaceparm nodlight
 	surfaceparm nonsolid
 	surfaceparm trans
 	polygonOffset
@@ -1553,6 +1482,8 @@ textures/decals/decal_telesign_left
 	{
 		detail
 		material textures/decals/decal_telesign_left.png
+		blendFunc blend // INTENTIONAL: It's opaque but the blendfun disabled depthwritting
+		alphaGen const 1.0
 	}
 }
 
@@ -1561,7 +1492,7 @@ textures/decals/decal_telesign_right
 	qer_editorimage textures/decals/decal_telesign_right.png
 	qer_trans 0.6
 	surfaceparm nomarks
-	//surfaceparm nodlight
+	surfaceparm nodlight
 	surfaceparm nonsolid
 	surfaceparm trans
 	polygonOffset
@@ -1570,6 +1501,67 @@ textures/decals/decal_telesign_right
 	{
 		detail
 		material textures/decals/decal_telesign_right.png
+		blendFunc blend // INTENTIONAL: It's opaque but the blendfun disabled depthwritting
+		alphaGen const 1.0
+	}
+}
+
+
+textures/decals/decal_telesign_boqu
+{
+    qer_editorimage textures/boqu/decals/tele_decal1.png
+    surfaceparm nolightmap
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+	detail
+	
+	{
+		map textures/boqu/decals/tele_decal1.png 
+		rgbgen const 0.9 0.9 0.9
+		blendFunc blend
+		alphaFunc GE128
+	}
+}
+
+textures/decals/decal_telesign_boqu2_left
+{	
+	qer_editorimage textures/boqu2/tele_decal2_blue
+	qer_trans 0.6
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/boqu2/tele_decal2_blue
+		blendFunc blend // INTENTIONAL: It's opaque but the blendfun disabled depthwritting
+		alphaGen const 1.0
+	}
+}
+
+textures/decals/decal_telesign_boqu2_right
+{	
+	qer_editorimage textures/boqu2/tele_decal1_blue
+	qer_trans 0.6
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/boqu2/tele_decal1_blue
+		blendFunc blend // INTENTIONAL: It's opaque but the blendfun disabled depthwritting
+		alphaGen const 1.0
 	}
 }
 
@@ -2006,7 +1998,8 @@ textures/decals/out_of_service
 	{
 		detail
 		material textures/factory/out_of_service.png textures/flatnorm.png
-		blendfunc blend
+		blendFunc blend // INTENTIONAL: It's opaque but the blendfun disabled depthwritting
+		alphaGen const 1.0
 	}
 }
 

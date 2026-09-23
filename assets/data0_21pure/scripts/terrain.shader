@@ -14,10 +14,7 @@ textures/terrain/drymud1
 textures/terrain/sand
 {
 	qer_editorimage textures/terrain/sand.png
-	q3map_deluxe_minangle 21
-	q3map_chamfer_convexwidth 4
-	q3map_chamfer_concavewidth 4
-	offsetMappingScale 3
+	offsetMappingScale 2
 	surfaceparm dust
 
 	{
@@ -32,6 +29,7 @@ textures/terrain/rocks001_512x512
 	q3map_deluxe_minangle 32
 	q3map_chamfer_convexwidth 4
 	q3map_chamfer_concavewidth 4
+	offsetmappingscale 2
 	surfaceparm dust
 
 	{
@@ -45,6 +43,7 @@ textures/terrain/rocks002_512x512
 	q3map_deluxe_minangle 32
 	q3map_chamfer_convexwidth 4
 	q3map_chamfer_concavewidth 4
+	offsetmappingscale 3
 	surfaceparm dust
 
 	{
@@ -66,7 +65,3 @@ textures/terrain/rockwall01
 		material textures/terrain/rockwall01_1024x1024.png textures/terrain/rockwall01_1024x1024_norm.png
 	}
 }
-
-
-
-

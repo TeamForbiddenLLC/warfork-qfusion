@@ -1,0 +1,9 @@
+# Exported by Gskelview
+
+newmtl jumppad1_c:MD3__default__Jumppad1__0
+Ka 1.0 1.0 1.0
+Kd 0 0 0
+Ks 0.0 0.0 0.0
+Ns 10.0
+illum 2
+map_Kd models/mapobjects/jumppad1/diffuse.png
