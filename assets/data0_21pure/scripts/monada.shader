@@ -26,6 +26,7 @@ models/players/monada/monada_haut_fb
 {
 	nopicmip
 	cull front
+	nofog
 
 	{
 		// <base> <celshade> [diffuse] [decal] [entitydecal] [stripes] [celllight]
@@ -38,6 +39,7 @@ models/players/monada/monada_bas_fb
 {
 	nopicmip
 	cull front
+	nofog
 
 	{
 		// <base> <celshade> [diffuse] [decal] [entitydecal] [stripes] [celllight]

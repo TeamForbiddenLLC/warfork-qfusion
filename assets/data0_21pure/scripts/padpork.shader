@@ -19,6 +19,7 @@ models/players/padpork/fullbright
 {
 	nopicmip
 	cull front
+	nofog
 
 	{
 		celshade $whiteImage env/cellbright models/players/padpork/padpork_diff_fb.png - - - env/celllight

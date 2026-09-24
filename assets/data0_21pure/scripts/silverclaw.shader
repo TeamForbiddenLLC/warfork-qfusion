@@ -16,6 +16,7 @@ models/players/silverclaw/silverclaw_fb
 {
 	nopicmip
 	cull front
+	nofog
 
 	{
 		// <base> <celshade> [diffuse] [decal] [entitydecal] [stripes] [celllight]

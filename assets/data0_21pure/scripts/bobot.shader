@@ -40,6 +40,7 @@ models/players/bobot/bobot_head_fb
 {
 	nopicmip
 	cull front
+	nofog
 
 	{
 		// <base> <celshade> [diffuse] [decal] [entitydecal] [stripes] [celllight]
@@ -52,6 +53,7 @@ models/players/bobot/bobot_torso_fb
 {
 	nopicmip
 	cull front
+	nofog
 
 	{
 		// <base> <celshade> [diffuse] [decal] [entitydecal] [stripes] [celllight]
@@ -64,6 +66,7 @@ models/players/bobot/bobot_legs_fb
 {
 	nopicmip
 	cull front
+	nofog
 
 	{
 		// <base> <celshade> [diffuse] [decal] [entitydecal] [stripes] [celllight]

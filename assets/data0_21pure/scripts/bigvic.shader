@@ -40,6 +40,7 @@ models/players/bigvic/bigvic_head_fb
 {
 	nopicmip
 	cull front
+	nofog
 
 	{
 		celshade $whiteImage env/cellbright models/players/bigvic/vic_head_fb.png - - - env/celllight
@@ -51,6 +52,7 @@ models/players/bigvic/bigvic_torso_fb
 {
 	nopicmip
 	cull front
+	nofog
 
 	{
 		celshade $whiteImage env/cellbright models/players/bigvic/vic_torso_fb.png - - - env/celllight
@@ -62,6 +64,7 @@ models/players/bigvic/bigvic_legs_fb
 {
 	nopicmip
 	cull front
+	nofog
 
 	{
 		// <base> <celshade> [diffuse] [decal] [entitydecal] [stripes] [celllight]

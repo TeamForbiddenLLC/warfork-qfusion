@@ -56,6 +56,7 @@ models/players/viciious/viciious_fb
 {
 	nopicmip
 	cull front
+	nofog
 
 	{
 		// <base> <celshade> [diffuse] [decal] [entitydecal] [stripes] [celllight]
@@ -68,6 +69,7 @@ models/players/viciious/u_chrome_fb
 {
 	nopicmip
 	cull front
+	nofog
 
 	{
 		// <base> <celshade> [diffuse] [decal] [entitydecal] [stripes] [celllight]
@@ -80,6 +82,7 @@ models/players/viciious/h_chrome_fb
 {
 	nopicmip
 	cull front
+	nofog
 
 	{
 		// <base> <celshade> [diffuse] [decal] [entitydecal] [stripes] [celllight]
