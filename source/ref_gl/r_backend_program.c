@@ -1128,9 +1128,9 @@ static void RB_RenderMeshGLSL_Material( const shaderpass_t *pass, r_glslfeat_t p
 									VectorCopy( mapHue, gridHue );
 
 								VectorSet( mixHue,
-									0.15f * gridHue[0] + 0.25f * mapHue[0] + 0.60f,
-									0.15f * gridHue[1] + 0.25f * mapHue[1] + 0.60f,
-									0.15f * gridHue[2] + 0.25f * mapHue[2] + 0.60f );
+									0.12f * gridHue[0] + 0.26f * mapHue[0] + 0.62f,
+									0.12f * gridHue[1] + 0.26f * mapHue[1] + 0.62f,
+									0.12f * gridHue[2] + 0.26f * mapHue[2] + 0.62f );
 
 								ambient[0] += mixHue[0] * missing;
 								ambient[1] += mixHue[1] * missing;

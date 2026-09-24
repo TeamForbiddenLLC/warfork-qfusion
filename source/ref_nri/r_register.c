@@ -203,8 +203,8 @@ static void R_Register( const char *screenshotsPrefix )
 	r_lighting_grayscale = Cvar_Get( "r_lighting_grayscale", "0", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 
 	r_lighting_overbrightmodels = Cvar_Get( "r_lighting_overbrightmodels", "1.0", CVAR_ARCHIVE );
-	r_lighting_gridminambient = Cvar_Get( "r_lighting_gridminambient", "25", 0 );
-	r_lighting_gridmaxambient = Cvar_Get( "r_lighting_gridmaxambient", "15", 0 );
+	r_lighting_gridminambient = Cvar_Get( "r_lighting_gridminambient", "22", 0 );
+	r_lighting_gridmaxambient = Cvar_Get( "r_lighting_gridmaxambient", "18", 0 );
 
 	r_offsetmapping = Cvar_Get( "r_offsetmapping", "2", CVAR_ARCHIVE );
 	r_offsetmapping_scale = Cvar_Get( "r_offsetmapping_scale", "0.02", CVAR_ARCHIVE );
