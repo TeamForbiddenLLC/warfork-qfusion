@@ -33,7 +33,7 @@ typedef uint64_t r_glslfeat_t;
 #include "qhash.h"
 
 #define GLSL_BIT(x)							(1ULL << (x))
-#define GLSL_BITS_VERSION					17
+#define GLSL_BITS_VERSION					21
 
 #define PIPELINE_LAYOUT_HASH_SIZE 4096// need to handle this large number of pipelines 
 #define PIPELINE_REFLECTION_HASH_SIZE 64
@@ -154,6 +154,10 @@ typedef enum glsl_program_type_s
 #define GLSL_SHADER_COMMON_FRAGMENT_HIGHP		GLSL_BIT(26)
 
 #define GLSL_SHADER_COMMON_TC_MOD				GLSL_BIT(27)
+
+#define GLSL_SHADER_COMMON_ATM_FOG				GLSL_BIT(28)
+#define GLSL_SHADER_COMMON_ATM_FOG_ADDITIVE		GLSL_BIT(29)
+#define GLSL_SHADER_COMMON_ATM_FOG_MULTIPLICATIVE	GLSL_BIT(30)
 
 // material prgoram type features
 #define GLSL_SHADER_MATERIAL_LIGHTSTYLE0		GLSL_BIT(32)

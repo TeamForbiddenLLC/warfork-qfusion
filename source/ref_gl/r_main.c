@@ -1248,6 +1248,112 @@ void R_RenderView( const refdef_t *fd )
 			rn.fog_eye = R_FogForSphere( rn.viewOrigin, 0.5 );
 		}
 
+		/* Initialize active atmospheric fog for this view */
+		if( rsh.worldModel && !( rn.refdef.rdflags & RDF_NOWORLDMODEL ) )
+		{
+			rn.activeFog = mapConfig.worldFog;
+
+			/* r_fog 0 = disabled, r_fog 1 = enabled. The fog source is the map
+			 * worldspawn config, unless r_fog_distance > 0 makes the cvars the source. */
+			if( r_fog->integer == 0 )
+			{
+				rn.activeFog.enabled = false;
+			}
+			else if( r_fog_distance->value > 0.0f )
+			{
+				rn.activeFog.enabled = true;
+				/* r_fog_distance is the ~95% opaque distance; convert to the
+				 * extinction coefficient (k = 3/d) for Beer-Lambert evaluation. */
+				rn.activeFog.density = 3.0f / r_fog_distance->value;
+			}
+
+			/* Cvar-driven fog configuration, active only when r_fog_distance
+			 * switches the cvars to be the fog source. */
+		if( rn.activeFog.enabled && r_fog_distance->value > 0.0f )
+		{
+			/* Live color override ("r g b") */
+			if( r_fog_color->string[0] )
+			{
+				float cr, cg, cb;
+				int count = sscanf( r_fog_color->string, "%f %f %f", &cr, &cg, &cb );
+				if( count >= 3 )
+				{
+					rn.activeFog.color[0] = cr;
+					rn.activeFog.color[1] = cg;
+					rn.activeFog.color[2] = cb;
+					rn.activeFog.color[3] = 1.0f;
+				}
+			}
+
+				/* Live minDist override */
+				if( r_fog_mindist->value >= 0.0f )
+					rn.activeFog.minDist = r_fog_mindist->value;
+
+				/* Live height overrides */
+				if( r_fog_height_clear->value < 90000.0f )
+				{
+					rn.activeFog.heightFogEnabled = true;
+					rn.activeFog.heightClear = r_fog_height_clear->value;
+				}
+				if( r_fog_height_full->value > -90000.0f )
+				{
+					rn.activeFog.heightFogEnabled = true;
+					rn.activeFog.heightFull = r_fog_height_full->value;
+				}
+
+				/* Live sun inscattering overrides */
+				if( r_fog_sun_inscatter->value >= 0.0f )
+				{
+					rn.activeFog.sunEnabled = true;
+					rn.activeFog.sunIntensity = r_fog_sun_inscatter->value;
+				}
+				if( r_fog_sun_dir->string[0] )
+				{
+					float dx, dy, dz;
+					if( sscanf( r_fog_sun_dir->string, "%f %f %f", &dx, &dy, &dz ) == 3 )
+					{
+						vec3_t dir = { dx, dy, dz };
+						VectorNormalize( dir );
+						VectorCopy( dir, rn.activeFog.sunDir );
+						rn.activeFog.sunEnabled = true;
+					}
+				}
+				if( r_fog_sun_color->string[0] )
+				{
+					float sr, sg, sb, se = rn.activeFog.sunExponent;
+					int num = sscanf( r_fog_sun_color->string, "%f %f %f %f", &sr, &sg, &sb, &se );
+					if( num >= 3 )
+					{
+						rn.activeFog.sunColor[0] = sr;
+						rn.activeFog.sunColor[1] = sg;
+						rn.activeFog.sunColor[2] = sb;
+						rn.activeFog.sunExponent = ( se > 0.0f ) ? se : 16.0f;
+						rn.activeFog.sunEnabled = true;
+					}
+				}
+
+				/* Live sky blend override */
+				if( r_fog_sky_blend->value >= 0.0f )
+				{
+					rn.activeFog.skyFogEnabled = ( r_fog_sky_blend->value > 0.0f );
+				}
+			}
+
+			/* 3D Skyportal fog compression scale adjustment */
+			if( rn.activeFog.enabled && rn.skyportalScale > 0.0f )
+			{
+				float s = rn.skyportalScale;
+				rn.activeFog.minDist      *= s;
+				rn.activeFog.density      /= s;
+				rn.activeFog.heightClear  *= s;
+				rn.activeFog.heightFull   *= s;
+			}
+		}
+		else
+		{
+			memset( &rn.activeFog, 0, sizeof( rn.activeFog ) );
+		}
+
 		R_DrawCoronas();
 
 		if( r_speeds->integer )

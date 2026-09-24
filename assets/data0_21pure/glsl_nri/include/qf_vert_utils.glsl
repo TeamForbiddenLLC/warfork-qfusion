@@ -157,9 +157,9 @@ void QF_TransformVerts(inout vec4 Position, inout vec3 Normal, inout vec3 Tangen
 		
 		#if defined(DEFORMV_AUTOSPRITE)
 		{
-		 	 vec3 right = (1.0 + step(0.5, TexCoord.s) * -2.0) * frame.viewAxis[1] * frame.mirrorSide;
-		 	 vec3 up = (1.0 + step(0.5, TexCoord.t) * -2.0) * frame.viewAxis[2];
-		 	 vec3 forward = -1.0 * frame.viewAxis[0];
+		 	 vec3 right = (1.0 + step(0.5, TexCoord.s) * -2.0) * frame.viewAxis[1].xyz * frame.mirrorSide;
+		 	 vec3 up = (1.0 + step(0.5, TexCoord.t) * -2.0) * frame.viewAxis[2].xyz;
+		 	 vec3 forward = -1.0 * frame.viewAxis[0].xyz;
 		 	 Position.xyz = a_SpritePoint.xyz + (right + up) * a_SpritePoint.w;
 		 	 Normal.xyz = forward;
 		 	 TexCoord.st = vec2(step(0.5, TexCoord.s),step(0.5, TexCoord.t));
@@ -167,11 +167,11 @@ void QF_TransformVerts(inout vec4 Position, inout vec3 Normal, inout vec3 Tangen
 		#endif
 		#if defined(DEFORMV_AUTOPARTICLE)
 		{
-		 	 vec3 right = (1.0 + TexCoord.s * -2.0) * frame.viewAxis[1] * frame.mirrorSide;
-		 	 vec3 up = (1.0 + TexCoord.t * -2.0) * frame.viewAxis[2];
-		 	 vec3 forward = -1.0 * frame.viewAxis[0];
+		 	 vec3 right = (1.0 + TexCoord.s * -2.0) * frame.viewAxis[1].xyz * frame.mirrorSide;
+		 	 vec3 up = (1.0 + TexCoord.t * -2.0) * frame.viewAxis[2].xyz;
+		 	 vec3 forward = -1.0 * frame.viewAxis[0].xyz;
 		 	 // prevent the particle from disappearing at large distances
-		 	 float t = dot(a_SpritePoint.xyz + obj.entityOrigin - frame.viewOrigin, frame.viewAxis[0]);
+		 	 float t = dot(a_SpritePoint.xyz + obj.entityOrigin - frame.viewOrigin, frame.viewAxis[0].xyz);
 		 	 t = 1.5 + step(20.0, t) * t * 0.006;
 		 	 Position.xyz = a_SpritePoint.xyz + (right + up) * t * a_SpritePoint.w;
 		 	 Normal.xyz = forward;

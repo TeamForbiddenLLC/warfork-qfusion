@@ -23,7 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 typedef uint64_t r_glslfeat_t;
 
 #define GLSL_BIT(x)							(1ULL << (x))
-#define GLSL_BITS_VERSION					18
+#define GLSL_BITS_VERSION					23
 
 #define DEFAULT_GLSL_MATERIAL_PROGRAM			"defaultMaterial"
 #define DEFAULT_GLSL_DISTORTION_PROGRAM			"defaultDistortion"
@@ -107,6 +107,10 @@ enum
 #define GLSL_SHADER_COMMON_FRAGMENT_HIGHP		GLSL_BIT(26)
 
 #define GLSL_SHADER_COMMON_TC_MOD				GLSL_BIT(27)
+
+#define GLSL_SHADER_COMMON_ATM_FOG				GLSL_BIT(28)
+#define GLSL_SHADER_COMMON_ATM_FOG_ADDITIVE		GLSL_BIT(29)
+#define GLSL_SHADER_COMMON_ATM_FOG_MULTIPLICATIVE	GLSL_BIT(30)
 
 // material prgoram type features
 #define GLSL_SHADER_MATERIAL_LIGHTSTYLE0		GLSL_BIT(32)
@@ -213,6 +217,8 @@ void RP_UpdateViewUniforms( int elem,
 	int viewport[4],
 	float zNear, float zFar );
 
+void RP_UpdateModelMatrixUniform( int elem, const mat4_t modelMatrix );
+
 void RP_UpdateBlendMixUniform( int elem, vec2_t blendMask );
 
 void RP_UpdateSoftParticlesUniforms( int elem, float scale );
@@ -234,6 +240,8 @@ unsigned int RP_UpdateDynamicLightsUniforms( int elem, const superLightStyle_t *
 
 void RP_UpdateFogUniforms( int elem, byte_vec4_t color, float clearDist, float opaqueDist, 
 	cplane_t *fogPlane, cplane_t *eyePlane, float eyeFogDist );
+
+void RP_UpdateAtmosphericFogUniforms( int elem, const fogSettings_t *fog );
 
 void RP_UpdateTexGenUniforms( int elem, const mat4_t reflectionMatrix, const mat4_t vectorMatrix );
 

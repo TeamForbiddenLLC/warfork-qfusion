@@ -322,6 +322,9 @@ static const glsl_feature_t glsl_features_material[] = { { GLSL_SHADER_COMMON_GR
 
 														 { GLSL_SHADER_COMMON_FOG, "#define APPLY_FOG\n#define APPLY_FOG_IN 1\n", "_fog" },
 														 { GLSL_SHADER_COMMON_FOG_RGB, "#define APPLY_FOG_COLOR\n", "_rgb" },
+														 { GLSL_SHADER_COMMON_ATM_FOG, "#define APPLY_ATM_FOG\n", "_atmfog" },
+														 { GLSL_SHADER_COMMON_ATM_FOG_ADDITIVE, "#define APPLY_ATM_FOG_ADDITIVE\n", "_atmadd" },
+														 { GLSL_SHADER_COMMON_ATM_FOG_MULTIPLICATIVE, "#define APPLY_ATM_FOG_MULTIPLICATIVE\n", "_atmmul" },
 
 														 { GLSL_SHADER_COMMON_DLIGHTS_16, "#define NUM_DLIGHTS 16\n", "_dl16" },
 														 { GLSL_SHADER_COMMON_DLIGHTS_12, "#define NUM_DLIGHTS 12\n", "_dl12" },
@@ -480,6 +483,9 @@ static const glsl_feature_t glsl_features_q3a[] = {
 
 	{ GLSL_SHADER_COMMON_FOG, "#define APPLY_FOG\n#define APPLY_FOG_IN 1\n", "_fog" },
 	{ GLSL_SHADER_COMMON_FOG_RGB, "#define APPLY_FOG_COLOR\n", "_rgb" },
+	{ GLSL_SHADER_COMMON_ATM_FOG, "#define APPLY_ATM_FOG\n", "_atmfog" },
+	{ GLSL_SHADER_COMMON_ATM_FOG_ADDITIVE, "#define APPLY_ATM_FOG_ADDITIVE\n", "_atmadd" },
+	{ GLSL_SHADER_COMMON_ATM_FOG_MULTIPLICATIVE, "#define APPLY_ATM_FOG_MULTIPLICATIVE\n", "_atmmul" },
 
 	{ GLSL_SHADER_COMMON_DLIGHTS_16, "#define NUM_DLIGHTS 16\n", "_dl16" },
 	{ GLSL_SHADER_COMMON_DLIGHTS_12, "#define NUM_DLIGHTS 12\n", "_dl12" },
@@ -544,6 +550,9 @@ static const glsl_feature_t glsl_features_celshade[] = {
 
 	{ GLSL_SHADER_COMMON_FOG, "#define APPLY_FOG\n#define APPLY_FOG_IN 1\n", "_fog" },
 	{ GLSL_SHADER_COMMON_FOG_RGB, "#define APPLY_FOG_COLOR\n", "_rgb" },
+	{ GLSL_SHADER_COMMON_ATM_FOG, "#define APPLY_ATM_FOG\n", "_atmfog" },
+	{ GLSL_SHADER_COMMON_ATM_FOG_ADDITIVE, "#define APPLY_ATM_FOG_ADDITIVE\n", "_atmadd" },
+	{ GLSL_SHADER_COMMON_ATM_FOG_MULTIPLICATIVE, "#define APPLY_ATM_FOG_MULTIPLICATIVE\n", "_atmmul" },
 
 	{ GLSL_SHADER_COMMON_INSTANCED_TRANSFORMS, "#define APPLY_INSTANCED_TRANSFORMS\n", "_instanced" },
 	{ GLSL_SHADER_COMMON_INSTANCED_ATTRIB_TRANSFORMS, "#define APPLY_INSTANCED_TRANSFORMS\n#define APPLY_INSTANCED_ATTRIB_TRANSFORMS\n", "_instanced_va" },
@@ -818,7 +827,7 @@ static bool __RF_AppendShaderFromFile( struct QStr *str, const char *rootFile, c
 			token += 12;
 
 			ignore_include = true;
-			if( ( !Q_stricmp( token, "APPLY_FOG)" ) && ( features & GLSL_SHADER_COMMON_FOG ) ) ||
+			if( ( !Q_stricmp( token, "APPLY_FOG)" ) && ( features & ( GLSL_SHADER_COMMON_FOG | GLSL_SHADER_COMMON_ATM_FOG ) ) ) ||
 
 				( !Q_stricmp( token, "NUM_DLIGHTS)" ) && ( features & GLSL_SHADER_COMMON_DLIGHTS ) ) ||
 
@@ -2565,6 +2574,14 @@ static bool __RP_MTLBuildLibraries( struct glsl_program_s *program, const glsl_p
 struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
 {
 	TracyCZoneN( ctx, "RP_RegisterProgram", 1 );
+
+	/* Atmospheric fog is only supported on MATERIAL, Q3A, and CELSHADE program types.
+	 * Strip ATM fog bits for other types (distortion, outline, shadowmap, etc.) to avoid
+	 * duplicate cache entries and unneeded shader includes. */
+	if( type != GLSL_PROGRAM_TYPE_MATERIAL && type != GLSL_PROGRAM_TYPE_Q3A_SHADER && type != GLSL_PROGRAM_TYPE_CELSHADE ) {
+		features &= ~( GLSL_SHADER_COMMON_ATM_FOG | GLSL_SHADER_COMMON_ATM_FOG_ADDITIVE | GLSL_SHADER_COMMON_ATM_FOG_MULTIPLICATIVE );
+	}
+
 	const uint64_t hashIndex = hash_u64( HASH_INITIAL_VALUE, features ) % GLSL_PROGRAMS_HASH_SIZE;
 	struct glsl_program_s *program = r_glslprograms + r_numglslprograms++;
 	struct QStr featuresStr = { 0 };

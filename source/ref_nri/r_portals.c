@@ -648,6 +648,8 @@ static void R_DrawSkyportal(struct FrameState_s* frame, const entity_t *e, skypo
 		VectorCopy( skyportal->vieworg, rn.refdef.vieworg );
 	}
 
+	rn.skyportalScale = skyportal->scale;
+
 	// FIXME
 	if( !VectorCompare( skyportal->viewanglesOffset, vec3_origin ) )
 	{

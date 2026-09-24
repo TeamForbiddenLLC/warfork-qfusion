@@ -7,6 +7,9 @@ layout(location = 0) out vec3 v_Position;
 layout(location = 1) out vec3 v_Normal;
 layout(location = 2) out vec2 v_TexCoord;  
 layout(location = 3) out vec4 frontColor; 
+#if defined(APPLY_ATM_FOG)
+layout(location = 9) out vec3 v_WorldPosition;
+#endif 
 
 #if defined(APPLY_TC_GEN_PROJECTION)
 layout(location = 8) out vec4 v_TexCoordProj;
@@ -65,8 +68,12 @@ frontColor = vec4(outColor);
 
 #endif // !defined(APPLY_CUBEMAP) && !defined(APPLY_SURROUNDMAP)
 
-#if defined(NUM_DLIGHTS) || defined(APPLY_CUBEMAP) || defined(APPLY_SURROUNDMAP)
+#if defined(NUM_DLIGHTS) || defined(APPLY_CUBEMAP) || defined(APPLY_SURROUNDMAP) || defined(APPLY_ATM_FOG)
 	v_Position = Position.xyz;
+#endif
+
+#if defined(APPLY_ATM_FOG)
+	v_WorldPosition = (obj.worldMatrix * vec4(Position.xyz, 1.0)).xyz;
 #endif
 
 #if defined(APPLY_CUBEMAP) || defined(APPLY_DRAWFLAT)

@@ -28,6 +28,9 @@ layout(location = 6) in vec4 v_TexCoord_FogCoord;
 layout(location = 7) in vec3 v_Tangent; 
 layout(location = 8) in vec3 v_Normal; 
 layout(location = 9) in vec3 v_Binormal; 
+#if defined(APPLY_ATM_FOG)
+layout(location = 10) in vec3 v_WorldPosition; 
+#endif 
 
 layout(location = 0) out vec4 outFragColor;
 
@@ -362,6 +365,18 @@ void main()
 #if defined(APPLY_FOG) && !defined(APPLY_FOG_COLOR)
 	float fogDensity = FogDensity(v_TexCoord_FogCoord.pq);
 	color.rgb = mix(color.rgb, frame.fogColor, fogDensity);
+#endif
+
+#if defined(APPLY_ATM_FOG)
+	vec4 atmFog = EvaluateAtmosphericFog(v_WorldPosition, frame.viewOrigin);
+	#if defined(APPLY_ATM_FOG_MULTIPLICATIVE)
+		/* Multiplicative pass (filter/detail): fade multiplier toward identity (white) */
+		color.rgb = mix(color.rgb, vec3(1.0), atmFog.a);
+	#elif defined(APPLY_ATM_FOG_ADDITIVE)
+		color.rgb *= (1.0 - atmFog.a);
+	#else
+		color.rgb = mix(color.rgb, atmFog.rgb, atmFog.a);
+	#endif
 #endif
 
 	outFragColor = vec4(color);

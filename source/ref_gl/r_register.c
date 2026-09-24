@@ -119,6 +119,17 @@ cvar_t *r_drawflat;
 cvar_t *r_wallcolor;
 cvar_t *r_floorcolor;
 
+cvar_t *r_fog;
+cvar_t *r_fog_distance;
+cvar_t *r_fog_color;
+cvar_t *r_fog_mindist;
+cvar_t *r_fog_height_clear;
+cvar_t *r_fog_height_full;
+cvar_t *r_fog_sun_dir;
+cvar_t *r_fog_sun_color;
+cvar_t *r_fog_sun_inscatter;
+cvar_t *r_fog_sky_blend;
+
 cvar_t *r_usenotexture;
 
 cvar_t *r_maxglslbones;
@@ -971,6 +982,17 @@ static void R_Register( const char *screenshotsPrefix )
 	r_drawflat = ri.Cvar_Get( "r_drawflat", "0", CVAR_ARCHIVE );
 	r_wallcolor = ri.Cvar_Get( "r_wallcolor", "255 255 255", CVAR_ARCHIVE );
 	r_floorcolor = ri.Cvar_Get( "r_floorcolor", "255 153 0", CVAR_ARCHIVE );
+
+	r_fog = ri.Cvar_Get( "r_fog", "1", CVAR_ARCHIVE );
+	r_fog_distance = ri.Cvar_Get( "r_fog_distance", "0", CVAR_CHEAT );
+	r_fog_color = ri.Cvar_Get( "r_fog_color", "0.75 0.75 0.75", CVAR_CHEAT );
+	r_fog_mindist = ri.Cvar_Get( "r_fog_mindist", "-1", CVAR_CHEAT );
+	r_fog_height_clear = ri.Cvar_Get( "r_fog_height_clear", "99999", CVAR_CHEAT );
+	r_fog_height_full = ri.Cvar_Get( "r_fog_height_full", "-99999", CVAR_CHEAT );
+	r_fog_sun_dir = ri.Cvar_Get( "r_fog_sun_dir", "", CVAR_CHEAT );
+	r_fog_sun_color = ri.Cvar_Get( "r_fog_sun_color", "", CVAR_CHEAT );
+	r_fog_sun_inscatter = ri.Cvar_Get( "r_fog_sun_inscatter", "-1", CVAR_CHEAT );
+	r_fog_sky_blend = ri.Cvar_Get( "r_fog_sky_blend", "-1", CVAR_CHEAT );
 
 	// make sure we rebuild our 3D texture after vid_restart
 	r_wallcolor->modified = r_floorcolor->modified = true;

@@ -5,6 +5,9 @@ layout(location = 0) out vec2 v_TexCoord;
 layout(location = 1) out vec3 v_TexCoordCube;
 layout(location = 2) out vec2 v_FogCoord;
 layout(location = 3) out vec4 v_FrontColor; 
+#if defined(APPLY_ATM_FOG)
+layout(location = 4) out vec3 v_WorldPosition;
+#endif
 
 #include "include/qf_vert_utils.glsl"
 
@@ -36,6 +39,10 @@ void main(void)
 	v_TexCoord = TexCoord;
 #endif
 	v_TexCoordCube = pass.reflectionTexMatrix * reflect(normalize(Position.xyz - obj.entityDist), Normal.xyz);
+
+#if defined(APPLY_ATM_FOG)
+	v_WorldPosition = (obj.worldMatrix * vec4(Position.xyz, 1.0)).xyz;
+#endif
 
 	gl_Position = obj.mvp * Position;
 	// fix for opengl

@@ -59,7 +59,8 @@ typedef struct glsl_program_s
 	int				binaryCachePos;
 
 	struct loc_s {
-		int			ModelViewMatrix,
+		int			ModelMatrix,
+					ModelViewMatrix,
 					ModelViewProjectionMatrix,
 
 					ZRange,
@@ -99,6 +100,16 @@ typedef struct glsl_program_s
 							ScaleAndEyeDist,
 							EyePlane;
 					} Fog;
+
+					/* Atmospheric world fog uniforms */
+					struct {
+						int AtmFogColor;          /* u_AtmFogColor        */
+						int AtmFogDistParams;     /* u_AtmFogDistParams   */
+						int AtmFogHeightParams;   /* u_AtmFogHeightParams */
+						int AtmFogSkyParams;      /* u_AtmFogSkyParams    */
+						int AtmFogSunColor;       /* u_AtmFogSunColor     */
+						int AtmFogSunParams;      /* u_AtmFogSunParams    */
+					} AtmFog;
 
 		int			ShaderTime,
 
@@ -622,6 +633,9 @@ static const glsl_feature_t glsl_features_material[] =
 
 	{ GLSL_SHADER_COMMON_FOG, "#define APPLY_FOG\n#define APPLY_FOG_IN 1\n", "_fog" },
 	{ GLSL_SHADER_COMMON_FOG_RGB, "#define APPLY_FOG_COLOR\n", "_rgb" },
+	{ GLSL_SHADER_COMMON_ATM_FOG, "#define APPLY_ATM_FOG\n", "_atmfog" },
+	{ GLSL_SHADER_COMMON_ATM_FOG_ADDITIVE, "#define APPLY_ATM_FOG_ADDITIVE\n", "_atmadd" },
+	{ GLSL_SHADER_COMMON_ATM_FOG_MULTIPLICATIVE, "#define APPLY_ATM_FOG_MULTIPLICATIVE\n", "_atmmul" },
 
 	{ GLSL_SHADER_COMMON_DLIGHTS_16, "#define NUM_DLIGHTS 16\n", "_dl16" },
 	{ GLSL_SHADER_COMMON_DLIGHTS_12, "#define NUM_DLIGHTS 12\n", "_dl12" },
@@ -787,6 +801,9 @@ static const glsl_feature_t glsl_features_q3a[] =
 
 	{ GLSL_SHADER_COMMON_FOG, "#define APPLY_FOG\n#define APPLY_FOG_IN 1\n", "_fog" },
 	{ GLSL_SHADER_COMMON_FOG_RGB, "#define APPLY_FOG_COLOR\n", "_rgb" },
+	{ GLSL_SHADER_COMMON_ATM_FOG, "#define APPLY_ATM_FOG\n", "_atmfog" },
+	{ GLSL_SHADER_COMMON_ATM_FOG_ADDITIVE, "#define APPLY_ATM_FOG_ADDITIVE\n", "_atmadd" },
+	{ GLSL_SHADER_COMMON_ATM_FOG_MULTIPLICATIVE, "#define APPLY_ATM_FOG_MULTIPLICATIVE\n", "_atmmul" },
 
 	{ GLSL_SHADER_COMMON_DLIGHTS_16, "#define NUM_DLIGHTS 16\n", "_dl16" },
 	{ GLSL_SHADER_COMMON_DLIGHTS_12, "#define NUM_DLIGHTS 12\n", "_dl12" },
@@ -854,6 +871,9 @@ static const glsl_feature_t glsl_features_celshade[] =
 
 	{ GLSL_SHADER_COMMON_FOG, "#define APPLY_FOG\n#define APPLY_FOG_IN 1\n", "_fog" },
 	{ GLSL_SHADER_COMMON_FOG_RGB, "#define APPLY_FOG_COLOR\n", "_rgb" },
+	{ GLSL_SHADER_COMMON_ATM_FOG, "#define APPLY_ATM_FOG\n", "_atmfog" },
+	{ GLSL_SHADER_COMMON_ATM_FOG_ADDITIVE, "#define APPLY_ATM_FOG_ADDITIVE\n", "_atmadd" },
+	{ GLSL_SHADER_COMMON_ATM_FOG_MULTIPLICATIVE, "#define APPLY_ATM_FOG_MULTIPLICATIVE\n", "_atmmul" },
 
 	{ GLSL_SHADER_COMMON_INSTANCED_TRANSFORMS, "#define APPLY_INSTANCED_TRANSFORMS\n", "_instanced" },
 	{ GLSL_SHADER_COMMON_INSTANCED_ATTRIB_TRANSFORMS, "#define APPLY_INSTANCED_TRANSFORMS\n#define APPLY_INSTANCED_ATTRIB_TRANSFORMS\n", "_instanced_va" },
@@ -1445,7 +1465,7 @@ static bool RF_LoadShaderFromFile_r( glslParser_t *parser, const char *fileName,
 			token += 12;
 
 			ignore_include = true;
-			if( ( !Q_stricmp( token, "APPLY_FOG)" ) && (features & GLSL_SHADER_COMMON_FOG) ) ||
+			if( ( !Q_stricmp( token, "APPLY_FOG)" ) && (features & (GLSL_SHADER_COMMON_FOG | GLSL_SHADER_COMMON_ATM_FOG)) ) ||
 
 				( !Q_stricmp( token, "NUM_DLIGHTS)" ) && (features & GLSL_SHADER_COMMON_DLIGHTS) ) ||
 
@@ -1639,6 +1659,13 @@ static int RP_RegisterProgramBinary( int type, const char *name, const char *def
 	if( type <= GLSL_PROGRAM_TYPE_NONE || type >= GLSL_PROGRAM_TYPE_MAXTYPE ) {
 		TracyCZoneEnd( ctx );
 		return 0;
+	}
+
+	/* Atmospheric fog is only supported on MATERIAL, Q3A, and CELSHADE program types.
+	 * Strip ATM fog bits for other types (distortion, outline, shadowmap, etc.) to avoid
+	 * duplicate cache entries and unneeded shader includes. */
+	if( type != GLSL_PROGRAM_TYPE_MATERIAL && type != GLSL_PROGRAM_TYPE_Q3A_SHADER && type != GLSL_PROGRAM_TYPE_CELSHADE ) {
+		features &= ~( GLSL_SHADER_COMMON_ATM_FOG | GLSL_SHADER_COMMON_ATM_FOG_ADDITIVE | GLSL_SHADER_COMMON_ATM_FOG_MULTIPLICATIVE );
 	}
 
 	assert( !deforms || deformsKey );
@@ -2135,6 +2162,17 @@ void RP_UpdateViewUniforms( int elem,
 }
 
 /*
+* RP_UpdateModelMatrixUniform
+*/
+void RP_UpdateModelMatrixUniform( int elem, const mat4_t modelMatrix )
+{
+	glsl_program_t *program = r_glslprograms + elem - 1;
+
+	if( program->loc.ModelMatrix >= 0 )
+		qglUniformMatrix4fvARB( program->loc.ModelMatrix, 1, GL_FALSE, modelMatrix );
+}
+
+/*
 * RP_UpdateBlendMixUniform
 *
 * The first component corresponds to RGB, the second to ALPHA.
@@ -2249,6 +2287,60 @@ void RP_UpdateFogUniforms( int elem, byte_vec4_t color, float clearDist, float o
 		qglUniform4fARB( program->loc.Fog.Plane, fogPlane->normal[0], fogPlane->normal[1], fogPlane->normal[2], fogPlane->dist );
 	if( program->loc.Fog.EyePlane >= 0 )
 		qglUniform4fARB( program->loc.Fog.EyePlane, eyePlane->normal[0], eyePlane->normal[1], eyePlane->normal[2], eyePlane->dist );
+}
+
+/*
+* RP_UpdateAtmosphericFogUniforms
+*/
+void RP_UpdateAtmosphericFogUniforms( int elem, const fogSettings_t *fog )
+{
+	glsl_program_t *program = r_glslprograms + elem - 1;
+	GLfloat zero4[4] = { 0, 0, 0, 0 };
+
+	if( !fog || !fog->enabled )
+	{
+		/* Disable by zeroing the master alpha */
+		if( program->loc.AtmFog.AtmFogColor >= 0 )
+			qglUniform4fvARB( program->loc.AtmFog.AtmFogColor, 1, zero4 );
+		return;
+	}
+
+	if( program->loc.AtmFog.AtmFogColor >= 0 )
+		qglUniform4fARB( program->loc.AtmFog.AtmFogColor,
+			fog->color[0], fog->color[1], fog->color[2], fog->color[3] );
+
+	if( program->loc.AtmFog.AtmFogDistParams >= 0 )
+		qglUniform4fARB( program->loc.AtmFog.AtmFogDistParams,
+			fog->minDist, 0.0f, 0.0f, fog->density );
+
+	if( program->loc.AtmFog.AtmFogHeightParams >= 0 )
+	{
+		float invRange = ( fog->heightFogEnabled && ( fog->heightClear != fog->heightFull ) )
+			? ( 1.0f / ( fog->heightFull - fog->heightClear ) )
+			: 0.0f;
+		qglUniform4fARB( program->loc.AtmFog.AtmFogHeightParams,
+			fog->heightClear,
+			fog->heightFull,
+			invRange,
+			fog->heightFogEnabled ? 1.0f : 0.0f );
+	}
+
+	if( program->loc.AtmFog.AtmFogSkyParams >= 0 )
+		qglUniform4fARB( program->loc.AtmFog.AtmFogSkyParams,
+			fog->skyHorizonBias,
+			fog->skyHorizonScale,
+			fog->skyZenithFalloff,
+			fog->skyFogEnabled ? 1.0f : 0.0f );
+
+	if( program->loc.AtmFog.AtmFogSunParams >= 0 )
+		qglUniform4fARB( program->loc.AtmFog.AtmFogSunParams,
+			fog->sunDir[0], fog->sunDir[1], fog->sunDir[2],
+			fog->sunEnabled ? fog->sunIntensity : 0.0f );
+
+	if( program->loc.AtmFog.AtmFogSunColor >= 0 )
+		qglUniform4fARB( program->loc.AtmFog.AtmFogSunColor,
+			fog->sunColor[0], fog->sunColor[1], fog->sunColor[2],
+			fog->sunExponent );
 }
 
 /*
@@ -2508,6 +2600,7 @@ static void RP_GetUniformLocations( glsl_program_t *program )
 
 	memset( &program->loc, -1, sizeof( program->loc ) );
 
+	program->loc.ModelMatrix = qglGetUniformLocationARB( program->object, "u_ModelMatrix" );
 	program->loc.ModelViewMatrix = qglGetUniformLocationARB( program->object, "u_ModelViewMatrix" );
 	program->loc.ModelViewProjectionMatrix = qglGetUniformLocationARB( program->object, "u_ModelViewProjectionMatrix" );
 
@@ -2592,6 +2685,13 @@ static void RP_GetUniformLocations( glsl_program_t *program )
 	program->loc.Fog.Color = qglGetUniformLocationARB( program->object, "u_FogColor" );
 	program->loc.Fog.ScaleAndEyeDist = qglGetUniformLocationARB( program->object, "u_FogScaleAndEyeDist" );
 	program->loc.Fog.EyePlane = qglGetUniformLocationARB( program->object, "u_FogEyePlane" );
+
+	program->loc.AtmFog.AtmFogColor        = qglGetUniformLocationARB( program->object, "u_AtmFogColor" );
+	program->loc.AtmFog.AtmFogDistParams   = qglGetUniformLocationARB( program->object, "u_AtmFogDistParams" );
+	program->loc.AtmFog.AtmFogHeightParams = qglGetUniformLocationARB( program->object, "u_AtmFogHeightParams" );
+	program->loc.AtmFog.AtmFogSkyParams    = qglGetUniformLocationARB( program->object, "u_AtmFogSkyParams" );
+	program->loc.AtmFog.AtmFogSunColor     = qglGetUniformLocationARB( program->object, "u_AtmFogSunColor" );
+	program->loc.AtmFog.AtmFogSunParams    = qglGetUniformLocationARB( program->object, "u_AtmFogSunParams" );
 
 	program->loc.ShaderTime = qglGetUniformLocationARB( program->object, "u_ShaderTime" );
 

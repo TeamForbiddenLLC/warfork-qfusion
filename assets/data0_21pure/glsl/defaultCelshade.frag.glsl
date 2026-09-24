@@ -10,6 +10,10 @@ qf_varying vec3 v_TexCoordCube;
 qf_varying vec2 v_FogCoord;
 #endif
 
+#if defined(APPLY_ATM_FOG)
+qf_varying vec3 v_WorldPosition;
+#endif
+
 uniform sampler2D u_BaseTexture;
 uniform samplerCube u_CelShadeTexture;
 
@@ -89,9 +93,24 @@ void main(void)
 	outColor.rgb = Greyscale(outColor.rgb);
 #endif
 
+
 #if defined(APPLY_FOG) && !defined(APPLY_FOG_COLOR)
 	float fogDensity = FogDensity(v_FogCoord);
 	outColor.rgb = mix(outColor.rgb, u_FogColor, fogDensity);
+#endif
+
+#ifdef APPLY_ATM_FOG
+	vec4 atmFog = EvaluateAtmosphericFog(v_WorldPosition, u_ViewOrigin);
+#ifdef APPLY_ATM_FOG_MULTIPLICATIVE
+	/* Multiplicative pass (filter/detail): fade multiplier toward identity (white) */
+	outColor.rgb = mix(outColor.rgb, vec3(1.0), atmFog.a);
+#elif defined(APPLY_ATM_FOG_ADDITIVE)
+	/* Additive blending pass: extinguish luminance to black */
+	outColor.rgb *= (1.0 - atmFog.a);
+#else
+	/* Standard blend/opaque pass: blend towards effective fog color */
+	outColor.rgb = mix(outColor.rgb, atmFog.rgb, atmFog.a);
+#endif
 #endif
 
 	qf_FragColor = vec4(outColor);

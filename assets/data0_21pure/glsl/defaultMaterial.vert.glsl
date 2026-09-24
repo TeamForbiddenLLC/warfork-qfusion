@@ -54,8 +54,12 @@ void main()
 	v_EyeVector = EyeVectorWorld * v_StrMatrix;
 #endif
 
-#if defined(NUM_DLIGHTS) || defined(APPLY_SPECULAR) || defined(APPLY_CAMERA_AMBIENT_FILL)
+#if defined(NUM_DLIGHTS) || defined(APPLY_SPECULAR) || defined(APPLY_CAMERA_AMBIENT_FILL) || defined(APPLY_ATM_FOG)
 	v_Position = Position.xyz;
+#endif
+
+#ifdef APPLY_ATM_FOG
+	v_WorldPosition = (u_ModelMatrix * vec4(Position.xyz, 1.0)).xyz;
 #endif
 
 	gl_Position = u_ModelViewProjectionMatrix * Position;

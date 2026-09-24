@@ -37,6 +37,7 @@ layout(set = DESCRIPTOR_OBJECT_SET, binding = 0) uniform ObjectCB {
     vec4 fogPlane;
     mat4 mvp;
     mat4 mv;
+    mat4 worldMatrix;
     vec4 rgbGenFuncArgs;
     vec4 alphaGenFuncArgs;
     vec4 colorConst;
@@ -82,6 +83,14 @@ layout(set = DESCRIPTOR_FRAME_SET, binding = 0) uniform FrameCB {
   float eyeDist;
   vec3 fogColor;
   float mirrorSide;
-  mat3 viewAxis;
-} frame; 
+  mat4 viewAxis;
+  vec4 atmFogDistParams;
+  vec4 atmFogColor;
+  vec4 atmFogHeightParams;
+  vec4 atmFogSunParams;
+  vec4 atmFogSunColor;
+  vec4 atmFogSkyParams;
+} frame;
+
+#include "fog.glsl"
 

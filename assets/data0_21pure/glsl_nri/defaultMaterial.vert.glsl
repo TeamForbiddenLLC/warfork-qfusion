@@ -11,6 +11,9 @@ layout(location = 6) out vec4 v_TexCoord_FogCoord;
 layout(location = 7) out vec3 v_Tangent; 
 layout(location = 8) out vec3 v_Normal; 
 layout(location = 9) out vec3 v_Binormal; 
+#if defined(APPLY_ATM_FOG)
+layout(location = 10) out vec3 v_WorldPosition; 
+#endif 
 
 #include "include/qf_vert_utils.glsl"
 
@@ -67,8 +70,12 @@ void main()
 	v_EyeVector = EyeVectorWorld * strMat;
 #endif
 
-#if defined(NUM_DLIGHTS) || defined(APPLY_SPECULAR) || defined(APPLY_CAMERA_AMBIENT_FILL)
+#if defined(NUM_DLIGHTS) || defined(APPLY_SPECULAR) || defined(APPLY_CAMERA_AMBIENT_FILL) || defined(APPLY_ATM_FOG)
 	v_Position = Position.xyz;
+#endif
+
+#if defined(APPLY_ATM_FOG)
+	v_WorldPosition = (obj.worldMatrix * vec4(Position.xyz, 1.0)).xyz;
 #endif
 
 	gl_Position = obj.mvp * Position;

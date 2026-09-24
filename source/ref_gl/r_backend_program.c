@@ -699,13 +699,52 @@ static r_glslfeat_t RB_InstancedArraysProgramFeatures( void )
 static r_glslfeat_t RB_FogProgramFeatures( const shaderpass_t *pass, const mfog_t *fog )
 {
 	r_glslfeat_t programFeatures = 0;
-	if( fog )
+
+	/* Legacy BSP brush fog volume handling (unchanged) */
+	if( fog && !( rb.currentShader->flags & SHADER_NOFOG ) )
 	{
 		programFeatures |= GLSL_SHADER_COMMON_FOG;
 		if( fog == rb.colorFog ) {
 			programFeatures |= GLSL_SHADER_COMMON_FOG_RGB;
 		}
 	}
+
+	/* Atmospheric world fog handling (world and entity geometry only,
+	 * 2D UI/console stretch-pic draws carry a NULL entity and must be excluded) */
+	if( rn.activeFog.enabled && rb.currentEntity != &rb.nullEnt &&
+		!( rb.currentShader->flags & SHADER_NOFOG ) )
+	{
+		unsigned srcBlend = pass->flags & GLSTATE_SRCBLEND_MASK;
+		unsigned dstBlend = pass->flags & GLSTATE_DSTBLEND_MASK;
+
+		/* Pure multiplicative passes (blendFunc filter = GL_DST_COLOR GL_ZERO,
+		 * and GL_ZERO GL_SRC_COLOR): the pass result is framebuffer * fragmentColor,
+		 * so the multiplicative identity is white. Map decals, graffiti and detail
+		 * passes modulate an already-fogged framebuffer, so fade the multiplier
+		 * toward white with the fog factor instead of mixing in fog color */
+		if( ( srcBlend == GLSTATE_SRCBLEND_DST_COLOR && dstBlend == GLSTATE_DSTBLEND_ZERO ) ||
+			( srcBlend == GLSTATE_SRCBLEND_ZERO && dstBlend == GLSTATE_DSTBLEND_SRC_COLOR ) )
+		{
+			programFeatures |= GLSL_SHADER_COMMON_ATM_FOG;
+			programFeatures |= GLSL_SHADER_COMMON_ATM_FOG_MULTIPLICATIVE;
+		}
+		else if( dstBlend == GLSTATE_DSTBLEND_ONE || dstBlend == GLSTATE_DSTBLEND_ONE_MINUS_SRC_COLOR )
+		{
+			/* Additive and screen/dodge glow passes (blendfunc add, GL_ONE GL_ONE,
+			 * GL_SRC_ALPHA GL_ONE and GL_ONE GL_ONE_MINUS_SRC_COLOR — autosprite2
+			 * halo/flare quads with black transparent backgrounds) use Beer-Lambert
+			 * luminance extinction instead of color mixing, so the transparent parts
+			 * of the quad don't get filled with fog color by the blend operation */
+			programFeatures |= GLSL_SHADER_COMMON_ATM_FOG;
+			programFeatures |= GLSL_SHADER_COMMON_ATM_FOG_ADDITIVE;
+		}
+		else if( dstBlend != GLSTATE_DSTBLEND_ZERO )
+		{
+			/* Regular transparent/opaque passes: blend towards the effective fog color */
+			programFeatures |= GLSL_SHADER_COMMON_ATM_FOG;
+		}
+	}
+
 	return programFeatures;
 }
 
@@ -774,6 +813,8 @@ static void RB_UpdateCommonUniforms( int program, const shaderpass_t *pass, mat4
 		rb.zNear, rb.zFar
 	);
 
+	RP_UpdateModelMatrixUniform( program, rb.objectMatrix );
+
 	if( RB_IsAlphaBlending( rb.gl.state & GLSTATE_SRCBLEND_MASK, rb.gl.state & GLSTATE_DSTBLEND_MASK ) ) {
 		blendMix[1] = 1;
 		if( rb.alphaHack ) {
@@ -797,6 +838,8 @@ static void RB_UpdateCommonUniforms( int program, const shaderpass_t *pass, mat4
 	RP_UpdateBlendMixUniform( program, blendMix );
 
 	RP_UpdateSoftParticlesUniforms( program, r_soft_particles_scale->value );
+
+	RP_UpdateAtmosphericFogUniforms( program, &rn.activeFog );
 }
 
 /*
@@ -2051,7 +2094,7 @@ void RB_BindShader( const entity_t *e, const shader_t *shader, const mfog_t *fog
 		rb.depthEqual = rb.alphaHack && (e->renderfx & RF_WEAPONMODEL);
 	}
 
-	if( fog && fog->shader && !rb.noColorWrite ) {
+	if( fog && fog->shader && !rb.noColorWrite && !( shader->flags & SHADER_NOFOG ) ) {
 		// should we fog the geometry with alpha texture or scale colors?
 		if( !rb.alphaHack && Shader_UseTextureFog( shader ) ) {
 			rb.texFog = fog;

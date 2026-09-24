@@ -23,6 +23,10 @@ layout(location = 3) in vec4 frontColor;
 layout(location = 8) in vec4 v_TexCoordProj;
 #endif
 
+#if defined(APPLY_ATM_FOG)
+layout(location = 9) in vec3 v_WorldPosition;
+#endif
+
 layout(location = 4) in vec4 v_LightmapTexCoord01;
 layout(location = 5) in vec4 v_LightmapTexCoord23;
 layout(location = 6) flat in uvec4 v_LightmapLayer0123;
@@ -153,6 +157,18 @@ void main(void)
 
 #if defined(APPLY_FOG) && !defined(APPLY_FOG_COLOR)
 	color.rgb = mix(color.rgb, frame.fogColor, fogDensity);
+#endif
+
+#if defined(APPLY_ATM_FOG)
+	vec4 atmFog = EvaluateAtmosphericFog(v_WorldPosition, frame.viewOrigin);
+	#if defined(APPLY_ATM_FOG_MULTIPLICATIVE)
+		/* Multiplicative pass (filter/detail): fade multiplier toward identity (white) */
+		color.rgb = mix(color.rgb, vec3(1.0), atmFog.a);
+	#elif defined(APPLY_ATM_FOG_ADDITIVE)
+		color.rgb *= (1.0 - atmFog.a);
+	#else
+		color.rgb = mix(color.rgb, atmFog.rgb, atmFog.a);
+	#endif
 #endif
 
 #if defined(APPLY_SOFT_PARTICLE)

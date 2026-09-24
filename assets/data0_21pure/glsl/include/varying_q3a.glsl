@@ -6,8 +6,12 @@
 #define APPLY_SURROUNDMAP
 #endif
 
-#if defined(NUM_DLIGHTS) || defined(APPLY_CUBEMAP) || defined(APPLY_SURROUNDMAP)
+#if defined(NUM_DLIGHTS) || defined(APPLY_CUBEMAP) || defined(APPLY_SURROUNDMAP) || defined(APPLY_ATM_FOG)
 qf_varying vec3 v_Position;
+#endif
+
+#ifdef APPLY_ATM_FOG
+qf_varying vec3 v_WorldPosition;
 #endif
 
 #if defined(APPLY_CUBEMAP) || defined(APPLY_DRAWFLAT)

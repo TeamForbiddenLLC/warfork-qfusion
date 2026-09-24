@@ -9,8 +9,12 @@ qf_flat_varying vec4 v_LightmapLayer0123;
 #endif
 #endif
 
-#if defined(NUM_DLIGHTS) || defined(APPLY_SPECULAR) || defined(APPLY_CAMERA_AMBIENT_FILL)
+#if defined(NUM_DLIGHTS) || defined(APPLY_SPECULAR) || defined(APPLY_CAMERA_AMBIENT_FILL) || defined(APPLY_ATM_FOG)
 qf_varying vec3 v_Position;
+#endif
+
+#ifdef APPLY_ATM_FOG
+qf_varying vec3 v_WorldPosition;
 #endif
 
 #if defined(APPLY_SPECULAR) || defined(APPLY_OFFSETMAPPING) || defined(APPLY_RELIEFMAPPING)

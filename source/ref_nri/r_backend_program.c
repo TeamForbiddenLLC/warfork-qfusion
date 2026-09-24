@@ -477,10 +477,44 @@ static r_glslfeat_t RB_InstancedArraysProgramFeatures( void )
 static r_glslfeat_t RB_FogProgramFeatures( const shaderpass_t *pass, const mfog_t *fog )
 {
 	r_glslfeat_t programFeatures = 0;
-	if( fog ) {
+	if( fog && !( rb.currentShader->flags & SHADER_NOFOG ) ) {
 		programFeatures |= GLSL_SHADER_COMMON_FOG;
 		if( fog == rb.colorFog ) {
 			programFeatures |= GLSL_SHADER_COMMON_FOG_RGB;
+		}
+	}
+	/* Atmospheric world fog handling (world and entity geometry only,
+	 * 2D UI/console stretch-pic draws carry a NULL entity and must be excluded) */
+	if( rn.activeFog.enabled && rb.currentEntity != &rb.nullEnt &&
+		!( rb.currentShader->flags & SHADER_NOFOG ) ) {
+		unsigned srcBlend = pass->flags & GLSTATE_SRCBLEND_MASK;
+		unsigned dstBlend = pass->flags & GLSTATE_DSTBLEND_MASK;
+
+		/* Pure multiplicative passes (blendFunc filter = GL_DST_COLOR GL_ZERO,
+		 * and GL_ZERO GL_SRC_COLOR): the pass result is framebuffer * fragmentColor,
+		 * so the multiplicative identity is white. Map decals, graffiti and detail
+		 * passes modulate an already-fogged framebuffer, so fade the multiplier
+		 * toward white with the fog factor instead of mixing in fog color */
+		if( ( srcBlend == GLSTATE_SRCBLEND_DST_COLOR && dstBlend == GLSTATE_DSTBLEND_ZERO ) ||
+			( srcBlend == GLSTATE_SRCBLEND_ZERO && dstBlend == GLSTATE_DSTBLEND_SRC_COLOR ) )
+		{
+			programFeatures |= GLSL_SHADER_COMMON_ATM_FOG;
+			programFeatures |= GLSL_SHADER_COMMON_ATM_FOG_MULTIPLICATIVE;
+		}
+		else if( dstBlend == GLSTATE_DSTBLEND_ONE || dstBlend == GLSTATE_DSTBLEND_ONE_MINUS_SRC_COLOR )
+		{
+			/* Additive and screen/dodge glow passes (blendfunc add, GL_ONE GL_ONE,
+			 * GL_SRC_ALPHA GL_ONE and GL_ONE GL_ONE_MINUS_SRC_COLOR — autosprite2
+			 * halo/flare quads with black transparent backgrounds) use Beer-Lambert
+			 * luminance extinction instead of color mixing, so the transparent parts
+			 * of the quad don't get filled with fog color by the blend operation */
+			programFeatures |= GLSL_SHADER_COMMON_ATM_FOG;
+			programFeatures |= GLSL_SHADER_COMMON_ATM_FOG_ADDITIVE;
+		}
+		else if( dstBlend != GLSTATE_DSTBLEND_ZERO )
+		{
+			/* Regular transparent/opaque passes: blend towards the effective fog color */
+			programFeatures |= GLSL_SHADER_COMMON_ATM_FOG;
 		}
 	}
 	return programFeatures;
@@ -618,8 +652,47 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			objectData.fogEyePlane.w = vpnPlane.dist;
 		}
 
+		if( rn.activeFog.enabled ) {
+			frameData.atmFogDistParams.x = rn.activeFog.minDist;
+			frameData.atmFogDistParams.y = 0.0f;
+			frameData.atmFogDistParams.z = 0.0f;
+			frameData.atmFogDistParams.w = rn.activeFog.density;
+
+			frameData.atmFogColor.x = rn.activeFog.color[0];
+			frameData.atmFogColor.y = rn.activeFog.color[1];
+			frameData.atmFogColor.z = rn.activeFog.color[2];
+			frameData.atmFogColor.w = rn.activeFog.color[3];
+
+			float clear = rn.activeFog.heightClear;
+			float full = rn.activeFog.heightFull;
+			float invRange = ( rn.activeFog.heightFogEnabled && ( clear != full ) )
+				? ( 1.0f / ( full - clear ) )
+				: 0.0f;
+
+			frameData.atmFogHeightParams.x = clear;
+			frameData.atmFogHeightParams.y = full;
+			frameData.atmFogHeightParams.z = invRange;
+			frameData.atmFogHeightParams.w = rn.activeFog.heightFogEnabled ? 1.0f : 0.0f;
+
+			frameData.atmFogSunParams.x = rn.activeFog.sunDir[0];
+			frameData.atmFogSunParams.y = rn.activeFog.sunDir[1];
+			frameData.atmFogSunParams.z = rn.activeFog.sunDir[2];
+			frameData.atmFogSunParams.w = rn.activeFog.sunEnabled ? rn.activeFog.sunIntensity : 0.0f;
+
+			frameData.atmFogSunColor.x = rn.activeFog.sunColor[0];
+			frameData.atmFogSunColor.y = rn.activeFog.sunColor[1];
+			frameData.atmFogSunColor.z = rn.activeFog.sunColor[2];
+			frameData.atmFogSunColor.w = rn.activeFog.sunExponent;
+
+			frameData.atmFogSkyParams.x = rn.activeFog.skyHorizonBias;
+			frameData.atmFogSkyParams.y = rn.activeFog.skyHorizonScale;
+			frameData.atmFogSkyParams.z = rn.activeFog.skyZenithFalloff;
+			frameData.atmFogSkyParams.w = rn.activeFog.skyFogEnabled ? 1.0f : 0.0f;
+		}
+
 		memcpy( objectData.mv.v, rb.modelviewMatrix, sizeof( struct mat4 ) );
 		memcpy( objectData.mvp.v, rb.modelviewProjectionMatrix, sizeof( struct mat4 ) );
+		memcpy( objectData.worldMatrix.v, rb.objectMatrix, sizeof( struct mat4 ) );
 		memcpy( frameData.viewOrigin.v, rb.cameraOrigin, sizeof( struct vec3 ) );
 		memcpy( frameData.viewAxis.v, rb.cameraAxis, sizeof( struct mat3 ) );
 		frameData.mirrorSide = ( rb.renderFlags & RF_MIRRORVIEW ) ? -1 : 1;
@@ -1909,7 +1982,7 @@ void RB_BindShader( struct FrameState_s *frame, const entity_t *e, const shader_
 		rb.depthEqual = rb.alphaHack && ( e->renderfx & RF_WEAPONMODEL );
 	}
 
-	if( fog && fog->shader && !rb.noColorWrite ) {
+	if( fog && fog->shader && !rb.noColorWrite && !( shader->flags & SHADER_NOFOG ) ) {
 		// should we fog the geometry with alpha texture or scale colors?
 		if( !rb.alphaHack && Shader_UseTextureFog( shader ) ) {
 			rb.texFog = fog;

@@ -11,6 +11,10 @@ qf_varying vec3 v_TexCoordCube;
 qf_varying vec2 v_FogCoord;
 #endif
 
+#if defined(APPLY_ATM_FOG)
+qf_varying vec3 v_WorldPosition;
+#endif
+
 uniform mat3 u_ReflectionTexMatrix;
 
 void main(void)
@@ -40,6 +44,10 @@ void main(void)
 	v_TexCoord = TexCoord;
 #endif
 	v_TexCoordCube = u_ReflectionTexMatrix * reflect(normalize(Position.xyz - u_EntityDist), Normal.xyz);
+
+#if defined(APPLY_ATM_FOG)
+	v_WorldPosition = (u_ModelMatrix * vec4(Position.xyz, 1.0)).xyz;
+#endif
 
 	gl_Position = u_ModelViewProjectionMatrix * Position;
 }

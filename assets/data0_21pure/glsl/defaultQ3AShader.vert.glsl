@@ -61,8 +61,12 @@ void main(void)
 
 #endif // !defined(APPLY_CUBEMAP) && !defined(APPLY_SURROUNDMAP)
 
-#if defined(NUM_DLIGHTS) || defined(APPLY_CUBEMAP) || defined(APPLY_SURROUNDMAP)
+#if defined(NUM_DLIGHTS) || defined(APPLY_CUBEMAP) || defined(APPLY_SURROUNDMAP) || defined(APPLY_ATM_FOG)
 	v_Position = Position.xyz;
+#endif
+
+#ifdef APPLY_ATM_FOG
+	v_WorldPosition = (u_ModelMatrix * vec4(Position.xyz, 1.0)).xyz;
 #endif
 
 #if defined(APPLY_CUBEMAP) || defined(APPLY_DRAWFLAT)

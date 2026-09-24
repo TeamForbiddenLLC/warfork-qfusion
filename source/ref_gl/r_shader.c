@@ -753,7 +753,7 @@ static void Shader_SkyParmsExt( shader_t *shader, shaderpass_t *pass, const char
 
 	skyheight = Shader_ParseFloat( ptr );
 	if( !skyheight )
-		skyheight = 512.0f;
+		skyheight = 2048.0f;
 
 	shader->skyHeight = skyheight;
 	shader->flags |= SHADER_SKY;
@@ -847,6 +847,11 @@ static void Shader_PolygonOffset( shader_t *shader, shaderpass_t *pass, const ch
 static void Shader_StencilTest( shader_t *shader, shaderpass_t *pass, const char **ptr )
 {
 	shader->flags |= SHADER_STENCILTEST;
+}
+
+static void Shader_NoFog( shader_t *shader, shaderpass_t *pass, const char **ptr )
+{
+	shader->flags |= SHADER_NOFOG;
 }
 
 static void Shader_EntityMergable( shader_t *shader, shaderpass_t *pass, const char **ptr )
@@ -1043,6 +1048,7 @@ static const shaderkey_t shaderkeys[] =
 	{ "smallestmipmapsize", Shader_SmallestMipMapSize },
 	{ "polygonoffset", Shader_PolygonOffset },
 	{ "stenciltest", Shader_StencilTest },
+	{ "nofog", Shader_NoFog },
 	{ "sort", Shader_Sort },
 	{ "deformvertexes", Shader_DeformVertexes },
 	{ "portal", Shader_Portal },

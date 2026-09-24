@@ -1686,6 +1686,86 @@ static void Mod_LoadEntities( const lump_t *l, vec3_t gridSize, vec3_t ambient, 
 				else
 					ri.Com_Printf( S_COLOR_YELLOW "WARNING: _lightmapimagesize must be a power of two, ignoring\n" );
 			}
+			else if( !Q_stricmp( key, "fog" ) || !Q_stricmp( key, "_fog" ) )
+			{
+				/*
+				 * Format: "fog_dist r g b [mindist]"
+				 *
+				 * fog_dist is the distance at which the fog is ~95% opaque.
+				 * Converted to the Beer-Lambert extinction coefficient k = 3/d.
+				 */
+				float r = 0.5f, g = 0.5f, b = 0.5f, fogDist = 6000.0f, minDist = 0.0f;
+				int count = sscanf( value, "%f %f %f %f %f", &fogDist, &r, &g, &b, &minDist );
+				if( count >= 4 )
+				{
+					mapConfig.worldFog.enabled = true;
+					mapConfig.worldFog.color[0] = r;
+					mapConfig.worldFog.color[1] = g;
+					mapConfig.worldFog.color[2] = b;
+					mapConfig.worldFog.color[3] = 1.0f;
+					mapConfig.worldFog.density  = ( fogDist > 0.0f ) ? ( 3.0f / fogDist ) : 0.0f;
+					mapConfig.worldFog.minDist  = ( count >= 5 ) ? max( 0.0f, minDist ) : 0.0f;
+				}
+			}
+			else if( !Q_stricmp( key, "fog_height" ) || !Q_stricmp( key, "_fog_height" ) )
+			{
+				/*
+				 * Format: "z_clear z_full"
+				 *
+				 * clear < full: densifies upward (cloud deck), "0 256"
+				 * clear > full: densifies downward (ground mist), "256 0"
+				 */
+				float zClear = 0.0f, zFull = -1024.0f;
+				int count = sscanf( value, "%f %f", &zClear, &zFull );
+				if( count >= 2 && zClear != zFull )
+				{
+					mapConfig.worldFog.heightFogEnabled = true;
+					mapConfig.worldFog.heightClear      = zClear;
+					mapConfig.worldFog.heightFull       = zFull;
+				}
+			}
+			else if( !Q_stricmp( key, "fog_sun" ) || !Q_stricmp( key, "_fog_sun" ) )
+			{
+				/*
+				 * Format: "dir_x dir_y dir_z r g b intensity exponent"
+				 */
+				float dx = 0.577f, dy = 0.577f, dz = 0.577f;
+				float sr = 1.0f, sg = 0.9f, sb = 0.7f, si = 1.5f, se = 16.0f;
+				float len;
+				if( sscanf( value, "%f %f %f %f %f %f %f %f", &dx, &dy, &dz, &sr, &sg, &sb, &si, &se ) >= 6 )
+				{
+					len = (float)sqrt( dx*dx + dy*dy + dz*dz );
+					if( len > 0.0001f )
+					{
+						dx /= len;
+						dy /= len;
+						dz /= len;
+					}
+					mapConfig.worldFog.sunEnabled    = true;
+					mapConfig.worldFog.sunDir[0]     = dx;
+					mapConfig.worldFog.sunDir[1]     = dy;
+					mapConfig.worldFog.sunDir[2]     = dz;
+					mapConfig.worldFog.sunColor[0]   = sr;
+					mapConfig.worldFog.sunColor[1]   = sg;
+					mapConfig.worldFog.sunColor[2]   = sb;
+					mapConfig.worldFog.sunIntensity  = si;
+					mapConfig.worldFog.sunExponent   = max( 1.0f, se );
+				}
+			}
+			else if( !Q_stricmp( key, "fog_sky" ) || !Q_stricmp( key, "_fog_sky" ) )
+			{
+				/*
+				 * Format: "horizon_bias horizon_scale zenith_falloff"
+				 */
+				float hb = 0.05f, hs = 2.0f, zf = 3.0f;
+				if( sscanf( value, "%f %f %f", &hb, &hs, &zf ) >= 1 )
+				{
+					mapConfig.worldFog.skyFogEnabled    = true;
+					mapConfig.worldFog.skyHorizonBias   = hb;
+					mapConfig.worldFog.skyHorizonScale  = hs;
+					mapConfig.worldFog.skyZenithFalloff = zf;
+				}
+			}
 		}
 
 		if( isworld )

@@ -102,6 +102,20 @@ void main(void)
 	color.rgb = mix(color.rgb, u_FogColor, fogDensity);
 #endif
 
+#ifdef APPLY_ATM_FOG
+	vec4 atmFog = EvaluateAtmosphericFog(v_WorldPosition, u_ViewOrigin);
+#ifdef APPLY_ATM_FOG_MULTIPLICATIVE
+	/* Multiplicative pass (filter/detail): fade multiplier toward identity (white) */
+	color.rgb = mix(color.rgb, vec3(1.0), atmFog.a);
+#elif defined(APPLY_ATM_FOG_ADDITIVE)
+	/* Additive blending pass: extinguish luminance to black */
+	color.rgb *= (1.0 - atmFog.a);
+#else
+	/* Standard blend/opaque pass: blend towards effective fog color */
+	color.rgb = mix(color.rgb, atmFog.rgb, atmFog.a);
+#endif
+#endif
+
 #if defined(APPLY_SOFT_PARTICLE)
 	float softness = FragmentSoftness(v_Depth, u_DepthTexture, gl_FragCoord.xy, u_ZRange);
 	color *= mix(vec4(1.0), vec4(softness), u_BlendMix.xxxy);

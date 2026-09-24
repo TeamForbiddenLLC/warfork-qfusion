@@ -71,6 +71,39 @@ typedef struct superLightStyle_s
 	float			stOffset[MAX_LIGHTMAPS][2];
 } superLightStyle_t;
 
+/*
+ * fogSettings_t - World atmospheric / ground-mist fog configuration.
+ * Populated from worldspawn entity keys and optionally overridden by CVars.
+ * Stored in mapconfig_t (per-map) and copied to rn.activeFog (per-view).
+ */
+typedef struct
+{
+	bool		enabled;			// true when world fog is active
+
+	/* --- Distance Extinction --- */
+	float		color[4];			// RGB [0..1] + master alpha weight
+	float		density;			// Extinction density (controls roll-off)
+	float		minDist;			// Start offset — fog begins past this distance
+
+	/* --- Height Fog (optional) --- */
+	bool		heightFogEnabled;
+	float		heightClear;		// Z where height fog is zero (fog begins from here)
+	float		heightFull;			// Z where height fog is full density (stays full past it)
+
+	/* --- Directional Sun Inscattering (optional) --- */
+	bool		sunEnabled;
+	float		sunDir[3];			// Normalized world direction towards sun
+	float		sunColor[3];		// Sun haze color [0..1] RGB
+	float		sunIntensity;		// Inscattering boost factor (e.g. 1.0 - 2.5)
+	float		sunExponent;		// Angular tightness (e.g. 8.0 - 32.0)
+
+	/* --- Skybox Horizon Blending (optional) --- */
+	bool		skyFogEnabled;
+	float		skyHorizonBias;		// Horizon elevation start offset
+	float		skyHorizonScale;	// Falloff sharpness
+	float		skyZenithFalloff;	// Power exponent towards zenith
+} fogSettings_t;
+
 #include "r_glimp.h"
 #include "r_surface.h"
 #include "r_image.h"
@@ -190,6 +223,8 @@ typedef struct
 	float			lod_dist_scale_for_fov;
 
 	mfog_t			*fog_eye;
+	fogSettings_t	activeFog;
+	float			skyportalScale;
 
 	unsigned int	numPortalSurfaces;
 	unsigned int	numDepthPortalSurfaces;
@@ -432,6 +467,17 @@ extern cvar_t *r_temp1;
 extern cvar_t *r_drawflat;
 extern cvar_t *r_wallcolor;
 extern cvar_t *r_floorcolor;
+
+extern cvar_t *r_fog;
+extern cvar_t *r_fog_distance;
+extern cvar_t *r_fog_color;
+extern cvar_t *r_fog_mindist;
+extern cvar_t *r_fog_height_clear;
+extern cvar_t *r_fog_height_full;
+extern cvar_t *r_fog_sun_dir;
+extern cvar_t *r_fog_sun_color;
+extern cvar_t *r_fog_sun_inscatter;
+extern cvar_t *r_fog_sky_blend;
 
 extern cvar_t *r_usenotexture;
 
@@ -856,6 +902,7 @@ typedef struct
 	bool		forceWorldOutlines;
 
 	int				lightmapImageSize;			// 0 = use format default
+	fogSettings_t	worldFog;					// loaded from worldspawn "fog", "fog_height", "fog_sun", "fog_sky"
 } mapconfig_t;
 
 extern mapconfig_t	mapConfig;

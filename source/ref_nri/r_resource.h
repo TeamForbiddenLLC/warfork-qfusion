@@ -109,6 +109,12 @@ struct FrameCB {
 	struct vec3 fogColor;
 	float mirrorSide;
   struct mat4 viewAxis;
+	struct vec4 atmFogDistParams;   // x: minDist, y: unused, z: unused, w: density
+	struct vec4 atmFogColor;        // rgb, a: master alpha weight
+	struct vec4 atmFogHeightParams; // x: clear, y: full, z: invRange, w: heightFogEnabled
+	struct vec4 atmFogSunParams;    // xyz: dir, w: intensity
+	struct vec4 atmFogSunColor;     // rgb, w: exponent
+	struct vec4 atmFogSkyParams;    // x: bias, y: scale, z: falloff, w: skyFogEnabled
 };
 
 struct DynLight {
@@ -132,6 +138,7 @@ struct ObjectCB {
    struct vec4 fogPlane;
    struct mat4 mvp;
    struct mat4 mv;
+   struct mat4 worldMatrix;
    struct vec4 rgbGenFuncArgs;
    struct vec4 alphaGenFuncArgs;
    struct vec4 colorConst;

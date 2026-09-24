@@ -1,3 +1,4 @@
+uniform mat4 u_ModelMatrix;
 uniform mat4 u_ModelViewMatrix;
 uniform mat4 u_ModelViewProjectionMatrix;
 
@@ -30,3 +31,40 @@ uniform vec2 u_ZRange;
 uniform ivec4 u_Viewport; // x, y, width, height
 
 uniform vec4 u_TextureParams;
+
+/* ============================================================
+ * Atmospheric & Ground-Mist World Fog Uniforms
+ * Set by RP_UpdateAtmosphericFogUniforms() each render pass.
+ * ============================================================ */
+uniform vec4 u_AtmFogColor;
+/* .xyz = fog color [0..1] RGB
+   .w   = master alpha weight (0 = fog disabled, >0 = enabled) */
+
+uniform vec4 u_AtmFogDistParams;
+/* .x = min_dist (extinction start offset)
+   .y = max_dist (not used in math, reserved)
+   .z = 0 (unused)
+   .w = density (extinction coefficient) */
+
+uniform vec4 u_AtmFogHeightParams;
+/* .x = height_clear (height at which fog is fully transparent)
+   .y = height_full  (height at which fog is fully opaque)
+   .z = 1.0 / (height_full - height_clear) precomputed inverse range (signed)
+   .w = height_fog_enabled (0.0 or 1.0)
+   height_clear < height_full: fog densifies upward (cloud deck)
+   height_clear > height_full: fog densifies downward (ground mist) */
+
+uniform vec4 u_AtmFogSkyParams;
+/* .x = horizon_bias
+   .y = horizon_scale
+   .z = zenith_falloff_exponent
+   .w = sky_fog_enabled (0.0 or 1.0) */
+
+
+uniform vec4 u_AtmFogSunColor;
+/* .xyz = sun inscattering RGB color
+   .w   = sun inscattering angular exponent */
+
+uniform vec4 u_AtmFogSunParams;
+/* .xyz = normalized world direction towards sun
+   .w   = sun inscattering intensity (0.0 = disabled) */
