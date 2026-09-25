@@ -673,16 +673,23 @@ static float CG_OutlineScaleForDist( entity_t *e, float maxdist, float scale )
 
 	dist *= scale;
 
-	if( dist < 64 )
-		return 0.14f;
-	if( dist < 128 )
-		return 0.30f;
-	if( dist < 256 )
-		return 0.42f;
-	if( dist < 512 )
-		return 0.56f;
-	if( dist < 768 )
-		return 0.70f;
+	static const float outlineDistLimits[] = { 4, 16, 24, 32, 58, 128, 256, 512, 768, 1024 };
+	static const float outlineDistValues[] = { 0.00000000001f, 0.0000001f, 0.0001f, 0.08f, 0.14f, 0.30f, 0.42f, 0.56f, 0.70f, 1.0f };
+	int i;
+
+	if( dist < outlineDistLimits[0] )
+		return outlineDistValues[0];
+
+	for( i = 0; i < 9; i++ )
+	{
+		float frac;
+
+		if( dist < outlineDistLimits[i+1] )
+		{
+			frac = ( dist - outlineDistLimits[i] ) / ( outlineDistLimits[i+1] - outlineDistLimits[i] );
+			return outlineDistValues[i] + frac * ( outlineDistValues[i+1] - outlineDistValues[i] );
+		}
+	}
 
 	return 1.0f;
 }
