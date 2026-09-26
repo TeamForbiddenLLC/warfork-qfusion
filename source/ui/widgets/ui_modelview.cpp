@@ -11,6 +11,10 @@
 #include "kernel/ui_boneposes.h"
 #include "widgets/ui_widgets.h"
 #include "../gameshared/q_shared.h"
+#include "../gameshared/q_comref.h"
+#include "../gameshared/q_collision.h"
+#include "../gameshared/gs_public.h"
+#include "../qcommon/mod_fs.h"
 
 #define MODELVIEW_EPSILON		1.0f
 
@@ -21,6 +25,67 @@ using namespace Rocket::Core;
 
 // forward-declare the instancer for keyselects
 class UI_ModelviewWidgetInstancer;
+
+static bool ParseUIPoseAnimation( const char *modelPath, int *firstFrame, int *lastFrame, int *loopingFrames, float *frametime )
+{
+	std::string cfgPath( modelPath );
+	std::string::size_type slash = cfgPath.find_last_of( '/' );
+	if( slash == std::string::npos )
+		return false;
+
+	cfgPath.erase( slash + 1 );
+	cfgPath += "animation.cfg";
+
+	int filenum = 0;
+	int length = FS_FOpenFile( cfgPath.c_str(), &filenum, FS_READ );
+	if( length < 0 || !filenum )
+		return false;
+
+	char *buffer = new char[length+1];
+	FS_Read( buffer, length, filenum );
+	FS_FCloseFile( filenum );
+	buffer[length] = '\0';
+
+	int counter = 0;
+	bool found = false;
+	char *line = buffer;
+
+	while( line && !found )
+	{
+		char *nextLine = strchr( line, '\n' );
+		if( nextLine )
+			*nextLine++ = '\0';
+
+		char *ptr = line;
+		char *token = COM_ParseExt( &ptr, false );
+
+		if( token[0] && *token >= '0' && *token <= '9' )
+		{
+			counter++;
+			if( counter == UI_POSE )
+			{
+				int values[4];
+
+				values[0] = atoi( token );
+				values[1] = atoi( COM_ParseExt( &ptr, false ) );
+				values[2] = atoi( COM_ParseExt( &ptr, false ) );
+				values[3] = atoi( COM_ParseExt( &ptr, false ) );
+
+				*firstFrame = values[0];
+				*lastFrame = values[1];
+				*loopingFrames = values[2];
+				*frametime = 1000.0f / (float)( values[3] > 10 ? values[3] : 10 );
+				found = true;
+			}
+		}
+
+		line = nextLine;
+	}
+
+	delete[] buffer;
+
+	return found;
+}
 
 class UI_ModelviewWidget : public Element, EventListener
 {
@@ -39,13 +104,21 @@ private:
 	String modelName;
 	String skinName;
 	float fov_x, fov_y;
+	bool hasUIPose;
+	int uiPoseFirstFrame;
+	int uiPoseLastFrame;
+	int uiPoseLoopingFrames;
+	float uiPoseFrametime;
+	float uiPoseTime;
 
 public:
 	UI_ModelviewWidget( const String &tag )
 		: Element( tag ), 
 		time( 0 ), AutoRotationCenter( false), Initialized( false ), RecomputePosition( false ), 
 		BonePoses( NULL ), skel( NULL ), modelName( "" ), skinName( "" ),
-		fov_x( 30.0f ), fov_y( 0.0f )
+		fov_x( 30.0f ), fov_y( 0.0f ),
+		hasUIPose( false ), uiPoseFirstFrame( 1 ), uiPoseLastFrame( 1 ),
+		uiPoseLoopingFrames( 0 ), uiPoseFrametime( 0.0f ), uiPoseTime( 0.0f )
 	{
 		memset( &entity, 0, sizeof( entity ) );
 		memset( &refdef, 0, sizeof( refdef ) );
@@ -90,6 +163,41 @@ public:
 		float deltatime = curtime - time;
 
 		refdef.time = curtime;
+
+		if( hasUIPose )
+		{
+			uiPoseTime += deltatime;
+
+			float frametime = uiPoseFrametime;
+			if( frametime <= 0.0f )
+				frametime = 100.0f;
+
+			int firstframe = uiPoseFirstFrame;
+			int lastframe = uiPoseLastFrame;
+
+			if( firstframe < 0 )
+				firstframe = 0;
+			if( lastframe < firstframe )
+				lastframe = firstframe;
+			if( skel && skel->numFrames > 0 && lastframe >= skel->numFrames )
+				lastframe = skel->numFrames - 1;
+			if( lastframe < firstframe )
+				lastframe = firstframe;
+
+			int numframes = lastframe - firstframe + 1;
+
+			float animtime = uiPoseTime / frametime;
+			int curframe = firstframe + ( (int)animtime % numframes );
+			int oldframe = curframe - 1;
+			if( oldframe < firstframe )
+				oldframe = lastframe;
+
+			entity.frame = curframe;
+			entity.oldframe = oldframe;
+			entity.backlerp = 1.0f - ( animtime - (float)(int)animtime );
+
+			BonePoses->SetBoneposesForTemporaryEntity( &entity );
+		}
 
 		for (int i = 0; i < 3; ++i)
 			angles[i] = anglemod( angles[i] + deltatime * anglespeed[i] / 1000.0f );
@@ -300,6 +408,12 @@ private:
 
 		entity.model = R_RegisterModel(modelName.CString());
 		entity.customSkin = R_RegisterSkinFile(skinName.CString());
+
+		time = UI_Main::Get()->getRefreshState().time;
+		uiPoseTime = 0.0f;
+		hasUIPose = false;
+		if( entity.model && ParseUIPoseAnimation( modelName.CString(), &uiPoseFirstFrame, &uiPoseLastFrame, &uiPoseLoopingFrames, &uiPoseFrametime ) )
+			hasUIPose = true;
 	}
 
 	void ComputePosition()
