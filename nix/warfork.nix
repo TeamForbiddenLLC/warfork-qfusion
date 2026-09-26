@@ -125,7 +125,6 @@ let
     installPhase = ''
       mkdir $out
       cp -r build/warfork-qfusion/* $out
-      cp build/libs/libTracyClient_x86_64.so* $out/libs
     '';
     preFixup = ''
       bads=(
