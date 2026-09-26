@@ -46,7 +46,8 @@ uint64_t RITimelineCompleted( struct RIDevice_s *dev, struct RITimeline_s *timel
 	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
 		{
 			uint64_t value = 0;
-			VK_WrapResult( vkGetSemaphoreCounterValue( dev->vk.device, timeline->vk.semaphore, &value ) );
+			if( !VK_WrapResult( vkGetSemaphoreCounterValue( dev->vk.device, timeline->vk.semaphore, &value ) ) )
+				return 0; // value is unspecified on failure (e.g. device lost)
 			return value;
 		}
 	}

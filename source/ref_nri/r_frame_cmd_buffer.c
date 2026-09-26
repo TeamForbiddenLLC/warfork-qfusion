@@ -88,6 +88,11 @@ void UpdateFrameUBO( struct FrameState_s *cmd, struct RIDescriptor_s *req, void 
 	if( req->cookie != hash ) {
 		req->cookie = hash;
 		struct RIBufferScratchAllocReq_s scratchReq = RIAllocBufferFromScratchAlloc( &rsh.device, &activeSet->uboScratchAlloc, size );
+		if( !scratchReq.pMappedAddress ) {
+			// Out of memory (already logged): leave the descriptor as it was and force a retry next time.
+			req->cookie = 0;
+			return;
+		}
 		// Scratch UBOs reuse the same backing buffer handle each frame at varying offsets, so the buffer's
 		// handle is not a stable identity; the content hash above IS the cookie (set directly, not via a
 		// builder — RIDescriptorUniformBuffer needs an RIBuffer_s, which the scratch allocator doesn't expose).

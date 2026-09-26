@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_local.h"
 #include "ri_vk.h"
 
+#include "r_program_cache.h"
 #include "spirv_reflect.h"
 #if ( DEVICE_IMPL_MTL )
 	#include <spirv_cross_c.h>
@@ -98,6 +99,12 @@ void RP_Init( void )
 
 	Trie_Create( TRIE_CASE_INSENSITIVE, &glsl_cache_trie );
 
+	// Both caches open before the base programs register: those 12 compile on every startup, so they
+	// are the most valuable cache hits available, and they would miss entirely if the caches only
+	// opened in RP_PrecachePrograms at the end of this function.
+	RP_InitPipelineCache();
+	RP_SpirvCacheOpen();
+
 	// register base programs
 	RP_RegisterProgram( GLSL_PROGRAM_TYPE_MATERIAL, DEFAULT_GLSL_MATERIAL_PROGRAM, NULL, NULL, 0, 0 );
 	RP_RegisterProgram( GLSL_PROGRAM_TYPE_DISTORTION, DEFAULT_GLSL_DISTORTION_PROGRAM, NULL, NULL, 0, 0 );
@@ -112,6 +119,9 @@ void RP_Init( void )
 	RP_RegisterProgram( GLSL_PROGRAM_TYPE_COLORCORRECTION, DEFAULT_GLSL_COLORCORRECTION_PROGRAM, NULL, NULL, 0, 0 );
 	// check whether compilation of the shader with GPU skinning succeeds, if not, disable GPU bone transforms
 	RP_RegisterProgram( GLSL_PROGRAM_TYPE_MATERIAL, DEFAULT_GLSL_MATERIAL_PROGRAM, NULL, NULL, 0, GLSL_SHADER_COMMON_BONE_TRANSFORMS1 );
+
+	// after the base programs, so the parent lookup for name-less permutations can resolve
+	RP_PrecachePrograms();
 	TracyCZoneEnd( ctx );
 }
 
@@ -203,24 +213,83 @@ static void __appendGLSLDeformv( struct QStr *str, const deformv_t *deformv, int
 /*
  * RP_PrecachePrograms
  *
- * Loads the list of known program permutations from disk file.
+ * Registers every permutation the last session recorded, so the SPIR-V load, reflection and layout
+ * creation happen here at init instead of mid-frame inside RB_DrawElements.
  *
- * Expected file format:
+ * This warms *programs*, not pipelines: a VkPipeline additionally needs a pipeline_desc_s built from
+ * live render state, which is not reconstructible here. The VkPipelineCache is what covers that.
+ *
+ * File format:
  * application_name\n
- * version_number\n*
- * program_type1 features_lower_bits1 features_higher_bits1 program_name1 binary_offset
+ * version_number\n
+ * program_type1 features1 "program_name1" "deforms_key1" binary_offset1
  * ..
- * program_typeN features_lower_bitsN features_higher_bitsN program_nameN binary_offset
+ * program_typeN featuresN "program_nameN" "deforms_keyN" binary_offsetN
  */
-void RP_PrecachePrograms( void ) {}
+void RP_PrecachePrograms( void )
+{
+	TracyCZoneN( ctx, "RP_PrecachePrograms", 1 );
+
+	// the index was already loaded by RP_SpirvCacheOpen() at the top of RP_Init
+	size_t warmed = 0;
+	for( size_t i = 0; i < RP_SpirvCacheEntryCount(); i++ ) {
+		int type;
+		r_glslfeat_t features;
+		const char *baseName;
+		const char *deformsKey;
+
+		if( !RP_SpirvCacheEntryAt( i, &type, &features, &baseName, &deformsKey ) ) {
+			break;
+		}
+		// leave headroom rather than march into the fixed-size r_glslprograms array
+		if( r_numglslprograms >= MAX_GLSL_PROGRAMS - 32 ) {
+			Com_Printf( S_COLOR_YELLOW "Precache list exceeds the program limit, warming %u of %u.\n", (unsigned)warmed, (unsigned)RP_SpirvCacheEntryCount() );
+			break;
+		}
+		// Deform permutations cannot be warmed from here: RP_ResolveProgram blanks deformsKey
+		// whenever deforms is NULL, and we have no deformv_t to hand it, so the call would silently
+		// resolve the non-deform program instead. They are still stored, and they still hit the
+		// SPIR-V cache mid-frame when the backend supplies the real deforms -- which is the path
+		// that was hitching anyway. Skipping them here only forgoes the load-time warm.
+		if( deformsKey && deformsKey[0] ) {
+			continue;
+		}
+		if( RP_ResolveProgram( type, baseName, NULL, NULL, 0, features ) ) {
+			warmed++;
+		}
+	}
+	if( warmed ) {
+		Com_Printf( "Precached %u GLSL programs.\n", (unsigned)warmed );
+	}
+	TracyCZoneEnd( ctx );
+}
 
 /*
  * RP_StorePrecacheList
  *
  * Stores the list of known GLSL program permutations to file on the disk.
  * File format matches that expected by RP_PrecachePrograms.
+ *
+ * Must run before RP_Shutdown's delete loop frees shaderBin and zeroes r_numglslprograms.
  */
-void RP_StorePrecacheList( void ) {}
+void RP_StorePrecacheList( void )
+{
+	unsigned int i;
+	struct glsl_program_s *program;
+
+	if( !RP_SpirvCacheStoreBegin() ) {
+		return;
+	}
+	for( i = 0, program = r_glslprograms; i < r_numglslprograms; i++, program++ ) {
+		// Two deliberate departures from ref_gl, which skips both of these:
+		//  - deform permutations are stored: they are exactly what hitches mid-game, and replaying a
+		//    cache hit needs no deformv_t (ref_gl had to skip them because its replay recompiles).
+		//  - zero-feature base programs are stored: RP_Init re-registers them on every startup, and
+		//    with the cache open before it does, they turn 12 unconditional compiles into 12 hits.
+		RP_SpirvCacheStoreProgram( program );
+	}
+	RP_SpirvCacheStoreEnd();
+}
 
 /*
  * RF_DeleteProgram
@@ -232,6 +301,8 @@ static void RF_DeleteProgram( struct glsl_program_s *program )
 
 	if( program->name )
 		R_Free( program->name );
+	if( program->baseName )
+		R_Free( program->baseName );
 	if( program->deformsKey )
 		R_Free( program->deformsKey );
 
@@ -932,26 +1003,19 @@ void RP_ProgramList_f( void )
 	Com_Printf( "------------------\n" );
 	size_t i;
 	struct glsl_program_s *program;
-	struct QStr fullName = { 0 };
 	for( i = 0, program = r_glslprograms; i < MAX_GLSL_PROGRAMS; i++, program++ ) {
 		if( !program->name )
 			break;
 
-		qStrClear( &fullName );
-		qStrAppendSlice( &fullName, qCToStrRef( program->name ) );
-		for( feature_iter_t iter = __R_NextFeature( (feature_iter_t){ .it = glsl_programtypes_features[program->type], .bits = program->features } ); __R_IsValidFeatureIter( &iter );
-			 iter = __R_NextFeature( iter ) ) {
-			qStrAppendSlice( &fullName, qCToStrRef( iter.it->suffix ) );
-		}
-		Com_Printf( " %3i %.*s", i + 1, fullName.len, fullName.buf );
+		// program->name already carries the feature suffixes
+		Com_Printf( " %3i %s", (int)( i + 1 ), program->name );
 
 		if( *program->deformsKey ) {
 			Com_Printf( " dv:%s", program->deformsKey );
 		}
 		Com_Printf( "\n" );
 	}
-	qStrFree( &fullName );
-	Com_Printf( "%i programs total\n", i );
+	Com_Printf( "%i programs total\n", (int)i );
 }
 
 const char *RP_GLSLStageToShaderPrefix( const glsl_program_stage_t stage )
@@ -991,7 +1055,32 @@ static inline struct pipeline_hash_s *__resolvePipeline( struct glsl_program_s *
 		index = ( index + 1 ) % PIPELINE_LAYOUT_HASH_SIZE;
 
 	} while( index != startIndex );
-	return NULL;
+
+	// Every slot is taken. Rather than hand back NULL (which every caller dereferences), evict the home
+	// slot: its pipeline may still be referenced by in-flight command buffers, so it is released through
+	// the frame's deferred free list (VK) or by dropping our reference (Metal command buffers retain the
+	// pipeline states they use).
+	static bool warned = false;
+	if( !warned ) {
+		Com_Printf( S_COLOR_YELLOW "Pipeline cache for program %s is full (%d entries), evicting\n", program->name ? program->name : "?", PIPELINE_LAYOUT_HASH_SIZE );
+		warned = true;
+	}
+	struct pipeline_hash_s *slot = &program->pipelines[startIndex];
+	#if ( DEVICE_IMPL_VULKAN )
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) && slot->vk.handle ) {
+		struct RIFree_s freeEntry = { .type = RI_FREE_VK_PIPELINE, .vkPipeline = slot->vk.handle };
+		arrpush( R_GetActiveFrameSet()->freeList, freeEntry );
+		slot->vk.handle = VK_NULL_HANDLE;
+	}
+	#endif
+	#if ( DEVICE_IMPL_MTL )
+	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) && slot->mtl.state ) {
+		mtlc_render_pipeline_state_release( mtlc_render_pipeline_state_from_id( slot->mtl.state ) );
+		slot->mtl.state = NULL;
+	}
+	#endif
+	slot->hash = hash;
+	return slot;
 }
 
 #if ( DEVICE_IMPL_VULKAN )
@@ -999,7 +1088,9 @@ static int __VK_SortVkVertexInputAttributeDescription( const void *a1, const voi
 {
 	const struct VkVertexInputAttributeDescription *at1 = a1;
 	const struct VkVertexInputAttributeDescription *at2 = a2;
-	return at1->location > at2->location;
+	// qsort needs a three-way result; returning only 0/1 isn't a valid ordering, so equal pipeline
+	// states could sort (and hash) differently and build duplicate pipelines.
+	return ( at1->location > at2->location ) - ( at1->location < at2->location );
 }
 #endif
 
@@ -1086,7 +1177,7 @@ void RP_BindPipeline( struct FrameState_s *cmd, struct pipeline_hash_s *pipeline
 	TracyCZoneEnd( ctx );
 }
 
-struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_desc_s *cmd )
+static struct pipeline_hash_s *__RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_desc_s *cmd )
 {
 	const enum RICullMode_e cullMode = FR_PipelineCullMode( cmd );
 	struct pipeline_hash_s *pipeline = NULL;
@@ -1410,7 +1501,7 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 			depthStencilState.maxDepthBounds = 1.0f;
 			pipelineCreateInfo.pDepthStencilState = &depthStencilState;
 
-			VK_WrapResult( vkCreateGraphicsPipelines( rsh.device.vk.device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &pipeline->vk.handle ) );
+			VK_WrapResult( vkCreateGraphicsPipelines( rsh.device.vk.device, RP_PipelineCache(), 1, &pipelineCreateInfo, NULL, &pipeline->vk.handle ) );
 			//assert( ( attribFlags & program->vertexInputMask ) == program->vertexInputMask );
 			if( vkSetDebugUtilsObjectNameEXT ) {
 				VkDebugUtilsObjectNameInfoEXT debugName = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, NULL, VK_OBJECT_TYPE_PIPELINE, (uint64_t)pipeline->vk.handle, program->name };
@@ -1424,6 +1515,15 @@ struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, stru
 	}
 #endif
 
+	return pipeline;
+}
+
+struct pipeline_hash_s *RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_desc_s *cmd )
+{
+	// wrapper so the zone closes on every one of the backend arms' early returns
+	TracyCZoneN( ctx, "RP_ResolvePipeline", 1 );
+	struct pipeline_hash_s *pipeline = __RP_ResolvePipeline( program, cmd );
+	TracyCZoneEnd( ctx );
 	return pipeline;
 }
 
@@ -1451,8 +1551,11 @@ void RP_BindPushConstant( struct RIDevice_s *device, struct FrameState_s *cmd, s
 #if ( DEVICE_IMPL_VULKAN )
 	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
 		{
+			// Push exactly what the caller owns: pushing the reflected block size reads past `data` whenever
+			// the caller's struct is smaller. The assert catches the reverse (a block bigger than the struct).
 			assert( len <= program->vk.pushConstant.size );
-			vkCmdPushConstants( cmd->handle.vk.cmd, program->vk.pipelineLayout, program->vk.pushConstant.shaderStageFlags, 0, program->vk.pushConstant.size, data );
+			assert( ( len % 4 ) == 0 );
+			vkCmdPushConstants( cmd->handle.vk.cmd, program->vk.pipelineLayout, program->vk.pushConstant.shaderStageFlags, 0, (uint32_t)len, data );
 		}
 	}
 #endif
@@ -1617,6 +1720,25 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd,
 					// is a distinct set contents, so it must not hash to (and reuse) the same cached set.
 					hash = hash_u64( hash, bindings[i].registerOffset );
 				}
+#if !defined( NDEBUG )
+				// A non-array binding the shader reflects but the caller never wrote is read as an undefined
+				// descriptor (VUID-vkCmdDrawIndexed-None-08114). Report each one once per program rather than
+				// asserting. Array bindings are PARTIALLY_BOUND, so unwritten elements there are legal.
+				for( size_t r = 0; r < program->numDescriptorReflections; r++ ) {
+					const struct descriptor_reflection_s *refl = &program->descriptorReflection[r];
+					if( refl->set != setIndex || refl->isArray || ( program->reportedUnwrittenBindings & ( 1ull << r ) ) )
+						continue;
+					bool written = false;
+					for( size_t i = 0; i < numDescriptorData && !written; i++ )
+						written = bindings[i].handle.hash == refl->hash && !RI_IsEmptyDescriptor( &bindings[i].descriptor );
+					if( written )
+						continue;
+					program->reportedUnwrittenBindings |= ( 1ull << r );
+					Com_Printf( S_COLOR_YELLOW "RP_BindDescriptorSets(%s): set %u binding %u is used by the shader but was never written%s\n",
+								program->name ? program->name : "?", setIndex, (unsigned)refl->baseRegisterIndex,
+								hash == HASH_INITIAL_VALUE ? " (nothing was supplied for this set, so it is never bound)" : "" );
+				}
+#endif
 				if( hash == HASH_INITIAL_VALUE )
 					continue;
 				struct glsl_program_descriptor_s *info = &program->programDescriptors[setIndex];
@@ -2582,8 +2704,18 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 		features &= ~( GLSL_SHADER_COMMON_ATM_FOG | GLSL_SHADER_COMMON_ATM_FOG_ADDITIVE | GLSL_SHADER_COMMON_ATM_FOG_MULTIPLICATIVE );
 	}
 
+	// RP_ResolveProgram bounds-checks before it calls here, but RP_Init and the precache replay
+	// reach this directly, and r_glslprograms is a fixed-size static array.
+	if( r_numglslprograms >= MAX_GLSL_PROGRAMS ) {
+		Com_Printf( S_COLOR_YELLOW "RP_RegisterProgram: GLSL programs limit exceeded\n" );
+		TracyCZoneEnd( ctx );
+		return NULL;
+	}
 	const uint64_t hashIndex = hash_u64( HASH_INITIAL_VALUE, features ) % GLSL_PROGRAMS_HASH_SIZE;
 	struct glsl_program_s *program = r_glslprograms + r_numglslprograms++;
+	// captured before fullName mangles it -- this is what the cache stores and what resolves back to
+	// the glsl_nri/<baseName>.<stage>.glsl source path
+	program->baseName = R_CopyString( name );
 	struct QStr featuresStr = { 0 };
 	struct QStr fullName = { 0 };
 	qStrAppendSlice( &fullName, qCToStrRef( name ) );
@@ -2593,7 +2725,6 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 			qStrAppendSlice( &fullName, qCToStrRef( iter.it->suffix ) );
 		}
 	}
-	ri.Com_Printf( "Loading Shader: %.*s", fullName.len, fullName.buf );
 
 	// Named up front so every diagnostic and MSL dump the build path emits carries the program's name
 	// and feature bits rather than "<unnamed>" / 0 (which also made every dump overwrite the same file).
@@ -2604,6 +2735,8 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 	program->features = features;
 
 	bool error = false;
+	// declared before the cache lookup below because the reflection pass iterates it on both the
+	// cached and the compiled path
 	struct {
 		glsl_program_stage_t stage;
 		struct QStr source;
@@ -2611,169 +2744,208 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 		{ .stage = GLSL_STAGE_VERTEX, .source = { 0 } },
 		{ .stage = GLSL_STAGE_FRAGMENT, .source = { 0 } },
 	};
-	{
-		struct QStr filePath = { 0 };
-		for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
-			qStrAppendSlice( &stages[i].source, qCToStrRef( "#version 440 \n" ) );
-			switch( stages[i].stage ) {
-				case GLSL_STAGE_VERTEX:
-					qStrAppendSlice( &stages[i].source, qCToStrRef( "#define VERTEX_SHADER\n" ) );
-					break;
-				case GLSL_STAGE_FRAGMENT:
-					qStrAppendSlice( &stages[i].source, qCToStrRef( "#define FRAGMENT_SHADER\n" ) );
-					break;
-				default:
-					assert( 0 );
-					break;
-			}
-			qStrAppendSlice( &stages[i].source, qToStrRef( featuresStr ) );
-			qStrAppendSlice( &stages[i].source, qCToStrRef( QF_BUILTIN_GLSL_CONSTANTS ) );
-			qStrAppendSlice( &stages[i].source, qCToStrRef( QF_GLSL_MATH ) );
-			if( stages[i].stage == GLSL_STAGE_VERTEX ) {
-				__appendGLSLDeformv( &stages[i].source, deforms, numDeforms );
-			}
-
-			qStrClear( &filePath );
-			qstrcatfmt( &filePath, "glsl_nri/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
-			qStrSetNullTerm( &filePath );
-			error = RF_AppendShaderFromFile( &stages[i].source, filePath.buf, type, features );
-			if( error ) {
-				break;
-			}
-		}
-		qStrFree( &filePath );
-	}
-	qStrFree( &featuresStr );
 
 	program->hasPushConstant = false;
 	program->vertexInputMask = 0;
 
-	for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
-		qStrSetNullTerm( &stages[i].source );
-		const glslang_input_t input = { .language = GLSLANG_SOURCE_GLSL,
-										.stage = __RP_GLStageToSlang( stages[i].stage ),
-										.client = GLSLANG_CLIENT_VULKAN,
-										.client_version = GLSLANG_TARGET_VULKAN_1_2,
-										.target_language = GLSLANG_TARGET_SPV,
-										.target_language_version = GLSLANG_TARGET_SPV_1_5,
-										.code = stages[i].source.buf,
-										.default_version = 450,
-										.default_profile = GLSLANG_CORE_PROFILE,
-										.force_default_version_and_profile = false,
-										.forward_compatible = false,
-										.messages = GLSLANG_MSG_DEFAULT_BIT,
-										.resource = glslang_default_resource() };
-		glslang_shader_t *shader = glslang_shader_create( &input );
-		glslang_program_t *glslang_program = NULL;
-		if( !glslang_shader_preprocess( shader, &input ) ) {
-			struct QStr errFilePath = { 0 };
-			qstrcatfmt( &errFilePath, "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
-			const char *infoLog = glslang_shader_get_info_log( shader );
-			const char *debugLogs = glslang_shader_get_info_debug_log( shader );
-			Com_Printf( S_COLOR_YELLOW "GLSL preprocess failed %.*s\n", fullName.len, fullName.buf );
-			Com_Printf( S_COLOR_YELLOW "%s\n", infoLog );
-			Com_Printf( S_COLOR_YELLOW "%s\n", debugLogs );
-			Com_Printf( S_COLOR_YELLOW "dump shader: %.*s\n", errFilePath.len, errFilePath.buf );
+	// A non-empty deformsKey with no deforms array cannot be compiled: __appendGLSLDeformv would
+	// bake no deform code, and the result would then be cached under a deform key -- silently wrong
+	// rendering that persists across runs. Such a call is only ever legal as a cache hit. Encoding
+	// it here rather than in the caller means no future caller can get it wrong.
+	const bool requiresCachedSpirv = ( deformsKey && deformsKey[0] && numDeforms == 0 );
+	const bool cacheHit = RP_SpirvCacheLookup( program, type, features, deformsKey );
 
-			struct QStr shaderErr = { 0 };
-			qstrcatfmt( &shaderErr, "%s\n", input.code );
-			qstrcatfmt( &shaderErr, "----------- Preprocessing Failed -----------\n" );
-			qstrcatfmt( &shaderErr, "%s\n", infoLog );
-			qstrcatfmt( &shaderErr, "%s\n", debugLogs );
-			__RP_writeTextToFile( errFilePath.buf, shaderErr.buf );
-			assert( false && "failed to preprocess shader" );
-
-			qStrFree( &shaderErr );
-			qStrFree( &errFilePath );
-
-			error = true;
-			goto shader_done;
-		}
-
-		if( !glslang_shader_parse( shader, &input ) ) {
-			struct QStr errFilePath = { 0 };
-			qstrcatfmt( &errFilePath, "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
-			const char *infoLog = glslang_shader_get_info_log( shader );
-			const char *debugLogs = glslang_shader_get_info_debug_log( shader );
-
-			Com_Printf( S_COLOR_YELLOW "GLSL parsing failed %.*s\n", fullName.len, fullName.buf );
-			Com_Printf( S_COLOR_YELLOW "%s\n", infoLog );
-			Com_Printf( S_COLOR_YELLOW "%s\n", debugLogs );
-			Com_Printf( S_COLOR_YELLOW "dump shader: %.*s\n", errFilePath.len, errFilePath.buf );
-
-			struct QStr shaderErr = { 0 };
-			qstrcatfmt( &shaderErr, "%s\n", input.code );
-			qstrcatfmt( &shaderErr, "----------- Parsing Failed -----------\n" );
-			qstrcatfmt( &shaderErr, "%s\n", infoLog );
-			qstrcatfmt( &shaderErr, "%s\n", debugLogs );
-			__RP_writeTextToFile( errFilePath.buf, shaderErr.buf );
-			assert( false && "failed to parse shader" );
-			qStrFree( &shaderErr );
-			qStrFree( &errFilePath );
-
-			error = true;
-			goto shader_done;
-		} else {
-			struct QStr shaderDebugPath = { 0 };
-			qstrcatfmt( &shaderDebugPath, "logs/shader_debug/%S_%u.%s.glsl", qToStrRef( fullName ), features, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
-			__RP_writeTextToFile( shaderDebugPath.buf, glslang_shader_get_preprocessed_code( shader ) );
-			qStrFree( &shaderDebugPath );
-		}
-
-		glslang_program = glslang_program_create();
-		glslang_program_add_shader( glslang_program, shader );
-
-		if( !glslang_program_link( glslang_program, GLSLANG_MSG_SPV_RULES_BIT | GLSLANG_MSG_VULKAN_RULES_BIT ) ) {
-			struct QStr errFilePath = { 0 };
-			qstrcatfmt( &errFilePath, "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
-
-			const char *infoLogs = glslang_program_get_info_log( glslang_program );
-			const char *debugLogs = glslang_program_get_info_debug_log( glslang_program );
-
-			Com_Printf( S_COLOR_YELLOW "GLSL linking failed %.*s\n", fullName.len, fullName.buf );
-			Com_Printf( S_COLOR_YELLOW "%s\n", infoLogs );
-			Com_Printf( S_COLOR_YELLOW "%s\n", debugLogs );
-			Com_Printf( S_COLOR_YELLOW "dump shader: %.*s\n", errFilePath.len, errFilePath.buf );
-
-			struct QStr shaderErr = { 0 };
-			qstrcatfmt( &shaderErr, "%s\n", input.code );
-			qstrcatfmt( &shaderErr, "----------- Linking Failed -----------\n" );
-			qstrcatfmt( &shaderErr, "%s\n", infoLogs );
-			qstrcatfmt( &shaderErr, "%s\n", debugLogs );
-			__RP_writeTextToFile( errFilePath.buf, shaderErr.buf );
-			qStrFree( &shaderErr );
-			qStrFree( &errFilePath );
-
-			assert( false && "failed to link shader" );
-			error = true;
-			goto shader_done;
-		}
-
-		const char *spirv_messages = glslang_program_SPIRV_get_messages( glslang_program );
-		if( spirv_messages ) {
-			Com_Printf( S_COLOR_BLUE "(%s) %s\b", name, spirv_messages );
-		}
-
-		// TODO: spv needs to be optimized for release
-		glslang_spv_options_t spvOptions = { 0 };
-		spvOptions.disable_optimizer = false;
-		spvOptions.optimize_size = true;
-		spvOptions.validate = true;
-		glslang_program_SPIRV_generate_with_options( glslang_program, __RP_GLStageToSlang( stages[i].stage ), &spvOptions );
-		size_t binSize = glslang_program_SPIRV_get_size( glslang_program ) * sizeof( uint32_t );
-		struct shader_bin_data_s *binData = &program->shaderBin[stages[i].stage];
-		binData->bin = R_Malloc( binSize );
-		binData->size = binSize;
-		glslang_program_SPIRV_get( glslang_program, (uint32_t *)binData->bin );
-		binData->stage = stages[i].stage;
-
-	shader_done:
-		glslang_shader_delete( shader );
-		if( glslang_program ) {
-			glslang_program_delete( glslang_program );
-		}
+	if( !cacheHit && requiresCachedSpirv ) {
+		qStrFree( &featuresStr );
+		qStrFree( &fullName );
+		R_Free( program->name );
+		R_Free( program->baseName );
+		memset( program, 0, sizeof( *program ) );
+		r_numglslprograms--;
+		TracyCZoneEnd( ctx );
+		return NULL;
 	}
+
+	if( !cacheHit ) {
+		ri.Com_Printf( "Loading Shader: %.*s", fullName.len, fullName.buf );
+		{
+			struct QStr filePath = { 0 };
+			for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
+				qStrAppendSlice( &stages[i].source, qCToStrRef( "#version 440 \n" ) );
+				switch( stages[i].stage ) {
+					case GLSL_STAGE_VERTEX:
+						qStrAppendSlice( &stages[i].source, qCToStrRef( "#define VERTEX_SHADER\n" ) );
+						break;
+					case GLSL_STAGE_FRAGMENT:
+						qStrAppendSlice( &stages[i].source, qCToStrRef( "#define FRAGMENT_SHADER\n" ) );
+						break;
+					default:
+						assert( 0 );
+						break;
+				}
+				qStrAppendSlice( &stages[i].source, qToStrRef( featuresStr ) );
+				qStrAppendSlice( &stages[i].source, qCToStrRef( QF_BUILTIN_GLSL_CONSTANTS ) );
+				qStrAppendSlice( &stages[i].source, qCToStrRef( QF_GLSL_MATH ) );
+				if( stages[i].stage == GLSL_STAGE_VERTEX ) {
+					__appendGLSLDeformv( &stages[i].source, deforms, numDeforms );
+				}
+
+				qStrClear( &filePath );
+				qstrcatfmt( &filePath, "glsl_nri/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
+				qStrSetNullTerm( &filePath );
+				error = RF_AppendShaderFromFile( &stages[i].source, filePath.buf, type, features );
+				if( error ) {
+					break;
+				}
+			}
+			qStrFree( &filePath );
+		}
+
+		TracyCZoneN( compileCtx, "RP_GLSLCompile", 1 );
+		for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
+			qStrSetNullTerm( &stages[i].source );
+			const glslang_input_t input = { .language = GLSLANG_SOURCE_GLSL,
+											.stage = __RP_GLStageToSlang( stages[i].stage ),
+											.client = GLSLANG_CLIENT_VULKAN,
+											.client_version = GLSLANG_TARGET_VULKAN_1_2,
+											.target_language = GLSLANG_TARGET_SPV,
+											.target_language_version = GLSLANG_TARGET_SPV_1_5,
+											.code = stages[i].source.buf,
+											.default_version = 450,
+											.default_profile = GLSLANG_CORE_PROFILE,
+											.force_default_version_and_profile = false,
+											.forward_compatible = false,
+											.messages = GLSLANG_MSG_DEFAULT_BIT,
+											.resource = glslang_default_resource() };
+			glslang_shader_t *shader = glslang_shader_create( &input );
+			glslang_program_t *glslang_program = NULL;
+			if( !glslang_shader_preprocess( shader, &input ) ) {
+				struct QStr errFilePath = { 0 };
+				qstrcatfmt( &errFilePath, "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
+				const char *infoLog = glslang_shader_get_info_log( shader );
+				const char *debugLogs = glslang_shader_get_info_debug_log( shader );
+				Com_Printf( S_COLOR_YELLOW "GLSL preprocess failed %.*s\n", fullName.len, fullName.buf );
+				Com_Printf( S_COLOR_YELLOW "%s\n", infoLog );
+				Com_Printf( S_COLOR_YELLOW "%s\n", debugLogs );
+				Com_Printf( S_COLOR_YELLOW "dump shader: %.*s\n", errFilePath.len, errFilePath.buf );
+
+				struct QStr shaderErr = { 0 };
+				qstrcatfmt( &shaderErr, "%s\n", input.code );
+				qstrcatfmt( &shaderErr, "----------- Preprocessing Failed -----------\n" );
+				qstrcatfmt( &shaderErr, "%s\n", infoLog );
+				qstrcatfmt( &shaderErr, "%s\n", debugLogs );
+				__RP_writeTextToFile( errFilePath.buf, shaderErr.buf );
+				assert( false && "failed to preprocess shader" );
+
+				qStrFree( &shaderErr );
+				qStrFree( &errFilePath );
+
+				error = true;
+				goto shader_done;
+			}
+
+			if( !glslang_shader_parse( shader, &input ) ) {
+				struct QStr errFilePath = { 0 };
+				qstrcatfmt( &errFilePath, "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
+				const char *infoLog = glslang_shader_get_info_log( shader );
+				const char *debugLogs = glslang_shader_get_info_debug_log( shader );
+
+				Com_Printf( S_COLOR_YELLOW "GLSL parsing failed %.*s\n", fullName.len, fullName.buf );
+				Com_Printf( S_COLOR_YELLOW "%s\n", infoLog );
+				Com_Printf( S_COLOR_YELLOW "%s\n", debugLogs );
+				Com_Printf( S_COLOR_YELLOW "dump shader: %.*s\n", errFilePath.len, errFilePath.buf );
+
+				struct QStr shaderErr = { 0 };
+				qstrcatfmt( &shaderErr, "%s\n", input.code );
+				qstrcatfmt( &shaderErr, "----------- Parsing Failed -----------\n" );
+				qstrcatfmt( &shaderErr, "%s\n", infoLog );
+				qstrcatfmt( &shaderErr, "%s\n", debugLogs );
+				__RP_writeTextToFile( errFilePath.buf, shaderErr.buf );
+				assert( false && "failed to parse shader" );
+				qStrFree( &shaderErr );
+				qStrFree( &errFilePath );
+
+				error = true;
+				goto shader_done;
+			} else if( r_shaderDebug->integer ) {
+				struct QStr shaderDebugPath = { 0 };
+				qstrcatfmt( &shaderDebugPath, "logs/shader_debug/%S_%u.%s.glsl", qToStrRef( fullName ), features, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
+				__RP_writeTextToFile( shaderDebugPath.buf, glslang_shader_get_preprocessed_code( shader ) );
+				qStrFree( &shaderDebugPath );
+			}
+
+			glslang_program = glslang_program_create();
+			glslang_program_add_shader( glslang_program, shader );
+
+			if( !glslang_program_link( glslang_program, GLSLANG_MSG_SPV_RULES_BIT | GLSLANG_MSG_VULKAN_RULES_BIT ) ) {
+				struct QStr errFilePath = { 0 };
+				qstrcatfmt( &errFilePath, "logs/shader_err/%s.%s.glsl", name, RP_GLSLStageToShaderPrefix( stages[i].stage ) );
+
+				const char *infoLogs = glslang_program_get_info_log( glslang_program );
+				const char *debugLogs = glslang_program_get_info_debug_log( glslang_program );
+
+				Com_Printf( S_COLOR_YELLOW "GLSL linking failed %.*s\n", fullName.len, fullName.buf );
+				Com_Printf( S_COLOR_YELLOW "%s\n", infoLogs );
+				Com_Printf( S_COLOR_YELLOW "%s\n", debugLogs );
+				Com_Printf( S_COLOR_YELLOW "dump shader: %.*s\n", errFilePath.len, errFilePath.buf );
+
+				struct QStr shaderErr = { 0 };
+				qstrcatfmt( &shaderErr, "%s\n", input.code );
+				qstrcatfmt( &shaderErr, "----------- Linking Failed -----------\n" );
+				qstrcatfmt( &shaderErr, "%s\n", infoLogs );
+				qstrcatfmt( &shaderErr, "%s\n", debugLogs );
+				__RP_writeTextToFile( errFilePath.buf, shaderErr.buf );
+				qStrFree( &shaderErr );
+				qStrFree( &errFilePath );
+
+				assert( false && "failed to link shader" );
+				error = true;
+				goto shader_done;
+			}
+
+			const char *spirv_messages = glslang_program_SPIRV_get_messages( glslang_program );
+			if( spirv_messages ) {
+				Com_Printf( S_COLOR_BLUE "(%s) %s\b", name, spirv_messages );
+			}
+
+			// The optimizer stays on by default: its cost is paid once per permutation per
+			// GLSL_BITS_VERSION bump, while its output is what the driver compiles and what the
+			// pipeline cache stores for every run after. Turning it off speeds up the first compile
+			// at the price of permanently caching bigger, slower-to-compile SPIR-V. Because it
+			// changes the generated SPIR-V, flipping r_shaderOptimize needs a GLSL_BITS_VERSION bump.
+			// The validator only inspects the output, so gating it costs nothing and needs no bump.
+			glslang_spv_options_t spvOptions = { 0 };
+			spvOptions.disable_optimizer = ( r_shaderOptimize->integer == 0 );
+			spvOptions.optimize_size = true;
+			spvOptions.validate = ( r_shaderValidate->integer != 0 );
+			glslang_program_SPIRV_generate_with_options( glslang_program, __RP_GLStageToSlang( stages[i].stage ), &spvOptions );
+			size_t binSize = glslang_program_SPIRV_get_size( glslang_program ) * sizeof( uint32_t );
+			struct shader_bin_data_s *binData = &program->shaderBin[stages[i].stage];
+			binData->bin = R_Malloc( binSize );
+			binData->size = binSize;
+			glslang_program_SPIRV_get( glslang_program, (uint32_t *)binData->bin );
+			binData->stage = stages[i].stage;
+
+		shader_done:
+			glslang_shader_delete( shader );
+			if( glslang_program ) {
+				glslang_program_delete( glslang_program );
+			}
+		}
+		TracyCZoneEnd( compileCtx );
+	} // !cacheHit
+
+	// freed on both paths: the feature defines are only consumed by the source assembly above, but
+	// the loop that builds them runs before the cache lookup
+	qStrFree( &featuresStr );
+
+	// Reflection runs on both paths -- it derives vertexInputMask, push constants, descriptor set
+	// layouts and the pipeline layout from the SPIR-V, and costs ~1% of a glslang compile, so
+	// caching its output would be a wide fragile format for a negligible win. On the cache path it
+	// doubles as the integrity check on the loaded blob. On Metal the MSL is likewise regenerated
+	// from the (possibly cached) SPIR-V.
 	SpvReflectDescriptorSet **reflectionDescSets = NULL;
+	TracyCZoneN( reflectCtx, "RP_Reflect", 1 );
 
 #if ( DEVICE_IMPL_MTL )
 	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
@@ -2802,7 +2974,14 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 			for( size_t i = 0; i < Q_ARRAY_COUNT( stages ); i++ ) {
 				SpvReflectShaderModule module = { 0 };
 				SpvReflectResult result = spvReflectCreateShaderModule( program->shaderBin[stages[i].stage].size, program->shaderBin[stages[i].stage].bin, &module );
-				assert( result == SPV_REFLECT_RESULT_SUCCESS );
+				// A real branch, not an assert: this is a full SPIR-V parse, so it doubles as the
+				// integrity check on blobs loaded from the on-disk cache -- and asserts compile out in
+				// release, which is exactly where a corrupt cache would reach the driver.
+				if( result != SPV_REFLECT_RESULT_SUCCESS ) {
+					Com_Printf( S_COLOR_YELLOW "Failed to reflect SPIR-V for %s\n", name );
+					error = true;
+					break;
+				}
 				{
 					uint32_t pushConstantCount = 0;
 					result = spvReflectEnumeratePushConstantBlocks( &module, &pushConstantCount, NULL );
@@ -2818,8 +2997,9 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 
 						result = spvReflectEnumeratePushConstantBlocks( &module, &pushConstantCount, reflectionBlockVariables );
 						assert( result == SPV_REFLECT_RESULT_SUCCESS );
-						pushConstantRange.size = reflectionBlockVariables[0]->size;
-						program->vk.pushConstant.size = reflectionBlockVariables[0]->size;
+						// The range must cover every stage's view of the block, not whichever stage was reflected last.
+						pushConstantRange.size = max( pushConstantRange.size, reflectionBlockVariables[0]->size );
+						program->vk.pushConstant.size = pushConstantRange.size;
 						switch( stages[i].stage ) {
 							case GLSL_STAGE_VERTEX:
 								pushConstantRange.stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
@@ -2873,6 +3053,9 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 									bindingFlags = descriptorBindingFlags[reflection->set] + i;
 								}
 							}
+							// A binding used by both stages is seen once per stage: only the first sighting adds to
+							// the pool sizes and the reflection table; later ones just widen stageFlags.
+							const bool isNewBinding = ( layoutBinding == NULL );
 
 							if( !layoutBinding ) {
 								VkDescriptorSetLayoutBinding bindings = { 0 };
@@ -2887,9 +3070,10 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 								( *bindingFlags ) = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
 							}
 
-							const uint32_t bindingCount = max( reflectionBinding->count, 1 );
+							const uint32_t bindingCount = isNewBinding ? max( reflectionBinding->count, 1 ) : 0;
 							layoutBinding->binding = reflectionBinding->binding;
-							layoutBinding->descriptorCount = bindingCount;
+							if( isNewBinding )
+								layoutBinding->descriptorCount = bindingCount;
 							switch( stages[i].stage ) {
 								case GLSL_STAGE_VERTEX:
 									layoutBinding->stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
@@ -2938,8 +3122,15 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 									assert( false );
 									break;
 							}
-							assert( program->numDescriptorReflections < PIPELINE_REFLECTION_HASH_SIZE );
-							program->descriptorReflection[program->numDescriptorReflections++] = reflc;
+							if( isNewBinding ) {
+								assert( program->numDescriptorReflections < PIPELINE_REFLECTION_HASH_SIZE );
+								if( program->numDescriptorReflections >= PIPELINE_REFLECTION_HASH_SIZE ) {
+									Com_Printf( S_COLOR_YELLOW "Too many descriptor bindings in %s\n", name );
+									error = true;
+									break;
+								}
+								program->descriptorReflection[program->numDescriptorReflections++] = reflc;
+							}
 						}
 					}
 				}
@@ -2980,8 +3171,12 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 		}
 	}
 #endif
+	TracyCZoneEnd( reflectCtx );
 	arrfree( reflectionDescSets );
 
+	// a program whose stages failed to compile is still registered (with no shaderBin), so record
+	// that here and never let it reach the cache
+	program->valid = !error;
 	program->deformsKey = R_CopyString( deformsKey ? deformsKey : "" );
 
 	//	if(rootConstantDesc.size > 0) {
@@ -3037,9 +3232,15 @@ void RP_Shutdown( void )
 	struct glsl_program_s *program;
 	TracyCZoneN( ctx, "RP_Shutdown", 1 );
 
+	// must run before the delete loop below frees shaderBin and zeroes r_numglslprograms
+	RP_StorePrecacheList();
+	RP_StorePipelineCache();
+
 	for( i = 0, program = r_glslprograms; i < r_numglslprograms; i++, program++ ) {
 		RF_DeleteProgram( program );
 	}
+	RP_ShutdownPipelineCache();
+	RP_SpirvCacheClose();
 
 #if ( DEVICE_IMPL_MTL )
 	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {

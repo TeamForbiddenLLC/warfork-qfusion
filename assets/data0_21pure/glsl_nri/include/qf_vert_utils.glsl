@@ -98,7 +98,7 @@ void QF_TransformVerts(inout vec4 Position, inout vec3 Normal, inout vec3 Tangen
 	#ifdef QF_NUM_BONE_INFLUENCES
 	{
 		uvec4 Indices = a_BonesIndices * 2;
-		if(max (max (Indices.x, Indices.y), max (Indices.z, Indices.w)) < MAX_GLSL_BONES) {
+		if(max (max (Indices.x, Indices.y), max (Indices.z, Indices.w)) < MAX_GLSL_BONES * 2) {
 			vec4 DQReal = bones.dualQuats[Indices.x];
 			vec4 DQDual = bones.dualQuats[Indices.x + 1];
 			#if QF_NUM_BONE_INFLUENCES >= 2

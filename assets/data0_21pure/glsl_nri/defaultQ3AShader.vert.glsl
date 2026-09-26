@@ -5,7 +5,11 @@
 
 layout(location = 0) out vec3 v_Position; 
 layout(location = 1) out vec3 v_Normal;
-layout(location = 2) out vec2 v_TexCoord;  
+#if defined(APPLY_CUBEMAP_VERTEX)
+layout(location = 2) out vec3 v_TexCoord;
+#else
+layout(location = 2) out vec2 v_TexCoord;
+#endif
 layout(location = 3) out vec4 frontColor; 
 #if defined(APPLY_ATM_FOG)
 layout(location = 9) out vec3 v_WorldPosition;

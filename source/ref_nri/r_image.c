@@ -1084,7 +1084,7 @@ static void __R_CopyTextureDataTexture( struct image_s *image, int layer, int mi
 	// uploadDesc.postBarrier.vk.access = VK_ACCESS_2_SHADER_READ_BIT;
 
 	RI_ResourceBeginCopyTexture( &rsh.device, &rsh.uploader, &uploadDesc );
-	for( size_t slice = 0; slice < uploadDesc.height; slice++ ) {
+	for( size_t slice = 0; uploadDesc.mapped.data && slice < uploadDesc.height; slice++ ) {
 		const size_t dstRowStart = uploadDesc.alignRowPitch * slice;
 		memset( &( (uint8_t *)uploadDesc.mapped.data )[dstRowStart], 255, uploadDesc.rowPitch );
 		for( size_t column = 0; column < uploadDesc.width; column++ ) {

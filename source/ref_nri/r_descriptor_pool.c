@@ -43,26 +43,23 @@ void AttachDescriptorSlot( struct DescriptorSetAllocator *alloc, struct descript
 void DetachDescriptorSlot( struct DescriptorSetAllocator *alloc, struct descriptor_set_slot_s *slot )
 {
 	assert( slot );
-	// remove from LRU queue
+	// remove from LRU queue. Begin and end are fixed up independently: a slot that is the only entry
+	// is both, and handling it as just the head used to leave queueEnd pointing at the detached slot.
 	{
-		if( alloc->queueBegin == slot ) {
-			alloc->queueBegin = slot->quNext;
-			if( slot->quNext ) {
-				slot->quNext->quPrev = NULL;
-			}
-		} else if( alloc->queueEnd == slot ) {
-			alloc->queueEnd = slot->quPrev;
-			if( slot->quPrev ) {
-				slot->quPrev->quNext = NULL;
-			}
+		if( slot->quPrev ) {
+			slot->quPrev->quNext = slot->quNext;
 		} else {
-			if( slot->quPrev ) {
-				slot->quPrev->quNext = slot->quNext;
-			}
-			if( slot->quNext ) {
-				slot->quNext->quPrev = slot->quPrev;
-			}
+			assert( alloc->queueBegin == slot );
+			alloc->queueBegin = slot->quNext;
 		}
+		if( slot->quNext ) {
+			slot->quNext->quPrev = slot->quPrev;
+		} else {
+			assert( alloc->queueEnd == slot );
+			alloc->queueEnd = slot->quPrev;
+		}
+		slot->quPrev = NULL;
+		slot->quNext = NULL;
 	}
 	// remove from hash table
 	{
@@ -179,4 +176,12 @@ void FreeDescriptorSetAlloc( struct RIDevice_s *device, struct DescriptorSetAllo
 #endif
 	}
 	arrfree( alloc->pools );
+
+	// Everything the LRU / hash point into was just freed; keep the configuration but drop the stale
+	// pointers so a reused allocator starts clean.
+	const RIAllocDescriptor_Func descriptorAllocator = alloc->descriptorAllocator;
+	const uint8_t framesInFlight = alloc->framesInFlight;
+	memset( alloc, 0, sizeof( *alloc ) );
+	alloc->descriptorAllocator = descriptorAllocator;
+	alloc->framesInFlight = framesInFlight;
 }

@@ -1,3 +1,4 @@
+#include "../qcommon/qcommon.h"
 #include "ri_resource_upload.h"
 #include "qtypes.h"
 #include "ri_format.h"
@@ -148,6 +149,30 @@ static void __FreeTransferCommandGroup( struct RIDevice_s *device, struct RITran
 #endif
 }
 
+// Alignment helpers that, unlike Q_ALIGN_TO, accept any alignment: texel strides of 3 (RGB8) or 12
+// (RGB32F) combined with a power-of-two device alignment are not powers of two.
+static inline uint64_t __AlignUpAny( uint64_t value, uint64_t alignment )
+{
+	if( alignment <= 1 )
+		return value;
+	return ( ( value + alignment - 1 ) / alignment ) * alignment;
+}
+
+static inline uint64_t __LeastCommonMultiple( uint64_t a, uint64_t b )
+{
+	if( a == 0 )
+		return b;
+	if( b == 0 )
+		return a;
+	uint64_t x = a, y = b;
+	while( y != 0 ) {
+		const uint64_t r = x % y;
+		x = y;
+		y = r;
+	}
+	return ( a / x ) * b; // x is the gcd
+}
+
 /*
  * __AllocateFromStageBuffer
  *
@@ -159,8 +184,8 @@ static bool __AllocateFromStageBuffer( struct RIDevice_s *device, struct RITrans
 {
 #if ( DEVICE_IMPL_VULKAN )
 	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
-		const size_t alignedSize = Q_ALIGN_TO( size, alignment );
-		const size_t alignedOffset = Q_ALIGN_TO( group->staging_buffer_offset, alignment );
+		const size_t alignedSize = __AlignUpAny( size, alignment );
+		const size_t alignedOffset = __AlignUpAny( group->staging_buffer_offset, alignment );
 
 		if( alignedOffset >= RI_RESOURCE_STAGE_BUFFER_SIZE )
 			return false;
@@ -207,7 +232,14 @@ static void __AllocateTemporaryBuffer( struct RIDevice_s *device, struct RITrans
 
 		struct RIBuffer_s tmp = { 0 };
 		VmaAllocationInfo vmaInfo = { 0 };
-		VK_WrapResult( vmaCreateBuffer( device->vk.vmaAllocator, &bufInfo, &allocInfo, &tmp.vk.buffer, &tmp.vk.allocation, &vmaInfo ) );
+		if( !VK_WrapResult( vmaCreateBuffer( device->vk.vmaAllocator, &bufInfo, &allocInfo, &tmp.vk.buffer, &tmp.vk.allocation, &vmaInfo ) ) || !vmaInfo.pMappedData ) {
+			// Leave `out` empty (data == NULL): callers skip the write and End* skips the copy.
+			Com_Printf( S_COLOR_RED "Resource upload: failed to allocate a %zu byte staging buffer\n", size );
+			if( tmp.vk.buffer )
+				vmaDestroyBuffer( device->vk.vmaAllocator, tmp.vk.buffer, tmp.vk.allocation );
+			memset( out, 0, sizeof( *out ) );
+			return;
+		}
 
 		arrpush( group->temporary_buffers[group->active_set], tmp );
 
@@ -227,6 +259,8 @@ static void __AllocateTemporaryBuffer( struct RIDevice_s *device, struct RITrans
 		out->offset = 0;
 		out->size = size;
 		out->data = malloc( size );
+		if( !out->data )
+			memset( out, 0, sizeof( *out ) );
 	}
 #endif
 }
@@ -286,6 +320,8 @@ void RI_ResourceEndCopyBuffer( struct RIDevice_s *device, struct RIResourceUploa
 {
 #if ( DEVICE_IMPL_VULKAN )
 	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		if( !trans->mapped.data )
+			return; // staging allocation failed (already logged)
 		VkBufferCopy region = { 0 };
 		region.srcOffset = trans->mapped.offset;
 		region.dstOffset = trans->offset;
@@ -354,28 +390,32 @@ void RI_ResourceEndCopyBuffer( struct RIDevice_s *device, struct RIResourceUploa
 void RI_ResourceBeginCopyTexture( struct RIDevice_s *device, struct RIResourceUploader_s *res, struct RIResourceTextureTransaction_s *trans )
 {
 	const struct RIFormatProps_s *formatProps = GetRIFormatProps( trans->format );
-	const uint64_t alignedRowPitch = Q_ALIGN_TO( trans->rowPitch, device->physicalAdapter.uploadBufferTextureRowAlignment );
+	// The pitch must be a multiple of the texel block size as well as the device row alignment, or
+	// alignRowPitch / stride (bufferRowLength, in EndCopyTexture) truncates and the rows skew. For RGB8
+	// the two aren't related by a power of two, hence the LCM rather than Q_ALIGN_TO.
+	const uint64_t rowAlignment = __LeastCommonMultiple( Q_MAX( device->physicalAdapter.uploadBufferTextureRowAlignment, 1 ), formatProps->stride );
+	const uint64_t alignedRowPitch = __AlignUpAny( trans->rowPitch, rowAlignment );
 	const uint64_t alignedSlicePitch = (uint64_t)trans->sliceNum * alignedRowPitch;
+	// A 3D upload stages every depth slice back to back at alignSlicePitch.
+	const uint64_t stagingSize = alignedSlicePitch * Q_MAX( trans->depth, 1 );
 
 	trans->alignRowPitch = (uint32_t)alignedRowPitch;
 	trans->alignSlicePitch = (uint32_t)alignedSlicePitch;
 
 	// bufferOffset must be a multiple of the texel block size and the device's
-	// optimalBufferCopyOffsetAlignment (Vulkan spec, vkCmdCopyBufferToImage).
-	size_t offsetAlign = device->physicalAdapter.uploadBufferOffsetAlignment;
-	if( formatProps->stride > offsetAlign )
-		offsetAlign = formatProps->stride;
-	if( offsetAlign < 4 )
-		offsetAlign = 4;
+	// optimalBufferCopyOffsetAlignment (Vulkan spec, vkCmdCopyBufferToImage), and of 4.
+	const size_t offsetAlign = (size_t)__LeastCommonMultiple( __LeastCommonMultiple( Q_MAX( device->physicalAdapter.uploadBufferOffsetAlignment, 1 ), formatProps->stride ), 4 );
 
 	__AcquireCmd( device, &res->upload_resource );
-	__ResolveStageMemory( device, &res->upload_resource, alignedSlicePitch, offsetAlign, &trans->mapped );
+	__ResolveStageMemory( device, &res->upload_resource, stagingSize, offsetAlign, &trans->mapped );
 }
 
 void RI_ResourceEndCopyTexture( struct RIDevice_s *device, struct RIResourceUploader_s *res, struct RIResourceTextureTransaction_s *trans )
 {
 #if ( DEVICE_IMPL_VULKAN )
 	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		if( !trans->mapped.data )
+			return; // staging allocation failed (already logged)
 		const struct RIFormatProps_s *formatProps = GetRIFormatProps( trans->format );
 
 		// bufferRowLength / bufferImageHeight describe the layout of the staging
@@ -463,8 +503,9 @@ void RI_ResourceEndCopyTexture( struct RIDevice_s *device, struct RIResourceUplo
 				.origin = { .x = trans->x, .y = trans->y, .z = trans->z },
 				.size = { .width = trans->width, .height = trans->height, .depth = trans->depth },
 			};
-			mtlc_texture_replace_region( trans->target.mtl.texture, region, trans->mipOffset, trans->arrayOffset,
-										 trans->mapped.data, trans->alignRowPitch, ( trans->depth > 1 ) ? trans->alignSlicePitch : 0 );
+			if( trans->mapped.data )
+				mtlc_texture_replace_region( trans->target.mtl.texture, region, trans->mipOffset, trans->arrayOffset,
+											 trans->mapped.data, trans->alignRowPitch, ( trans->depth > 1 ) ? trans->alignSlicePitch : 0 );
 			free( trans->mapped.data );
 			trans->mapped.data = NULL;
 		}

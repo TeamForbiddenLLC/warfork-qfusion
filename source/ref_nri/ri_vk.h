@@ -88,14 +88,12 @@ static inline VkAccessFlags2 RI_VK_ResourceStateToAccess( uint32_t state )
 	return access;
 }
 
-// Conservative stage derivation for barriers that omit a stage hint.
 static inline VkPipelineStageFlags2 RI_VK_ResourceStateToStages( uint32_t state )
 {
 	VkPipelineStageFlags2 flags = VK_PIPELINE_STAGE_2_NONE;
 	if( state & ( RI_RESOURCE_STATE_GENERAL | RI_RESOURCE_STATE_SHADER_RESOURCE | RI_RESOURCE_STATE_STORAGE_READ |
 	              RI_RESOURCE_STATE_STORAGE_WRITE | RI_RESOURCE_STATE_CONSTANT_BUFFER ) )
-		flags |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
-		         VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+		flags |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
 	if( state & ( RI_RESOURCE_STATE_RENDER_TARGET | RI_RESOURCE_STATE_RENDER_TARGET_READ ) )
 		flags |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 	if( state & ( RI_RESOURCE_STATE_DEPTH_WRITE | RI_RESOURCE_STATE_DEPTH_READ ) )
@@ -106,8 +104,6 @@ static inline VkPipelineStageFlags2 RI_VK_ResourceStateToStages( uint32_t state 
 		flags |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
 	if( state & ( RI_RESOURCE_STATE_VERTEX_BUFFER | RI_RESOURCE_STATE_INDEX_BUFFER ) )
 		flags |= VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
-	if( state & ( RI_RESOURCE_STATE_ACCEL_READ | RI_RESOURCE_STATE_ACCEL_WRITE ) )
-		flags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
 	if( state & RI_RESOURCE_STATE_CLEAR_STORAGE )
 		flags |= VK_PIPELINE_STAGE_2_CLEAR_BIT;
 	if( state & RI_RESOURCE_STATE_HOST_READ )
@@ -118,20 +114,38 @@ static inline VkPipelineStageFlags2 RI_VK_ResourceStateToStages( uint32_t state 
 }
 
 // hint is a set of RIBarrierStages_e bits; RI_BARRIER_STAGE_NONE derives from stateFallback instead.
+// A hint only narrows the shader stages: the fixed-function stages the state's accesses require
+// (attachment output, depth tests, vertex input, ...) are always ORed in from the state, otherwise a
+// shader-stage hint on e.g. a render-target barrier yields an access/stage mismatch
+// (VUID-VkImageMemoryBarrier2-srcAccessMask-03911/03893).
 static inline VkPipelineStageFlags2 RI_VK_BarrierStages( uint32_t hint, uint32_t stateFallback )
 {
 	if( hint == RI_BARRIER_STAGE_NONE )
 		return RI_VK_ResourceStateToStages( stateFallback );
 
 	VkPipelineStageFlags2 flags = VK_PIPELINE_STAGE_2_NONE;
+	if( stateFallback & ( RI_RESOURCE_STATE_RENDER_TARGET | RI_RESOURCE_STATE_RENDER_TARGET_READ ) )
+		flags |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+	if( stateFallback & ( RI_RESOURCE_STATE_DEPTH_WRITE | RI_RESOURCE_STATE_DEPTH_READ ) )
+		flags |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+	if( ( stateFallback & ( RI_RESOURCE_STATE_COPY_SRC | RI_RESOURCE_STATE_COPY_DST ) ) &&
+		( hint & ( RI_BARRIER_STAGE_COPY | RI_BARRIER_STAGE_BLIT | RI_BARRIER_STAGE_CLEAR ) ) == 0 )
+		flags |= VK_PIPELINE_STAGE_2_COPY_BIT | VK_PIPELINE_STAGE_2_BLIT_BIT | VK_PIPELINE_STAGE_2_CLEAR_BIT;
+	if( stateFallback & RI_RESOURCE_STATE_CLEAR_STORAGE )
+		flags |= VK_PIPELINE_STAGE_2_CLEAR_BIT;
+	if( stateFallback & RI_RESOURCE_STATE_INDIRECT_ARGUMENT )
+		flags |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
+	if( stateFallback & ( RI_RESOURCE_STATE_VERTEX_BUFFER | RI_RESOURCE_STATE_INDEX_BUFFER ) )
+		flags |= VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
+	if( stateFallback & RI_RESOURCE_STATE_HOST_READ )
+		flags |= VK_PIPELINE_STAGE_2_HOST_BIT;
+
 	if( hint & RI_BARRIER_STAGE_VERTEX )
 		flags |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
 	if( hint & RI_BARRIER_STAGE_FRAGMENT )
 		flags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
 	if( hint & RI_BARRIER_STAGE_COMPUTE )
 		flags |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-	if( hint & RI_BARRIER_STAGE_RAY_TRACING )
-		flags |= VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
 	if( hint & RI_BARRIER_STAGE_DRAW_INDIRECT )
 		flags |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
 	if( hint & RI_BARRIER_STAGE_COPY )
@@ -140,8 +154,6 @@ static inline VkPipelineStageFlags2 RI_VK_BarrierStages( uint32_t hint, uint32_t
 		flags |= VK_PIPELINE_STAGE_2_BLIT_BIT;
 	if( hint & RI_BARRIER_STAGE_CLEAR )
 		flags |= VK_PIPELINE_STAGE_2_CLEAR_BIT;
-	if( hint & RI_BARRIER_STAGE_ACCEL_BUILD )
-		flags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
 	if( hint & RI_BARRIER_STAGE_COLOR_ATTACHMENT )
 		flags |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 	if( hint & RI_BARRIER_STAGE_HOST )
@@ -184,6 +196,34 @@ static inline void RI_VK_FillDepthAttachment( VkRenderingAttachmentInfo *info, s
 	info->loadOp = attachAndClear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
 	info->storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	info->clearValue.depthStencil.depth = 1.0f;
+}
+
+// Labels a Vulkan object for validation messages and capture tools; a no-op without VK_EXT_debug_utils.
+static inline void RI_VK_SetObjectName( VkDevice device, VkObjectType type, uint64_t handle, const char *name )
+{
+	if( !vkSetDebugUtilsObjectNameEXT || !handle || !name )
+		return;
+	VkDebugUtilsObjectNameInfoEXT nameInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, NULL, type, handle, name };
+	vkSetDebugUtilsObjectNameEXT( device, &nameInfo );
+}
+
+// Orders a render pass that re-opens attachments written by an earlier pass in the same command buffer
+// (LOAD after STORE on the same color/depth image). Dynamic rendering instances aren't implicitly
+// ordered against each other, so without this the load can race the previous pass's store.
+static inline void RI_VK_CmdAttachmentReuseBarrier( VkCommandBuffer cmd )
+{
+	const VkPipelineStageFlags2 stages =
+		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+	VkMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+	barrier.srcStageMask = stages;
+	barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	barrier.dstStageMask = stages;
+	barrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+							VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+	dependencyInfo.memoryBarrierCount = 1;
+	dependencyInfo.pMemoryBarriers = &barrier;
+	vkCmdPipelineBarrier2( cmd, &dependencyInfo );
 }
 
 const VkFormat RIFormatToVK(uint32_t format);

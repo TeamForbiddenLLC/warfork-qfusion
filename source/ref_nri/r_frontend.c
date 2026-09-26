@@ -80,11 +80,15 @@ static void __R_InitVolatileAssets( void )
 // the swapchain teardown so the resize path can rebuild attachments without recreating the surface.
 static void __R_ShutdownSwapchainAttachments()
 {
-	for( uint32_t i = 0; i < RISwapchainGetImageCount( &rsh.swapchain ); i++ ) {
+	// Iterate what was created, not the current image count: a resize can change the count before this runs.
+	for( uint32_t i = 0; i < rsh.swapchainAttachmentNum; i++ ) {
 		RI_PogoBufferDestroy( &rsh.device, &rsh.pogoBuffer[i] );
 		FreeRITextureView( &rsh.device, &rsh.depthView[i] );
 		FreeRITexture( &rsh.device, &rsh.depthTextures[i] );
 	}
+	rsh.swapchainAttachmentNum = 0;
+	FreeRITextureView( &rsh.device, &rsh.fallbackBackbufferView );
+	FreeRITexture( &rsh.device, &rsh.fallbackBackbuffer );
 }
 
 // Create the per-swapchain-image attachments (pogo buffers + depth image/view), sized to the current
@@ -96,6 +100,7 @@ static void __R_CreateSwapchainAttachments()
 		uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
 
 		assert( RISwapchainGetImageCount( &rsh.swapchain ) > 0 );
+		rsh.swapchainAttachmentNum = RISwapchainGetImageCount( &rsh.swapchain );
 		for( uint32_t i = 0; i < RISwapchainGetImageCount( &rsh.swapchain ); i++ ) {
 			RI_PogoBufferInit( &rsh.device, &rsh.pogoBuffer[i], rsh.swapchain.width, rsh.swapchain.height, POGO_BUFFER_TEXTURE_FORMAT );
 
@@ -118,6 +123,7 @@ static void __R_CreateSwapchainAttachments()
 				VmaAllocationCreateInfo mem_reqs = { 0 };
 				mem_reqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 				VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &mem_reqs, &rsh.depthTextures[i].vk.image, &rsh.depthTextures[i].vk.allocation, NULL ) );
+				RI_VK_SetObjectName( rsh.device.vk.device, VK_OBJECT_TYPE_IMAGE, (uint64_t)rsh.depthTextures[i].vk.image, "swapchain depth" );
 			}
 			{
 				VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
@@ -136,6 +142,7 @@ static void __R_CreateSwapchainAttachments()
 #if ( DEVICE_IMPL_MTL )
 	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
 		assert( RISwapchainGetImageCount( &rsh.swapchain ) > 0 );
+		rsh.swapchainAttachmentNum = RISwapchainGetImageCount( &rsh.swapchain );
 		for( uint32_t i = 0; i < RISwapchainGetImageCount( &rsh.swapchain ); i++ ) {
 			RI_PogoBufferInit( &rsh.device, &rsh.pogoBuffer[i], rsh.swapchain.width, rsh.swapchain.height, POGO_BUFFER_TEXTURE_FORMAT );
 
@@ -151,6 +158,59 @@ static void __R_CreateSwapchainAttachments()
 	}
 #endif
 }
+
+#if ( DEVICE_IMPL_VULKAN )
+// Lazily created the first time an acquire fails, sized and formatted like the swapchain images so every
+// pipeline built against the swapchain format stays valid. Freed with the other swapchain attachments.
+static void __R_EnsureFallbackBackbuffer()
+{
+	if( rsh.fallbackBackbuffer.vk.image )
+		return;
+	uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
+	VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+	info.imageType = VK_IMAGE_TYPE_2D;
+	info.format = rsh.swapchain.vk.imageFormat;
+	info.extent.width = rsh.swapchain.width;
+	info.extent.height = rsh.swapchain.height;
+	info.extent.depth = 1;
+	info.mipLevels = 1;
+	info.arrayLayers = 1;
+	info.samples = VK_SAMPLE_COUNT_1_BIT;
+	info.tiling = VK_IMAGE_TILING_OPTIMAL;
+	info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+	info.pQueueFamilyIndices = queueFamilies;
+	VK_ConfigureImageQueueFamilies( &info, rsh.device.queues, RI_QUEUE_LEN, queueFamilies, RI_QUEUE_LEN );
+	info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	VmaAllocationCreateInfo memReqs = { 0 };
+	memReqs.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+	VK_WrapResult( vmaCreateImage( rsh.device.vk.vmaAllocator, &info, &memReqs, &rsh.fallbackBackbuffer.vk.image, &rsh.fallbackBackbuffer.vk.allocation, NULL ) );
+	RI_VK_SetObjectName( rsh.device.vk.device, VK_OBJECT_TYPE_IMAGE, (uint64_t)rsh.fallbackBackbuffer.vk.image, "fallback backbuffer" );
+
+	VkImageViewCreateInfo viewInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+	viewInfo.image = rsh.fallbackBackbuffer.vk.image;
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	viewInfo.format = rsh.swapchain.vk.imageFormat;
+	viewInfo.subresourceRange = (VkImageSubresourceRange){ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+	VK_WrapResult( vkCreateImageView( rsh.device.vk.device, &viewInfo, NULL, &rsh.fallbackBackbufferView.vk.image ) );
+}
+
+// Rebuilds an out-of-date swapchain in place. Attachments are only recreated when the swapchain
+// actually was (a zero-sized, e.g. minimized, surface leaves everything as-is and stays out of date).
+static void __R_RebuildSwapchain()
+{
+	WaitRIQueueIdle( &rsh.device, &rsh.device.queues[RI_QUEUE_GRAPHICS] );
+	const uint16_t oldWidth = rsh.swapchain.width;
+	const uint16_t oldHeight = rsh.swapchain.height;
+	const uint32_t oldImageCount = RISwapchainGetImageCount( &rsh.swapchain );
+	if( RISwapchainResize( &rsh.device, &rsh.swapchain, rsh.swapchain.width, rsh.swapchain.height ) <= 0 )
+		return;
+	if( oldWidth != rsh.swapchain.width || oldHeight != rsh.swapchain.height || oldImageCount != RISwapchainGetImageCount( &rsh.swapchain ) ||
+		rsh.swapchainAttachmentNum == 0 ) {
+		__R_ShutdownSwapchainAttachments();
+		__R_CreateSwapchainAttachments();
+	}
+}
+#endif
 
 static void __ShutdownSwapchainTexture()
 {
@@ -368,7 +428,12 @@ rserr_t RF_SetMode( int x, int y, int width, int height, int displayFrequency, b
 		swapchainInit.width = width;
 		swapchainInit.height = height;
 		swapchainInit.format = RI_SWAPCHAIN_BT709_G22_8BIT;
-		InitRISwapchain( &rsh.device, &swapchainInit, &rsh.swapchain );
+		swapchainInit.vsync = r_swapinterval->integer != 0;
+		rf.swapInterval = swapchainInit.vsync ? 1 : 0;
+		if( InitRISwapchain( &rsh.device, &swapchainInit, &rsh.swapchain ) != RI_SUCCESS ) {
+			Com_Printf( S_COLOR_RED "RF_SetMode: failed to create the swapchain\n" );
+			return rserr_unknown;
+		}
 		rsh.postProcessingSampler = RIDescriptorSampler( &rsh.device, R_ResolveSamplerDescriptor( IT_NOFILTERING ) );
 
 		__R_CreateSwapchainAttachments();
@@ -535,11 +600,13 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 		// A prior acquire/present reported the swapchain out of date (e.g. a compositor/DPI change that
 		// bypassed RF_SetMode). Rebuild it in place before starting the frame. WaitRIQueueIdle guarantees
 		// the GPU is done with the retiring images/views; attachments are rebuilt to match the new count.
+		const int swapInterval = ( r_swapinterval->integer || forceVsync ) ? 1 : 0;
+		if( swapInterval != rf.swapInterval ) {
+			rf.swapInterval = swapInterval;
+			RISwapchainSetVsync( &rsh.swapchain, swapInterval != 0 );
+		}
 		if( rsh.swapchain.vk.outOfDate && IsRISwapchainValid( &rsh.swapchain ) ) {
-			WaitRIQueueIdle( &rsh.device, &rsh.device.queues[RI_QUEUE_GRAPHICS] );
-			__R_ShutdownSwapchainAttachments();
-			RISwapchainResize( &rsh.device, &rsh.swapchain, rsh.swapchain.width, rsh.swapchain.height );
-			__R_CreateSwapchainAttachments();
+			__R_RebuildSwapchain();
 		}
 	}
 #endif
@@ -568,29 +635,46 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 			arrsetlen( activeSet->freeList, 0 );
 			RIResetScratchAlloc( &rsh.device, &activeSet->uboScratchAlloc );
 			rsh.swapchainIndex = RISwapchainAcquireNextTexture( &rsh.device, &rsh.swapchain );
+			if( rsh.swapchain.vk.acquireFailed && rsh.swapchain.vk.outOfDate ) {
+				// Rebuild and retry once so an ordinary resize doesn't cost a frame.
+				__R_RebuildSwapchain();
+				if( !rsh.swapchain.vk.outOfDate )
+					rsh.swapchainIndex = RISwapchainAcquireNextTexture( &rsh.device, &rsh.swapchain );
+			}
+			if( rsh.swapchain.vk.acquireFailed ) {
+				// Still no image: record the frame into an image we own. The submit skips the acquire wait
+				// and the present, so nothing reaches the screen, but nothing touches an unowned image either.
+				__R_EnsureFallbackBackbuffer();
+			}
+			const struct RITexture_s backbuffer = R_FrameBackbufferTexture();
+			const struct RITextureView_s backbufferView = R_FrameBackbufferView();
 
 			{
 				VkImageMemoryBarrier2 imageBarriers[4] = { 0 };
 				imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 				imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-				imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
-				imageBarriers[0].srcAccessMask = VK_ACCESS_2_NONE;
+				// Must match the acquire semaphore's wait stage so the layout transition is ordered after it;
+				// the write access also covers a previous frame's writes when this is the fallback image.
+				imageBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+				imageBarriers[0].srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
 				imageBarriers[0].dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 				imageBarriers[0].dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
 				imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 				imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 				imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				imageBarriers[0].image = rsh.swapchain.vk.images[rsh.swapchainIndex];
+				imageBarriers[0].image = backbuffer.vk.image;
 				imageBarriers[0].subresourceRange = (VkImageSubresourceRange){
 					VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
 				};
 
+				// The per-image depth is reused by later frames on the same queue; order this frame's clear after
+				// the previous user's depth writes (the acquire semaphore only gates COLOR_ATTACHMENT_OUTPUT).
 				imageBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 				imageBarriers[1].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-				imageBarriers[1].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
-				imageBarriers[1].srcAccessMask = VK_ACCESS_2_NONE;
-				imageBarriers[1].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-				imageBarriers[1].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+				imageBarriers[1].srcStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+				imageBarriers[1].srcAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+				imageBarriers[1].dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+				imageBarriers[1].dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 				imageBarriers[1].newLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
 				imageBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 				imageBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -612,7 +696,7 @@ void RF_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 
 				VkRenderingAttachmentInfo colorAttachment = { 
 					.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-					.imageView = rsh.swapchain.vk.views[rsh.swapchainIndex],
+					.imageView = backbufferView.vk.image,
 					.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 					.resolveMode = VK_RESOLVE_MODE_NONE,
 					.resolveImageView = VK_NULL_HANDLE,
@@ -783,7 +867,7 @@ void RF_EndFrame( void )
 				imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 				imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 				imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				imageBarriers[0].image = rsh.swapchain.vk.images[rsh.swapchainIndex];//rsh.colorAttachment[rsh.vk.swapchainIndex].texture->vk.image;
+				imageBarriers[0].image = R_FrameBackbufferTexture().vk.image;
 				imageBarriers[0].subresourceRange = (VkImageSubresourceRange){
 					VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS,
 				};

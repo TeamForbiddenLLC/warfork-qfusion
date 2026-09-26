@@ -1,10 +1,19 @@
+#include "../qcommon/qcommon.h"
 #include "ri_gpu_profiler.h"
 #include "stb_ds.h"
 
+// Timestamps are taken at ALL_COMMANDS: TOP_OF_PIPE for the begin isn't ordered after earlier work, so a
+// scope would absorb the tail of whatever was still in flight before it.
+#define RI_GPU_PROFILER_TIMESTAMP_STAGE VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
+
 void InitRIGpuProfiler( struct RIDevice_s *dev, uint32_t numSlots, struct RIGpuProfiler_s *profiler )
 {
+	if( profiler->numSlots > 0 )
+		FreeRIGpuProfiler( dev, profiler );
 	memset( profiler, 0, sizeof( struct RIGpuProfiler_s ) );
 	assert( numSlots > 0 && numSlots <= RI_GPU_PROFILER_MAX_SLOTS );
+	// clamp in release too: slots[] is fixed size
+	numSlots = bound( 1, numSlots, RI_GPU_PROFILER_MAX_SLOTS );
 	profiler->numSlots = numSlots;
 	profiler->activeSlot = 0;
 	profiler->enabled = false;
@@ -69,9 +78,11 @@ void FreeRIGpuProfiler( struct RIDevice_s *dev, struct RIGpuProfiler_s *profiler
 
 void RIGpuProfilerBeginFrame( struct RIDevice_s *dev, struct RIGpuProfiler_s *p, struct RICmd_s *cmd, uint32_t slot, uint64_t timelineValue )
 {
-	if( !p->enabled )
+	if( !p->enabled || !cmd )
 		return;
 	assert( slot < p->numSlots );
+	if( slot >= p->numSlots )
+		return;
 
 	p->activeSlot = slot;
 	struct RIGpuProfilerSlot_s *s = &p->slots[slot];
@@ -80,6 +91,7 @@ void RIGpuProfilerBeginFrame( struct RIDevice_s *dev, struct RIGpuProfiler_s *p,
 	s->queryCount = 0;
 	arrsetlen( s->scopes, 0 );
 	arrsetlen( p->openStack, 0 );
+	p->openLabels = 0;
 
 #if ( DEVICE_IMPL_VULKAN )
 	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
@@ -88,39 +100,57 @@ void RIGpuProfilerBeginFrame( struct RIDevice_s *dev, struct RIGpuProfiler_s *p,
 #endif
 }
 
-void RIGpuProfilerBeginScope( struct RIDevice_s *dev, struct RIGpuProfiler_s *p, struct RICmd_s *cmd, const char *name )
+void RIGpuProfilerAbandonFrame( struct RIGpuProfiler_s *p )
 {
 	if( !p->enabled )
+		return;
+	// Its timeline value will never be signalled, so resolving it would wait forever / read unwritten queries.
+	p->slots[p->activeSlot].resolved = true;
+	arrsetlen( p->openStack, 0 );
+	p->openLabels = 0;
+}
+
+void RIGpuProfilerBeginScope( struct RIDevice_s *dev, struct RIGpuProfiler_s *p, struct RICmd_s *cmd, const char *name )
+{
+	if( !p->enabled || !cmd )
 		return;
 
 	struct RIGpuProfilerSlot_s *s = &p->slots[p->activeSlot];
 	const uint32_t depth = (uint32_t)arrlen( p->openStack );
 	const uint32_t scopeIdx = (uint32_t)arrlen( s->scopes );
 
-	uint32_t beginIdx = RI_GPU_PROFILER_INVALID_QUERY;
-	uint32_t endIdx = RI_GPU_PROFILER_INVALID_QUERY;
+	struct RIGpuProfilerScope_s scope = { .depth = depth, .beginIdx = RI_GPU_PROFILER_INVALID_QUERY, .endIdx = RI_GPU_PROFILER_INVALID_QUERY };
+	Q_strncpyz( scope.name, name ? name : "", sizeof( scope.name ) );
 
-	// Gracefully degrade once the per-frame query budget is exhausted: the scope is still recorded
-	// (so nesting stays consistent) but resolves to 0 ms.
-	if( s->queryCount + 2 <= RI_GPU_PROFILER_MAX_QUERIES ) {
-		beginIdx = s->queryCount;
-		endIdx = s->queryCount + 1;
-		s->queryCount += 2;
+	// Only the begin index is taken now; the end index is assigned when the scope closes, so every index
+	// below queryCount is actually written and an unclosed scope can't leave a hole that makes the whole
+	// range report VK_NOT_READY forever. Once the budget runs out the scope is still recorded (so nesting
+	// stays consistent) but resolves to 0 ms.
+	if( s->queryCount < RI_GPU_PROFILER_MAX_QUERIES ) {
+		scope.beginIdx = s->queryCount++;
 #if ( DEVICE_IMPL_VULKAN )
 		if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
-			vkCmdWriteTimestamp2( cmd->vk.cmd, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, s->vk.pool, beginIdx );
+			vkCmdWriteTimestamp2( cmd->vk.cmd, RI_GPU_PROFILER_TIMESTAMP_STAGE, s->vk.pool, scope.beginIdx );
 		}
 #endif
 	}
 
-	struct RIGpuProfilerScope_s scope = { .name = name, .depth = depth, .beginIdx = beginIdx, .endIdx = endIdx };
+#if ( DEVICE_IMPL_VULKAN )
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) && vkCmdBeginDebugUtilsLabelEXT ) {
+		VkDebugUtilsLabelEXT label = { VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT };
+		label.pLabelName = scope.name;
+		vkCmdBeginDebugUtilsLabelEXT( cmd->vk.cmd, &label );
+		p->openLabels++;
+	}
+#endif
+
 	arrpush( s->scopes, scope );
 	arrpush( p->openStack, scopeIdx );
 }
 
 void RIGpuProfilerEndScope( struct RIDevice_s *dev, struct RIGpuProfiler_s *p, struct RICmd_s *cmd )
 {
-	if( !p->enabled )
+	if( !p->enabled || !cmd )
 		return;
 	if( arrlen( p->openStack ) == 0 )
 		return;
@@ -129,13 +159,23 @@ void RIGpuProfilerEndScope( struct RIDevice_s *dev, struct RIGpuProfiler_s *p, s
 	struct RIGpuProfilerSlot_s *s = &p->slots[p->activeSlot];
 	struct RIGpuProfilerScope_s *scope = &s->scopes[scopeIdx];
 
-	if( scope->endIdx != RI_GPU_PROFILER_INVALID_QUERY ) {
+	if( scope->beginIdx != RI_GPU_PROFILER_INVALID_QUERY && s->queryCount < RI_GPU_PROFILER_MAX_QUERIES ) {
+		scope->endIdx = s->queryCount++;
 #if ( DEVICE_IMPL_VULKAN )
 		if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
-			vkCmdWriteTimestamp2( cmd->vk.cmd, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, s->vk.pool, scope->endIdx );
+			vkCmdWriteTimestamp2( cmd->vk.cmd, RI_GPU_PROFILER_TIMESTAMP_STAGE, s->vk.pool, scope->endIdx );
 		}
 #endif
 	}
+
+#if ( DEVICE_IMPL_VULKAN )
+	// Only close labels this profiler opened, so begin/end stay balanced even if the extension appeared
+	// between the two calls or a scope was opened while it was unavailable.
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) && p->openLabels > 0 && vkCmdEndDebugUtilsLabelEXT ) {
+		vkCmdEndDebugUtilsLabelEXT( cmd->vk.cmd );
+		p->openLabels--;
+	}
+#endif
 }
 
 void RIGpuProfilerResolve( struct RIDevice_s *dev, struct RIGpuProfiler_s *p, uint64_t completedTimeline )
@@ -143,45 +183,51 @@ void RIGpuProfilerResolve( struct RIDevice_s *dev, struct RIGpuProfiler_s *p, ui
 	if( !p->enabled )
 		return;
 
-	arrsetlen( p->results, 0 );
-	p->totalMs = 0;
-
 #if ( DEVICE_IMPL_VULKAN )
 	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		// Pick the newest finished slot; older finished ones are just marked resolved. Results from the
+		// previous resolve stay in place when nothing new is ready, instead of flickering to empty.
+		struct RIGpuProfilerSlot_s *newest = NULL;
 		for( uint32_t i = 0; i < p->numSlots; i++ ) {
 			struct RIGpuProfilerSlot_s *s = &p->slots[i];
-			if( s->resolved || s->timelineValue > completedTimeline || s->queryCount == 0 )
+			if( s->resolved || s->timelineValue > completedTimeline )
 				continue;
-
-			uint64_t timestamps[RI_GPU_PROFILER_MAX_QUERIES];
-			VkResult vkResult = vkGetQueryPoolResults( dev->vk.device, s->vk.pool, 0, s->queryCount, s->queryCount * sizeof( uint64_t ), timestamps, sizeof( uint64_t ),
-													   VK_QUERY_RESULT_64_BIT );
-			if( vkResult == VK_NOT_READY )
-				continue;
-			if( vkResult != VK_SUCCESS ) {
-				VK_WrapResult( vkResult );
-				continue;
-			}
-
-			double depth0Total = 0;
-			for( size_t j = 0; j < arrlen( s->scopes ); j++ ) {
-				const struct RIGpuProfilerScope_s *scope = &s->scopes[j];
-				if( scope->beginIdx == RI_GPU_PROFILER_INVALID_QUERY ) {
-					struct RIGpuPassTiming_s timing = { .name = scope->name, .ms = 0, .depth = scope->depth };
-					arrpush( p->results, timing );
-					continue;
-				}
-				const uint64_t ticks = ( timestamps[scope->endIdx] - timestamps[scope->beginIdx] ) & p->validBitsMask;
-				const double ms = (double)ticks * p->ticksToMs;
-				struct RIGpuPassTiming_s timing = { .name = scope->name, .ms = (float)ms, .depth = scope->depth };
-				arrpush( p->results, timing );
-				if( scope->depth == 0 )
-					depth0Total += ms;
-			}
-			p->totalMs = (float)depth0Total;
 			s->resolved = true;
-			break; // resolve at most one slot per call
+			if( s->queryCount == 0 || s->timelineValue <= p->resultsTimeline )
+				continue;
+			if( !newest || s->timelineValue > newest->timelineValue )
+				newest = s;
 		}
+		if( !newest )
+			return;
+
+		uint64_t timestamps[RI_GPU_PROFILER_MAX_QUERIES];
+		VkResult vkResult = vkGetQueryPoolResults( dev->vk.device, newest->vk.pool, 0, newest->queryCount, newest->queryCount * sizeof( uint64_t ), timestamps,
+												   sizeof( uint64_t ), VK_QUERY_RESULT_64_BIT );
+		if( vkResult != VK_SUCCESS ) {
+			// The timeline says the submit finished, so NOT_READY here means the data is unusable; drop it.
+			if( vkResult != VK_NOT_READY )
+				VK_WrapResult( vkResult );
+			return;
+		}
+
+		arrsetlen( p->results, 0 );
+		double depth0Total = 0;
+		for( size_t j = 0; j < arrlen( newest->scopes ); j++ ) {
+			const struct RIGpuProfilerScope_s *scope = &newest->scopes[j];
+			struct RIGpuPassTiming_s timing = { .ms = 0, .depth = scope->depth };
+			memcpy( timing.name, scope->name, sizeof( timing.name ) );
+			if( scope->beginIdx != RI_GPU_PROFILER_INVALID_QUERY && scope->endIdx != RI_GPU_PROFILER_INVALID_QUERY ) {
+				// masked difference handles counter wraparound within timestampValidBits
+				const uint64_t ticks = ( timestamps[scope->endIdx] - timestamps[scope->beginIdx] ) & p->validBitsMask;
+				timing.ms = (float)( (double)ticks * p->ticksToMs );
+			}
+			arrpush( p->results, timing );
+			if( scope->depth == 0 )
+				depth0Total += timing.ms;
+		}
+		p->totalMs = (float)depth0Total;
+		p->resultsTimeline = newest->timelineValue;
 	}
 #endif
 }

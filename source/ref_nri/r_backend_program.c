@@ -1324,7 +1324,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 					case TC_GEN_VECTOR:
 						Matrix4_Identity( passCB.genTexMatrix.v );
 						Vector4Copy( &pass->tcgenVec[0], passCB.genTexMatrix.col0 );
-						Vector4Copy( &pass->tcgenVec[4], passCB.genTexMatrix.col3 );
+						Vector4Copy( &pass->tcgenVec[4], passCB.genTexMatrix.col1 );
 						programFeatures |= GLSL_SHADER_Q3_TC_GEN_VECTOR;
 						break;
 					case TC_GEN_PROJECTION:
@@ -1348,6 +1348,14 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 				RB_ApplyTCMods( pass, texMatrix );
 			}
 			ObjectCB_SetTextureMatrix( &objectData, texMatrix );
+			if( pass->tcgen == TC_GEN_REFLECTION_CELSHADE ) {
+				// the shader reads mat3(genTexMatrix), matching u_ReflectionTexMatrix in ref_gl
+				memcpy( passCB.genTexMatrix.v, texMatrix, sizeof( mat4_t ) );
+			}
+			if( programFeatures & GLSL_SHADER_COMMON_DRAWFLAT ) {
+				passCB.floorColor = (struct vec4){ .x = rsh.floorColor[0], .y = rsh.floorColor[1], .z = rsh.floorColor[2] };
+				passCB.wallColor = (struct vec3){ .x = rsh.wallColor[0], .y = rsh.wallColor[1], .z = rsh.wallColor[2] };
+			}
 
 			// set shaderpass state (blending, depthwrite, etc)
 			int state = pass->flags;
@@ -1612,7 +1620,9 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 					assert( numShadows <= GLSL_SHADOWMAP_LIMIT );
 
 					// this will tell the program how many shaders we want to render
-					programFeatures |= GLSL_SHADER_SHADOWMAP_SHADOW2 << ( numShadows - 2 );
+					if( numShadows > 1 ) {
+						programFeatures |= GLSL_SHADER_SHADOWMAP_SHADOW2 << ( numShadows - 2 );
+					}
 					if( rb.currentShadowBits && ( rb.currentModelType == mod_brush ) ) {
 						programFeatures |= GLSL_SHADER_SHADOWMAP_NORMALCHECK;
 					}
@@ -1731,9 +1741,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 
 			mat4_t reflectionMatrix;
 			RB_VertexTCCelshadeMatrix( reflectionMatrix );
-			memcpy( &passCB.reflectionTexMatrix.col0, &reflectionMatrix[0], 3 * sizeof( vec_t ) );
-			memcpy( &passCB.reflectionTexMatrix.col1, &reflectionMatrix[4], 3 * sizeof( vec_t ) );
-			memcpy( &passCB.reflectionTexMatrix.col2, &reflectionMatrix[8], 3 * sizeof( vec_t ) );
+			memcpy( passCB.padMat0.v, reflectionMatrix, sizeof( mat4_t ) );
 
 			mat4_t texMatrix;
 			Matrix4_Identity( texMatrix );

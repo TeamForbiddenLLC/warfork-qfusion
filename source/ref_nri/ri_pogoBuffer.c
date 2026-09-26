@@ -42,6 +42,8 @@ VkImageMemoryBarrier2 VK_RI_PogoAttachmentMemoryBarrier2(VkImage image, bool ini
 
 void RI_PogoBufferInit( struct RIDevice_s *device, struct RI_PogoBuffer *pogo, uint32_t width, uint32_t height, uint32_t format )
 {
+	// Init over a live pogo buffer would leak its images; callers destroy first (see the swapchain rebuild).
+	RI_PogoBufferDestroy( device, pogo );
 	pogo->attachmentIndex = 0;
 #if ( DEVICE_IMPL_VULKAN )
 	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
@@ -68,6 +70,7 @@ void RI_PogoBufferInit( struct RIDevice_s *device, struct RI_PogoBuffer *pogo, u
 
 		for( size_t p = 0; p < 2; p++ ) {
 			VK_WrapResult( vmaCreateImage( device->vk.vmaAllocator, &info, &mem_reqs, &pogo->vk.textures[p].vk.image, &pogo->vk.textures[p].vk.allocation, NULL ) );
+			RI_VK_SetObjectName( device->vk.device, VK_OBJECT_TYPE_IMAGE, (uint64_t)pogo->vk.textures[p].vk.image, p == 0 ? "pogo 0" : "pogo 1" );
 
 			VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
 			VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
@@ -93,11 +96,14 @@ void RI_PogoBufferDestroy( struct RIDevice_s *device, struct RI_PogoBuffer *pogo
 #if ( DEVICE_IMPL_VULKAN )
 	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
 		for( size_t p = 0; p < 2; p++ ) {
-			vkDestroyImageView( device->vk.device, pogo->vk.views[p].vk.image, NULL );
-			vmaDestroyImage( device->vk.vmaAllocator, pogo->vk.textures[p].vk.image, pogo->vk.textures[p].vk.allocation );
+			if( pogo->vk.views[p].vk.image )
+				vkDestroyImageView( device->vk.device, pogo->vk.views[p].vk.image, NULL );
+			if( pogo->vk.textures[p].vk.image )
+				vmaDestroyImage( device->vk.vmaAllocator, pogo->vk.textures[p].vk.image, pogo->vk.textures[p].vk.allocation );
 		}
 	}
 #endif
+	memset( pogo, 0, sizeof( *pogo ) );
 }
 
 void RI_PogoBufferToggle( struct RIDevice_s *device, struct RI_PogoBuffer *pogo, struct RICmd_s *handle )

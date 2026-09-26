@@ -23,7 +23,7 @@ void main()
 
 #ifdef APPLY_FOG
 	#if defined(APPLY_FOG_COLOR)
-		QF_FogGenColor(Position, outColor,  obj.blendMix);
+		QF_FogGenColor(Position, outColor);
 	#else
 		QF_FogGenCoordTexCoord(Position, v_FogCoord);
 	#endif

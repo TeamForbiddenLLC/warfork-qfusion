@@ -1036,6 +1036,9 @@ void FTLIB_FreeFonts( bool verbose )
 	}
 
 	fontFamilies = NULL;
+
+	// owned by the renderer that registered it; a renderer switch frees fonts and must not keep the old handle
+	shaderWhite = NULL;
 }
 
 /*

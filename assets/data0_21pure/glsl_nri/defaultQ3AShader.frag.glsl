@@ -17,7 +17,11 @@ layout(set = DESCRIPTOR_GLOBAL_SET, binding = 1) uniform texture2D lightmapTextu
 
 layout(location = 0) in vec3 v_Position; 
 layout(location = 1) in vec3 v_Normal;
-layout(location = 2) in vec2 v_TexCoord;  
+#if defined(APPLY_CUBEMAP_VERTEX)
+layout(location = 2) in vec3 v_TexCoord;
+#else
+layout(location = 2) in vec2 v_TexCoord;
+#endif
 layout(location = 3) in vec4 frontColor; 
 #if defined(APPLY_TC_GEN_PROJECTION)
 layout(location = 8) in vec4 v_TexCoordProj;

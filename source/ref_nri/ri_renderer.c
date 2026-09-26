@@ -69,27 +69,15 @@ const static char *DefaultDeviceExtension[] = {
 	// Shader Atomic Int 64 Extension
 	/************************************************************************/
 	VK_KHR_SHADER_ATOMIC_INT64_EXTENSION_NAME,
-	/************************************************************************/
-	// Raytracing
-	/************************************************************************/
-	VK_KHR_RAY_QUERY_EXTENSION_NAME,
-	VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
-	// Required by VK_KHR_ray_tracing_pipeline
 	VK_KHR_SPIRV_1_4_EXTENSION_NAME,
 	// Required by VK_KHR_spirv_1_4
 	VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME,
-
-	VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
-	// Required by VK_KHR_acceleration_structure
-	VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
 	/************************************************************************/
 	// YCbCr format support
 	/************************************************************************/
 	// Requirement for VK_KHR_sampler_ycbcr_conversion
 	VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
 	VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME,
-	VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
-	VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME,
 	VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME,
 	VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME,
 	/************************************************************************/
@@ -147,7 +135,7 @@ void vk_fillQueueFamilies( struct RIDevice_s *dev, uint32_t *queueFamilies, uint
 	for( size_t i = 0; i < RI_QUEUE_LEN; i++ ) {
 		if( dev->queues[i].vk.queue ) {
 			const uint32_t queueBit = ( 1 << dev->queues[i].vk.queueFamilyIdx );
-			if( ( uniqueQueue & queueBit ) > 0 ) {
+			if( ( uniqueQueue & queueBit ) == 0 ) {
 				assert( ( *queueFamiliesIdx ) < reservedLen );
 				queueFamilies[( *queueFamiliesIdx )++] = dev->queues[i].vk.queueFamilyIdx;
 			}
@@ -264,6 +252,11 @@ int EnumerateRIAdapters( struct RIPhysicalAdapter_s *adapters, uint32_t *numAdap
 						R_VK_ADD_STRUCT( &features, &presentIdFeatures );
 					}
 
+					VkPhysicalDeviceCoherentMemoryFeaturesAMD coherentMemoryFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COHERENT_MEMORY_FEATURES_AMD };
+					if( __VK_SupportExtension( extensionProperties, extensionNum, qCToStrRef( VK_AMD_DEVICE_COHERENT_MEMORY_EXTENSION_NAME ) ) ) {
+						R_VK_ADD_STRUCT( &features, &coherentMemoryFeatures );
+					}
+
 					VkPhysicalDeviceMemoryProperties memoryProperties = { 0 };
 					vkGetPhysicalDeviceMemoryProperties( physicalAdapter->vk.physicalDevice, &memoryProperties );
 					vkGetPhysicalDeviceProperties2( physicalAdapter->vk.physicalDevice, &properties );
@@ -309,7 +302,7 @@ int EnumerateRIAdapters( struct RIPhysicalAdapter_s *adapters, uint32_t *numAdap
 					physicalAdapter->vk.isPresentIDSupported = presentIdFeatures.presentId > 0;
 					physicalAdapter->vk.isBufferDeviceAddressSupported =
 						physicalAdapter->vk.apiVersion >= VK_API_VERSION_1_2 || __VK_SupportExtension( extensionProperties, extensionNum, qCToStrRef( VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME ) );
-					physicalAdapter->vk.isAMDDeviceCoherentMemorySupported = __VK_SupportExtension( extensionProperties, extensionNum, qCToStrRef( VK_AMD_DEVICE_COHERENT_MEMORY_EXTENSION_NAME ) );
+					physicalAdapter->vk.isAMDDeviceCoherentMemorySupported = coherentMemoryFeatures.deviceCoherentMemory;
 
 					const VkPhysicalDeviceLimits *limits = &properties.properties.limits;
 
@@ -344,10 +337,16 @@ int EnumerateRIAdapters( struct RIPhysicalAdapter_s *adapters, uint32_t *numAdap
 							physicalAdapter->systemMemorySize += memoryProperties.memoryHeaps[i].size;
 					}
 
-					for( uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++ ) {
-						const uint32_t uploadHeapFlags = ( VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT );
-						if( ( memoryProperties.memoryTypes[i].propertyFlags & uploadHeapFlags ) == uploadHeapFlags )
-							physicalAdapter->deviceUploadHeapSize += memoryProperties.memoryHeaps[i].size;
+					{
+						uint32_t countedHeaps = 0;
+						for( uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++ ) {
+							const uint32_t uploadHeapFlags = ( VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT );
+							const uint32_t heapIndex = memoryProperties.memoryTypes[i].heapIndex;
+							if( ( memoryProperties.memoryTypes[i].propertyFlags & uploadHeapFlags ) == uploadHeapFlags && ( countedHeaps & ( 1u << heapIndex ) ) == 0 ) {
+								countedHeaps |= ( 1u << heapIndex );
+								physicalAdapter->deviceUploadHeapSize += memoryProperties.memoryHeaps[heapIndex].size;
+							}
+						}
 					}
 
 					physicalAdapter->memoryAllocationMaxNum = limits->maxMemoryAllocationCount;
@@ -607,7 +606,7 @@ int InitRIDevice( struct RIDeviceDesc_s *init, struct RIDevice_s *device )
 
 			for( size_t idx = 0; idx < Q_ARRAY_COUNT( DefaultDeviceExtension ); idx++ ) {
 				if( __VK_SupportExtension( extensionProperties, extensionNum, qCToStrRef( DefaultDeviceExtension[idx] ) ) ) {
-					Com_Printf( "Enabled Extension: %s", extensionProperties[idx].extensionName );
+					Com_Printf( "Enabled Extension: %s", DefaultDeviceExtension[idx] );
 					arrpush( enabledExtensionNames, DefaultDeviceExtension[idx] );
 				}
 			}
@@ -743,8 +742,15 @@ int InitRIDevice( struct RIDeviceDesc_s *init, struct RIDevice_s *device )
 			R_VK_ADD_STRUCT( &features, &features12 );
 
 			VkPhysicalDeviceVulkan13Features features13 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
-			if( g_renderer.vk.apiVersion >= VK_API_VERSION_1_3 ) {
+			if( g_renderer.vk.apiVersion >= VK_API_VERSION_1_3 && physicalAdapter->vk.apiVersion >= VK_API_VERSION_1_3 ) {
 				R_VK_ADD_STRUCT( &features, &features13 );
+			}
+
+			// VMA's AMD_DEVICE_COHERENT_MEMORY flag requires the deviceCoherentMemory feature to be enabled,
+			// not just the extension.
+			VkPhysicalDeviceCoherentMemoryFeaturesAMD coherentMemoryFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COHERENT_MEMORY_FEATURES_AMD };
+			if( __VK_isExtensionNamesSupported( qCToStrRef( VK_AMD_DEVICE_COHERENT_MEMORY_EXTENSION_NAME ), enabledExtensionNames, arrlen( enabledExtensionNames ) ) ) {
+				R_VK_ADD_STRUCT( &features, &coherentMemoryFeatures );
 			}
 
 			VkPhysicalDeviceMaintenance5FeaturesKHR maintenance5Features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR };
@@ -769,6 +775,7 @@ int InitRIDevice( struct RIDeviceDesc_s *init, struct RIDevice_s *device )
 			}
 
 			vkGetPhysicalDeviceFeatures2( physicalAdapter->vk.physicalDevice, &features );
+			device->physicalAdapter.vk.isAMDDeviceCoherentMemorySupported = coherentMemoryFeatures.deviceCoherentMemory;
 
 			// Timeline semaphores are mandatory on any Vulkan 1.2+ device (and are enabled wholesale via
 			// the feature chain above); the frame timeline + GPU profiler now depend on them. Guard
@@ -789,6 +796,7 @@ int InitRIDevice( struct RIDeviceDesc_s *init, struct RIDevice_s *device )
 				riResult = RI_FAIL;
 				goto vk_done;
 			}
+			volkLoadDevice( device->vk.device );
 
 			// the request size
 			for( size_t q = 0; q < Q_ARRAY_COUNT( device->queues ); q++ ) {
@@ -918,14 +926,13 @@ int InitRIRenderer( const struct RIBackendInit_s *init )
 			VkInstanceCreateInfo instanceCreateInfo = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
 			instanceCreateInfo.pApplicationInfo = &appInfo;
 			const char *enabledLayerNames[8] = { 0 };
-			const char *enabledExtensionNames[8] = { 0 };
+			const char **enabledExtensionNames = NULL;
 			instanceCreateInfo.ppEnabledLayerNames = enabledLayerNames;
 			instanceCreateInfo.enabledLayerCount = 0;
-			instanceCreateInfo.ppEnabledExtensionNames = enabledExtensionNames;
-			instanceCreateInfo.enabledExtensionCount = 0;
 
 			VkLayerProperties *layerProperties = NULL;
 			VkExtensionProperties *extProperties = NULL;
+			bool debugUtilsSupported = false;
 			{
 				assert( 1 <= Q_ARRAY_COUNT( enabledLayerNames ) );
 				uint32_t enumInstanceLayers = 0;
@@ -971,34 +978,43 @@ int InitRIRenderer( const struct RIBackendInit_s *init )
 					useExtension |= ( strcmp( extProperties[i].extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME ) == 0 );
 					Com_Printf( "Instance Extensions: %s(%d): %s", extProperties[i].extensionName, extProperties[i].specVersion, useExtension ? "ENABLED" : "DISABLED" );
 					if( useExtension ) {
-						assert( instanceCreateInfo.enabledExtensionCount < Q_ARRAY_COUNT( enabledExtensionNames ) );
-						enabledExtensionNames[instanceCreateInfo.enabledExtensionCount++] = extProperties[i].extensionName;
+						arrpush( enabledExtensionNames, extProperties[i].extensionName );
 					}
 				}
+				debugUtilsSupported = __VK_isExtensionSupported( VK_EXT_DEBUG_UTILS_EXTENSION_NAME, extProperties, extensionNum );
 			}
+			instanceCreateInfo.ppEnabledExtensionNames = enabledExtensionNames;
+			instanceCreateInfo.enabledExtensionCount = (uint32_t)arrlen( enabledExtensionNames );
+
+			VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT };
+			messengerCreateInfo.pUserData = &g_renderer;
+			messengerCreateInfo.pfnUserCallback = __VK_DebugUtilsMessenger;
+			messengerCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
+			messengerCreateInfo.messageSeverity |= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+			messengerCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+			messengerCreateInfo.messageType |= VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 
 			if( init->vk.enableValidationLayer ) {
 				R_VK_ADD_STRUCT( &instanceCreateInfo, &validationFeatures );
+				// Chained into instance creation too, so messages from vkCreateInstance/vkDestroyInstance
+				// themselves are reported (the standalone messenger below only exists in between).
+				if( debugUtilsSupported ) {
+					R_VK_ADD_STRUCT( &instanceCreateInfo, &messengerCreateInfo );
+				}
 			}
 
 			VkResult result = vkCreateInstance( &instanceCreateInfo, NULL, &g_renderer.vk.instance );
 			free( layerProperties );
 			free( extProperties );
+			arrfree( enabledExtensionNames );
 			if( !VK_WrapResult( result ) ) {
+				memset( &g_renderer, 0, sizeof( g_renderer ) );
 				return RI_FAIL;
 			}
 			volkLoadInstance( g_renderer.vk.instance );
 			if( init->vk.enableValidationLayer && vkCreateDebugUtilsMessengerEXT ) {
-				VkDebugUtilsMessengerCreateInfoEXT createInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT };
-				createInfo.pUserData = &g_renderer;
-				createInfo.pfnUserCallback = __VK_DebugUtilsMessenger;
-
-				createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
-				createInfo.messageSeverity |= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-
-				createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
-				createInfo.messageType |= VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-				vkCreateDebugUtilsMessengerEXT( g_renderer.vk.instance, &createInfo, NULL, &g_renderer.vk.debugMessageUtils );
+				messengerCreateInfo.pNext = NULL;
+				vkCreateDebugUtilsMessengerEXT( g_renderer.vk.instance, &messengerCreateInfo, NULL, &g_renderer.vk.debugMessageUtils );
 			}
 		}
 	}
@@ -1189,6 +1205,9 @@ void FreeRIFree( struct RIDevice_s *dev, struct RIFree_s *mem )
 			break;
 		case RI_FREE_VK_BUFFER_VIEW:
 			vkDestroyBufferView( dev->vk.device, mem->vkBufferView, NULL );
+			break;
+		case RI_FREE_VK_PIPELINE:
+			vkDestroyPipeline( dev->vk.device, mem->vkPipeline, NULL );
 			break;
 #endif
 #if ( DEVICE_IMPL_MTL )
@@ -1860,10 +1879,12 @@ void ShutdownRIRenderer( void )
 	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
 		if( g_renderer.vk.debugMessageUtils )
 			vkDestroyDebugUtilsMessengerEXT( g_renderer.vk.instance, g_renderer.vk.debugMessageUtils, NULL );
-		vkDestroyInstance( g_renderer.vk.instance, NULL );
+		if( g_renderer.vk.instance )
+			vkDestroyInstance( g_renderer.vk.instance, NULL );
 		volkFinalize();
 	}
 #endif
+	memset( &g_renderer, 0, sizeof( g_renderer ) );
 }
 
 void WaitRIQueueIdle( struct RIDevice_s *device, struct RIQueue_s *queue )
@@ -1883,8 +1904,23 @@ int FreeRIDevice( struct RIDevice_s *dev )
 		assert( dev->vk.vmaAllocator );
 		assert( dev->vk.device );
 
-		if( dev->vk.vmaAllocator )
+		if( dev->vk.vmaAllocator ) {
+			// vmaDestroyAllocator asserts if anything is still allocated; report what leaked first. The
+			// per-block JSON carries sizes, which is usually enough to identify the resource.
+			VmaTotalStatistics stats = { 0 };
+			vmaCalculateStatistics( dev->vk.vmaAllocator, &stats );
+			if( stats.total.statistics.allocationCount > 0 ) {
+				Com_Printf( S_COLOR_RED "VMA LEAK: %u allocation(s) still live at device teardown, %llu bytes\n", stats.total.statistics.allocationCount,
+							(unsigned long long)stats.total.statistics.allocationBytes );
+				char *json = NULL;
+				vmaBuildStatsString( dev->vk.vmaAllocator, &json, VK_TRUE );
+				if( json ) {
+					Com_Printf( "VMA LEAK: %s\n", json );
+					vmaFreeStatsString( dev->vk.vmaAllocator, json );
+				}
+			}
 			vmaDestroyAllocator( dev->vk.vmaAllocator );
+		}
 		vkDestroyDevice( dev->vk.device, NULL );
 
 		dev->vk.device = NULL;

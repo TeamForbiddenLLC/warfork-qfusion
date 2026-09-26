@@ -33,7 +33,15 @@ typedef uint64_t r_glslfeat_t;
 #include "qhash.h"
 
 #define GLSL_BIT(x)							(1ULL << (x))
-#define GLSL_BITS_VERSION					21
+
+// Bump on ANY change that alters generated SPIR-V: glsl_nri/*.glsl or their #includes, the
+// glsl_features_* tables, __appendGLSLDeformv, the QF_BUILTIN_GLSL_* headers, the glslang_input_t
+// settings, r_shaderOptimize's default, or the glslang dependency version. Forgetting to bump serves
+// stale SPIR-V out of cache/nri_glsl.cache.bin, and you will debug a shader change that never took
+// effect -- it survives a rebuild because the cache lives under ~/.cache. Invalidation is MANUAL by
+// design (no source hashing); "r_shaderCache 0" is the escape hatch while iterating.
+// See RP_PrecachePrograms.
+#define GLSL_BITS_VERSION					22
 
 #define PIPELINE_LAYOUT_HASH_SIZE 4096// need to handle this large number of pipelines 
 #define PIPELINE_REFLECTION_HASH_SIZE 64
@@ -310,9 +318,16 @@ struct glsl_program_s {
 #endif
 	};
 
+	// name is the mangled name: base name plus every feature suffix, for logging and debug labels.
+	// baseName is the unsuffixed name the caller passed, which is also the glsl_nri/<baseName>.*.glsl
+	// source path -- that is the one the cache has to round-trip.
 	char *name;
+	char *baseName;
 	int type;
 	bool hasPushConstant;
+	// false if compilation failed; such a program is still registered but has no shaderBin, so it
+	// must never be written to the cache.
+	bool valid;
 	r_glslfeat_t features;
 	char *deformsKey;
 	struct glsl_program_s *hash_next;
@@ -366,6 +381,7 @@ struct glsl_program_s {
 	struct glsl_program_descriptor_s programDescriptors[R_DESCRIPTOR_SET_MAX];
 
 	size_t numDescriptorReflections;
+	uint64_t reportedUnwrittenBindings; // debug: bit i is set once descriptorReflection[i] was reported never written
 	struct descriptor_reflection_s {
 		hash_t hash;
 		uint16_t isArray : 1;

@@ -6,6 +6,7 @@
 #include "ri_types.h"
 #include "ri_vk.h"
 #include "ri_mtl.h"
+#include "../qcommon/qcommon.h"
 
 #if ( DEVICE_IMPL_VULKAN )
 
@@ -31,6 +32,113 @@ static uint32_t __priority_BT2020_G2084_10BIT( const VkSurfaceFormatKHR *surface
 	return ( ( surface->format == VK_FORMAT_A2B10G10R10_UNORM_PACK32 ) << 0 ) | ( ( surface->colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT ) << 1 );
 }
 
+// Returns VK_NULL_HANDLE when the window type is unsupported on this build or surface creation fails.
+static VkSurfaceKHR __VK_CreateWindowSurface( const struct RIWindowHandle_s *windowHandle )
+{
+	VkSurfaceKHR surface = VK_NULL_HANDLE;
+	VkResult result = VK_ERROR_INITIALIZATION_FAILED;
+	switch( windowHandle->type ) {
+	#ifdef VK_USE_PLATFORM_XLIB_KHR
+		case RI_WINDOW_X11: {
+			VkXlibSurfaceCreateInfoKHR xlibSurfaceInfo = { VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR };
+			xlibSurfaceInfo.dpy = windowHandle->x11.dpy;
+			xlibSurfaceInfo.window = windowHandle->x11.window;
+			result = vkCreateXlibSurfaceKHR( RIGetVkInstance(), &xlibSurfaceInfo, NULL, &surface );
+			break;
+		}
+	#endif
+	#ifdef VK_USE_PLATFORM_WIN32_KHR
+		case RI_WINDOW_WIN32: {
+			VkWin32SurfaceCreateInfoKHR win32SurfaceInfo = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
+			win32SurfaceInfo.hwnd = (HWND)windowHandle->windows.hwnd;
+			result = vkCreateWin32SurfaceKHR( RIGetVkInstance(), &win32SurfaceInfo, NULL, &surface );
+			break;
+		}
+	#endif
+	#ifdef VK_USE_PLATFORM_METAL_EXT
+		case RI_WINDOW_METAL: {
+			VkMetalSurfaceCreateInfoEXT metalSurfaceCreateInfo = { VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT };
+			metalSurfaceCreateInfo.pLayer = (const CAMetalLayer *)windowHandle->metal.caMetalLayer;
+			result = vkCreateMetalSurfaceEXT( RIGetVkInstance(), &metalSurfaceCreateInfo, NULL, &surface );
+			break;
+		}
+	#endif
+	#ifdef VK_USE_PLATFORM_WAYLAND_KHR
+		case RI_WINDOW_WAYLAND: {
+			VkWaylandSurfaceCreateInfoKHR waylandSurfaceInfo = { VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR };
+			waylandSurfaceInfo.display = windowHandle->wayland.display;
+			waylandSurfaceInfo.surface = windowHandle->wayland.surface;
+			result = vkCreateWaylandSurfaceKHR( RIGetVkInstance(), &waylandSurfaceInfo, NULL, &surface );
+			break;
+		}
+	#endif
+		default:
+			Com_Printf( S_COLOR_RED "Swapchain: unsupported window type %d\n", (int)windowHandle->type );
+			return VK_NULL_HANDLE;
+	}
+	if( result != VK_SUCCESS ) {
+		VK_WrapResult( result );
+		return VK_NULL_HANDLE;
+	}
+	return surface;
+}
+
+// When currentExtent is defined the surface dictates the size and the requested one must be ignored
+// (VUID-VkSwapchainCreateInfoKHR-imageExtent-01274); otherwise clamp into [minImageExtent, maxImageExtent].
+static VkExtent2D __VK_ResolveSwapchainExtent( const VkSurfaceCapabilitiesKHR *caps, uint32_t width, uint32_t height )
+{
+	if( caps->currentExtent.width != UINT32_MAX )
+		return caps->currentExtent;
+	VkExtent2D extent = { width, height };
+	extent.width = bound( caps->minImageExtent.width, extent.width, caps->maxImageExtent.width );
+	extent.height = bound( caps->minImageExtent.height, extent.height, caps->maxImageExtent.height );
+	return extent;
+}
+
+static VkPresentModeKHR __VK_SelectPresentMode( struct RIDevice_s *dev, VkSurfaceKHR surface, bool vsync )
+{
+	uint32_t presentModeCount = 0;
+	VK_WrapResult( vkGetPhysicalDeviceSurfacePresentModesKHR( dev->physicalAdapter.vk.physicalDevice, surface, &presentModeCount, NULL ) );
+	VkPresentModeKHR *supportedPresentMode = malloc( presentModeCount * sizeof( VkPresentModeKHR ) );
+	VK_WrapResult( vkGetPhysicalDeviceSurfacePresentModesKHR( dev->physicalAdapter.vk.physicalDevice, surface, &presentModeCount, supportedPresentMode ) );
+
+	// The VK_PRESENT_MODE_FIFO_KHR mode must always be present as per spec
+	// This mode waits for the vertical blank ("v-sync")
+	VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
+	if( !vsync ) {
+		const VkPresentModeKHR preferredModeList[] = { VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_FIFO_RELAXED_KHR, VK_PRESENT_MODE_FIFO_KHR };
+		for( size_t j = 0; j < Q_ARRAY_COUNT( preferredModeList ); j++ ) {
+			uint32_t i = 0;
+			for( ; i < presentModeCount; ++i ) {
+				if( supportedPresentMode[i] == preferredModeList[j] ) {
+					break;
+				}
+			}
+			if( i < presentModeCount ) {
+				presentMode = preferredModeList[j];
+				break;
+			}
+		}
+	}
+	free( supportedPresentMode );
+	return presentMode;
+}
+
+// Fetches the swapchain images, bounded by the array capacity rather than trusting the driver count.
+static uint32_t __VK_GetSwapchainImages( struct RIDevice_s *dev, struct RISwapchain_s *swapchain )
+{
+	uint32_t imageNum = 0;
+	VK_WrapResult( vkGetSwapchainImagesKHR( dev->vk.device, swapchain->vk.swapchain, &imageNum, NULL ) );
+	if( imageNum > RI_MAX_SWAPCHAIN_IMAGES ) {
+		Com_Printf( S_COLOR_YELLOW "Swapchain: driver returned %u images, using the first %u\n", imageNum, (uint32_t)RI_MAX_SWAPCHAIN_IMAGES );
+		imageNum = RI_MAX_SWAPCHAIN_IMAGES;
+	}
+	const VkResult result = vkGetSwapchainImagesKHR( dev->vk.device, swapchain->vk.swapchain, &imageNum, swapchain->vk.images );
+	if( result != VK_SUCCESS && result != VK_INCOMPLETE )
+		VK_WrapResult( result );
+	return imageNum;
+}
+
 #endif
 
 int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, struct RISwapchain_s *swapchain )
@@ -42,56 +150,30 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 	swapchain->width = init->width;
 	swapchain->height = init->height;
 	swapchain->presentQueue = init->queue;
+	swapchain->vsync = init->vsync;
 #if ( DEVICE_IMPL_VULKAN )
 	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
 		assert( init->requestImageCount <= Q_ARRAY_COUNT( swapchain->vk.images ) );
 		VkResult result = VK_SUCCESS;
+		swapchain->vk.surface = __VK_CreateWindowSurface( init->windowHandle );
+		if( swapchain->vk.surface == VK_NULL_HANDLE ) {
+			Com_Printf( S_COLOR_RED "Swapchain: failed to create a window surface\n" );
+			memset( swapchain, 0, sizeof( struct RISwapchain_s ) );
+			return RI_FAIL;
+		}
+
 		{
-			switch( init->windowHandle->type ) {
-	#ifdef VK_USE_PLATFORM_XLIB_KHR
-				case RI_WINDOW_X11: {
-					VkXlibSurfaceCreateInfoKHR xlibSurfaceInfo = { VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR };
-					xlibSurfaceInfo.dpy = init->windowHandle->x11.dpy;
-					xlibSurfaceInfo.window = init->windowHandle->x11.window;
-					result = vkCreateXlibSurfaceKHR( RIGetVkInstance(), &xlibSurfaceInfo, NULL, &swapchain->vk.surface );
-					VK_WrapResult( result );
-					break;
-				}
-	#endif
-	#ifdef VK_USE_PLATFORM_WIN32_KHR
-				case RI_WINDOW_WIN32: {
-					VkWin32SurfaceCreateInfoKHR win32SurfaceInfo = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
-					win32SurfaceInfo.hwnd = (HWND)init->windowHandle->windows.hwnd;
-
-					result = vkCreateWin32SurfaceKHR( RIGetVkInstance(), &win32SurfaceInfo, NULL, &swapchain->vk.surface );
-					VK_WrapResult( result );
-					break;
-				}
-	#endif
-	#ifdef VK_USE_PLATFORM_METAL_EXT
-				case RI_WINDOW_METAL: {
-					VkMetalSurfaceCreateInfoEXT metalSurfaceCreateInfo = { VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT };
-					metalSurfaceCreateInfo.pLayer = (CAMetalLayer *)swapChainDesc.window.metal.caMetalLayer;
-
-					VkResult result = vk.CreateMetalSurfaceEXT( m_Device, &metalSurfaceCreateInfo, m_Device.GetAllocationCallbacks(), &m_Surface );
-					RETURN_ON_FAILURE( &m_Device, result == VK_SUCCESS, GetReturnCode( result ), "vkCreateMetalSurfaceEXT returned %d", (int32_t)result );
-					break;
-				}
-	#endif
-	#ifdef VK_USE_PLATFORM_WAYLAND_KHR
-				case RI_WINDOW_WAYLAND: {
-					VkWaylandSurfaceCreateInfoKHR waylandSurfaceInfo = { VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR };
-					waylandSurfaceInfo.display = init->windowHandle->wayland.display;
-					waylandSurfaceInfo.surface = init->windowHandle->wayland.surface;
-					result = vkCreateWaylandSurfaceKHR( RIGetVkInstance(), &waylandSurfaceInfo, NULL, &swapchain->vk.surface );
-					VK_WrapResult( result );
-					break;
-				}
-	#endif
-				default:
-					break;
+			VkBool32 presentSupported = VK_FALSE;
+			result = vkGetPhysicalDeviceSurfaceSupportKHR( dev->physicalAdapter.vk.physicalDevice, init->queue->vk.queueFamilyIdx, swapchain->vk.surface, &presentSupported );
+			VK_WrapResult( result );
+			if( result != VK_SUCCESS || !presentSupported ) {
+				Com_Printf( S_COLOR_RED "Swapchain: queue family %u can't present to this surface\n", init->queue->vk.queueFamilyIdx );
+				vkDestroySurfaceKHR( RIGetVkInstance(), swapchain->vk.surface, NULL );
+				memset( swapchain, 0, sizeof( struct RISwapchain_s ) );
+				return RI_FAIL;
 			}
 		}
+
 		VkSurfaceCapabilitiesKHR surfaceCaps = { 0 };
 		result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR( dev->physicalAdapter.vk.physicalDevice, swapchain->vk.surface, &surfaceCaps );
 		VK_WrapResult( result );
@@ -127,31 +209,17 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 			}
 		}
 
-		uint32_t presentModeCount = 0;
-		result = vkGetPhysicalDeviceSurfacePresentModesKHR( dev->physicalAdapter.vk.physicalDevice, swapchain->vk.surface, &presentModeCount, NULL );
-		VK_WrapResult( result );
-		VkPresentModeKHR *supportedPresentMode = malloc( presentModeCount * sizeof( VkPresentModeKHR ) );
-		result = vkGetPhysicalDeviceSurfacePresentModesKHR( dev->physicalAdapter.vk.physicalDevice, swapchain->vk.surface, &presentModeCount, supportedPresentMode );
-		VK_WrapResult( result );
-
-		// The VK_PRESENT_MODE_FIFO_KHR mode must always be present as per spec
-		// This mode waits for the vertical blank ("v-sync")
-		VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
-
-		VkPresentModeKHR preferredModeList[] = { VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_FIFO_RELAXED_KHR, VK_PRESENT_MODE_FIFO_KHR };
-		for( size_t j = 0; j < Q_ARRAY_COUNT( preferredModeList ); j++ ) {
-			VkPresentModeKHR mode = preferredModeList[j];
-			uint32_t i = 0;
-			for( ; i < presentModeCount; ++i ) {
-				if( supportedPresentMode[i] == mode ) {
-					break;
-				}
-			}
-			if( i < presentModeCount ) {
-				presentMode = mode;
-				break;
-			}
+		const VkPresentModeKHR presentMode = __VK_SelectPresentMode( dev, swapchain->vk.surface, init->vsync );
+		const VkExtent2D extent = __VK_ResolveSwapchainExtent( &surfaceCaps, init->width, init->height );
+		if( extent.width == 0 || extent.height == 0 ) {
+			Com_Printf( S_COLOR_RED "Swapchain: surface has a zero extent\n" );
+			vkDestroySurfaceKHR( RIGetVkInstance(), swapchain->vk.surface, NULL );
+			free( surfaceFormats );
+			memset( swapchain, 0, sizeof( struct RISwapchain_s ) );
+			return RI_FAIL;
 		}
+		swapchain->width = (uint16_t)extent.width;
+		swapchain->height = (uint16_t)extent.height;
 		{
 			VkSwapchainCreateInfoKHR swapChainCreateInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
 			swapChainCreateInfo.flags = 0;
@@ -165,8 +233,7 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 			swapChainCreateInfo.minImageCount = desiredImageCount;
 			swapChainCreateInfo.imageFormat = selectedSurf->format;
 			swapChainCreateInfo.imageColorSpace = selectedSurf->colorSpace;
-			swapChainCreateInfo.imageExtent.width = init->width;
-			swapChainCreateInfo.imageExtent.height = init->height;
+			swapChainCreateInfo.imageExtent = extent;
 			swapChainCreateInfo.imageArrayLayers = 1;
 			swapChainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 			swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -178,16 +245,21 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 			swapChainCreateInfo.clipped = VK_TRUE;
 			swapChainCreateInfo.oldSwapchain = 0;
 			result = vkCreateSwapchainKHR( dev->vk.device, &swapChainCreateInfo, NULL, &swapchain->vk.swapchain );
+			if( result != VK_SUCCESS ) {
+				VK_WrapResult( result );
+				vkDestroySurfaceKHR( RIGetVkInstance(), swapchain->vk.surface, NULL );
+				free( surfaceFormats );
+				memset( swapchain, 0, sizeof( struct RISwapchain_s ) );
+				return RI_FAIL;
+			}
 		}
 
 		{
-			uint32_t imageNum = 0;
-			vkGetSwapchainImagesKHR( dev->vk.device, swapchain->vk.swapchain, &imageNum, NULL );
-			assert( imageNum <= RI_MAX_SWAPCHAIN_IMAGES );
-			vkGetSwapchainImagesKHR( dev->vk.device, swapchain->vk.swapchain, &imageNum, swapchain->vk.images );
+			const uint32_t imageNum = __VK_GetSwapchainImages( dev, swapchain );
 			swapchain->vk.imageCount = imageNum;
 
 			swapchain->format = VKToRIFormat( selectedSurf->format );
+			swapchain->vk.imageFormat = selectedSurf->format;
 			swapchain->vk.imageColorSpace = selectedSurf->colorSpace;
 			swapchain->vk.presentMode = presentMode;
 
@@ -219,9 +291,9 @@ int InitRISwapchain( struct RIDevice_s *dev, struct RISwapchainDesc_s *init, str
 				viewCreateInfo.subresourceRange.layerCount = 1;
 				result = vkCreateImageView( dev->vk.device, &viewCreateInfo, NULL, &swapchain->vk.views[i] );
 				VK_WrapResult( result );
+				RI_VK_SetObjectName( dev->vk.device, VK_OBJECT_TYPE_IMAGE, (uint64_t)swapchain->vk.images[i], "swapchain image" );
 			}
 		}
-		free( supportedPresentMode );
 		free( surfaceFormats );
 	}
 #endif // DEVICE_IMPL_VULKAN
@@ -260,7 +332,10 @@ uint32_t RISwapchainAcquireNextTexture( struct RIDevice_s *dev, struct RISwapcha
 			uint32_t image_index = 0;
 			swapchain->vk.acquireIdx = ( swapchain->vk.acquireIdx + 1 ) % swapchain->vk.imageCount;
 			VkSemaphore imageAcquiredSemaphore = swapchain->vk.acquireSemaphores[swapchain->vk.acquireIdx];
-			VkResult result = vkAcquireNextImageKHR( dev->vk.device, swapchain->vk.swapchain, UINT64_MAX, imageAcquiredSemaphore, VK_NULL_HANDLE, &image_index );
+			// Bounded so a wedged compositor surfaces as a skipped frame instead of a hang.
+			const uint64_t acquireTimeoutNs = 5000ull * 1000000ull;
+			VkResult result = vkAcquireNextImageKHR( dev->vk.device, swapchain->vk.swapchain, acquireTimeoutNs, imageAcquiredSemaphore, VK_NULL_HANDLE, &image_index );
+			swapchain->vk.acquireFailed = 0;
 			switch( result ) {
 				case VK_SUCCESS:
 					break;
@@ -269,14 +344,26 @@ uint32_t RISwapchainAcquireNextTexture( struct RIDevice_s *dev, struct RISwapcha
 					// rebuild but render this frame normally.
 					swapchain->vk.outOfDate = 1;
 					break;
+				case VK_TIMEOUT:
+				case VK_NOT_READY:
+					// No image and no semaphore signal, but the swapchain itself is still fine.
+					swapchain->vk.acquireFailed = 1;
+					image_index = 0;
+					break;
 				case VK_ERROR_OUT_OF_DATE_KHR:
 					// No image was acquired and the semaphore was not signalled. Mark the frame's acquire
 					// as failed so the submit skips the acquire wait / present, and flag for rebuild.
 					swapchain->vk.outOfDate = 1;
 					swapchain->vk.acquireFailed = 1;
+					image_index = 0;
 					break;
 				default:
+					// Anything else (e.g. SURFACE_LOST) also leaves the semaphore unsignalled and image_index
+					// undefined: treat it as a failed acquire so the frame never waits on it or presents.
 					VK_WrapResult( result );
+					swapchain->vk.outOfDate = 1;
+					swapchain->vk.acquireFailed = 1;
+					image_index = 0;
 					break;
 			}
 			return image_index;
@@ -469,19 +556,41 @@ int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, 
 			VkResult result;
 			VkSwapchainKHR oldSwapchain = swapchain->vk.swapchain;
 
+			// The surface can change size behind our back (compositor/DPI changes), so the caller's size is
+			// only a request: re-query the caps and clamp against them.
+			VkSurfaceCapabilitiesKHR surfaceCaps = { 0 };
+			result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR( dev->physicalAdapter.vk.physicalDevice, swapchain->vk.surface, &surfaceCaps );
+			if( result != VK_SUCCESS ) {
+				VK_WrapResult( result );
+				return RI_FAIL;
+			}
+			const VkExtent2D extent = __VK_ResolveSwapchainExtent( &surfaceCaps, width, height );
+			if( extent.width == 0 || extent.height == 0 ) {
+				// Minimized: a zero-sized swapchain is invalid. Keep the old one and leave outOfDate set so
+				// the rebuild is retried once the surface has a size again.
+				return 0;
+			}
+
+			uint32_t desiredImageCount = swapchain->vk.imageCount;
+			if( surfaceCaps.minImageCount > 0 && desiredImageCount < surfaceCaps.minImageCount )
+				desiredImageCount = surfaceCaps.minImageCount;
+			if( surfaceCaps.maxImageCount > 0 && desiredImageCount > surfaceCaps.maxImageCount )
+				desiredImageCount = surfaceCaps.maxImageCount;
+
+			const VkPresentModeKHR presentMode = __VK_SelectPresentMode( dev, swapchain->vk.surface, swapchain->vsync );
+
 			VkSwapchainCreateInfoKHR swapChainCreateInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
 			swapChainCreateInfo.surface = swapchain->vk.surface;
-			swapChainCreateInfo.minImageCount = swapchain->vk.imageCount;
-			swapChainCreateInfo.imageFormat = RIFormatToVK( swapchain->format );
+			swapChainCreateInfo.minImageCount = desiredImageCount;
+			swapChainCreateInfo.imageFormat = swapchain->vk.imageFormat;
 			swapChainCreateInfo.imageColorSpace = swapchain->vk.imageColorSpace;
-			swapChainCreateInfo.imageExtent.width = width;
-			swapChainCreateInfo.imageExtent.height = height;
+			swapChainCreateInfo.imageExtent = extent;
 			swapChainCreateInfo.imageArrayLayers = 1;
 			swapChainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 			swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 			swapChainCreateInfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 			swapChainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-			swapChainCreateInfo.presentMode = swapchain->vk.presentMode;
+			swapChainCreateInfo.presentMode = presentMode;
 			swapChainCreateInfo.clipped = VK_TRUE;
 			swapChainCreateInfo.oldSwapchain = oldSwapchain;
 
@@ -503,16 +612,13 @@ int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, 
 				swapchain->vk.views[i] = VK_NULL_HANDLE;
 			}
 
-			uint32_t imageNum = 0;
-			vkGetSwapchainImagesKHR( dev->vk.device, swapchain->vk.swapchain, &imageNum, NULL );
-			assert( imageNum <= RI_MAX_SWAPCHAIN_IMAGES );
-			vkGetSwapchainImagesKHR( dev->vk.device, swapchain->vk.swapchain, &imageNum, swapchain->vk.images );
+			const uint32_t imageNum = __VK_GetSwapchainImages( dev, swapchain );
 
 			for( size_t i = 0; i < imageNum; i++ ) {
 				VkImageViewCreateInfo viewCreateInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 				viewCreateInfo.image = swapchain->vk.images[i];
 				viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-				viewCreateInfo.format = RIFormatToVK( swapchain->format );
+				viewCreateInfo.format = swapchain->vk.imageFormat;
 				viewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
 				viewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 				viewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -553,11 +659,12 @@ int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, 
 			}
 
 			swapchain->vk.imageCount = imageNum;
+			swapchain->vk.presentMode = presentMode;
 			swapchain->vk.acquireIdx = 0;
 			swapchain->vk.outOfDate = 0;
 			swapchain->vk.acquireFailed = 0;
-			swapchain->width = width;
-			swapchain->height = height;
+			swapchain->width = (uint16_t)extent.width;
+			swapchain->height = (uint16_t)extent.height;
 		}
 	}
 #endif
@@ -574,6 +681,18 @@ int RISwapchainResize( struct RIDevice_s *dev, struct RISwapchain_s *swapchain, 
 	}
 #endif
 	return 1;
+}
+
+void RISwapchainSetVsync( struct RISwapchain_s *swapchain, bool vsync )
+{
+	if( swapchain->vsync == vsync )
+		return;
+	swapchain->vsync = vsync;
+#if ( DEVICE_IMPL_VULKAN )
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		swapchain->vk.outOfDate = 1;
+	}
+#endif
 }
 
 struct RITextureView_s RISwapchainGetTextureView(struct RISwapchain_s *swapchain, uint32_t index) {

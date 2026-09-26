@@ -122,7 +122,7 @@ bool R_CaptureRecordScreenshot( struct RICmd_s *cmd )
 			.def = def,
 		};
 
-		const struct RITexture_s backbuffer = RISwapchainGetTexture( &rsh.swapchain, rsh.swapchainIndex );
+		const struct RITexture_s backbuffer = R_FrameBackbufferTexture();
 
 		// The frame just finished rendering into the backbuffer, so take it COLOR_ATTACHMENT -> COPY_SRC,
 		// pull it into the readback buffer, then hand it to the presenter. This replaces the frame's usual

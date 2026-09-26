@@ -283,7 +283,8 @@ void R_UploadVBOVertexRawData( mesh_vbo_t *vbo, int vertsOffset, int numVerts, c
 #endif
 
 	RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
-	memcpy( uploadDesc.mapped.data, data, uploadDesc.size );
+	if( uploadDesc.mapped.data )
+		memcpy( uploadDesc.mapped.data, data, uploadDesc.size );
 	RI_ResourceEndCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
 }
 
@@ -1293,7 +1294,7 @@ void R_UploadVBOElemData( mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, con
 
 	RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
 	elem_t *dest = (elem_t *)uploadDesc.mapped.data;
-	for( size_t i = 0; i < mesh->numElems; i++ ) {
+	for( size_t i = 0; dest && i < mesh->numElems; i++ ) {
 		dest[i] = vertsOffset + mesh->elems[i];
 	}
 	RI_ResourceEndCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
@@ -1336,7 +1337,7 @@ vattribmask_t R_UploadVBOInstancesData( mesh_vbo_t *vbo, int instOffset, int num
 
 		RI_ResourceBeginCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );
 		instancePoint_t *dest = (instancePoint_t *)uploadDesc.mapped.data;
-		for( size_t i = 0; i < numInstances; i++ ) {
+		for( size_t i = 0; dest && i < numInstances; i++ ) {
 			memcpy( dest[i], instances[i], sizeof( instancePoint_t ) );
 		}
 		RI_ResourceEndCopyBuffer( &rsh.device, &rsh.uploader, &uploadDesc );

@@ -21,6 +21,7 @@ struct RISwapchain_s {
 	uint16_t width;
 	uint16_t height;
 	uint32_t format; // RI_Format_e
+	bool vsync;      // requested present pacing; applied on the next (re)build
 
 	union {
 #if ( DEVICE_IMPL_VULKAN )
@@ -45,11 +46,12 @@ struct RISwapchain_s {
 			// image i comes back from an acquire.
 			VkSemaphore presentSemaphores[RI_MAX_SWAPCHAIN_IMAGES];
 
+			VkFormat imageFormat; // kept as-is so a rebuild never round-trips through RI_Format_e
 			VkColorSpaceKHR imageColorSpace;
 			VkPresentModeKHR presentMode;
 
 			uint32_t outOfDate : 1;      // acquire/present reported OUT_OF_DATE/SUBOPTIMAL; swapchain needs rebuild
-			uint32_t acquireFailed : 1;  // last acquire failed (OUT_OF_DATE); skip acquire-wait/present this frame
+			uint32_t acquireFailed : 1;  // last acquire produced no image (OUT_OF_DATE/timeout/error); skip acquire-wait/present this frame
 		} vk;
 #endif
 #if ( DEVICE_IMPL_MTL )
@@ -90,6 +92,7 @@ struct RISwapchainDesc_s {
 	struct RIWindowHandle_s* windowHandle; 
 	struct RIQueue_s* queue;
 	uint16_t width, height;
+	bool vsync; // FIFO when set, otherwise prefer IMMEDIATE -> FIFO_RELAXED -> FIFO
 };
 
 int InitRISwapchain(struct RIDevice_s* dev, struct RISwapchainDesc_s* init, struct RISwapchain_s* swapchain);
@@ -102,7 +105,13 @@ struct RITextureView_s RISwapchainGetTextureView(struct RISwapchain_s* swapchain
 // out for them.
 struct RITexture_s RISwapchainGetTexture(struct RISwapchain_s* swapchain, uint32_t index);
 
+// Rebuilds the swapchain at the requested size (clamped to the surface) when the size changed, the
+// swapchain is out of date, or the vsync setting changed. Returns 1 when rebuilt, 0 when nothing was
+// done (including a zero-sized surface, e.g. a minimized window: outOfDate stays set so a later call
+// retries), and RI_FAIL on error.
 int RISwapchainResize(struct RIDevice_s* dev, struct RISwapchain_s* swapchain, uint16_t width, uint16_t height);
+// Requests a present-mode change; the swapchain is flagged out of date so the frame loop rebuilds it.
+void RISwapchainSetVsync(struct RISwapchain_s* swapchain, bool vsync);
 #if ( DEVICE_IMPL_VULKAN )
 VkResult RISwapchainPresent_vk(struct RIDevice_s* dev, struct RISwapchain_s* swapchain, uint32_t index, size_t num_wait_semaphores, VkSemaphore* wait_semaphores );
 #endif

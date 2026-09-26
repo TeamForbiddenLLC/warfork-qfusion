@@ -178,7 +178,8 @@ void main()
 			#endif // APPLY_HALFLAMBERT
 
 			// smooth the hard shadow edge
-			float hardShadow += floor(max(diffuseProduct + 0.1, 0.0) * 2.0);
+			float hardShadow = 0.0;
+			hardShadow += floor(max(diffuseProduct + 0.1, 0.0) * 2.0);
 			hardShadow += floor(max(diffuseProduct + 0.055, 0.0) * 2.0);
 			hardShadow += floor(diffuseProductPositive * 2.0);
 
@@ -187,9 +188,8 @@ void main()
 			// backlight
 			diffuseProduct += ceil(diffuseProductNegative * 2.0) * 0.085 + diffuseProductNegative * 0.085;
 			color.rgb += vec3(diffuseProduct);
-		
+
 		#else
-		}
 
 		#ifdef APPLY_HALFLAMBERT
 			float diffuseProduct = float ( clamp(dot (surfaceNormalModelspace, diffuseNormalModelspace), 0.0, 1.0) * 0.5 + 0.5 );
@@ -205,7 +205,7 @@ void main()
 		#endif
 
 		#endif // APPLY_CELSHADING
-
+		}
 	}
 	//color.rgb += DirectionalLightColor(surfaceNormalModelspace, weightedDiffuseNormalModelspace);
 #endif

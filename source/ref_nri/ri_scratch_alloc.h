@@ -25,11 +25,13 @@ struct RIBlockMem_s {
 };
 
 struct RIScratchAlloc_s;
-typedef struct RIBlockMem_s ( *RIAllocBlock_Func)(struct RIDevice_s* device, struct RIScratchAlloc_s* scratch);
+// Returns a mapped block of at least `size` bytes, or an empty block (pMappedAddress == NULL) on failure.
+typedef struct RIBlockMem_s ( *RIAllocBlock_Func)(struct RIDevice_s* device, struct RIScratchAlloc_s* scratch, size_t size);
 
 struct RIScratchAlloc_s {
 	struct RIBlockMem_s *recycle;
 	struct RIBlockMem_s *pool;
+	struct RIBlockMem_s *oversized; // one-off blocks for requests larger than blockSize, freed on reset
 
 	size_t alignmentReq;
 	size_t blockSize;
@@ -56,12 +58,13 @@ struct RIBufferScratchAllocReq_s {
 size_t RINumberOfUsedBlock(struct RIDevice_s *device,struct RIScratchAlloc_s* pool);
 struct RIBlockMem_s* RIGetUsedBlock(struct RIDevice_s *device,struct RIScratchAlloc_s* pool,size_t index);
 
-struct RIBlockMem_s RIUniformScratchAllocHandler(struct RIDevice_s* device, struct RIScratchAlloc_s* scratch);
+struct RIBlockMem_s RIUniformScratchAllocHandler(struct RIDevice_s* device, struct RIScratchAlloc_s* scratch, size_t size);
 
 void InitRIScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s *pool, const struct RIScratchAllocDesc_s *desc );
 void FreeRIScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s *pool ); 
 void RIResetScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s  *pool );
 
+// On allocation failure the returned request has pMappedAddress == NULL; the caller must not write to it.
 struct RIBufferScratchAllocReq_s RIAllocBufferFromScratchAlloc( struct RIDevice_s *device, struct RIScratchAlloc_s  *pool, size_t reqSize );
 void RIFinishScrachReq( struct RIDevice_s *device, struct RIBufferScratchAllocReq_s *req );
 

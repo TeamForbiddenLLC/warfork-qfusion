@@ -24,6 +24,7 @@ enum RIFreeType_e {
 	RI_FREE_VK_VMA_AllOC,
 	RI_FREE_VK_BUFFER,
 	RI_FREE_VK_BUFFER_VIEW,
+	RI_FREE_VK_PIPELINE,
 	RI_FREE_VK_END,
 
 	// Metal deferred-free kinds. A Metal free is just a release of the wrapped object; the type selects
@@ -44,6 +45,7 @@ struct RIFree_s {
 		VkBuffer vkBuffer;
 		VkSampler vkSampler;
 		VkBufferView vkBufferView;
+		VkPipeline vkPipeline;
 		struct VmaAllocation_T *vmaAlloc;
 #endif
 #if ( DEVICE_IMPL_MTL )

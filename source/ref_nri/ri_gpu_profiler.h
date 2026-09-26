@@ -11,24 +11,25 @@
 #define RI_GPU_PROFILER_MAX_QUERIES 256   // timestamps per slot (128 scope pairs)
 #define RI_GPU_PROFILER_MAX_SLOTS 4       // >= NUMBER_FRAMES_FLIGHT; runtime count passed to Init
 #define RI_GPU_PROFILER_INVALID_QUERY 0xffffffffu
+#define RI_GPU_PROFILER_NAME_LEN 32
 
 struct RIGpuPassTiming_s {
-	const char *name; // borrowed; scope names must be string literals with static lifetime
+	char name[RI_GPU_PROFILER_NAME_LEN];
 	float ms;
 	uint32_t depth;
 };
 
 struct RIGpuProfilerScope_s {
-	const char *name;
+	char name[RI_GPU_PROFILER_NAME_LEN]; // copied: callers may pass transient strings
 	uint32_t depth;
 	uint32_t beginIdx; // RI_GPU_PROFILER_INVALID_QUERY when the per-frame query budget was exhausted
-	uint32_t endIdx;
+	uint32_t endIdx;   // assigned when the scope closes; INVALID for a scope never closed (or out of budget)
 };
 
 struct RIGpuProfilerSlot_s {
 	uint64_t timelineValue;                // frame timeline value this slot's submit will signal
-	bool resolved;                         // results already read back
-	uint32_t queryCount;                   // timestamps written this frame
+	bool resolved;                         // results already read back (or the frame was never submitted)
+	uint32_t queryCount;                   // timestamps written this frame; every index below it was written
 	struct RIGpuProfilerScope_s *scopes;   // stb_ds array
 	union {
 #if ( DEVICE_IMPL_VULKAN )
@@ -44,13 +45,16 @@ struct RIGpuProfiler_s {
 	uint32_t numSlots;
 	uint32_t *openStack;                   // stb_ds array of open scope indices
 	uint32_t activeSlot;
+	uint32_t openLabels;                   // debug-utils labels opened by BeginScope and not yet closed
 	bool enabled;
 	double ticksToMs;
 	uint64_t validBitsMask;
-	struct RIGpuPassTiming_s *results;     // stb_ds array; valid until the next Resolve
+	uint64_t resultsTimeline;              // timeline value of the slot the current results came from
+	struct RIGpuPassTiming_s *results;     // stb_ds array; kept until a newer slot resolves
 	float totalMs;                         // sum of depth-0 scopes from the last resolved slot
 };
 
+// The profiler must be zero-initialized or previously initialized: Init frees an earlier instance.
 void InitRIGpuProfiler( struct RIDevice_s *dev, uint32_t numSlots, struct RIGpuProfiler_s *profiler );
 void FreeRIGpuProfiler( struct RIDevice_s *dev, struct RIGpuProfiler_s *profiler );
 
@@ -58,11 +62,12 @@ void FreeRIGpuProfiler( struct RIDevice_s *dev, struct RIGpuProfiler_s *profiler
 // illegal inside dynamic rendering). slot is the current frame-in-flight index; timelineValue is what
 // this frame's submit will signal.
 void RIGpuProfilerBeginFrame( struct RIDevice_s *dev, struct RIGpuProfiler_s *p, struct RICmd_s *cmd, uint32_t slot, uint64_t timelineValue );
-// name must be a string literal (borrowed until the next BeginFrame of this slot).
+// Call when a frame started with BeginFrame will not be submitted, so its slot is never waited on.
+void RIGpuProfilerAbandonFrame( struct RIGpuProfiler_s *p );
 void RIGpuProfilerBeginScope( struct RIDevice_s *dev, struct RIGpuProfiler_s *p, struct RICmd_s *cmd, const char *name );
 void RIGpuProfilerEndScope( struct RIDevice_s *dev, struct RIGpuProfiler_s *p, struct RICmd_s *cmd );
-// Read back any one slot the GPU has finished. Non-blocking; call once per frame with the last
-// completed timeline value.
+// Read back every slot the GPU has finished and keep the newest. Non-blocking; call once per frame with
+// the last completed timeline value. results/totalMs are left untouched when nothing new is ready.
 void RIGpuProfilerResolve( struct RIDevice_s *dev, struct RIGpuProfiler_s *p, uint64_t completedTimeline );
 
 #endif

@@ -38,7 +38,7 @@ void main(void)
 #else
 	v_TexCoord = TexCoord;
 #endif
-	v_TexCoordCube = pass.reflectionTexMatrix * reflect(normalize(Position.xyz - obj.entityDist), Normal.xyz);
+	v_TexCoordCube = mat3(pass.reflectionTexMatrix) * reflect(normalize(Position.xyz - obj.entityDist), Normal.xyz);
 
 #if defined(APPLY_ATM_FOG)
 	v_WorldPosition = (obj.worldMatrix * vec4(Position.xyz, 1.0)).xyz;

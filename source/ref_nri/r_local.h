@@ -374,6 +374,11 @@ typedef struct
 	struct RITexture_s depthTextures[RI_MAX_SWAPCHAIN_IMAGES];
 	struct RITextureView_s depthView[RI_MAX_SWAPCHAIN_IMAGES];
 	struct RI_PogoBuffer pogoBuffer[RI_MAX_SWAPCHAIN_IMAGES];
+	uint32_t swapchainAttachmentNum; // count created by __R_CreateSwapchainAttachments; survives a resize changing the image count
+	// Render target used in place of the swapchain image when a frame's acquire fails (out of date,
+	// minimized, timeout): the frame still records normally but never touches an image it doesn't own.
+	struct RITexture_s fallbackBackbuffer;
+	struct RITextureView_s fallbackBackbufferView;
 
 	struct r_frame_set_s frameSets[NUMBER_FRAMES_FLIGHT];
 
@@ -485,6 +490,27 @@ static inline struct r_frame_set_s *R_GetActiveFrameSet()
 {
 	return rsh.frameSets + ( rsh.frameSetCount % NUMBER_FRAMES_FLIGHT );
 }
+
+// The color target this frame renders into: the acquired swapchain image, or the fallback backbuffer
+// when the acquire failed. Always use these rather than indexing the swapchain directly.
+static inline struct RITexture_s R_FrameBackbufferTexture( void )
+{
+#if ( DEVICE_IMPL_VULKAN )
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) && rsh.swapchain.vk.acquireFailed )
+		return rsh.fallbackBackbuffer;
+#endif
+	return RISwapchainGetTexture( &rsh.swapchain, rsh.swapchainIndex );
+}
+
+static inline struct RITextureView_s R_FrameBackbufferView( void )
+{
+#if ( DEVICE_IMPL_VULKAN )
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) && rsh.swapchain.vk.acquireFailed )
+		return rsh.fallbackBackbufferView;
+#endif
+	return RISwapchainGetTextureView( &rsh.swapchain, rsh.swapchainIndex );
+}
+
 void R_InitSubpass( struct FrameState_s *parent, struct FrameState_s *child);
 
 #define RI_ACTIVE_FRAMESET() (rsh.frameSets + (rsh.frameSetCount % NUMBER_FRAMES_FLIGHT)) 
@@ -517,6 +543,11 @@ extern cvar_t *r_subdivisions;
 extern cvar_t *r_showtris;
 extern cvar_t *r_draworder;
 extern cvar_t *r_leafvis;
+
+extern cvar_t *r_shaderCache;
+extern cvar_t *r_shaderDebug;
+extern cvar_t *r_shaderValidate;
+extern cvar_t *r_shaderOptimize;
 
 extern cvar_t *r_fastsky;
 extern cvar_t *r_portalonly;

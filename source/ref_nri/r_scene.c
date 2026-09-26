@@ -369,6 +369,8 @@ void R_RenderScene(const refdef_t *fd )
 				renderingInfo.pColorAttachments = &colorAttachment;
 				renderingInfo.pDepthAttachment = &depthStencil;
 				renderingInfo.pStencilAttachment = NULL;
+				// the depth attachment is loaded from the back buffer pass that just ended
+				RI_VK_CmdAttachmentReuseBarrier( rsh.frame.handle.vk.cmd );
 				vkCmdBeginRendering( rsh.frame.handle.vk.cmd, &renderingInfo );
 			
 				enum RI_Format_e attachments[] = {POGO_BUFFER_TEXTURE_FORMAT};
@@ -433,6 +435,8 @@ void R_RenderScene(const refdef_t *fd )
 						renderingInfo.pColorAttachments = &colorAttachment;
 						renderingInfo.pDepthAttachment = &depthStencil;
 						renderingInfo.pStencilAttachment = NULL;
+						// every post pass loads and stores the same depth attachment
+						RI_VK_CmdAttachmentReuseBarrier( rsh.frame.handle.vk.cmd );
 						vkCmdBeginRendering( rsh.frame.handle.vk.cmd, &renderingInfo );
 
 						enum RI_Format_e attachments[] = { POGO_BUFFER_TEXTURE_FORMAT };
@@ -448,7 +452,7 @@ void R_RenderScene(const refdef_t *fd )
 				// reset back to back buffer
 				{
 					VkRenderingAttachmentInfo colorAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-					RI_VK_FillColorAttachment( &colorAttachment, RISwapchainGetTextureView(&rsh.swapchain, rsh.swapchainIndex), false, NULL );
+					RI_VK_FillColorAttachment( &colorAttachment, R_FrameBackbufferView(), false, NULL );
 
 					VkRenderingAttachmentInfo depthStencil = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 					RI_VK_FillDepthAttachment( &depthStencil, rsh.depthView[rsh.swapchainIndex], false );
@@ -462,6 +466,8 @@ void R_RenderScene(const refdef_t *fd )
 					renderingInfo.pColorAttachments = &colorAttachment;
 					renderingInfo.pDepthAttachment = &depthStencil;
 					renderingInfo.pStencilAttachment = NULL;
+					// re-opens the back buffer with LOAD after the pass that wrote it
+					RI_VK_CmdAttachmentReuseBarrier( rsh.frame.handle.vk.cmd );
 					vkCmdBeginRendering( rsh.frame.handle.vk.cmd, &renderingInfo );
 
 					enum RI_Format_e attachments[] = { rsh.swapchain.format };
