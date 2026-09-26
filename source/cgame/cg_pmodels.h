@@ -98,6 +98,7 @@ typedef struct pmodelinfo_s
 {
 	char *name;
 	int sex;
+	float leaningAnglesScale;
 
 	struct	model_s	*model;
 	struct cg_sexedSfx_s *sexedSfx;

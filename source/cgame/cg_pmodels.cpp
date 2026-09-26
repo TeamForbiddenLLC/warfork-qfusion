@@ -163,6 +163,7 @@ static bool CG_ParseAnimationScript( pmodelinfo_t *pmodelinfo, char *filename )
 
 	memset( rootanims, -1, sizeof( rootanims ) );
 	pmodelinfo->sex = GENDER_MALE;
+	pmodelinfo->leaningAnglesScale = 1.0f;
 	rounder = 0;
 	counter = 1; //reseve 0 for 'no animation'
 
@@ -235,6 +236,18 @@ static bool CG_ParseAnimationScript( pmodelinfo_t *pmodelinfo, char *filename )
 				}
 
 
+			}
+			// Leaning angles scale
+			else if( !Q_stricmp( token, "leaningscale" ) )
+			{
+				if( debug ) CG_Printf( "Script: %s:", token );
+
+				token = COM_ParseExt( &ptr, false );
+				if( !token[0] )  //Error (fixme)
+					break;
+
+				pmodelinfo->leaningAnglesScale = atof( token );
+				if( debug ) CG_Printf( " %s -Leaning angles scale set to %f\n", token, pmodelinfo->leaningAnglesScale );
 			}
 			// Rotation bone
 			else if( !Q_stricmp( token, "rotationbone" ) )
@@ -970,6 +983,36 @@ void CG_PModel_LeanAngles( centity_t *cent, pmodel_t *pmodel )
 			leanAngles[LOWER][ROLL] -= side * 0.5;
 			leanAngles[UPPER][ROLL] += side * 0.5;
 			leanAngles[HEAD][ROLL] += side * 0.25;
+		}
+
+		{
+			float maxspeed, leanfactor;
+
+			maxspeed = 0;
+			if( cg.frame.multipov || ISVIEWERENTITY( cent->current.number ) )
+			{
+				for( i = 0; i < cg.frame.numplayers; i++ )
+				{
+					if( cg.frame.playerStates[i].playerNum == (unsigned)( cent->current.number - 1 ) )
+					{
+						maxspeed = cg.frame.playerStates[i].pmove.stats[PM_STAT_MAXSPEED];
+						break;
+					}
+				}
+			}
+			if( maxspeed <= 0 )
+				maxspeed = DEFAULT_PLAYERSPEED;
+
+			if( speed <= maxspeed )
+				leanfactor = pmodel->pmodelinfo->leaningAnglesScale;
+			else if( speed < maxspeed * 2 )
+				leanfactor = pmodel->pmodelinfo->leaningAnglesScale
+					+ ( 1.0f - pmodel->pmodelinfo->leaningAnglesScale ) * ( ( speed - maxspeed ) / maxspeed );
+			else
+				leanfactor = 1.0f;
+
+			for( j = LOWER; j < PMODEL_PARTS; j++ )
+				VectorScale( leanAngles[j], leanfactor, leanAngles[j] );
 		}
 
 		clamp( leanAngles[LOWER][PITCH], -45, 45 );
