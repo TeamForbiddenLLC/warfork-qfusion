@@ -30,6 +30,7 @@ typedef struct iqmjoint iqmjoint_t;
 typedef struct iqmpose iqmpose_t;
 typedef struct iqmmesh iqmmesh_t;
 typedef struct iqmbounds iqmbounds_t;
+typedef struct iqmanim iqmanim_t;
 
 /*
 ==============================================================================
@@ -252,6 +253,8 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 	if( header->ofs_text + header->num_text > filesize
 		|| header->ofs_vertexarrays + header->num_vertexarrays * sizeof( iqmvertexarray_t ) > filesize
 		|| header->ofs_joints + header->num_joints * sizeof( iqmjoint_t ) > filesize
+		|| header->ofs_poses + header->num_poses * sizeof( iqmpose_t ) > filesize
+		|| header->ofs_anims + header->num_anims * sizeof( iqmanim_t ) > filesize
 		|| header->ofs_frames + header->num_frames * header->num_framechannels * sizeof( unsigned short ) > filesize
 		|| header->ofs_triangles + header->num_triangles * sizeof( int[3] ) > filesize
 		|| header->ofs_meshes + header->num_meshes * sizeof( iqmmesh_t ) > filesize
@@ -259,6 +262,25 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 		) {
 		ri.Com_Printf( S_COLOR_RED "ERROR: %s has invalid size or offset information\n", mod->name );
 		goto error;
+	}
+
+	// check the frame data against the number of channels the poses actually consume
+	{
+		unsigned int framechannels = 0;
+		unsigned int mask;
+
+		poses = ( iqmpose_t * )( pbase + header->ofs_poses );
+		for( i = 0; i < header->num_poses; i++ ) {
+			memcpy( &pose, &poses[i], sizeof( iqmpose_t ) );
+			mask = LittleLong( pose.mask ) & 0x3FF;
+			for( ; mask; mask >>= 1 )
+				framechannels += mask & 1;
+		}
+
+		if( header->ofs_frames + header->num_frames * framechannels * sizeof( unsigned short ) > filesize ) {
+			ri.Com_Printf( S_COLOR_RED "ERROR: %s has invalid frame data\n", mod->name );
+			goto error;
+		}
 	}
 
 	poutmodel = mod->extradata = Mod_Malloc( mod, sizeof( *poutmodel ) );
@@ -402,6 +424,11 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 			goto error;
 		}
 
+		if( joint.name > header->num_text ) {
+			ri.Com_Printf( S_COLOR_RED "ERROR: %s bone[%i] has an invalid name offset\n", mod->name, i );
+			goto error;
+		}
+
 		poutmodel->bones[i].name = texts + joint.name;
 		poutmodel->bones[i].parent = joint.parent;
 
@@ -512,6 +539,10 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 		memcpy( e, inelems, sizeof( int ) * 3 );
 		for( j = 0; j < 3; j++ ) {
 			outelems[j] = LittleLong( e[j] );
+			if( (unsigned)outelems[j] >= header->num_vertexes ) {
+				ri.Com_Printf( S_COLOR_RED "ERROR: %s triangle[%i] has an out of range vertex index\n", mod->name, i );
+				goto error;
+			}
 		}
 		inelems += 3;
 		outelems += 3;
@@ -657,6 +688,16 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 		inmesh.num_vertexes = LittleLong( inmesh.num_vertexes );
 		inmesh.first_triangle = LittleLong( inmesh.first_triangle );
 		inmesh.num_triangles = LittleLong( inmesh.num_triangles );
+
+		if( inmesh.name > header->num_text
+			|| inmesh.material > header->num_text
+			|| inmesh.first_vertex > header->num_vertexes
+			|| inmesh.num_vertexes > header->num_vertexes - inmesh.first_vertex
+			|| inmesh.first_triangle > header->num_triangles
+			|| inmesh.num_triangles > header->num_triangles - inmesh.first_triangle ) {
+			ri.Com_Printf( S_COLOR_RED "ERROR: %s mesh[%i] has invalid ranges\n", mod->name, i );
+			goto error;
+		}
 
 		poutmodel->meshes[i].name = texts + inmesh.name;
 		Mod_StripLODSuffix( poutmodel->meshes[i].name );
