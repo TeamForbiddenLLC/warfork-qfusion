@@ -154,18 +154,19 @@ static bool CG_ParseAnimationScript( pmodelinfo_t *pmodelinfo, char *filename )
 {
 	uint8_t *buf;
 	char *ptr, *token;
-	int rounder, counter, i;
+	int i;
 	bool debug = true;
+	bool inAnimations = false;
+	bool malformed = false;
 	int anim_data[4][PMODEL_TOTAL_ANIMATIONS];
 	int rootanims[PMODEL_PARTS];
 	int filenum;
 	int length;
 
 	memset( rootanims, -1, sizeof( rootanims ) );
+	memset( anim_data, 0, sizeof( anim_data ) );
 	pmodelinfo->sex = GENDER_MALE;
 	pmodelinfo->leaningAnglesScale = 1.0f;
-	rounder = 0;
-	counter = 1; //reseve 0 for 'no animation'
 
 	if( !cg_debugPlayerModels->integer )
 		debug = false;
@@ -196,7 +197,55 @@ static bool CG_ParseAnimationScript( pmodelinfo_t *pmodelinfo, char *filename )
 		if( !token[0] )
 			break;
 
-		if( *token < '0' || *token > '9' )
+		if( inAnimations )
+		{
+			// animations section: from here on everything is <name> <first> <last> <looping> <fps>
+			int animnum = -1;
+			int j;
+
+			for( j = 0; j < PMODEL_TOTAL_ANIMATIONS; j++ )
+			{
+				if( !Q_stricmp( token, pmodelAnimationNames[j] ) )
+				{
+					animnum = j;
+					break;
+				}
+			}
+
+			if( animnum == -1 )
+			{
+				if( debug )
+					CG_Printf( "Script: WARNING: unknown animation: %s\n", token );
+
+				for( j = 0; j < 4; j++ )
+					COM_ParseExt( &ptr, false );
+				continue;
+			}
+
+			if( debug ) CG_Printf( "Script: %s:", token );
+
+			for( j = 0; j < 4; j++ )
+			{
+				token = COM_ParseExt( &ptr, false );
+				if( !token[0] )
+				{
+					CG_Printf( "Script: ERROR: missing values for animation %s\n", pmodelAnimationNames[animnum] );
+					malformed = true;
+					break;
+				}
+				anim_data[j][animnum] = atoi( token );
+				if( debug ) CG_Printf( " %i", atoi( token ) );
+			}
+			if( debug ) CG_Printf( "\n" );
+
+			if( malformed )
+				break;
+		}
+		else if( !Q_stricmp( token, "animations" ) )
+		{
+			inAnimations = true;
+		}
+		else if( *token < '0' || *token > '9' )
 		{
 
 			// gender
@@ -339,30 +388,19 @@ static bool CG_ParseAnimationScript( pmodelinfo_t *pmodelinfo, char *filename )
 				CG_Printf( "Script: WARNING: unrecognized token: %s\n", token );
 
 		}
-		else
-		{
-			// frame & animation values
-			i = (int)atoi( token );
-			if( debug ) CG_Printf( "%i - ", i );
-			anim_data[rounder][counter] = i;
-			rounder++;
-			if( rounder > 3 )
-			{
-				rounder = 0;
-				if( debug ) CG_Printf( " anim: %i\n", counter );
-				counter++;
-				if( counter == PMODEL_TOTAL_ANIMATIONS )
-					break;
-			}
-		}
+		else if( token[0] && debug )
+			CG_Printf( "Script: WARNING: unexpected number outside the animations section: %s\n", token );
+
 	}
 
 	CG_Free( buf );
 
-	//it must contain at least as many animations as a Q3 script to be valid
-	if( counter < PMODEL_TOTAL_ANIMATIONS )
+	if( malformed )
+		return false;
+
+	if( !inAnimations )
 	{
-		CG_Printf( "PModel Error: Not enough animations(%i) at animations script: %s\n", counter, filename );
+		CG_Printf( "PModel Error: Missing animations section in animations script: %s\n", filename );
 		return false;
 	}
 
@@ -376,7 +414,7 @@ static bool CG_ParseAnimationScript( pmodelinfo_t *pmodelinfo, char *filename )
 	anim_data[3][ANIM_NONE]	= 15;
 
 	// reorganize to make my life easier
-	for( i = 0; i < counter; i++ )
+	for( i = 0; i < PMODEL_TOTAL_ANIMATIONS; i++ )
 	{
 		pmodelinfo->animSet.firstframe[i] = anim_data[0][i];
 		pmodelinfo->animSet.lastframe[i] = anim_data[1][i];
@@ -388,7 +426,7 @@ static bool CG_ParseAnimationScript( pmodelinfo_t *pmodelinfo, char *filename )
 	{
 		cgs_skeleton_t *skel;
 		skel = CG_SkeletonForModel( pmodelinfo->model );
-		for( i = 0; i < counter; ++i )
+		for( i = 0; i < PMODEL_TOTAL_ANIMATIONS; ++i )
 		{
 			clamp( pmodelinfo->animSet.firstframe[i], 0, skel->numFrames - 1 );
 			clamp( pmodelinfo->animSet.lastframe[i], 0, skel->numFrames - 1 );

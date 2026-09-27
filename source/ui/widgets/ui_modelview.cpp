@@ -46,7 +46,6 @@ static bool ParseUIPoseAnimation( const char *modelPath, int *firstFrame, int *l
 	FS_FCloseFile( filenum );
 	buffer[length] = '\0';
 
-	int counter = 0;
 	bool found = false;
 	char *line = buffer;
 
@@ -59,24 +58,20 @@ static bool ParseUIPoseAnimation( const char *modelPath, int *firstFrame, int *l
 		char *ptr = line;
 		char *token = COM_ParseExt( &ptr, false );
 
-		if( token[0] && *token >= '0' && *token <= '9' )
+		if( token[0] && !Q_stricmp( token, pmodelAnimationNames[UI_POSE] ) )
 		{
-			counter++;
-			if( counter == UI_POSE )
-			{
-				int values[4];
+			int values[4];
 
-				values[0] = atoi( token );
-				values[1] = atoi( COM_ParseExt( &ptr, false ) );
-				values[2] = atoi( COM_ParseExt( &ptr, false ) );
-				values[3] = atoi( COM_ParseExt( &ptr, false ) );
+			values[0] = atoi( COM_ParseExt( &ptr, false ) );
+			values[1] = atoi( COM_ParseExt( &ptr, false ) );
+			values[2] = atoi( COM_ParseExt( &ptr, false ) );
+			values[3] = atoi( COM_ParseExt( &ptr, false ) );
 
-				*firstFrame = values[0];
-				*lastFrame = values[1];
-				*loopingFrames = values[2];
-				*frametime = 1000.0f / (float)( values[3] > 10 ? values[3] : 10 );
-				found = true;
-			}
+			*firstFrame = values[0];
+			*lastFrame = values[1];
+			*loopingFrames = values[2];
+			*frametime = 1000.0f / (float)( values[3] > 10 ? values[3] : 10 );
+			found = true;
 		}
 
 		line = nextLine;
