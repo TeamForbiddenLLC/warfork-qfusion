@@ -67,6 +67,15 @@ typedef struct bonepose_s
 	dualquat_t dualquat;
 } bonepose_t;
 
+typedef struct
+{
+	char			*name;
+	unsigned int	firstframe;
+	unsigned int	numframes;
+	float			framerate;
+	unsigned int	flags;
+} mskanim_t;
+
 typedef struct fragment_s
 {
 	int firstvert;

@@ -898,6 +898,7 @@ void		R_SkeletalModelFrameBounds( const model_t *mod, int frame, vec3_t mins, ve
 int			R_SkeletalGetBoneInfo( const model_t *mod, int bonenum, char *name, size_t name_size, int *flags );
 void		R_SkeletalGetBonePose( const model_t *mod, int bonenum, int frame, bonepose_t *bonepose );
 int			R_SkeletalGetNumBones( const model_t *mod, int *numFrames );
+const mskanim_t	*R_SkeletalGetAnimByName( const model_t *mod, const char *name );
 
 void		R_InitSkeletalCache( void );
 void		R_ClearSkeletalCache( void );

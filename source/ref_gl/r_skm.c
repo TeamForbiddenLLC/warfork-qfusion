@@ -168,6 +168,7 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 	iqmjoint_t *joints, joint;
 	bonepose_t *baseposes;
 	iqmpose_t *poses, pose;
+	iqmanim_t *inanims, inanim;
 	unsigned short *framedata;
 	const int *inelems;
 	elem_t *outelems;
@@ -449,6 +450,34 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 
 		DualQuat_Copy( baseposes[i].dualquat, poutmodel->invbaseposes[i].dualquat );
 		DualQuat_Invert( poutmodel->invbaseposes[i].dualquat );
+	}
+
+
+	// load anims
+	inanims = ( iqmanim_t * )( pbase + header->ofs_anims );
+	poutmodel->numanims = header->num_anims;
+	poutmodel->anims = Mod_Malloc( mod, sizeof( mskanim_t ) * header->num_anims );
+	for( i = 0; i < header->num_anims; i++ ) {
+		memcpy( &inanim, &inanims[i], sizeof( iqmanim_t ) );
+
+		inanim.name = LittleLong( inanim.name );
+		inanim.first_frame = LittleLong( inanim.first_frame );
+		inanim.num_frames = LittleLong( inanim.num_frames );
+		inanim.framerate = LittleFloat( inanim.framerate );
+		inanim.flags = LittleLong( inanim.flags );
+
+		if( inanim.name > header->num_text
+			|| inanim.first_frame > header->num_frames
+			|| inanim.num_frames > header->num_frames - inanim.first_frame ) {
+			ri.Com_Printf( S_COLOR_RED "ERROR: %s anim[%i] has invalid ranges\n", mod->name, i );
+			goto error;
+		}
+
+		poutmodel->anims[i].name = texts + inanim.name;
+		poutmodel->anims[i].firstframe = inanim.first_frame;
+		poutmodel->anims[i].numframes = inanim.num_frames;
+		poutmodel->anims[i].framerate = inanim.framerate;
+		poutmodel->anims[i].flags = inanim.flags;
 	}
 
 
@@ -855,6 +884,30 @@ void R_SkeletalGetBonePose( const model_t *mod, int bonenum, int frame, bonepose
 
 	if( bonepose )
 		*bonepose = skmodel->frames[frame].boneposes[bonenum];
+}
+
+/*
+* R_SkeletalGetAnimByName
+*/
+const mskanim_t *R_SkeletalGetAnimByName( const model_t *mod, const char *name )
+{
+	const mskmodel_t *skmodel;
+	unsigned int i;
+
+	if( !mod || mod->type != mod_skeletal )
+		return NULL;
+
+	skmodel = ( const mskmodel_t * )mod->extradata;
+	if( name )
+	{
+		for( i = 0; i < skmodel->numanims; i++ )
+		{
+			if( !Q_stricmp( skmodel->anims[i].name, name ) )
+				return &skmodel->anims[i];
+		}
+	}
+
+	return NULL;
 }
 
 /*

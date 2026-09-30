@@ -142,19 +142,21 @@ static void CG_ParseTagMask( struct model_s *model, int bonenum, char *name, flo
 * 
 * 0 = first frame
 * 1 = lastframe
-* 2 = looping frames
+* 2 = looping frames (only ever set by the loopframes command)
 * 3 = fps
 * 
 * Note: The animations count begins at 1, not 0. I preserve zero for "no animation change"
 * ---------------
 * keyword:
 * alljumps: Uses 3 different jump animations (bunnyhoping)
+* loopframes <animation name> <value>: Sets the looping frames of an animation
 */
 static bool CG_ParseAnimationScript( pmodelinfo_t *pmodelinfo, char *filename )
 {
 	uint8_t *buf;
 	char *ptr, *token;
 	int i;
+	int model_anims = 0;
 	bool debug = true;
 	bool inAnimations = false;
 	bool malformed = false;
@@ -170,6 +172,27 @@ static bool CG_ParseAnimationScript( pmodelinfo_t *pmodelinfo, char *filename )
 
 	if( !cg_debugPlayerModels->integer )
 		debug = false;
+
+	if( debug )
+		CG_Printf( "Script: parsing %s\n", filename );
+
+	for( i = 0; i < PMODEL_TOTAL_ANIMATIONS; i++ )
+	{
+		const mskanim_t *anim = R_SkeletalGetAnimByName( pmodelinfo->model, pmodelAnimationNames[i] );
+
+		if( !anim || !anim->numframes )
+			continue;
+
+		anim_data[0][i] = anim->firstframe;
+		anim_data[1][i] = anim->firstframe + anim->numframes - 1;
+		anim_data[2][i] = 0;
+		anim_data[3][i] = (int)anim->framerate;
+		model_anims++;
+
+		if( debug )
+			CG_Printf( "Script: %s: %i %i %i %i (from model)\n", pmodelAnimationNames[i],
+				anim_data[0][i], anim_data[1][i], anim_data[2][i], anim_data[3][i] );
+	}
 
 	// load the file
 	length = FS_FOpenFile( filename, &filenum, FS_READ );
@@ -199,9 +222,16 @@ static bool CG_ParseAnimationScript( pmodelinfo_t *pmodelinfo, char *filename )
 
 		if( inAnimations )
 		{
-			// animations section: from here on everything is <name> <first> <last> <looping> <fps>
+			// animations section: from here on everything is <name> <first> <last> <fps>
 			int animnum = -1;
 			int j;
+
+			if( *token >= '0' && *token <= '9' )
+			{
+				CG_Printf( "Script: ERROR: unexpected number in the animations section: %s (4 values per animation is an old format)\n", token );
+				malformed = true;
+				break;
+			}
 
 			for( j = 0; j < PMODEL_TOTAL_ANIMATIONS; j++ )
 			{
@@ -217,14 +247,14 @@ static bool CG_ParseAnimationScript( pmodelinfo_t *pmodelinfo, char *filename )
 				if( debug )
 					CG_Printf( "Script: WARNING: unknown animation: %s\n", token );
 
-				for( j = 0; j < 4; j++ )
+				for( j = 0; j < 3; j++ )
 					COM_ParseExt( &ptr, false );
 				continue;
 			}
 
 			if( debug ) CG_Printf( "Script: %s:", token );
 
-			for( j = 0; j < 4; j++ )
+			for( j = 0; j < 3; j++ )
 			{
 				token = COM_ParseExt( &ptr, false );
 				if( !token[0] )
@@ -233,7 +263,10 @@ static bool CG_ParseAnimationScript( pmodelinfo_t *pmodelinfo, char *filename )
 					malformed = true;
 					break;
 				}
-				anim_data[j][animnum] = atoi( token );
+				if( j < 2 )
+					anim_data[j][animnum] = atoi( token );
+				else
+					anim_data[3][animnum] = atoi( token );
 				if( debug ) CG_Printf( " %i", atoi( token ) );
 			}
 			if( debug ) CG_Printf( "\n" );
@@ -297,6 +330,47 @@ static bool CG_ParseAnimationScript( pmodelinfo_t *pmodelinfo, char *filename )
 
 				pmodelinfo->leaningAnglesScale = atof( token );
 				if( debug ) CG_Printf( " %s -Leaning angles scale set to %f\n", token, pmodelinfo->leaningAnglesScale );
+			}
+			// Looping frames
+			else if( !Q_stricmp( token, "loopframes" ) )
+			{
+				char *animname;
+				int animnum = -1;
+				int j;
+
+				animname = COM_ParseExt( &ptr, false );
+				if( !animname[0] )  //Error (fixme)
+					break;
+
+				for( j = 0; j < PMODEL_TOTAL_ANIMATIONS; j++ )
+				{
+					if( !Q_stricmp( animname, pmodelAnimationNames[j] ) )
+					{
+						animnum = j;
+						break;
+					}
+				}
+
+				if( animnum == -1 )
+				{
+					if( debug )
+						CG_Printf( "Script: WARNING: unknown animation: %s\n", animname );
+
+					COM_ParseExt( &ptr, false );
+					continue;
+				}
+
+				token = COM_ParseExt( &ptr, false );
+				if( !token[0] )
+				{
+					CG_Printf( "Script: ERROR: missing value for loopframes %s\n", pmodelAnimationNames[animnum] );
+					malformed = true;
+					break;
+				}
+
+				anim_data[2][animnum] = atoi( token );
+				if( debug )
+					CG_Printf( "Script: loopframes: %s %i\n", pmodelAnimationNames[animnum], anim_data[2][animnum] );
 			}
 			// Rotation bone
 			else if( !Q_stricmp( token, "rotationbone" ) )
@@ -398,7 +472,7 @@ static bool CG_ParseAnimationScript( pmodelinfo_t *pmodelinfo, char *filename )
 	if( malformed )
 		return false;
 
-	if( !inAnimations )
+	if( !inAnimations && !model_anims )
 	{
 		CG_Printf( "PModel Error: Missing animations section in animations script: %s\n", filename );
 		return false;
@@ -410,7 +484,7 @@ static bool CG_ParseAnimationScript( pmodelinfo_t *pmodelinfo, char *filename )
 
 	anim_data[0][ANIM_NONE] = 0;
 	anim_data[1][ANIM_NONE]	= 0;
-	anim_data[2][ANIM_NONE]	= 1;
+	anim_data[2][ANIM_NONE]	= 0;
 	anim_data[3][ANIM_NONE]	= 15;
 
 	// reorganize to make my life easier

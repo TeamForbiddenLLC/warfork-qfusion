@@ -377,6 +377,9 @@ typedef struct mskmodel_s
 	unsigned int	*vertexBlends;	// [0..numbones-1] reference directly to bones
 									// [numbones..numbones+numblendweights-1] reference to blendweights
 
+	unsigned int	numanims;
+	mskanim_t		*anims;
+
 	unsigned int	numframes;
 	mskframe_t		*frames;
 	bonepose_t		*invbaseposes;

@@ -82,6 +82,7 @@ DECLARE_TYPEDEF_METHOD( void, R_GetShaderDimensions, const shader_t *shader, int
 DECLARE_TYPEDEF_METHOD( int, R_SkeletalGetNumBones, const model_t *mod, int *numFrames );
 DECLARE_TYPEDEF_METHOD( int, R_SkeletalGetBoneInfo, const model_t *mod, int bone, char *name, size_t name_size, int *flags );
 DECLARE_TYPEDEF_METHOD( void, R_SkeletalGetBonePose, const model_t *mod, int bone, int frame, bonepose_t *bonepose );
+DECLARE_TYPEDEF_METHOD( const mskanim_t *, R_SkeletalGetAnimByName, const model_t *mod, const char *name );
 
 #undef DECLARE_TYPEDEF_METHOD
 
@@ -138,6 +139,7 @@ struct ref_import_s {
 	R_SkeletalGetNumBonesFn R_SkeletalGetNumBones;
 	R_SkeletalGetBoneInfoFn R_SkeletalGetBoneInfo;
 	R_SkeletalGetBonePoseFn R_SkeletalGetBonePose;
+	R_SkeletalGetAnimByNameFn R_SkeletalGetAnimByName;
 	R_GetClippedFragmentsFn R_GetClippedFragments;
   R_RegisterRawAlphaMaskFn R_RegisterRawAlphaMask;
 };
@@ -195,6 +197,7 @@ struct ref_import_s {
 	R_SkeletalGetNumBones, \
 	R_SkeletalGetBoneInfo, \
 	R_SkeletalGetBonePose, \
+	R_SkeletalGetAnimByName, \
 	R_GetClippedFragments, \
 	R_RegisterRawAlphaMask, \
 }
@@ -258,6 +261,7 @@ void R_GetShaderDimensions( const shader_t *shader, int *width, int *height ) { 
 int R_SkeletalGetNumBones( const model_t *mod, int *numFrames) {return ref_import.R_SkeletalGetNumBones(mod, numFrames);}
 int R_SkeletalGetBoneInfo( const model_t *mod, int bone, char *name, size_t name_size, int *flags ) {return ref_import.R_SkeletalGetBoneInfo( mod, bone, name, name_size, flags);}
 void R_SkeletalGetBonePose( const model_t *mod, int bone, int frame, bonepose_t *bonepose ){return ref_import.R_SkeletalGetBonePose( mod, bone, frame, bonepose );}
+const mskanim_t *R_SkeletalGetAnimByName( const model_t *mod, const char *name ){return ref_import.R_SkeletalGetAnimByName( mod, name );}
 int R_GetClippedFragments(const vec3_t origin, float radius, vec3_t axis[3], int maxfverts, vec4_t *fverts, int maxfragments, fragment_t *fragments ) { return ref_import.R_GetClippedFragments(origin, radius, axis, maxfverts, fverts, maxfragments, fragments ); }
 shader_t* R_RegisterRawAlphaMask( const char *name, int width, int height, uint8_t *data ) { return ref_import.R_RegisterRawAlphaMask(name, width, height, data);  }
 

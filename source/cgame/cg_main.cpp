@@ -735,7 +735,7 @@ static void CG_RegisterVariables( void )
 	cg_predict =	    trap_Cvar_Get( "cg_predict", "1", 0 );
 	cg_showMiss =	    trap_Cvar_Get( "cg_showMiss", "0", 0 );
 
-	cg_debugPlayerModels =	trap_Cvar_Get( "cg_debugPlayerModels", "0", CVAR_CHEAT|CVAR_ARCHIVE );
+	cg_debugPlayerModels =	trap_Cvar_Get( "cg_debugPlayerModels", "0", CVAR_CHEAT );
 	cg_debugWeaponModels =	trap_Cvar_Get( "cg_debugWeaponModels", "0", CVAR_CHEAT|CVAR_ARCHIVE );
 
 	cg_model =		    trap_Cvar_Get( "model", DEFAULT_PLAYERMODEL, CVAR_USERINFO | CVAR_ARCHIVE );

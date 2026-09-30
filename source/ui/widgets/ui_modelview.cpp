@@ -26,7 +26,7 @@ using namespace Rocket::Core;
 // forward-declare the instancer for keyselects
 class UI_ModelviewWidgetInstancer;
 
-static bool ParseUIPoseAnimation( const char *modelPath, int *firstFrame, int *lastFrame, int *loopingFrames, float *frametime )
+static bool ParseUIPoseAnimation( const char *modelPath, int *firstFrame, int *lastFrame, float *frametime )
 {
 	std::string cfgPath( modelPath );
 	std::string::size_type slash = cfgPath.find_last_of( '/' );
@@ -60,17 +60,15 @@ static bool ParseUIPoseAnimation( const char *modelPath, int *firstFrame, int *l
 
 		if( token[0] && !Q_stricmp( token, pmodelAnimationNames[UI_POSE] ) )
 		{
-			int values[4];
+			int values[3];
 
 			values[0] = atoi( COM_ParseExt( &ptr, false ) );
 			values[1] = atoi( COM_ParseExt( &ptr, false ) );
 			values[2] = atoi( COM_ParseExt( &ptr, false ) );
-			values[3] = atoi( COM_ParseExt( &ptr, false ) );
 
 			*firstFrame = values[0];
 			*lastFrame = values[1];
-			*loopingFrames = values[2];
-			*frametime = 1000.0f / (float)( values[3] > 10 ? values[3] : 10 );
+			*frametime = 1000.0f / (float)( values[2] > 10 ? values[2] : 10 );
 			found = true;
 		}
 
@@ -102,7 +100,6 @@ private:
 	bool hasUIPose;
 	int uiPoseFirstFrame;
 	int uiPoseLastFrame;
-	int uiPoseLoopingFrames;
 	float uiPoseFrametime;
 	float uiPoseTime;
 
@@ -113,7 +110,7 @@ public:
 		BonePoses( NULL ), skel( NULL ), modelName( "" ), skinName( "" ),
 		fov_x( 30.0f ), fov_y( 0.0f ),
 		hasUIPose( false ), uiPoseFirstFrame( 1 ), uiPoseLastFrame( 1 ),
-		uiPoseLoopingFrames( 0 ), uiPoseFrametime( 0.0f ), uiPoseTime( 0.0f )
+		uiPoseFrametime( 0.0f ), uiPoseTime( 0.0f )
 	{
 		memset( &entity, 0, sizeof( entity ) );
 		memset( &refdef, 0, sizeof( refdef ) );
@@ -407,7 +404,20 @@ private:
 		time = UI_Main::Get()->getRefreshState().time;
 		uiPoseTime = 0.0f;
 		hasUIPose = false;
-		if( entity.model && ParseUIPoseAnimation( modelName.CString(), &uiPoseFirstFrame, &uiPoseLastFrame, &uiPoseLoopingFrames, &uiPoseFrametime ) )
+
+		const mskanim_t *anim = entity.model ? R_SkeletalGetAnimByName( entity.model, pmodelAnimationNames[UI_POSE] ) : NULL;
+		if( anim )
+		{
+			int framerate = (int)anim->framerate;
+			if( framerate < 10 )
+				framerate = 10;
+
+			uiPoseFirstFrame = anim->firstframe;
+			uiPoseLastFrame = anim->firstframe + anim->numframes - 1;
+			uiPoseFrametime = 1000.0f / framerate;
+			hasUIPose = true;
+		}
+		else if( entity.model && ParseUIPoseAnimation( modelName.CString(), &uiPoseFirstFrame, &uiPoseLastFrame, &uiPoseFrametime ) )
 			hasUIPose = true;
 	}
 

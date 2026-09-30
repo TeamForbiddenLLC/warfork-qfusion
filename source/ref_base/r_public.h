@@ -29,7 +29,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ref_mod.h"
 
 
-#define REF_API_VERSION 21
+#define REF_API_VERSION 22
 
 struct mempool_s;
 struct cinematics_s;
