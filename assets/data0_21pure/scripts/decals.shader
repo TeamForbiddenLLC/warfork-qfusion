@@ -590,6 +590,52 @@ textures/decals/graffityTEAMZISSOU32_darken
 		blendFunc filter
 	}
 }
+
+textures/decals/graffitiLERCHO
+{
+	qer_editorimage textures/decals/graffitiLERCHO
+	qer_trans 0.5
+	q3map_vertexcolor 255 255 255
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/decals/graffitiLERCHO textures/flatnorm.tga -
+		rgbgen vertex
+		alphagen vertex
+		blendfunc blend
+	}
+}
+
+textures/decals/graffitiOBMU
+{
+	qer_editorimage textures/decals/graffitiOBMU
+	qer_trans 0.5
+	q3map_vertexcolor 255 255 255
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/decals/graffitiOBMU textures/flatnorm.tga -
+		rgbgen vertex
+		alphagen vertex
+		blendfunc blend
+	}
+}
+
+
+
+
 textures/decals/graffiti_01
 {	
 	qer_editorimage textures/decals/graffiti_01.png
@@ -646,6 +692,49 @@ textures/decals/graffiti_03
 		blendFunc filter
 	}
 }
+
+textures/decals/graffiti_04
+{
+	qer_editorimage textures/decals/graffiti_04_blend
+	qer_trans 0.5
+	q3map_vertexcolor 255 255 255
+	surfaceparm nolightmap
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		map textures/decals/graffiti_04_mult
+		blendFunc filter
+	}
+}
+
+
+textures/decals/graffiti_04_blend
+{
+	qer_editorimage textures/decals/graffiti_04_blend
+	qer_trans 0.5
+	q3map_vertexcolor 255 255 255
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/decals/graffiti_04_blend textures/flatnorm.tga -
+		rgbgen vertex
+		alphagen vertex
+		blendfunc blend
+	}
+}
+
 
 
 // DIRT
