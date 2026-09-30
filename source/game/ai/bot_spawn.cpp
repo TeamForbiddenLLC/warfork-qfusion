@@ -324,7 +324,25 @@ static void BOT_CreateUserinfo( char *userinfo, size_t userinfo_size, int bot_pe
 	//Info_SetValueForKey( userinfo, "skin", bot_skin );
 	Info_SetValueForKey( userinfo, "skin", "default" ); // JALFIXME
 	Info_SetValueForKey( userinfo, "hand", va( "%i", (int)( random()*2.5 ) ) );
-	Info_SetValueForKey( userinfo, "color", va( "%i %i %i", (uint8_t)( random()*255 ), (uint8_t)( random()*255 ), (uint8_t)( random()*255 ) ) );
+	{
+		int color;
+		int r = 0, g = 0, b = 0;
+		int i;
+
+		for( i = 0; i < 32; i++ )
+		{
+			r = ( uint8_t )( random()*255 );
+			g = ( uint8_t )( random()*255 );
+			b = ( uint8_t )( random()*255 );
+			color = COLOR_RGB( r, g, b );
+
+			if( COM_ValidatePlayerColor( color ) == color
+				&& max( max( r, g ), b ) - min( min( r, g ), b ) >= (int)( 255 * 0.45f ) )
+				break;
+		}
+
+		Info_SetValueForKey( userinfo, "color", va( "%i %i %i", r, g, b ) );
+	}
 }
 
 static void BOT_pain( edict_t *self, edict_t *other, float kick, int damage )

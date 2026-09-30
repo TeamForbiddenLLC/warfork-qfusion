@@ -1722,7 +1722,7 @@ static void BOT_DMclass_RunFrame( edict_t *self )
 
 		//set up for pmove
 		for( i = 0; i < 3; i++ )
-			ucmd.angles[i] = ANGLE2SHORT( self->s.angles[i] ) - self->r.client->ps.pmove.delta_angles[i];
+			ucmd.angles[i] = ANGLE2SHORT( self->s.angles[i] );
 
 		VectorSet( self->r.client->ps.pmove.delta_angles, 0, 0, 0 );
 	}
