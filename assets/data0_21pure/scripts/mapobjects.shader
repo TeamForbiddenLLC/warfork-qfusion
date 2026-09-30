@@ -824,6 +824,89 @@ models/mapobjects/industrial/crates/albedovc
 	}
 }
 
+models/mapobjects/industrial/support01/albedo
+{
+	qer_editorimage models/mapobjects/industrial/support01/albedo
+	q3map_maxsamplesize 3.5
+	//q3map_minsmooth 1.5
+	q3map_vertexcolor #aeb2b5
+	glossExponent 100
+	glossIntensity 0.35
+
+	{
+		material models/mapobjects/industrial/support01/albedo models/mapobjects/industrial/support01/albedo_norm models/mapobjects/industrial/support01/albedo_gloss
+		rgbGen vertex
+	}
+	{
+		material models/mapobjects/industrial/support01/albedo models/mapobjects/industrial/support01/albedo_norm models/mapobjects/industrial/support01/albedo_gloss
+		rgbGen identity
+		blendFunc blend
+	}
+	{
+		map models/mapobjects/industrial/support01/AO
+		rgbgen const 0.05 0.05 0.05
+		blendFunc add
+	}
+}
+
+
+models/mapobjects/scifi/doordouble01/door_right
+{
+	qer_editorimage models/mapobjects/scifi/doordouble01/door_right.png
+	q3map_maxsamplesize 3.5
+	//q3map_minsmooth 1.5
+	q3map_vertexcolor #aeb2b5
+	glossExponent 100
+	glossIntensity 0.5
+
+	{
+		material models/mapobjects/scifi/doordouble01/door_right models/mapobjects/scifi/doordouble01/door_right_norm models/mapobjects/scifi/doordouble01/door_right_gloss
+	}
+	{
+		material models/mapobjects/scifi/doordouble01/door_right models/mapobjects/scifi/doordouble01/door_right_norm models/mapobjects/scifi/doordouble01/door_right_gloss
+		rgbGen vertex
+		alphagen vertex
+		blendFunc blend
+	}
+}
+
+models/mapobjects/scifi/doordouble01/door_left
+{
+	qer_editorimage models/mapobjects/scifi/doordouble01/door_left.png
+	q3map_maxsamplesize 3.5
+	//q3map_minsmooth 1.5
+	q3map_vertexcolor #aeb2b5
+	glossExponent 100
+	glossIntensity 0.2
+
+	{
+		material models/mapobjects/scifi/doordouble01/door_left models/mapobjects/scifi/doordouble01/door_left_norm models/mapobjects/scifi/doordouble01/door_left_gloss
+	}
+	{
+		material models/mapobjects/scifi/doordouble01/door_left models/mapobjects/scifi/doordouble01/door_left_norm models/mapobjects/scifi/doordouble01/door_left_gloss
+		rgbGen vertex
+		alphagen vertex
+		blendFunc blend
+	}
+}
+
+models/mapobjects/lights/boqu/walllamp1
+{
+	qer_editorimage models/mapobjects/lights/boqu/walllamp1_pants.jpg
+	surfaceparm nomarks
+	surfaceparm nodlight
+	q3map_vertexcolor 0.8 0.8 0.8
+	
+	{
+		material models/mapobjects/lights/boqu/walllamp1 textures/flatnorm models/mapobjects/lights/boqu/walllamp1_gloss 
+	}
+	{
+		map models/mapobjects/lights/boqu/walllamp1_glow
+		rgbgen vertex
+		blendfunc add
+	}
+}
+
 
 
 //==================================================

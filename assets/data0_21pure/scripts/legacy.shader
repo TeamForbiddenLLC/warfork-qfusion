@@ -283,6 +283,14 @@ textures/wsw_city1/concret7
 	}
 }
 
+textures/wsw_city1/tech_concrete_tiles
+{
+	qer_editorimage textures/concrete/concret7
+	{
+		material textures/tiles/concrete_tiles
+	}
+}
+
 
 // traffic lines
 textures/decals/trafficline04yellow

@@ -1317,31 +1317,23 @@ endif
 textures/boqu/teleporterback
 {
 	qer_editorimage textures/boqu/teleporterback.png
-	q3map_lightimage textures/boqu/teleporterback_glow.png
-	q3map_surfacelight 200
-	q3map_lightsubdivide 128
-	surfaceparm nomarks
-	surfaceparm nodlight
+	glossExponent 100
+	glossIntensity 5
 	
-if ! deluxe
 	{
-		map $lightmap
+		material textures/boqu/teleporterback textures/boqu/teleporterback_norm textures/boqu/teleporterback_gloss textures/boqu/teleporterback_glow
 	}
-	{
-		map textures/boqu/teleporterback.png
-	
-	}
-	{
-		map textures/boqu/teleporterback_glow.png 
-		blendFunc blend
-	}	
-endif
+}
 
-if deluxe
+textures/boqu/teleporterfront
+{
+	qer_editorimage textures/boqu/teleporterfront.png
+	glossExponent 80
+	glossIntensity 2.5
+	
 	{
-		material textures/boqu/teleporterback
+		material textures/boqu/teleporterfront textures/boqu/teleporterfront_norm textures/boqu/teleporterfront_gloss
 	}
-endif
 }
 	
 	

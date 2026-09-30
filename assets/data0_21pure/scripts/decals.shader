@@ -1997,6 +1997,177 @@ textures/decals/out_of_service
 }
 
 
+//--------------------------------------------------
+//
+//    FULLY OPAQUE SURFACES
+//	These are like a normal texture, but able to be used as a decal.
+//
+
+textures/decals/stripessurf_color
+{
+	qer_editorimage textures/decals/stripessurf_color.png
+	qer_trans 0.5
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	//nopicmip
+	glossIntensity 0.1
+	glossExponent 100
+
+	{
+		material textures/decals/stripessurf_color textures/flatnorm.tga textures/decals/stripessurf_color
+		rgbgen vertex
+		blendFunc blend // INTENTIONAL: It's opaque but the blendfun disabled depthwritting
+		alphaGen vertex
+	}
+}
+
+
+
+//--------------------------------------------------
+//
+// SURFACE DETAILS
+// These are tileable able detail to be applied 
+// over other materials. Not a single time detail
+// but to mix with the surface below
+
+textures/decals/sdt_treadplate0015
+{
+	qer_editorimage textures/metal/treadplate0015.png
+	qer_trans 0.5
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	//nopicmip
+
+	{
+		detail
+		material textures/metal/treadplate0015.png textures/metal/treadplate0015_norm.tga textures/metal/treadplate0015_gloss.tga
+		tcMod scale 1.5 1.5
+		blendfunc blend
+	}
+}
+
+textures/decals/sdt_treadplate0015b
+{
+	qer_editorimage textures/metal/treadplate0015b.png
+	qer_trans 0.5
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	//nopicmip
+
+	{
+		detail
+		material textures/metal/treadplate0015b.png textures/metal/treadplate0015_norm.tga textures/metal/treadplate0015_gloss.tga
+		tcMod scale 1.5 1.5
+		blendfunc blend
+	}
+}
+
+textures/decals/sdt_treadplate0015c
+{
+	qer_editorimage textures/metal/treadplate0015c.png
+	qer_trans 0.5
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	//nopicmip
+
+	{
+		detail
+		material textures/metal/treadplate0015c.png textures/metal/treadplate0015_norm.tga textures/metal/treadplate0015_gloss.tga
+		tcMod scale 1.5 1.5
+		blendfunc blend
+	}
+}
+
+textures/decals/sdt_treadplate0015d
+{
+	qer_editorimage textures/metal/treadplate0015d.tga
+	qer_trans 0.5
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/metal/treadplate0015d textures/metal/treadplate0015_norm textures/metal/treadplate0015_gloss
+		tcMod scale 1.5 1.5
+		blendfunc blend
+	}
+}
+
+textures/decals/sdt_treadplate0015e
+{
+	qer_editorimage textures/metal/treadplate0015e.png
+	qer_trans 0.5
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	//nopicmip
+
+	{
+		detail
+		material textures/metal/treadplate0015e.png textures/metal/treadplate0015_norm.tga textures/metal/treadplate0015_gloss.tga
+		tcMod scale 1.5 1.5
+		blendfunc blend
+	}
+}
+
+textures/decals/sdt_treadplate0015f
+{
+	qer_editorimage textures/metal/treadplate0015f.png
+	qer_trans 0.5
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	//nopicmip
+
+	{
+		detail
+		material textures/metal/treadplate0015f.png textures/metal/treadplate0015_norm.tga textures/metal/treadplate0015_gloss.tga
+		tcMod scale 1.5 1.5
+		blendfunc blend
+	}
+}
+
+textures/decals/dt_treadplate0015g
+{
+	qer_editorimage textures/metal/treadplate0015g.png
+	qer_trans 0.5
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	//nopicmip
+
+	{
+		detail
+		material textures/metal/treadplate0015g.png textures/metal/treadplate0015_norm.tga textures/metal/treadplate0015_gloss.tga
+		tcMod scale 1.5 1.5
+		blendfunc blend
+	}
+}
+
+
+
 
 //--------------------------------------------------
 //
