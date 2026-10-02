@@ -39,7 +39,7 @@ SERVER COMMANDS
 */
 static void CG_SC_Print( void )
 {
-	CG_LocalPrint( "%s", trap_Cmd_Argv( 1 ) );
+	CG_LocalPrint( "%s", Cmd_Argv( 1 ) );
 }
 
 /*
@@ -47,10 +47,10 @@ static void CG_SC_Print( void )
 */
 static void CG_SC_ChatPrint( void )
 {
-	const bool teamonly = (!Q_stricmp( trap_Cmd_Argv( 0 ), "tch" ) ? true : false);
-	const int who = atoi( trap_Cmd_Argv( 1 ) );
+	const bool teamonly = (!Q_stricmp( Cmd_Argv( 0 ), "tch" ) ? true : false);
+	const int who = atoi( Cmd_Argv( 1 ) );
 	const char *name = (who && who == bound(1, who, MAX_CLIENTS) ? cgs.clientInfo[who-1].name : NULL);
-	const char *text = trap_Cmd_Argv( 2 );
+	const char *text = Cmd_Argv( 2 );
 	const cvar_t *filter = (cgs.tv ? cg_chatFilterTV : cg_chatFilter);
 
 	if( filter->integer & (teamonly ? 2 : 1) )
@@ -83,8 +83,8 @@ static void CG_SC_ChatPrint( void )
 */
 static void CG_SC_TVChatPrint( void )
 {
-	const char *name = trap_Cmd_Argv( 1 );
-	const char *text = trap_Cmd_Argv( 2 );
+	const char *name = Cmd_Argv( 1 );
+	const char *text = Cmd_Argv( 2 );
 	const cvar_t *filter = (cgs.tv ? cg_chatFilterTV : cg_chatFilter);
 
 	if( filter->integer & 4 )
@@ -100,7 +100,7 @@ static void CG_SC_TVChatPrint( void )
 */
 static void CG_SC_CenterPrint( void )
 {
-	CG_CenterPrint( trap_Cmd_Argv( 1 ) );
+	CG_CenterPrint( Cmd_Argv( 1 ) );
 }
 
 /*
@@ -108,24 +108,24 @@ static void CG_SC_CenterPrint( void )
 */
 static void CG_SC_CenterPrintFormat( void )
 {
-	if( trap_Cmd_Argc() == 8 ) {
-		CG_CenterPrint( va( CG_TranslateString( trap_Cmd_Argv( 1 ) ), trap_Cmd_Argv( 2 ), trap_Cmd_Argv( 3 ), 
-			trap_Cmd_Argv( 4 ), trap_Cmd_Argv( 5 ), trap_Cmd_Argv( 6 ), trap_Cmd_Argv( 7 ) ) );
-	} else if( trap_Cmd_Argc() == 7 ) {
-		CG_CenterPrint( va( CG_TranslateString( trap_Cmd_Argv( 1 ) ), trap_Cmd_Argv( 2 ), trap_Cmd_Argv( 3 ), 
-			trap_Cmd_Argv( 4 ), trap_Cmd_Argv( 5 ), trap_Cmd_Argv( 6 ) ) );
-	} else if( trap_Cmd_Argc() == 6 ) {
-		CG_CenterPrint( va( CG_TranslateString( trap_Cmd_Argv( 1 ) ), trap_Cmd_Argv( 2 ), trap_Cmd_Argv( 3 ), 
-			trap_Cmd_Argv( 4 ), trap_Cmd_Argv( 5 ) ) );
-	} else if( trap_Cmd_Argc() == 5 ) {
-		CG_CenterPrint( va( CG_TranslateString( trap_Cmd_Argv( 1 ) ), trap_Cmd_Argv( 2 ), trap_Cmd_Argv( 3 ), 
-			trap_Cmd_Argv( 4 ) ) );
-	} else if( trap_Cmd_Argc() == 4 ) {
-		CG_CenterPrint( va( CG_TranslateString( trap_Cmd_Argv( 1 ) ), trap_Cmd_Argv( 2 ), trap_Cmd_Argv( 3 ) ) );
-	} else if( trap_Cmd_Argc() == 3 ) {
-		CG_CenterPrint( va( CG_TranslateString( trap_Cmd_Argv( 1 ) ), trap_Cmd_Argv( 2 ) ) );
-	} else if( trap_Cmd_Argc() == 2 ) {
-		CG_CenterPrint( CG_TranslateString( trap_Cmd_Argv( 1 ) ) ); // theoretically, shouldn't happen
+	if( Cmd_Argc() == 8 ) {
+		CG_CenterPrint( va( CG_TranslateString( Cmd_Argv( 1 ) ), Cmd_Argv( 2 ), Cmd_Argv( 3 ), 
+			Cmd_Argv( 4 ), Cmd_Argv( 5 ), Cmd_Argv( 6 ), Cmd_Argv( 7 ) ) );
+	} else if( Cmd_Argc() == 7 ) {
+		CG_CenterPrint( va( CG_TranslateString( Cmd_Argv( 1 ) ), Cmd_Argv( 2 ), Cmd_Argv( 3 ), 
+			Cmd_Argv( 4 ), Cmd_Argv( 5 ), Cmd_Argv( 6 ) ) );
+	} else if( Cmd_Argc() == 6 ) {
+		CG_CenterPrint( va( CG_TranslateString( Cmd_Argv( 1 ) ), Cmd_Argv( 2 ), Cmd_Argv( 3 ), 
+			Cmd_Argv( 4 ), Cmd_Argv( 5 ) ) );
+	} else if( Cmd_Argc() == 5 ) {
+		CG_CenterPrint( va( CG_TranslateString( Cmd_Argv( 1 ) ), Cmd_Argv( 2 ), Cmd_Argv( 3 ), 
+			Cmd_Argv( 4 ) ) );
+	} else if( Cmd_Argc() == 4 ) {
+		CG_CenterPrint( va( CG_TranslateString( Cmd_Argv( 1 ) ), Cmd_Argv( 2 ), Cmd_Argv( 3 ) ) );
+	} else if( Cmd_Argc() == 3 ) {
+		CG_CenterPrint( va( CG_TranslateString( Cmd_Argv( 1 ) ), Cmd_Argv( 2 ) ) );
+	} else if( Cmd_Argc() == 2 ) {
+		CG_CenterPrint( CG_TranslateString( Cmd_Argv( 1 ) ) ); // theoretically, shouldn't happen
 	} 
 }
 
@@ -202,7 +202,7 @@ void CG_ConfigString( int i, const char *s )
 	{
 		if( !cgs.demoPlaying )
 		{
-			trap_Cmd_AddCommand( cgs.configStrings[i], NULL );
+			Cmd_AddCommand( cgs.configStrings[i], NULL );
 			if( !Q_stricmp( cgs.configStrings[i], "gametypemenu" ) ) {
 				cgs.hasGametypeMenu = true;
 			}
@@ -219,7 +219,7 @@ void CG_ConfigString( int i, const char *s )
 */
 static void CG_SC_Scoreboard( void )
 {
-	SCR_UpdateScoreboardMessage( trap_Cmd_Argv( 1 ) );
+	SCR_UpdateScoreboardMessage( Cmd_Argv( 1 ) );
 }
 
 /*
@@ -333,8 +333,8 @@ static void CG_SC_PlayerStats( void )
 	const char *s;
 	int print;
 
-	print = atoi( trap_Cmd_Argv( 1 ) );
-	s = trap_Cmd_Argv( 2 );
+	print = atoi( Cmd_Argv( 1 ) );
+	s = Cmd_Argv( 2 );
 
 	if( !print )
 	{	// scoreboard message update
@@ -467,7 +467,7 @@ void CG_SC_AutoRecordAction( const char *action )
 		if( cg_autoaction_stats->integer && ( !spectator || cg_autoaction_spectator->integer ) )
 		{
 			const char *filename = va( "stats/%s/%s.txt", gs.gametypeName, name );
-			CG_SC_DumpPlayerStats( filename, trap_Cmd_Argv( 2 ) );
+			CG_SC_DumpPlayerStats( filename, Cmd_Argv( 2 ) );
 		}
 	}
 	else if( developer->integer )
@@ -483,7 +483,7 @@ static void CG_SC_ChannelAdd( void )
 {
 	char menuparms[MAX_STRING_CHARS];
 
-	Q_snprintfz( menuparms, sizeof( menuparms ), "menu_tvchannel_add %s\n", trap_Cmd_Args() );
+	Q_snprintfz( menuparms, sizeof( menuparms ), "menu_tvchannel_add %s\n", Cmd_Args() );
 	trap_Cmd_ExecuteText( EXEC_NOW, menuparms );
 }
 
@@ -494,9 +494,9 @@ static void CG_SC_ChannelRemove( void )
 {
 	int i, id;
 
-	for( i = 1; i < trap_Cmd_Argc(); i++ )
+	for( i = 1; i < Cmd_Argc(); i++ )
 	{
-		id = atoi( trap_Cmd_Argv( i ) );
+		id = atoi( Cmd_Argv( i ) );
 		if( id <= 0 )
 			continue;
 		trap_Cmd_ExecuteText( EXEC_NOW, va( "menu_tvchannel_remove %i\n", id ) );
@@ -581,7 +581,7 @@ static void CG_SC_MatchMessage( void )
 
 	cg.matchmessage = NULL;
 
-	mm = (matchmessage_t)atoi( trap_Cmd_Argv( 1 ) );
+	mm = (matchmessage_t)atoi( Cmd_Argv( 1 ) );
 	matchmessage = CG_MatchMessageString( mm );
 	if( !matchmessage || !matchmessage[0] )
 		return;
@@ -602,7 +602,7 @@ static void CG_SC_HelpMessage( void )
 
 	cg.helpmessage[0] = '\0';
 
-	index = atoi( trap_Cmd_Argv( 1 ) );
+	index = atoi( Cmd_Argv( 1 ) );
 	if( !index || index > MAX_HELPMESSAGES ) {
 		return;
 	}
@@ -667,7 +667,7 @@ static void CG_CS_UpdateTeamInfo( void )
 {
 	char *ti;
 
-	ti = trap_Cmd_Argv( 1 );
+	ti = Cmd_Argv( 1 );
 	if( !ti[0] )
 	{
 		cg.teaminfo_size = 0;
@@ -699,7 +699,7 @@ static void CG_Cmd_DemoGet_f( void )
 		return;
 	}
 
-	if( trap_Cmd_Argc() != 2 || ( atoi( trap_Cmd_Argv( 1 ) ) <= 0 && trap_Cmd_Argv( 1 )[0] != '.' ) )
+	if( Cmd_Argc() != 2 || ( atoi( Cmd_Argv( 1 ) ) <= 0 && Cmd_Argv( 1 )[0] != '.' ) )
 	{
 		CG_Printf( "Usage: demoget <number>\n" );
 		CG_Printf( "Downloads a demo from the server\n" );
@@ -707,7 +707,7 @@ static void CG_Cmd_DemoGet_f( void )
 		return;
 	}
 
-	trap_Cmd_ExecuteText( EXEC_NOW, va( "cmd demoget %s", trap_Cmd_Argv( 1 ) ) );
+	trap_Cmd_ExecuteText( EXEC_NOW, va( "cmd demoget %s", Cmd_Argv( 1 ) ) );
 
 	demo_requested = true;
 }
@@ -733,13 +733,13 @@ static void CG_SC_DemoGet( void )
 
 	demo_requested = false;
 
-	if( trap_Cmd_Argc() < 2 )
+	if( Cmd_Argc() < 2 )
 	{
 		CG_Printf( "No such demo found\n" );
 		return;
 	}
 
-	filename = trap_Cmd_Argv( 1 );
+	filename = Cmd_Argv( 1 );
 	extension = COM_FileExtension( filename );
 	if( !COM_ValidateRelativeFilename( filename ) ||
 		!extension || Q_stricmp( extension, cgs.demoExtension ) )
@@ -762,11 +762,11 @@ static void CG_SC_MOTD( void )
 		CG_Free( cg.motd );
 	cg.motd = NULL;
 
-	motd = trap_Cmd_Argv( 2 );
+	motd = Cmd_Argv( 2 );
 	if( !motd[0] )
 		return;
 
-	if( !strcmp( trap_Cmd_Argv( 1 ), "1" ) )
+	if( !strcmp( Cmd_Argv( 1 ), "1" ) )
 	{
 		cg.motd = CG_CopyString( motd );
 		cg.motd_time = cg.time + 50 *strlen( motd );
@@ -788,15 +788,15 @@ static void CG_SC_MenuCustom( void )
 	if( cgs.demoPlaying || cgs.tv )
 		return;
 
-	if( trap_Cmd_Argc() < 2 )
+	if( Cmd_Argc() < 2 )
 		return;
 
-	Q_strncpyz( request, va( "menu_open custom title \"%s\" ", trap_Cmd_Argv( 1 ) ), sizeof( request ) );
+	Q_strncpyz( request, va( "menu_open custom title \"%s\" ", Cmd_Argv( 1 ) ), sizeof( request ) );
 	
-	for( i = 2, c = 1; i < trap_Cmd_Argc() - 1; i += 2, c++ )
+	for( i = 2, c = 1; i < Cmd_Argc() - 1; i += 2, c++ )
 	{
-		const char *label = trap_Cmd_Argv( i );
-		const char *cmd = trap_Cmd_Argv( i + 1 );
+		const char *label = Cmd_Argv( i );
+		const char *cmd = Cmd_Argv( i + 1 );
 
 		Q_strncatz( request, va( "btn%i \"%s\" ", c, label ), sizeof( request ) );
 		Q_strncatz( request, va( "cmd%i \"%s%s\" ", c, *cmd ? "cmd " : "", cmd ), sizeof( request ) );
@@ -817,12 +817,12 @@ static void CG_SC_MenuQuick( void )
 
 	cg.quickmenu[0] = '\0';
 
-	if( trap_Cmd_Argc() >= 2 )
+	if( Cmd_Argc() >= 2 )
 	{
-		for( i = 1, c = 1; i < trap_Cmd_Argc() - 1; i += 2, c++ )
+		for( i = 1, c = 1; i < Cmd_Argc() - 1; i += 2, c++ )
 		{
-			const char *label = trap_Cmd_Argv( i );
-			const char *cmd = trap_Cmd_Argv( i + 1 );
+			const char *label = Cmd_Argv( i );
+			const char *cmd = Cmd_Argv( i + 1 );
 
 			Q_strncatz( cg.quickmenu, va( "btn%i \"%s\" ", c, label ), sizeof( cg.quickmenu ) );
 			Q_strncatz( cg.quickmenu, va( "cmd%i \"%s%s\" ", c, *cmd ? "cmd " : "", cmd ), sizeof( cg.quickmenu ) );
@@ -843,12 +843,12 @@ static void CG_SC_MenuOpen_( bool modal )
 	if( cgs.demoPlaying || cgs.tv )
 		return;
 
-	if( trap_Cmd_Argc() < 2 )
+	if( Cmd_Argc() < 2 )
 		return;
 
-	Q_strncpyz( request, va( "%s \"%s\"", modal ? "menu_modal" : "menu_open", trap_Cmd_Argv( 1 ) ), sizeof( request ) );
-	for( i = 2, c = 1; i < trap_Cmd_Argc(); i++, c++ )
-		Q_strncatz( request, va( " param%i \"%s\"", c, trap_Cmd_Argv( i ) ), sizeof( request ) );
+	Q_strncpyz( request, va( "%s \"%s\"", modal ? "menu_modal" : "menu_open", Cmd_Argv( 1 ) ), sizeof( request ) );
+	for( i = 2, c = 1; i < Cmd_Argc(); i++, c++ )
+		Q_strncatz( request, va( " param%i \"%s\"", c, Cmd_Argv( i ) ), sizeof( request ) );
 
 	trap_Cmd_ExecuteText( EXEC_APPEND, va( "%s\n", request ) );
 }
@@ -887,7 +887,7 @@ void CG_AddAward( const char *str )
 */
 static void CG_SC_AddAward( void )
 {
-	CG_AddAward( trap_Cmd_Argv( 1 ) );
+	CG_AddAward( Cmd_Argv( 1 ) );
 }
 
 typedef struct
@@ -931,9 +931,9 @@ void CG_GameCommand( const char *command )
 	char *s;
 	const svcmd_t *cmd;
 
-	trap_Cmd_TokenizeString( command );
+	Cmd_TokenizeString( command );
 
-	s = trap_Cmd_Argv( 0 );
+	s = Cmd_Argv( 0 );
 	for( cmd = cg_svcmds; cmd->name; cmd++ )
 	{
 		if( !strcmp( s, cmd->name ) )
@@ -1009,31 +1009,31 @@ static void CG_WriteBlockList( void )
 
 static void CG_Cmd_Block_f( void )
 {
-	if( trap_Cmd_Argc() < 2 )
+	if( Cmd_Argc() < 2 )
 	{
 		CG_Printf( "Usage: 'block <name> <steamid>'\n" );
 		return;
 	}
 
-	if (blocklist.find(atoll(trap_Cmd_Argv( 2 ))) != blocklist.end())
+	if (blocklist.find(atoll(Cmd_Argv( 2 ))) != blocklist.end())
 	{
 		CG_Printf( "Player already blocked\n" );
 		return;
 	}
 
-	blocklist[atoll(trap_Cmd_Argv( 2 ))] = std::string(trap_Cmd_Argv( 1 ));
+	blocklist[atoll(Cmd_Argv( 2 ))] = std::string(Cmd_Argv( 1 ));
 
 	CG_WriteBlockList();
 }
 static void CG_Cmd_Unblock_f( void )
 {
-	if( trap_Cmd_Argc() < 1 )
+	if( Cmd_Argc() < 1 )
 	{
 		CG_Printf( "Usage: 'unblock <steamid>'\n" );
 		return;
 	}
 
-	blocklist.erase( atoll(trap_Cmd_Argv( 1 )) );
+	blocklist.erase( atoll(Cmd_Argv( 1 )) );
 
 	CG_WriteBlockList();
 }
@@ -1084,13 +1084,13 @@ void CG_UseItem( const char *name )
 */
 static void CG_Cmd_UseItem_f( void )
 {
-	if( !trap_Cmd_Argc() )
+	if( !Cmd_Argc() )
 	{
 		CG_Printf( "Usage: 'use <item name>' or 'use <item index>'\n" );
 		return;
 	}
 
-	CG_UseItem( trap_Cmd_Args() );
+	CG_UseItem( Cmd_Args() );
 }
 
 /*
@@ -1180,12 +1180,12 @@ static void CG_Cmd_WeaponCross_f( void )
 	if( !cg.frame.valid )
 		return;
 
-	if( trap_Cmd_Argc() > 1 )
-		quarter = atoi( trap_Cmd_Argv( 1 ) );
+	if( Cmd_Argc() > 1 )
+		quarter = atoi( Cmd_Argv( 1 ) );
 
 	if( ( quarter < 0 ) || ( quarter > 4 ) )
 	{
-		CG_Printf( "Usage: '%s <0-4>' (0 - just show, 1 - GB/MG, 2 - RG/GL, 3 - RL/PG, 4 - LG/EB)\n", trap_Cmd_Argv( 0 ) );
+		CG_Printf( "Usage: '%s <0-4>' (0 - just show, 1 - GB/MG, 2 - RG/GL, 3 - RL/PG, 4 - LG/EB)\n", Cmd_Argv( 0 ) );
 		return;
 	}
 
@@ -1341,7 +1341,7 @@ static char **CG_TeamPlayerNamesCompletion_f( const char *partial )
 */
 static void CG_SayCmdAdd_f( void )
 {
-	trap_Cmd_SetCompletionFunc( "say", &CG_PlayerNamesCompletion_f );
+	Cmd_SetCompletionFunc( "say", &CG_PlayerNamesCompletion_f );
 }
 
 /*
@@ -1349,7 +1349,7 @@ static void CG_SayCmdAdd_f( void )
 */
 static void CG_SayTeamCmdAdd_f( void )
 {
-	trap_Cmd_SetCompletionFunc( "say_team", &CG_TeamPlayerNamesCompletion_f );
+	Cmd_SetCompletionFunc( "say_team", &CG_TeamPlayerNamesCompletion_f );
 }
 
 /*
@@ -1357,7 +1357,7 @@ static void CG_SayTeamCmdAdd_f( void )
 */
 static void CG_StatsCmdAdd_f( void )
 {
-	trap_Cmd_SetCompletionFunc( "stats", &CG_PlayerNamesCompletion_f );
+	Cmd_SetCompletionFunc( "stats", &CG_PlayerNamesCompletion_f );
 }
 
 /*
@@ -1365,7 +1365,7 @@ static void CG_StatsCmdAdd_f( void )
 */
 static void CG_WhoisCmdAdd_f( void )
 {
-	trap_Cmd_SetCompletionFunc( "whois", &CG_PlayerNamesCompletion_f );
+	Cmd_SetCompletionFunc( "whois", &CG_PlayerNamesCompletion_f );
 }
 
 // server commands
@@ -1438,7 +1438,7 @@ void CG_RegisterCGameCommands( void )
 			if( cmd->name )
 				continue;
 
-			trap_Cmd_AddCommand( name, NULL );
+			Cmd_AddCommand( name, NULL );
 
 			// check for server commands we might want to do some special things for..
 			for( svcmd = cg_consvcmds; svcmd->name; svcmd++ )
@@ -1458,7 +1458,7 @@ void CG_RegisterCGameCommands( void )
 	{
 		if( cgs.demoPlaying && !cmd->allowdemo )
 			continue;
-		trap_Cmd_AddCommand( cmd->name, cmd->func );
+		Cmd_AddCommand( cmd->name, cmd->func );
 	}
 }
 
@@ -1490,7 +1490,7 @@ void CG_UnregisterCGameCommands( void )
 			if( cmd->name )
 				continue;
 
-			trap_Cmd_RemoveCommand( name );
+			Cmd_RemoveCommand( name );
 		}
 
 		cgs.hasGametypeMenu = false;
@@ -1501,6 +1501,6 @@ void CG_UnregisterCGameCommands( void )
 	{
 		if( cgs.demoPlaying && !cmd->allowdemo )
 			continue;
-		trap_Cmd_RemoveCommand( cmd->name );
+		Cmd_RemoveCommand( cmd->name );
 	}
 }
