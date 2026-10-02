@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "qcommon.h"
 #include "../qalgo/q_trie.h"
 #include "../client/console.h"
+#include "mod_mem.h"
 
 #include <assert.h>
 
@@ -327,15 +328,12 @@ const char **Dynvar_CompleteBuildList(
         const char *partial
 )
 {
-	struct trie_dump_s *dump = NULL;
-	const char **buf;
-	unsigned int i;
-
 	assert( dynvar_trie );
 	assert( partial );
+	struct trie_dump_s *dump = NULL;
 	Trie_DumpIf( dynvar_trie, partial, TRIE_DUMP_VALUES, Dynvar_Console, NULL, &dump );
-	buf = (const char **) Mem_TempMalloc( sizeof( char * ) * ( dump->size + 1 ) );
-	for( i = 0; i < dump->size; ++i )
+	const char **buf = Q_Malloc( sizeof( char * ) * ( dump->size + 1 ) );
+	for(size_t i = 0; i < dump->size; ++i )
 		buf[i] = ( (dynvar_t *) ( dump->key_value_vector[i].value ) )->name;
 	buf[dump->size] = NULL;
 	Trie_FreeDump( dump );

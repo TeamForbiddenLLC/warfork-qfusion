@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "qcommon.h"
 #include "../qalgo/q_trie.h"
 #include "../client/console.h"
+#include "../qcommon/mod_mem.h"
 
 static bool	cvar_initialized = false;
 static bool	cvar_preinitialized = false;
@@ -816,20 +817,19 @@ int Cvar_CompleteCountPossible( const char *partial )
 */
 char **Cvar_CompleteBuildList( const char *partial )
 {
-	struct trie_dump_s *dump = NULL;
-	char **buf;
-	unsigned int i;
+
 
 	assert( cvar_trie );
 	QMutex_Lock( cvar_mutex );
+	struct trie_dump_s *dump = NULL;
 #ifdef PUBLIC_BUILD
 	Trie_DumpIf( cvar_trie, partial, TRIE_DUMP_VALUES, Cvar_NotDeveloper, NULL, &dump );
 #else
 	Trie_Dump( cvar_trie, partial, TRIE_DUMP_VALUES, &dump );
 #endif
 	QMutex_Unlock( cvar_mutex );
-	buf = (char **) Mem_TempMalloc( sizeof( char * ) * ( dump->size + 1 ) );
-	for( i = 0; i < dump->size; ++i )
+	char **buf = Q_Malloc( sizeof( char * ) * ( dump->size + 1 ) );
+	for(size_t i = 0; i < dump->size; ++i )
 		buf[i] = ( (cvar_t *) ( dump->key_value_vector[i].value ) )->name;
 	buf[dump->size] = NULL;
 	Trie_FreeDump( dump );
@@ -842,15 +842,13 @@ char **Cvar_CompleteBuildList( const char *partial )
 char **Cvar_CompleteBuildListWithFlag( const char *partial, cvar_flag_t flag )
 {
 	struct trie_dump_s *dump = NULL;
-	char **buf;
-	unsigned int i;
 
 	assert( cvar_trie );
 	QMutex_Lock( cvar_mutex );
 	Trie_DumpIf( cvar_trie, partial, TRIE_DUMP_VALUES, Cvar_HasFlags, &flag, &dump );
 	QMutex_Unlock( cvar_mutex );
-	buf = (char **) Mem_TempMalloc( sizeof( char * ) * ( dump->size + 1 ) );
-	for( i = 0; i < dump->size; ++i )
+	char **buf = (char **) Q_Malloc( sizeof( char * ) * ( dump->size + 1 ) );
+	for(size_t i = 0; i < dump->size; ++i )
 		buf[i] = ( (cvar_t *) ( dump->key_value_vector[i].value ) )->name;
 	buf[dump->size] = NULL;
 	Trie_FreeDump( dump );
