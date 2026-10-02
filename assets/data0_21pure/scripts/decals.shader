@@ -2085,6 +2085,106 @@ textures/decals/out_of_service
 	}
 }
 
+textures/decals/bb_neon1
+{	
+	qer_editorimage textures/billboard/neon1
+	qer_trans 0.8
+	q3map_vertexalpha 0.85
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/billboard/neon1 textures/flatnorm.png
+		blendFunc blend // INTENTIONAL: It's opaque but the blendfun disabled depthwritting
+		alphagen vertex
+	}
+}
+
+textures/decals/bb_small3
+{	
+	qer_editorimage textures/billboard/small3
+	qer_trans 0.8
+	q3map_vertexalpha 0.9
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/billboard/small3 textures/flatnorm.png
+		blendFunc blend // INTENTIONAL: It's opaque but the blendfun disabled depthwritting
+		alphagen vertex
+	}
+}
+
+textures/decals/bb_bigver1
+{	
+	qer_editorimage textures/billboard/bigver1
+	qer_trans 0.8
+	q3map_vertexalpha 0.7
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/billboard/bigver1 textures/flatnorm.png
+		blendFunc blend // INTENTIONAL: It's opaque but the blendfun disabled depthwritting
+		alphagen vertex
+	}
+}
+
+textures/decals/bb_ver2
+{	
+	qer_editorimage textures/billboard/ver2
+	qer_trans 0.8
+	q3map_vertexalpha 0.8
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/billboard/ver2 textures/flatnorm
+		blendFunc blend // INTENTIONAL: It's opaque but the blendfun disabled depthwritting
+		alphagen vertex
+	}
+}
+
+textures/decals/bb_ver3
+{	
+	qer_editorimage textures/billboard/ver3
+	qer_trans 0.8
+	q3map_vertexalpha 0.7
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/billboard/ver3 textures/flatnorm.rga
+		alphagen vertex
+		blendFunc blend // INTENTIONAL: It's opaque but the blendfun disabled depthwritting
+	}
+}
+
 
 //--------------------------------------------------
 //
@@ -2108,8 +2208,8 @@ textures/decals/stripessurf_color
 	{
 		material textures/decals/stripessurf_color textures/flatnorm.tga textures/decals/stripessurf_color
 		rgbgen vertex
-		blendFunc blend // INTENTIONAL: It's opaque but the blendfun disabled depthwritting
 		alphaGen vertex
+		blendFunc blend // INTENTIONAL: It's opaque but the blendfun disabled depthwritting
 	}
 }
 

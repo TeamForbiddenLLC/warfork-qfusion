@@ -1,0 +1,10 @@
+List of 3rd party textures used under free lisences.
+
+// These textures are download from https://freestylized.com and lisenced free of use for any purpose
+textures/metal/metal_roof
+textures/metal/metal_roof_norm
+textures/metal/metal_roof_AO
+textures/bricks/bricks2
+textures/bricks/bricks2_norm
+textures/concrete/concreteslabs02
+textures/concrete/concreteslabs02_norm

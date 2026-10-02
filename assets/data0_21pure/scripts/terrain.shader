@@ -51,9 +51,6 @@ textures/terrain/rocks002_512x512
 	}
 }
 
-
-
-
 textures/terrain/rockwall01
 {
 	qer_editorimage textures/terrain/rockwall01.png
@@ -63,5 +60,17 @@ textures/terrain/rockwall01
 
 	{
 		material textures/terrain/rockwall01_1024x1024.png textures/terrain/rockwall01_1024x1024_norm.png
+	}
+}
+
+textures/terrain/drydirtdark
+{
+	qer_editorimage textures/terrain/drydirtdark
+	q3map_deluxe_minangle 30
+	q3map_chamfer_convexwidth 4
+	q3map_chamfer_concavewidth 4
+
+	{
+		material textures/terrain/drydirtdark textures/terrain/drydirtdark_norm -
 	}
 }

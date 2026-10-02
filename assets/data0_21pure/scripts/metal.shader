@@ -1,4 +1,20 @@
 
+textures/metal/metal_roof
+{
+	// These textures are download from https://freestylized.com and lisenced free of use for any purpose.
+	qer_editorimage textures/metal/metal_roof
+	q3map_chamfer_convexangle 4
+	q3map_chafer_concaveangle 4
+	glossIntensity 0.8
+	glossExponent 50
+	
+	{
+		material textures/metal/metal_roof
+	}
+}
+
+
+
 textures/metal/aluminiumwrap
 {	
 	qer_editorimage textures/boqu/bright_metal

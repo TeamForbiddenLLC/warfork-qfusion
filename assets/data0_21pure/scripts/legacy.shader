@@ -1,3 +1,4 @@
+
 //==============================================
 //
 // Deprecated shaders.
@@ -253,6 +254,18 @@ textures/refly_bricks/bricks4
 //////////////////////
 // WSW_CITY
 
+
+textures/wsw_city1/tech_dirt1
+{
+	qer_editorimage textures/terrain/drydirtdark
+	q3map_chamfer_convexwidth 4
+	q3map_chamfer_concavewidth 4
+
+	{
+		material textures/terrain/drydirtdark
+	}
+}
+
 textures/wsw_city1/tubes1_bulge
 {
 	qer_editorimage textures/pipes/tubes1.png
@@ -474,6 +487,28 @@ textures/decals/trafficline04orangestripes2
 	}
 }
 
+////// HEXAGONS /////////
+textures/hexagons/blue
+{	
+	qer_editorimage textures/plastic/grey50.png
+	glossExponent 150
+	glossIntensity 0.4
+
+	{
+		material textures/plastic/grey50.png $blankbumpimage textures/plastic/grey_gloss.png
+	}
+}
+
+textures/hexagons/darkblue
+{	
+	qer_editorimage textures/plastic/blue.png
+	glossExponent 100
+	glossIntensity 0.4
+
+	{
+		material textures/plastic/blue.png $blankbumpimage textures/plastic/grey_gloss.png
+	}
+}
 
 ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////

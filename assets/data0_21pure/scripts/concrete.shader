@@ -162,3 +162,16 @@ textures/concrete/concrete2
 	}
 }
 
+textures/concrete/concreteslabs02
+{
+	// These textures are download from https://freestylized.com and lisenced free of use for any purpose.
+	qer_editorimage textures/concrete/concreteslabs02
+	q3map_chamfer_convexwidth 2
+	q3map_chamfer_concavewidth 0.5
+	q3map_deluxe_minangle 36
+
+	{
+		material textures/concrete/concreteslabs02
+	}
+}
+

@@ -1,28 +1,26 @@
-textures/hexagons/hx_jumpad
+
+textures/hexagons/pavementfloor01
 {
-	qer_editorimage textures/hexagons/hexabump.png
-	q3map_surfacelight 400
+	qer_editorimage textures/hexagons/pavementfloor01
+	q3map_chamfer_convexwidth 2
+	q3map_chamfer_concavewidth 1.5
 
 	{
-		map $lightmap 
-	}
-	{
-		map textures/hexagons/darkblue.png
-		blendfunc filter
-	}
-	{
-		clampmap textures/hexagons/hexabump.png
-		blendfunc add
-		rgbGen wave sin 0.5 0.5 0.25 1.5 
-		tcMod stretch sin 0.5 0.5 0 1.5 
-	}
-	{
-		clampmap textures/hexagons/hexabump.png
-		blendfunc add
-		rgbGen wave square 0.5 0.5 0.25 1.5 
-		tcMod stretch sin 1 0.5 0 1.5 
+		material textures/hexagons/pavementfloor01
 	}
 }
+
+textures/hexagons/stonecollumn01
+{
+	qer_editorimage textures/hexagons/stonecollumn01
+	q3map_chamfer_convexwidth 2
+	q3map_chamfer_concavewidth 1.5
+
+	{
+		material textures/hexagons/stonecollumn01
+	}
+}
+
 
 textures/hexagons/pavementfloor_trim_orange
 {
