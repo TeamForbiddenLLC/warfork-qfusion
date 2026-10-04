@@ -49,7 +49,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "stb_ds.h"
 
 #define MAX_GLSL_PROGRAMS 1024
-#define GLSL_PROGRAMS_HASH_SIZE 256
 
 typedef struct {
 	r_glslfeat_t bit;
@@ -59,9 +58,32 @@ typedef struct {
 
 trie_t *glsl_cache_trie = NULL;
 
+/*
+ * RP_Init
+ */
+#if ( DEVICE_IMPL_VULKAN )
+// Vulkan has no per-attribute default: every vertex shader input needs a description, or the pipeline is invalid
+// (VUID-VkGraphicsPipelineCreateInfo-Input-07904) and the read is undefined. A draw whose VBO lacks an attribute the
+// program statically reads (e.g. a_Color for a constant rgbgen) is given a stride-0 binding into this buffer instead,
+// which supplies the same constant to every vertex, like the GL generic-attribute default (0,0,0,1).
+#define RP_DEFAULT_ATTRIB_STREAM MAX_STREAMS // first binding slot after the real VBO streams
+#define RP_DEFAULT_ATTRIB_STRIDE 16
+static struct RIBuffer_s r_defaultVertexAttribs = {0};
+#endif
+
 static unsigned int r_numglslprograms;
 static struct glsl_program_s r_glslprograms[MAX_GLSL_PROGRAMS];
-static struct glsl_program_s *r_glslprograms_hash[GLSL_PROGRAM_TYPE_MAXTYPE][GLSL_PROGRAMS_HASH_SIZE];
+// All-uint64 so the key has no padding and stb_ds can hash/compare it bytewise. deformsHash is a hash of
+// the deformsKey string; hits are re-verified with strcmp in RP_ResolveProgram.
+struct glsl_program_key_s {
+	uint64_t type;
+	uint64_t features;
+	uint64_t deformsHash;
+};
+static struct {
+	struct glsl_program_key_s key;
+	struct glsl_program_s *value;
+} *r_glslprograms_map;
 
 static glslang_stage_t __RP_GLStageToSlang( glsl_program_stage_t stage )
 {
@@ -78,24 +100,33 @@ static glslang_stage_t __RP_GLStageToSlang( glsl_program_stage_t stage )
 	return GLSLANG_STAGE_COUNT;
 }
 
-// static struct ProgramDescriptorInfo* __GetDescriptorInfo(struct glsl_program_s* program, uint32_t set) {
-//	for( size_t i = 0; i < program->numSets; i++ ) {
-//		if( program->programDescriptors[i].registerSpace == set ) {
-//			return &program->programDescriptors[i];
-//		}
-//	}
-//	return NULL;
-// }
 
-/*
- * RP_Init
- */
 void RP_Init( void )
 {
 	TracyCZoneN( ctx, "RP_Init", 1 );
 	glslang_initialize_process();
+#if ( DEVICE_IMPL_VULKAN )
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		const struct RIBufferDesc_s desc = { .size = RP_DEFAULT_ATTRIB_STRIDE * MAX_ATTRIBUTES, .usage = RI_BUFFER_USAGE_VERTEX_BUFFER, .memoryLocation = RI_MEMORY_HOST_UPLOAD };
+		InitRIBuffer( &rsh.device, &desc, &r_defaultVertexAttribs );
+		float *data = RIBufferMappedData( &rsh.device, &r_defaultVertexAttribs );
+		for( size_t i = 0; i < MAX_ATTRIBUTES; i++ ) {
+			data[i * 4 + 0] = data[i * 4 + 1] = data[i * 4 + 2] = 0.0f;
+			data[i * 4 + 3] = 1.0f;
+		}
+		// COLOR0 defaults to opaque white so an unlit rgbgen vertex pass still draws visibly
+		data[VATTRIB_COLOR0 * 4 + 0] = data[VATTRIB_COLOR0 * 4 + 1] = data[VATTRIB_COLOR0 * 4 + 2] = 1.0f;
+		// integer locations read the same 16 bytes as uints: all zero
+		const uint32_t zero[4] = { 0, 0, 0, 0 };
+		for( size_t i = 0; i < MAX_ATTRIBUTES; i++ ) {
+			if( i == VATTRIB_BONESINDICES || i == VATTRIB_LMLAYERS0123 )
+				memcpy( data + i * 4, zero, sizeof( zero ) );
+		}
+	}
+#endif
 	memset( r_glslprograms, 0, sizeof( r_glslprograms ) );
-	memset( r_glslprograms_hash, 0, sizeof( r_glslprograms_hash ) );
+	hmfree( r_glslprograms_map );
+	r_glslprograms_map = NULL;
 
 	Trie_Create( TRIE_CASE_INSENSITIVE, &glsl_cache_trie );
 
@@ -296,7 +327,6 @@ void RP_StorePrecacheList( void )
  */
 static void RF_DeleteProgram( struct glsl_program_s *program )
 {
-	struct glsl_program_s *hash_next;
 	TracyCZoneN( ctx, "RF_DeleteProgram", 1 );
 
 	if( program->name )
@@ -360,9 +390,7 @@ static void RF_DeleteProgram( struct glsl_program_s *program )
 			R_Free( program->shaderBin[i].bin );
 	}
 
-	hash_next = program->hash_next;
 	memset( program, 0, sizeof( struct glsl_program_s ) );
-	program->hash_next = hash_next;
 	TracyCZoneEnd( ctx );
 }
 
@@ -447,6 +475,7 @@ static const glsl_feature_t glsl_features_material[] = { { GLSL_SHADER_COMMON_GR
 
 														 { GLSL_SHADER_MATERIAL_CAMERA_AMBIENT_FILL, "#define APPLY_CAMERA_AMBIENT_FILL\n", "_camamb" },
 
+	{ GLSL_SHADER_COMMON_DEPTH_ONLY, "#define QF_DEPTH_ONLY\n", "_depth" },
 														 { 0, NULL, NULL } };
 
 static const glsl_feature_t glsl_features_distortion[] = { { GLSL_SHADER_COMMON_GREYSCALE, "#define APPLY_GREYSCALE\n", "_grey" },
@@ -480,6 +509,7 @@ static const glsl_feature_t glsl_features_distortion[] = { { GLSL_SHADER_COMMON_
 														   { GLSL_SHADER_DISTORTION_REFLECTION, "#define APPLY_REFLECTION\n", "_refl" },
 														   { GLSL_SHADER_DISTORTION_REFRACTION, "#define APPLY_REFRACTION\n", "_refr" },
 
+	{ GLSL_SHADER_COMMON_DEPTH_ONLY, "#define QF_DEPTH_ONLY\n", "_depth" },
 														   { 0, NULL, NULL } };
 
 static const glsl_feature_t glsl_features_rgbshadow[] = {
@@ -532,6 +562,7 @@ static const glsl_feature_t glsl_features_outline[] = {
 
 	{ GLSL_SHADER_OUTLINE_OUTLINES_CUTOFF, "#define APPLY_OUTLINES_CUTOFF\n", "_outcut" },
 
+	{ GLSL_SHADER_COMMON_DEPTH_ONLY, "#define QF_DEPTH_ONLY\n", "_depth" },
 	{ 0, NULL, NULL } };
 
 static const glsl_feature_t glsl_features_q3a[] = {
@@ -596,6 +627,7 @@ static const glsl_feature_t glsl_features_q3a[] = {
 
 	{ GLSL_SHADER_Q3_ALPHA_MASK, "#define APPLY_ALPHA_MASK\n", "_alpha_mask" },
 
+	{ GLSL_SHADER_COMMON_DEPTH_ONLY, "#define QF_DEPTH_ONLY\n", "_depth" },
 	{ 0, NULL, NULL } };
 
 static const glsl_feature_t glsl_features_celshade[] = {
@@ -644,6 +676,7 @@ static const glsl_feature_t glsl_features_celshade[] = {
 	{ GLSL_SHADER_CELSHADE_CEL_LIGHT, "#define APPLY_CEL_LIGHT\n", "_light" },
 	{ GLSL_SHADER_CELSHADE_CEL_LIGHT_ADD, "#define APPLY_CEL_LIGHT_ADD\n", "_add" },
 
+	{ GLSL_SHADER_COMMON_DEPTH_ONLY, "#define QF_DEPTH_ONLY\n", "_depth" },
 	{ 0, NULL, NULL } };
 
 static const glsl_feature_t glsl_features_fog[] = {
@@ -662,6 +695,7 @@ static const glsl_feature_t glsl_features_fog[] = {
 	{ GLSL_SHADER_COMMON_INSTANCED_TRANSFORMS, "#define APPLY_INSTANCED_TRANSFORMS\n", "_instanced" },
 	{ GLSL_SHADER_COMMON_INSTANCED_ATTRIB_TRANSFORMS, "#define APPLY_INSTANCED_TRANSFORMS\n#define APPLY_INSTANCED_ATTRIB_TRANSFORMS\n", "_instanced_va" },
 
+	{ GLSL_SHADER_COMMON_DEPTH_ONLY, "#define QF_DEPTH_ONLY\n", "_depth" },
 	{ 0, NULL, NULL } };
 
 static const glsl_feature_t glsl_features_fxaa[] = { { GLSL_SHADER_FXAA_FXAA3, "#define APPLY_FXAA3\n", "_fxaa3" },
@@ -1137,6 +1171,8 @@ void RP_BindPipeline( struct FrameState_s *cmd, struct pipeline_hash_s *pipeline
 #if ( DEVICE_IMPL_VULKAN )
 	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
 		vkCmdBindPipeline( cmd->handle.vk.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->vk.handle );
+		if( pipeline->vk.usesDefaultAttribs )
+			FR_CmdSetVertexBuffer( cmd, RP_DEFAULT_ATTRIB_STREAM, &r_defaultVertexAttribs, 0 );
 	}
 #endif
 #if ( DEVICE_IMPL_MTL )
@@ -1183,7 +1219,8 @@ static struct pipeline_hash_s *__RP_ResolvePipeline( struct glsl_program_s *prog
 	struct pipeline_hash_s *pipeline = NULL;
 #if ( DEVICE_IMPL_VULKAN )
 	VkVertexInputAttributeDescription vertextbindingDesc[MAX_ATTRIBUTES];
-	VkVertexInputBindingDescription vertexInputStreamsDesc[MAX_STREAMS];
+	VkVertexInputBindingDescription vertexInputStreamsDesc[MAX_STREAMS + 1]; // + the default-attribute stream
+	bool usesDefaultAttribs = false;
 	VkPipelineVertexInputStateCreateInfo vertexInputState = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
 	VkFormat colorAttachmentsVK[MAX_COLOR_ATTACHMENTS];
 
@@ -1207,15 +1244,38 @@ static struct pipeline_hash_s *__RP_ResolvePipeline( struct glsl_program_s *prog
 				numVertexAttribs++;
 			}
 
+			// Locations the program reads that the bound VBO layout doesn't carry are fed from the default stream.
+			uint32_t providedMask = 0;
+			for( uint32_t i = 0; i < numVertexAttribs; i++ )
+				providedMask |= 1u << vertextbindingDesc[i].location;
+			const uint32_t missingMask = program->vertexInputMask & ~providedMask;
+			for( uint32_t location = 0; location < MAX_ATTRIBUTES; location++ ) {
+				if( !( missingMask & ( 1u << location ) ) )
+					continue;
+				vertextbindingDesc[numVertexAttribs].binding = RP_DEFAULT_ATTRIB_STREAM;
+				vertextbindingDesc[numVertexAttribs].location = location;
+				vertextbindingDesc[numVertexAttribs].format = ( program->vertexInputIntMask & ( 1u << location ) ) ? VK_FORMAT_R32G32B32A32_UINT : VK_FORMAT_R32G32B32A32_SFLOAT;
+				vertextbindingDesc[numVertexAttribs].offset = location * RP_DEFAULT_ATTRIB_STRIDE;
+				numVertexAttribs++;
+				usesDefaultAttribs = true;
+			}
+
 			for( size_t i = 0; i < cmd->numStreams; i++ ) {
 				vertexInputStreamsDesc[i].binding = cmd->streams[i].bindingSlot;
 				vertexInputStreamsDesc[i].stride = cmd->streams[i].stride;
 				vertexInputStreamsDesc[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 			}
+			uint32_t numBindings = (uint32_t)cmd->numStreams;
+			if( usesDefaultAttribs ) {
+				vertexInputStreamsDesc[numBindings].binding = RP_DEFAULT_ATTRIB_STREAM;
+				vertexInputStreamsDesc[numBindings].stride = 0; // every vertex reads the same constant
+				vertexInputStreamsDesc[numBindings].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+				numBindings++;
+			}
 			vertexInputState.pVertexAttributeDescriptions = vertextbindingDesc;
 			vertexInputState.vertexAttributeDescriptionCount = numVertexAttribs;
 			vertexInputState.pVertexBindingDescriptions = vertexInputStreamsDesc;
-			vertexInputState.vertexBindingDescriptionCount = cmd->numStreams;
+			vertexInputState.vertexBindingDescriptionCount = numBindings;
 		}
 		qsort( vertextbindingDesc, vertexInputState.vertexAttributeDescriptionCount, sizeof( VkVertexInputAttributeDescription ), __VK_SortVkVertexInputAttributeDescription );
 
@@ -1502,7 +1562,7 @@ static struct pipeline_hash_s *__RP_ResolvePipeline( struct glsl_program_s *prog
 			pipelineCreateInfo.pDepthStencilState = &depthStencilState;
 
 			VK_WrapResult( vkCreateGraphicsPipelines( rsh.device.vk.device, RP_PipelineCache(), 1, &pipelineCreateInfo, NULL, &pipeline->vk.handle ) );
-			//assert( ( attribFlags & program->vertexInputMask ) == program->vertexInputMask );
+			pipeline->vk.usesDefaultAttribs = usesDefaultAttribs;
 			if( vkSetDebugUtilsObjectNameEXT ) {
 				VkDebugUtilsObjectNameInfoEXT debugName = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, NULL, VK_OBJECT_TYPE_PIPELINE, (uint64_t)pipeline->vk.handle, program->name };
 				VK_WrapResult( vkSetDebugUtilsObjectNameEXT( rsh.device.vk.device, &debugName ) );
@@ -1983,6 +2043,24 @@ void RP_BindDescriptorSets( struct RIDevice_s *device, struct FrameState_s *cmd,
 	TracyCZoneEnd( ctx );
 }
 
+// QF_DEPTH_ONLY turns the fragment colour output into a private global for passes with no colour attachment.
+// Only the program types whose fragment shader checks QF_DEPTH_ONLY honour it; strip it elsewhere so it
+// doesn't create duplicate cache entries. Shared by RP_RegisterProgram and RP_ResolveProgram so their keys agree.
+static r_glslfeat_t RP_StripUnsupportedDepthOnly( int type, r_glslfeat_t features )
+{
+	switch( type ) {
+		case GLSL_PROGRAM_TYPE_MATERIAL:
+		case GLSL_PROGRAM_TYPE_Q3A_SHADER:
+		case GLSL_PROGRAM_TYPE_CELSHADE:
+		case GLSL_PROGRAM_TYPE_OUTLINE:
+		case GLSL_PROGRAM_TYPE_FOG:
+		case GLSL_PROGRAM_TYPE_DISTORTION:
+			return features;
+		default:
+			return features & ~GLSL_SHADER_COMMON_DEPTH_ONLY;
+	}
+}
+
 struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char *deformsKey, const deformv_t *deforms, int numDeforms, r_glslfeat_t features )
 {
 	TracyCZoneN( ctx, "RP_ResolveProgram", 1 );
@@ -1992,18 +2070,26 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 	if( !deforms )
 		deformsKey = "";
 
-	const uint64_t hashIndex = hash_u64( HASH_INITIAL_VALUE, features ) % GLSL_PROGRAMS_HASH_SIZE;
-	for( struct glsl_program_s *program = r_glslprograms_hash[type][hashIndex]; program; program = program->hash_next ) {
-		if( ( program->features == features ) && strcmp( program->deformsKey, deformsKey ) == 0 ) {
+	// Must match the ATM fog strip in RP_RegisterProgram (what it stores in program->features), or the
+	// lookup below never hits and every call registers a fresh slot until the program array is exhausted.
+	if( type != GLSL_PROGRAM_TYPE_MATERIAL && type != GLSL_PROGRAM_TYPE_Q3A_SHADER && type != GLSL_PROGRAM_TYPE_CELSHADE ) {
+		features &= ~( GLSL_SHADER_COMMON_ATM_FOG | GLSL_SHADER_COMMON_ATM_FOG_ADDITIVE | GLSL_SHADER_COMMON_ATM_FOG_MULTIPLICATIVE );
+	}
+	features = RP_StripUnsupportedDepthOnly( type, features );
+
+	{
+		struct glsl_program_key_s key = { .type = (uint64_t)type, .features = features, .deformsHash = stbds_hash_string( (char *)deformsKey, 0 ) };
+		struct glsl_program_s *found = hmget( r_glslprograms_map, key );
+		if( found ) {
+			if( strcmp( found->deformsKey, deformsKey ) != 0 )
+				ri.Com_Error( ERR_FATAL, "RP_ResolveProgram: deformsKey hash collision ('%s' vs '%s')", found->deformsKey, deformsKey );
 			TracyCZoneEnd( ctx );
-			return program;
+			return found;
 		}
 	}
 
 	if( r_numglslprograms == MAX_GLSL_PROGRAMS ) {
-		Com_Printf( S_COLOR_YELLOW "RP_RegisterProgram: GLSL programs limit exceeded\n" );
-		TracyCZoneEnd( ctx );
-		return NULL;
+		ri.Com_Error( ERR_FATAL, "RP_ResolveProgram: GLSL programs limit exceeded (type %i, features 0x%llx)", type, (unsigned long long)features );
 	}
 
 	struct glsl_program_s *program;
@@ -2022,14 +2108,14 @@ struct glsl_program_s *RP_ResolveProgram( int type, const char *name, const char
 			if( !name )
 				name = parent->name;
 		} else {
-			Com_Printf( S_COLOR_YELLOW "RP_RegisterProgram: failed to find parent for program type %i\n", type );
-			TracyCZoneEnd( ctx );
-			return 0;
+			ri.Com_Error( ERR_FATAL, "RP_ResolveProgram: failed to find parent for program type %i", type );
 		}
 	}
 
 	{
 		struct glsl_program_s *ret = RP_RegisterProgram( type, name, deformsKey, deforms, numDeforms, features );
+		if( !ret )
+			ri.Com_Error( ERR_FATAL, "RP_ResolveProgram: failed to register program type %i (features 0x%llx, deformsKey '%s')", type, (unsigned long long)features, deformsKey );
 		TracyCZoneEnd( ctx );
 		return ret;
 	}
@@ -2699,10 +2785,11 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 
 	/* Atmospheric fog is only supported on MATERIAL, Q3A, and CELSHADE program types.
 	 * Strip ATM fog bits for other types (distortion, outline, shadowmap, etc.) to avoid
-	 * duplicate cache entries and unneeded shader includes. */
+	 * duplicate cache entries and unneeded shader includes. Keep in sync with RP_ResolveProgram. */
 	if( type != GLSL_PROGRAM_TYPE_MATERIAL && type != GLSL_PROGRAM_TYPE_Q3A_SHADER && type != GLSL_PROGRAM_TYPE_CELSHADE ) {
 		features &= ~( GLSL_SHADER_COMMON_ATM_FOG | GLSL_SHADER_COMMON_ATM_FOG_ADDITIVE | GLSL_SHADER_COMMON_ATM_FOG_MULTIPLICATIVE );
 	}
+	features = RP_StripUnsupportedDepthOnly( type, features );
 
 	// RP_ResolveProgram bounds-checks before it calls here, but RP_Init and the precache replay
 	// reach this directly, and r_glslprograms is a fixed-size static array.
@@ -2711,7 +2798,6 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 		TracyCZoneEnd( ctx );
 		return NULL;
 	}
-	const uint64_t hashIndex = hash_u64( HASH_INITIAL_VALUE, features ) % GLSL_PROGRAMS_HASH_SIZE;
 	struct glsl_program_s *program = r_glslprograms + r_numglslprograms++;
 	// captured before fullName mangles it -- this is what the cache stores and what resolves back to
 	// the glsl_nri/<baseName>.<stage>.glsl source path
@@ -2747,6 +2833,7 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 
 	program->hasPushConstant = false;
 	program->vertexInputMask = 0;
+	program->vertexInputIntMask = 0;
 
 	// A non-empty deformsKey with no deforms array cannot be compiled: __appendGLSLDeformv would
 	// bake no deform code, and the result would then be cached under a deform key -- silently wrong
@@ -3017,7 +3104,13 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 
 					if( stages[i].stage == GLSL_STAGE_VERTEX ) {
 						for( size_t i = 0; i < module.input_variable_count; i++ ) {
-							program->vertexInputMask |= ( 1 << module.input_variables[i]->location );
+							const SpvReflectInterfaceVariable *input = module.input_variables[i];
+							// Built-ins report location ~0u and are not real vertex attributes.
+							if( input->location >= MAX_ATTRIBUTES )
+								continue;
+							program->vertexInputMask |= ( 1u << input->location );
+							if( input->type_description && ( input->type_description->type_flags & SPV_REFLECT_TYPE_FLAG_INT ) )
+								program->vertexInputIntMask |= ( 1u << input->location );
 						}
 					}
 
@@ -3215,9 +3308,9 @@ struct glsl_program_s *RP_RegisterProgram( int type, const char *name, const cha
 		qStrFree( &stages[i].source );
 	}
 
-	if( !program->hash_next ) {
-		program->hash_next = r_glslprograms_hash[type][hashIndex];
-		r_glslprograms_hash[type][hashIndex] = program;
+	{
+		struct glsl_program_key_s key = { .type = (uint64_t)type, .features = features, .deformsHash = stbds_hash_string( (char *)( program->deformsKey ? program->deformsKey : "" ), 0 ) };
+		hmput( r_glslprograms_map, key, program );
 	}
 
 	TracyCZoneEnd( ctx );
@@ -3231,6 +3324,11 @@ void RP_Shutdown( void )
 	unsigned int i;
 	struct glsl_program_s *program;
 	TracyCZoneN( ctx, "RP_Shutdown", 1 );
+
+#if ( DEVICE_IMPL_VULKAN )
+	FreeRIBuffer( &rsh.device, &r_defaultVertexAttribs );
+	memset( &r_defaultVertexAttribs, 0, sizeof( r_defaultVertexAttribs ) );
+#endif
 
 	// must run before the delete loop below frees shaderBin and zeroes r_numglslprograms
 	RP_StorePrecacheList();
@@ -3252,6 +3350,8 @@ void RP_Shutdown( void )
 	Trie_Destroy( glsl_cache_trie );
 	glsl_cache_trie = NULL;
 
+	hmfree( r_glslprograms_map );
+	r_glslprograms_map = NULL;
 	r_numglslprograms = 0;
 	TracyCZoneEnd( ctx );
 }

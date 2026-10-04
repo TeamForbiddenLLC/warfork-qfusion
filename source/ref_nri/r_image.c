@@ -141,69 +141,60 @@ static unsigned R_SamplerCategory( int flags )
 	return filter | ( clamp << 2 ) | ( compare << 3 );
 }
 
-#if ( DEVICE_IMPL_VULKAN )
-// Rebuild the exact VkSamplerCreateInfo a category maps to, from the current global filter/aniso
-// state. Byte-for-byte equivalent of the old per-flag branch chain.
-static VkSamplerCreateInfo R_BuildSamplerInfo( unsigned cat )
-{
-	const unsigned filter = cat & 0x3u;
-	const bool clamp = ( cat >> 2 ) & 0x1u;
-	const bool compare = ( cat >> 3 ) & 0x1u;
-
-	VkSamplerCreateInfo info = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
-	switch( filter ) {
-		case 0: // IT_NOFILTERING
-			info.minFilter = VK_FILTER_LINEAR;
-			info.magFilter = VK_FILTER_LINEAR;
-			info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-			break;
-		case 1: // IT_DEPTH
-			info.minFilter = VK_FILTER_LINEAR;
-			info.magFilter = VK_FILTER_LINEAR;
-			info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-			info.maxAnisotropy = defaultAnisotropicFilter;
-			info.anisotropyEnable = defaultAnisotropicFilter > 1.0f;
-			break;
-		case 2: { // mipmapped, uses the default filter preset
-			const VkFilter filterMapping[] = { [IMAGE_FILTER_LINEAR] = VK_FILTER_LINEAR, [IMAGE_FILTER_NEAREST] = VK_FILTER_NEAREST };
-			const VkSamplerMipmapMode mapMapFilterMapping[] = { [IMAGE_FILTER_LINEAR] = VK_SAMPLER_MIPMAP_MODE_LINEAR, [IMAGE_FILTER_NEAREST] = VK_SAMPLER_MIPMAP_MODE_NEAREST };
-			info.minFilter = filterMapping[defaultFilterMin];
-			info.magFilter = filterMapping[defaultFilterMag];
-			info.mipmapMode = mapMapFilterMapping[defaultFilterMipMap];
-			info.maxLod = 16;
-			info.maxAnisotropy = defaultAnisotropicFilter;
-			info.anisotropyEnable = defaultAnisotropicFilter > 1.0f;
-			break;
-		}
-		default: // 3: IT_NOMIPMAP
-			info.minFilter = VK_FILTER_LINEAR;
-			info.magFilter = VK_FILTER_LINEAR;
-			info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-			info.maxAnisotropy = defaultAnisotropicFilter;
-			info.anisotropyEnable = defaultAnisotropicFilter > 1.0f;
-			break;
-	}
-
-	if( clamp ) {
-		info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-		info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-		info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	}
-	if( compare ) {
-		info.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-		info.compareEnable = 1;
-	}
-	return info;
-}
-#endif
-
 struct RISampler_s *R_ResolveSamplerDescriptor( int flags )
 {
 #if ( DEVICE_IMPL_VULKAN )
 	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
 		const unsigned cat = R_SamplerCategory( flags );
 		struct RISampler_s *slot = &samplerCache[cat];
-		const VkSamplerCreateInfo info = R_BuildSamplerInfo( cat );
+
+		const unsigned filter = cat & 0x3u;
+		const bool clamp = ( cat >> 2 ) & 0x1u;
+		const bool compare = ( cat >> 3 ) & 0x1u;
+
+		VkSamplerCreateInfo info = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+		switch( filter ) {
+			case 0: // IT_NOFILTERING
+				info.minFilter = VK_FILTER_LINEAR;
+				info.magFilter = VK_FILTER_LINEAR;
+				info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+				break;
+			case 1: // IT_DEPTH
+				info.minFilter = VK_FILTER_LINEAR;
+				info.magFilter = VK_FILTER_LINEAR;
+				info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+				info.maxAnisotropy = defaultAnisotropicFilter;
+				info.anisotropyEnable = defaultAnisotropicFilter > 1.0f;
+				break;
+			case 2: { // mipmapped, uses the default filter preset
+				const VkFilter filterMapping[] = { [IMAGE_FILTER_LINEAR] = VK_FILTER_LINEAR, [IMAGE_FILTER_NEAREST] = VK_FILTER_NEAREST };
+				const VkSamplerMipmapMode mapMapFilterMapping[] = { [IMAGE_FILTER_LINEAR] = VK_SAMPLER_MIPMAP_MODE_LINEAR, [IMAGE_FILTER_NEAREST] = VK_SAMPLER_MIPMAP_MODE_NEAREST };
+				info.minFilter = filterMapping[defaultFilterMin];
+				info.magFilter = filterMapping[defaultFilterMag];
+				info.mipmapMode = mapMapFilterMapping[defaultFilterMipMap];
+				info.maxLod = 16;
+				info.maxAnisotropy = defaultAnisotropicFilter;
+				info.anisotropyEnable = defaultAnisotropicFilter > 1.0f;
+				break;
+			}
+			default: // 3: IT_NOMIPMAP
+				info.minFilter = VK_FILTER_LINEAR;
+				info.magFilter = VK_FILTER_LINEAR;
+				info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+				info.maxAnisotropy = defaultAnisotropicFilter;
+				info.anisotropyEnable = defaultAnisotropicFilter > 1.0f;
+				break;
+		}
+
+		if( clamp ) {
+			info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		}
+		if( compare ) {
+			info.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+			info.compareEnable = 1;
+		}
 
 		// The sampler-config hash is the sampler's stable identity cookie (folded into any descriptor
 		// built from it). Nudge off 0 so cookie 0 unambiguously marks an uninstantiated slot.
@@ -213,9 +204,12 @@ struct RISampler_s *R_ResolveSamplerDescriptor( int flags )
 
 		if( slot->cookie != cookie ) {
 			// First use of this category, or the global filter/anisotropy state changed since it was last
-			// built. Create a fresh sampler. The previous handle (if any) is intentionally left alive: the
-			// descriptor snapshots that reference it (some resolved only once, e.g. rsh.shadowSamplerDescriptor)
-			// are not all re-resolved, so destroying it here could dangle them. Settings changes are rare.
+			// built. Retire the previous handle through the frame free list so it is destroyed once the GPU is
+			// done with it (and at device shutdown) instead of leaking.
+			if( slot->vk.sampler ) {
+				struct RIFree_s freeEntry = { .type = RI_FREE_VK_SAMPLER, .vkSampler = slot->vk.sampler };
+				arrpush( RI_ACTIVE_FRAMESET()->freeList, freeEntry );
+			}
 			VK_WrapResult( vkCreateSampler( rsh.device.vk.device, &info, NULL, &slot->vk.sampler ) );
 			slot->cookie = cookie;
 		}

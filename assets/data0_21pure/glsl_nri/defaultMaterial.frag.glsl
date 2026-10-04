@@ -1,21 +1,29 @@
 #include "include/global.glsl" 
 #include "defaultMaterial.res.glsl"
 
+#ifdef NUM_LIGHTMAPS
 layout(set = DESCRIPTOR_GLOBAL_SET, binding = 0) uniform sampler lightmapTextureSample;
 layout(set = DESCRIPTOR_GLOBAL_SET, binding = 1) uniform texture2D lightmapTexture[16];
+#endif
 
 layout(set = DESCRIPTOR_PASS_SET, binding = 3) uniform sampler   u_BaseSampler;
 layout(set = DESCRIPTOR_PASS_SET, binding = 4) uniform texture2D u_BaseTexture;
 layout(set = DESCRIPTOR_PASS_SET, binding = 5) uniform sampler   u_NormalSampler;
 layout(set = DESCRIPTOR_PASS_SET, binding = 6) uniform texture2D u_NormalTexture;
+#if defined(APPLY_SPECULAR)
 layout(set = DESCRIPTOR_PASS_SET, binding = 7) uniform sampler   u_GlossSampler;
 layout(set = DESCRIPTOR_PASS_SET, binding = 8) uniform texture2D u_GlossTexture;
+#endif
 
+#if defined(APPLY_DECAL)
 layout(set = DESCRIPTOR_PASS_SET, binding = 9) uniform sampler   u_DecalSampler;
 layout(set = DESCRIPTOR_PASS_SET, binding = 10) uniform texture2D u_DecalTexture;
+#endif
 
+#if defined(APPLY_ENTITY_DECAL) && !( defined(APPLY_BASETEX_ALPHA_ONLY) && !defined(APPLY_DRAWFLAT) )
 layout(set = DESCRIPTOR_PASS_SET, binding = 11) uniform sampler    u_EntityDecalSampler;
 layout(set = DESCRIPTOR_PASS_SET, binding = 12) uniform texture2D u_EntityDecalTexture;
+#endif
 
 layout(location = 0) in vec3 v_Position; 
 layout(location = 1) in vec3 v_EyeVector; 
@@ -32,9 +40,14 @@ layout(location = 9) in vec3 v_Binormal;
 layout(location = 10) in vec3 v_WorldPosition; 
 #endif 
 
+#ifdef QF_DEPTH_ONLY
+vec4 outFragColor; // no colour attachment: keep it a plain global so the shader has no fragment output
+#else
 layout(location = 0) out vec4 outFragColor;
+#endif
 
 
+#ifdef NUM_LIGHTMAPS
 // for non-uniform access
 vec4 lightMapAccess(vec2 coord, uint index) {
 	switch(index) {
@@ -72,6 +85,7 @@ vec4 lightMapAccess(vec2 coord, uint index) {
 			return texture(sampler2D(lightmapTexture[15],lightmapTextureSample), coord);
 	}
 }
+#endif // NUM_LIGHTMAPS
 
 
 #if defined(APPLY_OFFSETMAPPING) || defined(APPLY_RELIEFMAPPING)

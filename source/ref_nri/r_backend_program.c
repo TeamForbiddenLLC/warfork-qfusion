@@ -331,7 +331,7 @@ static inline image_t *RB_ShaderpassTex( const shaderpass_t *pass )
 
 	if( !tex )
 		return rsh.noTexture;
-	if( !tex->missing )
+	if( tex != rsh.noTexture && !tex->missing )
 		return tex;
 	return r_usenotexture->integer == 0 ? rsh.greyTexture : rsh.noTexture;
 }
@@ -415,35 +415,6 @@ static r_glslfeat_t RB_BonesTransformsToProgramFeatures( void )
 }
 
 /*
- * RB_DlightbitsToProgramFeatures
- */
-static r_glslfeat_t RB_DlightbitsToProgramFeatures( unsigned int dlightBits )
-{
-	// always do 16
-	//	int numDlights;
-
-	// if( !dlightBits ) {
-	// 	return 0;
-	// }
-
-	// numDlights = Q_bitcount( dlightBits );
-	// if( r_lighting_maxglsldlights->integer && numDlights > r_lighting_maxglsldlights->integer ) {
-	// 	numDlights = r_lighting_maxglsldlights->integer;
-	// }
-
-	// if( numDlights <= 4 ) {
-	// 	return GLSL_SHADER_COMMON_DLIGHTS_4;
-	// }
-	// if( numDlights <= 8 ) {
-	// 	return GLSL_SHADER_COMMON_DLIGHTS_8;
-	// }
-	// if( numDlights <= 12 ) {
-	// 	return GLSL_SHADER_COMMON_DLIGHTS_12;
-	// }
-	return GLSL_SHADER_COMMON_DLIGHTS_16;
-}
-
-/*
  * RB_AutospriteProgramFeatures
  */
 static r_glslfeat_t RB_AutospriteProgramFeatures( void )
@@ -485,8 +456,7 @@ static r_glslfeat_t RB_FogProgramFeatures( const shaderpass_t *pass, const mfog_
 	}
 	/* Atmospheric world fog handling (world and entity geometry only,
 	 * 2D UI/console stretch-pic draws carry a NULL entity and must be excluded) */
-	if( rn.activeFog.enabled && rb.currentEntity != &rb.nullEnt &&
-		!( rb.currentShader->flags & SHADER_NOFOG ) ) {
+	if( rn.activeFog.enabled && rb.currentEntity != &rb.nullEnt && !( rb.currentShader->flags & SHADER_NOFOG ) ) {
 		unsigned srcBlend = pass->flags & GLSTATE_SRCBLEND_MASK;
 		unsigned dstBlend = pass->flags & GLSTATE_DSTBLEND_MASK;
 
@@ -495,14 +465,10 @@ static r_glslfeat_t RB_FogProgramFeatures( const shaderpass_t *pass, const mfog_
 		 * so the multiplicative identity is white. Map decals, graffiti and detail
 		 * passes modulate an already-fogged framebuffer, so fade the multiplier
 		 * toward white with the fog factor instead of mixing in fog color */
-		if( ( srcBlend == GLSTATE_SRCBLEND_DST_COLOR && dstBlend == GLSTATE_DSTBLEND_ZERO ) ||
-			( srcBlend == GLSTATE_SRCBLEND_ZERO && dstBlend == GLSTATE_DSTBLEND_SRC_COLOR ) )
-		{
+		if( ( srcBlend == GLSTATE_SRCBLEND_DST_COLOR && dstBlend == GLSTATE_DSTBLEND_ZERO ) || ( srcBlend == GLSTATE_SRCBLEND_ZERO && dstBlend == GLSTATE_DSTBLEND_SRC_COLOR ) ) {
 			programFeatures |= GLSL_SHADER_COMMON_ATM_FOG;
 			programFeatures |= GLSL_SHADER_COMMON_ATM_FOG_MULTIPLICATIVE;
-		}
-		else if( dstBlend == GLSTATE_DSTBLEND_ONE || dstBlend == GLSTATE_DSTBLEND_ONE_MINUS_SRC_COLOR )
-		{
+		} else if( dstBlend == GLSTATE_DSTBLEND_ONE || dstBlend == GLSTATE_DSTBLEND_ONE_MINUS_SRC_COLOR ) {
 			/* Additive and screen/dodge glow passes (blendfunc add, GL_ONE GL_ONE,
 			 * GL_SRC_ALPHA GL_ONE and GL_ONE GL_ONE_MINUS_SRC_COLOR — autosprite2
 			 * halo/flare quads with black transparent backgrounds) use Beer-Lambert
@@ -510,9 +476,7 @@ static r_glslfeat_t RB_FogProgramFeatures( const shaderpass_t *pass, const mfog_
 			 * of the quad don't get filled with fog color by the blend operation */
 			programFeatures |= GLSL_SHADER_COMMON_ATM_FOG;
 			programFeatures |= GLSL_SHADER_COMMON_ATM_FOG_ADDITIVE;
-		}
-		else if( dstBlend != GLSTATE_DSTBLEND_ZERO )
-		{
+		} else if( dstBlend != GLSTATE_DSTBLEND_ZERO ) {
 			/* Regular transparent/opaque passes: blend towards the effective fog color */
 			programFeatures |= GLSL_SHADER_COMMON_ATM_FOG;
 		}
@@ -572,28 +536,6 @@ r_glslfeat_t RB_TcGenToProgramFeatures( int tcgen, vec_t *tcgenVec, mat4_t texMa
 	return programFeatures;
 }
 
-static inline bool __IsAlphaBlendingGLState( int state )
-{
-	return ( ( state & GLSTATE_SRCBLEND_MASK ) == GLSTATE_SRCBLEND_SRC_ALPHA || state == GLSTATE_DSTBLEND_SRC_ALPHA ) ||
-		   ( ( state & GLSTATE_SRCBLEND_MASK ) == GLSTATE_SRCBLEND_ONE_MINUS_SRC_ALPHA || state == GLSTATE_DSTBLEND_ONE_MINUS_SRC_ALPHA );
-}
-
-static inline struct vec4 ConstColorAdjust( bool alphaBlending, bool alphaHack, struct vec4 vec )
-{
-	if( alphaBlending ) {
-		if( alphaHack ) {
-			vec.w *= rb.alphaHack;
-		}
-	} else {
-		if( alphaHack ) {
-			vec.x *= rb.alphaHack;
-			vec.y *= rb.alphaHack;
-			vec.z *= rb.alphaHack;
-		}
-	}
-	return vec;
-}
-
 void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *pass, int programType )
 {
 	size_t descriptorCount = 0;
@@ -628,7 +570,15 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 	struct FrameCB frameData = { 0 };
 	struct ObjectCB objectData = { 0 };
 	{
-		const bool isAlphaBlending = __IsAlphaBlendingGLState( pass->flags );
+		// mirrors RB_SetShaderpassState_2 so blend detection sees the final GL state like ref_gl
+		int finalState = pass->flags | rb.currentShaderState;
+		if( rb.alphaHack && !( finalState & GLSTATE_BLEND_MASK ) ) {
+			finalState = ( finalState & ~GLSTATE_DEPTHWRITE ) | GLSTATE_SRCBLEND_SRC_ALPHA | GLSTATE_DSTBLEND_ONE_MINUS_SRC_ALPHA;
+		}
+		const int srcBlend = finalState & GLSTATE_SRCBLEND_MASK;
+		const int dstBlend = finalState & GLSTATE_DSTBLEND_MASK;
+		const bool isAlphaBlending = ( srcBlend == GLSTATE_SRCBLEND_SRC_ALPHA || dstBlend == GLSTATE_DSTBLEND_SRC_ALPHA ) ||
+									 ( srcBlend == GLSTATE_SRCBLEND_ONE_MINUS_SRC_ALPHA || dstBlend == GLSTATE_DSTBLEND_ONE_MINUS_SRC_ALPHA );
 		const shaderfunc_t *rgbgenfunc = &pass->rgbgen.func;
 		const shaderfunc_t *alphagenfunc = &pass->alphagen.func;
 
@@ -636,10 +586,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 		objectData.isAlphaBlending = isAlphaBlending ? 1.0f : 0.0f;
 
 		if( rb.fog ) {
-			programFeatures |= GLSL_SHADER_COMMON_FOG;
-			if( rb.fog == rb.colorFog ) {
-				programFeatures |= GLSL_SHADER_COMMON_FOG_RGB;
-			}
+			// fog feature bits are chosen per program type via RB_FogProgramFeatures; only fill uniforms here
 			cplane_t fogPlane, vpnPlane;
 			float fog_color[3] = { 0, 0, 0 };
 			VectorScale( rb.fog->shader->fog_color, ( 1.0 / 255.0 ), fog_color );
@@ -665,9 +612,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 
 			float clear = rn.activeFog.heightClear;
 			float full = rn.activeFog.heightFull;
-			float invRange = ( rn.activeFog.heightFogEnabled && ( clear != full ) )
-				? ( 1.0f / ( full - clear ) )
-				: 0.0f;
+			float invRange = ( rn.activeFog.heightFogEnabled && ( clear != full ) ) ? ( 1.0f / ( full - clear ) ) : 0.0f;
 
 			frameData.atmFogHeightParams.x = clear;
 			frameData.atmFogHeightParams.y = full;
@@ -867,7 +812,6 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			default:
 				break;
 		}
-		// objectData.colorConst = ConstColorAdjust( isAlphaBlending, rb.alphaHack, objectData.colorConst );
 	}
 	if( rb.currentModelType == mod_skeletal && rb.bonesData.numBones ) {
 		struct DualQuatCB dualQuatCB = { 0 };
@@ -879,7 +823,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 	}
 
 	// if(rb.currentDlightBits) {
-	// 	programFeatures |= GLSL_SHADER_COMMON_DLIGHTS_16; //RB_DlightbitsToProgramFeatures( rb.currentDlightBits );
+	// 	programFeatures |= GLSL_SHADER_COMMON_DLIGHTS_16; // always 16 lights
 	// }
 
 	switch( programType ) {
@@ -888,7 +832,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 
 			// handy pointers
 			const image_t *base = RB_ShaderpassTex( pass );
-			const image_t *normalmap = pass->images[1] && !pass->images[1]->missing ? pass->images[1] : rsh.blankBumpTexture;
+			const image_t *normalmap = pass->images[1] && pass->images[1] != rsh.noTexture && !pass->images[1]->missing ? pass->images[1] : rsh.blankBumpTexture;
 			const image_t *glossmap = pass->images[2] && !pass->images[2]->missing ? pass->images[2] : NULL;
 			const image_t *decalmap = pass->images[3] && !pass->images[3]->missing ? pass->images[3] : NULL;
 			const image_t *entdecalmap = pass->images[4] && !pass->images[4]->missing ? pass->images[4] : NULL;
@@ -971,7 +915,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 
 				// add dynamic lights
 				// if( rb.currentDlightBits ) {
-				// 	programFeatures |= RB_DlightbitsToProgramFeatures( rb.currentDlightBits );
+				// 	programFeatures |= GLSL_SHADER_COMMON_DLIGHTS_16;
 				// }
 				if( pass->flags & SHADERPASS_PORTALMAP && rb.currentPortalSurface && rb.currentPortalSurface->portalfbs[0] ) {
 					descriptors[descriptorCount++] =
@@ -1109,26 +1053,21 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 								VectorSet( temp, 0.1f, 0.2f, 0.7f );
 							}
 
-							if( e->flags & RF_MINLIGHT )
-							{
+							if( e->flags & RF_MINLIGHT ) {
 								// lightgrid pre-filtering: guarantee a minimum ambient light and cap the
 								// ambient contribution, both expressed as a percentage of the max
 								// displayable light
-								if( !rb.noWorldLight && rsh.worldModel && rsh.worldBrushModel &&
-									rsh.worldBrushModel->lightgrid && rsh.worldBrushModel->numlightgridelems &&
-									( r_lighting_gridminambient->value > 0 || r_lighting_gridmaxambient->value > 0 ) )
-								{
+								if( !rb.noWorldLight && rsh.worldModel && rsh.worldBrushModel && rsh.worldBrushModel->lightgrid && rsh.worldBrushModel->numlightgridelems &&
+									( r_lighting_gridminambient->value > 0 || r_lighting_gridmaxambient->value > 0 ) ) {
 									// R_LightForOrigin already returned the grid values in display space
 									float maxLight = mapConfig.mapLightColorScale;
 									vec_t *ambient = objectData.lightAmbient.v;
 									float lumAmb = ambient[0] * 0.299f + ambient[1] * 0.587f + ambient[2] * 0.114f;
 
-									if( r_lighting_gridminambient->value > 0 )
-									{
+									if( r_lighting_gridminambient->value > 0 ) {
 										float targetMinAmbient = ( r_lighting_gridminambient->value / 100.0f ) * maxLight;
 
-										if( lumAmb < targetMinAmbient )
-										{
+										if( lumAmb < targetMinAmbient ) {
 											float missing = targetMinAmbient - lumAmb;
 											vec3_t gridHue;
 											vec3_t mapHue;
@@ -1146,10 +1085,8 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 											else
 												VectorCopy( mapHue, gridHue );
 
-											VectorSet( mixHue,
-												0.12f * gridHue[0] + 0.26f * mapHue[0] + 0.62f,
-												0.12f * gridHue[1] + 0.26f * mapHue[1] + 0.62f,
-												0.12f * gridHue[2] + 0.26f * mapHue[2] + 0.62f );
+											VectorSet( mixHue, 0.12f * gridHue[0] + 0.26f * mapHue[0] + 0.62f, 0.12f * gridHue[1] + 0.26f * mapHue[1] + 0.62f,
+													   0.12f * gridHue[2] + 0.26f * mapHue[2] + 0.62f );
 
 											ambient[0] += mixHue[0] * missing;
 											ambient[1] += mixHue[1] * missing;
@@ -1158,8 +1095,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 										}
 									}
 
-									if( r_lighting_gridmaxambient->value > 0 )
-									{
+									if( r_lighting_gridmaxambient->value > 0 ) {
 										float maxAmbientAllowed = ( r_lighting_gridmaxambient->value / 100.0f ) * maxLight;
 										if( lumAmb > maxAmbientAllowed )
 											VectorScale( ambient, maxAmbientAllowed / lumAmb, ambient );
@@ -1171,8 +1107,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 									VectorSet( objectData.lightAmbient.v, minLight, minLight, minLight );
 							}
 
-							if( ( e->flags & RF_MINLIGHT ) && r_lighting_overbrightmodels->value > 0 )
-							{
+							if( ( e->flags & RF_MINLIGHT ) && r_lighting_overbrightmodels->value > 0 ) {
 								objectData.cameraAmbientFill = r_lighting_overbrightmodels->value;
 								programFeatures |= GLSL_SHADER_MATERIAL_CAMERA_AMBIENT_FILL;
 							}
@@ -1201,7 +1136,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 				}
 
 				struct glsl_program_s *program =
-					RP_ResolveProgram( GLSL_PROGRAM_TYPE_MATERIAL, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
+					RP_ResolveProgram( GLSL_PROGRAM_TYPE_MATERIAL, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures | ( ( RIIsTargetSelected( RI_DEVICE_API_VK ) && ( rb.renderFlags & RF_SHADOWMAPVIEW ) ) ? GLSL_SHADER_COMMON_DEPTH_ONLY : 0 ) );
 				struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline );
 
 				if( RP_ProgramHasUniform( program, Create_DescriptorHandle( "pass" ) ) ) {
@@ -1352,6 +1287,13 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 				// the shader reads mat3(genTexMatrix), matching u_ReflectionTexMatrix in ref_gl
 				memcpy( passCB.genTexMatrix.v, texMatrix, sizeof( mat4_t ) );
 			}
+			if( programFeatures & GLSL_SHADER_COMMON_SOFT_PARTICLE ) {
+				const int w = rsh.screenDepthTextureCopy->width;
+				const int h = rsh.screenDepthTextureCopy->height;
+				passCB.textureParam = (struct vec4){ .x = (float)w, .y = (float)h, .z = w ? 1.0f / w : 1.0f, .w = h ? 1.0f / h : 1.0f };
+				passCB.zRange = (struct vec4){ .x = rb.zNear, .y = rb.zFar };
+				passCB.softParticlesScale = r_soft_particles_scale->value;
+			}
 			if( programFeatures & GLSL_SHADER_COMMON_DRAWFLAT ) {
 				passCB.floorColor = (struct vec4){ .x = rsh.floorColor[0], .y = rsh.floorColor[1], .z = rsh.floorColor[2] };
 				passCB.wallColor = (struct vec3){ .x = rsh.wallColor[0], .y = rsh.wallColor[1], .z = rsh.wallColor[2] };
@@ -1407,8 +1349,8 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 						descriptors[descriptorCount++] =
 							(struct glsl_descriptor_binding_s){ .descriptor = rsh.worldBrushModel->lightmapImages[i]->samplerBinding, .handle = Create_DescriptorHandle( "lightmapTextureSample" ) };
 					}
-					descriptors[descriptorCount++] =
-						(struct glsl_descriptor_binding_s){ .descriptor = rsh.worldBrushModel->lightmapImages[i]->binding, .registerOffset = i, .handle = Create_DescriptorHandle( "lightmapTexture" ) };
+					descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){
+						.descriptor = rsh.worldBrushModel->lightmapImages[i]->binding, .registerOffset = i, .handle = Create_DescriptorHandle( "lightmapTexture" ) };
 				}
 			}
 
@@ -1423,7 +1365,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			}
 
 			struct glsl_program_s *program =
-				RP_ResolveProgram( GLSL_PROGRAM_TYPE_Q3A_SHADER, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
+				RP_ResolveProgram( GLSL_PROGRAM_TYPE_Q3A_SHADER, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures | ( ( RIIsTargetSelected( RI_DEVICE_API_VK ) && ( rb.renderFlags & RF_SHADOWMAPVIEW ) ) ? GLSL_SHADER_COMMON_DEPTH_ONLY : 0 ) );
 			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline );
 
 			UpdateFrameUBO( cmd, &cmd->uboSceneFrame, &frameData, sizeof( struct FrameCB ) );
@@ -1520,7 +1462,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboSceneObject, .handle = Create_DescriptorHandle( "obj" ) };
 
 			struct glsl_program_s *program =
-				RP_ResolveProgram( GLSL_PROGRAM_TYPE_DISTORTION, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
+				RP_ResolveProgram( GLSL_PROGRAM_TYPE_DISTORTION, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures | ( ( RIIsTargetSelected( RI_DEVICE_API_VK ) && ( rb.renderFlags & RF_SHADOWMAPVIEW ) ) ? GLSL_SHADER_COMMON_DEPTH_ONLY : 0 ) );
 			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline );
 
 			RP_BindPipeline( cmd, pipeline );
@@ -1708,7 +1650,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			constant.outlineHeight = rb.currentEntity->outlineHeight * r_outlines_scale->value;
 
 			struct glsl_program_s *program =
-				RP_ResolveProgram( GLSL_PROGRAM_TYPE_OUTLINE, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
+				RP_ResolveProgram( GLSL_PROGRAM_TYPE_OUTLINE, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures | ( ( RIIsTargetSelected( RI_DEVICE_API_VK ) && ( rb.renderFlags & RF_SHADOWMAPVIEW ) ) ? GLSL_SHADER_COMMON_DEPTH_ONLY : 0 ) );
 			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline );
 
 			RP_BindPipeline( cmd, pipeline );
@@ -1846,7 +1788,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboSceneObject, .handle = Create_DescriptorHandle( "obj" ) };
 
 			struct glsl_program_s *program =
-				RP_ResolveProgram( GLSL_PROGRAM_TYPE_CELSHADE, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
+				RP_ResolveProgram( GLSL_PROGRAM_TYPE_CELSHADE, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures | ( ( RIIsTargetSelected( RI_DEVICE_API_VK ) && ( rb.renderFlags & RF_SHADOWMAPVIEW ) ) ? GLSL_SHADER_COMMON_DEPTH_ONLY : 0 ) );
 
 			if( RP_ProgramHasUniform( program, Create_DescriptorHandle( "pass" ) ) ) {
 				UpdateFrameUBO( cmd, &cmd->uboPassObject, &passCB, sizeof( struct DefaultCellShadeCB ) );
@@ -1880,7 +1822,7 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboSceneFrame, .handle = Create_DescriptorHandle( "frame" ) };
 			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboSceneObject, .handle = Create_DescriptorHandle( "obj" ) };
 
-			struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_FOG, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
+			struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_FOG, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures | ( ( RIIsTargetSelected( RI_DEVICE_API_VK ) && ( rb.renderFlags & RF_SHADOWMAPVIEW ) ) ? GLSL_SHADER_COMMON_DEPTH_ONLY : 0 ) );
 			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline );
 
 			RP_BindPipeline( cmd, pipeline );
@@ -1891,26 +1833,32 @@ void RB_RenderMeshGLSLProgrammed( struct FrameState_s *cmd, const shaderpass_t *
 			break;
 		}
 		case GLSL_PROGRAM_TYPE_YUV: {
-			assert( false );
+			mat4_t texMatrix;
+			Matrix4_Identity( texMatrix );
+			ObjectCB_SetTextureMatrix( &objectData, texMatrix );
 
 			// set shaderpass state (blending, depthwrite, etc)
 			RB_SetShaderpassState_2( cmd, pass->flags );
 
-			// RB_BindImage( 0, pass->images[0] );
-			// RB_BindImage( 1, pass->images[1] );
-			// RB_BindImage( 2, pass->images[2] );
+			UpdateFrameUBO( cmd, &cmd->uboSceneFrame, &frameData, sizeof( struct FrameCB ) );
+			UpdateFrameUBO( cmd, &cmd->uboSceneObject, &objectData, sizeof( struct ObjectCB ) );
+			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboSceneFrame, .handle = Create_DescriptorHandle( "frame" ) };
+			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = cmd->uboSceneObject, .handle = Create_DescriptorHandle( "obj" ) };
 
-			// update uniforms
+			// all three planes share the Y plane's sampler (see defaultYUV.frag.glsl)
+			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = pass->images[0]->samplerBinding, .handle = Create_DescriptorHandle( "u_YUVSampler" ) };
+			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = pass->images[0]->binding, .handle = Create_DescriptorHandle( "u_YUVTextureY" ) };
+			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = pass->images[1]->binding, .handle = Create_DescriptorHandle( "u_YUVTextureU" ) };
+			descriptors[descriptorCount++] = (struct glsl_descriptor_binding_s){ .descriptor = pass->images[2]->binding, .handle = Create_DescriptorHandle( "u_YUVTextureV" ) };
+
 			struct glsl_program_s *program = RP_ResolveProgram( GLSL_PROGRAM_TYPE_YUV, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, programFeatures );
 			struct pipeline_hash_s *pipeline = RP_ResolvePipeline( program, &cmd->pipeline );
 
-			// program = RB_RegisterProgram( GLSL_PROGRAM_TYPE_YUV, NULL, rb.currentShader->deformsKey, rb.currentShader->deforms, rb.currentShader->numdeforms, features );
-			// if( RB_BindProgram( program ) ) {
-			// 	RB_UpdateCommonUniforms( program, pass, texMatrix );
+			RP_BindPipeline( cmd, pipeline );
+			assert( descriptorCount <= Q_ARRAY_COUNT( descriptors ) );
+			RP_BindDescriptorSets( &rsh.device, cmd, program, descriptors, descriptorCount );
 
-			// 	RB_DrawElementsReal( &rb.drawElements );
-			// }
-			// RB_RenderMeshGLSL_YUV( pass, features );
+			FR_CmdDrawElements( cmd, cmd->drawElements.numElems, cmd->drawElements.numInstances, cmd->drawElements.firstElem, cmd->drawElements.firstVert, 0 );
 			break;
 		}
 		default:

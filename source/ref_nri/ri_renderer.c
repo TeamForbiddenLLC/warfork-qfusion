@@ -1770,7 +1770,7 @@ void RICmdBeginRendering( struct RIDevice_s *dev, struct RICmd_s *cmd, const str
 			for( uint32_t i = 0; i < desc->colorNum; i++ )
 				RI_VK_FillColorAttachment( &colorAttachments[i], desc->colors[i].view, desc->colors[i].clear, desc->colors[i].clearColor );
 
-			VkRenderingAttachmentInfo depthAttachment;
+			VkRenderingAttachmentInfo depthAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 			if( desc->hasDepth )
 				RI_VK_FillDepthAttachment( &depthAttachment, desc->depth.view, desc->depth.clear );
 

@@ -31,17 +31,14 @@ typedef uint64_t r_glslfeat_t;
 #include "r_descriptor_pool.h"
 #include "ri_types.h"
 #include "qhash.h"
+#include "r_generated.h"
 
 #define GLSL_BIT(x)							(1ULL << (x))
 
-// Bump on ANY change that alters generated SPIR-V: glsl_nri/*.glsl or their #includes, the
-// glsl_features_* tables, __appendGLSLDeformv, the QF_BUILTIN_GLSL_* headers, the glslang_input_t
-// settings, r_shaderOptimize's default, or the glslang dependency version. Forgetting to bump serves
-// stale SPIR-V out of cache/nri_glsl.cache.bin, and you will debug a shader change that never took
-// effect -- it survives a rebuild because the cache lives under ~/.cache. Invalidation is MANUAL by
-// design (no source hashing); "r_shaderCache 0" is the escape hatch while iterating.
-// See RP_PrecachePrograms.
-#define GLSL_BITS_VERSION					22
+// Generated from the GLSL sources, r_program.c/.h and the glslang version (see
+// ref_base/gen_glsl_cache_key.cmake). Not covered: r_shaderOptimize -- use "r_shaderCache 0" or
+// delete cache/ after changing its default. See RP_PrecachePrograms.
+#define GLSL_BITS_VERSION					R_GLSL_CACHE_KEY_NRI
 
 #define PIPELINE_LAYOUT_HASH_SIZE 4096// need to handle this large number of pipelines 
 #define PIPELINE_REFLECTION_HASH_SIZE 64
@@ -166,6 +163,9 @@ typedef enum glsl_program_type_s
 #define GLSL_SHADER_COMMON_ATM_FOG				GLSL_BIT(28)
 #define GLSL_SHADER_COMMON_ATM_FOG_ADDITIVE		GLSL_BIT(29)
 #define GLSL_SHADER_COMMON_ATM_FOG_MULTIPLICATIVE	GLSL_BIT(30)
+
+// no colour attachment bound: the fragment colour output is compiled out (see QF_DEPTH_ONLY in the fragment shaders)
+#define GLSL_SHADER_COMMON_DEPTH_ONLY			GLSL_BIT(31)
 
 // material prgoram type features
 #define GLSL_SHADER_MATERIAL_LIGHTSTYLE0		GLSL_BIT(32)
@@ -330,9 +330,9 @@ struct glsl_program_s {
 	bool valid;
 	r_glslfeat_t features;
 	char *deformsKey;
-	struct glsl_program_s *hash_next;
 
 	uint32_t vertexInputMask;
+	uint32_t vertexInputIntMask; // subset of vertexInputMask whose shader input is an integer type (uvec/ivec)
 	struct shader_bin_data_s {
 		char *bin;
 		size_t size;
@@ -368,6 +368,7 @@ struct glsl_program_s {
 #if ( DEVICE_IMPL_VULKAN )
 			struct {
 				VkPipeline handle;
+				bool usesDefaultAttribs; // vertex input includes the stride-0 default-attribute stream (see RP_DefaultAttribStream)
 			} vk;
 #endif
 #if ( DEVICE_IMPL_MTL )

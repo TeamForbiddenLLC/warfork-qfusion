@@ -8,16 +8,26 @@ layout(set = DESCRIPTOR_PASS_SET, binding = 2) uniform sampler u_BaseSampler;
 
 layout(set = DESCRIPTOR_PASS_SET, binding = 3) uniform textureCube u_CelShadeTexture;
 layout(set = DESCRIPTOR_PASS_SET, binding = 4) uniform sampler u_CelShadeSampler;
+#if defined(APPLY_DIFFUSE)
 layout(set = DESCRIPTOR_PASS_SET, binding = 5) uniform texture2D u_DiffuseTexture;
 layout(set = DESCRIPTOR_PASS_SET, binding = 6) uniform sampler u_DiffuseSampler;
+#endif
+#if defined(APPLY_DECAL)
 layout(set = DESCRIPTOR_PASS_SET, binding = 7) uniform texture2D u_DecalTexture;
 layout(set = DESCRIPTOR_PASS_SET, binding = 8) uniform sampler u_DecalSampler;
+#endif
+#if defined(APPLY_ENTITY_DECAL)
 layout(set = DESCRIPTOR_PASS_SET, binding = 9) uniform texture2D u_EntityDecalTexture;
 layout(set = DESCRIPTOR_PASS_SET, binding = 10) uniform sampler u_EntityDecalSampler;
+#endif
+#if defined(APPLY_STRIPES)
 layout(set = DESCRIPTOR_PASS_SET, binding = 11) uniform texture2D u_StripesTexture;
 layout(set = DESCRIPTOR_PASS_SET, binding = 12) uniform sampler u_StripesSampler;
+#endif
+#if defined(APPLY_CEL_LIGHT)
 layout(set = DESCRIPTOR_PASS_SET, binding = 13) uniform textureCube u_CelLightTexture;
 layout(set = DESCRIPTOR_PASS_SET, binding = 14) uniform sampler u_CelLightSampler;
+#endif
 
 layout(location = 0) in vec2 v_TexCoord;
 layout(location = 1) in vec3 v_TexCoordCube;
@@ -27,7 +37,11 @@ layout(location = 3) in vec4 v_FrontColor;
 layout(location = 4) in vec3 v_WorldPosition;
 #endif
 
+#ifdef QF_DEPTH_ONLY
+vec4 outFragColor; // no colour attachment: keep it a plain global so the shader has no fragment output
+#else
 layout(location = 0) out vec4 outFragColor;
+#endif
 
 void main(void)
 {
