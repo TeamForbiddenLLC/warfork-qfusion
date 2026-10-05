@@ -56,7 +56,7 @@ list(APPEND REF_GENERATED_DEPS
 	"${CMAKE_CURRENT_SOURCE_DIR}/../ref_gl/r_program.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/../ref_nri/r_program.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/../ref_nri/r_program.h"
-	"${CMAKE_CURRENT_SOURCE_DIR}/../glslang/known_good.json")
+	"${CMAKE_CURRENT_SOURCE_DIR}/../extern/glslang/known_good.json")
 
 add_custom_command(
 	OUTPUT "${REF_GENERATED_HEADER}"
