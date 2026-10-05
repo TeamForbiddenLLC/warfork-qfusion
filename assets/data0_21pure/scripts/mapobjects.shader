@@ -327,12 +327,12 @@ models/mapobjects/teleporter/teleporter_01_b
 	endif
 
 	{
-		material models/mapobjects/teleporter01/teleporter_01_b.png
+		material models/mapobjects/teleporter/teleporter_01_b.png
 		blendfunc blend
 	}
 
 	{
-		map models/mapobjects/teleporter01/teleporter_01_b_shine.png
+		map models/mapobjects/teleporter/teleporter_01_b_shine.png
 		blendFunc GL_ONE GL_ONE
 		rgbGen wave sin .5 .4 0 5
 	}
@@ -350,13 +350,13 @@ models/mapobjects/teleporter/teleporter_01_glow
 	cull front
 	
 	{
-		map models/mapobjects/teleporter01/teleporter_01_glow.png
+		map models/mapobjects/teleporter/teleporter_01_glow.png
 		blendFunc GL_ONE GL_ONE
 		rgbGen wave sin .5 .5 0 .3
 		tcmod scroll 0.02 0
 	}
 	{
-		map models/mapobjects/teleporter01/teleporter_01_glow.png
+		map models/mapobjects/teleporter/teleporter_01_glow.png
 		blendFunc GL_ONE GL_ONE
 		rgbGen wave sin .5 .5 .3 .3
 		tcmod scroll -0.02 0

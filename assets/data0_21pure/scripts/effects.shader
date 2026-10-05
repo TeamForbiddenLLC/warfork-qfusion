@@ -62,7 +62,7 @@ gfx/misc/smokepuff2_dark
 	entityMergable		// allow all the sprites to be merged together
 	softParticle
 	{
-		clampmap gfx/misc/cartoon_smokepuff2_dark.png
+		clampmap gfx/misc/cartoon_smokepuff2.png
 		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
 		rgbGen		vertex
 		alphaGen	vertex
@@ -75,7 +75,7 @@ gfx/misc/smokepuff1_dark
 	entityMergable		// allow all the sprites to be merged together
 	softParticle
 	{
-		clampmap gfx/misc/cartoon_smokepuff1_dark.png
+		clampmap gfx/misc/cartoon_smokepuff1.png
 		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
 		rgbGen		vertex
 		alphaGen	vertex
@@ -88,7 +88,7 @@ gfx/misc/smokepuff3_dark
 	entityMergable		// allow all the sprites to be merged together
 	softParticle
 	{
-		clampmap gfx/misc/cartoon_smokepuff3_dark.png
+		clampmap gfx/misc/cartoon_smokepuff3.png
 		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
 		rgbGen		vertex
 		alphaGen	vertex

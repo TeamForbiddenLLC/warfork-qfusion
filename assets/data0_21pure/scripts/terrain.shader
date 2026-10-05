@@ -33,7 +33,7 @@ textures/terrain/rocks001_512x512
 	surfaceparm dust
 
 	{
-		material textures/terrain/rocks001_1024x1024.png textures/terrain/rocks001_1024x1024_norm.png
+		material textures/terrain/rocks001_512x512.png textures/terrain/rocks001_512x512_norm.png
 	}
 }
 
@@ -47,7 +47,7 @@ textures/terrain/rocks002_512x512
 	surfaceparm dust
 
 	{
-		material textures/terrain/rocks002_1024x1024.png textures/terrain/rocks001_1024x1024_norm.png
+		material textures/terrain/rocks002_512x512.png textures/terrain/rocks002_512x512_norm.png
 	}
 }
 
@@ -59,7 +59,7 @@ textures/terrain/rockwall01
 	q3map_chamfer_concavewidth 4
 
 	{
-		material textures/terrain/rockwall01_1024x1024.png textures/terrain/rockwall01_1024x1024_norm.png
+		material textures/terrain/rockwall01.png textures/terrain/rockwall01_norm.png
 	}
 }
 

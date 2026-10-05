@@ -586,7 +586,7 @@ textures/decals/graffityTEAMZISSOU32_darken
 	nopicmip
 
 	{
-		clampmap map textures/decals/graffityTEAMZISSOU32.png
+		clampmap textures/decals/graffityTEAMZISSOU32.png
 		blendFunc filter
 	}
 }
