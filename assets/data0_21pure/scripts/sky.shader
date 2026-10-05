@@ -8,7 +8,7 @@ textures/sky/pinksky
 	surfaceparm sky
 	surfaceparm nodlight
 
-	skyParms - 2048 -
+	skyParms - - -
 
 	{
 		map textures/sky/pinksky2.blend.png
@@ -43,7 +43,7 @@ textures/sky/violetsky
 	surfaceparm sky
 	surfaceparm nodlight
 
-	skyParms - 2048 -
+	skyParms - - -
 
 	{
 		map textures/sky/violetsky2.blend.png
@@ -78,7 +78,7 @@ textures/sky/purplesky
 	surfaceparm sky
 	surfaceparm nodlight
 
-	skyParms - 2048 -
+	skyParms - - -
 
 	{
 		map textures/sky/purplesky2.blend.png
@@ -114,7 +114,7 @@ textures/sky/indigosky
 	surfaceparm sky
 	surfaceparm nodlight
 
-	skyParms - 2048 -
+	skyParms - - -
 
 	{
 		map textures/sky/indigosky2.blend.png
@@ -149,7 +149,7 @@ textures/sky/orangesky
 	surfaceparm sky
 	surfaceparm nodlight
 
-	skyParms - 2048 -
+	skyParms - - -
 
 	{
 		map textures/sky/orangesky2.blend.png

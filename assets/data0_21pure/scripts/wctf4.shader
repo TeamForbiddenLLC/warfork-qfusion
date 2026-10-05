@@ -11,7 +11,7 @@ textures/wctf4/sky
 	surfaceparm nomarks
 	q3map_surfacelight 25
 	q3map_sun 1 1 1 55 110 75
-	skyparms env/wdm1env 512 -
+	skyparms env/wdm1env - -
 
 	{
 		map textures/cha0s_ws/ch_sky_night_front.png

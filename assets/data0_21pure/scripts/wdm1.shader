@@ -11,13 +11,13 @@ textures/wdm1/sky
 
  if textureCubeMap
 
-	skyparms env/wdm1env 512 -
+	skyparms env/wdm1env - -
 
  endif
 
  if ! textureCubeMap
 
-	skyParms - 512 -
+	skyParms - - -
 	{
 		map textures/cha0s_ws/ch_sky_night_back.png
 		tcMod scale 2 2

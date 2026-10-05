@@ -95,7 +95,7 @@ textures/wdm9/sky_s
 	q3map_surfacelight 150
 	q3map_skyLight 80 6
 
-	skyParms - 2048 -
+	skyParms - - -
 
 	{
 		map textures/sky/violetsky2.blend.png

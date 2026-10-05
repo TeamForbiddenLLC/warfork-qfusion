@@ -85,7 +85,7 @@ quake1/Warp_Template
 
 quake1/Sky_Template
 {
-	skyParms - 378 -
+	skyParms - - -
 
 	{
 		map $right $1
@@ -212,5 +212,5 @@ quake2/AlphaWarp_Template
 
 quake2/Skybox_Template
 {
-	skyParms2 $1 512 -
+	skyParms2 $1 - -
 }

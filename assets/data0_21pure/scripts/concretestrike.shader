@@ -7,9 +7,9 @@ textures/concretestrike/sky
 	surfaceparm sky
 	q3map_surfacelight 82
 	q3map_sun 1 1 0.85 108 170 70 // <red> <green> <blue> <intensity> <degrees> <elevation>
-	skyParms - 512 -
+	skyParms - - -
 
-	skyparms env/cssky/cube 512 -
+	skyparms env/cssky/cube - -
 }
 
 textures/concretestrike/sky_newlight
@@ -21,7 +21,7 @@ textures/concretestrike/sky_newlight
 
 	q3map_sunExt 1 0.940627 0.783352 100 125 70 2 32 // <red> <green> <blue> <intensity> <degrees> <elevation> <deviance> <samples>
 
-	skyparms env/cssky/cube 512 -
+	skyparms env/cssky/cube - -
 }
 
 textures/concretestrike/sky_surfacelight
@@ -39,7 +39,7 @@ textures/concretestrike/sky_surfacelight
 	//q3map_sun 1 0.940627 0.783352 150 125 70 // <red> <green> <blue> <intensity> <degrees> <elevation>
 	//q3map_surfacelight 82
 
-	skyparms env/cssky/cube 512 -
+	skyparms env/cssky/cube - -
 }
 
 textures/concretestrike/stucco01b_nobounce

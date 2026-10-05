@@ -3111,7 +3111,7 @@ textures/melee/blacksky
 	surfaceparm nolightmap
 	surfaceparm sky
 
-	skyParms - 512 -
+	skyParms - - -
 	{
 		map textures/cleansurface/black.png
 	}

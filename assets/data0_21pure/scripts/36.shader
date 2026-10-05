@@ -7,7 +7,7 @@ textures/36_others/36sky2
 	surfaceparm nomarks
 	q3map_surfacelight 20
 	q3map_sun 1 1 1 40 110 75
-	skyparmssides env/36sky rt rt rt env/36sky_up rt 512 -
+	skyparmssides env/36sky rt rt rt env/36sky_up rt 1500 -
 	{
 		map textures/cha0s_ws/ch_sky_night_front.png
 		blendfunc add
@@ -23,7 +23,7 @@ textures/36_others/36sky3
 	surfaceparm noimpact
 	surfaceparm nolightmap
 	surfaceparm nomarks
-	skyparmssides env/36sky rt rt rt rt rt 512 -
+	skyparmssides env/36sky rt rt rt rt rt 1500 -
 }
 
 textures/36_others/36tele2

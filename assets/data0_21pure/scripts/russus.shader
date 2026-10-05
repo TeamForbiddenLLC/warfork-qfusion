@@ -118,7 +118,7 @@ textures/russus/russus_sky
 //	q3map_sun 0.2 0.2 0.2 80 0 90
 
 	if textureCubeMap 
-		skyparms env/city1 1024 -
+		skyparms env/city1 - -
 	endif
 
 	if ! textureCubeMap //for 3d cards not supporting cubemaps 

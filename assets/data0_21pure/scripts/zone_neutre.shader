@@ -61,7 +61,7 @@ textures/zone_neutre/skydarkblue
 	surfaceparm sky
 	q3map_surfacelight 0
 	q3map_sun 1 1 1 20 90 90
-	skyParms - 512 -
+	skyParms - - -
 	{
 		map textures/cha0s_ws/ch_sky_night_back.png
 		tcMod scale 2 2

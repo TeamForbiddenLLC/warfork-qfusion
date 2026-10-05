@@ -69,7 +69,7 @@ textures/wdm7/sky
 	surfaceparm sky
 	q3map_surfacelight 80
 	q3map_sun 1 1 0.75 155 170 70
-	skyParms - 512 -
+	skyParms - - -
 
 	{
 		map textures/Factory/blx_wt3_sky_orange.png

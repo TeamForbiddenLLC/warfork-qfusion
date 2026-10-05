@@ -25,7 +25,7 @@ textures/wdm6/sky_s
 	surfaceparm nolightmap
 	surfaceparm sky
 
-	skyParms - 2048 -
+	skyParms - - -
 
 	{
 		map textures/blxbis/skyturq_scroll2.png

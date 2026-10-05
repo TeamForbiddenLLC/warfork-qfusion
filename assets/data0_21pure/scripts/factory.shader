@@ -6,7 +6,7 @@ textures/factory/blx_wt3_sky_orange_shader_reverse
 	surfaceparm sky
 	q3map_surfacelight 20
 	q3map_sun 1 1 0.75 155 350 70
-	skyParms - 512 -
+	skyParms - - -
 
 	{
 		map textures/factory/blx_wt3_sky_orange.png
@@ -31,7 +31,7 @@ textures/factory/blx_wt3_sky_orange_shader
 	surfaceparm sky
 	q3map_surfacelight 20
 	q3map_sun 1 1 0.75 155 170 70
-	skyParms - 512 -
+	skyParms - - -
 
 	{
 		map textures/factory/blx_wt3_sky_orange.png

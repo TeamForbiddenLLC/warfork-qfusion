@@ -11,7 +11,7 @@ textures/wdm4/sky4_s
 	//q3map_skyLight 80 6
 	//q3map_lightmapFilterRadius 0 2
 
-	skyParms - 2048 -
+	skyParms - - -
 
 	{
 		map textures/blxbis/skyturq_scroll2.png

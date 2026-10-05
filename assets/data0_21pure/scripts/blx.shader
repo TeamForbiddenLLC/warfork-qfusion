@@ -551,7 +551,7 @@ textures/blx/new_sky
 	surfaceparm sky
 	q3map_surfacelight 200
 	q3map_sun 0.27 0.4 0.51 155 170 33
-	skyParms - 512 -
+	skyParms - - -
 	{
 		map textures/blx/new_sky.png
 		tcMod scale 8 8

@@ -96,7 +96,7 @@ textures/blx_wtest3/sky
 	surfaceparm sky
 	q3map_surfacelight 1200
 //	q3map_sun 0 0 0.5 255 255 255
-	skyParms - 512 -
+	skyParms - - -
 	{
 		map textures/blx_wtest3/blx_wt3_sky.png
 		tcMod scale 8 8
