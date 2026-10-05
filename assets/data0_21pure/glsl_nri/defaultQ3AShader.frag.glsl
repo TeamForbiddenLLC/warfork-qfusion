@@ -9,11 +9,15 @@ layout(set = DESCRIPTOR_PASS_SET, binding = 3) uniform sampler u_BaseSampler;
 #else
 	layout(set = DESCRIPTOR_PASS_SET, binding = 5) uniform texture2D u_BaseTexture;
 #endif
+#if defined(APPLY_SOFT_PARTICLE)
 layout(set = DESCRIPTOR_PASS_SET, binding = 1) uniform sampler u_DepthSampler;
 layout(set = DESCRIPTOR_PASS_SET, binding = 2) uniform texture2D u_DepthTexture;
+#endif
 
+#ifdef NUM_LIGHTMAPS
 layout(set = DESCRIPTOR_GLOBAL_SET, binding = 0) uniform sampler lightmapTextureSample;
 layout(set = DESCRIPTOR_GLOBAL_SET, binding = 1) uniform texture2D lightmapTexture[16];
+#endif
 
 layout(location = 0) in vec3 v_Position; 
 layout(location = 1) in vec3 v_Normal;
@@ -35,11 +39,19 @@ layout(location = 4) in vec4 v_LightmapTexCoord01;
 layout(location = 5) in vec4 v_LightmapTexCoord23;
 layout(location = 6) flat in uvec4 v_LightmapLayer0123;
 layout(location = 7) in vec2 v_FogCoord;
+#if defined(APPLY_SOFT_PARTICLE)
+layout(location = 10) in float v_Depth;
+#endif
 
+#ifdef QF_DEPTH_ONLY
+vec4 outFragColor; // no colour attachment: keep it a plain global so the shader has no fragment output
+#else
 layout(location = 0) out vec4 outFragColor;
+#endif
 
 
 
+#ifdef NUM_LIGHTMAPS
 // for non-uniform access
 vec4 lightMapAccess(vec2 coord, uint index) {
 	switch(index) {
@@ -77,6 +89,7 @@ vec4 lightMapAccess(vec2 coord, uint index) {
 			return texture(sampler2D(lightmapTexture[15],lightmapTextureSample), coord);
 	}
 }
+#endif // NUM_LIGHTMAPS
 
 
 void main(void)
@@ -177,10 +190,10 @@ void main(void)
 
 #if defined(APPLY_SOFT_PARTICLE)
 	{
-		vec2 tc = ScreenCoord * pass.textureParam.zw;
+		vec2 tc = gl_FragCoord.xy * pass.textureParam.zw;
 
-		float fragdepth = ZRange.x*ZRange.y/(ZRange.y - texture(sampler2D(u_DepthTexture,u_DepthSampler), tc).r*(pass.zRange.y-pass.zRange.x));
-		flaot partdepth = Depth;
+		float fragdepth = pass.zRange.x*pass.zRange.y/(pass.zRange.y - texture(sampler2D(u_DepthTexture,u_DepthSampler), tc).r*(pass.zRange.y-pass.zRange.x));
+		float partdepth = v_Depth;
 		
 		float d = max((fragdepth - partdepth) * pass.softParticlesScale, 0.0);
 		float softness = 1.0 - min(1.0, d);

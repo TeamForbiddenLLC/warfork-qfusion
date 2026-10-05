@@ -51,26 +51,32 @@ layout(set = DESCRIPTOR_OBJECT_SET, binding = 0) uniform ObjectCB {
     vec4 textureMatrix[2];
 } obj;
 
+#ifdef APPLY_INSTANCED_TRANSFORMS
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 1) uniform TransformCB { 
   vec4 instancePoints[MAX_UNIFORM_INSTANCES * 2];
 }; 
 #define a_InstanceQuat instancePoints[gl_InstanceIndex*2]
 #define a_InstancePosAndScale instancePoints[gl_InstanceIndex*2+1]
+#endif
 
 #define MAX_GLSL_BONES 128
+#ifdef QF_NUM_BONE_INFLUENCES
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 2) uniform BoneCB {
   vec4 dualQuats[MAX_GLSL_BONES * 2];
 } bones;
+#endif
 
 struct DynLight {
     vec4 position;
     vec4 diffuseAndInvRadius;
 };
 
+#ifdef NUM_DLIGHTS
 layout(set = DESCRIPTOR_OBJECT_SET, binding = 3) uniform DynamicLightCB {
     int numberLights;
     DynLight dynLights[32];
 } lights;
+#endif
 
 
 layout(set = DESCRIPTOR_FRAME_SET, binding = 0) uniform FrameCB {

@@ -20,10 +20,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef R_PROGRAM_H
 #define R_PROGRAM_H
 
+#include "r_generated.h"
+
 typedef uint64_t r_glslfeat_t;
 
 #define GLSL_BIT(x)							(1ULL << (x))
-#define GLSL_BITS_VERSION					23
+// generated, see ref_base/gen_glsl_cache_key.cmake; driver-specific hash is keyed separately at runtime
+#define GLSL_BITS_VERSION					R_GLSL_CACHE_KEY_GL
 
 #define DEFAULT_GLSL_MATERIAL_PROGRAM			"defaultMaterial"
 #define DEFAULT_GLSL_DISTORTION_PROGRAM			"defaultDistortion"

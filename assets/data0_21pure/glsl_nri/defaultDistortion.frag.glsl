@@ -15,7 +15,11 @@ layout(set = DESCRIPTOR_PASS_SET, binding = 5) uniform sampler u_ReflectionSampl
 layout(set = DESCRIPTOR_PASS_SET, binding = 6) uniform texture2D u_RefractionTexture;
 layout(set = DESCRIPTOR_PASS_SET, binding = 7) uniform sampler u_RefractionSampler;
 
+#ifdef QF_DEPTH_ONLY
+vec4 outFragColor; // no colour attachment: keep it a plain global so the shader has no fragment output
+#else
 layout(location = 0) out vec4 outFragColor;
+#endif
 
 void main(void)
 {

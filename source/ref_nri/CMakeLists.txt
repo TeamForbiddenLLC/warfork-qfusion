@@ -34,6 +34,7 @@ add_library(ref_nri SHARED ${REF_NRI_HEADERS} ${REF_NRI_COMMON_SOURCES} ${REF_NR
 target_compile_definitions(ref_nri PRIVATE DEVICE_SUPPORT_${RI_BACKEND})
 # "." last so shared ref_base/*.c sources can resolve this renderer's own r_local.h
 target_include_directories(ref_nri PRIVATE ${STB_INCLUDE_DIR} "../ref_base" ".")
+target_link_libraries(ref_nri PRIVATE ref_generated)
 target_include_directories(ref_nri PRIVATE ${MINIZ_INCLUDE_DIR})
 # glslang is the GLSL->SPIR-V front on every platform (SPIR-V is cross-compiled to MSL on macOS).
 target_link_libraries(ref_nri PRIVATE glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV glslang::SPVRemapper qcore Tracy::TracyClient)

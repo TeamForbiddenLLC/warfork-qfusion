@@ -40,3 +40,36 @@ file(GLOB REF_GL_COMMON_SOURCES
 #endif()
 
 
+
+
+# Content-derived shader cache keys (replaces the manual GLSL_BITS_VERSION bump).
+# Consumers: link ref_generated and #include "r_generated.h".
+set(REF_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+set(REF_GENERATED_HEADER "${REF_GENERATED_DIR}/r_generated.h")
+set(REF_ASSETS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../assets/data0_21pure")
+
+file(GLOB_RECURSE REF_GENERATED_DEPS CONFIGURE_DEPENDS
+	"${REF_ASSETS_DIR}/glsl/*"
+	"${REF_ASSETS_DIR}/glsl_nri/*")
+list(APPEND REF_GENERATED_DEPS
+	"${CMAKE_CURRENT_SOURCE_DIR}/../ref_gl/r_program.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/../ref_gl/r_program.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/../ref_nri/r_program.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/../ref_nri/r_program.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/../extern/glslang/known_good.json")
+
+add_custom_command(
+	OUTPUT "${REF_GENERATED_HEADER}"
+	COMMAND ${CMAKE_COMMAND}
+		-DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/..
+		-DASSETS_DIR=${REF_ASSETS_DIR}
+		-DOUT=${REF_GENERATED_HEADER}
+		-P "${CMAKE_CURRENT_SOURCE_DIR}/gen_glsl_cache_key.cmake"
+	DEPENDS ${REF_GENERATED_DEPS} "${CMAKE_CURRENT_SOURCE_DIR}/gen_glsl_cache_key.cmake"
+	COMMENT "Generating r_generated.h (shader cache keys)"
+	VERBATIM)
+add_custom_target(ref_generated_header DEPENDS "${REF_GENERATED_HEADER}")
+
+add_library(ref_generated INTERFACE)
+target_include_directories(ref_generated INTERFACE "${REF_GENERATED_DIR}")
+add_dependencies(ref_generated ref_generated_header)
