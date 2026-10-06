@@ -53,42 +53,6 @@ textures/zone_neutre/skyblue
 	}
 }
 
-textures/zone_neutre/skydarkblue
-{
-	qer_editorimage textures/cha0s_ws/ch_sky_night_back.png
-	surfaceparm noimpact
-	surfaceparm nolightmap
-	surfaceparm sky
-	q3map_surfacelight 0
-	q3map_sun 1 1 1 20 90 90
-	skyParms - - -
-	{
-		map textures/cha0s_ws/ch_sky_night_back.png
-		tcMod scale 2 2
-		tcMod scroll 0.01 0.01
-		depthWrite
-	}
-	{
-		map textures/cha0s_ws/ch_sky_night_front.png
-		blendfunc add
-		tcMod scale 3 3
-		tcMod scroll 0.02 0.02
-	}
-}
-
-textures/zone_neutre/znskybox
-{
-	qer_editorimage textures/cha0s_ws/ch_sky_night_back.png
-	surfaceparm noimpact
-	surfaceparm nolightmap
-	q3map_globaltexture
-	q3map_lightsubdivide 256
-	q3map_surfacelight 0
-	surfaceparm sky
-	q3map_sun 1 1 1 20 90 90
-	skyparms env/znsky/znsky - -
-}
-
 
 //shader du portal orange avec la spirale qui tourne n'importe comment
 textures/zone_neutre/portal
@@ -128,7 +92,7 @@ textures/zone_neutre/portal
 
 
 //shader du portal ctf
-//ne fonctione pas dutout, à corriger.
+//ne fonctione pas dutout, ï¿½ corriger.
 textures/zone_neutre/portalcft
 {
 	qer_editorimage textures/zone_neutre/portalcft.png
@@ -163,7 +127,7 @@ textures/zone_neutre/portalcft
 
 
 //shader du portal de test
-//ne fonctionne pas dutout; à corriger.
+//ne fonctionne pas dutout; ï¿½ corriger.
 textures/zone_neutre/test
 {
 	qer_editorimage textures/zone_neutre/test.png
@@ -183,8 +147,8 @@ textures/zone_neutre/test
 }
 
 //shader pour l'outline du cell-shading q3map2
-//on peut passer l'offset à -1 pour une outline très fine et très propre,
-//mais de loin, l'outline devient presque invisible, à tweaker selon la map.
+//on peut passer l'offset ï¿½ -1 pour une outline trï¿½s fine et trï¿½s propre,
+//mais de loin, l'outline devient presque invisible, ï¿½ tweaker selon la map.
 textures/zone_neutre/celshader
 {
 	qer_editorimage textures/zone_neutre/celshader.png

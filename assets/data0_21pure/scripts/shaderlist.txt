@@ -2,7 +2,6 @@ common
 extra
 world
 mapobjects
-mapmodels
 billboard
 sky
 
@@ -52,32 +51,19 @@ concrete
 metal
 metal_vertex
 glass
+window
+neon
 
 wsw_flareshalos
 wsw_city1
 wsw_cave1
 
 alley
-concretestrike
 deleo
 courtyard
 reactors
 shepas
 depot
-
-wdm1
-wdm6
-wdm4
-wdm9
-wdm11
-nate
-wdm7
-wctf4
-wdm17
-tutorial
-window
-
-neon
 
 etrtex
 scifi_interior

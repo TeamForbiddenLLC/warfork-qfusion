@@ -279,7 +279,6 @@ textures/wsw_city1/tubes1_bulge
 textures/wsw_city1/tubes1
 {
 	qer_editorimage textures/pipes/tubes1.png
-	deformVertexes bulge 4 7 -1.5 1
 
 	{
 		material textures/pipes/tubes1.png
@@ -301,6 +300,37 @@ textures/wsw_city1/tech_concrete_tiles
 	qer_editorimage textures/concrete/concret7
 	{
 		material textures/tiles/concrete_tiles
+	}
+}
+
+textures/wsw_city1/metal1_vertex
+{
+	qer_editorimage textures/metal/orangewall
+	surfaceparm nolightmap
+
+	{
+		rgbgen vertex
+		material textures/metal/orangewall
+	}
+}
+
+///// wsw_cave1
+
+textures/wsw_cave1/scratchedmetal1
+{
+	qer_editorimage textures/metal/scratchedmetal.png
+
+	{
+		material textures/metal/scratchedmetal
+	}
+}
+
+textures/wsw_cave1/scratchedmetal2
+{
+	qer_editorimage textures/metal/scratchedmetal.png
+
+	{
+		material textures/metal/scratchedmetal
 	}
 }
 
@@ -509,6 +539,123 @@ textures/hexagons/darkblue
 		material textures/plastic/blue.png $blankbumpimage textures/plastic/grey_gloss.png
 	}
 }
+
+
+/////// BLXBIS
+
+
+textures/blxbis/scratches0002_tiled
+{	
+	qer_editorimage textures/metal/scratchedmetal
+
+	{
+		material textures/metal/scratchedmetal
+	}
+}
+
+////// UNUSED SKY SHADERS /////////
+
+textures/sky/purplesky
+{
+	qer_editorimage textures/sky/purplesky1.blend.png
+	surfaceparm noimpact
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	surfaceparm sky
+	surfaceparm nodlight
+
+	skyParms - - -
+
+	{
+		map textures/sky/purplesky2.blend.png
+		tcMod scale 4 4
+		tcMod scroll 0 -0.05
+		rgbgen const 0.25 0.25 0.25
+	}
+
+	{
+		map textures/sky/purplesky1.blend.png
+		tcMod scale 4 4
+		tcMod scroll 0 0.05
+		rgbgen const 0.25 0.25 0.275
+		blendFunc add
+	}
+
+	{
+		map textures/sky/purplesky2.blend.png
+		tcMod scale 4 4
+		tcMod scroll 0 0.045
+		rgbgen const 0.25 0.25 0.25
+		blendFunc add
+	}
+}
+
+
+textures/sky/indigosky
+{
+	qer_editorimage textures/sky/indigosky1.blend.png
+	surfaceparm noimpact
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	surfaceparm sky
+	surfaceparm nodlight
+
+	skyParms - - -
+
+	{
+		map textures/sky/indigosky2.blend.png
+		tcMod scale 4 4
+		tcMod scroll 0 -0.05
+		rgbgen const 0.25 0.25 0.25
+	}
+
+	{
+		map textures/sky/indigosky1.blend.png
+		tcMod scale 4 4
+		tcMod scroll 0 0.05
+		rgbgen const 0.25 0.25 0.275
+		blendFunc add
+	}
+
+	{
+		map textures/sky/indigosky2.blend.png
+		tcMod scale 4 4
+		tcMod scroll 0 0.045
+		rgbgen const 0.25 0.25 0.25
+		blendFunc add
+	}
+}
+
+// MIRAMAR
+// high res 1024^2 environment map
+// ships as png.
+// 
+// 
+// By Jockum Skoglund aka hipshot
+// hipshot@zfight.com
+// www.zfight.com
+// Stockholm, 2005 08 25
+// 
+// 
+// Modify however you like, just cred me for my work, maybe link to my page.
+
+textures/sky/miramar
+{
+	qer_editorimage env/miramar/miramar_ft.png
+	surfaceparm noimpact
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	surfaceparm sky
+	surfaceparm nodlight
+
+	skyparms env/miramar/miramar - -
+}
+
+
+
+
+
+
 
 ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////

@@ -148,11 +148,67 @@ models/mapobjects/house4/house4
 
 //==================================================
 
+models/mapobjects/jumppad/jumppad1
+{
+	qer_editorimage models/mapobjects/jumppad/jumppad1
+	q3map_maxsamplesize 4
+	q3map_minsmooth 2.0
+	surfaceparm nonsolid
+	surfaceparm nomarks
+	nopicmip
+	glossExponent 100
+
+	{
+		material models/mapobjects/jumppad/jumppad1 $blankBumpImage models/mapobjects/jumppad/jumppad1_gloss
+	}
+	
+	{
+		map models/mapobjects/jumppad/jumppad1_light.png
+		blendFunc add
+	}
+}
+
+models/mapobjects/jumppad/u_ring
+{
+	cull none
+	nopicmip
+	surfaceparm nolightmap
+	surfaceparm nonsolid
+	surfaceparm nomarks
+	surfaceparm trans
+	deformVertexes move 0 0 4 sin 0 1 0 0.5
+	{
+		map models/mapobjects/jumppad/u_ring.png
+		blendfunc add
+		alphaFunc GT0
+	}
+}
+
+models/mapobjects/jumppad/l_ring
+{
+	cull none
+	nopicmip
+	surfaceparm nolightmap
+	surfaceparm nonsolid
+	surfaceparm nomarks
+	surfaceparm trans
+	deformVertexes move 0 0 8 sin 0 1 0.5 0.6
+
+	{
+		map models/mapobjects/jumppad/l_ring.png
+		blendfunc add
+		alphaFunc GT0
+	}
+}
+
 models/mapobjects/jumppad/flame
 {
 	cull none
 	nopicmip
 	surfaceparm nolightmap
+	surfaceparm nonsolid
+	surfaceparm nomarks
+	surfaceparm trans
 	deformVertexes autosprite2
 
 	{
@@ -163,32 +219,6 @@ models/mapobjects/jumppad/flame
 	}
 }
 
-models/mapobjects/jumppad/jumppad1
-{
-	cull none
-	nopicmip
-	qer_editorimage models/mapobjects/jumppad/jumppad1.png
-
-	if deluxe
-	{
-		material models/mapobjects/jumppad/jumppad1_diffuse.png models/mapobjects/jumppad/jumppad1_norm.png models/mapobjects/jumppad/jumppad1_gloss.png
-	}
-	endif
-
-	if ! deluxe 
-	{
-		map $lightmap
-	}
-	{
-		map models/mapobjects/jumppad/jumppad1.png
-		blendfunc filter
-	}
-	endif
-	{
-		map models/mapobjects/jumppad/jumppad1_light.png
-		blendFunc add
-	}
-}
 
 models/mapobjects/jumppad1/diffuse
 {
@@ -230,33 +260,6 @@ models/mapobjects/jumppad1/diffuse_a
 	{
 		animmap 8 models/mapobjects/jumppad1/glow_a_01.png models/mapobjects/jumppad1/glow_a_02.png  models/mapobjects/jumppad1/glow_a_03.png 
 		blendfunc add
-	}
-}
-
-models/mapobjects/jumppad/u_ring
-{
-	cull none
-	nopicmip
-	surfaceparm nolightmap
-	deformVertexes move 0 0 4 sin 0 1 0 0.5
-	{
-		map models/mapobjects/jumppad/u_ring.png
-		blendfunc add
-		alphaFunc GT0
-	}
-}
-
-models/mapobjects/jumppad/l_ring
-{
-	cull none
-	nopicmip
-	surfaceparm nolightmap
-	deformVertexes move 0 0 8 sin 0 1 0.5 0.6
-
-	{
-		map models/mapobjects/jumppad/l_ring.png
-		blendfunc add
-		alphaFunc GT0
 	}
 }
 
@@ -327,12 +330,12 @@ models/mapobjects/teleporter/teleporter_01_b
 	endif
 
 	{
-		material models/mapobjects/teleporter01/teleporter_01_b.png
+		material models/mapobjects/teleporter/teleporter_01_b.png
 		blendfunc blend
 	}
 
 	{
-		map models/mapobjects/teleporter01/teleporter_01_b_shine.png
+		map models/mapobjects/teleporter/teleporter_01_b_shine.png
 		blendFunc GL_ONE GL_ONE
 		rgbGen wave sin .5 .4 0 5
 	}
@@ -370,6 +373,7 @@ mapobjects_leds_iron_frame
 {
 	qer_editorimage models/mapobjects/lights/leds_iron_frame
 	surfaceparm nolightmap
+	surfaceparm nonsolid
 	surfaceparm nomarks
 
 	{
@@ -382,6 +386,7 @@ mapobjects_leds_orange
 {	
 	qer_editorimage models/mapobjects/lights/leds_light_orange.png
 	surfaceparm nolightmap
+	surfaceparm nonsolid
 	surfaceparm nomarks
 
 	{
@@ -394,6 +399,7 @@ models_mapobjects_decor_misc_powerline
 {
 	qer_editorimage models/mapobjects/decor_misc/powerline
 	surfaceparm nolightmap
+	surfaceparm nonsolid
 	surfaceparm nomarks
 
 	{
@@ -937,6 +943,88 @@ models/mapobjects/orb/orb
 	{
 		material models/mapobjects/orb/orb
 		rgbgen vertex
+	}
+}
+
+
+//=========== Nate's models ========================
+
+models/mapobjects/nateleaf1/tree2
+{
+    cull disable
+   	surfaceparm lightfilter      // Use texture's RGB and alpha channels to generate colored alpha
+	surfaceparm nonsolid
+	surfaceparm nomarks
+	surfaceparm noimpact
+	surfaceparm nolightmap
+
+        {
+                map models/mapobjects/nateleaf1/tree2.png
+                alphaFunc GE128
+		depthWrite
+		rgbGen vertex
+        }
+}
+
+textures/natestah/leaf2
+{
+	surfaceparm lightfilter      // Use texture's RGB and alpha channels to generate colored alpha
+	surfaceparm nonsolid
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	surfaceparm noimpact
+	cull disable
+	{
+		map textures/natestah/leaf2.png
+		rgbGen Vertex 
+		depthWrite
+		alphaFunc GE128
+	}
+	{
+		map $lightmap 
+		blendfunc filter
+		rgbGen identity
+	}
+}
+
+textures/natestah/nateswater
+{
+	qer_editorimage textures/natestah/nateswater.png
+	surfaceparm nonsolid
+	surfaceparm trans
+	surfaceparm water
+	cull disable
+	deformVertexes wave 64 sin 0.25 0.25 0 0.5 
+	qer_trans 0.5
+	q3map_globaltexture
+	{
+		map textures/natestah/nateswater.png
+		blendfunc add
+		rgbGen identity
+		tcMod scale 0.5 0.5
+		tcMod scroll 0.025 0.01
+	}
+
+	{
+		map $lightmap 
+		blendfunc filter
+		rgbGen identity
+	}
+}
+
+textures/natestah/nateweb
+{
+	qer_editorimage textures/natestah/nateweb.png
+	surfaceparm noimpact
+	surfaceparm nomarks
+	surfaceparm trans
+	surfaceparm nonsolid
+	surfaceparm nolightmap
+	cull disable	
+	{
+		map textures/natestah/nateweb.png
+		blendfunc add
+		rgbgen identity
 	}
 }
 

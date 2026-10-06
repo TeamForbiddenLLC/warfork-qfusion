@@ -85,30 +85,6 @@ textures/blx_houses/blx_grid2
 	}
 }
 
-textures/blx_houses/ctf_sky
-{
-	qer_editorimage textures/blx_houses/ctf_sky.png
-	surfaceparm noimpact
-	surfaceparm nomarks
-	surfaceparm nolightmap
-	surfaceparm sky
-	q3map_surfacelight 200
-	q3map_sun 0.27 0.4 0.51 155 170 33
-	skyParms - - -
-	{
-		map textures/blx_houses/ctf_sky.png
-		tcMod scale 8 8
-		tcMod scroll 0.0 0.0
-		depthWrite
-	}
-	{
-		map textures/cha0s_ws/ch_sky_night_front.png
-		blendfunc add
-		tcMod scale 2 2
-		tcMod scroll 0.01 0.01
-	}
-}
-
 textures/blx_houses/portal
 {
    portal   //flags surface to behave as a portal

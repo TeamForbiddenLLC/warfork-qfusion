@@ -106,33 +106,3 @@ textures/russus/teleporter
 	endif
 }
 
-textures/russus/russus_sky
-{
-	nopicmip
-	qer_editorimage textures/blx/new_sky.png
-	surfaceparm noimpact
-	surfaceparm nolightmap
-	surfaceparm nomarks
-	surfaceparm sky
-	q3map_surfacelight 200
-//	q3map_sun 0.2 0.2 0.2 80 0 90
-
-	if textureCubeMap 
-		skyparms env/city1 - -
-	endif
-
-	if ! textureCubeMap //for 3d cards not supporting cubemaps 
-	{
-		map textures/blx/new_sky.png
-		tcMod scale 8 8
-		tcMod scroll 0.0 0.0
-		depthWrite
-	}
-	{
-		map textures/cha0s_ws/ch_sky_night_front.png
-		blendfunc add
-		tcMod scale 2 2
-		tcMod scroll 0.01 0.01
-	}
-	endif
-}

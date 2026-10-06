@@ -222,3 +222,13 @@ textures/metal/chrome_rusty
 	}
 }
 
+
+textures/metal/scratchedmetal
+{
+	qer_editorimage textures/metal/scratchedmetal
+	glossIntensity 0.5
+	
+	{
+		material textures/metal/scratchedmetal
+	}
+}

@@ -13,17 +13,6 @@
 // 
 // (Grimm is not a typo of Grim, some people understand the meaning)
 
-textures/alley/oldsky
-{
-	qer_editorimage env/alleyskybox/grimmnight_ft.png
-	surfaceparm noimpact
-	surfaceparm nolightmap
-	//q3map_globaltexture
-	surfaceparm sky
-	//q3map_sun 0.7 0.6 0.9 50 350 45
-	q3map_sun 0.52021 0.711518 1 50 350 45
-	skyparms env/alleyskybox/grimmnight - -
-}
 
 textures/alley/newsky
 {

@@ -159,17 +159,4 @@ textures/wsw_cave1/stairs1
 	}
 }
 
-textures/wsw_cave1/scratchedmetal1
-{
-	qer_editorimage textures/wsw_cave1/scratchedmetal1.png
-	surfaceparm nomarks
-	cull none
 
-	{
-		map $lightmap
-	}
-	{
-		map textures/wsw_cave1/scratchedmetal1.png
-		blendfunc filter
-	}
-}

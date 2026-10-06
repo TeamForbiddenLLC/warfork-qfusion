@@ -660,17 +660,6 @@ textures/wsw_city1/vertex_stepup01_shiny
 	}
 }
 
-textures/wsw_city1/metal1_vertex
-{
-	qer_editorimage textures/wsw_city1/metal1.png
-	surfaceparm nolightmap
-
-	{
-		rgbgen vertex
-		material textures/wsw_city1/metal1
-	}
-}
-
 textures/wsw_city1/stepside02
 {
 	qer_editorimage textures/wsw_city1/stepside02.png

@@ -1,19 +1,5 @@
 
 
-textures/blx_ca/blx_ca_sky
-{
-	nopicmip
-	qer_editorimage textures/blx/new_sky.png
-	surfaceparm noimpact
-	surfaceparm nolightmap
-	surfaceparm nomarks
-	surfaceparm sky
-	q3map_surfacelight 200
-	q3map_sun 0.27 0.4 0.51 155 170 33
-
-	skyparms env/city1 - -
-}
-
 textures/blx_ca/blx_ca1_sky
 {
 	nopicmip

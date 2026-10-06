@@ -5,7 +5,7 @@ textures/metal/metal_roof
 textures/metal/metal_roof_norm
 textures/bricks/bricks2
 textures/bricks/bricks2_norm
-textures/concrete/concreteslabs01
-textures/concrete/concreteslabs01_norm
-textures/concrete/concreteslabs02
-textures/concrete/concreteslabs02_norm
+textures/concrete/concreteslab01
+textures/concrete/concreteslab01_norm
+textures/concrete/concreteslab02
+textures/concrete/concreteslab02_norm

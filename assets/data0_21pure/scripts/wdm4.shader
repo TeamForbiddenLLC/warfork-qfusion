@@ -459,10 +459,10 @@ mapobjects_wdm4_towerskin2
 
 mapobjects_wdm4_scratches
 {
-	qer_editorimage textures/blxbis/scratches0002_tiled.png
+	qer_editorimage textures/metal/scratchedmetal
 
 	{
-		material textures/blxbis/scratches0002_tiled.png
+		material textures/metal/scratchedmetal
 	}
 }
 
