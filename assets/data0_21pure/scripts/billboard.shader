@@ -1,7 +1,7 @@
 textures/billboard/board_512_256_1
 {
-	qer_editorimage textures/billboard/bigbill1.png
-	q3map_lightimage textures/billboard/bigbill1.png
+	qer_editorimage textures/billboard/bigbill5.png
+	q3map_lightimage textures/billboard/bigbill9.png
 	q3map_surfacelight 500
 	q3map_forceMeta
 	q3map_lightmapSampleSize 64
@@ -11,7 +11,7 @@ textures/billboard/board_512_256_1
 	nopicmip
 
 	{
-		animClampMap 0.1 textures/billboard/bigbill1.png textures/billboard/bigbill2.png textures/billboard/bigbill5.png
+		animClampMap 4 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill2 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill5 textures/billboard/bigbill6 
 		rgbGen wave sawtooth 0.5 1 0 .15
 	}
 
@@ -43,7 +43,7 @@ textures/billboard/board_512_256_2
 	nopicmip
 
 	{
-		animClampMap 0.1 textures/billboard/bigbill1.png textures/billboard/bigbill6.png textures/billboard/bigbill9.png
+		animClampMap 4 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill2 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill1 textures/billboard/bigbill5 textures/billboard/bigbill6 
 		rgbGen wave sawtooth 0.5 1 0 .15
 	}
 
@@ -61,6 +61,7 @@ textures/billboard/board_512_256_2
 		tcmod scroll 10 .15 
 	}
 }
+
 
 
 //------------
