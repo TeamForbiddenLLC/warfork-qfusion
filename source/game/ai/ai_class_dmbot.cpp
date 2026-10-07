@@ -562,6 +562,13 @@ void BOT_DMclass_Move( edict_t *self, usercmd_t *ucmd )
 			}
 			else
 			{
+				// walk the final stretch to an item the bot can't keep in front;
+				// the capped yaw rate then has a chance to catch up with the heading
+				if( self->ai->next_node == self->ai->goal_node
+					&& self->ai->goalEnt && self->ai->goalEnt->ent->item
+					&& !G_InFront( self, self->ai->goalEnt->ent ) )
+					ucmd->buttons |= BUTTON_WALK;
+
 				nodeReached = AI_NodeReached_Generic( self );
 			}
 		}
@@ -1795,7 +1802,7 @@ void BOT_DMclass_InitPersistant( edict_t *self )
 	self->ai->pers.inventoryWeights[HEALTH_MEGA] = /*self->ai->pers.cha.health_grabber **/ 2.0f;
 	self->ai->pers.inventoryWeights[HEALTH_ULTRA] = /*self->ai->pers.cha.health_grabber **/ 2.0f;
 	self->ai->pers.inventoryWeights[HEALTH_LARGE] = /*self->ai->pers.cha.health_grabber **/ 1.0f;
-	self->ai->pers.inventoryWeights[HEALTH_MEDIUM] = /*self->ai->pers.cha.health_grabber **/ 0.9f;
+	self->ai->pers.inventoryWeights[HEALTH_MEDIUM] = /*self->ai->pers.cha.health_grabber **/ 0.8f;
 	self->ai->pers.inventoryWeights[HEALTH_SMALL] = /*self->ai->pers.cha.health_grabber **/ 0.4f;
 
 	// backpack
