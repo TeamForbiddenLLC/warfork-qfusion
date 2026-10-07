@@ -467,19 +467,41 @@ LONG WINAPI MainWndProc(
 	case WM_KEYDOWN:
 		if( wParam == VK_PROCESSKEY )
 			return 0;
+
+		// handle F13..F24 for non-system keydown as well
+		if( wParam >= VK_F13 && wParam <= VK_F24 ) {
+			int keynum = K_F13 + ( (int)wParam - VK_F13 );
+			Key_Event( keynum, true, sys_msg_time );
+			break;
+		}
+
 		Key_Event( IN_MapKey( lParam ), true, sys_msg_time );
 		break;
 
 	case WM_SYSKEYUP:
-		if( wParam == 18 )
-		{ // ALT-key
+		if( wParam == 18 ) { // ALT-key
 			Key_Event( IN_MapKey( lParam ), false, sys_msg_time );
+			return 0;
+		}
+
+		// handle F13..F24 system key up
+		if( wParam >= VK_F13 && wParam <= VK_F24 ) {
+			int keynum = K_F13 + ( (int)wParam - VK_F13 );
+			Key_Event( keynum, false, sys_msg_time );
 			return 0;
 		}
 		// fall through
 	case WM_KEYUP:
 		if( wParam == VK_PROCESSKEY )
 			return 0;
+
+		// handle F13..F24 non-system key up
+		if( wParam >= VK_F13 && wParam <= VK_F24 ) {
+			int keynum = K_F13 + ( (int)wParam - VK_F13 );
+			Key_Event( keynum, false, sys_msg_time );
+			break;
+		}
+
 		Key_Event( IN_MapKey( lParam ), false, sys_msg_time );
 		break;
 
