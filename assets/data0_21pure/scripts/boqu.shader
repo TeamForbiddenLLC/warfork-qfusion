@@ -309,175 +309,175 @@ if deluxe
 endif
 }
 
-textures/boqu/tile_slim__yellow1
+textures/boqu/tile_slim_yellow1
 {
-	qer_editorimage textures/boqu/tile_slim__yellow1.png
+	qer_editorimage textures/boqu/tile_slim_yellow1.png
 	
 if ! deluxe
 	{
 		map $lightmap
 	}
 	{
-		map textures/boqu/tile_slim__yellow1.png
+		map textures/boqu/tile_slim_yellow1.png
 		blendFunc filter
 	}
 endif
 
 if deluxe
 	{
-		material textures/boqu/tile_slim__yellow1.png textures/boqu/tile_slim_norm.png textures/boqu/tile_slim_light_gloss.png 
+		material textures/boqu/tile_slim_yellow1.png textures/boqu/tile_slim_norm.png textures/boqu/tile_slim_light_gloss.png 
 	}
 endif
 
 }
-textures/boqu/tile_slim__yellow2
+textures/boqu/tile_slim_yellow2
 {
-	qer_editorimage textures/boqu/tile_slim__yellow2.png
+	qer_editorimage textures/boqu/tile_slim_yellow2.png
 	
 if ! deluxe
 	{
 		map $lightmap
 	}
 	{
-		map textures/boqu/tile_slim__yellow2.png
+		map textures/boqu/tile_slim_yellow2.png
 		blendFunc filter
 	}
 endif
 
 if deluxe
 	{
-		material textures/boqu/tile_slim__yellow2.png textures/boqu/tile_slim_norm.png textures/boqu/tile_slim_light_gloss.png 
+		material textures/boqu/tile_slim_yellow2.png textures/boqu/tile_slim_norm.png textures/boqu/tile_slim_light_gloss.png 
 	}
 endif
 
 }
-textures/boqu/tile_slim__yellow3
+textures/boqu/tile_slim_yellow3
 {
-	qer_editorimage textures/boqu/tile_slim__yellow3.png
+	qer_editorimage textures/boqu/tile_slim_yellow3.png
 	
 if ! deluxe
 	{
 		map $lightmap
 	}
 	{
-		map textures/boqu/tile_slim__yellow3.png
+		map textures/boqu/tile_slim_yellow3.png
 		blendFunc filter
 	}
 endif
 
 if deluxe
 	{
-		material textures/boqu/tile_slim__yellow3.png textures/boqu/tile_slim_norm.png textures/boqu/tile_slim_light_gloss.png 
-	}
-endif
-
-}
-
-textures/boqu/tile_slim__yellow4
-{
-	qer_editorimage textures/boqu/tile_slim__yellow4.png
-	
-if ! deluxe
-	{
-		map $lightmap
-	}
-	{
-		map textures/boqu/tile_slim__yellow4.png
-		blendFunc filter
-	}
-endif
-
-if deluxe
-	{
-		material textures/boqu/tile_slim__yellow4.png textures/boqu/tile_slim_norm.png textures/boqu/tile_slim_light_gloss.png 
+		material textures/boqu/tile_slim_yellow3.png textures/boqu/tile_slim_norm.png textures/boqu/tile_slim_light_gloss.png 
 	}
 endif
 
 }
 
-textures/boqu/tile_slim__yellow5
+textures/boqu/tile_slim_yellow4
 {
-	qer_editorimage textures/boqu/tile_slim__yellow5.png
+	qer_editorimage textures/boqu/tile_slim_yellow4.png
 	
 if ! deluxe
 	{
 		map $lightmap
 	}
 	{
-		map textures/boqu/tile_slim__yellow5.png
+		map textures/boqu/tile_slim_yellow4.png
 		blendFunc filter
 	}
 endif
 
 if deluxe
 	{
-		material textures/boqu/tile_slim__yellow5.png textures/boqu/tile_slim_norm.png textures/boqu/tile_slim_light_gloss.png 
+		material textures/boqu/tile_slim_yellow4.png textures/boqu/tile_slim_norm.png textures/boqu/tile_slim_light_gloss.png 
 	}
 endif
 
 }
 
-textures/boqu/tile_slim__yellow6
+textures/boqu/tile_slim_yellow5
 {
-	qer_editorimage textures/boqu/tile_slim__yellow6.png
+	qer_editorimage textures/boqu/tile_slim_yellow5.png
 	
 if ! deluxe
 	{
 		map $lightmap
 	}
 	{
-		map textures/boqu/tile_slim__yellow6.png
+		map textures/boqu/tile_slim_yellow5.png
 		blendFunc filter
 	}
 endif
 
 if deluxe
 	{
-		material textures/boqu/tile_slim__yellow6.png textures/boqu/tile_slim_norm.png textures/boqu/tile_slim_light_gloss.png 
+		material textures/boqu/tile_slim_yellow5.png textures/boqu/tile_slim_norm.png textures/boqu/tile_slim_light_gloss.png 
 	}
 endif
 
 }
 
-textures/boqu/tile_slim__yellow7
+textures/boqu/tile_slim_yellow6
 {
-	qer_editorimage textures/boqu/tile_slim__yellow7.png
+	qer_editorimage textures/boqu/tile_slim_yellow6.png
 	
 if ! deluxe
 	{
 		map $lightmap
 	}
 	{
-		map textures/boqu/tile_slim__yellow7.png
+		map textures/boqu/tile_slim_yellow6.png
 		blendFunc filter
 	}
 endif
 
 if deluxe
 	{
-		material textures/boqu/tile_slim__yellow7.png textures/boqu/tile_slim_norm.png textures/boqu/tile_slim_light_gloss.png 
+		material textures/boqu/tile_slim_yellow6.png textures/boqu/tile_slim_norm.png textures/boqu/tile_slim_light_gloss.png 
 	}
 endif
 
 }
 
-textures/boqu/tile_slim__yellow8
+textures/boqu/tile_slim_yellow7
 {
-	qer_editorimage textures/boqu/tile_slim__yellow8.png
+	qer_editorimage textures/boqu/tile_slim_yellow7.png
 	
 if ! deluxe
 	{
 		map $lightmap
 	}
 	{
-		map textures/boqu/tile_slim__yellow8.png
+		map textures/boqu/tile_slim_yellow7.png
 		blendFunc filter
 	}
 endif
 
 if deluxe
 	{
-		material textures/boqu/tile_slim__yellow8.png textures/boqu/tile_slim_norm.png textures/boqu/tile_slim_light_gloss.png 
+		material textures/boqu/tile_slim_yellow7.png textures/boqu/tile_slim_norm.png textures/boqu/tile_slim_light_gloss.png 
+	}
+endif
+
+}
+
+textures/boqu/tile_slim_yellow8
+{
+	qer_editorimage textures/boqu/tile_slim_yellow8.png
+	
+if ! deluxe
+	{
+		map $lightmap
+	}
+	{
+		map textures/boqu/tile_slim_yellow8.png
+		blendFunc filter
+	}
+endif
+
+if deluxe
+	{
+		material textures/boqu/tile_slim_yellow8.png textures/boqu/tile_slim_norm.png textures/boqu/tile_slim_light_gloss.png 
 	}
 endif
 
@@ -754,7 +754,7 @@ endif
 
 if deluxe
 	{
-		material textures/boqu/ceilinglamp
+		material textures/boqu/ceilinglamp_w
 	}
 endif
 }
@@ -1089,7 +1089,7 @@ endif
 
 if deluxe
 	{
-		material textures/boqu/ceilinglamptrim_orange.png textures/boqu/ceilinglamptrim_w_norm.png - textures/boqu/ceilinglamptrim_orange_glow.png 
+		material textures/boqu/ceilinglamptrim_orange.png textures/boqu/ceilinglamptrim_norm.png - textures/boqu/ceilinglamptrim_orange_glow.png 
 	}
 endif
 }
@@ -1120,7 +1120,7 @@ endif
 
 if deluxe
 	{
-		material textures/boqu/ceilinglamptrim_blue.png textures/boqu/ceilinglamptrim_w_norm.png - textures/boqu/ceilinglamptrim_blue_glow.png 
+		material textures/boqu/ceilinglamptrim_blue.png textures/boqu/ceilinglamptrim_norm.png - textures/boqu/ceilinglamptrim_blue_glow.png 
 	}
 endif
 }
@@ -1151,7 +1151,7 @@ endif
 
 if deluxe
 	{
-		material textures/boqu/ceilinglamptrim_yellow.png textures/boqu/ceilinglamptrim_w_norm.png - textures/boqu/ceilinglamptrim_yellow_glow.png 
+		material textures/boqu/ceilinglamptrim_yellow.png textures/boqu/ceilinglamptrim_norm.png - textures/boqu/ceilinglamptrim_yellow_glow.png 
 	}
 endif
 }
@@ -1181,7 +1181,7 @@ endif
 
 if deluxe
 	{
-		material textures/boqu/ceilinglamptrim_pink.png textures/boqu/ceilinglamptrim_w_norm.png - textures/boqu/ceilinglamptrim_pink_glow.png 
+		material textures/boqu/ceilinglamptrim_pink.png textures/boqu/ceilinglamptrim_norm.png - textures/boqu/ceilinglamptrim_pink_glow.png 
 	}
 endif
 }
