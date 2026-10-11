@@ -567,7 +567,8 @@ static void CG_EntAddBobEffect( centity_t *cent )
 
 	cent->ent.origin2[2] += bob;
 	cent->ent.origin[2] += bob;
-	cent->ent.lightingOrigin[2] += bob;
+	// lightingOrigin intentionally NOT bobbed: it drives the lightgrid sample and the shadowmap
+	// projection direction, so it must stay stable or the shadow wobbles with the bob
 }
 
 /*
