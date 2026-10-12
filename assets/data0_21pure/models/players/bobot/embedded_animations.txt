@@ -1,4 +1,4 @@
-// animation embedded in the model
+// animation embedded in the model (for informative purpose only)
 BOTH_DEATH1 0 23 0 30
 BOTH_DEAD1 24 24 0 30
 BOTH_DEATH2 25 55 0 30

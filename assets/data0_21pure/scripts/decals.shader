@@ -221,7 +221,6 @@ textures/decals/plasterworn0030
 	surfaceparm trans
 	polygonOffset
 	nopicmip
-	q3map_bounceScale 0
 
 	{
 		detail
@@ -231,31 +230,12 @@ textures/decals/plasterworn0030
 	}
 }
 
-textures/decals/leavedead01
-{	
-	qer_editorimage textures/decals/leavedead01.png
-	qer_trans 0.6
-	surfaceparm nomarks
-	//surfaceparm nodlight
-	surfaceparm nonsolid
-	surfaceparm trans
-	polygonOffset
-	nopicmip
-
-	{
-		detail
-		material textures/decals/leavedead01.png
-		alphagen vertex
-		blendfunc blend
-	}
-}
-
 textures/decals/leavesdead01
 {	
 	qer_editorimage textures/decals/leavesdead01.png
 	qer_trans 0.6
 	surfaceparm nomarks
-	//surfaceparm nodlight
+	surfaceparm nodlight
 	surfaceparm nonsolid
 	surfaceparm trans
 	polygonOffset
@@ -263,7 +243,7 @@ textures/decals/leavesdead01
 
 	{
 		detail
-		material textures/decals/leavesdead01.png
+		material textures/decals/leavesdead01
 		alphagen vertex
 		blendfunc blend
 	}

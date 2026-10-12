@@ -35,22 +35,18 @@ zone_neutre
 lights
 flareshalos
 plastic
-plastic_vertex
 wood
-wood_vertex
 bricks
 grates
-grates_vertex
 tiles
 pipes
 decals
 nature
 cleansurface
-cleansurface_vertex
 concrete
 metal
-metal_vertex
 glass
+water
 window
 neon
 
