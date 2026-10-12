@@ -1388,10 +1388,14 @@ void CG_AddPModel( centity_t *cent )
 		VectorCopy( org, cg.lightingOrigin );
 	}
 
-	// since origin is displaced in player models set lighting origin to the center of the bbox
+	// since origin is displaced in player models set lighting origin to a constant point in the bbox:
+	// the superior face of the crouch box. The highest point we can reach without ever being outside of the player box.
 #if 1
+<<<<<<< HEAD
 	//for( i = 0; i < 3; i++ )
 	//	cent->ent.lightingOrigin[i] = cent->ent.origin[i] + ( 0.5f * ( playerbox_stand_mins[i] + playerbox_stand_maxs[i] ) );
+=======
+>>>>>>> origin/master
 	cent->ent.lightingOrigin[0] = cent->ent.origin[0];
 	cent->ent.lightingOrigin[1] = cent->ent.origin[1];
 	cent->ent.lightingOrigin[2] = cent->ent.origin[2] + playerbox_crouch_maxs[2];
