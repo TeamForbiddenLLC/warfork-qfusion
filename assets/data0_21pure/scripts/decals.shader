@@ -2085,6 +2085,26 @@ textures/decals/out_of_service
 	}
 }
 
+textures/decals/frontier_firearms
+{	
+	qer_editorimage textures/decals/frontier_firearms
+	qer_trans 0.6
+	q3map_vertexalpha 0.7
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+
+	{
+		detail
+		material textures/decals/frontier_firearms textures/flatnorm.rga
+		alphagen vertex
+		blendFunc blend // INTENTIONAL: It's opaque but the blendfun disabled depthwritting
+	}
+}
+
 textures/decals/bb_neon1
 {	
 	qer_editorimage textures/billboard/neon1
@@ -2184,6 +2204,8 @@ textures/decals/bb_ver3
 		blendFunc blend // INTENTIONAL: It's opaque but the blendfun disabled depthwritting
 	}
 }
+
+
 
 
 //--------------------------------------------------

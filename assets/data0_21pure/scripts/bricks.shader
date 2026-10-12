@@ -10,6 +10,17 @@ textures/bricks/bricks2
 	}
 }
 
+textures/bricks/bricksbrown
+{	
+	// These textures are download from https://freestylized.com and lisenced free of use for any purpose
+	qer_editorimage textures/bricks/bricksbrown
+	q3map_chamfer_convexwidth 2
+	q3map_chamfer_concavewidth 1.5
+	{
+		material textures/bricks/bricksbrown
+	}
+}
+
 
 textures/bricks/bricks_05_black
 {	

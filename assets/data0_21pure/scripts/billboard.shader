@@ -1,7 +1,7 @@
 textures/billboard/board_512_256_1
 {
-	qer_editorimage textures/billboard/bigbill5.png
-	q3map_lightimage textures/billboard/bigbill9.png
+	qer_editorimage textures/billboard/bigbill1
+	q3map_lightimage textures/billboard/bigbill9
 	q3map_surfacelight 500
 	q3map_forceMeta
 	q3map_lightmapSampleSize 64
@@ -32,8 +32,8 @@ textures/billboard/board_512_256_1
 
 textures/billboard/board_512_256_2
 {
-	qer_editorimage textures/billboard/bigbill5.png
-	q3map_lightimage textures/billboard/bigbill9.png
+	qer_editorimage textures/billboard/bigbill1
+	q3map_lightimage textures/billboard/bigbill9
 	q3map_surfacelight 500
 	q3map_forceMeta
 	q3map_lightmapSampleSize 64

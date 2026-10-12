@@ -9,3 +9,5 @@ textures/concrete/concreteslab01
 textures/concrete/concreteslab01_norm
 textures/concrete/concreteslab02
 textures/concrete/concreteslab02_norm
+textures/bricks/bricksbrown
+textures/bricks/bricksbrown_norm

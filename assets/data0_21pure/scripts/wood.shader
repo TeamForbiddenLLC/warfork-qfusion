@@ -1,7 +1,7 @@
 
 textures/wood/testwood1
 {	
-	qer_editorimage textures/wood/woodplank01.png
+	qer_editorimage textures/wood/testwood1.png
 	q3map_deluxe_minangle 20
 	q3map_chamfer_convexwidth 2.25
 
