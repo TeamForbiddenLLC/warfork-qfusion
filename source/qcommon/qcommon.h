@@ -858,6 +858,7 @@ bool		FS_SetGameDirectory( const char *dir, bool force );
 int			FS_GetGameDirectoryList( char *buf, size_t bufsize );
 int			FS_GetExplicitPurePakList( char ***paknames );
 bool		FS_IsExplicitPurePak( const char *pakname, bool *wrongver );
+bool		FS_AddPurePakFilename( const char *filename );
 
 /**
 * Maps an existing file on disk for reading. 

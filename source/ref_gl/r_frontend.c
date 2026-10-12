@@ -266,8 +266,14 @@ rserr_t RF_SetWindow( void *hinstance, void *wndproc, void *parenthWnd )
 }
 
 struct ref_import_s RF_Forward_Mod() {
+#ifdef __WASM__
+	/* Static link: return the real ref_gl entry points, not an empty table
+	 * that C++ cgame/ui trampolines would call into themselves. */
+	return (struct ref_import_s)DECLARE_REF_STRUCT();
+#else
 	assert(0); // we don't implement this for the core mod
 	return (struct ref_import_s){0};
+#endif
 }
 
 void RF_AppActivate( bool active, bool destroy )

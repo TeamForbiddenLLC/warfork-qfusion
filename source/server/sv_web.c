@@ -1473,6 +1473,11 @@ void SV_Web_Init( void )
 		return;
 	}
 
+#ifdef __WASM__
+	Com_Printf( "HTTP server disabled in the WebAssembly client (single-threaded)\n" );
+	return;
+#endif
+
 	SV_Web_InitSocket( sv_http_ip->string[0] == '\0' ? sv_ip->string : sv_http_ip->string, NA_IP, &sv_socket_http );
 	SV_Web_InitSocket( sv_http_ipv6->string[0] == '\0' ? sv_ip6->string : sv_http_ipv6->string, NA_IP6, &sv_socket_http6 );
 

@@ -55,6 +55,7 @@ public:
 	//// Methods
 	int GetWidth( void );
 	int GetHeight( void );
+	void SetViewport( int vidWidth, int vidHeight );
 
 	void AddShaderToCache( const Rocket::Core::String &shader );
 	void ClearShaderCache( void );

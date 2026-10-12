@@ -38,6 +38,16 @@ UI_RenderInterface::UI_RenderInterface( int vidWidth, int vidHeight, float pixel
 	whiteShader = R_RegisterPic( "$whiteimage" );
 }
 
+void UI_RenderInterface::SetViewport( int vidWidth, int vidHeight )
+{
+	vid_width = vidWidth;
+	vid_height = vidHeight;
+	scissorX = 0;
+	scissorY = 0;
+	scissorWidth = vid_width;
+	scissorHeight = vid_height;
+}
+
 UI_RenderInterface::~UI_RenderInterface()
 {
 	this->RemoveReference();

@@ -57,6 +57,7 @@ typedef struct masterserver_s
 {
 	char addressString[MAX_TOKEN_CHARS];
 	netadr_t address;
+	int defaultPort;
 	qthread_t *resolverThread;
 	volatile bool resolverActive;
 	char delayedRequestModName[MAX_TOKEN_CHARS];
@@ -532,7 +533,7 @@ static void *CL_MasterResolverThreadFunc( void *param )
 	NET_StringToAddress( master->addressString, &master->address );
 	if( master->address.type == NA_IP || master->address.type == NA_IP6 ) {
 		if( NET_GetAddressPort( &master->address ) == 0 ) {
-			NET_SetAddressPort( &master->address, PORT_MASTER );
+			NET_SetAddressPort( &master->address, master->defaultPort ? master->defaultPort : PORT_MASTER );
 		}
 	} else {
 		Com_Printf( "Failed to resolve master server address: %s\n", master->addressString );
@@ -542,52 +543,58 @@ static void *CL_MasterResolverThreadFunc( void *param )
 	return NULL;
 }
 
+static void CL_RegisterMasterServersFromList( const char *masterList, int defaultPort )
+{
+	const char *ptr;
+	const char *masterAddress;
+	int i;
+
+	if( !masterList || !*masterList ) {
+		return;
+	}
+
+	ptr = masterList;
+	while( ptr && numMasterServers < MAX_MASTER_SERVERS ) {
+		masterserver_t *master;
+		bool duplicate = false;
+
+		masterAddress = COM_Parse( &ptr );
+		if( !*masterAddress ) {
+			break;
+		}
+
+		for( i = 0; i < numMasterServers; i++ ) {
+			if( !Q_stricmp( masterServers[i].addressString, masterAddress ) ) {
+				duplicate = true;
+				break;
+			}
+		}
+		if( duplicate ) {
+			continue;
+		}
+
+		master = &masterServers[numMasterServers];
+		memset( master, 0, sizeof( *master ) );
+		Q_strncpyz( master->addressString, masterAddress, sizeof( master->addressString ) );
+		master->defaultPort = defaultPort;
+		master->address.type = NA_NOTRANSMIT;
+		master->resolverActive = true;
+		master->resolverThread = QThread_Create( CL_MasterResolverThreadFunc, master );
+		if( !master->resolverThread ) {
+			master->resolverActive = false;
+		}
+		numMasterServers++;
+	}
+}
+
 /*
 * CL_MasterAddressCache_Init
 */
 static void CL_MasterAddressCache_Init( void )
 {
-	int numMasters;
-	const char *ptr;
-	const char *masterAddress;
-	const char *masterList;
-	masterserver_t *master;
-	int i;
-
-	masterList = Cvar_String( "masterservers" );
-	if( !*masterList ) {
-		return;
-	}
-
-	// count the number of master servers
-	numMasters = 0;
-	for( ptr = masterList; ptr; ) {
-		masterAddress = COM_Parse( &ptr );
-		if( !*masterAddress ) {
-			break;
-		}
-		numMasters++;
-	}
-
-	// don't allow too many as each will spawn its own resolver thread
-	if( numMasters > MAX_MASTER_SERVERS )
-		numMasters = MAX_MASTER_SERVERS;
-
 	numMasterServers = 0;
-	for( i = 0, ptr = masterList, master = masterServers; i < numMasters && ptr; i++, master++ )
-	{
-		masterAddress = COM_Parse( &ptr );
-		if( !*masterAddress )
-			break;
-
-		numMasterServers++;
-		Q_strncpyz( master->addressString, masterAddress, sizeof( master->addressString ) );
-		master->address.type = NA_NOTRANSMIT;
-		master->resolverActive = true;
-		master->resolverThread = QThread_Create( CL_MasterResolverThreadFunc, master );
-		if( !master->resolverThread )
-			master->resolverActive = false;
-	}
+	CL_RegisterMasterServersFromList( Cvar_String( "masterservers" ), PORT_MASTER );
+	CL_RegisterMasterServersFromList( Cvar_String( "masterservers_warfork" ), PORT_MASTER_WARFORK );
 }
 
 /*
@@ -645,6 +652,9 @@ static void CL_SendMasterServerQuery( netadr_t *adr, const char *modname )
 		filter_allow_empty ? "empty" : "" );
 
 	Com_DPrintf( "Querying %s: %s\n", NET_AddressToString( adr ), requeststring );
+#ifdef __WASM__
+	Com_Printf( "Querying master %s: %s\n", NET_AddressToString( adr ), requeststring );
+#endif
 
 	Netchan_OutOfBandPrint( socket, adr, "%s", requeststring );
 }
@@ -719,8 +729,36 @@ void CL_GetServers_f( void )
 
 	if( !master )
 	{
-		Com_Printf( "Address is not in master servers list: %s\n", masterAddress );
-		return;
+#ifdef __WASM__
+		if( numMasterServers < MAX_MASTER_SERVERS ) {
+			const char *wf;
+			const char *ptr;
+			int defaultPort = PORT_MASTER;
+
+			wf = Cvar_String( "masterservers_warfork" );
+			ptr = wf;
+			while( ptr ) {
+				const char *tok = COM_Parse( &ptr );
+				if( !*tok ) {
+					break;
+				}
+				if( !Q_stricmp( tok, masterAddress ) ) {
+					defaultPort = PORT_MASTER_WARFORK;
+					break;
+				}
+			}
+
+			master = &masterServers[numMasterServers++];
+			memset( master, 0, sizeof( *master ) );
+			Q_strncpyz( master->addressString, masterAddress, sizeof( master->addressString ) );
+			master->defaultPort = defaultPort;
+			master->address.type = NA_NOTRANSMIT;
+		}
+#endif
+		if( !master ) {
+			Com_Printf( "Address is not in master servers list: %s\n", masterAddress );
+			return;
+		}
 	}
 
 	if( !master->resolverActive )

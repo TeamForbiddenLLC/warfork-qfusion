@@ -18,11 +18,19 @@ namespace trap
 		using WSWUI::UI_IMPORT;
 
 		inline void Error( const char *str ) {
+#ifdef UI_HARD_LINKED
+			Com_Error( ERR_FATAL, "%s", str );
+#else
 			UI_IMPORT.Error( str );
+#endif
 		}
 
 		inline void Print( const char *str ) {
+#ifdef UI_HARD_LINKED
+			Com_Printf( "%s", str );
+#else
 			UI_IMPORT.Print( str );
+#endif
 		}
 
 		inline void Cmd_AddCommand( const char *name, void(*cmd)(void) ) {

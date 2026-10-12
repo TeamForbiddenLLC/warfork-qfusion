@@ -1691,9 +1691,16 @@ void CL_RequestNextDownload( void )
 				Com_DPrintf( "Adding pure file: %s\n", purefile->filename );
 				if( !FS_AddPurePak( purefile->checksum ) )
 				{
-					failed = true;
-					Q_strncatz( message, " ", sizeof( message ) );
-					Q_strncatz( message, purefile->filename, sizeof( message ) );
+#ifdef __WASM__
+					if( FS_AddPurePakFilename( purefile->filename ) ) {
+						Com_Printf( "WASM: using local %s (checksum differs from server)\n", purefile->filename );
+					} else
+#endif
+					{
+						failed = true;
+						Q_strncatz( message, " ", sizeof( message ) );
+						Q_strncatz( message, purefile->filename, sizeof( message ) );
+					}
 				}
 				purefile = purefile->next;
 			}
@@ -3003,7 +3010,21 @@ void CL_Frame( int realmsec, int gamemsec )
 	// update the screen
 	if( host_speeds->integer )
 		time_before_ref = Sys_Milliseconds();
+#ifdef __WASM__
+	{
+		static int n;
+		if( ++n <= 3 )
+			Com_Printf( "[wasm] CL_Frame before SCR_UpdateScreen\n" );
+	}
+#endif
 	SCR_UpdateScreen();
+#ifdef __WASM__
+	{
+		static int n;
+		if( ++n <= 3 )
+			Com_Printf( "[wasm] CL_Frame after SCR_UpdateScreen\n" );
+	}
+#endif
 	if( host_speeds->integer )
 		time_after_ref = Sys_Milliseconds();
 
@@ -3027,8 +3048,23 @@ void CL_Frame( int realmsec, int gamemsec )
 		// dma buffer while loading
 		if( cls.disable_screen )
 			CL_SoundModule_Clear();
-		else
+		else {
+#ifdef __WASM__
+			{
+				static int n;
+				if( ++n <= 3 )
+					Com_Printf( "[wasm] CL_SoundModule_Update\n" );
+			}
+#endif
 			CL_SoundModule_Update( vec3_origin, vec3_origin, axis_identity, NULL, false );
+#ifdef __WASM__
+			{
+				static int n;
+				if( ++n <= 3 )
+					Com_Printf( "[wasm] after CL_SoundModule_Update\n" );
+			}
+#endif
+		}
 	}
 
     // update discord
@@ -3207,8 +3243,14 @@ void CL_Init( void )
 
 	Con_Init();
 
+#ifdef __WASM__
+	Com_Printf( "[wasm] CL_Init: CL_Sys_Init\n" );
+#endif
 	CL_Sys_Init();
 
+#ifdef __WASM__
+	Com_Printf( "[wasm] CL_Init: VID_Init\n" );
+#endif
 	VID_Init();
 
 	CL_ClearState();
@@ -3237,9 +3279,15 @@ void CL_Init( void )
 
 	CL_InitAsyncStream();
 
+#ifdef __WASM__
+	Com_Printf( "[wasm] CL_Init: CL_InitMedia\n" );
+#endif
 	CL_InitMedia();
 
     CL_InitDiscord();
+#ifdef __WASM__
+	Com_Printf( "[wasm] CL_Init: ForceMenuOn\n" );
+#endif
 	CL_UIModule_ForceMenuOn();
 
 	CL_InitServerList();

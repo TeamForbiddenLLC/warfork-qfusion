@@ -236,6 +236,30 @@ only pointers and references are supported as-of-now (same goes for passing argu
 	#include <iostream>
 #endif
 
+#include "../../angelwrap/addon/as_generic_runtime.h"
+
+#if defined( __EMSCRIPTEN__ ) || defined( __WASM__ )
+#define ASBIND_MFN( f ) ( ::ASGen::Wrap( f ) )
+#define ASBIND_FN( f ) ( ::ASGen::Wrap( f ) )
+#define ASBIND_OF( f ) ( ::ASGen::WrapObjFirst( f ) )
+#define ASBIND_OL( f ) ( ::ASGen::WrapObjLast( f ) )
+#define ASBIND_THIS asCALL_GENERIC
+#define ASBIND_CC asCALL_GENERIC
+#define ASBIND_CC_OF asCALL_GENERIC
+#define ASBIND_CC_OL asCALL_GENERIC
+#define ASBIND_OBJ( f, first ) ( ( first ) ? ::ASGen::WrapObjFirst( f ) : ::ASGen::WrapObjLast( f ) )
+#else
+#define ASBIND_MFN( f ) asSMethodPtr<sizeof( f )>::Convert( f )
+#define ASBIND_FN( f ) asFUNCTION( f )
+#define ASBIND_OF( f ) asFUNCTION( f )
+#define ASBIND_OL( f ) asFUNCTION( f )
+#define ASBIND_THIS asCALL_THISCALL
+#define ASBIND_CC asCALL_CDECL
+#define ASBIND_CC_OF asCALL_CDECL_OBJFIRST
+#define ASBIND_CC_OL asCALL_CDECL_OBJLAST
+#define ASBIND_OBJ( f, first ) asFUNCTION( f )
+#endif
+
 namespace ASBind {
 
 //=========================================================
@@ -1036,8 +1060,8 @@ struct FunctionPtrBase {
 			int r = ctx->Execute();
 			if( r != asEXECUTION_FINISHED && r != asEXECUTION_SUSPENDED ) {
 				Com_Printf("ASBind::FunctionPtrBase: Execute failed %d (name %s)\n", r, fptr->GetName());
-			// some debug stuff
-			#ifdef __FUNCTIONPTR_CALL_THROW__
+			// WASM: a C++ throw aborts the runtime (exceptions are not caught).
+			#if defined( __FUNCTIONPTR_CALL_THROW__ ) && !defined( __EMSCRIPTEN__ ) && !defined( __WASM__ )
 				throw Exception( "FunctionPtrBase::call Execute failed" );
 			#endif
 			}
@@ -1372,7 +1396,7 @@ public:
 #endif
 
 		int _id = engine->RegisterObjectMethod( name.c_str(), fullname.c_str(),
-				asSMethodPtr<sizeof( f )>::Convert( f ), asCALL_THISCALL );
+				ASBIND_MFN( f ), ASBIND_THIS );
 		if( _id < 0 )
 			throw Exception( va( "ASBind::Class::method (%s::%s) RegisterObjectMethod failed %d", name.c_str(), fullname.c_str(), _id ) );
 
@@ -1390,7 +1414,7 @@ public:
 		Com_Printf( "%s::method %s\n", name.c_str(), proto );
 #endif
 
-		int _id = engine->RegisterObjectMethod( name.c_str(), proto, asSMethodPtr<sizeof( f )>::Convert( f ), asCALL_THISCALL );
+		int _id = engine->RegisterObjectMethod( name.c_str(), proto, ASBIND_MFN( f ), ASBIND_THIS );
 		if( _id < 0 )
 			throw Exception( va( "ASBind::Class::method (%s::%s) RegisterObjectMethod failed %d", name.c_str(), proto, _id ) );
 
@@ -1412,7 +1436,7 @@ public:
 #endif
 
 		int _id = engine->RegisterObjectMethod( name.c_str(), constname.c_str(),
-				asSMethodPtr<sizeof( f )>::Convert( f ), asCALL_THISCALL );
+				ASBIND_MFN( f ), ASBIND_THIS );
 		if( _id < 0 )
 			throw Exception( va( "ASBind::Class::constmethod (%s::%s) RegisterObjectMethod failed %d", name.c_str(), constname.c_str(), _id ) );
 
@@ -1435,7 +1459,7 @@ public:
 #endif
 
 		int _id = engine->RegisterObjectMethod( name.c_str(), funcname.c_str(),
-				asFUNCTION( f ), obj_first ? asCALL_CDECL_OBJFIRST : asCALL_CDECL_OBJLAST );
+				ASBIND_OBJ( f, obj_first ), obj_first ? ASBIND_CC_OF : ASBIND_CC_OL );
 		if( _id < 0 )
 			throw Exception( va( "ASBind::Class::method (%s::%s) RegisterObjectMethod failed %d", name.c_str(), funcname.c_str(), _id ) );
 
@@ -1454,7 +1478,7 @@ public:
 #endif
 
 		int _id = engine->RegisterObjectMethod( name.c_str(), fname,
-				asFUNCTION( f ), obj_first ? asCALL_CDECL_OBJFIRST : asCALL_CDECL_OBJLAST );
+				ASBIND_OBJ( f, obj_first ), obj_first ? ASBIND_CC_OF : ASBIND_CC_OL );
 		if( _id < 0 )
 			throw Exception( va( "ASBind::Class::method (%s::%s) RegisterObjectMethod failed %d", name.c_str(), fname, _id ) );
 
@@ -1477,7 +1501,7 @@ public:
 #endif
 
 		int _id = engine->RegisterObjectMethod( name.c_str(), constname.c_str(),
-				asFUNCTION( f ), obj_first ? asCALL_CDECL_OBJFIRST : asCALL_CDECL_OBJLAST );
+				ASBIND_OBJ( f, obj_first ), obj_first ? ASBIND_CC_OF : ASBIND_CC_OL );
 		if( _id < 0 )
 			throw Exception( va( "ASBind::Class::constmethod (%s::%s) RegisterObjectMethod failed %d", name.c_str(), constname.c_str(), _id ) );
 
@@ -1536,12 +1560,12 @@ public:
 	Class & refs( void (T::*addref)(), void (T::*release)() )
 	{
 		int _id = engine->RegisterObjectBehaviour( name.c_str(), asBEHAVE_ADDREF,
-				"void f()", asSMethodPtr<sizeof( addref )>::Convert( addref ), asCALL_THISCALL );
+				"void f()", ASBIND_MFN( addref ), ASBIND_THIS );
 		if( _id < 0 )
 			throw Exception( va( "ASBind::Class::refs (%s) RegisterObjectBehaviour failed %d", name.c_str(), _id ) );
 
 		id = engine->RegisterObjectBehaviour( name.c_str(), asBEHAVE_RELEASE,
-				"void f()", asSMethodPtr<sizeof( release )>::Convert( release ), asCALL_THISCALL );
+				"void f()", ASBIND_MFN( release ), ASBIND_THIS );
 		if( _id < 0 )
 			throw Exception( va( "ASBind::Class::refs (%s) RegisterObjectBehaviour failed %d", name.c_str(), _id ) );
 
@@ -1552,12 +1576,12 @@ public:
 	Class & refs( void (*addref)(T*), void (*release)(T*) )
 	{
 		int _id = engine->RegisterObjectBehaviour( name.c_str(), asBEHAVE_ADDREF,
-				"void f()", asFUNCTION( addref ), asCALL_CDECL_OBJLAST );
+				"void f()", ASBIND_OL( addref ), ASBIND_CC_OL );
 		if( _id < 0 )
 			throw Exception( va( "ASBind::Class::refs (%s) RegisterObjectBehaviour failed %d", name.c_str(), _id ) );
 
 		id = engine->RegisterObjectBehaviour( name.c_str(), asBEHAVE_RELEASE,
-				"void f()", asFUNCTION( release ), asCALL_CDECL_OBJLAST );
+				"void f()", ASBIND_OL( release ), ASBIND_CC_OL );
 		if( _id < 0 )
 			throw Exception( va( "ASBind::Class::refs (%s) RegisterObjectBehaviour failed %d", name.c_str(), _id ) );
 
@@ -1571,7 +1595,7 @@ public:
 	{
 		// FIXME: config CDECL/STDCALL!
 		int _id = engine->RegisterObjectBehaviour( name.c_str(), asBEHAVE_FACTORY,
-			FunctionString<F>( "f" ).c_str(), asFUNCTION( f ), asCALL_CDECL );
+			FunctionString<F>( "f" ).c_str(), ASBIND_FN( f ), ASBIND_CC );
 		if( _id < 0 )
 			throw Exception( va( "ASBind::Class::factory (%s) RegisterObjectBehaviour failed %d", name.c_str(), _id ) );
 
@@ -1584,7 +1608,7 @@ public:
 	Class & constructor( void )
 	{
 		int _id = engine->RegisterObjectBehaviour( name.c_str(), asBEHAVE_CONSTRUCT,
-			FunctionString<F>( "f" ).c_str(), asFunctionPtr( CallCtorProxy<T, F>()() ), asCALL_CDECL_OBJFIRST );
+			FunctionString<F>( "f" ).c_str(), ASBIND_OF( ( CallCtorProxy<T, F>()() ) ), ASBIND_CC_OF );
 		if( _id < 0 )
 			throw Exception( va( "ASBind::Class::constructor (%s) RegisterObjectBehaviour failed %d", name.c_str(), _id ) );
 
@@ -1607,8 +1631,8 @@ public:
 #endif
 
 		int _id = engine->RegisterObjectBehaviour( name.c_str(),
-			asBEHAVE_CONSTRUCT, funcname.c_str(), asFUNCTION( f ),
-			obj_first ? asCALL_CDECL_OBJFIRST : asCALL_CDECL_OBJLAST );
+			asBEHAVE_CONSTRUCT, funcname.c_str(), ASBIND_OBJ( f, obj_first ),
+			obj_first ? ASBIND_CC_OF : ASBIND_CC_OL );
 		if( _id < 0 )
 			throw Exception( va( "ASBind::Class::constructor (%s) RegisterObjectBehaviour failed %d", name.c_str(), _id ) );
 
@@ -1620,7 +1644,7 @@ public:
 	Class & destructor()
 	{
 		int _id = engine->RegisterObjectBehaviour( name.c_str(), asBEHAVE_DESTRUCT,
-			"void f()", asFUNCTION( CallDestructor<T> ), asCALL_CDECL_OBJLAST );
+			"void f()", ASBIND_OL( CallDestructor<T> ), ASBIND_CC_OL );
 		if( _id < 0 )
 			throw Exception( va( "ASBind::Class::destructor (%s) RegisterObjectBehaviour failed %d", name.c_str(), _id ) );
 
@@ -1631,7 +1655,7 @@ public:
 	Class & destructor( void (*f)( T* ) )
 	{
 		int _id = engine->RegisterObjectBehaviour( name.c_str(), asBEHAVE_DESTRUCT,
-			"void f()", asFUNCTION( f ), asCALL_CDECL_OBJLAST );
+			"void f()", ASBIND_OL( f ), ASBIND_CC_OL );
 		if( _id < 0 )
 			throw Exception( va( "ASBind::Class::destructor (%s) RegisterObjectBehaviour failed %d", name.c_str(), _id ) );
 
@@ -1646,7 +1670,7 @@ public:
 	{
 		std::string funcname = MethodString<F>( "opConv" );
 		int _id = engine->RegisterObjectMethod( name.c_str(), funcname.c_str(),
-			asSMethodPtr<sizeof( f )>::Convert( f ), asCALL_THISCALL );
+			ASBIND_MFN( f ), ASBIND_THIS );
 		if( _id < 0 )
 			throw Exception( va( "ASBind::Class::cast (%s) RegisterObjectMethod failed %d", name.c_str(), _id ) );
 
@@ -1671,7 +1695,7 @@ public:
 #endif
 
 		int _id = engine->RegisterObjectMethod( name.c_str(), funcname.c_str(),
-				asFUNCTION( f ), obj_first ? asCALL_CDECL_OBJFIRST : asCALL_CDECL_OBJLAST );
+				ASBIND_OBJ( f, obj_first ), obj_first ? ASBIND_CC_OF : ASBIND_CC_OL );
 		if( _id < 0 )
 			throw Exception( va( "ASBind::Class::cast (%s::%s) RegisterObjectMethod failed %d", name.c_str(), funcname.c_str(), _id ) );
 
@@ -1696,7 +1720,7 @@ public:
 #endif
 
 		int _id = engine->RegisterObjectMethod( name.c_str(), funcname.c_str(),
-				asFUNCTION( f ), obj_first ? asCALL_CDECL_OBJFIRST : asCALL_CDECL_OBJLAST );
+				ASBIND_OBJ( f, obj_first ), obj_first ? ASBIND_CC_OF : ASBIND_CC_OL );
 		if( _id < 0 )
 			throw Exception( va( "ASBind::Class::refcast (%s::%s) RegisterObjectMethod failed %d", name.c_str(), funcname.c_str(), _id ) );
 
@@ -1769,7 +1793,7 @@ public:
 		#ifdef __DEBUG_COM_PRINTF__
 			Com_Printf("Global::function %s\n", funcname.c_str());
 		#endif
-		int _id = engine->RegisterGlobalFunction( funcname.c_str(), asFUNCTION( f ), asCALL_CDECL );
+		int _id = engine->RegisterGlobalFunction( funcname.c_str(), ASBIND_FN( f ), ASBIND_CC );
 		if( _id < 0 )
 			throw Exception( va( "ASBind::Global::function (%s) RegisterGlobalFunction failed %d", funcname.c_str(), _id ) );
 

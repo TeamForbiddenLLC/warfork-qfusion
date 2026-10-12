@@ -88,8 +88,13 @@ void QGL_Shutdown( void )
 
 	glw_state.OpenGLLib = NULL;
 
+#if defined( __EMSCRIPTEN__ ) || defined( __WASM__ )
+#define QGL_FUNC( type, name, params )
+#define QGL_FUNC_OPT( type, name, params )
+#else
 #define QGL_FUNC( type, name, params ) ( q##name ) = NULL;
 #define QGL_FUNC_OPT( type, name, params ) ( q##name ) = NULL;
+#endif
 #define QGL_EXT( type, name, params ) ( q##name ) = NULL;
 #define QGL_WGL( type, name, params )
 #define QGL_WGL_EXT( type, name, params )
@@ -145,6 +150,11 @@ qgl_initerr_t QGL_Init( const char *dllname )
 			Com_Printf( "Using %s for OpenGL...\n", dllname );
 	}
 
+#if defined( __EMSCRIPTEN__ ) || defined( __WASM__ )
+	/* qgl* are macros to gl* (qgl_wasm_aliases.h); do not store JS import addresses. */
+#define QGL_FUNC( type, name, params )
+#define QGL_FUNC_OPT( type, name, params )
+#else
 #define QGL_FUNC( type, name, params )                                   \
 	( q##name ) = (void *)qglGetProcAddress( (const GLubyte *)#name );   \
 	if( !( q##name ) ) {                                                 \
@@ -152,6 +162,7 @@ qgl_initerr_t QGL_Init( const char *dllname )
 		return qgl_initerr_invalid_driver;                               \
 	}
 #define QGL_FUNC_OPT( type, name, params ) ( q##name ) = (void *)qglGetProcAddress( (const GLubyte *)#name );
+#endif
 #define QGL_EXT( type, name, params ) ( q##name ) = NULL;
 #define QGL_WGL( type, name, params )
 #define QGL_WGL_EXT( type, name, params )

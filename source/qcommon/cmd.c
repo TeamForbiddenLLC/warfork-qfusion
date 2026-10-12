@@ -884,6 +884,17 @@ void Cmd_AddCommand( const char *cmd_name, xcommand_t function )
 		Com_DPrintf( "Cmd_AddCommand: empty name pass as an argument\n" );
 		return;
 	}
+#ifdef __WASM__
+	if( !cmd_function_trie )
+		return;
+	{
+		size_t n;
+		for( n = 0; n < 64 && cmd_name[n]; n++ )
+			;
+		if( n == 0 || n >= 64 )
+			return;
+	}
+#endif
 
 	// fail if the command is a variable name
 	if( Cvar_String( cmd_name )[0] )

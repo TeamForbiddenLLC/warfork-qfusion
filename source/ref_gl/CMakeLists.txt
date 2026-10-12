@@ -1,3 +1,7 @@
+if (NOT QFUSION_LIBRARY_TYPE)
+	set(QFUSION_LIBRARY_TYPE SHARED)
+endif()
+
 project(ref_gl)
 
 file(GLOB REF_GL_HEADERS
@@ -36,7 +40,11 @@ if (USE_SDL2)
 		"../sdl/sdl_qgl.c"
 		)
 
-	set(REF_GL_PLATFORM_LIBRARIES SDL2::SDL2)
+	if (EMSCRIPTEN)
+		set(REF_GL_PLATFORM_LIBRARIES "")
+	else()
+		set(REF_GL_PLATFORM_LIBRARIES SDL2::SDL2)
+	endif()
 else()
 	if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 		file(GLOB REF_GL_PLATFORM_SOURCES
@@ -57,7 +65,11 @@ else()
 		set(REF_GL_PLATFORM_LIBRARIES "X11" "Xext" "Xinerama" "Xrandr" "Xxf86vm" "m")
 	endif()
 endif()
-add_library(ref_gl SHARED ${REF_GL_HEADERS} ${REF_GL_COMMON_SOURCES} ${REF_GL_PLATFORM_SOURCES})
+if (EMSCRIPTEN)
+	qf_wasm_strip_common_sources(REF_GL_COMMON_SOURCES)
+endif()
+
+add_library(ref_gl ${QFUSION_LIBRARY_TYPE} ${REF_GL_HEADERS} ${REF_GL_COMMON_SOURCES} ${REF_GL_PLATFORM_SOURCES})
 # "." last so shared ref_base/*.c sources can resolve this renderer's own r_local.h
 target_include_directories(ref_gl PRIVATE ${STB_INCLUDE_DIR} "../ref_base" "../qcore" ".")
 target_link_libraries(ref_gl PRIVATE ref_generated)

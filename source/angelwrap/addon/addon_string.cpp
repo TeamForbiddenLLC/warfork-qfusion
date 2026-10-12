@@ -595,75 +595,75 @@ void RegisterStringAddon( asIScriptEngine *engine )
 	r = engine->RegisterStringFactory( "String", &angelStringFactory ); assert( r >= 0 );
 
 	// register object behaviours
-	r = engine->RegisterObjectBehaviour( "String", asBEHAVE_FACTORY, "String @f()", asFUNCTION( objectString_Factory ), asCALL_CDECL ); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour( "String", asBEHAVE_FACTORY, "String @f(const String &in)", asFUNCTION( objectString_FactoryCopy ), asCALL_CDECL ); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour( "String", asBEHAVE_FACTORY, "String @f(int)", asFUNCTION( objectString_FactoryFromInt ), asCALL_CDECL ); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour( "String", asBEHAVE_FACTORY, "String @f(float)", asFUNCTION( objectString_FactoryFromFloat ), asCALL_CDECL ); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour( "String", asBEHAVE_FACTORY, "String @f(double)", asFUNCTION( objectString_FactoryFromDouble ), asCALL_CDECL ); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour( "String", asBEHAVE_FACTORY, "String @f()", AS_FN(objectString_Factory ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour( "String", asBEHAVE_FACTORY, "String @f(const String &in)", AS_FN(objectString_FactoryCopy ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour( "String", asBEHAVE_FACTORY, "String @f(int)", AS_FN(objectString_FactoryFromInt ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour( "String", asBEHAVE_FACTORY, "String @f(float)", AS_FN(objectString_FactoryFromFloat ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour( "String", asBEHAVE_FACTORY, "String @f(double)", AS_FN(objectString_FactoryFromDouble ), AS_CC ); assert( r >= 0 );
 
-	r = engine->RegisterObjectBehaviour( "String", asBEHAVE_ADDREF, "void f()", asFUNCTION( objectString_Addref ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour( "String", asBEHAVE_RELEASE, "void f()", asFUNCTION( objectString_Release ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour( "String", asBEHAVE_ADDREF, "void f()", AS_OL(objectString_Addref ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour( "String", asBEHAVE_RELEASE, "void f()", AS_OL(objectString_Release ), AS_CC_OL ); assert( r >= 0 );
 
 #ifdef ENABLE_STRING_IMPLICIT_CASTS
-	r = engine->RegisterObjectMethod( "String", "int opImplConv() const", asFUNCTION( objectString_CastToInt ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "float opImplConv() const", asFUNCTION( objectString_CastToFloat ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "double opImplConv() const", asFUNCTION( objectString_CastToDouble ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "int opImplConv() const", AS_OL(objectString_CastToInt ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "float opImplConv() const", AS_OL(objectString_CastToFloat ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "double opImplConv() const", AS_OL(objectString_CastToDouble ), AS_CC_OL ); assert( r >= 0 );
 #endif
 
 	// register object methods
 
 	// assignments
-	r = engine->RegisterObjectMethod( "String", "String &opAssign(const String &in)", asFUNCTION( objectString_AssignBehaviour ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String &opAssign(int)", asFUNCTION( objectString_AssignBehaviourI ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String &opAssign(double)", asFUNCTION( objectString_AssignBehaviourD ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String &opAssign(float)", asFUNCTION( objectString_AssignBehaviourF ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String &opAssign(const String &in)", AS_OL(objectString_AssignBehaviour ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String &opAssign(int)", AS_OL(objectString_AssignBehaviourI ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String &opAssign(double)", AS_OL(objectString_AssignBehaviourD ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String &opAssign(float)", AS_OL(objectString_AssignBehaviourF ), AS_CC_OL ); assert( r >= 0 );
 
 	// register the index operator, both as a mutator and as an inspector
-	r = engine->RegisterObjectMethod( "String", "uint8 &opIndex(uint)", asFUNCTION( objectString_Index ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "const uint8 &opIndex(uint) const", asFUNCTION( objectString_Index ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "uint8 &opIndex(uint)", AS_OL(objectString_Index ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "const uint8 &opIndex(uint) const", AS_OL(objectString_Index ), AS_CC_OL ); assert( r >= 0 );
 
 	// +=
-	r = engine->RegisterObjectMethod( "String", "String &opAddAssign(const String &in)", asFUNCTION( objectString_AddAssignBehaviourSS ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String &opAddAssign(int)", asFUNCTION( objectString_AddAssignBehaviourSI ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String &opAddAssign(double)", asFUNCTION( objectString_AddAssignBehaviourSD ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String &opAddAssign(float)", asFUNCTION( objectString_AddAssignBehaviourSF ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String &opAddAssign(const String &in)", AS_OL(objectString_AddAssignBehaviourSS ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String &opAddAssign(int)", AS_OL(objectString_AddAssignBehaviourSI ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String &opAddAssign(double)", AS_OL(objectString_AddAssignBehaviourSD ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String &opAddAssign(float)", AS_OL(objectString_AddAssignBehaviourSF ), AS_CC_OL ); assert( r >= 0 );
 
 	// +
-	r = engine->RegisterObjectMethod( "String", "String @opAdd(const String &in) const", asFUNCTION( objectString_AddBehaviourSS ), asCALL_CDECL_OBJFIRST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String @opAdd(int) const", asFUNCTION( objectString_AddBehaviourSI ), asCALL_CDECL_OBJFIRST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String @opAdd_r(int) const", asFUNCTION( objectString_AddBehaviourIS ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String @opAdd(double) const", asFUNCTION( objectString_AddBehaviourSD ), asCALL_CDECL_OBJFIRST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String @opAdd_r(double) const", asFUNCTION( objectString_AddBehaviourDS ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String @opAdd(float) const", asFUNCTION( objectString_AddBehaviourSF ), asCALL_CDECL_OBJFIRST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String @opAdd_r(float) const", asFUNCTION( objectString_AddBehaviourFS ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String @opAdd(const String &in) const", AS_OF(objectString_AddBehaviourSS ), AS_CC_OF ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String @opAdd(int) const", AS_OF(objectString_AddBehaviourSI ), AS_CC_OF ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String @opAdd_r(int) const", AS_OL(objectString_AddBehaviourIS ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String @opAdd(double) const", AS_OF(objectString_AddBehaviourSD ), AS_CC_OF ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String @opAdd_r(double) const", AS_OL(objectString_AddBehaviourDS ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String @opAdd(float) const", AS_OF(objectString_AddBehaviourSF ), AS_CC_OF ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String @opAdd_r(float) const", AS_OL(objectString_AddBehaviourFS ), AS_CC_OL ); assert( r >= 0 );
 
 	// ==
-	r = engine->RegisterObjectMethod( "String", "bool opEquals(const String &in) const", asFUNCTION( objectString_EqualBehaviour ), asCALL_CDECL_OBJFIRST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "bool opEquals(const String &in) const", AS_OF(objectString_EqualBehaviour ), AS_CC_OF ); assert( r >= 0 );
 
-	r = engine->RegisterObjectMethod( "String", "uint len() const", asFUNCTION( objectString_Len ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "uint length() const", asFUNCTION( objectString_Len ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "bool empty() const", asFUNCTION( objectString_Empty ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String @tolower() const", asFUNCTION( objectString_ToLower ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String @toupper() const", asFUNCTION( objectString_ToUpper ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String @trim() const", asFUNCTION( objectString_Trim ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String @removeColorTokens() const", asFUNCTION( objectString_RemoveColorTokens ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String @getToken(const uint) const", asFUNCTION( objectString_getToken ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "uint len() const", AS_OL(objectString_Len ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "uint length() const", AS_OL(objectString_Len ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "bool empty() const", AS_OL(objectString_Empty ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String @tolower() const", AS_OL(objectString_ToLower ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String @toupper() const", AS_OL(objectString_ToUpper ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String @trim() const", AS_OL(objectString_Trim ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String @removeColorTokens() const", AS_OL(objectString_RemoveColorTokens ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String @getToken(const uint) const", AS_OL(objectString_getToken ), AS_CC_OL ); assert( r >= 0 );
 
-	r = engine->RegisterObjectMethod( "String", "int toInt() const", asFUNCTION( objectString_toInt ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "float toFloat() const", asFUNCTION( objectString_toFloat ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "int toInt() const", AS_OL(objectString_toInt ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "float toFloat() const", AS_OL(objectString_toFloat ), AS_CC_OL ); assert( r >= 0 );
 
-	r = engine->RegisterObjectMethod( "String", "uint locate(const String &in, const uint) const", asFUNCTION( objectString_Locate ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String @substr(const uint start, const uint length) const", asFUNCTION( objectString_Substring ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String @subString(const uint start, const uint length) const", asFUNCTION( objectString_Substring ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String @substr(const uint start) const", asFUNCTION( objectString_Substring2 ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "String @subString(const uint start) const", asFUNCTION( objectString_Substring2 ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "uint locate(const String &in, const uint) const", AS_OL(objectString_Locate ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String @substr(const uint start, const uint length) const", AS_OL(objectString_Substring ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String @subString(const uint start, const uint length) const", AS_OL(objectString_Substring ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String @substr(const uint start) const", AS_OL(objectString_Substring2 ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String @subString(const uint start) const", AS_OL(objectString_Substring2 ), AS_CC_OL ); assert( r >= 0 );
 
-	r = engine->RegisterObjectMethod( "String", "String @replace(const String &in search, const String &in replace) const", asFUNCTION( objectString_Replace ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "String @replace(const String &in search, const String &in replace) const", AS_OL(objectString_Replace ), AS_CC_OL ); assert( r >= 0 );
 
-	r = engine->RegisterObjectMethod( "String", "bool isAlpha() const", asFUNCTION( objectString_IsAlpha ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "bool isNumerical() const", asFUNCTION( objectString_IsNumeric ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "bool isNumeric() const", asFUNCTION( objectString_IsNumeric ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "String", "bool isAlphaNumerical() const", asFUNCTION( objectString_IsAlphaNumerical ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "bool isAlpha() const", AS_OL(objectString_IsAlpha ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "bool isNumerical() const", AS_OL(objectString_IsNumeric ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "bool isNumeric() const", AS_OL(objectString_IsNumeric ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "String", "bool isAlphaNumerical() const", AS_OL(objectString_IsAlphaNumerical ), AS_CC_OL ); assert( r >= 0 );
 
 	(void)sizeof(r); // hush the compiler
 }

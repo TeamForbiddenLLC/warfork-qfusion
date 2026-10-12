@@ -74,7 +74,9 @@ struct mem_import_s {
 	Q_EmptyPool \
 };
 
-#if MEM_DEFINE_INTERFACE_IMPL
+#if MEM_DEFINE_INTERFACE_IMPL && defined( __WASM__ )
+static inline void Q_ImportMemModule( const struct mem_import_s *mem ) { (void)mem; }
+#elif MEM_DEFINE_INTERFACE_IMPL
 static struct mem_import_s mem_import;
 mempool_t* Q_ParentPool() { return mem_import.parent; }
 void *__Q_Malloc( size_t size, const char *sourceFilename, const char *functionName, int sourceLine ) { return mem_import.__Q_Malloc(size, sourceFilename, functionName, sourceLine); }

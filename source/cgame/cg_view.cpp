@@ -1008,6 +1008,17 @@ void CG_RenderView( float frameTime, float realFrameTime, int realTime, unsigned
 {
 	refdef_t *rd = &cg.view.refdef;
 
+#ifdef __WASM__
+	{
+		int w = (int)trap_Cvar_Value( "vid_width" );
+		int h = (int)trap_Cvar_Value( "vid_height" );
+		if( w >= 64 )
+			cgs.vidWidth = w;
+		if( h >= 64 )
+			cgs.vidHeight = h;
+	}
+#endif
+
 	// update time
 	cg.realTime = realTime;
 	cg.frameTime = frameTime;

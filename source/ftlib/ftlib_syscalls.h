@@ -26,7 +26,11 @@ extern ftlib_import_t FTLIB_IMPORT;
 
 static inline void trap_Print( const char *msg )
 {
+#ifdef FTLIB_HARD_LINKED
+	Com_Printf( "%s", msg );
+#else
 	FTLIB_IMPORT.Print( msg );
+#endif
 }
 
 static inline void trap_Error( const char *msg )

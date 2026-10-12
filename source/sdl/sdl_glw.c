@@ -19,9 +19,109 @@
  */
 
 #include <SDL.h>
+#ifdef __WASM__
+#include <emscripten.h>
+#endif
 
 #include "../ref_gl/r_local.h"
 #include "sdl_glw.h"
+
+#ifdef __WASM__
+void GLimp_FillBrowserCanvas( void )
+{
+	EM_ASM({
+		var c = ( typeof Module !== 'undefined' ) ? Module['canvas'] : null;
+		if( !c ) {
+			c = document.getElementById('canvas');
+		}
+		if( !c || !c.style ) {
+			return;
+		}
+		c.style.position = 'fixed';
+		c.style.left = '0';
+		c.style.top = '0';
+		c.style.right = 'auto';
+		c.style.bottom = 'auto';
+		c.style.margin = '0';
+		c.style.padding = '0';
+		c.style.border = '0';
+		c.style.display = 'block';
+	});
+}
+
+void GLimp_UpdateSize( int width, int height )
+{
+	if( width > 0 && height > 0 ) {
+		glConfig.width = width;
+		glConfig.height = height;
+	}
+	GLimp_FillBrowserCanvas();
+}
+
+void GLimp_SyncBrowserCanvas( int *outw, int *outh )
+{
+	int w, h, curw, curh;
+
+	w = EM_ASM_INT({
+		var vv = window.visualViewport;
+		return ( vv ? Math.round( vv.width ) : document.documentElement.clientWidth ) | 0;
+	});
+	h = EM_ASM_INT({
+		var vv = window.visualViewport;
+		return ( vv ? Math.round( vv.height ) : document.documentElement.clientHeight ) | 0;
+	});
+	if( w < 64 ) {
+		w = 64;
+	}
+	if( h < 64 ) {
+		h = 64;
+	}
+
+	/* SDL_GetWindowSize often follows CSS size, so it can match w/h while
+	 * canvas.width/height (WebGL drawing buffer) still holds the init size. */
+	EM_ASM({
+		var c = ( typeof Module !== 'undefined' ) ? Module['canvas'] : null;
+		if( !c ) {
+			c = document.getElementById('canvas');
+		}
+		if( !c ) {
+			return;
+		}
+		var bw = $0;
+		var bh = $1;
+		if( c.width !== bw ) {
+			c.width = bw;
+		}
+		if( c.height !== bh ) {
+			c.height = bh;
+		}
+		c.style.width = bw + 'px';
+		c.style.height = bh + 'px';
+		if( window.visualViewport ) {
+			c.style.left = Math.round( window.visualViewport.offsetLeft ) + 'px';
+			c.style.top = Math.round( window.visualViewport.offsetTop ) + 'px';
+		}
+	}, w, h);
+
+	if( glw_state.sdl_window ) {
+		SDL_GetWindowSize( glw_state.sdl_window, &curw, &curh );
+		if( curw != w || curh != h ) {
+			SDL_SetWindowSize( glw_state.sdl_window, w, h );
+		}
+	}
+
+	glConfig.width = w;
+	glConfig.height = h;
+	GLimp_FillBrowserCanvas();
+
+	if( outw ) {
+		*outw = w;
+	}
+	if( outh ) {
+		*outh = h;
+	}
+}
+#endif
 
 glwstate_t glw_state = {NULL, false};
 cvar_t *vid_fullscreen;
@@ -65,19 +165,33 @@ rserr_t GLimp_SetFullscreen( bool fullscreen, int xpos, int ypos )
 #endif
 	}
 
+#ifdef __WASM__
+	(void)flags;
+	(void)xpos;
+	(void)ypos;
+	glConfig.fullScreen = fullscreen;
+	return rserr_ok;
+#else
     if( SDL_SetWindowFullscreen( glw_state.sdl_window, flags ) == 0 ) {
         SDL_SetWindowPosition( glw_state.sdl_window, xpos, ypos );
         glConfig.fullScreen = fullscreen;
         return rserr_ok;
     }
+#endif
 
     return rserr_invalid_fullscreen;
 }
 
 static void GLimp_CreateWindow( int x, int y, int width, int height )
 {
+#ifdef __WASM__
+	glw_state.sdl_window = SDL_CreateWindow( glw_state.applicationName,
+		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height,
+		SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE );
+#else
 	glw_state.sdl_window = SDL_CreateWindow( glw_state.applicationName, 
 		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL );
+#endif
 
 	if( !glw_state.sdl_window )
 		Sys_Error( "Couldn't create window: \"%s\"", SDL_GetError() );
@@ -87,6 +201,10 @@ static void GLimp_CreateWindow( int x, int y, int width, int height )
 	}
 
 	SDL_SetWindowPosition( glw_state.sdl_window, x, y );
+
+#ifdef __WASM__
+	GLimp_FillBrowserCanvas();
+#endif
 
 	GLimp_SetWindowIcon();
 }
@@ -171,6 +289,13 @@ static int GLimp_InitGL( int stencilbits, bool stereo )
 	int colorBits, depthBits, stencilBits, stereo_;
 	SDL_GLContext sdl_glcontext = 0;
 
+#ifdef __WASM__
+	SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES );
+	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
+	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 0 );
+	SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
+#endif
+
 	SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, max( 0, stencilbits ) );
 #ifndef NDEBUG
 	SDL_GL_SetAttribute( SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG );
@@ -230,6 +355,9 @@ void GLimp_BeginFrame( void )
  */
 void GLimp_EndFrame( void )
 {
+#ifdef __WASM__
+	GLimp_SyncBrowserCanvas( NULL, NULL );
+#endif
 	SDL_GL_SwapWindow( glw_state.sdl_window );
 }
 
@@ -239,6 +367,13 @@ void GLimp_EndFrame( void )
 bool GLimp_GetGammaRamp( size_t stride, unsigned short *psize, unsigned short *ramp )
 {
 	unsigned short ramp256[3 * 256];
+
+#if defined( __EMSCRIPTEN__ ) || defined( __WASM__ )
+	(void)stride;
+	(void)psize;
+	(void)ramp;
+	return false;
+#endif
 
 	if( stride < 256 ) {
 		// SDL only supports gamma ramps with 256 mappings per channel
@@ -261,6 +396,14 @@ bool GLimp_GetGammaRamp( size_t stride, unsigned short *psize, unsigned short *r
 void GLimp_SetGammaRamp( size_t stride, unsigned short size, unsigned short *ramp )
 {
 	unsigned short ramp256[3 * 256];
+
+#if defined( __EMSCRIPTEN__ ) || defined( __WASM__ )
+	(void)stride;
+	(void)size;
+	(void)ramp;
+	(void)ramp256;
+	return;
+#endif
 
 	if( size != 256 )
 		return;

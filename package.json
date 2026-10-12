@@ -1,0 +1,11 @@
+{
+  "name": "warfork-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "web": "node web/server.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}

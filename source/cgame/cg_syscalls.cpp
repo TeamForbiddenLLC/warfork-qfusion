@@ -44,7 +44,9 @@ extern "C" QF_DLL_EXPORT cgame_export_t *GetCGameAPI( cgame_import_t *import )
 	CGAME_IMPORT = *import;
 	Q_ImportSteamModule( &import->steam_import );
 
+#ifndef __WASM__
 	fs_import = *import->fsImport;
+#endif
 	globals.API = CG_API;
 
 	globals.Init = CG_Init;

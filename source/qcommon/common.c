@@ -771,9 +771,15 @@ void Qcommon_Init( int argc, char **argv )
 	if( setjmp( abortframe ) )
 		Sys_Error( "Error during initialization: %s", com_errormsg );
 
+#ifdef __WASM__
+	printf( "[wasm] Qcommon_Init: threads\n" );
+#endif
 	QThreads_Init();
 
 	com_print_mutex = QMutex_Create();
+#ifdef __WASM__
+	Com_Printf( "[wasm] Qcommon_Init: memory\n" );
+#endif
 
 	// initialize memory manager
 	Memory_Init();
@@ -830,6 +836,9 @@ void Qcommon_Init( int argc, char **argv )
 	developer =	    Cvar_Get( "developer", "0", 0 );
     
 
+#ifdef __WASM__
+	Com_Printf( "[wasm] Qcommon_Init: FS_Init\n" );
+#endif
 	FS_Init();
 
 	#ifdef USE_CRASHPAD
@@ -883,18 +892,33 @@ void Qcommon_Init( int argc, char **argv )
 	Cvar_Get( "gamename", APPLICATION, CVAR_READONLY );
 	versioncvar = Cvar_Get( "version", APP_VERSION_STR " " CPUSTRING " " __DATE__ " " BUILDSTRING, CVAR_SERVERINFO|CVAR_READONLY );
 
+#ifdef __WASM__
+	Com_Printf( "[wasm] Qcommon_Init: Sys_Init\n" );
+#endif
 	Sys_Init();
 
+#ifdef __WASM__
+	Com_Printf( "[wasm] Qcommon_Init: NET_Init\n" );
+#endif
 	NET_Init();
 	Netchan_Init();
 
 	CM_Init();
 
+#ifdef __WASM__
+	Com_Printf( "[wasm] Qcommon_Init: ScriptModule\n" );
+#endif
 	Com_ScriptModule_Init();
 
 	MM_Init();
 
+#ifdef __WASM__
+	Com_Printf( "[wasm] Qcommon_Init: SV_Init\n" );
+#endif
 	SV_Init();
+#ifdef __WASM__
+	Com_Printf( "[wasm] Qcommon_Init: CL_Init\n" );
+#endif
 	CL_Init();
 
 	SCR_EndLoadingPlaque();

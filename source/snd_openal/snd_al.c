@@ -147,6 +147,47 @@ static bool S_Init( void *hwnd, int maxEntities, bool verbose )
 
 	s_last_update_time = 0;
 
+#ifdef __WASM__
+	Com_Printf( "OpenAL: opening Web Audio device\n" );
+	alDevice = qalcOpenDevice( NULL );
+	if( !alDevice )
+	{
+		Com_Printf( "Failed to open OpenAL device\n" );
+		return false;
+	}
+	alContext = qalcCreateContext( alDevice, NULL );
+	if( !alContext )
+	{
+		Com_Printf( "Failed to create OpenAL context\n" );
+		qalcCloseDevice( alDevice );
+		alDevice = NULL;
+		return false;
+	}
+	qalcMakeContextCurrent( alContext );
+	if( verbose )
+		Com_Printf( "OpenAL initialized (Web Audio)\n" );
+	qalDopplerFactor( s_doppler->value );
+#ifndef __WASM__
+	qalDopplerVelocity( s_sound_velocity->value > 0.0f ? s_sound_velocity->value : 0.0f );
+#endif
+	if( qalSpeedOfSound )
+		qalSpeedOfSound( s_sound_velocity->value > 0.0f ? s_sound_velocity->value : 0.0f );
+	s_doppler->modified = false;
+	S_SetAttenuationModel( S_DEFAULT_ATTENUATION_MODEL, S_DEFAULT_ATTENUATION_MAXDISTANCE, S_DEFAULT_ATTENUATION_REFDISTANCE );
+	S_LockBackgroundTrack( false );
+	if( !S_InitDecoders( verbose ) )
+	{
+		Com_Printf( "Failed to init decoders\n" );
+		return false;
+	}
+	if( !S_InitSources( maxEntities, verbose ) )
+	{
+		Com_Printf( "Failed to init sources\n" );
+		return false;
+	}
+	return true;
+#endif
+
 	// get system default device identifier
 	defaultDevice = ( char * )qalcGetString( NULL, ALC_DEFAULT_DEVICE_SPECIFIER );
 	if( !defaultDevice )
@@ -770,6 +811,21 @@ static int S_EnqueuedCmdsWaiter( sndCmdPipe_t *queue, pipeCmdHandler_t *cmdHandl
 	}
 
 	return read;
+}
+
+/*
+* S_PumpSoundCmdPipe
+* Drain queued sound commands on the calling thread (WASM has no audio worker).
+*/
+void S_PumpSoundCmdPipe( void *queue )
+{
+	int n;
+
+	if( !queue )
+		return;
+	do {
+		n = S_ReadEnqueuedCmds( (sndCmdPipe_t *)queue, sndCmdHandlers );
+	} while( n > 0 );
 }
 
 /*

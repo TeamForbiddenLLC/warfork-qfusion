@@ -740,7 +740,21 @@ void SCR_UpdateScreen( void )
 	{
 		static const char* const cl_frame = "Render Frame"; 	
 		TracyCFrameMarkStart(cl_frame);
+#ifdef __WASM__
+		{
+			static int n;
+			if( ++n <= 3 )
+				Com_Printf( "[wasm] SCR RF_BeginFrame\n" );
+		}
+#endif
 		RF_BeginFrame( separation[i], forceclear, forcevsync );
+#ifdef __WASM__
+		{
+			static int n;
+			if( ++n <= 3 )
+				Com_Printf( "[wasm] SCR after RF_BeginFrame state=%d\n", cls.state );
+		}
+#endif
 
 		if( scr_draw_loading == 2 )
 		{ 
@@ -795,7 +809,21 @@ void SCR_UpdateScreen( void )
 		// wsw : aiwa : call any listeners so they can draw their stuff
 		Dynvar_CallListeners( updatescreen, NULL );
 
+#ifdef __WASM__
+		{
+			static int n;
+			if( ++n <= 3 )
+				Com_Printf( "[wasm] SCR RF_EndFrame\n" );
+		}
+#endif
 		RF_EndFrame();
+#ifdef __WASM__
+		{
+			static int n;
+			if( ++n <= 3 )
+				Com_Printf( "[wasm] SCR after RF_EndFrame\n" );
+		}
+#endif
 		TracyCFrameMarkEnd(cl_frame);
 	}
 }

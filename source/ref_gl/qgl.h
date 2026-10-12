@@ -62,14 +62,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define GL_GLEXT_LEGACY
 #define GLX_GLXEXT_LEGACY
 
-#if !defined (__MACOSX__)
+#if defined ( __WASM__ ) || defined ( __EMSCRIPTEN__ )
+#include <GLES3/gl3.h>
+#elif !defined (__MACOSX__)
 #ifdef _WIN32
 #include <windows.h>
 #endif
 #include <GL/gl.h>
 #endif
 
-#if defined (__linux__) || defined (__FreeBSD__)
+#if (defined (__linux__) || defined (__FreeBSD__)) && !defined (__WASM__) && !defined (__EMSCRIPTEN__)
 #include <GL/glx.h>
 #endif
 
@@ -486,7 +488,9 @@ typedef unsigned short GLhalfARB;
 #ifdef GL_HALF_FLOAT
 #undef GL_HALF_FLOAT
 #endif
-#ifdef GL_ES_VERSION_2_0
+/* WebGL2 / GLES3 vertexAttribPointer requires GL_HALF_FLOAT 0x140B.
+ * 0x8D61 is GL_HALF_FLOAT_OES (ES2) and is rejected by the browser. */
+#if defined( GL_ES_VERSION_2_0 ) && !defined( __EMSCRIPTEN__ ) && !defined( __WASM__ )
 #define GL_HALF_FLOAT										0x8D61
 #else
 #define GL_HALF_FLOAT										0x140B
@@ -986,8 +990,13 @@ QGL_EXT(void, glTexSubImage3DOES, (GLenum target, GLint level, GLint xoffset, GL
 QGL_FUNC_OPT(void, glTexImage3D, (GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLenum format, GLenum type, const GLvoid *pixels));
 QGL_FUNC_OPT(void, glTexSubImage3D, (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, const GLvoid *pixels));
 #ifndef qglTexImage3DEXT
+#if defined( __EMSCRIPTEN__ ) || defined( __WASM__ )
+#define qglTexImage3DEXT qglTexImage3D
+#define qglTexSubImage3DEXT qglTexSubImage3D
+#else
 #define qglTexImage3DEXT qglTexImage3DOES
 #define qglTexSubImage3DEXT qglTexSubImage3DOES
+#endif
 #endif
 #endif
 
@@ -999,3 +1008,5 @@ QGL_WGL_EXT(BOOL, wglSwapIntervalEXT, (int interval));
 
 // GLX_EXT Functions
 QGL_GLX_EXT(int, glXSwapIntervalSGI, (int interval));
+
+#include "qgl_wasm_aliases.h"

@@ -152,6 +152,7 @@ ALuint S_SoundFormat( int width, int channels );
 const char *S_ErrorMessage( ALenum error );
 ALuint S_GetBufferLength( ALuint buffer );
 void *S_BackgroundUpdateProc( void *param );
+void S_PumpSoundCmdPipe( void *queue );
 
 /*
 * Buffer management

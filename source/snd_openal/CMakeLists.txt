@@ -1,3 +1,7 @@
+if (NOT QFUSION_LIBRARY_TYPE)
+	set(QFUSION_LIBRARY_TYPE SHARED)
+endif()
+
 project(snd_openal)
 
 include_directories("../snd_common" ".")
@@ -24,6 +28,10 @@ else ()
         set(SND_OPENAL_PLATFORM_LIBRARIES "")
 endif()
 
-add_library(snd_openal SHARED ${SND_OPENAL_HEADERS} ${SND_OPENAL_SOURCES})
+if (EMSCRIPTEN)
+	qf_wasm_strip_common_sources(SND_OPENAL_SOURCES)
+endif()
+
+add_library(snd_openal ${QFUSION_LIBRARY_TYPE} ${SND_OPENAL_HEADERS} ${SND_OPENAL_SOURCES})
 target_link_libraries(snd_openal PRIVATE ogg vorbis vorbisfile OpenAL::OpenAL ${SND_OPENAL_PLATFORM_LIBRARIES} Tracy::TracyClient)
 qf_set_output_dir(snd_openal libs)

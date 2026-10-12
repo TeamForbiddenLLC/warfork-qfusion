@@ -45,3 +45,9 @@ third-party/steamworks/sdk
 
 # Ignore Visual Studio database files
 .vs
+node_modules/
+.env
+build-wasm/
+web/wasm/*.wasm
+web/wasm/*.js
+web/wasm/*.data

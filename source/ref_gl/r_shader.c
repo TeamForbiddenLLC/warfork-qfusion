@@ -595,7 +595,8 @@ static image_t *Shader_FindImage( shader_t *shader, const char *name, int flags 
 {
 	image_t *image;
 
-	if( !Q_stricmp( name, "$whiteimage" ) || !Q_stricmp( name, "*white" ) )
+	if( !Q_stricmp( name, "$whiteimage" ) || !Q_stricmp( name, "*white" )
+		|| !Q_stricmp( name, "*whiteimage" ) )
 		return rsh.whiteTexture;
 	if( !Q_stricmp( name, "$blackimage" ) || !Q_stricmp( name, "*black" ) )
 		return rsh.blackTexture;
@@ -1947,14 +1948,31 @@ static unsigned int Shader_GetCache( const char *name, shadercache_t **cache )
 /*
 * R_PrecacheShaders
 */
+#ifdef __WASM__
+int FS_VisitFiles( const char *dir, const char *extension, int ( *cb )( const char *name, void *user ), void *user );
+
+static int Shader_MakeCacheVisit( const char *name, void *user )
+{
+	int *count = (int *)user;
+	( *count )++;
+	if( ( ( *count ) % 8 ) == 1 ) {
+		Com_Printf( "...shader file %i: %s\n", *count, name );
+	}
+	Shader_MakeCache( name );
+	return 1;
+}
+#endif
+
 static void R_InitShadersCache( void )
 {
+	int numfiles_total;
+#ifndef __WASM__
 	int d;
 	int i, j, k, numfiles;
-	int numfiles_total;
 	const char *fileptr;
 	char shaderPaths[1024];
 	const char *dirs[3] = { "<scripts", ">scripts", "scripts" };
+#endif
 
 	r_shaderTemplateBuf = NULL;
 
@@ -1962,6 +1980,14 @@ static void R_InitShadersCache( void )
 	
 	Com_Printf( "Initializing Shaders:\n" );
 
+#ifdef __WASM__
+	{
+		int visitCount = 0;
+		Com_Printf( "...scanning pk3 for scripts/*.shader\n" );
+		numfiles_total = FS_VisitFiles( "scripts", ".shader", Shader_MakeCacheVisit, &visitCount );
+		Com_Printf( "...cached %i shader files from pk3\n", numfiles_total );
+	}
+#else
 	numfiles_total = 0;
 	for( d = 0; d < 3; d++ ) {
 		if( d == 2 ) {
@@ -1993,9 +2019,14 @@ static void R_InitShadersCache( void )
 			}
 		}
 	}
+#endif
 
 	if( !numfiles_total ) {
+#ifdef __WASM__
+		Com_Printf( S_COLOR_YELLOW "No scripts/*.shader found; using builtin default shaders.\n" );
+#else
 		ri.Com_Error( ERR_DROP, "Could not find any shaders!" );
+#endif
 	}
 
 	Com_Printf( "--------------------------------------\n" );

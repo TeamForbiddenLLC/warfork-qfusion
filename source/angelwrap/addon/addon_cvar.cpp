@@ -188,32 +188,32 @@ void RegisterCvarAddon( asIScriptEngine *engine )
 	int r;
 
 	// register object behaviours
-	r = engine->RegisterObjectBehaviour( "Cvar", asBEHAVE_CONSTRUCT, "void f(const String &in, const String &in, const uint flags)", asFUNCTION( objectCVar_Constructor ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour( "Cvar", asBEHAVE_CONSTRUCT, "void f(const Cvar &in)", asFUNCTION( objectCVar_CopyConstructor ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour( "Cvar", asBEHAVE_CONSTRUCT, "void f(const String &in, const String &in, const uint flags)", AS_OL(objectCVar_Constructor ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour( "Cvar", asBEHAVE_CONSTRUCT, "void f(const Cvar &in)", AS_OL(objectCVar_CopyConstructor ), AS_CC_OL ); assert( r >= 0 );
 
 	// register object methods
 
-	r = engine->RegisterObjectMethod( "Cvar", "void reset()", asFUNCTION( objectCVar_Reset ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Cvar", "void set( const String &in )", asFUNCTION( objectCVar_setS ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Cvar", "void set( float value )", asFUNCTION( objectCVar_setF ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Cvar", "void set( int value )", asFUNCTION( objectCVar_setI ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Cvar", "void set( double value )", asFUNCTION( objectCVar_setD ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Cvar", "void reset()", AS_OL(objectCVar_Reset ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Cvar", "void set( const String &in )", AS_OL(objectCVar_setS ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Cvar", "void set( float value )", AS_OL(objectCVar_setF ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Cvar", "void set( int value )", AS_OL(objectCVar_setI ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Cvar", "void set( double value )", AS_OL(objectCVar_setD ), AS_CC_OL ); assert( r >= 0 );
 #ifdef CVAR_FORCESET
-	r = engine->RegisterObjectMethod( "Cvar", "void forceSet( const String &in )", asFUNCTION( objectCVar_forceSetS ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Cvar", "void forceSet( float value )", asFUNCTION( objectCVar_forceSetF ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Cvar", "void forceSet( int value )", asFUNCTION( objectCVar_forceSetI ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Cvar", "void forceSet( double value )", asFUNCTION( objectCVar_forceSetD ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Cvar", "void forceSet( const String &in )", AS_OL(objectCVar_forceSetS ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Cvar", "void forceSet( float value )", AS_OL(objectCVar_forceSetF ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Cvar", "void forceSet( int value )", AS_OL(objectCVar_forceSetI ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Cvar", "void forceSet( double value )", AS_OL(objectCVar_forceSetD ), AS_CC_OL ); assert( r >= 0 );
 #endif
-	r = engine->RegisterObjectMethod( "Cvar", "void set_modified( bool modified )", asFUNCTION( objectCVar_setModified ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Cvar", "void set_modified( bool modified )", AS_OL(objectCVar_setModified ), AS_CC_OL ); assert( r >= 0 );
 
-	r = engine->RegisterObjectMethod( "Cvar", "bool get_modified() const", asFUNCTION( objectCVar_getModified ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Cvar", "bool get_boolean() const", asFUNCTION( objectCVar_getBool ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Cvar", "int get_integer() const", asFUNCTION( objectCVar_getInteger ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Cvar", "float get_value() const", asFUNCTION( objectCVar_getValue ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Cvar", "const String @ get_name() const", asFUNCTION( objectCVar_getName ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Cvar", "const String @ get_string() const", asFUNCTION( objectCVar_getString ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Cvar", "const String @ get_defaultString() const", asFUNCTION( objectCVar_getDefaultString ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Cvar", "const String @ get_latchedString() const", asFUNCTION( objectCVar_getLatchedString ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Cvar", "bool get_modified() const", AS_OL(objectCVar_getModified ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Cvar", "bool get_boolean() const", AS_OL(objectCVar_getBool ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Cvar", "int get_integer() const", AS_OL(objectCVar_getInteger ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Cvar", "float get_value() const", AS_OL(objectCVar_getValue ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Cvar", "const String @ get_name() const", AS_OL(objectCVar_getName ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Cvar", "const String @ get_string() const", AS_OL(objectCVar_getString ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Cvar", "const String @ get_defaultString() const", AS_OL(objectCVar_getDefaultString ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Cvar", "const String @ get_latchedString() const", AS_OL(objectCVar_getLatchedString ), AS_CC_OL ); assert( r >= 0 );
 
 	// enums
 	r = engine->RegisterEnumValue( "eCvarFlag", "CVAR_ARCHIVE", CVAR_ARCHIVE ); assert( r >= 0 );

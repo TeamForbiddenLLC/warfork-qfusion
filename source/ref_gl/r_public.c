@@ -18,17 +18,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+#ifndef __WASM__
 #define CVAR_DEFINE_INTERFACE_IMPL 1
-#include "../qcommon/mod_cvar.h"
-
 #define FS_DEFINE_INTERFACE_IMPL 1
-#include "../qcommon/mod_fs.h"
-
 #define CMD_DEFINE_INTERFACE_IMPL 1
-#include "../qcommon/mod_cmd.h"
-
 #define MEM_DEFINE_INTERFACE_IMPL 1
+#endif
+#include "../qcommon/mod_cvar.h"
+#include "../qcommon/mod_fs.h"
+#include "../qcommon/mod_cmd.h"
 #include "../qcommon/mod_mem.h"
+#ifdef __WASM__
+static inline void Q_ImportFsModule( struct fs_import_s *mod ) { (void)mod; }
+static inline void Q_ImportMemModule( const struct mem_import_s *mem ) { (void)mem; }
+static inline void Q_ImportCmdModule( struct cmd_import_s *mod ) { (void)mod; }
+static inline void Q_ImportCvarModule( struct cvar_import_s *mod ) { (void)mod; }
+#endif
 
 
 #include "../ref_base/ref_mod.h"

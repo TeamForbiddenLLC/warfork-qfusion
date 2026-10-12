@@ -53,9 +53,13 @@ qasEngineContextMap contexts;
 
 // ============================================================================
 
-static void qasMessageCallback( const asSMessageInfo *msg )
+// AngelScript CallGlobalFunction invokes this as void(void*, void*). A single
+// pointer argument traps on WASM (call_indirect signature mismatch).
+static void qasMessageCallback( void *msgPtr, void *param )
 {
+	const asSMessageInfo *msg = static_cast<const asSMessageInfo *>( msgPtr );
 	const char *msg_type;
+	(void)param;
 
 	switch( msg->type )
 	{
@@ -74,9 +78,11 @@ static void qasMessageCallback( const asSMessageInfo *msg )
 	Com_Printf( "%s%s %d:%d: %s\n", msg_type, msg->section, msg->row, msg->col, msg->message );
 }
 
-static void qasExceptionCallback( asIScriptContext *ctx )
+static void qasExceptionCallback( void *ctxPtr, void *param )
 {
+	asIScriptContext *ctx = static_cast<asIScriptContext *>( ctxPtr );
 	int line, col;
+	(void)param;
 	asIScriptFunction *func;
 	const char *sectionName, *exceptionString, *funcDecl, *moduleName;
 

@@ -184,7 +184,38 @@ typedef UINT_PTR socket_handle_t;
 
 //==============================================
 
-#if defined ( __linux__ ) || defined ( __FreeBSD__ )
+#if defined ( __EMSCRIPTEN__ ) || defined ( __WASM__ )
+
+#define HAVE_INLINE
+
+#ifndef HAVE_STRCASECMP
+#define HAVE_STRCASECMP
+#endif
+
+#define LIB_DIRECTORY "libs"
+#define LIB_PREFIX "lib"
+#define LIB_SUFFIX ".so"
+
+#define BUILDSTRING "WASM"
+#define OSNAME "Emscripten"
+#define STEAMQUERY_OS 'w'
+#define ARCH "wasm"
+#define CPUSTRING "wasm32"
+#define VAR( x ) # x
+
+#include <alloca.h>
+
+typedef int ioctl_param_t;
+typedef int socket_handle_t;
+
+#define SOCKET_ERROR (-1)
+#define INVALID_SOCKET (-1)
+
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
+
+#elif defined ( __linux__ ) || defined ( __FreeBSD__ )
 
 #define HAVE_INLINE
 

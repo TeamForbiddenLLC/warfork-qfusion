@@ -43,6 +43,7 @@ pmodelinfo_t *cg_PModelInfos;
 void CG_PModelsInit( void )
 {
 	memset( cg_entPModels, 0, sizeof( cg_entPModels ) );
+	cg_PModelInfos = NULL;
 }
 
 /*
@@ -164,6 +165,7 @@ static bool CG_ParseAnimationScript( pmodelinfo_t *pmodelinfo, char *filename )
 	int rootanims[PMODEL_PARTS];
 	int filenum;
 	int length;
+	int oldAnimSlot = BOTH_DEATH1;
 
 	memset( rootanims, -1, sizeof( rootanims ) );
 	memset( anim_data, 0, sizeof( anim_data ) );
@@ -211,6 +213,7 @@ static bool CG_ParseAnimationScript( pmodelinfo_t *pmodelinfo, char *filename )
 		CG_Printf( "Couldn't load animation script: %s\n", filename );
 		return false;
 	}
+	buf[length] = 0;
 
 	// proceed
 	ptr = ( char * )buf;
@@ -220,18 +223,34 @@ static bool CG_ParseAnimationScript( pmodelinfo_t *pmodelinfo, char *filename )
 		if( !token[0] )
 			break;
 
-		if( inAnimations )
+		if( inAnimations || ( *token >= '0' && *token <= '9' ) )
 		{
-			// animations section: from here on everything is <name> <first> <last> <fps>
 			int animnum = -1;
 			int j;
 
 			if( *token >= '0' && *token <= '9' )
 			{
-				CG_Printf( "Script: ERROR: unexpected number in the animations section: %s (4 values per animation is an old format)\n", token );
-				malformed = true;
-				break;
+				/* Shipped pk3s still use the old numeric format (first last loop fps). */
+				inAnimations = true;
+				if( oldAnimSlot < PMODEL_TOTAL_ANIMATIONS )
+				{
+					anim_data[0][oldAnimSlot] = atoi( token );
+					token = COM_ParseExt( &ptr, false );
+					if( token[0] )
+						anim_data[1][oldAnimSlot] = atoi( token );
+					token = COM_ParseExt( &ptr, false );
+					if( token[0] )
+						anim_data[2][oldAnimSlot] = atoi( token );
+					token = COM_ParseExt( &ptr, false );
+					if( token[0] )
+						anim_data[3][oldAnimSlot] = atoi( token );
+					oldAnimSlot++;
+					model_anims++;
+				}
+				continue;
 			}
+
+			inAnimations = true;
 
 			for( j = 0; j < PMODEL_TOTAL_ANIMATIONS; j++ )
 			{
@@ -525,8 +544,12 @@ static bool CG_LoadPlayerModel( pmodelinfo_t *pmodelinfo, const char *filename )
 	char scratch[MAX_QPATH];
 
 	Q_snprintfz( scratch, sizeof( scratch ), "%s/tris.iqm", filename );
+#ifdef __WASM__
+	/* Listen-server pure lists can miss MEMFS pk3 checksums; still load the model. */
+#else
 	if( cgs.pure && !FS_IsPureFile( scratch ) )
 		return false;
+#endif
 
 	pmodelinfo->model = CG_RegisterModel( scratch );
 	if( !R_SkeletalGetNumBones( pmodelinfo->model, NULL ) )
@@ -540,8 +563,12 @@ static bool CG_LoadPlayerModel( pmodelinfo_t *pmodelinfo, const char *filename )
 	if( pmodelinfo->model )
 	{
 		Q_snprintfz( anim_filename, sizeof( anim_filename ), "%s/animation.cfg", filename );
+#ifdef __WASM__
+		loaded_model = CG_ParseAnimationScript( pmodelinfo, anim_filename );
+#else
 		if( !cgs.pure || FS_IsPureFile( anim_filename ) )
 			loaded_model = CG_ParseAnimationScript( pmodelinfo, anim_filename );
+#endif
 	}
 
 	// clean up if failed
@@ -1363,8 +1390,11 @@ void CG_AddPModel( centity_t *cent )
 
 	// since origin is displaced in player models set lighting origin to the center of the bbox
 #if 1
-	for( i = 0; i < 3; i++ )
-		cent->ent.lightingOrigin[i] = cent->ent.origin[i] + ( 0.5f * ( playerbox_stand_mins[i] + playerbox_stand_maxs[i] ) );
+	//for( i = 0; i < 3; i++ )
+	//	cent->ent.lightingOrigin[i] = cent->ent.origin[i] + ( 0.5f * ( playerbox_stand_mins[i] + playerbox_stand_maxs[i] ) );
+	cent->ent.lightingOrigin[0] = cent->ent.origin[0];
+	cent->ent.lightingOrigin[1] = cent->ent.origin[1];
+	cent->ent.lightingOrigin[2] = cent->ent.origin[2] + playerbox_crouch_maxs[2];
 #else
 	if( 1 )
 	{

@@ -671,30 +671,45 @@ class WFMasterFetcher {
 	{
 		WFMasterFetcher *t = static_cast<WFMasterFetcher*>(privatep);
 		if (status < 0 || status >= 300) {
+			printf("WF master HTTP failed status=%d bytes=%u\n", status, (unsigned)t->buf.size());
 			return delete t;
 		}
 		size_t cur = 0;
 
-		if (t->buf.size() < 2) {
+		t->buf.push_back('\0');
+		if (t->buf.size() < 3) {
+			printf("WF master HTTP empty body status=%d\n", status);
 			return delete t;
 		}
 
 		short numServers = be16toh(*(short *)&t->buf[cur]);
 		cur += sizeof(short);
+		if( numServers < 0 || numServers > 2048 ) {
+			printf("WF master HTTP bad count %d (status=%d bytes=%u)\n",
+				(int)numServers, status, (unsigned)t->buf.size());
+			return delete t;
+		}
 
 		for (int i = 0; i < numServers; i++) {
-			if (t->buf.size() - cur < 8) {
+			if (t->buf.size() - cur < 9) {
+				printf("WF master HTTP truncated at server %d/%d\n", i, (int)numServers);
 				return delete t;
 			}
 
-			long long steamid = *(long long *)&t->buf[cur];
 			cur += sizeof(long long);
 
 			char *info = &t->buf[cur];
+			size_t remain = t->buf.size() - cur;
+			size_t infolen = strnlen(info, remain);
+			if( infolen >= remain ) {
+				printf("WF master HTTP unterminated info at server %d\n", i);
+				return delete t;
+			}
 			t->source->addToServerListWarfork(info);
-			cur += strlen(info) + 1;
+			cur += infolen + 1;
 		}
 
+		printf("WF master HTTP listed %d servers (status=%d)\n", (int)numServers, status);
 		delete t;
 	}
 };
@@ -744,13 +759,18 @@ void ServerBrowserDataSource::startFullUpdate( void )
 	tokenize( trap::Cvar_String("masterservers_warfork"), ' ', masterServersWF );
 
 	for( std::vector<std::string>::iterator it = masterServersWF.begin(); it != masterServersWF.end(); ++it ) {
+#if defined( __WASM__ ) || defined( __EMSCRIPTEN__ )
+		/* Steam/HTTP master on :27951 times out in the browser; UDP getservers lists dedicated servers. */
+		std::string queryString = std::string( "requestservers global " ) + *it + " " + gameName + " full empty\n";
+		trap::Cmd_ExecuteText( EXEC_APPEND, queryString.c_str() );
+#else
 		char url[256];
 		snprintf(url, sizeof(url), "http://%s:%i/", it->c_str(), 27951);
-
 
 		auto fetcher = new WFMasterFetcher(this);
 		printf("Fetching %s\n", url);
 		trap::AsyncStream_PerformRequest(url, "GET", "", 5000, &WFMasterFetcher::StreamRead, &WFMasterFetcher::StreamDone, fetcher);
+#endif
 	}
 
 }

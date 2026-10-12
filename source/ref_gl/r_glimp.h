@@ -26,7 +26,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define QGL_EXTERN extern
 #endif
 
-#ifdef _WIN32
+#if defined ( __EMSCRIPTEN__ ) || defined ( __WASM__ )
+#define QGL_WGL( type, name, params )
+#define QGL_WGL_EXT( type, name, params )
+#define QGL_GLX( type, name, params )
+#define QGL_GLX_EXT( type, name, params )
+#define QGL_EGL( type, name, params )
+#define QGL_EGL_EXT( type, name, params )
+#elif defined ( _WIN32 )
 #include <windows.h>
 
 #define QGL_WGL( type, name, params ) QGL_EXTERN type( APIENTRY * q ## name ) params;
@@ -37,7 +44,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define QGL_EGL_EXT( type, name, params )
 #endif
 
-#if defined ( __linux__ ) || defined ( __FreeBSD__ )
+#if ( defined ( __linux__ ) || defined ( __FreeBSD__ ) ) && !defined ( __EMSCRIPTEN__ ) && !defined ( __WASM__ )
 #define QGL_WGL( type, name, params )
 #define QGL_WGL_EXT( type, name, params )
 #define QGL_GLX( type, name, params ) QGL_EXTERN type( APIENTRY * q ## name ) params;

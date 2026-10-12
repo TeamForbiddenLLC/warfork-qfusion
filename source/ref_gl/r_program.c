@@ -1050,17 +1050,16 @@ static const glsl_feature_t * const glsl_programtypes_features[] =
 "\n"
 
 #define QF_BUILTIN_GLSL_MACROS_GLSL300ES "" \
+"precision highp float;\n" \
+"precision highp int;\n" \
 "#ifdef VERTEX_SHADER\n" \
 "# define qf_varying out\n" \
 "# define qf_flat_varying flat out\n" \
 "# define qf_attribute in\n" \
 "#endif\n" \
 "#ifdef FRAGMENT_SHADER\n" \
-"# ifdef QF_FRAGMENT_PRECISION_HIGH\n" \
-"   precision highp float;\n" \
-"# else\n" \
-"   precision mediump float;\n" \
-"# endif\n" \
+"  precision highp float;\n" \
+"  precision highp int;\n" \
 "  precision lowp sampler2DArray;\n" \
 "  precision lowp sampler3D;\n" \
 "  precision lowp sampler2DShadow;\n" \
@@ -1088,16 +1087,31 @@ static const glsl_feature_t * const glsl_programtypes_features[] =
 #define QF_BUILTIN_GLSL_CONSTANTS \
 QF_GLSL_PI \
 "\n" \
+"#ifndef myhalf\n" \
+"#define myhalf float\n" \
+"#define myhalf2 vec2\n" \
+"#define myhalf3 vec3\n" \
+"#define myhalf4 vec4\n" \
+"#endif\n" \
 "#ifndef MAX_UNIFORM_INSTANCES\n" \
 "#define MAX_UNIFORM_INSTANCES " STR_TOSTR( MAX_GLSL_UNIFORM_INSTANCES ) "\n" \
 "#endif\n"
 
+#ifdef GL_ES_VERSION_2_0
+#define QF_BUILTIN_GLSL_UNIFORMS \
+"uniform highp vec3 u_QF_ViewOrigin;\n" \
+"uniform highp mat3 u_QF_ViewAxis;\n" \
+"uniform highp float u_QF_MirrorSide;\n" \
+"uniform highp vec3 u_QF_EntityOrigin;\n" \
+"uniform highp float u_QF_ShaderTime;\n"
+#else
 #define QF_BUILTIN_GLSL_UNIFORMS \
 "uniform vec3 u_QF_ViewOrigin;\n" \
 "uniform mat3 u_QF_ViewAxis;\n" \
 "uniform float u_QF_MirrorSide;\n" \
 "uniform vec3 u_QF_EntityOrigin;\n" \
 "uniform float u_QF_ShaderTime;\n"
+#endif
 
 #define QF_BUILTIN_GLSL_QUAT_TRANSFORM_OVERLOAD \
 "#ifdef QF_DUAL_QUAT_TRANSFORM_TANGENT\n" \
@@ -2816,6 +2830,9 @@ static void RP_BindAttrbibutesLocations( glsl_program_t *program )
 	qglBindAttribLocationARB( program->object, VATTRIB_TEXCOORDS, "a_TexCoord" );
 
 	qglBindAttribLocationARB( program->object, VATTRIB_SPRITEPOINT, "a_SpritePoint" );
+	/* Same location as a_SVector: AUTOSPRITE2 is mutually exclusive with
+	 * tangent-space materials. WebGL2 has enough attrib slots; leaving this
+	 * unbound lets the linker pick location 0 and collapse sprites to origin. */
 	qglBindAttribLocationARB( program->object, VATTRIB_SVECTOR, "a_SpriteRightUpAxis" );
 
 	qglBindAttribLocationARB( program->object, VATTRIB_BONESINDICES, "a_BonesIndices" );
@@ -2833,9 +2850,11 @@ static void RP_BindAttrbibutesLocations( glsl_program_t *program )
 		qglBindAttribLocationARB( program->object, VATTRIB_INSTANCE_XYZS, "a_InstancePosAndScale" );
 	}
 
+#ifndef GL_ES_VERSION_2_0
 	if( glConfig.shadingLanguageVersion >= 130 ) {
 		qglBindFragDataLocation( program->object, 0, "qf_FragColor" );
 	}
+#endif
 }
 
 /*

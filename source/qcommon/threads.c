@@ -225,6 +225,11 @@ static void QBufPipe_Wake( qbufPipe_t *pipe )
 */
 void QBufPipe_Finish( qbufPipe_t *pipe )
 {
+#ifdef __WASM__
+	/* Stub threads never drain the pipe; spinning here freezes the browser. */
+	(void)pipe;
+	return;
+#endif
 	while( Sys_Atomic_CAS( &pipe->cmdbuf_len, 0, 0, pipe->cmdbuf_mutex ) == false && !pipe->terminated ) {
 		QMutex_Lock( pipe->nonempty_mutex );
 		QBufPipe_Wake( pipe );

@@ -438,6 +438,11 @@ void CL_GameModule_Init( void )
 	import.RefreshMouseAngles = CL_GameModule_RefreshMouseAngles;
 
 	import.ref_import = RF_Forward_Mod();
+#ifdef __WASM__
+	if( !import.ref_import.RF_Init ) {
+		import.ref_import = re.refImport;
+	}
+#endif
 	import.R_UpdateScreen = SCR_UpdateScreen;
 	import.R_RegisterWorldModel = CL_GameModule_R_RegisterWorldModel;
 

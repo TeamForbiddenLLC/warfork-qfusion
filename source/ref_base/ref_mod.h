@@ -11,6 +11,10 @@ typedef struct shader_s shader_t;
 typedef struct model_s model_t;
 typedef struct skinfile_s skinfile_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define DECLARE_TYPEDEF_METHOD( ret, name, ... ) \
 	typedef ret(*name##Fn )( __VA_ARGS__ ); \
 	ret name (__VA_ARGS__);
@@ -204,7 +208,12 @@ struct ref_import_s {
 
 struct ref_import_s RF_Forward_Mod();
 
-#if REF_DEFINE_INTERFACE_IMPL
+#if defined( __WASM__ )
+static inline void Q_ImportRefModule( const struct ref_import_s *ref )
+{
+	(void)ref;
+}
+#elif REF_DEFINE_INTERFACE_IMPL
 static struct ref_import_s ref_import;
 struct ref_import_s RF_Forward_Mod() {
 	return ref_import;
@@ -267,6 +276,10 @@ shader_t* R_RegisterRawAlphaMask( const char *name, int width, int height, uint8
 
 static inline void Q_ImportRefModule(const struct ref_import_s* ref) {
 	ref_import = *ref;
+}
+#endif
+
+#ifdef __cplusplus
 }
 #endif
 

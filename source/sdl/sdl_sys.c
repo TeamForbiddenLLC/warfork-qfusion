@@ -1,5 +1,10 @@
 #include <SDL.h>
 #include "../client/client.h"
+#ifdef __WASM__
+#include <emscripten.h>
+#include "../wasm/wasm_net.h"
+#include "../wasm/wasm_trace.h"
+#endif
 
 #if defined( _WIN32 )
 #include "../win32/resource.h"
@@ -28,6 +33,18 @@ void Sys_Error( const char *format, ... )
 	Q_vsnprintfz( msg, sizeof( msg ), format, argptr );
 	va_end( argptr );
 
+	printf( "Sys_Error: %s\n", msg );
+#ifdef __WASM__
+	EM_ASM({
+		var text = UTF8ToString($0);
+		if (typeof Module !== 'undefined' && Module.printErr) {
+			Module.printErr(text);
+		}
+		if (typeof window !== 'undefined') {
+			window.dispatchEvent(new CustomEvent('warfork-error', { detail: text }));
+		}
+	}, msg);
+#endif
 	SDL_ShowSimpleMessageBox( SDL_MESSAGEBOX_ERROR, APPLICATION, msg, NULL );
 
 	exit( 1 );
@@ -39,6 +56,11 @@ void Sys_Error( const char *format, ... )
 void Sys_Init( void )
 {
 	Sys_InitTime();
+#ifdef __WASM__
+	Sys_WASM_Init();
+#else
+	/* native platform init stays in the existing Sys_* helpers */
+#endif
 }
 
 /*
@@ -100,6 +122,28 @@ void Sys_ConsoleOutput( char *string )
 
 /*****************************************************************************/
 
+#ifdef __WASM__
+static unsigned int wasm_oldtime;
+
+static void Sys_WASM_Frame( void )
+{
+	unsigned int newtime, time;
+	static int wasm_frame_n;
+
+	newtime = Sys_Milliseconds();
+	time = newtime - wasm_oldtime;
+	if( !time )
+		return;
+	wasm_oldtime = newtime;
+	wasm_frame_n++;
+	if( wasm_frame_n <= 3 )
+		WasmTrace( "Sys_WASM_Frame begin" );
+	Qcommon_Frame( time );
+	if( wasm_frame_n <= 3 )
+		WasmTrace( "Sys_WASM_Frame end" );
+}
+#endif
+
 int main( int argc, char **argv )
 {
 	unsigned int oldtime, newtime, time;
@@ -116,10 +160,24 @@ int main( int argc, char **argv )
 #endif
 #endif
 
+#ifdef __WASM__
+	WasmTrace( "main: SDL_Init" );
+#endif
 	SDL_Init( SDL_INIT_VIDEO );
-	
+
+#ifdef __WASM__
+	WasmTrace( "main: Qcommon_Init" );
+#endif
 	Qcommon_Init( argc, argv );
 
+#ifdef __WASM__
+	(void)oldtime;
+	(void)newtime;
+	(void)time;
+	wasm_oldtime = Sys_Milliseconds();
+	/* simulate_infinite_loop=0: callMain can return; EXIT_RUNTIME=0 keeps the loop alive. */
+	emscripten_set_main_loop( Sys_WASM_Frame, 0, 0 );
+#else
 	oldtime = Sys_Milliseconds();
 	while( true ) {
 		// find time spent rendering last frame
@@ -136,4 +194,5 @@ int main( int argc, char **argv )
 	}
 
 	SDL_Quit();
+#endif // __WASM__
 }

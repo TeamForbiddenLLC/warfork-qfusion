@@ -42,4 +42,10 @@ extern glwstate_t glw_state;
 extern cvar_t *vid_fullscreen;
 extern cvar_t *vid_multiscreen_head;
 
+#ifdef __WASM__
+void GLimp_FillBrowserCanvas( void );
+void GLimp_UpdateSize( int width, int height );
+void GLimp_SyncBrowserCanvas( int *outw, int *outh );
+#endif
+
 #endif // __SDL_GLW_H_

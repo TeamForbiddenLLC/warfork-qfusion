@@ -1,3 +1,7 @@
+if (NOT QFUSION_LIBRARY_TYPE)
+	set(QFUSION_LIBRARY_TYPE SHARED)
+endif()
+
 project(ftlib)
 
 include_directories(${CURL_INCLUDE_DIR} ${FREETYPE_INCLUDE_DIRS})
@@ -18,6 +22,10 @@ else ()
         set(FTLIB_PLATFORM_LIBRARIES "")
 endif()
 
-add_library(ftlib SHARED ${FTLIB_SOURCES} ${FTLIB_HEADERS})
+if (EMSCRIPTEN)
+	qf_wasm_strip_common_sources(FTLIB_SOURCES)
+endif()
+
+add_library(ftlib ${QFUSION_LIBRARY_TYPE} ${FTLIB_SOURCES} ${FTLIB_HEADERS})
 target_link_libraries(ftlib PRIVATE Freetype::Freetype ${FTLIB_PLATFORM_LIBRARIES} zlib)
 qf_set_output_dir(ftlib libs)

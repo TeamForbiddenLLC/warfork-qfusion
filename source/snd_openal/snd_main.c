@@ -155,11 +155,17 @@ bool SF_Init( void *hwnd, int maxEntities, bool verbose )
 		return false;
 	}
 
+#ifdef __WASM__
+	s_backThread = NULL;
+	S_IssueInitCmd( s_cmdPipe, hwnd, maxEntities, verbose );
+	S_PumpSoundCmdPipe( s_cmdPipe );
+#else
 	s_backThread = trap_Thread_Create( S_BackgroundUpdateProc, s_cmdPipe );
 
 	S_IssueInitCmd( s_cmdPipe, hwnd, maxEntities, verbose );
 
 	S_FinishSoundCmdPipe( s_cmdPipe );
+#endif
 
 	if( !alContext ) {
 		return false;
@@ -184,16 +190,21 @@ void SF_Shutdown( bool verbose )
 	// wake up the mixer
 	SF_Activate( true );
 
-	// wait for the queue to be processed
+#ifdef __WASM__
+	S_PumpSoundCmdPipe( s_cmdPipe );
+#else
 	S_FinishSoundCmdPipe( s_cmdPipe );
+#endif
 
 	S_ShutdownBuffers();
 
-	// shutdown backend
 	S_IssueShutdownCmd( s_cmdPipe, verbose );
 
-	// wait for the queue to be processed
+#ifdef __WASM__
+	S_PumpSoundCmdPipe( s_cmdPipe );
+#else
 	S_FinishSoundCmdPipe( s_cmdPipe );
+#endif
 
 	// wait for the backend thread to die
 	trap_Thread_Join( s_backThread );
@@ -225,19 +236,28 @@ void SF_BeginRegistration( void )
 	}
 	s_registering = true;
 
-	// wait for the queue to be processed
+#ifdef __WASM__
+	S_PumpSoundCmdPipe( s_cmdPipe );
+#else
 	S_FinishSoundCmdPipe( s_cmdPipe );
+#endif
 }
 
 void SF_EndRegistration( void )
 {
-	// wait for the queue to be processed
+#ifdef __WASM__
+	S_PumpSoundCmdPipe( s_cmdPipe );
+#else
 	S_FinishSoundCmdPipe( s_cmdPipe );
+#endif
 
 	S_ForEachBuffer( SF_UnregisterSound );
 
-	// wait for the queue to be processed
+#ifdef __WASM__
+	S_PumpSoundCmdPipe( s_cmdPipe );
+#else
 	S_FinishSoundCmdPipe( s_cmdPipe );
+#endif
 
 	S_ForEachBuffer( SF_FreeSound );
 
@@ -472,6 +492,9 @@ void SF_Update( const vec3_t origin, const vec3_t velocity, const mat3_t axis, b
 	}
 
 	S_IssueSetListenerCmd( s_cmdPipe, origin, velocity, axis, avidump );
+#ifdef __WASM__
+	S_PumpSoundCmdPipe( s_cmdPipe );
+#endif
 }
 
 /*

@@ -3,6 +3,10 @@
 
 #include "../gameshared/q_arch.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum {
 	VID_WINDOW_VULKAN,
 	VID_WINDOW_GL,
@@ -77,7 +81,9 @@ struct win_import_s {
 	R_WIN_GetWindowHandle \
 };
 
-#if WIN_DEFINE_INTERFACE_IMPL
+#if WIN_DEFINE_INTERFACE_IMPL && defined( __WASM__ )
+static inline void Q_ImportWinModule( const struct win_import_s *ref ) { (void)ref; }
+#elif WIN_DEFINE_INTERFACE_IMPL
 static struct win_import_s win_import;
 void R_WIN_Init(const char *applicationName, void *hinstance, void *wndproc, void *parenthWnd, int iconResource, const int *iconXPM ) { win_import.R_WIN_Init(applicationName, hinstance, wndproc, parenthWnd, iconResource, iconXPM); }
 void R_WIN_Shutdown(){ win_import.R_WIN_Shutdown(); } 
@@ -88,6 +94,10 @@ bool R_WIN_GetWindowHandle(win_handle_t *handle ){ return win_import.R_WIN_GetWi
 
 static inline void Q_ImportWinModule(const struct win_import_s* ref) {
 	win_import = *ref;
+}
+#endif
+
+#ifdef __cplusplus
 }
 #endif
 

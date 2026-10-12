@@ -802,6 +802,11 @@ static void QFT_Init( bool verbose )
 		if( verbose ) {
 			Com_Printf( S_COLOR_RED "Error initializing FreeType library: %i\n", error );
 		}
+#ifdef __WASM__
+		else {
+			Com_Printf( S_COLOR_YELLOW "FreeType unavailable in the browser client (%i)\n", error );
+		}
+#endif
 	}
 
 	assert( !qftGlyphTempBitmap );

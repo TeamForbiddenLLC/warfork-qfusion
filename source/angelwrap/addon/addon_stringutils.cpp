@@ -284,31 +284,31 @@ void RegisterStringUtilsAddon( asIScriptEngine *engine )
 
 	r = engine->SetDefaultNamespace( "StringUtils" ); assert( r >= 0 );
 
-	r = engine->RegisterGlobalFunction( "String @FormatInt(int64 val, const String &in options, uint width = 0)", asFUNCTION( QAS_FormatInt ), asCALL_CDECL );  assert( r >= 0 );
-	r = engine->RegisterGlobalFunction( "String @FormatFloat(double val, const String &in options, uint width = 0, uint precision = 0)", asFUNCTION( QAS_FormatFloat ), asCALL_CDECL ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "String @FormatInt(int64 val, const String &in options, uint width = 0)", AS_FN(QAS_FormatInt ), AS_CC );  assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "String @FormatFloat(double val, const String &in options, uint width = 0, uint precision = 0)", AS_FN(QAS_FormatFloat ), AS_CC ); assert( r >= 0 );
 
-	r = engine->RegisterGlobalFunction( "String @Format(const String &in format, const String &in arg1)", asFUNCTION( QAS_FormatString1 ), asCALL_CDECL ); assert( r >= 0 );
-	r = engine->RegisterGlobalFunction( "String @Format(const String &in format, const String &in arg1, const String &in arg2)", asFUNCTION( QAS_FormatString2 ), asCALL_CDECL ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "String @Format(const String &in format, const String &in arg1)", AS_FN(QAS_FormatString1 ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "String @Format(const String &in format, const String &in arg1, const String &in arg2)", AS_FN(QAS_FormatString2 ), AS_CC ); assert( r >= 0 );
 	r = engine->RegisterGlobalFunction( "String @Format(const String &in format, const String &in arg1, const String &in arg2, "
-		"const String &in arg3)", asFUNCTION( QAS_FormatString3 ), asCALL_CDECL ); assert( r >= 0 );
+		"const String &in arg3)", AS_FN(QAS_FormatString3 ), AS_CC ); assert( r >= 0 );
 	r = engine->RegisterGlobalFunction( "String @Format(const String &in format, const String &in arg1, const String &in arg2, "
-		"const String &in arg3, const String &in arg4)", asFUNCTION( QAS_FormatString4 ), asCALL_CDECL ); assert( r >= 0 );
+		"const String &in arg3, const String &in arg4)", AS_FN(QAS_FormatString4 ), AS_CC ); assert( r >= 0 );
 	r = engine->RegisterGlobalFunction( "String @Format(const String &in format, const String &in arg1, const String &in arg2, "
-		"const String &in arg3, const String &in arg4, const String &in arg5)", asFUNCTION( QAS_FormatString5 ), asCALL_CDECL ); assert( r >= 0 );
+		"const String &in arg3, const String &in arg4, const String &in arg5)", AS_FN(QAS_FormatString5 ), AS_CC ); assert( r >= 0 );
 	r = engine->RegisterGlobalFunction( "String @Format(const String &in format, const String &in arg1, const String &in arg2, "
-		"const String &in arg3, const String &in arg4, const String &in arg5, const String &in arg6)", asFUNCTION( QAS_FormatString6 ), asCALL_CDECL ); assert( r >= 0 );
+		"const String &in arg3, const String &in arg4, const String &in arg5, const String &in arg6)", AS_FN(QAS_FormatString6 ), AS_CC ); assert( r >= 0 );
 	r = engine->RegisterGlobalFunction( "String @Format(const String &in format, const String &in arg1, const String &in arg2, "
-		"const String &in arg3, const String &in arg4, const String &in arg5, const String &in arg6, const String &in arg7)", asFUNCTION( QAS_FormatString7 ), asCALL_CDECL ); assert( r >= 0 );
+		"const String &in arg3, const String &in arg4, const String &in arg5, const String &in arg6, const String &in arg7)", AS_FN(QAS_FormatString7 ), AS_CC ); assert( r >= 0 );
 	r = engine->RegisterGlobalFunction( "String @Format(const String &in format, const String &in arg1, const String &in arg2, "
-		"const String &in arg3, const String &in arg4, const String &in arg5, const String &in arg6, const String &in arg7, const String &in arg8)", asFUNCTION( QAS_FormatString8 ), asCALL_CDECL ); assert( r >= 0 );
+		"const String &in arg3, const String &in arg4, const String &in arg5, const String &in arg6, const String &in arg7, const String &in arg8)", AS_FN(QAS_FormatString8 ), AS_CC ); assert( r >= 0 );
 	
-	r = engine->RegisterGlobalFunction( "array<String @> @Split(const String &in string, const String &in delimiter)", asFUNCTION( QAS_SplitString ), asCALL_CDECL ); assert( r >= 0 );
-	r = engine->RegisterGlobalFunction( "String @Join(array<String @> &in, const String &in delimiter)", asFUNCTION( QAS_JoinString ), asCALL_CDECL ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "array<String @> @Split(const String &in string, const String &in delimiter)", AS_FN(QAS_SplitString ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "String @Join(array<String @> &in, const String &in delimiter)", AS_FN(QAS_JoinString ), AS_CC ); assert( r >= 0 );
 
-	r = engine->RegisterGlobalFunction( "uint Strtol(const String &in string, uint base)", asFUNCTION( QAS_Strtol ), asCALL_CDECL ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "uint Strtol(const String &in string, uint base)", AS_FN(QAS_Strtol ), AS_CC ); assert( r >= 0 );
 	
-	r = engine->RegisterGlobalFunction( "String @FromCharCode(uint charCode)", asFUNCTION( QAS_StringFromCharCode ), asCALL_CDECL ); assert( r >= 0 );
-	r = engine->RegisterGlobalFunction( "String @FromCharCode(array<uint> &in charCodes)", asFUNCTION( QAS_StringFromCharCodes ), asCALL_CDECL ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "String @FromCharCode(uint charCode)", AS_FN(QAS_StringFromCharCode ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "String @FromCharCode(array<uint> &in charCodes)", AS_FN(QAS_StringFromCharCodes ), AS_CC ); assert( r >= 0 );
 
 	r = engine->SetDefaultNamespace( "" ); assert( r >= 0 );
 

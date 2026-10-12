@@ -437,6 +437,8 @@ static struct trie_node_s *TRIE_Find_Rec(
 {
 	assert( key );
 	assert( node );
+	if( !node || !key )
+		return NULL;
 	if( !Trie_LetterCompare( *key, node->letter, casing ) )
 	{
 		// prefix matches

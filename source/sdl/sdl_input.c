@@ -1,9 +1,21 @@
 #include <SDL.h>
 #include "../client/client.h"
 #include "sdl_input_joy.h"
+#ifdef __WASM__
+#include "sdl_glw.h"
+#include <emscripten.h>
+#endif
 
 cvar_t *in_grabinconsole;
 cvar_t *in_disablemacosxmouseaccel;
+#ifdef __WASM__
+cvar_t *in_touchcontrols;
+cvar_t *in_touchscale;
+cvar_t *in_touchopacity;
+cvar_t *in_touchlook;
+cvar_t *in_touchlooksens;
+cvar_t *in_touchlayout;
+#endif
 
 extern cvar_t *vid_xpos;
 extern cvar_t *vid_ypos;
@@ -334,6 +346,11 @@ static void IN_HandleEvents( void )
 				break;
 
 			case SDL_MOUSEBUTTONDOWN:
+#ifdef __WASM__
+				if( !mouse_relative ) {
+					SDL_SetRelativeMouseMode( SDL_TRUE );
+				}
+#endif
 				mouse_button_event( &event.button, true );
 				break;
 
@@ -372,6 +389,16 @@ static void IN_HandleEvents( void )
 						vid_xpos->modified = false;
 						vid_ypos->modified = false;
 						break;
+#ifdef __WASM__
+					case SDL_WINDOWEVENT_SIZE_CHANGED:
+					case SDL_WINDOWEVENT_RESIZED:
+						if( event.window.data1 > 0 && event.window.data2 > 0 ) {
+							viddef.width = event.window.data1;
+							viddef.height = event.window.data2;
+							GLimp_UpdateSize( event.window.data1, event.window.data2 );
+						}
+						break;
+#endif
 				}
 				break;
 		}
@@ -414,22 +441,33 @@ void IN_MouseMove( usercmd_t *cmd )
 {
 	if( mouse_active ) {
 		if( cls.key_dest == key_menu ) {
-			// The menu cursor is driven by the absolute pointer position (relative
-			// mode is off in menus). Map window pixels into viddef (UI) space so the
-			// cursor tracks 1:1 even when the backend stretches the rendered image to
-			// the window; absolute positioning avoids the diagonal stair-stepping that
-			// accumulating scaled relative deltas would cause.
-			int ax = 0, ay = 0, winW = 0, winH = 0;
+			int ux = 0, uy = 0;
+#ifdef __WASM__
+			ux = EM_ASM_INT({
+				var x = window.__wfMenuMouseX;
+				return ( typeof x === 'number' && isFinite( x ) ) ? ( x | 0 ) : -1;
+			});
+			uy = EM_ASM_INT({
+				var y = window.__wfMenuMouseY;
+				return ( typeof y === 'number' && isFinite( y ) ) ? ( y | 0 ) : -1;
+			});
+			if( ux < 0 || uy < 0 ) {
+#endif
+			{
+				int ax = 0, ay = 0, winW = 0, winH = 0;
 
-			SDL_GetMouseState( &ax, &ay );
-			SDL_GetWindowSize( sdl_window, &winW, &winH );
-
-			int ux = ax, uy = ay;
-			if( winW > 0 && winH > 0 ) {
-				ux = (int)( (float)ax * (float)viddef.width / (float)winW );
-				uy = (int)( (float)ay * (float)viddef.height / (float)winH );
+				SDL_GetMouseState( &ax, &ay );
+				SDL_GetWindowSize( sdl_window, &winW, &winH );
+				ux = ax;
+				uy = ay;
+				if( winW > 0 && winH > 0 ) {
+					ux = (int)( (float)ax * (float)viddef.width / (float)winW );
+					uy = (int)( (float)ay * (float)viddef.height / (float)winH );
+				}
 			}
-
+#ifdef __WASM__
+			}
+#endif
 			CL_MouseSet( ux, uy, true );
 			mx = my = 0;
 			return;
@@ -465,6 +503,22 @@ void IN_Init()
 
 	in_grabinconsole = Cvar_Get( "in_grabinconsole", "0", CVAR_ARCHIVE );
 	in_disablemacosxmouseaccel = Cvar_Get( "in_disablemacosxmouseaccel", "1", CVAR_ARCHIVE );
+#ifdef __WASM__
+	in_touchcontrols = Cvar_Get( "in_touchcontrols", "-1", CVAR_ARCHIVE );
+	in_touchscale = Cvar_Get( "in_touchscale", "100", CVAR_ARCHIVE );
+	in_touchopacity = Cvar_Get( "in_touchopacity", "55", CVAR_ARCHIVE );
+	in_touchlook = Cvar_Get( "in_touchlook", "1", CVAR_ARCHIVE );
+	in_touchlooksens = Cvar_Get( "in_touchlooksens", "2.5", CVAR_ARCHIVE );
+	in_touchlayout = Cvar_Get( "in_touchlayout", "0", 0 );
+	if( in_touchcontrols->integer < 0 ) {
+		int mobile = EM_ASM_INT({
+			var ua = navigator.userAgent || '';
+			var iPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+			return (/Android|iPhone|iPad|iPod/i.test(ua) || iPadOS) ? 1 : 0;
+		});
+		Cvar_Set( "in_touchcontrols", mobile ? "1" : "0" );
+	}
+#endif
 
 	SDL_GetVersion( &linked );
 
@@ -477,7 +531,17 @@ void IN_Init()
 		SDL_SetHint( SDL_HINT_MOUSE_RELATIVE_MODE_WARP, m_raw->integer ? "0" : "1" );
 	}
 #endif
+#ifdef __WASM__
+	SDL_SetHint( "SDL_MOUSE_FOCUS_CLICKTHROUGH", "1" );
+	SDL_SetHint( "SDL_MOUSE_RELATIVE_SCALING", "0" );
+	SDL_SetHint( "SDL_EMSCRIPTEN_KEYBOARD_ELEMENT", "#canvas" );
+#endif
 
+#ifdef __WASM__
+	mouse_relative = false;
+	SDL_SetRelativeMouseMode( SDL_FALSE );
+	IN_SetMouseScalingEnabled( true );
+#else
 	mouse_relative = SDL_SetRelativeMouseMode( SDL_TRUE ) == 0;
 	if( mouse_relative ) {
 		IN_SetMouseScalingEnabled( false );
@@ -485,6 +549,7 @@ void IN_Init()
 	else {
 		IN_WarpMouseToCenter( NULL, NULL );
 	}
+#endif
 
 	IN_SDL_JoyInit( true );
 
@@ -529,13 +594,52 @@ void IN_Frame()
 	if( !input_inited )
 		return;
 
+#ifdef __WASM__
+	{
+		int cw = 0, ch = 0;
+		GLimp_SyncBrowserCanvas( &cw, &ch );
+		if( cw > 0 && ch > 0 && ( viddef.width != cw || viddef.height != ch ) ) {
+			viddef.width = cw;
+			viddef.height = ch;
+			Cvar_ForceSet( "vid_width", va( "%i", cw ) );
+			Cvar_ForceSet( "vid_height", va( "%i", ch ) );
+		} else if( cw > 0 && ch > 0 ) {
+			viddef.width = cw;
+			viddef.height = ch;
+		}
+	}
+#endif
+
 	// Evaluate the desired mouse state every frame (not just on activate/deactivate
 	// transitions) so switching between game/menu/console updates relative mode.
 	// Relative mode (FPS look) is only used in gameplay; menus use the absolute
 	// pointer position (see IN_MouseMove), matching upstream qfusion.
 	bool want_active = input_focus &&
 		!( !Cvar_Value( "vid_fullscreen" ) && cls.key_dest == key_console && !in_grabinconsole->integer );
-	bool want_relative = want_active && cls.key_dest != key_menu;
+	bool touch_overlay = false;
+#ifdef __WASM__
+	touch_overlay = in_touchcontrols && in_touchcontrols->integer;
+	EM_ASM({
+		if (window.WarforkTouch && typeof window.WarforkTouch.sync === 'function') {
+			window.WarforkTouch.sync($0, $1, $2, $3, $4, $5, $6);
+		}
+	}, cls.key_dest, touch_overlay ? 1 : 0,
+		in_touchscale ? in_touchscale->integer : 100,
+		in_touchopacity ? in_touchopacity->integer : 55,
+		in_touchlook ? in_touchlook->integer : 1,
+		in_touchlooksens ? (int)( in_touchlooksens->value * 100.0f ) : 250,
+		in_touchlayout && in_touchlayout->integer ? 1 : 0 );
+#endif
+	bool want_relative = want_active && cls.key_dest != key_menu && !touch_overlay;
+
+#ifdef __WASM__
+	EM_ASM({
+		window.__wfWantPointerLock = !!$0;
+		if( !$0 && document.pointerLockElement ) {
+			document.exitPointerLock();
+		}
+	}, want_relative ? 1 : 0 );
+#endif
 
 	if( want_relative != mouse_relative ) {
 		if( SDL_SetRelativeMouseMode( want_relative ? SDL_TRUE : SDL_FALSE ) == 0 ) {
@@ -557,7 +661,9 @@ void IN_Frame()
 	// Confine the (hidden) pointer to the window while in the absolute-cursor menu so
 	// clicks don't escape; relative mode already confines, and losing focus clears
 	// want_active which releases the grab.
+#ifndef __WASM__
 	SDL_SetWindowGrab( sdl_window, ( want_active && !mouse_relative ) ? SDL_TRUE : SDL_FALSE );
+#endif
 
 	input_active = true;
 
@@ -569,8 +675,37 @@ void IN_Frame()
  */
 unsigned int IN_SupportedDevices( void )
 {
+#ifdef __WASM__
+	if( in_touchcontrols && in_touchcontrols->integer ) {
+		return IN_DEVICE_KEYBOARD | IN_DEVICE_MOUSE | IN_DEVICE_JOYSTICK | IN_DEVICE_TOUCHSCREEN;
+	}
+#endif
 	return IN_DEVICE_KEYBOARD | IN_DEVICE_MOUSE | IN_DEVICE_JOYSTICK;
 }
+
+#ifdef __WASM__
+EMSCRIPTEN_KEEPALIVE void WASM_TouchCmd( const char *cmd )
+{
+	if( !cmd || !cmd[0] ) {
+		return;
+	}
+	Cbuf_AddText( cmd );
+	if( cmd[strlen( cmd ) - 1] != '\n' ) {
+		Cbuf_AddText( "\n" );
+	}
+}
+
+EMSCRIPTEN_KEEPALIVE void WASM_TouchMove( int dx, int dy )
+{
+	mx += dx;
+	my += dy;
+}
+
+EMSCRIPTEN_KEEPALIVE void WASM_TouchKey( int key, int down )
+{
+	Key_Event( key, down != 0, Sys_Milliseconds() );
+}
+#endif
 
 /**
  * Stub for showing an on-screen keyboard.

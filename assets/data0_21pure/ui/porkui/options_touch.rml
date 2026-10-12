@@ -1,0 +1,74 @@
+<rml>
+<head>
+	<title>options</title>
+	<link type="text/template" href="template.rml" />
+	<script>
+		ElementOptionsForm @form;
+
+		void onTouchShow( Element @body, Event @evt )
+		{
+			onTemplateShow( body, evt );
+
+			ElementOptionsForm @f = body.getElementById("options-form");
+			if( @f != null ) {
+				f.storeOptions();
+				@form = @f;
+			}
+
+			animationsOnShow();
+		}
+	</script>
+</head>
+<body template="porkui" onshow="$onTouchShow">
+	<div id="leftside">
+		<div id="touch-options">
+			<optionsform id="options-form">
+				<div class="title">On-screen joystick and buttons</div>
+				<input cvar="in_touchcontrols" type="checkbox" realtime="1"/>
+				<p>
+					Virtual stick (move) and buttons for phones and tablets.
+					Automatically enabled on Android and iOS. You can turn it on for any browser from this tab.
+				</p>
+				<br/>
+
+				<div class="title">Look pad (right side)</div>
+				<input cvar="in_touchlook" type="checkbox" realtime="1"/>
+				<br/>
+
+				<div class="title">Control size</div>
+				<input cvar="in_touchscale" type="range" min="60" max="160" step="1" value="100" realtime="1"/>
+				<br/>
+
+				<div class="title">Control opacity</div>
+				<input cvar="in_touchopacity" type="range" min="15" max="90" step="1" value="55" realtime="1"/>
+				<br/>
+
+				<div class="title">Look sensitivity</div>
+				<input cvar="in_touchlooksens" type="range" min="0.5" max="8" step="0.1" value="2.5" realtime="1"/>
+				<br/>
+
+				<br/>
+				<button onclick="game.execAppend('in_touchlayout 1\n'); notificationPopup('Drag the on-screen controls, then tap Done');" class="button-apply">Customize layout</button>
+				<p>Opens the touch overlay so you can drag the stick and buttons. Positions are saved on this device.</p>
+				<br/>
+
+				<br/>
+				<button onclick="form.restoreOptions();" class="button-cancel">Cancel</button>
+				<button onclick="form.applyOptions(); notificationPopup('Saved');" class="button-apply">Save changes</button>
+			</optionsform>
+		</div>
+	</div>
+
+	<div id="sidebar">
+		<div id="sidebar2">
+			<a href="#" onclick="animOpenMenu('options_player.rml');">Player</a>
+			<a href="#" onclick="animOpenMenu('options_teams.rml');">Teams</a>
+			<a href="#" onclick="animOpenMenu('options_video.rml');">Video</a>
+			<a href="#" onclick="animOpenMenu('options_audio.rml');">Audio</a>
+			<a href="#" onclick="animOpenMenu('options_input.rml');">Input</a>
+			<a href="#" onclick="animOpenMenu('options_privacy.rml');">Privacy</a>
+			<a id="opt-touch-link" href="#" onclick="animOpenMenu('options_touch.rml');">Touch</a>
+		</div>
+	</div>
+</body>
+</rml>

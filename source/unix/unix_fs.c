@@ -28,6 +28,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifdef __linux__
 #include <linux/limits.h>
 #endif
+#if defined ( __EMSCRIPTEN__ ) || defined ( __WASM__ )
+#include <limits.h>
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
+#endif
 
 #include <unistd.h>
 #include <sys/stat.h>
@@ -490,6 +496,16 @@ void *Sys_FS_MMapFile( int fileno, size_t size, size_t offset, void **mapping, s
 		offsetmask = ~(sysconf(_SC_PAGESIZE) - 1);
 	offsetpad = offset - (offset & offsetmask);
 
+#ifdef __WASM__
+	(void)offsetmask;
+	(void)offsetpad;
+	(void)fileno;
+	(void)size;
+	(void)offset;
+	(void)mapping;
+	(void)mapping_offset;
+	return NULL;
+#else
 	void *data = mmap( NULL, size + offsetpad, PROT_READ, MAP_PRIVATE, fileno, offset - offsetpad );
 	if( !data )
 		return NULL;
@@ -497,6 +513,7 @@ void *Sys_FS_MMapFile( int fileno, size_t size, size_t offset, void **mapping, s
 	*mapping = (void *)1;
 	*mapping_offset = offsetpad;
 	return data + offsetpad;
+#endif // __WASM__
 }
 
 /*
@@ -504,9 +521,16 @@ void *Sys_FS_MMapFile( int fileno, size_t size, size_t offset, void **mapping, s
 */
 void Sys_FS_UnMMapFile( void *mapping, void *data, size_t size, size_t mapping_offset )
 {
+#ifdef __WASM__
+	(void)mapping;
+	(void)data;
+	(void)size;
+	(void)mapping_offset;
+#else
 	if( !data )
 		return;
 	munmap( (char *)data - mapping_offset, size + mapping_offset );
+#endif // __WASM__
 }
 
 /*

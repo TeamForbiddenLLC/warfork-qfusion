@@ -48,6 +48,9 @@ struct steam_import_s {
 };
 
 #ifdef STEAM_DEFINE_INTERFACE_IMPL
+#if defined( __WASM__ )
+static inline void Q_ImportSteamModule( const struct steam_import_s *imp ) { (void)imp; }
+#else
 static struct steam_import_s steam_import;
 static inline void Q_ImportSteamModule( const struct steam_import_s *imp )
 {
@@ -62,4 +65,6 @@ void STEAMSHIM_subscribeEvent( uint32_t id, void *self, STEAMSHIM_evt_handle evt
 void STEAMSHIM_unsubscribeEvent( uint32_t id, STEAMSHIM_evt_handle evt){ return steam_import.STEAMSHIM_unsubscribeEvent(id, evt);} // wait on the dispatch loop
 bool STEAMSHIM_active(){ return steam_import.STEAMSHIM_active();} // wait on the dispatch loop
 #endif
+#endif
+
 #endif

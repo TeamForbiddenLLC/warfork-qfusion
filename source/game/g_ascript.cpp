@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "g_local.h"
 #include "g_as_local.h"
+#include "../angelwrap/addon/as_generic_runtime.h"
 
 angelwrap_api_t *angelExport = NULL;
 
@@ -108,8 +109,8 @@ static void asnullfunc(void) {}
 
 #define ASLIB_FUNCTION_NULL						NULL
 #define ASLIB_FUNCDEF_NULL						{ ASLIB_FUNCTION_NULL }
-#define ASLIB_BEHAVIOR_NULL						{ asBEHAVE_CONSTRUCT, ASLIB_FUNCTION_NULL, asFUNCTION(asnullfunc), asCALL_CDECL }
-#define ASLIB_METHOD_NULL						{ ASLIB_FUNCTION_NULL, asFUNCTION(asnullfunc), asCALL_CDECL }
+#define ASLIB_BEHAVIOR_NULL						{ asBEHAVE_CONSTRUCT, ASLIB_FUNCTION_NULL, AS_FN(asnullfunc), AS_CC }
+#define ASLIB_METHOD_NULL						{ ASLIB_FUNCTION_NULL, AS_FN(asnullfunc), AS_CC }
 #define ASLIB_PROPERTY_NULL						{ NULL, 0 }
 
 #define ASLIB_Malloc(s)							(aslib_import.Mem_Alloc(s,__FILE__,__LINE__))
@@ -747,17 +748,17 @@ static const asFuncdef_t astrace_Funcdefs[] =
 
 static const asBehavior_t astrace_ObjectBehaviors[] =
 {
-	{ asBEHAVE_CONSTRUCT, ASLIB_FUNCTION_DECL(void, f, ()), asFUNCTION(objectTrace_DefaultConstructor), asCALL_CDECL_OBJLAST },
-	{ asBEHAVE_CONSTRUCT, ASLIB_FUNCTION_DECL(void, f, (const Trace &in)), asFUNCTION(objectTrace_CopyConstructor), asCALL_CDECL_OBJLAST },
+	{ asBEHAVE_CONSTRUCT, ASLIB_FUNCTION_DECL(void, f, ()), AS_OL(objectTrace_DefaultConstructor), AS_CC_OL },
+	{ asBEHAVE_CONSTRUCT, ASLIB_FUNCTION_DECL(void, f, (const Trace &in)), AS_OL(objectTrace_CopyConstructor), AS_CC_OL },
 
 	ASLIB_BEHAVIOR_NULL
 };
 
 static const asMethod_t astrace_Methods[] =
 {
-	{ ASLIB_FUNCTION_DECL(bool, doTrace, ( const Vec3 &in, const Vec3 &in, const Vec3 &in, const Vec3 &in, int ignore, int contentMask ) const), asFUNCTION(objectTrace_doTrace), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(Vec3, get_endPos, () const), asFUNCTION(objectTrace_getEndPos), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(Vec3, get_planeNormal, () const), asFUNCTION(objectTrace_getPlaneNormal), asCALL_CDECL_OBJLAST },
+	{ ASLIB_FUNCTION_DECL(bool, doTrace, ( const Vec3 &in, const Vec3 &in, const Vec3 &in, const Vec3 &in, int ignore, int contentMask ) const), AS_OL(objectTrace_doTrace), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(Vec3, get_endPos, () const), AS_OL(objectTrace_getEndPos), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(Vec3, get_planeNormal, () const), AS_OL(objectTrace_getPlaneNormal), AS_CC_OL },
 
 	ASLIB_METHOD_NULL
 };
@@ -865,19 +866,19 @@ static const asBehavior_t asitem_ObjectBehaviors[] =
 
 static const asMethod_t asitem_Methods[] =
 {
-	{ ASLIB_FUNCTION_DECL(const String @, get_classname, () const), asFUNCTION(objectGItem_getClassName), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_name, () const), asFUNCTION(objectGItem_getName), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_shortName, () const), asFUNCTION(objectGItem_getShortName), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_model, () const), asFUNCTION(objectGItem_getModelName), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_model2, () const), asFUNCTION(objectGItem_getModel2Name), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_icon, () const), asFUNCTION(objectGItem_getIconName), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_simpleIcon, () const), asFUNCTION(objectGItem_getSimpleItemName), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_pickupSound, () const), asFUNCTION(objectGItem_getPickupSoundName), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_colorToken, () const), asFUNCTION(objectGItem_getColorToken), asCALL_CDECL_OBJLAST },
+	{ ASLIB_FUNCTION_DECL(const String @, get_classname, () const), AS_OL(objectGItem_getClassName), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_name, () const), AS_OL(objectGItem_getName), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_shortName, () const), AS_OL(objectGItem_getShortName), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_model, () const), AS_OL(objectGItem_getModelName), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_model2, () const), AS_OL(objectGItem_getModel2Name), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_icon, () const), AS_OL(objectGItem_getIconName), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_simpleIcon, () const), AS_OL(objectGItem_getSimpleItemName), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_pickupSound, () const), AS_OL(objectGItem_getPickupSoundName), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_colorToken, () const), AS_OL(objectGItem_getColorToken), AS_CC_OL },
 
-	{ ASLIB_FUNCTION_DECL(bool, isPickable, () const), asFUNCTION(objectGItem_isPickable), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, isUsable, () const), asFUNCTION(objectGItem_isUsable), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, isDropable, () const), asFUNCTION(objectGItem_isDropable), asCALL_CDECL_OBJLAST },
+	{ ASLIB_FUNCTION_DECL(bool, isPickable, () const), AS_OL(objectGItem_isPickable), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, isUsable, () const), AS_OL(objectGItem_isUsable), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, isDropable, () const), AS_OL(objectGItem_isDropable), AS_CC_OL },
 
 	ASLIB_METHOD_NULL
 };
@@ -1037,26 +1038,26 @@ static const asBehavior_t match_ObjectBehaviors[] =
 
 static const asMethod_t match_Methods[] =
 {
-	{ ASLIB_FUNCTION_DECL(void, launchState, (int state) const), asFUNCTION(objectMatch_launchState), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, startAutorecord, () const), asFUNCTION(objectMatch_startAutorecord), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, stopAutorecord, () const), asFUNCTION(objectMatch_stopAutorecord), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, scoreLimitHit, () const), asFUNCTION(objectMatch_scoreLimitHit), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, timeLimitHit, () const), asFUNCTION(objectMatch_timeLimitHit), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, isTied, () const), asFUNCTION(objectMatch_isTied), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, checkExtendPlayTime, () const), asFUNCTION(objectMatch_checkExtendPlayTime), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, suddenDeathFinished, () const), asFUNCTION(objectMatch_suddenDeathFinished), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, isPaused, () const), asFUNCTION(objectMatch_isPaused), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, isWaiting, () const), asFUNCTION(objectMatch_isWaiting), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, isExtended, () const), asFUNCTION(objectMatch_isExtended), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(uint, duration, () const), asFUNCTION(objectMatch_duration), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(uint, startTime, () const), asFUNCTION(objectMatch_startTime), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(uint, endTime, () const), asFUNCTION(objectMatch_endTime), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(int, getState, () const), asFUNCTION(objectMatch_getState), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_name, () const), asFUNCTION(objectMatch_getName), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, getScore, () const), asFUNCTION(objectMatch_getScore),  asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, set_name, ( const String &in )), asFUNCTION(objectMatch_setName), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, setScore, ( const String &in )), asFUNCTION(objectMatch_setScore), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, setClockOverride, ( uint milliseconds )), asFUNCTION(objectMatch_setClockOverride), asCALL_CDECL_OBJLAST },
+	{ ASLIB_FUNCTION_DECL(void, launchState, (int state) const), AS_OL(objectMatch_launchState), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, startAutorecord, () const), AS_OL(objectMatch_startAutorecord), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, stopAutorecord, () const), AS_OL(objectMatch_stopAutorecord), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, scoreLimitHit, () const), AS_OL(objectMatch_scoreLimitHit), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, timeLimitHit, () const), AS_OL(objectMatch_timeLimitHit), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, isTied, () const), AS_OL(objectMatch_isTied), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, checkExtendPlayTime, () const), AS_OL(objectMatch_checkExtendPlayTime), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, suddenDeathFinished, () const), AS_OL(objectMatch_suddenDeathFinished), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, isPaused, () const), AS_OL(objectMatch_isPaused), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, isWaiting, () const), AS_OL(objectMatch_isWaiting), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, isExtended, () const), AS_OL(objectMatch_isExtended), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(uint, duration, () const), AS_OL(objectMatch_duration), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(uint, startTime, () const), AS_OL(objectMatch_startTime), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(uint, endTime, () const), AS_OL(objectMatch_endTime), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(int, getState, () const), AS_OL(objectMatch_getState), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_name, () const), AS_OL(objectMatch_getName), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, getScore, () const), AS_OL(objectMatch_getScore),  AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, set_name, ( const String &in )), AS_OL(objectMatch_setName), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, setScore, ( const String &in )), AS_OL(objectMatch_setScore), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, setClockOverride, ( uint milliseconds )), AS_OL(objectMatch_setClockOverride), AS_CC_OL },
 
 	ASLIB_METHOD_NULL
 };
@@ -1183,20 +1184,20 @@ static const asBehavior_t gametypedescr_ObjectBehaviors[] =
 
 static const asMethod_t gametypedescr_Methods[] =
 {
-	{ ASLIB_FUNCTION_DECL(const String @, get_name, () const), asFUNCTION(objectGametypeDescriptor_getName), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_title, () const), asFUNCTION(objectGametypeDescriptor_getTitle), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, set_title, ( const String &in )), asFUNCTION(objectGametypeDescriptor_setTitle), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_version, () const), asFUNCTION(objectGametypeDescriptor_getVersion), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, set_version, ( const String &in )), asFUNCTION(objectGametypeDescriptor_setVersion), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_author, () const), asFUNCTION(objectGametypeDescriptor_getAuthor), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, set_author, ( const String &in )), asFUNCTION(objectGametypeDescriptor_setAuthor), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_manifest, () const), asFUNCTION(objectGametypeDescriptor_getManifest), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, setTeamSpawnsystem, ( int team, int spawnsystem, int wave_time, int wave_maxcount, bool deadcam )), asFUNCTION(objectGametypeDescriptor_SetTeamSpawnsystem), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, get_isInstagib, () const), asFUNCTION(objectGametypeDescriptor_isInstagib), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, get_useSteamAuth, () const), asFUNCTION(objectGametypeDescriptor_useSteamAuth), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, get_hasFallDamage, () const), asFUNCTION(objectGametypeDescriptor_hasFallDamage), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, get_hasSelfDamage, () const), asFUNCTION(objectGametypeDescriptor_hasSelfDamage), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, get_isInvidualGameType, () const), asFUNCTION(objectGametypeDescriptor_isInvidualGameType), asCALL_CDECL_OBJLAST },
+	{ ASLIB_FUNCTION_DECL(const String @, get_name, () const), AS_OL(objectGametypeDescriptor_getName), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_title, () const), AS_OL(objectGametypeDescriptor_getTitle), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, set_title, ( const String &in )), AS_OL(objectGametypeDescriptor_setTitle), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_version, () const), AS_OL(objectGametypeDescriptor_getVersion), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, set_version, ( const String &in )), AS_OL(objectGametypeDescriptor_setVersion), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_author, () const), AS_OL(objectGametypeDescriptor_getAuthor), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, set_author, ( const String &in )), AS_OL(objectGametypeDescriptor_setAuthor), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_manifest, () const), AS_OL(objectGametypeDescriptor_getManifest), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, setTeamSpawnsystem, ( int team, int spawnsystem, int wave_time, int wave_maxcount, bool deadcam )), AS_OL(objectGametypeDescriptor_SetTeamSpawnsystem), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, get_isInstagib, () const), AS_OL(objectGametypeDescriptor_isInstagib), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, get_useSteamAuth, () const), AS_OL(objectGametypeDescriptor_useSteamAuth), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, get_hasFallDamage, () const), AS_OL(objectGametypeDescriptor_hasFallDamage), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, get_hasSelfDamage, () const), AS_OL(objectGametypeDescriptor_hasSelfDamage), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, get_isInvidualGameType, () const), AS_OL(objectGametypeDescriptor_isInvidualGameType), AS_CC_OL },
 
 	ASLIB_METHOD_NULL
 };
@@ -1341,15 +1342,15 @@ static const asBehavior_t teamlist_ObjectBehaviors[] =
 
 static const asMethod_t teamlist_Methods[] =
 {
-	{ ASLIB_FUNCTION_DECL(Entity @, ent, ( int index )), asFUNCTION(objectTeamlist_GetPlayerEntity), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_name, () const), asFUNCTION(objectTeamlist_getName), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_defaultName, () const), asFUNCTION(objectTeamlist_getDefaultName), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, set_name, ( const String &in )), asFUNCTION(objectTeamlist_setName), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, isLocked, () const), asFUNCTION(objectTeamlist_IsLocked), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, lock, () const), asFUNCTION(objectTeamlist_Lock), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, unlock, () const), asFUNCTION(objectTeamlist_Unlock), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, clearInvites, ()), asFUNCTION(objectTeamlist_ClearInvites), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(int, team, () const), asFUNCTION(objectTeamlist_getTeamIndex), asCALL_CDECL_OBJLAST },
+	{ ASLIB_FUNCTION_DECL(Entity @, ent, ( int index )), AS_OL(objectTeamlist_GetPlayerEntity), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_name, () const), AS_OL(objectTeamlist_getName), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_defaultName, () const), AS_OL(objectTeamlist_getDefaultName), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, set_name, ( const String &in )), AS_OL(objectTeamlist_setName), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, isLocked, () const), AS_OL(objectTeamlist_IsLocked), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, lock, () const), AS_OL(objectTeamlist_Lock), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, unlock, () const), AS_OL(objectTeamlist_Unlock), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, clearInvites, ()), AS_OL(objectTeamlist_ClearInvites), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(int, team, () const), AS_OL(objectTeamlist_getTeamIndex), AS_CC_OL },
 
 	ASLIB_METHOD_NULL
 };
@@ -1452,15 +1453,15 @@ static const asBehavior_t scorestats_ObjectBehaviors[] =
 
 static const asMethod_t scorestats_Methods[] =
 {
-	{ ASLIB_FUNCTION_DECL(void, setScore, ( int i )), asFUNCTION(objectScoreStats_ScoreSet), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, addScore, ( int i )), asFUNCTION(objectScoreStats_ScoreAdd), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, addRound, ()), asFUNCTION(objectScoreStats_RoundAdd), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, clear, ()), asFUNCTION(objectScoreStats_Clear), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(int, accuracyShots, ( int ammo ) const), asFUNCTION(objectScoreStats_AccShots), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(int, accuracyHits, ( int ammo ) const), asFUNCTION(objectScoreStats_AccHits), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(int, accuracyHitsDirect, ( int ammo ) const), asFUNCTION(objectScoreStats_AccHitsDirect), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(int, accuracyHitsAir, ( int ammo ) const), asFUNCTION(objectScoreStats_AccHitsAir), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(int, accuracyDamage, ( int ammo ) const), asFUNCTION(objectScoreStats_AccDamage), asCALL_CDECL_OBJLAST },
+	{ ASLIB_FUNCTION_DECL(void, setScore, ( int i )), AS_OL(objectScoreStats_ScoreSet), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, addScore, ( int i )), AS_OL(objectScoreStats_ScoreAdd), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, addRound, ()), AS_OL(objectScoreStats_RoundAdd), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, clear, ()), AS_OL(objectScoreStats_Clear), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(int, accuracyShots, ( int ammo ) const), AS_OL(objectScoreStats_AccShots), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(int, accuracyHits, ( int ammo ) const), AS_OL(objectScoreStats_AccHits), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(int, accuracyHitsDirect, ( int ammo ) const), AS_OL(objectScoreStats_AccHitsDirect), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(int, accuracyHitsAir, ( int ammo ) const), AS_OL(objectScoreStats_AccHitsAir), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(int, accuracyDamage, ( int ammo ) const), AS_OL(objectScoreStats_AccDamage), AS_CC_OL },
 
 	ASLIB_METHOD_NULL
 };
@@ -1512,16 +1513,16 @@ static const asBehavior_t asbot_ObjectBehaviors[] =
 
 static const asMethod_t asbot_Methods[] =
 {
-	{ ASLIB_FUNCTION_DECL(void, clearGoalWeights, ()), asFUNCTION(AI_ClearWeights), asCALL_CDECL_OBJFIRST },
-	{ ASLIB_FUNCTION_DECL(void, resetGoalWeights, ()), asFUNCTION(AI_ResetWeights), asCALL_CDECL_OBJFIRST },
-	{ ASLIB_FUNCTION_DECL(void, setGoalWeight, ( int i, float weight )), asFUNCTION(AI_SetGoalWeight), asCALL_CDECL_OBJFIRST },
-	{ ASLIB_FUNCTION_DECL(float, getItemWeight, ( const Item @item ) const), asFUNCTION(AI_GetItemWeight), asCALL_CDECL_OBJFIRST },
+	{ ASLIB_FUNCTION_DECL(void, clearGoalWeights, ()), AS_OF(AI_ClearWeights), AS_CC_OF },
+	{ ASLIB_FUNCTION_DECL(void, resetGoalWeights, ()), AS_OF(AI_ResetWeights), AS_CC_OF },
+	{ ASLIB_FUNCTION_DECL(void, setGoalWeight, ( int i, float weight )), AS_OF(AI_SetGoalWeight), AS_CC_OF },
+	{ ASLIB_FUNCTION_DECL(float, getItemWeight, ( const Item @item ) const), AS_OF(AI_GetItemWeight), AS_CC_OF },
 
 	// character
-	{ ASLIB_FUNCTION_DECL(float, get_reactionTime, () const), asFUNCTION(AI_GetCharacterReactionTime), asCALL_CDECL_OBJFIRST },
-	{ ASLIB_FUNCTION_DECL(float, get_offensiveness, () const), asFUNCTION(AI_GetCharacterOffensiveness), asCALL_CDECL_OBJFIRST },
-	{ ASLIB_FUNCTION_DECL(float, get_campiness, () const), asFUNCTION(AI_GetCharacterCampiness), asCALL_CDECL_OBJFIRST },
-	{ ASLIB_FUNCTION_DECL(float, get_firerate, () const), asFUNCTION(AI_GetCharacterFirerate), asCALL_CDECL_OBJFIRST },
+	{ ASLIB_FUNCTION_DECL(float, get_reactionTime, () const), AS_OF(AI_GetCharacterReactionTime), AS_CC_OF },
+	{ ASLIB_FUNCTION_DECL(float, get_offensiveness, () const), AS_OF(AI_GetCharacterOffensiveness), AS_CC_OF },
+	{ ASLIB_FUNCTION_DECL(float, get_campiness, () const), AS_OF(AI_GetCharacterCampiness), AS_CC_OF },
+	{ ASLIB_FUNCTION_DECL(float, get_firerate, () const), AS_OF(AI_GetCharacterFirerate), AS_CC_OF },
 
 	ASLIB_METHOD_NULL
 };
@@ -2011,48 +2012,48 @@ static const asBehavior_t gameclient_ObjectBehaviors[] =
 
 static const asMethod_t gameclient_Methods[] =
 {
-	{ ASLIB_FUNCTION_DECL(int, get_playerNum, () const), asFUNCTION(objectGameClient_PlayerNum), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, isReady, () const), asFUNCTION(objectGameClient_isReady), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, isBot, () const), asFUNCTION(objectGameClient_isBot), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(Bot @, getBot, () const), asFUNCTION(objectGameClient_getBot), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(int, state, () const), asFUNCTION(objectGameClient_ClientState), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, respawn, ( bool ghost )), asFUNCTION(objectGameClient_Respawn), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, clearPlayerStateEvents, ()), asFUNCTION(objectGameClient_ClearPlayerStateEvents), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_name, () const), asFUNCTION(objectGameClient_getName), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_clanName, () const), asFUNCTION(objectGameClient_getClanName), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, getMMLogin, () const), asFUNCTION(objectGameClient_getMMLogin), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(Entity @, getEnt, () const), asFUNCTION(objectGameClient_GetEntity), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(int, inventoryCount, ( int tag ) const), asFUNCTION(objectGameClient_InventoryCount), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, inventorySetCount, ( int tag, int count )), asFUNCTION(objectGameClient_InventorySetCount), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, inventoryGiveItem, ( int tag, int count )), asFUNCTION(objectGameClient_InventoryGiveItemExt), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, inventoryGiveItem, ( int tag )), asFUNCTION(objectGameClient_InventoryGiveItem), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, inventoryClear, ()), asFUNCTION(objectGameClient_InventoryClear), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, canSelectWeapon, ( int tag ) const), asFUNCTION(objectGameClient_CanSelectWeapon), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, selectWeapon, ( int tag )), asFUNCTION(objectGameClient_SelectWeapon), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, addAward, ( const String &in )), asFUNCTION(objectGameClient_addAward), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, addMetaAward, ( const String &in )), asFUNCTION(objectGameClient_addMetaAward), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, execGameCommand, ( const String &in )), asFUNCTION(objectGameClient_execGameCommand), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, setHUDStat, ( int stat, int value )), asFUNCTION(objectGameClient_setHUDStat), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(int, getHUDStat, ( int stat ) const), asFUNCTION(objectGameClient_getHUDStat), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, set_pmoveFeatures, ( uint bitmask )), asFUNCTION(objectGameClient_setPMoveFeatures), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, set_pmoveMaxSpeed, ( float speed )), asFUNCTION(objectGameClient_setPMoveMaxSpeed), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, set_pmoveJumpSpeed, ( float speed )), asFUNCTION(objectGameClient_setPMoveJumpSpeed), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, set_pmoveDashSpeed, ( float speed )), asFUNCTION(objectGameClient_setPMoveDashSpeed), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(uint, get_pmoveFeatures, () const), asFUNCTION(objectGameClient_getPMoveFeatures), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(uint, get_pressedKeys, () const), asFUNCTION(objectGameClient_getPressedKeys), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(float, get_pmoveMaxSpeed, () const), asFUNCTION(objectGameClient_getPMoveMaxSpeed), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(float, get_pmoveJumpSpeed, () const), asFUNCTION(objectGameClient_getPMoveJumpSpeed), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(float, get_pmoveDashSpeed, () const), asFUNCTION(objectGameClient_getPMoveDashSpeed), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, getUserInfoKey, ( const String &in ) const), asFUNCTION(objectGameClient_getUserInfoKey), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, printMessage, ( const String &in )), asFUNCTION(objectGameClient_printMessage), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, chaseCam, ( const String @+, bool teamOnly )), asFUNCTION(objectGameClient_ChaseCam), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, set_chaseActive, ( const bool active )), asFUNCTION(objectGameClient_SetChaseActive), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, get_chaseActive, () const ), asFUNCTION(objectGameClient_GetChaseActive), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, newRaceRun, ( int numSectors )), asFUNCTION(objectGameClient_NewRaceRun), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, setRaceTime, ( int sector, uint time )), asFUNCTION(objectGameClient_SetRaceTime), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, setHelpMessage, ( uint msg )), asFUNCTION(objectGameClient_SetHelpMessage), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, setQuickMenuItems, ( const String &in )), asFUNCTION(objectGameClient_SetQuickMenuItems), asCALL_CDECL_OBJLAST },
-    { ASLIB_FUNCTION_DECL(void, dropClient, ( const String &in )), asFUNCTION(objectGameClient_DropClient), asCALL_CDECL_OBJLAST },
+	{ ASLIB_FUNCTION_DECL(int, get_playerNum, () const), AS_OL(objectGameClient_PlayerNum), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, isReady, () const), AS_OL(objectGameClient_isReady), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, isBot, () const), AS_OL(objectGameClient_isBot), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(Bot @, getBot, () const), AS_OL(objectGameClient_getBot), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(int, state, () const), AS_OL(objectGameClient_ClientState), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, respawn, ( bool ghost )), AS_OL(objectGameClient_Respawn), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, clearPlayerStateEvents, ()), AS_OL(objectGameClient_ClearPlayerStateEvents), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_name, () const), AS_OL(objectGameClient_getName), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_clanName, () const), AS_OL(objectGameClient_getClanName), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, getMMLogin, () const), AS_OL(objectGameClient_getMMLogin), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(Entity @, getEnt, () const), AS_OL(objectGameClient_GetEntity), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(int, inventoryCount, ( int tag ) const), AS_OL(objectGameClient_InventoryCount), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, inventorySetCount, ( int tag, int count )), AS_OL(objectGameClient_InventorySetCount), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, inventoryGiveItem, ( int tag, int count )), AS_OL(objectGameClient_InventoryGiveItemExt), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, inventoryGiveItem, ( int tag )), AS_OL(objectGameClient_InventoryGiveItem), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, inventoryClear, ()), AS_OL(objectGameClient_InventoryClear), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, canSelectWeapon, ( int tag ) const), AS_OL(objectGameClient_CanSelectWeapon), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, selectWeapon, ( int tag )), AS_OL(objectGameClient_SelectWeapon), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, addAward, ( const String &in )), AS_OL(objectGameClient_addAward), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, addMetaAward, ( const String &in )), AS_OL(objectGameClient_addMetaAward), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, execGameCommand, ( const String &in )), AS_OL(objectGameClient_execGameCommand), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, setHUDStat, ( int stat, int value )), AS_OL(objectGameClient_setHUDStat), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(int, getHUDStat, ( int stat ) const), AS_OL(objectGameClient_getHUDStat), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, set_pmoveFeatures, ( uint bitmask )), AS_OL(objectGameClient_setPMoveFeatures), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, set_pmoveMaxSpeed, ( float speed )), AS_OL(objectGameClient_setPMoveMaxSpeed), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, set_pmoveJumpSpeed, ( float speed )), AS_OL(objectGameClient_setPMoveJumpSpeed), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, set_pmoveDashSpeed, ( float speed )), AS_OL(objectGameClient_setPMoveDashSpeed), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(uint, get_pmoveFeatures, () const), AS_OL(objectGameClient_getPMoveFeatures), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(uint, get_pressedKeys, () const), AS_OL(objectGameClient_getPressedKeys), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(float, get_pmoveMaxSpeed, () const), AS_OL(objectGameClient_getPMoveMaxSpeed), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(float, get_pmoveJumpSpeed, () const), AS_OL(objectGameClient_getPMoveJumpSpeed), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(float, get_pmoveDashSpeed, () const), AS_OL(objectGameClient_getPMoveDashSpeed), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, getUserInfoKey, ( const String &in ) const), AS_OL(objectGameClient_getUserInfoKey), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, printMessage, ( const String &in )), AS_OL(objectGameClient_printMessage), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, chaseCam, ( const String @+, bool teamOnly )), AS_OL(objectGameClient_ChaseCam), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, set_chaseActive, ( const bool active )), AS_OL(objectGameClient_SetChaseActive), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, get_chaseActive, () const ), AS_OL(objectGameClient_GetChaseActive), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, newRaceRun, ( int numSectors )), AS_OL(objectGameClient_NewRaceRun), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, setRaceTime, ( int sector, uint time )), AS_OL(objectGameClient_SetRaceTime), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, setHelpMessage, ( uint msg )), AS_OL(objectGameClient_SetHelpMessage), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, setQuickMenuItems, ( const String &in )), AS_OL(objectGameClient_SetQuickMenuItems), AS_CC_OL },
+    { ASLIB_FUNCTION_DECL(void, dropClient, ( const String &in )), AS_OL(objectGameClient_DropClient), AS_CC_OL },
 
 	ASLIB_METHOD_NULL
 };
@@ -2517,55 +2518,55 @@ static const asBehavior_t gedict_ObjectBehaviors[] =
 
 static const asMethod_t gedict_Methods[] =
 {
-	{ ASLIB_FUNCTION_DECL(Vec3, get_velocity, () const), asFUNCTION(objectGameEntity_GetVelocity), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, set_velocity, (const Vec3 &in)), asFUNCTION(objectGameEntity_SetVelocity), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(Vec3, get_avelocity, () const), asFUNCTION(objectGameEntity_GetAVelocity), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, set_avelocity, (const Vec3 &in)), asFUNCTION(objectGameEntity_SetAVelocity), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(Vec3, get_origin, () const), asFUNCTION(objectGameEntity_GetOrigin), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, set_origin, (const Vec3 &in)), asFUNCTION(objectGameEntity_SetOrigin), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(Vec3, get_origin2, () const), asFUNCTION(objectGameEntity_GetOrigin2), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, set_origin2, (const Vec3 &in)), asFUNCTION(objectGameEntity_SetOrigin2), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(Vec3, get_angles, () const), asFUNCTION(objectGameEntity_GetAngles), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, set_angles, (const Vec3 &in)), asFUNCTION(objectGameEntity_SetAngles), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, getSize, (Vec3 &out, Vec3 &out)), asFUNCTION(objectGameEntity_GetSize), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, setSize, (const Vec3 &in, const Vec3 &in)), asFUNCTION(objectGameEntity_SetSize), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(Vec3, get_movedir, () const), asFUNCTION(objectGameEntity_GetMovedir), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, set_movedir, ()), asFUNCTION(objectGameEntity_SetMovedir), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, isBrushModel, () const), asFUNCTION(objectGameEntity_isBrushModel), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, freeEntity, ()), asFUNCTION(G_FreeEdict), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, linkEntity, ()), asFUNCTION(GClip_LinkEntity), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, unlinkEntity, ()), asFUNCTION(GClip_UnlinkEntity), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(bool, isGhosting, () const), asFUNCTION(objectGameEntity_IsGhosting), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(int, get_entNum, () const), asFUNCTION(objectGameEntity_EntNum), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(int, get_playerNum, () const), asFUNCTION(objectGameEntity_PlayerNum), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_model, () const), asFUNCTION(objectGameEntity_getModelName), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_model2, () const), asFUNCTION(objectGameEntity_getModel2Name), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_sounds, () const), asFUNCTION(objectGameEntity_getSoundName), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_classname, () const), asFUNCTION(objectGameEntity_getClassname), asCALL_CDECL_OBJLAST },
-	//{ ASLIB_FUNCTION_DECL(const String @, getSpawnKey, ( const String &in )), asFUNCTION(objectGameEntity_getSpawnKey), NULL, asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_targetname, () const), asFUNCTION(objectGameEntity_getTargetname), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_target, () const), asFUNCTION(objectGameEntity_getTarget), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(const String @, get_map, () const), asFUNCTION(objectGameEntity_getMap), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, set_target, ( const String &in )), asFUNCTION(objectGameEntity_setTarget), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, set_targetname, ( const String &in )), asFUNCTION(objectGameEntity_setTargetname), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, set_classname, ( const String &in )), asFUNCTION(objectGameEntity_setClassname), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, set_map, ( const String &in )), asFUNCTION(objectGameEntity_setMap), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, ghost, ()), asFUNCTION(objectGameEntity_GhostClient), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, spawnqueueAdd, ()), asFUNCTION(G_SpawnQueue_AddClient), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, teleportEffect, ( bool )), asFUNCTION(objectGameEntity_TeleportEffect), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, respawnEffect, ()), asFUNCTION(G_RespawnEffect), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, setupModel, ( const String &in )), asFUNCTION(objectGameEntity_SetupModel), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, setupModel, ( const String &in, const String &in )), asFUNCTION(objectGameEntity_SetupModelExt), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(array<Entity @> @, findTargets, () const), asFUNCTION(objectGameEntity_findTargets), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(array<Entity @> @, findTargeting, () const), asFUNCTION(objectGameEntity_findTargeting), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, useTargets, ( const Entity @activator )), asFUNCTION(objectGameEntity_UseTargets), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(Entity @, dropItem, ( int tag ) const), asFUNCTION(objectGameEntity_DropItemByTag), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(Entity @, dropItem, ( Item @ ) const), asFUNCTION(objectGameEntity_DropItem), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, sustainDamage, ( Entity @inflicter, Entity @attacker, const Vec3 &in dir, float damage, float knockback, float stun, int mod )), asFUNCTION(objectGameEntity_sustainDamage), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, splashDamage, ( Entity @attacker, int radius, float damage, float knockback, float stun, int mod )), asFUNCTION(objectGameEntity_splashDamage), asCALL_CDECL_OBJLAST },
-	{ ASLIB_FUNCTION_DECL(void, explosionEffect, ( int radius )), asFUNCTION(objectGameEntity_explosionEffect), asCALL_CDECL_OBJLAST },
-    { ASLIB_FUNCTION_DECL(bool, get_allowFunctionOverride, () const), asFUNCTION(objectGameEntity_GetAllowFunctionOverride), asCALL_CDECL_OBJLAST },
-    { ASLIB_FUNCTION_DECL(void, set_allowFunctionOverride, (const bool &in)), asFUNCTION(objectGameEntity_SetAllowFunctionOverride), asCALL_CDECL_OBJLAST },
+	{ ASLIB_FUNCTION_DECL(Vec3, get_velocity, () const), AS_OL(objectGameEntity_GetVelocity), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, set_velocity, (const Vec3 &in)), AS_OL(objectGameEntity_SetVelocity), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(Vec3, get_avelocity, () const), AS_OL(objectGameEntity_GetAVelocity), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, set_avelocity, (const Vec3 &in)), AS_OL(objectGameEntity_SetAVelocity), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(Vec3, get_origin, () const), AS_OL(objectGameEntity_GetOrigin), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, set_origin, (const Vec3 &in)), AS_OL(objectGameEntity_SetOrigin), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(Vec3, get_origin2, () const), AS_OL(objectGameEntity_GetOrigin2), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, set_origin2, (const Vec3 &in)), AS_OL(objectGameEntity_SetOrigin2), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(Vec3, get_angles, () const), AS_OL(objectGameEntity_GetAngles), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, set_angles, (const Vec3 &in)), AS_OL(objectGameEntity_SetAngles), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, getSize, (Vec3 &out, Vec3 &out)), AS_OL(objectGameEntity_GetSize), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, setSize, (const Vec3 &in, const Vec3 &in)), AS_OL(objectGameEntity_SetSize), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(Vec3, get_movedir, () const), AS_OL(objectGameEntity_GetMovedir), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, set_movedir, ()), AS_OL(objectGameEntity_SetMovedir), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, isBrushModel, () const), AS_OL(objectGameEntity_isBrushModel), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, freeEntity, ()), AS_OL(G_FreeEdict), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, linkEntity, ()), AS_OL(GClip_LinkEntity), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, unlinkEntity, ()), AS_OL(GClip_UnlinkEntity), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(bool, isGhosting, () const), AS_OL(objectGameEntity_IsGhosting), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(int, get_entNum, () const), AS_OL(objectGameEntity_EntNum), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(int, get_playerNum, () const), AS_OL(objectGameEntity_PlayerNum), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_model, () const), AS_OL(objectGameEntity_getModelName), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_model2, () const), AS_OL(objectGameEntity_getModel2Name), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_sounds, () const), AS_OL(objectGameEntity_getSoundName), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_classname, () const), AS_OL(objectGameEntity_getClassname), AS_CC_OL },
+	//{ ASLIB_FUNCTION_DECL(const String @, getSpawnKey, ( const String &in )), AS_OL(objectGameEntity_getSpawnKey), NULL, AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_targetname, () const), AS_OL(objectGameEntity_getTargetname), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_target, () const), AS_OL(objectGameEntity_getTarget), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(const String @, get_map, () const), AS_OL(objectGameEntity_getMap), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, set_target, ( const String &in )), AS_OL(objectGameEntity_setTarget), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, set_targetname, ( const String &in )), AS_OL(objectGameEntity_setTargetname), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, set_classname, ( const String &in )), AS_OL(objectGameEntity_setClassname), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, set_map, ( const String &in )), AS_OL(objectGameEntity_setMap), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, ghost, ()), AS_OL(objectGameEntity_GhostClient), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, spawnqueueAdd, ()), AS_OL(G_SpawnQueue_AddClient), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, teleportEffect, ( bool )), AS_OL(objectGameEntity_TeleportEffect), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, respawnEffect, ()), AS_OL(G_RespawnEffect), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, setupModel, ( const String &in )), AS_OL(objectGameEntity_SetupModel), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, setupModel, ( const String &in, const String &in )), AS_OL(objectGameEntity_SetupModelExt), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(array<Entity @> @, findTargets, () const), AS_OL(objectGameEntity_findTargets), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(array<Entity @> @, findTargeting, () const), AS_OL(objectGameEntity_findTargeting), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, useTargets, ( const Entity @activator )), AS_OL(objectGameEntity_UseTargets), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(Entity @, dropItem, ( int tag ) const), AS_OL(objectGameEntity_DropItemByTag), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(Entity @, dropItem, ( Item @ ) const), AS_OL(objectGameEntity_DropItem), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, sustainDamage, ( Entity @inflicter, Entity @attacker, const Vec3 &in dir, float damage, float knockback, float stun, int mod )), AS_OL(objectGameEntity_sustainDamage), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, splashDamage, ( Entity @attacker, int radius, float damage, float knockback, float stun, int mod )), AS_OL(objectGameEntity_splashDamage), AS_CC_OL },
+	{ ASLIB_FUNCTION_DECL(void, explosionEffect, ( int radius )), AS_OL(objectGameEntity_explosionEffect), AS_CC_OL },
+    { ASLIB_FUNCTION_DECL(bool, get_allowFunctionOverride, () const), AS_OL(objectGameEntity_GetAllowFunctionOverride), AS_CC_OL },
+    { ASLIB_FUNCTION_DECL(void, set_allowFunctionOverride, (const bool &in)), AS_OL(objectGameEntity_SetAllowFunctionOverride), AS_CC_OL },
 
 	ASLIB_METHOD_NULL
 };
@@ -3379,93 +3380,93 @@ static int asFunc_G_GetDefaultColorCorrection( void )
 
 static const asglobfuncs_t asGlobFuncs[] =
 {
-	{ "Entity @G_SpawnEntity( const String &in )", asFUNCTION(asFunc_G_Spawn), NULL },
-	{ "const String @G_SpawnTempValue( const String &in )", asFUNCTION(asFunc_G_SpawnTempValue), NULL },
-	{ "Entity @G_GetEntity( int entNum )", asFUNCTION(asFunc_GetEntity), NULL },
-	{ "Client @G_GetClient( int clientNum )", asFUNCTION(asFunc_GetClient), NULL },
-	{ "Team @G_GetTeam( int team )", asFUNCTION(asFunc_GetTeamlist), NULL },
-	{ "Item @G_GetItem( int tag )", asFUNCTION(asFunc_GS_FindItemByTag), NULL },
-	{ "Item @G_GetItemByName( const String &in name )", asFUNCTION(asFunc_GS_FindItemByName), NULL },
-	{ "Item @G_GetItemByClassname( const String &in name )", asFUNCTION(asFunc_GS_FindItemByClassname), NULL },
-	{ "array<Entity @> @G_FindInRadius( const Vec3 &in, float radius )", asFUNCTION(asFunc_G_FindInRadius), NULL },
-	{ "array<Entity @> @G_FindByClassname( const String &in )", asFUNCTION(asFunc_G_FindByClassname), NULL },
+	{ "Entity @G_SpawnEntity( const String &in )", AS_FN(asFunc_G_Spawn), NULL },
+	{ "const String @G_SpawnTempValue( const String &in )", AS_FN(asFunc_G_SpawnTempValue), NULL },
+	{ "Entity @G_GetEntity( int entNum )", AS_FN(asFunc_GetEntity), NULL },
+	{ "Client @G_GetClient( int clientNum )", AS_FN(asFunc_GetClient), NULL },
+	{ "Team @G_GetTeam( int team )", AS_FN(asFunc_GetTeamlist), NULL },
+	{ "Item @G_GetItem( int tag )", AS_FN(asFunc_GS_FindItemByTag), NULL },
+	{ "Item @G_GetItemByName( const String &in name )", AS_FN(asFunc_GS_FindItemByName), NULL },
+	{ "Item @G_GetItemByClassname( const String &in name )", AS_FN(asFunc_GS_FindItemByClassname), NULL },
+	{ "array<Entity @> @G_FindInRadius( const Vec3 &in, float radius )", AS_FN(asFunc_G_FindInRadius), NULL },
+	{ "array<Entity @> @G_FindByClassname( const String &in )", AS_FN(asFunc_G_FindByClassname), NULL },
 
 	// misc management utils
-	{ "void G_RemoveAllProjectiles()", asFUNCTION(asFunc_G_Match_RemoveAllProjectiles), NULL },
-	{ "void G_ResetLevel()", asFUNCTION(asFunc_G_ResetLevel), NULL },
-	{ "void G_RemoveDeadBodies()", asFUNCTION(asFunc_G_Match_FreeBodyQueue), NULL },
-	{ "void G_Items_RespawnByType( uint typeMask, int item_tag, float delay )", asFUNCTION(asFunc_G_Items_RespawnByType), NULL },
+	{ "void G_RemoveAllProjectiles()", AS_FN(asFunc_G_Match_RemoveAllProjectiles), NULL },
+	{ "void G_ResetLevel()", AS_FN(asFunc_G_ResetLevel), NULL },
+	{ "void G_RemoveDeadBodies()", AS_FN(asFunc_G_Match_FreeBodyQueue), NULL },
+	{ "void G_Items_RespawnByType( uint typeMask, int item_tag, float delay )", AS_FN(asFunc_G_Items_RespawnByType), NULL },
 
 	// misc
-	{ "void G_Print( const String &in )", asFUNCTION(asFunc_Print), NULL },
-	{ "void G_PrintMsg( Entity @, const String &in )", asFUNCTION(asFunc_PrintMsg), NULL },
-	{ "void G_CenterPrintMsg( Entity @, const String &in )", asFUNCTION(asFunc_CenterPrintMsg), NULL },
-	{ "void G_CenterPrintFormatMsg( Entity @, const String &in, const String &in )", asFUNCTION(asFunc_CenterPrintFormatMsg1), NULL },
-	{ "void G_CenterPrintFormatMsg( Entity @, const String &in, const String &in, const String &in )", asFUNCTION(asFunc_CenterPrintFormatMsg2), NULL },
+	{ "void G_Print( const String &in )", AS_FN(asFunc_Print), NULL },
+	{ "void G_PrintMsg( Entity @, const String &in )", AS_FN(asFunc_PrintMsg), NULL },
+	{ "void G_CenterPrintMsg( Entity @, const String &in )", AS_FN(asFunc_CenterPrintMsg), NULL },
+	{ "void G_CenterPrintFormatMsg( Entity @, const String &in, const String &in )", AS_FN(asFunc_CenterPrintFormatMsg1), NULL },
+	{ "void G_CenterPrintFormatMsg( Entity @, const String &in, const String &in, const String &in )", AS_FN(asFunc_CenterPrintFormatMsg2), NULL },
 	{ "void G_CenterPrintFormatMsg( Entity @, const String &in, const String &in, const String &in" 
-		", const String &in )", asFUNCTION(asFunc_CenterPrintFormatMsg3), NULL },
+		", const String &in )", AS_FN(asFunc_CenterPrintFormatMsg3), NULL },
 	{ "void G_CenterPrintFormatMsg( Entity @, const String &in, const String &in, const String &in" 
-		", const String &in, const String &in )", asFUNCTION(asFunc_CenterPrintFormatMsg4), NULL },
+		", const String &in, const String &in )", AS_FN(asFunc_CenterPrintFormatMsg4), NULL },
 	{ "void G_CenterPrintFormatMsg( Entity @, const String &in, const String &in, const String &in" 
-		", const String &in, const String &in, const String &in )", asFUNCTION(asFunc_CenterPrintFormatMsg5), NULL },
+		", const String &in, const String &in, const String &in )", AS_FN(asFunc_CenterPrintFormatMsg5), NULL },
 	{ "void G_CenterPrintFormatMsg( Entity @, const String &in, const String &in, const String &in" 
-		", const String &in, const String &in, const String &in, const String &in )", asFUNCTION(asFunc_CenterPrintFormatMsg6), NULL },
+		", const String &in, const String &in, const String &in, const String &in )", AS_FN(asFunc_CenterPrintFormatMsg6), NULL },
 	{ "void G_CenterPrintFormatMsg( Entity @, const String &in, const String &in, const String &in" 
-		", const String &in, const String &in, const String &in, const String &in, const String &in )", asFUNCTION(asFunc_CenterPrintFormatMsg7), NULL },
-	{ "void G_Sound( Entity @, int channel, int soundindex, float attenuation )", asFUNCTION(asFunc_G_Sound), NULL },
-	{ "void G_PositionedSound( const Vec3 &in, int channel, int soundindex, float attenuation )", asFUNCTION(asFunc_PositionedSound), NULL },
-	{ "void G_GlobalSound( int channel, int soundindex )", asFUNCTION(asFunc_G_GlobalSound), NULL },
-	{ "void G_LocalSound( Client @, int channel, int soundIndex )", asFUNCTION(asFunc_G_LocalSound), NULL },
-	{ "void G_AnnouncerSound( Client @, int soundIndex, int team, bool queued, Client @ )", asFUNCTION(asFunc_G_AnnouncerSound), NULL },
-	{ "int G_DirToByte( const Vec3 &in origin )", asFUNCTION(asFunc_DirToByte), NULL },
-	{ "int G_PointContents( const Vec3 &in origin )", asFUNCTION(asFunc_PointContents), NULL },
-	{ "bool G_InPVS( const Vec3 &in origin1, const Vec3 &in origin2 )", asFUNCTION(asFunc_InPVS), NULL },
-	{ "bool G_WriteFile( const String &, const String & )", asFUNCTION(asFunc_WriteFile), NULL },
-	{ "bool G_AppendToFile( const String &, const String & )", asFUNCTION(asFunc_AppendToFile), NULL },
-	{ "const String @G_LoadFile( const String & )", asFUNCTION(asFunc_LoadFile), NULL },
-	{ "int G_FileLength( const String & )", asFUNCTION(asFunc_FileLength), NULL },
-	{ "void G_CmdExecute( const String & )", asFUNCTION(asFunc_Cmd_ExecuteText), NULL },
-	{ "const String @G_LocationName( const Vec3 &in origin )", asFUNCTION(asFunc_LocationName), NULL },
-	{ "int G_LocationTag( const String & )", asFUNCTION(asFunc_LocationTag), NULL },
-	{ "const String @G_LocationName( int tag )", asFUNCTION(asFunc_LocationForTag), NULL },
+		", const String &in, const String &in, const String &in, const String &in, const String &in )", AS_FN(asFunc_CenterPrintFormatMsg7), NULL },
+	{ "void G_Sound( Entity @, int channel, int soundindex, float attenuation )", AS_FN(asFunc_G_Sound), NULL },
+	{ "void G_PositionedSound( const Vec3 &in, int channel, int soundindex, float attenuation )", AS_FN(asFunc_PositionedSound), NULL },
+	{ "void G_GlobalSound( int channel, int soundindex )", AS_FN(asFunc_G_GlobalSound), NULL },
+	{ "void G_LocalSound( Client @, int channel, int soundIndex )", AS_FN(asFunc_G_LocalSound), NULL },
+	{ "void G_AnnouncerSound( Client @, int soundIndex, int team, bool queued, Client @ )", AS_FN(asFunc_G_AnnouncerSound), NULL },
+	{ "int G_DirToByte( const Vec3 &in origin )", AS_FN(asFunc_DirToByte), NULL },
+	{ "int G_PointContents( const Vec3 &in origin )", AS_FN(asFunc_PointContents), NULL },
+	{ "bool G_InPVS( const Vec3 &in origin1, const Vec3 &in origin2 )", AS_FN(asFunc_InPVS), NULL },
+	{ "bool G_WriteFile( const String &, const String & )", AS_FN(asFunc_WriteFile), NULL },
+	{ "bool G_AppendToFile( const String &, const String & )", AS_FN(asFunc_AppendToFile), NULL },
+	{ "const String @G_LoadFile( const String & )", AS_FN(asFunc_LoadFile), NULL },
+	{ "int G_FileLength( const String & )", AS_FN(asFunc_FileLength), NULL },
+	{ "void G_CmdExecute( const String & )", AS_FN(asFunc_Cmd_ExecuteText), NULL },
+	{ "const String @G_LocationName( const Vec3 &in origin )", AS_FN(asFunc_LocationName), NULL },
+	{ "int G_LocationTag( const String & )", AS_FN(asFunc_LocationTag), NULL },
+	{ "const String @G_LocationName( int tag )", AS_FN(asFunc_LocationForTag), NULL },
 
-	{ "void __G_CallThink( Entity @ent )", asFUNCTION(G_CallThink), &asEntityCallThinkFuncPtr },
-	{ "void __G_CallTouch( Entity @ent, Entity @other, const Vec3 planeNormal, int surfFlags )", asFUNCTION(G_CallTouch), &asEntityCallTouchFuncPtr },
-	{ "void __G_CallUse( Entity @ent, Entity @other, Entity @activator )", asFUNCTION(G_CallUse), &asEntityCallUseFuncPtr },
-	{ "void __G_CallStop( Entity @ent )", asFUNCTION(G_CallStop), &asEntityCallStopFuncPtr },
-	{ "void __G_CallPain( Entity @ent, Entity @other, float kick, float damage )", asFUNCTION(G_CallPain), &asEntityCallPainFuncPtr },
-	{ "void __G_CallDie( Entity @ent, Entity @inflicter, Entity @attacker )", asFUNCTION(G_CallDie), &asEntityCallDieFuncPtr },
+	{ "void __G_CallThink( Entity @ent )", AS_FN(G_CallThink), &asEntityCallThinkFuncPtr },
+	{ "void __G_CallTouch( Entity @ent, Entity @other, const Vec3 planeNormal, int surfFlags )", AS_FN(G_CallTouch), &asEntityCallTouchFuncPtr },
+	{ "void __G_CallUse( Entity @ent, Entity @other, Entity @activator )", AS_FN(G_CallUse), &asEntityCallUseFuncPtr },
+	{ "void __G_CallStop( Entity @ent )", AS_FN(G_CallStop), &asEntityCallStopFuncPtr },
+	{ "void __G_CallPain( Entity @ent, Entity @other, float kick, float damage )", AS_FN(G_CallPain), &asEntityCallPainFuncPtr },
+	{ "void __G_CallDie( Entity @ent, Entity @inflicter, Entity @attacker )", AS_FN(G_CallDie), &asEntityCallDieFuncPtr },
 
-	{ "int G_ImageIndex( const String &in )", asFUNCTION(asFunc_ImageIndex), NULL },
-	{ "int G_SkinIndex( const String &in )", asFUNCTION(asFunc_SkinIndex), NULL },
-	{ "int G_ModelIndex( const String &in )", asFUNCTION(asFunc_ModelIndex), NULL },
-	{ "int G_SoundIndex( const String &in )", asFUNCTION(asFunc_SoundIndex), NULL },
-	{ "int G_ModelIndex( const String &in, bool pure )", asFUNCTION(asFunc_ModelIndexExt), NULL },
-    { "int G_SoundIndex( const String &in, bool pure )", asFUNCTION(asFunc_SoundIndexExt), NULL },
-    { "void G_PureFile( const String &in )", asFUNCTION(asFunc_PureFile), NULL },
-	{ "void G_RegisterCommand( const String &in )", asFUNCTION(asFunc_RegisterCommand), NULL },
-	{ "void G_RegisterCallvote( const String &in, const String &in, const String &in, const String &in )", asFUNCTION(asFunc_RegisterCallvote), NULL },
-	{ "void G_ConfigString( int index, const String &in )", asFUNCTION(asFunc_ConfigString), NULL },
+	{ "int G_ImageIndex( const String &in )", AS_FN(asFunc_ImageIndex), NULL },
+	{ "int G_SkinIndex( const String &in )", AS_FN(asFunc_SkinIndex), NULL },
+	{ "int G_ModelIndex( const String &in )", AS_FN(asFunc_ModelIndex), NULL },
+	{ "int G_SoundIndex( const String &in )", AS_FN(asFunc_SoundIndex), NULL },
+	{ "int G_ModelIndex( const String &in, bool pure )", AS_FN(asFunc_ModelIndexExt), NULL },
+    { "int G_SoundIndex( const String &in, bool pure )", AS_FN(asFunc_SoundIndexExt), NULL },
+    { "void G_PureFile( const String &in )", AS_FN(asFunc_PureFile), NULL },
+	{ "void G_RegisterCommand( const String &in )", AS_FN(asFunc_RegisterCommand), NULL },
+	{ "void G_RegisterCallvote( const String &in, const String &in, const String &in, const String &in )", AS_FN(asFunc_RegisterCallvote), NULL },
+	{ "void G_ConfigString( int index, const String &in )", AS_FN(asFunc_ConfigString), NULL },
 
 	// projectile firing
-	{ "void G_FireInstaShot( const Vec3 &in origin, const Vec3 &in angles, int range, int damage, int knockback, int stun, Entity @owner )", asFUNCTION(asFunc_FireInstaShot), NULL },
-	{ "Entity @G_FireWeakBolt( const Vec3 &in origin, const Vec3 &in angles, int speed, int damage, int knockback, int stun, Entity @owner )", asFUNCTION(asFunc_FireWeakBolt), NULL },
-	{ "void G_FireStrongBolt( const Vec3 &in origin, const Vec3 &in angles, int range, int damage, int knockback, int stun, Entity @owner )",asFUNCTION( asFunc_FireStrongBolt), NULL },
-	{ "Entity @G_FirePlasma( const Vec3 &in origin, const Vec3 &in angles, int speed, int radius, int damage, int knockback, int stun, Entity @owner )", asFUNCTION(asFunc_FirePlasma), NULL },
-	{ "Entity @G_FireRocket( const Vec3 &in origin, const Vec3 &in angles, int speed, int radius, int damage, int knockback, int stun, Entity @owner )", asFUNCTION(asFunc_FireRocket), NULL },
-	{ "Entity @G_FireGrenade( const Vec3 &in origin, const Vec3 &in angles, int speed, int radius, int damage, int knockback, int stun, Entity @owner )", asFUNCTION(asFunc_FireGrenade), NULL },
-	{ "void G_FireRiotgun( const Vec3 &in origin, const Vec3 &in angles, int range, int spread, int count, int damage, int knockback, int stun, Entity @owner )", asFUNCTION(asFunc_FireRiotgun), NULL },
-	{ "void G_FireBullet( const Vec3 &in origin, const Vec3 &in angles, int range, int spread, int damage, int knockback, int stun, Entity @owner )", asFUNCTION(asFunc_FireBullet), NULL },
-	{ "Entity @G_FireBlast( const Vec3 &in origin, const Vec3 &in angles, int speed, int radius, int damage, int knockback, int stun, Entity @owner )", asFUNCTION(asFunc_FireBlast), NULL },
+	{ "void G_FireInstaShot( const Vec3 &in origin, const Vec3 &in angles, int range, int damage, int knockback, int stun, Entity @owner )", AS_FN(asFunc_FireInstaShot), NULL },
+	{ "Entity @G_FireWeakBolt( const Vec3 &in origin, const Vec3 &in angles, int speed, int damage, int knockback, int stun, Entity @owner )", AS_FN(asFunc_FireWeakBolt), NULL },
+	{ "void G_FireStrongBolt( const Vec3 &in origin, const Vec3 &in angles, int range, int damage, int knockback, int stun, Entity @owner )", AS_FN(asFunc_FireStrongBolt), NULL },
+	{ "Entity @G_FirePlasma( const Vec3 &in origin, const Vec3 &in angles, int speed, int radius, int damage, int knockback, int stun, Entity @owner )", AS_FN(asFunc_FirePlasma), NULL },
+	{ "Entity @G_FireRocket( const Vec3 &in origin, const Vec3 &in angles, int speed, int radius, int damage, int knockback, int stun, Entity @owner )", AS_FN(asFunc_FireRocket), NULL },
+	{ "Entity @G_FireGrenade( const Vec3 &in origin, const Vec3 &in angles, int speed, int radius, int damage, int knockback, int stun, Entity @owner )", AS_FN(asFunc_FireGrenade), NULL },
+	{ "void G_FireRiotgun( const Vec3 &in origin, const Vec3 &in angles, int range, int spread, int count, int damage, int knockback, int stun, Entity @owner )", AS_FN(asFunc_FireRiotgun), NULL },
+	{ "void G_FireBullet( const Vec3 &in origin, const Vec3 &in angles, int range, int spread, int damage, int knockback, int stun, Entity @owner )", AS_FN(asFunc_FireBullet), NULL },
+	{ "Entity @G_FireBlast( const Vec3 &in origin, const Vec3 &in angles, int speed, int radius, int damage, int knockback, int stun, Entity @owner )", AS_FN(asFunc_FireBlast), NULL },
 
-	{ "bool ML_FilenameExists( const String &in )", asFUNCTION(asFunc_ML_FilenameExists), NULL },
-	{ "const String @ML_GetMapByNum( int num )", asFUNCTION(asFunc_ML_GetMapByNum), NULL },
+	{ "bool ML_FilenameExists( const String &in )", AS_FN(asFunc_ML_FilenameExists), NULL },
+	{ "const String @ML_GetMapByNum( int num )", AS_FN(asFunc_ML_GetMapByNum), NULL },
 
-	{ "uint G_RegisterHelpMessage( const String &in )", asFUNCTION(asFunc_G_RegisterHelpMessage), NULL },
+	{ "uint G_RegisterHelpMessage( const String &in )", AS_FN(asFunc_G_RegisterHelpMessage), NULL },
 
 	// color correction
-	{ "void G_SetColorCorrection( int index )", asFUNCTION(asFunc_G_SetColorCorrection), NULL },
-	{ "int G_GetDefaultColorCorrection()", asFUNCTION(asFunc_G_GetDefaultColorCorrection), NULL },
+	{ "void G_SetColorCorrection( int index )", AS_FN(asFunc_G_SetColorCorrection), NULL },
+	{ "int G_GetDefaultColorCorrection()", AS_FN(asFunc_G_GetDefaultColorCorrection), NULL },
 
 	{ NULL }
 };
@@ -3482,14 +3483,14 @@ static void asFunc_AI_AddGoal( edict_t *self, bool customReach )
 
 static const asglobfuncs_t asAIGlobFuncs[] =
 {
-	{ "int GetRootGoal()", asFUNCTION(AI_GetRootGoalEnt), NULL },
-	{ "int GetNextGoal( int index )", asFUNCTION(AI_GetNextGoalEnt), NULL },
-	{ "Entity @GetGoalEntity( int index )", asFUNCTION(AI_GetGoalEntity), NULL },
+	{ "int GetRootGoal()", AS_FN(AI_GetRootGoalEnt), NULL },
+	{ "int GetNextGoal( int index )", AS_FN(AI_GetNextGoalEnt), NULL },
+	{ "Entity @GetGoalEntity( int index )", AS_FN(AI_GetGoalEntity), NULL },
 
-	{ "void AddGoal( Entity @ent )", asFUNCTION(AI_AddGoalEntity), NULL },
-	{ "void AddGoal( Entity @ent, bool customReach )", asFUNCTION(asFunc_AI_AddGoal), NULL },
-	{ "void RemoveGoal( Entity @ent )", asFUNCTION(AI_RemoveGoalEntity), NULL },
-	{ "void ReachedGoal( Entity @ent )", asFUNCTION(AI_ReachedEntity), NULL },
+	{ "void AddGoal( Entity @ent )", AS_FN(AI_AddGoalEntity), NULL },
+	{ "void AddGoal( Entity @ent, bool customReach )", AS_FN(asFunc_AI_AddGoal), NULL },
+	{ "void RemoveGoal( Entity @ent )", AS_FN(AI_RemoveGoalEntity), NULL },
+	{ "void ReachedGoal( Entity @ent )", AS_FN(AI_ReachedEntity), NULL },
 
 	{ NULL }
 };
@@ -3522,7 +3523,7 @@ static void G_asRegisterGlobalFunctions( asIScriptEngine *asEngine, const asglob
 
 	for( func = funcs; func->declaration; func++ )
 	{
-		error = asEngine->RegisterGlobalFunction( func->declaration, func->pointer, asCALL_CDECL );
+		error = asEngine->RegisterGlobalFunction( func->declaration, func->pointer, AS_CC );
 
 		if( error < 0 )
 		{

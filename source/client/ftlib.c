@@ -21,6 +21,27 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "client.h"
 #include "ftlib.h"
 
+#ifdef __WASM__
+/* Static link: these names also exist in ftlib .c files. Keep the real module
+ * symbols and rename the client DLL wrappers so they cannot recurse. */
+#define FTLIB_RegisterFont CL_FTLIB_RegisterFont
+#define FTLIB_TouchFont CL_FTLIB_TouchFont
+#define FTLIB_TouchAllFonts CL_FTLIB_TouchAllFonts
+#define FTLIB_PrecacheFonts CL_FTLIB_PrecacheFonts
+#define FTLIB_FreeFonts CL_FTLIB_FreeFonts
+#define FTLIB_FontSize CL_FTLIB_FontSize
+#define FTLIB_FontHeight CL_FTLIB_FontHeight
+#define FTLIB_StrlenForWidth CL_FTLIB_StrlenForWidth
+#define FTLIB_FontUnderline CL_FTLIB_FontUnderline
+#define FTLIB_FontAdvance CL_FTLIB_FontAdvance
+#define FTLIB_FontXHeight CL_FTLIB_FontXHeight
+#define FTLIB_DrawRawChar CL_FTLIB_DrawRawChar
+#define FTLIB_DrawClampChar CL_FTLIB_DrawClampChar
+#define FTLIB_DrawClampString CL_FTLIB_DrawClampString
+#define FTLIB_DrawRawString CL_FTLIB_DrawRawString
+#define FTLIB_DrawMultilineString CL_FTLIB_DrawMultilineString
+#endif
+
 static ftlib_export_t *ftlib_export;
 static void *ftlib_libhandle = NULL;
 static mempool_t *ftlib_mempool;

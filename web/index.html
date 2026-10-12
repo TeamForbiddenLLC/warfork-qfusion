@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Warfork WASM</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="loader">
+    <img id="loading-logo" src="img/warfork-logo.png" alt="Warfork" width="720" height="180">
+    <div id="loading-bar">
+      <div id="loading-bar-fill"></div>
+    </div>
+    <p id="loaderText">Chargement…</p>
+  </div>
+  <pre id="errors" hidden></pre>
+  <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="0"></canvas>
+  <div id="touch-overlay" hidden>
+    <div class="touch-editbar" data-role="chrome">
+      <span>Drag controls to move them</span>
+      <button type="button" data-edit="reset">Reset</button>
+      <button type="button" class="primary" data-edit="done">Done</button>
+    </div>
+    <button type="button" class="touch-edit-open" data-role="chrome" data-edit="open">Edit layout</button>
+    <div class="touch-stick" data-role="stick" data-id="stick">
+      <div class="touch-stick-knob"></div>
+    </div>
+    <div class="touch-look" data-role="look" data-id="look"></div>
+    <button type="button" class="touch-btn" data-role="button" data-id="jump" data-cmd="+moveup">Jump</button>
+    <button type="button" class="touch-btn" data-role="button" data-id="special" data-cmd="+special">Alt</button>
+    <button type="button" class="touch-btn" data-role="button" data-id="prev" data-cmd="weapprev">Prev</button>
+    <button type="button" class="touch-btn fire" data-role="button" data-id="fire" data-cmd="+attack">Fire</button>
+    <button type="button" class="touch-btn" data-role="button" data-id="next" data-cmd="weapnext">Next</button>
+    <button type="button" class="touch-btn" data-role="button" data-id="duck" data-cmd="+movedown">Duck</button>
+    <button type="button" class="touch-btn" data-role="button" data-id="menu" data-cmd="escape">Menu</button>
+  </div>
+  <script src="js/touch.js"></script>
+  <script src="js/launcher.js"></script>
+</body>
+</html>

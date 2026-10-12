@@ -46,6 +46,7 @@ namespace WSWUI
 
 		void update( void );
 		void render( int contextId );
+		void updateScreenSize( int vidWidth, int vidHeight );
 
 		Rocket::Core::ElementDocument *loadDocument( int contextId, const char *filename, bool show=false, void *user_data = NULL );
 		void closeDocument( Rocket::Core::ElementDocument *doc );

@@ -1779,9 +1779,17 @@ void R_BeginFrame( float cameraSeparation, bool forceClear, bool forceVsync )
 #endif
 	}
 
-	if( forceClear )
+	if( forceClear
+#ifdef __WASM__
+		|| true
+#endif
+		)
 	{
+#ifdef __WASM__
+		RB_Clear( GL_COLOR_BUFFER_BIT, 0.08f, 0.09f, 0.12f, 1 );
+#else
 		RB_Clear( GL_COLOR_BUFFER_BIT, 0, 0, 0, 1 );
+#endif
 	}
 
 	// set swap interval (vertical synchronization)
@@ -1819,6 +1827,10 @@ void R_EndFrame( void )
 	R_Set2DMode( false );
 
 	RB_EndFrame();
+
+#ifdef __WASM__
+	qglBindFramebuffer( GL_FRAMEBUFFER, 0 );
+#endif
 
 	GLimp_EndFrame();
 

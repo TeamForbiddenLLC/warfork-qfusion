@@ -30,6 +30,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 cgs_skeleton_t *skel_headnode;
 
+void CG_ResetSkeletons( void )
+{
+	skel_headnode = NULL;
+}
+
 //#define SKEL_PRINTBONETREE
 #ifdef SKEL_PRINTBONETREE
 static void CG_PrintBoneTree( cgs_skeleton_t *skel, bonenode_t *node, int level )
@@ -112,6 +117,8 @@ cgs_skeleton_t *CG_SkeletonForModel( struct model_s *model )
 	numBones = R_SkeletalGetNumBones( model, &numFrames );
 	if( !numBones || !numFrames )
 		return NULL; // no bones or frames
+	if( numBones > 256 || numFrames > 4096 )
+		return NULL;
 
 	for( skel = skel_headnode; skel; skel = skel->next )
 	{

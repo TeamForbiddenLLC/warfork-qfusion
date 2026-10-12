@@ -39,11 +39,18 @@ file(GLOB CLIENT_COMMON_SOURCES
     "../gameshared/q_*.c"
     "../qalgo/*.c"
     "../matchmaker/*.c"
-    "${MINIZ_SOURCE_DIR}/miniz.c"
-	"${DISCORD_INCLUDE_DIR}/discord_rpc.cpp"
-	"${DISCORD_INCLUDE_DIR}/rpc_connection.cpp"
-	"${DISCORD_INCLUDE_DIR}/serialization.cpp"
+	"${MINIZ_SOURCE_DIR}/miniz.c"
 )
+
+if (NOT EMSCRIPTEN)
+	list(APPEND CLIENT_COMMON_SOURCES
+		"${DISCORD_INCLUDE_DIR}/discord_rpc.cpp"
+		"${DISCORD_INCLUDE_DIR}/rpc_connection.cpp"
+		"${DISCORD_INCLUDE_DIR}/serialization.cpp"
+	)
+else()
+	list(FILTER CLIENT_COMMON_SOURCES EXCLUDE REGEX "wswcurl\\.c$")
+endif()
     
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	file(GLOB CLIENT_PLATFORM_HEADERS
@@ -155,6 +162,38 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	endif()
 endif()
 
+if (EMSCRIPTEN)
+	set(CLIENT_PLATFORM_HEADERS "")
+
+	file(GLOB CLIENT_PLATFORM_SOURCES
+		"../unix/unix_fs.c"
+		"../unix/unix_sys.c"
+		"../null/sys_vfs_null.c"
+
+		"../sdl/sdl_input.c"
+		"../sdl/sdl_input_joy.c"
+		"../sdl/sdl_input_unix.c"
+		"../sdl/sdl_vid.c"
+		"../sdl/sdl_sys.c"
+		"../sdl/sdl_clipboard.c"
+		"../sdl/sdl_time.c"
+		"../sdl/sdl_client.c"
+
+		"./win/sdl_win.c"
+
+		"../wasm/wasm_lib.c"
+		"../wasm/wasm_net.c"
+		"../wasm/wasm_threads.c"
+		"../wasm/wasm_discord.c"
+		"../wasm/wasm_wswcurl.c"
+	)
+
+	set(CLIENT_PLATFORM_LIBRARIES "")
+	set(CLIENT_BINARY_TYPE "")
+	set(BUNDLE_RESOURCES "")
+	set(STEAMSHIMPARENT_LIBRARY steamshim_parent)
+endif()
+
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	set(CLIENT_PLATFORM_HEADERS "")
 
@@ -215,7 +254,9 @@ endif()
 
 add_executable(${QFUSION_CLIENT_NAME} ${CLIENT_BINARY_TYPE} ${CLIENT_HEADERS} ${CLIENT_PLATFORM_HEADERS} ${CLIENT_COMMON_SOURCES} ${CLIENT_PLATFORM_SOURCES} ${BUNDLE_RESOURCES} )
 add_dependencies(${QFUSION_CLIENT_NAME} angelwrap cgame cin ftlib game ref_gl snd_openal ui)
-set(STEAMSHIMPARENT_LIBRARY steamshim_parent)
+if (NOT STEAMSHIMPARENT_LIBRARY)
+	set(STEAMSHIMPARENT_LIBRARY steamshim_parent)
+endif()
 
 execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY ${CMAKE_HOME_DIRECTORY}/.. OUTPUT_VARIABLE GIT_COMMIT_HASH OUTPUT_STRIP_TRAILING_WHITESPACE)
 file(WRITE ${CMAKE_BINARY_DIR}/warfork-qfusion/commit.txt ${GIT_COMMIT_HASH})
@@ -257,8 +298,23 @@ if (USE_CRASHPAD)
     target_link_libraries(${QFUSION_CLIENT_NAME} PRIVATE crashpad_client)
 endif()
 
-qf_set_output_dir(${QFUSION_CLIENT_NAME} "")
+if (EMSCRIPTEN)
+    target_link_libraries(${QFUSION_CLIENT_NAME} PRIVATE
+        angelwrap cgame cin ftlib game ref_gl snd_openal ui)
+    qf_apply_wasm_client_flags(${QFUSION_CLIENT_NAME})
+    set_target_properties(${QFUSION_CLIENT_NAME} PROPERTIES OUTPUT_NAME warfork)
+    qf_set_output_dir(${QFUSION_CLIENT_NAME} "")
+    set(WASM_WEB_DIR ${CMAKE_HOME_DIRECTORY}/../web/wasm)
+    add_custom_command(TARGET ${QFUSION_CLIENT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND}
+            -DSRC=${CMAKE_BINARY_DIR}/warfork-qfusion
+            -DDST=${WASM_WEB_DIR}
+            -P ${CMAKE_HOME_DIRECTORY}/cmake/CopyWasmArtifacts.cmake
+        COMMENT "Copying WASM artifacts to web/wasm")
+else()
+    qf_set_output_dir(${QFUSION_CLIENT_NAME} "")
+endif()
 
-if (BUILD_STEAMLIB)
+if (BUILD_STEAMLIB AND NOT EMSCRIPTEN)
     add_dependencies(${QFUSION_CLIENT_NAME} wf_steam)
 endif()

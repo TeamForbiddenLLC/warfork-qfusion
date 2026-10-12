@@ -557,12 +557,48 @@ static void __R_GlCallback( GLenum source, GLenum type, GLuint id, GLenum severi
 }
 
 /*
+* R_ParseDottedVersion
+*
+* GL_VERSION / GL_SHADING_LANGUAGE_VERSION may be "4.6" or
+* "OpenGL ES GLSL ES 3.00 (WebGL GLSL ES 3.00 ...)".
+*/
+static void R_ParseDottedVersion( const char *s, int *major, int *minor )
+{
+	const char *p;
+
+	*major = *minor = 0;
+	if( !s ) {
+		return;
+	}
+	for( p = s; *p; p++ ) {
+		if( p[0] >= '0' && p[0] <= '9' && p[1] == '.' ) {
+			sscanf( p, "%d.%d", major, minor );
+			return;
+		}
+	}
+}
+
+/*
 * R_RegisterGLExtensions
 */
 static bool R_RegisterGLExtensions( void )
 {
 	memset( &glConfig.ext, 0, sizeof( glextinfo_t ) );
 
+#ifdef GL_ES_VERSION_2_0
+	/* WebGL 2 / GLES3: these features are core, not ARB/EXT entry points. */
+	glConfig.ext.GLSL_core = 1;
+	glConfig.ext.GLSL130 = 1;
+	glConfig.ext.draw_range_elements = 1;
+	glConfig.ext.framebuffer_blit = 1;
+	glConfig.ext.texture3D = 1;
+	glConfig.ext.texture_array = 1;
+	glConfig.ext.draw_instanced = 1;
+	glConfig.ext.instanced_arrays = 1;
+	if( R_TryLoadGLProcAddress( gl_ext_get_program_binary_OES_funcs ) ) {
+		glConfig.ext.get_program_binary = 1;
+	}
+#else
 	if( !R_TryLoadGLProcAddress( gl_ext_vertex_buffer_object_ARB_funcs ) ) {
 		R_RegisterFatalExt( "gl_ext_vertex_buffer_object_ARB_funcs " );
 	}
@@ -624,6 +660,7 @@ static bool R_RegisterGLExtensions( void )
 		glConfig.ext.texture3D = 1;
 		glConfig.ext.texture_array = 1;
 	}
+#endif // GL_ES_VERSION_2_0
 
 	glConfig.ext.texture_filter_anisotropic = 1;
 	// enum-only extensions: querying their GL_* enums without driver support
@@ -662,12 +699,16 @@ static bool R_RegisterGLExtensions( void )
 		char tmp[128];
 		int versionMajor = 0;
 		int versionMinor = 0;
-		sscanf( glConfig.versionString, "%d.%d", &versionMajor, &versionMinor );
+		R_ParseDottedVersion( glConfig.versionString, &versionMajor, &versionMinor );
 		glConfig.version = versionMajor * 100 + versionMinor * 10;
 
 		glConfig.ext.depth24 = true;
 		glConfig.ext.fragment_precision_high = true;
 		glConfig.ext.rgb8_rgba8 = true;
+#ifdef GL_ES_VERSION_3_0
+		/* WebGL 2: RGB8 is not color-renderable; depth textures need a sized format. */
+		glConfig.forceRGBAFramebuffers = true;
+#endif
 
 		glConfig.maxTextureSize = 0;
 		qglGetIntegerv( GL_MAX_TEXTURE_SIZE, &glConfig.maxTextureSize );
@@ -679,6 +720,7 @@ static bool R_RegisterGLExtensions( void )
 		ri.Cvar_ForceSet( "gl_max_texture_size", va_r( tmp, sizeof( tmp ), "%i", glConfig.maxTextureSize ) );
 
 		/* GL_ARB_GLSL_core (meta extension) */
+#ifndef GL_ES_VERSION_2_0
 		if( !glConfig.ext.GLSL_core ) {
 			qglDeleteProgram = qglDeleteObjectARB;
 			qglDeleteShader = qglDeleteObjectARB;
@@ -693,6 +735,7 @@ static bool R_RegisterGLExtensions( void )
 			qglGetShaderInfoLog = qglGetInfoLogARB;
 			qglGetAttachedShaders = qglGetAttachedObjectsARB;
 		}
+#endif // GL_ES_VERSION_2_0
 
 		/* GL_ARB_texture_cube_map */
 		glConfig.maxTextureCubemapSize = 0;
@@ -729,11 +772,17 @@ static bool R_RegisterGLExtensions( void )
 			glConfig.stencilBits = 0;
 
 		versionMajor = versionMinor = 0;
-		sscanf( glConfig.shadingLanguageVersionString, "%d.%d", &versionMajor, &versionMinor );
+		R_ParseDottedVersion( glConfig.shadingLanguageVersionString, &versionMajor, &versionMinor );
 		glConfig.shadingLanguageVersion = versionMajor * 100 + versionMinor;
+#ifndef GL_ES_VERSION_2_0
 		if( !glConfig.ext.GLSL130 ) {
 			glConfig.shadingLanguageVersion = 120;
 		}
+#else
+		if( glConfig.shadingLanguageVersion < 300 ) {
+			glConfig.shadingLanguageVersion = 300;
+		}
+#endif
 
 		glConfig.maxVertexUniformComponents = glConfig.maxFragmentUniformComponents = 0;
 		glConfig.maxVaryingFloats = 0;
@@ -958,10 +1007,16 @@ static void R_Register( const char *screenshotsPrefix )
 	r_outlines_scale = ri.Cvar_Get( "r_outlines_scale", "1", CVAR_ARCHIVE );
 	r_outlines_cutoff = ri.Cvar_Get( "r_outlines_cutoff", "712", CVAR_ARCHIVE );
 
+#ifdef __WASM__
+	r_soft_particles = ri.Cvar_Get( "r_soft_particles", "0", CVAR_ARCHIVE );
+	r_fxaa = ri.Cvar_Get( "r_fxaa", "0", CVAR_ARCHIVE );
+	ri.Cvar_ForceSet( "r_soft_particles", "0" );
+	ri.Cvar_ForceSet( "r_fxaa", "0" );
+#else
 	r_soft_particles = ri.Cvar_Get( "r_soft_particles", "1", CVAR_ARCHIVE );
-	r_soft_particles_scale = ri.Cvar_Get( "r_soft_particles_scale", "0.02", CVAR_ARCHIVE );
-
 	r_fxaa = ri.Cvar_Get( "r_fxaa", "1", CVAR_ARCHIVE );
+#endif
+	r_soft_particles_scale = ri.Cvar_Get( "r_soft_particles_scale", "0.02", CVAR_ARCHIVE );
 
 	r_lodbias = ri.Cvar_Get( "r_lodbias", "0", CVAR_ARCHIVE );
 	r_lodscale = ri.Cvar_Get( "r_lodscale", "5.0", CVAR_ARCHIVE );
@@ -1010,7 +1065,12 @@ static void R_Register( const char *screenshotsPrefix )
 
 	r_maxglslbones = ri.Cvar_Get( "r_maxglslbones", STR_TOSTR( MAX_GLSL_UNIFORM_BONES ), CVAR_LATCH_VIDEO );
 
+#ifdef __WASM__
+	r_multithreading = ri.Cvar_Get( "r_multithreading", "0", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
+	ri.Cvar_ForceSet( "r_multithreading", "0" );
+#else
 	r_multithreading = ri.Cvar_Get( "r_multithreading", "1", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
+#endif
 
 	gl_cull = ri.Cvar_Get( "gl_cull", "1", 0 );
 	gl_drawbuffer = ri.Cvar_Get( "gl_drawbuffer", "GL_BACK", 0 );
@@ -1203,7 +1263,11 @@ static rserr_t R_PostInit( void )
 
 	glConfig.versionHash = R_GLVersionHash( glConfig.vendorString, glConfig.rendererString,
 		glConfig.versionString );
+#ifdef __WASM__
+	glConfig.multithreading = false;
+#else
 	glConfig.multithreading = r_multithreading->integer != 0 && !strstr( glConfig.vendorString, "nouveau" );
+#endif
 
 	memset( &rsh, 0, sizeof( rsh ) );
 	memset( &rf, 0, sizeof( rf ) );

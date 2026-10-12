@@ -2117,6 +2117,48 @@ bool FS_AddPurePak( unsigned checksum )
 }
 
 /*
+* FS_AddPurePakFilename
+*
+* Mark a loaded pack as pure by path suffix when checksums do not match
+* (WASM MEMFS copies can hash differently from dedicated-server paks).
+*/
+bool FS_AddPurePakFilename( const char *filename )
+{
+	searchpath_t *search;
+	bool result = false;
+	size_t nameLen;
+
+	if( !filename || !filename[0] )
+		return false;
+
+	nameLen = strlen( filename );
+
+	QMutex_Lock( fs_searchpaths_mutex );
+
+	for( search = fs_searchpaths; search; search = search->next )
+	{
+		size_t packLen;
+		int diff;
+
+		if( !search->pack || !search->pack->filename )
+			continue;
+
+		packLen = strlen( search->pack->filename );
+		diff = (int)packLen - (int)nameLen;
+		if( diff >= 0 && !Q_stricmp( search->pack->filename + diff, filename ) ) {
+			if( search->pack->pure < FS_PURE_IMPLICIT )
+				search->pack->pure = FS_PURE_IMPLICIT;
+			result = true;
+			break;
+		}
+	}
+
+	QMutex_Unlock( fs_searchpaths_mutex );
+
+	return result;
+}
+
+/*
 * FS_RemovePurePaks
 */
 void FS_RemovePurePaks( void )
@@ -3001,6 +3043,12 @@ static int FS_PathGetFileListExt( searchpath_t *search, const char *dir, const c
 
 	if( !search->pack )
 	{
+#ifdef __WASM__
+		/* MEMFS readdir/stat of the overlay dirs can stall the browser thread
+		 * after hundreds of MiB of pk3 have been mounted. Pack scans are enough. */
+		(void)tempname;
+		return 0;
+#else
 		char vfstempname[FS_MAX_PATH];
 		size_t pathlen;
 		int numfiles = 0, numvfsfiles = 0, totalnumfiles;
@@ -3100,10 +3148,45 @@ static int FS_PathGetFileListExt( searchpath_t *search, const char *dir, const c
 		Mem_ZoneFree( vfsfilenames );
 
 		return found;
+#endif
 	}
 	else
 	{
 		unsigned int t;
+#ifdef __WASM__
+		const unsigned int npack = search->pack->numFiles;
+		const char *p;
+
+		/* Linear scan: Trie_DumpIf+glob on large pk3s can stall the WASM main thread
+		 * before any "...loading scripts/..." line is printed. */
+		for( t = 0; t < npack && found < size; t++ ) {
+			const char *fullname = search->pack->files[t].name;
+			const char *name;
+
+			if( !fullname || !fullname[0] )
+				continue;
+			if( dirlen ) {
+				if( Q_strnicmp( fullname, dir, dirlen ) || fullname[dirlen] != '/' )
+					continue;
+				name = fullname + dirlen + 1;
+			} else {
+				name = fullname;
+			}
+			if( !name[0] )
+				continue;
+			p = strchr( name, '/' );
+			if( p && p[1] )
+				continue;
+			if( extension && extension[0] && extension[0] != '/' ) {
+				size_t nlen = strlen( name );
+				if( nlen <= extlen || Q_stricmp( name + nlen - extlen, extension ) )
+					continue;
+			}
+			files[found].name = (char *)name;
+			files[found].searchPath = search;
+			found++;
+		}
+#else
 		struct trie_dump_s *trie_dump = NULL;
 		trie_error_t trie_err;
 		char *pattern;
@@ -3145,6 +3228,7 @@ static int FS_PathGetFileListExt( searchpath_t *search, const char *dir, const c
 		}
 
 		Trie_FreeDump( trie_dump );
+#endif
 	}
 
 	return found;
@@ -3335,6 +3419,58 @@ int FS_GetFileList( const char *dir, const char *extension, char *buf, size_t bu
 {
 	//	return FS_GetFileListExt_( dir, extension, buf, &bufsize, 0, start, end );				// 0 - no limit
 	return FS_GetFileListExt_( dir, extension, buf, &bufsize, FS_MAX_SEARCHFILES, start, end );
+}
+
+/*
+* FS_VisitFiles
+* Walk pack entries only (no directory glob). Used by the WASM shader cache
+* so listing cannot stall in MEMFS readdir after the pk3 mount.
+*/
+int FS_VisitFiles( const char *dir, const char *extension, int ( *cb )( const char *name, void *user ), void *user )
+{
+	searchpath_t *search;
+	size_t dirlen, extlen;
+	int n = 0;
+
+	if( !dir || !extension || !cb )
+		return 0;
+	if( dir[0] == '<' || dir[0] == '>' )
+		dir++;
+	dirlen = strlen( dir );
+	extlen = strlen( extension );
+
+	for( search = fs_searchpaths; search; search = search->next ) {
+		unsigned int t;
+		unsigned int npack;
+
+		if( !search->pack )
+			continue;
+		npack = (unsigned int)search->pack->numFiles;
+		for( t = 0; t < npack; t++ ) {
+			const char *fullname = search->pack->files[t].name;
+			const char *name;
+			const char *p;
+			size_t nlen;
+
+			if( !fullname || !fullname[0] )
+				continue;
+			if( Q_strnicmp( fullname, dir, dirlen ) || fullname[dirlen] != '/' )
+				continue;
+			name = fullname + dirlen + 1;
+			if( !name[0] )
+				continue;
+			p = strchr( name, '/' );
+			if( p && p[1] )
+				continue;
+			nlen = strlen( name );
+			if( nlen <= extlen || Q_stricmp( name + nlen - extlen, extension ) )
+				continue;
+			n++;
+			if( !cb( name, user ) )
+				return n;
+		}
+	}
+	return n;
 }
 
 /*

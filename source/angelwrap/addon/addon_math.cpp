@@ -145,9 +145,23 @@ void RegisterMathAddon( asIScriptEngine *engine )
 	}, *func;
 	int r = 0;
 
-	for( func = math_asGlobFuncs; func->declaration; func++ ) {
-		r = engine->RegisterGlobalFunction( func->declaration, func->ptr, asCALL_CDECL ); assert( r >= 0 );
-	}
+	r = engine->RegisterGlobalFunction( "int abs( int x )", AS_FN( asFunc_abs ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "double abs( double x )", AS_FN( asFunc_fabs ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "double log( double x )", AS_FN( asFunc_log ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "double pow( double x, double y )", AS_FN( asFunc_pow ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "double cos( double x )", AS_FN( asFunc_cos ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "double sin( double x )", AS_FN( asFunc_sin ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "double tan( double x )", AS_FN( asFunc_tan ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "double acos( double x )", AS_FN( asFunc_acos ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "double asin( double x )", AS_FN( asFunc_asin ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "double atan( double x )", AS_FN( asFunc_atan ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "double atan2( double x, double y )", AS_FN( asFunc_atan2 ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "double sqrt( double x )", AS_FN( asFunc_sqrt ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "double ceil( double x )", AS_FN( asFunc_ceil ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "double floor( double x )", AS_FN( asFunc_floor ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "double random()", AS_FN( asFunc_random ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "double brandom( double min, double max )", AS_FN( asFunc_brandom ), AS_CC ); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction( "int rand()", AS_FN( asFunc_rand ), AS_CC ); assert( r >= 0 );
 
   (void)sizeof(r); // hush the compiler
 }

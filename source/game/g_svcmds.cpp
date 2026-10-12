@@ -556,6 +556,14 @@ static void Cmd_ListLocations_f( void )
 */
 void G_AddServerCommands( void )
 {
+#ifdef __WASM__
+	/* HARD_LINKED: G_Init runs again on map change. Re-inserting into the
+	 * command trie after G_RemoveCommands has already walked it can OOB. */
+	static bool wasm_svcmds_registered;
+	if( wasm_svcmds_registered )
+		return;
+	wasm_svcmds_registered = true;
+#endif
 	if( dedicated->integer )
 		trap_Cmd_AddCommand( "say", Cmd_ConsoleSay_f );
 	trap_Cmd_AddCommand( "kick", Cmd_ConsoleKick_f );
@@ -595,6 +603,9 @@ void G_AddServerCommands( void )
 */
 void G_RemoveCommands( void )
 {
+#ifdef __WASM__
+	return;
+#endif
 	if( dedicated->integer )
 		trap_Cmd_RemoveCommand( "say" );
 	trap_Cmd_RemoveCommand( "kick" );

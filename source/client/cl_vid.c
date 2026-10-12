@@ -21,7 +21,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // Main windowed and fullscreen graphics interface module. This module
 // is used for both the software and OpenGL rendering versions of the
 // qfusion refresh engine.
+#ifndef __WASM__
 #define REF_DEFINE_INTERFACE_IMPL 1
+#endif
 #include "../ref_base/ref_mod.h"
 
 #include "client.h"
@@ -322,10 +324,14 @@ static bool VID_LoadRefresh( const char *name )
 	vid_ref_mempool = Q_CreatePool( NULL, "Refresh" );
 	
 	ref_import_t import;
-	struct mem_import_s memImport = DECLARE_MEM_STRUCT( vid_ref_mempool );
-	struct cmd_import_s cmdImport = DECLARE_CMD_STRUCT();
-	struct cvar_import_s cvarImport = DECLARE_CVAR_STRUCT();	
-	struct win_import_s winImport = DECLARE_WIN_STRUCT();
+	static struct mem_import_s memImport;
+	static struct cmd_import_s cmdImport;
+	static struct cvar_import_s cvarImport;
+	static struct win_import_s winImport;
+	memImport = (struct mem_import_s)DECLARE_MEM_STRUCT( vid_ref_mempool );
+	cmdImport = (struct cmd_import_s)DECLARE_CMD_STRUCT();
+	cvarImport = (struct cvar_import_s)DECLARE_CVAR_STRUCT();
+	winImport = (struct win_import_s)DECLARE_WIN_STRUCT();
 
 	size_t file_size;
 	char *file;
@@ -501,7 +507,9 @@ void VID_CheckChanges( void )
 		// stop and free all sounds
 		CL_SoundModule_Shutdown( false );
 
-		FTLIB_FreeFonts( false );
+		if( vid_ref_was_active ) {
+			FTLIB_FreeFonts( false );
+		}
 
 		L10n_ClearDomains();
 
@@ -730,7 +738,13 @@ void VID_Init( void )
 	vid_height = Cvar_Get( "vid_height", "0", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 	vid_xpos = Cvar_Get( "vid_xpos", "0", CVAR_ARCHIVE );
 	vid_ypos = Cvar_Get( "vid_ypos", "0", CVAR_ARCHIVE );
+#ifdef __WASM__
+	vid_fullscreen = Cvar_Get( "vid_fullscreen", "0", CVAR_ARCHIVE );
+	Cvar_ForceSet( "vid_fullscreen", "0" );
+	vid_fullscreen->modified = false;
+#else
 	vid_fullscreen = Cvar_Get( "vid_fullscreen", "1", CVAR_ARCHIVE );
+#endif
 	vid_displayfrequency = Cvar_Get( "vid_displayfrequency", "0", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 	vid_multiscreen_head = Cvar_Get( "vid_multiscreen_head", "-1", CVAR_ARCHIVE );
 	vid_parentwid = Cvar_Get( "vid_parentwid", "0", CVAR_NOSET );

@@ -310,6 +310,28 @@ void RocketModule::cancelTouches( int contextId )
 
 //==================================================
 
+#ifdef __WASM__
+static void InjectWebTouchOptionsTab( Rocket::Core::ElementDocument *document )
+{
+	if( !document ) {
+		return;
+	}
+	Rocket::Core::Element *sidebar = document->GetElementById( "sidebar2" );
+	if( !sidebar || document->GetElementById( "opt-touch-link" ) ) {
+		return;
+	}
+	Rocket::Core::Element *link = document->CreateElement( "a" );
+	if( !link ) {
+		return;
+	}
+	link->SetId( "opt-touch-link" );
+	link->SetAttribute( "href", "options_touch.rml" );
+	link->SetInnerRML( "Touch" );
+	sidebar->AppendChild( link );
+	link->RemoveReference();
+}
+#endif
+
 Rocket::Core::ElementDocument *RocketModule::loadDocument( int contextId, const char *filename, bool show, void *user_data )
 {
 	auto *context = contextForId( contextId );
@@ -317,6 +339,10 @@ Rocket::Core::ElementDocument *RocketModule::loadDocument( int contextId, const 
 	if( !document ) {
 		return NULL;
 	}
+
+#ifdef __WASM__
+	InjectWebTouchOptionsTab( document );
+#endif
 
 	if( show )
 	{
@@ -432,6 +458,21 @@ void RocketModule::update( void )
 
 	contextQuick->Update();
 	contextMain->Update();
+}
+
+void RocketModule::updateScreenSize( int vidWidth, int vidHeight )
+{
+	Rocket::Core::Vector2i dims( vidWidth, vidHeight );
+
+	if( renderInterface ) {
+		renderInterface->SetViewport( vidWidth, vidHeight );
+	}
+	if( contextMain ) {
+		contextMain->SetDimensions( dims );
+	}
+	if( contextQuick ) {
+		contextQuick->SetDimensions( dims );
+	}
 }
 
 void RocketModule::render( int contextId )

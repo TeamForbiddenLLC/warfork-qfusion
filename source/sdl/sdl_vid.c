@@ -84,7 +84,16 @@ void VID_FlashWindow( int count )
  */
 unsigned int VID_GetSysModes( vidmode_t *modes )
 {
-#ifdef __APPLE__
+#if defined( __WASM__ ) || defined( __EMSCRIPTEN__ )
+	int w = 0, h = 0;
+
+	VID_GetDefaultMode( &w, &h );
+	if( modes ) {
+		modes[0].width = w;
+		modes[0].height = h;
+	}
+	return 1;
+#elif defined( __APPLE__ )
 	// only support borderless fullscreen because Alt+Tab doesn't work in fullscreen
 	if( modes )
 		VID_GetDefaultMode( &modes[0].width, &modes[0].height );
@@ -132,12 +141,24 @@ unsigned int VID_GetSysModes( vidmode_t *modes )
 bool VID_GetDefaultMode( int *width, int *height )
 {
 	SDL_DisplayMode mode;
+
+#if defined( __WASM__ ) || defined( __EMSCRIPTEN__ )
+	if( SDL_GetDesktopDisplayMode( 0, &mode ) == 0 && mode.w > 0 && mode.h > 0 ) {
+		*width = mode.w;
+		*height = mode.h;
+		return true;
+	}
+	*width = 1280;
+	*height = 720;
+	return true;
+#else
 	SDL_GetDesktopDisplayMode( 0, &mode );
 
 	*width = mode.w;
 	*height = mode.h;
 
 	return true;
+#endif
 }
 
 /*

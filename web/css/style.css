@@ -1,0 +1,237 @@
+:root {
+  color-scheme: dark;
+  --bg: #000;
+  --accent: #ffb000;
+  --text: #f4f6fb;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  color: var(--text);
+  font-family: "Segoe UI", sans-serif;
+}
+
+#loader {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  background: #000;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% 40%, #1a1520 0%, #000 70%);
+}
+
+#loader[hidden] { display: none; }
+
+#loading-logo {
+  display: block;
+  width: min(720px, 82vw);
+  height: auto;
+  margin: 0 0 2.4rem;
+  pointer-events: none;
+  user-select: none;
+}
+
+#loading-bar {
+  width: min(480px, 70vw);
+  height: 32px;
+  position: relative;
+  background: #1a1a1a;
+  border: 2px solid #3a3228;
+  box-shadow: inset 0 0 12px #000;
+}
+
+#loading-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(180deg, #ffd060 0%, #ffb000 45%, #c47a00 100%);
+  transition: width 0.12s linear;
+}
+
+#loaderText {
+  margin-top: 1.1rem;
+  max-width: min(720px, 88vw);
+  font-size: 0.95rem;
+  color: #c8c8c8;
+  text-align: center;
+  min-height: 1.4em;
+}
+
+#canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: #000;
+  outline: none;
+  touch-action: none;
+}
+
+#errors {
+  position: fixed;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 10;
+  margin: 0;
+  color: #ff8a8a;
+  white-space: pre-wrap;
+  background: rgba(16, 18, 24, 0.92);
+  padding: 1rem;
+  border-radius: 8px;
+  max-height: 40vh;
+  overflow: auto;
+}
+
+#errors[hidden] { display: none; }
+
+#touch-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+#touch-overlay[hidden] { display: none !important; }
+
+#touch-overlay .touch-stick,
+#touch-overlay .touch-look,
+#touch-overlay .touch-btn,
+#touch-overlay .touch-editbar,
+#touch-overlay .touch-edit-open {
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.touch-editbar,
+.touch-edit-open {
+  display: none;
+}
+
+#touch-overlay.editing .touch-editbar,
+#touch-overlay:not(.editing) .touch-edit-open {
+  display: flex;
+}
+
+.touch-editbar {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(8, 8, 10, 0.88);
+  color: #fff;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.touch-editbar button,
+.touch-edit-open {
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: 700;
+  color: #111;
+  background: #ffb000;
+}
+
+.touch-editbar button.primary {
+  background: #ffe08a;
+}
+
+.touch-edit-open {
+  position: absolute;
+  left: 50%;
+  top: max(10px, env(safe-area-inset-top));
+  transform: translateX(-50%);
+  z-index: 6;
+  opacity: 0.72;
+}
+
+#touch-overlay.editing [data-id] {
+  outline: 2px dashed rgba(255, 176, 0, 0.9);
+}
+
+#touch-overlay.editing .touch-look {
+  background: rgba(255, 176, 0, 0.12);
+}
+
+.touch-stick {
+  position: absolute;
+  left: 4%;
+  top: 68%;
+  width: calc(148px * var(--touch-scale, 1));
+  height: calc(148px * var(--touch-scale, 1));
+  border-radius: 50%;
+  background: rgba(20, 22, 28, calc(var(--touch-opacity, 0.55) * 0.55));
+  border: 2px solid rgba(255, 176, 0, calc(var(--touch-opacity, 0.55)));
+  z-index: 2;
+}
+
+.touch-stick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46%;
+  height: 46%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 176, 0, calc(var(--touch-opacity, 0.55)));
+}
+
+.touch-look {
+  position: absolute;
+  left: 48%;
+  top: 12%;
+  width: 52%;
+  height: 52%;
+  z-index: 1;
+}
+
+.touch-btn {
+  position: absolute;
+  width: calc(64px * var(--touch-scale, 1));
+  min-height: calc(52px * var(--touch-scale, 1));
+  z-index: 3;
+  border: 0;
+  border-radius: 14px;
+  color: #fff;
+  font-weight: 700;
+  font-size: calc(13px * var(--touch-scale, 1));
+  background: rgba(20, 22, 28, calc(var(--touch-opacity, 0.55) * 0.85));
+  box-shadow: inset 0 0 0 2px rgba(255, 176, 0, 0.45);
+}
+
+.touch-btn.fire {
+  width: calc(128px * var(--touch-scale, 1));
+  background: rgba(180, 40, 30, calc(var(--touch-opacity, 0.55) * 0.95));
+}
+
+.touch-btn.active {
+  filter: brightness(1.25);
+}
+
+body.touch-on #canvas {
+  cursor: none;
+}

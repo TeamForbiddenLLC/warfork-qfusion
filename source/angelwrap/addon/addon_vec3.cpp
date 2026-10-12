@@ -227,45 +227,45 @@ void RegisterVec3Addon( asIScriptEngine *engine )
 	int r;
 
 	// register object behaviours
-	r = engine->RegisterObjectBehaviour( "Vec3", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION( objectVec3_DefaultConstructor ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour( "Vec3", asBEHAVE_CONSTRUCT, "void f(float x, float y, float z)", asFUNCTION( objectVec3_Constructor3F ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour( "Vec3", asBEHAVE_CONSTRUCT, "void f(float v)", asFUNCTION( objectVec3_Constructor1F ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour( "Vec3", asBEHAVE_CONSTRUCT, "void f(const Vec3 &in)", asFUNCTION( objectVec3_CopyConstructor ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour( "Vec3", asBEHAVE_CONSTRUCT, "void f()", AS_OL(objectVec3_DefaultConstructor ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour( "Vec3", asBEHAVE_CONSTRUCT, "void f(float x, float y, float z)", AS_OL(objectVec3_Constructor3F ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour( "Vec3", asBEHAVE_CONSTRUCT, "void f(float v)", AS_OL(objectVec3_Constructor1F ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour( "Vec3", asBEHAVE_CONSTRUCT, "void f(const Vec3 &in)", AS_OL(objectVec3_CopyConstructor ), AS_CC_OL ); assert( r >= 0 );
 
 	// register object methods
 
 	// assignments
-	r = engine->RegisterObjectMethod( "Vec3", "Vec3 &opAssign(Vec3 &in)", asFUNCTION( objectVec3_AssignBehaviour ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "Vec3 &opAssign(int)", asFUNCTION( objectVec3_AssignBehaviourI ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "Vec3 &opAssign(float)", asFUNCTION( objectVec3_AssignBehaviourD ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "Vec3 &opAddAssign(Vec3 &in)", asFUNCTION( objectVec3_AddAssignBehaviour ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "Vec3 &opSubAssign(Vec3 &in)", asFUNCTION( objectVec3_SubAssignBehaviour ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "Vec3 &opMulAssign(Vec3 &in)", asFUNCTION( objectVec3_MulAssignBehaviour ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "Vec3 &opXorAssign(Vec3 &in)", asFUNCTION( objectVec3_XORAssignBehaviour ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "Vec3 &opMulAssign(int)", asFUNCTION( objectVec3_MulAssignBehaviourI ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "Vec3 &opMulAssign(float)", asFUNCTION( objectVec3_MulAssignBehaviourD ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "Vec3 &opAssign(Vec3 &in)", AS_OL(objectVec3_AssignBehaviour ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "Vec3 &opAssign(int)", AS_OL(objectVec3_AssignBehaviourI ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "Vec3 &opAssign(float)", AS_OL(objectVec3_AssignBehaviourD ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "Vec3 &opAddAssign(Vec3 &in)", AS_OL(objectVec3_AddAssignBehaviour ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "Vec3 &opSubAssign(Vec3 &in)", AS_OL(objectVec3_SubAssignBehaviour ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "Vec3 &opMulAssign(Vec3 &in)", AS_OL(objectVec3_MulAssignBehaviour ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "Vec3 &opXorAssign(Vec3 &in)", AS_OL(objectVec3_XORAssignBehaviour ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "Vec3 &opMulAssign(int)", AS_OL(objectVec3_MulAssignBehaviourI ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "Vec3 &opMulAssign(float)", AS_OL(objectVec3_MulAssignBehaviourD ), AS_CC_OL ); assert( r >= 0 );
 
-	r = engine->RegisterObjectMethod( "Vec3", "Vec3 opAdd(Vec3 &in) const", asFUNCTION( objectVec3_AddBehaviour ), asCALL_CDECL_OBJFIRST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "Vec3 opSub(Vec3 &in) const", asFUNCTION( objectVec3_SubtractBehaviour ), asCALL_CDECL_OBJFIRST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "float opMul(Vec3 &in) const", asFUNCTION( objectVec3_MultiplyBehaviour ), asCALL_CDECL_OBJFIRST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "Vec3 opMul(float) const", asFUNCTION( objectVec3_MultiplyBehaviourVD ), asCALL_CDECL_OBJFIRST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "Vec3 opMul_r(float) const", asFUNCTION( objectVec3_MultiplyBehaviourDV ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "Vec3 opMul(int) const", asFUNCTION( objectVec3_MultiplyBehaviourVI ), asCALL_CDECL_OBJFIRST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "Vec3 opMul_r(int) const", asFUNCTION( objectVec3_MultiplyBehaviourIV ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "Vec3 opAdd(Vec3 &in) const", AS_OF(objectVec3_AddBehaviour ), AS_CC_OF ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "Vec3 opSub(Vec3 &in) const", AS_OF(objectVec3_SubtractBehaviour ), AS_CC_OF ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "float opMul(Vec3 &in) const", AS_OF(objectVec3_MultiplyBehaviour ), AS_CC_OF ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "Vec3 opMul(float) const", AS_OF(objectVec3_MultiplyBehaviourVD ), AS_CC_OF ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "Vec3 opMul_r(float) const", AS_OL(objectVec3_MultiplyBehaviourDV ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "Vec3 opMul(int) const", AS_OF(objectVec3_MultiplyBehaviourVI ), AS_CC_OF ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "Vec3 opMul_r(int) const", AS_OL(objectVec3_MultiplyBehaviourIV ), AS_CC_OL ); assert( r >= 0 );
 
-	r = engine->RegisterObjectMethod( "Vec3", "Vec3 opXor(const Vec3 &in) const", asFUNCTION( objectVec3_XORBehaviour ), asCALL_CDECL_OBJFIRST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "Vec3 opXor(const Vec3 &in) const", AS_OF(objectVec3_XORBehaviour ), AS_CC_OF ); assert( r >= 0 );
 
 	// == !=
-	r = engine->RegisterObjectMethod( "Vec3", "bool opEquals(const Vec3 &in) const", asFUNCTION( objectVec3_EqualBehaviour ), asCALL_CDECL_OBJFIRST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "bool opEquals(const Vec3 &in) const", AS_OF(objectVec3_EqualBehaviour ), AS_CC_OF ); assert( r >= 0 );
 
-	r = engine->RegisterObjectMethod( "Vec3", "void set(float x, float y, float z)", asFUNCTION( objectVec3_Set ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "float length() const", asFUNCTION( objectVec3_Length ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "float normalize() const", asFUNCTION( objectVec3_Normalize ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "float distance(const Vec3 &in) const", asFUNCTION( objectVec3_Distance ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "void angleVectors(Vec3 &out, Vec3 &out, Vec3 &out) const", asFUNCTION( objectVec3_AngleVectors ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "Vec3 toAngles() const", asFUNCTION( objectVec3_VecToAngles ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "Vec3 perpendicular() const", asFUNCTION( objectVec3_Perpendicular ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectMethod( "Vec3", "void makeNormalVectors(Vec3 &out, Vec3 &out) const", asFUNCTION( objectVec3_MakeNormalVectors ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "void set(float x, float y, float z)", AS_OL(objectVec3_Set ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "float length() const", AS_OL(objectVec3_Length ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "float normalize() const", AS_OL(objectVec3_Normalize ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "float distance(const Vec3 &in) const", AS_OL(objectVec3_Distance ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "void angleVectors(Vec3 &out, Vec3 &out, Vec3 &out) const", AS_OL(objectVec3_AngleVectors ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "Vec3 toAngles() const", AS_OL(objectVec3_VecToAngles ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "Vec3 perpendicular() const", AS_OL(objectVec3_Perpendicular ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Vec3", "void makeNormalVectors(Vec3 &out, Vec3 &out) const", AS_OL(objectVec3_MakeNormalVectors ), AS_CC_OL ); assert( r >= 0 );
 
 	// properties
 	r = engine->RegisterObjectProperty( "Vec3", "float x", asOFFSET( asvec3_t, v[0] ) ); assert( r >= 0 );

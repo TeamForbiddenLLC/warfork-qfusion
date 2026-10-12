@@ -1,3 +1,7 @@
+if (NOT QFUSION_LIBRARY_TYPE)
+	set(QFUSION_LIBRARY_TYPE SHARED)
+endif()
+
 project(cin)
 
 file(GLOB CIN_HEADERS
@@ -16,6 +20,10 @@ else ()
         set(CIN_PLATFORM_LIBRARIES "")
 endif()
 
-add_library(cin SHARED ${CIN_SOURCES} ${CIN_HEADERS})
+if (EMSCRIPTEN)
+	qf_wasm_strip_common_sources(CIN_SOURCES)
+endif()
+
+add_library(cin ${QFUSION_LIBRARY_TYPE} ${CIN_SOURCES} ${CIN_HEADERS})
 target_link_libraries(cin PRIVATE ogg vorbis vorbisfile ${CIN_PLATFORM_LIBRARIES})
 qf_set_output_dir(cin libs)

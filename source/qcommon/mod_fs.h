@@ -4,6 +4,10 @@
 #include "../gameshared/q_arch.h"
 #include "../gameshared/q_shared.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define DECLARE_TYPEDEF_METHOD( ret, name, ... ) \
 	typedef ret(*name##Fn )( __VA_ARGS__ ); \
 	ret name (__VA_ARGS__);
@@ -163,7 +167,9 @@ struct fs_import_s {
 	FS_FOpenBaseFileFn FS_FOpenBaseFile;
 };
 
-#if FS_DEFINE_INTERFACE_IMPL
+#if FS_DEFINE_INTERFACE_IMPL && defined( __WASM__ )
+static inline void Q_ImportFsModule( struct fs_import_s *mod ) { (void)mod; }
+#elif FS_DEFINE_INTERFACE_IMPL
 static struct fs_import_s fs_import;
 const char * FS_GameDirectory(void ){ return fs_import.FS_GameDirectory();}
 const char * FS_BaseGameDirectory(void){ return fs_import.FS_BaseGameDirectory();}
@@ -243,6 +249,9 @@ static inline void Q_ImportFsModule(struct fs_import_s* mod) {
 
 #endif
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

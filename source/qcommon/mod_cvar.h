@@ -4,6 +4,10 @@
 
 #include "../gameshared/q_cvar.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define DECLARE_TYPEDEF_METHOD( ret, name, ... ) \
 	typedef ret(*name##Fn )( __VA_ARGS__ ); \
 	ret name (__VA_ARGS__);
@@ -46,7 +50,9 @@ struct cvar_import_s {
 };
 
 
-#if CVAR_DEFINE_INTERFACE_IMPL
+#if CVAR_DEFINE_INTERFACE_IMPL && defined( __WASM__ )
+static inline void Q_ImportCvarModule( struct cvar_import_s *mod ) { (void)mod; }
+#elif CVAR_DEFINE_INTERFACE_IMPL
 static struct cvar_import_s cvar_import;
 
 cvar_t *Cvar_Get( const char *var_name, const char *value, cvar_flag_t flags ) { return cvar_import.Cvar_Get( var_name, value, flags );}
@@ -65,7 +71,9 @@ static inline void Q_ImportCvarModule( struct cvar_import_s *mod )
 }
 #endif
 
-
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

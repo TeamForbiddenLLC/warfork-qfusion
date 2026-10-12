@@ -72,17 +72,17 @@ void RegisterTimeAddon( asIScriptEngine *engine )
 	int r;
 
 	// register object behaviours
-	r = engine->RegisterObjectBehaviour( "Time", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION( objectTime_DefaultConstructor ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour( "Time", asBEHAVE_CONSTRUCT, "void f(uint64 t)", asFUNCTION( objectTime_ConstructorUInt64 ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour( "Time", asBEHAVE_CONSTRUCT, "void f(const Time &in)", asFUNCTION( objectTime_CopyConstructor ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour( "Time", asBEHAVE_CONSTRUCT, "void f()", AS_OL(objectTime_DefaultConstructor ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour( "Time", asBEHAVE_CONSTRUCT, "void f(uint64 t)", AS_OL(objectTime_ConstructorUInt64 ), AS_CC_OL ); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour( "Time", asBEHAVE_CONSTRUCT, "void f(const Time &in)", AS_OL(objectTime_CopyConstructor ), AS_CC_OL ); assert( r >= 0 );
 
 	// register object methods
 
 	// assignments
-	r = engine->RegisterObjectMethod( "Time", "Time &opAssign(const Time &in)", asFUNCTION( objectTime_AssignBehaviour ), asCALL_CDECL_OBJLAST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Time", "Time &opAssign(const Time &in)", AS_OL(objectTime_AssignBehaviour ), AS_CC_OL ); assert( r >= 0 );
 
 	// == !=
-	r = engine->RegisterObjectMethod( "Time", "bool opEquals(const Time &in, const Time &in)", asFUNCTION( objectTime_EqualBehaviour ), asCALL_CDECL_OBJFIRST ); assert( r >= 0 );
+	r = engine->RegisterObjectMethod( "Time", "bool opEquals(const Time &in, const Time &in)", AS_OF(objectTime_EqualBehaviour ), AS_CC_OF ); assert( r >= 0 );
 
 	// properties
 	r = engine->RegisterObjectProperty( "Time", "const uint64 time", asOFFSET( astime_t, time ) ); assert( r >= 0 );

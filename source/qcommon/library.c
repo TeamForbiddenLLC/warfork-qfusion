@@ -263,6 +263,33 @@ static void Com_LoadGameLibraryManifest( const char *libname, char *manifest )
 */
 void *Com_LoadGameLibrary( const char *basename, const char *apifuncname, void **handle, void *parms, bool pure, char *manifest )
 {
+#ifdef __WASM__
+	gamelib_t *gamelib;
+	void *( *APIfunc )( void * );
+
+	(void)pure;
+	(void)manifest;
+	*handle = 0;
+	gamelib = (gamelib_t *)Mem_ZoneMalloc( sizeof( gamelib_t ) );
+	gamelib->fullname = Mem_ZoneMalloc( strlen( basename ) + 1 );
+	strcpy( gamelib->fullname, basename );
+	gamelib->lib = Sys_Library_Open( basename );
+	gamelib->next = gamelibs;
+	gamelibs = gamelib;
+	if( !gamelib->lib ) {
+		Com_Printf( "LoadLibrary (%s):(%s)\n", basename, Sys_Library_ErrorString() );
+		Com_UnloadGameLibrary( (void **)&gamelib );
+		return NULL;
+	}
+	APIfunc = (void * ( * )( void * ))Sys_Library_ProcAddress( gamelib->lib, apifuncname );
+	if( !APIfunc ) {
+		Com_Printf( "LoadLibrary (%s): missing %s\n", basename, apifuncname );
+		Com_UnloadGameLibrary( (void **)&gamelib );
+		return NULL;
+	}
+	*handle = gamelib;
+	return APIfunc( parms );
+#else
 	static int randomizer = 0; // random part of tempmodules dir, always the same for one launch of Warsow
 	static int64_t randomizer_time;
 	const char *temppath;
@@ -352,4 +379,5 @@ void *Com_LoadGameLibrary( const char *basename, const char *apifuncname, void *
 	Mem_TempFree( libname );
 
 	return APIfunc( parms );
+#endif // __WASM__
 }

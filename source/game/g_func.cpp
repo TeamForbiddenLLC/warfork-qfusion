@@ -761,6 +761,7 @@ static void Think_SpawnDoorTrigger( edict_t *ent )
 	maxs[1] += expand_size;
 
 	other = G_Spawn();
+	VectorClear( other->s.origin );
 	VectorCopy( mins, other->r.mins );
 	VectorCopy( maxs, other->r.maxs );
 	other->r.owner = ent;
@@ -794,6 +795,14 @@ static void door_blocked( edict_t *self, edict_t *other )
 	if( self->spawnflags & DOOR_CRUSHER )
 		return;
 
+#ifdef __WASM__
+	/* If the auto-trigger never fired, walking into a closed door still opens it. */
+	if( self->moveinfo.state == STATE_BOTTOM ) {
+		for( ent = self->teammaster; ent; ent = ent->teamchain )
+			door_go_up( ent, other );
+		return;
+	}
+#endif
 
 	// if a door has a negative wait, it would never come back if blocked,
 	// so let it just squash the object to death real fast

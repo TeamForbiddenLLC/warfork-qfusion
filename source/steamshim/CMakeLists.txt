@@ -47,16 +47,22 @@ else()
 endif()
 
 
-file(GLOB parent_SRC
-    "src/*.h"
-    "src/*.cpp"
-    "src/parent/*.h"
-    "src/parent/*.cpp"
-)
+if (EMSCRIPTEN)
+    add_library(steamshim_parent STATIC ${CMAKE_HOME_DIRECTORY}/wasm/wasm_steam.c)
+    target_include_directories(steamshim_parent PRIVATE ${CMAKE_HOME_DIRECTORY})
+    qf_set_output_dir(steamshim_parent libs)
+else()
+    file(GLOB parent_SRC
+        "src/*.h"
+        "src/*.cpp"
+        "src/parent/*.h"
+        "src/parent/*.cpp"
+    )
 
-add_library(steamshim_parent STATIC ${parent_SRC})
-target_link_libraries(steamshim_parent PRIVATE Tracy::TracyClient)
-qf_set_output_dir(steamshim_parent libs)
+    add_library(steamshim_parent STATIC ${parent_SRC})
+    target_link_libraries(steamshim_parent PRIVATE Tracy::TracyClient)
+    qf_set_output_dir(steamshim_parent libs)
+endif()
 
 file(GLOB child_SRC
     "src/*.h"
@@ -66,7 +72,7 @@ file(GLOB child_SRC
     "src/child/ServerBrowser.cpp"
 )
 
-if (BUILD_STEAMLIB)
+if (BUILD_STEAMLIB AND NOT EMSCRIPTEN)
     add_executable(wf_steam ${STEAM_SERVER_BINARY_TYPE} ${child_SRC})
     target_link_libraries(wf_steam ${STEAMWORKS_LIBRARY})
     set_target_properties(wf_steam PROPERTIES BUILD_WITH_INSTALL_RPATH true INSTALL_RPATH "$ORIGIN")

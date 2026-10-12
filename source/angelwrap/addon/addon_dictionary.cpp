@@ -559,6 +559,18 @@ void ScriptDictionaryDeleteAll_Generic(asIScriptGeneric *gen)
 	dict->DeleteAll();
 }
 
+void ScriptDictionaryIsEmpty_Generic(asIScriptGeneric *gen)
+{
+	CScriptDictionary *dict = (CScriptDictionary*)gen->GetObject();
+	gen->SetReturnByte( dict->IsEmpty() );
+}
+
+void ScriptDictionaryGetSize_Generic(asIScriptGeneric *gen)
+{
+	CScriptDictionary *dict = (CScriptDictionary*)gen->GetObject();
+	gen->SetReturnDWord( dict->GetSize() );
+}
+
 static void ScriptDictionaryGetRefCount_Generic(asIScriptGeneric *gen)
 {
 	CScriptDictionary *self = (CScriptDictionary*)gen->GetObject();
@@ -679,6 +691,14 @@ static void RegisterScriptDictionary_Generic(asIScriptEngine *engine)
 	r = engine->RegisterObjectMethod("Dictionary", "bool exists(const String &in) const", asFUNCTION(ScriptDictionaryExists_Generic), asCALL_GENERIC); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("Dictionary", "void delete(const String &in)", asFUNCTION(ScriptDictionaryDelete_Generic), asCALL_GENERIC); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("Dictionary", "void deleteAll()", asFUNCTION(ScriptDictionaryDeleteAll_Generic), asCALL_GENERIC); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("Dictionary", "bool isEmpty() const", asFUNCTION(ScriptDictionaryIsEmpty_Generic), asCALL_GENERIC); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("Dictionary", "uint getSize() const", asFUNCTION(ScriptDictionaryGetSize_Generic), asCALL_GENERIC); assert( r >= 0 );
+#if AS_USE_STLNAMES == 1
+	r = engine->RegisterObjectMethod("Dictionary", "bool empty() const", asFUNCTION(ScriptDictionaryIsEmpty_Generic), asCALL_GENERIC); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("Dictionary", "uint size() const", asFUNCTION(ScriptDictionaryGetSize_Generic), asCALL_GENERIC); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("Dictionary", "void erase(const String &in)", asFUNCTION(ScriptDictionaryDelete_Generic), asCALL_GENERIC); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("Dictionary", "void clear()", asFUNCTION(ScriptDictionaryDeleteAll_Generic), asCALL_GENERIC); assert( r >= 0 );
+#endif
 
 	r = engine->RegisterObjectMethod("Dictionary", "array<String @> @getKeys() const", asFUNCTION(CScriptDictionaryGetKeys_Generic), asCALL_GENERIC); assert( r >= 0 );
 

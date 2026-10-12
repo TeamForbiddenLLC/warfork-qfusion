@@ -215,7 +215,9 @@ ui_export_t *GetUIAPI( ui_import_t *import )
 	Q_ImportRefModule(&import->refImport);
 	Q_ImportMemModule(import->memImport);
 
+#ifndef __WASM__
 	fs_import = *(import->fsImport);
+#endif
 	globals.API = WSWUI::API;
 
 	globals.Init = WSWUI::Init;

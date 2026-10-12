@@ -24,6 +24,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "tracy/TracyC.h"
 #include "../steamshim/src/parent/parent.h"
 #include "../steamshim/src/mod_steam.h"
+#ifdef __WASM__
+#include "../wasm/wasm_net.h"
+#endif
 #ifdef _WIN32
 #include "../win32/winquake.h"
 #else
@@ -227,6 +230,15 @@ static const char *GetLastErrorString( void )
 */
 static void GetLocalAddress( void )
 {
+#ifdef __WASM__
+	numIP = 1;
+	localIP[0][0] = 127;
+	localIP[0][1] = 0;
+	localIP[0][2] = 0;
+	localIP[0][3] = 1;
+	Com_Printf( "Hostname: browser\n  127.0.0.1\n" );
+	return;
+#else
 	struct addrinfo hints, *hostInfo, *i;
 	char hostname[256];
 	char *p;
@@ -265,6 +277,7 @@ static void GetLocalAddress( void )
 	}
 
 	freeaddrinfo( hostInfo );
+#endif // __WASM__
 }
 
 /*
@@ -497,6 +510,9 @@ static int NET_SDR_GetPacket( const socket_t *socket, netadr_t *address, msg_t *
 */
 static int NET_UDP_GetPacket( const socket_t *socket, netadr_t *address, msg_t *message )
 {
+#ifdef __WASM__
+	return Sys_WASM_UDP_GetPacket( socket, address, message );
+#else
 	struct sockaddr_storage from;
 	socklen_t fromlen;
 	int ret;
@@ -535,6 +551,7 @@ static int NET_UDP_GetPacket( const socket_t *socket, netadr_t *address, msg_t *
 	message->cursize = ret;
 
 	return 1;
+#endif // __WASM__
 }
 
 static bool NET_SDR_SendPacket( const socket_t *socket, const void *data, size_t length, const netadr_t *address, int flags ) {
@@ -592,6 +609,9 @@ static bool NET_SDR_SendPacket( const socket_t *socket, const void *data, size_t
 */
 static bool NET_UDP_SendPacket( const socket_t *socket, const void *data, size_t length, const netadr_t *address )
 {
+#ifdef __WASM__
+	return Sys_WASM_UDP_SendPacket( socket, data, length, address );
+#else
 	struct sockaddr_storage addr;
 	socklen_t addrlen;
 
@@ -611,6 +631,7 @@ static bool NET_UDP_SendPacket( const socket_t *socket, const void *data, size_t
 	}
 
 	return true;
+#endif // __WASM__
 }
 
 /*
@@ -618,6 +639,13 @@ static bool NET_UDP_SendPacket( const socket_t *socket, const void *data, size_t
 */
 static bool NET_IP_OpenSocket( socket_t *sock, const netadr_t *address, socket_type_t socktype, bool server )
 {
+#ifdef __WASM__
+	if( socktype != SOCKET_UDP ) {
+		NET_SetErrorString( "Only UDP sockets are supported in the browser" );
+		return false;
+	}
+	return Sys_WASM_UDP_OpenSocket( sock, address, server );
+#else
 	int newsocket;
 	const char *proto, *stype;
 
@@ -694,6 +722,7 @@ static bool NET_IP_OpenSocket( socket_t *sock, const netadr_t *address, socket_t
 	sock->handle = newsocket;
 
 	return true;
+#endif // __WASM__
 }
 
 /*
@@ -706,9 +735,13 @@ static void NET_UDP_CloseSocket( socket_t *socket )
 	if( !socket->open )
 		return;
 
+#ifdef __WASM__
+	Sys_WASM_UDP_CloseSocket( socket );
+#else
 	Sys_NET_SocketClose( socket->handle );
 	socket->handle = 0;
 	socket->open = false;
+#endif // __WASM__
 }
 
 static void NET_SDR_CloseSocket( socket_t *socket ) {
@@ -1648,11 +1681,31 @@ static bool StringToSockaddress( const char *s, struct sockaddr_storage *sadr )
 		struct addrinfo hints;
 		struct addrinfo* addrinf = NULL;
 		int err;
+#ifdef __WASM__
+		unsigned a, b, c, d;
+		char extra;
+		int isLiteral = sscanf( addr_copy, "%u.%u.%u.%u%c", &a, &b, &c, &d, &extra ) == 4
+			&& a <= 255 && b <= 255 && c <= 255 && d <= 255;
+
+		/* Emscripten getaddrinfo "succeeds" with fake 172.29.x.0 hosts. Always
+		 * resolve real DNS through the Node /dns-lookup helper first. */
+		if( !isLiteral && addr_copy[0] && addr_copy[0] != '[' ) {
+			char resolved[64];
+			if( !Sys_WASM_ResolveHost( addr_copy, resolved, sizeof( resolved ) ) ) {
+				NET_SetErrorString( "Host not found" );
+				return false;
+			}
+			Com_Printf( "DNS %s -> %s\n", addr_copy, resolved );
+			Q_strncpyz( addr_copy, resolved, sizeof( addr_copy ) );
+		}
+#endif
 
 		memset( &hints, 0, sizeof ( hints ) );
 		hints.ai_family = addr_family;
 		hints.ai_socktype = SOCK_DGRAM;
-		//hints.ai_flags = AI_NUMERICHOST;
+#ifdef __WASM__
+		hints.ai_flags = AI_NUMERICHOST;
+#endif
 
 		err = getaddrinfo( addr_copy, port_copy, &hints, &addrinf );
 		if ( err == 0 && addrinf != NULL )
@@ -2063,6 +2116,11 @@ int NET_SetSocketNoDelay( socket_t *socket, int nodelay )
 */
 void NET_Sleep( int msec, socket_t *sockets[] )
 {
+#ifdef __WASM__
+	(void)sockets;
+	Sys_WASM_NetSleep( msec );
+	return;
+#else
 	struct timeval timeout;
 	fd_set fdset;
 	int i;
@@ -2134,6 +2192,7 @@ void NET_Sleep( int msec, socket_t *sockets[] )
 		STEAMSHIM_dispatch();
 
 	TracyCZoneEnd( ctx );
+#endif // __WASM__
 }
 
 /*
@@ -2269,6 +2328,9 @@ void NET_Init( void )
 	assert( !net_initialized );
 
 	Sys_NET_Init();
+#ifdef __WASM__
+	Sys_WASM_NetInit();
+#endif
 
 	GetLocalAddress();
 
@@ -2285,6 +2347,9 @@ void NET_Shutdown( void )
 
 	errorstring[0] = '\0';
 
+#ifdef __WASM__
+	Sys_WASM_NetShutdown();
+#endif
 	Sys_NET_Shutdown();
 
 	// receive rings belong to whoever declared the socket_t; they are freed by NET_CloseSocket,

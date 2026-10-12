@@ -186,6 +186,11 @@ void CL_UIModule_Init( void )
 	import.fsImport = &default_fs_imports_s;
 	import.memImport = &memImport;
 	import.refImport = RF_Forward_Mod();
+#ifdef __WASM__
+	if( !import.refImport.RF_Init ) {
+		import.refImport = re.refImport;
+	}
+#endif
 
 	import.Dynvar_Create = Dynvar_Create;
 	import.Dynvar_Destroy = Dynvar_Destroy;
@@ -359,10 +364,24 @@ void CL_UIModule_TouchAllAssets( void )
 */
 void CL_UIModule_Refresh( bool backGround, bool showCursor )
 {
+#ifdef __WASM__
+	{
+		static int n;
+		if( ++n <= 3 )
+			Com_Printf( "[wasm] CL_UIModule_Refresh enter\n" );
+	}
+#endif
 	if( uie )
 		uie->Refresh( cls.realtime, Com_ClientState(), Com_ServerState(), 
 			cls.demo.playing, cls.demo.name, cls.demo.paused, Q_rint(cls.demo.time/1000.0f), 
 			backGround, showCursor );
+#ifdef __WASM__
+	{
+		static int n;
+		if( ++n <= 3 )
+			Com_Printf( "[wasm] CL_UIModule_Refresh leave\n" );
+	}
+#endif
 }
 
 /*

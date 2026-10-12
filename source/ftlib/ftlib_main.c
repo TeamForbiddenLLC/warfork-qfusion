@@ -42,6 +42,9 @@ bool FTLIB_Init( bool verbose )
 
 	trap_Cmd_AddCommand( "fontlist", &FTLIB_PrintFontList );
 
+#ifdef __WASM__
+	Com_Printf( "Fonts module initialized.\n" );
+#endif
 	return true;
 }
 

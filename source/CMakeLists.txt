@@ -1,6 +1,9 @@
 project(qfusion)
 
 cmake_minimum_required(VERSION 2.8.12...3.5)
+if (EMSCRIPTEN)
+    set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+endif()
 message(STATUS "CMAKE_SYSTEM: " ${CMAKE_SYSTEM})
 message(STATUS "CMAKE_SYSTEM_NAME: " ${CMAKE_SYSTEM_NAME})
 message(STATUS "CMAKE_SYSTEM_VERSION: " ${CMAKE_SYSTEM_VERSION})
@@ -47,6 +50,12 @@ option(BUILD_UNIT_TEST "Build with unit test" OFF)
 option(GAME_MODULES_ONLY "Only build game modules" OFF)
 option(BUILD_STEAMLIB "Include the steamlib module (requires Steamworks SDK)" OFF)
 option(USE_GRAPHICS_NRI "Build using Nvidia NRI" OFF)
+
+# Shared vs static engine modules. WASM cannot dlopen game/renderer/sound modules.
+set(QFUSION_LIBRARY_TYPE SHARED)
+if (EMSCRIPTEN)
+    include(QfusionWasm)
+endif()
 
 # ref_nri GPU backend. Single source of truth: ri_defines.h no longer picks a platform default.
 # Override on the command line, e.g. -DRI_BACKEND=VULKAN on macOS to A/B MoltenVK against Metal.
@@ -198,8 +207,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     endif()
 endif()
 
-# Linux or mingw specific settings
-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR MINGW)
+# Linux or mingw specific settings (never applied to Emscripten / WASM)
+if ((${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR MINGW) AND NOT EMSCRIPTEN)
     # If no build type was specified - use release build settings
     if (NOT CMAKE_BUILD_TYPE)
         set(CMAKE_BUILD_TYPE "Release")
@@ -286,7 +295,7 @@ if (NOT GAME_MODULES_ONLY)
     endif()
 endif()
 
-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR MINGW)
+if ((${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR MINGW) AND NOT EMSCRIPTEN)
     if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         STRING(TOLOWER "win32_${QFUSION_WINDOWS_ARCH}.tar.gz" TAR_GZ_NAME)
     else()
@@ -320,7 +329,7 @@ if (NOT GAME_MODULES_ONLY)
 endif()
 
 
-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux") # Do not add 'OR MINGW' here - we need to use suffix-prefix settings from Windows
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND NOT EMSCRIPTEN) # Do not add 'OR MINGW' here - we need to use suffix-prefix settings from Windows
     set(CURL_LIBRARY "")
     add_definitions(-DLIBCURL_RUNTIME)
 
@@ -361,9 +370,17 @@ if (NOT GAME_MODULES_ONLY)
     add_subdirectory(ref_gl)
     add_subdirectory(snd_openal)
     add_subdirectory(ui)
-    add_subdirectory(server)
-    add_subdirectory(tv_server)
+    if (NOT EMSCRIPTEN)
+        add_subdirectory(server)
+        add_subdirectory(tv_server)
+    endif()
     add_subdirectory(client)
+endif()
+
+if (NOT EMSCRIPTEN)
+    add_custom_target(wasm
+        COMMAND ${CMAKE_COMMAND} -E echo "Build WASM from the repository root with: make wasm"
+        COMMENT "WASM is a separate Emscripten build tree (build-wasm)")
 endif()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")

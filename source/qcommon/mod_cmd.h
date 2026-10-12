@@ -4,6 +4,10 @@
 //#include "../gameshared/q_arch.h"
 //#include "../gameshared/q_shared.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define DECLARE_TYPEDEF_METHOD( ret, name, ... ) \
 	typedef ret(*name##Fn )( __VA_ARGS__ ); \
 	ret name (__VA_ARGS__);
@@ -79,7 +83,9 @@ struct cmd_import_s {
 	Cmd_SetCompletionFunc, \
 };
 
-#if CMD_DEFINE_INTERFACE_IMPL
+#if CMD_DEFINE_INTERFACE_IMPL && defined( __WASM__ )
+static inline void Q_ImportCmdModule( struct cmd_import_s *mod ) { (void)mod; }
+#elif CMD_DEFINE_INTERFACE_IMPL
 static struct cmd_import_s cmd_import;
 
 void Cmd_AddCommand( const char *cmd_name, xcommand_t function ) { cmd_import.Cmd_AddCommand(cmd_name, function); }
@@ -103,6 +109,10 @@ void Cmd_SetCompletionFunc( const char *cmd_name, xcompletionf_t completion_func
 
 static inline void Q_ImportCmdModule(struct cmd_import_s* mod) {
   cmd_import = *mod;
+}
+#endif
+
+#ifdef __cplusplus
 }
 #endif
 

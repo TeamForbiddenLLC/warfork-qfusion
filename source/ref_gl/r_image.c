@@ -2463,6 +2463,14 @@ static void R_InitScreenImagePair( const char *name, image_t **color, image_t **
 */
 void R_InitBuiltinScreenImages( void )
 {
+#ifdef __WASM__
+	/* Draw to the default framebuffer so the canvas is not left on an off-screen FBO. */
+	rsh.screenTexture = rsh.screenDepthTexture = NULL;
+	rsh.screenTextureCopy = rsh.screenDepthTextureCopy = NULL;
+	rsh.screenPPCopies[0] = NULL;
+	rsh.screenPPCopies[1] = NULL;
+	return;
+#endif
 	if( glConfig.ext.depth_texture && glConfig.ext.fragment_precision_high && glConfig.ext.framebuffer_blit )
 	{
 		R_InitScreenImagePair( "r_screentex", &rsh.screenTexture, &rsh.screenDepthTexture, true );

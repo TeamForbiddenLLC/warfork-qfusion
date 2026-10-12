@@ -719,6 +719,19 @@ void UI_Main::refreshScreen( unsigned int time, int clientState, int serverState
 	refreshState.serverState = serverState;
 	refreshState.drawBackground = backGround;
 
+#ifdef __WASM__
+	{
+		int w = (int)trap::Cvar_Value( "vid_width" );
+		int h = (int)trap::Cvar_Value( "vid_height" );
+		if( w >= 64 && h >= 64 && ( w != refreshState.width || h != refreshState.height ) ) {
+			refreshState.width = w;
+			refreshState.height = h;
+			if( rocketModule )
+				rocketModule->updateScreenSize( w, h );
+		}
+	}
+#endif
+
 	if( demoPlaying && !demoInfo.getPlaying() ) {
 		demoInfo.setName( demoName );
 	}
@@ -748,7 +761,21 @@ void UI_Main::refreshScreen( unsigned int time, int clientState, int serverState
 	// TODO: handle the intervalled functions in AS somehow,
 	// taking care that they are not called when menu is hidden.
 	// i may need to make the interface public..
+#ifdef __WASM__
+	{
+		static int n;
+		if( ++n <= 3 )
+			Com_Printf( "[wasm] UI BindFrame\n" );
+	}
+#endif
 	BindFrame( asmodule );
+#ifdef __WASM__
+	{
+		static int n;
+		if( ++n <= 3 )
+			Com_Printf( "[wasm] UI after BindFrame\n" );
+	}
+#endif
 
 	// run incremental garbage collection
 	asmodule->garbageCollectOneStep();
@@ -789,7 +816,21 @@ void UI_Main::refreshScreen( unsigned int time, int clientState, int serverState
 	}
 
 	// rocket update+render
+#ifdef __WASM__
+	{
+		static int n;
+		if( ++n <= 3 )
+			Com_Printf( "[wasm] UI rocket update\n" );
+	}
+#endif
 	rocketModule->update();
+#ifdef __WASM__
+	{
+		static int n;
+		if( ++n <= 3 )
+			Com_Printf( "[wasm] UI rocket render\n" );
+	}
+#endif
 
 	if( quickMenuVisible ) {
 		rocketModule->render( UI_CONTEXT_QUICK );
@@ -797,6 +838,13 @@ void UI_Main::refreshScreen( unsigned int time, int clientState, int serverState
 	if( menuVisible ) {
 		rocketModule->render( UI_CONTEXT_MAIN );
 	}
+#ifdef __WASM__
+	{
+		static int n;
+		if( ++n <= 3 )
+			Com_Printf( "[wasm] UI after rocket render\n" );
+	}
+#endif
 
 	// mark the top stack document as viwed for history tracking
 	for( i = 0; i < UI_NUM_CONTEXTS; i++ ) {

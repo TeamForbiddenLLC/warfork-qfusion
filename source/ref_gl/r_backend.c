@@ -54,7 +54,9 @@ void RB_Init( void )
 	// create VBO's we're going to use for streamed data
 	RB_RegisterStreamVBOs();
 
+#ifndef __WASM__
 	RP_PrecachePrograms();
+#endif
 	TracyCZoneEnd( ctx );
 }
 
