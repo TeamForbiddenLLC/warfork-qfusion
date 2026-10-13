@@ -191,7 +191,7 @@ typedef struct refdef_s
 	skyportal_t skyportal;
 	uint8_t *areabits;					// if not NULL, only areas with set bits will be drawn
 	float weaponAlpha;
-	float minLight;						// minimum value of ambient lighting applied to RF_MINLIGHT entities
+	float minLight;						// minimum ambient light for RF_MINLIGHT entities, as a fraction of the max displayable light
 	struct shader_s *colorCorrection;	// post processing color correction lookup table to apply
 } refdef_t;
 

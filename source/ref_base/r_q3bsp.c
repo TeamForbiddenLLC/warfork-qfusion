@@ -1567,6 +1567,12 @@ static void Mod_LoadLightArray_RBSP( const lump_t *l )
 	for( i = 0; i < count; i++, in++, out++ )
 	{
 		index = LittleShort( *in );
+		// reserved index means "invalid/unreachable site" when the map opts in via worldspawn
+		if( mapConfig.lightgridFlagInvalid && index == 0xFFFF )
+		{
+			*out = NULL;
+			continue;
+		}
 		if( index >= (unsigned)loadbmodel->numlightgridelems ) {
 			ri.Com_Error( ERR_DROP, "Mod_LoadLightArray_RBSP: funny grid index(%i):%i in %s", i, index, loadmodel->name );
 		}
@@ -1984,6 +1990,10 @@ void Mod_LoadQ3BrushModel( model_t *mod, model_t *parent, void *buffer, bspForma
 	// swap all the lumps
 	for( i = 0; i < sizeof( dheader_t )/4; i++ )
 		( (int *)header )[i] = LittleLong( ( (int *)header )[i] );
+
+	// lightgrid flag-invalid sites are an FBSP v2 feature. FBSP v2 is not yet in
+	// the accepted format list, so this stays dormant until v2 is fully defined.
+	mapConfig.lightgridFlagInvalid = ( !strcmp( mod_bspFormat->header, QFBSPHEADER ) && header->version >= 2 );
 
 	// load into heap
 	Mod_LoadSubmodels( &header->lumps[LUMP_MODELS] );

@@ -63,7 +63,6 @@ cvar_t *r_lighting_specular;
 cvar_t *r_lighting_glossintensity;
 cvar_t *r_lighting_glossexponent;
 cvar_t *r_lighting_overbrightmodels;
-cvar_t *r_lighting_gridminambient;
 cvar_t *r_lighting_gridmaxambient;
 cvar_t *r_lighting_ambientscale;
 cvar_t *r_lighting_directedscale;
@@ -927,8 +926,7 @@ static void R_Register( const char *screenshotsPrefix )
 	r_lighting_glossintensity = ri.Cvar_Get( "r_lighting_glossintensity", "1.5", CVAR_ARCHIVE );
 	r_lighting_glossexponent = ri.Cvar_Get( "r_lighting_glossexponent", "24", CVAR_ARCHIVE );
 	r_lighting_overbrightmodels = ri.Cvar_Get( "r_lighting_overbrightmodels", "1.0", CVAR_ARCHIVE );
-	r_lighting_gridminambient = ri.Cvar_Get( "r_lighting_gridminambient", "22", 0 );
-	r_lighting_gridmaxambient = ri.Cvar_Get( "r_lighting_gridmaxambient", "18", 0 );
+	r_lighting_gridmaxambient = ri.Cvar_Get( "r_lighting_gridmaxambient", "0.17", CVAR_CHEAT );
 	r_lighting_ambientscale = ri.Cvar_Get( "r_lighting_ambientscale", "1", 0 );
 	r_lighting_directedscale = ri.Cvar_Get( "r_lighting_directedscale", "1", 0 );
 

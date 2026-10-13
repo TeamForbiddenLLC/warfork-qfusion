@@ -150,33 +150,35 @@ void R_ShutdownCoronas( void )
 //===================================================================
 
 /*
-* R_LightForOrigin
+* R_LightForOrigin_Grid
+* Samples the baked lightgrid into the raw accumulators (byte space) and mixes the
+* cell directions into dir. Returns false when there is no world light to sample
+* (noWorldLight or no lightgrid), leaving the accumulators untouched.
 */
-void R_LightForOrigin( const vec3_t origin, vec3_t dir, vec4_t ambient, vec4_t diffuse, float radius, bool noWorldLight )
+static bool R_LightForOrigin_Grid( const vec3_t origin, vec3_t dir, vec3_t ambientLocal, vec3_t diffuseLocal,
+	bool computeAmbient, bool computeDiffuse, bool noWorldLight )
 {
 	int i, j;
 	int k, s;
 	int vi[3], elem[4];
-	float dot, t[8], scale;
+	float t[8];
 	vec3_t vf, vf2, tdir;
-	vec3_t ambientLocal, diffuseLocal;
 	vec_t *gridSize, *gridMins;
 	int *gridBounds;
-	mgridlight_t lightarray[8];
+	const mgridlight_t *gridcells[8];	// linked cells; a NULL entry marks an invalid (sparse) site
+	bool hadInvalid = false;
+	float weightSum = 0.0f;
 	lightstyle_t *lightStyles = rsc.lightStyles;
-
-	VectorSet( ambientLocal, 0, 0, 0 );
-	VectorSet( diffuseLocal, 0, 0, 0 );
 
 	if( noWorldLight )
 	{
 		VectorSet( dir, 0.0f, 0.0f, 0.0f );
-		goto dynamic;
+		return false;
 	}
 	if( !rsh.worldModel || !rsh.worldBrushModel->lightgrid || !rsh.worldBrushModel->numlightgridelems )
 	{
 		VectorSet( dir, 0.1f, 0.2f, 0.7f );
-		goto dynamic;
+		return false;
 	}
 
 	gridSize = rsh.worldBrushModel->gridSize;
@@ -198,9 +200,9 @@ void R_LightForOrigin( const vec3_t origin, vec3_t dir, vec4_t ambient, vec4_t d
 
 	for( i = 0; i < 4; i++ )
 	{
-		lightarray[i*2+0] = *rsh.worldBrushModel->lightarray[bound( 0, elem[i]+0, 
+		gridcells[i*2+0] = rsh.worldBrushModel->lightarray[bound( 0, elem[i]+0,
 			(int)rsh.worldBrushModel->numlightarrayelems-1)];
-		lightarray[i*2+1] = *rsh.worldBrushModel->lightarray[bound( 1, elem[i]+1, 
+		gridcells[i*2+1] = rsh.worldBrushModel->lightarray[bound( 1, elem[i]+1,
 			(int)rsh.worldBrushModel->numlightarrayelems-1)];
 	}
 
@@ -213,56 +215,108 @@ void R_LightForOrigin( const vec3_t origin, vec3_t dir, vec4_t ambient, vec4_t d
 	t[6] = vf2[0] * vf[1] * vf[2];
 	t[7] = vf[0] * vf[1] * vf[2];
 
+	// sum the weights of the present cells; note whether any site was invalid (NULL link)
+	for( i = 0; i < 8; i++ )
+	{
+		if( gridcells[i] )
+			weightSum += t[i];
+		else
+			hadInvalid = true;
+	}
+
 	VectorClear( dir );
 
 	for( i = 0; i < 4; i++ )
 	{
-		R_LatLongToNorm( lightarray[i*2].direction, tdir );
-		VectorScale( tdir, t[i*2], tdir );
-		for( k = 0; k < MAX_LIGHTMAPS && ( s = lightarray[i*2].styles[k] ) != 255; k++ )
+		if( gridcells[i*2] )
 		{
-			dir[0] += lightStyles[s].rgb[0] * tdir[0];
-			dir[1] += lightStyles[s].rgb[1] * tdir[1];
-			dir[2] += lightStyles[s].rgb[2] * tdir[2];
+			R_LatLongToNorm( gridcells[i*2]->direction, tdir );
+			VectorScale( tdir, t[i*2], tdir );
+			for( k = 0; k < MAX_LIGHTMAPS && ( s = gridcells[i*2]->styles[k] ) != 255; k++ )
+			{
+				dir[0] += lightStyles[s].rgb[0] * tdir[0];
+				dir[1] += lightStyles[s].rgb[1] * tdir[1];
+				dir[2] += lightStyles[s].rgb[2] * tdir[2];
+			}
 		}
 
-		R_LatLongToNorm( lightarray[i*2+1].direction, tdir );
-		VectorScale( tdir, t[i*2+1], tdir );
-		for( k = 0; k < MAX_LIGHTMAPS && ( s = lightarray[i*2+1].styles[k] ) != 255; k++ )
+		if( gridcells[i*2+1] )
 		{
-			dir[0] += lightStyles[s].rgb[0] * tdir[0];
-			dir[1] += lightStyles[s].rgb[1] * tdir[1];
-			dir[2] += lightStyles[s].rgb[2] * tdir[2];
+			R_LatLongToNorm( gridcells[i*2+1]->direction, tdir );
+			VectorScale( tdir, t[i*2+1], tdir );
+			for( k = 0; k < MAX_LIGHTMAPS && ( s = gridcells[i*2+1]->styles[k] ) != 255; k++ )
+			{
+				dir[0] += lightStyles[s].rgb[0] * tdir[0];
+				dir[1] += lightStyles[s].rgb[1] * tdir[1];
+				dir[2] += lightStyles[s].rgb[2] * tdir[2];
+			}
 		}
 	}
 
 	for( j = 0; j < 3; j++ )
 	{
-		if( ambient )
+		if( computeAmbient )
 		{
 			for( i = 0; i < 4; i++ )
 			{
-				for( k = 0; k < MAX_LIGHTMAPS; k++ )
+				if( gridcells[i*2] )
 				{
-					if( ( s = lightarray[i*2].styles[k] ) != 255 )
-						ambientLocal[j] += t[i*2] * lightarray[i*2].ambient[k][j] * lightStyles[s].rgb[j];
-					if( ( s = lightarray[i*2+1].styles[k] ) != 255 )
-						ambientLocal[j] += t[i*2+1] * lightarray[i*2+1].ambient[k][j] * lightStyles[s].rgb[j];
+					for( k = 0; k < MAX_LIGHTMAPS; k++ )
+					{
+						if( ( s = gridcells[i*2]->styles[k] ) != 255 )
+							ambientLocal[j] += t[i*2] * gridcells[i*2]->ambient[k][j] * lightStyles[s].rgb[j];
+					}
+				}
+				if( gridcells[i*2+1] )
+				{
+					for( k = 0; k < MAX_LIGHTMAPS; k++ )
+					{
+						if( ( s = gridcells[i*2+1]->styles[k] ) != 255 )
+							ambientLocal[j] += t[i*2+1] * gridcells[i*2+1]->ambient[k][j] * lightStyles[s].rgb[j];
+					}
 				}
 			}
 		}
-		if( diffuse || radius )
+		if( computeDiffuse )
 		{
 			for( i = 0; i < 4; i++ )
 			{
-				for( k = 0; k < MAX_LIGHTMAPS; k++ )
+				if( gridcells[i*2] )
 				{
-					if( ( s = lightarray[i*2].styles[k] ) != 255 )
-						diffuseLocal[j] += t[i*2] * lightarray[i*2].diffuse[k][j] * lightStyles[s].rgb[j];
-					if( ( s = lightarray[i*2+1].styles[k] ) != 255 )
-						diffuseLocal[j] += t[i*2+1] * lightarray[i*2+1].diffuse[k][j] * lightStyles[s].rgb[j];
+					for( k = 0; k < MAX_LIGHTMAPS; k++ )
+					{
+						if( ( s = gridcells[i*2]->styles[k] ) != 255 )
+							diffuseLocal[j] += t[i*2] * gridcells[i*2]->diffuse[k][j] * lightStyles[s].rgb[j];
+					}
+				}
+				if( gridcells[i*2+1] )
+				{
+					for( k = 0; k < MAX_LIGHTMAPS; k++ )
+					{
+						if( ( s = gridcells[i*2+1]->styles[k] ) != 255 )
+							diffuseLocal[j] += t[i*2+1] * gridcells[i*2+1]->diffuse[k][j] * lightStyles[s].rgb[j];
+					}
 				}
 			}
+		}
+	}
+
+	// if any linked cell was invalid (sparse lightarray), rebuild the blend over the present
+	// cells only; with no present cells at all, behave as if the map had no lightgrid
+	if( hadInvalid )
+	{
+		if( weightSum > 0.0f )
+		{
+			VectorScale( dir, 1.0f / weightSum, dir );
+			VectorScale( ambientLocal, 1.0f / weightSum, ambientLocal );
+			VectorScale( diffuseLocal, 1.0f / weightSum, diffuseLocal );
+		}
+		else
+		{
+			VectorClear( dir );
+			VectorClear( ambientLocal );
+			VectorClear( diffuseLocal );
+			return true;	// dir then falls into the default-direction NaN guard below
 		}
 	}
 
@@ -270,56 +324,155 @@ void R_LightForOrigin( const vec3_t origin, vec3_t dir, vec4_t ambient, vec4_t d
 	if( r_lighting_grayscale->integer ) {
 		vec_t grey;
 
-		if( ambient ) {
+		if( computeAmbient ) {
 			grey = ColorGrayscale( ambientLocal );
 			ambientLocal[0] = ambientLocal[1] = ambientLocal[2] = bound( 0, grey, 255 );
 		}
 
-		if( diffuse || radius ) {
+		if( computeDiffuse ) {
 			grey = ColorGrayscale( diffuseLocal );
 			diffuseLocal[0] = diffuseLocal[1] = diffuseLocal[2] = bound( 0, grey, 255 );
 		}
 	}
 
-dynamic:
-	// add dynamic lights
-	if( radius && r_dynamiclight->integer )
+	return true;
+}
+
+/*
+* R_LightForOrigin_Dlights
+* Adds the dynamic light contribution to the raw accumulators and mixes the
+* incoming dynamic light directions into dir.
+*/
+static void R_LightForOrigin_Dlights( const vec3_t origin, vec3_t dir, vec3_t ambientLocal, vec3_t diffuseLocal, float radius )
+{
+	unsigned int lnum;
+	dlight_t *dl;
+	int i;
+	float dist, dist2, add, dot;
+	vec3_t direction;
+	bool anyDlights = false;
+
+	if( !radius || !r_dynamiclight->integer )
+		return;
+
+	for( lnum = 0; lnum < rsc.numDlights; lnum++ )
 	{
-		unsigned int lnum;
-		dlight_t *dl;
-		float dist, dist2, add;
-		vec3_t direction;
-		bool anyDlights = false;
+		dl = rsc.dlights + lnum;
+		if( Distance( dl->origin, origin ) > dl->intensity + radius )
+			continue;
 
-		for( lnum = 0; lnum < rsc.numDlights; lnum++ )
+		VectorSubtract( dl->origin, origin, direction );
+		dist = VectorLength( direction );
+
+		if( !dist || dist > dl->intensity + radius )
+			continue;
+
+		if( !anyDlights )
 		{
-			dl = rsc.dlights + lnum;
-			if( Distance( dl->origin, origin ) > dl->intensity + radius )
-				continue;
+			VectorNormalizeFast( dir );
+			anyDlights = true;
+		}
 
-			VectorSubtract( dl->origin, origin, direction );
-			dist = VectorLength( direction );
-
-			if( !dist || dist > dl->intensity + radius )
-				continue;
-
-			if( !anyDlights )
-			{
-				VectorNormalizeFast( dir );
-				anyDlights = true;
-			}
-
-			add = 1.0 - (dist / (dl->intensity + radius));
-			dist2 = add * 0.5 / dist;
-			for( i = 0; i < 3; i++ )
-			{
-				dot = dl->color[i] * add;
-				diffuseLocal[i] += dot;
-				ambientLocal[i] += dot * 0.05;
-				dir[i] += direction[i] * dist2;
-			}
+		add = 1.0 - (dist / (dl->intensity + radius));
+		dist2 = add * 0.5 / dist;
+		for( i = 0; i < 3; i++ )
+		{
+			dot = dl->color[i] * add;
+			diffuseLocal[i] += dot;
+			ambientLocal[i] += dot * 0.05;
+			dir[i] += direction[i] * dist2;
 		}
 	}
+}
+
+/*
+* R_NormalizeMinlightAmbient
+* RF_MINLIGHT ambient stabilization on the raw (byte space) grid accumulator, run
+* before R_LightForOrigin_Dlights adds the dynamic lights on top of it.
+* Lifts the ambient to a minimum luminance (minLight, a fraction of the max
+* displayable light) with a hue-mixed fill, then caps it at
+* r_lighting_gridmaxambient. Luminance-exact: never fills individual channels.
+* NB: r_lighting_ambientscale is applied to this value later, so a non-default
+* ambientscale also scales the effective floor and cap.
+*/
+static void R_NormalizeMinlightAmbient( float minLight, vec3_t ambientLocal )
+{
+	float maxLight = 255.0f;	// raw byte space; the display-space conversion happens in the tail
+	float lumAmb, targetMinAmbient;
+
+	if( minLight <= 0 && r_lighting_gridmaxambient->value <= 0 )
+		return;
+
+	lumAmb = ambientLocal[0] * 0.299f + ambientLocal[1] * 0.587f + ambientLocal[2] * 0.114f;
+
+	targetMinAmbient = minLight * maxLight;
+	if( lumAmb < targetMinAmbient )
+	{
+		float missing = targetMinAmbient - lumAmb;
+		float cfgLum = mapConfig.ambient[0] * 0.299f + mapConfig.ambient[1] * 0.587f + mapConfig.ambient[2] * 0.114f;
+		vec3_t gridHue, mapHue, mixHue;
+
+		if( cfgLum > 0.001f )
+			VectorScale( mapConfig.ambient, 1.0f / cfgLum, mapHue );
+		else
+			VectorSet( mapHue, 1.0f, 1.0f, 1.0f );
+
+		// colorless cell: fall back to the map ambient hue, then white
+		if( lumAmb > 0.001f )
+			VectorScale( ambientLocal, 1.0f / lumAmb, gridHue );
+		else
+			VectorCopy( mapHue, gridHue );
+
+		// mixHue is luminance-normalized ( 0.12 + 0.26 + 0.62 = 1.0 ), so the fill adds exactly the missing luminance
+		VectorSet( mixHue,
+			0.12f * gridHue[0] + 0.26f * mapHue[0] + 0.62f,
+			0.12f * gridHue[1] + 0.26f * mapHue[1] + 0.62f,
+			0.12f * gridHue[2] + 0.26f * mapHue[2] + 0.62f );
+
+		ambientLocal[0] += mixHue[0] * missing;
+		ambientLocal[1] += mixHue[1] * missing;
+		ambientLocal[2] += mixHue[2] * missing;
+		lumAmb = targetMinAmbient;
+	}
+
+	if( r_lighting_gridmaxambient->value > 0 )
+	{
+		float maxAmbientAllowed = r_lighting_gridmaxambient->value * maxLight;
+		if( lumAmb > maxAmbientAllowed )
+			VectorScale( ambientLocal, maxAmbientAllowed / lumAmb, ambientLocal );
+	}
+}
+
+/*
+* R_LightForOriginEx
+* Grid stage + optional RF_MINLIGHT ambient stabilization + dynamic light stage.
+* The accumulators are shared, so the plain (non-stabilized) path is exactly the
+* original single-pass sequence.
+*/
+static void R_LightForOriginEx( const vec3_t origin, vec3_t dir, vec4_t ambient, vec4_t diffuse,
+	float radius, bool noWorldLight, bool stabilize, float minLight )
+{
+	int i;
+	float scale;
+	vec3_t ambientLocal, diffuseLocal;
+	bool gridUsed;
+
+	VectorSet( ambientLocal, 0, 0, 0 );
+	VectorSet( diffuseLocal, 0, 0, 0 );
+
+	gridUsed = R_LightForOrigin_Grid( origin, dir, ambientLocal, diffuseLocal,
+		ambient != NULL, diffuse != NULL || radius > 0.0f, noWorldLight );
+
+	// never normalize a zero-length direction: empty grid cells (no light styles)
+	// accumulate dir == (0,0,0) and Q_RSqrt(0) yields NaNs that blow up lighting
+	if( VectorCompare( dir, vec3_origin ) )
+		VectorSet( dir, 0.1f, 0.2f, 0.7f );
+
+	// RF_MINLIGHT: stabilize the grid ambient before the dynamic lights are added on top
+	if( stabilize && gridUsed )
+		R_NormalizeMinlightAmbient( minLight, ambientLocal );
+
+	R_LightForOrigin_Dlights( origin, dir, ambientLocal, diffuseLocal, radius );
 
 	VectorNormalizeFast( dir );
 
@@ -344,6 +497,25 @@ dynamic:
 
 		diffuse[3] = 1.0f;
 	}
+}
+
+/*
+* R_LightForOrigin
+*/
+void R_LightForOrigin( const vec3_t origin, vec3_t dir, vec4_t ambient, vec4_t diffuse, float radius, bool noWorldLight )
+{
+	R_LightForOriginEx( origin, dir, ambient, diffuse, radius, noWorldLight, false, 0.0f );
+}
+
+/*
+* R_LightForOrigin_MinLight
+* RF_MINLIGHT variant: stabilizes the grid ambient (floor + cap) before the
+* dynamic light contribution is added on top of it.
+*/
+void R_LightForOrigin_MinLight( const vec3_t origin, vec3_t dir, vec4_t ambient, vec4_t diffuse,
+	float radius, bool noWorldLight, float minLight )
+{
+	R_LightForOriginEx( origin, dir, ambient, diffuse, radius, noWorldLight, true, minLight );
 }
 
 /*

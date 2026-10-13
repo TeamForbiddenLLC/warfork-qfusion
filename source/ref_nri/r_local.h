@@ -566,7 +566,6 @@ extern cvar_t *r_lighting_vertexlight;
 extern cvar_t *r_lighting_maxglsldlights;
 extern cvar_t *r_lighting_grayscale;
 extern cvar_t *r_lighting_overbrightmodels;
-extern cvar_t *r_lighting_gridminambient;
 extern cvar_t *r_lighting_gridmaxambient;
 
 extern cvar_t *r_offsetmapping;
@@ -693,6 +692,7 @@ bool	R_CullSpriteEntity( const entity_t *e );
 unsigned int R_AddSurfaceDlighbits( const msurface_t *surf, unsigned int checkDlightBits );
 void		R_AddDynamicLights( unsigned int dlightbits, int state );
 void		R_LightForOrigin( const vec3_t origin, vec3_t dir, vec4_t ambient, vec4_t diffuse, float radius, bool noWorldLight );
+void		R_LightForOrigin_MinLight( const vec3_t origin, vec3_t dir, vec4_t ambient, vec4_t diffuse, float radius, bool noWorldLight, float minLight );
 void		R_BuildLightmaps( model_t *mod, int numLightmaps, int w, int h, const uint8_t *data, mlightmapRect_t *rects );
 void		R_InitLightStyles( model_t *mod );
 superLightStyle_t	*R_AddSuperLightStyle( model_t *mod, const int *lightmaps, 
@@ -1054,6 +1054,7 @@ typedef struct
 	bool		forceWorldOutlines;
 
 	int				lightmapImageSize;			// 0 = use format default
+	bool			lightgridFlagInvalid;		// FBSP v2: LIGHTARRAY may hold 0xFFFF invalid-site indices
 	fogSettings_t	worldFog;					// loaded from worldspawn "fog", "fog_height", "fog_sun", "fog_sky"
 } mapconfig_t;
 

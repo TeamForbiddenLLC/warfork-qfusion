@@ -978,7 +978,7 @@ static void CG_SetupViewDef( cg_viewdef_t *view, int type, bool flipped )
 
 	view->fracDistFOV = tan( view->refdef.fov_x * ( M_PI/180 ) * 0.5f );
 
-	view->refdef.minLight = 0.3f;
+	view->refdef.minLight = cg_minLight->value;
 
 	if( view->thirdperson )
 		CG_ThirdPersonOffsetView( view );

@@ -1083,73 +1083,21 @@ static void RB_RenderMeshGLSL_Material( const shaderpass_t *pass, r_glslfeat_t p
 				if( e->model && e != rsc.worldent )
 				{
 					// get weighted incoming direction of world and dynamic lights
-					R_LightForOrigin( e->lightingOrigin, temp, ambient, diffuse, 
-						e->model->radius * e->scale, rb.noWorldLight );
+					if( e->flags & RF_MINLIGHT )
+					{
+						// stabilize the grid ambient, then add the dynamic lights on top
+						R_LightForOrigin_MinLight( e->lightingOrigin, temp, ambient, diffuse,
+							e->model->radius * e->scale, rb.noWorldLight, rb.minLight );
+					}
+					else
+					{
+						R_LightForOrigin( e->lightingOrigin, temp, ambient, diffuse,
+							e->model->radius * e->scale, rb.noWorldLight );
+					}
 				}
 				else
 				{
 					VectorSet( temp, 0.1f, 0.2f, 0.7f );
-				}
-
-				if( e->flags & RF_MINLIGHT )
-				{
-					// lightgrid pre-filtering: guarantee a minimum ambient light and cap the
-					// ambient contribution, both expressed as a percentage of the max
-					// displayable light
-					if( !rb.noWorldLight && rsh.worldModel && rsh.worldBrushModel &&
-						rsh.worldBrushModel->lightgrid && rsh.worldBrushModel->numlightgridelems &&
-						( r_lighting_gridminambient->value > 0 || r_lighting_gridmaxambient->value > 0 ) )
-					{
-						// R_LightForOrigin already returned the grid values in display space
-						float maxLight = mapConfig.mapLightColorScale;
-						float lumAmb = ambient[0] * 0.299f + ambient[1] * 0.587f + ambient[2] * 0.114f;
-
-						if( r_lighting_gridminambient->value > 0 )
-						{
-							float targetMinAmbient = ( r_lighting_gridminambient->value / 100.0f ) * maxLight;
-
-							if( lumAmb < targetMinAmbient )
-							{
-								float missing = targetMinAmbient - lumAmb;
-								vec3_t gridHue;
-								vec3_t mapHue;
-								vec3_t mixHue;
-
-								float cfgLum = mapConfig.ambient[0] * 0.299f + mapConfig.ambient[1] * 0.587f + mapConfig.ambient[2] * 0.114f;
-								if( cfgLum > 0.001f )
-									VectorScale( mapConfig.ambient, 1.0f / cfgLum, mapHue );
-								else
-									VectorSet( mapHue, 1.0f, 1.0f, 1.0f );
-
-								// colorless cell: fall back to the map ambient hue, then white
-								if( lumAmb > 0.001f )
-									VectorScale( ambient, 1.0f / lumAmb, gridHue );
-								else
-									VectorCopy( mapHue, gridHue );
-
-								VectorSet( mixHue,
-									0.12f * gridHue[0] + 0.26f * mapHue[0] + 0.62f,
-									0.12f * gridHue[1] + 0.26f * mapHue[1] + 0.62f,
-									0.12f * gridHue[2] + 0.26f * mapHue[2] + 0.62f );
-
-								ambient[0] += mixHue[0] * missing;
-								ambient[1] += mixHue[1] * missing;
-								ambient[2] += mixHue[2] * missing;
-								lumAmb = targetMinAmbient;
-							}
-						}
-
-						if( r_lighting_gridmaxambient->value > 0 )
-						{
-							float maxAmbientAllowed = ( r_lighting_gridmaxambient->value / 100.0f ) * maxLight;
-							if( lumAmb > maxAmbientAllowed )
-								VectorScale( ambient, maxAmbientAllowed / lumAmb, ambient );
-						}
-					}
-
-					float minLight = rb.minLight;
-					if( ambient[0] <= minLight || ambient[1] <= minLight || ambient[2] <= minLight )
-						VectorSet( ambient, minLight, minLight, minLight );
 				}
 
 				if( ( e->flags & RF_MINLIGHT ) && r_lighting_overbrightmodels->value > 0 )
@@ -1620,12 +1568,12 @@ static void RB_RenderMeshGLSL_Q3AShader( const shaderpass_t *pass, r_glslfeat_t 
 		}
 
 		// get weighted incoming direction of world and dynamic lights
-		R_LightForOrigin( e->lightingOrigin, temp, lightAmbient, lightDiffuse, radius * e->scale, rb.noWorldLight );
-
-		if( e->flags & RF_MINLIGHT ) 	{
-			if( lightAmbient[0] <= 0.1f || lightAmbient[1] <= 0.1f || lightAmbient[2] <= 0.1f ) {
-				VectorSet( lightAmbient, 0.1f, 0.1f, 0.1f );
-			}
+		if( e->flags & RF_MINLIGHT ) {
+			// stabilize the grid ambient, then add the dynamic lights on top
+			R_LightForOrigin_MinLight( e->lightingOrigin, temp, lightAmbient, lightDiffuse, radius * e->scale, rb.noWorldLight, rb.minLight );
+		}
+		else {
+			R_LightForOrigin( e->lightingOrigin, temp, lightAmbient, lightDiffuse, radius * e->scale, rb.noWorldLight );
 		}
 
 		// rotate direction

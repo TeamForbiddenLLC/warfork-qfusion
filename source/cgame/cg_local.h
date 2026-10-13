@@ -923,6 +923,7 @@ extern cvar_t *cg_predictLaserBeam;
 extern cvar_t *cg_voiceChats;
 extern cvar_t *cg_shadows;
 extern cvar_t *cg_showSelfShadow;
+extern cvar_t *cg_minLight;
 extern cvar_t *cg_laserBeamSubdivisions;
 extern cvar_t *cg_projectileAntilagOffset;
 extern cvar_t *cg_raceGhosts;
