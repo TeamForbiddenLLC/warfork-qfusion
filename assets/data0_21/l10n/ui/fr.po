@@ -699,6 +699,12 @@ msgstr "ombres simples"
 msgid "shadowmaps"
 msgstr "ombres de la carte"
 
+msgid "mixed"
+msgstr "Mixte"
+
+msgid "Shadowmap quality"
+msgstr "Qualité des ombres de la carte"
+
 msgid "Greyscale lighting"
 msgstr "Niveaux de gris"
 

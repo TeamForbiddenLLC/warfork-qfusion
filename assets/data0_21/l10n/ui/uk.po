@@ -693,6 +693,12 @@ msgstr "прості тіні"
 msgid "shadowmaps"
 msgstr "карти тіней"
 
+msgid "mixed"
+msgstr "Змішаний"
+
+msgid "Shadowmap quality"
+msgstr "Якість карт тіней"
+
 msgid "Greyscale lighting"
 msgstr "Півтонове освітлення"
 

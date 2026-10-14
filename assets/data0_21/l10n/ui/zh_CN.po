@@ -669,6 +669,12 @@ msgstr "简单阴影"
 msgid "shadowmaps"
 msgstr "阴影贴图"
 
+msgid "mixed"
+msgstr "混合"
+
+msgid "Shadowmap quality"
+msgstr "阴影贴图质量"
+
 msgid "Greyscale lighting"
 msgstr "灰度光照"
 

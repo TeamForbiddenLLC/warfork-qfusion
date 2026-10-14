@@ -716,6 +716,12 @@ msgstr "simple shadows"
 msgid "shadowmaps"
 msgstr "shadowmaps"
 
+msgid "mixed"
+msgstr "mixed"
+
+msgid "Shadowmap quality"
+msgstr "Shadowmap quality"
+
 msgid "Greyscale lighting"
 msgstr "Greyscale lighting"
 

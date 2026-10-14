@@ -669,6 +669,12 @@ msgstr "enkla skuggor"
 msgid "shadowmaps"
 msgstr "skugg kartor"
 
+msgid "mixed"
+msgstr "Blandad"
+
+msgid "Shadowmap quality"
+msgstr "Kvalitet på skuggkartor"
+
 msgid "Greyscale lighting"
 msgstr "Gråskala belysning"
 

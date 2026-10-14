@@ -61,7 +61,10 @@ class VideoSetup
 	Cvar ui_lighting( "ui_lighting", "2", 0 ); // used to store index of selector
 	
 	// shadows
-	Cvar cg_shadows( "cg_shadows", "1", CVAR_ARCHIVE );
+	Cvar cg_shadows( "cg_shadows", "2", CVAR_ARCHIVE );
+	Cvar r_shadows_pcf( "r_shadows_pcf", "1", 0 );
+	Cvar r_shadows_maxtexsize( "r_shadows_maxtexsize", "64", 0 );
+	Cvar r_shadows_dither( "r_shadows_dither", "0", 0 );
 	
 	// ids
 	String idProfile;
@@ -78,6 +81,7 @@ class VideoSetup
 	String idFiltering;
 	String idFilteringFrame;
 	String idLighting;
+	String idShadowQuality;
 	String idSoftParticlesFrame;
 	String idDriver;
 
@@ -92,6 +96,7 @@ class VideoSetup
 				const String &idFiltering,
 				const String &idFilteringFrame,
 				const String &idLighting, 
+				const String &idShadowQuality,
 				const String &idSoftParticlesFrame,
 				const String &idDriver )
 	{
@@ -109,6 +114,7 @@ class VideoSetup
 		this.idFiltering = idFiltering;
 		this.idFilteringFrame = idFilteringFrame;
 		this.idLighting = idLighting;
+		this.idShadowQuality = idShadowQuality;
 		this.idSoftParticlesFrame = idSoftParticlesFrame;
 		this.idDriver = idDriver;
 
@@ -422,6 +428,43 @@ class VideoSetup
 		}
 	}
 
+	void SetShadowQuality( Element @elem, bool reset )
+	{
+		ElementFormControl @shadowQuality = elem.getElementById( idShadowQuality );
+
+		if( @shadowQuality == null )
+			return;
+
+		if( reset )
+		{
+			int textureSize = r_shadows_maxtexsize.integer;
+			int value = ( textureSize >= 192 ) ? 2 : ( textureSize >= 96 ) ? 1 : 0;
+			shadowQuality.value = String( value );
+		}
+		else
+		{
+			switch( shadowQuality.value.toInt() )
+			{
+				case 0: // low
+					r_shadows_pcf.set( "1" );
+					r_shadows_maxtexsize.set( "64" );
+					r_shadows_dither.set( "1" );
+					break;
+				case 1: // medium
+					r_shadows_pcf.set( "1" );
+					r_shadows_maxtexsize.set( "128" );
+					r_shadows_dither.set( "0" );
+					break;
+				default: // 2, high
+					r_shadows_pcf.set( "1" );
+					r_shadows_maxtexsize.set( "256" );
+					r_shadows_dither.set( "0" );
+					break;
+			}
+			Changed();
+		}
+	}
+
 	void Changed( void )
 	{
 		allowVidRestart = true;
@@ -433,6 +476,7 @@ class VideoSetup
 		SetPicmip( @elem, true );
 		SetFiltering( @elem, true );
 		SetLighting( @elem, true );
+		SetShadowQuality( @elem, true );
 		
 		// cvars are not changed
 		allowVidRestart = false;
@@ -447,6 +491,7 @@ class VideoSetup
 			SetPicmip( @elem, false );
 			SetFiltering( @elem, false );
 			SetLighting( @elem, false );
+			SetShadowQuality( @elem, false );
 			
 			game.execAppend ( "vid_restart\n" );
 		}

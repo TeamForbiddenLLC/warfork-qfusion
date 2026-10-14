@@ -518,10 +518,11 @@ msgstr "<value> Width scale of the scoreboard."
 
 #. Console/cg
 msgid "cg_shadows"
-msgstr "<0-2> Shadows.\n"
+msgstr "<0-3> Shadows.\n"
 "^6Disable: cg_shadows \"0\"\n"
 "^6Simple Shadows: cg_shadows \"1\"\n"
-"^6Shadowmaps: cg_shadows \"2\""
+"^6Mixed: cg_shadows \"2\" (shadowmaps for players, simple shadows for everything else)\n"
+"^6Shadowmaps: cg_shadows \"3\""
 
 #. Console/cg
 msgid "cg_showAwards"

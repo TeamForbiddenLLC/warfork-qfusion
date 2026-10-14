@@ -688,6 +688,12 @@ msgstr "basit gölgeler"
 msgid "shadowmaps"
 msgstr "Gölge Haritaları"
 
+msgid "mixed"
+msgstr "Karışık"
+
+msgid "Shadowmap quality"
+msgstr "Gölge haritası kalitesi"
+
 msgid "Greyscale lighting"
 msgstr "Gri tonlama Aydınlatma"
 

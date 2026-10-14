@@ -787,6 +787,12 @@ msgstr "простые тени"
 msgid "shadowmaps"
 msgstr "карты теней"
 
+msgid "mixed"
+msgstr "Смешанный"
+
+msgid "Shadowmap quality"
+msgstr "Качество карт теней"
+
 msgid "Greyscale lighting"
 msgstr "Полутоновое освещение"
 

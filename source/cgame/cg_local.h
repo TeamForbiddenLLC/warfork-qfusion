@@ -921,6 +921,15 @@ extern cvar_t *cg_particles;
 extern cvar_t *cg_showhelp;
 extern cvar_t *cg_predictLaserBeam;
 extern cvar_t *cg_voiceChats;
+// cg_shadows modes, lowest to highest quality
+typedef enum
+{
+	SHADOWS_OFF,
+	SHADOWS_SIMPLE,
+	SHADOWS_MIXED,
+	SHADOWS_SHADOWMAPS,
+} cg_shadows_t;
+
 extern cvar_t *cg_shadows;
 extern cvar_t *cg_showSelfShadow;
 extern cvar_t *cg_minLight;

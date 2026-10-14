@@ -692,6 +692,12 @@ msgstr "Sombras simples"
 msgid "shadowmaps"
 msgstr "shadowmaps"
 
+msgid "mixed"
+msgstr "Misto"
+
+msgid "Shadowmap quality"
+msgstr "Qualidade dos shadowmaps"
+
 msgid "Greyscale lighting"
 msgstr "Iluminação em Tons de Cinzento"
 

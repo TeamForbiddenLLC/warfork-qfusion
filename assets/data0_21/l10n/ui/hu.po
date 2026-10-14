@@ -666,6 +666,12 @@ msgstr "egyszerű árnyékok"
 msgid "shadowmaps"
 msgstr "shadowmapok"
 
+msgid "mixed"
+msgstr "Vegyes"
+
+msgid "Shadowmap quality"
+msgstr "Shadowmap minőség"
+
 msgid "Greyscale lighting"
 msgstr "Egyszínű fényleképzés"
 

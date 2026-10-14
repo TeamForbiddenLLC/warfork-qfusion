@@ -692,6 +692,12 @@ msgstr "proste cienie"
 msgid "shadowmaps"
 msgstr "mapy cieniowania"
 
+msgid "mixed"
+msgstr "Mieszany"
+
+msgid "Shadowmap quality"
+msgstr "Jakość map cieniowania"
+
 msgid "Greyscale lighting"
 msgstr "Oświetlenie szarości"
 

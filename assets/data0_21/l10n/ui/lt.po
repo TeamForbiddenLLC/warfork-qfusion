@@ -690,6 +690,12 @@ msgstr "supaprastinti šešėliai"
 msgid "shadowmaps"
 msgstr "šešėliniai žemėlapiai"
 
+msgid "mixed"
+msgstr "Mišrus"
+
+msgid "Shadowmap quality"
+msgstr "Šešėlių žemėlapių kokybė"
+
 msgid "Greyscale lighting"
 msgstr "Pustoninis apšvietimas"
 

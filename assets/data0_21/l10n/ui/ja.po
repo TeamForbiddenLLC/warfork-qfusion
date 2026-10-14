@@ -670,6 +670,12 @@ msgstr "シンプルな影"
 msgid "shadowmaps"
 msgstr "リアルな影"
 
+msgid "mixed"
+msgstr "ミックス"
+
+msgid "Shadowmap quality"
+msgstr "シャドウマップの品質"
+
 msgid "Greyscale lighting"
 msgstr "灰色のライト"
 

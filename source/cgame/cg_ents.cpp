@@ -898,19 +898,15 @@ static void CG_AddGenericEnt( centity_t *cent )
 		}
 
 		// add shadows for items (do it before offseting for weapons)
-		if( cent->item ) {
-			if( !( cent->renderfx & RF_NOSHADOW ) && cg_shadows->integer ) {
-				if( cg_shadows->integer == 1 ) {
-					CG_AllocShadeBox( cent->current.number, cent->ent.origin, item_box_mins, item_box_maxs, NULL );
-					cent->ent.renderfx |= RF_NOSHADOW;
-				}
-				// cg_shadows >= 2: leave RF_NOSHADOW cleared, shadowmap system handles it
-			} else {
+		// shadowmaps leaves RF_NOSHADOW cleared so the shadowmap system handles the item,
+		// the other modes cast a blob
+		if( !( cent->renderfx & RF_NOSHADOW ) && cg_shadows->integer && !( item->type & (IT_HEALTH|IT_POWERUP) ) ) {
+			if( cg_shadows->integer != SHADOWS_SHADOWMAPS ) {
+				CG_AllocShadeBox( cent->current.number, cent->ent.lightingOrigin, item_box_mins, item_box_maxs, NULL );
 				cent->ent.renderfx |= RF_NOSHADOW;
 			}
 		} else {
-			if( cg_shadows->integer < 2 )
-				cent->ent.renderfx |= RF_NOSHADOW;
+			cent->ent.renderfx |= RF_NOSHADOW;
 		}
 
 		cent->ent.renderfx |= RF_MINLIGHT;

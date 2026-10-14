@@ -683,6 +683,12 @@ msgstr "Đổ bóng tối giản"
 msgid "shadowmaps"
 msgstr "shadowmaps"
 
+msgid "mixed"
+msgstr "Kết hợp"
+
+msgid "Shadowmap quality"
+msgstr "Chất lượng shadowmaps"
+
 msgid "Greyscale lighting"
 msgstr "Áng sáng thang xám"
 

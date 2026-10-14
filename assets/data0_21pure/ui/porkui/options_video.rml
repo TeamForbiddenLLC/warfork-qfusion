@@ -23,6 +23,7 @@
 				"picmip", "picmip-frame",
 				"filtering", "filtering-frame",
 				"lighting",
+				"shadowquality",
 				"softparticles-frame",
 				"vid-module" );
 			video = setup;
@@ -187,7 +188,16 @@
 				<select cvar="cg_shadows" id="shadows">
 					<option value="0">off</option>
 					<option value="1">simple shadows</option>
-					<option value="2">shadowmaps</option>					
+					<option value="2">mixed</option>
+					<option value="3">shadowmaps</option>
+				</select>
+				<br/>
+
+				<div class="title">Shadowmap quality</div>
+				<select id="shadowquality">
+					<option value="0">low</option>
+					<option value="1">medium</option>
+					<option value="2">high</option>
 				</select>
 				<br/>
 

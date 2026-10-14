@@ -693,6 +693,12 @@ msgstr "простыя цені"
 msgid "shadowmaps"
 msgstr "карты ценяў"
 
+msgid "mixed"
+msgstr "Змешаны"
+
+msgid "Shadowmap quality"
+msgstr "Якасць карт ценяў"
+
 msgid "Greyscale lighting"
 msgstr "Паўтонавае асвятленне"
 

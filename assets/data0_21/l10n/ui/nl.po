@@ -669,6 +669,12 @@ msgstr ""
 msgid "shadowmaps"
 msgstr ""
 
+msgid "mixed"
+msgstr "Gemengd"
+
+msgid "Shadowmap quality"
+msgstr "Schaduwkaartkwaliteit"
+
 msgid "Greyscale lighting"
 msgstr ""
 

@@ -666,6 +666,12 @@ msgstr "simple"
 msgid "shadowmaps"
 msgstr "shadowmaps"
 
+msgid "mixed"
+msgstr "Mixt"
+
+msgid "Shadowmap quality"
+msgstr "Calitate shadowmaps"
+
 msgid "Greyscale lighting"
 msgstr "Iluminare greyscale"
 

@@ -692,6 +692,12 @@ msgstr "прости сенки"
 msgid "shadowmaps"
 msgstr "сенчести карти"
 
+msgid "mixed"
+msgstr "Смесен"
+
+msgid "Shadowmap quality"
+msgstr "Качество на сенчестите карти"
+
 msgid "Greyscale lighting"
 msgstr "Светлини за скала на сивия цвят"
 

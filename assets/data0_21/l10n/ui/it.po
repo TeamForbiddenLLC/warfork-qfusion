@@ -700,6 +700,12 @@ msgstr "Ombre semplici"
 msgid "shadowmaps"
 msgstr "Mappatura ombre"
 
+msgid "mixed"
+msgstr "Misto"
+
+msgid "Shadowmap quality"
+msgstr "Qualità mappatura ombre"
+
 msgid "Greyscale lighting"
 msgstr "Illuminazione in scala di grigi"
 

@@ -696,6 +696,12 @@ msgstr "yksinkertaiset varjot"
 msgid "shadowmaps"
 msgstr "varjokartat"
 
+msgid "mixed"
+msgstr "Yhdistetty"
+
+msgid "Shadowmap quality"
+msgstr "Varjokarttojen laatu"
+
 msgid "Greyscale lighting"
 msgstr "Harmaasävyvalaistus"
 
