@@ -393,10 +393,12 @@ static void R_LightForOrigin_Dlights( const vec3_t origin, vec3_t dir, vec3_t am
 * Lifts the ambient to a minimum luminance (minLight, a fraction of the max
 * displayable light) with a hue-mixed fill, then caps it at
 * r_lighting_gridmaxambient. Luminance-exact: never fills individual channels.
+* The cap is a lightgrid cap: it is skipped for noWorldLight scenes, where the
+* accumulator is pure minLight fill and minLight alone owns the floor.
 * NB: r_lighting_ambientscale is applied to this value later, so a non-default
 * ambientscale also scales the effective floor and cap.
 */
-static void R_NormalizeMinlightAmbient( float minLight, vec3_t ambientLocal )
+static void R_NormalizeMinlightAmbient( float minLight, vec3_t ambientLocal, bool noWorldLight )
 {
 	float maxLight = 255.0f;	// raw byte space; the display-space conversion happens in the tail
 	float lumAmb, targetMinAmbient;
@@ -413,7 +415,8 @@ static void R_NormalizeMinlightAmbient( float minLight, vec3_t ambientLocal )
 		float cfgLum = mapConfig.ambient[0] * 0.299f + mapConfig.ambient[1] * 0.587f + mapConfig.ambient[2] * 0.114f;
 		vec3_t gridHue, mapHue, mixHue;
 
-		if( cfgLum > 0.001f )
+		// no world (UI/portrait scenes): decouple the fill from the last map's ambient tint
+		if( !noWorldLight && cfgLum > 0.001f )
 			VectorScale( mapConfig.ambient, 1.0f / cfgLum, mapHue );
 		else
 			VectorSet( mapHue, 1.0f, 1.0f, 1.0f );
@@ -436,7 +439,9 @@ static void R_NormalizeMinlightAmbient( float minLight, vec3_t ambientLocal )
 		lumAmb = targetMinAmbient;
 	}
 
-	if( r_lighting_gridmaxambient->value > 0 )
+	// the cap is a lightgrid cap: without a world there is no grid, and the
+	// accumulator is pure minLight fill, so let minLight alone own the floor
+	if( !noWorldLight && r_lighting_gridmaxambient->value > 0 )
 	{
 		float maxAmbientAllowed = r_lighting_gridmaxambient->value * maxLight;
 		if( lumAmb > maxAmbientAllowed )
@@ -456,12 +461,11 @@ static void R_LightForOriginEx( const vec3_t origin, vec3_t dir, vec4_t ambient,
 	int i;
 	float scale;
 	vec3_t ambientLocal, diffuseLocal;
-	bool gridUsed;
 
 	VectorSet( ambientLocal, 0, 0, 0 );
 	VectorSet( diffuseLocal, 0, 0, 0 );
 
-	gridUsed = R_LightForOrigin_Grid( origin, dir, ambientLocal, diffuseLocal,
+	R_LightForOrigin_Grid( origin, dir, ambientLocal, diffuseLocal,
 		ambient != NULL, diffuse != NULL || radius > 0.0f, noWorldLight );
 
 	// never normalize a zero-length direction: empty grid cells (no light styles)
@@ -469,15 +473,20 @@ static void R_LightForOriginEx( const vec3_t origin, vec3_t dir, vec4_t ambient,
 	if( VectorCompare( dir, vec3_origin ) )
 		VectorSet( dir, 0.1f, 0.2f, 0.7f );
 
-	// RF_MINLIGHT: stabilize the grid ambient before the dynamic lights are added on top
-	if( stabilize && gridUsed )
-		R_NormalizeMinlightAmbient( minLight, ambientLocal );
+	// RF_MINLIGHT: stabilize the ambient before the dynamic lights are added on top.
+	// Runs even without a lightgrid (noWorldLight / grid-less map): the floor is what
+	// keeps RF_MINLIGHT models (viewmodel, UI previews, players) from going black.
+	if( stabilize )
+		R_NormalizeMinlightAmbient( minLight, ambientLocal, noWorldLight );
 
 	R_LightForOrigin_Dlights( origin, dir, ambientLocal, diffuseLocal, radius );
 
 	VectorNormalizeFast( dir );
 
-	scale = mapConfig.mapLightColorScale / 255.0f;
+	// no world (UI/portrait scenes): don't inherit the last map's light color scale.
+	// neutral display space (1.0 overbright): refdef.minLight is then exactly the
+	// floor as a fraction of the max displayable light
+	scale = ( noWorldLight ? 1.0f : mapConfig.mapLightColorScale ) / 255.0f;
 
 	if( ambient )
 	{

@@ -118,7 +118,7 @@ public:
 		entity.frame = entity.oldframe = 1;
 		refdef.rdflags = RDF_NOWORLDMODEL;
 		refdef.areabits = 0;
-		refdef.minLight = 0.7;
+		refdef.minLight = 0.6;
 		Matrix3_Copy( axis_identity, refdef.viewaxis );
 
 		// Some default values
