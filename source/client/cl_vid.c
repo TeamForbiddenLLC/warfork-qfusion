@@ -478,6 +478,10 @@ void VID_CheckChanges( void )
 	}
 
 	if( vid_fullscreen->modified ) {
+#ifdef __WASM__
+		Cvar_ForceSet( "vid_fullscreen", "0" );
+		vid_fullscreen->modified = false;
+#else
 		if( vid_ref_active ) {
 			// try to change video mode without vid_restart
 			err = VID_ChangeMode();
@@ -488,6 +492,7 @@ void VID_CheckChanges( void )
 		}
 
 		vid_fullscreen->modified = false;
+#endif
 	}
 
 	if( vid_ref->modified ) {
@@ -618,7 +623,23 @@ load_refresh:
 
 		err = VID_ChangeMode();
 		if( err != rserr_ok ) {
+#ifdef __WASM__
+			Com_Printf( "VID_ChangeMode() failed with code %i, retrying windowed canvas size\n", err );
+			Cvar_ForceSet( "vid_fullscreen", "0" );
+			{
+				int w = 1280, h = 720;
+				if( VID_GetDefaultMode( &w, &h ) ) {
+					Cvar_ForceSet( vid_width->name, va( "%i", w ) );
+					Cvar_ForceSet( vid_height->name, va( "%i", h ) );
+				}
+			}
+			err = VID_ChangeMode();
+			if( err != rserr_ok ) {
+				Sys_Error( "VID_ChangeMode() failed with code %i", err );
+			}
+#else
 			Sys_Error( "VID_ChangeMode() failed with code %i", err );
+#endif
 		}
 
 		vid_ref_active = true;

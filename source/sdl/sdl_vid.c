@@ -19,6 +19,9 @@
  */
 
 #include <SDL.h>
+#ifdef __WASM__
+#include <emscripten.h>
+#endif
 #include "../client/client.h"
 #include "../ref_base/ref_mod.h"
 
@@ -143,13 +146,13 @@ bool VID_GetDefaultMode( int *width, int *height )
 	SDL_DisplayMode mode;
 
 #if defined( __WASM__ ) || defined( __EMSCRIPTEN__ )
-	if( SDL_GetDesktopDisplayMode( 0, &mode ) == 0 && mode.w > 0 && mode.h > 0 ) {
-		*width = mode.w;
-		*height = mode.h;
-		return true;
-	}
-	*width = 1280;
-	*height = 720;
+	(void)mode;
+	*width = EM_ASM_INT({
+		return Math.max( 64, Math.round( window.innerWidth || 1280 ) ) | 0;
+	});
+	*height = EM_ASM_INT({
+		return Math.max( 64, Math.round( window.innerHeight || 720 ) ) | 0;
+	});
 	return true;
 #else
 	SDL_GetDesktopDisplayMode( 0, &mode );

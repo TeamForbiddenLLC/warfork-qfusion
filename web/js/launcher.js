@@ -52,17 +52,80 @@ function unlockAudio() {
   }
 }
 
+function isPhone() {
+  const ua = navigator.userAgent || '';
+  const iPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  const coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+  const shortSide = Math.min(screen.width || 0, screen.height || 0)
+    || Math.min(window.innerWidth, window.innerHeight);
+  return /Android|iPhone|iPad|iPod/i.test(ua) || iPadOS || (coarse && shortSide < 900);
+}
+
+function isPortrait() {
+  if (window.matchMedia) {
+    return matchMedia('(orientation: portrait)').matches;
+  }
+  return window.innerHeight > window.innerWidth;
+}
+
+function updateRotateHint() {
+  const el = document.getElementById('rotate-phone');
+  if (!el) {
+    return;
+  }
+  const show = isPhone() && isPortrait();
+  el.hidden = !show;
+  document.body.classList.toggle('portrait-phone', show);
+}
+
+async function enterImmersive() {
+  const root = document.documentElement;
+  try {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      if (root.requestFullscreen) {
+        await root.requestFullscreen({ navigationUI: 'hide' });
+      } else if (root.webkitRequestFullscreen) {
+        root.webkitRequestFullscreen();
+      }
+    }
+  } catch (err) {
+    /* Safari iOS refuse souvent hors geste utilisateur */
+  }
+  try {
+    const ori = screen.orientation || screen.mozOrientation;
+    if (ori && typeof ori.lock === 'function') {
+      await ori.lock('landscape');
+    }
+  } catch (err) {
+    /* iOS n’autorise le lock qu’en PWA / fullscreen */
+  }
+  sizeCanvas();
+}
+
 function sizeCanvas() {
-  const vv = window.visualViewport;
-  const w = Math.max(64, (vv ? Math.round(vv.width) : document.documentElement.clientWidth) | 0);
-  const h = Math.max(64, (vv ? Math.round(vv.height) : document.documentElement.clientHeight) | 0);
-  canvas.width = w;
-  canvas.height = h;
-  canvas.style.width = w + 'px';
-  canvas.style.height = h + 'px';
-  canvas.style.left = (vv ? Math.round(vv.offsetLeft) : 0) + 'px';
-  canvas.style.top = (vv ? Math.round(vv.offsetTop) : 0) + 'px';
+  const w = Math.max(64, Math.round(window.innerWidth || document.documentElement.clientWidth || 64));
+  const h = Math.max(64, Math.round(window.innerHeight || document.documentElement.clientHeight || 64));
+  const landscape = w >= h;
+  const wasLandscape = canvas.width >= canvas.height;
+  if (canvas.width < 64 || canvas.height < 64 || landscape !== wasLandscape) {
+    canvas.width = w;
+    canvas.height = h;
+  } else {
+    if (w > canvas.width) {
+      canvas.width = w;
+    }
+    if (h > canvas.height) {
+      canvas.height = h;
+    }
+  }
+  canvas.style.width = '100%';
+  canvas.style.height = '100%';
+  canvas.style.left = '0';
+  canvas.style.top = '0';
+  canvas.style.right = '0';
+  canvas.style.bottom = '0';
   canvas.style.display = 'block';
+  updateRotateHint();
 }
 
 function bindMenuMouseMap() {
@@ -218,6 +281,77 @@ async function mountGameFiles(FS) {
   return { mounted, pk3 };
 }
 
+function parseMasterAddresses(text) {
+  const re = /\b(\d{1,3}(?:\.\d{1,3}){3}):(\d{1,5})\b/g;
+  const servers = [];
+  const seen = new Set();
+  let match;
+  while ((match = re.exec(String(text || '')))) {
+    const parts = match[1].split('.').map(Number);
+    const port = Number(match[2]);
+    if (parts.some((n) => n > 255) || port < 1 || port > 65535) {
+      continue;
+    }
+    const addr = `${match[1]}:${port}`;
+    if (seen.has(addr)) {
+      continue;
+    }
+    seen.add(addr);
+    servers.push(addr);
+  }
+  return servers;
+}
+
+async function fetchDpmasterServers() {
+  const urls = [
+    '/master-servers',
+    '/http-proxy/dpmaster.deathmask.net/?game=warfork&showonlylist=1',
+  ];
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) {
+        continue;
+      }
+      const text = await res.text();
+      let servers = [];
+      try {
+        const json = JSON.parse(text);
+        if (json && Array.isArray(json.servers)) {
+          servers = json.servers;
+        }
+      } catch {
+        servers = parseMasterAddresses(text);
+      }
+      if (servers.length) {
+        console.log('[master] ' + servers.length + ' servers from ' + url);
+        return servers;
+      }
+    } catch (err) {
+      console.warn('[master] ' + url, err);
+    }
+  }
+  return [];
+}
+
+function injectMasterServers(servers) {
+  const mod = window.Module;
+  if (!mod || typeof mod.ccall !== 'function' || !servers.length) {
+    return 0;
+  }
+  let n = 0;
+  for (const addr of servers) {
+    try {
+      mod.ccall('WASM_AddMasterServer', null, ['string'], [String(addr)]);
+      n += 1;
+    } catch (err) {
+      console.warn('[master] inject failed', addr, err);
+      break;
+    }
+  }
+  return n;
+}
+
 function waitForRuntime(timeoutMs) {
   return new Promise((resolve, reject) => {
     if (window.Module && window.Module.calledRun) {
@@ -249,6 +383,11 @@ async function startGame() {
   window.Module = {
     canvas,
     websocketUrl: defaultWsUrl(),
+    refreshMasterList: async () => {
+      const servers = await fetchDpmasterServers();
+      const n = injectMasterServers(servers);
+      console.log('[master] injected ' + n);
+    },
     elementPointerLock: false,
     locateFile: (path) => '/wasm/' + String(path).split('/').pop() + '?v=' + Date.now(),
     arguments: [
@@ -350,14 +489,26 @@ function loadEngineScript(src) {
 }
 
 canvas.addEventListener('click', () => {
-  if (window.__wfWantPointerLock && !(window.WarforkTouch && window.WarforkTouch.isActive())) {
+  if (!isPhone() && window.__wfWantPointerLock && !(window.WarforkTouch && window.WarforkTouch.isActive())) {
     requestRawPointerLock();
-  } else if (document.pointerLockElement) {
+  } else if (!isPhone() && document.pointerLockElement) {
     document.exitPointerLock();
   }
   unlockAudio();
   canvas.focus();
 });
+
+document.getElementById('btn-fullscreen')?.addEventListener('click', (event) => {
+  event.preventDefault();
+  unlockAudio();
+  enterImmersive();
+});
+
+document.addEventListener('pointerdown', () => {
+  if (isPhone()) {
+    enterImmersive();
+  }
+}, { capture: true, once: true });
 
 document.addEventListener('pointerlockchange', () => {
   if (document.pointerLockElement === canvas) {
@@ -367,6 +518,9 @@ document.addEventListener('pointerlockchange', () => {
 
 window.addEventListener('resize', () => {
   sizeCanvas();
+});
+window.addEventListener('orientationchange', () => {
+  setTimeout(sizeCanvas, 250);
 });
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', () => {

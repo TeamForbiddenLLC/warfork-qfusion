@@ -40,8 +40,10 @@ void GLimp_FillBrowserCanvas( void )
 		c.style.position = 'fixed';
 		c.style.left = '0';
 		c.style.top = '0';
-		c.style.right = 'auto';
-		c.style.bottom = 'auto';
+		c.style.right = '0';
+		c.style.bottom = '0';
+		c.style.width = '100%';
+		c.style.height = '100%';
 		c.style.margin = '0';
 		c.style.padding = '0';
 		c.style.border = '0';
@@ -62,13 +64,48 @@ void GLimp_SyncBrowserCanvas( int *outw, int *outh )
 {
 	int w, h, curw, curh;
 
+	/* Do not shrink the drawing buffer when the mobile URL bar appears:
+	 * assigning canvas.width/height clears WebGL to black until the next
+	 * rendered frame, which looks like a black rectangle while idle. */
 	w = EM_ASM_INT({
-		var vv = window.visualViewport;
-		return ( vv ? Math.round( vv.width ) : document.documentElement.clientWidth ) | 0;
+		var c = ( typeof Module !== 'undefined' ) ? Module['canvas'] : null;
+		if( !c ) {
+			c = document.getElementById( 'canvas' );
+		}
+		var iw = Math.round( window.innerWidth || document.documentElement.clientWidth || 64 ) | 0;
+		var ih = Math.round( window.innerHeight || document.documentElement.clientHeight || 64 ) | 0;
+		if( iw < 64 ) { iw = 64; }
+		if( ih < 64 ) { ih = 64; }
+		if( !c ) {
+			return iw;
+		}
+		var landscape = iw >= ih;
+		var wasLandscape = c.width >= c.height;
+		if( c.width < 64 || c.height < 64 || landscape !== wasLandscape ) {
+			c.width = iw;
+			c.height = ih;
+		} else {
+			if( iw > c.width ) {
+				c.width = iw;
+			}
+			if( ih > c.height ) {
+				c.height = ih;
+			}
+		}
+		c.style.width = '100%';
+		c.style.height = '100%';
+		c.style.left = '0';
+		c.style.top = '0';
+		c.style.right = '0';
+		c.style.bottom = '0';
+		return c.width | 0;
 	});
 	h = EM_ASM_INT({
-		var vv = window.visualViewport;
-		return ( vv ? Math.round( vv.height ) : document.documentElement.clientHeight ) | 0;
+		var c = ( typeof Module !== 'undefined' ) ? Module['canvas'] : null;
+		if( !c ) {
+			c = document.getElementById( 'canvas' );
+		}
+		return c ? ( c.height | 0 ) : 64;
 	});
 	if( w < 64 ) {
 		w = 64;
@@ -76,32 +113,6 @@ void GLimp_SyncBrowserCanvas( int *outw, int *outh )
 	if( h < 64 ) {
 		h = 64;
 	}
-
-	/* SDL_GetWindowSize often follows CSS size, so it can match w/h while
-	 * canvas.width/height (WebGL drawing buffer) still holds the init size. */
-	EM_ASM({
-		var c = ( typeof Module !== 'undefined' ) ? Module['canvas'] : null;
-		if( !c ) {
-			c = document.getElementById('canvas');
-		}
-		if( !c ) {
-			return;
-		}
-		var bw = $0;
-		var bh = $1;
-		if( c.width !== bw ) {
-			c.width = bw;
-		}
-		if( c.height !== bh ) {
-			c.height = bh;
-		}
-		c.style.width = bw + 'px';
-		c.style.height = bh + 'px';
-		if( window.visualViewport ) {
-			c.style.left = Math.round( window.visualViewport.offsetLeft ) + 'px';
-			c.style.top = Math.round( window.visualViewport.offsetTop ) + 'px';
-		}
-	}, w, h);
 
 	if( glw_state.sdl_window ) {
 		SDL_GetWindowSize( glw_state.sdl_window, &curw, &curh );
@@ -219,9 +230,35 @@ rserr_t GLimp_SetMode( int x, int y, int width, int height, int displayFrequency
 {
 	const char *win_fs[] = {"W", "FS"};
 
+#ifdef __WASM__
+	{
+		int cw, ch;
+		GLimp_SyncBrowserCanvas( &cw, &ch );
+		if( cw >= 64 && ch >= 64 ) {
+			width = cw;
+			height = ch;
+		}
+		/* Browser fullscreen is handled in JS. Recreating the WebGL
+		 * context on a phone usually fails (VID_ChangeMode code 2). */
+		fullscreen = false;
+		stereo = false;
+	}
+#endif
+
 	ri.Com_Printf( "Initializing OpenGL display\n" );
 	ri.Com_Printf( "...setting mode:" );
 	ri.Com_Printf( " %d %d %s\n", width, height, win_fs[fullscreen] );
+
+#ifdef __WASM__
+	if( glw_state.sdl_window && glw_state.sdl_glcontext ) {
+		SDL_SetWindowSize( glw_state.sdl_window, width, height );
+		glConfig.fullScreen = false;
+		glConfig.width = width;
+		glConfig.height = height;
+		GLimp_FillBrowserCanvas();
+		return rserr_ok;
+	}
+#endif
 
 	// destroy the existing window
 	if( glw_state.sdl_window ) {
@@ -240,7 +277,12 @@ rserr_t GLimp_SetMode( int x, int y, int width, int height, int displayFrequency
 	glConfig.width = width;
 	glConfig.height = height;
 
+#ifdef __WASM__
+	glConfig.fullScreen = false;
+	return rserr_ok;
+#else
     return glConfig.fullScreen == fullscreen ? rserr_ok : rserr_invalid_fullscreen;
+#endif
 }
 
 /**
@@ -294,8 +336,12 @@ static int GLimp_InitGL( int stencilbits, bool stereo )
 	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
 	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 0 );
 	SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-#endif
-
+	SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 16 );
+	SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 0 );
+	SDL_GL_SetAttribute( SDL_GL_STEREO, 0 );
+	(void)stereo;
+	stencilbits = 0;
+#else
 	SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, max( 0, stencilbits ) );
 #ifndef NDEBUG
 	SDL_GL_SetAttribute( SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG );
@@ -305,8 +351,18 @@ static int GLimp_InitGL( int stencilbits, bool stereo )
 		ri.Com_DPrintf( "...attempting to use stereo\n" );
 		SDL_GL_SetAttribute( SDL_GL_STEREO, 1 );
 	}
+#endif
 
 	sdl_glcontext = SDL_GL_CreateContext( glw_state.sdl_window );
+	if( sdl_glcontext == 0 ) {
+#ifdef __WASM__
+		ri.Com_Printf( "GLimp_Init() - retry GL context without ES profile: \"%s\"\n", SDL_GetError() );
+		SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, 0 );
+		SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 2 );
+		SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 0 );
+		sdl_glcontext = SDL_GL_CreateContext( glw_state.sdl_window );
+#endif
+	}
 	if( sdl_glcontext == 0 ) {
 		ri.Com_Printf( "GLimp_Init() - SDL_GL_CreateContext failed: \"%s\"\n", SDL_GetError() );
 		goto fail;

@@ -537,6 +537,8 @@ void CL_QueryGetStatusMessage_f( void );
 void CL_ParseStatusMessage( const socket_t *socket, const netadr_t *address, msg_t *msg );
 void CL_ParseGetServersResponse( const socket_t *socket, const netadr_t *address, msg_t *msg, bool extended );
 void CL_GetServers_f( void );
+void CL_AddMasterServerAddress( const char *adr );
+void CL_AddMasterServer_f( void );
 void CL_PingServer_f( void );
 void CL_ServerListFrame( void );
 void CL_InitServerList( void );

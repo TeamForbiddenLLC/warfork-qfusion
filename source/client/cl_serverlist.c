@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "client.h"
 
 //#define UNSAFE_EXIT
-#define MAX_MASTER_SERVERS					8
+#define MAX_MASTER_SERVERS					16
 
 #ifdef PUBLIC_BUILD
 #define SERVERBROWSER_PROTOCOL_VERSION		APP_PROTOCOL_VERSION
@@ -624,6 +624,27 @@ static void CL_MasterAddressCache_Shutdown( void )
 #endif
 
 	numMasterServers = 0;
+}
+
+void CL_AddMasterServerAddress( const char *adr )
+{
+	char copy[64];
+
+	if( !adr || !adr[0] ) {
+		return;
+	}
+	Q_strncpyz( copy, adr, sizeof( copy ) );
+	CL_AddServerToList( &masterList, copy, 0 );
+	CL_UIModule_AddToServerList( copy, "\\\\EOT" );
+}
+
+void CL_AddMasterServer_f( void )
+{
+	if( Cmd_Argc() < 2 ) {
+		Com_Printf( "Usage: addmasterserver ip:port\n" );
+		return;
+	}
+	CL_AddMasterServerAddress( Cmd_Argv( 1 ) );
 }
 
 /*

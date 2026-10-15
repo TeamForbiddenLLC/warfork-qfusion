@@ -11,10 +11,13 @@ html, body {
   margin: 0;
   width: 100%;
   height: 100%;
+  min-height: 100dvh;
   overflow: hidden;
   background: #000;
   color: var(--text);
   font-family: "Segoe UI", sans-serif;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 #loader {
@@ -37,6 +40,8 @@ html, body {
   display: block;
   width: min(720px, 82vw);
   height: auto;
+  max-height: 22vh;
+  object-fit: contain;
   margin: 0 0 2.4rem;
   pointer-events: none;
   user-select: none;
@@ -81,6 +86,40 @@ html, body {
   touch-action: none;
 }
 
+#rotate-phone {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  padding: 2rem;
+  background: #000;
+  color: #f4f6fb;
+  text-align: center;
+  font-size: 1.15rem;
+}
+
+#rotate-phone[hidden] {
+  display: none !important;
+}
+
+#rotate-phone button {
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-weight: 700;
+  background: #ffb000;
+  color: #111;
+}
+
+body.portrait-phone #canvas,
+body.portrait-phone #touch-overlay {
+  visibility: hidden;
+}
+
 #errors {
   position: fixed;
   left: 1rem;
@@ -109,6 +148,11 @@ html, body {
   touch-action: none;
 }
 
+#touch-overlay.in-game,
+#touch-overlay.editing {
+  pointer-events: auto;
+}
+
 #touch-overlay[hidden] { display: none !important; }
 
 #touch-overlay .touch-stick,
@@ -126,7 +170,7 @@ html, body {
 }
 
 #touch-overlay.editing .touch-editbar,
-#touch-overlay:not(.editing) .touch-edit-open {
+#touch-overlay.in-game:not(.editing) .touch-edit-open {
   display: flex;
 }
 
@@ -135,7 +179,7 @@ html, body {
   top: max(10px, env(safe-area-inset-top));
   left: 50%;
   transform: translateX(-50%);
-  z-index: 6;
+  z-index: 20;
   gap: 8px;
   align-items: center;
   padding: 8px 10px;
@@ -174,7 +218,7 @@ html, body {
 }
 
 #touch-overlay.editing .touch-look {
-  background: rgba(255, 176, 0, 0.12);
+  display: none;
 }
 
 .touch-stick {
@@ -186,7 +230,7 @@ html, body {
   border-radius: 50%;
   background: rgba(20, 22, 28, calc(var(--touch-opacity, 0.55) * 0.55));
   border: 2px solid rgba(255, 176, 0, calc(var(--touch-opacity, 0.55)));
-  z-index: 2;
+  z-index: 8;
 }
 
 .touch-stick-knob {
@@ -202,29 +246,43 @@ html, body {
 
 .touch-look {
   position: absolute;
-  left: 48%;
-  top: 12%;
-  width: 52%;
-  height: 52%;
-  z-index: 1;
+  inset: 0;
+  width: auto;
+  height: auto;
+  z-index: 0;
+  border: 0;
+  border-radius: 0;
+  opacity: 1;
+  pointer-events: auto !important;
+  background: transparent !important;
+  color-scheme: only light;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.touch-look-knob {
+  display: none;
 }
 
 .touch-btn {
   position: absolute;
-  width: calc(64px * var(--touch-scale, 1));
-  min-height: calc(52px * var(--touch-scale, 1));
-  z-index: 3;
+  width: calc(48px * var(--touch-scale, 1));
+  height: calc(48px * var(--touch-scale, 1));
+  min-width: 44px;
+  min-height: 44px;
+  z-index: 8;
   border: 0;
-  border-radius: 14px;
+  border-radius: 50%;
   color: #fff;
-  font-weight: 700;
-  font-size: calc(13px * var(--touch-scale, 1));
+  font-weight: 800;
+  font-size: calc(16px * var(--touch-scale, 1));
+  line-height: 1;
   background: rgba(20, 22, 28, calc(var(--touch-opacity, 0.55) * 0.85));
   box-shadow: inset 0 0 0 2px rgba(255, 176, 0, 0.45);
 }
 
 .touch-btn.fire {
-  width: calc(128px * var(--touch-scale, 1));
+  width: calc(58px * var(--touch-scale, 1));
+  height: calc(58px * var(--touch-scale, 1));
   background: rgba(180, 40, 30, calc(var(--touch-opacity, 0.55) * 0.95));
 }
 
@@ -234,4 +292,42 @@ html, body {
 
 body.touch-on #canvas {
   cursor: none;
+}
+
+@media (max-width: 900px), (max-height: 520px) {
+  .touch-stick {
+    width: calc(28vmin * var(--touch-scale, 1));
+    height: calc(28vmin * var(--touch-scale, 1));
+    min-width: 96px;
+    min-height: 96px;
+    left: max(12px, env(safe-area-inset-left));
+    top: auto;
+    bottom: max(18px, env(safe-area-inset-bottom));
+  }
+
+  .touch-btn {
+    width: calc(44px * var(--touch-scale, 1));
+    height: calc(44px * var(--touch-scale, 1));
+    font-size: calc(15px * var(--touch-scale, 1));
+  }
+
+  .touch-btn.fire {
+    width: calc(54px * var(--touch-scale, 1));
+    height: calc(54px * var(--touch-scale, 1));
+  }
+
+  .touch-look {
+    inset: 0;
+    width: auto;
+    height: auto;
+    right: 0;
+    bottom: 0;
+  }
+
+  .touch-editbar {
+    flex-wrap: wrap;
+    max-width: 96vw;
+    white-space: normal;
+    font-size: 12px;
+  }
 }

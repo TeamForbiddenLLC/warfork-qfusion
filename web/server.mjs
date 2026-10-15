@@ -176,6 +176,11 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  if (pathname === '/master-servers') {
+    serveMasterServers(req, res);
+    return;
+  }
+
   if (pathname.startsWith('/http-proxy/')) {
     proxyHttp(req, res, pathname, url.search);
     return;
@@ -261,6 +266,146 @@ function parseUdpFrame(packet) {
   const ip = `${packet[0]}.${packet[1]}.${packet[2]}.${packet[3]}`;
   const port = packet.readUInt16BE(4);
   return { ip, port, payload: packet.subarray(6) };
+}
+
+let masterCache = { at: 0, servers: [] };
+
+function parseServerAddresses(text) {
+  const re = /\b(\d{1,3}(?:\.\d{1,3}){3}):(\d{1,5})\b/g;
+  const servers = [];
+  const seen = new Set();
+  let match;
+  while ((match = re.exec(String(text || '')))) {
+    const parts = match[1].split('.').map(Number);
+    const port = Number(match[2]);
+    if (parts.some((n) => n > 255) || port < 1 || port > 65535) {
+      continue;
+    }
+    const addr = `${match[1]}:${port}`;
+    if (seen.has(addr)) {
+      continue;
+    }
+    seen.add(addr);
+    servers.push(addr);
+  }
+  return servers;
+}
+
+function httpGetText(url) {
+  return new Promise((resolve, reject) => {
+    const req = http.get(url, { timeout: 10000 }, (res) => {
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
+      res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    });
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('timeout'));
+    });
+    req.on('error', reject);
+  });
+}
+
+function udpGetServers(game, proto) {
+  return new Promise((resolve) => {
+    const socket = dgram.createSocket('udp4');
+    const found = [];
+    const payload = Buffer.concat([
+      Buffer.from([255, 255, 255, 255]),
+      Buffer.from(`getservers ${game} ${proto} empty full`),
+    ]);
+    const timer = setTimeout(() => {
+      try {
+        socket.close();
+      } catch {
+        /* already closed */
+      }
+      resolve(found);
+    }, 2500);
+    socket.on('message', (msg) => {
+      const header = msg.indexOf(Buffer.from('getserversResponse'));
+      if (header < 0) {
+        return;
+      }
+      let i = header + 19;
+      while (i + 7 <= msg.length) {
+        if (msg[i] !== 0x5c) {
+          break;
+        }
+        const port = msg.readUInt16BE(i + 5);
+        if (port === 0) {
+          break;
+        }
+        found.push(`${msg[i + 1]}.${msg[i + 2]}.${msg[i + 3]}.${msg[i + 4]}:${port}`);
+        i += 7;
+      }
+    });
+    socket.send(payload, 27950, 'dpmaster.deathmask.net', (err) => {
+      if (err) {
+        clearTimeout(timer);
+        try {
+          socket.close();
+        } catch {
+          /* already closed */
+        }
+        resolve(found);
+      }
+    });
+  });
+}
+
+function serveMasterServers(req, res) {
+  const send = (servers) => {
+    const body = Buffer.from(JSON.stringify({ servers }));
+    log(`[MASTER] listed ${servers.length} servers`);
+    res.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Length': body.length,
+      ...corsHeaders(),
+    });
+    res.end(body);
+  };
+
+  if (masterCache.servers.length && Date.now() - masterCache.at < 30000) {
+    send(masterCache.servers);
+    return;
+  }
+
+  Promise.all([
+    httpGetText('http://dpmaster.deathmask.net/?game=warfork&showonlylist=1').catch((err) => {
+      log(`[MASTER] HTML ${err.message}`);
+      return '';
+    }),
+    udpGetServers('Warfork', 27),
+    udpGetServers('Warfork', 24),
+    udpGetServers('Warfork', 22),
+    udpGetServers('Warsow', 22),
+  ])
+    .then(([html, ...udpLists]) => {
+      const seen = new Set();
+      const servers = [];
+      for (const addr of [...parseServerAddresses(html), ...udpLists.flat()]) {
+        if (seen.has(addr)) {
+          continue;
+        }
+        seen.add(addr);
+        servers.push(addr);
+      }
+      masterCache = { at: Date.now(), servers };
+      send(servers);
+    })
+    .catch((err) => {
+      log(`[MASTER] ${err.message}`);
+      if (masterCache.servers.length) {
+        send(masterCache.servers);
+        return;
+      }
+      res.writeHead(502, {
+        'Content-Type': 'application/json; charset=utf-8',
+        ...corsHeaders(),
+      });
+      res.end('{"servers":[]}');
+    });
 }
 
 function lookupDns(req, res, host) {

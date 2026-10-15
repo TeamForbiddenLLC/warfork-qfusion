@@ -474,6 +474,11 @@ void IN_MouseMove( usercmd_t *cmd )
 		}
 
 		if( !mouse_relative ) {
+#ifdef __WASM__
+			/* Touch look writes mx/my via WASM_TouchMove. Do not replace
+			 * them with the absolute cursor (that zeroes R-stick look). */
+			if( !( in_touchcontrols && in_touchcontrols->integer ) )
+#endif
 			if( mx || my ) {
 				int center_x, center_y;
 
@@ -514,7 +519,12 @@ void IN_Init()
 		int mobile = EM_ASM_INT({
 			var ua = navigator.userAgent || '';
 			var iPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
-			return (/Android|iPhone|iPad|iPod/i.test(ua) || iPadOS) ? 1 : 0;
+			var coarse = false;
+			try {
+				coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+			} catch (err) {}
+			var small = Math.min(screen.width || 0, screen.height || 0) < 900;
+			return (/Android|iPhone|iPad|iPod/i.test(ua) || iPadOS || (coarse && small)) ? 1 : 0;
 		});
 		Cvar_Set( "in_touchcontrols", mobile ? "1" : "0" );
 	}
@@ -684,9 +694,25 @@ unsigned int IN_SupportedDevices( void )
 }
 
 #ifdef __WASM__
+EMSCRIPTEN_KEEPALIVE void WASM_AddMasterServer( const char *adr )
+{
+	if( !adr || !adr[0] ) {
+		return;
+	}
+	CL_AddMasterServerAddress( adr );
+}
+
 EMSCRIPTEN_KEEPALIVE void WASM_TouchCmd( const char *cmd )
 {
 	if( !cmd || !cmd[0] ) {
+		return;
+	}
+	if( !Q_strnicmp( cmd, "in_touchlayout", 14 ) ) {
+		const char *v = cmd + 14;
+		while( *v == ' ' ) {
+			v++;
+		}
+		Cvar_Set( "in_touchlayout", ( *v == '1' ) ? "1" : "0" );
 		return;
 	}
 	Cbuf_AddText( cmd );

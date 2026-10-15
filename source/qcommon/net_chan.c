@@ -23,6 +23,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #if defined ( __MACOSX__ )
 #include <arpa/inet.h>
 #endif
+#ifdef __WASM__
+#include <emscripten.h>
+#endif
 
 /*
 
@@ -658,8 +661,31 @@ int Netchan_GamePort( void )
 */
 void Netchan_Init( void )
 {
-	// pick a game port value that should be nice and random
+	/* Distinguish two clients behind the same NAT / WS proxy.
+	 * Sys_Milliseconds() is time-since-start, so two WASM tabs often
+	 * got the same game_port and the dedicated kicked the first with
+	 * "New connection from IP". */
 	game_port = Sys_Milliseconds() & 0xffff;
+#ifdef __WASM__
+	{
+		unsigned int rnd = (unsigned int)EM_ASM_INT({
+			var a = new Uint32Array( 1 );
+			if( self.crypto && crypto.getRandomValues ) {
+				crypto.getRandomValues( a );
+			} else {
+				a[0] = ( Math.random() * 0x100000000 ) >>> 0;
+			}
+			return a[0] | 0;
+		});
+		game_port ^= (int)( rnd & 0xffff );
+		if( !game_port ) {
+			game_port = (int)( ( rnd >> 16 ) & 0xffff );
+		}
+		if( !game_port ) {
+			game_port = 1;
+		}
+	}
+#endif
 
 	showpackets = Cvar_Get( "showpackets", "0", 0 );
 	showdrop = Cvar_Get( "showdrop", "0", 0 );

@@ -2429,6 +2429,7 @@ static void CL_InitLocal( void )
 	Cmd_AddCommand( "s_restart", CL_S_Restart_f );
 	Cmd_AddCommand( "cmd", CL_ForwardToServer_f );
 	Cmd_AddCommand( "requestservers", CL_GetServers_f );
+	Cmd_AddCommand( "addmasterserver", CL_AddMasterServer_f );
 	Cmd_AddCommand( "getinfo", CL_QueryGetInfoMessage_f ); // wsw : jal : ask for server info
 	Cmd_AddCommand( "getstatus", CL_QueryGetStatusMessage_f ); // wsw : jal : ask for server info
 	Cmd_AddCommand( "userinfo", CL_Userinfo_f );
@@ -2472,6 +2473,7 @@ static void CL_ShutdownLocal( void )
 	Cmd_RemoveCommand( "s_restart" );
 	Cmd_RemoveCommand( "cmd" );
 	Cmd_RemoveCommand( "requestservers" );
+	Cmd_RemoveCommand( "addmasterserver" );
 	Cmd_RemoveCommand( "getinfo" );
 	Cmd_RemoveCommand( "getstatus" );
 	Cmd_RemoveCommand( "userinfo" );

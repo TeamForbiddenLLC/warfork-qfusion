@@ -71,10 +71,14 @@ UI_Main::UI_Main( int vidWidth, int vidHeight, float pixelRatio,
 	ui_developer = trap::Cvar_Get( "developer", "0", 0 );
 	ui_preload = trap::Cvar_Get( "ui_preload", "1", CVAR_ARCHIVE );
 
-	// make sure the UI isn't too small
+	/* Desktop: shrink dp so a 600px-tall layout still fits. Phones are often
+	 * 360px tall in landscape — that scale-down makes Home/Play unreadably
+	 * small. Keep 1:1 on WASM. */
+#if !defined( __WASM__ ) && !defined( __EMSCRIPTEN__ )
 	int minHeight = 600.0f * pixelRatio;
 	if( vidHeight < minHeight )
 		pixelRatio *= ( float )vidHeight / ( float )minHeight;
+#endif
 
 	// temp fix for missing background on start.. populate refreshState with some nice values
 	refreshState.clientState = CA_UNINITIALIZED;

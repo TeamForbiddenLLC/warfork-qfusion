@@ -54,6 +54,12 @@ static void Wasm_CurlProxyUrl( const char *url, char *out, size_t outSize )
 	origin[0] = '\0';
 	wasm_http_origin( origin, sizeof( origin ) );
 
+	/* Same-origin helpers (master list, etc.) must not go through the TCP proxy. */
+	if( url[0] == '/' ) {
+		Q_strncpyz( out, url, outSize );
+		return;
+	}
+
 	hostpath = url;
 	if( !Q_strnicmp( hostpath, "http://", 7 ) )
 		hostpath += 7;

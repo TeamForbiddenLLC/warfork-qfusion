@@ -47,6 +47,9 @@ namespace WSWUI
 		void update( void );
 		void render( int contextId );
 		void updateScreenSize( int vidWidth, int vidHeight );
+#ifdef __WASM__
+		void applyWasmCompactUi( int vidWidth, int vidHeight );
+#endif
 
 		Rocket::Core::ElementDocument *loadDocument( int contextId, const char *filename, bool show=false, void *user_data = NULL );
 		void closeDocument( Rocket::Core::ElementDocument *doc );

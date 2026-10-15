@@ -7,6 +7,10 @@
 #include "qstr.h"
 #include "datasources/ui_serverbrowser_datasource.h"
 
+#if defined( __WASM__ ) || defined( __EMSCRIPTEN__ )
+#include <emscripten.h>
+#endif
+
 namespace WSWUI {
 
 // TODO: constify
@@ -714,6 +718,59 @@ class WFMasterFetcher {
 	}
 };
 
+class DpmasterListFetcher {
+	private:
+	ServerBrowserDataSource *source;
+	std::vector<char> buf;
+
+	public:
+	DpmasterListFetcher( ServerBrowserDataSource *source ) : source( source ) { }
+
+	static size_t StreamRead( const void *buf, size_t numb, float percentage,
+		int status, const char *contentType, void *privatep )
+	{
+		DpmasterListFetcher *t = static_cast<DpmasterListFetcher *>( privatep );
+		if( status < 0 || status >= 300 ) {
+			return 0;
+		}
+		t->buf.insert( t->buf.end(), (char *)buf, (char *)buf + numb );
+		return numb;
+	}
+
+	static void StreamDone( int status, const char *contentType, void *privatep )
+	{
+		DpmasterListFetcher *t = static_cast<DpmasterListFetcher *>( privatep );
+		int added = 0;
+
+		if( status < 0 || status >= 300 ) {
+			printf( "dpmaster list HTTP failed status=%d bytes=%u\n", status, (unsigned)t->buf.size() );
+			return delete t;
+		}
+
+		t->buf.push_back( '\0' );
+		const char *p = &t->buf[0];
+		while( *p ) {
+			unsigned a, b, c, d, port;
+			int n = 0;
+			if( sscanf( p, "%u.%u.%u.%u:%u%n", &a, &b, &c, &d, &port, &n ) == 5
+				&& n > 0 && a <= 255 && b <= 255 && c <= 255 && d <= 255
+				&& port > 0 && port <= 65535 ) {
+				char adr[64];
+				Q_snprintfz( adr, sizeof( adr ), "%u.%u.%u.%u:%u", a, b, c, d, port );
+				trap::Cmd_ExecuteText( EXEC_APPEND, va( "addmasterserver %s\n", adr ) );
+				added++;
+				p += n;
+				continue;
+			}
+			p++;
+		}
+
+		printf( "dpmaster list HTTP added %d servers (status=%d bytes=%u)\n",
+			added, status, (unsigned)t->buf.size() );
+		delete t;
+	}
+};
+
 // initiates master server query
 void ServerBrowserDataSource::startFullUpdate( void )
 {
@@ -759,19 +816,27 @@ void ServerBrowserDataSource::startFullUpdate( void )
 	tokenize( trap::Cvar_String("masterservers_warfork"), ' ', masterServersWF );
 
 	for( std::vector<std::string>::iterator it = masterServersWF.begin(); it != masterServersWF.end(); ++it ) {
-#if defined( __WASM__ ) || defined( __EMSCRIPTEN__ )
-		/* Steam/HTTP master on :27951 times out in the browser; UDP getservers lists dedicated servers. */
-		std::string queryString = std::string( "requestservers global " ) + *it + " " + gameName + " full empty\n";
-		trap::Cmd_ExecuteText( EXEC_APPEND, queryString.c_str() );
-#else
 		char url[256];
 		snprintf(url, sizeof(url), "http://%s:%i/", it->c_str(), 27951);
 
 		auto fetcher = new WFMasterFetcher(this);
 		printf("Fetching %s\n", url);
-		trap::AsyncStream_PerformRequest(url, "GET", "", 5000, &WFMasterFetcher::StreamRead, &WFMasterFetcher::StreamDone, fetcher);
-#endif
+		trap::AsyncStream_PerformRequest(url, "GET", "", 12000, &WFMasterFetcher::StreamRead, &WFMasterFetcher::StreamDone, fetcher);
 	}
+
+#if defined( __WASM__ ) || defined( __EMSCRIPTEN__ )
+	{
+		auto dpmaster = new DpmasterListFetcher( this );
+		printf( "Fetching /master-servers\n" );
+		trap::AsyncStream_PerformRequest( "/master-servers", "GET", "", 15000,
+			&DpmasterListFetcher::StreamRead, &DpmasterListFetcher::StreamDone, dpmaster );
+		EM_ASM( {
+			if( typeof Module !== 'undefined' && typeof Module.refreshMasterList === 'function' ) {
+				Module.refreshMasterList();
+			}
+		} );
+	}
+#endif
 
 }
 
@@ -779,10 +844,13 @@ void ServerBrowserDataSource::startFullUpdate( void )
 // callback from client propagates to here
 void ServerBrowserDataSource::addToServerList( const char *adr, const char *info )
 {
-	// check if user has canceled the update
+#if defined( __WASM__ ) || defined( __EMSCRIPTEN__ )
+	active = true;
+#else
 	if( !active ) {
 		return;
 	}
+#endif
 
 	// TODO: hint for the address. If previous address matches this address
 	// use that previous iterator as a hint for the insert function!

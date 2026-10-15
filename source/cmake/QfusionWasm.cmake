@@ -48,7 +48,7 @@ set(QFUSION_WASM_LINK_FLAGS
     "SHELL:-sINVOKE_RUN=0"
     "SHELL:-sEXIT_RUNTIME=0"
     "SHELL:-sEXPORTED_RUNTIME_METHODS=['callMain','ccall','cwrap','FS']"
-    "SHELL:-sEXPORTED_FUNCTIONS=['_main','_malloc','_free','_WASM_TouchCmd','_WASM_TouchMove','_WASM_TouchKey']"
+    "SHELL:-sEXPORTED_FUNCTIONS=['_main','_malloc','_free','_WASM_TouchCmd','_WASM_TouchMove','_WASM_TouchKey','_WASM_AddMasterServer']"
     "SHELL:-sENVIRONMENT=web,worker"
     "SHELL:-sNO_DISABLE_EXCEPTION_CATCHING=0"
     "SHELL:-lwebsocket.js"

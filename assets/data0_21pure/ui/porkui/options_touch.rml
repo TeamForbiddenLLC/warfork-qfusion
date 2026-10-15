@@ -48,8 +48,8 @@
 				<br/>
 
 				<br/>
-				<button onclick="game.execAppend('in_touchlayout 1\n'); notificationPopup('Drag the on-screen controls, then tap Done');" class="button-apply">Customize layout</button>
-				<p>Opens the touch overlay so you can drag the stick and buttons. Positions are saved on this device.</p>
+				<button onclick="game.execAppend('in_touchlayout 1\n'); notificationPopup('Drag the joystick and buttons, then tap Done');" class="button-apply">Position joystick and buttons</button>
+				<p>Web only: drag the on-screen stick and buttons. Layout is saved in this browser.</p>
 				<br/>
 
 				<br/>

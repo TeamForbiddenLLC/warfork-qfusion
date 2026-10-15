@@ -48,6 +48,12 @@
 	ElementFormControlDataSelect @suggestionspinner;
 	Element @suggestionserverblock;
 
+	bool isCompactUi()
+	{
+		Cvar touch( 'in_touchcontrols', '0', 0 );
+		return touch.integer != 0;
+	}
+
 	void onJoinLoad( Element @body, Event @ev )
 	{
 		String tmp;
@@ -106,8 +112,10 @@
 
 		// hide the infoblock as we haven't picked a server yet
 		serverblock.css( 'display', 'none' );
-		connectbtn.css( 'display', 'none' );
-		favoritebtn.css( 'display', 'none' );
+		if( !isCompactUi() ) {
+			connectbtn.css( 'display', 'none' );
+			favoritebtn.css( 'display', 'none' );
+		}
 		suggestionmodal.css( 'display', 'none' );
 		
 		isGridHidden = false;
@@ -116,8 +124,8 @@
 		Favorites::init();
 	}
 
-	void onJoinShow( Element @body, Event @ev )
-	{
+		void onJoinShow( Element @body, Event @ev )
+		{
 		URL location = body.ownerDocument.URL;
 		const Dictionary @dict = location.getParameters();
 		Cvar lasttab( 'ui_serverbrowser_tab', '', ::CVAR_ARCHIVE );
@@ -149,13 +157,14 @@
 		lasttab.set( browserTableName );
 
 		Element @container = body.getElementById( 'serverbrowser-container' );
-		body.getElementById( 'serverbrowser_frame' ).css( 'height',
-			(body.getElementById( 'leftside' ).clientHeight() 
+		int frameHeight = body.getElementById( 'leftside' ).clientHeight() 
 			- body.getElementById( 'navibar' ).clientHeight()
 			- int( container.resolveProp( 'padding-top', container.clientHeight() ) )
-			- int( container.resolveProp( 'padding-bottom', container.clientHeight() ) )
-			) + 'px'
-		);
+			- int( container.resolveProp( 'padding-bottom', container.clientHeight() ) );
+		if( frameHeight < 80 ) {
+			frameHeight = 80;
+		}
+		body.getElementById( 'serverbrowser_frame' ).css( 'height', frameHeight + 'px' );
 
 		onTemplateShow( body, @ev );
 
@@ -473,6 +482,11 @@
 
 		bool isTV = ( browserTableName == 'tv' );
 		if( isTV ) {
+			return;
+		}
+
+		if( isCompactUi() ) {
+			serverblock.css( 'display', 'none' );
 			return;
 		}
 		
