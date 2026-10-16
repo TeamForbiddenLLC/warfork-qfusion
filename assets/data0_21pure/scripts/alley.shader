@@ -1,30 +1,4 @@
-// GRIMM NIGHT
-// high res 1024^2 environment map
-// ships as png.
-// 
-// 
-// By Jockum Skoglund aka hipshot
-// hipshot@zfight.com
-// www.zfight.com
-// Stockholm, 2005 08 25
-// 
-// 
-// Modify however you like, just cred me for my work, maybe link to my page.
-// 
-// (Grimm is not a typo of Grim, some people understand the meaning)
 
-
-textures/alley/newsky
-{
-	qer_editorimage env/alleyskybox/grimmnight_ft.png
-	surfaceparm noimpact
-	surfaceparm nolightmap
-	//q3map_globaltexture
-	surfaceparm sky
-	q3map_sun 0.52021 0.711518 1 75 350 45
-
-	skyparms env/alleyskybox/grimmnight - -
-}
 
 textures/alley/terrainblend
 {

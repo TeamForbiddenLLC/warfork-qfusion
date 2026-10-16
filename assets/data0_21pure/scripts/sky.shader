@@ -9,6 +9,33 @@ textures/sky/stars
 	skyparmssides env/36sky rt rt rt rt rt 1500 -
 }
 
+textures/sky/starsky
+{
+	qer_editorimage env/starsky.png
+	surfaceparm sky
+	surfaceparm noimpact
+	surfaceparm nolightmap
+	surfaceparm nomarks
+	skyparmssides env/starsky rt rt rt env/starsky_up rt - -
+}
+
+textures/sky/grimmnight
+{
+	qer_editorimage env/grimmnight/grimmnight_ft.png
+	surfaceparm noimpact
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	surfaceparm sky
+	surfaceparm nodlight
+	skyparms env/grimmnight/grimmnight - -
+	{
+		map textures/sky/sky_night_front
+		blendfunc add
+		tcMod scale 2 2 
+		tcMod scroll 0.01 0.01
+	}
+}
+
 textures/sky/pinksky
 {
 	qer_editorimage textures/sky/pinksky1.blend.png

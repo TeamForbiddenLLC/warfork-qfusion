@@ -1,6 +1,6 @@
 textures/grates/fence01
 {	
-	qer_trans 0.5
+	qer_alphafunc gequal 0.5
 	qer_editorimage textures/grates/fence01.png
 	surfaceparm trans
 	surfaceparm nomarks
@@ -22,7 +22,7 @@ textures/grates/fence01
 
 textures/grates/fence01_noshadow
 {	
-	qer_trans 0.5
+	qer_alphafunc gequal 0.5
 	qer_editorimage textures/grates/fence01.png
 	surfaceparm trans
 	surfaceparm nomarks
@@ -42,7 +42,7 @@ textures/grates/fence01_noshadow
 
 textures/grates/fence02
 {	
-	qer_trans 0.5
+	qer_alphafunc gequal 0.5
 	qer_editorimage textures/grates/fence02.png
 	surfaceparm trans
 	surfaceparm nomarks
@@ -62,7 +62,7 @@ textures/grates/fence02
 
 textures/grates/fence02_noshadow
 {	
-	qer_trans 0.5
+	qer_alphafunc gequal 0.5
 	qer_editorimage textures/grates/fence02.png
 	surfaceparm trans
 	surfaceparm nomarks
@@ -81,7 +81,7 @@ textures/grates/fence02_noshadow
 
 textures/grates/fence03
 {	
-	qer_trans 0.5
+	qer_alphafunc gequal 0.5
 	qer_editorimage textures/grates/fence03.png
 	surfaceparm trans
 	surfaceparm nomarks
@@ -102,7 +102,7 @@ textures/grates/fence03
 
 textures/grates/fence03_noshadow
 {	
-	qer_trans 0.5
+	qer_alphafunc gequal 0.5
 	qer_editorimage textures/grates/fence03.png
 	surfaceparm trans
 	surfaceparm nomarks
@@ -122,19 +122,19 @@ textures/grates/fence03_noshadow
 
 textures/grates/simplegrid
 {
-	qer_trans 0.5
 	qer_editorimage textures/grates/simplegrid.png
+	qer_alphafunc gequal 0.5
 	surfaceparm trans
 	surfaceparm nomarks
 	surfaceparm alphashadow
 	cull none
 	nopicmip
 	smallestmipmapsize 8
-	q3map_forceMeta
-	q3map_lightmapsamplesize 64
+	glossExponent 100
+	glossIntensity 0.25
 
 	{
-		material textures/grates/simplegrid.png
+		material textures/grates/simplegrid.png $blankBumpImage $whiteimage
 		alphaFunc GE128
 		depthWrite
 	}
@@ -142,8 +142,8 @@ textures/grates/simplegrid
 
 textures/grates/grid02
 {
-	qer_trans 0.5
 	qer_editorimage textures/grates/grid02.png
+	qer_alphafunc gequal 0.5
 	surfaceparm trans
 	surfaceparm nomarks
 	surfaceparm alphashadow
@@ -159,3 +159,64 @@ textures/grates/grid02
 		depthWrite
 	}
 }
+
+
+
+textures/grates/grid03
+{
+	qer_editorimage textures/grates/grid03
+	qer_alphafunc gequal 0.5
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm alphashadow
+	sort additive
+	cull none
+	nopicmip
+	nomipmaps
+	
+	{
+		material textures/grates/grid03
+		alphaFunc GE128
+		depthWrite
+	}
+}
+
+textures/grates/grid03_blue
+{
+	qer_editorimage textures/grates/grid03_blue
+	qer_alphafunc gequal 0.5
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm alphashadow
+	sort additive
+	cull none
+	nopicmip
+	nomipmaps
+	
+	{
+		material textures/grates/grid03_blue
+		alphaFunc GE128
+		depthWrite
+	}
+}
+
+textures/grates/grid03_orange
+{
+	qer_editorimage textures/grates/grid03_orange
+	qer_alphafunc gequal 0.5
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm alphashadow
+	sort additive
+	cull none
+	nopicmip
+	nomipmaps
+	
+	{
+		material textures/grates/grid03_orange
+		alphaFunc GE128
+		depthWrite
+	}
+}
+
+

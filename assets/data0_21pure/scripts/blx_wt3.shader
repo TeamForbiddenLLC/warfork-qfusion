@@ -87,17 +87,6 @@ textures/blx_wtest3/blx_wt3_glow
 }
 
 
-textures/blx_wtest3/blx_trans_noclip
-{
-	qer_editorimage textures/blx_wtest3/blx_trans_noclip.png
-	surfaceparm trans
-	surfaceparm nonsolid
-	{
-		map textures/blx_wtest3/blx_trans_noclip.png
-		blendfunc filter
-	}
-}
-
 textures/blx_wtest3/blx_grid2
 {
 	qer_editorimage textures/grates/fence01.png
@@ -133,23 +122,6 @@ textures/blx_wtest3/blx_grid2_noalphashadow
 		//blendFunc blend
 		depthWrite
 		tcmod scale 0.75 0.75
-	}
-}
-
-textures/blx_wtest3/blx_wt3_grid
-{
-	qer_editorimage textures/grates/simplegrid.png
-	surfaceparm nomarks
-	surfaceparm alphashadow
-	cull none
-	nopicmip
-	smallestmipmapsize 8
-
-	{
-		material textures/grates/simplegrid.png
-		//blendFunc blend
-		alphaFunc GE128
-		depthWrite
 	}
 }
 

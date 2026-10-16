@@ -9,7 +9,7 @@ textures/36_others/36sky2
 	q3map_sun 1 1 1 40 110 75
 	skyparmssides env/36sky rt rt rt env/36sky_up rt 1500 -
 	{
-		map textures/cha0s_ws/ch_sky_night_front.png
+		map textures/sky/sky_night_front
 		blendfunc add
 		tcMod scale 2 2
 		tcMod scroll 0.01 0.01

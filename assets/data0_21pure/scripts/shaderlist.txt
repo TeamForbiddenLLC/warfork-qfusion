@@ -54,11 +54,10 @@ wsw_flareshalos
 wsw_city1
 wsw_cave1
 
-alley
+
 deleo
 courtyard
 reactors
-shepas
 depot
 
 etrtex

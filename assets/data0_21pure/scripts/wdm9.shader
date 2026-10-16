@@ -91,7 +91,7 @@ textures/wdm9/sky_s
 	surfaceparm nolightmap
 	surfaceparm sky
 	surfaceparm nodlight
-	q3map_lightimage textures/cha0s_ws/ch_sky_night_back.png
+	q3map_lightimage textures/sky/sky_night_front
 	q3map_surfacelight 150
 	q3map_skyLight 80 6
 

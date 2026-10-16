@@ -8,6 +8,13 @@ textures/boqu/bright_metal
 	}
 }
 
+textures/boqu/treadplate_yellow
+{
+	qer_editorimage textures/boqu/treadplate_yellow
+	{
+		material textures/boqu/treadplate_yellow textures/boqu/treadplate_norm textures/boqu/treadplate_gloss
+	}
+}
 
 textures/boqu/hexx
 {	

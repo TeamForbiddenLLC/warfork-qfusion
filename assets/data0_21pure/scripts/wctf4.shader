@@ -4,7 +4,7 @@
 
 textures/wctf4/sky
 {
-	qer_editorimage textures/cha0s_ws/ch_sky_night_front.png
+	qer_editorimage textures/sky/sky_night_front
 	surfaceparm sky
 	surfaceparm noimpact
 	surfaceparm nolightmap
@@ -14,7 +14,7 @@ textures/wctf4/sky
 	skyparms env/wdm1env - -
 
 	{
-		map textures/cha0s_ws/ch_sky_night_front.png
+		map textures/sky/sky_night_front
 		blendfunc add
 		tcMod scale 3 3
 		tcMod scroll 0.02 0.02

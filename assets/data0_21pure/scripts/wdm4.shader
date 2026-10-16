@@ -6,7 +6,7 @@ textures/wdm4/sky4_s
 	surfaceparm nomarks
 	surfaceparm nolightmap
 	surfaceparm sky
-	//q3map_lightimage textures/cha0s_ws/ch_sky_night_back.png
+	//q3map_lightimage textures/sky/sky_night_front
 	//q3map_sunExt .9 .9 .9 70 130 75 2 32
 	//q3map_skyLight 80 6
 	//q3map_lightmapFilterRadius 0 2

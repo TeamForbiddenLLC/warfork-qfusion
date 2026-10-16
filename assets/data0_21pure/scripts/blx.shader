@@ -559,7 +559,7 @@ textures/blx/new_sky
 		depthWrite
 	}
 	{
-		map textures/cha0s_ws/ch_sky_night_front.png
+		map textures/sky/sky_night_front
 		blendfunc add
 		tcMod scale 2 2
 		tcMod scroll 0.01 0.01

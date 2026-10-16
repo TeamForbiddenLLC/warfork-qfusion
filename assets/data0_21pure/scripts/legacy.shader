@@ -1,4 +1,5 @@
 
+
 //==============================================
 //
 // Deprecated shaders.
@@ -553,7 +554,140 @@ textures/blxbis/scratches0002_tiled
 	}
 }
 
+////// BLX_WTEST3
+
+textures/blx_wtest3/blx_wt3_rock3
+{
+	qer_editorimage textures/terrain/rock3blx
+
+	{
+		material textures/terrain/rock3blx
+	}
+}
+
+textures/blx_wtest3/blx_wt3_rock3-grey
+{
+	qer_editorimage textures/terrain/rock3blx
+
+	{
+		material textures/terrain/rock3blx
+	}
+}
+
+textures/blx_wtest3/blx_wt3_rock3-grey-red
+{
+	qer_editorimage textures/terrain/rock3blx
+
+	{
+		material textures/terrain/rock3blx
+	}
+}
+
+textures/blx_wtest3/blx_wt3_rock3-switch
+{
+	qer_editorimage textures/terrain/rock3blx
+
+	{
+		material textures/terrain/rock3blx
+	}
+}
+
+textures/blx_wtest3/blx_wt3_rock3-switch-red
+{
+	qer_editorimage textures/terrain/rock3blx
+
+	{
+		material textures/terrain/rock3blx
+	}
+}
+
+
+
+textures/blx_wtest3/blx_wt3_grid
+{
+	qer_editorimage textures/grates/simplegrid.png
+	qer_alphafunc gequal 0.5
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm alphashadow
+	cull none
+	nopicmip
+	smallestmipmapsize 8
+	glossExponent 100
+	glossIntensity 0.25
+
+	{
+		material textures/grates/simplegrid.png $blankBumpImage $whiteimage
+		alphaFunc GE128
+		depthWrite
+	}
+}
+
+textures/blx_wtest3/blx_wt3_dia
+{
+	qer_editorimage textures/boqu/treadplate_yellow
+
+	{
+		material textures/boqu/treadplate_yellow
+	}
+}
+
+
 ////// UNUSED SKY SHADERS /////////
+
+// GRIMM NIGHT
+// high res 1024^2 environment map
+// ships as png.
+// 
+// 
+// By Jockum Skoglund aka hipshot
+// hipshot@zfight.com
+// www.zfight.com
+// Stockholm, 2005 08 25
+// 
+// 
+// Modify however you like, just cred me for my work, maybe link to my page.
+// 
+// (Grimm is not a typo of Grim, some people understand the meaning)
+
+
+textures/alley/newsky
+{
+	qer_editorimage env/grimmnight/grimmnight_ft.png
+	surfaceparm noimpact
+	surfaceparm nolightmap
+	//q3map_globaltexture
+	surfaceparm sky
+	q3map_sun 0.52021 0.711518 1 75 350 45
+
+	skyparms env/grimmnight/grimmnight - -
+}
+
+
+// MIRAMAR
+// high res 1024^2 environment map
+// ships as png.
+// 
+// 
+// By Jockum Skoglund aka hipshot
+// hipshot@zfight.com
+// www.zfight.com
+// Stockholm, 2005 08 25
+// 
+// 
+// Modify however you like, just cred me for my work, maybe link to my page.
+
+textures/sky/miramar
+{
+	qer_editorimage env/miramar/miramar_ft.png
+	surfaceparm noimpact
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	surfaceparm sky
+	surfaceparm nodlight
+
+	skyparms env/miramar/miramar - -
+}
 
 textures/sky/purplesky
 {
@@ -625,36 +759,106 @@ textures/sky/indigosky
 		blendFunc add
 	}
 }
-
-// MIRAMAR
-// high res 1024^2 environment map
-// ships as png.
-// 
-// 
-// By Jockum Skoglund aka hipshot
-// hipshot@zfight.com
-// www.zfight.com
-// Stockholm, 2005 08 25
-// 
-// 
-// Modify however you like, just cred me for my work, maybe link to my page.
-
-textures/sky/miramar
+textures/starsky/starsky_nolight
 {
-	qer_editorimage env/miramar/miramar_ft.png
+	qer_editorimage env/starsky.png
+	surfaceparm sky
+	surfaceparm noimpact
+	surfaceparm nolightmap
+	surfaceparm nomarks
+	skyparmssides env/starsky rt rt rt env/starsky_up rt - -
+}
+
+textures/shepas/sky_s
+{
+	qer_editorimage env/grimmnight/grimmnight_ft.png
 	surfaceparm noimpact
 	surfaceparm nomarks
 	surfaceparm nolightmap
 	surfaceparm sky
 	surfaceparm nodlight
-
-	skyparms env/miramar/miramar - -
+	skyparms env/grimmnight/grimmnight - -
+	{
+		map textures/sky/sky_night_front
+		blendfunc add
+		tcMod scale 2 2 
+		tcMod scroll 0.01 0.01
+	}
 }
 
 
+////// MISC garbage
+
+textures/common/black
+{
+    surfaceparm noimpact
+    surfaceparm nomarks
+    surfaceparm nolightmap
+
+    {
+        map *black
+    }
+}
+
+////// SCIFI INTERIOR
 
 
+textures/scifi_interior/grid
+{
+	qer_editorimage textures/grates/grid03
+	qer_alphafunc gequal 0.5
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm alphashadow
+	sort additive
+	cull none
+	nopicmip
+	nomipmaps
+	
+	{
+		material textures/grates/grid03
+		alphaFunc GE128
+		depthWrite
+	}
+}
 
+textures/scifi_interior/grid_blue
+{
+	qer_editorimage textures/grates/grid03_blue
+	qer_alphafunc gequal 0.5
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm alphashadow
+	sort additive
+	cull none
+	nopicmip
+	nomipmaps
+	
+	{
+		material textures/grates/grid03_blue
+		alphaFunc GE128
+		depthWrite
+	}
+}
+
+textures/scifi_interior/grid_orange
+{
+	qer_editorimage textures/grates/grid03_orange
+	qer_alphafunc gequal 0.5
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm alphashadow
+	sort additive
+	cull none
+	nopicmip
+	nomipmaps
+	
+	{
+		material textures/grates/grid03_orange
+		alphaFunc GE128
+		depthWrite
+	}
+}
 
 
 ////////////////////////////////////////////////////
