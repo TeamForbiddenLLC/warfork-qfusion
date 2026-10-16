@@ -755,7 +755,7 @@ static void CG_RegisterVariables( void )
 	cg_thirdPerson =	trap_Cvar_Get( "cg_thirdPerson", "0", CVAR_CHEAT );
 	cg_thirdPersonAngle =	trap_Cvar_Get( "cg_thirdPersonAngle", "0", 0 );
 	cg_thirdPersonRange =	trap_Cvar_Get( "cg_thirdPersonRange", "90", 0 );
-	cg_minLight =	trap_Cvar_Get( "cg_minLight", "0.22", CVAR_CHEAT );
+	cg_minLight =	trap_Cvar_Get( "cg_minLight", "0.20", CVAR_CHEAT );
 
 	cg_colorCorrection = trap_Cvar_Get( "cg_colorCorrection", "1", CVAR_ARCHIVE );
 

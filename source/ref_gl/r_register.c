@@ -64,6 +64,7 @@ cvar_t *r_lighting_glossintensity;
 cvar_t *r_lighting_glossexponent;
 cvar_t *r_lighting_overbrightmodels;
 cvar_t *r_lighting_gridmaxambient;
+cvar_t *r_lighting_gridmaxdirect;
 cvar_t *r_lighting_ambientscale;
 cvar_t *r_lighting_directedscale;
 cvar_t *r_lighting_packlightmaps;
@@ -926,7 +927,8 @@ static void R_Register( const char *screenshotsPrefix )
 	r_lighting_glossintensity = ri.Cvar_Get( "r_lighting_glossintensity", "1.5", CVAR_ARCHIVE );
 	r_lighting_glossexponent = ri.Cvar_Get( "r_lighting_glossexponent", "24", CVAR_ARCHIVE );
 	r_lighting_overbrightmodels = ri.Cvar_Get( "r_lighting_overbrightmodels", "1.0", CVAR_ARCHIVE );
-	r_lighting_gridmaxambient = ri.Cvar_Get( "r_lighting_gridmaxambient", "0.17", CVAR_CHEAT );
+	r_lighting_gridmaxambient = ri.Cvar_Get( "r_lighting_gridmaxambient", "0.16", CVAR_CHEAT );
+	r_lighting_gridmaxdirect = ri.Cvar_Get( "r_lighting_gridmaxdirect", "0.3", CVAR_CHEAT );
 	r_lighting_ambientscale = ri.Cvar_Get( "r_lighting_ambientscale", "1", 0 );
 	r_lighting_directedscale = ri.Cvar_Get( "r_lighting_directedscale", "1", 0 );
 
@@ -952,7 +954,7 @@ static void R_Register( const char *screenshotsPrefix )
 	r_shadows_self_shadow = ri.Cvar_Get( "r_shadows_self_shadow", "0", CVAR_ARCHIVE );
 	r_shadows_dither = ri.Cvar_Get( "r_shadows_dither", "0", CVAR_ARCHIVE );
 
-	r_outlines_world = ri.Cvar_Get( "r_outlines_world", "1.8", CVAR_ARCHIVE );
+	r_outlines_world = ri.Cvar_Get( "r_outlines_world", "0.8", CVAR_ARCHIVE );
 	r_outlines_scale = ri.Cvar_Get( "r_outlines_scale", "1", CVAR_ARCHIVE );
 	r_outlines_cutoff = ri.Cvar_Get( "r_outlines_cutoff", "712", CVAR_ARCHIVE );
 

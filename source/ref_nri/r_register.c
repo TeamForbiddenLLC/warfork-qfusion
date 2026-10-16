@@ -85,6 +85,7 @@ cvar_t *r_lighting_grayscale;
 
 cvar_t *r_lighting_overbrightmodels;
 cvar_t *r_lighting_gridmaxambient;
+cvar_t *r_lighting_gridmaxdirect;
 
 cvar_t *r_offsetmapping;
 cvar_t *r_offsetmapping_scale;
@@ -220,7 +221,8 @@ static void R_Register( const char *screenshotsPrefix )
 	r_lighting_grayscale = Cvar_Get( "r_lighting_grayscale", "0", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 
 	r_lighting_overbrightmodels = Cvar_Get( "r_lighting_overbrightmodels", "1.0", CVAR_ARCHIVE );
-	r_lighting_gridmaxambient = Cvar_Get( "r_lighting_gridmaxambient", "0.17", CVAR_CHEAT );
+	r_lighting_gridmaxambient = Cvar_Get( "r_lighting_gridmaxambient", "0.16", CVAR_CHEAT );
+	r_lighting_gridmaxdirect = Cvar_Get( "r_lighting_gridmaxdirect", "0.3", CVAR_CHEAT );
 
 	r_offsetmapping = Cvar_Get( "r_offsetmapping", "2", CVAR_ARCHIVE );
 	r_offsetmapping_scale = Cvar_Get( "r_offsetmapping_scale", "0.02", CVAR_ARCHIVE );
@@ -238,7 +240,7 @@ static void R_Register( const char *screenshotsPrefix )
 	r_shadows_self_shadow = Cvar_Get( "r_shadows_self_shadow", "0", CVAR_ARCHIVE );
 	r_shadows_dither = Cvar_Get( "r_shadows_dither", "0", CVAR_ARCHIVE );
 
-	r_outlines_world = Cvar_Get( "r_outlines_world", "1.8", CVAR_ARCHIVE );
+	r_outlines_world = Cvar_Get( "r_outlines_world", "0.8", CVAR_ARCHIVE );
 	r_outlines_scale = Cvar_Get( "r_outlines_scale", "1", CVAR_ARCHIVE );
 	r_outlines_cutoff = Cvar_Get( "r_outlines_cutoff", "712", CVAR_ARCHIVE );
 

@@ -413,6 +413,7 @@ extern cvar_t *r_lighting_glossintensity;
 extern cvar_t *r_lighting_glossexponent;
 extern cvar_t *r_lighting_overbrightmodels;
 extern cvar_t *r_lighting_gridmaxambient;
+extern cvar_t *r_lighting_gridmaxdirect;
 extern cvar_t *r_lighting_ambientscale;
 extern cvar_t *r_lighting_directedscale;
 extern cvar_t *r_lighting_packlightmaps;

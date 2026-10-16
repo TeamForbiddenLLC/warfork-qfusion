@@ -427,11 +427,11 @@ static void R_NormalizeMinlightAmbient( float minLight, vec3_t ambientLocal, boo
 		else
 			VectorCopy( mapHue, gridHue );
 
-		// mixHue is luminance-normalized ( 0.12 + 0.26 + 0.62 = 1.0 ), so the fill adds exactly the missing luminance
+		// mixHue is luminance-normalized ( 0.50 + 0.10 + 0.40 = 1.0 ), so the fill adds exactly the missing luminance
 		VectorSet( mixHue,
-			0.12f * gridHue[0] + 0.26f * mapHue[0] + 0.62f,
-			0.12f * gridHue[1] + 0.26f * mapHue[1] + 0.62f,
-			0.12f * gridHue[2] + 0.26f * mapHue[2] + 0.62f );
+			0.50f * gridHue[0] + 0.10f * mapHue[0] + 0.40f,
+			0.50f * gridHue[1] + 0.10f * mapHue[1] + 0.40f,
+			0.50f * gridHue[2] + 0.10f * mapHue[2] + 0.40f );
 
 		ambientLocal[0] += mixHue[0] * missing;
 		ambientLocal[1] += mixHue[1] * missing;
@@ -477,7 +477,20 @@ static void R_LightForOriginEx( const vec3_t origin, vec3_t dir, vec4_t ambient,
 	// Runs even without a lightgrid (noWorldLight / grid-less map): the floor is what
 	// keeps RF_MINLIGHT models (viewmodel, UI previews, players) from going black.
 	if( stabilize )
+	{
 		R_NormalizeMinlightAmbient( minLight, ambientLocal, noWorldLight );
+
+		// directed counterpart of the gridmaxambient cap: clamp the grid's directed
+		// component to a fraction of the max displayable light (0 disables the cap)
+		if( !noWorldLight && r_lighting_gridmaxdirect->value > 0 )
+		{
+			float lumDiff = diffuseLocal[0] * 0.299f + diffuseLocal[1] * 0.587f + diffuseLocal[2] * 0.114f;
+			float maxDiffuseAllowed = r_lighting_gridmaxdirect->value * 255.0f;
+
+			if( lumDiff > maxDiffuseAllowed )
+				VectorScale( diffuseLocal, maxDiffuseAllowed / lumDiff, diffuseLocal );
+		}
+	}
 
 	R_LightForOrigin_Dlights( origin, dir, ambientLocal, diffuseLocal, radius );
 
