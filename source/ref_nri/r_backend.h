@@ -28,6 +28,7 @@ struct shader_s;
 struct mfog_s;
 struct superLightStyle_s;
 struct portalSurface_s;
+struct cubemapGroup_s;
 
 // core
 void RB_Init( void );

@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // r_cubemaps.c - per-surface, capture-once reflection cubemaps ('map $cubemap')
 
 #include "r_local.h"
+#include "ri_renderer.h"
 
 // view angles (pitch, yaw, roll) for rendering straight into the six GL cube
 // faces, derived from the engine's own envshot chain and cross-checked against
