@@ -145,6 +145,11 @@ msgstr "<value> Lightmap block size\n"
 "^6Note: Higher values than the default will degrade performance."
 
 #. Console/r
+msgid "r_lighting_overbrightmodels"
+msgstr "<value> Adds extra light to models.\n"
+"^6Note: Values above the default make models brighter, values below it darker. The default is \"1.0\"."
+
+#. Console/r
 msgid "r_lighting_packlightmaps"
 msgstr "<0/1> Optimizes lighting by combining lightmap textures into a single texture atlas.\n"
 "^6Disable: r_lighting_packlightmaps \"0\"\n"
