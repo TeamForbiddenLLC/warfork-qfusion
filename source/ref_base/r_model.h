@@ -56,6 +56,8 @@ typedef struct mfog_s
 	vec3_t			mins, maxs;
 } mfog_t;
 
+struct cubemapGroup_s;
+
 typedef struct mshaderref_s
 {
 	char			name[MAX_QPATH];
@@ -77,6 +79,7 @@ typedef struct msurface_s
 	mesh_t			*mesh;
 	mfog_t			*fog;
 	cplane_t		*plane;
+	struct cubemapGroup_s *cubemap;	// static cubemap reflection group (set once at group build; NULL for non-$cubemap surfaces)
 
 	union
 	{

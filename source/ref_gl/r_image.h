@@ -98,8 +98,10 @@ void R_FreeUnusedImages( void );
 void R_InitBuiltinScreenImages( void );
 void R_ReleaseBuiltinScreenImages( void );
 void R_ShutdownImages( void );
-void R_InitViewportTexture( image_t **texture, const char *name, int id, 
+void R_InitViewportTexture( image_t **texture, const char *name, int id,
 	int viewportWidth, int viewportHeight, int size, int flags, int tags, int samples );
+image_t *R_InitCubemapTexture( image_t **texture, const char *name, int id,
+	int size, int flags, int tags, int samples );
 image_t *R_GetPortalTexture( int viewportWidth, int viewportHeight, int flags, unsigned frameNum );
 image_t *R_GetShadowmapTexture( int id, int viewportWidth, int viewportHeight, int flags );
 void R_InitDrawFlatTexture( void );

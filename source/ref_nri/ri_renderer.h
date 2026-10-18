@@ -39,6 +39,8 @@ void FreeRITextureView( struct RIDevice_s *dev, struct RITextureView_s *view );
 // usage on Vulkan, and on Metal the texture handle itself (non-owning; FreeRITextureView only clears it).
 int InitRITexture( struct RIDevice_s *dev, const struct RITextureDesc_s *desc, struct RITexture_s *tex );
 int InitRITextureView( struct RIDevice_s *dev, const struct RITextureDesc_s *desc, const struct RITexture_s *tex, struct RITextureView_s *view );
+int InitRITextureFaceView( struct RIDevice_s *dev, const struct RITextureDesc_s *desc, const struct RITexture_s *tex,
+	struct RITextureView_s *view, uint32_t face );
 
 // Queue a texture and its view for destruction once the frames that may still reference them have
 // retired. `freeList` is an stb_ds array of RIFree_s (r_frame_set_s.freeList); both handles are cleared.

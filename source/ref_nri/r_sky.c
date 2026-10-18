@@ -722,7 +722,7 @@ bool R_AddSkySurfToDrawList( const msurface_t *surf, const portalSurface_t *port
 
 	if( r_skySurf.visFrame != rf.frameCount ) {
 		r_skySurf.visFrame = rf.frameCount;
-		R_AddSurfToDrawList( rn.meshlist, rsc.skyent, fog, shader, 0, r_warpFaceAxis, portalSurf, &r_skySurf );
+		R_AddSurfToDrawList( rn.meshlist, rsc.skyent, fog, shader, 0, r_warpFaceAxis, portalSurf, NULL, &r_skySurf );
 	}
 
 	return true;

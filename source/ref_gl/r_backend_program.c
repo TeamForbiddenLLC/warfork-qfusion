@@ -534,8 +534,18 @@ static inline const image_t *RB_ShaderpassTex( const shaderpass_t *pass )
 	}
 
 	if( pass->flags & SHADERPASS_PORTALMAP ) {
-		return rb.currentPortalSurface && rb.currentPortalSurface->texures[0] ? 
+		return rb.currentPortalSurface && rb.currentPortalSurface->texures[0] ?
 			rb.currentPortalSurface->texures[0] : rsh.blackTexture;
+	}
+
+	if( pass->flags & SHADERPASS_SURFCUBEMAP ) {
+		// never sample a cube face while it is being captured (feedback loop)
+		if( ( rb.renderFlags & RF_CUBEMAPVIEW )
+			|| !r_cubemaps->integer
+			|| !rb.currentCubemapGroup || !rb.currentCubemapGroup->cube ) {
+			return rsh.blackCubemapTexture;
+		}
+		return rb.currentCubemapGroup->cube;
 	}
 
 	if( ( pass->flags & SHADERPASS_SKYBOXSIDE ) && rb.skyboxShader && rb.skyboxSide >= 0 ) {
@@ -2016,6 +2026,7 @@ void RB_BindShader( const entity_t *e, const shader_t *shader, const mfog_t *fog
 	rb.bonesData.maxWeights = 0;
 
 	rb.currentPortalSurface = NULL;
+	rb.currentCubemapGroup = NULL;
 
 	rb.skyboxShader = NULL;
 	rb.skyboxSide = -1;
@@ -2117,6 +2128,16 @@ void RB_SetPortalSurface( const portalSurface_t *portalSurface )
 {
 	assert( rb.currentShader != NULL );
 	rb.currentPortalSurface = portalSurface;
+	rb.dirtyUniformState = true;
+}
+
+/*
+* RB_SetCubemapGroup
+*/
+void RB_SetCubemapGroup( const cubemapGroup_t *cubemapGroup )
+{
+	assert( rb.currentShader != NULL );
+	rb.currentCubemapGroup = cubemapGroup;
 	rb.dirtyUniformState = true;
 }
 

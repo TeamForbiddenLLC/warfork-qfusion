@@ -496,8 +496,8 @@ static int Mod_CreateSubmodelBufferObjects( model_t *mod, unsigned int modnum, s
 		vcount = surf->numVerts;
 		ecount = surf->numElems;
 
-		// portal or foliage surfaces can not be batched
-		if( !(shader->flags & (SHADER_PORTAL_CAPTURE|SHADER_PORTAL_CAPTURE2)) && !surf->numInstances )
+		// portal, cubemap or foliage surfaces can not be batched
+		if( !(shader->flags & (SHADER_PORTAL_CAPTURE|SHADER_PORTAL_CAPTURE2|SHADER_CUBEMAP_CAPTURE)) && !surf->numInstances )
 		{
 			// scan remaining face checking whether we merge them with the current one
 			for( j = i + 1; j < numSurfaces; j++ )

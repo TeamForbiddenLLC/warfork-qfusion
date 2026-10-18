@@ -2148,6 +2148,24 @@ static void R_InitWhiteCubemapTexture( int *w, int *h, int *flags, int *samples 
 }
 
 /*
+* R_InitBlackCubemapTexture
+*/
+static void R_InitBlackCubemapTexture( int *w, int *h, int *flags, int *samples )
+{
+	int i;
+
+	*w = *h = 1;
+	*flags = IT_NOPICMIP|IT_NOCOMPRESS|IT_CUBEMAP;
+	*samples = 3;
+
+	for( i = 0; i < 6; i++ ) {
+		uint8_t *data;
+		data = R_PrepareImageBuffer( QGL_CONTEXT_MAIN, TEXTURE_LOADING_BUF0+i, 1 * 1 * 3 );
+		data[0] = data[1] = data[2] = 0;
+	}
+}
+
+/*
 * R_InitBlackTexture
 */
 static void R_InitBlackTexture( int *w, int *h, int *flags, int *samples )
@@ -2305,6 +2323,64 @@ void R_InitViewportTexture( image_t **texture, const char *name, int id,
 			RFB_AttachTextureToObject( t->fbo, t );
 		}
 	}
+}
+
+/*
+* R_InitCubemapTexture
+*
+* Creates (or resizes) a cube-map render target and its FBO. One FBO is
+* shared by all six faces; the cubemap capture code re-attaches the color
+* attachment per face (RFB_AttachCubemapFaceToObject).
+*/
+image_t *R_InitCubemapTexture( image_t **texture, const char *name, int id,
+	int size, int flags, int tags, int samples )
+{
+	int width, height;
+	image_t *t;
+	uint8_t *data[6] = { NULL };	// R_Upload32's cube path reads all six slots
+
+	R_GetViewportTextureSize( size, size, 0, flags, &width, &height );
+
+	if( !( *texture ) || ( *texture )->width != width || ( *texture )->height != height )
+	{
+		if( !*texture ) {
+			char uploadName[128];
+
+			Q_snprintfz( uploadName, sizeof( uploadName ), "***%s_%i***", name, id );
+			t = *texture = R_LoadImage( uploadName, data, width, height,
+				flags|IT_CUBEMAP, 1, tags, samples );
+		}
+		else {
+			t = *texture;
+			t->width = width;
+			t->height = height;
+
+			R_BindImage( t );
+
+			R_Upload32( QGL_CONTEXT_MAIN, data, 0, 0, 0, width, height,
+				flags|IT_CUBEMAP, 1, &t->upload_width, &t->upload_height,
+				t->samples, false, false );
+		}
+
+		if( !t ) {
+			*texture = NULL;
+			return NULL;
+		}
+
+		// (re)create the FBO: one shared object, faces attached on demand
+		if( t->fbo ) {
+			RFB_UnregisterObject( t->fbo );
+			t->fbo = 0;
+		}
+		if( t->flags & IT_FRAMEBUFFER ) {
+			t->fbo = RFB_RegisterObject( t->upload_width, t->upload_height,
+				( tags & IMAGE_TAG_BUILTIN ) != 0, ( flags & IT_DEPTHRB ) != 0,
+				( flags & IT_STENCIL ) != 0 );
+			RFB_AttachCubemapFaceToObject( t->fbo, t, 0 );
+		}
+	}
+
+	return *texture;
 }
 
 /*
@@ -2525,6 +2601,7 @@ static void R_InitBuiltinImages( void )
 		{ "***r_notexture***", &rsh.noTexture, &R_InitNoTexture },
 		{ "***r_whitetexture***", &rsh.whiteTexture, &R_InitWhiteTexture },
 		{ "***r_whitecubemaptexture***", &rsh.whiteCubemapTexture, &R_InitWhiteCubemapTexture },
+		{ "***r_blackcubemaptexture***", &rsh.blackCubemapTexture, &R_InitBlackCubemapTexture },
 		{ "***r_blacktexture***", &rsh.blackTexture, &R_InitBlackTexture },
 		{ "***r_greytexture***", &rsh.greyTexture, &R_InitGreyTexture },
 		{ "***r_blankbumptexture***", &rsh.blankBumpTexture, &R_InitBlankBumpTexture },
@@ -2555,6 +2632,7 @@ static void R_ReleaseBuiltinImages( void )
 	rsh.noTexture = NULL;
 	rsh.whiteTexture = rsh.blackTexture = rsh.greyTexture = NULL;
 	rsh.whiteCubemapTexture = NULL;
+	rsh.blackCubemapTexture = NULL;
 	rsh.blankBumpTexture = NULL;
 	rsh.particleTexture = NULL;
 	rsh.coronaTexture = NULL;
@@ -2663,6 +2741,9 @@ void R_FreeUnusedImages( void )
 
 	memset( rsh.portalTextures, 0, sizeof( image_t * ) * MAX_PORTAL_TEXTURES );
 	memset( rsh.shadowmapTextures, 0, sizeof( image_t * ) * MAX_SHADOWGROUPS );
+
+	memset( rsh.cubemapGroups, 0, sizeof( rsh.cubemapGroups ) );
+	rsh.numCubemapGroups = 0;
 }
 
 /*

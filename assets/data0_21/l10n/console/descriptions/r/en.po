@@ -283,6 +283,18 @@ msgstr "<0/1> 2D color blends.\n"
 "^6Enable: r_polyblend \"1\""
 
 #. Console/r
+msgid "r_cubemaps"
+msgstr "<0/1> Enable drawing of '$cubemap' shader reflections.\n"
+"^6Disable: r_cubemaps \"0\"\n"
+"^6Enable: r_cubemaps \"1\"\n"
+"^6Note: The cubemaps are captured once on map load, so toggling this is instant."
+
+#. Console/r
+msgid "r_cubemaps_imagesize"
+msgstr "<value> Resolution of each face of the '$cubemap' shader reflections.\n"
+"^6Note: Applies on vid_restart. \"256\" is the default. Higher values cost more memory and a longer one-time capture on map load."
+
+#. Console/r
 msgid "r_portalmaps"
 msgstr "<0/1> Affects shaders that conditionally enable portalmaps.\n"
 "^6Disable: r_portalmaps \"0\"\n"

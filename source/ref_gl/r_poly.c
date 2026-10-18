@@ -64,7 +64,7 @@ void R_DrawPolys( void )
 		else
 			fog = rsh.worldBrushModel->fogs + p->fogNum - 1;
 
-		if( !R_AddSurfToDrawList( rn.meshlist, rsc.polyent, fog, p->shader, 0, i, NULL, p ) ) {
+		if( !R_AddSurfToDrawList( rn.meshlist, rsc.polyent, fog, p->shader, 0, i, NULL, NULL, p ) ) {
 			continue;
 		}
 	}

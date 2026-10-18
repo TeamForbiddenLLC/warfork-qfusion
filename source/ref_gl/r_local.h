@@ -128,6 +128,8 @@ typedef struct
 #define MAX_PORTAL_SURFACES		32
 #define MAX_PORTAL_TEXTURES		64
 
+#define MAX_CUBEMAP_IMAGES		32
+
 #define BACKFACE_EPSILON		4
 
 #define	ON_EPSILON				0.1         // point on plane side epsilon
@@ -174,6 +176,15 @@ typedef struct portalSurface_s
 	int				portalmip;				// 0 = full res (memset clears to 0)
 	bool			portalnoshadows;		// no real-time shadows in this portal view
 } portalSurface_t;
+
+typedef struct cubemapGroup_s
+{
+	vec3_t			mins, maxs;
+	vec3_t			centre;				// capture origin: bounds midpoint snapped onto the (nudged) plane
+	cplane_t		plane;				// world-space plane, nudged like a portal plane
+	const shader_t	*shader;			// backref for console dumps
+	image_t			*cube;				// IT_CUBEMAP framebuffer image, NULL until captured
+} cubemapGroup_t;
 
 typedef struct
 {
@@ -263,12 +274,15 @@ typedef struct
 	image_t			*noTexture;					// use for bad textures
 	image_t			*whiteTexture;
 	image_t			*whiteCubemapTexture;
+	image_t			*blackCubemapTexture;
 	image_t			*blackTexture;
 	image_t			*greyTexture;
 	image_t			*blankBumpTexture;
 	image_t			*particleTexture;			// little dot for particles
 	image_t			*coronaTexture;
 	image_t			*portalTextures[MAX_PORTAL_TEXTURES+1];
+	cubemapGroup_t	cubemapGroups[MAX_CUBEMAP_IMAGES];
+	int				numCubemapGroups;
 	image_t			*shadowmapTextures[MAX_SHADOWGROUPS];
 	image_t			*screenTexture;
 	image_t			*screenDepthTexture;
@@ -333,6 +347,8 @@ typedef struct
 	int 			swapInterval;
 
 	int				worldModelSequence;
+
+	bool			pendingCubemapCapture;	// armed on world sequence change, consumed once by R_DrawWorldCubemaps
 
 	// used for dlight push checking
 	unsigned int	frameCount;
@@ -406,6 +422,9 @@ extern cvar_t *r_fastsky;
 extern cvar_t *r_portalonly;
 extern cvar_t *r_portalmaps;
 extern cvar_t *r_portalmaps_maxtexsize;
+
+extern cvar_t *r_cubemaps;
+extern cvar_t *r_cubemaps_imagesize;
 
 extern cvar_t *r_lighting_deluxemapping;
 extern cvar_t *r_lighting_specular;
@@ -557,6 +576,7 @@ void		RFB_TouchObject( int object );
 void		RFB_BindObject( int object );
 int			RFB_BoundObject( void );
 void		RFB_AttachTextureToObject( int object, image_t *texture );
+void		RFB_AttachCubemapFaceToObject( int object, image_t *texture, int face );
 image_t		*RFB_GetObjectTextureAttachment( int object, bool depth );
 void		RFB_BlitObject( int dest, int bitMask, int mode );
 bool	RFB_CheckObjectStatus( void );
@@ -690,8 +710,8 @@ void		R_ResetScissor( void );
 void R_InitDrawList( drawList_t *list );
 void R_ClearDrawList( drawList_t *list );
 unsigned R_PackOpaqueOrder( const entity_t *e, const shader_t *shader, bool lightmap, bool dlight );
-void *R_AddSurfToDrawList( drawList_t *list, const entity_t *e, const mfog_t *fog, const shader_t *shader, 
-	float dist, unsigned int order, const portalSurface_t *portalSurf, void *drawSurf );
+void *R_AddSurfToDrawList( drawList_t *list, const entity_t *e, const mfog_t *fog, const shader_t *shader,
+	float dist, unsigned int order, const portalSurface_t *portalSurf, const cubemapGroup_t *cubemapGroup, void *drawSurf );
 void R_UpdateDrawListSurf( void *psds, unsigned order );
 void R_AddVBOSlice( unsigned int index, unsigned int numVerts, unsigned int numElems, 
 	unsigned int firstVert, unsigned int firstElem );
@@ -708,6 +728,14 @@ void R_CopyOffsetTriangles( const elem_t *inelems, int numElems, int vertsOffset
 void R_BuildTrifanElements( int vertsOffset, int numVerts, elem_t *elems );
 void R_BuildTangentVectors( int numVertexes, vec4_t *xyzArray, vec4_t *normalsArray, vec2_t *stArray,
 	int numTris, elem_t *elems, vec4_t *sVectorsArray );
+
+//
+// r_cubemaps.c
+//
+extern drawList_t r_cubemaplist;
+
+void R_BuildWorldCubemapGroups( void );
+void R_DrawWorldCubemaps( void );
 
 //
 // r_portals.c

@@ -136,7 +136,7 @@ void R_DrawCoronas( void )
 		R_AddSurfToDrawList( rn.meshlist, rsc.polyent, 
 			R_FogForSphere( light->origin, 1 ), 
 			r_coronaShader, 
-			Distance( rn.viewOrigin, light->origin ), 0, NULL, &r_coronaSurfs[i] );
+			Distance( rn.viewOrigin, light->origin ), 0, NULL, NULL, &r_coronaSurfs[i] );
 	}
 }
 

@@ -124,6 +124,7 @@ typedef struct r_backend_s
 	const mesh_vbo_t *currentMeshVBO;
 	rbBonesData_t bonesData;
 	const portalSurface_t *currentPortalSurface;
+	const cubemapGroup_t *currentCubemapGroup;
 	
 	// glUseProgram cache
 	int	currentProgram;

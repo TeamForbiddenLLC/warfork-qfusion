@@ -281,6 +281,44 @@ void RFB_AttachTextureToObject( int object, image_t *texture )
 }
 
 /*
+* RFB_AttachCubemapFaceToObject
+*
+* Attaches one face of a cube map image as the color attachment of the FBO.
+* The same FBO can be re-attached to another face between renders.
+*/
+void RFB_AttachCubemapFaceToObject( int object, image_t *texture, int face )
+{
+	r_fbo_t *fbo;
+
+	assert( object > 0 && object <= r_num_framebuffer_objects );
+	if( object <= 0 || object > r_num_framebuffer_objects ) {
+		return;
+	}
+
+	assert( texture != NULL );
+	assert( face >= 0 && face < 6 );
+	if( !texture || face < 0 || face >= 6 ) {
+		return;
+	}
+
+	fbo = r_framebuffer_objects + object - 1;
+	qglBindFramebufferEXT( GL_FRAMEBUFFER_EXT, fbo->objectID );
+
+	fbo->colorTexture = texture;
+	texture->fbo = object;
+
+#ifndef GL_ES_VERSION_2_0
+	qglDrawBuffer( GL_COLOR_ATTACHMENT0_EXT );
+	qglReadBuffer( GL_COLOR_ATTACHMENT0_EXT );
+#endif
+
+	qglFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
+		GL_TEXTURE_CUBE_MAP_POSITIVE_X_ARB + face, texture->texnum, 0 );
+
+	qglBindFramebufferEXT( GL_FRAMEBUFFER_EXT, r_bound_framebuffer_objectID ? r_bound_framebuffer_object->objectID : 0 );
+}
+
+/*
 * RFB_GetObjectTextureAttachment
 */
 image_t	*RFB_GetObjectTextureAttachment( int object, bool depth )

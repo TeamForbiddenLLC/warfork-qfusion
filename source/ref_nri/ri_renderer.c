@@ -1423,13 +1423,15 @@ int InitRITexture( struct RIDevice_s *dev, const struct RITextureDesc_s *desc, s
 			uint32_t queueFamilies[RI_QUEUE_LEN] = { 0 };
 			VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 			info.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT; // typeless, like every other image here
+			if( desc->cube ) // allow cube views; faces are rendered through per-face 2D views
+				info.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 			info.imageType = VK_IMAGE_TYPE_2D;
 			info.format = RIFormatToVK( desc->format );
 			info.extent.width = desc->width;
 			info.extent.height = desc->height;
 			info.extent.depth = 1;
 			info.mipLevels = 1;
-			info.arrayLayers = 1;
+			info.arrayLayers = desc->cube ? 6 : 1;
 			info.samples = VK_SAMPLE_COUNT_1_BIT;
 			info.tiling = VK_IMAGE_TILING_OPTIMAL;
 			info.usage = RI_VK_TextureUsage( desc->usage );
@@ -1452,6 +1454,8 @@ int InitRITexture( struct RIDevice_s *dev, const struct RITextureDesc_s *desc, s
 				return RI_FAIL; // RIFormatToMTL has already printed which format is unmapped
 			// texture2DDescriptorWithPixelFormat:... is autoreleased; nothing to release here.
 			struct mtlc_texture_descriptor td = mtlc_texture_descriptor_texture_2d( fmt, desc->width, desc->height, false );
+			if( desc->cube ) // the same square 2D descriptor retyped to Cube (see __R_CreateMTLTexture)
+				mtlc_texture_descriptor_set_texture_type( td, MTLC_TEXTURE_TYPE_CUBE );
 			mtlc_uinteger usage = MTLC_TEXTURE_USAGE_UNKNOWN;
 			if( desc->usage & RI_USAGE_SHADER_RESOURCE )
 				usage |= MTLC_TEXTURE_USAGE_SHADER_READ;
@@ -1486,11 +1490,49 @@ int InitRITextureView( struct RIDevice_s *dev, const struct RITextureDesc_s *des
 			// nothing here creates a stencil-bearing format yet.
 			range.aspectMask = props->isDepth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
 			range.levelCount = 1;
-			range.layerCount = 1;
+			range.layerCount = desc->cube ? 6 : 1;
 
 			// The image is created with EXTENDED_USAGE, so this chain *replaces* the usage for the view rather
 			// than adding to it: a view that is both rendered into and sampled has to carry both bits, or it is
 			// illegal as an attachment.
+			VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
+			usageInfo.usage = RI_VK_TextureUsage( desc->usage );
+
+		VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+		createInfo.pNext = &usageInfo;
+		createInfo.viewType = desc->cube ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
+		createInfo.format = RIFormatToVK( desc->format );
+		createInfo.subresourceRange = range;
+		createInfo.image = tex->vk.image;
+		if( !VK_WrapResult( vkCreateImageView( dev->vk.device, &createInfo, NULL, &view->vk.image ) ) )
+			return RI_FAIL;
+		}
+	}
+#endif
+#if ( DEVICE_IMPL_MTL )
+	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
+		// A whole-texture, same-format view needs no MTLTexture view object; alias the handle (non-owning).
+		view->mtl.texture = tex->mtl.texture;
+	}
+#endif
+	return RI_SUCCESS;
+}
+
+int InitRITextureFaceView( struct RIDevice_s *dev, const struct RITextureDesc_s *desc, const struct RITexture_s *tex,
+	struct RITextureView_s *view, uint32_t face )
+{
+	memset( view, 0, sizeof( *view ) );
+	view->cookie = hash_random();
+#if ( DEVICE_IMPL_VULKAN )
+	if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+		{
+			const struct RIFormatProps_s *props = GetRIFormatProps( desc->format );
+			VkImageSubresourceRange range = { 0 };
+			range.aspectMask = props->isDepth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+			range.baseArrayLayer = face; // a cube face is array layer 0..5 of a CUBE_COMPATIBLE 2D image
+			range.levelCount = 1;
+			range.layerCount = 1;
+
 			VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
 			usageInfo.usage = RI_VK_TextureUsage( desc->usage );
 
@@ -1502,16 +1544,14 @@ int InitRITextureView( struct RIDevice_s *dev, const struct RITextureDesc_s *des
 			createInfo.image = tex->vk.image;
 			if( !VK_WrapResult( vkCreateImageView( dev->vk.device, &createInfo, NULL, &view->vk.image ) ) )
 				return RI_FAIL;
+			return RI_SUCCESS;
 		}
 	}
 #endif
-#if ( DEVICE_IMPL_MTL )
-	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
-		// A whole-texture, same-format view needs no MTLTexture view object; alias the handle (non-owning).
-		view->mtl.texture = tex->mtl.texture;
-	}
-#endif
-	return RI_SUCCESS;
+	// Metal: the mtlc bindings do not expose per-slice texture views yet; cubemap face
+	// rendering is Vulkan-only for now (the capture gates on this).
+	(void)dev; (void)tex; (void)desc; (void)face;
+	return RI_FAIL;
 }
 
 void RIDeferFreeTexture( struct RIFree_s **freeList, struct RITexture_s *tex, struct RITextureView_s *view )

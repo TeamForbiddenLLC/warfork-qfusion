@@ -1110,7 +1110,7 @@ static void Shaderpass_MapExt( shader_t *shader, shaderpass_t *pass, int addFlag
 			r_shaderHasLightmapPass = true;
 
 			pass->tcgen = TC_GEN_LIGHTMAP;
-			pass->flags = ( pass->flags & ~( SHADERPASS_PORTALMAP ) ) | SHADERPASS_LIGHTMAP;
+			pass->flags = ( pass->flags & ~( SHADERPASS_PORTALMAP|SHADERPASS_SURFCUBEMAP ) ) | SHADERPASS_LIGHTMAP;
 			pass->anim_fps = 0;
 			pass->images[0] = NULL;
 			return;
@@ -1118,12 +1118,21 @@ static void Shaderpass_MapExt( shader_t *shader, shaderpass_t *pass, int addFlag
 		else if( !strcmp( token, "portalmap" ) || !strcmp( token, "mirrormap" ) )
 		{
 			pass->tcgen = TC_GEN_PROJECTION;
-			pass->flags = ( pass->flags & ~( SHADERPASS_LIGHTMAP ) ) | SHADERPASS_PORTALMAP;
+			pass->flags = ( pass->flags & ~( SHADERPASS_LIGHTMAP|SHADERPASS_SURFCUBEMAP ) ) | SHADERPASS_PORTALMAP;
 			pass->anim_fps = 0;
 			pass->images[0] = NULL;
 			if( ( shader->flags & SHADER_PORTAL ) && ( shader->sort == SHADER_SORT_PORTAL ) )
 				shader->sort = 0; // reset sorting so we can figure it out later. FIXME?
 			shader->flags |= SHADER_PORTAL|( r_portalmaps->integer ? SHADER_PORTAL_CAPTURE : 0 );
+			return;
+		}
+		else if( !strcmp( token, "cubemap" ) )
+		{
+			pass->tcgen = TC_GEN_REFLECTION;
+			pass->flags = ( pass->flags & ~( SHADERPASS_LIGHTMAP|SHADERPASS_PORTALMAP ) ) | SHADERPASS_SURFCUBEMAP;
+			pass->anim_fps = 0;
+			pass->images[0] = NULL;
+			shader->flags |= SHADER_CUBEMAP_CAPTURE;
 			return;
 		}
 		else
@@ -1134,7 +1143,7 @@ static void Shaderpass_MapExt( shader_t *shader, shaderpass_t *pass, int addFlag
 
 	flags = Shader_SetImageFlags( shader ) | addFlags;
 	pass->tcgen = TC_GEN_BASE;
-	pass->flags &= ~( SHADERPASS_LIGHTMAP|SHADERPASS_PORTALMAP );
+	pass->flags &= ~( SHADERPASS_LIGHTMAP|SHADERPASS_PORTALMAP|SHADERPASS_SURFCUBEMAP );
 	pass->anim_fps = 0;
 	pass->images[0] = Shader_FindImage( shader, token, flags );
 }
@@ -1149,7 +1158,7 @@ static void Shaderpass_AnimMapExt( shader_t *shader, shaderpass_t *pass, int add
 	flags = Shader_SetImageFlags( shader ) | addFlags;
 
 	pass->tcgen = TC_GEN_BASE;
-	pass->flags &= ~( SHADERPASS_LIGHTMAP|SHADERPASS_PORTALMAP );
+	pass->flags &= ~( SHADERPASS_LIGHTMAP|SHADERPASS_PORTALMAP|SHADERPASS_SURFCUBEMAP );
 	pass->anim_fps = Shader_ParseFloat( ptr );
 	pass->anim_numframes = 0;
 
@@ -1176,7 +1185,7 @@ static void Shaderpass_CubeMapExt( shader_t *shader, shaderpass_t *pass, int add
 	token = Shader_ParseString( ptr );
 	flags = Shader_SetImageFlags( shader ) | addFlags;
 	pass->anim_fps = 0;
-	pass->flags &= ~( SHADERPASS_LIGHTMAP|SHADERPASS_PORTALMAP );
+	pass->flags &= ~( SHADERPASS_LIGHTMAP|SHADERPASS_PORTALMAP|SHADERPASS_SURFCUBEMAP );
 
 	pass->images[0] = R_FindImage( token, NULL, flags|IT_CUBEMAP, r_shaderMinMipSize, shader->imagetags );
 	if( pass->images[0] )
@@ -1237,7 +1246,7 @@ static void Shaderpass_VideoMap( shader_t *shader, shaderpass_t *pass, const cha
 	pass->cin = R_StartCinematic( token );
 	pass->tcgen = TC_GEN_BASE;
 	pass->anim_fps = 0;
-	pass->flags &= ~(SHADERPASS_LIGHTMAP|SHADERPASS_PORTALMAP);
+	pass->flags &= ~(SHADERPASS_LIGHTMAP|SHADERPASS_PORTALMAP|SHADERPASS_SURFCUBEMAP);
 }
 
 static void Shaderpass_Material( shader_t *shader, shaderpass_t *pass, const char **ptr )
@@ -1267,7 +1276,7 @@ static void Shaderpass_Material( shader_t *shader, shaderpass_t *pass, const cha
 	pass->images[1] = pass->images[2] = pass->images[3] = NULL;
 
 	pass->tcgen = TC_GEN_BASE;
-	pass->flags &= ~( SHADERPASS_LIGHTMAP|SHADERPASS_PORTALMAP );
+	pass->flags &= ~( SHADERPASS_LIGHTMAP|SHADERPASS_PORTALMAP|SHADERPASS_SURFCUBEMAP );
 	if( pass->rgbgen.type == RGB_GEN_UNKNOWN )
 		pass->rgbgen.type = RGB_GEN_IDENTITY;
 	
@@ -1354,7 +1363,7 @@ static void Shaderpass_Distortion( shader_t *shader, shaderpass_t *pass, const c
 	R_FreePassCinematics( pass );
 
 	flags = Shader_SetImageFlags( shader );
-	pass->flags &= ~( SHADERPASS_LIGHTMAP|SHADERPASS_PORTALMAP );
+	pass->flags &= ~( SHADERPASS_LIGHTMAP|SHADERPASS_PORTALMAP|SHADERPASS_SURFCUBEMAP );
 	pass->images[0] = pass->images[1] = NULL;
 
 	while( 1 )
@@ -1400,7 +1409,7 @@ static void Shaderpass_Celshade( shader_t *shader, shaderpass_t *pass, const cha
 
 	flags = Shader_SetImageFlags( shader );
 	pass->tcgen = TC_GEN_BASE;
-	pass->flags &= ~( SHADERPASS_LIGHTMAP|SHADERPASS_PORTALMAP );
+	pass->flags &= ~( SHADERPASS_LIGHTMAP|SHADERPASS_PORTALMAP|SHADERPASS_SURFCUBEMAP );
 	if( pass->rgbgen.type == RGB_GEN_UNKNOWN )
 		pass->rgbgen.type = RGB_GEN_IDENTITY;
 

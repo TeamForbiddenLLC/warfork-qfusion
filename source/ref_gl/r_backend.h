@@ -34,6 +34,7 @@ struct shader_s;
 struct mfog_s;
 struct superLightStyle_s;
 struct portalSurface_s;
+struct cubemapGroup_s;
 
 // core
 void RB_Init( void );
@@ -89,6 +90,7 @@ void RB_SetDlightBits( unsigned int dlightBits );
 void RB_SetShadowBits( unsigned int shadowBits );
 void RB_SetBonesData( int numBones, dualquat_t *dualQuats, int maxWeights );
 void RB_SetPortalSurface( const struct portalSurface_s *portalSurface );
+void RB_SetCubemapGroup( const struct cubemapGroup_s *cubemapGroup );
 void RB_SetSkyboxShader( const shader_t *shader );
 void RB_SetSkyboxSide( int side );
 void RB_SetRenderFlags( int flags );

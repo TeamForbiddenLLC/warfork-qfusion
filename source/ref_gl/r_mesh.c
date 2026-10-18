@@ -27,6 +27,7 @@ drawList_t r_worldlist;
 drawList_t r_shadowlist;
 drawList_t r_portalmasklist;
 drawList_t r_portallist, r_skyportallist;
+drawList_t r_cubemaplist;
 
 /*
 * R_InitDrawList
@@ -45,6 +46,7 @@ void R_InitDrawLists( void )
 	R_InitDrawList( &r_portalmasklist );
 	R_InitDrawList( &r_portallist );
 	R_InitDrawList( &r_skyportallist );
+	R_InitDrawList( &r_cubemaplist );
 	R_InitDrawList( &r_shadowlist );
 }
 
@@ -103,23 +105,25 @@ static unsigned int R_PackDistKey( int shaderSort, int dist, int order )
 /*
 * R_PackSortKey
 */
-static unsigned int R_PackSortKey( unsigned int shaderNum, int fogNum, 
-	int portalNum, unsigned int entNum )
+static uint64_t R_PackSortKey( unsigned int shaderNum, int fogNum,
+	int portalNum, int cubemapNum, unsigned int entNum )
 {
-	return (shaderNum & 0x7FF) << 21 | (entNum & 0x7FF) << 10 | 
-		(((portalNum+1) & 0x1F) << 5) | ((unsigned int)(fogNum+1) & 0x1F);
+	return ( ( uint64_t )( shaderNum & 0x7FF ) << 21 ) | ( ( uint64_t )( entNum & 0x7FF ) << 10 ) |
+		( ( uint64_t )( ( portalNum + 1 ) & 0x1F ) << 5 ) | ( ( uint64_t )( ( unsigned int )( fogNum + 1 ) & 0x1F ) ) |
+		( ( uint64_t )( ( cubemapNum + 1 ) & 0x3F ) << 32 );
 }
 
 /*
 * R_UnpackSortKey
 */
-static void R_UnpackSortKey( unsigned int sortKey, unsigned int *shaderNum, int *fogNum, 
-	int *portalNum, unsigned int *entNum )
+static void R_UnpackSortKey( uint64_t sortKey, unsigned int *shaderNum, int *fogNum,
+	int *portalNum, int *cubemapNum, unsigned int *entNum )
 {
-	*shaderNum = (sortKey >> 21) & 0x7FF;
-	*entNum = (sortKey >> 10) & 0x7FF;
-	*portalNum = (signed int)((sortKey >> 5) & 0x1F) - 1;
-	*fogNum = (signed int)(sortKey & 0x1F) - 1;
+	*shaderNum = ( sortKey >> 21 ) & 0x7FF;
+	*entNum = ( sortKey >> 10 ) & 0x7FF;
+	*portalNum = (signed int)( ( sortKey >> 5 ) & 0x1F ) - 1;
+	*fogNum = (signed int)( sortKey & 0x1F ) - 1;
+	*cubemapNum = (signed int)( ( sortKey >> 32 ) & 0x3F ) - 1;
 }
 
 /*
@@ -153,8 +157,8 @@ unsigned R_PackOpaqueOrder( const entity_t *e, const shader_t *shader, bool ligh
 * Calculate sortkey and store info used for batching and sorting.
 * All 3D-geometry passes this function.
 */
-void *R_AddSurfToDrawList( drawList_t *list, const entity_t *e, const mfog_t *fog, const shader_t *shader, 
-	float dist, unsigned int order, const portalSurface_t *portalSurf, void *drawSurf )
+void *R_AddSurfToDrawList( drawList_t *list, const entity_t *e, const mfog_t *fog, const shader_t *shader,
+	float dist, unsigned int order, const portalSurface_t *portalSurf, const cubemapGroup_t *cubemapGroup, void *drawSurf )
 {
 	sortedDrawSurf_t *sds;
 	int shaderSort;
@@ -217,7 +221,8 @@ void *R_AddSurfToDrawList( drawList_t *list, const entity_t *e, const mfog_t *fo
 	sds = &list->drawSurfs[list->numDrawSurfs++];
 	sds->distKey = R_PackDistKey( shaderSort, (int)dist, order );
 	sds->sortKey = R_PackSortKey( shader->id, fog ? fog - rsh.worldBrushModel->fogs : -1,
-		portalSurf ? portalSurf - rn.portalSurfaces : -1, R_ENT2NUM(e) );
+		portalSurf ? portalSurf - rn.portalSurfaces : -1,
+		cubemapGroup ? cubemapGroup - rsh.cubemapGroups : -1, R_ENT2NUM(e) );
 	sds->drawSurf = ( drawSurfaceType_t * )drawSurf;
 
 	return sds;
@@ -409,11 +414,12 @@ static void _R_DrawSurfaces( drawList_t *list )
 {
 	TracyCZoneN( ctx, "_R_DrawSurfaces", 1 );
 	unsigned int i;
-	unsigned int sortKey;
+	uint64_t sortKey;
 	unsigned int shaderNum = 0, prevShaderNum = MAX_SHADERS;
 	unsigned int entNum = 0, prevEntNum = MAX_REF_ENTITIES;
 	int portalNum = -1, prevPortalNum = -100500;
 	int fogNum = -1, prevFogNum = -100500;
+	int cubemapNum = -1, prevCubemapNum = -100500;
 	sortedDrawSurf_t *sds;
 	int drawSurfType;
 	bool batchDrawSurf = false, prevBatchDrawSurf = false;
@@ -421,6 +427,7 @@ static void _R_DrawSurfaces( drawList_t *list )
 	const entity_t *entity;
 	const mfog_t *fog;
 	const portalSurface_t *portalSurface;
+	const cubemapGroup_t *cubemapGroup;
 	float depthmin = 0.0f, depthmax = 0.0f;
 	bool depthHack = false, cullHack = false;
 	bool infiniteProj = false, prevInfiniteProj = false;
@@ -449,18 +456,19 @@ static void _R_DrawSurfaces( drawList_t *list )
 		batchDrawSurf = ( r_batchDrawSurfCb[drawSurfType] ? true : false );
 
 		// decode draw surface properties
-		R_UnpackSortKey( sortKey, &shaderNum, &fogNum, &portalNum, &entNum );
+		R_UnpackSortKey( sortKey, &shaderNum, &fogNum, &portalNum, &cubemapNum, &entNum );
 
 		shader = R_ShaderById( shaderNum );
 		entity = R_NUM2ENT(entNum);
 		fog = fogNum >= 0 ? rsh.worldBrushModel->fogs + fogNum : NULL;
 		portalSurface = portalNum >= 0 ? rn.portalSurfaces + portalNum : NULL;
+		cubemapGroup = cubemapNum >= 0 ? rsh.cubemapGroups + cubemapNum : NULL;
 		entityFX = entity->renderfx;
 		depthWrite = shader->flags & SHADER_DEPTHWRITE ? true : false;
 
 		// see if we need to reset mesh properties in the backend
 		if( !prevBatchDrawSurf || shaderNum != prevShaderNum || fogNum != prevFogNum || 
-			portalNum != prevPortalNum ||
+			portalNum != prevPortalNum || cubemapNum != prevCubemapNum ||
 			( entNum != prevEntNum && !(shader->flags & SHADER_ENTITY_MERGABLE) ) || 
 			entityFX != prevEntityFX ) {
 
@@ -553,6 +561,7 @@ static void _R_DrawSurfaces( drawList_t *list )
 
 				RB_BindShader( entity, shader, fog );
 				RB_SetPortalSurface( portalSurface );
+				RB_SetCubemapGroup( cubemapGroup );
 				RB_SetShadowBits( shadowBits );
 
 				r_drawSurfCb[drawSurfType]( entity, shader, fog, portalSurface, shadowBits, sds->drawSurf );
@@ -563,6 +572,7 @@ static void _R_DrawSurfaces( drawList_t *list )
 			prevFogNum = fogNum;
 			prevBatchDrawSurf = batchDrawSurf;
 			prevPortalNum = portalNum;
+			prevCubemapNum = cubemapNum;
 			prevInfiniteProj = infiniteProj;
 			prevEntityFX = entityFX;
 		}

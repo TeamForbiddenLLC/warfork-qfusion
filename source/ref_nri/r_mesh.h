@@ -53,7 +53,7 @@ typedef struct
 typedef struct
 {
 	unsigned int		distKey;
-	unsigned int		sortKey;
+	uint64_t			sortKey;
 	drawSurfaceType_t	*drawSurf;
 } sortedDrawSurf_t;
 

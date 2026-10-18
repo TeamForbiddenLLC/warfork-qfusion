@@ -1262,6 +1262,80 @@ struct image_s *R_LoadImage( const char *name, uint8_t **pic, int width, int hei
 	return image;
 }
 
+/*
+ * R_InitCubemapTexture
+ *
+ * Creates (or resizes) a cube-map render-target image. The cube is sampled as a whole
+ * through its cube view; the cubemap capture renders each face through a per-face 2D
+ * view (InitRITextureFaceView) with separate per-face depth textures (r_cubemaps.c).
+ * The image is freed by the registration system like any other generic-tag image.
+ */
+image_t *R_InitCubemapTexture( image_t **texture, const char *name, int id,
+	int size, int flags, int tags, int samples )
+{
+	image_t *image;
+	char uploadName[128];
+	int width, height;
+
+	// keep it square, power of two, capped by the requested size
+	for( width = 1; width <= size; width <<= 1 );
+	if( width > size )
+		width >>= 1;
+	height = width;
+
+	if( *texture && ( *texture )->width == width && ( *texture )->height == height )
+		return *texture;
+
+	if( *texture ) {
+		// size change: drop the reference; the registration tags free the old image
+		*texture = NULL;
+	}
+
+	Q_snprintfz( uploadName, sizeof( uploadName ), "***%s_%i***", name, id );
+	image = R_CreateImage( uploadName, width, height, 1, flags | IT_CUBEMAP, 1, tags, samples );
+	if( !image ) {
+		*texture = NULL;
+		return NULL;
+	}
+
+	image->mipNum = 1;
+	image->handle.cookie = hash_random();
+	image->view.cookie = hash_random();
+
+	{
+		const struct RITextureDesc_s desc = {
+			.width = width,
+			.height = height,
+			.format = RI_FORMAT_RGBA8_UNORM,
+			.usage = RI_USAGE_COLOR_ATTACHMENT | RI_USAGE_SHADER_RESOURCE,
+			.cube = 1,
+		};
+
+		if( InitRITexture( &rsh.device, &desc, &image->handle ) != RI_SUCCESS ||
+			InitRITextureView( &rsh.device, &desc, &image->handle, &image->view ) != RI_SUCCESS ) {
+			ri.Com_Printf( S_COLOR_YELLOW "R_InitCubemapTexture: failed to create %ix%i cube '%s'\n", width, height, uploadName );
+			__FreeImage( image );
+			*texture = NULL;
+			return NULL;
+		}
+
+#if ( DEVICE_IMPL_VULKAN )
+		if( RIIsTargetSelected( RI_DEVICE_API_VK ) ) {
+			// image_t convention: the VMA allocation lives in image->vk.vmaAlloc (see R_LoadImage),
+			// so move it out of handle.vk.allocation to keep __FreeGPUImageData's deferred frees whole.
+			image->vk.vmaAlloc = image->handle.vk.allocation;
+			memset( &image->handle.vk.allocation, 0, sizeof( image->handle.vk.allocation ) );
+		}
+#endif
+	}
+
+	image->binding = RIDescriptorSampledImage( &rsh.device, &image->view, RI_RESOURCE_STATE_SHADER_RESOURCE );
+	image->samplerBinding = RIDescriptorSampler( &rsh.device, R_ResolveSamplerDescriptor( image->flags ) );
+
+	*texture = image;
+	return image;
+}
+
 image_t *R_CreateImage( const char *name, int width, int height, int layers, int flags, int minmipsize, int tags, int samples )
 {
 	image_t *image = __R_AllocImage( qCToStrRef( name ) );
@@ -1892,6 +1966,24 @@ static void R_InitWhiteCubemapTexture( int *w, int *h, int *flags, int *samples 
 }
 
 /*
+ * R_InitBlackCubemapTexture
+ */
+static void R_InitBlackCubemapTexture( int *w, int *h, int *flags, int *samples )
+{
+	int i;
+
+	*w = *h = 1;
+	*flags = IT_NOPICMIP | IT_NOCOMPRESS | IT_CUBEMAP;
+	*samples = 3;
+
+	for( i = 0; i < 6; i++ ) {
+		uint8_t *data;
+		data = R_PrepareImageBuffer( QGL_CONTEXT_MAIN, TEXTURE_LOADING_BUF0 + i, 1 * 1 * 3 );
+		data[0] = data[1] = data[2] = 0;
+	}
+}
+
+/*
  * R_InitBlackTexture
  */
 static void R_InitBlackTexture( int *w, int *h, int *flags, int *samples )
@@ -1960,6 +2052,7 @@ static void R_ReleaseBuiltinImages( void )
 	rsh.noTexture = NULL;
 	rsh.whiteTexture = rsh.blackTexture = rsh.greyTexture = NULL;
 	rsh.whiteCubemapTexture = NULL;
+rsh.blackCubemapTexture = NULL;
 	rsh.blankBumpTexture = NULL;
 	rsh.particleTexture = NULL;
 	rsh.coronaTexture = NULL;
@@ -1994,7 +2087,8 @@ void R_InitImages( void )
 		void ( *init )( int *w, int *h, int *flags, int *samples );
 	} textures[] = { { "***r_notexture***", &rsh.noTexture, &R_InitNoTexture },
 					 { "***r_whitetexture***", &rsh.whiteTexture, &R_InitWhiteTexture },
-					 { "***r_whitecubemaptexture***", &rsh.whiteCubemapTexture, &R_InitWhiteCubemapTexture },
+		{ "***r_whitecubemaptexture***", &rsh.whiteCubemapTexture, &R_InitWhiteCubemapTexture },
+		{ "***r_blackcubemaptexture***", &rsh.blackCubemapTexture, &R_InitBlackCubemapTexture },
 					 { "***r_blacktexture***", &rsh.blackTexture, &R_InitBlackTexture },
 					 { "***r_greytexture***", &rsh.greyTexture, &R_InitGreyTexture },
 					 { "***r_blankbumptexture***", &rsh.blankBumpTexture, &R_InitBlankBumpTexture },
@@ -2068,6 +2162,9 @@ void R_FreeUnusedImagesByTags( int tags )
 void R_FreeUnusedImages( void )
 {
 	R_FreeUnusedImagesByTags( ~IMAGE_TAG_BUILTIN );
+
+	memset( rsh.cubemapGroups, 0, sizeof( rsh.cubemapGroups ) );
+	rsh.numCubemapGroups = 0;
 }
 
 /*

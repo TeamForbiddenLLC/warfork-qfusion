@@ -319,6 +319,16 @@ static inline image_t *RB_ShaderpassTex( const shaderpass_t *pass )
 		return rsh.blackTexture;
 	}
 
+	if( pass->flags & SHADERPASS_SURFCUBEMAP ) {
+		// never sample a cube face while it is being captured (feedback loop)
+		if( ( rb.renderFlags & RF_CUBEMAPVIEW )
+			|| !r_cubemaps->integer
+			|| !rb.currentCubemapGroup || !rb.currentCubemapGroup->cube ) {
+			return rsh.blackCubemapTexture;
+		}
+		return rb.currentCubemapGroup->cube;
+	}
+
 	if( ( pass->flags & SHADERPASS_SKYBOXSIDE ) && rb.skyboxShader && rb.skyboxSide >= 0 ) {
 		return rb.skyboxShader->skyboxImages[rb.skyboxSide];
 	}
@@ -1862,6 +1872,7 @@ void RB_BindShader( struct FrameState_s *frame, const entity_t *e, const shader_
 	rb.bonesData.maxWeights = 0;
 
 	rb.currentPortalSurface = NULL;
+	rb.currentCubemapGroup = NULL;
 
 	rb.skyboxShader = NULL;
 	rb.skyboxSide = -1;
@@ -1958,6 +1969,15 @@ void RB_SetPortalSurface( const portalSurface_t *portalSurface )
 {
 	assert( rb.currentShader != NULL );
 	rb.currentPortalSurface = portalSurface;
+}
+
+/*
+ * RB_SetCubemapGroup
+ */
+void RB_SetCubemapGroup( const cubemapGroup_t *cubemapGroup )
+{
+	assert( rb.currentShader != NULL );
+	rb.currentCubemapGroup = cubemapGroup;
 }
 
 /*

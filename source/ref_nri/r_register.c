@@ -71,6 +71,9 @@ cvar_t *r_portalonly;
 cvar_t *r_portalmaps;
 cvar_t *r_portalmaps_maxtexsize;
 
+cvar_t *r_cubemaps;
+cvar_t *r_cubemaps_imagesize;
+
 cvar_t *r_lighting_deluxemapping;
 cvar_t *r_lighting_specular;
 cvar_t *r_lighting_glossintensity;
@@ -206,6 +209,9 @@ static void R_Register( const char *screenshotsPrefix )
 	r_portalonly = Cvar_Get( "r_portalonly", "0", 0 );
 	r_portalmaps = Cvar_Get( "r_portalmaps", "1", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 	r_portalmaps_maxtexsize = Cvar_Get( "r_portalmaps_maxtexsize", "1024", CVAR_ARCHIVE );
+
+	r_cubemaps = Cvar_Get( "r_cubemaps", "1", CVAR_ARCHIVE );
+	r_cubemaps_imagesize = Cvar_Get( "r_cubemaps_imagesize", "256", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 
 	r_lighting_deluxemapping = Cvar_Get( "r_lighting_deluxemapping", "1", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 	r_lighting_specular = Cvar_Get( "r_lighting_specular", "1", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );

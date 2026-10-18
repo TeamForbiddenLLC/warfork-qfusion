@@ -341,7 +341,7 @@ static bool R_AddSpriteToDrawList( const entity_t *e )
 		return false; // cull it because we don't want to sort unneeded things
 
 	if( !R_AddSurfToDrawList( rn.meshlist, e, R_FogForSphere( e->origin, e->radius ), 
-		e->customShader, dist, 0, NULL, &spriteDrawSurf ) ) {
+		e->customShader, dist, 0, NULL, NULL, &spriteDrawSurf ) ) {
 		return false;
 	}
 
@@ -423,7 +423,7 @@ void R_DrawNullSurf( const entity_t *e, const shader_t *shader, const mfog_t *fo
 static bool R_AddNullSurfToDrawList( const entity_t *e )
 {
 	if( !R_AddSurfToDrawList( rn.meshlist, e, R_FogForSphere( e->origin, 0.1f ), 
-		rsh.whiteShader, 0, 0, NULL, &nullDrawSurf ) ) {
+		rsh.whiteShader, 0, 0, NULL, NULL, &nullDrawSurf ) ) {
 		return false;
 	}
 
@@ -952,6 +952,10 @@ static void R_SetupFrame( void )
 
 			// load all world images if not yet
 			R_FinishLoadingImages();
+
+			// build cubemap capture groups for the new world and arm the one-shot capture
+			R_BuildWorldCubemapGroups();
+			rf.pendingCubemapCapture = ( rsh.numCubemapGroups > 0 );
 		
 			//Mod_FixupQ1MipTex(rsh.worldModel);
 		}
@@ -1385,6 +1389,8 @@ void R_RenderView( const refdef_t *fd )
 
 	R_SetupGL();
 
+	R_DrawWorldCubemaps();
+
 	R_DrawPortals();
 
 	if( r_portalonly->integer && !( rn.renderFlags & ( RF_MIRRORVIEW|RF_PORTALVIEW ) ) ) {
@@ -1704,7 +1710,7 @@ void R_RenderDebugSurface( const refdef_t *fd )
 			
 			R_ClearDrawList( rn.portalmasklist );
 			
-			if( R_AddSurfToDrawList( rn.meshlist, R_NUM2ENT(tr.ent), NULL, surf->shader, 0, 0, NULL, surf->drawSurf ) ) {
+			if( R_AddSurfToDrawList( rn.meshlist, R_NUM2ENT(tr.ent), NULL, surf->shader, 0, 0, NULL, NULL, surf->drawSurf ) ) {
 				if( rn.refdef.rdflags & RDF_FLIPPED )
 					RB_FlipFrontFace();
 				

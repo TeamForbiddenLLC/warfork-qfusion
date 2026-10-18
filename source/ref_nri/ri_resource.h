@@ -81,13 +81,17 @@ struct RIBufferDesc_s {
 	uint8_t memoryLocation; // RIMemoryLocation_e
 };
 
-// A single-mip, single-layer, GPU-only 2D texture: the shape of every render target the frontend
+// A single-mip, GPU-only 2D texture: the shape of every render target the frontend
 // allocates itself (shadow maps, portal captures, post-processing pogo buffers). Images loaded from
 // disk keep their own upload path in r_image.c. Created with InitRITexture / InitRITextureView.
+// With desc->cube set the texture is a 6-face cube map (width must equal height): it is sampled
+// as a whole through the cube view, and each face is rendered into through per-face 2D views
+// (InitRITextureFaceView). Faces carry their own depth; the cube carries only color.
 struct RITextureDesc_s {
 	uint16_t width, height;
 	uint8_t format; // RI_Format_e
 	uint32_t usage; // RITextureUsageBits_e bits
+	uint8_t cube;   // allocate as a 6-face cube map
 };
 
 struct RIBuffer_s {
