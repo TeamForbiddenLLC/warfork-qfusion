@@ -146,6 +146,27 @@ models/mapobjects/house4/house4
 	}
 }
 
+models/mapobjects/tree110/leaves0108_s
+{
+	qer_editorimage models/mapobjects/tree110/leaves0108_s
+	qer_alphafunc gequal 0.5
+	surfaceparm nomarks
+	surfaceparm	nonsolid
+	//surfaceparm alphashadow
+	surfaceparm lightfilter      // Use texture's RGB and alpha channels to generate colored alpha
+	surfaceparm trans
+	cull none
+	nopicmip
+	surfaceparm nolightmap
+	
+	{
+		map models/mapobjects/tree110/leaves0108_s
+		alphaFunc GE128
+		rgbGen vertex
+		depthWrite
+	}
+}
+
 //==================================================
 
 models/mapobjects/jumppad/jumppad1
@@ -856,6 +877,28 @@ models/mapobjects/industrial/support01/albedo
 }
 
 
+models/mapobjects/scifi/pillar-mech/phong1_albedo
+{
+	qer_editorimage models/mapobjects/scifi/pillar-mech/albedo.tga
+	//q3map_maxsamplesize 4
+	q3map_minsmooth 1.5
+	q3map_vertexcolor #ffffff
+	glossExponent 75
+	glossIntensity 0.7
+
+	{
+		material models/mapobjects/scifi/pillar-mech/albedo 
+	}
+	
+	{
+		material models/mapobjects/scifi/pillar-mech/albedo_vertexcolor models/mapobjects/scifi/pillar-mech/albedo_norm models/mapobjects/scifi/pillar-mech/albedo_gloss
+		rgbgen vertex
+		alphagen vertex
+		blendfunc blend
+	}
+}
+
+
 models/mapobjects/scifi/doordouble01/door_right
 {
 	qer_editorimage models/mapobjects/scifi/doordouble01/door_right.png
@@ -913,6 +956,61 @@ models/mapobjects/lights/boqu/walllamp1
 	}
 }
 
+models/mapobjects/lights/fluo-pack/albedo
+{
+	qer_editorimage models/mapobjects/lights/fluo-pack/albedo.png
+	surfaceparm nomarks
+	q3map_vertexcolor #ffffff
+
+	{
+		material models/mapobjects/lights/fluo-pack/albedo models/mapobjects/lights/fluo-pack/albedo_norm models/mapobjects/lights/fluo-pack/albedo_gloss models/mapobjects/lights/fluo-pack/albedo_decal
+	}
+}
+
+
+// ------------------
+// ROCKS
+//-------------------
+
+models/mapobjects/rocks/cliffrock/albedo
+{
+	qer_editorimage models/mapobjects/rocks/cliffrock/radiant.tga
+	//q3map_maxsamplesize 4
+	q3map_minsmooth 1.5
+	q3map_vertexcolor #f#ffcc6e
+
+	{
+		material models/mapobjects/rocks/cliffrock/albedo
+		rgbgen vertex
+	}
+	
+//	{
+//		map models/mapobjects/rocks/cliffrock/add.png
+//		rgbGen const 0.25 0.25 0.25
+//		blendFunc add
+//	}
+}
+
+models/mapobjects/rocks/blockyrocks/albedo
+{
+	qer_editorimage models/mapobjects/rocks/blockyrocks/radiant.tga
+	//q3map_maxsamplesize 4
+	q3map_minsmooth 1.5
+	q3map_deluxe_minangle 50
+	q3map_vertexcolor #f#ffcc6e
+
+	{
+		material models/mapobjects/rocks/blockyrocks/albedo models/mapobjects/rocks/blockyrocks/normal
+		rgbgen vertex
+	}
+	
+	{
+		map models/mapobjects/rocks/blockyrocks/add.png
+		rgbGen const 0.25 0.25 0.25
+		blendFunc add
+	}
+}
+
 
 
 //==================================================
@@ -966,67 +1064,6 @@ models/mapobjects/nateleaf1/tree2
         }
 }
 
-textures/natestah/leaf2
-{
-	surfaceparm lightfilter      // Use texture's RGB and alpha channels to generate colored alpha
-	surfaceparm nonsolid
-	surfaceparm nomarks
-	surfaceparm nolightmap
-	surfaceparm noimpact
-	cull disable
-	{
-		map textures/natestah/leaf2.png
-		rgbGen Vertex 
-		depthWrite
-		alphaFunc GE128
-	}
-	{
-		map $lightmap 
-		blendfunc filter
-		rgbGen identity
-	}
-}
-
-textures/natestah/nateswater
-{
-	qer_editorimage textures/natestah/nateswater.png
-	surfaceparm nonsolid
-	surfaceparm trans
-	surfaceparm water
-	cull disable
-	deformVertexes wave 64 sin 0.25 0.25 0 0.5 
-	qer_trans 0.5
-	q3map_globaltexture
-	{
-		map textures/natestah/nateswater.png
-		blendfunc add
-		rgbGen identity
-		tcMod scale 0.5 0.5
-		tcMod scroll 0.025 0.01
-	}
-
-	{
-		map $lightmap 
-		blendfunc filter
-		rgbGen identity
-	}
-}
-
-textures/natestah/nateweb
-{
-	qer_editorimage textures/natestah/nateweb.png
-	surfaceparm noimpact
-	surfaceparm nomarks
-	surfaceparm trans
-	surfaceparm nonsolid
-	surfaceparm nolightmap
-	cull disable	
-	{
-		map textures/natestah/nateweb.png
-		blendfunc add
-		rgbgen identity
-	}
-}
 
 
 

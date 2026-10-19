@@ -1,23 +1,5 @@
 
-textures/leaves/leaves0108_s
-{
-	qer_editorimage textures/leaves/leaves0108_s.png
-	surfaceparm nomarks
-	surfaceparm	nonsolid
-	//surfaceparm alphashadow
-	surfaceparm lightfilter      // Use texture's RGB and alpha channels to generate colored alpha
-	surfaceparm trans
-	cull none
-	nopicmip
-	surfaceparm nolightmap
-	
-	{
-		map textures/leaves/leaves0108_s.png
-		alphaFunc GE128
-		rgbGen vertex
-		depthWrite
-	}
-}
+
 
 vertex/trees/barkdecidious048
 {
@@ -39,3 +21,42 @@ textures/trees/barkdecidious048
 		material textures/trees/barkdecidious048.png
 	}
 }
+
+
+textures/nature/leaf2
+{
+	surfaceparm lightfilter      // Use texture's RGB and alpha channels to generate colored alpha
+	surfaceparm nonsolid
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	surfaceparm noimpact
+	cull disable
+	{
+		map textures/nature/leaf2.png
+		rgbGen Vertex 
+		depthWrite
+		alphaFunc GE128
+	}
+	{
+		map $lightmap 
+		blendfunc filter
+		rgbGen identity
+	}
+}
+
+textures/nature/nateweb
+{
+	qer_editorimage textures/nature/nateweb.png
+	surfaceparm noimpact
+	surfaceparm nomarks
+	surfaceparm trans
+	surfaceparm nonsolid
+	surfaceparm nolightmap
+	cull disable	
+	{
+		map textures/nature/nateweb.png
+		blendfunc add
+		rgbgen identity
+	}
+}
+

@@ -113,3 +113,40 @@ textures/water/watergoo_vcolor
 	endif
 }
 
+
+// This one should be replaced
+
+textures/water/nateswater
+{
+	qer_editorimage textures/world/water/nateswater.tga
+	surfaceparm nonsolid
+	surfaceparm trans
+	surfaceparm water
+	cull disable
+	tessSize 32
+	deformVertexes wave 64 sin 0.25 0.25 0 0.5 
+	qer_trans 0.5
+	q3map_globaltexture
+	
+	{
+		map textures/world/water/nateswater.tga
+		rgbGen identity
+		tcMod scale -0.4 -0.4
+		tcMod scroll -0.01 -0.012
+		tcMod turb 0.25 0.4 1 0.02
+		blendfunc blend
+	}
+	{
+		map textures/world/water/nateswater.tga
+		blendFunc GL_ONE_MINUS_SRC_ALPHA GL_ONE
+		rgbGen const 0.25 0.25 0.25
+		tcMod scale 0.5 0.5
+		tcMod scroll 0.011 0.009
+		tcMod turb 0.15 0.35 1 0.025
+	}
+	{
+		map $lightmap
+		blendFunc filter
+	}
+}
+

@@ -16,6 +16,16 @@ textures/boqu/treadplate_yellow
 	}
 }
 
+textures/boqu2/o2pipe
+{
+	qer_editorimage textures/boqu2/o2pipe.png
+	// images moved to pipes
+	{
+		material textures/pipes/o2pipe textures/pipes/o2pipe_norm textures/pipes/o2pipe_gloss
+	}
+}
+
+
 textures/boqu/hexx
 {	
 	qer_trans 0.5

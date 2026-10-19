@@ -36,6 +36,17 @@ textures/sky/grimmnight
 	}
 }
 
+textures/sky/grimmnight_static
+{
+	qer_editorimage env/grimmnight/grimmnight_ft.png
+	surfaceparm noimpact
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	surfaceparm sky
+	surfaceparm nodlight
+	skyparms env/grimmnight/grimmnight 1500 -
+}
+
 textures/sky/pinksky
 {
 	qer_editorimage textures/sky/pinksky1.blend.png

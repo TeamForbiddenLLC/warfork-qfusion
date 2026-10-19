@@ -1,12 +1,28 @@
-textures/pipes/o2pipe_boqu2
+textures/pipes/o2pipe
 {
-	qer_editorimage textures/boqu2/o2pipe.png
+	qer_editorimage textures/pipes/o2pipe.png
 
 	{
-		material textures/boqu2/o2pipe textures/boqu2/o2pipe_norm textures/boqu2/o2pipe_gloss
+		material textures/pipes/o2pipe textures/pipes/o2pipe_norm textures/pipes/o2pipe_gloss
 	}
 }
 
+textures/pipes/o2pipe_vcolor
+{
+	qer_editorimage textures/pipes/o2pipe_vcolor
+	
+	{
+		material textures/pipes/o2pipe_vcolor textures/pipes/o2pipe_norm textures/pipes/o2pipe_gloss
+		rgbgen vertex
+	}
+	
+	{
+		material textures/pipes/o2pipe_vcolor textures/pipes/o2pipe_norm textures/pipes/o2pipe_gloss
+		rgbgen identity
+		alphagen vertex
+		blendfunc blend
+	}
+}
 
 textures/pipes/tubes1bulge
 {
