@@ -96,6 +96,7 @@ textures/factory/blx_glow2sides
 	qer_editorimage textures/blx/blx_glow2.png
 	cull none
 	surfaceparm nonsolid
+	surfaceparm trans
 	{	
 		map textures/blx/blx_glow2.png
 		blendfunc add
@@ -109,6 +110,7 @@ textures/factory/pillar03_fx
 	qer_editorimage textures/factory/pillar03_fx.png
 	cull none
 	nopicmip
+	surfaceparm trans
 	surfaceparm nomarks
 	surfaceparm nolightmap
 	{
@@ -124,6 +126,7 @@ textures/factory/wave_fx_scroll
 	qer_editorimage textures/factory/wave_fx.png
 	cull none
 	nopicmip
+	surfaceparm trans
 	surfaceparm nomarks
 	surfaceparm nolightmap
 	{
@@ -139,6 +142,7 @@ textures/factory/wave_fx_scroll-
 	qer_editorimage textures/factory/wave_fx.png
 	cull none
 	nopicmip
+	surfaceparm trans
 	surfaceparm nomarks
 	surfaceparm nolightmap
 	{

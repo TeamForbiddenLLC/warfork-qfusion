@@ -278,25 +278,6 @@ textures/hazelh/lightstrip
 	}
 }
 
-textures/hazelh/grate
-{
-	qer_editorimage textures/hazelh/grate.png
-	surfaceparm metalsteps
-	surfaceparm alphashadow
-	surfaceparm nomarks
-	surfaceparm nolightmap
-	surfaceparm trans
-	nopicmip
-	cull none
-
-	{
-		map textures/hazelh/grate.png
-		rgbgen vertex
-		alphafunc GE128
-		depthWrite
-	}
-}
-
 textures/hazelh/glow_orange
 {	
 	nomipmaps

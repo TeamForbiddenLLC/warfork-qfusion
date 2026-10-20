@@ -219,4 +219,22 @@ textures/grates/grid03_orange
 	}
 }
 
+textures/grates/gratehzh
+{
+	qer_editorimage textures/grates/gratehzh
+	qer_alphafunc gequal 0.5
+	surfaceparm metalsteps
+	surfaceparm alphashadow
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	surfaceparm trans
+	nopicmip
+	cull none
 
+	{
+		map textures/grates/gratehzh
+		rgbgen vertex
+		alphafunc GE128
+		depthWrite
+	}
+}
