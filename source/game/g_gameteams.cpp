@@ -139,9 +139,10 @@ bool G_Teams_LockTeam( int team )
 	if( team <= TEAM_SPECTATOR || team >= GS_MAX_TEAMS )
 		return false;
 
-	if( !level.teamlock || teamlist[team].locked )
+	if( teamlist[team].locked )
 		return false;
 
+	level.teamlock = true; 
 	teamlist[team].locked = true;
 	return true;
 }
