@@ -651,15 +651,6 @@ textures/scifi_interior/floorpanel_black
 
 // bricks
 
-textures/scifi_interior/bricks
-{	
-	qer_editorimage textures/scifi_interior/bricks.png
-
-	{
-		material textures/scifi_interior/bricks.png textures/scifi_interior/bricks_norm.png *black
-	}
-}
-
 textures/scifi_interior/bricks_blue
 {	
 	qer_editorimage textures/scifi_interior/bricks_blue.png

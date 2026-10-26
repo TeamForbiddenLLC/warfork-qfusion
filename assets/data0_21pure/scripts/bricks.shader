@@ -89,3 +89,15 @@ textures/bricks/bricks_05_bricks4
 		material textures/bricks/bricks_05_bricks4 textures/bricks/bricks_05_norm textures/bricks/bricks_05_gloss
 	}
 }
+
+
+textures/bricks/whitebricks6
+{	
+	qer_editorimage textures/bricks/whitebricks6.png
+	q3map_chamfer_convexwidth 2
+	q3map_chamfer_concavewidth 1
+
+	{
+		material textures/bricks/whitebricks6 textures/bricks/whitebricks6_norm.png
+	}
+}

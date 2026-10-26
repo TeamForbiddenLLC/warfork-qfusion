@@ -50,30 +50,6 @@ textures/wdm4/fog
 	fogparms ( 0.45 0.55 0.58 ) 1300
 }
 
-textures/wdm4/foglayer
-{
-	qer_editorimage textures/world/wdm4/foglayer.png
-
-	surfaceparm nonsolid
-	surfaceparm trans
-	surfaceparm	nolightmap
-	//cull none
-
-	{
-		map textures/world/wdm4/foglayer.png
-		tcMod scale .04 .04
-		tcMod scroll 0.15 0.15
-		blendfunc blend
-	}
-
-	{
-		map textures/world/wdm4/foglayer.png
-		tcMod scale .04 .04
-		tcMod scroll -0.2 -0.2
-		blendfunc blend
-	}
-}
-
 textures/wdm4/wdm4_teleporter
 {
 	q3map_surfacelight 80
@@ -99,42 +75,6 @@ textures/wdm4/wdm4_teleporter
 		blendfunc add
 		tcMod turb .1 0.25 0 .1
 	}
-}
-
-textures/wdm4/ice_01_lightprojector_mid
-{
-	qer_editorimage textures/blxbis/ice_01.png
-	surfaceparm nolightmap
-	surfaceparm nonsolid
-	surfaceparm trans
-	surfaceparm nomarks
-	q3map_lightimage textures/blxbis/ice_01.png
-	q3map_surfacelight 800
-
-	//{
-	//	map &whiteImage
-	//	alphagen const 0
-	//	alphaFunc GE128
-	//	blendFunc blend
-	//}
-}
-
-textures/wdm4/ice_01_lightprojector_strong
-{
-	qer_editorimage textures/blxbis/ice_01.png
-	surfaceparm nolightmap
-	surfaceparm nonsolid
-	surfaceparm trans
-	surfaceparm nomarks
-	q3map_lightimage textures/blxbis/ice_01.png
-	q3map_surfacelight 1400
-
-	//{
-	//	map &whiteImage
-	//	alphagen const 0
-	//	alphaFunc GE128
-	//	blendFunc blend
-	//}
 }
 
 

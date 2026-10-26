@@ -862,6 +862,16 @@ textures/scifi_interior/grid_orange
 	}
 }
 
+textures/scifi_interior/bricks
+{	
+	qer_editorimage textures/bricks/whitebricks6.png
+	q3map_chamfer_convexwidth 2
+	q3map_chamfer_concavewidth 1
+
+	{
+		material textures/bricks/whitebricks6 textures/bricks/whitebricks6_norm.png
+	}
+}
 
 /////// doh
 
@@ -975,6 +985,8 @@ textures/hazelh/grate
 		depthWrite
 	}
 }
+
+
 
 ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////

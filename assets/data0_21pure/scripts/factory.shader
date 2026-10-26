@@ -594,7 +594,9 @@ textures/factory/trim_04
 	qer_editorimage textures/factory/trim_04_decal.png
 	surfaceparm nomarks
 	surfaceparm nonsolid
+	surfaceparm trans
 	nopicmip
+	polygonOffset
 
 	{
 		material textures/factory/trim_04_decal.png
@@ -608,6 +610,7 @@ textures/factory/trim_04_decal
 	surfaceparm nomarks
 	polygonOffset
 	surfaceparm nonsolid
+	surfaceparm trans
 	nopicmip
 
 	{
