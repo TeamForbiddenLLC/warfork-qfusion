@@ -60,26 +60,3 @@ textures/wdm7/oil
 		tcmod scroll .01 .02
 	}
 }
-
-textures/wdm7/sky
-{
-	qer_editorimage textures/Factory/blx_wt3_sky_orange.png
-	surfaceparm noimpact
-	surfaceparm nolightmap
-	surfaceparm sky
-	q3map_surfacelight 80
-	q3map_sun 1 1 0.75 155 170 70
-	skyParms - - -
-
-	{
-		map textures/Factory/blx_wt3_sky_orange.png
-		tcMod scale 2 2
-		tcMod scroll 0.005 0.005
-	}
-	{
-		map textures/Factory/blx_wt3_sky_orange.png
-		blendfunc add
-		tcMod scale 3 3
-		tcMod scroll 0.01 0.01
-	}
-}

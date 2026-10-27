@@ -1,6 +1,7 @@
 textures/concrete/stucco01
 {
 	qer_editorimage textures/concrete/stucco01.png
+	q3map_chamfer_convexwidth 1.5
 
 	{
 		material
@@ -10,6 +11,7 @@ textures/concrete/stucco01
 textures/concrete/stucco01b
 {
 	qer_editorimage textures/concrete/stucco01b.png
+	q3map_chamfer_convexwidth 1.5
 
 	{
 		material textures/concrete/stucco01b.png textures/concrete/stucco01_norm.png
@@ -19,6 +21,7 @@ textures/concrete/stucco01b
 textures/concrete/stucco01c
 {
 	qer_editorimage textures/concrete/stucco01c.png
+	q3map_chamfer_convexwidth 1.5
 
 	{
 		material textures/concrete/stucco01c.png textures/concrete/stucco01_norm.png
@@ -28,6 +31,7 @@ textures/concrete/stucco01c
 textures/concrete/stucco01e
 {
 	qer_editorimage textures/concrete/stucco01e.png
+	q3map_chamfer_convexwidth 1.5
 
 	{
 		material textures/concrete/stucco01e.png textures/concrete/stucco01_norm.png
@@ -37,6 +41,7 @@ textures/concrete/stucco01e
 textures/concrete/concretecleanstriped
 {
 	qer_editorimage textures/concrete/concretecleanstriped.png
+	q3map_chamfer_convexwidth 1.5
 
 	{
 		material textures/concrete/concretecleanstriped.png textures/concrete/concreteclean_norm.png
@@ -46,6 +51,7 @@ textures/concrete/concretecleanstriped
 textures/concrete/concretegrey
 {
 	qer_editorimage textures/concrete/concretegrey.png
+	q3map_chamfer_convexwidth 1.65
 
 	{
 		material
@@ -55,6 +61,7 @@ textures/concrete/concretegrey
 textures/concrete/concretered
 {
 	qer_editorimage textures/concrete/concretered.png
+	q3map_chamfer_convexwidth 1.65
 
 	{
 		material textures/concrete/concretered.png textures/concrete/concretegrey_norm.png
@@ -64,6 +71,7 @@ textures/concrete/concretered
 textures/concrete/concretegreyandwhite
 {
 	qer_editorimage textures/concrete/concretegreyandwhite.png
+	q3map_chamfer_convexwidth 1.65
 
 	{
 		material textures/concrete/concretegreyandwhite.png textures/concrete/concretegrey_norm.png
@@ -73,6 +81,7 @@ textures/concrete/concretegreyandwhite
 textures/concrete/concretegreyandred
 {
 	qer_editorimage textures/concrete/concretegreyandred.png
+	q3map_chamfer_convexwidth 1.65
 
 	{
 		material textures/concrete/concretegreyandred.png textures/concrete/concretegrey_norm.png
@@ -82,6 +91,7 @@ textures/concrete/concretegreyandred
 textures/concrete/concreteredandwhite
 {
 	qer_editorimage textures/concrete/concreteredandwhite.png
+	q3map_chamfer_convexwidth 1.65
 
 	{
 		material textures/concrete/concreteredandwhite.png textures/concrete/concretegrey_norm.png
@@ -91,6 +101,7 @@ textures/concrete/concreteredandwhite
 textures/concrete/concretecold01
 {
 	qer_editorimage textures/concrete/concretecold01
+	q3map_chamfer_convexwidth 1.75
 
 	{
 		material
@@ -101,6 +112,7 @@ textures/concrete/concretecold01
 textures/concrete/concretecold02
 {
 	qer_editorimage textures/concrete/concretecold02
+	q3map_chamfer_convexwidth 1.75
 
 	{
 		material textures/concrete/concretecold02 textures/concrete/concretecold01_norm
@@ -111,6 +123,8 @@ textures/concrete/concretecold02
 textures/concrete/roadbarrier_concrete
 {
 	qer_editorimage textures/concrete/roadbarrier_concrete
+	q3map_chamfer_convexwidth 1.5
+	q3map_chamfer_concavewidth 0.5
 	
 	{
 		material
@@ -120,7 +134,7 @@ textures/concrete/roadbarrier_concrete
 textures/concrete/concretebunker0068
 {
 	qer_editorimage textures/concrete/concretebunker0068
-	//q3map_chamfer_concavewidth 0.5
+	q3map_chamfer_convexwidth 1.65
 	q3map_deluxe_minangle 24
 
 	{
@@ -142,6 +156,7 @@ textures/concrete/concret7
 textures/concrete/baseblue0060
 {
 	qer_editorimage textures/concrete/concretecold01
+	q3map_chamfer_convexwidth 1.5
 	q3map_chamfer_concavewidth 0.5
 
 	{
@@ -154,6 +169,7 @@ textures/concrete/concrete2
 {
 	// this is the grainy one
 	qer_editorimage textures/concrete/concrete2
+	q3map_chamfer_convexwidth 1.5
 	q3map_chamfer_concavewidth 0.5
 
 	{
@@ -188,4 +204,39 @@ textures/concrete/concreteslab02
 		material textures/concrete/concreteslab02
 	}
 }
+
+textures/concrete/oldplaster2uniform
+{
+	qer_editorimage textures/concrete/oldplaster2uniform
+	q3map_chamfer_convexwidth 1.75
+	//q3map_chamfer_concavewidth 0.5
+
+	{
+		material textures/concrete/oldplaster2uniform
+	}
+}
+
+
+textures/cconcrete/oldplasterdetail
+{
+	qer_editorimage textures/concrete/oldplasterdetail
+	q3map_chamfer_convexwidth 1.75
+	//q3map_chamfer_concavewidth 0.5
+
+	{
+		material textures/concrete/oldplasterdetail
+	}
+}
+
+textures/concrete/plasterred01
+{
+	qer_editorimage textures/concrete/plasterred01
+	q3map_chamfer_convexwidth 1.75
+	//q3map_chamfer_concavewidth 0.5
+
+	{
+		material textures/concrete/plasterred01
+	}
+}
+
 

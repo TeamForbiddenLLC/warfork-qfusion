@@ -1034,6 +1034,17 @@ textures/exwsw/matte_ex_trim_baseboard_02
 	}
 }
 
+textures/exwsw/matte_eX_trim_psimple_04
+{
+	qer_editorimage textures/exwsw/eX_trim_psimple_04.png
+	glossIntensity 0.25
+	glossExponent 70
+
+	{
+		material textures/exwsw/eX_trim_psimple_04 textures/exwsw/eX_trim_psimple_04_norm textures/exwsw/eX_trim_psimple_04_gloss
+	}
+}
+
 textures/fakeads_hor/bigbill6
 {
 	qer_editorimage textures/billboard/bigbill6.png

@@ -1,12 +1,22 @@
 
 textures/sky/stars
 {
-	qer_editorimage textures/sky/stars_reflect.jpg
+	qer_editorimage env/36sky_up
 	surfaceparm sky
 	surfaceparm noimpact
 	surfaceparm nolightmap
 	surfaceparm nomarks
 	skyparmssides env/36sky rt rt rt rt rt 1500 -
+}
+
+textures/sky/autumtrees
+{
+	qer_editorimage env/autumtrees/autumtrees_up
+	surfaceparm sky
+	surfaceparm noimpact
+	surfaceparm nolightmap
+	surfaceparm nomarks
+	skyparms env/autumtrees/autumtrees - -
 }
 
 textures/sky/starsky

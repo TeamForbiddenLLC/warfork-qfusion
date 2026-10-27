@@ -278,12 +278,14 @@ textures/exwsw/matte_eX_wall_01_brown
 	}
 }
 
-textures/exwsw/matte_eX_trim_psimple_04
+textures/exwsw/ex_trim_psimple_04
 {
-	qer_editorimage textures/exwsw/eX_trim_psimple_04.png
+	qer_editorimage textures/exwsw/ex_trim_psimple_04.png
+	glossIntensity 0.25
+	glossExponent 70
 
 	{
-		material textures/exwsw/eX_trim_psimple_04.png textures/exwsw/eX_trim_psimple_04_norm.png
+		material textures/exwsw/ex_trim_psimple_04 textures/exwsw/ex_trim_psimple_04_norm textures/exwsw/ex_trim_psimple_04_gloss
 	}
 }
 
