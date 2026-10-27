@@ -42,7 +42,7 @@ DECLARE_TYPEDEF_METHOD( void, RF_GetScissor, int *x, int *y, int *w, int *h );
 DECLARE_TYPEDEF_METHOD( void, RF_ResetScissor, void );
 DECLARE_TYPEDEF_METHOD( void, RF_SetCustomColor, int num, int r, int g, int b );
 DECLARE_TYPEDEF_METHOD( void, RF_ScreenShot, const char *path, const char *name, const char *fmtstring, bool silent );
-DECLARE_TYPEDEF_METHOD( void, RF_EnvShot, const char *path, const char *name, unsigned pixels );
+DECLARE_TYPEDEF_METHOD( void, RF_EnvShot, const char *path, const char *name, unsigned pixels, bool sky );
 DECLARE_TYPEDEF_METHOD( bool, RF_RenderingEnabled, void );
 DECLARE_TYPEDEF_METHOD( const char *, RF_GetSpeedsMessage, char *out, size_t size );
 DECLARE_TYPEDEF_METHOD( int, RF_GetAverageFramerate, void );
@@ -235,7 +235,7 @@ void RF_GetScissor( int *x, int *y, int *w, int *h ) { ref_import.RF_GetScissor(
 void RF_ResetScissor( void ){ ref_import.RF_ResetScissor();}
 void RF_SetCustomColor( int num, int r, int g, int b ) { ref_import.RF_SetCustomColor(num, r ,g ,b); }
 void RF_ScreenShot( const char *path, const char *name, const char *fmtstring, bool silent) { ref_import.RF_ScreenShot(path, name, fmtstring, silent); }
-void RF_EnvShot( const char *path, const char *name, unsigned pixels) { ref_import.RF_EnvShot(path, name, pixels); }
+void RF_EnvShot( const char *path, const char *name, unsigned pixels, bool sky) { ref_import.RF_EnvShot(path, name, pixels, sky); }
 bool RF_RenderingEnabled( void ){ return ref_import.RF_RenderingEnabled(); }
 const char *RF_GetSpeedsMessage( char *out, size_t size) { return ref_import.RF_GetSpeedsMessage(out, size); }
 int RF_GetAverageFramerate( void ) { return ref_import.RF_GetAverageFramerate(); }
