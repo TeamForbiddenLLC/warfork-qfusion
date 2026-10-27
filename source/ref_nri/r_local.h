@@ -686,8 +686,9 @@ void		R_CinList_f( void );
 // r_cmds.c
 //
 void		R_ScreenShot_f( void );
-void 		R_TakeEnvShot(struct FrameState_s* cmd, const char *path, const char *name, unsigned maxPixels );
+void 		R_TakeEnvShot(struct FrameState_s* cmd, const char *path, const char *name, unsigned maxPixels, bool sky );
 void		R_EnvShot_f( void );
+void		R_EnvShotSky_f( void );
 void		R_ImageList_f( void );
 void		R_ShaderList_f( void );
 void		R_ShaderDump_f( void );

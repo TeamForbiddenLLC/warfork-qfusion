@@ -1295,12 +1295,19 @@ void RF_ScreenShot( const char *path, const char *name, const char *fmtstring, b
 	rsh.screenshot.state = CAPTURE_STATE_RECORD_SCREENSHOT;
 }
 
-void RF_EnvShot( const char *path, const char *name, unsigned pixels )
+void RF_EnvShot( const char *path, const char *name, unsigned pixels, bool sky )
 {
 	if( RF_RenderingEnabled() ) {
-		R_TakeEnvShot( &rsh.frame, path, name, pixels );
+		R_TakeEnvShot( &rsh.frame, path, name, pixels, sky );
 	}
 	// rrf.adapter.cmdPipe->EnvShot( rrf.adapter.cmdPipe, path, name, pixels );
+}
+
+void RF_EnvShotSky( const char *path, const char *name, unsigned pixels )
+{
+	if( RF_RenderingEnabled() ) {
+		R_TakeEnvShot( &rsh.frame, path, name, pixels, true );
+	}
 }
 
 bool RF_RenderingEnabled( void )

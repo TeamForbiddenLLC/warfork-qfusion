@@ -572,10 +572,16 @@ void RF_ScreenShot( const char *path, const char *name, const char *fmtstring, b
 		rrf.adapter.cmdPipe->ScreenShot( rrf.adapter.cmdPipe, path, name, fmtstring, silent );
 }
 
-void RF_EnvShot( const char *path, const char *name, unsigned pixels )
+void RF_EnvShot( const char *path, const char *name, unsigned pixels, bool sky )
 {
 	if( RF_RenderingEnabled() )
-		rrf.adapter.cmdPipe->EnvShot( rrf.adapter.cmdPipe, path, name, pixels );
+		rrf.adapter.cmdPipe->EnvShot( rrf.adapter.cmdPipe, path, name, pixels, sky );
+}
+
+void RF_EnvShotSky( const char *path, const char *name, unsigned pixels )
+{
+	if( RF_RenderingEnabled() )
+		rrf.adapter.cmdPipe->EnvShot( rrf.adapter.cmdPipe, path, name, pixels, true );
 }
 
 bool RF_RenderingEnabled( void )

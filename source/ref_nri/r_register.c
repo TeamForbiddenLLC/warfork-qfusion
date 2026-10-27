@@ -307,6 +307,7 @@ static void R_Register( const char *screenshotsPrefix )
 	Cmd_AddCommand( "shaderdump", R_ShaderDump_f );
 	Cmd_AddCommand( "screenshot", R_ScreenShot_f );
 	Cmd_AddCommand( "envshot", R_EnvShot_f );
+	Cmd_AddCommand( "envshotsky", R_EnvShotSky_f );
 	Cmd_AddCommand( "modellist", Mod_Modellist_f );
 	Cmd_AddCommand( "glslprogramlist", RP_ProgramList_f );
 	Cmd_AddCommand( "cinlist", R_CinList_f );

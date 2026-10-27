@@ -542,8 +542,11 @@ void		R_CinList_f( void );
 //
 void 		R_TakeScreenShot( const char *path, const char *name, const char *fmtString, int x, int y, int w, int h, bool silent, bool media );
 void		R_ScreenShot_f( void );
-void 		R_TakeEnvShot( const char *path, const char *name, unsigned maxPixels );
+void 		R_TakeEnvShot( const char *path, const char *name, unsigned maxPixels, bool sky );
 void		R_EnvShot_f( void );
+void		R_EnvShotSky_f( void );
+void		RF_EnvShot( const char *path, const char *name, unsigned pixels, bool sky );
+void		RF_EnvShotSky( const char *path, const char *name, unsigned pixels );
 void		R_ImageList_f( void );
 void		R_ShaderList_f( void );
 void		R_ShaderDump_f( void );

@@ -195,7 +195,7 @@ void R_ScreenShot_f( void )
 /*
  * R_TakeEnvShot
  */
-void R_TakeEnvShot( const char *path, const char *name, unsigned maxPixels )
+void R_TakeEnvShot( const char *path, const char *name, unsigned maxPixels, bool sky )
 {
 	int i;
 	unsigned size, maxSize;
@@ -205,7 +205,8 @@ void R_TakeEnvShot( const char *path, const char *name, unsigned maxPixels )
 	struct	cubemapSufAndFlip
 	{
 		char *suf; vec3_t angles; int flags;
-	} cubemapShots[6] = {
+	};
+	static const struct cubemapSufAndFlip cubemapShots[6] = {
 		{ "px", { 0, 0, 0 }, IT_FLIPX|IT_FLIPY|IT_FLIPDIAGONAL },
 		{ "nx", { 0, 180, 0 }, IT_FLIPDIAGONAL },
 		{ "py", { 0, 90, 0 }, IT_FLIPY },
@@ -213,9 +214,23 @@ void R_TakeEnvShot( const char *path, const char *name, unsigned maxPixels )
 		{ "pz", { -90, 180, 0 }, IT_FLIPDIAGONAL },
 		{ "nz", { 90, 180, 0 }, IT_FLIPDIAGONAL }
 	};
+	// skyparms-compatible faces: rt bk lf ft up dn, no flips at load time
+	static const struct cubemapSufAndFlip skyShots[6] = {
+		{ "rt", { 0, 0, 180 }, 0 },              // +X  = envshot px + 180 roll
+		{ "bk", { 0, 270, 180 }, 0 },            // -Y  = envshot ny + 180 roll
+		{ "lf", { 0, 180, 180 }, 0 },            // -X  = envshot nx + 180 roll
+		{ "ft", { 0, 90, 180 }, 0 },             // +Y  = envshot py + 180 roll
+		{ "up", { -90, 180, 0 }, 0 },            // +Z  = envshot pz
+		{ "dn", { 90, 180, 0 }, 0 }              // -Z  = envshot nz
+	};
+	const struct cubemapSufAndFlip *shots;
+	int shotCount;
 	
 	if( !R_IsRenderingToScreen() || !rsh.worldModel )
 		return;
+	
+	shots = sky ? skyShots : cubemapShots;
+	shotCount = 6;
 	
 	maxSize = min( min( glConfig.width, glConfig.height ), glConfig.maxTextureSize );
 	if( maxSize > maxPixels )
@@ -225,7 +240,7 @@ void R_TakeEnvShot( const char *path, const char *name, unsigned maxPixels )
 	if( size > maxSize )
 		size >>= 1;
 	
-	checkname_size = strlen( path ) + strlen( name ) + 1 + strlen( cubemapShots[0].suf ) + 4 + 1;
+	checkname_size = strlen( path ) + strlen( name ) + 1 + strlen( shots[0].suf ) + 4 + 1;
 	checkname = alloca( checkname_size );
 	
 	fd = rsc.refdef;
@@ -245,24 +260,51 @@ void R_TakeEnvShot( const char *path, const char *name, unsigned maxPixels )
 	Vector4Set( rn.viewport, fd.x, glConfig.height - size - fd.y, size, size );
 	Vector4Set( rn.scissor, fd.x, glConfig.height - size - fd.y, size, size );
 	
-	for( i = 0; i < 6; i++ )
+	for( i = 0; i < shotCount; i++ )
 	{
-		AnglesToAxis( cubemapShots[i].angles, fd.viewaxis );
+		AnglesToAxis( shots[i].angles, fd.viewaxis );
 		
 		R_RenderView( &fd );
 		
-		Q_snprintfz( checkname, checkname_size, "%s%s_%s", path, name, cubemapShots[i].suf );
+		Q_snprintfz( checkname, checkname_size, "%s%s_%s", path, name, shots[i].suf );
 		COM_DefaultExtension( checkname, ".tga", checkname_size );
 		
 		R_ScreenShot( checkname, 0, 0, size, size,
-					 ( cubemapShots[i].flags & IT_FLIPX ) ? true : false, 
-					 ( cubemapShots[i].flags & IT_FLIPY ) ? true : false, 
-					 ( cubemapShots[i].flags & IT_FLIPDIAGONAL ) ? true : false,
+					 ( shots[i].flags & IT_FLIPX ) ? true : false, 
+					 ( shots[i].flags & IT_FLIPY ) ? true : false, 
+					 ( shots[i].flags & IT_FLIPDIAGONAL ) ? true : false,
 					 false );
 	}
 	
 	// render non-bmodel entities again
 	rn.renderFlags &= ~RF_CUBEMAPVIEW;
+}
+
+/*
+ * R_EnvShotSky_f
+ */
+void R_EnvShotSky_f( void )
+{
+	const char *writedir, *gamedir;
+	int path_size;
+	char *path;
+
+	if( !rsh.worldModel )
+		return;
+
+	if( ri.Cmd_Argc() != 3 )
+	{
+		Com_Printf( "usage: envshotsky <name> <size>\n" );
+		return;
+	}
+
+	writedir = FS_WriteDirectory();
+	gamedir = FS_GameDirectory();
+	path_size = strlen( writedir ) + 1 + strlen( gamedir ) + 1 + strlen( "env/" ) + 1;
+	path = alloca( path_size );
+	Q_snprintfz( path, path_size, "%s/%s/env/", writedir, gamedir );
+
+	RF_EnvShotSky( path, ri.Cmd_Argv( 1 ), atoi( ri.Cmd_Argv( 2 ) ) );
 }
 
 /*
@@ -289,7 +331,7 @@ void R_EnvShot_f( void )
 	path = alloca( path_size );
 	Q_snprintfz( path, path_size, "%s/%s/env/", writedir, gamedir );
 
-	RF_EnvShot( path, ri.Cmd_Argv( 1 ), atoi( ri.Cmd_Argv( 2 ) ) );
+	RF_EnvShot( path, ri.Cmd_Argv( 1 ), atoi( ri.Cmd_Argv( 2 ) ), false );
 }
 
 /*

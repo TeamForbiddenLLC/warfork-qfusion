@@ -94,7 +94,7 @@ void R_ScreenShot_f( void )
 /*
  * R_TakeEnvShot
  */
-void R_TakeEnvShot(struct FrameState_s* cmd, const char *path, const char *name, unsigned maxPixels )
+void R_TakeEnvShot(struct FrameState_s* cmd, const char *path, const char *name, unsigned maxPixels, bool sky )
 {
 	// Never ported to ref_nri: this needs the six cubemap faces rendered offscreen, which the backend
 	// has no path for yet. It used to abort here instead of saying so.
@@ -102,8 +102,8 @@ void R_TakeEnvShot(struct FrameState_s* cmd, const char *path, const char *name,
 }
 
 /*
-* R_EnvShot_f
-*/
+ * R_EnvShot_f
+ */
 void R_EnvShot_f( void )
 {
 	const char *writedir, *gamedir;
@@ -125,7 +125,34 @@ void R_EnvShot_f( void )
 	path = alloca( path_size );
 	Q_snprintfz( path, path_size, "%s/%s/env/", writedir, gamedir );
 
-	RF_EnvShot( path, Cmd_Argv( 1 ), atoi( Cmd_Argv( 2 ) ) );
+	RF_EnvShot( path, Cmd_Argv( 1 ), atoi( Cmd_Argv( 2 ) ), false );
+}
+
+/*
+ * R_EnvShotSky_f
+ */
+void R_EnvShotSky_f( void )
+{
+	const char *writedir, *gamedir;
+	int path_size;
+	char *path;
+
+	if( !rsh.worldModel )
+		return;
+
+	if( Cmd_Argc() != 3 )
+	{
+		Com_Printf( "usage: envshotsky <name> <size>\n" );
+		return;
+	}
+
+	writedir = FS_WriteDirectory();
+	gamedir = FS_GameDirectory();
+	path_size = strlen( writedir ) + 1 + strlen( gamedir ) + 1 + strlen( "env/" ) + 1;
+	path = alloca( path_size );
+	Q_snprintfz( path, path_size, "%s/%s/env/", writedir, gamedir );
+
+	RF_EnvShotSky( path, Cmd_Argv( 1 ), atoi( Cmd_Argv( 2 ) ) );
 }
 
 /*

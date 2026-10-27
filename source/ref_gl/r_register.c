@@ -1032,6 +1032,7 @@ static void R_Register( const char *screenshotsPrefix )
 	ri.Cmd_AddCommand( "shaderdump", R_ShaderDump_f );
 	ri.Cmd_AddCommand( "screenshot", R_ScreenShot_f );
 	ri.Cmd_AddCommand( "envshot", R_EnvShot_f );
+	ri.Cmd_AddCommand( "envshotsky", R_EnvShotSky_f );
 	ri.Cmd_AddCommand( "modellist", Mod_Modellist_f );
 	ri.Cmd_AddCommand( "gfxinfo", R_GfxInfo_f );
 	ri.Cmd_AddCommand( "glslprogramlist", RP_ProgramList_f );
