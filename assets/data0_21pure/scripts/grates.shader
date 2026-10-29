@@ -10,7 +10,7 @@ textures/grates/fence01
 	nopicmip
 	nomipmaps
 	q3map_forceMeta
-	q3map_lightmapsamplesize 64
+	q3map_lightmapsamplesize 16
 	
 	{
 		// notice: 01 doesn't use the gloss map
@@ -30,7 +30,7 @@ textures/grates/fence01_noshadow
 	nopicmip
 	nomipmaps
 	q3map_forceMeta
-	q3map_lightmapsamplesize 64
+	q3map_lightmapsamplesize 16
 	
 	{
 		// notice: 01 doesn't use the gloss map
@@ -51,7 +51,7 @@ textures/grates/fence02
 	nopicmip
 	nomipmaps
 	q3map_forceMeta
-	q3map_lightmapsamplesize 64
+	q3map_lightmapsamplesize 16
 
 	{
 		material textures/grates/fence02.png textures/grates/fence01_norm.png textures/grates/fence01_gloss.png
@@ -70,7 +70,7 @@ textures/grates/fence02_noshadow
 	nopicmip
 	nomipmaps
 	q3map_forceMeta
-	q3map_lightmapsamplesize 64
+	q3map_lightmapsamplesize 16
 	
 	{
 		material textures/grates/fence02.png textures/grates/fence01_norm.png textures/grates/fence01_gloss.png
@@ -90,7 +90,7 @@ textures/grates/fence03
 	nopicmip
 	nomipmaps
 	q3map_forceMeta
-	q3map_lightmapsamplesize 64
+	q3map_lightmapsamplesize 16
 
 	{
 		material textures/grates/fence03.png textures/grates/fence01_norm.png textures/grates/fence01_gloss.png
@@ -111,7 +111,7 @@ textures/grates/fence03_noshadow
 	nopicmip
 	nomipmaps
 	q3map_forceMeta
-	q3map_lightmapsamplesize 64
+	q3map_lightmapsamplesize 16
 	
 	{
 		material textures/grates/fence03.png 
@@ -150,8 +150,6 @@ textures/grates/grid02
 	cull none
 	nopicmip
 	nomipmaps
-	q3map_forceMeta
-	q3map_lightmapsamplesize 64
 
 	{
 		material textures/grates/grid02.png
@@ -169,7 +167,6 @@ textures/grates/grid03
 	surfaceparm trans
 	surfaceparm nomarks
 	surfaceparm alphashadow
-	sort additive
 	cull none
 	nopicmip
 	nomipmaps
@@ -218,6 +215,63 @@ textures/grates/grid03_orange
 		depthWrite
 	}
 }
+
+textures/grates/grid04
+{
+	qer_alphafunc gequal 0.5
+	qer_editorimage textures/grates/grid04.png
+	qer_alphafunc gequal 0.5
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm alphashadow
+	cull none
+	nopicmip
+	smallestmipmapsize 8
+	glossExponent 100
+	glossIntensity 0.25
+
+	{
+		material textures/grates/grid04.png textures/grates/grid04_norm $whiteimage
+		alphaFunc GE128
+		depthWrite
+	}
+}
+
+
+textures/grates/grid06
+{
+	qer_alphafunc gequal 0.5
+	qer_editorimage textures/grates/grid06.png
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm alphashadow
+	cull none
+	nopicmip
+
+	{
+		material textures/grates/grid06.png textures/grates/grid05_norm.png
+		alphafunc GE128
+		depthWrite
+	}
+}
+
+textures/grates/grid05
+{
+	qer_alphafunc gequal 0.5
+	qer_editorimage textures/grates/grid05.png
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm alphashadow
+	cull none
+	nopicmip
+
+	{
+		material textures/grates/grid05.png textures/grates/grid05_norm.png
+		alphafunc GE128
+		depthWrite
+	}
+}
+
 
 textures/grates/gratehzh
 {

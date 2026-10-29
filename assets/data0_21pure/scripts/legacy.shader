@@ -317,6 +317,60 @@ textures/wsw_city1/metal1_vertex
 	}
 }
 
+textures/wsw_city1/grid2
+{
+	qer_editorimage textures/grates/grid04.png
+	qer_alphafunc gequal 0.5
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm alphashadow
+	cull none
+	nopicmip
+	smallestmipmapsize 8
+	glossExponent 100
+	glossIntensity 0.25
+
+	{
+		material textures/grates/grid04.png textures/grates/grid04_norm $whiteimage
+		alphaFunc GE128
+		depthWrite
+	}
+}
+
+
+textures/wsw_city1/grid_a
+{
+	qer_editorimage textures/grates/grid06.png
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm alphashadow
+	cull none
+	nopicmip
+
+	{
+		material textures/grates/grid06.png textures/grates/grid05_norm.png
+		alphafunc GE128
+		depthWrite
+	}
+}
+
+textures/wsw_city1/grid
+{
+	qer_editorimage textures/grates/grid05.png
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm alphashadow
+	cull none
+	nopicmip
+
+	{
+		material textures/grates/grid05.png textures/grates/grid05_norm.png
+		alphafunc GE128
+		depthWrite
+	}
+}
+
+
 ///// wsw_cave1
 
 textures/wsw_cave1/scratchedmetal1

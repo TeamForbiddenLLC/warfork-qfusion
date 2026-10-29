@@ -12,6 +12,10 @@ textures/concrete/concreteslab02_norm
 textures/bricks/bricksbrown
 textures/bricks/bricksbrown_norm
 
+// CCO License
+textures/factory/construction_debris
+Construction debris by Tarox https://www.materialmaker.org/material?id=969
+
 
 // Skybox
 

@@ -1050,6 +1050,7 @@ models/mapobjects/orb/orb
 models/mapobjects/nateleaf1/tree2
 {
 	qer_alphafunc gequal 0.5
+	qer_editorimage models/mapobjects/nateleaf1/tree2
     cull disable
    	surfaceparm lightfilter      // Use texture's RGB and alpha channels to generate colored alpha
 	surfaceparm nonsolid
@@ -1058,11 +1059,30 @@ models/mapobjects/nateleaf1/tree2
 	surfaceparm nolightmap
 
         {
-            map models/mapobjects/nateleaf1/tree2.png
+            map models/mapobjects/nateleaf1/tree2
             alphaFunc GE128
 			depthWrite
 			rgbGen vertex
         }
+}
+
+models/mapobjects/nateleaf1/ivyleaf
+{
+	qer_alphafunc gequal 0.5
+	qer_editorimage models/mapobjects/nateleaf1/ivyleaf
+    cull disable
+   	surfaceparm lightfilter      // Use texture's RGB and alpha channels to generate colored alpha
+	surfaceparm nonsolid
+	surfaceparm nomarks
+	surfaceparm noimpact
+	surfaceparm nolightmap
+
+	{
+		map models/mapobjects/nateleaf1/ivyleaf
+		alphaFunc GE128
+		depthWrite
+		rgbGen vertex
+	}
 }
 
 

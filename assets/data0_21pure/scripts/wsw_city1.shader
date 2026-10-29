@@ -375,38 +375,6 @@ models/mapobjects/Pillar_Statue/Titan_PillarCompleteMap
 	}
 }
 
-textures/wsw_city1/grid_a
-{
-	qer_editorimage textures/wsw_city1/grid_a.png
-	surfaceparm trans
-	surfaceparm nomarks
-	surfaceparm alphashadow
-	cull none
-	nopicmip
-
-	{
-		material textures/wsw_city1/grid_a.png textures/wsw_city1/grid_a_norm.png
-		alphafunc GE128
-		depthWrite
-	}
-}
-
-textures/wsw_city1/grid
-{
-	qer_editorimage textures/wsw_city1/grid.png
-	surfaceparm trans
-	surfaceparm nomarks
-	surfaceparm alphashadow
-	cull none
-	nopicmip
-
-	{
-		material textures/wsw_city1/grid.png textures/wsw_city1/grid_norm.png
-		alphafunc GE128
-		depthWrite
-	}
-}
-
 textures/wsw_city1/lighthalo1_high
 {
 	qer_editorimage textures/wsw_flareshalos/glow_halo_white.png
@@ -490,6 +458,7 @@ models/mapobjects/betastation
 textures/wsw_city1/grate_nosolid_doublesided
 {
 	qer_editorimage textures/wsw_city1/grate.png
+	q3map_maxsamplesize 3
 	surfaceparm nomarks
 	surfaceparm alphashadow
 	surfaceparm nonsolid
@@ -506,10 +475,42 @@ textures/wsw_city1/grate_nosolid_doublesided
 textures/wsw_city1/grate_nosolid
 {
 	qer_editorimage textures/wsw_city1/grate.png
+	q3map_maxsamplesize 3
 	surfaceparm nomarks
 	surfaceparm alphashadow
 	surfaceparm nonsolid
 	nopicmip
+
+	{
+		material textures/wsw_city1/grate.png
+		alphaFunc GE128
+		depthWrite
+	}
+}
+
+textures/wsw_city1/grate
+{
+	qer_editorimage textures/wsw_city1/grate.png
+	q3map_maxsamplesize 3
+	surfaceparm nomarks
+	surfaceparm alphashadow
+	nopicmip
+
+	{
+		material textures/wsw_city1/grate.png
+		alphaFunc GE128
+		depthWrite
+	}
+}
+
+textures/wsw_city1/grate_doublesided
+{
+	qer_editorimage textures/wsw_city1/grate.png
+	q3map_maxsamplesize 3
+	surfaceparm nomarks
+	surfaceparm alphashadow
+	nopicmip
+	cull none
 
 	{
 		material textures/wsw_city1/grate.png

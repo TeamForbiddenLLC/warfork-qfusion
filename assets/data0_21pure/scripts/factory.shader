@@ -805,3 +805,19 @@ if deluxe
 	}
 endif
 }
+
+
+
+textures/factory/construction_debris
+{
+	qer_editorimage textures/factory/construction_debris.png
+	q3map_deluxe_minangle 32
+	q3map_chamfer_convexwidth 4
+	q3map_chamfer_concavewidth 4
+	offsetmappingscale 2
+	surfaceparm dust
+
+	{
+		material textures/factory/construction_debris.png textures/factory/construction_debris.png
+	}
+}
