@@ -12,12 +12,14 @@ textures/concrete/concreteslab02_norm
 textures/bricks/bricksbrown
 textures/bricks/bricksbrown_norm
 
-// CCO License
+// CCO License (The CC0 (Creative Commons Zero) tool is a public domain dedication, meaning it has no conditions or restrictions.)
 textures/factory/construction_debris
 Construction debris by Tarox https://www.materialmaker.org/material?id=969
 
+textures/terrain/chipped_dirt
+Chipped ground dirt by Nic https://www.materialmaker.org/material?id=742
 
-// Skybox
 
+// CCA License (attribution required. Any use and modifications allowed)
 textures/sky/autumtrees
 "FREE - SkyBox Autumn Forest" (https://skfb.ly/oIRYs) by Paul is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).

@@ -74,3 +74,15 @@ textures/terrain/drydirtdark
 		material textures/terrain/drydirtdark textures/terrain/drydirtdark_norm -
 	}
 }
+
+textures/terrain/chipped_dirt
+{
+	qer_editorimage textures/terrain/chipped_dirt
+	q3map_chamfer_convexwidth 6
+	q3map_chamfer_concavewidth 4
+
+	{
+		material textures/terrain/chipped_dirt textures/terrain/chipped_dirt_norm -
+		tcMod scale 3 3
+	}
+}

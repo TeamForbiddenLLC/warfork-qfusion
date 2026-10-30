@@ -149,7 +149,14 @@ textures/cha0s_ws/concrete-4
 	}
 }
 
+textures/cha0s_ws/concrete-pit-rows_stripes
+{
+	qer_editorimage textures/cha0s_ws/concrete-pit-rows
 
+	{
+		material textures/cha0s_ws/concrete-pit-rows textures/cha0s_ws/concrete-pit-rows_norm
+	}
+}
 
 // refly bricks
 textures/bricks_vertex/vertex_redbricks_base_01

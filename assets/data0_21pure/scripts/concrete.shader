@@ -217,7 +217,7 @@ textures/concrete/oldplaster2uniform
 }
 
 
-textures/cconcrete/oldplasterdetail
+textures/concrete/oldplasterdetail
 {
 	qer_editorimage textures/concrete/oldplasterdetail
 	q3map_chamfer_convexwidth 1.75
