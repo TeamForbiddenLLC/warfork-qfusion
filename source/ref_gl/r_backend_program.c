@@ -539,11 +539,15 @@ static inline const image_t *RB_ShaderpassTex( const shaderpass_t *pass )
 	}
 
 	if( pass->flags & SHADERPASS_SURFCUBEMAP ) {
-		// never sample a cube face while it is being captured (feedback loop)
-		if( ( rb.renderFlags & RF_CUBEMAPVIEW )
-			|| !r_cubemaps->integer
-			|| !rb.currentCubemapGroup || !rb.currentCubemapGroup->cube ) {
-			return rsh.blackCubemapTexture;
+		// feature off: hard grey
+		if( !r_cubemaps->integer )
+			return rsh.greyCubemapTexture;
+
+		// no cube yet or this group is being captured -> use fallback
+		// other groups' completed cubes remain sampleable
+		if( !rb.currentCubemapGroup || !rb.currentCubemapGroup->cube
+			|| rb.currentCubemapGroup->beingCaptured ) {
+			return rsh.fallbackCubemapTexture ? rsh.fallbackCubemapTexture : rsh.greyCubemapTexture;
 		}
 		return rb.currentCubemapGroup->cube;
 	}

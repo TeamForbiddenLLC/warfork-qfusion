@@ -906,6 +906,8 @@ static void R_SetupFrame( void )
 
 			// build cubemap capture groups for the new world and arm the one-shot capture
 			R_BuildWorldCubemapGroups();
+			if( rsh.numCubemapGroups > 0 )
+				R_RequestCubemapFallback();	// loads synchronously, before the capture
 			rf.pendingCubemapCapture = ( rsh.numCubemapGroups > 0 );
 		}
 	}

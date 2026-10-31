@@ -955,6 +955,8 @@ static void R_SetupFrame( void )
 
 			// build cubemap capture groups for the new world and arm the one-shot capture
 			R_BuildWorldCubemapGroups();
+			if( rsh.numCubemapGroups > 0 )
+				R_RequestCubemapFallback();	// IT_SYNC: loads inline, before the capture
 			rf.pendingCubemapCapture = ( rsh.numCubemapGroups > 0 );
 		
 			//Mod_FixupQ1MipTex(rsh.worldModel);

@@ -180,8 +180,10 @@ typedef struct portalSurface_s
 typedef struct cubemapGroup_s
 {
 	vec3_t			mins, maxs;
-	vec3_t			centre;				// capture origin: bounds midpoint snapped onto the (nudged) plane
-	cplane_t		plane;				// world-space plane, nudged like a portal plane
+	vec3_t			centre;				// capture origin: bounds midpoint; snapped onto the (nudged) plane for planar groups
+	bool			nonPlanar;			// true: probe = bounds centre (trisoup/patch), never merged, plane unused
+	bool			beingCaptured;		// true while this group's cube is the attached render target; set/cleared around each face render
+	cplane_t		plane;				// world-space plane, nudged; only valid for planar groups
 	const shader_t	*shader;			// backref for console dumps
 	image_t			*cube;				// IT_CUBEMAP framebuffer image, NULL until captured
 } cubemapGroup_t;
@@ -274,7 +276,8 @@ typedef struct
 	image_t			*noTexture;					// use for bad textures
 	image_t			*whiteTexture;
 	image_t			*whiteCubemapTexture;
-	image_t			*blackCubemapTexture;
+	image_t			*greyCubemapTexture;
+	image_t			*fallbackCubemapTexture;	// capture-time env fallback: map-specific set, else shipped generic; NULL = grey
 	image_t			*blackTexture;
 	image_t			*greyTexture;
 	image_t			*blankBumpTexture;
@@ -738,6 +741,7 @@ void R_BuildTangentVectors( int numVertexes, vec4_t *xyzArray, vec4_t *normalsAr
 extern drawList_t r_cubemaplist;
 
 void R_BuildWorldCubemapGroups( void );
+void R_RequestCubemapFallback( void );
 void R_DrawWorldCubemaps( void );
 
 //

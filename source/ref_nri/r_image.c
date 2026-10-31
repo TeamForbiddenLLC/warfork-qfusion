@@ -1966,9 +1966,9 @@ static void R_InitWhiteCubemapTexture( int *w, int *h, int *flags, int *samples 
 }
 
 /*
- * R_InitBlackCubemapTexture
+ * R_InitGreyCubemapTexture
  */
-static void R_InitBlackCubemapTexture( int *w, int *h, int *flags, int *samples )
+static void R_InitGreyCubemapTexture( int *w, int *h, int *flags, int *samples )
 {
 	int i;
 
@@ -1979,7 +1979,7 @@ static void R_InitBlackCubemapTexture( int *w, int *h, int *flags, int *samples 
 	for( i = 0; i < 6; i++ ) {
 		uint8_t *data;
 		data = R_PrepareImageBuffer( QGL_CONTEXT_MAIN, TEXTURE_LOADING_BUF0 + i, 1 * 1 * 3 );
-		data[0] = data[1] = data[2] = 0;
+		data[0] = data[1] = data[2] = 127;
 	}
 }
 
@@ -2052,7 +2052,7 @@ static void R_ReleaseBuiltinImages( void )
 	rsh.noTexture = NULL;
 	rsh.whiteTexture = rsh.blackTexture = rsh.greyTexture = NULL;
 	rsh.whiteCubemapTexture = NULL;
-rsh.blackCubemapTexture = NULL;
+rsh.greyCubemapTexture = NULL;
 	rsh.blankBumpTexture = NULL;
 	rsh.particleTexture = NULL;
 	rsh.coronaTexture = NULL;
@@ -2088,7 +2088,7 @@ void R_InitImages( void )
 	} textures[] = { { "***r_notexture***", &rsh.noTexture, &R_InitNoTexture },
 					 { "***r_whitetexture***", &rsh.whiteTexture, &R_InitWhiteTexture },
 		{ "***r_whitecubemaptexture***", &rsh.whiteCubemapTexture, &R_InitWhiteCubemapTexture },
-		{ "***r_blackcubemaptexture***", &rsh.blackCubemapTexture, &R_InitBlackCubemapTexture },
+		{ "***r_greycubemaptexture***", &rsh.greyCubemapTexture, &R_InitGreyCubemapTexture },
 					 { "***r_blacktexture***", &rsh.blackTexture, &R_InitBlackTexture },
 					 { "***r_greytexture***", &rsh.greyTexture, &R_InitGreyTexture },
 					 { "***r_blankbumptexture***", &rsh.blankBumpTexture, &R_InitBlankBumpTexture },
@@ -2165,6 +2165,7 @@ void R_FreeUnusedImages( void )
 
 	memset( rsh.cubemapGroups, 0, sizeof( rsh.cubemapGroups ) );
 	rsh.numCubemapGroups = 0;
+	rsh.fallbackCubemapTexture = NULL;	// freed by the tags pass above; kill the stale pointer
 }
 
 /*
