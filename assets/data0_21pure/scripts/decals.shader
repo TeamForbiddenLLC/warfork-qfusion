@@ -5,7 +5,7 @@
 textures/decals/dashed_line_vcolor
 {
 	qer_editorimage textures/decals/dashed_line.png
-	qer_trans 0.5
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	surfaceparm nodlight
 	q3map_vertexcolor 255 255 255
@@ -25,7 +25,7 @@ textures/decals/dashed_line_vcolor
 textures/decals/trafficline04
 {
 	qer_editorimage textures/decals/trafficline04.png
-	qer_trans 0.5
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	surfaceparm nodlight
 	q3map_vertexcolor 255 255 255
@@ -45,7 +45,7 @@ textures/decals/trafficline04
 textures/decals/trafficline04stripes
 {
 	qer_editorimage textures/decals/trafficline04stripes.png
-	qer_trans 0.5
+	qer_alphafunc gequal 0.5
 	q3map_vertexcolor 255 255 255
 	surfaceparm nomarks
 	surfaceparm nodlight
@@ -65,7 +65,7 @@ textures/decals/trafficline04stripes
 textures/decals/trafficline04stripes2
 {
 	qer_editorimage textures/decals/trafficline04stripes2.png
-	qer_trans 0.5
+	qer_alphafunc gequal 0.5
 	q3map_vertexcolor 255 255 255
 	surfaceparm nomarks
 	surfaceparm nodlight
@@ -86,7 +86,7 @@ textures/decals/trafficline04stripes2
 textures/decals/paint_line
 {
 	qer_editorimage textures/decals/paint_line.png
-	qer_trans 0.5
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	surfaceparm nodlight
 	q3map_vertexcolor 255 255 255
@@ -107,7 +107,7 @@ textures/decals/paint_line
 textures/decals/paint_line_corner
 {
 	qer_editorimage textures/decals/paint_line_corner.png
-	qer_trans 0.5
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	surfaceparm nodlight
 	q3map_vertexcolor 255 255 255
@@ -128,7 +128,7 @@ textures/decals/paint_line_corner
 textures/decals/paint_line_stripes
 {
 	qer_editorimage textures/decals/paint_line_stripes.png
-	qer_trans 0.5
+	qer_alphafunc gequal 0.5
 	q3map_vertexcolor 255 255 255
 	surfaceparm nomarks
 	surfaceparm nodlight
@@ -149,7 +149,7 @@ textures/decals/paint_line_stripes
 textures/decals/paint_line_smallstripes
 {
 	qer_editorimage textures/decals/paint_line_smallstripes.png
-	qer_trans 0.5
+	qer_alphafunc gequal 0.5
 	q3map_vertexcolor 255 255 255
 	surfaceparm nomarks
 	surfaceparm nodlight
@@ -170,7 +170,7 @@ textures/decals/paint_line_smallstripes
 textures/decals/trafficline04redandwhitestripes2
 {
 	qer_editorimage textures/decals/trafficline04redandwhitestripes2.png
-	qer_trans 0.8
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	//surfaceparm nodlight
 	surfaceparm nonsolid
@@ -193,7 +193,7 @@ textures/decals/trafficline04redandwhitestripes2
 textures/decals/plasterbroken01
 {	
 	qer_editorimage textures/decals/plasterbroken01.png
-	qer_trans 0.6
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	//surfaceparm nodlight
 	surfaceparm nonsolid
@@ -230,10 +230,52 @@ textures/decals/plasterworn0030
 	}
 }
 
+
+textures/decals/concretedamage01
+{	
+	qer_editorimage textures/decals/concretedamage01
+	qer_alphafunc gequal 0.5
+	surfaceparm nomarks
+	//surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+	offsetmappingscale 2
+
+	{
+		detail
+		material textures/decals/concretedamage01
+		alphagen vertex
+		blendfunc blend
+	}
+}
+
+textures/decals/concretedamage02
+{	
+	qer_editorimage textures/decals/concretedamage02
+	qer_alphafunc gequal 0.5
+	surfaceparm nomarks
+	//surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	nopicmip
+	offsetmappingscale 2
+
+	{
+		detail
+		material textures/decals/concretedamage02
+		alphagen vertex
+		blendfunc blend
+	}
+}
+
+
 textures/decals/leavesdead01
 {	
 	qer_editorimage textures/decals/leavesdead01.png
-	qer_trans 0.6
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	surfaceparm nodlight
 	surfaceparm nonsolid
@@ -256,7 +298,7 @@ textures/decals/leavesdead01
 textures/decals/sign_warning01
 {	
 	qer_editorimage textures/decals/sign_warning01.png
-	qer_trans 0.6
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	surfaceparm nodlight
 	surfaceparm nonsolid
@@ -275,7 +317,7 @@ textures/decals/sign_warning01
 textures/decals/sign_up01
 {	
 	qer_editorimage textures/decals/sign_up01.png
-	qer_trans 0.6
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	surfaceparm nodlight
 	surfaceparm nonsolid
@@ -316,7 +358,7 @@ textures/decals/evilface_stamp
 textures/decals/b
 {
 	qer_editorimage textures/decals/b.png
-	qer_trans 0.8
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	surfaceparm nodlight
 	surfaceparm nonsolid
@@ -336,7 +378,7 @@ textures/decals/b
 textures/decals/a
 {
 	qer_editorimage textures/decals/a.png
-	qer_trans 0.8
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	surfaceparm nodlight
 	surfaceparm nonsolid
@@ -395,7 +437,7 @@ textures/decals/0080
 textures/decals/orangearrows
 {	
 	qer_editorimage textures/decals/orangearrows.png
-	qer_trans 0.6
+	qer_alphafunc gequal 0.5
 	surfaceparm nolightmap
 	surfaceparm nomarks
 	surfaceparm nodlight
@@ -414,7 +456,7 @@ textures/decals/orangearrows
 textures/decals/orangearrows_outlined
 {	
 	qer_editorimage textures/decals/orangearrows_outlined.png
-	qer_trans 0.6
+	qer_alphafunc gequal 0.5
 	surfaceparm nolightmap
 	surfaceparm nomarks
 	surfaceparm nodlight
@@ -574,7 +616,7 @@ textures/decals/graffityTEAMZISSOU32_darken
 textures/decals/graffitiLERCHO
 {
 	qer_editorimage textures/decals/graffitiLERCHO
-	qer_trans 0.5
+	qer_alphafunc gequal 0.5
 	q3map_vertexcolor 255 255 255
 	surfaceparm nomarks
 	surfaceparm nodlight
@@ -595,7 +637,7 @@ textures/decals/graffitiLERCHO
 textures/decals/graffitiOBMU
 {
 	qer_editorimage textures/decals/graffitiOBMU
-	qer_trans 0.5
+	qer_alphafunc gequal 0.5
 	q3map_vertexcolor 255 255 255
 	surfaceparm nomarks
 	surfaceparm nodlight
@@ -697,7 +739,7 @@ textures/decals/graffiti_04
 textures/decals/graffiti_04_blend
 {
 	qer_editorimage textures/decals/graffiti_04_blend
-	qer_trans 0.5
+	qer_alphafunc gequal 0.5
 	q3map_vertexcolor 255 255 255
 	surfaceparm nomarks
 	surfaceparm nodlight
@@ -733,7 +775,7 @@ template_Dirt
 textures/decals/dirt_01
 {	
 	qer_editorimage textures/decals/dirt_01.png
-	qer_trans 0.3
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	surfaceparm nonsolid
 	surfaceparm trans
@@ -746,7 +788,7 @@ textures/decals/dirt_01
 textures/decals/dirt_02
 {	
 	qer_editorimage textures/decals/dirt_02.png
-	qer_trans 0.3
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	surfaceparm nonsolid
 	surfaceparm trans
@@ -759,7 +801,7 @@ textures/decals/dirt_02
 textures/decals/dirt_scratch_01
 {	
 	qer_editorimage textures/decals/dirt_scratch_01.png
-	qer_trans 0.3
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	surfaceparm nonsolid
 	surfaceparm trans
@@ -772,7 +814,7 @@ textures/decals/dirt_scratch_01
 textures/decals/dirt_scratch_02
 {	
 	qer_editorimage textures/decals/dirt_scratch_02.png
-	qer_trans 0.3
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	surfaceparm nonsolid
 	surfaceparm trans
@@ -781,7 +823,6 @@ textures/decals/dirt_scratch_02
 
 	template template_Dirt scratch_02
 }
-
 
 
 // POSTERS
@@ -1386,7 +1427,7 @@ textures/decals/team_beta_stain006
 textures/decals/decal_armor_ra
 {	
 	qer_editorimage textures/decals/decal_armor_ra.png
-	qer_trans 0.6
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	//surfaceparm nodlight
 	surfaceparm nonsolid
@@ -1404,7 +1445,7 @@ textures/decals/decal_armor_ra
 textures/decals/decal_armor_ya
 {	
 	qer_editorimage textures/decals/decal_armor_ya.png
-	qer_trans 0.6
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	//surfaceparm nodlight
 	surfaceparm nonsolid
@@ -1422,7 +1463,7 @@ textures/decals/decal_armor_ya
 textures/decals/decal_armor_ga
 {	
 	qer_editorimage textures/decals/decal_armor_ga.png
-	qer_trans 0.6
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	//surfaceparm nodlight
 	surfaceparm nonsolid
@@ -1440,7 +1481,7 @@ textures/decals/decal_armor_ga
 textures/decals/decal_danger
 {	
 	qer_editorimage textures/decals/decal_danger.png
-	qer_trans 0.6
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	//surfaceparm nodlight
 	surfaceparm nonsolid
@@ -1459,7 +1500,7 @@ textures/decals/decal_danger
 textures/decals/decal_dirt1
 {	
 	qer_editorimage textures/decals/decal_dirt1.png
-	qer_trans 0.6
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	//surfaceparm nodlight
 	surfaceparm nonsolid
@@ -1478,7 +1519,7 @@ textures/decals/decal_dirt1
 textures/decals/decal_dirt2
 {	
 	qer_editorimage textures/decals/decal_dirt2.png
-	qer_trans 0.6
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	//surfaceparm nodlight
 	surfaceparm nonsolid
@@ -1498,7 +1539,7 @@ textures/decals/decal_dirt2
 textures/decals/decal_health
 {	
 	qer_editorimage textures/decals/decal_health.png
-	qer_trans 0.6
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	//surfaceparm nodlight
 	surfaceparm nonsolid
@@ -1557,6 +1598,7 @@ textures/decals/decal_telesign_right
 textures/decals/decal_telesign_boqu
 {
     qer_editorimage textures/boqu/decals/tele_decal1.png
+    qer_alphafunc gequal 0.5
     surfaceparm nolightmap
 	surfaceparm nomarks
 	surfaceparm nodlight
@@ -1578,7 +1620,7 @@ textures/decals/decal_telesign_boqu
 textures/decals/decal_telesign_boqu2_left
 {	
 	qer_editorimage textures/boqu2/tele_decal2_blue
-	qer_trans 0.6
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	surfaceparm nodlight
 	surfaceparm nonsolid
@@ -1597,7 +1639,7 @@ textures/decals/decal_telesign_boqu2_left
 textures/decals/decal_telesign_boqu2_right
 {	
 	qer_editorimage textures/boqu2/tele_decal1_blue
-	qer_trans 0.6
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	surfaceparm nodlight
 	surfaceparm nonsolid
@@ -1616,7 +1658,7 @@ textures/decals/decal_telesign_boqu2_right
 textures/decals/decal_drop
 {	
 	qer_editorimage textures/decals/decal_drop.png
-	qer_trans 0.6
+	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	//surfaceparm nodlight
 	surfaceparm nonsolid

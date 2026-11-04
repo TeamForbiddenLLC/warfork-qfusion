@@ -272,6 +272,23 @@ textures/grates/grid05
 	}
 }
 
+textures/grates/grid05
+{
+	qer_alphafunc gequal 0.5
+	qer_editorimage textures/grates/grid05.png
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm alphashadow
+	cull none
+	nopicmip
+	offsetmappingScale 2.5
+
+	{
+		material textures/grates/grid05 textures/grates/grid05_norm textures/grates/grid05_gloss
+		alphafunc GE128
+		depthWrite
+	}
+}
 
 textures/grates/gratehzh
 {

@@ -19,6 +19,13 @@ Construction debris by Tarox https://www.materialmaker.org/material?id=969
 textures/terrain/chipped_dirt
 Chipped ground dirt by Nic https://www.materialmaker.org/material?id=742
 
+textures/terrain/brokenasfalt
+Dirt by muhuk https://www.materialmaker.org/material?id=1765
+
+textures/decals/concretedamage01
+textures/decals/concretedamage02
+Bunker Concrete by Tarox https://www.materialmaker.org/material?id=1112
+
 
 // CCA License (attribution required. Any use and modifications allowed)
 textures/sky/autumtrees

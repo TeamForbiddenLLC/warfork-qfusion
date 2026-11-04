@@ -80,9 +80,23 @@ textures/terrain/chipped_dirt
 	qer_editorimage textures/terrain/chipped_dirt
 	q3map_chamfer_convexwidth 6
 	q3map_chamfer_concavewidth 4
+	offsetMappingScale 2.5
 
 	{
 		material textures/terrain/chipped_dirt textures/terrain/chipped_dirt_norm -
+		tcMod scale 3 3
+	}
+}
+
+textures/terrain/chipped_dirt_grey
+{
+	qer_editorimage textures/terrain/chipped_dirt_grey
+	q3map_chamfer_convexwidth 6
+	q3map_chamfer_concavewidth 4
+	offsetMappingScale 1.5
+
+	{
+		material textures/terrain/chipped_dirt_grey textures/terrain/chipped_dirt_norm -
 		tcMod scale 3 3
 	}
 }

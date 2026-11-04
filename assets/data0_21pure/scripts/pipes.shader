@@ -10,6 +10,7 @@ textures/pipes/o2pipe
 textures/pipes/o2pipe_vcolor
 {
 	qer_editorimage textures/pipes/o2pipe_vcolor
+	q3map_vertexcolor #5dcbac
 	
 	{
 		material textures/pipes/o2pipe_vcolor textures/pipes/o2pipe_norm textures/pipes/o2pipe_gloss

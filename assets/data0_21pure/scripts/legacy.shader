@@ -2436,6 +2436,15 @@ textures/blxbis/vertex_aluminium
 // factory
 //***********************************
 
+textures/factory/metal_dark
+{	
+	qer_editorimage textures/metal/plaindark
+
+	{
+		material textures/metal/plaindark $blankbumpimage textures/metal/plaindark_gloss
+	}
+}
+
 textures/factory/factory_metal_floor2
 {	
 	qer_editorimage textures/metal/treadplate0015g.png

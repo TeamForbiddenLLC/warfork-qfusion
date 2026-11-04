@@ -14,7 +14,6 @@ textures/metal/metal_roof
 }
 
 
-
 textures/metal/aluminiumwrap
 {	
 	qer_editorimage textures/boqu/bright_metal
@@ -25,6 +24,15 @@ textures/metal/aluminiumwrap
 	}
 }
 
+textures/metal/plaindark
+{	
+	qer_editorimage textures/metal/plaindark
+
+	{
+		material textures/metal/plaindark $blankbumpimage textures/metal/plaindark_gloss
+		tcmod scale 2 2 
+	}
+}
 
 textures/metal/treadplate0015
 {	
