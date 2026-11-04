@@ -193,7 +193,7 @@ edict_t *SelectDeathmatchSpawnPoint( edict_t *ent )
 /*
 * G_OffsetSpawnPoint - use a grid of player boxes to offset the spawn point
 */
-bool G_OffsetSpawnPoint( vec3_t origin, vec3_t box_mins, vec3_t box_maxs, float radius, bool checkground )
+bool G_OffsetSpawnPoint( vec3_t origin, vec3_t box_mins, vec3_t box_maxs, float radius, bool checkground, int mask_spawn )
 {
 	trace_t	trace;
 	vec3_t virtualorigin;
@@ -204,7 +204,6 @@ bool G_OffsetSpawnPoint( vec3_t origin, vec3_t box_mins, vec3_t box_maxs, float 
 	int i, j, row = 0, column = 0;
 	int rowseed = rand() & 255;
 	int columnseed = rand() & 255;
-	int mask_spawn = MASK_PLAYERSOLID | ( CONTENTS_LAVA|CONTENTS_SLIME|CONTENTS_TELEPORTER|CONTENTS_JUMPPAD|CONTENTS_BODY|CONTENTS_NODROP );
 	int playersFound = 0, worldfound = 0, nofloorfound = 0, badclusterfound = 0;
 	// check box clusters
 	int cluster;
@@ -219,7 +218,7 @@ bool G_OffsetSpawnPoint( vec3_t origin, vec3_t box_mins, vec3_t box_maxs, float 
 		VectorCopy( origin, virtualorigin );
 		virtualorigin[2] -= 1024;
 
-		G_Trace( &trace, origin, box_mins, box_maxs, virtualorigin, NULL, MASK_PLAYERSOLID );
+		G_Trace( &trace, origin, box_mins, box_maxs, virtualorigin, NULL, mask_spawn );
 		if( trace.fraction == 1.0f )
 			checkground = false;
 		else if( trace.endpos[2] + 8.0f < origin[2] )
@@ -274,7 +273,7 @@ bool G_OffsetSpawnPoint( vec3_t origin, vec3_t box_mins, vec3_t box_maxs, float 
 
 		// one more trace is needed, only checking if some part of the world is on the
 		// way from spawnpoint to the virtual position
-		trap_CM_TransformedBoxTrace( &trace, origin, virtualorigin, box_mins, box_maxs, NULL, MASK_PLAYERSOLID, NULL, NULL );
+		trap_CM_TransformedBoxTrace( &trace, origin, virtualorigin, box_mins, box_maxs, NULL, mask_spawn, NULL, NULL );
 		if( trace.fraction != 1.0f )
 			continue;
 
@@ -299,7 +298,7 @@ bool G_OffsetSpawnPoint( vec3_t origin, vec3_t box_mins, vec3_t box_maxs, float 
 			VectorCopy( origin_from, origin_to );
 			origin_to[2] -= 32;
 			// use point trace instead of box trace to avoid small glitches that can't support the player but will stop the trace
-			G_Trace( &trace, origin_from, vec3_origin, vec3_origin, origin_to, NULL, MASK_PLAYERSOLID );
+			G_Trace( &trace, origin_from, vec3_origin, vec3_origin, origin_to, NULL, mask_spawn );
 			if( trace.startsolid || trace.allsolid || trace.fraction == 1.0f )
 			{                                                        // full run means no ground
 				nofloorfound++;
@@ -375,8 +374,16 @@ void SelectSpawnPoint( edict_t *ent, edict_t **spawnpoint, vec3_t origin, vec3_t
 
 	// SPAWN TELEFRAGGING PROTECTION.
 	if( ent->r.solid == SOLID_YES && ( level.gametype.spawnpointRadius > ( playerbox_stand_maxs[0] - playerbox_stand_mins[0] ) ) )
-		G_OffsetSpawnPoint( origin, playerbox_stand_mins, playerbox_stand_maxs, level.gametype.spawnpointRadius, 
-			!( spot->spawnflags & 1 ) ? true : false );
+	{
+		int mask_spawn = MASK_PLAYERSOLID | ( CONTENTS_LAVA|CONTENTS_SLIME|CONTENTS_TELEPORTER|CONTENTS_JUMPPAD|CONTENTS_BODY|CONTENTS_NODROP );
+
+		// bots collide with monsterclip too, same as their movement mask does
+		if( ent->r.client && ( ent->r.client->ps.pmove.stats[PM_STAT_FEATURES] & PMFEAT_BOTCLIP ) )
+			mask_spawn |= CONTENTS_MONSTERCLIP;
+
+		G_OffsetSpawnPoint( origin, playerbox_stand_mins, playerbox_stand_maxs, level.gametype.spawnpointRadius,
+			!( spot->spawnflags & 1 ) ? true : false, mask_spawn );
+	}
 }
 
 //==================================================
