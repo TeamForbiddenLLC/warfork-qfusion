@@ -142,7 +142,7 @@ msgstr "<value> The maximum number of dynamic lights allowed using GLSL shaders.
 #. Console/r
 msgid "r_lighting_maxlmblocksize"
 msgstr "<value> Lightmap block size\n"
-"^6Note: Higher values than the default will degrade performance."
+"^6Note: Maps with lightmap image sizes larger than this value will be rejected on load."
 
 #. Console/r
 msgid "r_lighting_overbrightmodels"
