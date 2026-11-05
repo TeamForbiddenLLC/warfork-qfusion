@@ -219,7 +219,7 @@ textures/grates/grid03_orange
 textures/grates/grid04
 {
 	qer_alphafunc gequal 0.5
-	qer_editorimage textures/grates/grid04.png
+	qer_editorimage textures/grates/preview/grid04.tga
 	qer_alphafunc gequal 0.5
 	surfaceparm trans
 	surfaceparm nomarks
@@ -232,6 +232,7 @@ textures/grates/grid04
 
 	{
 		material textures/grates/grid04.png textures/grates/grid04_norm $whiteimage
+		tcMod scale 2 2
 		alphaFunc GE128
 		depthWrite
 	}
@@ -241,7 +242,7 @@ textures/grates/grid04
 textures/grates/grid06
 {
 	qer_alphafunc gequal 0.5
-	qer_editorimage textures/grates/grid06.png
+	qer_editorimage textures/grates/preview/grid06.tga
 	surfaceparm trans
 	surfaceparm nomarks
 	surfaceparm alphashadow
@@ -250,6 +251,7 @@ textures/grates/grid06
 
 	{
 		material textures/grates/grid06.png textures/grates/grid05_norm.png
+		tcMod scale 2 2
 		alphafunc GE128
 		depthWrite
 	}
@@ -258,24 +260,7 @@ textures/grates/grid06
 textures/grates/grid05
 {
 	qer_alphafunc gequal 0.5
-	qer_editorimage textures/grates/grid05.png
-	surfaceparm trans
-	surfaceparm nomarks
-	surfaceparm alphashadow
-	cull none
-	nopicmip
-
-	{
-		material textures/grates/grid05.png textures/grates/grid05_norm.png
-		alphafunc GE128
-		depthWrite
-	}
-}
-
-textures/grates/grid05
-{
-	qer_alphafunc gequal 0.5
-	qer_editorimage textures/grates/grid05.png
+	qer_editorimage textures/grates/preview/grid05.tga
 	surfaceparm trans
 	surfaceparm nomarks
 	surfaceparm alphashadow
@@ -285,6 +270,7 @@ textures/grates/grid05
 
 	{
 		material textures/grates/grid05 textures/grates/grid05_norm textures/grates/grid05_gloss
+		tcMod scale 2 2
 		alphafunc GE128
 		depthWrite
 	}
