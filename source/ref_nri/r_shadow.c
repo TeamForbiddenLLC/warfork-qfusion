@@ -34,6 +34,43 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define SHADOWGROUPS_HASH_SIZE	8
 static shadowGroup_t *r_shadowGroups_hash[SHADOWGROUPS_HASH_SIZE];
 
+/*
+* R_ShadowmapLodCap
+*
+* returns the highest LOD level whose shadowmap viewport is still at least
+* SHADOWMAP_MIN_VIEWPORT_SIZE pixels wide and high
+*/
+static int R_ShadowmapLodCap( int textureWidth, int textureHeight )
+{
+	int lod = 0;
+	int minDim = min( textureWidth, textureHeight );
+
+	while( lod < SHADOWMAP_MAX_LOD && ( ( minDim >> ( lod + 1 ) ) >= SHADOWMAP_MIN_VIEWPORT_SIZE ) ) {
+		lod++;
+	}
+	return lod;
+}
+
+/*
+* R_SmoothStep
+*/
+static float R_SmoothStep( float edge0, float edge1, float x )
+{
+	float t;
+
+	if( edge1 <= edge0 ) {
+		return x >= edge1 ? 1.0f : 0.0f;
+	}
+	if( x <= edge0 ) {
+		return 0.0f;
+	}
+	if( x >= edge1 ) {
+		return 1.0f;
+	}
+	t = ( x - edge0 ) / ( edge1 - edge0 );
+	return t * t * ( 3.0f - 2.0f * t );
+}
+
 void R_ShutdownShadows() {
 	for(size_t frameIdx = 0; frameIdx < NUMBER_FRAMES_FLIGHT; frameIdx++) {
 		for(size_t portalIdx = 0; portalIdx < MAX_PORTAL_TEXTURES; portalIdx++) {
@@ -390,6 +427,8 @@ void R_DrawShadowmaps(struct FrameState_s* cmd)
 	int lod;
 	float farClip;
 	float dist;
+	float scaledDist;
+	float drawDistance, fade;
 
 	if( !rsc.numShadowGroups )
 		return;
@@ -435,9 +474,36 @@ void R_DrawShadowmaps(struct FrameState_s* cmd)
 		if( lod < 0 ) {
 			lod = 0;
 		}
+		// user-controlled LOD ladder spacing
+		if( r_shadows_lodscale->value > 0.0f ) {
+			lod = (int)( lod / r_shadows_lodscale->value );
+		}
+
 		// allocate/resize the texture if needed
 		struct shadow_fb_s *fb = __ResolveShadowSurface( i, rsc.refdef.width, rsc.refdef.height );
+		if( !fb ) {
+			continue;
+		}
 		group->shadowmap = fb;
+
+		// keep the last LOD alive: never shrink the viewport below the minimum size
+		lod = min( lod, R_ShadowmapLodCap( fb->width, fb->height ) );
+
+		// cull shadowmaps too far away from the viewer, fading them out first;
+		// the distance is scaled by the FOV factor (same units as entity LOD)
+		scaledDist = dist * lodScale;
+		drawDistance = r_shadows_drawdistance->value;
+		if( drawDistance > 0.0f ) {
+			if( scaledDist > drawDistance ) {
+				continue;
+			}
+			fade = min( r_shadows_fadedistance->value, drawDistance );
+			if( fade > 0.0f && scaledDist > drawDistance - fade ) {
+				// alpha is a lightness floor in the shadow shader (1 = no shadow),
+				// so fading the shadow OUT means lerping alpha UP toward 1
+				group->alpha += ( 1.0f - group->alpha ) * R_SmoothStep( drawDistance - fade, drawDistance, scaledDist );
+			}
+		}
 
 		farClip = R_SetupShadowmapView( group, &refdef, lod );
 		if( farClip <= 0.0f ) {

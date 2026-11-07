@@ -602,6 +602,9 @@ extern cvar_t *r_shadows_maxtexsize;
 extern cvar_t *r_shadows_pcf;
 extern cvar_t *r_shadows_self_shadow;
 extern cvar_t *r_shadows_dither;
+extern cvar_t *r_shadows_drawdistance;
+extern cvar_t *r_shadows_fadedistance;
+extern cvar_t *r_shadows_lodscale;
 
 extern cvar_t *r_outlines_world;
 extern cvar_t *r_outlines_scale;

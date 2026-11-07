@@ -932,6 +932,9 @@ typedef enum
 
 extern cvar_t *cg_shadows;
 extern cvar_t *cg_showSelfShadow;
+// renderer shadow cvars, shared with the blob shadows (read-only here)
+extern cvar_t *r_shadows_drawdistance;
+extern cvar_t *r_shadows_fadedistance;
 extern cvar_t *cg_minLight;
 extern cvar_t *cg_laserBeamSubdivisions;
 extern cvar_t *cg_projectileAntilagOffset;

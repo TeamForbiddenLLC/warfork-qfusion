@@ -101,6 +101,9 @@ cvar_t *r_shadows_maxtexsize;
 cvar_t *r_shadows_pcf;
 cvar_t *r_shadows_self_shadow;
 cvar_t *r_shadows_dither;
+cvar_t *r_shadows_drawdistance;
+cvar_t *r_shadows_fadedistance;
+cvar_t *r_shadows_lodscale;
 
 cvar_t *r_outlines_world;
 cvar_t *r_outlines_scale;
@@ -245,6 +248,9 @@ static void R_Register( const char *screenshotsPrefix )
 	r_shadows_pcf = Cvar_Get( "r_shadows_pcf", "1", CVAR_ARCHIVE );
 	r_shadows_self_shadow = Cvar_Get( "r_shadows_self_shadow", "0", CVAR_ARCHIVE );
 	r_shadows_dither = Cvar_Get( "r_shadows_dither", "0", CVAR_ARCHIVE );
+	r_shadows_drawdistance = Cvar_Get( "r_shadows_drawdistance", "1792", CVAR_ARCHIVE );
+	r_shadows_fadedistance = Cvar_Get( "r_shadows_fadedistance", "256", CVAR_ARCHIVE );
+	r_shadows_lodscale = Cvar_Get( "r_shadows_lodscale", "2.0", CVAR_ARCHIVE );
 
 	r_outlines_world = Cvar_Get( "r_outlines_world", "0.8", CVAR_ARCHIVE );
 	r_outlines_scale = Cvar_Get( "r_outlines_scale", "1", CVAR_ARCHIVE );

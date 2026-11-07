@@ -190,6 +190,9 @@ typedef struct
 	int entNum;
 	struct shader_s *shader;
 
+	// FOV-scaled distance to the view, for the shared shadow fade
+	float distScaled;
+
 	vec4_t verts[MAX_BLOBSHADOW_VERTS];
 	vec4_t norms[MAX_BLOBSHADOW_VERTS];
 	vec2_t stcoords[MAX_BLOBSHADOW_VERTS];
@@ -292,6 +295,32 @@ static void CG_ClearShadeBoxes( void )
 }
 
 /*
+* CG_ShadowFadeScale
+*
+* distance fade shared with the shadowmap system: shadows fade out over the
+* last r_shadows_fadedistance units before r_shadows_drawdistance (both in
+* FOV-scaled units, the same space fracDistFOV distances live in)
+*/
+static float CG_ShadowFadeScale( float distScaled )
+{
+	float drawDistance, fade, t;
+
+	drawDistance = r_shadows_drawdistance->value;
+	if( drawDistance <= 0.0f ) {
+		return 1.0f;
+	}
+	fade = min( r_shadows_fadedistance->value, drawDistance );
+	if( fade <= 0.0f || distScaled <= drawDistance - fade ) {
+		return 1.0f;
+	}
+	if( distScaled >= drawDistance ) {
+		return 0.0f;
+	}
+	t = ( distScaled - ( drawDistance - fade ) ) / fade;
+	return 1.0f - t * t * ( 3.0f - 2.0f * t );
+}
+
+/*
 * CG_AllocShadeBox
 */
 void CG_AllocShadeBox( int entNum, const vec3_t origin, const vec3_t mins, const vec3_t maxs, struct shader_s *shader )
@@ -308,13 +337,15 @@ void CG_AllocShadeBox( int entNum, const vec3_t origin, const vec3_t mins, const
 	// Kill if behind the view or if too far away
 	VectorSubtract( origin, cg.view.origin, dir );
 	dist = VectorNormalize2( dir, dir ) * cg.view.fracDistFOV;
-	if( dist > 1024 )
+	// same FOV-scaled draw distance the renderer uses for shadowmaps
+	if( r_shadows_drawdistance->value > 0.0f && dist > r_shadows_drawdistance->value )
 		return;
 
 	if( DotProduct( dir, &cg.view.axis[AXIS_FORWARD] ) < 0 )
 		return;
 
 	sb = &cg_shadeBoxes[cg_numShadeBoxes++];
+	sb->distScaled = dist;
 	VectorCopy( origin, sb->origin );
 	VectorCopy( mins, sb->mins );
 	VectorCopy( maxs, sb->maxs );
@@ -364,6 +395,7 @@ void CG_AddShadeBoxes( void )
 			blobradius = SHADOW_MIN_SIZE + trace.fraction * ( SHADOW_MAX_SIZE-SHADOW_MIN_SIZE );
 
 			alpha = ( 1.0f - trace.fraction ) * maxalpha;
+			alpha *= CG_ShadowFadeScale( sb->distScaled );
 
 			CG_AddBlobShadow( trace.endpos, trace.plane.normal, shangles[YAW], blobradius,
 				1, 1, 1, alpha, sb );

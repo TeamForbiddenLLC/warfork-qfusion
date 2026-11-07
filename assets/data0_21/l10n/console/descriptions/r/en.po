@@ -348,6 +348,21 @@ msgstr "<0/1> Dithering in GLSL shaders to reduce shadow artifacts.\n"
 "^6Enable: r_shadows_dither \"1\""
 
 #. Console/r
+msgid "r_shadows_drawdistance"
+msgstr "<value> The maximum distance at which shadows are drawn.\n"
+"^6Note: The distance is measured at a 90 degrees field of view, so zooming in extends it and zooming out shortens it. Applies to both shadowmaps and blob shadows. \"0\" disables the limit."
+
+#. Console/r
+msgid "r_shadows_fadedistance"
+msgstr "<value> The distance over which shadows fade out before reaching r_shadows_drawdistance.\n"
+"^6Note: Shadows never pop out of view while fading is enabled. \"0\" disables fading."
+
+#. Console/r
+msgid "r_shadows_lodscale"
+msgstr "<value> Scales the distance at which shadowmap resolution starts to drop.\n"
+"^6Note: Higher values keep shadows sharp at greater distances, at a small performance cost."
+
+#. Console/r
 msgid "r_shadows_maxtexsize"
 msgstr "<value> Sets the maximum size of shadowmap textures."
 

@@ -82,6 +82,9 @@ cvar_t *cg_predictLaserBeam;
 cvar_t *cg_voiceChats;
 cvar_t *cg_shadows;
 cvar_t *cg_showSelfShadow;
+// renderer shadow cvars, shared with the blob shadows (read-only here)
+cvar_t *r_shadows_drawdistance;
+cvar_t *r_shadows_fadedistance;
 cvar_t *cg_minLight;
 cvar_t *cg_laserBeamSubdivisions;
 cvar_t *cg_projectileAntilagOffset;
@@ -806,6 +809,9 @@ static void CG_RegisterVariables( void )
 	cg_showhelp =		trap_Cvar_Get( "cg_showhelp", "1", CVAR_ARCHIVE );
 	cg_predictLaserBeam =	trap_Cvar_Get( "cg_predictLaserBeam", "1", CVAR_ARCHIVE );
 	cg_showSelfShadow =	trap_Cvar_Get( "cg_showSelfShadow", "0", CVAR_ARCHIVE );
+	// same cvars the renderer registers; matching defaults keep order irrelevant
+	r_shadows_drawdistance =	trap_Cvar_Get( "r_shadows_drawdistance", "1792", CVAR_ARCHIVE );
+	r_shadows_fadedistance =	trap_Cvar_Get( "r_shadows_fadedistance", "256", CVAR_ARCHIVE );
 
 	cg_cartoonEffects =		trap_Cvar_Get( "cg_cartoonEffects", "7", CVAR_ARCHIVE );
 
