@@ -165,7 +165,7 @@ jobs:
           path: steam-build
 
       - name: Deploy to Steam
-        uses: game-ci/steam-deploy@87f8a362c6a8a7dbde08099e4c05da88877f7113
+        uses: game-ci/steam-deploy@v3
         with:
           username: ${{ secrets.STEAM_USERNAME }}
           configVdf: ${{ secrets.STEAM_CONFIG_VDF }}
