@@ -116,9 +116,13 @@ jobs:
 
       - name: Sentry Upload
         run: |
-          curl -sL https://sentry.io/get-cli/ | bash
-          sentry-cli --version
-          sentry-cli debug-files upload steam-build/
+          set -euo pipefail
+          curl -fL https://downloads.sentry-cdn.com/sentry-cli/3.8.2/sentry-cli-Linux-x86_64 \
+            -o "$RUNNER_TEMP/sentry-cli"
+          echo "c958865f9d4000183509ea21b1f04925d5390de6d8d87386b9e69f2b305070c3  $RUNNER_TEMP/sentry-cli" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/sentry-cli"
+          "$RUNNER_TEMP/sentry-cli" --version
+          "$RUNNER_TEMP/sentry-cli" debug-files upload steam-build/
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: team-forbidden-llc
@@ -164,6 +168,13 @@ jobs:
           name: steam-build
           path: steam-build
 
+      - name: Capture transient Steam logs
+        run: |
+          nohup python3 .github/scripts/capture_steam_logs.py \
+            "$RUNNER_TEMP" "$GITHUB_WORKSPACE/steam-log-capture" \
+            >/dev/null 2>&1 &
+          echo $! > "$RUNNER_TEMP/steam-log-capture.pid"
+
       - name: Deploy to Steam
         uses: game-ci/steam-deploy@v3.2.2
         with:
@@ -192,15 +203,14 @@ jobs:
             echo '::error::Set the STEAM_LOG_ARTIFACT_KEY repository secret to upload encrypted Steam logs.'
             exit 1
           fi
-          cd "$RUNNER_TEMP"
-          mapfile -d '' log_files < <(find . -type f \( \
-            -path '*/Steam/logs/*' -o \
-            -path '*/BuildOutput/*.log' -o \
-            -path '*/build_output/*.log' \
-          \) -print0)
+          if [[ -f "$RUNNER_TEMP/steam-log-capture.pid" ]]; then
+            kill "$(cat "$RUNNER_TEMP/steam-log-capture.pid")" || true
+          fi
+          cd "$GITHUB_WORKSPACE"
+          mapfile -d '' log_files < <(find steam-log-capture -type f -print0 2>/dev/null || true))
           if (( ${#log_files[@]} == 0 )); then
-            echo 'No Steam logs found in the runner temporary directory.'
-            exit 0
+            echo '::error::No Steam logs were captured before game-ci removed its temporary directory.'
+            exit 1
           fi
           printf '%s\0' "${log_files[@]}" |
             tar --null -T - -czf - |
@@ -214,5 +224,5 @@ jobs:
         with:
           name: steam-logs-${{ matrix.steam_app.id }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: steam-logs.tar.gz.enc
-          if-no-files-found: ignore
+          if-no-files-found: error
           retention-days: 7
