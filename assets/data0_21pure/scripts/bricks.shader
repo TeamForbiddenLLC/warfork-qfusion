@@ -32,6 +32,26 @@ textures/bricks/bricks_05_black
 	}
 }
 
+// this is a decal that blends the bricks on top of the other surface
+textures/bricks/bricks_05_black_decal
+{	
+	qer_editorimage textures/bricks/bricks_05_black_decal
+	qer_alphafunc gequal 0.5
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	polygonOffset
+	//nopicmip
+	
+	{
+		detail
+		material textures/bricks/bricks_05_black_decal textures/bricks/bricks_05_norm textures/bricks/bricks_05_gloss
+		blendfunc blend
+		alphagen vertex
+	}
+}
+
 textures/bricks/bricks_05_bricksdark1
 {	
 	qer_editorimage textures/bricks/bricks_05_bricksdark1

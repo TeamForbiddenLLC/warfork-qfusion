@@ -2404,6 +2404,97 @@ textures/decals/dt_treadplate0015g
 
 //--------------------------------------------------
 //
+// LIGHTS
+//
+//
+
+textures/decals/lights/decal_blacktrim01
+{	
+	qer_editorimage textures/decals/lights/decal_blacktrim01.tga
+	qer_trans 0.7
+	q3map_surfacelight_nodeluxe
+	q3map_backsplash_nodeluxe
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	surfaceparm nolightmap
+	polygonOffset
+	nopicmip
+
+	{
+		map textures/decals/lights/decal_blacktrim01.tga
+		blendfunc blend
+	}
+}
+
+textures/decals/lights/decal_blacktrim01_1000
+{	
+	qer_editorimage textures/decals/lights/decal_blacktrim01.tga
+	qer_trans 0.7
+	q3map_surfacelight 1000
+	q3map_surfacelight_nodeluxe
+	q3map_backsplash_nodeluxe
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	surfaceparm nolightmap
+	polygonOffset
+	nopicmip
+
+	{
+		map textures/decals/lights/decal_blacktrim01.tga
+		blendfunc blend
+	}
+}
+
+textures/decals/lights/decal_blacktrim02
+{	
+	qer_editorimage textures/decals/lights/decal_blacktrim02.tga
+	qer_trans 0.7
+	q3map_surfacelight_nodeluxe
+	q3map_backsplash_nodeluxe
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	surfaceparm nolightmap
+	polygonOffset
+	nopicmip
+
+	{
+		map textures/decals/lights/decal_blacktrim02.tga
+		blendfunc blend
+	}
+}
+
+textures/decals/lights/decal_blacktrim02_1000
+{	
+	qer_editorimage textures/decals/lights/decal_blacktrim02.tga
+	qer_trans 0.7
+	q3map_surfacelight 1000
+	q3map_surfacelight_nodeluxe
+	q3map_backsplash_nodeluxe
+	surfaceparm nomarks
+	surfaceparm nodlight
+	surfaceparm nonsolid
+	surfaceparm trans
+	surfaceparm nolightmap
+	polygonOffset
+	nopicmip
+
+	{
+		map textures/decals/lights/decal_blacktrim02.tga
+		blendfunc blend
+	}
+}
+
+
+
+
+//--------------------------------------------------
+//
 //    FONTS
 //	Notice: These fonts are for makebsp to genate
 //		decals directly from text.
