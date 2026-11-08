@@ -141,19 +141,16 @@ jobs:
           # client
           - id: '671610'
             desc: 'Warfork build'
-            depot4: ''
-            depot5: 'windows'
-            depot6: 'linux'
-            depot7: 'linux'
-            depot8: 'macos'
+            depot1: 'windows'
+            depot2: 'linux'
+            depot3: 'linux'
+            depot4: 'macos'
           # dedicated server
           - id: '1136510'
             desc: 'Warfork Dedicated Server build'
-            depot4: 'windows'
-            depot5: ''
-            depot6: ''
-            depot7: 'macos'
-            depot8: 'linux'
+            depot1: 'windows'
+            depot2: 'macos'
+            depot3: 'linux'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -172,10 +169,9 @@ jobs:
           appId: ${{ matrix.steam_app.id }}
           buildDescription: "${{ matrix.steam_app.desc }} ${{ github.sha }}"
           rootPath: steam-build
+          depot1Path: ${{ matrix.steam_app.depot1 }}
+          depot2Path: ${{ matrix.steam_app.depot2 }}
+          depot3Path: ${{ matrix.steam_app.depot3 }}
           depot4Path: ${{ matrix.steam_app.depot4 }}
-          depot5Path: ${{ matrix.steam_app.depot5 }}
-          depot6Path: ${{ matrix.steam_app.depot6 }}
-          depot7Path: ${{ matrix.steam_app.depot7 }}
-          depot8Path: ${{ matrix.steam_app.depot8 }}
           releaseBranch: ${{ inputs.release_branch }}
           debugBranch: true
