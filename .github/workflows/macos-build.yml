@@ -28,7 +28,7 @@ on:
 jobs:
   osx:
     name: "osx-${{ inputs.arch }}-${{ inputs.config }}"
-    runs-on: ${{ inputs.arch == 'x86_64' && 'macos-15-intel' || 'macos-14' }}
+    runs-on: ${{ inputs.arch == 'x86_64' && 'macos-15-intel' || 'macos-15' }}
     env:
       CONFIG_NAME: "osx-${{ inputs.arch }}-${{ inputs.config }}"
       BUILD_FOLDER: "${{ inputs.config == 'release' && 'RelWithDebInfo' || 'Debug' }}"
