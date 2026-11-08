@@ -179,3 +179,40 @@ jobs:
           depot8Path: ${{ matrix.steam_app.depot8 }}
           releaseBranch: ${{ inputs.release_branch }}
           debugBranch: true
+
+      # This repository is public, so encrypt logs before uploading an artifact.
+      - name: Encrypt Steam logs on failure
+        if: failure()
+        shell: bash
+        env:
+          STEAM_LOG_ARTIFACT_KEY: ${{ secrets.STEAM_LOG_ARTIFACT_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$STEAM_LOG_ARTIFACT_KEY" ]]; then
+            echo '::error::Set the STEAM_LOG_ARTIFACT_KEY repository secret to upload encrypted Steam logs.'
+            exit 1
+          fi
+          cd "$RUNNER_TEMP"
+          mapfile -d '' log_files < <(find . -type f \( \
+            -path '*/Steam/logs/*' -o \
+            -path '*/BuildOutput/*.log' -o \
+            -path '*/build_output/*.log' \
+          \) -print0)
+          if (( ${#log_files[@]} == 0 )); then
+            echo 'No Steam logs found in the runner temporary directory.'
+            exit 0
+          fi
+          printf '%s\0' "${log_files[@]}" |
+            tar --null -T - -czf - |
+            openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 \
+              -pass env:STEAM_LOG_ARTIFACT_KEY \
+              -out "$GITHUB_WORKSPACE/steam-logs.tar.gz.enc"
+
+      - name: Upload encrypted Steam logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: steam-logs-${{ matrix.steam_app.id }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: steam-logs.tar.gz.enc
+          if-no-files-found: ignore
+          retention-days: 7
