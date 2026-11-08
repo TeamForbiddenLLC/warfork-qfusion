@@ -133,7 +133,8 @@ jobs:
   # Deploy to Steam
   deploy:
     needs: prepare-steam-build
-    runs-on: ubuntu-latest
+    # The pinned Docker action preserves gaps in depot numbers (5, 7, 8).
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -143,7 +144,7 @@ jobs:
             desc: 'Warfork build'
             depot4: ''
             depot5: 'windows'
-            depot6: 'linux'
+            depot6: ''
             depot7: 'linux'
             depot8: 'macos'
           # dedicated server
