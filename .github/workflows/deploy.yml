@@ -207,7 +207,7 @@ jobs:
             kill "$(cat "$RUNNER_TEMP/steam-log-capture.pid")" || true
           fi
           cd "$GITHUB_WORKSPACE"
-          mapfile -d '' log_files < <(find steam-log-capture -type f -print0 2>/dev/null || true))
+          mapfile -d '' log_files < <(find steam-log-capture -type f -print0 2>/dev/null || true)
           if (( ${#log_files[@]} == 0 )); then
             echo '::error::No Steam logs were captured before game-ci removed its temporary directory.'
             exit 1
