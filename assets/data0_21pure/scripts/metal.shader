@@ -180,22 +180,17 @@ textures/metal/chrome
 
 textures/metal/chrome2
 {	
+	// cubemap chrome
 	qer_editorimage textures/metal/chrome
 	surfaceparm nolightmap
 	surfaceparm nomarks
-
+	
 	{
-		map $whiteImage
-		rgbgen vertex
-	}
-
-	{
-		map env/2d/map1.png 
-		tcGen environment
-		alphagen const 0.35
-		blendFunc blend
+		map $cubemap
+		rgbgen identity
 	}
 }
+	
 
 textures/metal/chrome_rusty
 {	
@@ -238,5 +233,6 @@ textures/metal/scratchedmetal
 	
 	{
 		material textures/metal/scratchedmetal
+		tcmod scale 2 2
 	}
 }

@@ -4,7 +4,7 @@
 
 textures/decals/dashed_line_vcolor
 {
-	qer_editorimage textures/decals/dashed_line.png
+	qer_editorimage textures/decals/preview/dashed_line
 	qer_alphafunc gequal 0.5
 	surfaceparm nomarks
 	surfaceparm nodlight
@@ -15,7 +15,8 @@ textures/decals/dashed_line_vcolor
 
 	{
 		detail
-		material textures/decals/dashed_line.png textures/decals/paint_line_norm.tga
+		material textures/decals/dashed_line textures/decals/paint_line_norm
+		tcmod scale 4 4
 		rgbgen vertex
 		alphagen vertex
 		blendfunc blend
