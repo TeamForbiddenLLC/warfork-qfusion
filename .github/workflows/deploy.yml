@@ -133,7 +133,7 @@ jobs:
   # Deploy to Steam
   deploy:
     needs: prepare-steam-build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -141,19 +141,9 @@ jobs:
           # client
           - id: '671610'
             desc: 'Warfork build'
-            depot4: ''
-            depot5: 'windows'
-            depot6: 'linux'
-            depot7: 'linux'
-            depot8: 'macos'
           # dedicated server
           - id: '1136510'
             desc: 'Warfork Dedicated Server build'
-            depot4: 'windows'
-            depot5: ''
-            depot6: ''
-            depot7: 'macos'
-            depot8: 'linux'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -164,55 +154,43 @@ jobs:
           name: steam-build
           path: steam-build
 
-      - name: Deploy to Steam
-        uses: game-ci/steam-deploy@v3.2.2
-        with:
-          username: ${{ secrets.STEAM_USERNAME }}
-          configVdf: ${{ secrets.STEAM_CONFIG_VDF }}
-          appId: ${{ matrix.steam_app.id }}
-          buildDescription: "${{ matrix.steam_app.desc }} ${{ github.sha }}"
-          rootPath: steam-build
-          depot4Path: ${{ matrix.steam_app.depot4 }}
-          depot5Path: ${{ matrix.steam_app.depot5 }}
-          depot6Path: ${{ matrix.steam_app.depot6 }}
-          depot7Path: ${{ matrix.steam_app.depot7 }}
-          depot8Path: ${{ matrix.steam_app.depot8 }}
-          releaseBranch: ${{ inputs.release_branch }}
-          debugBranch: true
-
-      # This repository is public, so encrypt logs before uploading an artifact.
-      - name: Encrypt Steam logs on failure
-        if: failure()
-        shell: bash
-        env:
-          STEAM_LOG_ARTIFACT_KEY: ${{ secrets.STEAM_LOG_ARTIFACT_KEY }}
+      - name: Install SteamCMD
         run: |
           set -euo pipefail
-          if [[ -z "$STEAM_LOG_ARTIFACT_KEY" ]]; then
-            echo '::error::Set the STEAM_LOG_ARTIFACT_KEY repository secret to upload encrypted Steam logs.'
+          sudo apt-get update
+          sudo apt-get install -y lib32gcc-s1
+          mkdir -p "$RUNNER_TEMP/steamcmd" "$RUNNER_TEMP/steam-home"
+          curl -fL https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz \
+            -o "$RUNNER_TEMP/steamcmd.tar.gz"
+          tar -xzf "$RUNNER_TEMP/steamcmd.tar.gz" -C "$RUNNER_TEMP/steamcmd"
+          HOME="$RUNNER_TEMP/steam-home" "$RUNNER_TEMP/steamcmd/steamcmd.sh" +quit
+
+      - name: Deploy to Steam
+        shell: bash
+        env:
+          STEAM_USERNAME: ${{ secrets.STEAM_USERNAME }}
+          STEAM_CONFIG_VDF: ${{ secrets.STEAM_CONFIG_VDF }}
+          STEAM_APP_ID: ${{ matrix.steam_app.id }}
+          STEAM_BRANCH: ${{ inputs.release_branch }}
+          BUILD_DESCRIPTION: ${{ matrix.steam_app.desc }} ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/steam-home"
+          mkdir -p "$HOME/Steam/config" "$GITHUB_WORKSPACE/steam-build-output"
+          printf '%s' "$STEAM_CONFIG_VDF" | base64 --decode > "$HOME/Steam/config/config.vdf"
+          chmod 600 "$HOME/Steam/config/config.vdf"
+          python3 .github/scripts/generate_steam_build.py \
+            --app-id "$STEAM_APP_ID" --branch "$STEAM_BRANCH" \
+            --description "$BUILD_DESCRIPTION" \
+            --content-root "$GITHUB_WORKSPACE/steam-build" \
+            --build-output "$GITHUB_WORKSPACE/steam-build-output" \
+            --output "$RUNNER_TEMP/app_build.vdf"
+          "$RUNNER_TEMP/steamcmd/steamcmd.sh" \
+            +login "$STEAM_USERNAME" +run_app_build "$RUNNER_TEMP/app_build.vdf" +quit \
+            2>&1 | tee "$GITHUB_WORKSPACE/steam-deploy-console.log"
+          if ! grep -Eq "Successfully finished AppID $STEAM_APP_ID build \\(BuildID [0-9]+\\)" \
+            "$GITHUB_WORKSPACE/steam-deploy-console.log"; then
+            echo '::error::SteamCMD did not report a successful app build with a BuildID.'
             exit 1
           fi
-          cd "$RUNNER_TEMP"
-          mapfile -d '' log_files < <(find . -type f \( \
-            -path '*/Steam/logs/*' -o \
-            -path '*/BuildOutput/*.log' -o \
-            -path '*/build_output/*.log' \
-          \) -print0)
-          if (( ${#log_files[@]} == 0 )); then
-            echo 'No Steam logs found in the runner temporary directory.'
-            exit 0
-          fi
-          printf '%s\0' "${log_files[@]}" |
-            tar --null -T - -czf - |
-            openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 \
-              -pass env:STEAM_LOG_ARTIFACT_KEY \
-              -out "$GITHUB_WORKSPACE/steam-logs.tar.gz.enc"
 
-      - name: Upload encrypted Steam logs
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: steam-logs-${{ matrix.steam_app.id }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: steam-logs.tar.gz.enc
-          if-no-files-found: ignore
-          retention-days: 7
