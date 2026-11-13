@@ -281,6 +281,10 @@ void CG_CalcViewWeapon( cg_viewweapon_t *viewweapon )
 	viewweapon->ent.rtype = RT_MODEL;
 	Vector4Set( viewweapon->ent.shaderRGBA, 255, 255, 255, 255 );
 
+	// built the skeleton pose so we can grab the tags
+	if( viewweapon->ent.model )
+		CG_SetBoneposesForTemporaryEntity( &viewweapon->ent );
+
 	if( cg_gun_alpha->value < 1.0f ) {
 		viewweapon->ent.renderfx |= RF_ALPHAHACK;
 		viewweapon->ent.shaderRGBA[3] = bound( 0, cg_gun_alpha->value, 1 ) * 255.0f;
@@ -355,9 +359,13 @@ void CG_CalcViewWeapon( cg_viewweapon_t *viewweapon )
 
 	// if the player doesn't want to view the weapon we still have to build the projection source
 	if( CG_GrabTag( &tag, &viewweapon->ent, "tag_weapon" ) )
+	{
 		CG_ViewWeapon_UpdateProjectionSource( viewweapon->ent.origin, viewweapon->ent.axis, tag.origin, tag.axis );
+	}
 	else
+	{
 		CG_ViewWeapon_UpdateProjectionSource( viewweapon->ent.origin, viewweapon->ent.axis, vec3_origin, axis_identity );
+	}
 }
 
 /*
@@ -374,6 +382,10 @@ void CG_AddViewWeapon( cg_viewweapon_t *viewweapon )
 	// update the other origins
 	VectorCopy( viewweapon->ent.origin, viewweapon->ent.origin2 );
 	VectorCopy( cg_entities[viewweapon->POVnum].ent.lightingOrigin, viewweapon->ent.lightingOrigin );
+
+	// events may have changed the animation so rebuild the pose
+	if( viewweapon->ent.model )
+		CG_SetBoneposesForTemporaryEntity( &viewweapon->ent );
 
 	CG_AddColoredOutLineEffect( &viewweapon->ent, cg.effects, 0, 0, 0, viewweapon->ent.shaderRGBA[3] );
 	CG_AddEntityToScene( &viewweapon->ent );
