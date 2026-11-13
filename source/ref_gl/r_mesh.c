@@ -686,6 +686,9 @@ void R_BuildTangentVectors( int numVertexes, vec4_t *xyzArray, vec4_t *normalsAr
 	vec3_t stackTVectorsArray[128];
 	vec3_t *tVectorsArray;
 
+	if( numVertexes <= 0 )
+		return;
+
 	if( numVertexes > sizeof( stackTVectorsArray )/sizeof( stackTVectorsArray[0] ) )
 		tVectorsArray = R_Malloc( sizeof( vec3_t )*numVertexes );
 	else

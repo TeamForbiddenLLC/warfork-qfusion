@@ -153,6 +153,47 @@ static int Mod_SkeletalModel_AddBlend( mskmodel_t *model, const mskblend_t *newb
 }
 
 /*
+* Mod_SkeletalModelCalcFrameBounds
+* 
+* Compute the per-frame model bounds from the bone poses, for skeleton-only
+* files that carry no bounds lump
+*/
+static void Mod_SkeletalModelCalcFrameBounds( mskmodel_t *poutmodel, model_t *mod )
+{
+	unsigned int i, j;
+	dualquat_t *worldposes;
+
+	worldposes = ( dualquat_t * )Mod_Malloc( mod, sizeof( dualquat_t ) * poutmodel->numbones );
+
+	for( i = 0; i < poutmodel->numframes; i++ ) {
+		bonepose_t *pbp = poutmodel->frames[i].boneposes;
+		vec3_t mins, maxs, pos;
+
+		ClearBounds( mins, maxs );
+
+		for( j = 0; j < poutmodel->numbones; j++, pbp++ ) {
+			if( poutmodel->bones[j].parent >= 0 ) {
+				DualQuat_Multiply( worldposes[poutmodel->bones[j].parent], pbp->dualquat, worldposes[j] );
+			} else {
+				DualQuat_Copy( pbp->dualquat, worldposes[j] );
+			}
+
+			DualQuat_GetVector( worldposes[j], pos );
+			AddPointToBounds( pos, mins, maxs );
+		}
+
+		VectorCopy( mins, poutmodel->frames[i].mins );
+		VectorCopy( maxs, poutmodel->frames[i].maxs );
+		poutmodel->frames[i].radius = RadiusFromBounds( mins, maxs );
+
+		AddPointToBounds( poutmodel->frames[i].mins, mod->mins, mod->maxs );
+		AddPointToBounds( poutmodel->frames[i].maxs, mod->mins, mod->maxs );
+	}
+
+	R_Free( worldposes );
+}
+
+/*
 * Mod_LoadSkeletalModel
 */
 void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, bspFormatDesc_t *unused )
@@ -226,24 +267,30 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 	H_SWAP( ofs_extensions );
 #undef H_SWAP
 
-	if( header->num_triangles < 1 || header->num_vertexes < 3 || header->num_vertexarrays < 1 || header->num_meshes < 1 ) {
-		ri.Com_Printf( S_COLOR_RED "ERROR: %s has no geometry\n", mod->name );
-		goto error;
+	{
+		bool has_geom = header->num_meshes > 0 || header->num_triangles > 0 || header->num_vertexes > 0;
+
+		// allow meshless IQM files (bone rigs): same policy as MD3, reject
+		// only when there are neither meshes nor joints
+		if( !has_geom && !header->num_joints ) {
+			ri.Com_Printf( S_COLOR_RED "ERROR: %s has no meshes and no joints\n", mod->name );
+			goto error;
+		}
+		if( has_geom && ( header->num_triangles < 1 || header->num_vertexes < 3 || header->num_vertexarrays < 1 || header->num_meshes < 1 ) ) {
+			ri.Com_Printf( S_COLOR_RED "ERROR: %s has no geometry\n", mod->name );
+			goto error;
+		}
 	}
 	if( header->num_vertexes >= USHRT_MAX ) {
 		ri.Com_Printf( S_COLOR_RED "ERROR: %s has too many vertices\n", mod->name );
 		goto error;
 	}
-	if( header->num_frames < 1 || header->num_anims < 1 ) {
+	if( header->num_frames < 1 || ( header->num_meshes > 0 && header->num_anims < 1 ) ) {
 		ri.Com_Printf( S_COLOR_RED "ERROR: %s has no animations\n", mod->name );
 		goto error;
 	}
-	if( header->num_joints != header->num_poses ) {
+	if( !header->num_joints || header->num_joints != header->num_poses ) {
 		ri.Com_Printf( S_COLOR_RED "ERROR: %s has an invalid number of poses: %i vs %i\n", mod->name, header->num_joints, header->num_poses );
-		goto error;
-	}
-	if( !header->ofs_bounds ) {
-		ri.Com_Printf( S_COLOR_RED "ERROR: %s has no frame bounds\n", mod->name );
 		goto error;
 	}
 
@@ -259,7 +306,7 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 		|| header->ofs_frames + header->num_frames * header->num_framechannels * sizeof( unsigned short ) > filesize
 		|| header->ofs_triangles + header->num_triangles * sizeof( int[3] ) > filesize
 		|| header->ofs_meshes + header->num_meshes * sizeof( iqmmesh_t ) > filesize
-		|| header->ofs_bounds + header->num_frames * sizeof( iqmbounds_t ) > filesize
+		|| ( header->ofs_bounds && header->ofs_bounds + header->num_frames * sizeof( iqmbounds_t ) > filesize )
 		) {
 		ri.Com_Printf( S_COLOR_RED "ERROR: %s has invalid size or offset information\n", mod->name );
 		goto error;
@@ -384,9 +431,9 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 		}
 	}
 
-	if( !vposition || !vtexcoord 
-		|| !(vblendindices_byte || vblendindexes_int) 
-		|| !(vblendweights_byte || vblendweights_float) ) {
+	if( header->num_vertexes > 0 && ( !vposition || !vtexcoord || !vnormal
+		|| !(vblendindices_byte || vblendindexes_int)
+		|| !(vblendweights_byte || vblendweights_float) ) ) {
 		ri.Com_Printf( S_COLOR_RED "ERROR: %s is missing vertex array data\n", mod->name );
 		goto error;
 	}
@@ -456,7 +503,7 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 	// load anims
 	inanims = ( iqmanim_t * )( pbase + header->ofs_anims );
 	poutmodel->numanims = header->num_anims;
-	poutmodel->anims = Mod_Malloc( mod, sizeof( mskanim_t ) * header->num_anims );
+	poutmodel->anims = header->num_anims ? ( mskanim_t * )Mod_Malloc( mod, sizeof( mskanim_t ) * header->num_anims ) : NULL;
 	for( i = 0; i < header->num_anims; i++ ) {
 		memcpy( &inanim, &inanims[i], sizeof( iqmanim_t ) );
 
@@ -555,7 +602,7 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 	// load triangles
 	memsize = 0;
 	memsize += sizeof( *outelems ) * header->num_triangles * 3;
-	pmem = Mod_Malloc( mod, memsize );
+	pmem = memsize ? Mod_Malloc( mod, memsize ) : NULL;
 
 	poutmodel->numtris = header->num_triangles;
 	poutmodel->elems = ( elem_t * )pmem; pmem += sizeof( *outelems ) * header->num_triangles * 3;
@@ -586,7 +633,7 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 	memsize += sizeof( *poutmodel->stArray ) * header->num_vertexes;
 	memsize += sizeof( *poutmodel->blendWeights ) * header->num_vertexes * SKM_MAX_WEIGHTS;
 	memsize += sizeof( *poutmodel->blendIndices ) * header->num_vertexes * SKM_MAX_WEIGHTS;
-	pmem = Mod_Malloc( mod, memsize );
+	pmem = memsize ? Mod_Malloc( mod, memsize ) : NULL;
 
 	poutmodel->numverts = header->num_vertexes;
 
@@ -634,7 +681,7 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 		vtexcoord += 2;
 	}
 
-	if( !vtangent ) {
+	if( !vtangent && poutmodel->numverts > 0 ) {
 		// if the loaded file is missing precomputed S-vectors, compute them now
 		R_BuildTangentVectors( poutmodel->numverts, poutmodel->xyzArray, poutmodel->normalsArray, poutmodel->stArray, 
 			poutmodel->numtris, poutmodel->elems, poutmodel->sVectorsArray );
@@ -675,7 +722,7 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 	// blends
 	memsize = 0;
 	memsize += poutmodel->numverts * ( sizeof( mskblend_t ) + sizeof( unsigned int ) );
-	pmem = Mod_Malloc( mod, memsize );
+	pmem = memsize ? Mod_Malloc( mod, memsize ) : NULL;
 
 	poutmodel->numblends = 0;
 	poutmodel->blends = ( mskblend_t * )pmem; pmem += sizeof( *poutmodel->blends ) * poutmodel->numverts;
@@ -702,7 +749,7 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 	memsize = 0;
 	memsize += sizeof( mskmesh_t ) * header->num_meshes;
 	memsize += sizeof( drawSurfaceSkeletal_t ) * header->num_meshes;
-	pmem = Mod_Malloc( mod, memsize );
+	pmem = memsize ? Mod_Malloc( mod, memsize ) : NULL;
 
 	poutmodel->nummeshes = header->num_meshes;
 	poutmodel->meshes = ( mskmesh_t * )pmem; pmem += sizeof( *poutmodel->meshes ) * header->num_meshes;
@@ -793,23 +840,29 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 	// bounds
 	ClearBounds( mod->mins, mod->maxs );
 
-	inbounds = ( iqmbounds_t * )(pbase + header->ofs_bounds);
-	for( i = 0; i < header->num_frames; i++ ) {
-		memcpy( &inbound, &inbounds[i], sizeof( iqmbounds_t ) );
+	if( header->ofs_bounds ) {
+		inbounds = ( iqmbounds_t * )(pbase + header->ofs_bounds);
+		for( i = 0; i < header->num_frames; i++ ) {
+			memcpy( &inbound, &inbounds[i], sizeof( iqmbounds_t ) );
 
-		for( j = 0; j < 3; j++ ) {
-			inbound.bbmin[j] = LittleFloat( inbound.bbmin[j] );
-			inbound.bbmax[j] = LittleFloat( inbound.bbmax[j] );
+			for( j = 0; j < 3; j++ ) {
+				inbound.bbmin[j] = LittleFloat( inbound.bbmin[j] );
+				inbound.bbmax[j] = LittleFloat( inbound.bbmax[j] );
+			}
+			inbound.radius = LittleFloat( inbound.radius );
+			inbound.xyradius = LittleFloat( inbound.xyradius );
+
+			VectorCopy( inbound.bbmin, poutmodel->frames[i].mins );
+			VectorCopy( inbound.bbmax, poutmodel->frames[i].maxs );
+			poutmodel->frames[i].radius = inbound.radius;
+
+			AddPointToBounds( poutmodel->frames[i].mins, mod->mins, mod->maxs );
+			AddPointToBounds( poutmodel->frames[i].maxs, mod->mins, mod->maxs );
 		}
-		inbound.radius = LittleFloat( inbound.radius );
-		inbound.xyradius = LittleFloat( inbound.xyradius );
-
-		VectorCopy( inbound.bbmin, poutmodel->frames[i].mins );
-		VectorCopy( inbound.bbmax, poutmodel->frames[i].maxs );
-		poutmodel->frames[i].radius = inbound.radius;
-
-		AddPointToBounds( poutmodel->frames[i].mins, mod->mins, mod->maxs );
-		AddPointToBounds( poutmodel->frames[i].maxs, mod->mins, mod->maxs );
+	}
+	else {
+		// skeletons without a mesh have no predefined bounds
+		Mod_SkeletalModelCalcFrameBounds( poutmodel, mod );
 	}
 
 	mod->radius = RadiusFromBounds( mod->mins, mod->maxs );
@@ -916,6 +969,7 @@ const mskanim_t *R_SkeletalGetAnimByName( const model_t *mod, const char *name )
 static model_t *R_SkeletalModelLOD( const entity_t *e )
 {
 	int lod;
+	model_t *mod;
 
 	if( !e->model->numlods || ( e->flags & RF_FORCENOLOD ) )
 		return e->model;
@@ -924,7 +978,14 @@ static model_t *R_SkeletalModelLOD( const entity_t *e )
 
 	if( lod < 1 )
 		return e->model;
-	return e->model->lods[min( lod, e->model->numlods )-1];
+
+	mod = e->model->lods[min( lod, e->model->numlods )-1];
+
+	// a LOD file that failed to load has no skeletal data; fall back to the base model
+	if( !mod || mod->type != mod_skeletal || !mod->extradata )
+		return e->model;
+
+	return mod;
 }
 
 /*

@@ -190,6 +190,9 @@ int R_LODForSphere( const vec3_t origin, float radius )
 	float dist;
 	int lod;
 
+	if( radius <= 0 )
+		return 0;
+
 	dist = DistanceFast( origin, rn.lodOrigin );
 	dist *= rn.lod_dist_scale_for_fov;
 
