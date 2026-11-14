@@ -61,6 +61,7 @@ struct pipeline_desc_s {
 	float depthBiasClamp;
 	float depthBiasSlope;
 	uint16_t flippedViewport : 1; // bodge for portals ...
+	uint16_t frontFace : 1;		  // RB_FrontFace: true = clockwise is front (GL_CW), false = counter-clockwise
 	uint16_t cullMode : 3;		  // RICullMode_e
 	uint16_t colorBlendEnabled : 1;
 	uint16_t depthWrite : 1;
@@ -77,14 +78,14 @@ struct pipeline_desc_s {
 	struct frame_cmd_vertex_attrib_s attribs[MAX_ATTRIBUTES];
 };
 
-// The cull mode actually handed to the rasterizer. A flipped viewport mirrors the image, which swaps
-// which winding faces the camera, so the mode has to swap with it. Shared by RP_ResolvePipeline (which
-// bakes it into the VkPipeline) and RP_BindPipeline (which sets it as Metal encoder state) so the two
-// backends can never drift.
-static inline enum RICullMode_e FR_PipelineCullMode( const struct pipeline_desc_s *desc )
+// The front-face winding actually handed to the rasterizer: true = clockwise. frontFace is the
+// renderer's own choice (RB_FrontFace, as in ref_gl). A flipped viewport mirrors the image, which
+// reverses the winding once more, so it toggles the result. The cull mode is left exactly as the shader
+// asked for. Shared by RP_ResolvePipeline (which bakes it into the VkPipeline) and RP_BindPipeline
+// (which sets it as Metal encoder state) so the two backends can never drift.
+static inline bool FR_PipelineFrontFaceCW( const struct pipeline_desc_s *desc )
 {
-	const enum RICullMode_e mode = (enum RICullMode_e)desc->cullMode;
-	return desc->flippedViewport ? RI_FlipCullMode( mode ) : mode;
+	return ( desc->frontFace != 0 ) != ( desc->flippedViewport != 0 );
 }
 
 struct FrameState_s {

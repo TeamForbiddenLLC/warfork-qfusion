@@ -49,6 +49,7 @@ void RB_DepthOffset( bool enable );
 void RB_ClearDepth( float depth );
 void RB_Cull( int cull );
 void RB_SetState_2(struct FrameState_s *cmd, int state );
+void RB_FrontFace( struct FrameState_s* cmd, bool front );
 void RB_FlipFrontFace( struct FrameState_s* cmd);
 void RB_Scissor( int x, int y, int w, int h );
 void RB_GetScissor( int *x, int *y, int *w, int *h );

@@ -71,6 +71,7 @@ void FR_CmdResetCommandState( struct FrameState_s *cmd, enum CmdResetBits bits)
 		cmd->pipeline.colorWriteMask = RI_COLOR_WRITE_RGB;
 		cmd->pipeline.colorBlendEnabled = false;
 		cmd->pipeline.flippedViewport = false;
+		cmd->pipeline.frontFace = false;
 		cmd->pipeline.depthWrite = false;
 		cmd->pipeline.cullMode = RI_CULL_MODE_FRONT;
 		cmd->pipeline.depthBiasConstant = 0.0f;

@@ -1198,9 +1198,9 @@ void RP_BindPipeline( struct FrameState_s *cmd, struct pipeline_hash_s *pipeline
 			const bool depthWrite = desc->depthWrite && hasDepth && ( desc->compareFunc != RI_COMPARE_NONE );
 			mtlc_render_command_encoder_set_depth_stencil_state( enc, __RP_MTLResolveDepthState( (enum RICompareFunc_e)desc->compareFunc, depthWrite ) );
 
-			mtlc_render_command_encoder_set_cull_mode( enc, RICullModeToMTL( FR_PipelineCullMode( desc ) ) );
-			// Matches the VK arm's VK_FRONT_FACE_COUNTER_CLOCKWISE; Metal defaults to clockwise.
-			mtlc_render_command_encoder_set_front_facing_winding( enc, MTLC_WINDING_COUNTER_CLOCKWISE );
+			mtlc_render_command_encoder_set_cull_mode( enc, RICullModeToMTL( (enum RICullMode_e)desc->cullMode ) );
+			// Same choice the VK arm bakes into rasterizationState.frontFace; Metal defaults to clockwise.
+			mtlc_render_command_encoder_set_front_facing_winding( enc, FR_PipelineFrontFaceCW( desc ) ? MTLC_WINDING_CLOCKWISE : MTLC_WINDING_COUNTER_CLOCKWISE );
 
 			// Same enable predicate the VK arm uses -- Metal has no depthBiasEnable, so "off" is all zeroes.
 			const bool useDepthBias = ( desc->depthBiasConstant != 0 || desc->depthBiasSlope != 0 );
@@ -1215,7 +1215,8 @@ void RP_BindPipeline( struct FrameState_s *cmd, struct pipeline_hash_s *pipeline
 
 static struct pipeline_hash_s *__RP_ResolvePipeline( struct glsl_program_s *program, struct pipeline_desc_s *cmd )
 {
-	const enum RICullMode_e cullMode = FR_PipelineCullMode( cmd );
+	const enum RICullMode_e cullMode = (enum RICullMode_e)cmd->cullMode;
+	const bool frontFaceCW = FR_PipelineFrontFaceCW( cmd );
 	struct pipeline_hash_s *pipeline = NULL;
 #if ( DEVICE_IMPL_VULKAN )
 	VkVertexInputAttributeDescription vertextbindingDesc[MAX_ATTRIBUTES];
@@ -1284,6 +1285,7 @@ static struct pipeline_hash_s *__RP_ResolvePipeline( struct glsl_program_s *prog
 			float depthBiasClamp;
 			float depthBiasSlope;
 			uint16_t cullMode : 3; // RICullMode_e
+			uint16_t frontFaceCW : 1;
 			uint16_t colorBlendEnabled : 1;
 			uint16_t depthWrite : 1;
 			uint16_t colorWriteMask : 4; // RIColorWriteMask_e
@@ -1297,6 +1299,7 @@ static struct pipeline_hash_s *__RP_ResolvePipeline( struct glsl_program_s *prog
 		encode.depthBiasClamp = useDepthBias ? cmd->depthBiasClamp : 0;
 		encode.depthBiasSlope = useDepthBias ? cmd->depthBiasSlope : 0;
 		encode.cullMode = cullMode;
+		encode.frontFaceCW = frontFaceCW;
 		encode.colorBlendEnabled = cmd->colorBlendEnabled;
 		encode.depthWrite = cmd->depthWrite;
 		// The write mask is baked into the pipeline whether or not blending is on (see colorAttachmentDesc
@@ -1332,6 +1335,7 @@ static struct pipeline_hash_s *__RP_ResolvePipeline( struct glsl_program_s *prog
 	if( RIIsTargetSelected( RI_DEVICE_API_MTL ) ) {
 		{
 			(void)cullMode; // encoder state on Metal, applied in RP_BindPipeline
+			(void)frontFaceCW; // likewise
 			// Metal folds blend state, colour write mask and attachment formats into the pipeline object, so
 			// they are all part of the cache key. Cull mode, depth bias and the depth test/write flags are
 			// encoder state on Metal (applied on every RP_BindPipeline) and deliberately are NOT hashed here:
@@ -1545,7 +1549,7 @@ static struct pipeline_hash_s *__RP_ResolvePipeline( struct glsl_program_s *prog
 			VkPipelineRasterizationStateCreateInfo rasterizationState = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
 			rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
 			rasterizationState.cullMode = ri_vk_RICullModeToVK( cullMode );
-			rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+			rasterizationState.frontFace = frontFaceCW ? VK_FRONT_FACE_CLOCKWISE : VK_FRONT_FACE_COUNTER_CLOCKWISE;
 			rasterizationState.depthBiasEnable = useDepthBias ? VK_TRUE : VK_FALSE;
 			rasterizationState.depthBiasConstantFactor = cmd->depthBiasConstant;
 			rasterizationState.depthBiasClamp = cmd->depthBiasClamp;

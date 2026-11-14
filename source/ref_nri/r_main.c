@@ -964,8 +964,8 @@ static void R_SetupViewMatrices( bool flippedViewport )
 		// compensates the rasterizer's NDC-Y direction -- paths that *sample* a rendered texture instead of
 		// rasterizing through it must undo it (r_shadow.c un-flips the shadow lookup matrix it stores).
 		//
-		// Mirroring in NDC also inverts triangle winding -- which is exactly what FR_PipelineCullMode
-		// already compensates for on the same flippedViewport condition, so the cull mode stays correct.
+		// Mirroring in NDC also inverts triangle winding -- which is exactly what FR_PipelineFrontFaceCW
+		// already compensates for on the same flippedViewport condition, so culling stays correct.
 		if( flippedViewport ) {
 			rn.projectionMatrix[1] = -rn.projectionMatrix[1];
 			rn.projectionMatrix[5] = -rn.projectionMatrix[5];
@@ -1009,6 +1009,18 @@ static void R_Clear(struct FrameState_s* frame, int bitMask  /* unused variable 
 }
 
 /*
+* R_ViewFlipsFrontFace
+*
+* ref_gl flips on RF_FLIPFRONTFACE alone. Shadow map views set the flag too (to render back faces), but
+* this renderer has never honoured it for them and the shadow lookup is tuned for front faces, so they
+* stay excluded. Drop the RF_SHADOWMAPVIEW test to match ref_gl there as well.
+*/
+static bool R_ViewFlipsFrontFace( void )
+{
+	return ( rn.renderFlags & RF_FLIPFRONTFACE ) && !( rn.renderFlags & RF_SHADOWMAPVIEW );
+}
+
+/*
 * R_SetupGL
 */
 static void R_SetupGL(struct FrameState_s* frame)
@@ -1044,7 +1056,7 @@ static void R_SetupGL(struct FrameState_s* frame)
 
 	RB_LoadObjectMatrix( mat4x4_identity );
 
-	if( rn.renderFlags & RF_FLIPFRONTFACE )
+	if( R_ViewFlipsFrontFace() )
 		RB_FlipFrontFace(frame);
 
 	if( ( rn.renderFlags & RF_SHADOWMAPVIEW )  )
@@ -1059,7 +1071,7 @@ static void R_EndGL( struct FrameState_s* frame )
 	if( ( rn.renderFlags & RF_SHADOWMAPVIEW ) )
 		RB_SetShaderStateMask( ~0, 0 );
 
-	if( rn.renderFlags & RF_FLIPFRONTFACE )
+	if( R_ViewFlipsFrontFace() )
 		RB_FlipFrontFace(frame);
 }
 

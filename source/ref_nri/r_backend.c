@@ -340,9 +340,17 @@ void RB_SetState_2( struct FrameState_s *cmd, int state )
 	// rb.gl.state = state;
 }
 
+void RB_FrontFace( struct FrameState_s *cmd, bool front )
+{
+	cmd->pipeline.frontFace = front;
+}
+
+/*
+ * RB_FlipFrontFace
+ */
 void RB_FlipFrontFace( struct FrameState_s *cmd )
 {
-	cmd->pipeline.cullMode = RI_FlipCullMode( cmd->pipeline.cullMode );
+	RB_FrontFace( cmd, !cmd->pipeline.frontFace );
 }
 
 /*
