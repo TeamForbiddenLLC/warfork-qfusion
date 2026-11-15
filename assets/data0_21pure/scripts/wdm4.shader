@@ -262,39 +262,6 @@ mapobjects_wdm4_tubes_blueglow
 	}
 }
 
-mapobjects_wdm4_ice_axisz
-{
-	qer_editorimage textures/blxbis/ice_01.png
-	q3map_lightimage textures/blxbis/ice_01.png
-	surfaceparm slick
-	surfaceparm nomarks
-	q3map_surfacelight 400
-	q3map_lightsubdivide 72
-	q3map_lightmapaxis z
-	q3map_forceMeta
-	q3map_nonplanar
-	q3map_bounceScale 0.1
-
-	{
-		map $lightmap
-	}
-	{
-		map textures/blxbis/ice_02.png
-		blendFunc filter
-	}
-	{
-		map textures/blxbis/ice_01.png
-		blendfunc blend
-		rgbGen const ( 0.756863 1 0.756863 )
-		tcMod scroll 0.01 0.02
-	}
-	{
-		map textures/blxbis/ice_01_alpha.png
-		blendfunc blend
-		alphaFunc GT0
-	}
-}
-
 mapobjects_wdm4_ice_grated
 {
 	qer_editorimage textures/blxbis/ice_01.png

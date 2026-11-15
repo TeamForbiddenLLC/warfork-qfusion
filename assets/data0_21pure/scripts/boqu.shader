@@ -8,6 +8,15 @@ textures/boqu/bright_metal
 	}
 }
 
+textures/boqu/metal_brushed
+{
+	qer_editorimage textures/metal/metal_brushed
+	
+	{
+		material textures/metal/metal_brushed
+	}
+}
+
 textures/boqu/treadplate_yellow
 {
 	qer_editorimage textures/boqu/treadplate_yellow

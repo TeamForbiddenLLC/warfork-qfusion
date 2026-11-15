@@ -320,22 +320,23 @@ textures/blxbis/trim4_turq_light_01_2000
 
 textures/blxbis/ice_01
 {
-	qer_editorimage textures/blxbis/ice_01.png
-	q3map_lightimage textures/blxbis/ice_01.png
-	//surfaceparm nolightmap
+	qer_editorimage textures/blxbis/ice_01
+	q3map_lightimage textures/blxbis/ice_01
 	surfaceparm slick
 	surfaceparm nomarks
 	q3map_surfacelight 500
 	q3map_lightsubdivide 86
-	q3map_bounceScale 0.25
+	q3map_backsplash 100 24
 
 	{
-		map $lightmap
+		material textures/blxbis/ice_02 textures/flatnorm
 	}
 	{
-		map textures/blxbis/ice_02.png
-		blendFunc filter
+		map $whiteImage
+		rgbgen const 0.3 0.3 0.3
+		blendfunc add
 	}
+
 	{
 		map textures/blxbis/ice_01.png
 		blendfunc blend
@@ -352,17 +353,11 @@ textures/blxbis/ice_01
 textures/blxbis/ice_01_nolight
 {
 	qer_editorimage textures/blxbis/ice_01.png
-	//surfaceparm nolightmap
 	surfaceparm slick
 	surfaceparm nomarks
-	q3map_bounceScale 0.25
 
 	{
-		map $lightmap
-	}
-	{
-		map textures/blxbis/ice_02.png
-		blendFunc filter
+		material textures/blxbis/ice_02
 	}
 	{
 		map textures/blxbis/ice_01.png
@@ -374,6 +369,27 @@ textures/blxbis/ice_01_nolight
 		map textures/blxbis/ice_01_alpha.png
 		blendfunc blend
 		alphaFunc GT0
+	}
+}
+
+
+textures/blxbis/ice_03
+{
+	qer_editorimage textures/blxbis/ice_01
+	q3map_lightimage textures/blxbis/ice_01
+	surfaceparm slick
+	surfaceparm nomarks
+	q3map_surfacelight 1000
+	q3map_lightsubdivide 86
+	q3map_backsplash 100 24
+
+	{
+		material textures/blxbis/ice_02 textures/flatnorm
+	}
+	{
+		map $whiteImage
+		rgbgen const 0.3 0.3 0.3
+		blendfunc add
 	}
 }
 

@@ -382,19 +382,19 @@ textures/wsw_city1/grid
 
 textures/wsw_cave1/scratchedmetal1
 {
-	qer_editorimage textures/metal/scratchedmetal.png
+	qer_editorimage textures/metal/metal_brushed
 
 	{
-		material textures/metal/scratchedmetal
+		material textures/metal/metal_brushed
 	}
 }
 
 textures/wsw_cave1/scratchedmetal2
 {
-	qer_editorimage textures/metal/scratchedmetal.png
+	qer_editorimage textures/metal/metal_brushed
 
 	{
-		material textures/metal/scratchedmetal
+		material textures/metal/metal_brushed
 	}
 }
 
