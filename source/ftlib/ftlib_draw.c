@@ -370,12 +370,18 @@ void FTLIB_DrawClampChar( int x, int y, wchar_t num, int xmin, int ymin, int xma
 	if( drawCharIntercept )
 		draw = drawCharIntercept;
 
-	if (!shaderWhite)
-		shaderWhite = trap_R_RegisterPic("$whiteimage");
+	if( !shaderWhite )
+		shaderWhite = trap_R_RegisterPic( "$whiteimage" );
+	
+	// only draw a background when one is actually set: an always-on bg quad alternates
+	// shaders with the glyph and breaks 2D batching (one draw call per quad)
+	if( bgcolor && bgcolor[3] > 0.0f )
+	{
+		draw( ix - 1, iy - 1, glyph->x_advance, font->height + 1,
+			0.0f, 0.0f, 1.0f, 1.0f,
+			bgcolor, shaderWhite );
+	}
 
-	draw( ix - 1, iy - 1, glyph->x_advance, font->height + 1,
-		0.0f, 0.0f, 1.0f, 1.0f,
-		bgcolor, shaderWhite );
 	draw( x, y, x2 - x, y2 - y,
 		glyph->s1 + tw * s1, glyph->t1 + th * t1,
 		glyph->s1 + tw * s2, glyph->t1 + th * t2,
@@ -387,14 +393,17 @@ void FTLIB_DrawClampChar( int x, int y, wchar_t num, int xmin, int ymin, int xma
 */
 void FTLIB_DrawClampString( int x, int y, const char *str, int xmin, int ymin, int xmax, int ymax, qfontface_t *font, vec4_t color, int flags )
 {
-	int xoffset = 0;
+	static const char bgEscape[] = { Q_COLOR_ESCAPE, Q_COLOR_ANSI_ESCAPE, '\0' };
+	int xoffset;
 	vec4_t scolor;
 	vec4_t bgcolor = { 0, 0, 0, 0 };
 	int colorindex, colorindexansi, colorindexansibg, rgbcolor;
-	wchar_t num, prev_num = 0;
-	const char *s = str, *olds;
+	int bgRunStart = 0, bgRunEnd = 0;
+	bool bgRun = false;
+	wchar_t num, prev_num;
+	const char *s, *olds;
 	int gc;
-	qglyph_t *glyph, *prev_glyph = NULL;
+	qglyph_t *glyph, *prev_glyph;
 	renderString_f renderString;
 	getKerning_f getKerning;
 	bool hasKerning;
@@ -404,11 +413,101 @@ void FTLIB_DrawClampString( int x, int y, const char *str, int xmin, int ymin, i
 	if( ( xmax <= xmin ) || ( ymax <= ymin ) || ( x > xmax ) || ( y > ymax ) )
 		return;
 
-	Vector4Copy( color, scolor );
-
 	renderString = font->f->renderString;
 	getKerning = font->f->getKerning;
 	hasKerning = ( flags & TEXTDRAWFLAG_KERNING ) && font->hasKerning;
+
+	if( !shaderWhite )
+		shaderWhite = trap_R_RegisterPic( "$whiteimage" );
+
+	// backgrounds go first, underneath the glyphs, as merged runs (one quad per run of equal
+	// bg color): a bg quad per glyph would alternate shaders and break 2D batching.
+	// Only strings with an ANSI escape can have a background.
+	if( !( flags & TEXTDRAWFLAG_NO_COLORS ) && strstr( str, bgEscape ) )
+	{
+		s = str;
+		xoffset = 0;
+		prev_num = 0;
+		prev_glyph = NULL;
+
+		while( 1 )
+		{
+			olds = s;
+			gc = FTLIB_GrabChar( &s, &num, &colorindex, &colorindexansi, &colorindexansibg, &rgbcolor, flags );
+			if( gc == GRABCHAR_CHAR )
+			{
+				if( num == '\n' )
+					break;
+
+				if( num < ' ' )
+					continue;
+
+				glyph = FTLIB_GetGlyph( font, num );
+				if( !glyph )
+				{
+					num = FTLIB_REPLACEMENT_GLYPH;
+					glyph = FTLIB_GetGlyph( font, num );
+				}
+
+				if( !glyph->shader )
+					renderString( font, olds );
+
+				if( prev_num )
+				{
+					xoffset += prev_glyph->x_advance;
+					if( hasKerning )
+						xoffset += getKerning( font, prev_glyph, glyph );
+				}
+
+				if( x + xoffset > xmax )
+					break;
+
+				if( bgcolor[3] > 0.0f && num > ' ' )
+				{
+					if( !bgRun )
+					{
+						bgRunStart = x + xoffset - 1;
+						bgRun = true;
+					}
+					bgRunEnd = x + xoffset - 1 + glyph->x_advance;
+				}
+
+				prev_num = num;
+				prev_glyph = glyph;
+			}
+			else if( gc == GRABCHAR_COLOR )
+			{
+				if( bgRun )
+				{
+					trap_R_DrawStretchPic( bgRunStart, y - 1, bgRunEnd - bgRunStart, font->height + 1, 0.0f, 0.0f, 1.0f, 1.0f, bgcolor, shaderWhite );
+					bgRun = false;
+				}
+				bgcolor[3] = 0.0f;
+			}
+			else if( gc == GRABCHAR_ANSI )
+			{
+				const float *newbg = ansi_color_table[colorindexansibg];
+				if( bgRun && !( VectorCompare( bgcolor, newbg ) && bgcolor[3] == newbg[3] ) )
+				{
+					trap_R_DrawStretchPic( bgRunStart, y - 1, bgRunEnd - bgRunStart, font->height + 1, 0.0f, 0.0f, 1.0f, 1.0f, bgcolor, shaderWhite );
+					bgRun = false;
+				}
+				Vector4Copy( newbg, bgcolor );
+			}
+			else if( gc == GRABCHAR_END )
+				break;
+		}
+
+		if( bgRun )
+			trap_R_DrawStretchPic( bgRunStart, y - 1, bgRunEnd - bgRunStart, font->height + 1, 0.0f, 0.0f, 1.0f, 1.0f, bgcolor, shaderWhite );
+	}
+
+	// glyphs
+	Vector4Copy( color, scolor );
+	s = str;
+	xoffset = 0;
+	prev_num = 0;
+	prev_glyph = NULL;
 
 	while( 1 )
 	{
@@ -442,7 +541,7 @@ void FTLIB_DrawClampString( int x, int y, const char *str, int xmin, int ymin, i
 			if( x + xoffset > xmax )
 				break;
 
-			FTLIB_DrawClampChar( x + xoffset, y, num, xmin, ymin, xmax, ymax, font, scolor, bgcolor );
+			FTLIB_DrawClampChar( x + xoffset, y, num, xmin, ymin, xmax, ymax, font, scolor, NULL );
 
 			prev_num = num;
 			prev_glyph = glyph;
@@ -451,11 +550,9 @@ void FTLIB_DrawClampString( int x, int y, const char *str, int xmin, int ymin, i
 		{
 			assert( ( unsigned )colorindex < MAX_S_COLORS );
 			VectorCopy( color_table[colorindex], scolor );
-			bgcolor[3] = 0.0f;
 		}
 		else if(gc == GRABCHAR_ANSI ){
 			Vector4Copy( ansi_color_table[colorindexansi], scolor );
-			Vector4Copy( ansi_color_table[colorindexansibg], bgcolor );
 		}
 		else if (gc == GRABCHAR_RGB) {
 			Vector4Set( scolor, ( rgbcolor >> 16 ) / 255.0f, ( ( rgbcolor >> 8 ) & 0xFF ) / 255.0f, ( rgbcolor & 0xFF ) / 255.0f, 1.0f );
