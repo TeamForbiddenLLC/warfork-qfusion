@@ -243,6 +243,18 @@ void resetBombSites()
 
 void misc_capture_area_indicator( Entity @ent )
 {
+	// maps built for other gametypes (e.g. wfdm4) can have more capture areas than we have
+	// site letters. remove the extras outright: leaving them in the world lets the
+	// trigger_capture_area that targets them find no site, and the null site kills the script
+	if ( siteCount >= SITE_LETTERS.length() )
+	{
+		G_Print( "Too many bombsites, removing " + ent.classname + " at " + vec3ToString( ent.origin ) + "\n" );
+
+		ent.freeEntity();
+
+		return;
+	}
+
 	@ent.think = misc_capture_area_indicator_think;
 
 	// drop to floor?
@@ -322,8 +334,10 @@ void misc_capture_area_indicator_think( Entity @ent )
 
 		cBombSite @site = @getSiteFromIndicator( @ent );
 
-		// we know site isn't null but for debugging purposes...
-		assert( @site != null, "site.as trigger_capture_area_touch: @site == null" );
+		if ( @site == null )
+		{
+			return;
+		}
 
 		site.carrierTouched();
 	}
@@ -390,10 +404,18 @@ void trigger_capture_area_touch( Entity @ent, Entity @other, const Vec3 planeNor
 	cBombSite @site = null;
 	
 	array<Entity @> @targets = ent.findTargets();
+	if ( targets.empty() )
+	{
+		return;
+	}
+
 	@site = getSiteFromIndicator( targets[0] );
 
-	// we know point isn't null either but for debugging purposes...
-	assert( @site != null, "site.as trigger_capture_area_touch: @site == null" );
+	// a null site here throws, and an exception shuts the whole gametype script down
+	if ( @site == null )
+	{
+		return;
+	}
 
 	// BREAKTHROUGH
 
