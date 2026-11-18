@@ -364,7 +364,7 @@ bool CG_SkeletalPoseGetAttachment( orientation_t *orient, cgs_skeleton_t *skel,
 
 	if( i == skel->numBones )
 	{
-		CG_Printf( "CG_SkeletalPoseLerpAttachment: no such bone %s\n", bonename );
+		//CG_Printf( "CG_SkeletalPoseLerpAttachment: no such bone %s\n", bonename );
 		return false;
 	}
 
