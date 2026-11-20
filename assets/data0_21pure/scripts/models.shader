@@ -189,9 +189,11 @@ models/weapons/rlauncher/rlauncher
 {
 	nopicmip
 	cull front
+	glossExponent 50
+	glossIntensity 2.0
 
 	{
-		material models/weapons/rlauncher/rlauncher.png
+		material models/weapons/rlauncher/rlauncher
 		rgbgen entity
 	}
 }
